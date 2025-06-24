@@ -1,0 +1,110 @@
+"use client";
+import { useEffect, useState } from "react";
+
+export default function TrafficPage() {
+  const [stats, setStats] = useState<any>(null);
+  const [showAllCountries, setShowAllCountries] = useState(false);
+  const [showAllVisitors, setShowAllVisitors] = useState(false);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await fetch("/api/traffic");
+        const data = await res.json();
+        setStats(data);
+      } catch (error) {
+        console.error("Failed to fetch traffic data:", error);
+      }
+    };
+    fetchStats();
+    const interval = setInterval(fetchStats, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  if (!stats) return <p className="p-4">Loading traffic data...</p>;
+  const summary = stats.summary || {};
+  const countries = Object.entries(summary.top_countries || {});
+  const visitors = Object.entries(summary.top_repeat_visitors || {});
+
+  const format = (count: number, color: string) => (
+    <span className={`text-${color}-400 font-semibold`}>{count}</span>
+  );
+
+  return (
+
+<div className="grid md:grid-cols-2 gap-4 mb-4">
+  {/* Left side: Traffic Monitor */}
+  <div>
+    <h1 className="text-xl font-bold mb-2">🔍 Traffic Monitor</h1>
+    <p>🔥 Firebase users: {stats.firebase_total}</p>
+    <p>🐘 Postgres users: {stats.postgres_total}</p>
+    <p className="text-orange-400">
+      ⚠️ Mismatched users (Firebase-only): {stats.mismatch_count}
+    </p>
+    {stats.only_in_firebase?.map((email: string) => (
+      <div key={email} className="text-sm text-orange-300">🔸 {email}</div>
+    ))}
+  </div>
+
+  {/* Right side: Top Countries */}
+  <div className="rounded-xl border border-gray-600 p-4 bg-[#111827] shadow-md">
+    <h2 className="text-lg font-semibold mb-2">🌍 Top Countries</h2>
+    {(showAllCountries ? countries : countries.slice(0, 5)).map(
+      ([country, count]: any, i: number) => (
+        <p key={country}>🔹 {i + 1}: {country}{count > 1 ? ` ${count}` : ""}</p>
+      )
+    )}
+    {countries.length > 5 && (
+      <button
+        className="text-sm text-blue-400 mt-1"
+        onClick={() => setShowAllCountries(!showAllCountries)}
+      >
+        {showAllCountries ? "Show Less" : "Show More"}
+      </button>
+    )}
+  </div>
+</div>
+
+      {/* Summary + Countries + Repeat Visitors */}
+      <div className="grid md:grid-cols-3 gap-4 mb-6">
+        {/* 📊 Traffic Summary */}
+        <div className="rounded-xl border border-gray-600 p-4 bg-[#111827] shadow-md">
+          <h2 className="text-lg font-semibold mb-2">📊 Traffic Summary</h2>
+          <p>👥 Real Users (last 24h): {format(summary.real_24h, "green")}</p>
+          <p>🔁 Repeat Visitors: {format(summary.repeat, "blue")}</p>
+          <p>🤖 Bots: {format(summary.bot, "yellow")}</p>
+          <p>⚠️ Suspicious: {format(summary.suspicious, "red")}</p>
+          <p>❓ Unknown: {format(summary.unknown, "gray")}</p>
+          <p className="line-through text-gray-500 text-sm">📌 Unique IPs in last 1000 lines:</p>
+          <p>📈 Total Visitors Since Launch: {format(summary.total_all_time_ips, "blue")}</p>
+        </div>
+
+        {/* 👤 Top Repeat Visitors */}
+        <div className="rounded-xl border border-gray-600 p-4 bg-[#111827] shadow-md">
+          <h2 className="text-lg font-semibold mb-2">👤 Top Repeat Visitors</h2>
+          {(showAllVisitors ? visitors : visitors.slice(0, 3)).map(
+          ([ip, count]: any) => (
+              <p key={ip}>🧠 {ip} → <span className="text-blue-400 font-semibold">{count}</span> visits</p>
+            )
+          )}
+          {visitors.length > 3 && (
+            <button
+              className="text-sm text-blue-400 mt-1"
+              onClick={() => setShowAllVisitors(!showAllVisitors)}
+            >
+              {showAllVisitors ? "Show Less" : "Show More"}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* 🧾 Traffic Log */}
+      <div>
+        <h2 className="text-lg font-semibold mb-2">📜 Recent Traffic Log</h2>
+        <pre className="bg-black text-green-400 text-xs p-2 rounded-md overflow-x-auto max-h-[600px]">
+          {stats.traffic_log}
+        </pre>
+      </div>
+    </div>
+  );
+}
