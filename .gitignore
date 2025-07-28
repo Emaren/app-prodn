@@ -15,3 +15,4 @@ build/
 *.log
 .envrc
 .direnv/
+.python-version
