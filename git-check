@@ -1,1 +1,9 @@
-/Users/tonyblum/projects/llama-scripts/bin/git-check
+#!/usr/bin/env bash
+set -euo pipefail
+
+# default: print a short build id
+if command -v git >/dev/null 2>&1 && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  git rev-parse --short HEAD
+else
+  echo "nogit"
+fi
