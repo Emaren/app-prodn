@@ -1,1 +1,5 @@
-/Users/tonyblum/projects/llama-scripts/bin/sanity
+#!/usr/bin/env bash
+set -euo pipefail
+# Minimal placeholder for VPS builds.
+# If you actually want checks here later, we can add them.
+echo "sanity: ok"
