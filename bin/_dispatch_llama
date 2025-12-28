@@ -4,30 +4,39 @@ set -euo pipefail
 tool="${1:?tool name required}"
 shift || true
 
-# Priority:
-# 1) explicit env var (works everywhere)
-# 2) vendored llama-scripts inside this repo (if you add it later)
-# 3) your Mac path (for convenience when running on your Mac)
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 candidates=()
 
-if [ -n "${LLAMA_SCRIPTS_DIR:-}" ]; then
+# 1) explicit env var points at llama-scripts repo root (works everywhere)
+if [[ -n "${LLAMA_SCRIPTS_DIR:-}" ]]; then
   candidates+=("${LLAMA_SCRIPTS_DIR}/bin/${tool}")
+  # also try without ".sh" in case llama-scripts uses names without extension
+  if [[ "$tool" == *.sh ]]; then
+    candidates+=("${LLAMA_SCRIPTS_DIR}/bin/${tool%.sh}")
+  fi
 fi
 
-# if you later vendor/copy llama-scripts into this repo:
-candidates+=("$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/llama-scripts/bin/${tool}")
+# 2) vendored inside this repo (if you ever add it later)
+candidates+=("${repo_root}/llama-scripts/bin/${tool}")
+if [[ "$tool" == *.sh ]]; then
+  candidates+=("${repo_root}/llama-scripts/bin/${tool%.sh}")
+fi
 
-# optional: convenience for your Mac only (harmless on Linux if it doesn't exist)
+# 3) your Mac path (harmless on Linux)
 candidates+=("/Users/tonyblum/projects/llama-scripts/bin/${tool}")
+if [[ "$tool" == *.sh ]]; then
+  candidates+=("/Users/tonyblum/projects/llama-scripts/bin/${tool%.sh}")
+fi
 
 for p in "${candidates[@]}"; do
-  if [ -x "$p" ]; then
+  if [[ -x "$p" ]]; then
     exec "$p" "$@"
   fi
 done
 
-echo "❌ '$tool' not found."
+echo "❌ '$tool' not found or not executable."
+echo "LLAMA_SCRIPTS_DIR=${LLAMA_SCRIPTS_DIR:-<unset>}"
 echo "Set LLAMA_SCRIPTS_DIR to the llama-scripts repo root, e.g.:"
 echo "  export LLAMA_SCRIPTS_DIR=\$HOME/projects/llama-scripts"
 echo "Tried:"
