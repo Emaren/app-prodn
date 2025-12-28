@@ -1,1 +1,3 @@
-/Users/tonyblum/projects/llama-scripts/bin/symlink-cli-tools.sh
+#!/usr/bin/env bash
+set -euo pipefail
+exec "$(dirname "$0")/_dispatch_llama" "symlink-cli-tools.sh" "$@"

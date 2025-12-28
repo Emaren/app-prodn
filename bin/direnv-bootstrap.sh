@@ -1,1 +1,3 @@
-/Users/tonyblum/projects/llama-scripts/bin/direnv-bootstrap.sh
+#!/usr/bin/env bash
+set -euo pipefail
+exec "$(dirname "$0")/_dispatch_llama" "direnv-bootstrap.sh" "$@"

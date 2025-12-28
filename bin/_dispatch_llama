@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+tool="${1:?tool name required}"
+shift || true
+
+# Priority:
+# 1) explicit env var (works everywhere)
+# 2) vendored llama-scripts inside this repo (if you add it later)
+# 3) your Mac path (for convenience when running on your Mac)
+
+candidates=()
+
+if [ -n "${LLAMA_SCRIPTS_DIR:-}" ]; then
+  candidates+=("${LLAMA_SCRIPTS_DIR}/bin/${tool}")
+fi
+
+# if you later vendor/copy llama-scripts into this repo:
+candidates+=("$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/llama-scripts/bin/${tool}")
+
+# optional: convenience for your Mac only (harmless on Linux if it doesn't exist)
+candidates+=("/Users/tonyblum/projects/llama-scripts/bin/${tool}")
+
+for p in "${candidates[@]}"; do
+  if [ -x "$p" ]; then
+    exec "$p" "$@"
+  fi
+done
+
+echo "❌ '$tool' not found."
+echo "Set LLAMA_SCRIPTS_DIR to the llama-scripts repo root, e.g.:"
+echo "  export LLAMA_SCRIPTS_DIR=\$HOME/projects/llama-scripts"
+echo "Tried:"
+printf '  - %s\n' "${candidates[@]}"
+exit 127
