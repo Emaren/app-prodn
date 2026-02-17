@@ -16,8 +16,16 @@ build/
 .envrc
 .direnv/
 .python-version
+.env
+.env.*
+!.env.production
 
 /lib/generated/prisma
 
 # macOS metadata
 .DS_Store
+
+# VPS-local artifacts
+data.json
+next.config.js.bak.*
+testdameon
