@@ -49,6 +49,13 @@ Optional migration compatibility:
 - Watcher package: `public/downloads/aoe2-watcher-mac.zip`
 - Replay parser page: `/replay-parser`
 
+## Admin bootstrap
+
+- If there are zero users in DB, the first successful user registration becomes admin.
+- You can promote/demote explicitly from backend with:
+  - `python /var/www/AoE2HDBets/api-prodn/scripts/set_admin.py --list`
+  - `python /var/www/AoE2HDBets/api-prodn/scripts/set_admin.py --email you@example.com`
+
 ## Production routing
 
 - `aoe2hdbets.com/*` should proxy to `app-prodn` (Next.js on `127.0.0.1:3004`)
