@@ -1,36 +1,42 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# app-prodn
 
-## Getting Started
+Production Next.js frontend for AoE2HDBets.
 
-First, run the development server:
+## Stack
+
+- Next.js App Router
+- Prisma 7 (`@prisma/client` + `@prisma/adapter-pg`) for user/profile APIs
+- UI routes for replay upload, game stats, wallet, and admin pages
+
+## Local development
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Build
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run build
+npm run start
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+`prebuild` runs `prisma generate`.
 
-## Learn More
+## Environment
 
-To learn more about Next.js, take a look at the following resources:
+Required for Prisma API routes:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `DATABASE_URL` (Postgres connection string)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Common:
 
-## Deploy on Vercel
+- `NEXT_PUBLIC_API_BASE_URL` (defaults to same-origin in `next.config.js`)
+- `AOE2_BACKEND_UPSTREAM` (server-side upstream for rewrites, default `http://127.0.0.1:3330`)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Replay upload flow
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Browser upload endpoint: `/api/replay/upload` (proxied to `api-prodn`)
+- Watcher package: `public/downloads/aoe2-watcher-mac.zip`
+- Replay parser page: `/replay-parser`

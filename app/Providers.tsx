@@ -1,12 +1,17 @@
 // app/Providers.tsx
 "use client";
 
-import { useEffect, ReactNode } from "react";
+import { ReactNode, useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useChainId } from "@/hooks/useChainId";
 import { woloChainConfig as baseConfig } from "@/lib/woloChain";
 
 const queryClient = new QueryClient();
+type KeplrSuggestConfig = typeof baseConfig & { chainId: string };
+
+type KeplrLike = {
+  experimentalSuggestChain: (config: KeplrSuggestConfig) => Promise<void>;
+};
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
@@ -21,12 +26,13 @@ function KeplrSuggest({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const keplr = (window as any).keplr;
+    const keplrWindow = window as Window & { keplr?: KeplrLike };
+    const keplr = keplrWindow.keplr;
     if (!keplr || !isSuccess || !chainId) return;
 
-    keplr.experimentalSuggestChain({ ...baseConfig, chainId }).catch((err: any) =>
-      console.error("Keplr suggestChain failed:", err)
-    );
+    keplr
+      .experimentalSuggestChain({ ...baseConfig, chainId })
+      .catch((err: unknown) => console.error("Keplr suggestChain failed:", err));
   }, [chainId, isSuccess]);
 
   return <>{children}</>;

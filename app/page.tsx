@@ -11,7 +11,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL!;
 console.log("✅", API_BASE);
 
 export default function Page() {
-  const { uid, playerName, setPlayerName, setUid, loading, isAdmin } = useUserAuth();
+  const { uid, playerName, setPlayerName, setUid, loading } = useUserAuth();
 
   const [showPwPrompt, setShowPwPrompt] = useState(false);
   const [password, setPassword] = useState("");
@@ -23,13 +23,13 @@ export default function Page() {
   }, [uid]);
 
   const savePlayerName = () => {
-    if (playerName.trim()) setShowPwPrompt(true);
+    if ((playerName || "").trim()) setShowPwPrompt(true);
   };
 
   const savePasswordAndAuth = async () => {
     if (!password.trim()) return;
 
-    const name = playerName.trim();
+    const name = (playerName || "").trim();
     if (!name) return;
 
     const existingUid = localStorage.getItem("uid");

@@ -3,16 +3,27 @@
 
 import { useEffect } from "react";
 
+declare global {
+  interface Window {
+    __wc_ws_patched?: boolean;
+  }
+}
+
 export default function WsBlocker() {
   useEffect(() => {
-    if ((window as any).__wc_ws_patched) return;
+    if (window.__wc_ws_patched) return;
+
     const OriginalWebSocket = window.WebSocket;
-    // @ts-ignore override
-    window.WebSocket = function (url: string, protocols?: string | string[]) {
-      if (url.includes("bridge.walletconnect.org")) {
+
+    const WrappedWebSocket = function (
+      url: string | URL,
+      protocols?: string | string[]
+    ): WebSocket {
+      const targetUrl = typeof url === "string" ? url : url.toString();
+
+      if (targetUrl.includes("bridge.walletconnect.org")) {
         console.warn("Blocked stray WC WebSocket ➔", url);
-        // Return dummy closed socket
-        const dummy: any = {
+        const dummySocket = {
           readyState: OriginalWebSocket.CLOSED,
           send: () => {},
           close: () => {},
@@ -23,11 +34,17 @@ export default function WsBlocker() {
           onerror: null,
           onclose: null,
         };
-        return dummy;
+        return dummySocket as unknown as WebSocket;
       }
-      return new OriginalWebSocket(url, protocols as any);
-    } as any;
-    (window as any).__wc_ws_patched = true;
+
+      return protocols === undefined
+        ? new OriginalWebSocket(url)
+        : new OriginalWebSocket(url, protocols);
+    } as unknown as typeof WebSocket;
+
+    WrappedWebSocket.prototype = OriginalWebSocket.prototype;
+    window.WebSocket = WrappedWebSocket;
+    window.__wc_ws_patched = true;
   }, []);
 
   return null;

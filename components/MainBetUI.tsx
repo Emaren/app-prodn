@@ -19,30 +19,28 @@ export interface MainBetUIProps {
   handleAccept: () => void;
   handleDecline: () => void;
   handleChallenge: () => void;
-  pendingBets: any[];
-  router: any;
+  pendingBets: unknown[];
+  router: unknown;
   menuOpen: boolean;
   setMenuOpen: React.Dispatch<React.SetStateAction<boolean>>;
   playerName: string;
 }
 
-export default function MainBetUI({
-  betPending,
-  betAmount,
-  challenger,
-  opponent,
-  setOpponent,
-  betStatus,
-  showButtons,
-  handleAccept,
-  handleDecline,
-  handleChallenge,
-  pendingBets,
-  router,
-  menuOpen,
-  setMenuOpen,
-  playerName,
-}: MainBetUIProps) {
+export default function MainBetUI(props: MainBetUIProps) {
+  const {
+    betPending,
+    betAmount,
+    challenger,
+    opponent,
+    setOpponent,
+    betStatus,
+    showButtons,
+    handleAccept,
+    handleDecline,
+    handleChallenge,
+    playerName,
+  } = props;
+
   return (
     <div className="relative w-full min-h-screen flex flex-col bg-gray-900 text-white">
       {/* Wallet button */}
@@ -80,10 +78,10 @@ export default function MainBetUI({
             ) : (
               <>
                 <p className="text-gray-400 text-lg">Welcome, <strong>{playerName}</strong>!</p>
-                <p className="text-gray-400 text-lg">Enter Opponent's Name:</p>
+                <p className="text-gray-400 text-lg">Enter Opponent&apos;s Name:</p>
                 <Input
                   className="text-black w-full px-4 py-3 text-lg rounded-md"
-                  placeholder="Opponent's Steam Name"
+                  placeholder="Opponent&apos;s Steam Name"
                   value={opponent}
                   onChange={(e) => setOpponent(e.target.value)}
                 />

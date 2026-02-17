@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -49,15 +50,15 @@ export default function AuthNamePrompt({
           </Button>
         </CardContent>
       </Card>
-<a
-  href="https://discord.gg/aK56aWQ5"
-  target="_blank"
-  rel="noopener noreferrer"
-  className="inline-flex items-center space-x-2 text-white hover:text-blue-400 transition"
->
-  <img src="/icons/discord.svg" alt="Discord" className="w-6 h-6" />
-  <span>Our Discord</span>
-</a>
+      <a
+        href="https://discord.gg/aK56aWQ5"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center space-x-2 text-white hover:text-blue-400 transition"
+      >
+        <Image src="/icons/discord.svg" alt="Discord" width={24} height={24} />
+        <span>Our Discord</span>
+      </a>
     </div>
   );
 }

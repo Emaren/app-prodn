@@ -39,7 +39,7 @@ export default function EarlyPatches() {
   return (
     <Script
       id="early-patches"
-      strategy="beforeInteractive"
+      strategy="afterInteractive"
       dangerouslySetInnerHTML={{ __html: patch }}
     />
   );

@@ -20,10 +20,10 @@ export default function BetChallengeCard({ betPending, challenger, opponent, set
           </div>
         ) : (
           <>
-            <p className="text-gray-400 text-lg">Enter Opponent's Name:</p>
+            <p className="text-gray-400 text-lg">Enter Opponent&apos;s Name:</p>
             <Input
               className="text-black w-full px-4 py-3 text-lg rounded-md"
-              placeholder="Opponent's Steam Name"
+              placeholder="Opponent&apos;s Steam Name"
               value={opponent}
               onChange={(e) => setOpponent(e.target.value)}
             />

@@ -21,12 +21,11 @@ export default function HeaderMenu({
   pendingBetsCount,
   playerName,
   setPlayerName,
-  uid,
 }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const router = useRouter();
   const { address } = useKeplr();
-  const { data: rawBalance } = useWoloBalance(address);
+  useWoloBalance(address);
   const menuRef = useRef<HTMLDivElement>(null);
   const { logout, isAdmin } = useUserAuth();
 

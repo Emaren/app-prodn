@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,9 +42,42 @@ export default function ProfilePage() {
     }
   };
 
-  const getIdToken = async (): Promise<string | null> => null;
+  const getIdToken = useCallback(async (): Promise<string | null> => null, []);
 
-  const fetchUser = async () => {
+  const registerUser = useCallback(
+    async (nextUid: string, userEmail: string) => {
+      const in_game_name = localStorage.getItem("playerName") || playerName || "";
+      const idToken = await getIdToken();
+
+      if (!nextUid || !in_game_name) {
+        console.warn("⛔ Skipping registration — missing uid or in_game_name");
+        return;
+      }
+
+      try {
+        const res = await fetch("/api/user/register", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
+          },
+          body: JSON.stringify({ uid: nextUid, email: userEmail, in_game_name }),
+        });
+
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(`Register failed: ${res.status} ${text}`);
+        }
+
+        console.log("🆕 User registered:", nextUid);
+      } catch (err) {
+        console.error("❌ Failed to register user:", err);
+      }
+    },
+    [getIdToken, playerName]
+  );
+
+  const fetchUser = useCallback(async () => {
     const fallbackEmail = localStorage.getItem("userEmail") || "unknown@aoe2hdbets.com";
     const idToken = await getIdToken();
 
@@ -87,38 +120,7 @@ export default function ProfilePage() {
     } catch (err) {
       console.error("❌ Exception in fetchUser:", err);
     }
-  };
-
-  const registerUser = async (uid: string, email: string) => {
-    const in_game_name = localStorage.getItem("playerName") || playerName || "";
-    const idToken = await getIdToken();
-
-    if (!uid || !in_game_name) {
-      console.warn("⛔ Skipping registration — missing uid or in_game_name");
-      return;
-    }
-
-    try {
-      const res = await fetch("/api/user/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
-        },
-        body: JSON.stringify({ uid, email, in_game_name }),
-      });
-
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`Register failed: ${res.status} ${text}`);
-      }
-
-      console.log("🆕 User registered:", uid);
-      await fetchUser();
-    } catch (err) {
-      console.error("❌ Failed to register user:", err);
-    }
-  };
+  }, [getIdToken, registerUser, setPlayerName, uid]);
 
   useEffect(() => {
     if (!uid || !isLoggedIn) {
@@ -129,7 +131,7 @@ export default function ProfilePage() {
     fetchUser();
     window.addEventListener("focus", fetchUser);
     return () => window.removeEventListener("focus", fetchUser);
-  }, [uid, isLoggedIn]);
+  }, [fetchUser, isLoggedIn, router, uid]);
 
   const handleSaveName = async () => {
     const trimmed = (playerName || "").trim();

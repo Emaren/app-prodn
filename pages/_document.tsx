@@ -177,7 +177,6 @@ import Document, {
             <meta name="apple-mobile-web-app-title" content="AoE2 Betting" />
             <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
             <link rel="manifest" href="/manifest.json" />
-            <title>AoE2 Betting</title>
           </Head>
           <body className="bg-gray-900 text-white min-h-screen flex flex-col">
             <Main />

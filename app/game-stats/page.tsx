@@ -26,7 +26,7 @@ interface PlayerStats {
 interface GameStats {
   id: number;
   game_version: string;
-  map: any;
+  map: unknown;
   game_type: string;
   duration: number;
   game_duration?: number;
@@ -103,7 +103,7 @@ const GameStatsPage = () => {
 
         const formattedGames = data.map((game: GameStats) => {
           let safePlayers: PlayerStats[] = [];
-          let safeMap: any = game.map;
+          let safeMap: unknown = game.map;
 
           if (typeof game.players === "string") {
             try { safePlayers = JSON.parse(game.players); } catch { safePlayers = []; }
@@ -132,7 +132,6 @@ const GameStatsPage = () => {
         validGames.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
         if (validGames.length === 0) {
-          console.warn("⚠️ No valid games found.");
           setLoading(false);
           return;
         }
@@ -154,19 +153,28 @@ const GameStatsPage = () => {
     let interval: NodeJS.Timeout;
     const startPolling = () => {
       clearInterval(interval);
-      interval = setInterval(fetchGameStats, focusRef.current ? 1000 : 5000);
+      interval = setInterval(fetchGameStats, focusRef.current ? 5000 : 15000);
     };
 
     fetchGameStats();
     startPolling();
 
-    window.addEventListener("focus", () => { focusRef.current = true; startPolling(); });
-    window.addEventListener("blur", () => { focusRef.current = false; startPolling(); });
+    const onFocus = () => {
+      focusRef.current = true;
+      startPolling();
+    };
+    const onBlur = () => {
+      focusRef.current = false;
+      startPolling();
+    };
+
+    window.addEventListener("focus", onFocus);
+    window.addEventListener("blur", onBlur);
 
     return () => {
       clearInterval(interval);
-      window.removeEventListener("focus", () => {});
-      window.removeEventListener("blur", () => {});
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("blur", onBlur);
     };
   }, []);
 
@@ -240,7 +248,12 @@ const GameStatsPage = () => {
                   </h3>
 
                   <p className="text-lg"><strong>Game Version:</strong> {game.game_version?.replace("Version.", "") || "Unknown"}</p>
-                  <p className="text-lg"><strong>Map:</strong> {typeof game.map === "object" ? game.map?.name : game.map}</p>
+                  <p className="text-lg">
+                    <strong>Map:</strong>{" "}
+                    {typeof game.map === "object" && game.map
+                      ? (game.map as { name?: string }).name || "Unknown"
+                      : String(game.map || "Unknown")}
+                  </p>
                   <p className="text-lg"><strong>Game Type:</strong> {cleanGameType(game.game_type).replace("VER ", "v")}</p>
                   <p className="text-lg"><strong>Duration:</strong> {cleanedDuration === 0 ? "⚠️ Invalid Duration (Likely Out of Sync)" : formatDuration(cleanedDuration)}</p>
 

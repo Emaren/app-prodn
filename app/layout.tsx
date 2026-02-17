@@ -12,7 +12,7 @@ import { UserAuthProvider, useUserAuth } from "@/context/UserAuthContext";
 
 function InnerLayout({ children }: { children: React.ReactNode }) {
   const { uid, playerName, setPlayerName } = useUserAuth();
-  const [pendingBetsCount, setPendingBetsCount] = React.useState(0);
+  const [pendingBetsCount] = React.useState(0);
 
   return (
     <>

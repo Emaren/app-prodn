@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 
 type User = {
@@ -15,22 +15,20 @@ type User = {
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [error, setError] = useState("");
+  const getErrorMessage = (err: unknown): string =>
+    err instanceof Error ? err.message : "Unknown error";
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
-      const res = await fetch("/api/admin/users", {
-        headers: {
-          Authorization: "Bearer secretadmin",
-        },
-      });
+      const res = await fetch("/api/admin/users");
       if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
       const data = await res.json();
       setUsers(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("❌ Failed to fetch users:", err);
-      setError(err.message);
+      setError(getErrorMessage(err));
     }
-  };
+  }, []);
 
   const deleteUser = async (uid: string) => {
     if (!confirm("Are you sure you want to delete this user?")) return;
@@ -38,9 +36,6 @@ export default function UsersPage() {
     try {
       const res = await fetch(`/api/admin/delete_user/${uid}`, {
         method: "DELETE",
-        headers: {
-          Authorization: "Bearer secretadmin",
-        },
       });
       if (!res.ok) throw new Error(`Delete failed: ${res.status}`);
       await fetchUsers(); // refresh list
@@ -52,7 +47,7 @@ export default function UsersPage() {
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [fetchUsers]);
 
   return (
     <div className="p-6 text-white">
