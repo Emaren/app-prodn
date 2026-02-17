@@ -30,7 +30,7 @@ cd /var/www/api-prodn && git pull origin main
 
 ```bash
 cd /var/www/api-prodn
-source .venv/bin/activate
+if [ -f venv/bin/activate ]; then source venv/bin/activate; else source .venv/bin/activate; fi
 alembic upgrade head
 ```
 
@@ -40,12 +40,12 @@ alembic upgrade head
 cd /var/www/app-prodn
 npm install
 npm run build
-pm2 restart app-prodn
+pm2 startOrReload ecosystem.config.js --only app-prodn --update-env
 
 cd /var/www/api-prodn
-source .venv/bin/activate
+if [ -f venv/bin/activate ]; then source venv/bin/activate; else source .venv/bin/activate; fi
 pip install -r requirements.txt
-pm2 restart api-prodn
+pm2 startOrReload ecosystem.config.js --only api-prodn --update-env
 ```
 
 ## 5) Confirm nginx routing model
