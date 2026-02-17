@@ -30,6 +30,8 @@ data.json
 next.config.js.bak.*
 testdameon
 aoe2hd-frontend-clean.git/
+*.bfg-report/
+-
 
 # TypeScript incremental artifacts
 tsconfig.tsbuildinfo
