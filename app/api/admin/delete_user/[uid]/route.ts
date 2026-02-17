@@ -4,6 +4,13 @@ type RouteContext = {
   params: Promise<{ uid: string }>;
 };
 
+function resolveAdminToken() {
+  const token = process.env.ADMIN_TOKEN;
+  if (token) return token;
+  if (process.env.NODE_ENV !== "production") return "secretadmin";
+  return null;
+}
+
 export async function DELETE(_request: Request, context: RouteContext) {
   const { uid } = await context.params;
   if (!uid?.trim()) {
@@ -13,7 +20,10 @@ export async function DELETE(_request: Request, context: RouteContext) {
   try {
     const upstream = process.env.AOE2_BACKEND_UPSTREAM || process.env.BACKEND_API || "http://127.0.0.1:3330";
     const base = (upstream === "." ? "http://127.0.0.1:3330" : upstream).replace(/\/$/, "");
-    const adminToken = process.env.ADMIN_TOKEN || "secretadmin";
+    const adminToken = resolveAdminToken();
+    if (!adminToken) {
+      return NextResponse.json({ detail: "ADMIN_TOKEN is not configured" }, { status: 500 });
+    }
 
     const response = await fetch(`${base}/api/admin/delete_user/${encodeURIComponent(uid)}`, {
       method: "DELETE",

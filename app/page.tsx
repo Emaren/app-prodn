@@ -68,7 +68,6 @@ export default function Page() {
     const payload = await regRes.json().catch(() => ({}));
     localStorage.setItem("isAdmin", String(Boolean(payload?.is_admin)));
     localStorage.setItem("userEmail", fallbackEmail);
-    localStorage.setItem("userPass", password);
     localStorage.setItem("uid", sessionUid);
     localStorage.setItem("playerName", name);
 

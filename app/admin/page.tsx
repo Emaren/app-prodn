@@ -90,7 +90,6 @@ export default function Page() {
     localStorage.setItem("uid", sessionUid);
     localStorage.setItem("userEmail", fallbackEmail);
     localStorage.setItem("playerName", name);
-    localStorage.setItem("userPass", password);
     setUid(sessionUid);
     window.dispatchEvent(new Event("storage"));
   };

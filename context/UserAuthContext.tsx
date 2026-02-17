@@ -166,7 +166,6 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("uid");
     localStorage.removeItem("userEmail");
     localStorage.removeItem("playerName");
-    localStorage.removeItem("userPass");
     localStorage.removeItem("isAdmin");
     router.push("/");
     router.refresh();
