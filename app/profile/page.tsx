@@ -218,7 +218,7 @@ export default function ProfilePage() {
         <Button
           className="bg-yellow-600 hover:bg-yellow-700 px-6 py-3"
           onClick={() => {
-            alert("Password reset is temporarily unavailable during Firebase migration.");
+            alert("Password reset is temporarily unavailable.");
           }}
         >
           🔐 Send Password Reset Email
