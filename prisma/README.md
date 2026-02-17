@@ -25,5 +25,7 @@ yarn prisma:push
 Notes
 -----
 
+- This repo uses Prisma 7 with `@prisma/adapter-pg` in server routes.
+- `yarn build` now runs `prisma generate` automatically (`prebuild` hook).
 - `yarn prisma:migrate:dev` is for local/dev only.
 - For production, treat migration rollout as a separate controlled step after review.
