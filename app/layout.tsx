@@ -11,7 +11,7 @@ import { Providers } from "./Providers";
 import { UserAuthProvider, useUserAuth } from "@/context/UserAuthContext";
 
 function InnerLayout({ children }: { children: React.ReactNode }) {
-  const { uid, playerName, setPlayerName } = useUserAuth(); // ✅ fixed
+  const { uid, playerName, setPlayerName } = useUserAuth();
   const [pendingBetsCount, setPendingBetsCount] = React.useState(0);
 
   return (
@@ -25,7 +25,7 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
               pendingBetsCount={pendingBetsCount}
               playerName={playerName}
               setPlayerName={setPlayerName}
-              uid={uid} // ✅ now valid
+              uid={uid}
             />
           </div>
         </div>
@@ -39,7 +39,15 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <head />
+      <head>
+        {/* Plausible */}
+        <script
+          defer
+          data-domain="aoe2hdbets.com"
+          src="https://plausible.io/js/script.js"
+        ></script>
+      </head>
+
       <body className="bg-gray-900 text-white min-h-screen flex flex-col">
         <EarlyPatches />
         <UserAuthProvider>

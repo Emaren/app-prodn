@@ -8,26 +8,50 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 candidates=()
 
+# Add candidate paths for a "base" directory.
+# Tries:
+#   base/<tool>
+#   base/<tool>.sh
+#   base/<tool-without-.sh>
+add_for_base() {
+  local base="$1"
+  local name="$2"
+
+  # as-given
+  candidates+=("${base}/${name}")
+
+  # if given without .sh, also try with .sh
+  if [[ "$name" != *.sh ]]; then
+    candidates+=("${base}/${name}.sh")
+  else
+    # if given with .sh, also try without .sh
+    candidates+=("${base}/${name%.sh}")
+  fi
+}
+
+# Add candidates for a llama-scripts "root":
+#   root/<tool*>
+#   root/bin/<tool*>
+add_for_llama_root() {
+  local root="$1"
+  local name="$2"
+
+  # repo root
+  add_for_base "$root" "$name"
+  # bin subdir (if repo uses it)
+  add_for_base "$root/bin" "$name"
+}
+
 # 1) explicit env var points at llama-scripts repo root (works everywhere)
 if [[ -n "${LLAMA_SCRIPTS_DIR:-}" ]]; then
-  candidates+=("${LLAMA_SCRIPTS_DIR}/bin/${tool}")
-  # also try without ".sh" in case llama-scripts uses names without extension
-  if [[ "$tool" == *.sh ]]; then
-    candidates+=("${LLAMA_SCRIPTS_DIR}/bin/${tool%.sh}")
-  fi
+  add_for_llama_root "$LLAMA_SCRIPTS_DIR" "$tool"
 fi
 
 # 2) vendored inside this repo (if you ever add it later)
-candidates+=("${repo_root}/llama-scripts/bin/${tool}")
-if [[ "$tool" == *.sh ]]; then
-  candidates+=("${repo_root}/llama-scripts/bin/${tool%.sh}")
-fi
+add_for_llama_root "${repo_root}/llama-scripts" "$tool"
 
 # 3) your Mac path (harmless on Linux)
-candidates+=("/Users/tonyblum/projects/llama-scripts/bin/${tool}")
-if [[ "$tool" == *.sh ]]; then
-  candidates+=("/Users/tonyblum/projects/llama-scripts/bin/${tool%.sh}")
-fi
+add_for_llama_root "/Users/tonyblum/projects/llama-scripts" "$tool"
 
 for p in "${candidates[@]}"; do
   if [[ -x "$p" ]]; then
@@ -38,7 +62,7 @@ done
 echo "❌ '$tool' not found or not executable."
 echo "LLAMA_SCRIPTS_DIR=${LLAMA_SCRIPTS_DIR:-<unset>}"
 echo "Set LLAMA_SCRIPTS_DIR to the llama-scripts repo root, e.g.:"
-echo "  export LLAMA_SCRIPTS_DIR=\$HOME/projects/llama-scripts"
+echo "  export LLAMA_SCRIPTS_DIR=\$HOME/llama-scripts"
 echo "Tried:"
 printf '  - %s\n' "${candidates[@]}"
 exit 127
