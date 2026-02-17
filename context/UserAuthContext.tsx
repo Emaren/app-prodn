@@ -13,6 +13,18 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 
+type SessionUser = {
+  uid?: string;
+  in_game_name?: string | null;
+  is_admin?: boolean;
+  email?: string | null;
+};
+
+type SessionEnvelope = {
+  uid?: string;
+  user?: SessionUser | null;
+};
+
 type CtxShape = {
   playerName: string;
   setPlayerName: (n: string) => void;
@@ -53,14 +65,53 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
 
   const refreshToken = useCallback(async () => null, []);
 
-  async function loadUserFromBackend(uidValue: string, email?: string) {
+  const ensureSession = useCallback(async () => {
+    try {
+      const storedEmail =
+        typeof window !== "undefined" ? localStorage.getItem("userEmail") : null;
+      const response = await fetch("/api/auth/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(storedEmail ? { email: storedEmail } : {}),
+      });
+      if (!response.ok) return null;
+
+      const payload = (await response.json().catch(() => ({}))) as SessionEnvelope;
+      const nextUid =
+        typeof payload.uid === "string" && payload.uid.trim()
+          ? payload.uid
+          : typeof payload.user?.uid === "string" && payload.user.uid.trim()
+            ? payload.user.uid
+            : null;
+      if (!nextUid) return null;
+
+      setUidState(nextUid);
+      localStorage.setItem("uid", nextUid);
+
+      if (payload.user?.email && !storedEmail) {
+        localStorage.setItem("userEmail", payload.user.email);
+      }
+      if (typeof payload.user?.is_admin === "boolean") {
+        setIsAdmin(payload.user.is_admin);
+        localStorage.setItem("isAdmin", String(payload.user.is_admin));
+      }
+      if (typeof payload.user?.in_game_name === "string" && payload.user.in_game_name.trim()) {
+        setPlayerNameState(payload.user.in_game_name);
+        localStorage.setItem("playerName", payload.user.in_game_name);
+      }
+
+      return nextUid;
+    } catch (error) {
+      console.warn("Failed to ensure session:", error);
+      return null;
+    }
+  }, []);
+
+  const loadUserFromBackend = useCallback(async () => {
     try {
       const res = await fetch("/api/user/me", {
         method: "GET",
-        headers: {
-          "x-user-uid": uidValue,
-          ...(email ? { "x-user-email": email } : {}),
-        },
+        cache: "no-store",
       });
       if (!res.ok) {
         return;
@@ -74,31 +125,44 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       console.warn("Failed to load user profile:", err);
     }
-  }
+  }, []);
 
   useEffect(() => {
-    const storedUid = localStorage.getItem("uid");
-    const storedName = localStorage.getItem("playerName");
-    const storedEmail = localStorage.getItem("userEmail") || undefined;
-    const storedIsAdmin = localStorage.getItem("isAdmin");
+    const storedName =
+      typeof window !== "undefined" ? localStorage.getItem("playerName") : null;
+    const storedIsAdmin =
+      typeof window !== "undefined" ? localStorage.getItem("isAdmin") : null;
 
     if (storedName) setPlayerNameState(storedName);
     if (storedIsAdmin) setIsAdmin(storedIsAdmin === "true");
 
-    if (storedUid) {
-      setUidState(storedUid);
-      loadUserFromBackend(storedUid, storedEmail).finally(() => setLoading(false));
-      return;
-    }
+    let cancelled = false;
+    (async () => {
+      const nextUid = await ensureSession();
+      if (cancelled) return;
+      if (nextUid) {
+        await loadUserFromBackend();
+      }
+      if (!cancelled) {
+        setLoading(false);
+      }
+    })();
 
-    setLoading(false);
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [ensureSession, loadUserFromBackend]);
 
   async function logout() {
     setUid(null);
     setToken(null);
     setPlayerNameState("");
     setIsAdmin(false);
+    try {
+      await fetch("/api/auth/session", { method: "DELETE" });
+    } catch (error) {
+      console.warn("Failed to clear server session cookie:", error);
+    }
     localStorage.removeItem("uid");
     localStorage.removeItem("userEmail");
     localStorage.removeItem("playerName");

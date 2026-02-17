@@ -29,7 +29,6 @@ module.exports = {
       { source: "/api/game_stats", destination: `${UPSTREAM_API}/api/game_stats` },
       { source: "/api/admin/users", destination: `${UPSTREAM_API}/api/admin/users` },
       { source: "/api/parse_replay", destination: `${UPSTREAM_API}/api/parse_replay` },
-      { source: "/api/replay/upload", destination: `${UPSTREAM_API}/api/replay/upload` },
       { source: "/api/health", destination: `${UPSTREAM_API}/api/health` },
     ];
   },

@@ -35,14 +35,20 @@ export default function ReplayParserPage() {
     };
   }, []);
 
-  const getUidForUpload = () => {
-    const stored = typeof window !== "undefined" ? localStorage.getItem("uid") : null;
-    if (stored) return stored;
-    const generated = `guest-${crypto.randomUUID()}`;
-    if (typeof window !== "undefined") {
-      localStorage.setItem("uid", generated);
+  const ensureSession = async () => {
+    const existingEmail =
+      typeof window !== "undefined" ? localStorage.getItem("userEmail") : null;
+    const fallbackEmail = existingEmail || `guest-${crypto.randomUUID()}@aoe2hdbets.local`;
+    if (typeof window !== "undefined" && !existingEmail) {
+      localStorage.setItem("userEmail", fallbackEmail);
     }
-    return generated;
+
+    const response = await fetch("/api/auth/session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: fallbackEmail }),
+    });
+    return response.ok;
   };
 
   const digestSha1 = async (file: File) => {
@@ -130,8 +136,12 @@ export default function ReplayParserPage() {
   };
 
   const uploadReplayFile = async (file: File) => {
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || ".";
-    const uid = getUidForUpload();
+    const hasSession = await ensureSession();
+    if (!hasSession) {
+      setStatus("❌ Unable to initialize session.");
+      return;
+    }
+
     setFileName(file.name);
     setStatus(`Uploading ${file.name}...`);
 
@@ -139,11 +149,8 @@ export default function ReplayParserPage() {
     formData.append("file", file);
 
     try {
-      const res = await fetch(`${API_BASE}/api/replay/upload`, {
+      const res = await fetch("/api/replay/upload", {
         method: "POST",
-        headers: {
-          "x-user-uid": uid,
-        },
         body: formData,
       });
 

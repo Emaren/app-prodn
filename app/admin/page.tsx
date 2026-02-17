@@ -38,22 +38,32 @@ export default function Page() {
     const name = playerName.trim();
     if (!name) return;
 
-    const existingUid = localStorage.getItem("uid");
     const existingEmail = localStorage.getItem("userEmail");
-    const sessionUid = existingUid || crypto.randomUUID();
-    const sessionEmail = existingEmail || `guest-${sessionUid}@aoe2hdbets.local`;
+    const fallbackEmail = existingEmail || `guest-${crypto.randomUUID()}@aoe2hdbets.local`;
+
+    const sessionRes = await fetch("/api/auth/session", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email: fallbackEmail }),
+    });
+    if (!sessionRes.ok) {
+      throw new Error(`Failed session setup: ${sessionRes.status}`);
+    }
+
+    const sessionPayload = (await sessionRes.json().catch(() => ({}))) as { uid?: string };
+    const sessionUid = typeof sessionPayload.uid === "string" ? sessionPayload.uid : null;
+    if (!sessionUid) throw new Error("Session response missing uid");
 
     /* 4. ask backend */
     const meRes = await fetch("/api/user/me", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-user-uid": sessionUid,
-        "x-user-email": sessionEmail,
       },
       body: JSON.stringify({
-        uid: sessionUid,
-        email: sessionEmail,
+        email: fallbackEmail,
         in_game_name: returningUser ? undefined : name,
       }),
     });
@@ -64,12 +74,9 @@ export default function Page() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-user-uid": sessionUid,
-          "x-user-email": sessionEmail,
         },
         body: JSON.stringify({
-          uid: sessionUid,
-          email: sessionEmail,
+          email: fallbackEmail,
           in_game_name: name,
         }),
       });
@@ -81,7 +88,7 @@ export default function Page() {
 
     /* 5. success */
     localStorage.setItem("uid", sessionUid);
-    localStorage.setItem("userEmail", sessionEmail);
+    localStorage.setItem("userEmail", fallbackEmail);
     localStorage.setItem("playerName", name);
     localStorage.setItem("userPass", password);
     setUid(sessionUid);

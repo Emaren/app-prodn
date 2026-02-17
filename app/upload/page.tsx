@@ -10,14 +10,20 @@ export default function UploadReplay() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [status, setStatus] = useState("");
 
-  const getUidForUpload = () => {
-    const stored = typeof window !== "undefined" ? localStorage.getItem("uid") : null;
-    if (stored) return stored;
-    const generated = `guest-${crypto.randomUUID()}`;
-    if (typeof window !== "undefined") {
-      localStorage.setItem("uid", generated);
+  const ensureSession = async () => {
+    const existingEmail =
+      typeof window !== "undefined" ? localStorage.getItem("userEmail") : null;
+    const fallbackEmail = existingEmail || `guest-${crypto.randomUUID()}@aoe2hdbets.local`;
+    if (typeof window !== "undefined" && !existingEmail) {
+      localStorage.setItem("userEmail", fallbackEmail);
     }
-    return generated;
+
+    const response = await fetch("/api/auth/session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: fallbackEmail }),
+    });
+    return response.ok;
   };
 
   const submit = async () => {
@@ -26,16 +32,19 @@ export default function UploadReplay() {
       return;
     }
 
-    const uid = getUidForUpload();
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || ".";
+    const hasSession = await ensureSession();
+    if (!hasSession) {
+      setStatus("Unable to initialize session. Try refreshing and retrying.");
+      return;
+    }
+
     const formData = new FormData();
     formData.append("file", selectedFile);
     setStatus(`Uploading ${selectedFile.name}...`);
 
     try {
-      const response = await fetch(`${API_BASE}/api/replay/upload`, {
+      const response = await fetch("/api/replay/upload", {
         method: "POST",
-        headers: { "x-user-uid": uid },
         body: formData,
       });
       if (!response.ok) {

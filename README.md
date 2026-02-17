@@ -29,11 +29,17 @@ npm run start
 Required for Prisma API routes:
 
 - `DATABASE_URL` (Postgres connection string)
+- `SESSION_SECRET` (long random string for signing auth session cookies)
 
 Common:
 
 - `NEXT_PUBLIC_API_BASE_URL` (defaults to same-origin in `next.config.js`)
 - `AOE2_BACKEND_UPSTREAM` (server-side upstream for rewrites, default `http://127.0.0.1:3330`)
+- `ADMIN_TOKEN` (required for admin proxy routes)
+
+Optional migration compatibility:
+
+- `ALLOW_LEGACY_UID_HEADERS=true` to temporarily allow `x-user-uid`/body uid fallback for user routes.
 
 ## Replay upload flow
 

@@ -42,15 +42,12 @@ export default function ProfilePage() {
     }
   };
 
-  const getIdToken = useCallback(async (): Promise<string | null> => null, []);
-
   const registerUser = useCallback(
-    async (nextUid: string, userEmail: string) => {
+    async (userEmail: string) => {
       const in_game_name = localStorage.getItem("playerName") || playerName || "";
-      const idToken = await getIdToken();
 
-      if (!nextUid || !in_game_name) {
-        console.warn("⛔ Skipping registration — missing uid or in_game_name");
+      if (!in_game_name) {
+        console.warn("⛔ Skipping registration — missing in_game_name");
         return;
       }
 
@@ -59,9 +56,8 @@ export default function ProfilePage() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
           },
-          body: JSON.stringify({ uid: nextUid, email: userEmail, in_game_name }),
+          body: JSON.stringify({ email: userEmail, in_game_name }),
         });
 
         if (!res.ok) {
@@ -69,34 +65,31 @@ export default function ProfilePage() {
           throw new Error(`Register failed: ${res.status} ${text}`);
         }
 
-        console.log("🆕 User registered:", nextUid);
+        console.log("🆕 User registered from active session");
       } catch (err) {
         console.error("❌ Failed to register user:", err);
       }
     },
-    [getIdToken, playerName]
+    [playerName]
   );
 
   const fetchUser = useCallback(async () => {
     const fallbackEmail = localStorage.getItem("userEmail") || "unknown@aoe2hdbets.com";
-    const idToken = await getIdToken();
-
-    const payload = { uid, email: fallbackEmail };
-    console.log("🔍 Fetching user with:", payload);
+    const payload = { email: fallbackEmail };
+    console.log("🔍 Fetching user with active session");
 
     try {
       const res = await fetch("/api/user/me", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
         },
         body: JSON.stringify(payload),
       });
 
       if (res.status === 404) {
         console.warn("⚠️ No user found (404), retrying registration...");
-        await registerUser(uid || "", fallbackEmail);
+        await registerUser(fallbackEmail);
         return;
       }
 
@@ -120,7 +113,7 @@ export default function ProfilePage() {
     } catch (err) {
       console.error("❌ Exception in fetchUser:", err);
     }
-  }, [getIdToken, registerUser, setPlayerName, uid]);
+  }, [registerUser, setPlayerName]);
 
   useEffect(() => {
     if (!uid || !isLoggedIn) {
@@ -137,7 +130,6 @@ export default function ProfilePage() {
     const trimmed = (playerName || "").trim();
     if (!trimmed) return alert("Enter a valid name.");
 
-    const idToken = await getIdToken();
     localStorage.setItem("playerName", trimmed);
 
     try {
@@ -145,9 +137,8 @@ export default function ProfilePage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
         },
-        body: JSON.stringify({ uid, in_game_name: trimmed }),
+        body: JSON.stringify({ in_game_name: trimmed }),
       });
 
       if (res.status === 404) {

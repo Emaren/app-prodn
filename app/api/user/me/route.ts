@@ -2,30 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@/lib/generated/prisma/client";
 import { getPrisma } from "@/lib/prisma";
 import { toUserApi } from "@/lib/userDto";
+import { resolveRequestEmail, resolveRequestUid } from "@/lib/requestIdentity";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function resolveIdentity(request: NextRequest, body?: Record<string, unknown>) {
-  const uidFromHeader = request.headers.get("x-user-uid")?.trim() || undefined;
-  const emailFromHeader = request.headers.get("x-user-email")?.trim() || undefined;
-
-  const uidFromBody =
-    typeof body?.uid === "string" && body.uid.trim() ? body.uid.trim() : undefined;
-  const emailFromBody =
-    typeof body?.email === "string" && body.email.trim() ? body.email.trim() : undefined;
-
-  return {
-    uid: uidFromHeader || uidFromBody,
-    email: emailFromHeader || emailFromBody,
-  };
-}
-
 export async function GET(request: NextRequest) {
   const prisma = getPrisma();
-  const { uid } = resolveIdentity(request);
+  const uid = await resolveRequestUid(request);
   if (!uid) {
-    return NextResponse.json({ detail: "Missing identity" }, { status: 401 });
+    return NextResponse.json({ detail: "Missing session identity" }, { status: 401 });
   }
 
   const user = await prisma.user.findUnique({ where: { uid } });
@@ -41,14 +27,15 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const prisma = getPrisma();
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
-  const { uid, email } = resolveIdentity(request, body);
+  const uid = await resolveRequestUid(request, body);
+  const email = resolveRequestEmail(request, body);
   const inGameName =
     typeof body.in_game_name === "string" && body.in_game_name.trim()
       ? body.in_game_name.trim()
       : undefined;
 
   if (!uid) {
-    return NextResponse.json({ detail: "Missing uid" }, { status: 401 });
+    return NextResponse.json({ detail: "Missing session identity" }, { status: 401 });
   }
 
   const existing = await prisma.user.findUnique({ where: { uid } });
@@ -58,14 +45,16 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      const userCount = await prisma.user.count();
+      const namedUserCount = await prisma.user.count({
+        where: { inGameName: { not: null } },
+      });
       const created = await prisma.user.create({
         data: {
           uid,
           email,
           inGameName,
           verified: false,
-          isAdmin: userCount === 0,
+          isAdmin: namedUserCount === 0,
         },
       });
       return NextResponse.json(toUserApi(created), {
@@ -80,6 +69,33 @@ export async function POST(request: NextRequest) {
       }
       throw error;
     }
+  }
+
+  if (inGameName && existing.inGameName !== inGameName) {
+    const conflict = await prisma.user.findFirst({
+      where: {
+        inGameName,
+        uid: { not: uid },
+      },
+      select: { uid: true },
+    });
+    if (conflict) {
+      return NextResponse.json(
+        { detail: { field: "in_game_name", error: "In-game name already taken" } },
+        { status: 400 }
+      );
+    }
+
+    const renamed = await prisma.user.update({
+      where: { uid },
+      data: {
+        inGameName,
+        email: existing.email || email,
+      },
+    });
+    return NextResponse.json(toUserApi(renamed), {
+      headers: { "x-user-api-source": "next-prisma" },
+    });
   }
 
   if (!existing.email && email) {

@@ -7,9 +7,6 @@ import AuthNamePrompt from "@/components/AuthNamePrompt";
 import AuthPasswordPrompt from "@/components/AuthPasswordPrompt";
 import MainBetUI from "@/components/MainBetUI";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL!;
-console.log("✅", API_BASE);
-
 export default function Page() {
   const { uid, playerName, setPlayerName, setUid, loading } = useUserAuth();
 
@@ -32,55 +29,62 @@ export default function Page() {
     const name = (playerName || "").trim();
     if (!name) return;
 
-    const existingUid = localStorage.getItem("uid");
     const existingEmail = localStorage.getItem("userEmail");
-    const sessionUid = existingUid || crypto.randomUUID();
-    const sessionEmail = existingEmail || `guest-${sessionUid}@aoe2hdbets.local`;
+    const fallbackEmail = existingEmail || `guest-${crypto.randomUUID()}@aoe2hdbets.local`;
 
-    const meRes = await fetch(`${API_BASE}/api/user/me`, {
+    const sessionRes = await fetch("/api/auth/session", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-user-uid": sessionUid,
-        "x-user-email": sessionEmail,
-      },
-      body: JSON.stringify({ uid: sessionUid, email: sessionEmail }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: fallbackEmail }),
     });
-
-    if (meRes.status === 404) {
-      const regRes = await fetch(`${API_BASE}/api/user/register`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-user-uid": sessionUid,
-          "x-user-email": sessionEmail,
-        },
-        body: JSON.stringify({
-          uid: sessionUid,
-          email: sessionEmail,
-          in_game_name: name,
-        }),
-      });
-      if (!regRes.ok) {
-        const msg = await regRes.text();
-        console.error("Register failed:", msg);
-        return;
-      }
-
-      const payload = await regRes.json().catch(() => ({}));
-      localStorage.setItem("isAdmin", String(Boolean(payload?.is_admin)));
-    } else if (meRes.ok) {
-      const payload = await meRes.json().catch(() => ({}));
-      localStorage.setItem("isAdmin", String(Boolean(payload?.is_admin)));
-    } else {
-      console.error("Failed /api/user/me:", meRes.status, await meRes.text());
+    if (!sessionRes.ok) {
+      console.error("Failed to create/refresh session:", sessionRes.status, await sessionRes.text());
       return;
     }
 
+    const sessionPayload = (await sessionRes.json().catch(() => ({}))) as { uid?: string };
+    const sessionUid = typeof sessionPayload.uid === "string" ? sessionPayload.uid : null;
+    if (!sessionUid) {
+      console.error("Session response missing uid");
+      return;
+    }
+
+    const regRes = await fetch("/api/user/register", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email: fallbackEmail,
+        in_game_name: name,
+      }),
+    });
+    if (!regRes.ok) {
+      const msg = await regRes.text();
+      console.error("Register failed:", msg);
+      return;
+    }
+
+    const payload = await regRes.json().catch(() => ({}));
+    localStorage.setItem("isAdmin", String(Boolean(payload?.is_admin)));
+    localStorage.setItem("userEmail", fallbackEmail);
     localStorage.setItem("userPass", password);
     localStorage.setItem("uid", sessionUid);
-    localStorage.setItem("userEmail", sessionEmail);
     localStorage.setItem("playerName", name);
+
+    if (!payload?.in_game_name) {
+      const meRes = await fetch("/api/user/me", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email: fallbackEmail }),
+      });
+      if (meRes.ok) {
+        const mePayload = await meRes.json().catch(() => ({}));
+        localStorage.setItem("isAdmin", String(Boolean(mePayload?.is_admin)));
+      }
+    }
 
     setUid(sessionUid);
     setShowPwPrompt(false);
@@ -104,7 +108,7 @@ export default function Page() {
         password={password}
         setPassword={setPassword}
         onSubmit={savePasswordAndAuth}
-        mode={localStorage.getItem("uid") ? "login" : "register"}
+        mode="register"
         loading={loading}
       />
     );
