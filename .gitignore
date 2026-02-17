@@ -18,3 +18,6 @@ build/
 .python-version
 
 /lib/generated/prisma
+
+# macOS metadata
+.DS_Store
