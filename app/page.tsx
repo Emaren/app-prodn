@@ -6,7 +6,6 @@ import { useUserAuth } from "@/context/UserAuthContext";
 import AuthNamePrompt from "@/components/AuthNamePrompt";
 import AuthPasswordPrompt from "@/components/AuthPasswordPrompt";
 import MainBetUI from "@/components/MainBetUI";
-import AdminUserList from "@/components/AdminUserList";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL!;
 console.log("✅", API_BASE);
@@ -30,44 +29,22 @@ export default function Page() {
   const savePasswordAndAuth = async () => {
     if (!password.trim()) return;
 
-    const auth = window.firebase.auth();
+    const name = playerName.trim();
+    if (!name) return;
+
+    const existingUid = localStorage.getItem("uid");
     const existingEmail = localStorage.getItem("userEmail");
-    const existingPass = localStorage.getItem("userPass");
-
-    let email = existingEmail;
-    let firstTime = false;
-
-    try {
-      if (existingEmail && existingPass) {
-        await auth.signInWithEmailAndPassword(existingEmail, existingPass);
-      } else {
-        email = `${crypto.randomUUID()}@aoe2hdbets.com`;
-        await auth.createUserWithEmailAndPassword(email, password);
-        firstTime = true;
-      }
-    } catch (e) {
-      console.error("Firebase auth error:", e);
-      return;
-    }
-
-    const fbUser = auth.currentUser!;
-    const firebaseUid = fbUser.uid;
-    const token = await fbUser.getIdToken(true);
-
-    if (firstTime) {
-      localStorage.setItem("userPass", password);
-      localStorage.setItem("uid", firebaseUid);
-      localStorage.setItem("userEmail", email!);
-      localStorage.setItem("playerName", playerName.trim());
-    }
+    const sessionUid = existingUid || crypto.randomUUID();
+    const sessionEmail = existingEmail || `guest-${sessionUid}@aoe2hdbets.local`;
 
     const meRes = await fetch(`${API_BASE}/api/user/me`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
+        "x-user-uid": sessionUid,
+        "x-user-email": sessionEmail,
       },
-      body: JSON.stringify({ uid: firebaseUid, email }),
+      body: JSON.stringify({ uid: sessionUid, email: sessionEmail }),
     });
 
     if (meRes.status === 404) {
@@ -75,28 +52,38 @@ export default function Page() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          "x-user-uid": sessionUid,
+          "x-user-email": sessionEmail,
         },
         body: JSON.stringify({
-          uid: firebaseUid,
-          email,
-          in_game_name: playerName.trim(),
+          uid: sessionUid,
+          email: sessionEmail,
+          in_game_name: name,
         }),
       });
-      if (!regRes.ok && regRes.status !== 400) {
-        console.error("Register failed:", await regRes.text());
+      if (!regRes.ok) {
+        const msg = await regRes.text();
+        console.error("Register failed:", msg);
         return;
       }
-      if (regRes.ok) {
-        const { is_admin } = await regRes.json();
-        localStorage.setItem("isAdmin", String(is_admin));
-      }
+
+      const payload = await regRes.json().catch(() => ({}));
+      localStorage.setItem("isAdmin", String(Boolean(payload?.is_admin)));
     } else if (meRes.ok) {
-      const { is_admin } = await meRes.json();
-      localStorage.setItem("isAdmin", String(is_admin));
+      const payload = await meRes.json().catch(() => ({}));
+      localStorage.setItem("isAdmin", String(Boolean(payload?.is_admin)));
+    } else {
+      console.error("Failed /api/user/me:", meRes.status, await meRes.text());
+      return;
     }
 
-    setUid(firebaseUid);
+    localStorage.setItem("userPass", password);
+    localStorage.setItem("uid", sessionUid);
+    localStorage.setItem("userEmail", sessionEmail);
+    localStorage.setItem("playerName", name);
+
+    setUid(sessionUid);
+    setShowPwPrompt(false);
     window.dispatchEvent(new Event("storage"));
   };
 

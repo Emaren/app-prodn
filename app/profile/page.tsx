@@ -8,7 +8,7 @@ import { useUserAuth } from "@/hooks/useUserAuth";
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { uid, playerName, setPlayerName } = useUserAuth();
+  const { uid, playerName, setPlayerName, logout: contextLogout } = useUserAuth();
   const [email, setEmail] = useState("");
   const [passwordHash, setPasswordHash] = useState("");
   const [isVerified, setIsVerified] = useState(false);
@@ -18,13 +18,9 @@ export default function ProfilePage() {
 
   const logout = async () => {
     try {
-      if (window.firebase?.auth?.()?.currentUser) {
-        await window.firebase.auth().signOut();
-        console.log("✅ Firebase logout succeeded");
-      }
+      await contextLogout();
       localStorage.clear();
       window.dispatchEvent(new Event("storage"));
-      router.push("/");
       // — unregister SW & clear all caches on logout
 
       if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
@@ -46,10 +42,7 @@ export default function ProfilePage() {
     }
   };
 
-  const getIdToken = async (): Promise<string | null> => {
-    const user = window.firebase?.auth?.()?.currentUser;
-    return user?.getIdToken ? await user.getIdToken() : null;
-  };
+  const getIdToken = async (): Promise<string | null> => null;
 
   const fetchUser = async () => {
     const fallbackEmail = localStorage.getItem("userEmail") || "unknown@aoe2hdbets.com";
@@ -139,7 +132,7 @@ export default function ProfilePage() {
   }, [uid, isLoggedIn]);
 
   const handleSaveName = async () => {
-    const trimmed = playerName.trim();
+    const trimmed = (playerName || "").trim();
     if (!trimmed) return alert("Enter a valid name.");
 
     const idToken = await getIdToken();
@@ -225,13 +218,7 @@ export default function ProfilePage() {
         <Button
           className="bg-yellow-600 hover:bg-yellow-700 px-6 py-3"
           onClick={() => {
-            const user = window.firebase?.auth?.()?.currentUser;
-            if (user?.email) {
-              window.firebase.auth().sendPasswordResetEmail(user.email);
-              alert(`Password reset email sent to ${user.email}`);
-            } else {
-              alert("No email linked to this session.");
-            }
+            alert("Password reset is temporarily unavailable during Firebase migration.");
           }}
         >
           🔐 Send Password Reset Email

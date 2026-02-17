@@ -9,7 +9,6 @@ import { useWoloBalance } from "@/hooks/useWoloBalance";
 import { useKeplr } from "@/hooks/use-keplr";
 import { useClickOutside } from "@/hooks/useClickOutside";
 import { useUserAuth } from "@/context/UserAuthContext";
-import type firebase from "firebase/compat/app";
 
 interface Props {
   pendingBetsCount: number;

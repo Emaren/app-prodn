@@ -12,19 +12,12 @@ import {
   useCallback,
 } from "react";
 import { useRouter } from "next/navigation";
-import {
-  getAuth,
-  onAuthStateChanged,
-  onIdTokenChanged,
-  signInAnonymously,
-  signOut,
-} from "firebase/auth";
-import { getFirebaseApp } from "@/lib/firebaseClient";
 
 type CtxShape = {
-  playerName: string | null;
+  playerName: string;
   setPlayerName: (n: string) => void;
   uid: string | null;
+  setUid: (uid: string | null) => void;
   token: string | null;
   isAdmin: boolean;
   loading: boolean;
@@ -36,112 +29,81 @@ const Ctx = createContext<CtxShape | undefined>(undefined);
 
 export function UserAuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
-  const auth = typeof window !== "undefined" ? getAuth(getFirebaseApp()) : undefined as any;
-
-  const [uid, setUid] = useState<string | null>(null);
+  const [uid, setUidState] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
-  const [playerName, setPlayerNameState] = useState<string | null>(null);
+  const [playerName, setPlayerNameState] = useState<string>("");
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const setPlayerName = (name: string) => {
+  const setPlayerName = useCallback((name: string) => {
     setPlayerNameState(name);
-  };
-
-  /* ----------  Firebase boot-strap  ---------- */
-  useEffect(() => {
-    signInAnonymously(auth).catch(console.error);
-
-    const unsubAuth = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        setUid(user.uid);
-        const t = await user.getIdToken(true);
-        setToken(t);
-        await loadUserFromBackend(t, user.uid, user.email ?? undefined);
-      } else {
-        setUid(null);
-        setToken(null);
-        setPlayerNameState(null);
-        setIsAdmin(false);
-      }
-      setLoading(false);
-    });
-
-    const unsubToken = onIdTokenChanged(auth, async (user) => {
-      if (user) setToken(await user.getIdToken());
-    });
-
-    return () => {
-      unsubAuth();
-      unsubToken();
-    };
+    if (typeof window !== "undefined") {
+      if (name) localStorage.setItem("playerName", name);
+      else localStorage.removeItem("playerName");
+    }
   }, []);
 
-  const refreshToken = useCallback(async () => {
-    if (!auth.currentUser) return null;
-    const fresh = await auth.currentUser.getIdToken(true);
-    setToken(fresh);
-    return fresh;
-  }, [auth]);
+  const setUid = useCallback((nextUid: string | null) => {
+    setUidState(nextUid);
+    if (typeof window !== "undefined") {
+      if (nextUid) localStorage.setItem("uid", nextUid);
+      else localStorage.removeItem("uid");
+    }
+  }, []);
 
-  async function loadUserFromBackend(jwt: string, uid: string, email?: string) {
+  const refreshToken = useCallback(async () => null, []);
+
+  async function loadUserFromBackend(uidValue: string, email?: string) {
     try {
       const res = await fetch("/api/user/me", {
         method: "GET",
         headers: {
-          Authorization: `Bearer ${jwt}`,
-          "x-user-uid": uid,
+          "x-user-uid": uidValue,
           ...(email ? { "x-user-email": email } : {}),
         },
       });
       if (!res.ok) {
-        if (res.status === 404) {
-          setPlayerNameState(null); // Not yet registered in backend
-        }
         return;
       }
       const data = await res.json();
-      setPlayerNameState(data.in_game_name ?? null);
+      const resolvedName = data.in_game_name ?? "";
+      setPlayerNameState(resolvedName);
       setIsAdmin(Boolean(data.is_admin));
+      if (resolvedName) localStorage.setItem("playerName", resolvedName);
+      localStorage.setItem("isAdmin", String(Boolean(data.is_admin)));
     } catch (err) {
       console.warn("Failed to load user profile:", err);
     }
   }
 
-  async function savePlayerName(newName: string) {
-    if (!auth.currentUser || !newName) return;
+  useEffect(() => {
+    const storedUid = localStorage.getItem("uid");
+    const storedName = localStorage.getItem("playerName");
+    const storedEmail = localStorage.getItem("userEmail") || undefined;
+    const storedIsAdmin = localStorage.getItem("isAdmin");
 
-    try {
-      const user = auth.currentUser;
-      const jwt = await user.getIdToken();
-      const res = await fetch("/api/user/me", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${jwt}`,
-          "x-user-uid": user.uid,
-          ...(user.email ? { "x-user-email": user.email } : {}),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          uid: user.uid,
-          email: user.email,
-          in_game_name: newName,
-        }),
-      });
+    if (storedName) setPlayerNameState(storedName);
+    if (storedIsAdmin) setIsAdmin(storedIsAdmin === "true");
 
-      if (res.ok) {
-        const data = await res.json();
-        setPlayerNameState(data.in_game_name || newName);
-      } else {
-        console.error("Failed to save player name:", await res.text());
-      }
-    } catch (err) {
-      console.error("Network error:", err);
+    if (storedUid) {
+      setUidState(storedUid);
+      loadUserFromBackend(storedUid, storedEmail).finally(() => setLoading(false));
+      return;
     }
-  }
+
+    setLoading(false);
+  }, []);
 
   async function logout() {
-    await signOut(auth);
+    setUid(null);
+    setToken(null);
+    setPlayerNameState("");
+    setIsAdmin(false);
+    localStorage.removeItem("uid");
+    localStorage.removeItem("userEmail");
+    localStorage.removeItem("playerName");
+    localStorage.removeItem("userPass");
+    localStorage.removeItem("isAdmin");
     router.push("/");
     router.refresh();
   }
@@ -150,6 +112,7 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
     playerName,
     setPlayerName,
     uid,
+    setUid,
     token,
     isAdmin,
     loading,

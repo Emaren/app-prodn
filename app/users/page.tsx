@@ -14,21 +14,10 @@ export default function OnlineUsersPage() {
   const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
 
-  const getIdToken = async (): Promise<string | null> => {
-    const user = window.firebase?.auth?.()?.currentUser;
-    return user?.getIdToken ? await user.getIdToken() : null;
-  };
-
   useEffect(() => {
     const fetchOnlineUsers = async () => {
-      const idToken = await getIdToken();
-
       try {
-	const res = await fetch(`/api/user/online_users`, {
-          headers: idToken
-            ? { Authorization: `Bearer ${idToken}` }
-            : undefined,
-        });
+	const res = await fetch(`/api/user/online_users`);
 
         if (!res.ok) {
           console.error("Failed to fetch online users:", res.status);

@@ -35,42 +35,26 @@ export default function Page() {
   /* ───────────────── sign-in OR sign-up ───────────────────── */
   const finishPasswordStep = async () => {
     if (!password.trim()) return;
+    const name = playerName.trim();
+    if (!name) return;
 
-    /* 1. firebase auth */
-    const auth = window.firebase.auth();
-    const email = `${crypto.randomUUID()}@aoe2hdbets.com`;
-
-    const methods = await auth.fetchSignInMethodsForEmail(email);
-    if (returningUser) {
-      // should already have an account; sign-in
-      await auth.signInWithEmailAndPassword(email, password);
-    } else if (methods.length === 0) {
-      await auth.createUserWithEmailAndPassword(email, password);
-    } else {
-      await auth.signInWithEmailAndPassword(email, password);
-    }
-
-    /* 2. uid / token */
-    const user = auth.currentUser!;
-    const firebaseUid = user.uid;
-    const token = await user.getIdToken(true);
-
-    /* 3. stash creds */
-    localStorage.setItem("uid", firebaseUid);
-    localStorage.setItem("userEmail", email);
-    localStorage.setItem("playerName", playerName.trim());
+    const existingUid = localStorage.getItem("uid");
+    const existingEmail = localStorage.getItem("userEmail");
+    const sessionUid = existingUid || crypto.randomUUID();
+    const sessionEmail = existingEmail || `guest-${sessionUid}@aoe2hdbets.local`;
 
     /* 4. ask backend */
     const meRes = await fetch("/api/user/me", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
+        "x-user-uid": sessionUid,
+        "x-user-email": sessionEmail,
       },
       body: JSON.stringify({
-        uid: firebaseUid,
-        email,
-        in_game_name: returningUser ? undefined : playerName.trim(),
+        uid: sessionUid,
+        email: sessionEmail,
+        in_game_name: returningUser ? undefined : name,
       }),
     });
 
@@ -80,12 +64,13 @@ export default function Page() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          "x-user-uid": sessionUid,
+          "x-user-email": sessionEmail,
         },
         body: JSON.stringify({
-          uid: firebaseUid,
-          email,
-          in_game_name: playerName.trim(),
+          uid: sessionUid,
+          email: sessionEmail,
+          in_game_name: name,
         }),
       });
       if (!regRes.ok) {
@@ -95,7 +80,11 @@ export default function Page() {
     }
 
     /* 5. success */
-    setUid(firebaseUid);
+    localStorage.setItem("uid", sessionUid);
+    localStorage.setItem("userEmail", sessionEmail);
+    localStorage.setItem("playerName", name);
+    localStorage.setItem("userPass", password);
+    setUid(sessionUid);
     window.dispatchEvent(new Event("storage"));
   };
 
