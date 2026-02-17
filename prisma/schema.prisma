@@ -11,4 +11,56 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            Int        @id @default(autoincrement())
+  uid           String     @unique @db.VarChar(100)
+  email         String?    @unique @db.VarChar(100)
+  inGameName    String?    @unique @map("in_game_name")
+  verified      Boolean    @default(false)
+  walletAddress String?    @map("wallet_address") @db.VarChar(100)
+  lockName      Boolean    @default(false) @map("lock_name")
+  createdAt     DateTime   @default(now()) @map("created_at")
+  token         String?    @db.VarChar(128)
+  lastSeen      DateTime?  @map("last_seen")
+  isAdmin       Boolean    @default(false) @map("is_admin")
+  gameStats     GameStats[]
+
+  @@index([email], map: "ix_users_email")
+  @@map("users")
+}
+
+model GameStats {
+  id                 Int       @id @default(autoincrement())
+  userUid            String?   @map("user_uid")
+  replayFile         String    @map("replay_file") @db.VarChar(500)
+  replayHash         String    @map("replay_hash") @db.VarChar(64)
+  createdAt          DateTime  @default(now()) @map("created_at")
+  gameVersion        String?   @map("game_version") @db.VarChar(50)
+  map                Json?
+  gameType           String?   @map("game_type") @db.VarChar(50)
+  duration           Int?
+  gameDuration       Int?      @map("game_duration")
+  winner             String?   @db.VarChar(100)
+  players            Json?
+  eventTypes         Json?     @map("event_types")
+  keyEvents          Json?     @map("key_events")
+  timestamp          DateTime? @default(now())
+  playedOn           DateTime? @map("played_on")
+  parseIteration     Int       @default(0) @map("parse_iteration")
+  isFinal            Boolean   @default(false) @map("is_final")
+  disconnectDetected Boolean   @default(false) @map("disconnect_detected")
+  parseSource        String?   @default("unknown") @map("parse_source") @db.VarChar(20)
+  parseReason        String?   @default("unspecified") @map("parse_reason") @db.VarChar(50)
+  originalFilename   String?   @map("original_filename") @db.VarChar(255)
+
+  user User? @relation(fields: [userUid], references: [uid], onDelete: SetNull, onUpdate: Cascade)
+
+  @@index([userUid], map: "ix_game_stats_user_uid")
+  @@index([replayFile, parseIteration], map: "ix_replay_iteration")
+  @@index([replayHash, parseIteration], map: "ix_replay_hash_iteration")
+  @@unique([replayHash, isFinal], map: "uq_replay_final")
+  @@map("game_stats")
 }
