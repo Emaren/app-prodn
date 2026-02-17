@@ -16,3 +16,5 @@ build/
 .envrc
 .direnv/
 .python-version
+
+/lib/generated/prisma

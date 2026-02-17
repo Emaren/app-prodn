@@ -10,7 +10,7 @@ export default function Head() {
         try {
           return _dp(target, key, desc);
         } catch (e) {
-          if (e.message.includes("Cannot redefine property:")) {
+          if (e.message && e.message.includes("Cannot redefine property:")) {
             console.warn("⚡️ Suppressed defineProperty on", key);
             return target;
           }
@@ -22,7 +22,7 @@ export default function Head() {
         try {
           return _dps(target, props);
         } catch (e) {
-          if (e.message.includes("Cannot redefine property:")) {
+          if (e.message && e.message.includes("Cannot redefine property:")) {
             console.warn("⚡️ Suppressed defineProperties", props);
             return target;
           }
@@ -30,13 +30,14 @@ export default function Head() {
         }
       };
 
-      // Swallow those extension errors before they bubble up
       window.addEventListener(
         "error",
         (event) => {
           const msg = event.message || "";
-          if (msg.includes("Cannot redefine property:") ||
-              msg.includes("Access to storage is not allowed")) {
+          if (
+            msg.includes("Cannot redefine property:") ||
+            msg.includes("Access to storage is not allowed")
+          ) {
             event.stopImmediatePropagation();
             console.warn("⚡️ Suppressed extension error:", msg);
           }
@@ -48,8 +49,10 @@ export default function Head() {
         "unhandledrejection",
         (event) => {
           const reason = event.reason?.message || event.reason || "";
-          if (reason.includes("Cannot redefine property:") ||
-              reason.includes("Access to storage is not allowed")) {
+          if (
+            String(reason).includes("Cannot redefine property:") ||
+            String(reason).includes("Access to storage is not allowed")
+          ) {
             event.preventDefault();
             console.warn("⚡️ Suppressed extension rejection:", reason);
           }
@@ -61,12 +64,14 @@ export default function Head() {
 
   return (
     <>
+      {/* Suppress extension noise */}
       <Script
         id="suppress-extension-noise"
         strategy="beforeInteractive"
         dangerouslySetInnerHTML={{ __html: patch }}
       />
-      {/*–– the rest of your head tags: meta, title, manifest, etc. ––*/}
+
+      {/* rest of head */}
       <meta name="mobile-web-app-capable" content="yes" />
       <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       <meta name="apple-mobile-web-app-title" content="AoE2 Betting" />
