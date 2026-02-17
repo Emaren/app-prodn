@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getBackendUpstreamBase } from "@/lib/backendUpstream";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 
@@ -25,13 +26,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ detail: "Forbidden" }, { status: 403 });
     }
 
-    const upstream = process.env.AOE2_BACKEND_UPSTREAM || process.env.BACKEND_API || "http://127.0.0.1:3330";
-    const base = upstream === "." ? "http://127.0.0.1:3330" : upstream;
+    const base = getBackendUpstreamBase();
     const adminToken = resolveAdminToken();
     if (!adminToken) {
       return NextResponse.json({ detail: "ADMIN_TOKEN is not configured" }, { status: 500 });
     }
-    const res = await fetch(`${base.replace(/\/$/, "")}/api/admin/users`, {
+    const res = await fetch(`${base}/api/admin/users`, {
       headers: {
         Authorization: `Bearer ${adminToken}`,
       },

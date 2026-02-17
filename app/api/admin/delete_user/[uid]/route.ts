@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getBackendUpstreamBase } from "@/lib/backendUpstream";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 
@@ -34,8 +35,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ detail: "Forbidden" }, { status: 403 });
     }
 
-    const upstream = process.env.AOE2_BACKEND_UPSTREAM || process.env.BACKEND_API || "http://127.0.0.1:3330";
-    const base = (upstream === "." ? "http://127.0.0.1:3330" : upstream).replace(/\/$/, "");
+    const base = getBackendUpstreamBase();
     const adminToken = resolveAdminToken();
     if (!adminToken) {
       return NextResponse.json({ detail: "ADMIN_TOKEN is not configured" }, { status: 500 });

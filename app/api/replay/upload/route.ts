@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getBackendUpstreamBase } from "@/lib/backendUpstream";
 import { getSessionUid } from "@/lib/session";
 import { getPrisma } from "@/lib/prisma";
 
@@ -22,17 +23,15 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  const upstream =
-    process.env.AOE2_BACKEND_UPSTREAM ||
-    process.env.BACKEND_API ||
-    process.env.NEXT_PUBLIC_API_BASE_URL ||
-    "http://127.0.0.1:3330";
-  const base = (upstream === "." ? "http://127.0.0.1:3330" : upstream).replace(/\/$/, "");
+  const base = getBackendUpstreamBase();
   const contentType = request.headers.get("content-type");
 
   const headers = new Headers();
   if (contentType) headers.set("content-type", contentType);
   headers.set("x-user-uid", uid);
+  if (process.env.INTERNAL_API_KEY) {
+    headers.set("x-api-key", process.env.INTERNAL_API_KEY);
+  }
 
   const init: RequestInit & { duplex?: "half" } = {
     method: "POST",

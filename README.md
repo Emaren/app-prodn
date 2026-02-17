@@ -33,9 +33,10 @@ Required for Prisma API routes:
 
 Common:
 
-- `NEXT_PUBLIC_API_BASE_URL` (defaults to same-origin in `next.config.js`)
+- `NEXT_PUBLIC_API_BASE_URL` (keep this as `"."` / same-origin)
 - `AOE2_BACKEND_UPSTREAM` (server-side upstream for rewrites, default `http://127.0.0.1:3330`)
 - `ADMIN_TOKEN` (required for admin proxy routes)
+- `INTERNAL_API_KEY` (optional; forwarded on replay upload when backend enforces API keys)
 
 Optional migration compatibility:
 
@@ -46,3 +47,11 @@ Optional migration compatibility:
 - Browser upload endpoint: `/api/replay/upload` (proxied to `api-prodn`)
 - Watcher package: `public/downloads/aoe2-watcher-mac.zip`
 - Replay parser page: `/replay-parser`
+
+## Production routing
+
+- `aoe2hdbets.com/*` should proxy to `app-prodn` (Next.js on `127.0.0.1:3004`)
+- Keep browser calls same-origin (`/api/...`) so Next local API handlers enforce session/admin checks
+- Next rewrites selected API paths to backend using `AOE2_BACKEND_UPSTREAM`
+- `api-prodn.aoe2hdbets.com/*` should proxy directly to `api-prodn` (`127.0.0.1:3330`) for watcher/automation uploads
+- Reference nginx template: `deploy/nginx.conf.example`

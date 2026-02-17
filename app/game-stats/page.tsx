@@ -58,8 +58,6 @@ function sanitizeDuration(seconds: number): number {
   return seconds;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8002";
-
 // --- Skeleton Loader ---
 const LoadingSkeleton = () => (
   <div className="space-y-6">
@@ -93,7 +91,7 @@ const GameStatsPage = () => {
   useEffect(() => {
     const fetchGameStats = async () => {
       try {
-        const response = await fetch(`${API_BASE}/api/game_stats?ts=${Date.now()}`, { cache: "no-store" });
+        const response = await fetch(`/api/game_stats?ts=${Date.now()}`, { cache: "no-store" });
         const data = await response.json();
         if (!Array.isArray(data)) {
           console.warn("⚠️ Invalid API response format.");

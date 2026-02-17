@@ -14,8 +14,9 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
 
-        /* Next.js → FastAPI */
-        NEXT_PUBLIC_API_BASE_URL: 'https://api-prodn.aoe2hdbets.com',
+        /* Keep browser API calls same-origin; proxy server-side to api-prodn */
+        NEXT_PUBLIC_API_BASE_URL: '.',
+        AOE2_BACKEND_UPSTREAM : 'http://127.0.0.1:3330',
         NEXT_PUBLIC_CHAIN_ID    : '11865'
       },
 

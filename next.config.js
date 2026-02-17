@@ -5,7 +5,8 @@
 // (truthy, so it also defeats any `|| "https://api-prodn..."` fallbacks in your code).
 //
 // Rewrites are a safety net for cases where you hit Next directly (3030) without nginx.
-// In prod, nginx already routes /api/* to 127.0.0.1:3330.
+// In prod, nginx should route all `aoe2hdbets.com/*` traffic to Next.
+// Only routes without local handlers are rewritten from Next -> backend upstream.
 
 const UPSTREAM_API = (process.env.AOE2_BACKEND_UPSTREAM ?? "http://127.0.0.1:3330").replace(/\/$/, "");
 
@@ -25,9 +26,6 @@ module.exports = {
     return [
       { source: "/api/traffic", destination: `${UPSTREAM_API}/api/traffic` },
       { source: "/api/chain-id", destination: `${UPSTREAM_API}/api/chain-id` },
-
-      { source: "/api/game_stats", destination: `${UPSTREAM_API}/api/game_stats` },
-      { source: "/api/admin/users", destination: `${UPSTREAM_API}/api/admin/users` },
       { source: "/api/parse_replay", destination: `${UPSTREAM_API}/api/parse_replay` },
       { source: "/api/health", destination: `${UPSTREAM_API}/api/health` },
     ];

@@ -1,7 +1,7 @@
 // components/WalletConnector.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useKeplr } from "@/hooks/use-keplr";
 import { useWoloBalance } from "@/hooks/useWoloBalance";
 import { Button } from "@/components/ui/button";
@@ -28,15 +28,6 @@ export default function WalletConnector() {
       console.error("Keplr connect failed:", err);
     }
   };
-
-  useEffect(() => {
-    if (!address) return;
-    fetch("/api/user/create", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ walletAddress: address }),
-    }).catch((err) => console.error("User creation failed:", err));
-  }, [address]);
 
   return (
     <>

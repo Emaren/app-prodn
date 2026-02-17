@@ -41,7 +41,7 @@ export default function TrafficPage() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/traffic`);
+        const res = await fetch("/api/traffic");
         const data = await res.json();
         setStats(data as TrafficStats);
       } catch (err) {
