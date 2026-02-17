@@ -57,7 +57,7 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
         setUid(user.uid);
         const t = await user.getIdToken(true);
         setToken(t);
-        await loadUserFromBackend(t);
+        await loadUserFromBackend(t, user.uid, user.email ?? undefined);
       } else {
         setUid(null);
         setToken(null);
@@ -84,11 +84,15 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
     return fresh;
   }, [auth]);
 
-  async function loadUserFromBackend(jwt: string) {
+  async function loadUserFromBackend(jwt: string, uid: string, email?: string) {
     try {
       const res = await fetch("/api/user/me", {
         method: "GET",
-        headers: { Authorization: `Bearer ${jwt}` },
+        headers: {
+          Authorization: `Bearer ${jwt}`,
+          "x-user-uid": uid,
+          ...(email ? { "x-user-email": email } : {}),
+        },
       });
       if (!res.ok) {
         if (res.status === 404) {
@@ -108,14 +112,21 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
     if (!auth.currentUser || !newName) return;
 
     try {
-      const jwt = await auth.currentUser.getIdToken();
+      const user = auth.currentUser;
+      const jwt = await user.getIdToken();
       const res = await fetch("/api/user/me", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${jwt}`,
+          "x-user-uid": user.uid,
+          ...(user.email ? { "x-user-email": user.email } : {}),
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ in_game_name: newName }),
+        body: JSON.stringify({
+          uid: user.uid,
+          email: user.email,
+          in_game_name: newName,
+        }),
       });
 
       if (res.ok) {
