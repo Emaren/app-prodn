@@ -26,6 +26,8 @@ npm run start
 
 ## Environment
 
+Start from `.env.production.example` and create your local `.env.production`.
+
 Required for Prisma API routes:
 
 - `DATABASE_URL` (Postgres connection string)

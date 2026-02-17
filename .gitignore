@@ -18,7 +18,6 @@ build/
 .python-version
 .env
 .env.*
-!.env.production
 
 /lib/generated/prisma
 
@@ -35,3 +34,5 @@ aoe2hd-frontend-clean.git/
 
 # TypeScript incremental artifacts
 tsconfig.tsbuildinfo
+
+!.env.production.example
