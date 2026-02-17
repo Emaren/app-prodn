@@ -45,6 +45,7 @@ Optional migration compatibility:
 ## Replay upload flow
 
 - Browser upload endpoint: `/api/replay/upload` (proxied to `api-prodn`)
+- Admin traffic endpoint: `/api/traffic` (session + admin-gated proxy to `api-prodn`)
 - Watcher package: `public/downloads/aoe2-watcher-mac.zip`
 - Replay parser page: `/replay-parser`
 

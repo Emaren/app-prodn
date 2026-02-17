@@ -24,7 +24,6 @@ module.exports = {
 
   async rewrites() {
     return [
-      { source: "/api/traffic", destination: `${UPSTREAM_API}/api/traffic` },
       { source: "/api/chain-id", destination: `${UPSTREAM_API}/api/chain-id` },
       { source: "/api/parse_replay", destination: `${UPSTREAM_API}/api/parse_replay` },
       { source: "/api/health", destination: `${UPSTREAM_API}/api/health` },
