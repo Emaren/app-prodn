@@ -1,4 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { getPrisma } from "@/lib/prisma";
+import { getSessionUid } from "@/lib/session";
 
 type RouteContext = {
   params: Promise<{ uid: string }>;
@@ -11,13 +13,27 @@ function resolveAdminToken() {
   return null;
 }
 
-export async function DELETE(_request: Request, context: RouteContext) {
+export async function DELETE(request: NextRequest, context: RouteContext) {
   const { uid } = await context.params;
   if (!uid?.trim()) {
     return NextResponse.json({ detail: "Missing uid" }, { status: 400 });
   }
 
   try {
+    const sessionUid = await getSessionUid(request);
+    if (!sessionUid) {
+      return NextResponse.json({ detail: "Unauthorized" }, { status: 401 });
+    }
+
+    const prisma = getPrisma();
+    const user = await prisma.user.findUnique({
+      where: { uid: sessionUid },
+      select: { isAdmin: true },
+    });
+    if (!user?.isAdmin) {
+      return NextResponse.json({ detail: "Forbidden" }, { status: 403 });
+    }
+
     const upstream = process.env.AOE2_BACKEND_UPSTREAM || process.env.BACKEND_API || "http://127.0.0.1:3330";
     const base = (upstream === "." ? "http://127.0.0.1:3330" : upstream).replace(/\/$/, "");
     const adminToken = resolveAdminToken();

@@ -1,4 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { getPrisma } from "@/lib/prisma";
+import { getSessionUid } from "@/lib/session";
 
 function resolveAdminToken() {
   const token = process.env.ADMIN_TOKEN;
@@ -7,8 +9,22 @@ function resolveAdminToken() {
   return null;
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const uid = await getSessionUid(request);
+    if (!uid) {
+      return NextResponse.json({ detail: "Unauthorized" }, { status: 401 });
+    }
+
+    const prisma = getPrisma();
+    const user = await prisma.user.findUnique({
+      where: { uid },
+      select: { isAdmin: true },
+    });
+    if (!user?.isAdmin) {
+      return NextResponse.json({ detail: "Forbidden" }, { status: 403 });
+    }
+
     const upstream = process.env.AOE2_BACKEND_UPSTREAM || process.env.BACKEND_API || "http://127.0.0.1:3330";
     const base = upstream === "." ? "http://127.0.0.1:3330" : upstream;
     const adminToken = resolveAdminToken();
