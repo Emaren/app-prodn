@@ -37,17 +37,8 @@ export async function POST(request: NextRequest) {
     uid = newSessionUid();
   }
 
-  const existing = await prisma.user.findUnique({ where: { uid } });
-  let user = existing;
-  if (!existing) {
-    user = await prisma.user.create({
-      data: {
-        uid,
-        email: providedEmail,
-        isAdmin: false,
-      },
-    });
-  } else if (!existing.email && providedEmail) {
+  let user = await prisma.user.findUnique({ where: { uid } });
+  if (user && !user.email && providedEmail) {
     user = await prisma.user.update({
       where: { uid },
       data: { email: providedEmail },

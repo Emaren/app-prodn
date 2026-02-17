@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionUid } from "@/lib/session";
+import { getPrisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -8,6 +9,17 @@ export async function POST(request: NextRequest) {
   const uid = await getSessionUid(request);
   if (!uid) {
     return NextResponse.json({ detail: "Missing session identity" }, { status: 401 });
+  }
+
+  const prisma = getPrisma();
+  const user = await prisma.user.findUnique({ where: { uid }, select: { uid: true } });
+  if (!user) {
+    await prisma.user.create({
+      data: {
+        uid,
+        isAdmin: false,
+      },
+    });
   }
 
   const upstream =
