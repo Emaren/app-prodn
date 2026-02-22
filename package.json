@@ -8,7 +8,7 @@
     "dev": "npm run kill-ports && npm run cert && node server.js",
     "prebuild": "prisma generate",
     "build": "next build",
-    "start": "next start --hostname 127.0.0.1 --port 3003",
+    "start": "next start --hostname 127.0.0.1 --port 3030",
     "lint": "next lint",
     "prisma:generate": "prisma generate",
     "prisma:migrate:dev": "prisma migrate dev",

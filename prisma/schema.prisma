@@ -1,11 +1,5 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
-  provider = "prisma-client"
+  provider = "prisma-client-js"
   output   = "../lib/generated/prisma"
 }
 
@@ -14,52 +8,83 @@ datasource db {
 }
 
 model User {
-  id            Int        @id @default(autoincrement())
-  uid           String     @unique @db.VarChar(100)
-  email         String?    @unique @db.VarChar(100)
-  inGameName    String?    @unique @map("in_game_name")
-  verified      Boolean    @default(false)
-  walletAddress String?    @map("wallet_address") @db.VarChar(100)
-  lockName      Boolean    @default(false) @map("lock_name")
-  createdAt     DateTime   @default(now()) @map("created_at")
-  token         String?    @db.VarChar(128)
-  lastSeen      DateTime?  @map("last_seen")
-  isAdmin       Boolean    @default(false) @map("is_admin")
-  gameStats     GameStats[]
+  id            Int       @id @default(autoincrement())
+  uid           String    @unique @db.VarChar(100)
+  email         String?   @unique(map: "ix_users_email") @db.VarChar(100)
+  inGameName    String?   @unique @map("in_game_name") @db.VarChar
+  verified      Boolean   @default(false)
+  walletAddress String?   @map("wallet_address") @db.VarChar(100)
+  lockName      Boolean   @default(false) @map("lock_name")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  token         String?   @db.VarChar(128)
+  lastSeen      DateTime? @map("last_seen") @db.Timestamp(6)
+  isAdmin       Boolean   @default(false) @map("is_admin")
 
-  @@index([email], map: "ix_users_email")
+  // NOTE: DB has a partial unique index (WHERE steam_id IS NOT NULL).
+  // Prisma can't represent partial uniqueness here, so we map to the index name
+  // and rely on the DB for enforcement.
+  steamId            String?   @unique(map: "uq_users_steam_id") @map("steam_id") @db.VarChar(32)
+  steamPersonaName   String?   @map("steam_persona_name") @db.VarChar(255)
+  verificationLevel  Int       @default(0) @map("verification_level")
+  verificationMethod String    @default("none") @map("verification_method") @db.VarChar(32)
+  verifiedAt         DateTime? @map("verified_at") @db.Timestamp(6)
+
+  apiKeys   ApiKey[]
+  gameStats GameStats[]
+
   @@map("users")
 }
 
+model ApiKey {
+  id         Int       @id @default(autoincrement())
+  userId     Int       @map("user_id")
+  kind       String    @default("watcher") @db.VarChar(20)
+  keyPrefix  String    @unique @map("key_prefix") @db.VarChar(12)
+  keyHash    String    @map("key_hash") @db.VarChar(255)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  lastUsedAt DateTime? @map("last_used_at") @db.Timestamp(6)
+  revokedAt  DateTime? @map("revoked_at") @db.Timestamp(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([userId], map: "ix_api_keys_user_id")
+  @@index([keyPrefix], map: "ix_api_keys_prefix")
+  @@map("api_keys")
+}
+
 model GameStats {
-  id                 Int       @id @default(autoincrement())
-  userUid            String?   @map("user_uid")
-  replayFile         String    @map("replay_file") @db.VarChar(500)
-  replayHash         String    @map("replay_hash") @db.VarChar(64)
-  createdAt          DateTime  @default(now()) @map("created_at")
-  gameVersion        String?   @map("game_version") @db.VarChar(50)
-  map                Json?
-  gameType           String?   @map("game_type") @db.VarChar(50)
-  duration           Int?
-  gameDuration       Int?      @map("game_duration")
-  winner             String?   @db.VarChar(100)
-  players            Json?
-  eventTypes         Json?     @map("event_types")
-  keyEvents          Json?     @map("key_events")
-  timestamp          DateTime? @default(now())
-  playedOn           DateTime? @map("played_on")
-  parseIteration     Int       @default(0) @map("parse_iteration")
-  isFinal            Boolean   @default(false) @map("is_final")
-  disconnectDetected Boolean   @default(false) @map("disconnect_detected")
-  parseSource        String?   @default("unknown") @map("parse_source") @db.VarChar(20)
-  parseReason        String?   @default("unspecified") @map("parse_reason") @db.VarChar(50)
-  originalFilename   String?   @map("original_filename") @db.VarChar(255)
+  id                  Int       @id @default(autoincrement())
+  userUid             String?   @map("user_uid") @db.VarChar(100)
+  replay_file         String    @db.VarChar(500)
+  replayHash          String    @map("replay_hash") @db.VarChar(64)
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  game_version        String?   @db.VarChar(50)
+  map                 Json?
+  game_type           String?   @db.VarChar(50)
+  duration            Int?
+  game_duration       Int?
+  winner              String?   @db.VarChar(100)
+  players             Json?
+  event_types         Json?
+  key_events          Json?
+  timestamp           DateTime? @default(now()) @db.Timestamp(6)
+  played_on           DateTime? @db.Timestamp(6)
+  parse_iteration     Int       @default(0)
+  is_final            Boolean   @default(false)
+  disconnect_detected Boolean   @default(false)
+  parse_source        String    @default("unknown") @db.VarChar(20)
+  parse_reason        String    @default("unspecified") @db.VarChar(50)
+  original_filename   String?   @db.VarChar(255)
 
-  user User? @relation(fields: [userUid], references: [uid], onDelete: SetNull, onUpdate: Cascade)
+  user User? @relation(fields: [userUid], references: [uid], onDelete: NoAction, onUpdate: NoAction)
 
+  @@unique([replayHash, is_final], map: "uq_replay_final")
   @@index([userUid], map: "ix_game_stats_user_uid")
-  @@index([replayFile, parseIteration], map: "ix_replay_iteration")
-  @@index([replayHash, parseIteration], map: "ix_replay_hash_iteration")
-  @@unique([replayHash, isFinal], map: "uq_replay_final")
+  @@index([replayHash, parse_iteration], map: "ix_replay_hash_iteration")
+  @@index([replay_file, parse_iteration], map: "ix_replay_iteration")
   @@map("game_stats")
+}
+
+model alembic_version {
+  version_num String @id(map: "alembic_version_pkc") @db.VarChar(32)
 }

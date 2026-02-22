@@ -1,18 +1,108 @@
-import type { User } from "@/lib/generated/prisma/client";
+// ~/projects/AoE2HDBets/app-prodn/lib/userDto.ts
 
-export function toUserApi(user: User) {
+export type UserCoreRow = {
+  id: number;
+  uid: string;
+  email: string | null;
+  inGameName: string | null;
+  verified: boolean;
+  walletAddress: string | null;
+  lockName: boolean;
+  createdAt: Date;
+  token: string | null;
+  lastSeen: Date | null;
+  isAdmin: boolean;
+};
+
+export type UserVerificationRow = {
+  steamId: string | null;
+  steamPersonaName: string | null;
+  verificationLevel: number;
+  verificationMethod: string;
+  verifiedAt: string | null;
+};
+
+export type UserApi = {
+  id: number;
+  uid: string;
+  email: string | null;
+  inGameName: string | null;
+  verified: boolean;
+  walletAddress: string | null;
+  lockName: boolean;
+  createdAt: string;
+  token: string | null;
+  lastSeen: string | null;
+  isAdmin: boolean;
+
+  steamId: string | null;
+  steamPersonaName: string | null;
+  verificationLevel: number;
+  verificationMethod: string;
+  verifiedAt: string | null;
+};
+
+export function toUserApi(core: UserCoreRow, ver?: Partial<UserVerificationRow> | null): UserApi {
+  const v: UserVerificationRow = {
+    steamId: ver?.steamId ?? null,
+    steamPersonaName: ver?.steamPersonaName ?? null,
+    verificationLevel: ver?.verificationLevel ?? 0,
+    verificationMethod: ver?.verificationMethod ?? "none",
+    verifiedAt: ver?.verifiedAt ?? null,
+  };
+
   return {
-    id: user.id,
-    uid: user.uid,
-    email: user.email,
-    in_game_name: user.inGameName,
-    verified: user.verified,
-    wallet_address: user.walletAddress,
-    lock_name: user.lockName,
-    created_at: user.createdAt?.toISOString?.() ?? null,
-    token: user.token,
-    last_seen: user.lastSeen?.toISOString?.() ?? null,
-    is_admin: user.isAdmin,
+    id: core.id,
+    uid: core.uid,
+    email: core.email,
+    inGameName: core.inGameName,
+    verified: core.verified,
+    walletAddress: core.walletAddress,
+    lockName: core.lockName,
+    createdAt: core.createdAt.toISOString(),
+    token: core.token,
+    lastSeen: core.lastSeen ? core.lastSeen.toISOString() : null,
+    isAdmin: core.isAdmin,
+
+    steamId: v.steamId,
+    steamPersonaName: v.steamPersonaName,
+    verificationLevel: v.verificationLevel,
+    verificationMethod: v.verificationMethod,
+    verifiedAt: v.verifiedAt,
   };
 }
 
+type PrismaLike = {
+  $queryRaw: <T = unknown>(strings: TemplateStringsArray, ...values: unknown[]) => Promise<T>;
+};
+
+export async function fetchUserVerification(prisma: PrismaLike, uid: string): Promise<UserVerificationRow> {
+  const rows = await prisma.$queryRaw<
+    Array<{
+      steam_id: string | null;
+      steam_persona_name: string | null;
+      verification_level: number | null;
+      verification_method: string | null;
+      verified_at: Date | null;
+    }>
+  >`
+    SELECT
+      steam_id,
+      steam_persona_name,
+      verification_level,
+      verification_method,
+      verified_at
+    FROM public.users
+    WHERE uid = ${uid}
+    LIMIT 1
+  `;
+
+  const r = rows[0];
+  return {
+    steamId: r?.steam_id ?? null,
+    steamPersonaName: r?.steam_persona_name ?? null,
+    verificationLevel: r?.verification_level ?? 0,
+    verificationMethod: r?.verification_method ?? "none",
+    verifiedAt: r?.verified_at ? r.verified_at.toISOString() : null,
+  };
+}
