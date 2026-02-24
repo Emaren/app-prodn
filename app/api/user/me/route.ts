@@ -1,9 +1,12 @@
+// /var/www/AoE2HDBets/app-prodn/app/api/user/me/route.ts
+
 import { NextResponse, type NextRequest } from "next/server";
 import { getPrisma } from "@/lib/prisma";
 import { toUserApi } from "@/lib/userDto";
 import { resolveRequestUid, resolveRequestEmail } from "@/lib/requestIdentity";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 function normalizeInGameName(name: string) {
   return name.trim().replace(/\s+/g, " ").slice(0, 64);
@@ -16,6 +19,27 @@ function nameLooksValid(name: string) {
   return true;
 }
 
+const USER_SELECT = {
+  id: true,
+  uid: true,
+  email: true,
+  token: true,
+
+  inGameName: true,
+  verified: true,
+  lockName: true,
+  walletAddress: true,
+  createdAt: true,
+  lastSeen: true,
+  isAdmin: true,
+
+  steamId: true,
+  steamPersonaName: true,
+  verificationLevel: true,
+  verificationMethod: true,
+  verifiedAt: true,
+} as const;
+
 export async function GET(request: NextRequest) {
   const uid = await resolveRequestUid(request);
   if (!uid) return NextResponse.json({ detail: "No active session" }, { status: 401 });
@@ -23,23 +47,7 @@ export async function GET(request: NextRequest) {
   const prisma = getPrisma();
   const user = await prisma.user.findUnique({
     where: { uid },
-    select: {
-      uid: true,
-      email: true,
-      inGameName: true,
-      verified: true,
-      lockName: true,
-      walletAddress: true,
-      createdAt: true,
-      lastSeen: true,
-      isAdmin: true,
-
-      steamId: true,
-      steamPersonaName: true,
-      verificationLevel: true,
-      verificationMethod: true,
-      verifiedAt: true,
-    },
+    select: USER_SELECT,
   });
 
   if (!user) return NextResponse.json({ detail: "User not found" }, { status: 404 });
@@ -59,24 +67,7 @@ export async function POST(request: NextRequest) {
 
   const existing = await prisma.user.findUnique({
     where: { uid },
-    select: {
-      id: true,
-      uid: true,
-      email: true,
-      inGameName: true,
-      verified: true,
-      lockName: true,
-      walletAddress: true,
-      createdAt: true,
-      lastSeen: true,
-      isAdmin: true,
-
-      steamId: true,
-      steamPersonaName: true,
-      verificationLevel: true,
-      verificationMethod: true,
-      verifiedAt: true,
-    },
+    select: USER_SELECT,
   });
 
   if (!existing) {
@@ -88,23 +79,7 @@ export async function POST(request: NextRequest) {
         inGameName: incomingName ? normalizeInGameName(incomingName) : null,
         isAdmin: userCount === 0,
       },
-      select: {
-        uid: true,
-        email: true,
-        inGameName: true,
-        verified: true,
-        lockName: true,
-        walletAddress: true,
-        createdAt: true,
-        lastSeen: true,
-        isAdmin: true,
-
-        steamId: true,
-        steamPersonaName: true,
-        verificationLevel: true,
-        verificationMethod: true,
-        verifiedAt: true,
-      },
+      select: USER_SELECT,
     });
 
     return NextResponse.json(toUserApi(created));
@@ -136,6 +111,7 @@ export async function POST(request: NextRequest) {
     }
 
     const steamLinked = !!existing.steamId;
+
     const updated = await prisma.user.update({
       where: { uid },
       data: {
@@ -149,23 +125,7 @@ export async function POST(request: NextRequest) {
         verificationMethod: steamLinked ? "steam" : "none",
         verifiedAt: null,
       },
-      select: {
-        uid: true,
-        email: true,
-        inGameName: true,
-        verified: true,
-        lockName: true,
-        walletAddress: true,
-        createdAt: true,
-        lastSeen: true,
-        isAdmin: true,
-
-        steamId: true,
-        steamPersonaName: true,
-        verificationLevel: true,
-        verificationMethod: true,
-        verifiedAt: true,
-      },
+      select: USER_SELECT,
     });
 
     return NextResponse.json(toUserApi(updated));
@@ -175,23 +135,7 @@ export async function POST(request: NextRequest) {
   const updated = await prisma.user.update({
     where: { uid },
     data: { email: email as string },
-    select: {
-      uid: true,
-      email: true,
-      inGameName: true,
-      verified: true,
-      lockName: true,
-      walletAddress: true,
-      createdAt: true,
-      lastSeen: true,
-      isAdmin: true,
-
-      steamId: true,
-      steamPersonaName: true,
-      verificationLevel: true,
-      verificationMethod: true,
-      verifiedAt: true,
-    },
+    select: USER_SELECT,
   });
 
   return NextResponse.json(toUserApi(updated));

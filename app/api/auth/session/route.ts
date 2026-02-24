@@ -1,8 +1,8 @@
-// ~/projects/AoE2HDBets/app-prodn/app/api/auth/session/route.ts
+// /var/www/AoE2HDBets/app-prodn/app/api/auth/session/route.ts
 
 import { NextRequest, NextResponse } from "next/server";
 import { getPrisma } from "@/lib/prisma";
-import { toUserApi } from "@/lib/userDto";
+import { toUserApi, type UserCoreRow } from "@/lib/userDto";
 import {
   clearSessionCookie,
   getSessionUid,
@@ -29,13 +29,11 @@ export async function GET(request: NextRequest) {
   }
 
   const prisma = getPrisma();
-
-  // Intentionally no `select:` here to avoid TS/UserSelect drift issues.
   const user = await prisma.user.findUnique({ where: { uid } });
 
   return NextResponse.json({
     uid,
-    user: user ? toUserApi(user as any) : null,
+    user: user ? toUserApi(user as unknown as UserCoreRow) : null,
   });
 }
 
@@ -45,12 +43,11 @@ export async function POST(request: NextRequest) {
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
   const providedEmail = normalizeEmail(body.email);
 
-  // Ensure we always have a uid (existing session or new one)
   let uid = await getSessionUid(request);
   if (!uid) uid = newSessionUid();
 
-  // Ensure a user row exists for this uid
-  let user = await prisma.user.findUnique({ where: { uid } });
+  const existing = await prisma.user.findUnique({ where: { uid } });
+  let user = existing;
 
   if (!user) {
     const userCount = await prisma.user.count();
@@ -61,7 +58,7 @@ export async function POST(request: NextRequest) {
         isAdmin: userCount === 0,
       },
     });
-  } else if (!user.email && providedEmail) {
+  } else if (providedEmail && providedEmail !== user.email) {
     user = await prisma.user.update({
       where: { uid },
       data: { email: providedEmail },
@@ -72,7 +69,7 @@ export async function POST(request: NextRequest) {
 
   const response = NextResponse.json({
     uid,
-    user: user ? toUserApi(user as any) : null,
+    user: user ? toUserApi(user as unknown as UserCoreRow) : null,
   });
 
   setSessionCookie(response, token);

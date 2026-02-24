@@ -14,29 +14,41 @@ const C = {
 const LS_IGN = "aoe2hdbets_ign";
 
 export default function HomePage() {
-  const [inGameName, setInGameName] = useState("");
+  // ✅ draft vs saved (confirmed)
+  const [inGameNameDraft, setInGameNameDraft] = useState("");
+  const [inGameNameSaved, setInGameNameSaved] = useState("");
+
   const [opponent, setOpponent] = useState("");
 
-  const stage = useMemo(() => (inGameName.trim() ? "challenge" : "setname"), [inGameName]);
+  const stage = useMemo(
+    () => (inGameNameSaved.trim() ? "challenge" : "setname"),
+    [inGameNameSaved]
+  );
 
   useEffect(() => {
     try {
       const saved = localStorage.getItem(LS_IGN) || "";
-      if (saved) setInGameName(saved);
+      if (saved) {
+        setInGameNameSaved(saved);
+        setInGameNameDraft(saved);
+      }
     } catch {
       // ignore
     }
   }, []);
 
   function saveName() {
-    const v = inGameName.trim();
+    const v = inGameNameDraft.trim();
     if (!v) return;
+
     try {
       localStorage.setItem(LS_IGN, v);
     } catch {
       // ignore
     }
-    // stage computed from state
+
+    setInGameNameSaved(v);
+    // stage computed from saved
   }
 
   function clearName() {
@@ -46,7 +58,8 @@ export default function HomePage() {
       // ignore
     }
     setOpponent("");
-    setInGameName("");
+    setInGameNameSaved("");
+    setInGameNameDraft("");
   }
 
   return (
@@ -79,15 +92,14 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Flutter: SizedBox(height: 24) */}
           <div className="h-6" />
 
           {stage === "setname" ? (
             <div className="space-y-3">
               <FilledField
                 label="Your Steam/In-Game Name"
-                value={inGameName}
-                onChange={setInGameName}
+                value={inGameNameDraft}
+                onChange={setInGameNameDraft}
                 onEnter={saveName}
               />
 
@@ -107,7 +119,8 @@ export default function HomePage() {
           ) : (
             <div className="space-y-3">
               <div className="text-center text-sm" style={{ color: C.white70 }}>
-                Welcome, <span className="font-semibold text-white">{inGameName.trim()}</span>!
+                Welcome,{" "}
+                <span className="font-semibold text-white">{inGameNameSaved.trim()}</span>!
               </div>
 
               <FilledField
@@ -197,7 +210,7 @@ function DiscordRow() {
         className="inline-flex items-center"
         aria-label="Join our Discord"
       >
-        <img
+        <Image
           src="/legacy/discord_white.svg"
           alt="Discord"
           width={32}
