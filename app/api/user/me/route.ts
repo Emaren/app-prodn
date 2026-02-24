@@ -19,6 +19,23 @@ function nameLooksValid(name: string) {
   return true;
 }
 
+function normalizeEmail(email: string) {
+  return email.trim().toLowerCase();
+}
+
+function isPrismaUnique(err: unknown, field?: string) {
+  const e = err as any;
+  if (!e || typeof e !== "object") return false;
+  // PrismaClientKnownRequestError: code P2002 = unique constraint
+  if (e.code !== "P2002") return false;
+  if (!field) return true;
+
+  const targets = e?.meta?.target;
+  if (Array.isArray(targets)) return targets.includes(field);
+  if (typeof targets === "string") return targets.includes(field);
+  return false;
+}
+
 const USER_SELECT = {
   id: true,
   uid: true,
@@ -60,7 +77,9 @@ export async function POST(request: NextRequest) {
   const uid = await resolveRequestUid(request, body);
   if (!uid) return NextResponse.json({ detail: "No active session" }, { status: 401 });
 
-  const email = resolveRequestEmail(request, body);
+  const emailRaw = resolveRequestEmail(request, body);
+  const emailNorm = typeof emailRaw === "string" && emailRaw.trim() ? normalizeEmail(emailRaw) : null;
+
   const incomingName = typeof body?.inGameName === "string" ? body.inGameName : null;
 
   const prisma = getPrisma();
@@ -70,23 +89,90 @@ export async function POST(request: NextRequest) {
     select: USER_SELECT,
   });
 
+  // ────────────────────────────────────────────────────────────────────────────
+  // Create / attach-by-email branch (fixes "Unique constraint failed on (email)")
+  // ────────────────────────────────────────────────────────────────────────────
   if (!existing) {
-    const userCount = await prisma.user.count();
-    const created = await prisma.user.create({
-      data: {
-        uid,
-        email: email ?? null,
-        inGameName: incomingName ? normalizeInGameName(incomingName) : null,
-        isAdmin: userCount === 0,
-      },
-      select: USER_SELECT,
-    });
+    // If we have an email and that email already exists, attach this uid to that record.
+    if (emailNorm) {
+      const byEmail = await prisma.user.findUnique({
+        where: { email: emailNorm },
+        select: USER_SELECT,
+      });
 
-    return NextResponse.json(toUserApi(created));
+      if (byEmail) {
+        // If same uid already, just return it.
+        if (byEmail.uid === uid) {
+          return NextResponse.json(toUserApi(byEmail));
+        }
+
+        // Only update name if provided and not locked, and it actually changes.
+        let nextName: string | null = byEmail.inGameName ?? null;
+        if (incomingName && !byEmail.lockName) {
+          const n = normalizeInGameName(incomingName);
+          if (nameLooksValid(n) && n !== (byEmail.inGameName ?? "")) {
+            nextName = n;
+          }
+        }
+
+        const updated = await prisma.user.update({
+          where: { email: emailNorm },
+          data: {
+            uid,
+            // keep email as-is (already emailNorm)
+            inGameName: nextName,
+          },
+          select: USER_SELECT,
+        });
+
+        return NextResponse.json(toUserApi(updated));
+      }
+    }
+
+    // Otherwise create new. If a race causes P2002(email), fall back to attach-by-email.
+    try {
+      const userCount = await prisma.user.count();
+
+      const created = await prisma.user.create({
+        data: {
+          uid,
+          email: emailNorm,
+          inGameName: incomingName ? normalizeInGameName(incomingName) : null,
+          isAdmin: userCount === 0,
+        },
+        select: USER_SELECT,
+      });
+
+      return NextResponse.json(toUserApi(created));
+    } catch (err) {
+      // If email was unique and collided, attach to existing-by-email.
+      if (emailNorm && isPrismaUnique(err, "email")) {
+        const byEmail = await prisma.user.findUnique({
+          where: { email: emailNorm },
+          select: USER_SELECT,
+        });
+
+        if (byEmail) {
+          const updated = await prisma.user.update({
+            where: { email: emailNorm },
+            data: { uid },
+            select: USER_SELECT,
+          });
+
+          return NextResponse.json(toUserApi(updated));
+        }
+      }
+      throw err;
+    }
   }
 
+  // ────────────────────────────────────────────────────────────────────────────
+  // Update branch
+  // ────────────────────────────────────────────────────────────────────────────
+
   // update email if provided
-  const wantsEmailUpdate = typeof email === "string" && email.trim() && email !== existing.email;
+  const wantsEmailUpdate =
+    typeof emailNorm === "string" && emailNorm.trim() && emailNorm !== (existing.email ?? null);
 
   // update name if provided
   const wantsNameUpdate =
@@ -112,31 +198,45 @@ export async function POST(request: NextRequest) {
 
     const steamLinked = !!existing.steamId;
 
+    try {
+      const updated = await prisma.user.update({
+        where: { uid },
+        data: {
+          email: wantsEmailUpdate ? (emailNorm as string) : existing.email,
+
+          // name change kills name-verification
+          inGameName: nextName,
+          verified: false,
+          lockName: false,
+          verificationLevel: steamLinked ? 1 : 0,
+          verificationMethod: steamLinked ? "steam" : "none",
+          verifiedAt: null,
+        },
+        select: USER_SELECT,
+      });
+
+      return NextResponse.json(toUserApi(updated));
+    } catch (err) {
+      if (wantsEmailUpdate && isPrismaUnique(err, "email")) {
+        return NextResponse.json({ detail: "Email already in use" }, { status: 409 });
+      }
+      throw err;
+    }
+  }
+
+  // only email update
+  try {
     const updated = await prisma.user.update({
       where: { uid },
-      data: {
-        email: wantsEmailUpdate ? (email as string) : existing.email,
-
-        // name change kills name-verification
-        inGameName: nextName,
-        verified: false,
-        lockName: false,
-        verificationLevel: steamLinked ? 1 : 0,
-        verificationMethod: steamLinked ? "steam" : "none",
-        verifiedAt: null,
-      },
+      data: { email: emailNorm as string },
       select: USER_SELECT,
     });
 
     return NextResponse.json(toUserApi(updated));
+  } catch (err) {
+    if (isPrismaUnique(err, "email")) {
+      return NextResponse.json({ detail: "Email already in use" }, { status: 409 });
+    }
+    throw err;
   }
-
-  // only email update
-  const updated = await prisma.user.update({
-    where: { uid },
-    data: { email: email as string },
-    select: USER_SELECT,
-  });
-
-  return NextResponse.json(toUserApi(updated));
 }
