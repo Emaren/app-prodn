@@ -23,16 +23,23 @@ function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
 }
 
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null;
+}
+
 function isPrismaUnique(err: unknown, field?: string) {
-  const e = err as any;
-  if (!e || typeof e !== "object") return false;
-  // PrismaClientKnownRequestError: code P2002 = unique constraint
-  if (e.code !== "P2002") return false;
+  if (!isRecord(err)) return false;
+
+  const code = err["code"];
+  if (code !== "P2002") return false;
   if (!field) return true;
 
-  const targets = e?.meta?.target;
-  if (Array.isArray(targets)) return targets.includes(field);
-  if (typeof targets === "string") return targets.includes(field);
+  const meta = err["meta"];
+  if (!isRecord(meta)) return false;
+
+  const target = meta["target"];
+  if (Array.isArray(target)) return target.includes(field);
+  if (typeof target === "string") return target.includes(field);
   return false;
 }
 
@@ -78,7 +85,8 @@ export async function POST(request: NextRequest) {
   if (!uid) return NextResponse.json({ detail: "No active session" }, { status: 401 });
 
   const emailRaw = resolveRequestEmail(request, body);
-  const emailNorm = typeof emailRaw === "string" && emailRaw.trim() ? normalizeEmail(emailRaw) : null;
+  const emailNorm =
+    typeof emailRaw === "string" && emailRaw.trim() ? normalizeEmail(emailRaw) : null;
 
   const incomingName = typeof body?.inGameName === "string" ? body.inGameName : null;
 
