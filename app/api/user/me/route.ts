@@ -2,6 +2,7 @@
 
 import { NextResponse, type NextRequest } from "next/server";
 import { getPrisma } from "@/lib/prisma";
+import { hydrateSteamIdentity } from "@/lib/steamIdentity";
 import { fetchUserVerification, toUserApi } from "@/lib/userDto";
 import { resolveRequestUid, resolveRequestEmail } from "@/lib/requestIdentity";
 
@@ -69,7 +70,24 @@ export async function GET(request: NextRequest) {
   });
 
   if (!user) return NextResponse.json({ detail: "User not found" }, { status: 404 });
-  return NextResponse.json(toUserApi(user, await fetchUserVerification(prisma, uid)));
+
+  let verification = await fetchUserVerification(prisma, uid);
+  if (verification.steamId) {
+    const hydration = await hydrateSteamIdentity(prisma, uid);
+    verification = hydration.verification;
+    if (hydration.seededPlayableName) {
+      const refreshedUser = await prisma.user.findUnique({
+        where: { uid },
+        select: USER_SELECT,
+      });
+
+      if (refreshedUser) {
+        return NextResponse.json(toUserApi(refreshedUser, verification));
+      }
+    }
+  }
+
+  return NextResponse.json(toUserApi(user, verification));
 }
 
 export async function POST(request: NextRequest) {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPrisma } from "@/lib/prisma";
+import { hydrateSteamIdentity } from "@/lib/steamIdentity";
 import {
   getSessionUid,
   newSessionUid,
@@ -117,6 +118,8 @@ export async function GET(request: NextRequest) {
         WHERE uid = ${uid}
       `;
     }
+
+    await hydrateSteamIdentity(prisma, uid);
 
     const token = await signSession(uid);
     const returnTo = sanitizeReturnTo(request.nextUrl.searchParams.get("returnTo"));

@@ -11,6 +11,27 @@ type SteamProfile = {
   personaName: string | null;
 };
 
+function extractPersonaFromXml(xml: string) {
+  const match = xml.match(
+    /<steamID>\s*(?:<!\[CDATA\[(.*?)\]\]>|([^<]*))\s*<\/steamID>/i
+  );
+  const value = match?.[1] || match?.[2] || "";
+  return value.trim() || null;
+}
+
+async function fetchSteamPersonaFromCommunity(steamId: string) {
+  const xmlUrl = new URL(`https://steamcommunity.com/profiles/${steamId}`);
+  xmlUrl.searchParams.set("xml", "1");
+
+  const response = await fetch(xmlUrl, { cache: "no-store" });
+  if (!response.ok) {
+    return null;
+  }
+
+  const xml = await response.text().catch(() => "");
+  return extractPersonaFromXml(xml);
+}
+
 function getProto(request: NextRequest) {
   const forwardedProto = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
   if (forwardedProto) return forwardedProto;
@@ -127,23 +148,24 @@ export async function verifySteamCallback(request: NextRequest) {
 
 export async function fetchSteamProfile(steamId: string): Promise<SteamProfile> {
   const apiKey = process.env.STEAM_API_KEY?.trim();
-  if (!apiKey) {
-    return { steamId, personaName: null };
+  if (apiKey) {
+    const url = new URL("https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/");
+    url.searchParams.set("key", apiKey);
+    url.searchParams.set("steamids", steamId);
+
+    const response = await fetch(url, { cache: "no-store" });
+    if (response.ok) {
+      const payload = (await response.json().catch(() => null)) as
+        | { response?: { players?: Array<{ personaname?: string }> } }
+        | null;
+
+      const personaName = payload?.response?.players?.[0]?.personaname?.trim() || null;
+      if (personaName) {
+        return { steamId, personaName };
+      }
+    }
   }
 
-  const url = new URL("https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/");
-  url.searchParams.set("key", apiKey);
-  url.searchParams.set("steamids", steamId);
-
-  const response = await fetch(url, { cache: "no-store" });
-  if (!response.ok) {
-    return { steamId, personaName: null };
-  }
-
-  const payload = (await response.json().catch(() => null)) as
-    | { response?: { players?: Array<{ personaname?: string }> } }
-    | null;
-
-  const personaName = payload?.response?.players?.[0]?.personaname?.trim() || null;
+  const personaName = await fetchSteamPersonaFromCommunity(steamId).catch(() => null);
   return { steamId, personaName };
 }

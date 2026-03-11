@@ -2,6 +2,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getPrisma } from "@/lib/prisma";
+import { hydrateSteamIdentity } from "@/lib/steamIdentity";
 import { fetchUserVerification, toUserApi, type UserCoreRow } from "@/lib/userDto";
 import {
   clearSessionCookie,
@@ -31,12 +32,21 @@ export async function GET(request: NextRequest) {
   }
 
   const prisma = getPrisma();
-  const user = await prisma.user.findUnique({ where: { uid } });
+  let user = await prisma.user.findUnique({ where: { uid } });
+
+  let verification = user ? await fetchUserVerification(prisma, uid) : null;
+  if (user && verification?.steamId) {
+    const hydration = await hydrateSteamIdentity(prisma, uid);
+    verification = hydration.verification;
+    if (hydration.seededPlayableName) {
+      user = await prisma.user.findUnique({ where: { uid } });
+    }
+  }
 
   return NextResponse.json({
     uid,
     user: user
-      ? toUserApi(user as unknown as UserCoreRow, await fetchUserVerification(prisma, uid))
+      ? toUserApi(user as unknown as UserCoreRow, verification)
       : null,
   });
 }

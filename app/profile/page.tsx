@@ -177,6 +177,9 @@ export default function ProfilePage() {
               <div>Steam ID: {profile?.steamId || "Not connected"}</div>
               <div>Verification method: {profile?.verificationMethod || "none"}</div>
             </div>
+            <p className="mt-4 text-xs leading-5 text-slate-400">
+              Steam can supply your profile persona. Your replay uploads are still the trust source for your actual AoE2HD playable name.
+            </p>
           </div>
 
           <div className="rounded-2xl border border-white/8 bg-white/5 p-5">
