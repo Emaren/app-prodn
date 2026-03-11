@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Prisma } from "@/lib/generated/prisma/client";
+import { Prisma } from "@/lib/generated/prisma";
 import { getPrisma } from "@/lib/prisma";
 import { resolveRequestEmail, resolveRequestUid } from "@/lib/requestIdentity";
 

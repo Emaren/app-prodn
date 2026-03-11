@@ -31,6 +31,9 @@ model User {
 
   apiKeys   ApiKey[]
   gameStats GameStats[]
+  tournamentEntries TournamentEntry[]
+  chatMessages      ChatMessage[]
+  createdTournaments Tournament[] @relation("TournamentCreator")
 
   @@map("users")
 }
@@ -83,6 +86,76 @@ model GameStats {
   @@index([replayHash, parse_iteration], map: "ix_replay_hash_iteration")
   @@index([replay_file, parse_iteration], map: "ix_replay_iteration")
   @@map("game_stats")
+}
+
+model Tournament {
+  id              Int       @id @default(autoincrement())
+  slug            String    @unique @db.VarChar(80)
+  title           String    @db.VarChar(120)
+  description     String?   @db.Text
+  format          String    @default("1v1 AoE2HD showcase") @db.VarChar(80)
+  status          String    @default("planning") @db.VarChar(20)
+  startsAt        DateTime? @map("starts_at") @db.Timestamp(6)
+  featured        Boolean   @default(false)
+  createdByUserId Int?      @map("created_by_user_id")
+  chatRoomId      Int?      @unique(map: "uq_tournaments_chat_room_id")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  chatRoom  ChatRoom?         @relation(fields: [chatRoomId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  createdBy User?             @relation("TournamentCreator", fields: [createdByUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  entries   TournamentEntry[]
+
+  @@index([featured, startsAt], map: "ix_tournaments_featured_starts_at")
+  @@index([status, startsAt], map: "ix_tournaments_status_starts_at")
+  @@map("tournaments")
+}
+
+model TournamentEntry {
+  id           Int       @id @default(autoincrement())
+  tournamentId Int       @map("tournament_id")
+  userId       Int       @map("user_id")
+  status       String    @default("joined") @db.VarChar(20)
+  note         String?   @db.VarChar(160)
+  joinedAt     DateTime  @default(now()) @map("joined_at") @db.Timestamp(6)
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([tournamentId, userId], map: "uq_tournament_entries_tournament_user")
+  @@index([userId], map: "ix_tournament_entries_user_id")
+  @@index([tournamentId, joinedAt], map: "ix_tournament_entries_tournament_joined_at")
+  @@map("tournament_entries")
+}
+
+model ChatRoom {
+  id          Int       @id @default(autoincrement())
+  slug        String    @unique @db.VarChar(80)
+  name        String    @db.VarChar(120)
+  description String?   @db.Text
+  scope       String    @default("lobby") @db.VarChar(20)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  messages   ChatMessage[]
+  tournament Tournament?
+
+  @@map("chat_rooms")
+}
+
+model ChatMessage {
+  id        Int      @id @default(autoincrement())
+  roomId    Int      @map("room_id")
+  userId    Int      @map("user_id")
+  body      String   @db.VarChar(500)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  room ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([roomId, createdAt], map: "ix_chat_messages_room_created_at")
+  @@index([userId, createdAt], map: "ix_chat_messages_user_created_at")
+  @@map("chat_messages")
 }
 
 model alembic_version {
