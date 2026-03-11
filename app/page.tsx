@@ -17,6 +17,7 @@ import {
 export default function HomePage() {
   const { isAdmin, isAuthenticated, loading, loginWithSteam, playerName, user } = useUserAuth();
   const [lobby, setLobby] = useState<LobbySnapshot | null>(null);
+  const [liveConnected, setLiveConnected] = useState(false);
   const [authError, setAuthError] = useState(false);
   const [authDetail, setAuthDetail] = useState<string | null>(null);
   const [lobbyError, setLobbyError] = useState<string | null>(null);
@@ -43,23 +44,54 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
-
-    const poll = async () => {
-      await loadLobby();
-      if (cancelled) return;
-    };
-
-    void poll();
+    void loadLobby();
     const interval = window.setInterval(() => {
-      void poll();
-    }, 10_000);
+      void loadLobby();
+    }, 30_000);
 
     return () => {
-      cancelled = true;
       window.clearInterval(interval);
     };
   }, [loadLobby]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof EventSource === "undefined") {
+      return;
+    }
+
+    const source = new EventSource("/api/lobby/stream");
+
+    const handleSnapshot = (event: MessageEvent<string>) => {
+      try {
+        const snapshot = JSON.parse(event.data) as LobbySnapshot;
+        setLobby(snapshot);
+        setLobbyError(null);
+        setLiveConnected(true);
+      } catch (error) {
+        console.warn("Failed to parse live lobby snapshot:", error);
+      }
+    };
+
+    const handleStreamError = () => {
+      setLiveConnected(false);
+    };
+
+    source.addEventListener("snapshot", handleSnapshot as EventListener);
+    source.addEventListener("error", handleStreamError as EventListener);
+    source.onopen = () => {
+      setLiveConnected(true);
+    };
+    source.onerror = () => {
+      setLiveConnected(false);
+    };
+
+    return () => {
+      source.removeEventListener("snapshot", handleSnapshot as EventListener);
+      source.removeEventListener("error", handleStreamError as EventListener);
+      source.close();
+      setLiveConnected(false);
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -162,8 +194,19 @@ export default function HomePage() {
       <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(251,191,36,0.18),_transparent_30%),linear-gradient(135deg,_#0f172a,_#111827_55%,_#0b1120)] p-8">
         <div className="grid gap-8 lg:grid-cols-[1.2fr_0.95fr]">
           <div className="space-y-5">
-            <div className="text-sm uppercase tracking-[0.4em] text-amber-200/70">
-              Community Lobby
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="text-sm uppercase tracking-[0.4em] text-amber-200/70">
+                Community Lobby
+              </div>
+              <div
+                className={`rounded-full px-3 py-1 text-xs ${
+                  liveConnected
+                    ? "border border-emerald-400/30 bg-emerald-500/10 text-emerald-100"
+                    : "border border-white/10 bg-white/5 text-slate-300"
+                }`}
+              >
+                {liveConnected ? "Live updates connected" : "Polling fallback"}
+              </div>
             </div>
             <div className="max-w-3xl space-y-3">
               <h2 className="text-4xl font-semibold leading-tight text-white sm:text-5xl">
