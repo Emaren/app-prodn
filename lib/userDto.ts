@@ -12,7 +12,13 @@ export type UserCoreRow = {
   token: string | null;
   lastSeen: Date | null;
   isAdmin: boolean;
-} & Partial<UserVerificationRow>;
+} & Partial<{
+  steamId: string | null;
+  steamPersonaName: string | null;
+  verificationLevel: number;
+  verificationMethod: string;
+  verifiedAt: Date | string | null;
+}>;
 
 export type UserVerificationRow = {
   steamId: string | null;
@@ -43,12 +49,15 @@ export type UserApi = {
 };
 
 export function toUserApi(core: UserCoreRow, ver?: Partial<UserVerificationRow> | null): UserApi {
+  const coreVerifiedAt =
+    core.verifiedAt instanceof Date ? core.verifiedAt.toISOString() : core.verifiedAt ?? null;
+
   const v: UserVerificationRow = {
     steamId: ver?.steamId ?? core.steamId ?? null,
     steamPersonaName: ver?.steamPersonaName ?? core.steamPersonaName ?? null,
     verificationLevel: ver?.verificationLevel ?? core.verificationLevel ?? 0,
     verificationMethod: ver?.verificationMethod ?? core.verificationMethod ?? "none",
-    verifiedAt: ver?.verifiedAt ?? core.verifiedAt ?? null,
+    verifiedAt: ver?.verifiedAt ?? coreVerifiedAt,
   };
 
   return {
