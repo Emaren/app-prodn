@@ -98,7 +98,7 @@ model Tournament {
   startsAt        DateTime? @map("starts_at") @db.Timestamp(6)
   featured        Boolean   @default(false)
   createdByUserId Int?      @map("created_by_user_id")
-  chatRoomId      Int?      @unique(map: "uq_tournaments_chat_room_id")
+  chatRoomId      Int?      @unique(map: "uq_tournaments_chat_room_id") @map("chat_room_id")
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
 
