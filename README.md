@@ -32,6 +32,7 @@ Required for Prisma API routes:
 
 - `DATABASE_URL` (Postgres connection string)
 - `SESSION_SECRET` (long random string for signing auth session cookies)
+- `STEAM_API_KEY` (optional but recommended; used to fetch Steam persona names after sign-in)
 
 Common:
 
@@ -39,6 +40,7 @@ Common:
 - `AOE2_BACKEND_UPSTREAM` (server-side upstream for rewrites, default `http://127.0.0.1:3330`)
 - `ADMIN_TOKEN` (required for admin proxy routes)
 - `INTERNAL_API_KEY` (optional; forwarded on replay upload when backend enforces API keys)
+- `ALLOW_GUEST_SESSIONS=false` (recommended; keep guest sessions off so replay evidence ties to signed identities)
 
 Optional migration compatibility:
 
@@ -53,8 +55,8 @@ Optional migration compatibility:
 
 ## Admin bootstrap
 
-- If there are zero users in DB, the first successful user registration becomes admin.
-- You can promote/demote explicitly from backend with:
+- Admin is no longer granted automatically to the first user/session.
+- Promote/demote explicitly from backend with:
   - `python /var/www/AoE2HDBets/api-prodn/scripts/set_admin.py --list`
   - `python /var/www/AoE2HDBets/api-prodn/scripts/set_admin.py --email you@example.com`
 

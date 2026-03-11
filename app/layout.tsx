@@ -3,7 +3,6 @@
 
 import React from "react";
 import "./globals.css";
-import WalletConnector from "@/components/WalletConnector";
 import HeaderMenu from "@/components/HeaderMenu";
 import { Toaster } from "sonner";
 import { Providers } from "./Providers";
@@ -15,11 +14,15 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      <header className="w-full p-4 border-b border-gray-700">
-        <div className="max-w-4xl mx-auto flex flex-wrap justify-between items-center gap-4 overflow-visible">
-          <h1 className="text-xl font-semibold">AoE2 Betting</h1>
+      <header className="border-b border-white/10 bg-slate-950/90 p-4 backdrop-blur">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 overflow-visible">
+          <div>
+            <div className="text-xs uppercase tracking-[0.35em] text-white/45">
+              AoE2HD Bets
+            </div>
+            <h1 className="text-xl font-semibold text-white">Tournament Lobby</h1>
+          </div>
           <div className="flex items-center gap-4">
-            <WalletConnector />
             <HeaderMenu
               pendingBetsCount={pendingBetsCount}
               playerName={playerName}
@@ -30,7 +33,7 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <main className="flex-1 max-w-4xl mx-auto p-4">{children}</main>
+      <main className="mx-auto flex-1 max-w-6xl p-4">{children}</main>
     </>
   );
 }

@@ -1,6 +1,3 @@
-/* ----------------------------------------------------------------
-context/UserAuthContext.tsx (Stabilized Edition)
----------------------------------------------------------------- */
 "use client";
 
 import {
@@ -14,10 +11,15 @@ import {
 import { useRouter } from "next/navigation";
 
 type SessionUser = {
-  uid?: string;
-  in_game_name?: string | null;
-  is_admin?: boolean;
-  email?: string | null;
+  uid: string;
+  email: string | null;
+  inGameName: string | null;
+  isAdmin: boolean;
+  steamId: string | null;
+  steamPersonaName: string | null;
+  verificationLevel: number;
+  verificationMethod: string;
+  verified: boolean;
 };
 
 type SessionEnvelope = {
@@ -27,122 +29,135 @@ type SessionEnvelope = {
 
 type CtxShape = {
   playerName: string;
-  setPlayerName: (n: string) => void;
+  setPlayerName: (name: string) => void;
   uid: string | null;
   setUid: (uid: string | null) => void;
   token: string | null;
   isAdmin: boolean;
+  isAuthenticated: boolean;
   loading: boolean;
-  logout(): Promise<void>;
-  refreshToken(): Promise<string | null>;
+  user: SessionUser | null;
+  loginWithSteam: (returnTo?: string) => void;
+  logout: () => Promise<void>;
+  refreshToken: () => Promise<string | null>;
+  refreshSession: () => Promise<void>;
 };
 
 const Ctx = createContext<CtxShape | undefined>(undefined);
+
+function getDisplayName(user: SessionUser | null) {
+  if (!user) return "";
+  return user.inGameName || user.steamPersonaName || "";
+}
+
+function persistDisplayState(user: SessionUser | null) {
+  if (typeof window === "undefined") return;
+
+  const displayName = getDisplayName(user);
+  if (displayName) {
+    localStorage.setItem("playerName", displayName);
+  } else {
+    localStorage.removeItem("playerName");
+  }
+
+  if (user?.uid) {
+    localStorage.setItem("uid", user.uid);
+  } else {
+    localStorage.removeItem("uid");
+  }
+
+  localStorage.setItem("isAdmin", String(Boolean(user?.isAdmin)));
+}
 
 export function UserAuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [uid, setUidState] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
-  const [playerName, setPlayerNameState] = useState<string>("");
+  const [user, setUser] = useState<SessionUser | null>(null);
+  const [playerName, setPlayerNameState] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  const syncUserState = useCallback((nextUser: SessionUser | null) => {
+    setUser(nextUser);
+    setUidState(nextUser?.uid ?? null);
+    setIsAdmin(Boolean(nextUser?.isAdmin));
+    setPlayerNameState(getDisplayName(nextUser));
+    persistDisplayState(nextUser);
+  }, []);
+
+  const refreshSession = useCallback(async () => {
+    try {
+      const response = await fetch("/api/auth/session", {
+        method: "GET",
+        cache: "no-store",
+      });
+
+      if (response.status === 401) {
+        syncUserState(null);
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(`Session lookup failed: ${response.status}`);
+      }
+
+      const payload = (await response.json()) as SessionEnvelope;
+      if (!payload.user || !payload.uid) {
+        syncUserState(null);
+        return;
+      }
+
+      syncUserState({
+        ...payload.user,
+        uid: payload.uid,
+      });
+    } catch (error) {
+      console.warn("Failed to refresh session:", error);
+      syncUserState(null);
+    }
+  }, [syncUserState]);
+
   const setPlayerName = useCallback((name: string) => {
-    setPlayerNameState(name);
+    const trimmed = name.trimStart();
+    setPlayerNameState(trimmed);
     if (typeof window !== "undefined") {
-      if (name) localStorage.setItem("playerName", name);
-      else localStorage.removeItem("playerName");
+      if (trimmed) {
+        localStorage.setItem("playerName", trimmed);
+      } else {
+        localStorage.removeItem("playerName");
+      }
     }
   }, []);
 
   const setUid = useCallback((nextUid: string | null) => {
     setUidState(nextUid);
     if (typeof window !== "undefined") {
-      if (nextUid) localStorage.setItem("uid", nextUid);
-      else localStorage.removeItem("uid");
+      if (nextUid) {
+        localStorage.setItem("uid", nextUid);
+      } else {
+        localStorage.removeItem("uid");
+      }
     }
   }, []);
 
   const refreshToken = useCallback(async () => null, []);
 
-  const ensureSession = useCallback(async () => {
-    try {
-      const storedEmail =
-        typeof window !== "undefined" ? localStorage.getItem("userEmail") : null;
-      const response = await fetch("/api/auth/session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(storedEmail ? { email: storedEmail } : {}),
-      });
-      if (!response.ok) return null;
+  const loginWithSteam = useCallback((returnTo?: string) => {
+    const target =
+      returnTo ||
+      (typeof window !== "undefined"
+        ? `${window.location.pathname}${window.location.search}`
+        : "/");
 
-      const payload = (await response.json().catch(() => ({}))) as SessionEnvelope;
-      const nextUid =
-        typeof payload.uid === "string" && payload.uid.trim()
-          ? payload.uid
-          : typeof payload.user?.uid === "string" && payload.user.uid.trim()
-            ? payload.user.uid
-            : null;
-      if (!nextUid) return null;
-
-      setUidState(nextUid);
-      localStorage.setItem("uid", nextUid);
-
-      if (payload.user?.email && !storedEmail) {
-        localStorage.setItem("userEmail", payload.user.email);
-      }
-      if (typeof payload.user?.is_admin === "boolean") {
-        setIsAdmin(payload.user.is_admin);
-        localStorage.setItem("isAdmin", String(payload.user.is_admin));
-      }
-      if (typeof payload.user?.in_game_name === "string" && payload.user.in_game_name.trim()) {
-        setPlayerNameState(payload.user.in_game_name);
-        localStorage.setItem("playerName", payload.user.in_game_name);
-      }
-
-      return nextUid;
-    } catch (error) {
-      console.warn("Failed to ensure session:", error);
-      return null;
-    }
-  }, []);
-
-  const loadUserFromBackend = useCallback(async () => {
-    try {
-      const res = await fetch("/api/user/me", {
-        method: "GET",
-        cache: "no-store",
-      });
-      if (!res.ok) {
-        return;
-      }
-      const data = await res.json();
-      const resolvedName = data.in_game_name ?? "";
-      setPlayerNameState(resolvedName);
-      setIsAdmin(Boolean(data.is_admin));
-      if (resolvedName) localStorage.setItem("playerName", resolvedName);
-      localStorage.setItem("isAdmin", String(Boolean(data.is_admin)));
-    } catch (err) {
-      console.warn("Failed to load user profile:", err);
-    }
+    window.location.assign(`/api/auth/steam?returnTo=${encodeURIComponent(target)}`);
   }, []);
 
   useEffect(() => {
-    const storedName =
-      typeof window !== "undefined" ? localStorage.getItem("playerName") : null;
-    const storedIsAdmin =
-      typeof window !== "undefined" ? localStorage.getItem("isAdmin") : null;
-
-    if (storedName) setPlayerNameState(storedName);
-    if (storedIsAdmin) setIsAdmin(storedIsAdmin === "true");
-
     let cancelled = false;
+
     (async () => {
-      const nextUid = await ensureSession();
-      if (cancelled) return;
-      if (nextUid) {
-        await loadUserFromBackend();
-      }
+      await refreshSession();
       if (!cancelled) {
         setLoading(false);
       }
@@ -151,25 +166,46 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [ensureSession, loadUserFromBackend]);
+  }, [refreshSession]);
 
-  async function logout() {
+  useEffect(() => {
+    if (!uid) return;
+
+    let active = true;
+
+    const ping = async () => {
+      try {
+        await fetch("/api/user/ping", { method: "POST" });
+      } catch (error) {
+        if (active) {
+          console.warn("Presence ping failed:", error);
+        }
+      }
+    };
+
+    void ping();
+    const interval = window.setInterval(ping, 60_000);
+
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
+  }, [uid]);
+
+  const logout = useCallback(async () => {
     setUid(null);
     setToken(null);
-    setPlayerNameState("");
-    setIsAdmin(false);
+    syncUserState(null);
+
     try {
       await fetch("/api/auth/session", { method: "DELETE" });
     } catch (error) {
       console.warn("Failed to clear server session cookie:", error);
     }
-    localStorage.removeItem("uid");
-    localStorage.removeItem("userEmail");
-    localStorage.removeItem("playerName");
-    localStorage.removeItem("isAdmin");
+
     router.push("/");
     router.refresh();
-  }
+  }, [router, setUid, syncUserState]);
 
   const value: CtxShape = {
     playerName,
@@ -178,9 +214,13 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
     setUid,
     token,
     isAdmin,
+    isAuthenticated: Boolean(uid),
     loading,
+    user,
+    loginWithSteam,
     logout,
     refreshToken,
+    refreshSession,
   };
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

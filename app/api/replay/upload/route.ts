@@ -9,11 +9,17 @@ export const dynamic = "force-dynamic";
 export async function POST(request: NextRequest) {
   const uid = await getSessionUid(request);
   if (!uid) {
-    return NextResponse.json({ detail: "Missing session identity" }, { status: 401 });
+    return NextResponse.json({ detail: "Sign in with Steam before uploading replays." }, { status: 401 });
   }
 
   const prisma = getPrisma();
-  const user = await prisma.user.findUnique({ where: { uid }, select: { uid: true } });
+  const user = await prisma.user.findUnique({
+    where: { uid },
+    select: {
+      uid: true,
+      inGameName: true,
+    },
+  });
   if (!user) {
     await prisma.user.create({
       data: {
@@ -29,6 +35,10 @@ export async function POST(request: NextRequest) {
   const headers = new Headers();
   if (contentType) headers.set("content-type", contentType);
   headers.set("x-user-uid", uid);
+  const playerName = user?.inGameName;
+  if (playerName) {
+    headers.set("x-player-name", playerName);
+  }
   if (process.env.INTERNAL_API_KEY) {
     headers.set("x-api-key", process.env.INTERNAL_API_KEY);
   }

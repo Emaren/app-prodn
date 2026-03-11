@@ -5,6 +5,12 @@ import { resolveRequestUid } from "@/lib/requestIdentity";
 
 export const runtime = "nodejs";
 
+type WatcherKeyRow = {
+  key_prefix: string;
+  created_at: Date;
+  last_used_at: Date | null;
+};
+
 function sha256Hex(input: string) {
   return crypto.createHash("sha256").update(input, "utf8").digest("hex");
 }
@@ -28,14 +34,10 @@ export async function POST(request: NextRequest) {
 
   const { prefix, apiKey, hash } = makeKey();
 
-  await prisma.apiKey.create({
-    data: {
-      userId: user.id,
-      kind: "watcher",
-      keyPrefix: prefix,
-      keyHash: hash,
-    },
-  });
+  await prisma.$executeRaw`
+    INSERT INTO public.api_keys (user_id, kind, key_prefix, key_hash)
+    VALUES (${user.id}, ${"watcher"}, ${prefix}, ${hash})
+  `;
 
   return NextResponse.json({ apiKey, prefix });
 }
@@ -48,17 +50,20 @@ export async function GET(request: NextRequest) {
   const user = await prisma.user.findUnique({ where: { uid }, select: { id: true } });
   if (!user) return NextResponse.json({ detail: "User not found" }, { status: 404 });
 
-  const keys = await prisma.apiKey.findMany({
-    where: { userId: user.id, revokedAt: null, kind: "watcher" },
-    orderBy: { createdAt: "desc" },
-    select: { keyPrefix: true, createdAt: true, lastUsedAt: true },
-  });
+  const keys = await prisma.$queryRaw<WatcherKeyRow[]>`
+    SELECT key_prefix, created_at, last_used_at
+    FROM public.api_keys
+    WHERE user_id = ${user.id}
+      AND revoked_at IS NULL
+      AND kind = ${"watcher"}
+    ORDER BY created_at DESC
+  `;
 
   return NextResponse.json({
     keys: keys.map((k) => ({
-      prefix: k.keyPrefix,
-      createdAt: k.createdAt.toISOString(),
-      lastUsedAt: k.lastUsedAt ? k.lastUsedAt.toISOString() : null,
+      prefix: k.key_prefix,
+      createdAt: k.created_at.toISOString(),
+      lastUsedAt: k.last_used_at ? k.last_used_at.toISOString() : null,
     })),
   });
 }

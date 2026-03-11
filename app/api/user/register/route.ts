@@ -12,8 +12,13 @@ export async function POST(request: NextRequest) {
 
   const uid = await resolveRequestUid(request, body);
   const email = resolveRequestEmail(request, body);
-  const inGameName =
-    typeof body.in_game_name === "string" ? body.in_game_name.trim() : "";
+  const rawName =
+    typeof body.inGameName === "string"
+      ? body.inGameName
+      : typeof body.in_game_name === "string"
+        ? body.in_game_name
+        : "";
+  const inGameName = rawName.trim();
 
   if (!uid) {
     return NextResponse.json({ detail: "Missing session identity" }, { status: 401 });
@@ -41,17 +46,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const namedUserCount = await prisma.user.count({
-      where: { inGameName: { not: null } },
-    });
-    const shouldBeAdmin = !existing.isAdmin && namedUserCount === 0;
-
     const updated = await prisma.user.update({
       where: { uid },
       data: {
         inGameName,
         email: existing.email || email,
-        isAdmin: existing.isAdmin || shouldBeAdmin,
       },
       select: { isAdmin: true, uid: true, inGameName: true },
     });
@@ -76,15 +75,12 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const namedUserCount = await prisma.user.count({
-      where: { inGameName: { not: null } },
-    });
     const created = await prisma.user.create({
       data: {
         uid,
         email,
         inGameName,
-        isAdmin: namedUserCount === 0,
+        isAdmin: false,
       },
       select: { isAdmin: true },
     });

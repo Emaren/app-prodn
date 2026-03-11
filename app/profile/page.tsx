@@ -1,232 +1,277 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useUserAuth } from "@/hooks/useUserAuth";
+import SteamLoginButton from "@/components/SteamLoginButton";
+
+type ProfileResponse = {
+  uid: string;
+  email: string | null;
+  inGameName: string | null;
+  verified: boolean;
+  isAdmin: boolean;
+  steamId: string | null;
+  steamPersonaName: string | null;
+  verificationLevel: number;
+  verificationMethod: string;
+};
+
+type WatcherKeyRow = {
+  prefix: string;
+  createdAt: string;
+  lastUsedAt: string | null;
+};
 
 export default function ProfilePage() {
-  const router = useRouter();
-  const { uid, playerName, setPlayerName, logout: contextLogout } = useUserAuth();
-  const [email, setEmail] = useState("");
-  const [passwordHash, setPasswordHash] = useState("");
-  const [isVerified, setIsVerified] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
-
-  const isLoggedIn = !!uid;
-
-  const logout = async () => {
-    try {
-      await contextLogout();
-      localStorage.clear();
-      window.dispatchEvent(new Event("storage"));
-      // — unregister SW & clear all caches on logout
-
-      if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
-
-        const reg = await navigator.serviceWorker.ready;
-
-        await reg.unregister();
-
-        const keys = await caches.keys();
-
-        await Promise.all(keys.map(k => caches.delete(k)));
-
-      }
-
-      window.location.reload();
-    } catch (err) {
-      console.error("❌ Logout failed:", err);
-      alert("Logout failed.");
-    }
-  };
-
-  const registerUser = useCallback(
-    async (userEmail: string) => {
-      const in_game_name = localStorage.getItem("playerName") || playerName || "";
-
-      if (!in_game_name) {
-        console.warn("⛔ Skipping registration — missing in_game_name");
-        return;
-      }
-
-      try {
-        const res = await fetch("/api/user/register", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ email: userEmail, in_game_name }),
-        });
-
-        if (!res.ok) {
-          const text = await res.text();
-          throw new Error(`Register failed: ${res.status} ${text}`);
-        }
-
-        console.log("🆕 User registered from active session");
-      } catch (err) {
-        console.error("❌ Failed to register user:", err);
-      }
-    },
-    [playerName]
-  );
-
-  const fetchUser = useCallback(async () => {
-    const fallbackEmail = localStorage.getItem("userEmail") || "unknown@aoe2hdbets.com";
-    const payload = { email: fallbackEmail };
-    console.log("🔍 Fetching user with active session");
-
-    try {
-      const res = await fetch("/api/user/me", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (res.status === 404) {
-        console.warn("⚠️ No user found (404), retrying registration...");
-        await registerUser(fallbackEmail);
-        return;
-      }
-
-      if (!res.ok) {
-        console.error("❌ Failed to fetch user:", res.status);
-        return;
-      }
-
-      const data = await res.json();
-      console.log("🧠 /api/user/me response:", data);
-
-      if (data.in_game_name) {
-        setPlayerName(data.in_game_name);
-        localStorage.setItem("playerName", data.in_game_name);
-      }
-      if (data.email) setEmail(data.email);
-      if (data.password_hash) setPasswordHash(data.password_hash);
-      if (data.is_admin) setIsAdmin(data.is_admin);
-
-      setIsVerified(!!data.verified);
-    } catch (err) {
-      console.error("❌ Exception in fetchUser:", err);
-    }
-  }, [registerUser, setPlayerName]);
+  const { uid, isAuthenticated, playerName, setPlayerName, logout, refreshSession } = useUserAuth();
+  const [profile, setProfile] = useState<ProfileResponse | null>(null);
+  const [watcherKeys, setWatcherKeys] = useState<WatcherKeyRow[]>([]);
+  const [newWatcherKey, setNewWatcherKey] = useState<string | null>(null);
+  const [status, setStatus] = useState("");
+  const [savingName, setSavingName] = useState(false);
 
   useEffect(() => {
-    if (!uid || !isLoggedIn) {
-      router.push("/");
+    if (!isAuthenticated) return;
+
+    const load = async () => {
+      try {
+        const [profileResponse, watcherKeyResponse] = await Promise.all([
+          fetch("/api/user/me", { cache: "no-store" }),
+          fetch("/api/user/watcher-key", { cache: "no-store" }),
+        ]);
+
+        if (profileResponse.ok) {
+          const nextProfile = (await profileResponse.json()) as ProfileResponse;
+          setProfile(nextProfile);
+          if (nextProfile.inGameName) {
+            setPlayerName(nextProfile.inGameName);
+          }
+        }
+
+        if (watcherKeyResponse.ok) {
+          const payload = (await watcherKeyResponse.json()) as { keys?: WatcherKeyRow[] };
+          setWatcherKeys(Array.isArray(payload.keys) ? payload.keys : []);
+        }
+      } catch (error) {
+        console.warn("Failed to load profile:", error);
+      }
+    };
+
+    void load();
+  }, [isAuthenticated, setPlayerName]);
+
+  const saveName = async () => {
+    const nextName = playerName.trim();
+    if (!nextName) {
+      setStatus("Enter an in-game name first.");
       return;
     }
 
-    fetchUser();
-    window.addEventListener("focus", fetchUser);
-    return () => window.removeEventListener("focus", fetchUser);
-  }, [fetchUser, isLoggedIn, router, uid]);
-
-  const handleSaveName = async () => {
-    const trimmed = (playerName || "").trim();
-    if (!trimmed) return alert("Enter a valid name.");
-
-    localStorage.setItem("playerName", trimmed);
+    setSavingName(true);
+    setStatus("");
 
     try {
-      const res = await fetch("/api/user/update_name", {
+      const response = await fetch("/api/user/update_name", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
+          "content-type": "application/json",
         },
-        body: JSON.stringify({ in_game_name: trimmed }),
+        body: JSON.stringify({ inGameName: nextName }),
       });
 
-      if (res.status === 404) {
-        alert("Please register first or check your UID.");
+      const payload = (await response.json().catch(() => ({}))) as
+        | ProfileResponse
+        | { detail?: string };
+
+      if (!response.ok) {
+        const detail =
+          "detail" in payload && typeof payload.detail === "string"
+            ? payload.detail
+            : "Failed to save name.";
+        setStatus(detail);
         return;
       }
 
-      if (!res.ok) {
-        throw new Error(`Update name failed: ${res.status}`);
-      }
-
-      const result = await res.json();
-      alert(`Saved! Verified: ${result.verified}`);
-      setIsVerified(result.verified);
-      window.dispatchEvent(new Event("storage"));
-    } catch (err) {
-      console.error("❌ Update error:", err);
-      alert("Name update likely worked, but verification check failed.");
+      setProfile(payload as ProfileResponse);
+      setStatus("In-game name updated.");
+      await refreshSession();
+    } catch (error) {
+      console.error("Failed to save name:", error);
+      setStatus("Failed to save name.");
+    } finally {
+      setSavingName(false);
     }
   };
 
+  const createWatcherKey = async () => {
+    setStatus("");
+    setNewWatcherKey(null);
+
+    try {
+      const response = await fetch("/api/user/watcher-key", { method: "POST" });
+      const payload = (await response.json()) as { apiKey?: string; detail?: string };
+
+      if (!response.ok || !payload.apiKey) {
+        setStatus(payload.detail || "Failed to create watcher key.");
+        return;
+      }
+
+      setNewWatcherKey(payload.apiKey);
+
+      const refreshKeys = await fetch("/api/user/watcher-key", { cache: "no-store" });
+      if (refreshKeys.ok) {
+        const nextPayload = (await refreshKeys.json()) as { keys?: WatcherKeyRow[] };
+        setWatcherKeys(Array.isArray(nextPayload.keys) ? nextPayload.keys : []);
+      }
+    } catch (error) {
+      console.error("Failed to create watcher key:", error);
+      setStatus("Failed to create watcher key.");
+    }
+  };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="mx-auto max-w-3xl py-10">
+        <div className="rounded-[2rem] border border-white/10 bg-slate-950/70 p-8 text-white">
+          <div className="text-xs uppercase tracking-[0.35em] text-white/45">Profile</div>
+          <h2 className="mt-3 text-3xl font-semibold">Sign in before you claim a competitive identity.</h2>
+          <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-300">
+            Steam is the first account path. That gives you a stable identity now, while replay verification continues to handle trust for betting and result settlement.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <SteamLoginButton className="rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200" />
+            <Link
+              href="/"
+              className="rounded-full border border-white/15 px-5 py-3 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
+            >
+              Back To Lobby
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-3xl font-bold mb-6">Profile</h1>
-      <p className="mb-4">Manage your account details and preferences here.</p>
+    <div className="mx-auto max-w-4xl space-y-6 py-8 text-white">
+      <section className="rounded-[2rem] border border-white/10 bg-slate-950/70 p-8">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <div className="text-xs uppercase tracking-[0.35em] text-white/45">Identity</div>
+            <h1 className="mt-2 text-3xl font-semibold">{profile?.steamPersonaName || playerName || "Profile"}</h1>
+            <p className="mt-3 text-sm text-slate-300">
+              UID: <span className="font-mono text-white/85">{uid}</span>
+            </p>
+          </div>
+          <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+            Verification level {profile?.verificationLevel ?? 0}
+          </div>
+        </div>
 
-      <div className="mb-6">
-        <label htmlFor="playerName" className="block text-lg mb-2">
-          Player Name{" "}
-          {playerName && (
-            <span className={isVerified ? "text-green-400" : "text-yellow-400"}>
-              {isVerified ? "✅ Verified" : "❌ Unverified"} ({playerName})
-            </span>
+        <div className="mt-8 grid gap-6 md:grid-cols-2">
+          <div className="rounded-2xl border border-white/8 bg-white/5 p-5">
+            <div className="text-sm font-medium text-white">Steam</div>
+            <div className="mt-3 space-y-2 text-sm text-slate-300">
+              <div>Persona: {profile?.steamPersonaName || "Unknown"}</div>
+              <div>Steam ID: {profile?.steamId || "Not connected"}</div>
+              <div>Verification method: {profile?.verificationMethod || "none"}</div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-white/8 bg-white/5 p-5">
+            <div className="text-sm font-medium text-white">Playable Name</div>
+            <label className="mt-3 block text-sm text-slate-300">
+              In-game name
+              <input
+                value={playerName}
+                onChange={(event) => setPlayerName(event.target.value)}
+                className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/80 px-4 py-3 text-white outline-none transition focus:border-amber-300/50"
+                placeholder="Enter your AoE2HD name"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={saveName}
+              disabled={savingName}
+              className="mt-4 rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {savingName ? "Saving..." : "Save Name"}
+            </button>
+          </div>
+        </div>
+
+        {status && <p className="mt-4 text-sm text-slate-300">{status}</p>}
+      </section>
+
+      <section className="rounded-[2rem] border border-white/10 bg-slate-950/70 p-8">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <div className="text-xs uppercase tracking-[0.35em] text-white/45">Watcher</div>
+            <h2 className="mt-2 text-2xl font-semibold">Mint a replay uploader key</h2>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
+              This is the clean bridge between your account and the watcher app. Replays uploaded with your watcher key can auto-strengthen trust in your claimed in-game identity.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={createWatcherKey}
+            className="rounded-full border border-white/15 px-5 py-3 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
+          >
+            Create Watcher Key
+          </button>
+        </div>
+
+        {newWatcherKey && (
+          <div className="mt-6 rounded-2xl border border-amber-300/20 bg-amber-400/10 p-5">
+            <div className="text-sm font-medium text-amber-100">Copy this once</div>
+            <div className="mt-3 break-all font-mono text-sm text-white">{newWatcherKey}</div>
+          </div>
+        )}
+
+        <div className="mt-6 space-y-3">
+          {watcherKeys.length === 0 ? (
+            <p className="rounded-2xl border border-white/8 bg-white/5 px-4 py-4 text-sm text-slate-300">
+              No watcher keys minted yet.
+            </p>
+          ) : (
+            watcherKeys.map((key) => (
+              <div
+                key={key.prefix}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/8 bg-white/5 px-4 py-4 text-sm"
+              >
+                <div className="font-mono text-white">{key.prefix}</div>
+                <div className="text-slate-300">
+                  Created {new Date(key.createdAt).toLocaleString()}
+                  {key.lastUsedAt ? ` · Last used ${new Date(key.lastUsedAt).toLocaleString()}` : ""}
+                </div>
+              </div>
+            ))
           )}
-        </label>
-        <Input
-          id="playerName"
-          value={playerName}
-          onChange={(e) => setPlayerName(e.target.value)}
-          className="w-full px-4 py-3 text-lg rounded-md text-black"
-          placeholder="Enter your in-game name"
-        />
-      </div>
+        </div>
+      </section>
 
-      <Button className="mt-6 bg-blue-600 hover:bg-blue-700 px-6 py-3" onClick={handleSaveName}>
-        Save Name
-      </Button>
-
-      <Button
-        className="mt-6 bg-gray-600 hover:bg-gray-700 px-6 py-3 ml-4"
-        onClick={() => router.push("/")}
-      >
-        ⬅️ Back to Home
-      </Button>
-
-      <div className="mt-10 border-t border-gray-500 pt-6">
-        <h2 className="text-2xl font-semibold mb-4">Account Info</h2>
-        <p className="mb-2"><strong>Email:</strong> {email || "unknown"}</p>
-        <p className="mb-2"><strong>UID:</strong> {uid || "unknown"}</p>
-        {isAdmin && (
-          <p className="mb-2 text-blue-400 font-bold">🛡️ Admin Access Enabled</p>
-        )}
-        {passwordHash && (
-          <p className="mb-2 text-yellow-300"><strong>Password Hash:</strong> {passwordHash}</p>
-        )}
-      </div>
-
-      <div className="mt-10 border-t border-gray-500 pt-6">
-        <h2 className="text-2xl font-semibold mb-4">Password</h2>
-        <Button
-          className="bg-yellow-600 hover:bg-yellow-700 px-6 py-3"
-          onClick={() => {
-            alert("Password reset is temporarily unavailable.");
-          }}
+      <section className="flex flex-wrap gap-3">
+        <Link
+          href="/"
+          className="rounded-full border border-white/15 px-5 py-3 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
         >
-          🔐 Send Password Reset Email
-        </Button>
-      </div>
-
-      <div className="mt-10 border-t border-gray-500 pt-6">
-        <h2 className="text-2xl font-semibold mb-4">Session</h2>
-        <Button
-          className="bg-red-600 hover:bg-red-700 px-6 py-3"
+          Back To Lobby
+        </Link>
+        <Link
+          href="/upload"
+          className="rounded-full border border-white/15 px-5 py-3 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
+        >
+          Upload Replay
+        </Link>
+        <button
+          type="button"
           onClick={logout}
+          className="rounded-full border border-red-400/20 px-5 py-3 text-sm text-red-200 transition hover:border-red-300/40 hover:bg-red-500/10"
         >
-          🚪 Log Out
-        </Button>
-      </div>
+          Log Out
+        </button>
+      </section>
     </div>
   );
 }

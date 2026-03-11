@@ -1,145 +1,57 @@
-// app/page.tsx
 "use client";
 
-import React, { useState } from "react";
+import Link from "next/link";
 import { useUserAuth } from "@/context/UserAuthContext";
-import AuthNamePrompt from "@/components/AuthNamePrompt";
-import AuthPasswordPrompt from "@/components/AuthPasswordPrompt";
-import MainBetUI from "@/components/MainBetUI";
-import AdminUserList from "@/components/AdminUserList";
 
-export default function Page() {
-  const { uid, playerName, setPlayerName, setUid, loading, isAdmin } =
-    useUserAuth();
+export default function AdminPage() {
+  const { isAuthenticated, isAdmin } = useUserAuth();
 
-  /* local UI state */
-  const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
-  const [returningUser, setReturningUser] = useState(false);
-  const [password, setPassword] = useState("");
-  const [opponent, setOpponent] = useState("");
-  const [menuOpen, setMenuOpen] = useState(false);
-
-  /* ───────────────── name → password prompt ───────────────── */
-  const savePlayerName = async () => {
-    if (!playerName.trim()) return;
-
-    const res = await fetch(
-      `/api/user/exists?name=${encodeURIComponent(playerName.trim())}`
-    );
-    const { exists } = await res.json();
-
-    setReturningUser(exists);
-    setShowPasswordPrompt(true);
-  };
-
-  /* ───────────────── sign-in OR sign-up ───────────────────── */
-  const finishPasswordStep = async () => {
-    if (!password.trim()) return;
-    const name = playerName.trim();
-    if (!name) return;
-
-    const existingEmail = localStorage.getItem("userEmail");
-    const fallbackEmail = existingEmail || `guest-${crypto.randomUUID()}@aoe2hdbets.local`;
-
-    const sessionRes = await fetch("/api/auth/session", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ email: fallbackEmail }),
-    });
-    if (!sessionRes.ok) {
-      throw new Error(`Failed session setup: ${sessionRes.status}`);
-    }
-
-    const sessionPayload = (await sessionRes.json().catch(() => ({}))) as { uid?: string };
-    const sessionUid = typeof sessionPayload.uid === "string" ? sessionPayload.uid : null;
-    if (!sessionUid) throw new Error("Session response missing uid");
-
-    /* 4. ask backend */
-    const meRes = await fetch("/api/user/me", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        email: fallbackEmail,
-        in_game_name: returningUser ? undefined : name,
-      }),
-    });
-
-    if (meRes.status === 404 && !returningUser) {
-      // brand-new user – register
-      const regRes = await fetch("/api/user/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: fallbackEmail,
-          in_game_name: name,
-        }),
-      });
-      if (!regRes.ok) {
-        const msg = await regRes.text();
-        throw new Error(`Register failed: ${regRes.status} ${msg}`);
-      }
-    }
-
-    /* 5. success */
-    localStorage.setItem("uid", sessionUid);
-    localStorage.setItem("userEmail", fallbackEmail);
-    localStorage.setItem("playerName", name);
-    setUid(sessionUid);
-    window.dispatchEvent(new Event("storage"));
-  };
-
-  /* ───────────────── conditional UI ───────────────────────── */
-  if (!uid && !showPasswordPrompt) {
+  if (!isAuthenticated) {
     return (
-      <AuthNamePrompt
-        playerName={playerName}
-        setPlayerName={setPlayerName}
-        savePlayerName={savePlayerName}
-        loading={loading}
-      />
+      <div className="mx-auto max-w-3xl py-10 text-white">
+        <div className="rounded-[2rem] border border-white/10 bg-slate-950/70 p-8">
+          <h1 className="text-3xl font-semibold">Admin</h1>
+          <p className="mt-4 text-sm text-slate-300">
+            Admin routes now sit behind the signed session model. Sign in first, then open the dedicated admin pages.
+          </p>
+          <Link
+            href="/"
+            className="mt-6 inline-flex rounded-full border border-white/15 px-5 py-3 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
+          >
+            Back To Lobby
+          </Link>
+        </div>
+      </div>
     );
   }
 
-  if (!uid && showPasswordPrompt) {
+  if (!isAdmin) {
     return (
-      <AuthPasswordPrompt
-        password={password}
-        setPassword={setPassword}
-        onSubmit={finishPasswordStep}
-        mode={returningUser ? "login" : "register"}
-        loading={loading}
-      />
+      <div className="mx-auto max-w-3xl py-10 text-white">
+        <div className="rounded-[2rem] border border-white/10 bg-slate-950/70 p-8">
+          <h1 className="text-3xl font-semibold">Admin</h1>
+          <p className="mt-4 text-sm text-slate-300">
+            Your account is signed in, but it does not have admin access.
+          </p>
+        </div>
+      </div>
     );
   }
 
-  /* ───────────────── main page ─────────────────────────────── */
   return (
-    <main className="flex-1 max-w-4xl mx-auto p-4 bg-gray-900 text-white min-h-screen space-y-8">
-      <MainBetUI
-        opponent={opponent}
-        setOpponent={setOpponent}
-        betPending={false}
-        betAmount={0}
-        challenger=""
-        betStatus=""
-        showButtons={false}
-        handleAccept={() => {}}
-        handleDecline={() => {}}
-        handleChallenge={() => alert(`Challenged ${opponent}`)}
-        pendingBets={[]}
-        menuOpen={menuOpen}
-        setMenuOpen={setMenuOpen}
-        router={null}
-        playerName={playerName}
-      />
-
-      {isAdmin && <AdminUserList />}
-    </main>
+    <div className="mx-auto max-w-3xl py-10 text-white">
+      <div className="rounded-[2rem] border border-white/10 bg-slate-950/70 p-8">
+        <h1 className="text-3xl font-semibold">Admin</h1>
+        <p className="mt-4 text-sm text-slate-300">
+          Use the dedicated user management page for admin work.
+        </p>
+        <Link
+          href="/admin/user-list"
+          className="mt-6 inline-flex rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200"
+        >
+          Open User List
+        </Link>
+      </div>
+    </div>
   );
 }

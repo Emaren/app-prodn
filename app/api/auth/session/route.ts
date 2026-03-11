@@ -2,7 +2,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getPrisma } from "@/lib/prisma";
-import { toUserApi, type UserCoreRow } from "@/lib/userDto";
+import { fetchUserVerification, toUserApi, type UserCoreRow } from "@/lib/userDto";
 import {
   clearSessionCookie,
   getSessionUid,
@@ -13,6 +13,8 @@ import {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const ALLOW_GUEST_SESSIONS = process.env.ALLOW_GUEST_SESSIONS === "true";
 
 function normalizeEmail(v: unknown): string | null {
   if (typeof v !== "string") return null;
@@ -33,29 +35,56 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({
     uid,
-    user: user ? toUserApi(user as unknown as UserCoreRow) : null,
+    user: user
+      ? toUserApi(user as unknown as UserCoreRow, await fetchUserVerification(prisma, uid))
+      : null,
   });
 }
 
 export async function POST(request: NextRequest) {
   const prisma = getPrisma();
-
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
   const providedEmail = normalizeEmail(body.email);
 
   let uid = await getSessionUid(request);
-  if (!uid) uid = newSessionUid();
+  if (!uid) {
+    if (!ALLOW_GUEST_SESSIONS) {
+      return NextResponse.json(
+        { detail: "Guest sessions are disabled. Sign in with Steam to continue." },
+        { status: 401 }
+      );
+    }
+
+    uid = newSessionUid();
+    const user = await prisma.user.create({
+      data: {
+        uid,
+        email: providedEmail,
+        isAdmin: false,
+      },
+    });
+
+    const token = await signSession(uid);
+    const response = NextResponse.json({
+      uid,
+      user: toUserApi(
+        user as unknown as UserCoreRow,
+        await fetchUserVerification(prisma, uid)
+      ),
+    });
+    setSessionCookie(response, token);
+    return response;
+  }
 
   const existing = await prisma.user.findUnique({ where: { uid } });
   let user = existing;
 
   if (!user) {
-    const userCount = await prisma.user.count();
     user = await prisma.user.create({
       data: {
         uid,
         email: providedEmail,
-        isAdmin: userCount === 0,
+        isAdmin: false,
       },
     });
   } else if (providedEmail && providedEmail !== user.email) {
@@ -65,15 +94,12 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  const token = await signSession(uid);
-
-  const response = NextResponse.json({
+  return NextResponse.json({
     uid,
-    user: user ? toUserApi(user as unknown as UserCoreRow) : null,
+    user: user
+      ? toUserApi(user as unknown as UserCoreRow, await fetchUserVerification(prisma, uid))
+      : null,
   });
-
-  setSessionCookie(response, token);
-  return response;
 }
 
 export async function DELETE() {

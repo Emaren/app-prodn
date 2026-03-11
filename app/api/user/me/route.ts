@@ -2,7 +2,7 @@
 
 import { NextResponse, type NextRequest } from "next/server";
 import { getPrisma } from "@/lib/prisma";
-import { toUserApi } from "@/lib/userDto";
+import { fetchUserVerification, toUserApi } from "@/lib/userDto";
 import { resolveRequestUid, resolveRequestEmail } from "@/lib/requestIdentity";
 
 export const runtime = "nodejs";
@@ -56,12 +56,6 @@ const USER_SELECT = {
   createdAt: true,
   lastSeen: true,
   isAdmin: true,
-
-  steamId: true,
-  steamPersonaName: true,
-  verificationLevel: true,
-  verificationMethod: true,
-  verifiedAt: true,
 } as const;
 
 export async function GET(request: NextRequest) {
@@ -75,7 +69,7 @@ export async function GET(request: NextRequest) {
   });
 
   if (!user) return NextResponse.json({ detail: "User not found" }, { status: 404 });
-  return NextResponse.json(toUserApi(user));
+  return NextResponse.json(toUserApi(user, await fetchUserVerification(prisma, uid)));
 }
 
 export async function POST(request: NextRequest) {
@@ -88,7 +82,12 @@ export async function POST(request: NextRequest) {
   const emailNorm =
     typeof emailRaw === "string" && emailRaw.trim() ? normalizeEmail(emailRaw) : null;
 
-  const incomingName = typeof body?.inGameName === "string" ? body.inGameName : null;
+  const incomingName =
+    typeof body?.inGameName === "string"
+      ? body.inGameName
+      : typeof body?.in_game_name === "string"
+        ? body.in_game_name
+        : null;
 
   const prisma = getPrisma();
 
@@ -133,25 +132,23 @@ export async function POST(request: NextRequest) {
           select: USER_SELECT,
         });
 
-        return NextResponse.json(toUserApi(updated));
+        return NextResponse.json(toUserApi(updated, await fetchUserVerification(prisma, updated.uid)));
       }
     }
 
     // Otherwise create new. If a race causes P2002(email), fall back to attach-by-email.
     try {
-      const userCount = await prisma.user.count();
-
       const created = await prisma.user.create({
         data: {
           uid,
           email: emailNorm,
           inGameName: incomingName ? normalizeInGameName(incomingName) : null,
-          isAdmin: userCount === 0,
+          isAdmin: false,
         },
         select: USER_SELECT,
       });
 
-      return NextResponse.json(toUserApi(created));
+      return NextResponse.json(toUserApi(created, await fetchUserVerification(prisma, created.uid)));
     } catch (err) {
       // If email was unique and collided, attach to existing-by-email.
       if (emailNorm && isPrismaUnique(err, "email")) {
@@ -167,7 +164,7 @@ export async function POST(request: NextRequest) {
             select: USER_SELECT,
           });
 
-          return NextResponse.json(toUserApi(updated));
+          return NextResponse.json(toUserApi(updated, await fetchUserVerification(prisma, updated.uid)));
         }
       }
       throw err;
@@ -188,7 +185,7 @@ export async function POST(request: NextRequest) {
     normalizeInGameName(incomingName) !== (existing.inGameName ?? "");
 
   if (!wantsEmailUpdate && !wantsNameUpdate) {
-    return NextResponse.json(toUserApi(existing));
+    return NextResponse.json(toUserApi(existing, await fetchUserVerification(prisma, existing.uid)));
   }
 
   if (wantsNameUpdate) {
@@ -204,26 +201,38 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ detail: "Invalid in-game name" }, { status: 400 });
     }
 
-    const steamLinked = !!existing.steamId;
-
     try {
       const updated = await prisma.user.update({
         where: { uid },
         data: {
           email: wantsEmailUpdate ? (emailNorm as string) : existing.email,
-
-          // name change kills name-verification
           inGameName: nextName,
           verified: false,
           lockName: false,
-          verificationLevel: steamLinked ? 1 : 0,
-          verificationMethod: steamLinked ? "steam" : "none",
-          verifiedAt: null,
         },
         select: USER_SELECT,
       });
 
-      return NextResponse.json(toUserApi(updated));
+      const verification = await fetchUserVerification(prisma, uid);
+      const steamLinked = Boolean(verification.steamId);
+
+      await prisma.$executeRaw`
+        UPDATE public.users
+        SET
+          verification_level = ${steamLinked ? 1 : 0},
+          verification_method = ${steamLinked ? "steam" : "none"},
+          verified_at = NULL
+        WHERE uid = ${uid}
+      `;
+
+      return NextResponse.json(
+        toUserApi(updated, {
+          ...verification,
+          verificationLevel: steamLinked ? 1 : 0,
+          verificationMethod: steamLinked ? "steam" : "none",
+          verifiedAt: null,
+        })
+      );
     } catch (err) {
       if (wantsEmailUpdate && isPrismaUnique(err, "email")) {
         return NextResponse.json({ detail: "Email already in use" }, { status: 409 });
@@ -240,7 +249,7 @@ export async function POST(request: NextRequest) {
       select: USER_SELECT,
     });
 
-    return NextResponse.json(toUserApi(updated));
+    return NextResponse.json(toUserApi(updated, await fetchUserVerification(prisma, uid)));
   } catch (err) {
     if (isPrismaUnique(err, "email")) {
       return NextResponse.json({ detail: "Email already in use" }, { status: 409 });
