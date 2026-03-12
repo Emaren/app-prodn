@@ -102,10 +102,13 @@ export default function HomePage() {
   }, []);
 
   const tournament = lobby?.tournament ?? getFallbackTournament(false);
-
   const onlineUsers = lobby?.onlineUsers ?? [];
   const recentMatches = lobby?.recentMatches ?? [];
   const messages = lobby?.messages ?? [];
+  const chatRoomTitle =
+    messages.length > 0 && messages[0]?.roomSlug === tournament.roomSlug && !tournament.isFallback
+      ? `${tournament.title} Chat`
+      : "Live Chat";
 
   async function handleJoinTournament() {
     if (!tournament.id) return;
@@ -163,7 +166,7 @@ export default function HomePage() {
       const response = await fetch("/api/lobby/chat", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ message: trimmed }),
+        body: JSON.stringify({ message: trimmed, roomSlug: tournament.roomSlug }),
       });
 
       const payload = (await response.json().catch(() => ({}))) as
@@ -418,7 +421,7 @@ export default function HomePage() {
           <div className="flex items-center justify-between gap-4">
             <div>
               <div className="text-xs uppercase tracking-[0.35em] text-white/45">Chat</div>
-              <h3 className="mt-2 text-2xl font-semibold text-white">Lobby Room</h3>
+              <h3 className="mt-2 text-2xl font-semibold text-white">{chatRoomTitle}</h3>
             </div>
             <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
               {messages.length} recent

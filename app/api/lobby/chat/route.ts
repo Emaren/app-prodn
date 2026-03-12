@@ -30,7 +30,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ detail: "User not found." }, { status: 404 });
   }
 
-  const room = await ensureLobbyRoom(prisma);
+  const requestedRoomSlug =
+    typeof body.roomSlug === "string" && body.roomSlug.trim().length > 0
+      ? body.roomSlug.trim()
+      : LOBBY_ROOM_SLUG;
+
+  const room =
+    requestedRoomSlug === LOBBY_ROOM_SLUG
+      ? await ensureLobbyRoom(prisma)
+      : await prisma.chatRoom.findUnique({
+          where: { slug: requestedRoomSlug },
+          select: { id: true, slug: true },
+        });
+
+  if (!room) {
+    return NextResponse.json({ detail: "Chat room not found." }, { status: 404 });
+  }
 
   const recentMessage = await prisma.chatMessage.findFirst({
     where: {
@@ -59,6 +74,6 @@ export async function POST(request: NextRequest) {
     },
   });
 
-  const messages = await getLobbyMessages(prisma, LOBBY_ROOM_SLUG, 30);
+  const messages = await getLobbyMessages(prisma, room.slug, 30);
   return NextResponse.json({ ok: true, messages });
 }

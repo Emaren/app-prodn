@@ -2,6 +2,7 @@ import { PrismaClient } from "@/lib/generated/prisma";
 import { getBackendUpstreamBase } from "@/lib/backendUpstream";
 import { getFeaturedTournament, getLobbyMessages } from "@/lib/communityStore";
 import {
+  LOBBY_ROOM_SLUG,
   type LobbyMatchRow,
   type LobbyOnlineUser,
   type LobbySnapshot,
@@ -52,12 +53,18 @@ export async function loadLobbySnapshot(
   prisma: PrismaClient,
   viewerUid?: string | null
 ): Promise<LobbySnapshot> {
-  const [tournament, messages, onlineUsers, recentMatches] = await Promise.all([
-    getFeaturedTournament(prisma, viewerUid),
-    getLobbyMessages(prisma),
+  const tournament = await getFeaturedTournament(prisma, viewerUid);
+
+  const [tournamentMessages, onlineUsers, recentMatches] = await Promise.all([
+    getLobbyMessages(prisma, tournament.roomSlug),
     loadOnlineUsers(prisma),
     loadRecentMatches(),
   ]);
+
+  const messages =
+    tournamentMessages.length > 0 || tournament.roomSlug === LOBBY_ROOM_SLUG
+      ? tournamentMessages
+      : await getLobbyMessages(prisma, LOBBY_ROOM_SLUG);
 
   return {
     tournament,
