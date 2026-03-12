@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 import SteamLinkedBadge from "@/components/SteamLinkedBadge";
 import {
+  displayParseReason,
   displayPlayerName,
   formatDurationLabel,
   outcomeBadgeLabel,
@@ -291,7 +292,7 @@ export default async function PublicPlayerPage({
 
                     <div className="mt-4 flex flex-wrap gap-2">
                       {outcomeLabel ? <Tag>{outcomeLabel}</Tag> : null}
-                      <Tag>{game.parse_reason}</Tag>
+                      <Tag>{displayParseReason(game.parse_reason)}</Tag>
                       {game.disconnect_detected ? <Tag>disconnect suspected</Tag> : null}
                     </div>
 

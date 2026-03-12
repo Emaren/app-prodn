@@ -58,6 +58,10 @@ function cleanVersionName(value: string) {
   return value.replace(/^Version\./, "").replace(/_/g, " ").trim();
 }
 
+function titleCaseWords(value: string) {
+  return value.replace(/\b([a-z])/g, (match) => match.toUpperCase());
+}
+
 export function shortHash(value: string | null | undefined, length = 12) {
   if (!value) return "n/a";
   return value.slice(0, length);
@@ -123,6 +127,40 @@ export function outcomeBadgeLabel(
 ) {
   if (!winner || winner === "Unknown") return null;
   return isResignationOutcome(parseReason) ? "Win by resignation" : null;
+}
+
+export function displayParseReason(value: string | null | undefined) {
+  if (!value) return "Unknown parse reason";
+
+  const trimmed = value.trim();
+  if (!trimmed) return "Unknown parse reason";
+
+  switch (trimmed) {
+    case "watcher_or_browser":
+      return "Manual upload";
+    case "watcher":
+      return "Watcher upload";
+    case "browser":
+      return "Browser upload";
+    case "file_upload":
+      return "File upload";
+    case "unspecified":
+      return "Recorded parse";
+    case "watcher_inferred_opponent_win_on_incomplete_1v1":
+      return "Replay inference";
+    case "watcher_inferred_opponent_win_on_incomplete":
+      return "Replay inference";
+    case "watcher_inferred_backfill":
+      return "Replay backfill";
+    default:
+      break;
+  }
+
+  if (trimmed.startsWith("watcher_inferred_")) {
+    return "Replay inference";
+  }
+
+  return titleCaseWords(trimmed.replace(/_/g, " "));
 }
 
 export function normalizeDurationSeconds(value: number | null | undefined) {

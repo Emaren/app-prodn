@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 import { buildMatchupHref, buildRivalSummaries } from "@/lib/publicMatchups";
 import {
+  displayParseReason,
   displayPlayerName,
   formatDurationLabel,
   outcomeBadgeLabel,
@@ -270,7 +271,7 @@ export default async function ReplayOnlyPlayerPage({
 
                   <div className="mt-4 flex flex-wrap gap-2">
                     {outcomeLabel ? <Tag>{outcomeLabel}</Tag> : null}
-                    <Tag>{match.parse_reason || "unknown parse reason"}</Tag>
+                    <Tag>{displayParseReason(match.parse_reason)}</Tag>
                     {match.disconnect_detected ? <Tag>disconnect suspected</Tag> : null}
                   </div>
 

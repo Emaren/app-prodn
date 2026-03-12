@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 import SteamLinkedBadge from "@/components/SteamLinkedBadge";
 import {
+  displayParseReason,
   formatDurationLabel,
   displayGameType,
   displayGameVersion,
@@ -132,7 +133,7 @@ export default async function GameStatsDetailPage({
             <div className="flex flex-wrap gap-2">
               <Tag>{winnerLabel(game.winner, game.parse_reason)}</Tag>
               <Tag>{game.parse_source}</Tag>
-              <Tag>{game.parse_reason}</Tag>
+              <Tag>{displayParseReason(game.parse_reason)}</Tag>
               {game.disconnect_detected ? <Tag>disconnect suspected</Tag> : null}
               {game.is_final ? <Tag>final replay</Tag> : <Tag>non-final replay</Tag>}
               {outcomeLabel ? <Tag>{outcomeLabel}</Tag> : null}

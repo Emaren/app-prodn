@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import { getPrisma } from "@/lib/prisma";
 import {
+  displayParseReason,
   displayPlayerName,
   displayReplayFilename,
   outcomeBadgeLabel,
@@ -129,7 +130,7 @@ export default async function GameStatsPage() {
 
                     <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-slate-400">
                       <Tag>{displayReplayFilename(game.original_filename, game.replay_file)}</Tag>
-                      <Tag>{game.parse_reason}</Tag>
+                      <Tag>{displayParseReason(game.parse_reason)}</Tag>
                       {game.disconnect_detected ? <Tag>disconnect suspected</Tag> : null}
                       {game.user ? (
                         <Tag>{game.user.inGameName || game.user.steamPersonaName || game.user.uid}</Tag>

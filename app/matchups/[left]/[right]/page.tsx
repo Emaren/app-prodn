@@ -3,7 +3,13 @@ import { notFound, redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
 import SteamLinkedBadge from "@/components/SteamLinkedBadge";
-import { outcomeBadgeLabel, readMapName, readPlayedAt, winnerLabel } from "@/lib/gameStatsView";
+import {
+  displayParseReason,
+  outcomeBadgeLabel,
+  readMapName,
+  readPlayedAt,
+  winnerLabel,
+} from "@/lib/gameStatsView";
 import {
   buildMatchupHref,
   filterHeadToHeadMatches,
@@ -141,7 +147,7 @@ export default async function MatchupPage({
 
                     <div className="mt-4 flex flex-wrap gap-2">
                       {outcomeLabel ? <Tag>{outcomeLabel}</Tag> : null}
-                      <Tag>{match.parse_reason || "unknown parse reason"}</Tag>
+                      <Tag>{displayParseReason(match.parse_reason)}</Tag>
                       {match.disconnect_detected ? <Tag>disconnect suspected</Tag> : null}
                     </div>
 
@@ -194,9 +200,9 @@ function PlayerSummaryCard({
 
   return (
     <div className="rounded-2xl border border-white/8 bg-white/5 p-6">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="text-xl font-semibold text-white">{player.name}</div>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="text-xl font-semibold text-white break-words">{player.name}</div>
           <div className="mt-1 text-[11px] uppercase tracking-[0.2em] text-slate-400">
             {identityLabel}
           </div>
@@ -208,13 +214,13 @@ function PlayerSummaryCard({
         </div>
         <Link
           href={player.href}
-          className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] font-medium text-slate-300 transition hover:border-white/20 hover:text-white"
+          className="shrink-0 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] font-medium text-slate-300 transition hover:border-white/20 hover:text-white"
         >
           Open
         </Link>
       </div>
 
-      <div className="mt-6 grid grid-cols-3 gap-2">
+      <div className="mt-6 grid grid-cols-3 gap-3">
         <Stat label="Wins" value={String(wins)} />
         <Stat label="Losses" value={String(losses)} />
         <Stat label="Unknown" value={String(unknowns)} />
@@ -224,9 +230,9 @@ function PlayerSummaryCard({
         <div className="mt-6">
           <Link
             href={`/profile?claim_name=${encodeURIComponent(player.name)}`}
-            className="rounded-full bg-rose-300 px-4 py-2 text-xs font-semibold text-slate-950 transition hover:bg-rose-200"
+            className="inline-flex max-w-full items-center rounded-full bg-rose-300 px-4 py-2 text-xs font-semibold text-slate-950 transition hover:bg-rose-200"
           >
-            Claim {player.name}
+            <span className="truncate">Claim {player.name}</span>
           </Link>
         </div>
       ) : null}
@@ -236,8 +242,10 @@ function PlayerSummaryCard({
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-white/8 bg-slate-950/60 px-3 py-4 text-center">
-      <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{label}</div>
+    <div className="min-w-0 rounded-2xl border border-white/8 bg-slate-950/60 px-3 py-4 text-center">
+      <div className="text-[9px] uppercase tracking-[0.14em] leading-4 text-slate-500 break-words">
+        {label}
+      </div>
       <div className="mt-3 text-2xl font-semibold text-slate-100">{value}</div>
     </div>
   );
@@ -245,7 +253,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 
 function Tag({ children }: { children: ReactNode }) {
   return (
-    <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+    <span className="inline-flex max-w-full items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs leading-5 text-slate-300 break-words">
       {children}
     </span>
   );
