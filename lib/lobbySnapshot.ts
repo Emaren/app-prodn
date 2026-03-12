@@ -7,6 +7,7 @@ import {
   type LobbyOnlineUser,
   type LobbySnapshot,
 } from "@/lib/lobby";
+import { reconcileTournamentMatchProofs } from "@/lib/tournamentProofReconciler";
 
 async function loadRecentMatches(): Promise<LobbyMatchRow[]> {
   try {
@@ -53,6 +54,7 @@ export async function loadLobbySnapshot(
   prisma: PrismaClient,
   viewerUid?: string | null
 ): Promise<LobbySnapshot> {
+  await reconcileTournamentMatchProofs(prisma);
   const tournament = await getFeaturedTournament(prisma, viewerUid);
 
   const [tournamentMessages, onlineUsers, recentMatches] = await Promise.all([

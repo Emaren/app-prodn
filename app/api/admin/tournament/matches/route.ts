@@ -11,6 +11,7 @@ import {
   replayMatchesAssignedPlayers,
   toReplayCandidate,
 } from "@/lib/replayProof";
+import { reconcileTournamentMatchProofs } from "@/lib/tournamentProofReconciler";
 import { toLobbyEntrant, toLobbyTournamentMatch } from "@/lib/tournamentMatchView";
 
 export const runtime = "nodejs";
@@ -121,6 +122,7 @@ export async function GET(request: NextRequest) {
   const admin = await requireAdmin(request);
   if ("error" in admin) return admin.error;
 
+  await reconcileTournamentMatchProofs(admin.prisma);
   const tournament = await getEditableTournament(admin.prisma);
   if (!tournament) {
     return NextResponse.json({
@@ -415,6 +417,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ detail }, { status: 400 });
   }
 
+  await reconcileTournamentMatchProofs(admin.prisma, { force: true, tournamentId });
   const refreshed = await getEditableTournament(admin.prisma);
   const replayCandidates = await loadReplayCandidates(admin.prisma, entrants);
   return NextResponse.json({

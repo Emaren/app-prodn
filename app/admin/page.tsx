@@ -10,6 +10,7 @@ import {
   getTournamentStatusLabel,
   TOURNAMENT_MATCH_STATUSES,
   TOURNAMENT_STATUSES,
+  type LobbyTournamentMatchProof,
   type LobbyTournament,
   type LobbyTournamentEntrant,
   type LobbyTournamentMatch,
@@ -36,6 +37,7 @@ type MatchDraft = {
   winnerEntryId: string;
   sourceGameStatsId: string;
   scheduledAt: string;
+  proof: LobbyTournamentMatchProof | null;
 };
 
 function toFormState(tournament: LobbyTournament | null): FormState {
@@ -62,6 +64,7 @@ function toMatchDraft(match?: LobbyTournamentMatch): MatchDraft {
     winnerEntryId: match?.winnerEntryId ? String(match.winnerEntryId) : "",
     sourceGameStatsId: match?.sourceGameStatsId ? String(match.sourceGameStatsId) : "",
     scheduledAt: match?.scheduledAt ? toDateTimeLocal(match.scheduledAt) : "",
+    proof: match?.proof ?? null,
   };
 }
 
@@ -73,7 +76,8 @@ function findEntrantByEntryId(entrants: LobbyTournamentEntrant[], value: string)
 
 function getCompatibleReplayCandidates(
   match: MatchDraft,
-  replayCandidates: AdminReplayCandidate[]
+  replayCandidates: AdminReplayCandidate[],
+  usedReplayIds: Set<number>
 ) {
   const playerOneId = Number(match.playerOneEntryId);
   const playerTwoId = Number(match.playerTwoEntryId);
@@ -83,6 +87,8 @@ function getCompatibleReplayCandidates(
 
   return replayCandidates.filter(
     (candidate) =>
+      (!usedReplayIds.has(candidate.gameStatsId) ||
+        String(candidate.gameStatsId) === match.sourceGameStatsId) &&
       candidate.matchedEntryIds.includes(playerOneId) &&
       candidate.matchedEntryIds.includes(playerTwoId)
   );
@@ -115,6 +121,11 @@ export default function AdminPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [bracketError, setBracketError] = useState<string | null>(null);
   const [bracketNotice, setBracketNotice] = useState<string | null>(null);
+  const usedReplayIds = new Set(
+    matches
+      .map((match) => (match.sourceGameStatsId ? Number(match.sourceGameStatsId) : null))
+      .filter((id): id is number => typeof id === "number" && Number.isFinite(id) && id > 0)
+  );
 
   useEffect(() => {
     if (!isAuthenticated || !isAdmin) {
@@ -284,11 +295,12 @@ export default function AdminPage() {
             : null;
           if (
             selectedReplay &&
-            !getCompatibleReplayCandidates(next, replayCandidates).some(
+            !getCompatibleReplayCandidates(next, replayCandidates, usedReplayIds).some(
               (candidate) => candidate.gameStatsId === selectedReplay.gameStatsId
             )
           ) {
             next.sourceGameStatsId = "";
+            next.proof = null;
           }
         }
 
@@ -307,6 +319,7 @@ export default function AdminPage() {
             next.winnerEntryId = String(inferredWinnerEntryId);
             next.status = "completed";
           }
+          next.proof = selectedReplay ?? null;
         }
 
         return next;
@@ -618,12 +631,18 @@ export default function AdminPage() {
                   className="rounded-[1.5rem] border border-white/8 bg-white/5 p-5"
                 >
                   {(() => {
-                    const compatibleReplays = getCompatibleReplayCandidates(match, replayCandidates);
-                    const linkedReplay = match.sourceGameStatsId
-                      ? replayCandidates.find(
-                          (candidate) => String(candidate.gameStatsId) === match.sourceGameStatsId
-                        ) ?? null
-                      : null;
+                    const compatibleReplays = getCompatibleReplayCandidates(
+                      match,
+                      replayCandidates,
+                      usedReplayIds
+                    );
+                    const linkedReplay =
+                      match.proof ??
+                      (match.sourceGameStatsId
+                        ? replayCandidates.find(
+                            (candidate) => String(candidate.gameStatsId) === match.sourceGameStatsId
+                          ) ?? null
+                        : null);
 
                     return (
                       <>

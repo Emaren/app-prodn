@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getBackendUpstreamBase } from "@/lib/backendUpstream";
 import { getSessionUid } from "@/lib/session";
 import { getPrisma } from "@/lib/prisma";
+import { reconcileTournamentMatchProofs } from "@/lib/tournamentProofReconciler";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -52,6 +53,13 @@ export async function POST(request: NextRequest) {
   };
 
   const upstreamResponse = await fetch(`${base}/api/replay/upload`, init);
+  if (upstreamResponse.ok) {
+    try {
+      await reconcileTournamentMatchProofs(prisma, { force: true });
+    } catch (error) {
+      console.warn("Replay upload succeeded but tournament proof reconciliation failed:", error);
+    }
+  }
   return new NextResponse(upstreamResponse.body, {
     status: upstreamResponse.status,
     headers: {
