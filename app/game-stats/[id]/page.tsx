@@ -196,19 +196,24 @@ export default async function GameStatsDetailPage({
               {players.length === 0 ? (
                 <EmptyPanel message="No player payload was stored for this replay." />
               ) : (
-                players.map((player, index) => (
+                players.map((player, index) => {
+                  const playerName = displayPlayerName(player);
+                  const playerRef = playerRefs[index];
+                  const claimedPlayer = getClaimedPublicPlayer(playerName, claimedPlayers);
+
+                  return (
                   <Link
-                    key={`${displayPlayerName(player)}-${index}`}
-                    href={getPublicPlayerHref(displayPlayerName(player), claimedPlayers)}
-                    className="block rounded-2xl border border-white/8 bg-white/5 p-5 transition hover:border-sky-300/30 hover:bg-white/10"
+                    key={`${playerName}-${index}`}
+                    href={playerRef?.href || getPublicPlayerHref(playerName, claimedPlayers)}
+                    className="group block cursor-pointer rounded-2xl border border-white/8 bg-white/5 p-5 transition hover:border-sky-300/30 hover:bg-white/10"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <div className="text-lg font-semibold text-white">
-                          {displayPlayerName(player)}
+                        <div className="text-lg font-semibold text-white transition group-hover:text-sky-100">
+                          {playerName}
                         </div>
                         <div className="mt-1 text-xs uppercase tracking-[0.25em] text-slate-400">
-                          {getClaimedPublicPlayer(displayPlayerName(player), claimedPlayers)
+                          {claimedPlayer
                             ? Boolean(player.winner)
                               ? "claimed player · winner"
                               : "claimed player"
@@ -239,8 +244,16 @@ export default async function GameStatsDetailPage({
                       {renderAchievementGroup("Technology", readNestedRecord(player, "achievements", "technology"))}
                       {renderAchievementGroup("Society", readNestedRecord(player, "achievements", "society"))}
                     </div>
+
+                    <div className="mt-5 flex items-center justify-between gap-3 border-t border-white/8 pt-4 text-xs uppercase tracking-[0.25em] text-slate-400">
+                      <span>Open public player page</span>
+                      <span className="text-sky-200 transition group-hover:translate-x-0.5 group-hover:text-sky-100">
+                        View profile
+                      </span>
+                    </div>
                   </Link>
-                ))
+                  );
+                })
               )}
             </div>
           </Panel>

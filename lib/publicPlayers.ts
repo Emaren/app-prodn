@@ -38,7 +38,7 @@ export function buildClaimedPlayerHref(uid: string) {
 }
 
 export function buildClaimedPlayerToken(uid: string) {
-  return `u_${uid}`;
+  return `c_${uid}`;
 }
 
 export function buildReplayPlayerToken(name: string) {
@@ -46,7 +46,12 @@ export function buildReplayPlayerToken(name: string) {
 }
 
 export function parsePublicPlayerToken(token: string) {
-  if (token.startsWith("u_") && token.length > 2) {
+  if (token.startsWith("c_") && token.length > 2) {
+    return { kind: "claimed" as const, uid: token.slice(2) };
+  }
+
+  // Legacy claimed-player token format used during the first rivalry rollout.
+  if (token.startsWith("u_u_") && token.length > 4) {
     return { kind: "claimed" as const, uid: token.slice(2) };
   }
 

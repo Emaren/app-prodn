@@ -28,8 +28,16 @@ export type RivalSummary = {
   lastPlayedAt: string | null;
 };
 
+export function canonicalizeMatchupPlayers(left: PublicPlayerRef, right: PublicPlayerRef) {
+  return [left, right].sort((a, b) => {
+    if (a.token === b.token) return 0;
+    return a.token.localeCompare(b.token);
+  }) as [PublicPlayerRef, PublicPlayerRef];
+}
+
 export function buildMatchupHref(left: PublicPlayerRef, right: PublicPlayerRef) {
-  return `/matchups/${encodeURIComponent(left.token)}/${encodeURIComponent(right.token)}`;
+  const [canonicalLeft, canonicalRight] = canonicalizeMatchupPlayers(left, right);
+  return `/matchups/${encodeURIComponent(canonicalLeft.token)}/${encodeURIComponent(canonicalRight.token)}`;
 }
 
 function updateLastPlayedAt(current: string | null, next: Date | string | null) {

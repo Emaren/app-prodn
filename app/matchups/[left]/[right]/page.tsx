@@ -1,9 +1,13 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { readMapName, readPlayedAt, winnerLabel } from "@/lib/gameStatsView";
-import { filterHeadToHeadMatches, summarizeHeadToHead } from "@/lib/publicMatchups";
+import {
+  buildMatchupHref,
+  filterHeadToHeadMatches,
+  summarizeHeadToHead,
+} from "@/lib/publicMatchups";
 import { getPrisma } from "@/lib/prisma";
 import { resolvePublicPlayerToken, type PublicPlayerRef } from "@/lib/publicPlayers";
 
@@ -24,6 +28,14 @@ export default async function MatchupPage({
 
   if (!leftPlayer || !rightPlayer || leftPlayer.token === rightPlayer.token) {
     notFound();
+  }
+
+  const canonicalHref = buildMatchupHref(leftPlayer, rightPlayer);
+  const currentHref = `/matchups/${encodeURIComponent(decodeURIComponent(left))}/${encodeURIComponent(
+    decodeURIComponent(right)
+  )}`;
+  if (canonicalHref !== currentHref) {
+    redirect(canonicalHref);
   }
 
   const candidateMatches = await prisma.gameStats.findMany({
