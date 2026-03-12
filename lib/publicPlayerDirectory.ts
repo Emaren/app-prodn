@@ -261,6 +261,10 @@ export async function loadPublicPlayerDirectory(
       entry.name = entry.aliases[0] || entry.name;
     }
 
+    if (entry.uid && entry.name === entry.uid && entry.totalMatches === 0) {
+      return false;
+    }
+
     return true;
   });
 
