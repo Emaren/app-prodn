@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
 import {
+  displayGameType,
+  displayGameVersion,
   displayPlayerName,
   displayReplayFilename,
   isInferredOutcome,
@@ -167,8 +169,8 @@ export default async function GameStatsDetailPage({
               <StatRow label="Winner" value={winnerLabel(game.winner, game.parse_reason)} />
               <StatRow label="Map" value={readMapName(game.map)} />
               <StatRow label="Map Size" value={readMapSize(game.map)} />
-              <StatRow label="Game Version" value={game.game_version || "Unknown"} />
-              <StatRow label="Game Type" value={game.game_type || "Unknown"} />
+              <StatRow label="Game Version" value={displayGameVersion(game.game_version)} />
+              <StatRow label="Game Type" value={displayGameType(game.game_type)} />
               <StatRow label="Duration" value={formatDuration(game.duration || game.game_duration)} />
               <StatRow label="Played On" value={formatDateTime(playedAt)} />
               <StatRow label="Recorded At" value={formatDateTime(game.createdAt)} />
@@ -202,56 +204,56 @@ export default async function GameStatsDetailPage({
                   const claimedPlayer = getClaimedPublicPlayer(playerName, claimedPlayers);
 
                   return (
-                  <Link
-                    key={`${playerName}-${index}`}
-                    href={playerRef?.href || getPublicPlayerHref(playerName, claimedPlayers)}
-                    className="group block cursor-pointer rounded-2xl border border-white/8 bg-white/5 p-5 transition hover:border-sky-300/30 hover:bg-white/10"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="text-lg font-semibold text-white transition group-hover:text-sky-100">
-                          {playerName}
+                    <Link
+                      key={`${playerName}-${index}`}
+                      href={playerRef?.href || getPublicPlayerHref(playerName, claimedPlayers)}
+                      className="group block cursor-pointer rounded-2xl border border-white/8 bg-white/5 p-5 transition hover:border-sky-300/30 hover:bg-white/10"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="text-lg font-semibold text-white transition group-hover:text-sky-100">
+                            {playerName}
+                          </div>
+                          <div className="mt-1 text-[11px] uppercase tracking-[0.22em] text-slate-400">
+                            {claimedPlayer
+                              ? Boolean(player.winner)
+                                ? "claimed player · winner"
+                                : "claimed player"
+                              : Boolean(player.winner)
+                                ? "unclaimed warrior · winner"
+                                : "unclaimed warrior"}
+                          </div>
                         </div>
-                        <div className="mt-1 text-xs uppercase tracking-[0.25em] text-slate-400">
-                          {claimedPlayer
-                            ? Boolean(player.winner)
-                              ? "claimed player · winner"
-                              : "claimed player"
-                            : Boolean(player.winner)
-                              ? "unclaimed warrior · winner"
-                              : "unclaimed warrior"}
+                        <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+                          Civ {formatPrimitive(player.civilization)}
                         </div>
                       </div>
-                      <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-                        Civ {formatPrimitive(player.civilization)}
+
+                      <dl className="mt-5 grid gap-3 sm:grid-cols-2">
+                        <StatRow label="Steam ID" value={formatPrimitive(player.user_id)} compact />
+                        <StatRow label="Score" value={formatPrimitive(player.score)} compact />
+                        <StatRow label="EAPM" value={formatPrimitive(player.eapm)} compact />
+                        <StatRow
+                          label="Starting Position"
+                          value={Array.isArray(player.position) ? player.position.join(", ") : "Unknown"}
+                          compact
+                        />
+                      </dl>
+
+                      <div className="mt-5 space-y-4">
+                        {renderAchievementGroup("Military", readNestedRecord(player, "achievements", "military"))}
+                        {renderAchievementGroup("Economy", readNestedRecord(player, "achievements", "economy"))}
+                        {renderAchievementGroup("Technology", readNestedRecord(player, "achievements", "technology"))}
+                        {renderAchievementGroup("Society", readNestedRecord(player, "achievements", "society"))}
                       </div>
-                    </div>
 
-                    <dl className="mt-5 grid gap-3 sm:grid-cols-2">
-                      <StatRow label="Steam ID" value={formatPrimitive(player.user_id)} compact />
-                      <StatRow label="Score" value={formatPrimitive(player.score)} compact />
-                      <StatRow label="EAPM" value={formatPrimitive(player.eapm)} compact />
-                      <StatRow
-                        label="Starting Position"
-                        value={Array.isArray(player.position) ? player.position.join(", ") : "Unknown"}
-                        compact
-                      />
-                    </dl>
-
-                    <div className="mt-5 space-y-4">
-                      {renderAchievementGroup("Military", readNestedRecord(player, "achievements", "military"))}
-                      {renderAchievementGroup("Economy", readNestedRecord(player, "achievements", "economy"))}
-                      {renderAchievementGroup("Technology", readNestedRecord(player, "achievements", "technology"))}
-                      {renderAchievementGroup("Society", readNestedRecord(player, "achievements", "society"))}
-                    </div>
-
-                    <div className="mt-5 flex items-center justify-between gap-3 border-t border-white/8 pt-4 text-xs uppercase tracking-[0.25em] text-slate-400">
-                      <span>Open public player page</span>
-                      <span className="text-sky-200 transition group-hover:translate-x-0.5 group-hover:text-sky-100">
-                        View profile
-                      </span>
-                    </div>
-                  </Link>
+                      <div className="mt-5 flex items-center justify-between gap-3 border-t border-white/8 pt-4 text-sm text-slate-400">
+                        <span className="font-medium text-slate-300">Public player page</span>
+                        <span className="text-sky-200 transition group-hover:translate-x-0.5 group-hover:text-sky-100">
+                          Open profile
+                        </span>
+                      </div>
+                    </Link>
                   );
                 })
               )}

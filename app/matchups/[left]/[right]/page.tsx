@@ -72,8 +72,8 @@ export default async function MatchupPage({
 
           <div className="flex flex-wrap gap-2">
             <Tag>{summary.totalMatches} matches</Tag>
-            <Tag>{leftPlayer.name} {summary.leftWins}</Tag>
-            <Tag>{rightPlayer.name} {summary.rightWins}</Tag>
+            <Tag>{leftPlayer.name}: {summary.leftWins}</Tag>
+            <Tag>{rightPlayer.name}: {summary.rightWins}</Tag>
             {summary.unknowns > 0 ? <Tag>{summary.unknowns} unknown</Tag> : null}
             {summary.lastPlayedAt ? (
               <Tag>Last played {new Date(summary.lastPlayedAt).toLocaleString()}</Tag>
@@ -187,31 +187,33 @@ function PlayerSummaryCard({
   losses: number;
   unknowns: number;
 }) {
+  const identityLabel = player.claimed ? "Claimed profile" : "Unclaimed warrior";
+
   return (
-    <div className="rounded-2xl border border-white/8 bg-white/5 p-5">
+    <div className="rounded-2xl border border-white/8 bg-white/5 p-6">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <div className="text-lg font-semibold text-white">{player.name}</div>
-          <div className="mt-1 text-xs uppercase tracking-[0.25em] text-slate-400">
-            {player.claimed ? "claimed profile" : "unclaimed warrior"}
+          <div className="text-xl font-semibold text-white">{player.name}</div>
+          <div className="mt-1 text-[11px] uppercase tracking-[0.2em] text-slate-400">
+            {identityLabel}
           </div>
         </div>
         <Link
           href={player.href}
-          className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300 transition hover:border-white/20 hover:text-white"
+          className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] font-medium text-slate-300 transition hover:border-white/20 hover:text-white"
         >
           Open
         </Link>
       </div>
 
-      <div className="mt-5 grid gap-3 sm:grid-cols-3">
+      <div className="mt-6 grid grid-cols-3 gap-2">
         <Stat label="Wins" value={String(wins)} />
         <Stat label="Losses" value={String(losses)} />
         <Stat label="Unknown" value={String(unknowns)} />
       </div>
 
       {!player.claimed ? (
-        <div className="mt-5">
+        <div className="mt-6">
           <Link
             href={`/profile?claim_name=${encodeURIComponent(player.name)}`}
             className="rounded-full bg-rose-300 px-4 py-2 text-xs font-semibold text-slate-950 transition hover:bg-rose-200"
@@ -226,9 +228,9 @@ function PlayerSummaryCard({
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-white/8 bg-slate-950/60 px-3 py-3">
-      <div className="text-[11px] uppercase tracking-[0.25em] text-slate-500">{label}</div>
-      <div className="mt-2 text-sm font-medium text-slate-200">{value}</div>
+    <div className="rounded-2xl border border-white/8 bg-slate-950/60 px-3 py-4 text-center">
+      <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{label}</div>
+      <div className="mt-3 text-2xl font-semibold text-slate-100">{value}</div>
     </div>
   );
 }

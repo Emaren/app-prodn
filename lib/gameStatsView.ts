@@ -54,6 +54,10 @@ export function readPlayedAt(value: { played_on?: Date | string | null; timestam
   return value.played_on ?? value.timestamp ?? null;
 }
 
+function cleanVersionName(value: string) {
+  return value.replace(/^Version\./, "").replace(/_/g, " ").trim();
+}
+
 export function shortHash(value: string | null | undefined, length = 12) {
   if (!value) return "n/a";
   return value.slice(0, length);
@@ -61,6 +65,34 @@ export function shortHash(value: string | null | undefined, length = 12) {
 
 export function displayReplayFilename(originalFilename: string | null | undefined, replayFile: string | null | undefined) {
   return originalFilename || replayFile || "Replay file";
+}
+
+export function displayGameVersion(value: string | null | undefined) {
+  if (!value) return "Unknown";
+
+  const trimmed = value.trim();
+  if (!trimmed) return "Unknown";
+
+  return cleanVersionName(trimmed);
+}
+
+export function displayGameType(value: string | null | undefined) {
+  if (!value) return "Unknown";
+
+  const trimmed = value.trim();
+  if (!trimmed) return "Unknown";
+
+  const tupleMatch = trimmed.match(/^\(<Version\.([^:>]+):\s*\d+>,\s*'([^']+)'/);
+  if (tupleMatch) {
+    const [, version, build] = tupleMatch;
+    return `${cleanVersionName(version)} match (${build})`;
+  }
+
+  if (trimmed.startsWith("Version.")) {
+    return `${cleanVersionName(trimmed)} match`;
+  }
+
+  return trimmed.replace(/\s+/g, " ");
 }
 
 export function isInferredOutcome(parseReason: string | null | undefined) {
