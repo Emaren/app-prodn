@@ -542,10 +542,10 @@ export default function HomePage() {
               </div>
               <div className="flex items-center gap-3">
                 <Link
-                  href="/users"
+                  href="/players"
                   className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300 transition hover:border-white/20 hover:text-white"
                 >
-                  Browse Profiles
+                  Browse Player Graph
                 </Link>
                 <div className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-200">
                   {onlineUsers.length} active

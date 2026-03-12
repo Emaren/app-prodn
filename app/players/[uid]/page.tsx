@@ -11,6 +11,7 @@ import {
   winnerLabel,
 } from "@/lib/gameStatsView";
 import { getPrisma } from "@/lib/prisma";
+import { normalizePublicPlayerName } from "@/lib/publicPlayers";
 
 export const dynamic = "force-dynamic";
 
@@ -24,13 +25,6 @@ export default async function PublicPlayerPage({
 
   const user = await prisma.user.findUnique({
     where: { uid },
-    include: {
-      gameStats: {
-        where: { is_final: true },
-        orderBy: [{ played_on: "desc" }, { timestamp: "desc" }, { createdAt: "desc" }],
-        take: 24,
-      },
-    },
   });
 
   if (!user) {
@@ -43,10 +37,47 @@ export default async function PublicPlayerPage({
     take: 40,
   });
 
+  const candidateMatches = await prisma.gameStats.findMany({
+    where: { is_final: true },
+    orderBy: [{ played_on: "desc" }, { timestamp: "desc" }, { createdAt: "desc" }],
+    take: 250,
+  });
+
+  const identityKeys = Array.from(
+    new Set(
+      [user.inGameName, user.steamPersonaName]
+        .map((name) => normalizePublicPlayerName(name).toLowerCase())
+        .filter(Boolean)
+    )
+  );
+
+  const publicMatches = candidateMatches
+    .filter((game) =>
+      parsePlayers(game.players).some((player) =>
+        identityKeys.includes(normalizePublicPlayerName(displayPlayerName(player)).toLowerCase())
+      )
+    )
+    .slice(0, 24);
+  const aliasSet = new Set<string>(
+    [user.inGameName, user.steamPersonaName]
+      .map((name) => normalizePublicPlayerName(name))
+      .filter(Boolean)
+  );
+
+  for (const game of publicMatches) {
+    for (const player of parsePlayers(game.players)) {
+      const playerName = normalizePublicPlayerName(displayPlayerName(player));
+      if (identityKeys.includes(playerName.toLowerCase())) {
+        aliasSet.add(playerName);
+      }
+    }
+  }
+
   const failedAttempts = parseAttempts.filter((attempt) => attempt.status !== "stored");
   const liveThreshold = new Date(Date.now() - 2 * 60 * 1000);
   const displayName = user.inGameName || user.steamPersonaName || user.uid;
   const isLive = Boolean(user.lastSeen && user.lastSeen > liveThreshold);
+  const aliases = Array.from(aliasSet);
 
   return (
     <main className="space-y-6 py-6 text-white">
@@ -68,6 +99,12 @@ export default async function PublicPlayerPage({
 
           <div className="flex flex-wrap gap-3">
             <Link
+              href="/players"
+              className="rounded-full border border-white/15 px-5 py-3 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
+            >
+              Browse Players
+            </Link>
+            <Link
               href="/"
               className="rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200"
             >
@@ -87,6 +124,20 @@ export default async function PublicPlayerPage({
               <StatRow label="Steam ID" value={user.steamId || "Unknown"} />
               <StatRow label="Verification Method" value={user.verificationMethod} />
               <StatRow
+                label="Known Aliases"
+                value={
+                  aliases.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {aliases.map((alias) => (
+                        <Tag key={alias}>{alias}</Tag>
+                      ))}
+                    </div>
+                  ) : (
+                    "None yet"
+                  )
+                }
+              />
+              <StatRow
                 label="Verified At"
                 value={user.verifiedAt ? user.verifiedAt.toLocaleString() : "Not yet"}
               />
@@ -99,7 +150,7 @@ export default async function PublicPlayerPage({
 
           <Panel title="Reliability" eyebrow="Parser Health">
             <dl className="grid gap-4 sm:grid-cols-2">
-              <StatRow label="Final Replays" value={String(user.gameStats.length)} />
+              <StatRow label="Public Matches" value={String(publicMatches.length)} />
               <StatRow label="Recent Parse Misses" value={String(failedAttempts.length)} />
             </dl>
 
@@ -137,10 +188,10 @@ export default async function PublicPlayerPage({
 
         <Panel title="Recent Replay-Backed Matches" eyebrow="Match Feed">
           <div className="space-y-3">
-            {user.gameStats.length === 0 ? (
-              <EmptyPanel message="No final replay uploads have been tied to this player yet." />
+            {publicMatches.length === 0 ? (
+              <EmptyPanel message="No public replay-backed matches have been connected to this player yet." />
             ) : (
-              user.gameStats.map((game) => {
+              publicMatches.map((game) => {
                 const players = parsePlayers(game.players);
                 const playedAt = readPlayedAt(game);
 

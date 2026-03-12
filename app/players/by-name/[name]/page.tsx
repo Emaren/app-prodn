@@ -103,6 +103,12 @@ export default async function ReplayOnlyPlayerPage({
               Claim This Identity
             </Link>
             <Link
+              href="/players"
+              className="rounded-full border border-white/15 px-5 py-3 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
+            >
+              Browse Players
+            </Link>
+            <Link
               href="/game-stats"
               className="rounded-full border border-white/15 px-5 py-3 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
             >
