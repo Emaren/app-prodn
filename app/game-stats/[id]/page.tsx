@@ -16,6 +16,11 @@ import {
   winnerLabel,
 } from "@/lib/gameStatsView";
 import { getPrisma } from "@/lib/prisma";
+import {
+  findClaimedUsersForReplayNames,
+  getClaimedPublicPlayer,
+  getPublicPlayerHref,
+} from "@/lib/publicPlayers";
 
 export const dynamic = "force-dynamic";
 
@@ -75,6 +80,10 @@ export default async function GameStatsDetailPage({
   });
 
   const players = parsePlayers(game.players);
+  const claimedPlayers = await findClaimedUsersForReplayNames(
+    prisma,
+    players.map((player) => displayPlayerName(player))
+  );
   const playedAt = readPlayedAt(game);
   const eventTypes = Array.isArray(game.event_types) ? game.event_types : [];
   const keyEvents =
@@ -90,9 +99,24 @@ export default async function GameStatsDetailPage({
             <div className="text-xs uppercase tracking-[0.35em] text-sky-200/70">Replay Detail</div>
             <h1 className="text-4xl font-semibold text-white sm:text-5xl">{readMapName(game.map)}</h1>
             <p className="max-w-3xl text-base leading-7 text-slate-300 sm:text-lg">
-              {players.length > 0
-                ? players.map((player) => displayPlayerName(player)).join(" vs ")
-                : "Player list unavailable"}
+              {players.length > 0 ? (
+                players.map((player, index) => {
+                  const name = displayPlayerName(player);
+                  return (
+                    <span key={`${name}-${index}`}>
+                      {index > 0 ? " vs " : null}
+                      <Link
+                        href={getPublicPlayerHref(name, claimedPlayers)}
+                        className="text-sky-200 transition hover:text-sky-100"
+                      >
+                        {name}
+                      </Link>
+                    </span>
+                  );
+                })
+              ) : (
+                "Player list unavailable"
+              )}
             </p>
             <div className="flex flex-wrap gap-2">
               <Tag>{winnerLabel(game.winner, game.parse_reason)}</Tag>
@@ -159,9 +183,10 @@ export default async function GameStatsDetailPage({
                 <EmptyPanel message="No player payload was stored for this replay." />
               ) : (
                 players.map((player, index) => (
-                  <div
+                  <Link
                     key={`${displayPlayerName(player)}-${index}`}
-                    className="rounded-2xl border border-white/8 bg-white/5 p-5"
+                    href={getPublicPlayerHref(displayPlayerName(player), claimedPlayers)}
+                    className="block rounded-2xl border border-white/8 bg-white/5 p-5 transition hover:border-sky-300/30 hover:bg-white/10"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
@@ -169,7 +194,13 @@ export default async function GameStatsDetailPage({
                           {displayPlayerName(player)}
                         </div>
                         <div className="mt-1 text-xs uppercase tracking-[0.25em] text-slate-400">
-                          {Boolean(player.winner) ? "winner" : "player"}
+                          {getClaimedPublicPlayer(displayPlayerName(player), claimedPlayers)
+                            ? Boolean(player.winner)
+                              ? "claimed player · winner"
+                              : "claimed player"
+                            : Boolean(player.winner)
+                              ? "unclaimed warrior · winner"
+                              : "unclaimed warrior"}
                         </div>
                       </div>
                       <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
@@ -194,7 +225,7 @@ export default async function GameStatsDetailPage({
                       {renderAchievementGroup("Technology", readNestedRecord(player, "achievements", "technology"))}
                       {renderAchievementGroup("Society", readNestedRecord(player, "achievements", "society"))}
                     </div>
-                  </div>
+                  </Link>
                 ))
               )}
             </div>

@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useUserAuth } from "@/hooks/useUserAuth";
 import SteamLoginButton from "@/components/SteamLoginButton";
 
@@ -24,12 +25,24 @@ type WatcherKeyRow = {
 };
 
 export default function ProfilePage() {
+  return (
+    <Suspense fallback={<ProfilePageFallback />}>
+      <ProfilePageContent />
+    </Suspense>
+  );
+}
+
+function ProfilePageContent() {
   const { uid, isAuthenticated, playerName, setPlayerName, logout, refreshSession } = useUserAuth();
+  const searchParams = useSearchParams();
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
   const [watcherKeys, setWatcherKeys] = useState<WatcherKeyRow[]>([]);
   const [newWatcherKey, setNewWatcherKey] = useState<string | null>(null);
   const [status, setStatus] = useState("");
   const [savingName, setSavingName] = useState(false);
+  const [claimSeedApplied, setClaimSeedApplied] = useState(false);
+
+  const claimName = searchParams?.get("claim_name")?.trim() || "";
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -60,6 +73,20 @@ export default function ProfilePage() {
 
     void load();
   }, [isAuthenticated, setPlayerName]);
+
+  useEffect(() => {
+    if (!claimName || claimSeedApplied) return;
+    if (profile?.inGameName) {
+      setClaimSeedApplied(true);
+      return;
+    }
+
+    if (!playerName) {
+      setPlayerName(claimName);
+    }
+    setStatus(`Claim suggestion loaded for ${claimName}. Save it, then upload a replay to verify it.`);
+    setClaimSeedApplied(true);
+  }, [claimName, claimSeedApplied, playerName, profile?.inGameName, setPlayerName]);
 
   const saveName = async () => {
     const nextName = playerName.trim();
@@ -135,12 +162,25 @@ export default function ProfilePage() {
       <div className="mx-auto max-w-3xl py-10">
         <div className="rounded-[2rem] border border-white/10 bg-slate-950/70 p-8 text-white">
           <div className="text-xs uppercase tracking-[0.35em] text-white/45">Profile</div>
-          <h2 className="mt-3 text-3xl font-semibold">Sign in before you claim a competitive identity.</h2>
+          <h2 className="mt-3 text-3xl font-semibold">
+            {claimName
+              ? `Sign in before you claim ${claimName}.`
+              : "Sign in before you claim a competitive identity."}
+          </h2>
           <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-300">
             Steam is the first account path. That gives you a stable identity now, while replay verification continues to handle trust for betting and result settlement.
           </p>
+          {claimName ? (
+            <div className="mt-4 rounded-2xl border border-amber-300/20 bg-amber-400/10 px-4 py-4 text-sm text-amber-100">
+              This public warrior page exists already. Sign in, save <span className="font-semibold">{claimName}</span>,
+              then upload one replay with your watcher key to claim it properly.
+            </div>
+          ) : null}
           <div className="mt-6 flex flex-wrap gap-3">
-            <SteamLoginButton className="rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200" />
+            <SteamLoginButton
+              returnTo={claimName ? `/profile?claim_name=${encodeURIComponent(claimName)}` : "/profile"}
+              className="rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200"
+            />
             <Link
               href="/"
               className="rounded-full border border-white/15 px-5 py-3 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
@@ -168,6 +208,13 @@ export default function ProfilePage() {
             Verification level {profile?.verificationLevel ?? 0}
           </div>
         </div>
+
+        {claimName && !profile?.inGameName ? (
+          <div className="mt-6 rounded-2xl border border-amber-300/20 bg-amber-400/10 px-4 py-4 text-sm text-amber-100">
+            You came here from the public warrior page for <span className="font-semibold">{claimName}</span>.
+            Save that name below, then upload one replay with your watcher key to verify and claim it.
+          </div>
+        ) : null}
 
         <div className="mt-8 grid gap-6 md:grid-cols-2">
           <div className="rounded-2xl border border-white/8 bg-white/5 p-5">
@@ -275,6 +322,20 @@ export default function ProfilePage() {
           Log Out
         </button>
       </section>
+    </div>
+  );
+}
+
+function ProfilePageFallback() {
+  return (
+    <div className="mx-auto max-w-4xl py-8 text-white">
+      <div className="rounded-[2rem] border border-white/10 bg-slate-950/70 p-8">
+        <div className="text-xs uppercase tracking-[0.35em] text-white/45">Profile</div>
+        <h1 className="mt-2 text-3xl font-semibold">Loading profile...</h1>
+        <p className="mt-3 text-sm text-slate-300">
+          Preparing your account, watcher keys, and claim flow.
+        </p>
+      </div>
     </div>
   );
 }
