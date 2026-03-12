@@ -6,6 +6,7 @@ import { buildMatchupHref, buildRivalSummaries } from "@/lib/publicMatchups";
 import {
   displayPlayerName,
   formatDurationLabel,
+  outcomeBadgeLabel,
   parsePlayers,
   readMapName,
   readPlayedAt,
@@ -245,6 +246,7 @@ export default async function ReplayOnlyPlayerPage({
             {matches.map((match) => {
               const players = parsePlayers(match.players);
               const playedAt = readPlayedAt(match);
+              const outcomeLabel = outcomeBadgeLabel(match.parse_reason, match.winner);
 
               return (
                 <Link
@@ -267,6 +269,7 @@ export default async function ReplayOnlyPlayerPage({
                   </div>
 
                   <div className="mt-4 flex flex-wrap gap-2">
+                    {outcomeLabel ? <Tag>{outcomeLabel}</Tag> : null}
                     <Tag>{match.parse_reason || "unknown parse reason"}</Tag>
                     {match.disconnect_detected ? <Tag>disconnect suspected</Tag> : null}
                   </div>

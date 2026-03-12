@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import SteamLinkedBadge from "@/components/SteamLinkedBadge";
 import { getPrisma } from "@/lib/prisma";
 import {
   loadPublicPlayerDirectory,
@@ -142,6 +143,12 @@ function PlayerCard({
                 : `steam linked · level ${entry.verificationLevel}`
               : "replay-built warrior"}
           </div>
+          {entry.claimed ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              <SteamLinkedBadge compact />
+              {entry.verified ? <Tag>Replay verified</Tag> : null}
+            </div>
+          ) : null}
         </div>
         <div className={`rounded-full border px-3 py-1 text-xs ${badgeStyles}`}>
           {entry.claimed ? (entry.isOnline ? "Online" : "Profile") : "Claimable"}

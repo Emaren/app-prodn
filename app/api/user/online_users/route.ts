@@ -17,6 +17,7 @@ export async function GET() {
       uid: true,
       inGameName: true,
       verified: true,
+      verificationLevel: true,
     },
     take: 500,
   });
@@ -26,6 +27,7 @@ export async function GET() {
       uid: u.uid,
       in_game_name: u.inGameName,
       verified: u.verified,
+      verificationLevel: u.verificationLevel,
     }))
   );
 }

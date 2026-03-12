@@ -36,6 +36,7 @@ async function loadOnlineUsers(prisma: PrismaClient): Promise<LobbyOnlineUser[]>
       uid: true,
       inGameName: true,
       verified: true,
+      verificationLevel: true,
     },
     take: 12,
   });
@@ -46,6 +47,7 @@ async function loadOnlineUsers(prisma: PrismaClient): Promise<LobbyOnlineUser[]>
         uid: user.uid,
         in_game_name: user.inGameName || user.uid,
         verified: user.verified,
+        verificationLevel: user.verificationLevel,
       }) satisfies LobbyOnlineUser
   );
 }

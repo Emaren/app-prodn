@@ -9,6 +9,7 @@ export type LobbyOnlineUser = {
   uid: string;
   in_game_name: string;
   verified: boolean;
+  verificationLevel: number;
 };
 
 export type LobbyMatchPlayer = {

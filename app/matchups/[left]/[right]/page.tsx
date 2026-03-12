@@ -2,7 +2,8 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
-import { readMapName, readPlayedAt, winnerLabel } from "@/lib/gameStatsView";
+import SteamLinkedBadge from "@/components/SteamLinkedBadge";
+import { outcomeBadgeLabel, readMapName, readPlayedAt, winnerLabel } from "@/lib/gameStatsView";
 import {
   buildMatchupHref,
   filterHeadToHeadMatches,
@@ -118,6 +119,7 @@ export default async function MatchupPage({
             ) : (
               matches.map((match) => {
                 const playedAt = readPlayedAt(match);
+                const outcomeLabel = outcomeBadgeLabel(match.parse_reason, match.winner);
 
                 return (
                   <Link
@@ -138,6 +140,7 @@ export default async function MatchupPage({
                     </div>
 
                     <div className="mt-4 flex flex-wrap gap-2">
+                      {outcomeLabel ? <Tag>{outcomeLabel}</Tag> : null}
                       <Tag>{match.parse_reason || "unknown parse reason"}</Tag>
                       {match.disconnect_detected ? <Tag>disconnect suspected</Tag> : null}
                     </div>
@@ -197,6 +200,11 @@ function PlayerSummaryCard({
           <div className="mt-1 text-[11px] uppercase tracking-[0.2em] text-slate-400">
             {identityLabel}
           </div>
+          {player.claimed ? (
+            <div className="mt-3">
+              <SteamLinkedBadge compact />
+            </div>
+          ) : null}
         </div>
         <Link
           href={player.href}

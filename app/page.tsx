@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import SteamLoginButton from "@/components/SteamLoginButton";
+import SteamLinkedBadge from "@/components/SteamLinkedBadge";
 import { useUserAuth } from "@/context/UserAuthContext";
 import {
+  outcomeBadgeLabel,
   parsePlayers as parseReplayPlayers,
   readMapName,
   winnerLabel,
@@ -479,8 +481,15 @@ export default function HomePage() {
                         })}
                       </div>
                     </div>
-                    <div className="mt-1 text-xs uppercase tracking-[0.25em] text-slate-500">
-                      {message.user.verificationLevel > 0 ? "Steam Linked" : "Unverified"}
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {message.user.verificationLevel > 0 ? (
+                        <SteamLinkedBadge compact />
+                      ) : (
+                        <MiniIdentityPill>Unverified</MiniIdentityPill>
+                      )}
+                      {message.user.verified ? (
+                        <MiniIdentityPill>Replay verified</MiniIdentityPill>
+                      ) : null}
                     </div>
                     <p className="mt-3 text-sm leading-6 text-slate-200">{message.body}</p>
                   </div>
@@ -621,8 +630,13 @@ function OnlineUserCard({ user }: { user: LobbyOnlineUser }) {
     >
       <div>
         <div className="font-medium text-white">{user.in_game_name}</div>
-        <div className="text-xs uppercase tracking-[0.25em] text-slate-400">
-          {user.verified ? "Replay Verified" : "Unverified"}
+        <div className="mt-2 flex flex-wrap gap-2">
+          {user.verificationLevel > 0 ? <SteamLinkedBadge compact /> : null}
+          {user.verified ? (
+            <MiniIdentityPill>Replay verified</MiniIdentityPill>
+          ) : (
+            <MiniIdentityPill>New warrior</MiniIdentityPill>
+          )}
         </div>
       </div>
       <div
@@ -639,6 +653,7 @@ function OnlineUserCard({ user }: { user: LobbyOnlineUser }) {
 function MatchCard({ match }: { match: LobbyMatchRow }) {
   const players = parseReplayPlayers(match.players).map((player) => String(player.name || "")).filter(Boolean);
   const playedAt = match.played_on || match.timestamp;
+  const outcomeLabel = outcomeBadgeLabel(match.parse_reason, match.winner);
 
   return (
     <Link
@@ -650,8 +665,11 @@ function MatchCard({ match }: { match: LobbyMatchRow }) {
           <div className="font-medium text-white">{readMapName(match.map)}</div>
           <div className="mt-1 text-sm text-slate-300">{players.join(" vs ")}</div>
         </div>
-        <div className="text-right text-xs uppercase tracking-[0.25em] text-slate-400">
-          {winnerLabel(match.winner, match.parse_reason)}
+        <div className="space-y-2 text-right">
+          <div className="text-xs uppercase tracking-[0.25em] text-slate-400">
+            {winnerLabel(match.winner, match.parse_reason)}
+          </div>
+          {outcomeLabel ? <ResultTypePill>{outcomeLabel}</ResultTypePill> : null}
         </div>
       </div>
       {playedAt && (
@@ -686,4 +704,20 @@ function formatTournamentWindow(startsAt: string | null) {
     hour: "numeric",
     minute: "2-digit",
   });
+}
+
+function MiniIdentityPill({ children }: { children: ReactNode }) {
+  return (
+    <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-medium text-slate-300">
+      {children}
+    </span>
+  );
+}
+
+function ResultTypePill({ children }: { children: ReactNode }) {
+  return (
+    <span className="inline-flex rounded-full border border-amber-300/20 bg-amber-400/10 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-amber-100">
+      {children}
+    </span>
+  );
 }

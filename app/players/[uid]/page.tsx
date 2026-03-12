@@ -2,9 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
+import SteamLinkedBadge from "@/components/SteamLinkedBadge";
 import {
   displayPlayerName,
   formatDurationLabel,
+  outcomeBadgeLabel,
   parsePlayers,
   parseStatusLabel,
   readMapName,
@@ -97,7 +99,8 @@ export default async function PublicPlayerPage({
             </p>
 
             <div className="flex flex-wrap gap-2">
-              <Tag>{user.verified ? "Replay verified" : "Steam linked"}</Tag>
+              {user.verificationLevel > 0 ? <SteamLinkedBadge compact /> : null}
+              <Tag>{user.verified ? "Replay verified" : "Claimed profile"}</Tag>
               <Tag>verification level {user.verificationLevel}</Tag>
               {isLive ? <Tag>online now</Tag> : null}
             </div>
@@ -264,6 +267,7 @@ export default async function PublicPlayerPage({
               publicMatches.map((game) => {
                 const players = parsePlayers(game.players);
                 const playedAt = readPlayedAt(game);
+                const outcomeLabel = outcomeBadgeLabel(game.parse_reason, game.winner);
 
                 return (
                   <Link
@@ -286,6 +290,7 @@ export default async function PublicPlayerPage({
                     </div>
 
                     <div className="mt-4 flex flex-wrap gap-2">
+                      {outcomeLabel ? <Tag>{outcomeLabel}</Tag> : null}
                       <Tag>{game.parse_reason}</Tag>
                       {game.disconnect_detected ? <Tag>disconnect suspected</Tag> : null}
                     </div>

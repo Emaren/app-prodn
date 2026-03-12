@@ -5,6 +5,7 @@ import { getPrisma } from "@/lib/prisma";
 import {
   displayPlayerName,
   displayReplayFilename,
+  outcomeBadgeLabel,
   parsePlayers,
   parseStatusLabel,
   readMapName,
@@ -96,6 +97,7 @@ export default async function GameStatsPage() {
               games.map((game) => {
                 const players = parsePlayers(game.players);
                 const playedAt = readPlayedAt(game);
+                const outcomeLabel = outcomeBadgeLabel(game.parse_reason, game.winner);
 
                 return (
                   <Link
@@ -116,6 +118,11 @@ export default async function GameStatsPage() {
                         <div className="text-xs uppercase tracking-[0.25em] text-slate-400">
                           {winnerLabel(game.winner, game.parse_reason)}
                         </div>
+                        {outcomeLabel ? (
+                          <div className="mt-2">
+                            <Tag>{outcomeLabel}</Tag>
+                          </div>
+                        ) : null}
                         <div className="mt-2 text-xs text-slate-500">#{game.id}</div>
                       </div>
                     </div>

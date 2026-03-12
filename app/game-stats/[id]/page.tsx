@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
+import SteamLinkedBadge from "@/components/SteamLinkedBadge";
 import {
   formatDurationLabel,
   displayGameType,
@@ -99,6 +100,7 @@ export default async function GameStatsDetailPage({
     game.key_events && typeof game.key_events === "object" && !Array.isArray(game.key_events)
       ? game.key_events
       : {};
+  const outcomeLabel = outcomeBadgeLabel(game.parse_reason, game.winner);
 
   return (
     <main className="space-y-6 py-6 text-white">
@@ -133,9 +135,7 @@ export default async function GameStatsDetailPage({
               <Tag>{game.parse_reason}</Tag>
               {game.disconnect_detected ? <Tag>disconnect suspected</Tag> : null}
               {game.is_final ? <Tag>final replay</Tag> : <Tag>non-final replay</Tag>}
-              {outcomeBadgeLabel(game.parse_reason) ? (
-                <Tag>{outcomeBadgeLabel(game.parse_reason)}</Tag>
-              ) : null}
+              {outcomeLabel ? <Tag>{outcomeLabel}</Tag> : null}
             </div>
           </div>
 
@@ -170,6 +170,7 @@ export default async function GameStatsDetailPage({
             <dl className="grid gap-4 sm:grid-cols-2">
               <StatRow label="Replay ID" value={`#${game.id}`} />
               <StatRow label="Winner" value={winnerLabel(game.winner, game.parse_reason)} />
+              <StatRow label="Victory Type" value={outcomeLabel || "Recorded final result"} />
               <StatRow label="Map" value={readMapName(game.map)} />
               <StatRow label="Map Size" value={readMapSize(game.map)} />
               <StatRow label="Game Version" value={displayGameVersion(game.game_version)} />
@@ -445,9 +446,12 @@ function renderUploader(
   const label = user.inGameName || user.steamPersonaName || user.uid;
 
   return (
-    <Link href={`/players/${user.uid}`} className="text-sky-200 transition hover:text-sky-100">
-      {label}
-    </Link>
+    <span className="flex flex-wrap items-center gap-2">
+      <Link href={`/players/${user.uid}`} className="text-sky-200 transition hover:text-sky-100">
+        {label}
+      </Link>
+      {user.verificationLevel > 0 ? <SteamLinkedBadge compact /> : null}
+    </span>
   );
 }
 

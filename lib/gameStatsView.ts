@@ -109,15 +109,20 @@ export function isResignationOutcome(parseReason: string | null | undefined) {
   );
 }
 
-export function winnerLabel(winner: string | null | undefined, parseReason: string | null | undefined) {
+export function winnerLabel(winner: string | null | undefined, parseReason?: string | null | undefined) {
+  void parseReason;
   if (winner && winner !== "Unknown") {
-    return isResignationOutcome(parseReason) ? `${winner} (Resigned)` : winner;
+    return winner;
   }
   return "Unknown";
 }
 
-export function outcomeBadgeLabel(parseReason: string | null | undefined) {
-  return isResignationOutcome(parseReason) ? "resignation detected" : null;
+export function outcomeBadgeLabel(
+  parseReason: string | null | undefined,
+  winner?: string | null | undefined
+) {
+  if (!winner || winner === "Unknown") return null;
+  return isResignationOutcome(parseReason) ? "Win by resignation" : null;
 }
 
 export function normalizeDurationSeconds(value: number | null | undefined) {
