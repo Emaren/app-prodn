@@ -1,13 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, type ReactNode, useEffect, useState } from "react";
 import { useUserAuth } from "@/context/UserAuthContext";
 import {
   getFallbackTournament,
+  getTournamentMatchStatusLabel,
   getTournamentStatusLabel,
+  TOURNAMENT_MATCH_STATUSES,
   TOURNAMENT_STATUSES,
   type LobbyTournament,
+  type LobbyTournamentEntrant,
+  type LobbyTournamentMatch,
 } from "@/lib/lobby";
 
 type FormState = {
@@ -17,6 +21,18 @@ type FormState = {
   format: string;
   status: string;
   startsAt: string;
+};
+
+type MatchDraft = {
+  id: number | null;
+  round: string;
+  position: string;
+  label: string;
+  status: string;
+  playerOneEntryId: string;
+  playerTwoEntryId: string;
+  winnerEntryId: string;
+  scheduledAt: string;
 };
 
 function toFormState(tournament: LobbyTournament | null): FormState {
@@ -31,14 +47,33 @@ function toFormState(tournament: LobbyTournament | null): FormState {
   };
 }
 
+function toMatchDraft(match?: LobbyTournamentMatch): MatchDraft {
+  return {
+    id: match?.id ?? null,
+    round: String(match?.round ?? 1),
+    position: String(match?.position ?? 1),
+    label: match?.label ?? "",
+    status: match?.status ?? "scheduled",
+    playerOneEntryId: match?.playerOne?.entryId ? String(match.playerOne.entryId) : "",
+    playerTwoEntryId: match?.playerTwo?.entryId ? String(match.playerTwo.entryId) : "",
+    winnerEntryId: match?.winnerEntryId ? String(match.winnerEntryId) : "",
+    scheduledAt: match?.scheduledAt ? toDateTimeLocal(match.scheduledAt) : "",
+  };
+}
+
 export default function AdminPage() {
   const { isAuthenticated, isAdmin } = useUserAuth();
   const [form, setForm] = useState<FormState>(() => toFormState(null));
   const [tournament, setTournament] = useState<LobbyTournament | null>(null);
+  const [entrants, setEntrants] = useState<LobbyTournamentEntrant[]>([]);
+  const [matches, setMatches] = useState<MatchDraft[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingBracket, setSavingBracket] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [bracketError, setBracketError] = useState<string | null>(null);
+  const [bracketNotice, setBracketNotice] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isAuthenticated || !isAdmin) {
@@ -50,20 +85,53 @@ export default function AdminPage() {
 
     (async () => {
       try {
-        const response = await fetch("/api/admin/tournament", { cache: "no-store" });
-        const payload = (await response.json().catch(() => ({}))) as
+        const [tournamentResponse, matchesResponse] = await Promise.all([
+          fetch("/api/admin/tournament", { cache: "no-store" }),
+          fetch("/api/admin/tournament/matches", { cache: "no-store" }),
+        ]);
+
+        const tournamentPayload = (await tournamentResponse.json().catch(() => ({}))) as
           | { detail?: string; tournament?: LobbyTournament }
           | Record<string, unknown>;
+        const matchesPayload = (await matchesResponse.json().catch(() => ({}))) as
+          | {
+              detail?: string;
+              entrants?: LobbyTournamentEntrant[];
+              matches?: LobbyTournamentMatch[];
+            }
+          | Record<string, unknown>;
 
-        if (!response.ok) {
-          throw new Error(typeof payload.detail === "string" ? payload.detail : "Failed to load tournament.");
+        if (!tournamentResponse.ok) {
+          throw new Error(
+            typeof tournamentPayload.detail === "string"
+              ? tournamentPayload.detail
+              : "Failed to load tournament."
+          );
+        }
+
+        if (!matchesResponse.ok) {
+          throw new Error(
+            typeof matchesPayload.detail === "string"
+              ? matchesPayload.detail
+              : "Failed to load bracket."
+          );
         }
 
         if (!active) return;
 
-        const nextTournament = (payload.tournament as LobbyTournament) || getFallbackTournament(false);
+        const nextTournament =
+          (tournamentPayload.tournament as LobbyTournament) || getFallbackTournament(false);
+        const nextEntrants = Array.isArray(matchesPayload.entrants)
+          ? (matchesPayload.entrants as LobbyTournamentEntrant[])
+          : nextTournament.entrants;
+        const nextMatches = Array.isArray(matchesPayload.matches)
+          ? (matchesPayload.matches as LobbyTournamentMatch[])
+          : nextTournament.matches;
+
         setTournament(nextTournament);
         setForm(toFormState(nextTournament));
+        setEntrants(nextEntrants);
+        setMatches(nextMatches.map(toMatchDraft));
       } catch (loadError) {
         if (active) {
           setError(loadError instanceof Error ? loadError.message : "Failed to load tournament.");
@@ -144,6 +212,8 @@ export default function AdminPage() {
       const nextTournament = (payload.tournament as LobbyTournament) || null;
       setTournament(nextTournament);
       setForm(toFormState(nextTournament));
+      setEntrants(nextTournament?.entrants ?? []);
+      setMatches((nextTournament?.matches ?? []).map(toMatchDraft));
       setNotice("Featured tournament updated.");
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Save failed.");
@@ -152,15 +222,105 @@ export default function AdminPage() {
     }
   }
 
+  function updateMatch(index: number, key: keyof MatchDraft, value: string) {
+    setMatches((current) =>
+      current.map((match, idx) => (idx === index ? { ...match, [key]: value } : match))
+    );
+  }
+
+  function addMatch() {
+    setMatches((current) => {
+      const highestPosition = current
+        .map((match) => Number(match.position) || 0)
+        .reduce((max, value) => Math.max(max, value), 0);
+
+      return [...current, { ...toMatchDraft(), position: String(highestPosition + 1) }];
+    });
+  }
+
+  function removeMatch(index: number) {
+    setMatches((current) => current.filter((_, idx) => idx !== index));
+  }
+
+  async function saveBracket() {
+    if (!form.id) {
+      setBracketError("Save the tournament card first, then add bracket matches.");
+      return;
+    }
+
+    try {
+      setSavingBracket(true);
+      setBracketError(null);
+      setBracketNotice(null);
+
+      const response = await fetch("/api/admin/tournament/matches", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          tournamentId: form.id,
+          matches: matches.map((match) => ({
+            id: match.id,
+            round: Number(match.round || 1),
+            position: Number(match.position || 1),
+            label: match.label,
+            status: match.status,
+            playerOneEntryId: match.playerOneEntryId ? Number(match.playerOneEntryId) : null,
+            playerTwoEntryId: match.playerTwoEntryId ? Number(match.playerTwoEntryId) : null,
+            winnerEntryId: match.winnerEntryId ? Number(match.winnerEntryId) : null,
+            scheduledAt: match.scheduledAt ? new Date(match.scheduledAt).toISOString() : null,
+          })),
+        }),
+      });
+
+      const payload = (await response.json().catch(() => ({}))) as
+        | {
+            detail?: string;
+            entrants?: LobbyTournamentEntrant[];
+            matches?: LobbyTournamentMatch[];
+          }
+        | Record<string, unknown>;
+
+      if (!response.ok) {
+        throw new Error(typeof payload.detail === "string" ? payload.detail : "Bracket save failed.");
+      }
+
+      const nextEntrants = Array.isArray(payload.entrants)
+        ? (payload.entrants as LobbyTournamentEntrant[])
+        : entrants;
+      const nextMatches = Array.isArray(payload.matches)
+        ? (payload.matches as LobbyTournamentMatch[])
+        : [];
+
+      setEntrants(nextEntrants);
+      setMatches(nextMatches.map(toMatchDraft));
+      setTournament((current) =>
+        current
+          ? {
+              ...current,
+              entrants: nextEntrants,
+              matches: nextMatches,
+            }
+          : current
+      );
+      setBracketNotice("Bracket updated.");
+    } catch (saveError) {
+      setBracketError(
+        saveError instanceof Error ? saveError.message : "Bracket save failed."
+      );
+    } finally {
+      setSavingBracket(false);
+    }
+  }
+
   return (
-    <div className="mx-auto max-w-5xl py-10 text-white">
+    <div className="mx-auto max-w-6xl space-y-6 py-10 text-white">
       <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
         <div className="rounded-[2rem] border border-white/10 bg-slate-950/70 p-8">
           <div className="flex items-center justify-between gap-4">
             <div>
               <h1 className="text-3xl font-semibold">Admin</h1>
               <p className="mt-4 text-sm text-slate-300">
-                This is the control point for the homepage tournament card. Save here, then the lobby updates on the next poll.
+                This is the control point for the homepage tournament card and live bracket.
               </p>
             </div>
             <Link
@@ -277,10 +437,211 @@ export default function AdminPage() {
             <div className="text-sm text-slate-300">
               {form.startsAt ? `Starts ${new Date(form.startsAt).toLocaleString()}` : "Start time not set"}
             </div>
+            <div className="pt-2 text-sm text-slate-300">
+              {matches.length} bracket {matches.length === 1 ? "match" : "matches"} configured
+            </div>
           </div>
         </div>
       </div>
+
+      <section className="rounded-[2rem] border border-white/10 bg-slate-950/70 p-8">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <div className="text-xs uppercase tracking-[0.35em] text-white/45">Bracket</div>
+            <h2 className="mt-2 text-2xl font-semibold">Manual Match Control</h2>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
+              Assign entrants to match slots, mark winners, and the homepage will reflect the next live pairings immediately.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={addMatch}
+              className="rounded-full border border-white/15 px-5 py-3 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
+            >
+              Add Match
+            </button>
+            <button
+              type="button"
+              onClick={() => void saveBracket()}
+              disabled={savingBracket || !form.id}
+              className="rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {savingBracket ? "Saving Bracket..." : "Save Bracket"}
+            </button>
+          </div>
+        </div>
+
+        {bracketError && (
+          <div className="mt-6 rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+            {bracketError}
+          </div>
+        )}
+
+        {bracketNotice && (
+          <div className="mt-6 rounded-2xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+            {bracketNotice}
+          </div>
+        )}
+
+        <div className="mt-6 grid gap-6 lg:grid-cols-[0.7fr_1.3fr]">
+          <div className="rounded-[1.5rem] border border-white/8 bg-white/5 p-5">
+            <div className="text-sm font-medium text-white">Joined Entrants</div>
+            <div className="mt-4 space-y-3">
+              {entrants.length === 0 ? (
+                <div className="text-sm text-slate-400">
+                  No entrants yet. Players need to join the featured tournament before you can assign matches.
+                </div>
+              ) : (
+                entrants.map((entrant) => (
+                  <div
+                    key={entrant.entryId ?? entrant.uid}
+                    className="rounded-2xl border border-white/8 bg-slate-950/60 px-4 py-3"
+                  >
+                    <div className="font-medium text-white">
+                      {entrant.inGameName || entrant.steamPersonaName || entrant.uid}
+                    </div>
+                    <div className="mt-1 text-xs uppercase tracking-[0.25em] text-slate-400">
+                      Entry #{entrant.entryId}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            {matches.length === 0 ? (
+              <div className="rounded-[1.5rem] border border-white/8 bg-white/5 px-5 py-6 text-sm text-slate-300">
+                No bracket matches configured yet.
+              </div>
+            ) : (
+              matches.map((match, index) => (
+                <div
+                  key={match.id ?? `draft-${index}`}
+                  className="rounded-[1.5rem] border border-white/8 bg-white/5 p-5"
+                >
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    <Field label="Round">
+                      <input
+                        value={match.round}
+                        onChange={(event) => updateMatch(index, "round", event.target.value)}
+                        className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-amber-300/50"
+                      />
+                    </Field>
+
+                    <Field label="Position">
+                      <input
+                        value={match.position}
+                        onChange={(event) => updateMatch(index, "position", event.target.value)}
+                        className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-amber-300/50"
+                      />
+                    </Field>
+
+                    <Field label="Label">
+                      <input
+                        value={match.label}
+                        onChange={(event) => updateMatch(index, "label", event.target.value)}
+                        placeholder="Quarterfinal A"
+                        className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-amber-300/50"
+                      />
+                    </Field>
+
+                    <Field label="Status">
+                      <select
+                        value={match.status}
+                        onChange={(event) => updateMatch(index, "status", event.target.value)}
+                        className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-amber-300/50"
+                      >
+                        {TOURNAMENT_MATCH_STATUSES.map((status) => (
+                          <option key={status} value={status}>
+                            {getTournamentMatchStatusLabel(status)}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+
+                    <Field label="Player One">
+                      <select
+                        value={match.playerOneEntryId}
+                        onChange={(event) => updateMatch(index, "playerOneEntryId", event.target.value)}
+                        className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-amber-300/50"
+                      >
+                        <option value="">Unassigned</option>
+                        {entrants.map((entrant) => (
+                          <option key={`p1-${entrant.entryId}`} value={entrant.entryId ?? ""}>
+                            {entrant.inGameName || entrant.steamPersonaName || entrant.uid}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+
+                    <Field label="Player Two">
+                      <select
+                        value={match.playerTwoEntryId}
+                        onChange={(event) => updateMatch(index, "playerTwoEntryId", event.target.value)}
+                        className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-amber-300/50"
+                      >
+                        <option value="">Unassigned</option>
+                        {entrants.map((entrant) => (
+                          <option key={`p2-${entrant.entryId}`} value={entrant.entryId ?? ""}>
+                            {entrant.inGameName || entrant.steamPersonaName || entrant.uid}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+
+                    <Field label="Winner">
+                      <select
+                        value={match.winnerEntryId}
+                        onChange={(event) => updateMatch(index, "winnerEntryId", event.target.value)}
+                        className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-amber-300/50"
+                      >
+                        <option value="">No winner yet</option>
+                        {entrants.map((entrant) => (
+                          <option key={`w-${entrant.entryId}`} value={entrant.entryId ?? ""}>
+                            {entrant.inGameName || entrant.steamPersonaName || entrant.uid}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+
+                    <Field label="Scheduled At">
+                      <input
+                        type="datetime-local"
+                        value={match.scheduledAt}
+                        onChange={(event) => updateMatch(index, "scheduledAt", event.target.value)}
+                        className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-amber-300/50"
+                      />
+                    </Field>
+                  </div>
+
+                  <div className="mt-4 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => removeMatch(index)}
+                      className="rounded-full border border-red-400/25 px-4 py-2 text-sm text-red-200 transition hover:border-red-400/45 hover:text-red-100"
+                    >
+                      Remove Match
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </section>
     </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label className="block space-y-2">
+      <span className="text-sm text-slate-300">{label}</span>
+      {children}
+    </label>
   );
 }
 

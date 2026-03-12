@@ -105,6 +105,7 @@ model Tournament {
   chatRoom  ChatRoom?         @relation(fields: [chatRoomId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   createdBy User?             @relation("TournamentCreator", fields: [createdByUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   entries   TournamentEntry[]
+  matches   TournamentMatch[]
 
   @@index([featured, startsAt], map: "ix_tournaments_featured_starts_at")
   @@index([status, startsAt], map: "ix_tournaments_status_starts_at")
@@ -121,11 +122,40 @@ model TournamentEntry {
 
   tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   user       User       @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  playerOneMatches TournamentMatch[] @relation("TournamentMatchPlayerOne")
+  playerTwoMatches TournamentMatch[] @relation("TournamentMatchPlayerTwo")
+  winnerMatches    TournamentMatch[] @relation("TournamentMatchWinner")
 
   @@unique([tournamentId, userId], map: "uq_tournament_entries_tournament_user")
   @@index([userId], map: "ix_tournament_entries_user_id")
   @@index([tournamentId, joinedAt], map: "ix_tournament_entries_tournament_joined_at")
   @@map("tournament_entries")
+}
+
+model TournamentMatch {
+  id             Int       @id @default(autoincrement())
+  tournamentId   Int       @map("tournament_id")
+  round          Int       @default(1)
+  position       Int       @default(1)
+  label          String?   @db.VarChar(80)
+  status         String    @default("scheduled") @db.VarChar(20)
+  playerOneEntryId Int?    @map("player_one_entry_id")
+  playerTwoEntryId Int?    @map("player_two_entry_id")
+  winnerEntryId    Int?    @map("winner_entry_id")
+  scheduledAt    DateTime? @map("scheduled_at") @db.Timestamp(6)
+  completedAt    DateTime? @map("completed_at") @db.Timestamp(6)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  playerOne  TournamentEntry? @relation("TournamentMatchPlayerOne", fields: [playerOneEntryId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  playerTwo  TournamentEntry? @relation("TournamentMatchPlayerTwo", fields: [playerTwoEntryId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  winner     TournamentEntry? @relation("TournamentMatchWinner", fields: [winnerEntryId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@unique([tournamentId, round, position], map: "uq_tournament_matches_round_position")
+  @@index([tournamentId, status], map: "ix_tournament_matches_tournament_status")
+  @@index([scheduledAt], map: "ix_tournament_matches_scheduled_at")
+  @@map("tournament_matches")
 }
 
 model ChatRoom {

@@ -6,6 +6,7 @@ import SteamLoginButton from "@/components/SteamLoginButton";
 import { useUserAuth } from "@/context/UserAuthContext";
 import {
   getFallbackTournament,
+  getTournamentMatchStatusLabel,
   getTournamentStatusLabel,
   type LobbyMatchPlayer,
   type LobbyMatchRow,
@@ -312,12 +313,59 @@ export default function HomePage() {
                       No one has joined yet. The first few players set the tone.
                     </div>
                   ) : (
-                    tournament.entrants.map((entrant) => (
+                    tournament.entrants.slice(0, 12).map((entrant) => (
                       <div
-                        key={`${entrant.uid}-${entrant.joinedAt}`}
+                        key={`${entrant.entryId ?? entrant.uid}-${entrant.joinedAt}`}
                         className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs text-white"
                       >
                         {displayName(entrant.inGameName, entrant.steamPersonaName)}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-white/8 bg-slate-950/40 p-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <div className="text-xs uppercase tracking-[0.25em] text-slate-400">
+                      Bracket Preview
+                    </div>
+                    <div className="mt-1 text-lg font-semibold text-white">
+                      {tournament.matches.length} {tournament.matches.length === 1 ? "match" : "matches"}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4 space-y-3">
+                  {tournament.matches.length === 0 ? (
+                    <div className="text-sm text-slate-400">
+                      No bracket matches posted yet. Once the first pairings are set, they will appear here live.
+                    </div>
+                  ) : (
+                    tournament.matches.slice(0, 3).map((match) => (
+                      <div
+                        key={match.id}
+                        className="rounded-2xl border border-white/8 bg-white/5 px-4 py-4"
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <div className="text-sm font-medium text-white">
+                              {match.label || `Round ${match.round} · Match ${match.position}`}
+                            </div>
+                            <div className="mt-1 text-sm text-slate-300">
+                              {displayMatchPlayer(match.playerOne)} vs {displayMatchPlayer(match.playerTwo)}
+                            </div>
+                          </div>
+                          <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-200">
+                            {getTournamentMatchStatusLabel(match.status)}
+                          </div>
+                        </div>
+                        {match.scheduledAt && (
+                          <div className="mt-3 text-xs text-slate-400">
+                            {new Date(match.scheduledAt).toLocaleString()}
+                          </div>
+                        )}
                       </div>
                     ))
                   )}
@@ -560,6 +608,15 @@ function MatchCard({ match }: { match: LobbyMatchRow }) {
 
 function displayName(inGameName: string | null | undefined, steamPersonaName: string | null | undefined) {
   return inGameName || steamPersonaName || "Steam user";
+}
+
+function displayMatchPlayer(
+  entrant:
+    | LobbySnapshot["tournament"]["matches"][number]["playerOne"]
+    | LobbySnapshot["tournament"]["matches"][number]["playerTwo"]
+) {
+  if (!entrant) return "Open Slot";
+  return displayName(entrant.inGameName, entrant.steamPersonaName);
 }
 
 function formatTournamentWindow(startsAt: string | null) {

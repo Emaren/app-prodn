@@ -1,7 +1,9 @@
 export const LOBBY_ROOM_SLUG = "main-lobby";
 export const TOURNAMENT_STATUSES = ["planning", "open", "active", "completed"] as const;
+export const TOURNAMENT_MATCH_STATUSES = ["scheduled", "ready", "live", "completed"] as const;
 
 export type TournamentStatus = (typeof TOURNAMENT_STATUSES)[number];
+export type TournamentMatchStatus = (typeof TOURNAMENT_MATCH_STATUSES)[number];
 
 export type LobbyOnlineUser = {
   uid: string;
@@ -24,6 +26,7 @@ export type LobbyMatchRow = {
 };
 
 export type LobbyTournamentEntrant = {
+  entryId: number | null;
   uid: string;
   inGameName: string | null;
   steamPersonaName: string | null;
@@ -46,6 +49,20 @@ export type LobbyTournament = {
   viewerJoined: boolean;
   roomSlug: string;
   isFallback: boolean;
+  matches: LobbyTournamentMatch[];
+};
+
+export type LobbyTournamentMatch = {
+  id: number;
+  round: number;
+  position: number;
+  label: string | null;
+  status: TournamentMatchStatus;
+  scheduledAt: string | null;
+  completedAt: string | null;
+  winnerEntryId: number | null;
+  playerOne: LobbyTournamentEntrant | null;
+  playerTwo: LobbyTournamentEntrant | null;
 };
 
 export type LobbyMessage = {
@@ -106,6 +123,7 @@ export function getFallbackTournament(viewerJoined = false): LobbyTournament {
     viewerJoined,
     roomSlug: LOBBY_ROOM_SLUG,
     isFallback: true,
+    matches: [],
   };
 }
 
@@ -121,5 +139,30 @@ export function getTournamentStatusLabel(status: TournamentStatus) {
       return "Completed";
     default:
       return "Planning";
+  }
+}
+
+export function normalizeTournamentMatchStatus(value: unknown): TournamentMatchStatus {
+  if (
+    typeof value === "string" &&
+    TOURNAMENT_MATCH_STATUSES.includes(value as TournamentMatchStatus)
+  ) {
+    return value as TournamentMatchStatus;
+  }
+  return "scheduled";
+}
+
+export function getTournamentMatchStatusLabel(status: TournamentMatchStatus) {
+  switch (status) {
+    case "scheduled":
+      return "Scheduled";
+    case "ready":
+      return "Ready";
+    case "live":
+      return "Live";
+    case "completed":
+      return "Completed";
+    default:
+      return "Scheduled";
   }
 }

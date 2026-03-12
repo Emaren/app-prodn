@@ -3,8 +3,31 @@ import {
   getFallbackTournament,
   LOBBY_ROOM_SLUG,
   type LobbyMessage,
+  type LobbyTournamentEntrant,
   type LobbyTournament,
 } from "@/lib/lobby";
+
+function toLobbyEntrant(entry: {
+  id?: number;
+  joinedAt: Date;
+  user: {
+    uid: string;
+    inGameName: string | null;
+    steamPersonaName: string | null;
+    verificationLevel: number;
+    verified: boolean;
+  };
+}): LobbyTournamentEntrant {
+  return {
+    entryId: entry.id ?? null,
+    uid: entry.user.uid,
+    inGameName: entry.user.inGameName,
+    steamPersonaName: entry.user.steamPersonaName,
+    verificationLevel: entry.user.verificationLevel,
+    verified: entry.user.verified,
+    joinedAt: entry.joinedAt.toISOString(),
+  };
+}
 
 export async function ensureLobbyRoom(prisma: PrismaClient) {
   return prisma.chatRoom.upsert({
@@ -56,7 +79,6 @@ export async function getFeaturedTournament(
     include: {
       entries: {
         orderBy: { joinedAt: "asc" },
-        take: 12,
         include: {
           user: {
             select: {
@@ -74,6 +96,37 @@ export async function getFeaturedTournament(
       },
       chatRoom: {
         select: { slug: true },
+      },
+      matches: {
+        orderBy: [{ round: "asc" }, { position: "asc" }],
+        include: {
+          playerOne: {
+            include: {
+              user: {
+                select: {
+                  uid: true,
+                  inGameName: true,
+                  steamPersonaName: true,
+                  verificationLevel: true,
+                  verified: true,
+                },
+              },
+            },
+          },
+          playerTwo: {
+            include: {
+              user: {
+                select: {
+                  uid: true,
+                  inGameName: true,
+                  steamPersonaName: true,
+                  verificationLevel: true,
+                  verified: true,
+                },
+              },
+            },
+          },
+        },
       },
     },
   });
@@ -106,17 +159,22 @@ export async function getFeaturedTournament(
     startsAt: tournament.startsAt ? tournament.startsAt.toISOString() : null,
     featured: tournament.featured,
     entryCount: tournament._count.entries,
-    entrants: tournament.entries.map((entry) => ({
-      uid: entry.user.uid,
-      inGameName: entry.user.inGameName,
-      steamPersonaName: entry.user.steamPersonaName,
-      verificationLevel: entry.user.verificationLevel,
-      verified: entry.user.verified,
-      joinedAt: entry.joinedAt.toISOString(),
-    })),
+    entrants: tournament.entries.map(toLobbyEntrant),
     viewerJoined,
     roomSlug: tournament.chatRoom?.slug || LOBBY_ROOM_SLUG,
     isFallback: false,
+    matches: tournament.matches.map((match) => ({
+      id: match.id,
+      round: match.round,
+      position: match.position,
+      label: match.label,
+      status: match.status as LobbyTournament["matches"][number]["status"],
+      scheduledAt: match.scheduledAt ? match.scheduledAt.toISOString() : null,
+      completedAt: match.completedAt ? match.completedAt.toISOString() : null,
+      winnerEntryId: match.winnerEntryId ?? null,
+      playerOne: match.playerOne ? toLobbyEntrant(match.playerOne) : null,
+      playerTwo: match.playerTwo ? toLobbyEntrant(match.playerTwo) : null,
+    })),
   };
 }
 

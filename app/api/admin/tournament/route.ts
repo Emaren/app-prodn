@@ -1,30 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ensureTournamentRoom, getFeaturedTournament } from "@/lib/communityStore";
+import { requireAdmin } from "@/lib/adminSession";
+import { PrismaClient } from "@/lib/generated/prisma";
 import { normalizeTournamentStatus, slugifyTournamentTitle } from "@/lib/lobby";
-import { getPrisma } from "@/lib/prisma";
-import { getSessionUid } from "@/lib/session";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-async function requireAdmin(request: NextRequest) {
-  const uid = await getSessionUid(request);
-  if (!uid) {
-    return { error: NextResponse.json({ detail: "Unauthorized" }, { status: 401 }) };
-  }
-
-  const prisma = getPrisma();
-  const user = await prisma.user.findUnique({
-    where: { uid },
-    select: { id: true, uid: true, isAdmin: true },
-  });
-
-  if (!user?.isAdmin) {
-    return { error: NextResponse.json({ detail: "Forbidden" }, { status: 403 }) };
-  }
-
-  return { prisma, user };
-}
 
 function parseStartsAt(value: unknown) {
   if (typeof value !== "string" || !value.trim()) return null;
@@ -33,8 +14,7 @@ function parseStartsAt(value: unknown) {
   return parsed;
 }
 
-async function buildUniqueTournamentSlug(title: string) {
-  const prisma = getPrisma();
+async function buildUniqueTournamentSlug(prisma: PrismaClient, title: string) {
   const baseSlug = slugifyTournamentTitle(title) || "community-tournament";
 
   let candidate = baseSlug;
@@ -135,7 +115,7 @@ export async function POST(request: NextRequest) {
 
     tournamentId = existing.id;
   } else {
-    const slug = await buildUniqueTournamentSlug(title);
+    const slug = await buildUniqueTournamentSlug(admin.prisma, title);
     const chatRoom = await ensureTournamentRoom(admin.prisma, slug, title);
 
     await admin.prisma.tournament.updateMany({
