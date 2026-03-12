@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { buildMatchupHref, buildRivalSummaries } from "@/lib/publicMatchups";
 import {
   displayPlayerName,
   parsePlayers,
@@ -10,7 +11,7 @@ import {
   winnerLabel,
 } from "@/lib/gameStatsView";
 import { getPrisma } from "@/lib/prisma";
-import { normalizePublicPlayerName } from "@/lib/publicPlayers";
+import { buildReplayPublicPlayerRef, normalizePublicPlayerName } from "@/lib/publicPlayers";
 
 export const dynamic = "force-dynamic";
 
@@ -73,6 +74,8 @@ export default async function ReplayOnlyPlayerPage({
   const losses = matches.filter((match) => match.winner && match.winner !== playerName).length;
   const unknowns = matches.length - wins - losses;
   const claimHref = `/profile?claim_name=${encodeURIComponent(playerName)}`;
+  const currentPlayer = buildReplayPublicPlayerRef(playerName);
+  const rivalries = await buildRivalSummaries(prisma, matches, currentPlayer);
 
   return (
     <main className="space-y-6 py-6 text-white">
@@ -119,25 +122,74 @@ export default async function ReplayOnlyPlayerPage({
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
-        <section className="rounded-[1.75rem] border border-white/10 bg-slate-950/70 p-6">
-          <div className="text-xs uppercase tracking-[0.35em] text-white/45">Why Claim It</div>
-          <h2 className="mt-2 text-2xl font-semibold text-white">Turn replay sightings into a real profile</h2>
+        <section className="space-y-6">
+          <section className="rounded-[1.75rem] border border-white/10 bg-slate-950/70 p-6">
+            <div className="text-xs uppercase tracking-[0.35em] text-white/45">Why Claim It</div>
+            <h2 className="mt-2 text-2xl font-semibold text-white">Turn replay sightings into a real profile</h2>
 
-          <div className="mt-5 space-y-4 text-sm leading-6 text-slate-300">
-            <p>
-              Right now this page only knows what the parser saw in replay files. Claiming it lets
-              you link Steam, join tournaments, chat in the lobby, mint a watcher key, and turn this
-              into a verified player identity.
-            </p>
-            <div className="rounded-2xl border border-white/8 bg-white/5 px-4 py-4">
-              <div className="text-sm font-medium text-white">Claim flow</div>
-              <ol className="mt-3 space-y-2 text-slate-300">
-                <li>1. Sign in with Steam.</li>
-                <li>2. Save this in-game name on your profile.</li>
-                <li>3. Upload one replay with your watcher key to verify it.</li>
-              </ol>
+            <div className="mt-5 space-y-4 text-sm leading-6 text-slate-300">
+              <p>
+                Right now this page only knows what the parser saw in replay files. Claiming it lets
+                you link Steam, join tournaments, chat in the lobby, mint a watcher key, and turn this
+                into a verified player identity.
+              </p>
+              <div className="rounded-2xl border border-white/8 bg-white/5 px-4 py-4">
+                <div className="text-sm font-medium text-white">Claim flow</div>
+                <ol className="mt-3 space-y-2 text-slate-300">
+                  <li>1. Sign in with Steam.</li>
+                  <li>2. Save this in-game name on your profile.</li>
+                  <li>3. Upload one replay with your watcher key to verify it.</li>
+                </ol>
+              </div>
             </div>
-          </div>
+          </section>
+
+          <section className="rounded-[1.75rem] border border-white/10 bg-slate-950/70 p-6">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <div className="text-xs uppercase tracking-[0.35em] text-white/45">Rivalries</div>
+                <h2 className="mt-2 text-2xl font-semibold text-white">Top Head-To-Heads</h2>
+              </div>
+              <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+                {rivalries.length} rivals
+              </div>
+            </div>
+
+            <div className="mt-5 space-y-3">
+              {rivalries.length === 0 ? (
+                <div className="rounded-2xl border border-white/8 bg-white/5 px-4 py-5 text-sm text-slate-300">
+                  No rivalries yet. The first repeat opponent will show up here.
+                </div>
+              ) : (
+                rivalries.slice(0, 6).map((rivalry) => (
+                  <Link
+                    key={rivalry.ref.token}
+                    href={buildMatchupHref(currentPlayer, rivalry.ref)}
+                    className="block rounded-2xl border border-white/8 bg-white/5 px-4 py-4 transition hover:border-rose-300/30 hover:bg-white/10"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <div className="font-medium text-white">{rivalry.ref.name}</div>
+                        <div className="mt-1 text-xs uppercase tracking-[0.25em] text-slate-400">
+                          {rivalry.ref.claimed ? "claimed rival" : "replay-built rival"}
+                        </div>
+                      </div>
+                      <div className="text-right text-xs text-slate-300">
+                        {rivalry.wins}-{rivalry.losses}
+                        {rivalry.unknowns > 0 ? ` · ${rivalry.unknowns} unknown` : ""}
+                      </div>
+                    </div>
+
+                    {rivalry.lastPlayedAt ? (
+                      <div className="mt-3 text-xs text-slate-400">
+                        Last met {new Date(rivalry.lastPlayedAt).toLocaleString()}
+                      </div>
+                    ) : null}
+                  </Link>
+                ))
+              )}
+            </div>
+          </section>
         </section>
 
         <section className="rounded-[1.75rem] border border-white/10 bg-slate-950/70 p-6">

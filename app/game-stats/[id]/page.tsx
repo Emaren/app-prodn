@@ -15,8 +15,10 @@ import {
   stringifyJson,
   winnerLabel,
 } from "@/lib/gameStatsView";
+import { buildMatchupHref } from "@/lib/publicMatchups";
 import { getPrisma } from "@/lib/prisma";
 import {
+  buildPublicPlayerRef,
   findClaimedUsersForReplayNames,
   getClaimedPublicPlayer,
   getPublicPlayerHref,
@@ -84,6 +86,10 @@ export default async function GameStatsDetailPage({
     prisma,
     players.map((player) => displayPlayerName(player))
   );
+  const playerRefs = players.map((player) =>
+    buildPublicPlayerRef(displayPlayerName(player), claimedPlayers)
+  );
+  const matchupHref = playerRefs.length === 2 ? buildMatchupHref(playerRefs[0], playerRefs[1]) : null;
   const playedAt = readPlayedAt(game);
   const eventTypes = Array.isArray(game.event_types) ? game.event_types : [];
   const keyEvents =
@@ -129,6 +135,14 @@ export default async function GameStatsDetailPage({
           </div>
 
           <div className="flex flex-wrap gap-3">
+            {matchupHref ? (
+              <Link
+                href={matchupHref}
+                className="rounded-full border border-white/15 px-5 py-3 text-sm text-white/85 transition hover:border-sky-300/40 hover:text-white"
+              >
+                Open Rivalry
+              </Link>
+            ) : null}
             <Link
               href="/game-stats"
               className="rounded-full border border-white/15 px-5 py-3 text-sm text-white/85 transition hover:border-white/30 hover:text-white"

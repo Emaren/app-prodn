@@ -8,6 +8,19 @@ export type ClaimedPublicPlayer = {
   verificationLevel: number;
 };
 
+export type PublicPlayerRef = {
+  token: string;
+  name: string;
+  href: string;
+  claimed: boolean;
+  uid: string | null;
+  verified: boolean;
+  verificationLevel: number;
+  aliases: string[];
+  steamPersonaName: string | null;
+  inGameName: string | null;
+};
+
 function normalizeKey(value: string | null | undefined) {
   return (value || "").trim().replace(/\s+/g, " ").toLowerCase();
 }
@@ -18,6 +31,87 @@ export function normalizePublicPlayerName(value: string | null | undefined) {
 
 export function buildReplayPlayerHref(name: string) {
   return `/players/by-name/${encodeURIComponent(normalizePublicPlayerName(name))}`;
+}
+
+export function buildClaimedPlayerHref(uid: string) {
+  return `/players/${uid}`;
+}
+
+export function buildClaimedPlayerToken(uid: string) {
+  return `u_${uid}`;
+}
+
+export function buildReplayPlayerToken(name: string) {
+  return `n_${normalizePublicPlayerName(name)}`;
+}
+
+export function parsePublicPlayerToken(token: string) {
+  if (token.startsWith("u_") && token.length > 2) {
+    return { kind: "claimed" as const, uid: token.slice(2) };
+  }
+
+  if (token.startsWith("n_") && token.length > 2) {
+    return { kind: "replay" as const, name: normalizePublicPlayerName(token.slice(2)) };
+  }
+
+  return null;
+}
+
+function buildAliasList(values: Array<string | null | undefined>) {
+  const aliases: string[] = [];
+
+  for (const value of values) {
+    const normalized = normalizePublicPlayerName(value);
+    if (!normalized) continue;
+
+    if (!aliases.some((alias) => normalizeKey(alias) === normalizeKey(normalized))) {
+      aliases.push(normalized);
+    }
+  }
+
+  return aliases;
+}
+
+export function buildClaimedPublicPlayerRef(
+  claimed: ClaimedPublicPlayer,
+  fallbackName?: string | null
+): PublicPlayerRef {
+  const aliases = buildAliasList([claimed.inGameName, claimed.steamPersonaName, fallbackName]);
+  const name =
+    normalizePublicPlayerName(claimed.inGameName) ||
+    normalizePublicPlayerName(claimed.steamPersonaName) ||
+    normalizePublicPlayerName(fallbackName) ||
+    claimed.uid;
+
+  return {
+    token: buildClaimedPlayerToken(claimed.uid),
+    name,
+    href: buildClaimedPlayerHref(claimed.uid),
+    claimed: true,
+    uid: claimed.uid,
+    verified: claimed.verified,
+    verificationLevel: claimed.verificationLevel,
+    aliases,
+    steamPersonaName: claimed.steamPersonaName,
+    inGameName: claimed.inGameName,
+  };
+}
+
+export function buildReplayPublicPlayerRef(name: string): PublicPlayerRef {
+  const normalizedName = normalizePublicPlayerName(name) || "Unknown player";
+
+  return {
+    token: buildReplayPlayerToken(normalizedName),
+    name: normalizedName,
+    href: buildReplayPlayerHref(normalizedName),
+    claimed: false,
+    uid: null,
+    verified: false,
+    verificationLevel: 0,
+    aliases: [normalizedName],
+    steamPersonaName: null,
+    inGameName: null,
+  };
 }
 
 export async function findClaimedUsersForReplayNames(prisma: PrismaClient, names: string[]) {
@@ -67,10 +161,66 @@ export function getClaimedPublicPlayer(
   return claimedPlayers.get(normalizeKey(playerName)) || null;
 }
 
-export function getPublicPlayerHref(
+export function buildPublicPlayerRef(
   playerName: string,
   claimedPlayers: Map<string, ClaimedPublicPlayer>
 ) {
   const claimed = getClaimedPublicPlayer(playerName, claimedPlayers);
-  return claimed ? `/players/${claimed.uid}` : buildReplayPlayerHref(playerName);
+  return claimed
+    ? buildClaimedPublicPlayerRef(claimed, playerName)
+    : buildReplayPublicPlayerRef(playerName);
+}
+
+export function getPublicPlayerHref(
+  playerName: string,
+  claimedPlayers: Map<string, ClaimedPublicPlayer>
+) {
+  return buildPublicPlayerRef(playerName, claimedPlayers).href;
+}
+
+export async function resolvePublicPlayerToken(prisma: PrismaClient, token: string) {
+  const parsed = parsePublicPlayerToken(token);
+  if (!parsed) {
+    return null;
+  }
+
+  if (parsed.kind === "claimed") {
+    const user = await prisma.user.findUnique({
+      where: { uid: parsed.uid },
+      select: {
+        uid: true,
+        inGameName: true,
+        steamPersonaName: true,
+        verified: true,
+        verificationLevel: true,
+      },
+    });
+
+    return user ? buildClaimedPublicPlayerRef(user) : null;
+  }
+
+  const claimedUser = await prisma.user.findFirst({
+    where: {
+      OR: [
+        { inGameName: { equals: parsed.name, mode: "insensitive" } },
+        { steamPersonaName: { equals: parsed.name, mode: "insensitive" } },
+      ],
+    },
+    select: {
+      uid: true,
+      inGameName: true,
+      steamPersonaName: true,
+      verified: true,
+      verificationLevel: true,
+    },
+  });
+
+  return claimedUser
+    ? buildClaimedPublicPlayerRef(claimedUser, parsed.name)
+    : buildReplayPublicPlayerRef(parsed.name);
+}
+
+export function publicPlayerMatchesName(player: PublicPlayerRef, name: string) {
+  const key = normalizeKey(name);
+  return player.aliases.some((alias) => normalizeKey(alias) === key);
 }

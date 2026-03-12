@@ -10,8 +10,9 @@ import {
   readPlayedAt,
   winnerLabel,
 } from "@/lib/gameStatsView";
+import { buildMatchupHref, buildRivalSummaries } from "@/lib/publicMatchups";
 import { getPrisma } from "@/lib/prisma";
-import { normalizePublicPlayerName } from "@/lib/publicPlayers";
+import { buildClaimedPublicPlayerRef, normalizePublicPlayerName } from "@/lib/publicPlayers";
 
 export const dynamic = "force-dynamic";
 
@@ -78,6 +79,8 @@ export default async function PublicPlayerPage({
   const displayName = user.inGameName || user.steamPersonaName || user.uid;
   const isLive = Boolean(user.lastSeen && user.lastSeen > liveThreshold);
   const aliases = Array.from(aliasSet);
+  const currentPlayer = buildClaimedPublicPlayerRef(user, displayName);
+  const rivalries = await buildRivalSummaries(prisma, publicMatches, currentPlayer);
 
   return (
     <main className="space-y-6 py-6 text-white">
@@ -180,6 +183,41 @@ export default async function PublicPlayerPage({
                       {attempt.createdAt.toLocaleString()}
                     </div>
                   </div>
+                ))
+              )}
+            </div>
+          </Panel>
+
+          <Panel title="Top Rivalries" eyebrow="Head-To-Head">
+            <div className="space-y-3">
+              {rivalries.length === 0 ? (
+                <EmptyPanel message="No repeat opponents yet. Once this player meets the same rival again, the head-to-head graph will start here." />
+              ) : (
+                rivalries.slice(0, 6).map((rivalry) => (
+                  <Link
+                    key={rivalry.ref.token}
+                    href={buildMatchupHref(currentPlayer, rivalry.ref)}
+                    className="block rounded-2xl border border-white/8 bg-white/5 px-4 py-4 transition hover:border-amber-300/30 hover:bg-white/10"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <div className="font-medium text-white">{rivalry.ref.name}</div>
+                        <div className="mt-1 text-xs uppercase tracking-[0.25em] text-slate-400">
+                          {rivalry.ref.claimed ? "claimed rival" : "replay-built rival"}
+                        </div>
+                      </div>
+                      <div className="text-right text-xs text-slate-300">
+                        {rivalry.wins}-{rivalry.losses}
+                        {rivalry.unknowns > 0 ? ` · ${rivalry.unknowns} unknown` : ""}
+                      </div>
+                    </div>
+
+                    {rivalry.lastPlayedAt ? (
+                      <div className="mt-3 text-xs text-slate-400">
+                        Last met {new Date(rivalry.lastPlayedAt).toLocaleString()}
+                      </div>
+                    ) : null}
+                  </Link>
                 ))
               )}
             </div>
