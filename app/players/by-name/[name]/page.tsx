@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import type { ReactNode } from "react";
-import { Prisma } from "@/lib/generated/prisma";
 
 import {
   displayPlayerName,
@@ -14,17 +13,6 @@ import { getPrisma } from "@/lib/prisma";
 import { normalizePublicPlayerName } from "@/lib/publicPlayers";
 
 export const dynamic = "force-dynamic";
-
-type ReplayOnlyMatchRow = {
-  id: number;
-  map: unknown;
-  winner: string | null;
-  players: unknown;
-  played_on: Date | null;
-  timestamp: Date | null;
-  parse_reason: string | null;
-  disconnect_detected: boolean;
-};
 
 export default async function ReplayOnlyPlayerPage({
   params,
@@ -52,26 +40,30 @@ export default async function ReplayOnlyPlayerPage({
     redirect(`/players/${claimedUser.uid}`);
   }
 
-  const matches = await prisma.$queryRaw<ReplayOnlyMatchRow[]>(Prisma.sql`
-    SELECT
-      id,
-      map,
-      winner,
-      players,
-      played_on,
-      "timestamp",
-      parse_reason,
-      disconnect_detected
-    FROM public.game_stats
-    WHERE is_final IS TRUE
-      AND EXISTS (
-        SELECT 1
-        FROM jsonb_array_elements(COALESCE(players, '[]'::jsonb)) AS player
-        WHERE LOWER(COALESCE(player->>'name', '')) = LOWER(${playerName})
+  const normalizedPlayerName = normalizePublicPlayerName(playerName);
+  const candidateMatches = await prisma.gameStats.findMany({
+    where: { is_final: true },
+    orderBy: [{ played_on: "desc" }, { timestamp: "desc" }, { createdAt: "desc" }],
+    take: 200,
+    select: {
+      id: true,
+      map: true,
+      winner: true,
+      players: true,
+      played_on: true,
+      timestamp: true,
+      parse_reason: true,
+      disconnect_detected: true,
+    },
+  });
+
+  const matches = candidateMatches
+    .filter((match) =>
+      parsePlayers(match.players).some(
+        (player) => normalizePublicPlayerName(displayPlayerName(player)) === normalizedPlayerName
       )
-    ORDER BY COALESCE(played_on, "timestamp", created_at) DESC
-    LIMIT 24
-  `);
+    )
+    .slice(0, 24);
 
   if (matches.length === 0) {
     notFound();
