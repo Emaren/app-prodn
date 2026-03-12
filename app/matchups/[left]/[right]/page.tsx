@@ -63,58 +63,100 @@ export default async function MatchupPage({
 
   const matches = filterHeadToHeadMatches(candidateMatches, leftPlayer, rightPlayer).slice(0, 24);
   const summary = summarizeHeadToHead(matches, leftPlayer, rightPlayer);
+  const lastPlayedLabel = summary.lastPlayedAt
+    ? new Date(summary.lastPlayedAt).toLocaleString([], {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      })
+    : "Waiting for first match";
 
   return (
-    <main className="space-y-6 py-6 text-white">
-      <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(96,165,250,0.18),_transparent_28%),linear-gradient(135deg,_#0f172a,_#111827_58%,_#020617)] p-8">
-        <div className="space-y-5">
-          <div className="text-xs uppercase tracking-[0.35em] text-sky-200/70">Head-To-Head</div>
-          <h1 className="text-4xl font-semibold text-white sm:text-5xl">
-            {leftPlayer.name} vs {rightPlayer.name}
-          </h1>
-          <p className="max-w-3xl text-base leading-7 text-slate-300 sm:text-lg">
-            Replay-backed rivalry record. Every stored meeting between these two players lands here
-            with results, timestamps, and direct paths into each public identity page.
-          </p>
+    <main className="space-y-8 py-6 text-white">
+      <section className="overflow-hidden rounded-[2.3rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(96,165,250,0.22),_transparent_24%),radial-gradient(circle_at_bottom_right,_rgba(245,158,11,0.14),_transparent_28%),linear-gradient(135deg,_#0f172a,_#111827_56%,_#020617)] p-8 shadow-[0_30px_90px_rgba(2,6,23,0.45)] sm:p-10">
+        <div className="grid gap-8 xl:grid-cols-[1.15fr_0.85fr] xl:items-end">
+          <div className="space-y-6">
+            <div className="text-xs uppercase tracking-[0.35em] text-sky-200/70">Head-To-Head</div>
+            <div className="space-y-4">
+              <h1 className="max-w-4xl text-4xl font-semibold leading-[0.95] text-white sm:text-5xl lg:text-6xl">
+                {leftPlayer.name} vs {rightPlayer.name}
+              </h1>
+              <p className="max-w-3xl text-base leading-8 text-slate-300 sm:text-lg">
+                Replay-backed rivalry record. Every stored meeting between these two players lands
+                here with results, timestamps, and direct paths into each public identity page.
+              </p>
+            </div>
 
-          <div className="flex flex-wrap gap-2">
-            <Tag>{summary.totalMatches} matches</Tag>
-            <Tag>{leftPlayer.name}: {summary.leftWins}</Tag>
-            <Tag>{rightPlayer.name}: {summary.rightWins}</Tag>
-            {summary.unknowns > 0 ? <Tag>{summary.unknowns} unknown</Tag> : null}
-            {summary.lastPlayedAt ? (
-              <Tag>Last played {new Date(summary.lastPlayedAt).toLocaleString()}</Tag>
-            ) : null}
+            <div className="flex flex-wrap gap-2">
+              <Tag>{summary.totalMatches} matches</Tag>
+              <Tag>{leftPlayer.name}: {summary.leftWins}</Tag>
+              <Tag>{rightPlayer.name}: {summary.rightWins}</Tag>
+              {summary.unknowns > 0 ? <Tag>{summary.unknowns} unknown</Tag> : null}
+              <Tag>Last played {lastPlayedLabel}</Tag>
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              <Link
+                href={leftPlayer.href}
+                className="rounded-full bg-sky-300 px-6 py-3.5 text-sm font-semibold text-slate-950 transition hover:bg-sky-200"
+              >
+                View {leftPlayer.name}
+              </Link>
+              <Link
+                href={rightPlayer.href}
+                className="rounded-full border border-white/15 px-6 py-3.5 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
+              >
+                View {rightPlayer.name}
+              </Link>
+              <Link
+                href="/players"
+                className="rounded-full border border-white/15 px-6 py-3.5 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
+              >
+                Browse Players
+              </Link>
+            </div>
           </div>
 
-          <div className="flex flex-wrap gap-3">
-            <Link
-              href={leftPlayer.href}
-              className="rounded-full bg-sky-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-200"
-            >
-              View {leftPlayer.name}
-            </Link>
-            <Link
-              href={rightPlayer.href}
-              className="rounded-full border border-white/15 px-5 py-3 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
-            >
-              View {rightPlayer.name}
-            </Link>
-            <Link
-              href="/players"
-              className="rounded-full border border-white/15 px-5 py-3 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
-            >
-              Browse Players
-            </Link>
+          <div className="rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.09),rgba(255,255,255,0.03))] p-6 shadow-2xl shadow-black/30">
+            <div className="text-xs uppercase tracking-[0.35em] text-white/45">Live Rivalry Score</div>
+            <div className="mt-6 grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+              <HeroPlayer player={leftPlayer} align="left" />
+              <div className="rounded-[1.6rem] border border-white/10 bg-slate-950/70 px-5 py-4 text-center">
+                <div className="text-[11px] uppercase tracking-[0.28em] text-slate-500">Series</div>
+                <div className="mt-2 text-4xl font-semibold text-white sm:text-5xl">
+                  {summary.leftWins}
+                  <span className="px-2 text-slate-500">-</span>
+                  {summary.rightWins}
+                </div>
+              </div>
+              <HeroPlayer player={rightPlayer} align="right" />
+            </div>
+
+            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+              <SummaryMetric label="Meetings" value={String(summary.totalMatches)} />
+              <SummaryMetric label="Unknown" value={String(summary.unknowns)} />
+              <SummaryMetric label="Last Meeting" value={lastPlayedLabel} />
+            </div>
           </div>
         </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+      <section className="grid gap-6 xl:grid-cols-[0.94fr_1.06fr]">
         <Panel title="Series Record" eyebrow="Rivalry">
-          <div className="grid gap-4 md:grid-cols-2">
-            <PlayerSummaryCard player={leftPlayer} wins={summary.leftWins} losses={summary.rightWins} unknowns={summary.unknowns} />
-            <PlayerSummaryCard player={rightPlayer} wins={summary.rightWins} losses={summary.leftWins} unknowns={summary.unknowns} />
+          <div className="grid gap-5 lg:grid-cols-2">
+            <PlayerSummaryCard
+              player={leftPlayer}
+              wins={summary.leftWins}
+              losses={summary.rightWins}
+              unknowns={summary.unknowns}
+            />
+            <PlayerSummaryCard
+              player={rightPlayer}
+              wins={summary.rightWins}
+              losses={summary.leftWins}
+              unknowns={summary.unknowns}
+            />
           </div>
         </Panel>
 
@@ -133,14 +175,14 @@ export default async function MatchupPage({
                     href={`/game-stats/${match.id}`}
                     className="block rounded-2xl border border-white/8 bg-white/5 px-4 py-4 transition hover:border-sky-300/30 hover:bg-white/10"
                   >
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <div className="font-medium text-white">{readMapName(match.map)}</div>
-                        <div className="mt-1 text-sm text-slate-300">
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div className="min-w-0 flex-1">
+                        <div className="text-lg font-semibold text-white">{readMapName(match.map)}</div>
+                        <div className="mt-1 text-sm leading-6 text-slate-300">
                           {leftPlayer.name} vs {rightPlayer.name}
                         </div>
                       </div>
-                      <div className="text-right text-xs uppercase tracking-[0.25em] text-slate-400">
+                      <div className="rounded-full border border-sky-300/20 bg-sky-300/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.22em] text-sky-100">
                         {winnerLabel(match.winner, match.parse_reason)}
                       </div>
                     </div>
@@ -177,11 +219,28 @@ function Panel({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-[1.75rem] border border-white/10 bg-slate-950/70 p-6">
+    <section className="rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(2,6,23,0.9),rgba(2,6,23,0.72))] p-7 shadow-[0_20px_60px_rgba(2,6,23,0.35)]">
       <div className="text-xs uppercase tracking-[0.35em] text-white/45">{eyebrow}</div>
-      <h2 className="mt-2 text-2xl font-semibold text-white">{title}</h2>
-      <div className="mt-5">{children}</div>
+      <h2 className="mt-3 text-3xl font-semibold text-white">{title}</h2>
+      <div className="mt-6">{children}</div>
     </section>
+  );
+}
+
+function HeroPlayer({
+  player,
+  align,
+}: {
+  player: PublicPlayerRef;
+  align: "left" | "right";
+}) {
+  return (
+    <div className={`min-w-0 ${align === "right" ? "text-right" : ""}`}>
+      <div className="text-[11px] uppercase tracking-[0.28em] text-slate-500">
+        {player.claimed ? "Claimed" : "Unclaimed"}
+      </div>
+      <div className="mt-2 break-words text-2xl font-semibold text-white">{player.name}</div>
+    </div>
   );
 }
 
@@ -199,38 +258,43 @@ function PlayerSummaryCard({
   const identityLabel = player.claimed ? "Claimed profile" : "Unclaimed warrior";
 
   return (
-    <div className="rounded-2xl border border-white/8 bg-white/5 p-6">
+    <div className="rounded-[1.8rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.03))] p-6 shadow-lg shadow-black/20">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <div className="text-xl font-semibold text-white break-words">{player.name}</div>
-          <div className="mt-1 text-[11px] uppercase tracking-[0.2em] text-slate-400">
-            {identityLabel}
-          </div>
-          {player.claimed ? (
-            <div className="mt-3">
-              <SteamLinkedBadge compact />
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="text-2xl font-semibold leading-tight text-white break-words">
+              {player.name}
             </div>
-          ) : null}
+            {player.claimed ? (
+              <Link href={player.href} className="inline-flex">
+                <SteamLinkedBadge compact />
+              </Link>
+            ) : null}
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Tag>{identityLabel}</Tag>
+            <Tag>{wins + losses + unknowns} recorded</Tag>
+          </div>
         </div>
         <Link
           href={player.href}
-          className="shrink-0 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] font-medium text-slate-300 transition hover:border-white/20 hover:text-white"
+          className="shrink-0 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-[11px] font-medium text-slate-300 transition hover:border-white/20 hover:text-white"
         >
-          Open
+          Open profile
         </Link>
       </div>
 
-      <div className="mt-6 grid grid-cols-3 gap-3">
-        <Stat label="Wins" value={String(wins)} />
-        <Stat label="Losses" value={String(losses)} />
-        <Stat label="Unknown" value={String(unknowns)} />
+      <div className="mt-6 space-y-3">
+        <RecordMetric label="Wins" value={wins} accent="emerald" />
+        <RecordMetric label="Losses" value={losses} accent="rose" />
+        <RecordMetric label="Unknown" value={unknowns} accent="slate" />
       </div>
 
       {!player.claimed ? (
         <div className="mt-6">
           <Link
             href={`/profile?claim_name=${encodeURIComponent(player.name)}`}
-            className="inline-flex max-w-full items-center rounded-full bg-rose-300 px-4 py-2 text-xs font-semibold text-slate-950 transition hover:bg-rose-200"
+            className="inline-flex max-w-full items-center rounded-full bg-rose-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-rose-200"
           >
             <span className="truncate">Claim {player.name}</span>
           </Link>
@@ -240,13 +304,38 @@ function PlayerSummaryCard({
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function RecordMetric({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: number;
+  accent: "emerald" | "rose" | "slate";
+}) {
+  const accentClasses =
+    accent === "emerald"
+      ? "border-emerald-400/20 bg-emerald-500/10 text-emerald-100"
+      : accent === "rose"
+        ? "border-rose-300/20 bg-rose-400/10 text-rose-100"
+        : "border-white/10 bg-slate-950/60 text-slate-200";
+
   return (
-    <div className="min-w-0 rounded-2xl border border-white/8 bg-slate-950/60 px-3 py-4 text-center">
-      <div className="text-[9px] uppercase tracking-[0.14em] leading-4 text-slate-500 break-words">
-        {label}
+    <div className={`flex items-center justify-between rounded-2xl border px-4 py-4 ${accentClasses}`}>
+      <div>
+        <div className="text-[11px] uppercase tracking-[0.25em] text-white/55">{label}</div>
+        <div className="mt-1 text-sm text-white/75">Series result</div>
       </div>
-      <div className="mt-3 text-2xl font-semibold text-slate-100">{value}</div>
+      <div className="text-3xl font-semibold text-white">{value}</div>
+    </div>
+  );
+}
+
+function SummaryMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-4">
+      <div className="text-[11px] uppercase tracking-[0.22em] text-slate-500">{label}</div>
+      <div className="mt-2 text-sm font-medium leading-6 text-white">{value}</div>
     </div>
   );
 }

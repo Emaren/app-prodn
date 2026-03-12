@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "/opengraph-image",
+        url: "/social/aoe2hdbets-card.png",
         width: 1200,
         height: 630,
         alt: "AoE2HDBets tournament lobby social card",
@@ -33,10 +33,17 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
+    site: "@AoE2HDBets",
+    creator: "@AoE2HDBets",
     title: "AoE2HDBets",
     description:
       "Tournament lobby, replay proof, rivalry pages, and live chat for AoE2HD players.",
-    images: ["/twitter-image"],
+    images: [
+      {
+        url: "/social/aoe2hdbets-card.png",
+        alt: "AoE2HDBets tournament lobby social card",
+      },
+    ],
   },
   icons: {
     icon: "/favicon.ico",
