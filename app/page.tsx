@@ -5,10 +5,14 @@ import { useCallback, useEffect, useState } from "react";
 import SteamLoginButton from "@/components/SteamLoginButton";
 import { useUserAuth } from "@/context/UserAuthContext";
 import {
+  parsePlayers as parseReplayPlayers,
+  readMapName,
+  winnerLabel,
+} from "@/lib/gameStatsView";
+import {
   getFallbackTournament,
   getTournamentMatchStatusLabel,
   getTournamentStatusLabel,
-  type LobbyMatchPlayer,
   type LobbyMatchRow,
   type LobbyMessage,
   type LobbyOnlineUser,
@@ -536,8 +540,16 @@ export default function HomePage() {
                 <div className="text-xs uppercase tracking-[0.35em] text-white/45">Lobby</div>
                 <h3 className="mt-2 text-2xl font-semibold text-white">Online Warriors</h3>
               </div>
-              <div className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-200">
-                {onlineUsers.length} active
+              <div className="flex items-center gap-3">
+                <Link
+                  href="/users"
+                  className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300 transition hover:border-white/20 hover:text-white"
+                >
+                  Browse Profiles
+                </Link>
+                <div className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-200">
+                  {onlineUsers.length} active
+                </div>
               </div>
             </div>
 
@@ -555,8 +567,18 @@ export default function HomePage() {
           </div>
 
           <div className="rounded-[1.75rem] border border-white/10 bg-slate-950/70 p-6">
-            <div className="text-xs uppercase tracking-[0.35em] text-white/45">Match Feed</div>
-            <h3 className="mt-2 text-2xl font-semibold text-white">Recent Parsed Games</h3>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <div className="text-xs uppercase tracking-[0.35em] text-white/45">Match Feed</div>
+                <h3 className="mt-2 text-2xl font-semibold text-white">Recent Parsed Games</h3>
+              </div>
+              <Link
+                href="/game-stats"
+                className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300 transition hover:border-white/20 hover:text-white"
+              >
+                Open Parser Lab
+              </Link>
+            </div>
 
             <div className="mt-5 space-y-3">
               {recentMatches.length === 0 ? (
@@ -585,7 +607,10 @@ function StatCard({ label, value }: { label: string; value: string }) {
 
 function OnlineUserCard({ user }: { user: LobbyOnlineUser }) {
   return (
-    <div className="flex items-center justify-between rounded-2xl border border-white/8 bg-white/5 px-4 py-4">
+    <Link
+      href={`/players/${user.uid}`}
+      className="flex items-center justify-between rounded-2xl border border-white/8 bg-white/5 px-4 py-4 transition hover:border-amber-300/30 hover:bg-white/10"
+    >
       <div>
         <div className="font-medium text-white">{user.in_game_name}</div>
         <div className="text-xs uppercase tracking-[0.25em] text-slate-400">
@@ -599,29 +624,32 @@ function OnlineUserCard({ user }: { user: LobbyOnlineUser }) {
       >
         {user.verified ? "Trusted" : "New"}
       </div>
-    </div>
+    </Link>
   );
 }
 
 function MatchCard({ match }: { match: LobbyMatchRow }) {
-  const players = normalizePlayers(match.players);
+  const players = parseReplayPlayers(match.players).map((player) => String(player.name || "")).filter(Boolean);
   const playedAt = match.played_on || match.timestamp;
 
   return (
-    <div className="rounded-2xl border border-white/8 bg-white/5 px-4 py-4">
+    <Link
+      href={`/game-stats/${match.id}`}
+      className="block rounded-2xl border border-white/8 bg-white/5 px-4 py-4 transition hover:border-sky-300/30 hover:bg-white/10"
+    >
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="font-medium text-white">{readMapName(match.map)}</div>
           <div className="mt-1 text-sm text-slate-300">{players.join(" vs ")}</div>
         </div>
         <div className="text-right text-xs uppercase tracking-[0.25em] text-slate-400">
-          {match.winner || "Unknown"}
+          {winnerLabel(match.winner, match.parse_reason)}
         </div>
       </div>
       {playedAt && (
         <div className="mt-3 text-xs text-slate-400">{new Date(playedAt).toLocaleString()}</div>
       )}
-    </div>
+    </Link>
   );
 }
 
@@ -650,29 +678,4 @@ function formatTournamentWindow(startsAt: string | null) {
     hour: "numeric",
     minute: "2-digit",
   });
-}
-
-function readMapName(value: LobbyMatchRow["map"]) {
-  if (!value) return "Unknown Map";
-  if (typeof value === "string") return value;
-  return value.name || "Unknown Map";
-}
-
-function normalizePlayers(value: LobbyMatchRow["players"]) {
-  if (Array.isArray(value)) {
-    return value.map((player) => player.name).filter(Boolean).slice(0, 4);
-  }
-
-  if (typeof value === "string") {
-    try {
-      const parsed = JSON.parse(value) as LobbyMatchPlayer[];
-      return Array.isArray(parsed)
-        ? parsed.map((player) => player.name).filter(Boolean).slice(0, 4)
-        : [];
-    } catch {
-      return [];
-    }
-  }
-
-  return [];
 }

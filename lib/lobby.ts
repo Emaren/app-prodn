@@ -23,6 +23,7 @@ export type LobbyMatchRow = {
   players: LobbyMatchPlayer[] | string;
   played_on: string | null;
   timestamp: string | null;
+  parse_reason?: string | null;
 };
 
 export type LobbyTournamentEntrant = {

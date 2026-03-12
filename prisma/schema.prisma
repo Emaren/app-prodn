@@ -81,12 +81,37 @@ model GameStats {
 
   user                 User?            @relation(fields: [userUid], references: [uid], onDelete: NoAction, onUpdate: NoAction)
   tournamentMatchProof TournamentMatch? @relation("TournamentMatchProof")
+  replayParseAttempts  ReplayParseAttempt[] @relation("GameStatsParseAttempts")
 
   @@unique([replayHash, is_final], map: "uq_replay_final")
   @@index([userUid], map: "ix_game_stats_user_uid")
   @@index([replayHash, parse_iteration], map: "ix_replay_hash_iteration")
   @@index([replay_file, parse_iteration], map: "ix_replay_iteration")
   @@map("game_stats")
+}
+
+model ReplayParseAttempt {
+  id               Int       @id @default(autoincrement())
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  userUid          String?   @map("user_uid") @db.VarChar(100)
+  replayHash       String?   @map("replay_hash") @db.VarChar(64)
+  originalFilename String?   @map("original_filename") @db.VarChar(255)
+  parseSource      String    @default("file_upload") @map("parse_source") @db.VarChar(20)
+  status           String    @default("received") @db.VarChar(32)
+  detail           String?   @db.VarChar(255)
+  uploadMode       String?   @map("upload_mode") @db.VarChar(20)
+  fileSizeBytes    Int?      @map("file_size_bytes")
+  gameStatsId      Int?      @map("game_stats_id")
+  playedOn         DateTime? @map("played_on") @db.Timestamp(6)
+
+  gameStats GameStats? @relation("GameStatsParseAttempts", fields: [gameStatsId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([createdAt], map: "ix_replay_parse_attempts_created_at")
+  @@index([status, createdAt], map: "ix_replay_parse_attempts_status_created_at")
+  @@index([userUid, createdAt], map: "ix_replay_parse_attempts_user_uid_created_at")
+  @@index([replayHash], map: "ix_replay_parse_attempts_replay_hash")
+  @@index([gameStatsId], map: "ix_replay_parse_attempts_game_stats_id")
+  @@map("replay_parse_attempts")
 }
 
 model Tournament {

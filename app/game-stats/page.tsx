@@ -1,295 +1,266 @@
-"use client";
+import Link from "next/link";
+import type { ReactNode } from "react";
 
-import React, { useEffect, useState, useRef, useMemo } from "react";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { motion, AnimatePresence } from "framer-motion";
+import { getPrisma } from "@/lib/prisma";
+import {
+  displayPlayerName,
+  displayReplayFilename,
+  parsePlayers,
+  parseStatusLabel,
+  readMapName,
+  readPlayedAt,
+  shortHash,
+  winnerLabel,
+} from "@/lib/gameStatsView";
 
-// --- Interfaces ---
-interface PlayerStats {
-  name: string;
-  civilization: number;
-  civilization_name: string;
-  winner: boolean;
-  military_score: number;
-  economy_score: number;
-  technology_score: number;
-  society_score: number;
-  units_killed: number;
-  buildings_destroyed: number;
-  resources_gathered: number;
-  fastest_castle_age: number;
-  fastest_imperial_age: number;
-  relics_collected: number;
-}
+export const dynamic = "force-dynamic";
 
-interface GameStats {
-  id: number;
-  game_version: string;
-  map: unknown;
-  game_type: string;
-  duration: number;
-  game_duration?: number;
-  players: PlayerStats[];
-  timestamp: string;
-  replay_hash: string;
-}
+export default async function GameStatsPage() {
+  const prisma = getPrisma();
 
-// --- Helpers ---
-function cleanGameType(rawType: string): string {
-  const match = rawType.match(/'(VER.*?)'/);
-  return match && match[1] ? match[1] : rawType;
-}
+  const [games, recentAttempts] = await Promise.all([
+    prisma.gameStats.findMany({
+      where: { is_final: true },
+      orderBy: [{ played_on: "desc" }, { timestamp: "desc" }, { createdAt: "desc" }],
+      take: 100,
+      include: {
+        user: {
+          select: {
+            uid: true,
+            inGameName: true,
+            steamPersonaName: true,
+            verificationLevel: true,
+            verified: true,
+          },
+        },
+      },
+    }),
+    prisma.replayParseAttempt.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 60,
+    }),
+  ]);
 
-function formatDuration(totalSeconds: number): string {
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const secs = totalSeconds % 60;
-  if (hours > 0 && minutes > 0 && secs > 0) return `${hours} hours ${minutes} minutes ${secs} seconds`;
-  if (hours > 0 && minutes > 0) return `${hours} hours ${minutes} minutes`;
-  if (hours > 0) return `${hours} hours`;
-  if (minutes > 0 && secs > 0) return `${minutes} minutes ${secs} seconds`;
-  if (minutes > 0) return `${minutes} minutes`;
-  return `${secs} seconds`;
-}
-
-function sanitizeDuration(seconds: number): number {
-  if (seconds > 4 * 3600 || seconds < 10) return 0;
-  return seconds;
-}
-
-// --- Skeleton Loader ---
-const LoadingSkeleton = () => (
-  <div className="space-y-6">
-    {Array.from({ length: 3 }).map((_, idx) => (
-      <div
-        key={idx}
-        className="p-6 rounded-xl bg-gray-700 animate-pulse space-y-4"
-      >
-        <div className="h-6 bg-gray-600 rounded w-1/2"></div>
-        <div className="h-4 bg-gray-600 rounded w-1/3"></div>
-        <div className="h-4 bg-gray-600 rounded w-1/4"></div>
-        <div className="h-4 bg-gray-600 rounded w-2/5"></div>
-        <div className="h-4 bg-gray-600 rounded w-3/5"></div>
-        <div className="h-4 bg-gray-600 rounded w-1/2"></div>
-      </div>
-    ))}
-  </div>
-);
-
-const GameStatsPage = () => {
-  const router = useRouter();
-  const storedName = typeof window !== "undefined" ? localStorage.getItem("playerName")?.toLowerCase() || "" : "";
-  const [playerName] = useState(storedName);
-  const [filterMode, setFilterMode] = useState<"all" | "mine">("all"); // ⬅️ Default always to "all"
-  const [games, setGames] = useState<GameStats[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const latestHashRef = useRef<string | null>(null);
-  const focusRef = useRef(true);
-
-  useEffect(() => {
-    const fetchGameStats = async () => {
-      try {
-        const response = await fetch(`/api/game_stats?ts=${Date.now()}`, { cache: "no-store" });
-        const data = await response.json();
-        if (!Array.isArray(data)) {
-          console.warn("⚠️ Invalid API response format.");
-          setLoading(false);
-          return;
-        }
-
-        const formattedGames = data.map((game: GameStats) => {
-          let safePlayers: PlayerStats[] = [];
-          let safeMap: unknown = game.map;
-
-          if (typeof game.players === "string") {
-            try { safePlayers = JSON.parse(game.players); } catch { safePlayers = []; }
-          } else if (Array.isArray(game.players)) {
-            safePlayers = game.players;
-          }
-
-          if (typeof safeMap === "string") {
-            try { safeMap = JSON.parse(safeMap); } catch { safeMap = {}; }
-          }
-
-          return { ...game, players: safePlayers, map: safeMap };
-        });
-
-        const dedupedGames = Array.from(
-          formattedGames.reduce((map, game) => {
-            const existing = map.get(game.replay_hash);
-            if (!existing || new Date(game.timestamp) > new Date(existing.timestamp)) {
-              map.set(game.replay_hash, game);
-            }
-            return map;
-          }, new Map<string, GameStats>()).values()
-        );
-
-        const validGames = dedupedGames.filter((g) => g.players.length > 0);
-        validGames.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-
-        if (validGames.length === 0) {
-          setLoading(false);
-          return;
-        }
-
-        const newestHash = validGames[0].replay_hash;
-        if (newestHash !== latestHashRef.current) {
-          latestHashRef.current = newestHash;
-          setGames(validGames);
-          console.log("🔁 Game list updated. Latest replay_hash:", newestHash);
-        }
-
-        setLoading(false);
-      } catch (err) {
-        console.error("❌ Failed to fetch game stats:", err);
-        setLoading(false);
-      }
-    };
-
-    let interval: NodeJS.Timeout;
-    const startPolling = () => {
-      clearInterval(interval);
-      interval = setInterval(fetchGameStats, focusRef.current ? 5000 : 15000);
-    };
-
-    fetchGameStats();
-    startPolling();
-
-    const onFocus = () => {
-      focusRef.current = true;
-      startPolling();
-    };
-    const onBlur = () => {
-      focusRef.current = false;
-      startPolling();
-    };
-
-    window.addEventListener("focus", onFocus);
-    window.addEventListener("blur", onBlur);
-
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener("focus", onFocus);
-      window.removeEventListener("blur", onBlur);
-    };
-  }, []);
-
-  const filteredGames = useMemo(() => {
-    if (filterMode === "all") return games;
-    return games.filter((game) =>
-      game.players.some((p) => p.name.toLowerCase() === playerName)
-    );
-  }, [games, playerName, filterMode]);
-
-  const showPremium = () => (
-    <span className="text-gray-400 italic">Premium Stats</span>
-  );
+  const failedAttempts = recentAttempts.filter((attempt) => attempt.status !== "stored");
+  const storedAttempts = recentAttempts.filter((attempt) => attempt.status === "stored");
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-12">
-      <div className="text-center mt-4">
-        <Button
-          className="bg-blue-700 hover:bg-blue-700 px-2 py-1 text-white"
-          onClick={() => router.push("/")}
-        >
-          ⬅️ Back to Home
-        </Button>
-      </div>
+    <main className="space-y-6 py-6 text-white">
+      <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(56,189,248,0.16),_transparent_35%),linear-gradient(135deg,_#0f172a,_#0f172a_55%,_#111827)] p-8">
+        <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+          <div className="space-y-4">
+            <div className="text-sm uppercase tracking-[0.4em] text-sky-200/70">Parser Lab</div>
+            <h1 className="max-w-3xl text-4xl font-semibold leading-tight text-white sm:text-5xl">
+              Every final replay, every recent failure, and the exact parser trail behind them.
+            </h1>
+            <p className="max-w-3xl text-base leading-7 text-slate-300 sm:text-lg">
+              This is the workbench for making AoE2HDBets trustworthy. Final parses link into full
+              detail pages. Failed attempts stay visible so we can tighten the watcher and parser
+              instead of losing the evidence.
+            </p>
 
-      <div className="text-center mt-8 flex justify-center gap-4">
-        <Button
-          onClick={() => setFilterMode("mine")}
-          className={filterMode === "mine" ? "bg-yellow-700" : "bg-gray-700"}
-        >
-          🎯 My Games
-        </Button>
-        <Button
-          onClick={() => setFilterMode("all")}
-          className={filterMode === "all" ? "bg-yellow-700" : "bg-gray-700"}
-        >
-          🌎 All Games
-        </Button>
-      </div>
+            <div className="flex flex-wrap gap-3">
+              <Link
+                href="/"
+                className="rounded-full bg-sky-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-200"
+              >
+                Back To Lobby
+              </Link>
+            </div>
+          </div>
 
-      <h2 className="text-3xl font-bold text-center my-8 text-gray-400">
-        {filterMode === "mine" ? "My Matches" : "All Matches"}
-      </h2>
-
-      {loading ? (
-        <LoadingSkeleton />
-      ) : filteredGames.length === 0 ? (
-        <p className="text-center text-gray-400">No games detected. Play AoE2HD games using this app first to see them parsed and displayed here.</p>
-      ) : (
-        <div className="space-y-6">
-          <AnimatePresence>
-            {filteredGames.map((game, index) => {
-              const isLatest = index === 0;
-              const cleanedDuration = sanitizeDuration(game.duration || game.game_duration || 0);
-
-              return (
-                <motion.div
-                  key={game.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3, delay: index * 0.05 }}
-                  className={`p-6 rounded-xl shadow-lg ${
-                    isLatest
-                      ? "bg-gray-900 text-yellow-400 border-2 border-yellow-500"
-                      : "bg-gray-700 text-black border border-gray-600"
-                  }`}
-                >
-                  <h3 className="text-2xl font-semibold">
-                    {isLatest ? "🔥 Latest Match" : `Previous Match #${filteredGames.length - index}`}
-                  </h3>
-
-                  <p className="text-lg"><strong>Game Version:</strong> {game.game_version?.replace("Version.", "") || "Unknown"}</p>
-                  <p className="text-lg">
-                    <strong>Map:</strong>{" "}
-                    {typeof game.map === "object" && game.map
-                      ? (game.map as { name?: string }).name || "Unknown"
-                      : String(game.map || "Unknown")}
-                  </p>
-                  <p className="text-lg"><strong>Game Type:</strong> {cleanGameType(game.game_type).replace("VER ", "v")}</p>
-                  <p className="text-lg"><strong>Duration:</strong> {cleanedDuration === 0 ? "⚠️ Invalid Duration (Likely Out of Sync)" : formatDuration(cleanedDuration)}</p>
-
-                  <h4 className="text-xl font-semibold mt-4">Players</h4>
-                  <div className="mt-2 space-y-2">
-                    {game.players.map((player, pIdx) => (
-                      <div
-                        key={pIdx}
-                        className={`p-4 rounded-lg ${
-                          player.winner
-                            ? "bg-gray-500 text-black font-bold"
-                            : "bg-gray-600 text-black"
-                        }`}
-                      >
-                        <p><strong>Name:</strong> {player.name} {player.winner ? "🏆" : "❌"}</p>
-                        <p><strong>Civilization:</strong> {player.civilization}</p>
-                        <p><strong>Military Score:</strong> {showPremium()}</p>
-                        <p><strong>Economy Score:</strong> {showPremium()}</p>
-                        <p><strong>Technology Score:</strong> {showPremium()}</p>
-                        <p><strong>Society Score:</strong> {showPremium()}</p>
-                        <p><strong>More:</strong> {showPremium()}</p>
-                      </div>
-                    ))}
-                  </div>
-
-                  {!game.players.some((p) => p.winner) && (
-                    <p className="text-red-500 italic mt-4">
-                      ⚠️ No winner detected. Likely Out of Sync. Bets refunded.
-                    </p>
-                  )}
-                </motion.div>
-              );
-            })}
-          </AnimatePresence>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+            <StatCard label="Final Parsed Games" value={String(games.length)} />
+            <StatCard label="Recent Failures" value={String(failedAttempts.length)} />
+            <StatCard label="Recent Stored Uploads" value={String(storedAttempts.length)} />
+          </div>
         </div>
-      )}
+      </section>
+
+      <section className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+        <div className="rounded-[1.75rem] border border-white/10 bg-slate-950/70 p-6">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <div className="text-xs uppercase tracking-[0.35em] text-white/45">Final Games</div>
+              <h2 className="mt-2 text-2xl font-semibold text-white">Successful Final Parses</h2>
+            </div>
+            <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+              {games.length} visible
+            </div>
+          </div>
+
+          <div className="mt-5 space-y-3">
+            {games.length === 0 ? (
+              <EmptyPanel message="No final parses yet. Upload a replay with the watcher and it will land here." />
+            ) : (
+              games.map((game) => {
+                const players = parsePlayers(game.players);
+                const playedAt = readPlayedAt(game);
+
+                return (
+                  <Link
+                    key={game.id}
+                    href={`/game-stats/${game.id}`}
+                    className="block rounded-2xl border border-white/8 bg-white/5 px-4 py-4 transition hover:border-sky-300/30 hover:bg-white/10"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <div className="font-medium text-white">{readMapName(game.map)}</div>
+                        <div className="mt-1 text-sm text-slate-300">
+                          {players.length > 0
+                            ? players.map((player) => displayPlayerName(player)).join(" vs ")
+                            : "Players unavailable"}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-xs uppercase tracking-[0.25em] text-slate-400">
+                          {winnerLabel(game.winner, game.parse_reason)}
+                        </div>
+                        <div className="mt-2 text-xs text-slate-500">#{game.id}</div>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                      <Tag>{displayReplayFilename(game.original_filename, game.replay_file)}</Tag>
+                      <Tag>{game.parse_reason}</Tag>
+                      {game.disconnect_detected ? <Tag>disconnect suspected</Tag> : null}
+                      {game.user ? (
+                        <Tag>{game.user.inGameName || game.user.steamPersonaName || game.user.uid}</Tag>
+                      ) : null}
+                    </div>
+
+                    {playedAt ? (
+                      <div className="mt-3 text-xs text-slate-400">
+                        {new Date(playedAt).toLocaleString()}
+                      </div>
+                    ) : null}
+                  </Link>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          <div className="rounded-[1.75rem] border border-white/10 bg-slate-950/70 p-6">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <div className="text-xs uppercase tracking-[0.35em] text-white/45">Failures</div>
+                <h2 className="mt-2 text-2xl font-semibold text-white">Recent Parse Misses</h2>
+              </div>
+              <div className="rounded-full border border-red-400/25 bg-red-500/10 px-3 py-1 text-xs text-red-100">
+                {failedAttempts.length} recent
+              </div>
+            </div>
+
+            <div className="mt-5 space-y-3">
+              {failedAttempts.length === 0 ? (
+                <EmptyPanel message="No recent failures. New parse misses will stay visible here after deployment." />
+              ) : (
+                failedAttempts.map((attempt) => (
+                  <div
+                    key={attempt.id}
+                    className="rounded-2xl border border-white/8 bg-white/5 px-4 py-4"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <div className="font-medium text-white">
+                          {displayReplayFilename(attempt.originalFilename, null)}
+                        </div>
+                        <p className="mt-2 text-sm leading-6 text-slate-300">
+                          {attempt.detail || "No parser detail recorded."}
+                        </p>
+                      </div>
+                      <div className="rounded-full border border-red-400/20 bg-red-500/10 px-3 py-1 text-xs text-red-100">
+                        {parseStatusLabel(attempt.status)}
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap gap-2 text-xs text-slate-400">
+                      <Tag>{attempt.uploadMode || "unknown mode"}</Tag>
+                      <Tag>{attempt.parseSource}</Tag>
+                      <Tag>{shortHash(attempt.replayHash)}</Tag>
+                    </div>
+
+                    <div className="mt-3 text-xs text-slate-400">
+                      {attempt.createdAt.toLocaleString()}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-[1.75rem] border border-white/10 bg-slate-950/70 p-6">
+            <div className="text-xs uppercase tracking-[0.35em] text-white/45">Ingestion</div>
+            <h2 className="mt-2 text-2xl font-semibold text-white">Recent Stored Uploads</h2>
+
+            <div className="mt-5 space-y-3">
+              {storedAttempts.length === 0 ? (
+                <EmptyPanel message="Stored uploads will appear here after the first persisted parse attempt lands." />
+              ) : (
+                storedAttempts.slice(0, 12).map((attempt) => (
+                  <div
+                    key={attempt.id}
+                    className="rounded-2xl border border-white/8 bg-white/5 px-4 py-4"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="font-medium text-white">
+                        {displayReplayFilename(attempt.originalFilename, null)}
+                      </div>
+                      <div className="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-100">
+                        Stored
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap gap-2 text-xs text-slate-400">
+                      <Tag>{attempt.uploadMode || "unknown mode"}</Tag>
+                      <Tag>{shortHash(attempt.replayHash)}</Tag>
+                      {attempt.gameStatsId ? (
+                        <Link
+                          href={`/game-stats/${attempt.gameStatsId}`}
+                          className="rounded-full border border-sky-300/20 bg-sky-400/10 px-3 py-1 text-sky-100 transition hover:border-sky-300/35 hover:bg-sky-400/15"
+                        >
+                          Open game #{attempt.gameStatsId}
+                        </Link>
+                      ) : null}
+                    </div>
+
+                    <div className="mt-3 text-xs text-slate-400">
+                      {attempt.createdAt.toLocaleString()}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  );
+}
+
+function StatCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[1.4rem] border border-white/10 bg-white/5 px-4 py-4">
+      <div className="text-xs uppercase tracking-[0.25em] text-slate-400">{label}</div>
+      <div className="mt-2 text-2xl font-semibold text-white">{value}</div>
     </div>
   );
-};
+}
 
-export default GameStatsPage;
+function EmptyPanel({ message }: { message: string }) {
+  return (
+    <div className="rounded-2xl border border-white/8 bg-white/5 px-4 py-5 text-sm text-slate-300">
+      {message}
+    </div>
+  );
+}
+
+function Tag({ children }: { children: ReactNode }) {
+  return (
+    <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+      {children}
+    </span>
+  );
+}
