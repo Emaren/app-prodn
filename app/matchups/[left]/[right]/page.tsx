@@ -63,6 +63,7 @@ export default async function MatchupPage({
 
   const matches = filterHeadToHeadMatches(candidateMatches, leftPlayer, rightPlayer).slice(0, 24);
   const summary = summarizeHeadToHead(matches, leftPlayer, rightPlayer);
+  const matchCountLabel = summary.totalMatches === 1 ? "1 match" : `${summary.totalMatches} matches`;
   const lastPlayedLabel = summary.lastPlayedAt
     ? new Date(summary.lastPlayedAt).toLocaleString([], {
         month: "short",
@@ -75,11 +76,11 @@ export default async function MatchupPage({
   return (
     <main className="space-y-8 py-6 text-white">
       <section className="overflow-hidden rounded-[2.3rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(96,165,250,0.22),_transparent_24%),radial-gradient(circle_at_bottom_right,_rgba(245,158,11,0.14),_transparent_28%),linear-gradient(135deg,_#0f172a,_#111827_56%,_#020617)] p-8 shadow-[0_30px_90px_rgba(2,6,23,0.45)] sm:p-10">
-        <div className="grid gap-8 xl:grid-cols-[1.15fr_0.85fr] xl:items-end">
+        <div className="space-y-8">
           <div className="space-y-6">
             <div className="text-xs uppercase tracking-[0.35em] text-sky-200/70">Head-To-Head</div>
-            <div className="space-y-4">
-              <h1 className="max-w-4xl text-4xl font-semibold leading-[0.95] text-white sm:text-5xl lg:text-6xl">
+            <div className="max-w-4xl space-y-4">
+              <h1 className="text-4xl font-semibold leading-[0.92] text-white sm:text-5xl lg:text-6xl">
                 {leftPlayer.name} vs {rightPlayer.name}
               </h1>
               <p className="max-w-3xl text-base leading-8 text-slate-300 sm:text-lg">
@@ -89,7 +90,7 @@ export default async function MatchupPage({
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <Tag>{summary.totalMatches} matches</Tag>
+              <Tag>{matchCountLabel}</Tag>
               <Tag>{leftPlayer.name}: {summary.leftWins}</Tag>
               <Tag>{rightPlayer.name}: {summary.rightWins}</Tag>
               {summary.unknowns > 0 ? <Tag>{summary.unknowns} unknown</Tag> : null}
@@ -119,23 +120,27 @@ export default async function MatchupPage({
           </div>
 
           <div className="rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.09),rgba(255,255,255,0.03))] p-6 shadow-2xl shadow-black/30">
-            <div className="text-xs uppercase tracking-[0.35em] text-white/45">Live Rivalry Score</div>
-            <div className="mt-6 grid grid-cols-[1fr_auto_1fr] items-center gap-4">
-              <HeroPlayer player={leftPlayer} align="left" />
-              <div className="rounded-[1.6rem] border border-white/10 bg-slate-950/70 px-5 py-4 text-center">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="text-xs uppercase tracking-[0.35em] text-white/45">Live Rivalry Score</div>
+              <Tag>Updated from final parsed replays</Tag>
+            </div>
+
+            <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:items-center">
+              <HeroPlayer player={leftPlayer} />
+              <div className="rounded-[1.7rem] border border-white/10 bg-slate-950/70 px-6 py-5 text-center">
                 <div className="text-[11px] uppercase tracking-[0.28em] text-slate-500">Series</div>
-                <div className="mt-2 text-4xl font-semibold text-white sm:text-5xl">
+                <div className="mt-2 text-5xl font-semibold tracking-tight text-white sm:text-6xl">
                   {summary.leftWins}
-                  <span className="px-2 text-slate-500">-</span>
+                  <span className="px-3 text-slate-500">-</span>
                   {summary.rightWins}
                 </div>
               </div>
-              <HeroPlayer player={rightPlayer} align="right" />
+              <HeroPlayer player={rightPlayer} />
             </div>
 
-            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            <div className="mt-6 grid gap-3 md:grid-cols-3">
               <SummaryMetric label="Meetings" value={String(summary.totalMatches)} />
-              <SummaryMetric label="Unknown" value={String(summary.unknowns)} />
+              <SummaryMetric label="Unknown Results" value={String(summary.unknowns)} />
               <SummaryMetric label="Last Meeting" value={lastPlayedLabel} />
             </div>
           </div>
@@ -144,7 +149,7 @@ export default async function MatchupPage({
 
       <section className="grid gap-6 xl:grid-cols-[0.94fr_1.06fr]">
         <Panel title="Series Record" eyebrow="Rivalry">
-          <div className="grid gap-5 lg:grid-cols-2">
+          <div className="space-y-5">
             <PlayerSummaryCard
               player={leftPlayer}
               wins={summary.leftWins}
@@ -229,17 +234,26 @@ function Panel({
 
 function HeroPlayer({
   player,
-  align,
 }: {
   player: PublicPlayerRef;
-  align: "left" | "right";
 }) {
   return (
-    <div className={`min-w-0 ${align === "right" ? "text-right" : ""}`}>
+    <div className="min-w-0 rounded-[1.6rem] border border-white/8 bg-white/5 px-5 py-5">
       <div className="text-[11px] uppercase tracking-[0.28em] text-slate-500">
-        {player.claimed ? "Claimed" : "Unclaimed"}
+        {player.claimed ? "Claimed Warrior" : "Unclaimed Warrior"}
       </div>
-      <div className="mt-2 break-words text-2xl font-semibold text-white">{player.name}</div>
+      <div className="mt-3 break-words text-2xl font-semibold leading-tight text-white">
+        {player.name}
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {player.claimed ? (
+          <Link href={player.href} className="inline-flex">
+            <SteamLinkedBadge compact />
+          </Link>
+        ) : (
+          <Tag>Replay-built identity</Tag>
+        )}
+      </div>
     </div>
   );
 }
@@ -259,10 +273,10 @@ function PlayerSummaryCard({
 
   return (
     <div className="rounded-[1.8rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.03))] p-6 shadow-lg shadow-black/20">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="text-2xl font-semibold leading-tight text-white break-words">
+      <div className="space-y-5">
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="text-2xl font-semibold leading-tight text-white break-words sm:text-3xl">
               {player.name}
             </div>
             {player.claimed ? (
@@ -276,30 +290,30 @@ function PlayerSummaryCard({
             <Tag>{wins + losses + unknowns} recorded</Tag>
           </div>
         </div>
-        <Link
-          href={player.href}
-          className="shrink-0 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-[11px] font-medium text-slate-300 transition hover:border-white/20 hover:text-white"
-        >
-          Open profile
-        </Link>
-      </div>
 
-      <div className="mt-6 space-y-3">
-        <RecordMetric label="Wins" value={wins} accent="emerald" />
-        <RecordMetric label="Losses" value={losses} accent="rose" />
-        <RecordMetric label="Unknown" value={unknowns} accent="slate" />
-      </div>
-
-      {!player.claimed ? (
-        <div className="mt-6">
-          <Link
-            href={`/profile?claim_name=${encodeURIComponent(player.name)}`}
-            className="inline-flex max-w-full items-center rounded-full bg-rose-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-rose-200"
-          >
-            <span className="truncate">Claim {player.name}</span>
-          </Link>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <RecordMetric label="Wins" value={wins} accent="emerald" />
+          <RecordMetric label="Losses" value={losses} accent="rose" />
+          <RecordMetric label="Unknown" value={unknowns} accent="slate" />
         </div>
-      ) : null}
+
+        <div className="flex flex-wrap gap-3">
+          <Link
+            href={player.href}
+            className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-5 py-3 text-sm font-medium text-slate-200 transition hover:border-white/20 hover:text-white"
+          >
+            Open profile
+          </Link>
+          {!player.claimed ? (
+            <Link
+              href={`/profile?claim_name=${encodeURIComponent(player.name)}`}
+              className="inline-flex max-w-full items-center rounded-full bg-rose-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-rose-200"
+            >
+              <span className="truncate">Claim {player.name}</span>
+            </Link>
+          ) : null}
+        </div>
+      </div>
     </div>
   );
 }
@@ -321,12 +335,10 @@ function RecordMetric({
         : "border-white/10 bg-slate-950/60 text-slate-200";
 
   return (
-    <div className={`flex items-center justify-between rounded-2xl border px-4 py-4 ${accentClasses}`}>
-      <div>
-        <div className="text-[11px] uppercase tracking-[0.25em] text-white/55">{label}</div>
-        <div className="mt-1 text-sm text-white/75">Series result</div>
-      </div>
-      <div className="text-3xl font-semibold text-white">{value}</div>
+    <div className={`rounded-2xl border px-4 py-4 ${accentClasses}`}>
+      <div className="text-[11px] uppercase tracking-[0.25em] text-white/55">{label}</div>
+      <div className="mt-1 text-sm text-white/75">Series result</div>
+      <div className="mt-4 text-4xl font-semibold text-white">{value}</div>
     </div>
   );
 }
@@ -335,7 +347,9 @@ function SummaryMetric({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-4">
       <div className="text-[11px] uppercase tracking-[0.22em] text-slate-500">{label}</div>
-      <div className="mt-2 text-sm font-medium leading-6 text-white">{value}</div>
+      <div className="mt-3 break-words text-xl font-semibold leading-7 text-white">
+        {value}
+      </div>
     </div>
   );
 }
