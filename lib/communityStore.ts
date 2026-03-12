@@ -3,31 +3,9 @@ import {
   getFallbackTournament,
   LOBBY_ROOM_SLUG,
   type LobbyMessage,
-  type LobbyTournamentEntrant,
   type LobbyTournament,
 } from "@/lib/lobby";
-
-function toLobbyEntrant(entry: {
-  id?: number;
-  joinedAt: Date;
-  user: {
-    uid: string;
-    inGameName: string | null;
-    steamPersonaName: string | null;
-    verificationLevel: number;
-    verified: boolean;
-  };
-}): LobbyTournamentEntrant {
-  return {
-    entryId: entry.id ?? null,
-    uid: entry.user.uid,
-    inGameName: entry.user.inGameName,
-    steamPersonaName: entry.user.steamPersonaName,
-    verificationLevel: entry.user.verificationLevel,
-    verified: entry.user.verified,
-    joinedAt: entry.joinedAt.toISOString(),
-  };
-}
+import { toLobbyEntrant, toLobbyTournamentMatch } from "@/lib/tournamentMatchView";
 
 export async function ensureLobbyRoom(prisma: PrismaClient) {
   return prisma.chatRoom.upsert({
@@ -100,6 +78,18 @@ export async function getFeaturedTournament(
       matches: {
         orderBy: [{ round: "asc" }, { position: "asc" }],
         include: {
+          sourceGameStats: {
+            select: {
+              id: true,
+              replayHash: true,
+              winner: true,
+              players: true,
+              played_on: true,
+              timestamp: true,
+              map: true,
+              original_filename: true,
+            },
+          },
           playerOne: {
             include: {
               user: {
@@ -163,18 +153,7 @@ export async function getFeaturedTournament(
     viewerJoined,
     roomSlug: tournament.chatRoom?.slug || LOBBY_ROOM_SLUG,
     isFallback: false,
-    matches: tournament.matches.map((match) => ({
-      id: match.id,
-      round: match.round,
-      position: match.position,
-      label: match.label,
-      status: match.status as LobbyTournament["matches"][number]["status"],
-      scheduledAt: match.scheduledAt ? match.scheduledAt.toISOString() : null,
-      completedAt: match.completedAt ? match.completedAt.toISOString() : null,
-      winnerEntryId: match.winnerEntryId ?? null,
-      playerOne: match.playerOne ? toLobbyEntrant(match.playerOne) : null,
-      playerTwo: match.playerTwo ? toLobbyEntrant(match.playerTwo) : null,
-    })),
+    matches: tournament.matches.map(toLobbyTournamentMatch),
   };
 }
 

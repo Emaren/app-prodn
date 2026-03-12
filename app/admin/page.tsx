@@ -4,6 +4,7 @@ import Link from "next/link";
 import { type FormEvent, type ReactNode, useEffect, useState } from "react";
 import { useUserAuth } from "@/context/UserAuthContext";
 import {
+  type AdminReplayCandidate,
   getFallbackTournament,
   getTournamentMatchStatusLabel,
   getTournamentStatusLabel,
@@ -13,6 +14,7 @@ import {
   type LobbyTournamentEntrant,
   type LobbyTournamentMatch,
 } from "@/lib/lobby";
+import { inferReplayWinnerEntryId } from "@/lib/replayProof";
 
 type FormState = {
   id: number | null;
@@ -32,6 +34,7 @@ type MatchDraft = {
   playerOneEntryId: string;
   playerTwoEntryId: string;
   winnerEntryId: string;
+  sourceGameStatsId: string;
   scheduledAt: string;
 };
 
@@ -57,8 +60,45 @@ function toMatchDraft(match?: LobbyTournamentMatch): MatchDraft {
     playerOneEntryId: match?.playerOne?.entryId ? String(match.playerOne.entryId) : "",
     playerTwoEntryId: match?.playerTwo?.entryId ? String(match.playerTwo.entryId) : "",
     winnerEntryId: match?.winnerEntryId ? String(match.winnerEntryId) : "",
+    sourceGameStatsId: match?.sourceGameStatsId ? String(match.sourceGameStatsId) : "",
     scheduledAt: match?.scheduledAt ? toDateTimeLocal(match.scheduledAt) : "",
   };
+}
+
+function findEntrantByEntryId(entrants: LobbyTournamentEntrant[], value: string) {
+  const entryId = Number(value);
+  if (!Number.isFinite(entryId) || entryId < 1) return null;
+  return entrants.find((entrant) => entrant.entryId === entryId) ?? null;
+}
+
+function getCompatibleReplayCandidates(
+  match: MatchDraft,
+  replayCandidates: AdminReplayCandidate[]
+) {
+  const playerOneId = Number(match.playerOneEntryId);
+  const playerTwoId = Number(match.playerTwoEntryId);
+  if (!Number.isFinite(playerOneId) || !Number.isFinite(playerTwoId)) {
+    return [];
+  }
+
+  return replayCandidates.filter(
+    (candidate) =>
+      candidate.matchedEntryIds.includes(playerOneId) &&
+      candidate.matchedEntryIds.includes(playerTwoId)
+  );
+}
+
+function formatReplayCandidateLabel(candidate: AdminReplayCandidate) {
+  const players =
+    candidate.players.length > 0
+      ? candidate.players.map((player) => player.name).join(" vs ")
+      : "Unknown players";
+  const playedOn = candidate.playedOn
+    ? new Date(candidate.playedOn).toLocaleString()
+    : "Unknown time";
+  const mapName = candidate.mapName || "Unknown map";
+
+  return `#${candidate.gameStatsId} · ${players} · ${mapName} · ${playedOn}`;
 }
 
 export default function AdminPage() {
@@ -67,6 +107,7 @@ export default function AdminPage() {
   const [tournament, setTournament] = useState<LobbyTournament | null>(null);
   const [entrants, setEntrants] = useState<LobbyTournamentEntrant[]>([]);
   const [matches, setMatches] = useState<MatchDraft[]>([]);
+  const [replayCandidates, setReplayCandidates] = useState<AdminReplayCandidate[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savingBracket, setSavingBracket] = useState(false);
@@ -98,6 +139,7 @@ export default function AdminPage() {
               detail?: string;
               entrants?: LobbyTournamentEntrant[];
               matches?: LobbyTournamentMatch[];
+              replayCandidates?: AdminReplayCandidate[];
             }
           | Record<string, unknown>;
 
@@ -127,11 +169,15 @@ export default function AdminPage() {
         const nextMatches = Array.isArray(matchesPayload.matches)
           ? (matchesPayload.matches as LobbyTournamentMatch[])
           : nextTournament.matches;
+        const nextReplayCandidates = Array.isArray(matchesPayload.replayCandidates)
+          ? (matchesPayload.replayCandidates as AdminReplayCandidate[])
+          : [];
 
         setTournament(nextTournament);
         setForm(toFormState(nextTournament));
         setEntrants(nextEntrants);
         setMatches(nextMatches.map(toMatchDraft));
+        setReplayCandidates(nextReplayCandidates);
       } catch (loadError) {
         if (active) {
           setError(loadError instanceof Error ? loadError.message : "Failed to load tournament.");
@@ -214,6 +260,7 @@ export default function AdminPage() {
       setForm(toFormState(nextTournament));
       setEntrants(nextTournament?.entrants ?? []);
       setMatches((nextTournament?.matches ?? []).map(toMatchDraft));
+      setReplayCandidates([]);
       setNotice("Featured tournament updated.");
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Save failed.");
@@ -224,7 +271,46 @@ export default function AdminPage() {
 
   function updateMatch(index: number, key: keyof MatchDraft, value: string) {
     setMatches((current) =>
-      current.map((match, idx) => (idx === index ? { ...match, [key]: value } : match))
+      current.map((match, idx) => {
+        if (idx !== index) return match;
+
+        const next = { ...match, [key]: value };
+
+        if (key === "playerOneEntryId" || key === "playerTwoEntryId") {
+          const selectedReplay = next.sourceGameStatsId
+            ? replayCandidates.find(
+                (candidate) => String(candidate.gameStatsId) === next.sourceGameStatsId
+              )
+            : null;
+          if (
+            selectedReplay &&
+            !getCompatibleReplayCandidates(next, replayCandidates).some(
+              (candidate) => candidate.gameStatsId === selectedReplay.gameStatsId
+            )
+          ) {
+            next.sourceGameStatsId = "";
+          }
+        }
+
+        if (key === "sourceGameStatsId") {
+          const selectedReplay = value
+            ? replayCandidates.find((candidate) => String(candidate.gameStatsId) === value)
+            : null;
+          const playerOne = findEntrantByEntryId(entrants, next.playerOneEntryId);
+          const playerTwo = findEntrantByEntryId(entrants, next.playerTwoEntryId);
+          const inferredWinnerEntryId =
+            selectedReplay && playerOne && playerTwo
+              ? inferReplayWinnerEntryId(selectedReplay, playerOne, playerTwo)
+              : null;
+
+          if (inferredWinnerEntryId) {
+            next.winnerEntryId = String(inferredWinnerEntryId);
+            next.status = "completed";
+          }
+        }
+
+        return next;
+      })
     );
   }
 
@@ -267,6 +353,7 @@ export default function AdminPage() {
             playerOneEntryId: match.playerOneEntryId ? Number(match.playerOneEntryId) : null,
             playerTwoEntryId: match.playerTwoEntryId ? Number(match.playerTwoEntryId) : null,
             winnerEntryId: match.winnerEntryId ? Number(match.winnerEntryId) : null,
+            sourceGameStatsId: match.sourceGameStatsId ? Number(match.sourceGameStatsId) : null,
             scheduledAt: match.scheduledAt ? new Date(match.scheduledAt).toISOString() : null,
           })),
         }),
@@ -277,6 +364,7 @@ export default function AdminPage() {
             detail?: string;
             entrants?: LobbyTournamentEntrant[];
             matches?: LobbyTournamentMatch[];
+            replayCandidates?: AdminReplayCandidate[];
           }
         | Record<string, unknown>;
 
@@ -290,9 +378,13 @@ export default function AdminPage() {
       const nextMatches = Array.isArray(payload.matches)
         ? (payload.matches as LobbyTournamentMatch[])
         : [];
+      const nextReplayCandidates = Array.isArray(payload.replayCandidates)
+        ? (payload.replayCandidates as AdminReplayCandidate[])
+        : replayCandidates;
 
       setEntrants(nextEntrants);
       setMatches(nextMatches.map(toMatchDraft));
+      setReplayCandidates(nextReplayCandidates);
       setTournament((current) =>
         current
           ? {
@@ -302,7 +394,7 @@ export default function AdminPage() {
             }
           : current
       );
-      setBracketNotice("Bracket updated.");
+      setBracketNotice("Bracket updated. Linked parsed replays now count as proof-backed results.");
     } catch (saveError) {
       setBracketError(
         saveError instanceof Error ? saveError.message : "Bracket save failed."
@@ -440,6 +532,9 @@ export default function AdminPage() {
             <div className="pt-2 text-sm text-slate-300">
               {matches.length} bracket {matches.length === 1 ? "match" : "matches"} configured
             </div>
+            <div className="text-sm text-slate-400">
+              {matches.filter((match) => match.sourceGameStatsId).length} replay-backed
+            </div>
           </div>
         </div>
       </div>
@@ -448,9 +543,9 @@ export default function AdminPage() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="text-xs uppercase tracking-[0.35em] text-white/45">Bracket</div>
-            <h2 className="mt-2 text-2xl font-semibold">Manual Match Control</h2>
+            <h2 className="mt-2 text-2xl font-semibold">Match Control And Replay Proof</h2>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
-              Assign entrants to match slots, mark winners, and the homepage will reflect the next live pairings immediately.
+              Assign entrants to match slots, then attach parsed replays when they exist so winners come from proof instead of manual entry.
             </p>
           </div>
 
@@ -522,6 +617,16 @@ export default function AdminPage() {
                   key={match.id ?? `draft-${index}`}
                   className="rounded-[1.5rem] border border-white/8 bg-white/5 p-5"
                 >
+                  {(() => {
+                    const compatibleReplays = getCompatibleReplayCandidates(match, replayCandidates);
+                    const linkedReplay = match.sourceGameStatsId
+                      ? replayCandidates.find(
+                          (candidate) => String(candidate.gameStatsId) === match.sourceGameStatsId
+                        ) ?? null
+                      : null;
+
+                    return (
+                      <>
                   <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                     <Field label="Round">
                       <input
@@ -596,9 +701,12 @@ export default function AdminPage() {
                       <select
                         value={match.winnerEntryId}
                         onChange={(event) => updateMatch(index, "winnerEntryId", event.target.value)}
-                        className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-amber-300/50"
+                        disabled={Boolean(match.sourceGameStatsId)}
+                        className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-amber-300/50 disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        <option value="">No winner yet</option>
+                        <option value="">
+                          {match.sourceGameStatsId ? "Winner comes from replay proof" : "No winner yet"}
+                        </option>
                         {entrants.map((entrant) => (
                           <option key={`w-${entrant.entryId}`} value={entrant.entryId ?? ""}>
                             {entrant.inGameName || entrant.steamPersonaName || entrant.uid}
@@ -615,7 +723,47 @@ export default function AdminPage() {
                         className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-amber-300/50"
                       />
                     </Field>
+
+                    <Field label="Parsed Replay">
+                      <select
+                        value={match.sourceGameStatsId}
+                        onChange={(event) => updateMatch(index, "sourceGameStatsId", event.target.value)}
+                        disabled={!match.playerOneEntryId || !match.playerTwoEntryId}
+                        className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-amber-300/50 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <option value="">
+                          {!match.playerOneEntryId || !match.playerTwoEntryId
+                            ? "Assign both players first"
+                            : compatibleReplays.length === 0
+                              ? "No parsed replay matches yet"
+                              : "No replay linked"}
+                        </option>
+                        {compatibleReplays.map((candidate) => (
+                          <option key={`replay-${candidate.gameStatsId}`} value={candidate.gameStatsId}>
+                            {formatReplayCandidateLabel(candidate)}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
                   </div>
+
+                  {linkedReplay && (
+                    <div className="mt-4 rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-4 text-sm text-emerald-100">
+                      <div className="font-medium text-white">
+                        Replay proof linked: #{linkedReplay.gameStatsId}
+                      </div>
+                      <div className="mt-2 text-emerald-100/90">
+                        {linkedReplay.players.map((player) => player.name).join(" vs ")}
+                      </div>
+                      <div className="mt-1 text-xs uppercase tracking-[0.25em] text-emerald-200/80">
+                        {linkedReplay.mapName || "Unknown map"}
+                        {linkedReplay.playedOn
+                          ? ` · ${new Date(linkedReplay.playedOn).toLocaleString()}`
+                          : ""}
+                        {linkedReplay.winner ? ` · Winner ${linkedReplay.winner}` : ""}
+                      </div>
+                    </div>
+                  )}
 
                   <div className="mt-4 flex justify-end">
                     <button
@@ -626,6 +774,9 @@ export default function AdminPage() {
                       Remove Match
                     </button>
                   </div>
+                      </>
+                    );
+                  })()}
                 </div>
               ))
             )}

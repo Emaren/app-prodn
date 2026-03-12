@@ -360,13 +360,29 @@ export default function HomePage() {
                               {displayMatchPlayer(match.playerOne)} vs {displayMatchPlayer(match.playerTwo)}
                             </div>
                           </div>
-                          <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-200">
-                            {getTournamentMatchStatusLabel(match.status)}
+                          <div className="space-y-2 text-right">
+                            <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-200">
+                              {getTournamentMatchStatusLabel(match.status)}
+                            </div>
+                            {match.proof && (
+                              <div className="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-100">
+                                Replay Verified
+                              </div>
+                            )}
                           </div>
                         </div>
                         {match.scheduledAt && (
                           <div className="mt-3 text-xs text-slate-400">
                             {new Date(match.scheduledAt).toLocaleString()}
+                          </div>
+                        )}
+                        {match.proof && (
+                          <div className="mt-3 text-xs text-emerald-100/90">
+                            {match.proof.mapName || "Unknown map"}
+                            {match.proof.playedOn
+                              ? ` · ${new Date(match.proof.playedOn).toLocaleString()}`
+                              : ""}
+                            {match.proof.winner ? ` · Winner ${match.proof.winner}` : ""}
                           </div>
                         )}
                       </div>

@@ -35,6 +35,26 @@ export type LobbyTournamentEntrant = {
   joinedAt: string;
 };
 
+export type LobbyReplayPlayer = {
+  name: string;
+  winner: boolean | null;
+};
+
+export type LobbyTournamentMatchProof = {
+  gameStatsId: number;
+  replayHash: string;
+  winner: string | null;
+  playedOn: string | null;
+  mapName: string | null;
+  originalFilename: string | null;
+  players: LobbyReplayPlayer[];
+};
+
+export type AdminReplayCandidate = LobbyTournamentMatchProof & {
+  matchedEntryIds: number[];
+  matchedEntrantNames: string[];
+};
+
 export type LobbyTournament = {
   id: number | null;
   slug: string;
@@ -61,6 +81,8 @@ export type LobbyTournamentMatch = {
   scheduledAt: string | null;
   completedAt: string | null;
   winnerEntryId: number | null;
+  sourceGameStatsId: number | null;
+  proof: LobbyTournamentMatchProof | null;
   playerOne: LobbyTournamentEntrant | null;
   playerTwo: LobbyTournamentEntrant | null;
 };
