@@ -4,12 +4,14 @@ import type { ReactNode } from "react";
 
 import {
   displayPlayerName,
+  formatDurationLabel,
   parsePlayers,
   parseStatusLabel,
   readMapName,
   readPlayedAt,
   winnerLabel,
 } from "@/lib/gameStatsView";
+import { buildPlayerPerformanceStats } from "@/lib/playerPerformance";
 import { buildMatchupHref, buildRivalSummaries } from "@/lib/publicMatchups";
 import { getPrisma } from "@/lib/prisma";
 import { buildClaimedPublicPlayerRef, normalizePublicPlayerName } from "@/lib/publicPlayers";
@@ -52,20 +54,19 @@ export default async function PublicPlayerPage({
     )
   );
 
-  const publicMatches = candidateMatches
+  const matchedGames = candidateMatches
     .filter((game) =>
       parsePlayers(game.players).some((player) =>
         identityKeys.includes(normalizePublicPlayerName(displayPlayerName(player)).toLowerCase())
       )
-    )
-    .slice(0, 24);
+    );
   const aliasSet = new Set<string>(
     [user.inGameName, user.steamPersonaName]
       .map((name) => normalizePublicPlayerName(name))
       .filter(Boolean)
   );
 
-  for (const game of publicMatches) {
+  for (const game of matchedGames) {
     for (const player of parsePlayers(game.players)) {
       const playerName = normalizePublicPlayerName(displayPlayerName(player));
       if (identityKeys.includes(playerName.toLowerCase())) {
@@ -80,6 +81,8 @@ export default async function PublicPlayerPage({
   const isLive = Boolean(user.lastSeen && user.lastSeen > liveThreshold);
   const aliases = Array.from(aliasSet);
   const currentPlayer = buildClaimedPublicPlayerRef(user, displayName);
+  const performance = buildPlayerPerformanceStats(matchedGames, currentPlayer);
+  const publicMatches = matchedGames.slice(0, 24);
   const rivalries = await buildRivalSummaries(prisma, publicMatches, currentPlayer);
 
   return (
@@ -119,6 +122,35 @@ export default async function PublicPlayerPage({
 
       <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
         <div className="space-y-6">
+          <Panel title="Performance Snapshot" eyebrow="Stats">
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              <MetricCard label="Current ELO" value={performance.eloLabel} />
+              <MetricCard
+                label="Win Rate"
+                value={performance.winRate !== null ? `${performance.winRate}%` : "Unknown"}
+              />
+              <MetricCard label="Rated Matches" value={String(performance.ratedMatches)} />
+              <MetricCard
+                label="Avg Game Length"
+                value={formatDurationLabel(performance.averageDurationSeconds)}
+              />
+              <MetricCard
+                label="Longest Game"
+                value={formatDurationLabel(performance.longestDurationSeconds)}
+              />
+              <MetricCard
+                label="Shortest Game"
+                value={formatDurationLabel(performance.shortestDurationSeconds)}
+              />
+              <MetricCard label="Unique Opponents" value={String(performance.uniqueOpponents)} />
+              <MetricCard
+                label="Civilizations Played"
+                value={String(performance.civilizationsPlayed)}
+              />
+              <MetricCard label="Most Played Map" value={performance.mostPlayedMap || "Unknown"} />
+            </div>
+          </Panel>
+
           <Panel title="Identity" eyebrow="Profile">
             <dl className="grid gap-4">
               <StatRow label="Public Name" value={displayName} />
@@ -153,7 +185,7 @@ export default async function PublicPlayerPage({
 
           <Panel title="Reliability" eyebrow="Parser Health">
             <dl className="grid gap-4 sm:grid-cols-2">
-              <StatRow label="Public Matches" value={String(publicMatches.length)} />
+              <StatRow label="Public Matches" value={String(matchedGames.length)} />
               <StatRow label="Recent Parse Misses" value={String(failedAttempts.length)} />
             </dl>
 
@@ -305,6 +337,15 @@ function StatRow({ label, value }: { label: string; value: ReactNode }) {
     <div className="rounded-2xl border border-white/8 bg-white/5 px-4 py-4">
       <dt className="text-xs uppercase tracking-[0.25em] text-slate-500">{label}</dt>
       <dd className="mt-2 text-sm text-slate-200">{value}</dd>
+    </div>
+  );
+}
+
+function MetricCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-white/8 bg-white/5 px-4 py-4">
+      <div className="text-xs uppercase tracking-[0.25em] text-slate-500">{label}</div>
+      <div className="mt-3 text-lg font-semibold text-white">{value}</div>
     </div>
   );
 }

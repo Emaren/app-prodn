@@ -5,11 +5,13 @@ import type { ReactNode } from "react";
 import { buildMatchupHref, buildRivalSummaries } from "@/lib/publicMatchups";
 import {
   displayPlayerName,
+  formatDurationLabel,
   parsePlayers,
   readMapName,
   readPlayedAt,
   winnerLabel,
 } from "@/lib/gameStatsView";
+import { buildPlayerPerformanceStats } from "@/lib/playerPerformance";
 import { getPrisma } from "@/lib/prisma";
 import { buildReplayPublicPlayerRef, normalizePublicPlayerName } from "@/lib/publicPlayers";
 
@@ -55,26 +57,30 @@ export default async function ReplayOnlyPlayerPage({
       timestamp: true,
       parse_reason: true,
       disconnect_detected: true,
+      duration: true,
+      game_duration: true,
+      key_events: true,
     },
   });
 
-  const matches = candidateMatches
+  const matchedGames = candidateMatches
     .filter((match) =>
       parsePlayers(match.players).some(
         (player) => normalizePublicPlayerName(displayPlayerName(player)) === normalizedPlayerName
       )
-    )
-    .slice(0, 24);
+    );
 
-  if (matches.length === 0) {
+  if (matchedGames.length === 0) {
     notFound();
   }
 
-  const wins = matches.filter((match) => match.winner === playerName).length;
-  const losses = matches.filter((match) => match.winner && match.winner !== playerName).length;
-  const unknowns = matches.length - wins - losses;
+  const wins = matchedGames.filter((match) => match.winner === playerName).length;
+  const losses = matchedGames.filter((match) => match.winner && match.winner !== playerName).length;
+  const unknowns = matchedGames.length - wins - losses;
   const claimHref = `/profile?claim_name=${encodeURIComponent(playerName)}`;
   const currentPlayer = buildReplayPublicPlayerRef(playerName);
+  const performance = buildPlayerPerformanceStats(matchedGames, currentPlayer);
+  const matches = matchedGames.slice(0, 24);
   const rivalries = await buildRivalSummaries(prisma, matches, currentPlayer);
 
   return (
@@ -91,7 +97,7 @@ export default async function ReplayOnlyPlayerPage({
             </p>
             <div className="flex flex-wrap gap-2">
               <Tag>unclaimed identity</Tag>
-              <Tag>{matches.length} parsed matches</Tag>
+              <Tag>{matchedGames.length} parsed matches</Tag>
               {wins > 0 ? <Tag>{wins} wins</Tag> : null}
               {losses > 0 ? <Tag>{losses} losses</Tag> : null}
               {unknowns > 0 ? <Tag>{unknowns} unknown outcomes</Tag> : null}
@@ -123,6 +129,38 @@ export default async function ReplayOnlyPlayerPage({
 
       <section className="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
         <section className="space-y-6">
+          <section className="rounded-[1.75rem] border border-white/10 bg-slate-950/70 p-6">
+            <div className="text-xs uppercase tracking-[0.35em] text-white/45">Stats</div>
+            <h2 className="mt-2 text-2xl font-semibold text-white">Performance Snapshot</h2>
+
+            <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              <MetricCard label="Current ELO" value={performance.eloLabel} />
+              <MetricCard
+                label="Win Rate"
+                value={performance.winRate !== null ? `${performance.winRate}%` : "Unknown"}
+              />
+              <MetricCard label="Rated Matches" value={String(performance.ratedMatches)} />
+              <MetricCard
+                label="Avg Game Length"
+                value={formatDurationLabel(performance.averageDurationSeconds)}
+              />
+              <MetricCard
+                label="Longest Game"
+                value={formatDurationLabel(performance.longestDurationSeconds)}
+              />
+              <MetricCard
+                label="Shortest Game"
+                value={formatDurationLabel(performance.shortestDurationSeconds)}
+              />
+              <MetricCard label="Unique Opponents" value={String(performance.uniqueOpponents)} />
+              <MetricCard
+                label="Civilizations Played"
+                value={String(performance.civilizationsPlayed)}
+              />
+              <MetricCard label="Most Played Map" value={performance.mostPlayedMap || "Unknown"} />
+            </div>
+          </section>
+
           <section className="rounded-[1.75rem] border border-white/10 bg-slate-950/70 p-6">
             <div className="text-xs uppercase tracking-[0.35em] text-white/45">Why Claim It</div>
             <h2 className="mt-2 text-2xl font-semibold text-white">Turn replay sightings into a real profile</h2>
@@ -253,5 +291,14 @@ function Tag({ children }: { children: ReactNode }) {
     <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
       {children}
     </span>
+  );
+}
+
+function MetricCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-white/8 bg-white/5 px-4 py-4">
+      <div className="text-xs uppercase tracking-[0.25em] text-slate-500">{label}</div>
+      <div className="mt-3 text-lg font-semibold text-white">{value}</div>
+    </div>
   );
 }

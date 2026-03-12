@@ -160,7 +160,7 @@ export async function getFeaturedTournament(
 export async function getLobbyMessages(
   prisma: PrismaClient,
   roomSlug = LOBBY_ROOM_SLUG,
-  limit = 30
+  limit = 60
 ): Promise<LobbyMessage[]> {
   const room =
     roomSlug === LOBBY_ROOM_SLUG
@@ -175,7 +175,7 @@ export async function getLobbyMessages(
   const messages = await prisma.chatMessage.findMany({
     where: { roomId: room.id },
     orderBy: { createdAt: "desc" },
-    take: Math.max(1, Math.min(limit, 50)),
+    take: Math.max(1, Math.min(limit, 100)),
     include: {
       user: {
         select: {

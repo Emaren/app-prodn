@@ -99,11 +99,57 @@ export function isInferredOutcome(parseReason: string | null | undefined) {
   return Boolean(parseReason && parseReason.startsWith("watcher_inferred_"));
 }
 
+export function isResignationOutcome(parseReason: string | null | undefined) {
+  if (!parseReason) return false;
+
+  return (
+    parseReason.startsWith("watcher_inferred_") ||
+    parseReason.includes("disconnect") ||
+    parseReason.includes("resign")
+  );
+}
+
 export function winnerLabel(winner: string | null | undefined, parseReason: string | null | undefined) {
   if (winner && winner !== "Unknown") {
-    return isInferredOutcome(parseReason) ? `${winner} (inferred)` : winner;
+    return isResignationOutcome(parseReason) ? `${winner} (Resigned)` : winner;
   }
   return "Unknown";
+}
+
+export function outcomeBadgeLabel(parseReason: string | null | undefined) {
+  return isResignationOutcome(parseReason) ? "resignation detected" : null;
+}
+
+export function normalizeDurationSeconds(value: number | null | undefined) {
+  if (!value || value <= 0) return null;
+
+  const rounded = Math.floor(value);
+
+  // Some parsed HD replays still come through in milliseconds for shorter games.
+  if (rounded > 12 * 3600) {
+    return Math.max(1, Math.floor(rounded / 1000));
+  }
+
+  return rounded;
+}
+
+export function formatDurationLabel(value: number | null | undefined) {
+  const totalSeconds = normalizeDurationSeconds(value);
+  if (!totalSeconds) return "Unknown";
+
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (hours > 0) {
+    return `${hours}h ${minutes}m ${seconds}s`;
+  }
+
+  if (minutes > 0) {
+    return `${minutes}m ${seconds}s`;
+  }
+
+  return `${seconds}s`;
 }
 
 export function stringifyJson(value: unknown) {

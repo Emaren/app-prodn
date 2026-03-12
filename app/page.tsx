@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import SteamLoginButton from "@/components/SteamLoginButton";
 import { useUserAuth } from "@/context/UserAuthContext";
 import {
@@ -19,6 +19,8 @@ import {
   type LobbySnapshot,
 } from "@/lib/lobby";
 
+const EMPTY_MESSAGES: LobbyMessage[] = [];
+
 export default function HomePage() {
   const { isAdmin, isAuthenticated, loading, loginWithSteam, playerName, user } = useUserAuth();
   const [lobby, setLobby] = useState<LobbySnapshot | null>(null);
@@ -31,6 +33,7 @@ export default function HomePage() {
   const [joinError, setJoinError] = useState<string | null>(null);
   const [chatPending, setChatPending] = useState(false);
   const [joinPending, setJoinPending] = useState(false);
+  const chatScrollRef = useRef<HTMLDivElement | null>(null);
 
   const loadLobby = useCallback(async () => {
     try {
@@ -108,11 +111,16 @@ export default function HomePage() {
   const tournament = lobby?.tournament ?? getFallbackTournament(false);
   const onlineUsers = lobby?.onlineUsers ?? [];
   const recentMatches = lobby?.recentMatches ?? [];
-  const messages = lobby?.messages ?? [];
+  const messages = lobby?.messages ?? EMPTY_MESSAGES;
   const chatRoomTitle =
     messages.length > 0 && messages[0]?.roomSlug === tournament.roomSlug && !tournament.isFallback
       ? `${tournament.title} Chat`
       : "Live Chat";
+
+  useEffect(() => {
+    if (!chatScrollRef.current) return;
+    chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+  }, [messages]);
 
   async function handleJoinTournament() {
     if (!tournament.id) return;
@@ -437,7 +445,7 @@ export default function HomePage() {
       </section>
 
       <section className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
-        <div className="rounded-[1.75rem] border border-white/10 bg-slate-950/70 p-6">
+        <div className="flex min-h-[34rem] flex-col rounded-[1.75rem] border border-white/10 bg-slate-950/70 p-6 lg:min-h-[42rem]">
           <div className="flex items-center justify-between gap-4">
             <div>
               <div className="text-xs uppercase tracking-[0.35em] text-white/45">Chat</div>
@@ -448,8 +456,8 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="mt-5 space-y-3">
-            <div className="max-h-[26rem] space-y-3 overflow-y-auto pr-1">
+          <div className="mt-5 flex min-h-0 flex-1 flex-col gap-3">
+            <div ref={chatScrollRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
               {messages.length === 0 ? (
                 <div className="rounded-2xl border border-white/8 bg-white/5 px-4 py-5 text-sm text-slate-300">
                   No messages yet. The first tournament chatter starts here.

@@ -3,11 +3,12 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
 import {
+  formatDurationLabel,
   displayGameType,
   displayGameVersion,
   displayPlayerName,
   displayReplayFilename,
-  isInferredOutcome,
+  outcomeBadgeLabel,
   parsePlayers,
   parseStatusLabel,
   readMapName,
@@ -132,7 +133,9 @@ export default async function GameStatsDetailPage({
               <Tag>{game.parse_reason}</Tag>
               {game.disconnect_detected ? <Tag>disconnect suspected</Tag> : null}
               {game.is_final ? <Tag>final replay</Tag> : <Tag>non-final replay</Tag>}
-              {isInferredOutcome(game.parse_reason) ? <Tag>inferred outcome</Tag> : null}
+              {outcomeBadgeLabel(game.parse_reason) ? (
+                <Tag>{outcomeBadgeLabel(game.parse_reason)}</Tag>
+              ) : null}
             </div>
           </div>
 
@@ -171,7 +174,10 @@ export default async function GameStatsDetailPage({
               <StatRow label="Map Size" value={readMapSize(game.map)} />
               <StatRow label="Game Version" value={displayGameVersion(game.game_version)} />
               <StatRow label="Game Type" value={displayGameType(game.game_type)} />
-              <StatRow label="Duration" value={formatDuration(game.duration || game.game_duration)} />
+              <StatRow
+                label="Duration"
+                value={formatDurationLabel(game.duration || game.game_duration)}
+              />
               <StatRow label="Played On" value={formatDateTime(playedAt)} />
               <StatRow label="Recorded At" value={formatDateTime(game.createdAt)} />
               <StatRow label="Uploader" value={renderUploader(game.user)} />
@@ -449,21 +455,6 @@ function formatPrimitive(value: unknown) {
   if (value === null || value === undefined || value === "") return "Unknown";
   if (typeof value === "boolean") return value ? "Yes" : "No";
   return String(value);
-}
-
-function formatDuration(value: number | null | undefined) {
-  if (!value || value <= 0) return "Unknown";
-  const totalSeconds = Math.max(0, Math.floor(value));
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-  if (hours > 0) {
-    return `${hours}h ${minutes}m ${seconds}s`;
-  }
-  if (minutes > 0) {
-    return `${minutes}m ${seconds}s`;
-  }
-  return `${seconds}s`;
 }
 
 function formatDateTime(value: Date | string | null | undefined) {

@@ -66,8 +66,8 @@ export default async function MatchupPage({
             {leftPlayer.name} vs {rightPlayer.name}
           </h1>
           <p className="max-w-3xl text-base leading-7 text-slate-300 sm:text-lg">
-            A living rivalry page built from parsed AoE2HD matches. As more replays land, this page
-            becomes the public record between these two identities.
+            Replay-backed rivalry record. Every stored meeting between these two players lands here
+            with results, timestamps, and direct paths into each public identity page.
           </p>
 
           <div className="flex flex-wrap gap-2">
@@ -85,13 +85,13 @@ export default async function MatchupPage({
               href={leftPlayer.href}
               className="rounded-full bg-sky-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-200"
             >
-              Open {leftPlayer.name}
+              View {leftPlayer.name}
             </Link>
             <Link
               href={rightPlayer.href}
               className="rounded-full border border-white/15 px-5 py-3 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
             >
-              Open {rightPlayer.name}
+              View {rightPlayer.name}
             </Link>
             <Link
               href="/players"
