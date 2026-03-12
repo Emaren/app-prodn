@@ -242,7 +242,28 @@ export async function loadPublicPlayerDirectory(
     }
   }
 
-  const allEntries = Array.from(directory.values());
+  const allEntries = Array.from(directory.values()).filter((entry) => {
+    if (!entry.claimed) {
+      return true;
+    }
+
+    const hasNamedIdentity = Boolean(
+      normalizePublicPlayerName(entry.inGameName) ||
+        normalizePublicPlayerName(entry.steamPersonaName) ||
+        entry.aliases.length > 0
+    );
+
+    if (!hasNamedIdentity) {
+      return false;
+    }
+
+    if (!normalizePublicPlayerName(entry.inGameName) && !normalizePublicPlayerName(entry.steamPersonaName)) {
+      entry.name = entry.aliases[0] || entry.name;
+    }
+
+    return true;
+  });
+
   const claimedEntries = allEntries.filter((entry) => entry.claimed).sort(sortClaimedEntries);
   const replayEntries = allEntries.filter((entry) => !entry.claimed).sort(sortReplayEntries);
   const activeClaimed = claimedEntries.filter((entry) => entry.isOnline);
