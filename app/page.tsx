@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import { type CSSProperties, type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import SteamLoginButton from "@/components/SteamLoginButton";
 import SteamLinkedBadge from "@/components/SteamLinkedBadge";
 import { useUserAuth } from "@/context/UserAuthContext";
@@ -35,7 +35,10 @@ export default function HomePage() {
   const [joinError, setJoinError] = useState<string | null>(null);
   const [chatPending, setChatPending] = useState(false);
   const [joinPending, setJoinPending] = useState(false);
+  const [chatCardHeight, setChatCardHeight] = useState<number | null>(null);
+
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
+  const rightColumnRef = useRef<HTMLDivElement | null>(null);
 
   const loadLobby = useCallback(async () => {
     try {
@@ -114,6 +117,7 @@ export default function HomePage() {
   const onlineUsers = lobby?.onlineUsers ?? [];
   const recentMatches = lobby?.recentMatches ?? [];
   const messages = lobby?.messages ?? EMPTY_MESSAGES;
+
   const chatRoomTitle =
     messages.length > 0 && messages[0]?.roomSlug === tournament.roomSlug && !tournament.isFallback
       ? `${tournament.title} Chat`
@@ -123,6 +127,47 @@ export default function HomePage() {
     if (!chatScrollRef.current) return;
     chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
   }, [messages]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const syncChatHeightToRightColumn = () => {
+      if (window.innerWidth < 1024) {
+        setChatCardHeight(null);
+        return;
+      }
+
+      const rightHeight = rightColumnRef.current?.getBoundingClientRect().height ?? 0;
+      if (rightHeight > 0) {
+        setChatCardHeight(Math.ceil(rightHeight));
+      }
+    };
+
+    syncChatHeightToRightColumn();
+
+    const handleResize = () => {
+      syncChatHeightToRightColumn();
+    };
+
+    window.addEventListener("resize", handleResize);
+
+    if (typeof ResizeObserver === "undefined" || !rightColumnRef.current) {
+      return () => {
+        window.removeEventListener("resize", handleResize);
+      };
+    }
+
+    const observer = new ResizeObserver(() => {
+      syncChatHeightToRightColumn();
+    });
+
+    observer.observe(rightColumnRef.current);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
 
   async function handleJoinTournament() {
     if (!tournament.id) return;
@@ -157,6 +202,7 @@ export default function HomePage() {
             }
           : current
       );
+
       await loadLobby();
     } catch (error) {
       setJoinError(error instanceof Error ? error.message : "Join failed.");
@@ -207,6 +253,11 @@ export default function HomePage() {
     }
   }
 
+  const chatCardStyle: CSSProperties | undefined =
+    chatCardHeight && typeof window !== "undefined" && window.innerWidth >= 1024
+      ? { height: `${chatCardHeight}px` }
+      : undefined;
+
   return (
     <main className="space-y-6 py-6 text-white">
       <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(251,191,36,0.18),_transparent_30%),linear-gradient(135deg,_#0f172a,_#111827_55%,_#0b1120)] p-8">
@@ -226,12 +277,15 @@ export default function HomePage() {
                 {liveConnected ? "Live updates connected" : "Polling fallback"}
               </div>
             </div>
+
             <div className="max-w-3xl space-y-3">
               <h2 className="text-4xl font-semibold leading-tight text-white sm:text-5xl">
-                One homepage for the next tournament, the live lobby, and the proof system behind trusted bets.
+                Age of Empires II HD tournaments, stats, and p2p betting — all in
+                one place.
               </h2>
               <p className="max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
-                Browse anonymously. Sign in with Steam when you want a persistent identity, tournament entry, replay uploads, and a trust path toward peer-to-peer betting.
+                Browse anonymously. Sign in with Steam when you want a persistent identity, tournament
+                entry, replay uploads, and a trust path toward peer-to-peer betting.
               </p>
             </div>
 
@@ -357,7 +411,8 @@ export default function HomePage() {
                 <div className="mt-4 space-y-3">
                   {tournament.matches.length === 0 ? (
                     <div className="text-sm text-slate-400">
-                      No bracket matches posted yet. Once the first pairings are set, they will appear here live.
+                      No bracket matches posted yet. Once the first pairings are set, they will appear
+                      here live.
                     </div>
                   ) : (
                     tournament.matches.slice(0, 3).map((match) => (
@@ -371,7 +426,8 @@ export default function HomePage() {
                               {match.label || `Round ${match.round} · Match ${match.position}`}
                             </div>
                             <div className="mt-1 text-sm text-slate-300">
-                              {displayMatchPlayer(match.playerOne)} vs {displayMatchPlayer(match.playerTwo)}
+                              {displayMatchPlayer(match.playerOne)} vs{" "}
+                              {displayMatchPlayer(match.playerTwo)}
                             </div>
                           </div>
                           <div className="space-y-2 text-right">
@@ -446,8 +502,11 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
-        <div className="flex min-h-[34rem] flex-col rounded-[1.75rem] border border-white/10 bg-slate-950/70 p-6 lg:min-h-[42rem]">
+      <section className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr] lg:items-start">
+        <div
+          className="flex min-h-[34rem] min-w-0 flex-col rounded-[1.75rem] border border-white/10 bg-slate-950/70 p-6"
+          style={chatCardStyle}
+        >
           <div className="flex items-center justify-between gap-4">
             <div>
               <div className="text-xs uppercase tracking-[0.35em] text-white/45">Chat</div>
@@ -459,42 +518,41 @@ export default function HomePage() {
           </div>
 
           <div className="mt-5 flex min-h-0 flex-1 flex-col gap-3">
-            <div ref={chatScrollRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
-              {messages.length === 0 ? (
-                <div className="rounded-2xl border border-white/8 bg-white/5 px-4 py-5 text-sm text-slate-300">
-                  No messages yet. The first tournament chatter starts here.
-                </div>
-              ) : (
-                messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className="rounded-2xl border border-white/8 bg-white/5 px-4 py-4"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="font-medium text-white">
-                        {displayName(message.user.inGameName, message.user.steamPersonaName)}
-                      </div>
-                      <div className="text-xs text-slate-400">
-                        {new Date(message.createdAt).toLocaleTimeString([], {
-                          hour: "numeric",
-                          minute: "2-digit",
-                        })}
-                      </div>
-                    </div>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {message.user.verificationLevel > 0 ? (
-                        <SteamLinkedBadge compact />
-                      ) : (
-                        <MiniIdentityPill>Unverified</MiniIdentityPill>
-                      )}
-                      {message.user.verified ? (
-                        <MiniIdentityPill>Replay verified</MiniIdentityPill>
-                      ) : null}
-                    </div>
-                    <p className="mt-3 text-sm leading-6 text-slate-200">{message.body}</p>
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[1.5rem] border border-white/8 bg-white/5 p-3">
+              <div ref={chatScrollRef} className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
+                {messages.length === 0 ? (
+                  <div className="rounded-xl bg-slate-950/70 px-4 py-5 text-sm text-slate-300">
+                    No messages yet. The first tournament chatter starts here.
                   </div>
-                ))
-              )}
+                ) : (
+                  messages.map((message) => (
+                    <div key={message.id} className="rounded-xl bg-slate-950/70 px-4 py-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="font-medium text-white">
+                          {displayName(message.user.inGameName, message.user.steamPersonaName)}
+                        </div>
+                        <div className="text-xs text-slate-400">
+                          {new Date(message.createdAt).toLocaleTimeString([], {
+                            hour: "numeric",
+                            minute: "2-digit",
+                          })}
+                        </div>
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {message.user.verificationLevel > 0 ? (
+                          <SteamLinkedBadge compact />
+                        ) : (
+                          <MiniIdentityPill>Unverified</MiniIdentityPill>
+                        )}
+                        {message.user.verified ? (
+                          <MiniIdentityPill>Replay verified</MiniIdentityPill>
+                        ) : null}
+                      </div>
+                      <p className="mt-3 text-sm leading-6 text-slate-200">{message.body}</p>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
 
             {chatError && (
@@ -507,7 +565,9 @@ export default function HomePage() {
               {isAuthenticated ? (
                 <div className="space-y-3">
                   <div className="text-sm text-slate-300">
-                    Chatting as {playerName || displayName(user?.inGameName || null, user?.steamPersonaName || null)}
+                    Chatting as{" "}
+                    {playerName ||
+                      displayName(user?.inGameName || null, user?.steamPersonaName || null)}
                   </div>
                   <div className="flex flex-col gap-3 sm:flex-row">
                     <input
@@ -550,12 +610,12 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div className="space-y-6">
+        <div ref={rightColumnRef} className="flex min-w-0 flex-col gap-6">
           <div className="rounded-[1.75rem] border border-white/10 bg-slate-950/70 p-6">
             <div className="flex items-center justify-between gap-4">
               <div>
                 <div className="text-xs uppercase tracking-[0.35em] text-white/45">Lobby</div>
-                <h3 className="mt-2 text-2xl font-semibold text-white">Online Warriors</h3>
+                <h3 className="mt-2 text-2xl font-semibold text-white">Online Players</h3>
               </div>
               <div className="flex items-center gap-3">
                 <Link
@@ -573,7 +633,8 @@ export default function HomePage() {
             <div className="mt-5 space-y-3">
               {onlineUsers.length === 0 ? (
                 <p className="rounded-2xl border border-white/8 bg-white/5 px-4 py-5 text-sm text-slate-300">
-                  No recent presence yet. Once signed-in players start pinging the site, this becomes the real lobby roster.
+                  No recent presence yet. Once signed-in players start pinging the site, this becomes
+                  the real lobby roster.
                 </p>
               ) : (
                 onlineUsers.map((onlineUser) => (
@@ -651,7 +712,9 @@ function OnlineUserCard({ user }: { user: LobbyOnlineUser }) {
 }
 
 function MatchCard({ match }: { match: LobbyMatchRow }) {
-  const players = parseReplayPlayers(match.players).map((player) => String(player.name || "")).filter(Boolean);
+  const players = parseReplayPlayers(match.players)
+    .map((player) => String(player.name || ""))
+    .filter(Boolean);
   const playedAt = match.played_on || match.timestamp;
   const outcomeLabel = outcomeBadgeLabel(match.parse_reason, match.winner);
 
@@ -679,7 +742,10 @@ function MatchCard({ match }: { match: LobbyMatchRow }) {
   );
 }
 
-function displayName(inGameName: string | null | undefined, steamPersonaName: string | null | undefined) {
+function displayName(
+  inGameName: string | null | undefined,
+  steamPersonaName: string | null | undefined
+) {
   return inGameName || steamPersonaName || "Steam user";
 }
 

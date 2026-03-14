@@ -25,6 +25,7 @@ export async function GET(request: NextRequest) {
       where: { uid },
       select: { isAdmin: true },
     });
+
     if (!user?.isAdmin) {
       return NextResponse.json({ detail: "Forbidden" }, { status: 403 });
     }
@@ -43,10 +44,12 @@ export async function GET(request: NextRequest) {
     });
 
     const payload = await upstreamResponse.text();
+
     return new NextResponse(payload, {
       status: upstreamResponse.status,
       headers: {
         "content-type": upstreamResponse.headers.get("content-type") || "application/json",
+        "Cache-Control": "no-store, max-age=0, must-revalidate",
       },
     });
   } catch (error) {
