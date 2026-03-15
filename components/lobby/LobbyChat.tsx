@@ -1,7 +1,6 @@
 "use client";
 
 import { type CSSProperties, type ReactNode, type RefObject } from "react";
-import SteamLoginButton from "@/components/SteamLoginButton";
 import SteamLinkedBadge from "@/components/SteamLinkedBadge";
 import type { ChatRenderItem } from "@/components/lobby/utils";
 import { displayName } from "@/components/lobby/utils";
@@ -51,6 +50,7 @@ export function LobbyChat({
           <div className="text-xs uppercase tracking-[0.35em] text-white/45">Chat</div>
           <h3 className="mt-2 text-2xl font-semibold text-white">{chatRoomTitle}</h3>
         </div>
+
         <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
           {messagesCount} recent
         </div>
@@ -73,6 +73,7 @@ export function LobbyChat({
                       <div className="font-medium text-white">
                         {displayName(item.message.user.inGameName, item.message.user.steamPersonaName)}
                       </div>
+
                       <div className="text-xs text-slate-400">
                         {new Date(item.message.createdAt).toLocaleTimeString([], {
                           hour: "numeric",
@@ -80,16 +81,19 @@ export function LobbyChat({
                         })}
                       </div>
                     </div>
+
                     <div className="mt-2 flex flex-wrap gap-2">
                       {item.message.user.verificationLevel > 0 ? (
                         <SteamLinkedBadge compact />
                       ) : (
                         <MiniIdentityPill>Unverified</MiniIdentityPill>
                       )}
+
                       {item.message.user.verified ? (
                         <MiniIdentityPill>Replay verified</MiniIdentityPill>
                       ) : null}
                     </div>
+
                     <p className="mt-3 text-sm leading-6 text-slate-200">{item.message.body}</p>
                   </div>
                 )
@@ -108,10 +112,9 @@ export function LobbyChat({
           {isAuthenticated ? (
             <div className="space-y-3">
               <div className="text-sm text-slate-300">
-                Chatting as{" "}
-                {playerName ||
-                  displayName(currentUserInGameName, currentUserSteamPersonaName)}
+                Chatting as {playerName || displayName(currentUserInGameName, currentUserSteamPersonaName)}
               </div>
+
               <div className="flex flex-col gap-3 sm:flex-row">
                 <input
                   value={messageBody}
@@ -126,6 +129,7 @@ export function LobbyChat({
                   placeholder="Call out the matchup, look for practice games, or talk bracket."
                   className="min-w-0 flex-1 rounded-full border border-white/10 bg-slate-950/80 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-amber-300/50"
                 />
+
                 <button
                   type="button"
                   onClick={onSendMessage}
@@ -141,10 +145,14 @@ export function LobbyChat({
               <div className="text-sm text-slate-300">
                 Sign in to join the live lobby instead of just watching it.
               </div>
-              <SteamLoginButton
+
+              <button
+                type="button"
+                onClick={onLogin}
                 className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-200"
-                label="Sign In To Chat"
-              />
+              >
+                Sign In To Chat
+              </button>
             </div>
           )}
         </div>
