@@ -1,30 +1,20 @@
 "use client";
 
-import Link from "next/link";
-import { type CSSProperties, type ReactNode, useCallback, useEffect, useRef, useState } from "react";
-import SteamLoginButton from "@/components/SteamLoginButton";
-import SteamLinkedBadge from "@/components/SteamLinkedBadge";
+import { type CSSProperties, useCallback, useEffect, useRef, useState } from "react";
+import { LobbyChat } from "@/components/lobby/LobbyChat";
+import { LobbyHero } from "@/components/lobby/LobbyHero";
+import { OnlinePlayersPanel } from "@/components/lobby/OnlinePlayersPanel";
+import { RecentMatchesPanel } from "@/components/lobby/RecentMatchesPanel";
+import { TournamentPanel } from "@/components/lobby/TournamentPanel";
+import { buildChatItems } from "@/components/lobby/utils";
 import { useUserAuth } from "@/context/UserAuthContext";
-import {
-  outcomeBadgeLabel,
-  parsePlayers as parseReplayPlayers,
-  readMapName,
-  winnerLabel,
-} from "@/lib/gameStatsView";
-import {
-  getFallbackTournament,
-  getTournamentMatchStatusLabel,
-  getTournamentStatusLabel,
-  type LobbyMatchRow,
-  type LobbyMessage,
-  type LobbyOnlineUser,
-  type LobbySnapshot,
-} from "@/lib/lobby";
+import { getFallbackTournament, type LobbyMessage, type LobbySnapshot } from "@/lib/lobby";
 
 const EMPTY_MESSAGES: LobbyMessage[] = [];
 
 export default function HomePage() {
   const { isAdmin, isAuthenticated, loading, loginWithSteam, playerName, user } = useUserAuth();
+
   const [lobby, setLobby] = useState<LobbySnapshot | null>(null);
   const [liveConnected, setLiveConnected] = useState(false);
   const [authError, setAuthError] = useState(false);
@@ -58,6 +48,7 @@ export default function HomePage() {
 
   useEffect(() => {
     void loadLobby();
+
     const interval = window.setInterval(() => {
       void loadLobby();
     }, 30_000);
@@ -91,9 +82,11 @@ export default function HomePage() {
 
     source.addEventListener("snapshot", handleSnapshot as EventListener);
     source.addEventListener("error", handleStreamError as EventListener);
+
     source.onopen = () => {
       setLiveConnected(true);
     };
+
     source.onerror = () => {
       setLiveConnected(false);
     };
@@ -108,6 +101,7 @@ export default function HomePage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+
     const params = new URLSearchParams(window.location.search);
     setAuthError(params.get("auth") === "steam-error");
     setAuthDetail(params.get("detail"));
@@ -117,6 +111,7 @@ export default function HomePage() {
   const onlineUsers = lobby?.onlineUsers ?? [];
   const recentMatches = lobby?.recentMatches ?? [];
   const messages = lobby?.messages ?? EMPTY_MESSAGES;
+  const chatItems = buildChatItems(messages);
 
   const chatRoomTitle =
     messages.length > 0 && messages[0]?.roomSlug === tournament.roomSlug && !tournament.isFallback
@@ -126,7 +121,7 @@ export default function HomePage() {
   useEffect(() => {
     if (!chatScrollRef.current) return;
     chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
-  }, [messages]);
+  }, [chatItems]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -171,6 +166,7 @@ export default function HomePage() {
 
   async function handleJoinTournament() {
     if (!tournament.id) return;
+
     if (!isAuthenticated) {
       loginWithSteam("/");
       return;
@@ -214,6 +210,7 @@ export default function HomePage() {
   async function handleSendMessage() {
     const trimmed = messageBody.trim();
     if (!trimmed) return;
+
     if (!isAuthenticated) {
       loginWithSteam("/");
       return;
@@ -262,528 +259,58 @@ export default function HomePage() {
     <main className="space-y-6 py-6 text-white">
       <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(251,191,36,0.18),_transparent_30%),linear-gradient(135deg,_#0f172a,_#111827_55%,_#0b1120)] p-8">
         <div className="grid gap-8 lg:grid-cols-[1.2fr_0.95fr]">
-          <div className="space-y-5">
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="text-sm uppercase tracking-[0.4em] text-amber-200/70">
-                Community Lobby
-              </div>
-              <div
-                className={`rounded-full px-3 py-1 text-xs ${
-                  liveConnected
-                    ? "border border-emerald-400/30 bg-emerald-500/10 text-emerald-100"
-                    : "border border-white/10 bg-white/5 text-slate-300"
-                }`}
-              >
-                {liveConnected ? "Live updates connected" : "Polling fallback"}
-              </div>
-            </div>
+          <LobbyHero
+            liveConnected={liveConnected}
+            authError={authError}
+            authDetail={authDetail}
+            lobbyError={lobbyError}
+            isAuthenticated={isAuthenticated}
+            loading={loading}
+            tournamentEntryCount={tournament.entryCount}
+            onlineUserCount={onlineUsers.length}
+            recentMatchCount={recentMatches.length}
+          />
 
-            <div className="max-w-3xl space-y-3">
-              <h2 className="text-4xl font-semibold leading-tight text-white sm:text-5xl">
-                Age of Empires II HD tournaments, stats, and p2p betting — all in
-                one place.
-              </h2>
-              <p className="max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
-                Browse anonymously. Sign in with Steam when you want a persistent identity, tournament
-                entry, replay uploads, and a trust path toward peer-to-peer betting.
-              </p>
-            </div>
-
-            {authError && (
-              <div className="max-w-2xl rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
-                Steam sign-in failed{authDetail ? `: ${authDetail}` : "."}
-              </div>
-            )}
-
-            {lobbyError && (
-              <div className="max-w-2xl rounded-2xl border border-amber-300/25 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
-                {lobbyError}
-              </div>
-            )}
-
-            <div className="flex flex-wrap items-center gap-3">
-              {isAuthenticated ? (
-                <Link
-                  href="/profile"
-                  className="rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200"
-                >
-                  Open Profile
-                </Link>
-              ) : (
-                <SteamLoginButton
-                  className="rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200"
-                  label={loading ? "Loading..." : "Claim Your Steam Identity"}
-                  disabled={loading}
-                />
-              )}
-
-              <Link
-                href="/game-stats"
-                className="rounded-full border border-white/15 px-5 py-3 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
-              >
-                Watch Parsed Matches
-              </Link>
-
-              <Link
-                href="/download"
-                className="rounded-full border border-white/15 px-5 py-3 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
-              >
-                Download Watcher
-              </Link>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-3">
-              <StatCard label="Entrants" value={String(tournament.entryCount)} />
-              <StatCard label="Active Lobby" value={String(onlineUsers.length)} />
-              <StatCard label="Recent Matches" value={String(recentMatches.length)} />
-            </div>
-          </div>
-
-          <div className="rounded-[1.75rem] border border-white/10 bg-white/5 p-6 shadow-2xl shadow-black/20">
-            <div className="flex items-start justify-between gap-4">
-              <div className="text-xs uppercase tracking-[0.35em] text-amber-200/70">
-                Next Tournament
-              </div>
-              <div className="rounded-full border border-amber-300/20 bg-amber-300/10 px-3 py-1 text-xs font-medium text-amber-100">
-                {getTournamentStatusLabel(tournament.status)}
-              </div>
-            </div>
-
-            <div className="mt-4 space-y-3">
-              <h3 className="text-2xl font-semibold text-white">{tournament.title}</h3>
-              <p className="text-sm text-slate-300">
-                <span className="font-semibold text-white">{tournament.format}</span>
-                {" · "}
-                {formatTournamentWindow(tournament.startsAt)}
-              </p>
-              <p className="text-sm leading-6 text-slate-300">{tournament.description}</p>
-
-              <div className="rounded-2xl border border-white/8 bg-slate-950/40 p-4">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <div className="text-xs uppercase tracking-[0.25em] text-slate-400">
-                      Join Queue
-                    </div>
-                    <div className="mt-1 text-lg font-semibold text-white">
-                      {tournament.entryCount} {tournament.entryCount === 1 ? "entrant" : "entrants"}
-                    </div>
-                  </div>
-                  {isAdmin && (
-                    <Link
-                      href="/admin"
-                      className="rounded-full border border-white/15 px-4 py-2 text-xs text-white/85 transition hover:border-white/30 hover:text-white"
-                    >
-                      Edit Tournament
-                    </Link>
-                  )}
-                </div>
-
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {tournament.entrants.length === 0 ? (
-                    <div className="text-sm text-slate-400">
-                      No one has joined yet. The first few players set the tone.
-                    </div>
-                  ) : (
-                    tournament.entrants.slice(0, 12).map((entrant) => (
-                      <div
-                        key={`${entrant.entryId ?? entrant.uid}-${entrant.joinedAt}`}
-                        className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs text-white"
-                      >
-                        {displayName(entrant.inGameName, entrant.steamPersonaName)}
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-white/8 bg-slate-950/40 p-4">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <div className="text-xs uppercase tracking-[0.25em] text-slate-400">
-                      Bracket Preview
-                    </div>
-                    <div className="mt-1 text-lg font-semibold text-white">
-                      {tournament.matches.length} {tournament.matches.length === 1 ? "match" : "matches"}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-4 space-y-3">
-                  {tournament.matches.length === 0 ? (
-                    <div className="text-sm text-slate-400">
-                      No bracket matches posted yet. Once the first pairings are set, they will appear
-                      here live.
-                    </div>
-                  ) : (
-                    tournament.matches.slice(0, 3).map((match) => (
-                      <div
-                        key={match.id}
-                        className="rounded-2xl border border-white/8 bg-white/5 px-4 py-4"
-                      >
-                        <div className="flex items-start justify-between gap-4">
-                          <div>
-                            <div className="text-sm font-medium text-white">
-                              {match.label || `Round ${match.round} · Match ${match.position}`}
-                            </div>
-                            <div className="mt-1 text-sm text-slate-300">
-                              {displayMatchPlayer(match.playerOne)} vs{" "}
-                              {displayMatchPlayer(match.playerTwo)}
-                            </div>
-                          </div>
-                          <div className="space-y-2 text-right">
-                            <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-200">
-                              {getTournamentMatchStatusLabel(match.status)}
-                            </div>
-                            {match.proof && (
-                              <div className="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-100">
-                                Replay Verified
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        {match.scheduledAt && (
-                          <div className="mt-3 text-xs text-slate-400">
-                            {new Date(match.scheduledAt).toLocaleString()}
-                          </div>
-                        )}
-                        {match.proof && (
-                          <div className="mt-3 text-xs text-emerald-100/90">
-                            {match.proof.mapName || "Unknown map"}
-                            {match.proof.playedOn
-                              ? ` · ${new Date(match.proof.playedOn).toLocaleString()}`
-                              : ""}
-                            {match.proof.winner ? ` · Winner ${match.proof.winner}` : ""}
-                          </div>
-                        )}
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-
-              {joinError && (
-                <div className="rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
-                  {joinError}
-                </div>
-              )}
-
-              <div className="flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    void handleJoinTournament();
-                  }}
-                  disabled={joinPending || tournament.isFallback || tournament.status === "completed"}
-                  className="rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {tournament.viewerJoined
-                    ? joinPending
-                      ? "Refreshing..."
-                      : "Joined"
-                    : joinPending
-                      ? "Joining..."
-                      : tournament.isFallback
-                        ? "Waiting For Setup"
-                        : "Join Tournament"}
-                </button>
-
-                {!isAuthenticated && (
-                  <button
-                    type="button"
-                    onClick={() => loginWithSteam("/")}
-                    className="rounded-full border border-white/15 px-5 py-3 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
-                  >
-                    Sign In To Join
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
+          <TournamentPanel
+            tournament={tournament}
+            isAdmin={isAdmin}
+            isAuthenticated={isAuthenticated}
+            joinPending={joinPending}
+            joinError={joinError}
+            onJoinTournament={() => {
+              void handleJoinTournament();
+            }}
+            onLogin={() => loginWithSteam("/")}
+          />
         </div>
       </section>
 
       <section className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr] lg:items-start">
-        <div
-          className="flex min-h-[34rem] min-w-0 flex-col rounded-[1.75rem] border border-white/10 bg-slate-950/70 p-6"
+        <LobbyChat
           style={chatCardStyle}
-        >
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <div className="text-xs uppercase tracking-[0.35em] text-white/45">Chat</div>
-              <h3 className="mt-2 text-2xl font-semibold text-white">{chatRoomTitle}</h3>
-            </div>
-            <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-              {messages.length} recent
-            </div>
-          </div>
-
-          <div className="mt-5 flex min-h-0 flex-1 flex-col gap-3">
-            <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[1.5rem] border border-white/8 bg-white/5 p-3">
-              <div ref={chatScrollRef} className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
-                {messages.length === 0 ? (
-                  <div className="rounded-xl bg-slate-950/70 px-4 py-5 text-sm text-slate-300">
-                    No messages yet. The first tournament chatter starts here.
-                  </div>
-                ) : (
-                  messages.map((message) => (
-                    <div key={message.id} className="rounded-xl bg-slate-950/70 px-4 py-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="font-medium text-white">
-                          {displayName(message.user.inGameName, message.user.steamPersonaName)}
-                        </div>
-                        <div className="text-xs text-slate-400">
-                          {new Date(message.createdAt).toLocaleTimeString([], {
-                            hour: "numeric",
-                            minute: "2-digit",
-                          })}
-                        </div>
-                      </div>
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {message.user.verificationLevel > 0 ? (
-                          <SteamLinkedBadge compact />
-                        ) : (
-                          <MiniIdentityPill>Unverified</MiniIdentityPill>
-                        )}
-                        {message.user.verified ? (
-                          <MiniIdentityPill>Replay verified</MiniIdentityPill>
-                        ) : null}
-                      </div>
-                      <p className="mt-3 text-sm leading-6 text-slate-200">{message.body}</p>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-
-            {chatError && (
-              <div className="rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
-                {chatError}
-              </div>
-            )}
-
-            <div className="rounded-[1.5rem] border border-white/8 bg-white/5 p-3">
-              {isAuthenticated ? (
-                <div className="space-y-3">
-                  <div className="text-sm text-slate-300">
-                    Chatting as{" "}
-                    {playerName ||
-                      displayName(user?.inGameName || null, user?.steamPersonaName || null)}
-                  </div>
-                  <div className="flex flex-col gap-3 sm:flex-row">
-                    <input
-                      value={messageBody}
-                      onChange={(event) => setMessageBody(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" && !event.shiftKey) {
-                          event.preventDefault();
-                          void handleSendMessage();
-                        }
-                      }}
-                      maxLength={280}
-                      placeholder="Call out the matchup, look for practice games, or talk bracket."
-                      className="min-w-0 flex-1 rounded-full border border-white/10 bg-slate-950/80 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-amber-300/50"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        void handleSendMessage();
-                      }}
-                      disabled={chatPending || messageBody.trim().length === 0}
-                      className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {chatPending ? "Sending..." : "Send"}
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="text-sm text-slate-300">
-                    Sign in to join the live lobby instead of just watching it.
-                  </div>
-                  <SteamLoginButton
-                    className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-200"
-                    label="Sign In To Chat"
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+          chatRoomTitle={chatRoomTitle}
+          messagesCount={messages.length}
+          chatItems={chatItems}
+          chatScrollRef={chatScrollRef}
+          chatError={chatError}
+          isAuthenticated={isAuthenticated}
+          playerName={playerName}
+          currentUserInGameName={user?.inGameName ?? null}
+          currentUserSteamPersonaName={user?.steamPersonaName ?? null}
+          messageBody={messageBody}
+          chatPending={chatPending}
+          onMessageBodyChange={setMessageBody}
+          onSendMessage={() => {
+            void handleSendMessage();
+          }}
+          onLogin={() => loginWithSteam("/")}
+        />
 
         <div ref={rightColumnRef} className="flex min-w-0 flex-col gap-6">
-          <div className="rounded-[1.75rem] border border-white/10 bg-slate-950/70 p-6">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <div className="text-xs uppercase tracking-[0.35em] text-white/45">Lobby</div>
-                <h3 className="mt-2 text-2xl font-semibold text-white">Online Players</h3>
-              </div>
-              <div className="flex items-center gap-3">
-                <Link
-                  href="/players"
-                  className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300 transition hover:border-white/20 hover:text-white"
-                >
-                  Browse Player Graph
-                </Link>
-                <div className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-200">
-                  {onlineUsers.length} active
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-5 space-y-3">
-              {onlineUsers.length === 0 ? (
-                <p className="rounded-2xl border border-white/8 bg-white/5 px-4 py-5 text-sm text-slate-300">
-                  No recent presence yet. Once signed-in players start pinging the site, this becomes
-                  the real lobby roster.
-                </p>
-              ) : (
-                onlineUsers.map((onlineUser) => (
-                  <OnlineUserCard key={onlineUser.uid} user={onlineUser} />
-                ))
-              )}
-            </div>
-          </div>
-
-          <div className="rounded-[1.75rem] border border-white/10 bg-slate-950/70 p-6">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <div className="text-xs uppercase tracking-[0.35em] text-white/45">Match Feed</div>
-                <h3 className="mt-2 text-2xl font-semibold text-white">Recent Parsed Games</h3>
-              </div>
-              <Link
-                href="/game-stats"
-                className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300 transition hover:border-white/20 hover:text-white"
-              >
-                Open Parser Lab
-              </Link>
-            </div>
-
-            <div className="mt-5 space-y-3">
-              {recentMatches.length === 0 ? (
-                <p className="rounded-2xl border border-white/8 bg-white/5 px-4 py-5 text-sm text-slate-300">
-                  Parsed matches will show here as soon as the watcher uploads them.
-                </p>
-              ) : (
-                recentMatches.map((match) => <MatchCard key={match.id} match={match} />)
-              )}
-            </div>
-          </div>
+          <OnlinePlayersPanel onlineUsers={onlineUsers} />
+          <RecentMatchesPanel recentMatches={recentMatches} />
         </div>
       </section>
     </main>
-  );
-}
-
-function StatCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-[1.4rem] border border-white/10 bg-white/5 px-4 py-4">
-      <div className="text-xs uppercase tracking-[0.25em] text-slate-400">{label}</div>
-      <div className="mt-2 text-2xl font-semibold text-white">{value}</div>
-    </div>
-  );
-}
-
-function OnlineUserCard({ user }: { user: LobbyOnlineUser }) {
-  return (
-    <Link
-      href={`/players/${user.uid}`}
-      className="flex items-center justify-between rounded-2xl border border-white/8 bg-white/5 px-4 py-4 transition hover:border-amber-300/30 hover:bg-white/10"
-    >
-      <div>
-        <div className="font-medium text-white">{user.in_game_name}</div>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {user.verificationLevel > 0 ? <SteamLinkedBadge compact /> : null}
-          {user.verified ? (
-            <MiniIdentityPill>Replay verified</MiniIdentityPill>
-          ) : (
-            <MiniIdentityPill>New warrior</MiniIdentityPill>
-          )}
-        </div>
-      </div>
-      <div
-        className={`rounded-full px-3 py-1 text-xs ${
-          user.verified ? "bg-emerald-500/15 text-emerald-200" : "bg-white/8 text-slate-300"
-        }`}
-      >
-        {user.verified ? "Trusted" : "New"}
-      </div>
-    </Link>
-  );
-}
-
-function MatchCard({ match }: { match: LobbyMatchRow }) {
-  const players = parseReplayPlayers(match.players)
-    .map((player) => String(player.name || ""))
-    .filter(Boolean);
-  const playedAt = match.played_on || match.timestamp;
-  const outcomeLabel = outcomeBadgeLabel(match.parse_reason, match.winner);
-
-  return (
-    <Link
-      href={`/game-stats/${match.id}`}
-      className="block rounded-2xl border border-white/8 bg-white/5 px-4 py-4 transition hover:border-sky-300/30 hover:bg-white/10"
-    >
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <div className="font-medium text-white">{readMapName(match.map)}</div>
-          <div className="mt-1 text-sm text-slate-300">{players.join(" vs ")}</div>
-        </div>
-        <div className="space-y-2 text-right">
-          <div className="text-xs uppercase tracking-[0.25em] text-slate-400">
-            {winnerLabel(match.winner, match.parse_reason)}
-          </div>
-          {outcomeLabel ? <ResultTypePill>{outcomeLabel}</ResultTypePill> : null}
-        </div>
-      </div>
-      {playedAt && (
-        <div className="mt-3 text-xs text-slate-400">{new Date(playedAt).toLocaleString()}</div>
-      )}
-    </Link>
-  );
-}
-
-function displayName(
-  inGameName: string | null | undefined,
-  steamPersonaName: string | null | undefined
-) {
-  return inGameName || steamPersonaName || "Steam user";
-}
-
-function displayMatchPlayer(
-  entrant:
-    | LobbySnapshot["tournament"]["matches"][number]["playerOne"]
-    | LobbySnapshot["tournament"]["matches"][number]["playerTwo"]
-) {
-  if (!entrant) return "Open Slot";
-  return displayName(entrant.inGameName, entrant.steamPersonaName);
-}
-
-function formatTournamentWindow(startsAt: string | null) {
-  if (!startsAt) return "Scheduling now";
-
-  const date = new Date(startsAt);
-  if (Number.isNaN(date.getTime())) return "Scheduling now";
-
-  return date.toLocaleString([], {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
-function MiniIdentityPill({ children }: { children: ReactNode }) {
-  return (
-    <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-medium text-slate-300">
-      {children}
-    </span>
-  );
-}
-
-function ResultTypePill({ children }: { children: ReactNode }) {
-  return (
-    <span className="inline-flex rounded-full border border-amber-300/20 bg-amber-400/10 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-amber-100">
-      {children}
-    </span>
   );
 }

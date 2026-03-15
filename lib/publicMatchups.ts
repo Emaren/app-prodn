@@ -5,6 +5,7 @@ import {
   buildPublicPlayerRef,
   type PublicPlayerRef,
   findClaimedUsersForReplayNames,
+  normalizePublicPlayerName,
   publicPlayerMatchesName,
 } from "@/lib/publicPlayers";
 
@@ -26,6 +27,18 @@ export type RivalSummary = {
   losses: number;
   unknowns: number;
   lastPlayedAt: string | null;
+};
+
+export type PublicRivalryEntry = {
+  key: string;
+  left: PublicPlayerRef;
+  right: PublicPlayerRef;
+  leftWins: number;
+  rightWins: number;
+  unknowns: number;
+  totalMatches: number;
+  lastPlayedAt: string | null;
+  href: string;
 };
 
 export function canonicalizeMatchupPlayers(left: PublicPlayerRef, right: PublicPlayerRef) {
@@ -66,6 +79,24 @@ function winnerMatchesPlayer(player: PublicPlayerRef, winner: string | null | un
   }
 
   return publicPlayerMatchesName(player, winner);
+}
+
+function extractDistinctReplayNames(players: unknown) {
+  const seen = new Set<string>();
+  const names: string[] = [];
+
+  for (const player of parsePlayers(players)) {
+    const normalized = normalizePublicPlayerName(displayPlayerName(player));
+    if (!normalized) continue;
+
+    const key = normalized.toLowerCase();
+    if (seen.has(key)) continue;
+
+    seen.add(key);
+    names.push(normalized);
+  }
+
+  return names;
 }
 
 export function filterHeadToHeadMatches(
@@ -183,5 +214,96 @@ export async function buildRivalSummaries(
     }
 
     return left.ref.name.localeCompare(right.ref.name);
+  });
+}
+
+export async function loadPublicRivalries(
+  prisma: PrismaClient,
+  options?: { take?: number }
+): Promise<PublicRivalryEntry[]> {
+  const candidateMatches = await prisma.gameStats.findMany({
+    where: { is_final: true },
+    orderBy: [{ played_on: "desc" }, { timestamp: "desc" }, { createdAt: "desc" }],
+    take: options?.take ?? 400,
+    select: {
+      id: true,
+      winner: true,
+      players: true,
+      played_on: true,
+      timestamp: true,
+      parse_reason: true,
+      map: true,
+      disconnect_detected: true,
+    },
+  });
+
+  const duelSeeds = candidateMatches
+    .map((match) => ({
+      match,
+      names: extractDistinctReplayNames(match.players),
+    }))
+    .filter((entry) => entry.names.length === 2);
+
+  const claimedPlayers = await findClaimedUsersForReplayNames(
+    prisma,
+    Array.from(new Set(duelSeeds.flatMap((entry) => entry.names)))
+  );
+
+  const rivalries = new Map<string, PublicRivalryEntry>();
+
+  for (const entry of duelSeeds) {
+    const firstRef = buildPublicPlayerRef(entry.names[0], claimedPlayers);
+    const secondRef = buildPublicPlayerRef(entry.names[1], claimedPlayers);
+    const [left, right] = canonicalizeMatchupPlayers(firstRef, secondRef);
+    const key = `${left.token}::${right.token}`;
+
+    const rivalry =
+      rivalries.get(key) ||
+      ({
+        key,
+        left,
+        right,
+        leftWins: 0,
+        rightWins: 0,
+        unknowns: 0,
+        totalMatches: 0,
+        lastPlayedAt: null,
+        href: buildMatchupHref(left, right),
+      } satisfies PublicRivalryEntry);
+
+    rivalry.totalMatches += 1;
+    rivalry.lastPlayedAt = updateLastPlayedAt(rivalry.lastPlayedAt, readPlayedAt(entry.match));
+
+    if (winnerMatchesPlayer(left, entry.match.winner)) {
+      rivalry.leftWins += 1;
+    } else if (winnerMatchesPlayer(right, entry.match.winner)) {
+      rivalry.rightWins += 1;
+    } else {
+      rivalry.unknowns += 1;
+    }
+
+    rivalries.set(key, rivalry);
+  }
+
+  return Array.from(rivalries.values()).sort((left, right) => {
+    if (left.totalMatches !== right.totalMatches) {
+      return right.totalMatches - left.totalMatches;
+    }
+
+    if (left.lastPlayedAt && right.lastPlayedAt) {
+      return new Date(right.lastPlayedAt).getTime() - new Date(left.lastPlayedAt).getTime();
+    }
+
+    if (left.lastPlayedAt || right.lastPlayedAt) {
+      return left.lastPlayedAt ? -1 : 1;
+    }
+
+    if (left.unknowns !== right.unknowns) {
+      return left.unknowns - right.unknowns;
+    }
+
+    const leftLabel = `${left.left.name} ${left.right.name}`;
+    const rightLabel = `${right.left.name} ${right.right.name}`;
+    return leftLabel.localeCompare(rightLabel);
   });
 }
