@@ -155,7 +155,9 @@ function PlayerCard({
         </div>
       </div>
 
-      <div className="mt-5 grid gap-3 sm:grid-cols-4">
+      <div className="mt-5 grid gap-3 sm:grid-cols-3">
+        <Stat label="Steam" value={formatRating(entry.steamRmRating)} />
+        <Stat label="RM Ladder" value={formatRating(entry.steamDmRating)} />
         <Stat label="Matches" value={String(entry.totalMatches)} />
         <Stat label="Wins" value={String(entry.wins)} />
         <Stat label="Losses" value={String(entry.losses)} />
@@ -171,8 +173,8 @@ function PlayerCard({
 
       <div className="mt-4 text-xs text-slate-400">
         {entry.lastPlayedAt
-          ? `Last replay sighting ${new Date(entry.lastPlayedAt).toLocaleString()}`
-          : "No replay sightings yet."}
+          ? `Last game ${new Date(entry.lastPlayedAt).toLocaleString()}`
+          : "No games stored yet."}
       </div>
     </Link>
   );
@@ -212,6 +214,10 @@ function Stat({ label, value }: { label: string; value: string }) {
       <div className="mt-2 text-sm font-medium text-slate-200">{value}</div>
     </div>
   );
+}
+
+function formatRating(value: number | null) {
+  return typeof value === "number" && Number.isFinite(value) ? String(Math.round(value)) : "Unknown";
 }
 
 function Tag({ children }: { children: ReactNode }) {

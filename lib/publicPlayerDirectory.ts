@@ -130,7 +130,28 @@ function updateSteamRatings(
   entry.ratingLastSeenAt = nextTimestamp !== null ? new Date(nextTimestamp).toISOString() : entry.ratingLastSeenAt;
 }
 
+function compareOfficialRatings(left: PublicPlayerDirectoryEntry, right: PublicPlayerDirectoryEntry) {
+  const leftSteam = left.steamRmRating ?? Number.NEGATIVE_INFINITY;
+  const rightSteam = right.steamRmRating ?? Number.NEGATIVE_INFINITY;
+  if (leftSteam !== rightSteam) {
+    return rightSteam - leftSteam;
+  }
+
+  const leftLadder = left.steamDmRating ?? Number.NEGATIVE_INFINITY;
+  const rightLadder = right.steamDmRating ?? Number.NEGATIVE_INFINITY;
+  if (leftLadder !== rightLadder) {
+    return rightLadder - leftLadder;
+  }
+
+  return 0;
+}
+
 function sortClaimedEntries(left: PublicPlayerDirectoryEntry, right: PublicPlayerDirectoryEntry) {
+  const ratingComparison = compareOfficialRatings(left, right);
+  if (ratingComparison !== 0) {
+    return ratingComparison;
+  }
+
   if (left.isOnline !== right.isOnline) {
     return Number(right.isOnline) - Number(left.isOnline);
   }
@@ -155,6 +176,11 @@ function sortClaimedEntries(left: PublicPlayerDirectoryEntry, right: PublicPlaye
 }
 
 function sortReplayEntries(left: PublicPlayerDirectoryEntry, right: PublicPlayerDirectoryEntry) {
+  const ratingComparison = compareOfficialRatings(left, right);
+  if (ratingComparison !== 0) {
+    return ratingComparison;
+  }
+
   if (left.totalMatches !== right.totalMatches) {
     return right.totalMatches - left.totalMatches;
   }

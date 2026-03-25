@@ -1,5 +1,39 @@
 type ReplayPlayerRecord = Record<string, unknown>;
 
+const HD_CIVILIZATION_NAMES: Record<number, string> = {
+  1: "Britons",
+  2: "Franks",
+  3: "Goths",
+  4: "Teutons",
+  5: "Japanese",
+  6: "Chinese",
+  7: "Byzantines",
+  8: "Persians",
+  9: "Saracens",
+  10: "Turks",
+  11: "Vikings",
+  12: "Mongols",
+  13: "Celts",
+  14: "Spanish",
+  15: "Aztecs",
+  16: "Mayans",
+  17: "Huns",
+  18: "Koreans",
+  19: "Italians",
+  20: "Indians",
+  21: "Incas",
+  22: "Magyars",
+  23: "Slavs",
+  24: "Portuguese",
+  25: "Ethiopians",
+  26: "Malians",
+  27: "Berbers",
+  28: "Khmer",
+  29: "Malay",
+  30: "Burmese",
+  31: "Vietnamese",
+};
+
 export function parsePlayers(value: unknown): ReplayPlayerRecord[] {
   if (Array.isArray(value)) {
     return value.filter((player): player is ReplayPlayerRecord => Boolean(player) && typeof player === "object");
@@ -219,6 +253,24 @@ export function parseStatusLabel(status: string) {
 export function displayPlayerName(player: ReplayPlayerRecord) {
   const name = player.name;
   return typeof name === "string" && name.trim() ? name : "Unknown player";
+}
+
+export function readPlayerCivilizationLabel(player: ReplayPlayerRecord) {
+  const named = player.civilization_name;
+  if (typeof named === "string" && named.trim()) {
+    return named.trim();
+  }
+
+  const value = player.civilization;
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return HD_CIVILIZATION_NAMES[Math.round(value)] || `Unknown (${Math.round(value)})`;
+  }
+
+  if (typeof value === "string" && value.trim()) {
+    return value.trim();
+  }
+
+  return "Unknown";
 }
 
 function readNumericPlayerField(player: ReplayPlayerRecord, ...keys: string[]) {

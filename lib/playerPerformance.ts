@@ -3,6 +3,9 @@ import {
   normalizeDurationSeconds,
   parsePlayers,
   readMapName,
+  readPlayedAt,
+  readPlayerSteamDmRating,
+  readPlayerSteamRmRating,
 } from "@/lib/gameStatsView";
 import { type PublicPlayerRef, publicPlayerMatchesName } from "@/lib/publicPlayers";
 
@@ -13,6 +16,8 @@ type PerformanceGame = {
   duration?: number | null;
   game_duration?: number | null;
   key_events?: unknown;
+  played_on?: Date | string | null;
+  timestamp?: Date | string | null;
 };
 
 export type PlayerPerformanceStats = {
@@ -28,7 +33,9 @@ export type PlayerPerformanceStats = {
   uniqueOpponents: number;
   civilizationsPlayed: number;
   mostPlayedMap: string | null;
-  eloLabel: string;
+  steamRating: number | null;
+  ladderRating: number | null;
+  ratingLastSeenAt: string | null;
 };
 
 function readBooleanFlag(source: unknown, key: string) {
@@ -65,6 +72,10 @@ export function buildPlayerPerformanceStats(
   let losses = 0;
   let unknowns = 0;
   let ratedMatches = 0;
+  let steamRating: number | null = null;
+  let ladderRating: number | null = null;
+  let ratingLastSeenAt: string | null = null;
+  let ratingLastSeenMs = 0;
 
   for (const match of matches) {
     const players = parsePlayers(match.players);
@@ -75,6 +86,25 @@ export function buildPlayerPerformanceStats(
     if (currentRecord) {
       const civ = readCivilization(currentRecord);
       if (civ) civilizations.add(civ);
+
+      const nextSteamRating = readPlayerSteamRmRating(currentRecord);
+      const nextLadderRating = readPlayerSteamDmRating(currentRecord);
+      if (nextSteamRating !== null || nextLadderRating !== null) {
+        const nextPlayedAt = readPlayedAt(match);
+        const nextPlayedAtMs = nextPlayedAt ? new Date(nextPlayedAt).getTime() : 0;
+        const shouldReplace =
+          ratingLastSeenMs === 0 ||
+          nextPlayedAtMs === 0 ||
+          nextPlayedAtMs >= ratingLastSeenMs;
+
+        if (shouldReplace) {
+          steamRating = nextSteamRating;
+          ladderRating = nextLadderRating;
+          ratingLastSeenMs = nextPlayedAtMs || ratingLastSeenMs;
+          ratingLastSeenAt =
+            nextPlayedAtMs > 0 ? new Date(nextPlayedAtMs).toISOString() : ratingLastSeenAt;
+        }
+      }
     }
 
     for (const player of players) {
@@ -133,6 +163,8 @@ export function buildPlayerPerformanceStats(
     uniqueOpponents: opponentKeys.size,
     civilizationsPlayed: civilizations.size,
     mostPlayedMap,
-    eloLabel: ratedMatches > 0 ? "Not captured yet" : "No rated games yet",
+    steamRating,
+    ladderRating,
+    ratingLastSeenAt,
   };
 }

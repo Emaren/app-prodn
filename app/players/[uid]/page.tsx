@@ -128,7 +128,8 @@ export default async function PublicPlayerPage({
         <div className="space-y-6">
           <Panel title="Performance Snapshot" eyebrow="Stats">
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              <MetricCard label="Current ELO" value={performance.eloLabel} />
+              <MetricCard label="Steam Rating" value={formatRatingMetric(performance.steamRating)} />
+              <MetricCard label="RM Ladder" value={formatRatingMetric(performance.ladderRating)} />
               <MetricCard
                 label="Win Rate"
                 value={performance.winRate !== null ? `${performance.winRate}%` : "Unknown"}
@@ -153,6 +154,11 @@ export default async function PublicPlayerPage({
               />
               <MetricCard label="Most Played Map" value={performance.mostPlayedMap || "Unknown"} />
             </div>
+            {performance.ratingLastSeenAt ? (
+              <div className="mt-4 text-xs text-slate-400">
+                Official rating last seen {new Date(performance.ratingLastSeenAt).toLocaleString()}
+              </div>
+            ) : null}
           </Panel>
 
           <Panel title="Identity" eyebrow="Profile">
@@ -354,6 +360,10 @@ function MetricCard({ label, value }: { label: string; value: string }) {
       <div className="mt-3 text-lg font-semibold text-white">{value}</div>
     </div>
   );
+}
+
+function formatRatingMetric(value: number | null) {
+  return typeof value === "number" && Number.isFinite(value) ? String(Math.round(value)) : "Unknown";
 }
 
 function EmptyPanel({ message }: { message: string }) {

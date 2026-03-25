@@ -15,6 +15,10 @@ import {
   parseStatusLabel,
   readMapName,
   readMapSize,
+  readPlayerCivilizationLabel,
+  readPlayerSteamDmRating,
+  readPlayerSteamId,
+  readPlayerSteamRmRating,
   readPlayedAt,
   shortHash,
   stringifyJson,
@@ -101,6 +105,18 @@ export default async function GameStatsDetailPage({
     game.key_events && typeof game.key_events === "object" && !Array.isArray(game.key_events)
       ? game.key_events
       : {};
+  const keyEventRecord = keyEvents as Record<string, unknown>;
+  const settingsSummary =
+    keyEventRecord.settings &&
+    typeof keyEventRecord.settings === "object" &&
+    !Array.isArray(keyEventRecord.settings)
+      ? (keyEventRecord.settings as Record<string, unknown>)
+      : {};
+  const chatPreview = Array.isArray(keyEventRecord.chat_preview)
+    ? keyEventRecord.chat_preview.filter(
+        (entry): entry is Record<string, unknown> => Boolean(entry) && typeof entry === "object"
+      )
+    : [];
   const outcomeLabel = outcomeBadgeLabel(game.parse_reason, game.winner);
 
   return (
@@ -176,13 +192,17 @@ export default async function GameStatsDetailPage({
               <StatRow label="Map Size" value={readMapSize(game.map)} />
               <StatRow label="Game Version" value={displayGameVersion(game.game_version)} />
               <StatRow label="Game Type" value={displayGameType(game.game_type)} />
+              <StatRow label="Platform" value={formatPrimitive(keyEventRecord.platform_id)} />
+              <StatRow label="Rated" value={formatPrimitive(keyEventRecord.rated)} />
               <StatRow
                 label="Duration"
                 value={formatDurationLabel(game.duration || game.game_duration)}
               />
+              <StatRow label="Match ID" value={formatPrimitive(keyEventRecord.platform_match_id)} />
               <StatRow label="Played On" value={formatDateTime(playedAt)} />
               <StatRow label="Recorded At" value={formatDateTime(game.createdAt)} />
               <StatRow label="Uploader" value={renderUploader(game.user)} />
+              <StatRow label="Lobby Name" value={formatPrimitive(keyEventRecord.lobby_name)} />
               <StatRow
                 label="Replay File"
                 value={displayReplayFilename(game.original_filename, game.replay_file)}
@@ -233,19 +253,29 @@ export default async function GameStatsDetailPage({
                           </div>
                         </div>
                         <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-                          Civ {formatPrimitive(player.civilization)}
+                          {readPlayerCivilizationLabel(player)}
                         </div>
                       </div>
 
-                      <dl className="mt-5 grid gap-3 sm:grid-cols-2">
-                        <StatRow label="Steam ID" value={formatPrimitive(player.user_id)} compact />
-                        <StatRow label="Score" value={formatPrimitive(player.score)} compact />
+                      <dl className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                        <StatRow label="Steam ID" value={formatPrimitive(readPlayerSteamId(player))} compact />
+                        <StatRow
+                          label="Steam Rating"
+                          value={formatRatingMetric(readPlayerSteamRmRating(player))}
+                          compact
+                        />
+                        <StatRow
+                          label="RM Ladder"
+                          value={formatRatingMetric(readPlayerSteamDmRating(player))}
+                          compact
+                        />
                         <StatRow label="EAPM" value={formatPrimitive(player.eapm)} compact />
                         <StatRow
                           label="Starting Position"
-                          value={Array.isArray(player.position) ? player.position.join(", ") : "Unknown"}
+                          value={formatPositionValue(player.position)}
                           compact
                         />
+                        <StatRow label="Score" value={formatPrimitive(player.score)} compact />
                       </dl>
 
                       <div className="mt-5 space-y-4">
@@ -272,6 +302,42 @@ export default async function GameStatsDetailPage({
         <div className="space-y-6">
           <Panel title="Parse Signals" eyebrow="Metadata">
             <div className="space-y-4">
+              {Object.keys(settingsSummary).length > 0 ? (
+                <div>
+                  <div className="text-xs uppercase tracking-[0.25em] text-slate-500">Settings</div>
+                  <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+                    {Object.entries(settingsSummary).map(([key, value]) => (
+                      <StatRow key={key} label={humanizeKey(key)} value={formatPrimitive(value)} compact />
+                    ))}
+                  </dl>
+                </div>
+              ) : null}
+
+              {chatPreview.length > 0 ? (
+                <div>
+                  <div className="text-xs uppercase tracking-[0.25em] text-slate-500">Chat Preview</div>
+                  <div className="mt-3 space-y-2">
+                    {chatPreview.map((entry, index) => (
+                      <div
+                        key={`${String(entry.player_number || "system")}-${index}`}
+                        className="rounded-2xl border border-white/8 bg-white/5 px-4 py-3 text-sm text-slate-200"
+                      >
+                        <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.2em] text-slate-500">
+                          <span>{formatPrimitive(entry.origination)}</span>
+                          <span>{formatPrimitive(entry.type)}</span>
+                          {entry.timestamp_seconds !== null && entry.timestamp_seconds !== undefined ? (
+                            <span>{formatDurationLabel(Number(entry.timestamp_seconds))}</span>
+                          ) : null}
+                        </div>
+                        <div className="mt-2 text-sm text-slate-200">
+                          {formatPrimitive(entry.message)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
               <div>
                 <div className="text-xs uppercase tracking-[0.25em] text-slate-500">Event Types</div>
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -462,11 +528,19 @@ function formatPrimitive(value: unknown) {
   return String(value);
 }
 
+function formatRatingMetric(value: number | null) {
+  return typeof value === "number" && Number.isFinite(value) ? String(Math.round(value)) : "Unknown";
+}
+
 function formatDateTime(value: Date | string | null | undefined) {
   if (!value) return "Unknown";
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return "Unknown";
   return date.toLocaleString();
+}
+
+function formatPositionValue(value: unknown) {
+  return Array.isArray(value) && value.length === 2 ? value.join(", ") : "Unknown";
 }
 
 function humanizeKey(value: string) {

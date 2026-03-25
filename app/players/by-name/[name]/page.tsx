@@ -136,7 +136,8 @@ export default async function ReplayOnlyPlayerPage({
             <h2 className="mt-2 text-2xl font-semibold text-white">Performance Snapshot</h2>
 
             <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              <MetricCard label="Current ELO" value={performance.eloLabel} />
+              <MetricCard label="Steam Rating" value={formatRatingMetric(performance.steamRating)} />
+              <MetricCard label="RM Ladder" value={formatRatingMetric(performance.ladderRating)} />
               <MetricCard
                 label="Win Rate"
                 value={performance.winRate !== null ? `${performance.winRate}%` : "Unknown"}
@@ -161,6 +162,11 @@ export default async function ReplayOnlyPlayerPage({
               />
               <MetricCard label="Most Played Map" value={performance.mostPlayedMap || "Unknown"} />
             </div>
+            {performance.ratingLastSeenAt ? (
+              <div className="mt-4 text-xs text-slate-400">
+                Official rating last seen {new Date(performance.ratingLastSeenAt).toLocaleString()}
+              </div>
+            ) : null}
           </section>
 
           <section className="rounded-[1.75rem] border border-white/10 bg-slate-950/70 p-6">
@@ -305,4 +311,8 @@ function MetricCard({ label, value }: { label: string; value: string }) {
       <div className="mt-3 text-lg font-semibold text-white">{value}</div>
     </div>
   );
+}
+
+function formatRatingMetric(value: number | null) {
+  return typeof value === "number" && Number.isFinite(value) ? String(Math.round(value)) : "Unknown";
 }
