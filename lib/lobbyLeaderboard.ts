@@ -2,7 +2,6 @@ import type { PrismaClient } from "@/lib/generated/prisma";
 
 import { displayPlayerName, parsePlayers } from "@/lib/gameStatsView";
 import {
-  LOBBY_LEADERBOARD_ENTRY_LIMIT,
   LOBBY_LEADERBOARD_MIN_MATCHES,
   type LobbyLeaderboardEntry,
   type LobbyLeaderboardSummary,
@@ -118,8 +117,7 @@ function buildLeaderboardSelection(entries: EnrichedLeaderboardEntry[]) {
 
   const selectedEntries = entries
     .filter((entry) => entry.totalMatches > 0)
-    .sort(compareLeaderboardEntries)
-    .slice(0, LOBBY_LEADERBOARD_ENTRY_LIMIT);
+    .sort(compareLeaderboardEntries);
 
   return { eligibleEntries, selectedEntries };
 }

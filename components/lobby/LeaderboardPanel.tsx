@@ -38,17 +38,14 @@ export function LeaderboardPanel({ leaderboard }: LeaderboardPanelProps) {
   return (
     <div className="rounded-[1.85rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] p-5 shadow-2xl shadow-black/20 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <div className="text-xs uppercase tracking-[0.35em] text-white/45">Leaderboard</div>
-          <h3 className="mt-2 text-2xl font-semibold text-white sm:text-3xl">{leaderboard.title}</h3>
-        </div>
+        <div className="text-xs uppercase tracking-[0.35em] text-white/45">Leaderboard</div>
 
         <div className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-100">
           {leaderboard.statusLabel}
         </div>
       </div>
 
-      <div className="mt-5 space-y-3">
+      <div className="mt-5 max-h-[58vh] space-y-3 overflow-y-auto pr-2 sm:max-h-[62vh] lg:max-h-[46rem]">
         {leaderboard.entries.length === 0 ? (
           <div className="rounded-2xl border border-white/8 bg-white/5 px-4 py-5 text-sm leading-6 text-slate-300">
             Need more final games.
