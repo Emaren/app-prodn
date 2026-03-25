@@ -110,6 +110,7 @@ export type LobbyLeaderboardEntry = {
   key: string;
   name: string;
   href: string;
+  elo: number | null;
   ratingLabel: string;
   wins: number;
   losses: number;
@@ -121,6 +122,7 @@ export type LobbyLeaderboardEntry = {
   claimed: boolean;
   totalMatches: number;
   lastPlayedAt: string | null;
+  provisional: boolean;
 };
 
 export type LobbyLeaderboardSummary = {
@@ -129,7 +131,6 @@ export type LobbyLeaderboardSummary = {
   entries: LobbyLeaderboardEntry[];
   activePlayers: number;
   matchesToday: number;
-  woloStatusLabel: string;
   rankedPlayers: number;
   minimumMatches: number;
 };
@@ -186,11 +187,10 @@ export function getFallbackTournament(viewerJoined = false): LobbyTournament {
 export function getFallbackLeaderboard(): LobbyLeaderboardSummary {
   return {
     title: "Season Leaderboard",
-    statusLabel: "Replay-backed standings",
+    statusLabel: "Arena Elo",
     entries: [],
     activePlayers: 0,
     matchesToday: 0,
-    woloStatusLabel: "Primed",
     rankedPlayers: 0,
     minimumMatches: LOBBY_LEADERBOARD_MIN_MATCHES,
   };

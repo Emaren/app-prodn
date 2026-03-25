@@ -53,6 +53,12 @@ export default function HeaderMenu({ pendingBetsCount, playerName, uid }: Props)
           <MenuLink href="/profile" onNavigate={() => setMenuOpen(false)}>
             Profile
           </MenuLink>
+          <MenuLink href="/players" onNavigate={() => setMenuOpen(false)}>
+            Players
+          </MenuLink>
+          <MenuLink href="/rivalries" onNavigate={() => setMenuOpen(false)}>
+            Rivalries
+          </MenuLink>
           <MenuLink href="/upload" onNavigate={() => setMenuOpen(false)}>
             Upload Replay
           </MenuLink>
@@ -64,6 +70,15 @@ export default function HeaderMenu({ pendingBetsCount, playerName, uid }: Props)
           </MenuLink>
           <MenuLink href="/download" onNavigate={() => setMenuOpen(false)}>
             Download Watcher
+          </MenuLink>
+          <MenuLink href="/wolo" onNavigate={() => setMenuOpen(false)}>
+            $WOLO
+          </MenuLink>
+          <MenuLink href="/roadmap" onNavigate={() => setMenuOpen(false)}>
+            Roadmap
+          </MenuLink>
+          <MenuLink href="/about" onNavigate={() => setMenuOpen(false)}>
+            About
           </MenuLink>
           <MenuLink href="/pending-bets" onNavigate={() => setMenuOpen(false)}>
             Pending Bets ({pendingBetsCount})

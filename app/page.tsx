@@ -16,6 +16,8 @@ import {
 } from "@/lib/lobby";
 
 const EMPTY_MESSAGES: LobbyMessage[] = [];
+const CHAT_AUTO_SCROLL_GRACE_MS = 4000;
+const CHAT_BOTTOM_THRESHOLD_PX = 48;
 
 export default function HomePage() {
   const { isAdmin, isAuthenticated, loading, loginWithSteam, playerName, user } = useUserAuth();
@@ -34,6 +36,8 @@ export default function HomePage() {
 
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
   const rightColumnRef = useRef<HTMLDivElement | null>(null);
+  const chatAutoScrollHoldUntilRef = useRef(0);
+  const chatAutoScrollTimerRef = useRef<number | null>(null);
 
   const loadLobby = useCallback(async () => {
     try {
@@ -124,10 +128,80 @@ export default function HomePage() {
       ? `${tournament.title} Chat`
       : "Live Chat";
 
+  const scrollChatToBottom = useCallback((behavior: ScrollBehavior = "auto") => {
+    const node = chatScrollRef.current;
+    if (!node) return;
+
+    node.scrollTo({ top: node.scrollHeight, behavior });
+  }, []);
+
   useEffect(() => {
-    if (!chatScrollRef.current) return;
-    chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
-  }, [chatItems]);
+    if (typeof window === "undefined") return;
+
+    const node = chatScrollRef.current;
+    if (!node) return;
+
+    const handleScroll = () => {
+      const distanceFromBottom = node.scrollHeight - node.scrollTop - node.clientHeight;
+
+      if (chatAutoScrollTimerRef.current) {
+        window.clearTimeout(chatAutoScrollTimerRef.current);
+        chatAutoScrollTimerRef.current = null;
+      }
+
+      if (distanceFromBottom > CHAT_BOTTOM_THRESHOLD_PX) {
+        chatAutoScrollHoldUntilRef.current = Date.now() + CHAT_AUTO_SCROLL_GRACE_MS;
+        return;
+      }
+
+      chatAutoScrollHoldUntilRef.current = 0;
+    };
+
+    node.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => {
+      node.removeEventListener("scroll", handleScroll);
+      if (chatAutoScrollTimerRef.current) {
+        window.clearTimeout(chatAutoScrollTimerRef.current);
+        chatAutoScrollTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const node = chatScrollRef.current;
+    if (!node) return;
+
+    const distanceFromBottom = node.scrollHeight - node.scrollTop - node.clientHeight;
+    const holdRemaining = chatAutoScrollHoldUntilRef.current - Date.now();
+
+    if (distanceFromBottom <= CHAT_BOTTOM_THRESHOLD_PX || holdRemaining <= 0) {
+      scrollChatToBottom();
+      return;
+    }
+
+    if (chatAutoScrollTimerRef.current) {
+      window.clearTimeout(chatAutoScrollTimerRef.current);
+    }
+
+    chatAutoScrollTimerRef.current = window.setTimeout(() => {
+      if (Date.now() < chatAutoScrollHoldUntilRef.current) {
+        return;
+      }
+
+      scrollChatToBottom("smooth");
+      chatAutoScrollTimerRef.current = null;
+    }, holdRemaining);
+
+    return () => {
+      if (chatAutoScrollTimerRef.current) {
+        window.clearTimeout(chatAutoScrollTimerRef.current);
+        chatAutoScrollTimerRef.current = null;
+      }
+    };
+  }, [chatItems.length, scrollChatToBottom]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;

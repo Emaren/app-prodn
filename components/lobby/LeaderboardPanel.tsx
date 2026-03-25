@@ -7,9 +7,9 @@ type LeaderboardPanelProps = {
   leaderboard: LobbyLeaderboardSummary;
 };
 
-function formatLastReplay(value: string | null) {
+function formatLastGame(value: string | null) {
   if (!value) {
-    return "Replay-backed";
+    return "Pending";
   }
 
   return new Date(value).toLocaleString([], {
@@ -25,19 +25,22 @@ function buildRecordLabel(entry: LobbyLeaderboardSummary["entries"][number]) {
   return entry.unknowns > 0 ? `${base} · ${entry.unknowns} unk` : base;
 }
 
+function buildWinRateLabel(entry: LobbyLeaderboardSummary["entries"][number]) {
+  const resolvedMatches = entry.wins + entry.losses;
+  if (resolvedMatches <= 0) {
+    return "0% WR";
+  }
+
+  return `${Math.round((entry.wins / resolvedMatches) * 100)}% WR`;
+}
+
 export function LeaderboardPanel({ leaderboard }: LeaderboardPanelProps) {
   return (
     <div className="rounded-[1.85rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] p-5 shadow-2xl shadow-black/20 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="max-w-2xl">
-          <div className="text-xs uppercase tracking-[0.35em] text-white/45">Competition</div>
-          <h3 className="mt-2 text-2xl font-semibold text-white sm:text-3xl">
-            {leaderboard.title}
-          </h3>
-          <p className="mt-3 text-sm leading-6 text-slate-300 sm:text-[15px]">
-            Replay-backed standings built from real parsed matches, claimed profiles, and fresh
-            activity across the lobby.
-          </p>
+        <div>
+          <div className="text-xs uppercase tracking-[0.35em] text-white/45">Leaderboard</div>
+          <h3 className="mt-2 text-2xl font-semibold text-white sm:text-3xl">{leaderboard.title}</h3>
         </div>
 
         <div className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-100">
@@ -48,8 +51,7 @@ export function LeaderboardPanel({ leaderboard }: LeaderboardPanelProps) {
       <div className="mt-5 space-y-3">
         {leaderboard.entries.length === 0 ? (
           <div className="rounded-2xl border border-white/8 bg-white/5 px-4 py-5 text-sm leading-6 text-slate-300">
-            The ladder needs a few more final replays before the rankings lock in. Upload a replay,
-            claim a profile, and the board starts earning its shape.
+            Need more final games.
           </div>
         ) : (
           leaderboard.entries.map((entry) => (
@@ -74,6 +76,7 @@ export function LeaderboardPanel({ leaderboard }: LeaderboardPanelProps) {
                         <MiniTag>{entry.claimed ? "Claimed" : "Claimable"}</MiniTag>
                       )}
                       {entry.isOnline ? <MiniTag tone="emerald">Online</MiniTag> : null}
+                      {entry.provisional ? <MiniTag>Provisional</MiniTag> : null}
                     </div>
                   </div>
                 </div>
@@ -82,6 +85,7 @@ export function LeaderboardPanel({ leaderboard }: LeaderboardPanelProps) {
                   <div className="text-sm font-semibold text-amber-100">{entry.ratingLabel}</div>
                   <div className="mt-2 flex flex-wrap gap-2 sm:justify-end">
                     <MetricPill>{buildRecordLabel(entry)}</MetricPill>
+                    <MetricPill>{buildWinRateLabel(entry)}</MetricPill>
                     {entry.streakLabel ? (
                       <MetricPill tone={entry.streakLabel.startsWith("W") ? "emerald" : "rose"}>
                         {entry.streakLabel}
@@ -89,7 +93,7 @@ export function LeaderboardPanel({ leaderboard }: LeaderboardPanelProps) {
                     ) : null}
                   </div>
                   <div className="mt-3 text-xs text-slate-400">
-                    Last replay {formatLastReplay(entry.lastPlayedAt)}
+                    Last game {formatLastGame(entry.lastPlayedAt)}
                   </div>
                 </div>
               </div>
@@ -101,8 +105,8 @@ export function LeaderboardPanel({ leaderboard }: LeaderboardPanelProps) {
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-white/8 pt-4">
         <div className="text-[11px] uppercase tracking-[0.24em] text-slate-500">
           {leaderboard.rankedPlayers > 0
-            ? `${leaderboard.rankedPlayers} ranked warriors · min ${leaderboard.minimumMatches} final replays`
-            : `Need ${leaderboard.minimumMatches} final replays to lock the ladder`}
+            ? `${leaderboard.rankedPlayers} ranked warriors · min ${leaderboard.minimumMatches} games`
+            : `Need ${leaderboard.minimumMatches} games to rank`}
         </div>
 
         <div className="flex flex-wrap gap-3">
@@ -110,13 +114,13 @@ export function LeaderboardPanel({ leaderboard }: LeaderboardPanelProps) {
             href="/players"
             className="rounded-full bg-amber-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-amber-200"
           >
-            View Full Rankings
+            Players
           </Link>
           <Link
             href="/rivalries"
             className="rounded-full border border-white/15 px-4 py-2 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
           >
-            Browse Rivalries
+            Rivalries
           </Link>
         </div>
       </div>

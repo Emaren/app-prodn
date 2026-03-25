@@ -42,17 +42,6 @@ export function LobbyHero({
         </div>
       </div>
 
-      <div className="max-w-3xl space-y-3">
-        <h2 className="text-4xl font-semibold leading-tight text-white sm:text-5xl">
-          See who owns the ladder before the next bracket locks.
-        </h2>
-        <p className="max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
-          Replay-backed standings, verified identities, and live activity now drive the AoE2HD
-          lobby. The board leads, and the tournament card on the right points straight at the next
-          battle.
-        </p>
-      </div>
-
       {authError && (
         <div className="max-w-2xl rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
           Steam sign-in failed{authDetail ? `: ${authDetail}` : "."}
@@ -71,20 +60,18 @@ export function LobbyHero({
         <StatCard
           label="Active Players"
           value={String(leaderboard.activePlayers)}
-          subtext="Signed-in warriors on the board right now."
+          subtext="Online right now."
           tone="emerald"
         />
         <StatCard
           label="Matches Today"
           value={String(leaderboard.matchesToday)}
-          subtext="Final parsed replays driving the lobby pulse."
+          subtext="Final games on the board."
         />
         <StatCard
-          label="$WOLO Rail"
-          value={leaderboard.woloStatusLabel}
-          subtext="Tournament-linked trust layer, kept secondary for now."
-          tone="amber"
-          valueClassName="text-3xl sm:text-[2rem]"
+          label="Ranked Warriors"
+          value={String(leaderboard.rankedPlayers)}
+          subtext={`Min ${leaderboard.minimumMatches} games to rank.`}
         />
       </div>
 

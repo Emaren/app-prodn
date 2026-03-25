@@ -13,9 +13,13 @@ import {
 } from "@/lib/publicPlayerDirectory";
 import { normalizePublicPlayerName } from "@/lib/publicPlayers";
 
+const BASE_ARENA_ELO = 1500;
+const ARENA_ELO_K_FACTOR = 32;
+
 type PreparedLeaderboardGame = {
   winner: string | null;
   players: ReturnType<typeof parsePlayers>;
+  playedAtMs: number;
 };
 
 type EnrichedLeaderboardEntry = PublicPlayerDirectoryEntry & {
@@ -23,6 +27,7 @@ type EnrichedLeaderboardEntry = PublicPlayerDirectoryEntry & {
   resolvedMatches: number;
   winRate: number;
   lastPlayedAtMs: number;
+  arenaElo: number;
 };
 
 function normalizeLeaderboardKey(value: string | null | undefined) {
@@ -51,20 +56,21 @@ function buildEnrichedEntry(entry: PublicPlayerDirectoryEntry): EnrichedLeaderbo
     resolvedMatches,
     winRate: resolvedMatches > 0 ? entry.wins / resolvedMatches : 0,
     lastPlayedAtMs: entry.lastPlayedAt ? new Date(entry.lastPlayedAt).getTime() : 0,
+    arenaElo: BASE_ARENA_ELO,
   };
 }
 
 function compareLeaderboardEntries(left: EnrichedLeaderboardEntry, right: EnrichedLeaderboardEntry) {
-  if (left.claimed !== right.claimed) {
-    return Number(right.claimed) - Number(left.claimed);
-  }
-
-  if (left.verified !== right.verified) {
-    return Number(right.verified) - Number(left.verified);
+  if (left.arenaElo !== right.arenaElo) {
+    return right.arenaElo - left.arenaElo;
   }
 
   if (left.winRate !== right.winRate) {
     return right.winRate - left.winRate;
+  }
+
+  if (left.resolvedMatches !== right.resolvedMatches) {
+    return right.resolvedMatches - left.resolvedMatches;
   }
 
   if (left.wins !== right.wins) {
@@ -75,12 +81,12 @@ function compareLeaderboardEntries(left: EnrichedLeaderboardEntry, right: Enrich
     return right.lastPlayedAtMs - left.lastPlayedAtMs;
   }
 
-  if (left.isOnline !== right.isOnline) {
-    return Number(right.isOnline) - Number(left.isOnline);
+  if (left.verified !== right.verified) {
+    return Number(right.verified) - Number(left.verified);
   }
 
-  if (left.totalMatches !== right.totalMatches) {
-    return right.totalMatches - left.totalMatches;
+  if (left.claimed !== right.claimed) {
+    return Number(right.claimed) - Number(left.claimed);
   }
 
   return left.name.localeCompare(right.name);
@@ -112,6 +118,86 @@ function buildLeaderboardSelection(entries: EnrichedLeaderboardEntry[]) {
   }
 
   return { eligibleEntries, selectedEntries };
+}
+
+function buildAliasEntryMap(entries: EnrichedLeaderboardEntry[]) {
+  const aliasToEntry = new Map<string, EnrichedLeaderboardEntry>();
+
+  for (const entry of entries) {
+    for (const aliasKey of entry.aliasKeys) {
+      const existing = aliasToEntry.get(aliasKey);
+      if (!existing) {
+        aliasToEntry.set(aliasKey, entry);
+        continue;
+      }
+
+      if (existing.claimed === entry.claimed) {
+        continue;
+      }
+
+      if (!existing.claimed && entry.claimed) {
+        aliasToEntry.set(aliasKey, entry);
+      }
+    }
+  }
+
+  return aliasToEntry;
+}
+
+function buildArenaElo(entries: EnrichedLeaderboardEntry[], games: PreparedLeaderboardGame[]) {
+  const aliasToEntry = buildAliasEntryMap(entries);
+  const ratings = new Map(entries.map((entry) => [entry.key, BASE_ARENA_ELO]));
+
+  for (const game of games) {
+    const resolvedWinner = normalizeLeaderboardKey(game.winner);
+    if (!resolvedWinner || resolvedWinner === "unknown") {
+      continue;
+    }
+
+    const participantNames = game.players
+      .map((player) => normalizeLeaderboardKey(displayPlayerName(player)))
+      .filter(Boolean);
+
+    if (participantNames.length !== 2) {
+      continue;
+    }
+
+    const participantEntries = participantNames
+      .map((playerName) => aliasToEntry.get(playerName))
+      .filter((entry): entry is EnrichedLeaderboardEntry => Boolean(entry));
+
+    if (participantEntries.length !== 2) {
+      continue;
+    }
+
+    if (participantEntries[0].key === participantEntries[1].key) {
+      continue;
+    }
+
+    const winnerEntry = aliasToEntry.get(resolvedWinner);
+    if (!winnerEntry) {
+      continue;
+    }
+
+    const [entryA, entryB] = participantEntries;
+    if (winnerEntry.key !== entryA.key && winnerEntry.key !== entryB.key) {
+      continue;
+    }
+
+    const ratingA = ratings.get(entryA.key) ?? BASE_ARENA_ELO;
+    const ratingB = ratings.get(entryB.key) ?? BASE_ARENA_ELO;
+    const expectedA = 1 / (1 + 10 ** ((ratingB - ratingA) / 400));
+    const expectedB = 1 / (1 + 10 ** ((ratingA - ratingB) / 400));
+    const scoreA = winnerEntry.key === entryA.key ? 1 : 0;
+    const scoreB = winnerEntry.key === entryB.key ? 1 : 0;
+
+    ratings.set(entryA.key, ratingA + ARENA_ELO_K_FACTOR * (scoreA - expectedA));
+    ratings.set(entryB.key, ratingB + ARENA_ELO_K_FACTOR * (scoreB - expectedB));
+  }
+
+  for (const entry of entries) {
+    entry.arenaElo = Math.round(ratings.get(entry.key) ?? BASE_ARENA_ELO);
+  }
 }
 
 function buildEntryOutcome(entry: EnrichedLeaderboardEntry, winner: string | null | undefined) {
@@ -162,11 +248,7 @@ function buildStreakLabel(entry: EnrichedLeaderboardEntry, games: PreparedLeader
 }
 
 function buildRatingLabel(entry: EnrichedLeaderboardEntry) {
-  if (entry.resolvedMatches <= 0) {
-    return entry.totalMatches === 1 ? "1 match" : `${entry.totalMatches} matches`;
-  }
-
-  return `${Math.round(entry.winRate * 100)}% WR`;
+  return `${Math.round(entry.arenaElo)} ELO`;
 }
 
 function toLobbyLeaderboardEntry(
@@ -179,6 +261,7 @@ function toLobbyLeaderboardEntry(
     key: entry.key,
     name: entry.name,
     href: entry.href,
+    elo: Math.round(entry.arenaElo),
     ratingLabel: buildRatingLabel(entry),
     wins: entry.wins,
     losses: entry.losses,
@@ -190,6 +273,7 @@ function toLobbyLeaderboardEntry(
     claimed: entry.claimed,
     totalMatches: entry.totalMatches,
     lastPlayedAt: entry.lastPlayedAt,
+    provisional: entry.totalMatches < LOBBY_LEADERBOARD_MIN_MATCHES,
   };
 }
 
@@ -199,15 +283,17 @@ export async function loadLobbyLeaderboard(
   const dayStart = new Date();
   dayStart.setHours(0, 0, 0, 0);
 
-  const [directory, recentGames, matchesToday] = await Promise.all([
+  const [directory, leaderboardGames, matchesToday] = await Promise.all([
     loadPublicPlayerDirectory(prisma),
     prisma.gameStats.findMany({
       where: { is_final: true },
-      orderBy: [{ played_on: "desc" }, { timestamp: "desc" }, { createdAt: "desc" }],
-      take: 120,
+      orderBy: [{ played_on: "asc" }, { timestamp: "asc" }, { createdAt: "asc" }],
+      take: 600,
       select: {
         winner: true,
         players: true,
+        played_on: true,
+        timestamp: true,
       },
     }),
     prisma.gameStats.count({
@@ -222,26 +308,28 @@ export async function loadLobbyLeaderboard(
     }),
   ]);
 
-  const preparedGames: PreparedLeaderboardGame[] = recentGames.map((game) => ({
+  const preparedGames: PreparedLeaderboardGame[] = leaderboardGames.map((game) => ({
     winner: game.winner,
     players: parsePlayers(game.players),
+    playedAtMs: new Date(game.played_on ?? game.timestamp ?? 0).getTime(),
   }));
+  const recentGames = [...preparedGames].sort((left, right) => right.playedAtMs - left.playedAtMs);
 
   const candidates = directory.allEntries
     .filter((entry) => entry.totalMatches > 0)
     .map(buildEnrichedEntry);
+  buildArenaElo(candidates, preparedGames);
 
   const { eligibleEntries, selectedEntries } = buildLeaderboardSelection(candidates);
 
   return {
     title: "Season Leaderboard",
-    statusLabel: eligibleEntries.length > 0 ? "Live rankings" : "Building the ladder",
+    statusLabel: eligibleEntries.length > 0 ? "Arena Elo" : "Need games",
     entries: selectedEntries.map((entry, index) =>
-      toLobbyLeaderboardEntry(entry, index + 1, preparedGames)
+      toLobbyLeaderboardEntry(entry, index + 1, recentGames)
     ),
     activePlayers: directory.activeClaimed.length,
     matchesToday,
-    woloStatusLabel: "Primed",
     rankedPlayers: eligibleEntries.length,
     minimumMatches: LOBBY_LEADERBOARD_MIN_MATCHES,
   };
