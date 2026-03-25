@@ -8,7 +8,12 @@ import { RecentMatchesPanel } from "@/components/lobby/RecentMatchesPanel";
 import { TournamentPanel } from "@/components/lobby/TournamentPanel";
 import { buildChatItems } from "@/components/lobby/utils";
 import { useUserAuth } from "@/context/UserAuthContext";
-import { getFallbackTournament, type LobbyMessage, type LobbySnapshot } from "@/lib/lobby";
+import {
+  getFallbackLeaderboard,
+  getFallbackTournament,
+  type LobbyMessage,
+  type LobbySnapshot,
+} from "@/lib/lobby";
 
 const EMPTY_MESSAGES: LobbyMessage[] = [];
 
@@ -108,6 +113,7 @@ export default function HomePage() {
   }, []);
 
   const tournament = lobby?.tournament ?? getFallbackTournament(false);
+  const leaderboard = lobby?.leaderboard ?? getFallbackLeaderboard();
   const onlineUsers = lobby?.onlineUsers ?? [];
   const recentMatches = lobby?.recentMatches ?? [];
   const messages = lobby?.messages ?? EMPTY_MESSAGES;
@@ -266,9 +272,7 @@ export default function HomePage() {
             lobbyError={lobbyError}
             isAuthenticated={isAuthenticated}
             loading={loading}
-            tournamentEntryCount={tournament.entryCount}
-            onlineUserCount={onlineUsers.length}
-            recentMatchCount={recentMatches.length}
+            leaderboard={leaderboard}
           />
 
           <TournamentPanel

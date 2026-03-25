@@ -1,6 +1,8 @@
 export const LOBBY_ROOM_SLUG = "main-lobby";
 export const TOURNAMENT_STATUSES = ["planning", "open", "active", "completed"] as const;
 export const TOURNAMENT_MATCH_STATUSES = ["scheduled", "ready", "live", "completed"] as const;
+export const LOBBY_LEADERBOARD_MIN_MATCHES = 3;
+export const LOBBY_LEADERBOARD_ENTRY_LIMIT = 6;
 
 export type TournamentStatus = (typeof TOURNAMENT_STATUSES)[number];
 export type TournamentMatchStatus = (typeof TOURNAMENT_MATCH_STATUSES)[number];
@@ -103,11 +105,41 @@ export type LobbyMessage = {
   };
 };
 
+export type LobbyLeaderboardEntry = {
+  rank: number;
+  key: string;
+  name: string;
+  href: string;
+  ratingLabel: string;
+  wins: number;
+  losses: number;
+  unknowns: number;
+  streakLabel: string | null;
+  verified: boolean;
+  verificationLevel: number;
+  isOnline: boolean;
+  claimed: boolean;
+  totalMatches: number;
+  lastPlayedAt: string | null;
+};
+
+export type LobbyLeaderboardSummary = {
+  title: string;
+  statusLabel: string;
+  entries: LobbyLeaderboardEntry[];
+  activePlayers: number;
+  matchesToday: number;
+  woloStatusLabel: string;
+  rankedPlayers: number;
+  minimumMatches: number;
+};
+
 export type LobbySnapshot = {
   tournament: LobbyTournament;
   onlineUsers: LobbyOnlineUser[];
   recentMatches: LobbyMatchRow[];
   messages: LobbyMessage[];
+  leaderboard: LobbyLeaderboardSummary;
 };
 
 export function slugifyTournamentTitle(value: string) {
@@ -148,6 +180,19 @@ export function getFallbackTournament(viewerJoined = false): LobbyTournament {
     roomSlug: LOBBY_ROOM_SLUG,
     isFallback: true,
     matches: [],
+  };
+}
+
+export function getFallbackLeaderboard(): LobbyLeaderboardSummary {
+  return {
+    title: "Season Leaderboard",
+    statusLabel: "Replay-backed standings",
+    entries: [],
+    activePlayers: 0,
+    matchesToday: 0,
+    woloStatusLabel: "Primed",
+    rankedPlayers: 0,
+    minimumMatches: LOBBY_LEADERBOARD_MIN_MATCHES,
   };
 }
 
