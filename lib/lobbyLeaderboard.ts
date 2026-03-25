@@ -60,7 +60,26 @@ function buildEnrichedEntry(entry: PublicPlayerDirectoryEntry): EnrichedLeaderbo
   };
 }
 
+function hasSteamRmRating(entry: EnrichedLeaderboardEntry) {
+  return typeof entry.steamRmRating === "number" && Number.isFinite(entry.steamRmRating);
+}
+
+function getPrimaryRatingValue(entry: EnrichedLeaderboardEntry) {
+  return hasSteamRmRating(entry) ? Math.round(entry.steamRmRating ?? BASE_ARENA_ELO) : entry.arenaElo;
+}
+
 function compareLeaderboardEntries(left: EnrichedLeaderboardEntry, right: EnrichedLeaderboardEntry) {
+  const leftPrimaryRating = getPrimaryRatingValue(left);
+  const rightPrimaryRating = getPrimaryRatingValue(right);
+
+  if (leftPrimaryRating !== rightPrimaryRating) {
+    return rightPrimaryRating - leftPrimaryRating;
+  }
+
+  if (hasSteamRmRating(left) !== hasSteamRmRating(right)) {
+    return Number(hasSteamRmRating(right)) - Number(hasSteamRmRating(left));
+  }
+
   if (left.arenaElo !== right.arenaElo) {
     return right.arenaElo - left.arenaElo;
   }
@@ -97,25 +116,10 @@ function buildLeaderboardSelection(entries: EnrichedLeaderboardEntry[]) {
     .filter((entry) => entry.totalMatches >= LOBBY_LEADERBOARD_MIN_MATCHES)
     .sort(compareLeaderboardEntries);
 
-  const selectedEntries = eligibleEntries.slice(0, LOBBY_LEADERBOARD_ENTRY_LIMIT);
-
-  if (selectedEntries.length < LOBBY_LEADERBOARD_ENTRY_LIMIT) {
-    const fallbackEntries = entries
-      .filter((entry) => entry.totalMatches > 0 && entry.totalMatches < LOBBY_LEADERBOARD_MIN_MATCHES)
-      .sort(compareLeaderboardEntries);
-
-    for (const fallbackEntry of fallbackEntries) {
-      if (selectedEntries.some((entry) => entry.key === fallbackEntry.key)) {
-        continue;
-      }
-
-      selectedEntries.push(fallbackEntry);
-
-      if (selectedEntries.length >= LOBBY_LEADERBOARD_ENTRY_LIMIT) {
-        break;
-      }
-    }
-  }
+  const selectedEntries = entries
+    .filter((entry) => entry.totalMatches > 0)
+    .sort(compareLeaderboardEntries)
+    .slice(0, LOBBY_LEADERBOARD_ENTRY_LIMIT);
 
   return { eligibleEntries, selectedEntries };
 }
@@ -247,8 +251,20 @@ function buildStreakLabel(entry: EnrichedLeaderboardEntry, games: PreparedLeader
   return direction ? `${direction}${count}` : null;
 }
 
-function buildRatingLabel(entry: EnrichedLeaderboardEntry) {
-  return `${Math.round(entry.arenaElo)} ELO`;
+function buildPrimaryRatingLabel(entry: EnrichedLeaderboardEntry) {
+  return String(Math.round(getPrimaryRatingValue(entry)));
+}
+
+function buildPrimaryRatingSourceLabel(entry: EnrichedLeaderboardEntry) {
+  return hasSteamRmRating(entry) ? "Steam RM" : "Arena Elo";
+}
+
+function buildSecondaryRatingLabel(entry: EnrichedLeaderboardEntry) {
+  if (!hasSteamRmRating(entry)) {
+    return null;
+  }
+
+  return `Arena ${Math.round(entry.arenaElo)}`;
 }
 
 function toLobbyLeaderboardEntry(
@@ -262,7 +278,14 @@ function toLobbyLeaderboardEntry(
     name: entry.name,
     href: entry.href,
     elo: Math.round(entry.arenaElo),
-    ratingLabel: buildRatingLabel(entry),
+    arenaElo: Math.round(entry.arenaElo),
+    steamRmRating: entry.steamRmRating,
+    steamDmRating: entry.steamDmRating,
+    primaryRating: getPrimaryRatingValue(entry),
+    primaryRatingLabel: buildPrimaryRatingLabel(entry),
+    primaryRatingSourceLabel: buildPrimaryRatingSourceLabel(entry),
+    secondaryRatingLabel: buildSecondaryRatingLabel(entry),
+    ratingLabel: buildPrimaryRatingLabel(entry),
     wins: entry.wins,
     losses: entry.losses,
     unknowns: entry.unknowns,
@@ -324,7 +347,11 @@ export async function loadLobbyLeaderboard(
 
   return {
     title: "Season Leaderboard",
-    statusLabel: eligibleEntries.length > 0 ? "Arena Elo" : "Need games",
+    statusLabel: selectedEntries.some(hasSteamRmRating)
+      ? "Steam RM + Arena"
+      : eligibleEntries.length > 0
+        ? "Arena Elo"
+        : "Need games",
     entries: selectedEntries.map((entry, index) =>
       toLobbyLeaderboardEntry(entry, index + 1, recentGames)
     ),

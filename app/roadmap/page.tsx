@@ -3,9 +3,9 @@ import Link from "next/link";
 const MODULES = [
   {
     title: "Leaderboard + Lobby",
-    score: 79,
+    score: 83,
     status: "Now",
-    detail: "Merit-first board, Arena Elo, tighter lobby focus, and less dead copy.",
+    detail: "Centered nav, Steam RM first when available, Arena support, and a tighter lobby board with less dead copy.",
   },
   {
     title: "Rivalries",

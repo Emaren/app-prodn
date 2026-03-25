@@ -220,3 +220,46 @@ export function displayPlayerName(player: ReplayPlayerRecord) {
   const name = player.name;
   return typeof name === "string" && name.trim() ? name : "Unknown player";
 }
+
+function readNumericPlayerField(player: ReplayPlayerRecord, ...keys: string[]) {
+  for (const key of keys) {
+    const value = player[key];
+
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return Math.round(value);
+    }
+
+    if (typeof value === "string" && value.trim()) {
+      const parsed = Number(value);
+      if (Number.isFinite(parsed)) {
+        return Math.round(parsed);
+      }
+    }
+  }
+
+  return null;
+}
+
+export function readPlayerSteamRmRating(player: ReplayPlayerRecord) {
+  return readNumericPlayerField(player, "steam_rm_rating", "hd_rm_rating", "rate_snapshot");
+}
+
+export function readPlayerSteamDmRating(player: ReplayPlayerRecord) {
+  return readNumericPlayerField(player, "steam_dm_rating", "hd_dm_rating");
+}
+
+export function readPlayerSteamId(player: ReplayPlayerRecord) {
+  for (const key of ["steam_id", "steamId", "user_id"]) {
+    const value = player[key];
+
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+
+    if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+      return String(Math.trunc(value));
+    }
+  }
+
+  return null;
+}

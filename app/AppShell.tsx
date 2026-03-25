@@ -23,13 +23,16 @@ function InnerShell({ children }: { children: React.ReactNode }) {
   return (
     <>
       <header className="border-b border-white/10 bg-slate-950/90 p-4 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 overflow-visible">
-          <div className="space-y-3">
-            <div className="text-xs uppercase tracking-[0.35em] text-white/45">
-              AoE2HD Bets
+        <div className="mx-auto max-w-6xl overflow-visible">
+          <div className="flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:items-center">
+            <div className="min-w-0">
+              <div className="text-xs uppercase tracking-[0.35em] text-white/45">
+                AoE2HD Bets
+              </div>
+              <h1 className="text-xl font-semibold text-white">Tournament Lobby</h1>
             </div>
-            <h1 className="text-xl font-semibold text-white">Tournament Lobby</h1>
-            <nav className="flex flex-wrap gap-2">
+
+            <nav className="flex max-w-full items-center gap-2 overflow-x-auto whitespace-nowrap pb-1 lg:justify-self-center lg:pb-0">
               {HEADER_LINKS.map((link) => (
                 <Link
                   key={link.href}
@@ -40,14 +43,15 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                 </Link>
               ))}
             </nav>
-          </div>
-          <div className="flex items-center gap-4">
-            <HeaderMenu
-              pendingBetsCount={pendingBetsCount}
-              playerName={playerName}
-              setPlayerName={setPlayerName}
-              uid={uid}
-            />
+
+            <div className="flex items-center justify-start gap-4 lg:justify-self-end">
+              <HeaderMenu
+                pendingBetsCount={pendingBetsCount}
+                playerName={playerName}
+                setPlayerName={setPlayerName}
+                uid={uid}
+              />
+            </div>
           </div>
         </div>
       </header>

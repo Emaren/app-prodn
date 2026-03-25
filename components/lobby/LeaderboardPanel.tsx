@@ -82,7 +82,15 @@ export function LeaderboardPanel({ leaderboard }: LeaderboardPanelProps) {
                 </div>
 
                 <div className="sm:text-right">
-                  <div className="text-sm font-semibold text-amber-100">{entry.ratingLabel}</div>
+                  <div className="text-[10px] uppercase tracking-[0.28em] text-slate-400">
+                    {entry.primaryRatingSourceLabel}
+                  </div>
+                  <div className="mt-1 text-lg font-semibold text-amber-100">
+                    {entry.primaryRatingLabel}
+                  </div>
+                  {entry.secondaryRatingLabel ? (
+                    <div className="mt-1 text-xs text-slate-400">{entry.secondaryRatingLabel}</div>
+                  ) : null}
                   <div className="mt-2 flex flex-wrap gap-2 sm:justify-end">
                     <MetricPill>{buildRecordLabel(entry)}</MetricPill>
                     <MetricPill>{buildWinRateLabel(entry)}</MetricPill>

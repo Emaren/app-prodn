@@ -7,8 +7,8 @@ const PILLARS = [
     body: "Final replays drive match history, rivalry records, and the trust layer behind who actually won.",
   },
   {
-    title: "Arena Elo",
-    body: "The leaderboard now runs on a local AoE2HDBets Arena Elo built from replay-backed 1v1 finals, not vanity boosts.",
+    title: "Steam RM First",
+    body: "When an HD replay carries ladder ratings, that official Steam RM gets the top billing. AoE2HDBets Arena Elo stays underneath as the site-native signal.",
   },
   {
     title: "Rivalries",
@@ -53,7 +53,7 @@ export default function AboutPage() {
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
             <MiniStat label="Mode" value="Builder" />
-            <MiniStat label="Ranking" value="Arena Elo" />
+            <MiniStat label="Ranking" value="Steam RM first" />
             <MiniStat label="Source" value="Final replays" />
           </div>
         </div>

@@ -1,6 +1,13 @@
 import type { PrismaClient } from "@/lib/generated/prisma";
 
-import { displayPlayerName, parsePlayers, readPlayedAt } from "@/lib/gameStatsView";
+import {
+  displayPlayerName,
+  parsePlayers,
+  readPlayedAt,
+  readPlayerSteamDmRating,
+  readPlayerSteamId,
+  readPlayerSteamRmRating,
+} from "@/lib/gameStatsView";
 import {
   buildReplayPlayerHref,
   findClaimedUsersForReplayNames,
@@ -14,6 +21,7 @@ export type PublicPlayerDirectoryEntry = {
   href: string;
   claimed: boolean;
   uid: string | null;
+  steamId: string | null;
   verified: boolean;
   verificationLevel: number;
   isOnline: boolean;
@@ -22,6 +30,9 @@ export type PublicPlayerDirectoryEntry = {
   losses: number;
   unknowns: number;
   lastPlayedAt: string | null;
+  ratingLastSeenAt: string | null;
+  steamRmRating: number | null;
+  steamDmRating: number | null;
   aliases: string[];
   steamPersonaName: string | null;
   inGameName: string | null;
@@ -84,6 +95,41 @@ function updateOutcome(
   entry.losses += 1;
 }
 
+function updateSteamRatings(
+  entry: PublicPlayerDirectoryEntry,
+  player: Record<string, unknown>,
+  nextPlayedAt: Date | string | null
+) {
+  const steamId = readPlayerSteamId(player);
+  const steamRmRating = readPlayerSteamRmRating(player);
+  const steamDmRating = readPlayerSteamDmRating(player);
+
+  if (!steamId && steamRmRating === null && steamDmRating === null) {
+    return;
+  }
+
+  const nextValue = nextPlayedAt ? new Date(nextPlayedAt) : null;
+  const nextTimestamp = nextValue && !Number.isNaN(nextValue.getTime()) ? nextValue.getTime() : null;
+  const currentTimestamp = entry.ratingLastSeenAt ? new Date(entry.ratingLastSeenAt).getTime() : null;
+  const shouldReplace =
+    currentTimestamp === null ||
+    currentTimestamp === 0 ||
+    (nextTimestamp !== null && nextTimestamp >= currentTimestamp);
+
+  if (steamId && !entry.steamId) {
+    entry.steamId = steamId;
+  }
+
+  if (!shouldReplace) {
+    return;
+  }
+
+  entry.steamId = steamId ?? entry.steamId;
+  entry.steamRmRating = steamRmRating;
+  entry.steamDmRating = steamDmRating;
+  entry.ratingLastSeenAt = nextTimestamp !== null ? new Date(nextTimestamp).toISOString() : entry.ratingLastSeenAt;
+}
+
 function sortClaimedEntries(left: PublicPlayerDirectoryEntry, right: PublicPlayerDirectoryEntry) {
   if (left.isOnline !== right.isOnline) {
     return Number(right.isOnline) - Number(left.isOnline);
@@ -139,6 +185,7 @@ export async function loadPublicPlayerDirectory(
         uid: true,
         inGameName: true,
         steamPersonaName: true,
+        steamId: true,
         verified: true,
         verificationLevel: true,
         lastSeen: true,
@@ -180,6 +227,7 @@ export async function loadPublicPlayerDirectory(
       href: `/players/${user.uid}`,
       claimed: true,
       uid: user.uid,
+      steamId: user.steamId,
       verified: user.verified,
       verificationLevel: user.verificationLevel,
       isOnline: Boolean(user.lastSeen && user.lastSeen > onlineThreshold),
@@ -188,6 +236,9 @@ export async function loadPublicPlayerDirectory(
       losses: 0,
       unknowns: 0,
       lastPlayedAt: null,
+      ratingLastSeenAt: null,
+      steamRmRating: null,
+      steamDmRating: null,
       aliases: [],
       steamPersonaName: user.steamPersonaName,
       inGameName: user.inGameName,
@@ -220,6 +271,7 @@ export async function loadPublicPlayerDirectory(
           href: buildReplayPlayerHref(replayName),
           claimed: false,
           uid: null,
+          steamId: null,
           verified: false,
           verificationLevel: 0,
           isOnline: false,
@@ -228,6 +280,9 @@ export async function loadPublicPlayerDirectory(
           losses: 0,
           unknowns: 0,
           lastPlayedAt: null,
+          ratingLastSeenAt: null,
+          steamRmRating: null,
+          steamDmRating: null,
           aliases: [],
           steamPersonaName: null,
           inGameName: null,
@@ -236,6 +291,7 @@ export async function loadPublicPlayerDirectory(
       }
 
       pushAlias(entry, replayName);
+      updateSteamRatings(entry, player, playedAt);
       entry.totalMatches += 1;
       updateOutcome(entry, game.winner, replayName);
       updateLastPlayedAt(entry, playedAt);

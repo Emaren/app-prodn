@@ -111,6 +111,13 @@ export type LobbyLeaderboardEntry = {
   name: string;
   href: string;
   elo: number | null;
+  arenaElo: number | null;
+  steamRmRating: number | null;
+  steamDmRating: number | null;
+  primaryRating: number | null;
+  primaryRatingLabel: string;
+  primaryRatingSourceLabel: string;
+  secondaryRatingLabel: string | null;
   ratingLabel: string;
   wins: number;
   losses: number;
