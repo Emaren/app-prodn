@@ -313,7 +313,7 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
             onViewModeChange={setViewMode}
           />
 
-          <div className="lg:pt-[3.35rem]">
+          <div className="lg:pt-14">
             <TournamentPanel
               tournament={tournament}
               themeKey={themeKey}

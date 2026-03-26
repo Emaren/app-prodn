@@ -50,9 +50,9 @@ export default function WoloPage() {
   }
 
   return (
-    <main className="space-y-6 py-6 text-white">
-      <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(251,191,36,0.16),_transparent_28%),linear-gradient(135deg,_#0f172a,_#111827_55%,_#0b1120)] p-8">
-        <div className="grid gap-8 lg:grid-cols-[1.15fr_0.95fr]">
+    <main className="space-y-4 py-2 text-white sm:space-y-6 sm:py-3">
+      <section className="overflow-hidden rounded-[1.75rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(251,191,36,0.16),_transparent_28%),linear-gradient(135deg,_#0f172a,_#111827_55%,_#0b1120)] p-4 sm:rounded-[2rem] sm:p-6 lg:p-8">
+        <div className="grid gap-5 lg:grid-cols-[1.15fr_0.95fr] lg:gap-8">
           <div className="space-y-6">
             <div className="flex flex-wrap items-center gap-3">
               <div className="text-sm uppercase tracking-[0.4em] text-amber-200/70">$WOLO</div>
@@ -105,7 +105,7 @@ export default function WoloPage() {
             </div>
           </div>
 
-          <div className="rounded-[1.75rem] border border-white/10 bg-white/5 p-6 shadow-2xl shadow-black/20">
+          <div className="rounded-[1.75rem] border border-white/10 bg-white/5 p-5 shadow-2xl shadow-black/20 sm:p-6">
             <div className="flex items-start justify-between gap-4">
               <div className="text-xs uppercase tracking-[0.35em] text-amber-200/70">
                 Wallet Snapshot
@@ -158,7 +158,7 @@ export default function WoloPage() {
         </div>
       </section>
 
-      <section className="grid gap-6 lg:grid-cols-3">
+      <section className="grid gap-4 sm:gap-6 lg:grid-cols-3">
         <UtilityCard
           title="Tournament rail"
           body="WOLO belongs next to brackets, match identity, and tournament entry. The page should make that obvious instead of hiding the token as a tiny stat tile."
@@ -173,7 +173,7 @@ export default function WoloPage() {
         />
       </section>
 
-      <section className="rounded-[2rem] border border-white/10 bg-slate-950/70 p-8">
+      <section className="rounded-[1.75rem] border border-white/10 bg-slate-950/70 p-5 sm:rounded-[2rem] sm:p-6 lg:p-8">
         <div className="max-w-3xl space-y-3">
           <div className="text-xs uppercase tracking-[0.35em] text-white/45">Next Up</div>
           <h3 className="text-3xl font-semibold text-white">What this page should eventually hold</h3>
@@ -184,7 +184,7 @@ export default function WoloPage() {
           </p>
         </div>
 
-        <div className="mt-6 grid gap-4 md:grid-cols-3">
+        <div className="mt-5 grid gap-4 md:grid-cols-3">
           <RoadmapCard
             title="Near term"
             body="Wallet connection, chain identity, balance visibility, and a clean explanation of what WOLO is."
