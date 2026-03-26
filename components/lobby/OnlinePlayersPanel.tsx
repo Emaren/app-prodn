@@ -80,15 +80,15 @@ function OnlineUserCard({
         <div className="mt-2 flex flex-wrap gap-2">
           {user.verificationLevel > 0 ? <SteamLinkedBadge compact /> : null}
           {user.verified ? (
-            <MiniIdentityPill>Replay verified</MiniIdentityPill>
+            <MiniIdentityPill toneClassName={tone.neutralPill}>Replay verified</MiniIdentityPill>
           ) : (
-            <MiniIdentityPill>New player</MiniIdentityPill>
+            <MiniIdentityPill toneClassName={tone.neutralPill}>New player</MiniIdentityPill>
           )}
         </div>
       </div>
       <div
         className={`rounded-full px-3 py-1 text-xs ${
-          user.verified ? tone.activeBadge : "bg-white/8 text-slate-300"
+          user.verified ? tone.activeBadge : tone.neutralPill
         }`}
       >
         {user.verified ? "Trusted" : "New"}
@@ -97,9 +97,15 @@ function OnlineUserCard({
   );
 }
 
-function MiniIdentityPill({ children }: { children: ReactNode }) {
+function MiniIdentityPill({
+  children,
+  toneClassName,
+}: {
+  children: ReactNode;
+  toneClassName: string;
+}) {
   return (
-    <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-medium text-slate-300">
+    <span className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${toneClassName}`}>
       {children}
     </span>
   );

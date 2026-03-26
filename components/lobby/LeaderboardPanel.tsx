@@ -110,10 +110,12 @@ export function LeaderboardPanel({
                       {entry.verified ? (
                         <SteamLinkedBadge compact label="Steam" />
                       ) : (
-                        <MiniTag>{entry.claimed ? "Claimed" : "Claimable"}</MiniTag>
+                        <MiniTag toneClassName={tone.neutralPill}>
+                          {entry.claimed ? "Claimed" : "Claimable"}
+                        </MiniTag>
                       )}
-                      {entry.isOnline ? <MiniTag tone="emerald">Online</MiniTag> : null}
-                      {entry.provisional ? <MiniTag>Provisional</MiniTag> : null}
+                      {entry.isOnline ? <MiniTag toneClassName={tone.activeBadge}>Online</MiniTag> : null}
+                      {entry.provisional ? <MiniTag toneClassName={tone.neutralPill}>Provisional</MiniTag> : null}
                     </div>
                   </div>
                 </div>
@@ -167,18 +169,13 @@ export function LeaderboardPanel({
 
 function MiniTag({
   children,
-  tone = "default",
+  toneClassName,
 }: {
   children: React.ReactNode;
-  tone?: "default" | "emerald";
+  toneClassName: string;
 }) {
-  const toneClass =
-    tone === "emerald"
-      ? "border-emerald-400/20 bg-emerald-500/10 text-emerald-100"
-      : "border-white/10 bg-white/5 text-slate-300";
-
   return (
-    <span className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${toneClass}`}>
+    <span className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${toneClassName}`}>
       {children}
     </span>
   );

@@ -18,6 +18,7 @@ type LobbyThemeOption = {
   key: LobbyThemeKey;
   label: string;
   swatch: string;
+  pageBackground: string;
   heroBackground: string;
 };
 
@@ -59,11 +60,22 @@ type LobbyAccentTone = {
 
 export type LobbyPresentationTone = LobbyThemeTone & LobbyAccentTone;
 
+export type LobbyHeaderSkin = {
+  shell: string;
+  surface: string;
+  tray: string;
+  popover: string;
+  menuItem: string;
+  logout: string;
+};
+
 export const LOBBY_THEME_OPTIONS: LobbyThemeOption[] = [
   {
     key: "black",
     label: "Black",
     swatch: "linear-gradient(135deg,#050505,#1a1a1d)",
+    pageBackground:
+      "linear-gradient(180deg, rgba(8,8,10,0.96), rgba(11,12,16,0.94) 34%, rgba(4,5,8,0.98) 100%)",
     heroBackground:
       "radial-gradient(circle at top left, rgba(255,255,255,0.08), transparent 28%), linear-gradient(135deg, #040404, #0d0f12 54%, #16191f)",
   },
@@ -71,6 +83,8 @@ export const LOBBY_THEME_OPTIONS: LobbyThemeOption[] = [
     key: "grey",
     label: "Grey",
     swatch: "linear-gradient(135deg,#63666d,#2b313a)",
+    pageBackground:
+      "linear-gradient(180deg, rgba(24,31,43,0.96), rgba(39,47,61,0.94) 34%, rgba(12,18,28,0.98) 100%)",
     heroBackground:
       "radial-gradient(circle at top left, rgba(226,232,240,0.18), transparent 30%), linear-gradient(135deg, #111827, #374151 52%, #1f2937)",
   },
@@ -78,6 +92,8 @@ export const LOBBY_THEME_OPTIONS: LobbyThemeOption[] = [
     key: "white",
     label: "White",
     swatch: "linear-gradient(135deg,#f8fafc,#cbd5e1)",
+    pageBackground:
+      "linear-gradient(180deg, rgba(82,93,111,0.94), rgba(63,73,91,0.95) 34%, rgba(20,28,42,0.98) 100%)",
     heroBackground:
       "radial-gradient(circle at top left, rgba(255,255,255,0.22), transparent 28%), linear-gradient(135deg, #1f2937, #475569 52%, #0f172a)",
   },
@@ -85,6 +101,8 @@ export const LOBBY_THEME_OPTIONS: LobbyThemeOption[] = [
     key: "sepia",
     label: "Sepia",
     swatch: "linear-gradient(135deg,#f2d7ac,#8b6b42)",
+    pageBackground:
+      "linear-gradient(180deg, rgba(92,70,39,0.95), rgba(64,47,26,0.95) 36%, rgba(27,19,11,0.98) 100%)",
     heroBackground:
       "radial-gradient(circle at top left, rgba(245, 205, 141, 0.2), transparent 29%), linear-gradient(135deg, #1b140d, #5b4630 52%, #24180d)",
   },
@@ -92,6 +110,8 @@ export const LOBBY_THEME_OPTIONS: LobbyThemeOption[] = [
     key: "walnut",
     label: "Walnut",
     swatch: "linear-gradient(135deg,#6b4226,#2b1810)",
+    pageBackground:
+      "linear-gradient(180deg, rgba(78,47,28,0.95), rgba(50,29,18,0.95) 36%, rgba(19,11,8,0.99) 100%)",
     heroBackground:
       "radial-gradient(circle at top left, rgba(166, 94, 46, 0.22), transparent 29%), linear-gradient(135deg, #160d08, #3b2418 52%, #120a07)",
   },
@@ -99,6 +119,8 @@ export const LOBBY_THEME_OPTIONS: LobbyThemeOption[] = [
     key: "crimson",
     label: "Crimson",
     swatch: "linear-gradient(135deg,#a10f2b,#2b0a12)",
+    pageBackground:
+      "linear-gradient(180deg, rgba(90,21,39,0.95), rgba(60,14,31,0.95) 36%, rgba(19,7,13,0.99) 100%)",
     heroBackground:
       "radial-gradient(circle at top left, rgba(239, 68, 68, 0.18), transparent 30%), linear-gradient(135deg, #1a0810, #3f1020 52%, #12060c)",
   },
@@ -106,6 +128,8 @@ export const LOBBY_THEME_OPTIONS: LobbyThemeOption[] = [
     key: "midnight",
     label: "Midnight",
     swatch: "linear-gradient(135deg,#0f274f,#050b18)",
+    pageBackground:
+      "linear-gradient(180deg, rgba(14,29,56,0.96), rgba(14,26,49,0.95) 34%, rgba(6,13,27,0.99) 100%)",
     heroBackground:
       "radial-gradient(circle at top left, rgba(59, 130, 246, 0.16), transparent 30%), linear-gradient(135deg, #0f172a, #111827 55%, #0b1120)",
   },
@@ -146,10 +170,93 @@ export function getLobbyPageBackground(themeKey: LobbyThemeKey, viewMode: LobbyV
   const theme = findThemeOption(themeKey);
   const viewOverlay =
     viewMode === "field"
-      ? "radial-gradient(circle at 16% 8%, rgba(74, 222, 128, 0.12), transparent 24%), radial-gradient(circle at 84% 12%, rgba(22, 163, 74, 0.14), transparent 26%), "
-      : "radial-gradient(circle at 16% 8%, rgba(251, 191, 36, 0.1), transparent 24%), radial-gradient(circle at 84% 12%, rgba(96, 165, 250, 0.12), transparent 26%), ";
+      ? "radial-gradient(circle at 16% 8%, rgba(74, 222, 128, 0.14), transparent 24%), radial-gradient(circle at 84% 12%, rgba(22, 163, 74, 0.16), transparent 26%), "
+      : "radial-gradient(circle at 16% 8%, rgba(251, 191, 36, 0.12), transparent 24%), radial-gradient(circle at 84% 12%, rgba(96, 165, 250, 0.14), transparent 26%), ";
 
-  return `${viewOverlay}radial-gradient(circle at 50% 0%, rgba(255,255,255,0.03), transparent 42%), linear-gradient(180deg, rgba(2,6,23,0.82), rgba(2,6,23,0.94) 32%, rgba(2,6,23,0.98) 100%), ${theme.heroBackground}`;
+  return `${viewOverlay}radial-gradient(circle at 50% 0%, rgba(255,255,255,0.05), transparent 40%), radial-gradient(circle at 18% 85%, rgba(255,255,255,0.035), transparent 36%), ${theme.pageBackground}`;
+}
+
+export function getLobbyHeaderSkin(themeKey: LobbyThemeKey): LobbyHeaderSkin {
+  switch (themeKey) {
+    case "black":
+      return {
+        shell:
+          "border-white/10 bg-[linear-gradient(180deg,rgba(9,9,11,0.9),rgba(5,5,7,0.82))] shadow-[0_18px_42px_rgba(0,0,0,0.35)]",
+        surface:
+          "border-white/10 bg-white/[0.05] text-white/85 hover:border-white/24 hover:bg-white/[0.09] hover:text-white",
+        tray: "border-white/10 bg-white/[0.04]",
+        popover: "border-white/10 bg-[#09090b]/95",
+        menuItem: "text-white/85 hover:bg-white/8 hover:text-white",
+        logout: "text-red-300 hover:bg-red-500/10 hover:text-red-200",
+      };
+    case "grey":
+      return {
+        shell:
+          "border-slate-200/10 bg-[linear-gradient(180deg,rgba(30,38,50,0.9),rgba(19,25,35,0.84))] shadow-[0_18px_42px_rgba(15,23,42,0.28)]",
+        surface:
+          "border-slate-200/12 bg-slate-300/[0.08] text-slate-100 hover:border-slate-200/24 hover:bg-slate-300/[0.13] hover:text-white",
+        tray: "border-slate-200/12 bg-slate-300/[0.07]",
+        popover: "border-slate-200/12 bg-[#19212d]/95",
+        menuItem: "text-slate-100 hover:bg-slate-300/[0.1] hover:text-white",
+        logout: "text-red-200 hover:bg-red-500/10 hover:text-red-100",
+      };
+    case "white":
+      return {
+        shell:
+          "border-stone-100/12 bg-[linear-gradient(180deg,rgba(77,88,106,0.9),rgba(42,50,65,0.84))] shadow-[0_18px_42px_rgba(30,41,59,0.22)]",
+        surface:
+          "border-stone-100/14 bg-white/[0.1] text-stone-50 hover:border-stone-100/30 hover:bg-white/[0.16] hover:text-white",
+        tray: "border-stone-100/12 bg-white/[0.08]",
+        popover: "border-stone-100/14 bg-[#364053]/95",
+        menuItem: "text-stone-50 hover:bg-white/[0.08] hover:text-white",
+        logout: "text-red-100 hover:bg-red-500/10 hover:text-white",
+      };
+    case "sepia":
+      return {
+        shell:
+          "border-amber-100/12 bg-[linear-gradient(180deg,rgba(90,68,42,0.9),rgba(47,33,20,0.86))] shadow-[0_18px_42px_rgba(70,45,17,0.24)]",
+        surface:
+          "border-amber-100/12 bg-amber-200/[0.07] text-amber-50 hover:border-amber-100/24 hover:bg-amber-200/[0.14] hover:text-white",
+        tray: "border-amber-100/12 bg-amber-200/[0.06]",
+        popover: "border-amber-100/12 bg-[#332315]/95",
+        menuItem: "text-amber-50 hover:bg-amber-200/[0.08] hover:text-white",
+        logout: "text-red-100 hover:bg-red-500/10 hover:text-white",
+      };
+    case "walnut":
+      return {
+        shell:
+          "border-orange-100/10 bg-[linear-gradient(180deg,rgba(74,46,29,0.9),rgba(37,24,16,0.86))] shadow-[0_18px_42px_rgba(58,33,16,0.26)]",
+        surface:
+          "border-orange-100/10 bg-orange-200/[0.07] text-orange-50 hover:border-orange-100/24 hover:bg-orange-200/[0.13] hover:text-white",
+        tray: "border-orange-100/10 bg-orange-200/[0.06]",
+        popover: "border-orange-100/12 bg-[#2b1a11]/95",
+        menuItem: "text-orange-50 hover:bg-orange-200/[0.08] hover:text-white",
+        logout: "text-red-100 hover:bg-red-500/10 hover:text-white",
+      };
+    case "crimson":
+      return {
+        shell:
+          "border-rose-100/10 bg-[linear-gradient(180deg,rgba(86,23,39,0.9),rgba(43,11,22,0.86))] shadow-[0_18px_42px_rgba(69,16,31,0.26)]",
+        surface:
+          "border-rose-100/10 bg-rose-200/[0.075] text-rose-50 hover:border-rose-100/22 hover:bg-rose-200/[0.13] hover:text-white",
+        tray: "border-rose-100/10 bg-rose-200/[0.065]",
+        popover: "border-rose-100/12 bg-[#2d1019]/95",
+        menuItem: "text-rose-50 hover:bg-rose-200/[0.08] hover:text-white",
+        logout: "text-red-100 hover:bg-red-500/10 hover:text-white",
+      };
+    case "midnight":
+    default:
+      return {
+        shell:
+          "border-sky-200/10 bg-[linear-gradient(180deg,rgba(14,25,48,0.9),rgba(8,15,29,0.84))] shadow-[0_18px_42px_rgba(5,11,24,0.28)]",
+        surface:
+          "border-sky-200/10 bg-white/[0.055] text-slate-100 hover:border-sky-200/24 hover:bg-white/[0.1] hover:text-white",
+        tray: "border-sky-200/10 bg-white/[0.045]",
+        popover: "border-sky-200/12 bg-[#0b1324]/95",
+        menuItem: "text-slate-100 hover:bg-white/8 hover:text-white",
+        logout: "text-red-200 hover:bg-red-500/10 hover:text-red-100",
+      };
+  }
 }
 
 function getLobbyThemeTone(themeKey: LobbyThemeKey): LobbyThemeTone {

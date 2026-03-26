@@ -58,7 +58,7 @@ export function LobbyChat({
     >
       <div className="flex items-center justify-between gap-4">
         <div>
-          <div className="text-xs uppercase tracking-[0.35em] text-white/45">Chat</div>
+          <div className={`text-xs uppercase tracking-[0.35em] ${tone.eyebrow}`}>Chat</div>
           <h3 className="mt-2 text-2xl font-semibold text-white">{chatRoomTitle}</h3>
         </div>
 
@@ -97,11 +97,11 @@ export function LobbyChat({
                       {item.message.user.verificationLevel > 0 ? (
                         <SteamLinkedBadge compact />
                       ) : (
-                        <MiniIdentityPill>Unverified</MiniIdentityPill>
+                        <MiniIdentityPill toneClassName={tone.neutralPill}>Unverified</MiniIdentityPill>
                       )}
 
                       {item.message.user.verified ? (
-                        <MiniIdentityPill>Replay verified</MiniIdentityPill>
+                        <MiniIdentityPill toneClassName={tone.neutralPill}>Replay verified</MiniIdentityPill>
                       ) : null}
                     </div>
 
@@ -190,9 +190,15 @@ function ChatDateDivider({
   );
 }
 
-function MiniIdentityPill({ children }: { children: ReactNode }) {
+function MiniIdentityPill({
+  children,
+  toneClassName,
+}: {
+  children: ReactNode;
+  toneClassName: string;
+}) {
   return (
-    <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-medium text-slate-300">
+    <span className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${toneClassName}`}>
       {children}
     </span>
   );

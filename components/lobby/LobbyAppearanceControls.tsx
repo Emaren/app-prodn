@@ -51,7 +51,7 @@ export function LobbyThemePicker({
               type="button"
               onClick={() => onThemeChange(option.key)}
               className={`${circleSizeClassName} rounded-full border border-white/10 transition hover:scale-105 ${
-                isActive ? `ring-2 ring-offset-2 ring-offset-slate-950 ${tone.circleRing}` : ""
+                isActive ? `ring-2 ring-offset-2 ring-offset-transparent ${tone.circleRing}` : ""
               }`}
               style={{ backgroundImage: option.swatch }}
               title={option.label}

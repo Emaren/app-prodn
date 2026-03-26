@@ -41,7 +41,11 @@ async function requestInbox(targetUid?: string | null, summaryOnly?: boolean) {
   return payload as ContactInboxPayload;
 }
 
-export default function HeaderInboxControl() {
+type HeaderInboxControlProps = {
+  buttonClassName?: string;
+};
+
+export default function HeaderInboxControl({ buttonClassName }: HeaderInboxControlProps) {
   const { uid } = useUserAuth();
   const [open, setOpen] = useState(false);
   const [summary, setSummary] = useState<ContactInboxPayload | null>(null);
@@ -130,7 +134,12 @@ export default function HeaderInboxControl() {
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
-        className="relative flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-white/5 text-white transition hover:border-white/30 hover:bg-white/10"
+        className={[
+          "relative flex h-11 w-11 items-center justify-center rounded-full border text-white transition",
+          buttonClassName || "border-white/15 bg-white/5 hover:border-white/30 hover:bg-white/10",
+        ]
+          .filter(Boolean)
+          .join(" ")}
         aria-label="Open Contact Emaren inbox"
       >
         <MessageSquareMore className="h-5 w-5" />
