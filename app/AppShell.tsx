@@ -71,15 +71,13 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                   logoutClassName={headerSkin.logout}
                 />
               </div>
-              <div className={`inline-flex items-center rounded-full border px-2.5 py-1.5 ${headerSkin.tray}`}>
-                <LobbyThemePicker
-                  themeKey={themeKey}
-                  onThemeChange={setThemeKey}
-                  tone={presentationTone}
-                  size="sm"
-                  className="gap-1.5"
-                />
-              </div>
+              <LobbyThemePicker
+                themeKey={themeKey}
+                onThemeChange={setThemeKey}
+                tone={presentationTone}
+                size="sm"
+                className="gap-1.5"
+              />
             </div>
           </div>
         </div>

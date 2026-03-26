@@ -20,9 +20,6 @@ import {
 } from "@/lib/lobby";
 
 const EMPTY_MESSAGES: LobbyMessage[] = [];
-const CHAT_AUTO_SCROLL_GRACE_MS = 4000;
-const CHAT_BOTTOM_THRESHOLD_PX = 48;
-
 type HomePageClientProps = {
   initialLobby: LobbySnapshot | null;
 };
@@ -45,8 +42,7 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
 
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
   const rightColumnRef = useRef<HTMLDivElement | null>(null);
-  const chatAutoScrollHoldUntilRef = useRef(0);
-  const chatAutoScrollTimerRef = useRef<number | null>(null);
+  const chatInitializedRef = useRef(false);
 
   const loadLobby = useCallback(async () => {
     try {
@@ -146,69 +142,15 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    if (chatInitializedRef.current || chatItems.length === 0) return;
 
-    const node = chatScrollRef.current;
-    if (!node) return;
-
-    const handleScroll = () => {
-      const distanceFromBottom = node.scrollHeight - node.scrollTop - node.clientHeight;
-
-      if (chatAutoScrollTimerRef.current) {
-        window.clearTimeout(chatAutoScrollTimerRef.current);
-        chatAutoScrollTimerRef.current = null;
-      }
-
-      if (distanceFromBottom > CHAT_BOTTOM_THRESHOLD_PX) {
-        chatAutoScrollHoldUntilRef.current = Date.now() + CHAT_AUTO_SCROLL_GRACE_MS;
-        return;
-      }
-
-      chatAutoScrollHoldUntilRef.current = 0;
-    };
-
-    node.addEventListener("scroll", handleScroll, { passive: true });
-
-    return () => {
-      node.removeEventListener("scroll", handleScroll);
-      if (chatAutoScrollTimerRef.current) {
-        window.clearTimeout(chatAutoScrollTimerRef.current);
-        chatAutoScrollTimerRef.current = null;
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const node = chatScrollRef.current;
-    if (!node) return;
-
-    const distanceFromBottom = node.scrollHeight - node.scrollTop - node.clientHeight;
-    const holdRemaining = chatAutoScrollHoldUntilRef.current - Date.now();
-
-    if (distanceFromBottom <= CHAT_BOTTOM_THRESHOLD_PX || holdRemaining <= 0) {
+    const frame = window.requestAnimationFrame(() => {
       scrollChatToBottom();
-      return;
-    }
-
-    if (chatAutoScrollTimerRef.current) {
-      window.clearTimeout(chatAutoScrollTimerRef.current);
-    }
-
-    chatAutoScrollTimerRef.current = window.setTimeout(() => {
-      if (Date.now() < chatAutoScrollHoldUntilRef.current) {
-        return;
-      }
-
-      scrollChatToBottom("smooth");
-      chatAutoScrollTimerRef.current = null;
-    }, holdRemaining);
+      chatInitializedRef.current = true;
+    });
 
     return () => {
-      if (chatAutoScrollTimerRef.current) {
-        window.clearTimeout(chatAutoScrollTimerRef.current);
-        chatAutoScrollTimerRef.current = null;
-      }
+      window.cancelAnimationFrame(frame);
     };
   }, [chatItems.length, scrollChatToBottom]);
 
@@ -371,7 +313,7 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
             onViewModeChange={setViewMode}
           />
 
-          <div>
+          <div className="lg:pt-[3.35rem]">
             <TournamentPanel
               tournament={tournament}
               themeKey={themeKey}

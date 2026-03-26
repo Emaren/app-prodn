@@ -80,7 +80,7 @@ export function LobbyHero({
         onViewModeChange={onViewModeChange}
       />
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2">
         <StatCard
           label="Active Players"
           value={String(leaderboard.activePlayers)}
@@ -93,14 +93,6 @@ export function LobbyHero({
           label="Matches Today"
           value={String(leaderboard.matchesToday)}
           subtext="Final games on the board."
-          themeKey={themeKey}
-          viewMode={viewMode}
-        />
-        <StatCard
-          label="Qualified"
-          value={String(leaderboard.rankedPlayers)}
-          subtext={`${leaderboard.minimumMatches}+ final games logged.`}
-          tone={viewMode === "field" ? "emerald" : "amber"}
           themeKey={themeKey}
           viewMode={viewMode}
         />

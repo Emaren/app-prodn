@@ -34,15 +34,6 @@ function buildRecordLabel(entry: LobbyLeaderboardSummary["entries"][number]) {
   return entry.unknowns > 0 ? `${base} · ${entry.unknowns} unk` : base;
 }
 
-function buildWinRateLabel(entry: LobbyLeaderboardSummary["entries"][number]) {
-  const resolvedMatches = entry.wins + entry.losses;
-  if (resolvedMatches <= 0) {
-    return "0% WR";
-  }
-
-  return `${Math.round((entry.wins / resolvedMatches) * 100)}% WR`;
-}
-
 export function LeaderboardPanel({
   leaderboard,
   themeKey,
@@ -132,7 +123,6 @@ export function LeaderboardPanel({
                   ) : null}
                   <div className="mt-2 flex flex-wrap gap-2 sm:justify-end">
                     <MetricPill toneClassName={tone.neutralPill}>{buildRecordLabel(entry)}</MetricPill>
-                    <MetricPill toneClassName={tone.neutralPill}>{buildWinRateLabel(entry)}</MetricPill>
                     {entry.streakLabel ? (
                       <MetricPill toneClassName={entry.streakLabel.startsWith("W") ? "border-emerald-400/20 bg-emerald-500/10 text-emerald-100" : "border-rose-300/20 bg-rose-500/10 text-rose-100"}>
                         {entry.streakLabel}
