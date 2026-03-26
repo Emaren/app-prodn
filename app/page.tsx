@@ -3,6 +3,13 @@
 import { type CSSProperties, useCallback, useEffect, useRef, useState } from "react";
 import { LobbyChat } from "@/components/lobby/LobbyChat";
 import { LobbyHero } from "@/components/lobby/LobbyHero";
+import {
+  getLobbyHeroBackground,
+  isLobbyThemeKey,
+  isLobbyViewMode,
+  type LobbyThemeKey,
+  type LobbyViewMode,
+} from "@/components/lobby/lobbyPresentation";
 import { OnlinePlayersPanel } from "@/components/lobby/OnlinePlayersPanel";
 import { RecentMatchesPanel } from "@/components/lobby/RecentMatchesPanel";
 import { TournamentPanel } from "@/components/lobby/TournamentPanel";
@@ -18,6 +25,10 @@ import {
 const EMPTY_MESSAGES: LobbyMessage[] = [];
 const CHAT_AUTO_SCROLL_GRACE_MS = 4000;
 const CHAT_BOTTOM_THRESHOLD_PX = 48;
+const LOBBY_THEME_STORAGE_KEY = "aoe2hdbets:lobby-theme";
+const LOBBY_VIEW_STORAGE_KEY = "aoe2hdbets:lobby-view";
+const DEFAULT_LOBBY_THEME: LobbyThemeKey = "midnight";
+const DEFAULT_LOBBY_VIEW: LobbyViewMode = "steel";
 
 export default function HomePage() {
   const { isAdmin, isAuthenticated, loading, loginWithSteam, playerName, user } = useUserAuth();
@@ -33,6 +44,8 @@ export default function HomePage() {
   const [chatPending, setChatPending] = useState(false);
   const [joinPending, setJoinPending] = useState(false);
   const [chatCardHeight, setChatCardHeight] = useState<number | null>(null);
+  const [themeKey, setThemeKey] = useState<LobbyThemeKey>(DEFAULT_LOBBY_THEME);
+  const [viewMode, setViewMode] = useState<LobbyViewMode>(DEFAULT_LOBBY_VIEW);
 
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
   const rightColumnRef = useRef<HTMLDivElement | null>(null);
@@ -115,6 +128,30 @@ export default function HomePage() {
     setAuthError(params.get("auth") === "steam-error");
     setAuthDetail(params.get("detail"));
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const storedTheme = window.localStorage.getItem(LOBBY_THEME_STORAGE_KEY);
+    if (isLobbyThemeKey(storedTheme)) {
+      setThemeKey(storedTheme);
+    }
+
+    const storedView = window.localStorage.getItem(LOBBY_VIEW_STORAGE_KEY);
+    if (isLobbyViewMode(storedView)) {
+      setViewMode(storedView);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(LOBBY_THEME_STORAGE_KEY, themeKey);
+  }, [themeKey]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(LOBBY_VIEW_STORAGE_KEY, viewMode);
+  }, [viewMode]);
 
   const tournament = lobby?.tournament ?? getFallbackTournament(false);
   const leaderboard = lobby?.leaderboard ?? getFallbackLeaderboard();
@@ -334,10 +371,20 @@ export default function HomePage() {
     chatCardHeight && typeof window !== "undefined" && window.innerWidth >= 1024
       ? { height: `${chatCardHeight}px` }
       : undefined;
+  const heroStyle: CSSProperties = {
+    backgroundImage: getLobbyHeroBackground(themeKey, viewMode),
+  };
+  const heroShellClassName =
+    viewMode === "field"
+      ? "border-emerald-400/20 shadow-[0_28px_80px_rgba(5,46,22,0.32)]"
+      : "border-white/10 shadow-[0_28px_80px_rgba(15,23,42,0.4)]";
 
   return (
     <main className="space-y-6 py-6 text-white">
-      <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(251,191,36,0.18),_transparent_30%),linear-gradient(135deg,_#0f172a,_#111827_55%,_#0b1120)] p-8">
+      <section
+        className={`overflow-hidden rounded-[2rem] border p-8 transition-all duration-500 ${heroShellClassName}`}
+        style={heroStyle}
+      >
         <div className="grid gap-8 lg:grid-cols-[1.2fr_0.95fr]">
           <LobbyHero
             liveConnected={liveConnected}
@@ -347,10 +394,15 @@ export default function HomePage() {
             isAuthenticated={isAuthenticated}
             loading={loading}
             leaderboard={leaderboard}
+            themeKey={themeKey}
+            viewMode={viewMode}
+            onThemeChange={setThemeKey}
+            onViewModeChange={setViewMode}
           />
 
           <TournamentPanel
             tournament={tournament}
+            viewMode={viewMode}
             isAdmin={isAdmin}
             isAuthenticated={isAuthenticated}
             joinPending={joinPending}

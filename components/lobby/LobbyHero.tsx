@@ -3,6 +3,10 @@
 import Link from "next/link";
 import SteamLoginButton from "@/components/SteamLoginButton";
 import { LeaderboardPanel } from "@/components/lobby/LeaderboardPanel";
+import {
+  type LobbyThemeKey,
+  type LobbyViewMode,
+} from "@/components/lobby/lobbyPresentation";
 import { StatCard } from "@/components/lobby/StatCard";
 import type { LobbySnapshot } from "@/lib/lobby";
 
@@ -14,6 +18,10 @@ type LobbyHeroProps = {
   isAuthenticated: boolean;
   loading: boolean;
   leaderboard: LobbySnapshot["leaderboard"];
+  themeKey: LobbyThemeKey;
+  viewMode: LobbyViewMode;
+  onThemeChange: (themeKey: LobbyThemeKey) => void;
+  onViewModeChange: (viewMode: LobbyViewMode) => void;
 };
 
 export function LobbyHero({
@@ -24,11 +32,22 @@ export function LobbyHero({
   isAuthenticated,
   loading,
   leaderboard,
+  themeKey,
+  viewMode,
+  onThemeChange,
+  onViewModeChange,
 }: LobbyHeroProps) {
+  const accentTextClassName =
+    viewMode === "field" ? "text-emerald-200/70" : "text-amber-200/70";
+  const primaryActionClassName =
+    viewMode === "field"
+      ? "rounded-full bg-emerald-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-200"
+      : "rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200";
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
-        <div className="text-sm uppercase tracking-[0.4em] text-amber-200/70">
+        <div className={`text-sm uppercase tracking-[0.4em] ${accentTextClassName}`}>
           Community Lobby
         </div>
         <div
@@ -54,7 +73,13 @@ export function LobbyHero({
         </div>
       )}
 
-      <LeaderboardPanel leaderboard={leaderboard} />
+      <LeaderboardPanel
+        leaderboard={leaderboard}
+        themeKey={themeKey}
+        viewMode={viewMode}
+        onThemeChange={onThemeChange}
+        onViewModeChange={onViewModeChange}
+      />
 
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard
@@ -69,9 +94,10 @@ export function LobbyHero({
           subtext="Final games on the board."
         />
         <StatCard
-          label="Ranked Warriors"
+          label="Qualified"
           value={String(leaderboard.rankedPlayers)}
-          subtext={`Min ${leaderboard.minimumMatches} games to rank.`}
+          subtext={`${leaderboard.minimumMatches}+ final games logged.`}
+          tone={viewMode === "field" ? "emerald" : "amber"}
         />
       </div>
 
@@ -79,13 +105,13 @@ export function LobbyHero({
         {isAuthenticated ? (
           <Link
             href="/profile"
-            className="rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200"
+            className={primaryActionClassName}
           >
             Open Profile
           </Link>
         ) : (
           <SteamLoginButton
-            className="rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200"
+            className={primaryActionClassName}
             label={loading ? "Loading..." : "Claim Your Steam Identity"}
             disabled={loading}
           />

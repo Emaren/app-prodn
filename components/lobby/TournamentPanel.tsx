@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import type { LobbyViewMode } from "@/components/lobby/lobbyPresentation";
 import { getTournamentMatchStatusLabel, getTournamentStatusLabel, type LobbySnapshot } from "@/lib/lobby";
 import { displayMatchPlayer, displayName, formatTournamentWindow } from "@/components/lobby/utils";
 
 type TournamentPanelProps = {
   tournament: LobbySnapshot["tournament"];
+  viewMode: LobbyViewMode;
   isAdmin: boolean;
   isAuthenticated: boolean;
   joinPending: boolean;
@@ -16,6 +18,7 @@ type TournamentPanelProps = {
 
 export function TournamentPanel({
   tournament,
+  viewMode,
   isAdmin,
   isAuthenticated,
   joinPending,
@@ -23,11 +26,24 @@ export function TournamentPanel({
   onJoinTournament,
   onLogin,
 }: TournamentPanelProps) {
+  const accentLabelClassName =
+    viewMode === "field" ? "text-emerald-200/70" : "text-amber-200/70";
+  const accentBadgeClassName =
+    viewMode === "field"
+      ? "border-emerald-300/20 bg-emerald-500/12 text-emerald-50"
+      : "border-amber-300/20 bg-amber-300/10 text-amber-100";
+  const primaryButtonClassName =
+    viewMode === "field"
+      ? "rounded-full bg-emerald-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-200 disabled:cursor-not-allowed disabled:opacity-50"
+      : "rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-50";
+
   return (
     <div className="rounded-[1.75rem] border border-white/10 bg-white/5 p-6 shadow-2xl shadow-black/20">
       <div className="flex items-start justify-between gap-4">
-        <div className="text-xs uppercase tracking-[0.35em] text-amber-200/70">Next Tournament</div>
-        <div className="rounded-full border border-amber-300/20 bg-amber-300/10 px-3 py-1 text-xs font-medium text-amber-100">
+        <div className={`text-xs uppercase tracking-[0.35em] ${accentLabelClassName}`}>
+          Next Tournament
+        </div>
+        <div className={`rounded-full border px-3 py-1 text-xs font-medium ${accentBadgeClassName}`}>
           {getTournamentStatusLabel(tournament.status)}
         </div>
       </div>
@@ -149,7 +165,7 @@ export function TournamentPanel({
             type="button"
             onClick={onJoinTournament}
             disabled={joinPending || tournament.isFallback || tournament.status === "completed"}
-            className="rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-50"
+            className={primaryButtonClassName}
           >
             {tournament.viewerJoined
               ? joinPending

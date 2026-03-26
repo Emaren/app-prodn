@@ -355,6 +355,7 @@ export async function loadLobbyLeaderboard(
     ),
     activePlayers: directory.activeClaimed.length,
     matchesToday,
+    trackedPlayers: selectedEntries.length,
     rankedPlayers: eligibleEntries.length,
     minimumMatches: LOBBY_LEADERBOARD_MIN_MATCHES,
   };
