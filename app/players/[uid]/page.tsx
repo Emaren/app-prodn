@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
+import CommunityBadgePill from "@/components/contact/CommunityBadgePill";
 import SteamLinkedBadge from "@/components/SteamLinkedBadge";
 import {
   displayParseReason,
@@ -18,6 +19,7 @@ import { buildPlayerPerformanceStats } from "@/lib/playerPerformance";
 import { buildMatchupHref, buildRivalSummaries } from "@/lib/publicMatchups";
 import { getPrisma } from "@/lib/prisma";
 import { buildClaimedPublicPlayerRef, normalizePublicPlayerName } from "@/lib/publicPlayers";
+import { loadUserCommunitySummaries } from "@/lib/communityHonors";
 
 export const dynamic = "force-dynamic";
 
@@ -82,6 +84,11 @@ export default async function PublicPlayerPage({
   const liveThreshold = new Date(Date.now() - 2 * 60 * 1000);
   const displayName = user.inGameName || user.steamPersonaName || user.uid;
   const isLive = Boolean(user.lastSeen && user.lastSeen > liveThreshold);
+  const community = (await loadUserCommunitySummaries(prisma, [user.id])).get(user.id) ?? {
+    badges: [],
+    gifts: [],
+    giftedWolo: 0,
+  };
   const aliases = Array.from(aliasSet);
   const currentPlayer = buildClaimedPublicPlayerRef(user, displayName);
   const performance = buildPlayerPerformanceStats(matchedGames, currentPlayer);
@@ -104,6 +111,9 @@ export default async function PublicPlayerPage({
               <Tag>{user.verified ? "Replay verified" : "Claimed profile"}</Tag>
               <Tag>verification level {user.verificationLevel}</Tag>
               {isLive ? <Tag>online now</Tag> : null}
+              {community.badges.map((badge) => (
+                <CommunityBadgePill key={badge.id} label={badge.label} />
+              ))}
             </div>
           </div>
 
@@ -192,6 +202,25 @@ export default async function PublicPlayerPage({
               />
             </dl>
           </Panel>
+
+          {community.badges.length > 0 || community.giftedWolo > 0 ? (
+            <Panel title="Community Honors" eyebrow="Recognition">
+              <div className="space-y-4">
+                {community.badges.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {community.badges.map((badge) => (
+                      <CommunityBadgePill key={badge.id} label={badge.label} />
+                    ))}
+                  </div>
+                ) : null}
+                {community.giftedWolo > 0 ? (
+                  <div className="rounded-2xl border border-amber-300/20 bg-amber-400/10 px-4 py-4 text-sm text-amber-100">
+                    Community grant ledger: {community.giftedWolo} WOLO recorded for this player.
+                  </div>
+                ) : null}
+              </div>
+            </Panel>
+          ) : null}
 
           <Panel title="Reliability" eyebrow="Parser Health">
             <dl className="grid gap-4 sm:grid-cols-2">

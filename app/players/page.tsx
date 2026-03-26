@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import CommunityBadgePill from "@/components/contact/CommunityBadgePill";
 import SteamLinkedBadge from "@/components/SteamLinkedBadge";
 import { getPrisma } from "@/lib/prisma";
 import {
@@ -147,6 +148,15 @@ function PlayerCard({
             <div className="mt-3 flex flex-wrap gap-2">
               <SteamLinkedBadge compact />
               {entry.verified ? <Tag>Replay verified</Tag> : null}
+              {entry.badges.map((badge) => (
+                <CommunityBadgePill key={badge.id} label={badge.label} />
+              ))}
+            </div>
+          ) : entry.badges.length > 0 ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {entry.badges.map((badge) => (
+                <CommunityBadgePill key={badge.id} label={badge.label} />
+              ))}
             </div>
           ) : null}
         </div>

@@ -1,52 +1,71 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getBackendUpstreamBase } from "@/lib/backendUpstream";
-import { getPrisma } from "@/lib/prisma";
-import { getSessionUid } from "@/lib/session";
-
-function resolveAdminToken() {
-  const token = process.env.ADMIN_TOKEN;
-  if (token) return token;
-  if (process.env.NODE_ENV !== "production") return "secretadmin";
-  return null;
-}
+import { loadUserCommunitySummaries } from "@/lib/communityHonors";
+import { loadInboxPayload } from "@/lib/contactInbox";
+import { requireAdmin } from "@/lib/adminSession";
 
 export async function GET(request: NextRequest) {
   try {
-    const uid = await getSessionUid(request);
-    if (!uid) {
-      return NextResponse.json({ detail: "Unauthorized" }, { status: 401 });
+    const gate = await requireAdmin(request);
+    if ("error" in gate) {
+      return gate.error;
     }
 
-    const prisma = getPrisma();
-    const user = await prisma.user.findUnique({
-      where: { uid },
-      select: { isAdmin: true },
-    });
-    if (!user?.isAdmin) {
-      return NextResponse.json({ detail: "Forbidden" }, { status: 403 });
-    }
-
-    const base = getBackendUpstreamBase();
-    const adminToken = resolveAdminToken();
-    if (!adminToken) {
-      return NextResponse.json({ detail: "ADMIN_TOKEN is not configured" }, { status: 500 });
-    }
-    const res = await fetch(`${base}/api/admin/users`, {
-      headers: {
-        Authorization: `Bearer ${adminToken}`,
+    const { prisma, user: admin } = gate;
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        uid: true,
+        email: true,
+        inGameName: true,
+        steamPersonaName: true,
+        steamId: true,
+        verified: true,
+        verificationLevel: true,
+        createdAt: true,
+        lastSeen: true,
+        isAdmin: true,
       },
-      cache: "no-store",
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     });
 
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`API error ${res.status}: ${text}`);
-    }
+    const communityMap = await loadUserCommunitySummaries(
+      prisma,
+      users.map((entry) => entry.id)
+    );
+    const inbox = await loadInboxPayload(prisma, admin.uid, { summaryOnly: true });
+    const unreadMap = new Map(
+      inbox.summaries.map((summary) => [summary.targetUid, summary.unreadCount] as const)
+    );
 
-    const data = await res.json();
-    return NextResponse.json(data);
+    return NextResponse.json(
+      users.map((entry) => {
+        const community = communityMap.get(entry.id) ?? {
+          badges: [],
+          gifts: [],
+          giftedWolo: 0,
+        };
+
+        return {
+          uid: entry.uid,
+          email: entry.email,
+          inGameName: entry.inGameName,
+          steamPersonaName: entry.steamPersonaName,
+          steamId: entry.steamId,
+          displayName: entry.inGameName || entry.steamPersonaName || entry.uid,
+          verified: entry.verified,
+          verificationLevel: entry.verificationLevel,
+          createdAt: entry.createdAt.toISOString(),
+          lastSeen: entry.lastSeen ? entry.lastSeen.toISOString() : null,
+          isAdmin: entry.isAdmin,
+          badges: community.badges,
+          giftedWolo: community.giftedWolo,
+          gifts: community.gifts.slice(0, 6),
+          unreadCount: unreadMap.get(entry.uid) ?? 0,
+        };
+      })
+    );
   } catch (err) {
-    console.error("🔥 Backend fetch failed:", err);
-    return new Response("Internal error", { status: 500 });
+    console.error("Failed to load admin users:", err);
+    return NextResponse.json({ detail: "Internal error" }, { status: 500 });
   }
 }

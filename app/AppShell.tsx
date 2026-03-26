@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import HeaderInboxControl from "@/components/contact/HeaderInboxControl";
 import HeaderMenu from "@/components/HeaderMenu";
 import { Toaster } from "sonner";
 import { Providers } from "./Providers";
@@ -45,6 +46,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
             </nav>
 
             <div className="flex items-center justify-start gap-4 lg:justify-self-end">
+              <HeaderInboxControl />
               <HeaderMenu
                 pendingBetsCount={pendingBetsCount}
                 playerName={playerName}

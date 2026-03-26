@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@/lib/generated/prisma";
+import type { CommunityBadge } from "@/lib/communityHonors";
 
 import {
   displayPlayerName,
@@ -14,6 +15,7 @@ import {
   getClaimedPublicPlayer,
   normalizePublicPlayerName,
 } from "@/lib/publicPlayers";
+import { loadUserCommunitySummaries } from "@/lib/communityHonors";
 
 export type PublicPlayerDirectoryEntry = {
   key: string;
@@ -36,6 +38,7 @@ export type PublicPlayerDirectoryEntry = {
   aliases: string[];
   steamPersonaName: string | null;
   inGameName: string | null;
+  badges: CommunityBadge[];
 };
 
 export type PublicPlayerDirectory = {
@@ -208,6 +211,7 @@ export async function loadPublicPlayerDirectory(
   const [users, games] = await Promise.all([
     prisma.user.findMany({
       select: {
+        id: true,
         uid: true,
         inGameName: true,
         steamPersonaName: true,
@@ -232,6 +236,10 @@ export async function loadPublicPlayerDirectory(
       },
     }),
   ]);
+  const communityMap = await loadUserCommunitySummaries(
+    prisma,
+    users.map((user) => user.id)
+  );
 
   const replayNames = Array.from(
     new Set(
@@ -268,6 +276,7 @@ export async function loadPublicPlayerDirectory(
       aliases: [],
       steamPersonaName: user.steamPersonaName,
       inGameName: user.inGameName,
+      badges: communityMap.get(user.id)?.badges ?? [],
     };
 
     pushAlias(entry, user.inGameName);
@@ -312,6 +321,7 @@ export async function loadPublicPlayerDirectory(
           aliases: [],
           steamPersonaName: null,
           inGameName: null,
+          badges: [],
         };
         directory.set(entry.key, entry);
       }

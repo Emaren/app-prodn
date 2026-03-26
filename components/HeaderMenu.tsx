@@ -53,6 +53,9 @@ export default function HeaderMenu({ pendingBetsCount, playerName, uid }: Props)
           <MenuLink href="/profile" onNavigate={() => setMenuOpen(false)}>
             Profile
           </MenuLink>
+          <MenuLink href="/contact-emaren" onNavigate={() => setMenuOpen(false)}>
+            Contact Emaren
+          </MenuLink>
           <MenuLink href="/players" onNavigate={() => setMenuOpen(false)}>
             Players
           </MenuLink>

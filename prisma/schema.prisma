@@ -34,6 +34,12 @@ model User {
   tournamentEntries TournamentEntry[]
   chatMessages      ChatMessage[]
   createdTournaments Tournament[] @relation("TournamentCreator")
+  directConversationParticipants DirectConversationParticipant[] @relation("DirectConversationParticipantUser")
+  directMessagesSent            DirectMessage[]                 @relation("DirectMessageSender")
+  receivedBadges               UserBadge[]                     @relation("UserBadgeRecipient")
+  grantedBadges                UserBadge[]                     @relation("UserBadgeCreator")
+  receivedGifts                UserGift[]                      @relation("UserGiftRecipient")
+  grantedGifts                 UserGift[]                      @relation("UserGiftCreator")
 
   @@map("users")
 }
@@ -214,6 +220,84 @@ model ChatMessage {
   @@index([roomId, createdAt], map: "ix_chat_messages_room_created_at")
   @@index([userId, createdAt], map: "ix_chat_messages_user_created_at")
   @@map("chat_messages")
+}
+
+model DirectConversation {
+  id        Int      @id @default(autoincrement())
+  pairKey   String   @unique(map: "uq_direct_conversations_pair_key") @map("pair_key") @db.VarChar(64)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  participants DirectConversationParticipant[]
+  messages     DirectMessage[]
+
+  @@map("direct_conversations")
+}
+
+model DirectConversationParticipant {
+  id             Int       @id @default(autoincrement())
+  conversationId Int       @map("conversation_id")
+  userId         Int       @map("user_id")
+  joinedAt       DateTime  @default(now()) @map("joined_at") @db.Timestamp(6)
+  lastReadAt     DateTime? @map("last_read_at") @db.Timestamp(6)
+
+  conversation DirectConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user         User               @relation("DirectConversationParticipantUser", fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([conversationId, userId], map: "uq_direct_conversation_participants_conversation_user")
+  @@index([userId, lastReadAt], map: "ix_direct_conversation_participants_user_last_read_at")
+  @@index([conversationId], map: "ix_direct_conversation_participants_conversation_id")
+  @@map("direct_conversation_participants")
+}
+
+model DirectMessage {
+  id             Int      @id @default(autoincrement())
+  conversationId Int      @map("conversation_id")
+  senderUserId   Int      @map("sender_user_id")
+  body           String   @db.VarChar(1000)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  conversation DirectConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  sender       User               @relation("DirectMessageSender", fields: [senderUserId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([conversationId, createdAt], map: "ix_direct_messages_conversation_created_at")
+  @@index([senderUserId, createdAt], map: "ix_direct_messages_sender_created_at")
+  @@map("direct_messages")
+}
+
+model UserBadge {
+  id              Int       @id @default(autoincrement())
+  userId          Int       @map("user_id")
+  label           String    @db.VarChar(40)
+  note            String?   @db.VarChar(160)
+  createdByUserId Int?      @map("created_by_user_id")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+
+  user      User  @relation("UserBadgeRecipient", fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  createdBy User? @relation("UserBadgeCreator", fields: [createdByUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@unique([userId, label], map: "uq_user_badges_user_label")
+  @@index([createdByUserId], map: "ix_user_badges_created_by_user_id")
+  @@index([userId, createdAt], map: "ix_user_badges_user_created_at")
+  @@map("user_badges")
+}
+
+model UserGift {
+  id              Int       @id @default(autoincrement())
+  userId          Int       @map("user_id")
+  kind            String    @default("WOLO") @db.VarChar(40)
+  amount          Int?
+  note            String?   @db.VarChar(160)
+  createdByUserId Int?      @map("created_by_user_id")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+
+  user      User  @relation("UserGiftRecipient", fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  createdBy User? @relation("UserGiftCreator", fields: [createdByUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([userId, createdAt], map: "ix_user_gifts_user_created_at")
+  @@index([kind, createdAt], map: "ix_user_gifts_kind_created_at")
+  @@index([createdByUserId], map: "ix_user_gifts_created_by_user_id")
+  @@map("user_gifts")
 }
 
 model alembic_version {
