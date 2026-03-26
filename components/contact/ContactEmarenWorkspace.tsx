@@ -50,10 +50,13 @@ export default function ContactEmarenWorkspace() {
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(
-    async (targetUid?: string | null) => {
+    async (targetUid?: string | null, options?: { silent?: boolean }) => {
       if (!uid) return;
-      setPending(true);
-      setError(null);
+      const silent = Boolean(options?.silent);
+      if (!silent) {
+        setPending(true);
+        setError(null);
+      }
       try {
         const payload = await requestInbox(targetUid ?? selectedTargetUid ?? undefined);
         setData(payload);
@@ -61,7 +64,9 @@ export default function ContactEmarenWorkspace() {
       } catch (fetchError) {
         setError(fetchError instanceof Error ? fetchError.message : "Inbox failed.");
       } finally {
-        setPending(false);
+        if (!silent) {
+          setPending(false);
+        }
       }
     },
     [selectedTargetUid, uid]
@@ -75,8 +80,8 @@ export default function ContactEmarenWorkspace() {
   useEffect(() => {
     if (!uid) return;
     const interval = window.setInterval(() => {
-      void refresh();
-    }, 10_000);
+      void refresh(undefined, { silent: true });
+    }, 12_000);
 
     return () => {
       window.clearInterval(interval);
@@ -110,7 +115,7 @@ export default function ContactEmarenWorkspace() {
   return (
     <ContactInboxPanel
       data={data}
-      loading={pending}
+      loading={pending && !data}
       error={error}
       body={body}
       sendPending={sendPending}

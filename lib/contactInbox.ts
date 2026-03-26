@@ -68,7 +68,7 @@ function buildPairKey(leftUserId: number, rightUserId: number) {
 }
 
 export function normalizeInboxMessageBody(value: string) {
-  return value.trim().replace(/\s+/g, " ").slice(0, 1000);
+  return value.replace(/\r\n?/g, "\n").trim().slice(0, 1000);
 }
 
 async function findViewer(prisma: PrismaClient, viewerUid: string) {

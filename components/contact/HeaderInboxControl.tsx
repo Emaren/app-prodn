@@ -66,10 +66,13 @@ export default function HeaderInboxControl() {
   }, [selectedTargetUid, uid]);
 
   const refreshPanel = useCallback(
-    async (targetUid?: string | null) => {
+    async (targetUid?: string | null, options?: { silent?: boolean }) => {
       if (!uid) return;
-      setLoading(true);
-      setError(null);
+      const silent = Boolean(options?.silent);
+      if (!silent) {
+        setLoading(true);
+        setError(null);
+      }
       try {
         const payload = await requestInbox(targetUid ?? selectedTargetUid ?? undefined, false);
         setPanelData(payload);
@@ -78,7 +81,9 @@ export default function HeaderInboxControl() {
       } catch (fetchError) {
         setError(fetchError instanceof Error ? fetchError.message : "Inbox failed.");
       } finally {
-        setLoading(false);
+        if (!silent) {
+          setLoading(false);
+        }
       }
     },
     [selectedTargetUid, uid]
@@ -102,8 +107,8 @@ export default function HeaderInboxControl() {
 
     void refreshPanel(selectedTargetUid);
     const interval = window.setInterval(() => {
-      void refreshPanel(selectedTargetUid);
-    }, 10_000);
+      void refreshPanel(selectedTargetUid, { silent: true });
+    }, 12_000);
 
     return () => {
       window.clearInterval(interval);
@@ -140,7 +145,7 @@ export default function HeaderInboxControl() {
         <div className="absolute right-0 top-14 z-50">
           <ContactInboxPanel
             data={panelData ?? summary}
-            loading={loading}
+            loading={loading && !(panelData ?? summary)}
             error={error}
             body={body}
             sendPending={sendPending}
