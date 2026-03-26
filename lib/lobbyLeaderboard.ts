@@ -368,7 +368,7 @@ export async function loadLobbyLeaderboard(
   const recentGames = [...preparedGames].sort((left, right) => right.playedAtMs - left.playedAtMs);
 
   const candidates = directory.allEntries
-    .filter((entry) => entry.totalMatches > 0)
+    .filter((entry) => entry.totalMatches > 0 || entry.claimed)
     .map(buildEnrichedEntry);
   buildArenaElo(candidates, preparedGames);
 

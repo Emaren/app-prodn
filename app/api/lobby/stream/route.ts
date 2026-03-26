@@ -22,15 +22,38 @@ export async function GET(request: NextRequest) {
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
+      const cleanup = () => {
+        if (closed) return;
+        closed = true;
+        if (interval) clearInterval(interval);
+        if (heartbeat) clearInterval(heartbeat);
+      };
+
+      const safeEnqueue = (payload: Uint8Array) => {
+        if (closed || request.signal.aborted) {
+          return false;
+        }
+
+        try {
+          controller.enqueue(payload);
+          return true;
+        } catch {
+          cleanup();
+          return false;
+        }
+      };
+
       const pushSnapshot = async () => {
+        if (closed || request.signal.aborted) {
+          return;
+        }
+
         try {
           const snapshot = await loadLobbySnapshot(prisma, viewerUid);
-          controller.enqueue(formatSse("snapshot", snapshot));
+          safeEnqueue(formatSse("snapshot", snapshot));
         } catch (error) {
           console.warn("Failed to stream lobby snapshot:", error);
-          controller.enqueue(
-            formatSse("error", { detail: "Failed to load live lobby snapshot." })
-          );
+          safeEnqueue(formatSse("error", { detail: "Failed to load live lobby snapshot." }));
         }
       };
 
@@ -41,18 +64,13 @@ export async function GET(request: NextRequest) {
       }, 8_000);
 
       heartbeat = setInterval(() => {
-        controller.enqueue(encoder.encode(":keep-alive\n\n"));
+        safeEnqueue(encoder.encode(":keep-alive\n\n"));
       }, 15_000);
 
-      request.signal.addEventListener("abort", () => {
-        if (closed) return;
-        closed = true;
-        if (interval) clearInterval(interval);
-        if (heartbeat) clearInterval(heartbeat);
-        controller.close();
-      });
+      request.signal.addEventListener("abort", cleanup, { once: true });
     },
     cancel() {
+      if (closed) return;
       closed = true;
       if (interval) clearInterval(interval);
       if (heartbeat) clearInterval(heartbeat);
