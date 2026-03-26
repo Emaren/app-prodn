@@ -5,6 +5,11 @@ import Link from "next/link";
 import UserExperienceTracker from "@/components/analytics/UserExperienceTracker";
 import HeaderInboxControl from "@/components/contact/HeaderInboxControl";
 import HeaderMenu from "@/components/HeaderMenu";
+import { LobbyThemePicker } from "@/components/lobby/LobbyAppearanceControls";
+import {
+  LobbyAppearanceProvider,
+  useLobbyAppearance,
+} from "@/components/lobby/LobbyAppearanceContext";
 import { Toaster } from "sonner";
 import { Providers } from "./Providers";
 import { UserAuthProvider, useUserAuth } from "@/context/UserAuthContext";
@@ -20,14 +25,15 @@ const HEADER_LINKS = [
 
 function InnerShell({ children }: { children: React.ReactNode }) {
   const { uid, playerName, setPlayerName } = useUserAuth();
+  const { themeKey, setThemeKey, presentationTone, pageStyle } = useLobbyAppearance();
   const [pendingBetsCount] = React.useState(0);
 
   return (
-    <>
+    <div className="min-h-screen text-white transition-[background-image,background-color] duration-500" style={pageStyle}>
       <UserExperienceTracker />
-      <header className="border-b border-white/10 bg-slate-950/90 p-4 backdrop-blur">
+      <header className="border-b border-white/10 bg-slate-950/55 px-3 py-4 backdrop-blur sm:px-4">
         <div className="mx-auto max-w-6xl overflow-visible">
-          <div className="flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:items-center">
+          <div className="flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:items-start">
             <div className="min-w-0">
               <div className="text-xs uppercase tracking-[0.35em] text-white/45">
                 AoE2HD Bets
@@ -35,7 +41,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
               <h1 className="text-xl font-semibold text-white">Tournament Lobby</h1>
             </div>
 
-            <nav className="flex max-w-full items-center gap-2 overflow-x-auto whitespace-nowrap pb-1 lg:justify-self-center lg:pb-0">
+            <nav className="flex flex-wrap items-center gap-2 lg:justify-self-center">
               {HEADER_LINKS.map((link) => (
                 <Link
                   key={link.href}
@@ -47,22 +53,31 @@ function InnerShell({ children }: { children: React.ReactNode }) {
               ))}
             </nav>
 
-            <div className="flex items-center justify-start gap-4 lg:justify-self-end">
-              <HeaderInboxControl />
-              <HeaderMenu
-                pendingBetsCount={pendingBetsCount}
-                playerName={playerName}
-                setPlayerName={setPlayerName}
-                uid={uid}
+            <div className="flex flex-col items-start gap-2 lg:justify-self-end lg:items-end">
+              <div className="flex w-full items-center justify-start gap-3 sm:w-auto sm:justify-end">
+                <HeaderInboxControl />
+                <HeaderMenu
+                  pendingBetsCount={pendingBetsCount}
+                  playerName={playerName}
+                  setPlayerName={setPlayerName}
+                  uid={uid}
+                />
+              </div>
+              <LobbyThemePicker
+                themeKey={themeKey}
+                onThemeChange={setThemeKey}
+                tone={presentationTone}
+                size="sm"
+                className="justify-start sm:justify-end"
               />
             </div>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto flex-1 max-w-6xl p-4">{children}</main>
+      <main className="mx-auto flex-1 w-full max-w-6xl px-3 py-4 sm:px-4">{children}</main>
       <Toaster richColors />
-    </>
+    </div>
   );
 }
 
@@ -70,7 +85,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <UserAuthProvider>
       <Providers>
-        <InnerShell>{children}</InnerShell>
+        <LobbyAppearanceProvider>
+          <InnerShell>{children}</InnerShell>
+        </LobbyAppearanceProvider>
       </Providers>
     </UserAuthProvider>
   );

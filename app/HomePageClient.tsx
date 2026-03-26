@@ -1,21 +1,12 @@
 "use client";
 
 import { type CSSProperties, useCallback, useEffect, useRef, useState } from "react";
-import { LobbyThemePicker } from "@/components/lobby/LobbyAppearanceControls";
 import { LobbyChat } from "@/components/lobby/LobbyChat";
 import { LobbyHero } from "@/components/lobby/LobbyHero";
 import {
-  DEFAULT_LOBBY_THEME,
-  DEFAULT_LOBBY_VIEW,
   getLobbyHeroBackground,
-  getLobbyPresentationTone,
-  readStoredLobbyTheme,
-  readStoredLobbyViewMode,
-  writeStoredLobbyTheme,
-  writeStoredLobbyViewMode,
-  type LobbyThemeKey,
-  type LobbyViewMode,
 } from "@/components/lobby/lobbyPresentation";
+import { useLobbyAppearance } from "@/components/lobby/LobbyAppearanceContext";
 import { OnlinePlayersPanel } from "@/components/lobby/OnlinePlayersPanel";
 import { RecentMatchesPanel } from "@/components/lobby/RecentMatchesPanel";
 import { TournamentPanel } from "@/components/lobby/TournamentPanel";
@@ -27,10 +18,6 @@ import {
   type LobbyMessage,
   type LobbySnapshot,
 } from "@/lib/lobby";
-import {
-  fetchUserAppearancePreference,
-  saveUserAppearancePreference,
-} from "@/lib/userAppearanceClient";
 
 const EMPTY_MESSAGES: LobbyMessage[] = [];
 const CHAT_AUTO_SCROLL_GRACE_MS = 4000;
@@ -42,6 +29,7 @@ type HomePageClientProps = {
 
 export default function HomePageClient({ initialLobby }: HomePageClientProps) {
   const { isAdmin, isAuthenticated, loading, loginWithSteam, playerName, user } = useUserAuth();
+  const { themeKey, viewMode, setViewMode } = useLobbyAppearance();
 
   const [lobby, setLobby] = useState<LobbySnapshot | null>(initialLobby);
   const [liveConnected, setLiveConnected] = useState(false);
@@ -54,9 +42,6 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
   const [chatPending, setChatPending] = useState(false);
   const [joinPending, setJoinPending] = useState(false);
   const [chatCardHeight, setChatCardHeight] = useState<number | null>(null);
-  const [themeKey, setThemeKey] = useState<LobbyThemeKey>(DEFAULT_LOBBY_THEME);
-  const [viewMode, setViewMode] = useState<LobbyViewMode>(DEFAULT_LOBBY_VIEW);
-  const [appearanceLoaded, setAppearanceLoaded] = useState(false);
 
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
   const rightColumnRef = useRef<HTMLDivElement | null>(null);
@@ -139,64 +124,6 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
     setAuthError(params.get("auth") === "steam-error");
     setAuthDetail(params.get("detail"));
   }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    let cancelled = false;
-    setAppearanceLoaded(false);
-    const storedTheme = readStoredLobbyTheme();
-    const storedView = readStoredLobbyViewMode();
-
-    const hydrateAppearance = async () => {
-      if (!user?.uid) {
-        if (!cancelled) {
-          setThemeKey(storedTheme);
-          setViewMode(storedView);
-          setAppearanceLoaded(true);
-        }
-        return;
-      }
-
-      try {
-        const preference = await fetchUserAppearancePreference();
-        if (cancelled) return;
-        setThemeKey(preference.themeKey);
-        setViewMode(preference.viewMode);
-      } catch (error) {
-        console.warn("Failed to hydrate appearance from account:", error);
-        if (cancelled) return;
-        setThemeKey(storedTheme);
-        setViewMode(storedView);
-      } finally {
-        if (!cancelled) {
-          setAppearanceLoaded(true);
-        }
-      }
-    };
-
-    void hydrateAppearance();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.uid]);
-
-  useEffect(() => {
-    writeStoredLobbyTheme(themeKey);
-  }, [themeKey]);
-
-  useEffect(() => {
-    writeStoredLobbyViewMode(viewMode);
-  }, [viewMode]);
-
-  useEffect(() => {
-    if (!appearanceLoaded || !user?.uid) return;
-
-    void saveUserAppearancePreference({ themeKey, viewMode }).catch((error) => {
-      console.warn("Failed to save appearance preference:", error);
-    });
-  }, [appearanceLoaded, themeKey, user?.uid, viewMode]);
 
   const tournament = lobby?.tournament ?? getFallbackTournament(false);
   const leaderboard = lobby?.leaderboard ?? getFallbackLeaderboard();
@@ -419,19 +346,18 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
   const heroStyle: CSSProperties = {
     backgroundImage: getLobbyHeroBackground(themeKey, viewMode),
   };
-  const presentationTone = getLobbyPresentationTone(themeKey, viewMode);
   const heroShellClassName =
     viewMode === "field"
       ? "border-emerald-400/20 shadow-[0_28px_80px_rgba(5,46,22,0.32)]"
       : "border-white/10 shadow-[0_28px_80px_rgba(15,23,42,0.4)]";
 
   return (
-    <main className="space-y-6 py-6 text-white">
+    <div className="space-y-4 py-2 text-white sm:space-y-6 sm:py-3">
       <section
-        className={`overflow-hidden rounded-[2rem] border p-8 transition-all duration-500 ${heroShellClassName}`}
+        className={`overflow-hidden rounded-[1.75rem] border p-4 transition-all duration-500 sm:rounded-[2rem] sm:p-6 lg:p-8 ${heroShellClassName}`}
         style={heroStyle}
       >
-        <div className="grid gap-8 lg:grid-cols-[1.2fr_0.95fr]">
+        <div className="grid gap-5 lg:grid-cols-[1.2fr_0.95fr] lg:gap-8">
           <LobbyHero
             liveConnected={liveConnected}
             authError={authError}
@@ -445,17 +371,7 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
             onViewModeChange={setViewMode}
           />
 
-          <div className="space-y-4">
-            <div className="flex min-h-[2rem] justify-end">
-              <LobbyThemePicker
-                themeKey={themeKey}
-                onThemeChange={setThemeKey}
-                tone={presentationTone}
-                size="sm"
-                className="justify-end"
-              />
-            </div>
-
+          <div>
             <TournamentPanel
               tournament={tournament}
               themeKey={themeKey}
@@ -505,6 +421,6 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
           />
         </div>
       </section>
-    </main>
+    </div>
   );
 }

@@ -142,7 +142,7 @@ export default function HeaderInboxControl() {
       </button>
 
       {open ? (
-        <div className="absolute right-0 top-14 z-50">
+        <div className="fixed inset-x-3 top-28 z-50 flex justify-center sm:absolute sm:right-0 sm:top-14 sm:left-auto sm:block">
           <ContactInboxPanel
             data={panelData ?? summary}
             loading={loading && !(panelData ?? summary)}

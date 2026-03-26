@@ -142,6 +142,16 @@ export function getLobbyHeroBackground(themeKey: LobbyThemeKey, viewMode: LobbyV
   return `${viewOverlay}${theme.heroBackground}`;
 }
 
+export function getLobbyPageBackground(themeKey: LobbyThemeKey, viewMode: LobbyViewMode) {
+  const theme = findThemeOption(themeKey);
+  const viewOverlay =
+    viewMode === "field"
+      ? "radial-gradient(circle at 16% 8%, rgba(74, 222, 128, 0.12), transparent 24%), radial-gradient(circle at 84% 12%, rgba(22, 163, 74, 0.14), transparent 26%), "
+      : "radial-gradient(circle at 16% 8%, rgba(251, 191, 36, 0.1), transparent 24%), radial-gradient(circle at 84% 12%, rgba(96, 165, 250, 0.12), transparent 26%), ";
+
+  return `${viewOverlay}radial-gradient(circle at 50% 0%, rgba(255,255,255,0.03), transparent 42%), linear-gradient(180deg, rgba(2,6,23,0.82), rgba(2,6,23,0.94) 32%, rgba(2,6,23,0.98) 100%), ${theme.heroBackground}`;
+}
+
 function getLobbyThemeTone(themeKey: LobbyThemeKey): LobbyThemeTone {
   switch (themeKey) {
     case "black":

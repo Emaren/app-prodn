@@ -8,23 +8,11 @@ import {
   LobbyViewToggle,
 } from "@/components/lobby/LobbyAppearanceControls";
 import {
-  DEFAULT_LOBBY_THEME,
-  DEFAULT_LOBBY_VIEW,
   getLobbyHeroBackground,
-  getLobbyPresentationTone,
-  readStoredLobbyTheme,
-  readStoredLobbyViewMode,
-  writeStoredLobbyTheme,
-  writeStoredLobbyViewMode,
-  type LobbyThemeKey,
-  type LobbyViewMode,
 } from "@/components/lobby/lobbyPresentation";
+import { useLobbyAppearance } from "@/components/lobby/LobbyAppearanceContext";
 import { useUserAuth } from "@/hooks/useUserAuth";
 import SteamLoginButton from "@/components/SteamLoginButton";
-import {
-  fetchUserAppearancePreference,
-  saveUserAppearancePreference,
-} from "@/lib/userAppearanceClient";
 
 type ProfileResponse = {
   uid: string;
@@ -61,68 +49,10 @@ function ProfilePageContent() {
   const [status, setStatus] = useState("");
   const [savingName, setSavingName] = useState(false);
   const [claimSeedApplied, setClaimSeedApplied] = useState(false);
-  const [themeKey, setThemeKey] = useState<LobbyThemeKey>(DEFAULT_LOBBY_THEME);
-  const [viewMode, setViewMode] = useState<LobbyViewMode>(DEFAULT_LOBBY_VIEW);
-  const [appearanceLoaded, setAppearanceLoaded] = useState(false);
+  const { themeKey, setThemeKey, viewMode, setViewMode, presentationTone: appearanceTone } =
+    useLobbyAppearance();
 
   const claimName = searchParams?.get("claim_name")?.trim() || "";
-  const appearanceTone = getLobbyPresentationTone(themeKey, viewMode);
-
-  useEffect(() => {
-    let cancelled = false;
-    setAppearanceLoaded(false);
-    const storedTheme = readStoredLobbyTheme();
-    const storedView = readStoredLobbyViewMode();
-
-    const hydrateAppearance = async () => {
-      if (!uid) {
-        if (!cancelled) {
-          setThemeKey(storedTheme);
-          setViewMode(storedView);
-          setAppearanceLoaded(true);
-        }
-        return;
-      }
-
-      try {
-        const preference = await fetchUserAppearancePreference();
-        if (cancelled) return;
-        setThemeKey(preference.themeKey);
-        setViewMode(preference.viewMode);
-      } catch (error) {
-        console.warn("Failed to hydrate stored appearance:", error);
-        if (cancelled) return;
-        setThemeKey(storedTheme);
-        setViewMode(storedView);
-      } finally {
-        if (!cancelled) {
-          setAppearanceLoaded(true);
-        }
-      }
-    };
-
-    void hydrateAppearance();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [uid]);
-
-  useEffect(() => {
-    writeStoredLobbyTheme(themeKey);
-  }, [themeKey]);
-
-  useEffect(() => {
-    writeStoredLobbyViewMode(viewMode);
-  }, [viewMode]);
-
-  useEffect(() => {
-    if (!appearanceLoaded || !uid) return;
-
-    void saveUserAppearancePreference({ themeKey, viewMode }).catch((error) => {
-      console.warn("Failed to persist account appearance:", error);
-    });
-  }, [appearanceLoaded, themeKey, uid, viewMode]);
 
   useEffect(() => {
     if (!isAuthenticated) return;

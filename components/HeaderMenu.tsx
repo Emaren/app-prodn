@@ -24,7 +24,7 @@ export default function HeaderMenu({ pendingBetsCount, playerName, uid }: Props)
 
   if (!uid) {
     return (
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <Link
           href="/game-stats"
           className="rounded-full border border-white/15 px-4 py-2 text-sm text-white/80 transition hover:border-white/30 hover:text-white"
@@ -41,11 +41,11 @@ export default function HeaderMenu({ pendingBetsCount, playerName, uid }: Props)
   return (
     <div className="relative flex items-center gap-2" ref={menuRef}>
       <button
-        className="flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm text-white transition hover:border-white/30 hover:bg-white/10"
+        className="flex min-w-0 items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm text-white transition hover:border-white/30 hover:bg-white/10"
         onClick={() => setMenuOpen((open) => !open)}
       >
         <UserCircle className="h-5 w-5" />
-        <span>{playerName || "Account"}</span>
+        <span className="max-w-[8.5rem] truncate sm:max-w-none">{playerName || "Account"}</span>
       </button>
 
       {menuOpen && (
