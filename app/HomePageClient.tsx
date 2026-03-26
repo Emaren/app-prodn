@@ -4,9 +4,13 @@ import { type CSSProperties, useCallback, useEffect, useRef, useState } from "re
 import { LobbyChat } from "@/components/lobby/LobbyChat";
 import { LobbyHero } from "@/components/lobby/LobbyHero";
 import {
+  DEFAULT_LOBBY_THEME,
+  DEFAULT_LOBBY_VIEW,
   getLobbyHeroBackground,
-  isLobbyThemeKey,
-  isLobbyViewMode,
+  readStoredLobbyTheme,
+  readStoredLobbyViewMode,
+  writeStoredLobbyTheme,
+  writeStoredLobbyViewMode,
   type LobbyThemeKey,
   type LobbyViewMode,
 } from "@/components/lobby/lobbyPresentation";
@@ -25,10 +29,6 @@ import {
 const EMPTY_MESSAGES: LobbyMessage[] = [];
 const CHAT_AUTO_SCROLL_GRACE_MS = 4000;
 const CHAT_BOTTOM_THRESHOLD_PX = 48;
-const LOBBY_THEME_STORAGE_KEY = "aoe2hdbets:lobby-theme";
-const LOBBY_VIEW_STORAGE_KEY = "aoe2hdbets:lobby-view";
-const DEFAULT_LOBBY_THEME: LobbyThemeKey = "midnight";
-const DEFAULT_LOBBY_VIEW: LobbyViewMode = "steel";
 
 type HomePageClientProps = {
   initialLobby: LobbySnapshot | null;
@@ -135,26 +135,16 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-
-    const storedTheme = window.localStorage.getItem(LOBBY_THEME_STORAGE_KEY);
-    if (isLobbyThemeKey(storedTheme)) {
-      setThemeKey(storedTheme);
-    }
-
-    const storedView = window.localStorage.getItem(LOBBY_VIEW_STORAGE_KEY);
-    if (isLobbyViewMode(storedView)) {
-      setViewMode(storedView);
-    }
+    setThemeKey(readStoredLobbyTheme());
+    setViewMode(readStoredLobbyViewMode());
   }, []);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(LOBBY_THEME_STORAGE_KEY, themeKey);
+    writeStoredLobbyTheme(themeKey);
   }, [themeKey]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(LOBBY_VIEW_STORAGE_KEY, viewMode);
+    writeStoredLobbyViewMode(viewMode);
   }, [viewMode]);
 
   const tournament = lobby?.tournament ?? getFallbackTournament(false);
@@ -400,17 +390,18 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
             leaderboard={leaderboard}
             themeKey={themeKey}
             viewMode={viewMode}
-            onThemeChange={setThemeKey}
             onViewModeChange={setViewMode}
           />
 
           <TournamentPanel
             tournament={tournament}
+            themeKey={themeKey}
             viewMode={viewMode}
             isAdmin={isAdmin}
             isAuthenticated={isAuthenticated}
             joinPending={joinPending}
             joinError={joinError}
+            onThemeChange={setThemeKey}
             onJoinTournament={() => {
               void handleJoinTournament();
             }}
@@ -422,6 +413,8 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
       <section className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr] lg:items-start">
         <LobbyChat
           style={chatCardStyle}
+          themeKey={themeKey}
+          viewMode={viewMode}
           chatRoomTitle={chatRoomTitle}
           messagesCount={messages.length}
           chatItems={chatItems}
@@ -441,8 +434,12 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
         />
 
         <div ref={rightColumnRef} className="flex min-w-0 flex-col gap-6">
-          <OnlinePlayersPanel onlineUsers={onlineUsers} />
-          <RecentMatchesPanel recentMatches={recentMatches} />
+          <OnlinePlayersPanel onlineUsers={onlineUsers} themeKey={themeKey} viewMode={viewMode} />
+          <RecentMatchesPanel
+            recentMatches={recentMatches}
+            themeKey={themeKey}
+            viewMode={viewMode}
+          />
         </div>
       </section>
     </main>

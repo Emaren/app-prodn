@@ -3,6 +3,22 @@
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import {
+  LobbyThemePicker,
+  LobbyViewToggle,
+} from "@/components/lobby/LobbyAppearanceControls";
+import {
+  DEFAULT_LOBBY_THEME,
+  DEFAULT_LOBBY_VIEW,
+  getLobbyHeroBackground,
+  getLobbyPresentationTone,
+  readStoredLobbyTheme,
+  readStoredLobbyViewMode,
+  writeStoredLobbyTheme,
+  writeStoredLobbyViewMode,
+  type LobbyThemeKey,
+  type LobbyViewMode,
+} from "@/components/lobby/lobbyPresentation";
 import { useUserAuth } from "@/hooks/useUserAuth";
 import SteamLoginButton from "@/components/SteamLoginButton";
 
@@ -41,8 +57,24 @@ function ProfilePageContent() {
   const [status, setStatus] = useState("");
   const [savingName, setSavingName] = useState(false);
   const [claimSeedApplied, setClaimSeedApplied] = useState(false);
+  const [themeKey, setThemeKey] = useState<LobbyThemeKey>(DEFAULT_LOBBY_THEME);
+  const [viewMode, setViewMode] = useState<LobbyViewMode>(DEFAULT_LOBBY_VIEW);
 
   const claimName = searchParams?.get("claim_name")?.trim() || "";
+  const appearanceTone = getLobbyPresentationTone(themeKey, viewMode);
+
+  useEffect(() => {
+    setThemeKey(readStoredLobbyTheme());
+    setViewMode(readStoredLobbyViewMode());
+  }, []);
+
+  useEffect(() => {
+    writeStoredLobbyTheme(themeKey);
+  }, [themeKey]);
+
+  useEffect(() => {
+    writeStoredLobbyViewMode(viewMode);
+  }, [viewMode]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -252,6 +284,89 @@ function ProfilePageContent() {
         </div>
 
         {status && <p className="mt-4 text-sm text-slate-300">{status}</p>}
+      </section>
+
+      <section className={`rounded-[2rem] border p-8 ${appearanceTone.panelShell}`}>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <div className={`text-xs uppercase tracking-[0.35em] ${appearanceTone.eyebrow}`}>
+              Appearance
+            </div>
+            <h2 className="mt-2 text-2xl font-semibold text-white">Tune your command room</h2>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
+              Theme circles set the lobby atmosphere and tile palette. Steel versus Field changes the
+              skin treatment across the homepage tiles.
+            </p>
+          </div>
+          <div className={`rounded-2xl border px-4 py-3 text-sm ${appearanceTone.neutralPill}`}>
+            Stored on this device for now
+          </div>
+        </div>
+
+        <div className="mt-6 grid gap-6 md:grid-cols-2">
+          <div className={`rounded-2xl border p-5 ${appearanceTone.insetPanel}`}>
+            <div className="text-sm font-medium text-white">Theme</div>
+            <p className="mt-2 text-sm leading-6 text-slate-300">
+              Moves the page atmosphere and the tile palette together.
+            </p>
+            <LobbyThemePicker
+              themeKey={themeKey}
+              onThemeChange={setThemeKey}
+              tone={appearanceTone}
+              size="sm"
+              className="mt-4"
+            />
+          </div>
+
+          <div className={`rounded-2xl border p-5 ${appearanceTone.insetPanel}`}>
+            <div className="text-sm font-medium text-white">Tile Skin</div>
+            <p className="mt-2 text-sm leading-6 text-slate-300">
+              Steel stays armored and neutral. Field leans greener and more war-room.
+            </p>
+            <LobbyViewToggle
+              viewMode={viewMode}
+              onViewModeChange={setViewMode}
+              tone={appearanceTone}
+              className="mt-4"
+            />
+          </div>
+        </div>
+
+        <div
+          className="mt-6 rounded-[1.75rem] border border-white/10 p-4"
+          style={{ backgroundImage: getLobbyHeroBackground(themeKey, viewMode) }}
+        >
+          <div className="grid gap-4 md:grid-cols-[1.1fr_0.9fr]">
+            <div className={`rounded-2xl border p-4 ${appearanceTone.card}`}>
+              <div className={`text-[11px] uppercase tracking-[0.32em] ${appearanceTone.eyebrow}`}>
+                Preview
+              </div>
+              <div className="mt-3 text-4xl font-semibold tracking-tight text-white">61</div>
+              <div className={`mt-2 text-[11px] uppercase tracking-[0.28em] ${appearanceTone.countLabel}`}>
+                Players On Board
+              </div>
+            </div>
+
+            <div className={`rounded-2xl border p-4 ${appearanceTone.insetPanel}`}>
+              <div className="flex items-center justify-between gap-3">
+                <div className={`text-[11px] uppercase tracking-[0.32em] ${appearanceTone.accentText}`}>
+                  Current Skin
+                </div>
+                <div className={`rounded-full border px-3 py-1 text-xs font-medium ${appearanceTone.statusBadge}`}>
+                  {viewMode === "field" ? "Field" : "Steel"}
+                </div>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <span className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${appearanceTone.neutralPill}`}>
+                  {themeKey}
+                </span>
+                <span className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${appearanceTone.rankBadge}`}>
+                  lobby tiles
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
 
       <section className="rounded-[2rem] border border-white/10 bg-slate-950/70 p-8">

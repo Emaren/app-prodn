@@ -20,7 +20,6 @@ type LobbyHeroProps = {
   leaderboard: LobbySnapshot["leaderboard"];
   themeKey: LobbyThemeKey;
   viewMode: LobbyViewMode;
-  onThemeChange: (themeKey: LobbyThemeKey) => void;
   onViewModeChange: (viewMode: LobbyViewMode) => void;
 };
 
@@ -34,7 +33,6 @@ export function LobbyHero({
   leaderboard,
   themeKey,
   viewMode,
-  onThemeChange,
   onViewModeChange,
 }: LobbyHeroProps) {
   const accentTextClassName =
@@ -53,7 +51,9 @@ export function LobbyHero({
         <div
           className={`rounded-full px-3 py-1 text-xs ${
             liveConnected
-              ? "border border-emerald-400/30 bg-emerald-500/10 text-emerald-100"
+              ? viewMode === "field"
+                ? "border border-emerald-300/30 bg-emerald-500/12 text-emerald-50"
+                : "border border-emerald-400/30 bg-emerald-500/10 text-emerald-100"
               : "border border-white/10 bg-white/5 text-slate-300"
           }`}
         >
@@ -77,7 +77,6 @@ export function LobbyHero({
         leaderboard={leaderboard}
         themeKey={themeKey}
         viewMode={viewMode}
-        onThemeChange={onThemeChange}
         onViewModeChange={onViewModeChange}
       />
 
@@ -87,17 +86,23 @@ export function LobbyHero({
           value={String(leaderboard.activePlayers)}
           subtext="Online right now."
           tone="emerald"
+          themeKey={themeKey}
+          viewMode={viewMode}
         />
         <StatCard
           label="Matches Today"
           value={String(leaderboard.matchesToday)}
           subtext="Final games on the board."
+          themeKey={themeKey}
+          viewMode={viewMode}
         />
         <StatCard
           label="Qualified"
           value={String(leaderboard.rankedPlayers)}
           subtext={`${leaderboard.minimumMatches}+ final games logged.`}
           tone={viewMode === "field" ? "emerald" : "amber"}
+          themeKey={themeKey}
+          viewMode={viewMode}
         />
       </div>
 

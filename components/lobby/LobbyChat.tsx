@@ -1,12 +1,19 @@
 "use client";
 
 import { type CSSProperties, type ReactNode, type RefObject } from "react";
+import {
+  getLobbyPresentationTone,
+  type LobbyThemeKey,
+  type LobbyViewMode,
+} from "@/components/lobby/lobbyPresentation";
 import SteamLinkedBadge from "@/components/SteamLinkedBadge";
 import type { ChatRenderItem } from "@/components/lobby/utils";
 import { displayName } from "@/components/lobby/utils";
 
 type LobbyChatProps = {
   style?: CSSProperties;
+  themeKey: LobbyThemeKey;
+  viewMode: LobbyViewMode;
   chatRoomTitle: string;
   messagesCount: number;
   chatItems: ChatRenderItem[];
@@ -25,6 +32,8 @@ type LobbyChatProps = {
 
 export function LobbyChat({
   style,
+  themeKey,
+  viewMode,
   chatRoomTitle,
   messagesCount,
   chatItems,
@@ -40,9 +49,11 @@ export function LobbyChat({
   onSendMessage,
   onLogin,
 }: LobbyChatProps) {
+  const tone = getLobbyPresentationTone(themeKey, viewMode);
+
   return (
     <div
-      className="flex min-h-[34rem] min-w-0 flex-col rounded-[1.75rem] border border-white/10 bg-slate-950/70 p-6"
+      className={`flex min-h-[34rem] min-w-0 flex-col rounded-[1.75rem] border p-6 ${tone.panelShell}`}
       style={style}
     >
       <div className="flex items-center justify-between gap-4">
@@ -51,24 +62,24 @@ export function LobbyChat({
           <h3 className="mt-2 text-2xl font-semibold text-white">{chatRoomTitle}</h3>
         </div>
 
-        <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+        <div className={`rounded-full border px-3 py-1 text-xs ${tone.neutralPill}`}>
           {messagesCount} recent
         </div>
       </div>
 
       <div className="mt-5 flex min-h-0 flex-1 flex-col gap-3">
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[1.5rem] border border-white/8 bg-white/5 p-3">
+        <div className={`flex min-h-0 flex-1 flex-col overflow-hidden rounded-[1.5rem] border p-3 ${tone.insetPanel}`}>
           <div ref={chatScrollRef} className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
             {chatItems.length === 0 ? (
-              <div className="rounded-xl bg-slate-950/70 px-4 py-5 text-sm text-slate-300">
+              <div className={`rounded-xl border px-4 py-5 text-sm text-slate-300 ${tone.subduedCard}`}>
                 No messages yet. The first tournament chatter starts here.
               </div>
             ) : (
               chatItems.map((item) =>
                 item.type === "divider" ? (
-                  <ChatDateDivider key={item.key} label={item.label} />
+                  <ChatDateDivider key={item.key} label={item.label} dividerClassName={tone.divider} />
                 ) : (
-                  <div key={item.key} className="rounded-xl bg-slate-950/70 px-4 py-4">
+                  <div key={item.key} className={`rounded-xl border px-4 py-4 ${tone.subduedCard}`}>
                     <div className="flex items-center justify-between gap-3">
                       <div className="font-medium text-white">
                         {displayName(item.message.user.inGameName, item.message.user.steamPersonaName)}
@@ -108,7 +119,7 @@ export function LobbyChat({
           </div>
         )}
 
-        <div className="rounded-[1.5rem] border border-white/8 bg-white/5 p-3">
+        <div className={`rounded-[1.5rem] border p-3 ${tone.insetPanel}`}>
           {isAuthenticated ? (
             <div className="space-y-3">
               <div className="text-sm text-slate-300">
@@ -127,14 +138,14 @@ export function LobbyChat({
                   }}
                   maxLength={280}
                   placeholder="Call out the matchup, look for practice games, or talk bracket."
-                  className="min-w-0 flex-1 rounded-full border border-white/10 bg-slate-950/80 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-amber-300/50"
+                  className={`min-w-0 flex-1 rounded-full border px-4 py-3 text-sm outline-none ${tone.input}`}
                 />
 
                 <button
                   type="button"
                   onClick={onSendMessage}
                   disabled={chatPending || messageBody.trim().length === 0}
-                  className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
+                  className={`rounded-full px-5 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${tone.primaryButton}`}
                 >
                   {chatPending ? "Sending..." : "Send"}
                 </button>
@@ -149,7 +160,7 @@ export function LobbyChat({
               <button
                 type="button"
                 onClick={onLogin}
-                className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-200"
+                className={`rounded-full px-5 py-3 text-sm font-semibold transition ${tone.primaryButton}`}
               >
                 Sign In To Chat
               </button>
@@ -161,14 +172,20 @@ export function LobbyChat({
   );
 }
 
-function ChatDateDivider({ label }: { label: string }) {
+function ChatDateDivider({
+  label,
+  dividerClassName,
+}: {
+  label: string;
+  dividerClassName: string;
+}) {
   return (
     <div className="flex items-center gap-3 px-1 py-2">
-      <div className="h-px flex-1 bg-white/10" />
+      <div className={`h-px flex-1 border-t ${dividerClassName}`} />
       <div className="text-[10px] font-medium uppercase tracking-[0.28em] text-slate-500">
         {label}
       </div>
-      <div className="h-px flex-1 bg-white/10" />
+      <div className={`h-px flex-1 border-t ${dividerClassName}`} />
     </div>
   );
 }

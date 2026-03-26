@@ -1,6 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import {
+  getLobbyPresentationTone,
+  type LobbyThemeKey,
+  type LobbyViewMode,
+} from "@/components/lobby/lobbyPresentation";
 
 type StatCardProps = {
   label: string;
@@ -9,6 +14,8 @@ type StatCardProps = {
   valueClassName?: string;
   tone?: "default" | "amber" | "emerald";
   href?: string;
+  themeKey: LobbyThemeKey;
+  viewMode: LobbyViewMode;
 };
 
 export function StatCard({
@@ -18,27 +25,30 @@ export function StatCard({
   valueClassName,
   tone = "default",
   href,
+  themeKey,
+  viewMode,
 }: StatCardProps) {
+  const presentationTone = getLobbyPresentationTone(themeKey, viewMode);
   const toneClasses =
     tone === "amber"
       ? {
-          card: "border-amber-300/15 bg-amber-300/5",
+          card: "border-amber-300/18 bg-amber-300/[0.06]",
           label: "text-amber-100/75",
         }
       : tone === "emerald"
         ? {
-            card: "border-emerald-400/15 bg-emerald-500/5",
+            card: "border-emerald-400/18 bg-emerald-500/[0.08]",
             label: "text-emerald-100/75",
           }
         : {
-            card: "border-white/10 bg-white/5",
-            label: "text-slate-400",
+            card: presentationTone.insetPanel,
+            label: presentationTone.eyebrow,
           };
 
   const card = (
     <div
       className={`min-h-[118px] rounded-[1.4rem] border px-5 py-5 ${toneClasses.card} ${
-        href ? "transition hover:border-amber-300/25 hover:bg-white/10" : ""
+        href ? `transition ${presentationTone.cardHover}` : ""
       }`}
     >
       <div className="flex h-full flex-col justify-between gap-4">

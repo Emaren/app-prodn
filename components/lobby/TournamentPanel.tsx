@@ -1,49 +1,59 @@
 "use client";
 
 import Link from "next/link";
-import type { LobbyViewMode } from "@/components/lobby/lobbyPresentation";
+import { LobbyThemePicker } from "@/components/lobby/LobbyAppearanceControls";
+import {
+  getLobbyPresentationTone,
+  type LobbyThemeKey,
+  type LobbyViewMode,
+} from "@/components/lobby/lobbyPresentation";
 import { getTournamentMatchStatusLabel, getTournamentStatusLabel, type LobbySnapshot } from "@/lib/lobby";
 import { displayMatchPlayer, displayName, formatTournamentWindow } from "@/components/lobby/utils";
 
 type TournamentPanelProps = {
   tournament: LobbySnapshot["tournament"];
+  themeKey: LobbyThemeKey;
   viewMode: LobbyViewMode;
   isAdmin: boolean;
   isAuthenticated: boolean;
   joinPending: boolean;
   joinError: string | null;
+  onThemeChange: (themeKey: LobbyThemeKey) => void;
   onJoinTournament: () => void;
   onLogin: () => void;
 };
 
 export function TournamentPanel({
   tournament,
+  themeKey,
   viewMode,
   isAdmin,
   isAuthenticated,
   joinPending,
   joinError,
+  onThemeChange,
   onJoinTournament,
   onLogin,
 }: TournamentPanelProps) {
-  const accentLabelClassName =
-    viewMode === "field" ? "text-emerald-200/70" : "text-amber-200/70";
-  const accentBadgeClassName =
-    viewMode === "field"
-      ? "border-emerald-300/20 bg-emerald-500/12 text-emerald-50"
-      : "border-amber-300/20 bg-amber-300/10 text-amber-100";
-  const primaryButtonClassName =
-    viewMode === "field"
-      ? "rounded-full bg-emerald-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-200 disabled:cursor-not-allowed disabled:opacity-50"
-      : "rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-50";
+  const tone = getLobbyPresentationTone(themeKey, viewMode);
 
   return (
-    <div className="rounded-[1.75rem] border border-white/10 bg-white/5 p-6 shadow-2xl shadow-black/20">
+    <div className={`rounded-[1.75rem] border p-6 ${tone.panelShell}`}>
+      <div className="mb-4 flex justify-end">
+        <LobbyThemePicker
+          themeKey={themeKey}
+          onThemeChange={onThemeChange}
+          tone={tone}
+          size="sm"
+          label="Theme"
+        />
+      </div>
+
       <div className="flex items-start justify-between gap-4">
-        <div className={`text-xs uppercase tracking-[0.35em] ${accentLabelClassName}`}>
+        <div className={`text-xs uppercase tracking-[0.35em] ${tone.accentText}`}>
           Next Tournament
         </div>
-        <div className={`rounded-full border px-3 py-1 text-xs font-medium ${accentBadgeClassName}`}>
+        <div className={`rounded-full border px-3 py-1 text-xs font-medium ${tone.statusBadge}`}>
           {getTournamentStatusLabel(tournament.status)}
         </div>
       </div>
@@ -57,7 +67,7 @@ export function TournamentPanel({
         </p>
         <p className="text-sm leading-6 text-slate-300">{tournament.description}</p>
 
-        <div className="rounded-2xl border border-white/8 bg-slate-950/40 p-4">
+        <div className={`rounded-2xl border p-4 ${tone.insetPanel}`}>
           <div className="flex items-center justify-between gap-4">
             <div>
               <div className="text-xs uppercase tracking-[0.25em] text-slate-400">Join Queue</div>
@@ -68,7 +78,7 @@ export function TournamentPanel({
             {isAdmin && (
               <Link
                 href="/admin"
-                className="rounded-full border border-white/15 px-4 py-2 text-xs text-white/85 transition hover:border-white/30 hover:text-white"
+                className={`rounded-full border px-4 py-2 text-xs transition ${tone.secondaryButton}`}
               >
                 Edit Tournament
               </Link>
@@ -84,7 +94,7 @@ export function TournamentPanel({
               tournament.entrants.slice(0, 12).map((entrant) => (
                 <div
                   key={`${entrant.entryId ?? entrant.uid}-${entrant.joinedAt}`}
-                  className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs text-white"
+                  className={`rounded-full border px-3 py-2 text-xs text-white ${tone.neutralPill}`}
                 >
                   {displayName(entrant.inGameName, entrant.steamPersonaName)}
                 </div>
@@ -93,7 +103,7 @@ export function TournamentPanel({
           </div>
         </div>
 
-        <div className="rounded-2xl border border-white/8 bg-slate-950/40 p-4">
+        <div className={`rounded-2xl border p-4 ${tone.insetPanel}`}>
           <div className="flex items-center justify-between gap-4">
             <div>
               <div className="text-xs uppercase tracking-[0.25em] text-slate-400">Bracket Preview</div>
@@ -111,7 +121,7 @@ export function TournamentPanel({
               </div>
             ) : (
               tournament.matches.slice(0, 3).map((match) => (
-                <div key={match.id} className="rounded-2xl border border-white/8 bg-white/5 px-4 py-4">
+                <div key={match.id} className={`rounded-2xl border px-4 py-4 ${tone.card}`}>
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <div className="text-sm font-medium text-white">
@@ -122,7 +132,7 @@ export function TournamentPanel({
                       </div>
                     </div>
                     <div className="space-y-2 text-right">
-                      <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-200">
+                      <div className={`rounded-full border px-3 py-1 text-xs ${tone.neutralPill}`}>
                         {getTournamentMatchStatusLabel(match.status)}
                       </div>
                       {match.proof && (
@@ -165,7 +175,7 @@ export function TournamentPanel({
             type="button"
             onClick={onJoinTournament}
             disabled={joinPending || tournament.isFallback || tournament.status === "completed"}
-            className={primaryButtonClassName}
+            className={`rounded-full px-5 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${tone.primaryButton}`}
           >
             {tournament.viewerJoined
               ? joinPending
@@ -182,7 +192,7 @@ export function TournamentPanel({
             <button
               type="button"
               onClick={onLogin}
-              className="rounded-full border border-white/15 px-5 py-3 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
+              className={`rounded-full border px-5 py-3 text-sm transition ${tone.secondaryButton}`}
             >
               Sign In To Join
             </button>
