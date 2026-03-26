@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { LobbyThemePicker } from "@/components/lobby/LobbyAppearanceControls";
 import {
   getLobbyPresentationTone,
   type LobbyThemeKey,
@@ -18,7 +17,6 @@ type TournamentPanelProps = {
   isAuthenticated: boolean;
   joinPending: boolean;
   joinError: string | null;
-  onThemeChange: (themeKey: LobbyThemeKey) => void;
   onJoinTournament: () => void;
   onLogin: () => void;
 };
@@ -31,7 +29,6 @@ export function TournamentPanel({
   isAuthenticated,
   joinPending,
   joinError,
-  onThemeChange,
   onJoinTournament,
   onLogin,
 }: TournamentPanelProps) {
@@ -39,16 +36,6 @@ export function TournamentPanel({
 
   return (
     <div className={`rounded-[1.75rem] border p-6 ${tone.panelShell}`}>
-      <div className="mb-4 flex justify-end">
-        <LobbyThemePicker
-          themeKey={themeKey}
-          onThemeChange={onThemeChange}
-          tone={tone}
-          size="sm"
-          label="Theme"
-        />
-      </div>
-
       <div className="flex items-start justify-between gap-4">
         <div className={`text-xs uppercase tracking-[0.35em] ${tone.accentText}`}>
           Next Tournament

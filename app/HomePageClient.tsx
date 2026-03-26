@@ -1,12 +1,14 @@
 "use client";
 
 import { type CSSProperties, useCallback, useEffect, useRef, useState } from "react";
+import { LobbyThemePicker } from "@/components/lobby/LobbyAppearanceControls";
 import { LobbyChat } from "@/components/lobby/LobbyChat";
 import { LobbyHero } from "@/components/lobby/LobbyHero";
 import {
   DEFAULT_LOBBY_THEME,
   DEFAULT_LOBBY_VIEW,
   getLobbyHeroBackground,
+  getLobbyPresentationTone,
   readStoredLobbyTheme,
   readStoredLobbyViewMode,
   writeStoredLobbyTheme,
@@ -368,6 +370,7 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
   const heroStyle: CSSProperties = {
     backgroundImage: getLobbyHeroBackground(themeKey, viewMode),
   };
+  const presentationTone = getLobbyPresentationTone(themeKey, viewMode);
   const heroShellClassName =
     viewMode === "field"
       ? "border-emerald-400/20 shadow-[0_28px_80px_rgba(5,46,22,0.32)]"
@@ -393,20 +396,32 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
             onViewModeChange={setViewMode}
           />
 
-          <TournamentPanel
-            tournament={tournament}
-            themeKey={themeKey}
-            viewMode={viewMode}
-            isAdmin={isAdmin}
-            isAuthenticated={isAuthenticated}
-            joinPending={joinPending}
-            joinError={joinError}
-            onThemeChange={setThemeKey}
-            onJoinTournament={() => {
-              void handleJoinTournament();
-            }}
-            onLogin={() => loginWithSteam("/")}
-          />
+          <div className="space-y-6">
+            <div className="flex min-h-[2.25rem] justify-end">
+              <LobbyThemePicker
+                themeKey={themeKey}
+                onThemeChange={setThemeKey}
+                tone={presentationTone}
+                size="sm"
+                label="Theme"
+                className="justify-end"
+              />
+            </div>
+
+            <TournamentPanel
+              tournament={tournament}
+              themeKey={themeKey}
+              viewMode={viewMode}
+              isAdmin={isAdmin}
+              isAuthenticated={isAuthenticated}
+              joinPending={joinPending}
+              joinError={joinError}
+              onJoinTournament={() => {
+                void handleJoinTournament();
+              }}
+              onLogin={() => loginWithSteam("/")}
+            />
+          </div>
         </div>
       </section>
 
