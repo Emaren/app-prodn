@@ -1,6 +1,12 @@
 import type { PrismaClient } from "@/lib/generated/prisma";
 
-import { loadUserCommunitySummaries, type CommunityBadge } from "@/lib/communityHonors";
+import {
+  loadUserCommunitySummaries,
+  normalizeGiftKind,
+  normalizeHonorStatus,
+  type CommunityBadge,
+} from "@/lib/communityHonors";
+import { recordUserActivity } from "@/lib/userExperience";
 
 export type InboxCounterpart = {
   uid: string;
@@ -21,17 +27,59 @@ export type InboxSummary = {
   giftedWolo: number;
 };
 
-export type InboxMessage = {
+type InboxSender = {
+  uid: string;
+  displayName: string;
+  isAdmin: boolean;
+  badges: CommunityBadge[];
+};
+
+type InboxReadReceipt = {
+  status: "sent" | "read";
+  readAt: string | null;
+};
+
+type InboxHonorBase = {
   id: number;
-  body: string;
+  note: string | null;
+  status: string;
+  displayOnProfile: boolean;
+  acceptedAt: string | null;
+};
+
+export type InboxBadgeMessage = {
+  id: string;
+  kind: "badge";
   createdAt: string;
-  sender: {
-    uid: string;
-    displayName: string;
-    isAdmin: boolean;
-    badges: CommunityBadge[];
+  sender: InboxSender;
+  receipt: null;
+  badge: InboxHonorBase & {
+    label: string;
   };
 };
+
+export type InboxGiftMessage = {
+  id: string;
+  kind: "gift";
+  createdAt: string;
+  sender: InboxSender;
+  receipt: null;
+  gift: InboxHonorBase & {
+    kind: string;
+    amount: number | null;
+  };
+};
+
+export type InboxTextMessage = {
+  id: string;
+  kind: "text";
+  createdAt: string;
+  sender: InboxSender;
+  receipt: InboxReadReceipt | null;
+  body: string;
+};
+
+export type InboxMessage = InboxTextMessage | InboxBadgeMessage | InboxGiftMessage;
 
 export type InboxPayload = {
   viewer: {
@@ -45,6 +93,9 @@ export type InboxPayload = {
   activeCounterpart: InboxCounterpart | null;
   messages: InboxMessage[];
   unavailableReason: string | null;
+  conversation: {
+    counterpartLastReadAt: string | null;
+  } | null;
 };
 
 type ViewerUser = {
@@ -53,6 +104,12 @@ type ViewerUser = {
   isAdmin: boolean;
   inGameName: string | null;
   steamPersonaName: string | null;
+};
+
+type PairHonorSummary = {
+  unreadCount: number;
+  latestAt: Date | null;
+  latestSnippet: string | null;
 };
 
 function displayNameForUser(user: {
@@ -65,6 +122,122 @@ function displayNameForUser(user: {
 
 function buildPairKey(leftUserId: number, rightUserId: number) {
   return [leftUserId, rightUserId].sort((a, b) => a - b).join(":");
+}
+
+function buildBadgeSnippet(label: string, status: string) {
+  if (status === "accepted") {
+    return `${label} badge accepted`;
+  }
+  if (status === "declined") {
+    return `${label} badge declined`;
+  }
+  return `${label} badge waiting`;
+}
+
+function buildGiftSnippet(kind: string, amount: number | null, status: string) {
+  const prefix = amount ? `${amount} ${kind}` : kind;
+  if (status === "accepted") {
+    return `${prefix} accepted`;
+  }
+  if (status === "declined") {
+    return `${prefix} declined`;
+  }
+  return `${prefix} waiting`;
+}
+
+function senderShapeFromUser(
+  user:
+    | {
+        id: number;
+        uid: string;
+        isAdmin: boolean;
+        inGameName: string | null;
+        steamPersonaName: string | null;
+      }
+    | null
+    | undefined,
+  badges: CommunityBadge[] = []
+): InboxSender {
+  return {
+    uid: user?.uid ?? "system",
+    displayName: user ? displayNameForUser(user) : "AoE2HDBets",
+    isAdmin: Boolean(user?.isAdmin),
+    badges,
+  };
+}
+
+function serializeBadge(
+  badge: {
+    id: number;
+    label: string;
+    note: string | null;
+    status: string;
+    displayOnProfile: boolean;
+    acceptedAt: Date | null;
+    createdAt: Date;
+    createdBy: {
+      id: number;
+      uid: string;
+      isAdmin: boolean;
+      inGameName: string | null;
+      steamPersonaName: string | null;
+    } | null;
+  },
+  senderBadges: CommunityBadge[]
+): InboxBadgeMessage {
+  return {
+    id: `badge-${badge.id}`,
+    kind: "badge",
+    createdAt: badge.createdAt.toISOString(),
+    sender: senderShapeFromUser(badge.createdBy, senderBadges),
+    receipt: null,
+    badge: {
+      id: badge.id,
+      label: badge.label,
+      note: badge.note,
+      status: normalizeHonorStatus(badge.status),
+      displayOnProfile: badge.displayOnProfile,
+      acceptedAt: badge.acceptedAt?.toISOString() ?? null,
+    },
+  };
+}
+
+function serializeGift(
+  gift: {
+    id: number;
+    kind: string;
+    amount: number | null;
+    note: string | null;
+    status: string;
+    displayOnProfile: boolean;
+    acceptedAt: Date | null;
+    createdAt: Date;
+    createdBy: {
+      id: number;
+      uid: string;
+      isAdmin: boolean;
+      inGameName: string | null;
+      steamPersonaName: string | null;
+    } | null;
+  },
+  senderBadges: CommunityBadge[]
+): InboxGiftMessage {
+  return {
+    id: `gift-${gift.id}`,
+    kind: "gift",
+    createdAt: gift.createdAt.toISOString(),
+    sender: senderShapeFromUser(gift.createdBy, senderBadges),
+    receipt: null,
+    gift: {
+      id: gift.id,
+      kind: normalizeGiftKind(gift.kind),
+      amount: typeof gift.amount === "number" ? gift.amount : null,
+      note: gift.note,
+      status: normalizeHonorStatus(gift.status),
+      displayOnProfile: gift.displayOnProfile,
+      acceptedAt: gift.acceptedAt?.toISOString() ?? null,
+    },
+  };
 }
 
 export function normalizeInboxMessageBody(value: string) {
@@ -136,6 +309,77 @@ export async function getOrCreateConversationByUsers(
   });
 }
 
+async function loadHonorSummary(
+  prisma: PrismaClient,
+  viewerUserId: number,
+  counterpartUserId: number,
+  lastReadAt: Date | null
+): Promise<PairHonorSummary> {
+  const unreadWhere = {
+    userId: viewerUserId,
+    createdByUserId: counterpartUserId,
+    ...(lastReadAt ? { createdAt: { gt: lastReadAt } } : {}),
+  };
+
+  const [latestBadge, latestGift, unreadBadgeCount, unreadGiftCount] = await Promise.all([
+    prisma.userBadge.findFirst({
+      where: {
+        userId: viewerUserId,
+        createdByUserId: counterpartUserId,
+      },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      select: {
+        label: true,
+        status: true,
+        createdAt: true,
+      },
+    }),
+    prisma.userGift.findFirst({
+      where: {
+        userId: viewerUserId,
+        createdByUserId: counterpartUserId,
+      },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      select: {
+        kind: true,
+        amount: true,
+        status: true,
+        createdAt: true,
+      },
+    }),
+    prisma.userBadge.count({ where: unreadWhere }),
+    prisma.userGift.count({ where: unreadWhere }),
+  ]);
+
+  const badgeSnippet = latestBadge
+    ? buildBadgeSnippet(latestBadge.label, normalizeHonorStatus(latestBadge.status))
+    : null;
+  const giftSnippet = latestGift
+    ? buildGiftSnippet(
+        normalizeGiftKind(latestGift.kind),
+        typeof latestGift.amount === "number" ? latestGift.amount : null,
+        normalizeHonorStatus(latestGift.status)
+      )
+    : null;
+
+  if (
+    latestGift?.createdAt &&
+    (!latestBadge?.createdAt || latestGift.createdAt.getTime() >= latestBadge.createdAt.getTime())
+  ) {
+    return {
+      unreadCount: unreadBadgeCount + unreadGiftCount,
+      latestAt: latestGift.createdAt,
+      latestSnippet: giftSnippet,
+    };
+  }
+
+  return {
+    unreadCount: unreadBadgeCount + unreadGiftCount,
+    latestAt: latestBadge?.createdAt ?? null,
+    latestSnippet: badgeSnippet,
+  };
+}
+
 async function loadConversationSummaries(prisma: PrismaClient, viewerUserId: number) {
   const memberships = await prisma.directConversationParticipant.findMany({
     where: { userId: viewerUserId },
@@ -182,13 +426,21 @@ async function loadConversationSummaries(prisma: PrismaClient, viewerUserId: num
         return null;
       }
 
-      const unreadCount = await prisma.directMessage.count({
-        where: {
-          conversationId: membership.conversationId,
-          senderUserId: { not: viewerUserId },
-          ...(membership.lastReadAt ? { createdAt: { gt: membership.lastReadAt } } : {}),
-        },
-      });
+      const [unreadMessageCount, honorSummary] = await Promise.all([
+        prisma.directMessage.count({
+          where: {
+            conversationId: membership.conversationId,
+            senderUserId: { not: viewerUserId },
+            ...(membership.lastReadAt ? { createdAt: { gt: membership.lastReadAt } } : {}),
+          },
+        }),
+        loadHonorSummary(
+          prisma,
+          viewerUserId,
+          counterpartParticipant.userId,
+          membership.lastReadAt
+        ),
+      ]);
 
       const lastMessage = membership.conversation.messages[0] ?? null;
       const community = communityMap.get(counterpartParticipant.userId) ?? {
@@ -197,13 +449,23 @@ async function loadConversationSummaries(prisma: PrismaClient, viewerUserId: num
         giftedWolo: 0,
       };
 
+      const lastDirectTime = lastMessage?.createdAt ?? null;
+      const lastEventAt =
+        honorSummary.latestAt && (!lastDirectTime || honorSummary.latestAt.getTime() >= lastDirectTime.getTime())
+          ? honorSummary.latestAt
+          : lastDirectTime;
+      const lastSnippet =
+        honorSummary.latestAt && (!lastDirectTime || honorSummary.latestAt.getTime() >= lastDirectTime.getTime())
+          ? honorSummary.latestSnippet
+          : lastMessage?.body.slice(0, 120) ?? honorSummary.latestSnippet;
+
       return {
         targetUid: counterpartParticipant.user.uid,
         displayName: displayNameForUser(counterpartParticipant.user),
         isAdmin: counterpartParticipant.user.isAdmin,
-        unreadCount,
-        lastMessageAt: lastMessage?.createdAt.toISOString() ?? null,
-        lastMessageSnippet: lastMessage ? lastMessage.body.slice(0, 120) : null,
+        unreadCount: unreadMessageCount + honorSummary.unreadCount,
+        lastMessageAt: lastEventAt?.toISOString() ?? null,
+        lastMessageSnippet: lastSnippet ?? null,
         badges: community.badges,
         giftedWolo: community.giftedWolo,
       } satisfies InboxSummary;
@@ -256,11 +518,12 @@ async function loadConversationMessages(
       conversation: null,
       messages: [] as InboxMessage[],
       counterpart: null as InboxCounterpart | null,
+      counterpartLastReadAt: null as string | null,
     };
   }
 
   const counterpartParticipant = conversation.participants.find(
-    (participant) => participant.userId !== viewerUserId
+    (participant) => participant.userId === targetUserId
   );
 
   const communityMap = await loadUserCommunitySummaries(
@@ -271,32 +534,122 @@ async function loadConversationMessages(
     ? communityMap.get(counterpartParticipant.userId) ?? { badges: [], gifts: [], giftedWolo: 0 }
     : { badges: [], gifts: [], giftedWolo: 0 };
 
-  const senderIds = Array.from(new Set(conversation.messages.map((message) => message.senderUserId)));
+  const [badges, gifts] = await Promise.all([
+    prisma.userBadge.findMany({
+      where: {
+        OR: [
+          { userId: viewerUserId, createdByUserId: targetUserId },
+          { userId: targetUserId, createdByUserId: viewerUserId },
+        ],
+      },
+      include: {
+        createdBy: {
+          select: {
+            id: true,
+            uid: true,
+            isAdmin: true,
+            inGameName: true,
+            steamPersonaName: true,
+          },
+        },
+      },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    }),
+    prisma.userGift.findMany({
+      where: {
+        OR: [
+          { userId: viewerUserId, createdByUserId: targetUserId },
+          { userId: targetUserId, createdByUserId: viewerUserId },
+        ],
+      },
+      include: {
+        createdBy: {
+          select: {
+            id: true,
+            uid: true,
+            isAdmin: true,
+            inGameName: true,
+            steamPersonaName: true,
+          },
+        },
+      },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    }),
+  ]);
+
+  const senderIds = Array.from(
+    new Set([
+      ...conversation.messages.map((message) => message.senderUserId),
+      ...badges.map((badge) => badge.createdByUserId).filter((value): value is number => typeof value === "number"),
+      ...gifts.map((gift) => gift.createdByUserId).filter((value): value is number => typeof value === "number"),
+    ])
+  );
   const senderCommunityMap = await loadUserCommunitySummaries(prisma, senderIds);
+
+  const counterpartLastReadAt = counterpartParticipant?.lastReadAt?.toISOString() ?? null;
+
+  const messageEvents: InboxMessage[] = conversation.messages.map((message) => {
+    const sender = conversation.participants.find(
+      (participant) => participant.userId === message.senderUserId
+    )?.user;
+    const senderCommunity =
+      sender && senderCommunityMap.get(sender.id)
+        ? senderCommunityMap.get(sender.id)
+        : { badges: [], gifts: [], giftedWolo: 0 };
+
+    const readAt =
+      sender?.id === viewerUserId &&
+      counterpartParticipant?.lastReadAt &&
+      counterpartParticipant.lastReadAt.getTime() >= message.createdAt.getTime()
+        ? counterpartParticipant.lastReadAt.toISOString()
+        : null;
+
+    return {
+      id: `message-${message.id}`,
+      kind: "text",
+      body: message.body,
+      createdAt: message.createdAt.toISOString(),
+      sender: senderShapeFromUser(sender, senderCommunity?.badges ?? []),
+      receipt:
+        sender?.id === viewerUserId
+          ? {
+              status: readAt ? "read" : "sent",
+              readAt,
+            }
+          : null,
+    } satisfies InboxTextMessage;
+  });
+
+  const badgeEvents = badges.map((badge) =>
+    serializeBadge(
+      badge,
+      badge.createdBy && senderCommunityMap.get(badge.createdBy.id)
+        ? senderCommunityMap.get(badge.createdBy.id)?.badges ?? []
+        : []
+    )
+  );
+  const giftEvents = gifts.map((gift) =>
+    serializeGift(
+      gift,
+      gift.createdBy && senderCommunityMap.get(gift.createdBy.id)
+        ? senderCommunityMap.get(gift.createdBy.id)?.badges ?? []
+        : []
+    )
+  );
+
+  const combinedMessages = [...messageEvents, ...badgeEvents, ...giftEvents].sort((left, right) => {
+    const leftTime = new Date(left.createdAt).getTime();
+    const rightTime = new Date(right.createdAt).getTime();
+    if (leftTime !== rightTime) {
+      return leftTime - rightTime;
+    }
+
+    return left.id.localeCompare(right.id);
+  });
 
   return {
     conversation,
-    messages: conversation.messages.map((message) => {
-      const sender = conversation.participants.find(
-        (participant) => participant.userId === message.senderUserId
-      )?.user;
-      const senderCommunity =
-        sender && senderCommunityMap.get(sender.id)
-          ? senderCommunityMap.get(sender.id)
-          : { badges: [], gifts: [], giftedWolo: 0 };
-
-      return {
-        id: message.id,
-        body: message.body,
-        createdAt: message.createdAt.toISOString(),
-        sender: {
-          uid: sender?.uid ?? `user-${message.senderUserId}`,
-          displayName: sender ? displayNameForUser(sender) : "Unknown user",
-          isAdmin: Boolean(sender?.isAdmin),
-          badges: senderCommunity?.badges ?? [],
-        },
-      } satisfies InboxMessage;
-    }),
+    messages: combinedMessages,
     counterpart: counterpartParticipant
       ? ({
           uid: counterpartParticipant.user.uid,
@@ -306,6 +659,7 @@ async function loadConversationMessages(
           giftedWolo: community.giftedWolo,
         } satisfies InboxCounterpart)
       : null,
+    counterpartLastReadAt,
   };
 }
 
@@ -372,6 +726,14 @@ export async function loadInboxPayload(
 
   if (!options?.summaryOnly && activeTargetUser && activeTargetUser.id !== viewer.id) {
     await markConversationRead(prisma, viewer.id, activeTargetUser.id);
+    await recordUserActivity(prisma, {
+      userId: viewer.id,
+      type: "inbox_opened",
+      path: "/contact-emaren",
+      label: activeTargetUser.uid,
+      metadata: { targetUid: activeTargetUser.uid },
+      dedupeWithinSeconds: 180,
+    });
   }
 
   const summaries = await loadConversationSummaries(prisma, viewer.id);
@@ -403,6 +765,7 @@ export async function loadInboxPayload(
       activeCounterpart: null,
       messages: [],
       unavailableReason,
+      conversation: null,
     };
   }
 
@@ -430,6 +793,9 @@ export async function loadInboxPayload(
       },
       messages: [],
       unavailableReason,
+      conversation: {
+        counterpartLastReadAt: null,
+      },
     };
   }
 
@@ -445,5 +811,8 @@ export async function loadInboxPayload(
     activeCounterpart: activeConversation.counterpart,
     messages: activeConversation.messages,
     unavailableReason,
+    conversation: {
+      counterpartLastReadAt: activeConversation.counterpartLastReadAt,
+    },
   };
 }

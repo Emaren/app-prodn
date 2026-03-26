@@ -21,6 +21,10 @@ import {
 } from "@/components/lobby/lobbyPresentation";
 import { useUserAuth } from "@/hooks/useUserAuth";
 import SteamLoginButton from "@/components/SteamLoginButton";
+import {
+  fetchUserAppearancePreference,
+  saveUserAppearancePreference,
+} from "@/lib/userAppearanceClient";
 
 type ProfileResponse = {
   uid: string;
@@ -59,14 +63,50 @@ function ProfilePageContent() {
   const [claimSeedApplied, setClaimSeedApplied] = useState(false);
   const [themeKey, setThemeKey] = useState<LobbyThemeKey>(DEFAULT_LOBBY_THEME);
   const [viewMode, setViewMode] = useState<LobbyViewMode>(DEFAULT_LOBBY_VIEW);
+  const [appearanceLoaded, setAppearanceLoaded] = useState(false);
 
   const claimName = searchParams?.get("claim_name")?.trim() || "";
   const appearanceTone = getLobbyPresentationTone(themeKey, viewMode);
 
   useEffect(() => {
-    setThemeKey(readStoredLobbyTheme());
-    setViewMode(readStoredLobbyViewMode());
-  }, []);
+    let cancelled = false;
+    setAppearanceLoaded(false);
+    const storedTheme = readStoredLobbyTheme();
+    const storedView = readStoredLobbyViewMode();
+
+    const hydrateAppearance = async () => {
+      if (!uid) {
+        if (!cancelled) {
+          setThemeKey(storedTheme);
+          setViewMode(storedView);
+          setAppearanceLoaded(true);
+        }
+        return;
+      }
+
+      try {
+        const preference = await fetchUserAppearancePreference();
+        if (cancelled) return;
+        setThemeKey(preference.themeKey);
+        setViewMode(preference.viewMode);
+      } catch (error) {
+        console.warn("Failed to hydrate stored appearance:", error);
+        if (cancelled) return;
+        setThemeKey(storedTheme);
+        setViewMode(storedView);
+      } finally {
+        if (!cancelled) {
+          setAppearanceLoaded(true);
+        }
+      }
+    };
+
+    void hydrateAppearance();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [uid]);
 
   useEffect(() => {
     writeStoredLobbyTheme(themeKey);
@@ -75,6 +115,14 @@ function ProfilePageContent() {
   useEffect(() => {
     writeStoredLobbyViewMode(viewMode);
   }, [viewMode]);
+
+  useEffect(() => {
+    if (!appearanceLoaded || !uid) return;
+
+    void saveUserAppearancePreference({ themeKey, viewMode }).catch((error) => {
+      console.warn("Failed to persist account appearance:", error);
+    });
+  }, [appearanceLoaded, themeKey, uid, viewMode]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -299,7 +347,7 @@ function ProfilePageContent() {
             </p>
           </div>
           <div className={`rounded-2xl border px-4 py-3 text-sm ${appearanceTone.neutralPill}`}>
-            Stored on this device for now
+            Stored to your account + this device
           </div>
         </div>
 

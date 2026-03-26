@@ -27,6 +27,10 @@ import {
   type LobbyMessage,
   type LobbySnapshot,
 } from "@/lib/lobby";
+import {
+  fetchUserAppearancePreference,
+  saveUserAppearancePreference,
+} from "@/lib/userAppearanceClient";
 
 const EMPTY_MESSAGES: LobbyMessage[] = [];
 const CHAT_AUTO_SCROLL_GRACE_MS = 4000;
@@ -52,6 +56,7 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
   const [chatCardHeight, setChatCardHeight] = useState<number | null>(null);
   const [themeKey, setThemeKey] = useState<LobbyThemeKey>(DEFAULT_LOBBY_THEME);
   const [viewMode, setViewMode] = useState<LobbyViewMode>(DEFAULT_LOBBY_VIEW);
+  const [appearanceLoaded, setAppearanceLoaded] = useState(false);
 
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
   const rightColumnRef = useRef<HTMLDivElement | null>(null);
@@ -137,9 +142,45 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    setThemeKey(readStoredLobbyTheme());
-    setViewMode(readStoredLobbyViewMode());
-  }, []);
+
+    let cancelled = false;
+    setAppearanceLoaded(false);
+    const storedTheme = readStoredLobbyTheme();
+    const storedView = readStoredLobbyViewMode();
+
+    const hydrateAppearance = async () => {
+      if (!user?.uid) {
+        if (!cancelled) {
+          setThemeKey(storedTheme);
+          setViewMode(storedView);
+          setAppearanceLoaded(true);
+        }
+        return;
+      }
+
+      try {
+        const preference = await fetchUserAppearancePreference();
+        if (cancelled) return;
+        setThemeKey(preference.themeKey);
+        setViewMode(preference.viewMode);
+      } catch (error) {
+        console.warn("Failed to hydrate appearance from account:", error);
+        if (cancelled) return;
+        setThemeKey(storedTheme);
+        setViewMode(storedView);
+      } finally {
+        if (!cancelled) {
+          setAppearanceLoaded(true);
+        }
+      }
+    };
+
+    void hydrateAppearance();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.uid]);
 
   useEffect(() => {
     writeStoredLobbyTheme(themeKey);
@@ -148,6 +189,14 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
   useEffect(() => {
     writeStoredLobbyViewMode(viewMode);
   }, [viewMode]);
+
+  useEffect(() => {
+    if (!appearanceLoaded || !user?.uid) return;
+
+    void saveUserAppearancePreference({ themeKey, viewMode }).catch((error) => {
+      console.warn("Failed to save appearance preference:", error);
+    });
+  }, [appearanceLoaded, themeKey, user?.uid, viewMode]);
 
   const tournament = lobby?.tournament ?? getFallbackTournament(false);
   const leaderboard = lobby?.leaderboard ?? getFallbackLeaderboard();

@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import UserExperienceTracker from "@/components/analytics/UserExperienceTracker";
 import HeaderInboxControl from "@/components/contact/HeaderInboxControl";
 import HeaderMenu from "@/components/HeaderMenu";
 import { Toaster } from "sonner";
@@ -23,6 +24,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
 
   return (
     <>
+      <UserExperienceTracker />
       <header className="border-b border-white/10 bg-slate-950/90 p-4 backdrop-blur">
         <div className="mx-auto max-w-6xl overflow-visible">
           <div className="flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:items-center">

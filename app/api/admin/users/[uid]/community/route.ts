@@ -4,6 +4,8 @@ import {
   normalizeBadgeLabel,
   normalizeGiftKind,
 } from "@/lib/communityHonors";
+import { getOrCreateConversationByUsers } from "@/lib/contactInbox";
+import { recordUserActivity } from "@/lib/userExperience";
 import { requireAdmin } from "@/lib/adminSession";
 
 export const runtime = "nodejs";
@@ -64,7 +66,9 @@ export async function POST(
           return NextResponse.json({ detail: "Badge label is required" }, { status: 400 });
         }
 
-        await prisma.userBadge.upsert({
+        await getOrCreateConversationByUsers(prisma, admin.id, target.id);
+
+        const badge = await prisma.userBadge.upsert({
           where: {
             userId_label: {
               userId: target.id,
@@ -79,8 +83,22 @@ export async function POST(
             userId: target.id,
             label,
             note,
+            status: "pending",
+            displayOnProfile: false,
             createdByUserId: admin.id,
           },
+        });
+
+        await recordUserActivity(prisma, {
+          userId: target.id,
+          type: "badge_granted",
+          path: "/admin/user-list",
+          label,
+          metadata: {
+            badgeId: badge.id,
+            note,
+          },
+          dedupeWithinSeconds: 0,
         });
         break;
       }
@@ -96,6 +114,17 @@ export async function POST(
             userId: target.id,
           },
         });
+
+        await recordUserActivity(prisma, {
+          userId: target.id,
+          type: "badge_removed",
+          path: "/admin/user-list",
+          label: String(payload.badgeId),
+          metadata: {
+            badgeId: payload.badgeId,
+          },
+          dedupeWithinSeconds: 0,
+        });
         break;
       }
 
@@ -108,14 +137,31 @@ export async function POST(
           return NextResponse.json({ detail: "Gift type is required" }, { status: 400 });
         }
 
-        await prisma.userGift.create({
+        await getOrCreateConversationByUsers(prisma, admin.id, target.id);
+
+        const gift = await prisma.userGift.create({
           data: {
             userId: target.id,
             kind,
             amount,
             note,
+            status: "pending",
+            displayOnProfile: false,
             createdByUserId: admin.id,
           },
+        });
+
+        await recordUserActivity(prisma, {
+          userId: target.id,
+          type: "gift_granted",
+          path: "/admin/user-list",
+          label: kind,
+          metadata: {
+            giftId: gift.id,
+            amount,
+            note,
+          },
+          dedupeWithinSeconds: 0,
         });
         break;
       }
@@ -130,6 +176,17 @@ export async function POST(
             id: payload.giftId,
             userId: target.id,
           },
+        });
+
+        await recordUserActivity(prisma, {
+          userId: target.id,
+          type: "gift_removed",
+          path: "/admin/user-list",
+          label: String(payload.giftId),
+          metadata: {
+            giftId: payload.giftId,
+          },
+          dedupeWithinSeconds: 0,
         });
         break;
       }

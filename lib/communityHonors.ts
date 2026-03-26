@@ -6,6 +6,9 @@ export type CommunityBadge = {
   id: number;
   label: string;
   note: string | null;
+  status: string;
+  displayOnProfile: boolean;
+  acceptedAt: string | null;
   createdAt: string;
 };
 
@@ -14,6 +17,9 @@ export type CommunityGift = {
   kind: string;
   amount: number | null;
   note: string | null;
+  status: string;
+  displayOnProfile: boolean;
+  acceptedAt: string | null;
   createdAt: string;
 };
 
@@ -29,6 +35,14 @@ export function normalizeBadgeLabel(value: string) {
 
 export function normalizeGiftKind(value: string) {
   return value.trim().replace(/\s+/g, " ").slice(0, 40).toUpperCase();
+}
+
+export function normalizeHonorStatus(value: string | null | undefined) {
+  const normalized = (value || "pending").trim().toLowerCase();
+  if (normalized === "accepted" || normalized === "declined") {
+    return normalized;
+  }
+  return "pending";
 }
 
 export function badgeToneClassName(label: string) {
@@ -47,10 +61,14 @@ export function badgeToneClassName(label: string) {
 
 export async function loadUserCommunitySummaries(
   prisma: PrismaClient,
-  userIds: number[]
+  userIds: number[],
+  options?: {
+    includePending?: boolean;
+  }
 ): Promise<Map<number, UserCommunitySummary>> {
   const uniqueUserIds = Array.from(new Set(userIds.filter((value) => Number.isInteger(value))));
   const summaryMap = new Map<number, UserCommunitySummary>();
+  const includePending = Boolean(options?.includePending);
 
   for (const userId of uniqueUserIds) {
     summaryMap.set(userId, {
@@ -78,10 +96,19 @@ export async function loadUserCommunitySummaries(
   for (const badge of badges) {
     const summary = summaryMap.get(badge.userId);
     if (!summary) continue;
+    const status = normalizeHonorStatus(badge.status);
+
+    if (!includePending && (status !== "accepted" || !badge.displayOnProfile)) {
+      continue;
+    }
+
     summary.badges.push({
       id: badge.id,
       label: badge.label,
       note: badge.note,
+      status,
+      displayOnProfile: badge.displayOnProfile,
+      acceptedAt: badge.acceptedAt?.toISOString() ?? null,
       createdAt: badge.createdAt.toISOString(),
     });
   }
@@ -91,16 +118,24 @@ export async function loadUserCommunitySummaries(
     if (!summary) continue;
     const normalizedKind = normalizeGiftKind(gift.kind);
     const amount = typeof gift.amount === "number" ? gift.amount : null;
+    const status = normalizeHonorStatus(gift.status);
+
+    if (!includePending && (status !== "accepted" || !gift.displayOnProfile)) {
+      continue;
+    }
 
     summary.gifts.push({
       id: gift.id,
       kind: normalizedKind,
       amount,
       note: gift.note,
+      status,
+      displayOnProfile: gift.displayOnProfile,
+      acceptedAt: gift.acceptedAt?.toISOString() ?? null,
       createdAt: gift.createdAt.toISOString(),
     });
 
-    if (normalizedKind === "WOLO" && amount) {
+    if (normalizedKind === "WOLO" && amount && status === "accepted") {
       summary.giftedWolo += amount;
     }
   }

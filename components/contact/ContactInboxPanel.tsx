@@ -3,7 +3,11 @@
 import Link from "next/link";
 
 import CommunityBadgePill from "@/components/contact/CommunityBadgePill";
-import type { ContactInboxPayload, ContactInboxSummary } from "@/components/contact/types";
+import type {
+  ContactInboxMessage,
+  ContactInboxPayload,
+  ContactInboxSummary,
+} from "@/components/contact/types";
 
 type ContactInboxPanelProps = {
   data: ContactInboxPayload | null;
@@ -15,6 +19,7 @@ type ContactInboxPanelProps = {
   onBodyChange: (value: string) => void;
   onSend: () => void;
   onSelectConversation: (targetUid: string) => void;
+  onInboxAction: (action: Record<string, unknown>) => void;
   openPageHref?: string;
 };
 
@@ -88,6 +93,260 @@ function SummaryButton({
   );
 }
 
+function statusTone(status: string) {
+  if (status === "accepted") {
+    return "border-emerald-400/30 bg-emerald-500/10 text-emerald-100";
+  }
+  if (status === "declined") {
+    return "border-red-400/30 bg-red-500/10 text-red-100";
+  }
+  return "border-amber-300/30 bg-amber-400/10 text-amber-100";
+}
+
+function ReceiptLine({
+  message,
+}: {
+  message: Extract<ContactInboxMessage, { kind: "text" }>;
+}) {
+  if (!message.receipt) {
+    return null;
+  }
+
+  const copy =
+    message.receipt.status === "read" && message.receipt.readAt
+      ? `Read ${formatTimestamp(message.receipt.readAt)}`
+      : "Sent";
+
+  return <div className="mt-2 text-[11px] uppercase tracking-[0.22em] text-slate-400/80">{copy}</div>;
+}
+
+function HonorActions({
+  message,
+  viewerIsAdmin,
+  onInboxAction,
+}: {
+  message: ContactInboxMessage;
+  viewerIsAdmin: boolean;
+  onInboxAction: (action: Record<string, unknown>) => void;
+}) {
+  if (viewerIsAdmin) {
+    return null;
+  }
+
+  if (message.kind === "badge" && message.badge) {
+    if (message.badge.status === "pending") {
+      return (
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() =>
+              onInboxAction({ action: "accept_badge", badgeId: message.badge.id, displayOnProfile: true })
+            }
+            className="rounded-full bg-amber-300 px-3 py-1.5 text-xs font-semibold text-slate-950 transition hover:bg-amber-200"
+          >
+            Accept + Show
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              onInboxAction({ action: "accept_badge", badgeId: message.badge.id, displayOnProfile: false })
+            }
+            className="rounded-full border border-white/15 px-3 py-1.5 text-xs text-white/85 transition hover:border-white/30 hover:text-white"
+          >
+            Accept Private
+          </button>
+          <button
+            type="button"
+            onClick={() => onInboxAction({ action: "decline_badge", badgeId: message.badge.id })}
+            className="rounded-full border border-red-400/30 px-3 py-1.5 text-xs text-red-200 transition hover:bg-red-500/10"
+          >
+            Decline
+          </button>
+        </div>
+      );
+    }
+
+    if (message.badge.status === "accepted") {
+      return (
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() =>
+              onInboxAction({
+                action: "set_badge_display",
+                badgeId: message.badge.id,
+                displayOnProfile: !message.badge.displayOnProfile,
+              })
+            }
+            className="rounded-full border border-white/15 px-3 py-1.5 text-xs text-white/85 transition hover:border-white/30 hover:text-white"
+          >
+            {message.badge.displayOnProfile ? "Hide On Profile" : "Show On Profile"}
+          </button>
+        </div>
+      );
+    }
+  }
+
+  if (message.kind === "gift" && message.gift) {
+    if (message.gift.status === "pending") {
+      return (
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() =>
+              onInboxAction({ action: "accept_gift", giftId: message.gift.id, displayOnProfile: true })
+            }
+            className="rounded-full bg-emerald-300 px-3 py-1.5 text-xs font-semibold text-slate-950 transition hover:bg-emerald-200"
+          >
+            Accept + Show
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              onInboxAction({ action: "accept_gift", giftId: message.gift.id, displayOnProfile: false })
+            }
+            className="rounded-full border border-white/15 px-3 py-1.5 text-xs text-white/85 transition hover:border-white/30 hover:text-white"
+          >
+            Accept Private
+          </button>
+          <button
+            type="button"
+            onClick={() => onInboxAction({ action: "decline_gift", giftId: message.gift.id })}
+            className="rounded-full border border-red-400/30 px-3 py-1.5 text-xs text-red-200 transition hover:bg-red-500/10"
+          >
+            Decline
+          </button>
+        </div>
+      );
+    }
+
+    if (message.gift.status === "accepted") {
+      return (
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() =>
+              onInboxAction({
+                action: "set_gift_display",
+                giftId: message.gift.id,
+                displayOnProfile: !message.gift.displayOnProfile,
+              })
+            }
+            className="rounded-full border border-white/15 px-3 py-1.5 text-xs text-white/85 transition hover:border-white/30 hover:text-white"
+          >
+            {message.gift.displayOnProfile ? "Hide Gift On Profile" : "Show Gift On Profile"}
+          </button>
+        </div>
+      );
+    }
+  }
+
+  return null;
+}
+
+function InboxEventCard({
+  message,
+  viewerUid,
+  viewerIsAdmin,
+  onInboxAction,
+}: {
+  message: ContactInboxMessage;
+  viewerUid: string;
+  viewerIsAdmin: boolean;
+  onInboxAction: (action: Record<string, unknown>) => void;
+}) {
+  const isViewer = message.sender.uid === viewerUid;
+
+  if (message.kind === "text" && message.body) {
+    return (
+      <div className={`flex ${isViewer ? "justify-end" : "justify-start"}`}>
+        <div
+          className={`max-w-[88%] rounded-2xl border px-4 py-3 ${
+            isViewer
+              ? "border-amber-300/30 bg-amber-400/12 text-amber-50"
+              : "border-white/10 bg-white/5 text-slate-100"
+          }`}
+        >
+          <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.24em] text-slate-300/80">
+            <span>{message.sender.displayName}</span>
+            <span>{formatTimestamp(message.createdAt)}</span>
+          </div>
+
+          {message.sender.badges.length > 0 ? (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {message.sender.badges.slice(0, 3).map((badge) => (
+                <CommunityBadgePill key={badge.id} label={badge.label} />
+              ))}
+            </div>
+          ) : null}
+
+          <p className="mt-3 whitespace-pre-wrap text-sm leading-6">{message.body}</p>
+          <ReceiptLine message={message} />
+        </div>
+      </div>
+    );
+  }
+
+  const honorTitle =
+    message.kind === "badge" && message.badge
+      ? `${message.badge.label} badge`
+      : message.kind === "gift" && message.gift
+        ? `${message.gift.amount ? `${message.gift.amount} ` : ""}${message.gift.kind}`
+        : "Inbox event";
+  const honorStatus =
+    message.kind === "badge" && message.badge
+      ? message.badge.status
+      : message.kind === "gift" && message.gift
+        ? message.gift.status
+        : "pending";
+  const displayOnProfile =
+    message.kind === "badge" && message.badge
+      ? message.badge.displayOnProfile
+      : message.kind === "gift" && message.gift
+        ? message.gift.displayOnProfile
+        : false;
+  const note =
+    message.kind === "badge" && message.badge
+      ? message.badge.note
+      : message.kind === "gift" && message.gift
+        ? message.gift.note
+        : null;
+
+  return (
+    <div className={`flex ${isViewer ? "justify-end" : "justify-start"}`}>
+      <div className="max-w-[92%] rounded-2xl border border-sky-300/20 bg-sky-500/10 px-4 py-4 text-slate-100">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="text-[11px] uppercase tracking-[0.24em] text-slate-300/80">
+            {message.sender.displayName}
+          </div>
+          <div className="text-[11px] uppercase tracking-[0.24em] text-slate-400">
+            {formatTimestamp(message.createdAt)}
+          </div>
+          <span className={`rounded-full border px-2 py-0.5 text-[11px] ${statusTone(honorStatus)}`}>
+            {honorStatus}
+          </span>
+          {displayOnProfile ? (
+            <span className="rounded-full border border-sky-300/30 bg-sky-400/10 px-2 py-0.5 text-[11px] text-sky-100">
+              public
+            </span>
+          ) : null}
+        </div>
+
+        <div className="mt-3 text-base font-semibold text-white">{honorTitle}</div>
+        <div className="mt-2 text-sm leading-6 text-slate-200">
+          {note || "A new community item is waiting in your direct line."}
+        </div>
+
+        <HonorActions
+          message={message}
+          viewerIsAdmin={viewerIsAdmin}
+          onInboxAction={onInboxAction}
+        />
+      </div>
+    </div>
+  );
+}
+
 export default function ContactInboxPanel({
   data,
   loading,
@@ -98,6 +357,7 @@ export default function ContactInboxPanel({
   onBodyChange,
   onSend,
   onSelectConversation,
+  onInboxAction,
   openPageHref,
 }: ContactInboxPanelProps) {
   const counterpart = data?.activeCounterpart ?? null;
@@ -136,7 +396,7 @@ export default function ContactInboxPanel({
               </div>
               {counterpart.giftedWolo > 0 ? (
                 <div className="rounded-full border border-amber-300/30 bg-amber-400/10 px-2.5 py-1 text-[11px] text-amber-100">
-                  {counterpart.giftedWolo} WOLO
+                  {counterpart.giftedWolo} WOLO live
                 </div>
               ) : null}
             </div>
@@ -209,38 +469,15 @@ export default function ContactInboxPanel({
                   : "No messages yet. This is your direct line to Emaren."}
               </div>
             ) : (
-              data?.messages.map((message) => {
-                const isViewer = message.sender.uid === data.viewer.uid;
-                return (
-                  <div
-                    key={message.id}
-                    className={`flex ${isViewer ? "justify-end" : "justify-start"}`}
-                  >
-                    <div
-                      className={`max-w-[88%] rounded-2xl border px-4 py-3 ${
-                        isViewer
-                          ? "border-amber-300/30 bg-amber-400/12 text-amber-50"
-                          : "border-white/10 bg-white/5 text-slate-100"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.24em] text-slate-300/80">
-                        <span>{message.sender.displayName}</span>
-                        <span>{formatTimestamp(message.createdAt)}</span>
-                      </div>
-
-                      {message.sender.badges.length > 0 ? (
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {message.sender.badges.slice(0, 3).map((badge) => (
-                            <CommunityBadgePill key={badge.id} label={badge.label} />
-                          ))}
-                        </div>
-                      ) : null}
-
-                      <p className="mt-3 whitespace-pre-wrap text-sm leading-6">{message.body}</p>
-                    </div>
-                  </div>
-                );
-              })
+              data?.messages.map((message) => (
+                <InboxEventCard
+                  key={message.id}
+                  message={message}
+                  viewerUid={data.viewer.uid}
+                  viewerIsAdmin={data.viewer.isAdmin}
+                  onInboxAction={onInboxAction}
+                />
+              ))
             )}
           </div>
 

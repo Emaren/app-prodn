@@ -40,6 +40,8 @@ model User {
   grantedBadges                UserBadge[]                     @relation("UserBadgeCreator")
   receivedGifts                UserGift[]                      @relation("UserGiftRecipient")
   grantedGifts                 UserGift[]                      @relation("UserGiftCreator")
+  appearancePreference         UserAppearancePreference?
+  activityEvents               UserActivityEvent[]
 
   @@map("users")
 }
@@ -270,6 +272,9 @@ model UserBadge {
   userId          Int       @map("user_id")
   label           String    @db.VarChar(40)
   note            String?   @db.VarChar(160)
+  status          String    @default("pending") @db.VarChar(20)
+  displayOnProfile Boolean  @default(false) @map("display_on_profile")
+  acceptedAt      DateTime? @map("accepted_at") @db.Timestamp(6)
   createdByUserId Int?      @map("created_by_user_id")
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
 
@@ -279,6 +284,7 @@ model UserBadge {
   @@unique([userId, label], map: "uq_user_badges_user_label")
   @@index([createdByUserId], map: "ix_user_badges_created_by_user_id")
   @@index([userId, createdAt], map: "ix_user_badges_user_created_at")
+  @@index([userId, status, createdAt], map: "ix_user_badges_user_status_created_at")
   @@map("user_badges")
 }
 
@@ -288,6 +294,9 @@ model UserGift {
   kind            String    @default("WOLO") @db.VarChar(40)
   amount          Int?
   note            String?   @db.VarChar(160)
+  status          String    @default("pending") @db.VarChar(20)
+  displayOnProfile Boolean  @default(false) @map("display_on_profile")
+  acceptedAt      DateTime? @map("accepted_at") @db.Timestamp(6)
   createdByUserId Int?      @map("created_by_user_id")
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
 
@@ -297,7 +306,36 @@ model UserGift {
   @@index([userId, createdAt], map: "ix_user_gifts_user_created_at")
   @@index([kind, createdAt], map: "ix_user_gifts_kind_created_at")
   @@index([createdByUserId], map: "ix_user_gifts_created_by_user_id")
+  @@index([userId, status, createdAt], map: "ix_user_gifts_user_status_created_at")
   @@map("user_gifts")
+}
+
+model UserAppearancePreference {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @unique(map: "uq_user_appearance_preferences_user_id") @map("user_id")
+  themeKey  String   @default("midnight") @map("theme_key") @db.VarChar(20)
+  viewMode  String   @default("steel") @map("view_mode") @db.VarChar(20)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("user_appearance_preferences")
+}
+
+model UserActivityEvent {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  type      String   @db.VarChar(40)
+  path      String?  @db.VarChar(160)
+  label     String?  @db.VarChar(80)
+  metadata  Json?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([userId, createdAt], map: "ix_user_activity_events_user_created_at")
+  @@index([type, createdAt], map: "ix_user_activity_events_type_created_at")
+  @@map("user_activity_events")
 }
 
 model alembic_version {

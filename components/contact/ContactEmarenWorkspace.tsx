@@ -121,6 +121,34 @@ export default function ContactEmarenWorkspace() {
       sendPending={sendPending}
       mode="page"
       onBodyChange={setBody}
+      onInboxAction={async (action) => {
+        setError(null);
+        try {
+          const response = await fetch("/api/contact-emaren", {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              targetUid: selectedTargetUid,
+              ...action,
+            }),
+          });
+
+          const payload = (await response.json().catch(() => ({}))) as
+            | ContactInboxPayload
+            | { detail?: string };
+
+          if (!response.ok) {
+            throw new Error(readDetail(payload) || "Inbox action failed.");
+          }
+
+          setData(payload as ContactInboxPayload);
+          setSelectedTargetUid((payload as ContactInboxPayload).activeTargetUid);
+        } catch (actionError) {
+          setError(actionError instanceof Error ? actionError.message : "Inbox action failed.");
+        }
+      }}
       onSelectConversation={(targetUid) => {
         setSelectedTargetUid(targetUid);
         void refresh(targetUid);
