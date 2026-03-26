@@ -403,7 +403,6 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
                 onThemeChange={setThemeKey}
                 tone={presentationTone}
                 size="sm"
-                label="Theme"
                 className="justify-end"
               />
             </div>
