@@ -59,12 +59,24 @@ function buildEnrichedEntry(entry: PublicPlayerDirectoryEntry): EnrichedLeaderbo
   };
 }
 
+function hasTrackedHistory(entry: EnrichedLeaderboardEntry) {
+  return entry.totalMatches > 0;
+}
+
 function hasSteamRmRating(entry: EnrichedLeaderboardEntry) {
   return typeof entry.steamRmRating === "number" && Number.isFinite(entry.steamRmRating);
 }
 
 function getPrimaryRatingValue(entry: EnrichedLeaderboardEntry) {
-  return hasSteamRmRating(entry) ? Math.round(entry.steamRmRating ?? BASE_ARENA_ELO) : entry.arenaElo;
+  if (hasSteamRmRating(entry)) {
+    return Math.round(entry.steamRmRating ?? BASE_ARENA_ELO);
+  }
+
+  if (!hasTrackedHistory(entry)) {
+    return null;
+  }
+
+  return entry.arenaElo;
 }
 
 function compareLeaderboardEntries(left: EnrichedLeaderboardEntry, right: EnrichedLeaderboardEntry) {
@@ -72,7 +84,7 @@ function compareLeaderboardEntries(left: EnrichedLeaderboardEntry, right: Enrich
   const rightPrimaryRating = getPrimaryRatingValue(right);
 
   if (leftPrimaryRating !== rightPrimaryRating) {
-    return rightPrimaryRating - leftPrimaryRating;
+    return (rightPrimaryRating ?? Number.NEGATIVE_INFINITY) - (leftPrimaryRating ?? Number.NEGATIVE_INFINITY);
   }
 
   if (hasSteamRmRating(left) !== hasSteamRmRating(right)) {
@@ -115,11 +127,25 @@ function buildLeaderboardSelection(entries: EnrichedLeaderboardEntry[]) {
     .filter((entry) => entry.totalMatches >= LOBBY_LEADERBOARD_MIN_MATCHES)
     .sort(compareLeaderboardEntries);
 
-  const selectedEntries = entries
+  const rankedEntries = entries
     .filter((entry) => entry.totalMatches > 0)
     .sort(compareLeaderboardEntries);
 
-  return { eligibleEntries, selectedEntries };
+  const pendingClaimedEntries = entries
+    .filter((entry) => entry.claimed && entry.totalMatches === 0)
+    .sort((left, right) => {
+      if (left.isOnline !== right.isOnline) {
+        return Number(right.isOnline) - Number(left.isOnline);
+      }
+
+      if (left.verified !== right.verified) {
+        return Number(right.verified) - Number(left.verified);
+      }
+
+      return left.name.localeCompare(right.name);
+    });
+
+  return { eligibleEntries, selectedEntries: [...rankedEntries, ...pendingClaimedEntries] };
 }
 
 function buildAliasEntryMap(entries: EnrichedLeaderboardEntry[]) {
@@ -250,15 +276,20 @@ function buildStreakLabel(entry: EnrichedLeaderboardEntry, games: PreparedLeader
 }
 
 function buildPrimaryRatingLabel(entry: EnrichedLeaderboardEntry) {
-  return String(Math.round(getPrimaryRatingValue(entry)));
+  const value = getPrimaryRatingValue(entry);
+  return value === null ? "Pending" : String(Math.round(value));
 }
 
 function buildPrimaryRatingSourceLabel(entry: EnrichedLeaderboardEntry) {
-  return hasSteamRmRating(entry) ? "Steam RM" : "Arena Elo";
+  if (hasSteamRmRating(entry)) {
+    return "Steam RM";
+  }
+
+  return hasTrackedHistory(entry) ? "Arena Elo" : "Profile";
 }
 
 function buildSecondaryRatingLabel(entry: EnrichedLeaderboardEntry) {
-  if (!hasSteamRmRating(entry)) {
+  if (!hasSteamRmRating(entry) || !hasTrackedHistory(entry)) {
     return null;
   }
 

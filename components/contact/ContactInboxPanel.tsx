@@ -114,10 +114,14 @@ function ReceiptLine({
 
   const copy =
     message.receipt.status === "read" && message.receipt.readAt
-      ? `Read ${formatTimestamp(message.receipt.readAt)}`
+      ? `Read at ${formatTimestamp(message.receipt.readAt)}`
       : "Sent";
 
-  return <div className="mt-2 text-[11px] uppercase tracking-[0.22em] text-slate-400/80">{copy}</div>;
+  return (
+    <div className="mt-2 text-right text-[10px] italic text-slate-400/80">
+      {copy}
+    </div>
+  );
 }
 
 function HonorActions({

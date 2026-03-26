@@ -14,22 +14,26 @@ export const dynamic = "force-dynamic";
 export default async function PlayersDirectoryPage() {
   const prisma = getPrisma();
   const directory = await loadPublicPlayerDirectory(prisma);
-  const offlineClaimed = directory.claimedEntries.filter((entry) => !entry.isOnline);
 
   return (
     <main className="space-y-5 py-5 text-white sm:space-y-6 sm:py-6">
       <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(34,197,94,0.16),_transparent_30%),linear-gradient(135deg,_#0f172a,_#111827_55%,_#020617)] p-6 sm:p-8">
-        <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr] lg:items-start">
-          <div className="space-y-3">
+        <div className="grid gap-7 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
+          <div className="space-y-5">
             <div className="text-sm uppercase tracking-[0.4em] text-emerald-200/70">
               Player Board
             </div>
-            <h1 className="max-w-3xl text-4xl font-semibold leading-tight text-white sm:text-5xl">
-              {directory.allEntries.length} warriors on board. Claimed profiles up top. Replay-built challengers below.
+            <h1 className="max-w-3xl text-4xl font-semibold leading-[1.02] text-white sm:text-5xl">
+              {directory.allEntries.length} warriors on board.
             </h1>
-            <p className="max-w-2xl text-sm leading-6 text-slate-300 sm:text-base">
-              Steam-linked accounts, live players, and replay-built names all surface here with the strongest signal first.
-            </p>
+
+            <div className="flex flex-wrap gap-2">
+              <HeroPill>{directory.claimedEntries.length} Claimed Profiles</HeroPill>
+              <HeroPill live>
+                {directory.activeClaimed.length} Live Now
+              </HeroPill>
+              <HeroPill>{directory.replayEntries.length} Claimable</HeroPill>
+            </div>
 
             <div className="flex flex-wrap gap-3">
               <Link
@@ -47,9 +51,15 @@ export default async function PlayersDirectoryPage() {
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+          <div className="grid gap-3 sm:grid-cols-2">
             <StatCard label="On Board" value={String(directory.allEntries.length)} />
-            <StatCard label="Live Now" value={String(directory.activeClaimed.length)} />
+            <StatCard label="Claimed" value={String(directory.claimedEntries.length)} />
+            <StatCard
+              label="Live Now"
+              value={String(directory.activeClaimed.length)}
+              live
+              helper="Realtime site activity"
+            />
             <StatCard label="Claimable" value={String(directory.replayEntries.length)} />
           </div>
         </div>
@@ -60,6 +70,7 @@ export default async function PlayersDirectoryPage() {
           title="Online Now"
           eyebrow="Live Lobby"
           count={directory.activeClaimed.length}
+          status={<LiveSignal label="Calculating live" />}
         >
           <div className="space-y-3">
             {directory.activeClaimed.length === 0 ? (
@@ -75,13 +86,13 @@ export default async function PlayersDirectoryPage() {
         <Panel
           title="Claimed Profiles"
           eyebrow="Persistent Identity"
-          count={offlineClaimed.length}
+          count={directory.claimedEntries.length}
         >
           <div className="space-y-3">
-            {offlineClaimed.length === 0 ? (
-              <EmptyPanel message="No additional claimed profiles yet." />
+            {directory.claimedEntries.length === 0 ? (
+              <EmptyPanel message="No claimed profiles yet." />
             ) : (
-              offlineClaimed.slice(0, 18).map((entry) => (
+              directory.claimedEntries.slice(0, 18).map((entry) => (
                 <PlayerCard key={entry.key} entry={entry} accent="amber" />
               ))
             )}
@@ -199,11 +210,13 @@ function Panel({
   title,
   eyebrow,
   count,
+  status,
   children,
 }: {
   title: string;
   eyebrow: string;
   count?: number;
+  status?: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -213,22 +226,39 @@ function Panel({
           <div className="text-xs uppercase tracking-[0.35em] text-white/45">{eyebrow}</div>
           <h2 className="mt-2 text-2xl font-semibold text-white">{title}</h2>
         </div>
-        {typeof count === "number" ? (
-          <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-            {count}
-          </div>
-        ) : null}
+        <div className="flex flex-wrap items-center gap-2">
+          {status}
+          {typeof count === "number" ? (
+            <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+              {count}
+            </div>
+          ) : null}
+        </div>
       </div>
       <div className="mt-4">{children}</div>
     </section>
   );
 }
 
-function StatCard({ label, value }: { label: string; value: string }) {
+function StatCard({
+  label,
+  value,
+  live = false,
+  helper,
+}: {
+  label: string;
+  value: string;
+  live?: boolean;
+  helper?: string;
+}) {
   return (
     <div className="rounded-[1.4rem] border border-white/10 bg-white/5 px-4 py-4">
-      <div className="text-xs uppercase tracking-[0.25em] text-slate-400">{label}</div>
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-xs uppercase tracking-[0.25em] text-slate-400">{label}</div>
+        {live ? <LiveSignal label="Now" compact /> : null}
+      </div>
       <div className="mt-2 text-2xl font-semibold text-white">{value}</div>
+      {helper ? <div className="mt-2 text-xs text-slate-400">{helper}</div> : null}
     </div>
   );
 }
@@ -278,5 +308,53 @@ function EmptyPanel({ message }: { message: string }) {
     <div className="rounded-2xl border border-white/8 bg-white/5 px-4 py-5 text-sm text-slate-300">
       {message}
     </div>
+  );
+}
+
+function LiveSignal({
+  label,
+  compact = false,
+}: {
+  label: string;
+  compact?: boolean;
+}) {
+  return (
+    <div
+      className={`inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-500/10 text-emerald-100 ${
+        compact ? "px-2 py-0.5 text-[10px]" : "px-3 py-1 text-xs"
+      }`}
+    >
+      <span className="relative flex h-2.5 w-2.5">
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-300/75" />
+        <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-300" />
+      </span>
+      <span>{label}</span>
+    </div>
+  );
+}
+
+function HeroPill({
+  children,
+  live = false,
+}: {
+  children: ReactNode;
+  live?: boolean;
+}) {
+  return (
+    <span
+      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs ${
+        live
+          ? "border-emerald-400/20 bg-emerald-500/10 text-emerald-100"
+          : "border-white/10 bg-white/5 text-slate-300"
+      }`}
+    >
+      {live ? (
+        <span className="relative flex h-2.5 w-2.5">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-300/75" />
+          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-300" />
+        </span>
+      ) : null}
+      {children}
+    </span>
   );
 }
