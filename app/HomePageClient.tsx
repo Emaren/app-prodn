@@ -396,8 +396,8 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
             onViewModeChange={setViewMode}
           />
 
-          <div className="space-y-6">
-            <div className="flex min-h-[2.25rem] justify-end">
+          <div className="space-y-4">
+            <div className="flex min-h-[2rem] justify-end">
               <LobbyThemePicker
                 themeKey={themeKey}
                 onThemeChange={setThemeKey}
