@@ -14,22 +14,21 @@ export const dynamic = "force-dynamic";
 export default async function PlayersDirectoryPage() {
   const prisma = getPrisma();
   const directory = await loadPublicPlayerDirectory(prisma);
+  const offlineClaimed = directory.claimedEntries.filter((entry) => !entry.isOnline);
 
   return (
-    <main className="space-y-6 py-6 text-white">
-      <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(34,197,94,0.16),_transparent_30%),linear-gradient(135deg,_#0f172a,_#111827_55%,_#020617)] p-8">
-        <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
-          <div className="space-y-4">
+    <main className="space-y-5 py-5 text-white sm:space-y-6 sm:py-6">
+      <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(34,197,94,0.16),_transparent_30%),linear-gradient(135deg,_#0f172a,_#111827_55%,_#020617)] p-6 sm:p-8">
+        <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr] lg:items-start">
+          <div className="space-y-3">
             <div className="text-sm uppercase tracking-[0.4em] text-emerald-200/70">
-              Player Graph
+              Player Board
             </div>
             <h1 className="max-w-3xl text-4xl font-semibold leading-tight text-white sm:text-5xl">
-              Claimed profiles, live warriors, and replay-built identities all in one directory.
+              {directory.allEntries.length} warriors on board. Claimed profiles up top. Replay-built challengers below.
             </h1>
-            <p className="max-w-3xl text-base leading-7 text-slate-300 sm:text-lg">
-              This is where AoE2HDBets starts to feel like a real network. Claimed players build
-              public profiles, replay-only opponents get discoverable warrior pages, and every new
-              match makes the graph denser.
+            <p className="max-w-2xl text-sm leading-6 text-slate-300 sm:text-base">
+              Steam-linked accounts, live players, and replay-built names all surface here with the strongest signal first.
             </p>
 
             <div className="flex flex-wrap gap-3">
@@ -49,18 +48,22 @@ export default async function PlayersDirectoryPage() {
           </div>
 
           <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-            <StatCard label="Public Profiles" value={String(directory.allEntries.length)} />
-            <StatCard label="Claimed Players" value={String(directory.claimedEntries.length)} />
-            <StatCard label="Replay-Built Warriors" value={String(directory.replayEntries.length)} />
+            <StatCard label="On Board" value={String(directory.allEntries.length)} />
+            <StatCard label="Live Now" value={String(directory.activeClaimed.length)} />
+            <StatCard label="Claimable" value={String(directory.replayEntries.length)} />
           </div>
         </div>
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[0.88fr_1.12fr]">
-        <Panel title="Online Now" eyebrow="Live Lobby">
+        <Panel
+          title="Online Now"
+          eyebrow="Live Lobby"
+          count={directory.activeClaimed.length}
+        >
           <div className="space-y-3">
             {directory.activeClaimed.length === 0 ? (
-              <EmptyPanel message="No claimed players are live right now. As soon as signed-in players browse the site, they show up here." />
+              <EmptyPanel message="No claimed players are live right now." />
             ) : (
               directory.activeClaimed.slice(0, 12).map((entry) => (
                 <PlayerCard key={entry.key} entry={entry} accent="emerald" />
@@ -69,12 +72,16 @@ export default async function PlayersDirectoryPage() {
           </div>
         </Panel>
 
-        <Panel title="Claimed Profiles" eyebrow="Persistent Identity">
+        <Panel
+          title="Claimed Profiles"
+          eyebrow="Persistent Identity"
+          count={offlineClaimed.length}
+        >
           <div className="space-y-3">
-            {directory.claimedEntries.length === 0 ? (
-              <EmptyPanel message="No claimed profiles yet. Steam sign-in plus one verified replay is enough to start the public graph." />
+            {offlineClaimed.length === 0 ? (
+              <EmptyPanel message="No additional claimed profiles yet." />
             ) : (
-              directory.claimedEntries.slice(0, 18).map((entry) => (
+              offlineClaimed.slice(0, 18).map((entry) => (
                 <PlayerCard key={entry.key} entry={entry} accent="amber" />
               ))
             )}
@@ -82,21 +89,18 @@ export default async function PlayersDirectoryPage() {
         </Panel>
       </section>
 
-      <Panel title="Replay-Built Warriors" eyebrow="Claimable Identities">
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <p className="max-w-3xl text-sm leading-6 text-slate-300">
-            These pages were generated from parsed replays. They are meant to pull real AoE2HD
-            opponents into the network: each one already has a public link, match history, and a
-            claim path.
-          </p>
-          <div className="rounded-full border border-rose-300/20 bg-rose-400/10 px-3 py-1 text-xs text-rose-100">
-            {directory.replayEntries.length} claimable warriors
-          </div>
+      <Panel
+        title="Replay-Built Warriors"
+        eyebrow="Claimable Identities"
+        count={directory.replayEntries.length}
+      >
+        <div className="mb-4 text-sm leading-6 text-slate-300">
+          Parsed opponents land here with a public page and a clean claim path.
         </div>
 
         <div className="grid gap-4 lg:grid-cols-2">
           {directory.replayEntries.length === 0 ? (
-            <EmptyPanel message="No replay-only opponents yet. As soon as a new unclaimed name shows up in a final replay, it lands here." />
+            <EmptyPanel message="No replay-only opponents yet." />
           ) : (
             directory.replayEntries.slice(0, 24).map((entry) => (
               <PlayerCard key={entry.key} entry={entry} accent="rose" />
@@ -144,42 +148,43 @@ function PlayerCard({
                 : `steam linked · level ${entry.verificationLevel}`
               : "replay-built warrior"}
           </div>
-          {entry.claimed ? (
-            <div className="mt-3 flex flex-wrap gap-2">
-              <SteamLinkedBadge compact />
-              {entry.verified ? <Tag>Replay verified</Tag> : null}
-              {entry.badges.map((badge) => (
-                <CommunityBadgePill key={badge.id} label={badge.label} />
-              ))}
-            </div>
-          ) : entry.badges.length > 0 ? (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {entry.badges.map((badge) => (
-                <CommunityBadgePill key={badge.id} label={badge.label} />
-              ))}
-            </div>
-          ) : null}
         </div>
         <div className={`rounded-full border px-3 py-1 text-xs ${badgeStyles}`}>
           {entry.claimed ? (entry.isOnline ? "Online" : "Profile") : "Claimable"}
         </div>
       </div>
 
-      <div className="mt-5 grid gap-3 sm:grid-cols-3">
-        <Stat label="Steam" value={formatRating(entry.steamRmRating)} />
-        <Stat label="RM Ladder" value={formatRating(entry.steamDmRating)} />
+      {entry.claimed ? (
+        <div className="mt-3 flex flex-wrap gap-2">
+          <SteamLinkedBadge compact />
+          {entry.verified ? <Tag>Replay verified</Tag> : null}
+          {entry.badges.map((badge) => (
+            <CommunityBadgePill key={badge.id} label={badge.label} />
+          ))}
+        </div>
+      ) : entry.badges.length > 0 ? (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {entry.badges.map((badge) => (
+            <CommunityBadgePill key={badge.id} label={badge.label} />
+          ))}
+        </div>
+      ) : null}
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-4">
+        <Stat label="Steam RM" value={formatRating(entry.steamRmRating)} />
+        <Stat label="Steam DM" value={formatRating(entry.steamDmRating)} />
         <Stat label="Matches" value={String(entry.totalMatches)} />
-        <Stat label="Wins" value={String(entry.wins)} />
-        <Stat label="Losses" value={String(entry.losses)} />
-        <Stat label="Unknown" value={String(entry.unknowns)} />
+        <Stat label="Record" value={formatRecord(entry)} />
       </div>
 
-      <div className="mt-5 flex flex-wrap gap-2">
-        {entry.aliases.slice(0, 4).map((alias) => (
-          <Tag key={alias}>{alias}</Tag>
-        ))}
-        {entry.aliases.length > 4 ? <Tag>+{entry.aliases.length - 4} aliases</Tag> : null}
-      </div>
+      {visibleAliases(entry).length > 0 ? (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {visibleAliases(entry).map((alias) => (
+            <Tag key={alias}>{alias}</Tag>
+          ))}
+          {hiddenAliasCount(entry) > 0 ? <Tag>+{hiddenAliasCount(entry)} more</Tag> : null}
+        </div>
+      ) : null}
 
       <div className="mt-4 text-xs text-slate-400">
         {entry.lastPlayedAt
@@ -193,17 +198,28 @@ function PlayerCard({
 function Panel({
   title,
   eyebrow,
+  count,
   children,
 }: {
   title: string;
   eyebrow: string;
+  count?: number;
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-[1.75rem] border border-white/10 bg-slate-950/70 p-6">
-      <div className="text-xs uppercase tracking-[0.35em] text-white/45">{eyebrow}</div>
-      <h2 className="mt-2 text-2xl font-semibold text-white">{title}</h2>
-      <div className="mt-5">{children}</div>
+    <section className="rounded-[1.75rem] border border-white/10 bg-slate-950/70 p-5 sm:p-6">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <div className="text-xs uppercase tracking-[0.35em] text-white/45">{eyebrow}</div>
+          <h2 className="mt-2 text-2xl font-semibold text-white">{title}</h2>
+        </div>
+        {typeof count === "number" ? (
+          <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+            {count}
+          </div>
+        ) : null}
+      </div>
+      <div className="mt-4">{children}</div>
     </section>
   );
 }
@@ -219,7 +235,7 @@ function StatCard({ label, value }: { label: string; value: string }) {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-white/8 bg-slate-950/60 px-3 py-3">
+    <div className="rounded-xl border border-white/8 bg-slate-950/60 px-3 py-3">
       <div className="text-[11px] uppercase tracking-[0.25em] text-slate-500">{label}</div>
       <div className="mt-2 text-sm font-medium text-slate-200">{value}</div>
     </div>
@@ -228,6 +244,25 @@ function Stat({ label, value }: { label: string; value: string }) {
 
 function formatRating(value: number | null) {
   return typeof value === "number" && Number.isFinite(value) ? String(Math.round(value)) : "Unknown";
+}
+
+function formatRecord(entry: PublicPlayerDirectoryEntry) {
+  const base = `${entry.wins}-${entry.losses}`;
+  return entry.unknowns > 0 ? `${base}-${entry.unknowns}` : base;
+}
+
+function visibleAliases(entry: PublicPlayerDirectoryEntry) {
+  return entry.aliases
+    .filter((alias) => alias.trim().toLowerCase() !== entry.name.trim().toLowerCase())
+    .slice(0, 2);
+}
+
+function hiddenAliasCount(entry: PublicPlayerDirectoryEntry) {
+  const visibleCount = visibleAliases(entry).length;
+  const uniqueAliases = entry.aliases.filter(
+    (alias) => alias.trim().toLowerCase() !== entry.name.trim().toLowerCase()
+  );
+  return Math.max(0, uniqueAliases.length - visibleCount);
 }
 
 function Tag({ children }: { children: ReactNode }) {

@@ -363,51 +363,43 @@ export default function ContactInboxPanel({
   const counterpart = data?.activeCounterpart ?? null;
   const activeTargetUid = data?.activeTargetUid ?? null;
   const showConversationRail = Boolean(data?.viewer.isAdmin && (data?.summaries.length ?? 0) > 0);
+  const unreadCount = data?.totalUnreadCount ?? 0;
+  const heading = data?.viewer.isAdmin ? "Direct Threads" : counterpart?.displayName || "Private Thread";
 
   return (
     <div
       className={`overflow-hidden rounded-[1.5rem] border border-white/10 bg-slate-950/95 text-white shadow-2xl ${
-        mode === "page" ? "min-h-[42rem]" : "w-[24rem] max-w-[calc(100vw-2rem)]"
+        mode === "page" ? "min-h-[40rem]" : "w-[24rem] max-w-[calc(100vw-2rem)]"
       }`}
     >
       <div className="border-b border-white/10 px-4 py-4">
         <div className="flex items-start justify-between gap-3">
           <div>
             <div className="text-[11px] uppercase tracking-[0.3em] text-amber-200/70">
-              {data?.viewer.isAdmin ? "Private Inbox" : "Contact Emaren"}
+              {data?.viewer.isAdmin ? "Private Inbox" : "Direct Line"}
             </div>
-            <h2 className="mt-2 text-xl font-semibold text-white">
-              {data?.viewer.isAdmin ? "Direct Threads" : "1 on 1 conversation"}
-            </h2>
+            <h2 className="mt-2 text-xl font-semibold text-white">{heading}</h2>
           </div>
-          <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-            {data?.totalUnreadCount ?? 0} unread
-          </div>
+          {unreadCount > 0 ? (
+            <div className="rounded-full border border-red-400/30 bg-red-500/15 px-3 py-1 text-xs text-red-100">
+              {unreadCount} unread
+            </div>
+          ) : null}
         </div>
 
         {counterpart ? (
-          <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 px-3 py-3">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <div className="text-sm font-semibold text-white">{counterpart.displayName}</div>
-                <div className="mt-1 text-[11px] uppercase tracking-[0.24em] text-slate-400">
-                  {counterpart.isAdmin ? "Emaren admin thread" : "Direct community line"}
-                </div>
-              </div>
-              {counterpart.giftedWolo > 0 ? (
-                <div className="rounded-full border border-amber-300/30 bg-amber-400/10 px-2.5 py-1 text-[11px] text-amber-100">
-                  {counterpart.giftedWolo} WOLO live
-                </div>
-              ) : null}
-            </div>
-
-            {counterpart.badges.length > 0 ? (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {counterpart.badges.map((badge) => (
-                  <CommunityBadgePill key={badge.id} label={badge.label} />
-                ))}
-              </div>
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-300">
+            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">
+              {counterpart.isAdmin ? "Emaren admin thread" : "Private community line"}
+            </span>
+            {counterpart.giftedWolo > 0 ? (
+              <span className="rounded-full border border-amber-300/30 bg-amber-400/10 px-3 py-1 text-amber-100">
+                {counterpart.giftedWolo} WOLO live
+              </span>
             ) : null}
+            {counterpart.badges.map((badge) => (
+              <CommunityBadgePill key={badge.id} label={badge.label} />
+            ))}
           </div>
         ) : null}
       </div>
@@ -465,8 +457,8 @@ export default function ContactInboxPanel({
             ) : (data?.messages.length ?? 0) === 0 ? (
               <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-5 text-sm text-slate-300">
                 {data?.viewer.isAdmin
-                  ? "No messages in this thread yet. Once either side says hello, the private line begins here."
-                  : "No messages yet. This is your direct line to Emaren."}
+                  ? "No messages in this thread yet."
+                  : "No messages yet. Say hello."}
               </div>
             ) : (
               data?.messages.map((message) => (
@@ -487,7 +479,7 @@ export default function ContactInboxPanel({
                 value={body}
                 onChange={(event) => onBodyChange(event.target.value)}
                 placeholder={buildPrompt(data, counterpart?.displayName ?? null)}
-                className="min-h-[4.25rem] flex-1 resize-none rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-amber-300/35 focus:bg-white/7"
+                className="min-h-[3.8rem] flex-1 resize-none rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-amber-300/35 focus:bg-white/7"
               />
               <button
                 type="button"

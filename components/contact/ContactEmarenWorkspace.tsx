@@ -90,7 +90,7 @@ export default function ContactEmarenWorkspace() {
 
   if (loading) {
     return (
-      <div className="rounded-[1.75rem] border border-white/10 bg-slate-950/70 px-6 py-10 text-white">
+      <div className="rounded-[1.75rem] border border-white/10 bg-slate-950/70 px-5 py-8 text-white sm:px-6 sm:py-10">
         Loading your direct line...
       </div>
     );
@@ -98,12 +98,11 @@ export default function ContactEmarenWorkspace() {
 
   if (!isAuthenticated) {
     return (
-      <div className="rounded-[1.75rem] border border-white/10 bg-slate-950/70 px-6 py-10 text-white">
+      <div className="rounded-[1.75rem] border border-white/10 bg-slate-950/70 px-5 py-8 text-white sm:px-6 sm:py-10">
         <div className="text-xs uppercase tracking-[0.35em] text-amber-200/70">Contact Emaren</div>
-        <h1 className="mt-3 text-3xl font-semibold text-white">Sign in to open the private line.</h1>
-        <p className="mt-4 max-w-2xl text-base leading-7 text-slate-300">
-          Steam sign-in keeps the conversation tied to a real AoE2HDBets identity, which makes the
-          first wave of community contact feel personal instead of anonymous.
+        <h1 className="mt-3 text-3xl font-semibold text-white">Sign in to message Emaren.</h1>
+        <p className="mt-4 max-w-xl text-sm leading-6 text-slate-300 sm:text-base">
+          Steam sign-in keeps the line personal and tied to a real AoE2HDBets identity.
         </p>
         <div className="mt-6">
           <SteamLoginButton className="rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200" />
