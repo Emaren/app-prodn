@@ -702,6 +702,19 @@ async function loadConversationMessages(
     counterpartParticipant?.typingUpdatedAt &&
       Date.now() - counterpartParticipant.typingUpdatedAt.getTime() <= DIRECT_MESSAGE_TYPING_WINDOW_MS
   );
+  const latestOutgoingTextMessage =
+    [...conversation.messages].reverse().find((message) => message.senderUserId === viewerUserId) ?? null;
+  const latestReadOutgoingTextMessage =
+    counterpartParticipant?.lastReadAt
+      ? [...conversation.messages]
+          .reverse()
+          .find(
+            (message) =>
+              message.senderUserId === viewerUserId &&
+              counterpartParticipant.lastReadAt &&
+              counterpartParticipant.lastReadAt.getTime() >= message.createdAt.getTime()
+          ) ?? null
+      : null;
 
   const messageEvents: InboxMessage[] = conversation.messages.map((message) => {
     const sender = conversation.participants.find(
@@ -712,10 +725,12 @@ async function loadConversationMessages(
         ? senderCommunityMap.get(sender.id)
         : { badges: [], gifts: [], giftedWolo: 0 };
 
+    const isReceiptAnchor =
+      sender?.id === viewerUserId && latestOutgoingTextMessage?.id === message.id;
     const readAt =
-      sender?.id === viewerUserId &&
-      counterpartParticipant?.lastReadAt &&
-      counterpartParticipant.lastReadAt.getTime() >= message.createdAt.getTime()
+      isReceiptAnchor &&
+      latestReadOutgoingTextMessage?.id === message.id &&
+      counterpartParticipant?.lastReadAt
         ? counterpartParticipant.lastReadAt.toISOString()
         : null;
 
@@ -729,7 +744,7 @@ async function loadConversationMessages(
       attachment: buildMessageAttachment(message),
       reactions: buildMessageReactions(message.reactions, viewerUserId),
       receipt:
-        sender?.id === viewerUserId
+        isReceiptAnchor
           ? {
               status: readAt ? "read" : "sent",
               readAt,

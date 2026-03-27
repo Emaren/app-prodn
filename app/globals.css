@@ -10,3 +10,16 @@ html, body {
     background-color: #111827; /* Dark background */
     color: white;
 }
+
+a[href],
+button,
+label[for],
+[role="button"],
+summary {
+    cursor: pointer;
+}
+
+button:disabled,
+[aria-disabled="true"] {
+    cursor: not-allowed;
+}

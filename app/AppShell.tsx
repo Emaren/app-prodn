@@ -20,12 +20,12 @@ const HEADER_LINKS: ReadonlyArray<{
   label: string;
   countKey?: "requests";
 }> = [
-  { href: "/requests", label: "Requests", countKey: "requests" },
   { href: "/players", label: "Players" },
   { href: "/rivalries", label: "Rivalries" },
   { href: "/wolo", label: "$WOLO" },
   { href: "/roadmap", label: "Roadmap" },
   { href: "/about", label: "About" },
+  { href: "/requests", label: "Requests", countKey: "requests" },
 ];
 
 function InnerShell({ children }: { children: React.ReactNode }) {

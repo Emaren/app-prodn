@@ -301,31 +301,6 @@ function DateDivider({ label }: { label: string }) {
   );
 }
 
-function MessageReactionSummary({
-  reactions,
-}: {
-  reactions: Extract<ContactInboxMessage, { kind: "text" }>["reactions"];
-}) {
-  if (reactions.length === 0) {
-    return null;
-  }
-
-  return (
-    <div className="mt-2 flex flex-wrap gap-2">
-      {reactions.map((reaction) => (
-        <div
-          key={reaction.emoji}
-          className={`rounded-full px-2.5 py-1 text-[11px] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)] ${
-            reaction.viewerReacted ? "bg-amber-400/12 text-amber-100" : "bg-white/[0.06] text-slate-300"
-          }`}
-        >
-          {reaction.emoji} {reaction.count}
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function TextMessageBubble({
   message,
   viewerUid,
@@ -418,7 +393,7 @@ function TextMessageBubble({
 
         {onToggleReaction ? (
           <div
-            className={`absolute top-full z-20 mt-2 flex max-w-[19rem] flex-wrap gap-2 rounded-full bg-slate-950/96 px-2 py-2 shadow-[0_16px_40px_rgba(0,0,0,0.42)] transition ${
+            className={`absolute top-full z-20 mt-1 flex max-w-[19rem] flex-wrap gap-2 rounded-full bg-slate-950/96 px-2 py-2 shadow-[0_16px_40px_rgba(0,0,0,0.42)] transition ${
               isViewer ? "right-0" : "left-0"
             } ${
               pickerPinned
@@ -437,6 +412,7 @@ function TextMessageBubble({
                     onToggleReaction(message.messageId, emoji);
                     setPickerPinned(false);
                   }}
+                  aria-pressed={isActive}
                   disabled={reactingMessageId === message.messageId}
                   className={`rounded-full px-2.5 py-1 text-xs transition ${
                     isActive
@@ -444,14 +420,14 @@ function TextMessageBubble({
                       : "bg-white/[0.06] text-slate-200 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.07)] hover:bg-white/[0.12]"
                   } disabled:cursor-not-allowed disabled:opacity-60`}
                 >
-                  {emoji}
+                  <span>{emoji}</span>
+                  {existing?.count ? <span className="ml-1 text-[10px]">{existing.count}</span> : null}
                 </button>
               );
             })}
           </div>
         ) : null}
 
-        <MessageReactionSummary reactions={message.reactions} />
         <ReceiptLine message={message} />
       </div>
     </div>

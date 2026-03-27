@@ -50,15 +50,13 @@ export default async function GameStatsPage() {
     <main className="space-y-6 py-6 text-white">
       <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(56,189,248,0.16),_transparent_35%),linear-gradient(135deg,_#0f172a,_#0f172a_55%,_#111827)] p-8">
         <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div className="text-sm uppercase tracking-[0.4em] text-sky-200/70">Parser Lab</div>
             <h1 className="max-w-3xl text-4xl font-semibold leading-tight text-white sm:text-5xl">
-              Every final replay, every recent failure, and the exact parser trail behind them.
+              Final replays, parse misses, and fresh uploads.
             </h1>
-            <p className="max-w-3xl text-base leading-7 text-slate-300 sm:text-lg">
-              This is the workbench for making AoE2HDBets trustworthy. Final parses link into full
-              detail pages. Failed attempts stay visible so we can tighten the watcher and parser
-              instead of losing the evidence.
+            <p className="max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
+              Track what landed, what failed, and what needs another pass.
             </p>
 
             <div className="flex flex-wrap gap-3">

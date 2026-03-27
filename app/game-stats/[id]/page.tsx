@@ -257,25 +257,22 @@ export default async function GameStatsDetailPage({
                         </div>
                       </div>
 
-                      <dl className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                        <StatRow label="Steam ID" value={formatPrimitive(readPlayerSteamId(player))} compact />
-                        <StatRow
-                          label="Steam Rating"
+                      <dl className="mt-5 grid gap-3 sm:grid-cols-2">
+                        <PlayerMetric label="Steam ID" value={formatPrimitive(readPlayerSteamId(player))} />
+                        <PlayerMetric
+                          label="RM Rating"
                           value={formatRatingMetric(readPlayerSteamRmRating(player))}
-                          compact
                         />
-                        <StatRow
-                          label="RM Ladder"
+                        <PlayerMetric
+                          label="DM Rating"
                           value={formatRatingMetric(readPlayerSteamDmRating(player))}
-                          compact
                         />
-                        <StatRow label="EAPM" value={formatPrimitive(player.eapm)} compact />
-                        <StatRow
+                        <PlayerMetric label="EAPM" value={formatPrimitive(player.eapm)} />
+                        <PlayerMetric
                           label="Starting Position"
                           value={formatPositionValue(player.position)}
-                          compact
                         />
-                        <StatRow label="Score" value={formatPrimitive(player.score)} compact />
+                        <PlayerMetric label="Score" value={formatPrimitive(player.score)} />
                       </dl>
 
                       <div className="mt-5 space-y-4">
@@ -460,6 +457,15 @@ function EmptyPanel({ message }: { message: string }) {
   return (
     <div className="rounded-2xl border border-white/8 bg-white/5 px-4 py-5 text-sm text-slate-300">
       {message}
+    </div>
+  );
+}
+
+function PlayerMetric({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="rounded-[1rem] border border-white/8 bg-slate-950/40 px-3 py-3">
+      <dt className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{label}</dt>
+      <dd className="mt-1 text-sm font-medium text-slate-100">{value}</dd>
     </div>
   );
 }
