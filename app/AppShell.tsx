@@ -15,41 +15,58 @@ import { Toaster } from "sonner";
 import { Providers } from "./Providers";
 import { UserAuthProvider, useUserAuth } from "@/context/UserAuthContext";
 
-const HEADER_LINKS = [
+const HEADER_LINKS: ReadonlyArray<{
+  href: string;
+  label: string;
+  countKey?: "requests";
+}> = [
+  { href: "/requests", label: "Requests", countKey: "requests" },
   { href: "/players", label: "Players" },
   { href: "/rivalries", label: "Rivalries" },
   { href: "/wolo", label: "$WOLO" },
   { href: "/roadmap", label: "Roadmap" },
   { href: "/about", label: "About" },
-] as const;
+];
 
 function InnerShell({ children }: { children: React.ReactNode }) {
   const { uid, playerName, setPlayerName } = useUserAuth();
   const { themeKey, setThemeKey, presentationTone, pageStyle } = useLobbyAppearance();
   const [pendingBetsCount] = React.useState(0);
   const [liveGamesCount, setLiveGamesCount] = React.useState(0);
+  const [requestCount, setRequestCount] = React.useState(0);
   const headerSkin = getLobbyHeaderSkin(themeKey);
 
   React.useEffect(() => {
     let cancelled = false;
 
-    async function loadLiveGamesSummary() {
+    async function loadHeaderCounts() {
       try {
-        const response = await fetch("/api/live-games?summary=1", { cache: "no-store" });
-        if (!response.ok) return;
+        const [liveResponse, requestsResponse] = await Promise.all([
+          fetch("/api/live-games?summary=1", { cache: "no-store" }),
+          fetch("/api/requests?summary=1", { cache: "no-store" }),
+        ]);
 
-        const payload = (await response.json()) as { liveCount?: number };
+        const livePayload = liveResponse.ok
+          ? ((await liveResponse.json()) as { liveCount?: number })
+          : {};
+        const requestsPayload = requestsResponse.ok
+          ? ((await requestsResponse.json()) as { openCount?: number })
+          : {};
+
         if (!cancelled) {
-          setLiveGamesCount(typeof payload.liveCount === "number" ? payload.liveCount : 0);
+          setLiveGamesCount(typeof livePayload.liveCount === "number" ? livePayload.liveCount : 0);
+          setRequestCount(
+            typeof requestsPayload.openCount === "number" ? requestsPayload.openCount : 0
+          );
         }
       } catch (error) {
-        console.warn("Failed to load live games summary:", error);
+        console.warn("Failed to load header counts:", error);
       }
     }
 
-    void loadLiveGamesSummary();
+    void loadHeaderCounts();
     const interval = window.setInterval(() => {
-      void loadLiveGamesSummary();
+      void loadHeaderCounts();
     }, 30_000);
 
     return () => {
@@ -90,7 +107,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                   href={link.href}
                   className={`rounded-full border px-3 py-1 text-xs transition ${headerSkin.surface}`}
                 >
-                  {link.label}
+                  {link.countKey === "requests" ? `${requestCount} ${link.label}` : link.label}
                 </Link>
               ))}
             </nav>
@@ -104,6 +121,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                   setPlayerName={setPlayerName}
                   uid={uid}
                   liveGamesCount={liveGamesCount}
+                  requestCount={requestCount}
                   buttonClassName={headerSkin.surface}
                   menuClassName={headerSkin.popover}
                   linkClassName={headerSkin.menuItem}

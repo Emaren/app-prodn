@@ -47,30 +47,30 @@ export default function ContactRichComposer({
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="text-xs uppercase tracking-[0.28em] text-slate-400">
+        <div className="text-xs uppercase tracking-[0.28em] text-slate-500">
           {counterpartName ? `Replying to ${counterpartName}` : "Private reply"}
         </div>
-        <div className="text-xs text-slate-500">
+        <div className="text-xs text-slate-600">
           Enter sends. Shift+Enter keeps writing.
         </div>
       </div>
 
       {attachment ? (
-        <div className="rounded-[1.25rem] border border-white/10 bg-white/5 p-3">
+        <div className="rounded-[1.25rem] bg-white/[0.05] p-3 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <div className="text-xs uppercase tracking-[0.24em] text-slate-400">
+              <div className="text-xs uppercase tracking-[0.24em] text-slate-500">
                 {attachment.kind === "image" ? "Screenshot attached" : "Voice note attached"}
               </div>
               <div className="mt-1 text-sm font-medium text-white">{attachment.name}</div>
               {attachment.durationSeconds ? (
-                <div className="mt-1 text-xs text-slate-400">{attachment.durationSeconds}s</div>
+                <div className="mt-1 text-xs text-slate-500">{attachment.durationSeconds}s</div>
               ) : null}
             </div>
             <button
               type="button"
               onClick={onClearAttachment}
-              className="rounded-full border border-white/10 bg-white/5 p-2 text-slate-300 transition hover:border-white/20 hover:text-white"
+              className="rounded-full bg-white/[0.06] p-2 text-slate-300 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)] transition hover:bg-white/[0.1] hover:text-white"
               aria-label="Remove attachment"
             >
               <X className="h-4 w-4" />
@@ -92,7 +92,7 @@ export default function ContactRichComposer({
         </div>
       ) : null}
 
-      <div className="rounded-[1.35rem] border border-white/10 bg-white/5 p-3">
+      <div className="rounded-[1.35rem] bg-white/[0.055] p-3 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]">
         <textarea
           value={body}
           onChange={(event) => onBodyChange(event.target.value)}
@@ -108,7 +108,7 @@ export default function ContactRichComposer({
           className="min-h-[6.5rem] w-full resize-none bg-transparent px-1 py-1 text-sm leading-6 text-white outline-none placeholder:text-slate-500"
         />
 
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-3">
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-white/8 pt-3">
           <div className="flex flex-wrap items-center gap-2">
             <input
               id={inputId}
@@ -126,7 +126,7 @@ export default function ContactRichComposer({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200 transition hover:border-white/20 hover:text-white"
+              className="inline-flex items-center gap-2 rounded-full bg-white/[0.06] px-3 py-2 text-sm text-slate-200 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)] transition hover:bg-white/[0.1] hover:text-white"
             >
               <ImagePlus className="h-4 w-4" />
               Screenshot
@@ -136,7 +136,7 @@ export default function ContactRichComposer({
               type="button"
               onClick={onToggleVoiceRecording}
               disabled={!voiceSupported}
-              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200 transition hover:border-white/20 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-full bg-white/[0.06] px-3 py-2 text-sm text-slate-200 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)] transition hover:bg-white/[0.1] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
               {voiceRecording ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
               {voiceRecording ? "Stop Voice" : "Voice Mode"}

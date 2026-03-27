@@ -14,6 +14,7 @@ interface Props {
   setPlayerName: (name: string) => void;
   uid: string | null;
   liveGamesCount?: number;
+  requestCount?: number;
   buttonClassName?: string;
   menuClassName?: string;
   linkClassName?: string;
@@ -25,6 +26,7 @@ export default function HeaderMenu({
   playerName,
   uid,
   liveGamesCount = 0,
+  requestCount = 0,
   buttonClassName,
   menuClassName,
   linkClassName,
@@ -84,6 +86,9 @@ export default function HeaderMenu({
           </MenuLink>
           <MenuLink href="/players" linkClassName={linkClassName} onNavigate={() => setMenuOpen(false)}>
             Players
+          </MenuLink>
+          <MenuLink href="/requests" linkClassName={linkClassName} onNavigate={() => setMenuOpen(false)}>
+            Requests ({requestCount})
           </MenuLink>
           <MenuLink href="/live-games" linkClassName={linkClassName} onNavigate={() => setMenuOpen(false)}>
             Live Games ({liveGamesCount})

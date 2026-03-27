@@ -37,6 +37,10 @@ model User {
   directConversationParticipants DirectConversationParticipant[] @relation("DirectConversationParticipantUser")
   directMessagesSent            DirectMessage[]                 @relation("DirectMessageSender")
   directMessageReactions        DirectMessageReaction[]
+  communityRequestsCreated      CommunityRequest[]             @relation("CommunityRequestAuthor")
+  communityRequestsCompleted    CommunityRequest[]             @relation("CommunityRequestCompleter")
+  communityRequestVotes         CommunityRequestVote[]
+  communityRequestComments      CommunityRequestComment[]      @relation("CommunityRequestCommentAuthor")
   receivedBadges               UserBadge[]                     @relation("UserBadgeRecipient")
   grantedBadges                UserBadge[]                     @relation("UserBadgeCreator")
   receivedGifts                UserGift[]                      @relation("UserGiftRecipient")
@@ -289,6 +293,64 @@ model DirectMessageReaction {
   @@index([messageId, createdAt], map: "ix_direct_message_reactions_message_id")
   @@index([userId, createdAt], map: "ix_direct_message_reactions_user_id")
   @@map("direct_message_reactions")
+}
+
+model CommunityRequest {
+  id                Int       @id @default(autoincrement())
+  title             String    @db.VarChar(160)
+  body              String    @db.Text
+  status            String    @default("open") @db.VarChar(20)
+  createdByUserId   Int       @map("created_by_user_id")
+  completedByUserId Int?      @map("completed_by_user_id")
+  completedAt       DateTime? @map("completed_at") @db.Timestamp(6)
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  author      User                     @relation("CommunityRequestAuthor", fields: [createdByUserId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  completedBy User?                    @relation("CommunityRequestCompleter", fields: [completedByUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  votes       CommunityRequestVote[]
+  comments    CommunityRequestComment[]
+
+  @@index([status, createdAt], map: "ix_community_requests_status_created_at")
+  @@index([completedAt], map: "ix_community_requests_completed_at")
+  @@index([createdByUserId, createdAt], map: "ix_community_requests_created_by_user_id")
+  @@map("community_requests")
+}
+
+model CommunityRequestVote {
+  id        Int      @id @default(autoincrement())
+  requestId Int      @map("request_id")
+  userId    Int      @map("user_id")
+  value     Int
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  request CommunityRequest @relation(fields: [requestId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user    User             @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([requestId, userId], map: "uq_community_request_votes_request_user")
+  @@index([requestId, updatedAt], map: "ix_community_request_votes_request_id")
+  @@index([userId, updatedAt], map: "ix_community_request_votes_user_id")
+  @@map("community_request_votes")
+}
+
+model CommunityRequestComment {
+  id           Int      @id @default(autoincrement())
+  requestId    Int      @map("request_id")
+  authorUserId Int      @map("author_user_id")
+  parentId     Int?     @map("parent_id")
+  body         String   @db.Text
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  request CommunityRequest @relation(fields: [requestId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  author  User             @relation("CommunityRequestCommentAuthor", fields: [authorUserId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  parent  CommunityRequestComment?  @relation("CommunityRequestCommentReplies", fields: [parentId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  replies CommunityRequestComment[] @relation("CommunityRequestCommentReplies")
+
+  @@index([requestId, parentId, createdAt], map: "ix_community_request_comments_request_parent_created_at")
+  @@index([authorUserId, createdAt], map: "ix_community_request_comments_author_user_id")
+  @@map("community_request_comments")
 }
 
 model UserBadge {

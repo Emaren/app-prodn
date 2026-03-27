@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import WoloChainTerminalTile from "@/components/wolo/WoloChainTerminalTile";
 import { useChainId } from "@/hooks/useChainId";
 import { useKeplr } from "@/hooks/use-keplr";
 import { useWoloBalance } from "@/hooks/useWoloBalance";
@@ -219,6 +220,8 @@ export default function WoloPage() {
           />
         </div>
       </section>
+
+      <WoloChainTerminalTile />
     </main>
   );
 }

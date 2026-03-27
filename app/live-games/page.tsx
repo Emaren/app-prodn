@@ -38,49 +38,25 @@ export default async function LiveGamesPage() {
 
   return (
     <main className="space-y-4 py-2 text-white sm:space-y-6 sm:py-3">
-      <section className="overflow-hidden rounded-[1.9rem] border border-red-400/15 bg-[radial-gradient(circle_at_top_left,_rgba(248,113,113,0.16),_transparent_24%),radial-gradient(circle_at_bottom_right,_rgba(251,191,36,0.12),_transparent_26%),linear-gradient(135deg,_#101828,_#0f172a_45%,_#020617)] p-5 sm:rounded-[2.2rem] sm:p-7 lg:p-8">
-        <div className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
-          <div className="space-y-4">
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="text-xs uppercase tracking-[0.4em] text-red-200/70">Live Games</div>
-              <div className="rounded-full border border-red-400/25 bg-red-500/10 px-3 py-1 text-xs text-red-100">
-                {snapshot.liveCount} live now
-              </div>
-              <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-200">
-                {snapshot.readyCount} on deck
-              </div>
-            </div>
-
-            <div className="max-w-3xl space-y-3">
-              <h1 className="text-4xl font-semibold leading-tight text-white sm:text-5xl">
-                Watch the games that matter while they are still hot.
-              </h1>
-              <p className="max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
-                This is the live rail for active bracket battles, ready-to-fire matchups, and the
-                freshest replay-backed proof the site can surface right now.
-              </p>
+      <section className="overflow-hidden rounded-[1.9rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(248,113,113,0.12),_transparent_22%),radial-gradient(circle_at_bottom_right,_rgba(251,191,36,0.10),_transparent_24%),linear-gradient(135deg,_#101828,_#0f172a_45%,_#020617)] p-5 sm:rounded-[2rem] sm:p-6">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <div className="text-xs uppercase tracking-[0.38em] text-red-200/70">Live Games</div>
+            <h1 className="mt-2 text-3xl font-semibold text-white sm:text-4xl">Watch. Spectate. Bet.</h1>
+            <div className="mt-3 text-sm text-slate-400">
+              {snapshot.tournament ? snapshot.tournament.title : "Tournament rail standing by"}
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-            <StatTile label="Live games" value={String(snapshot.liveCount)} detail="Tournament matches flagged live" />
-            <StatTile label="Ready next" value={String(snapshot.readyCount)} detail="Queue pressure building now" />
-            <StatTile
-              label="Feed freshness"
-              value={formatTime(snapshot.updatedAt)}
-              detail={snapshot.tournament ? snapshot.tournament.title : "Waiting for a featured event"}
-              compact
-            />
-          </div>
-        </div>
-      </section>
-
-      <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <div className="rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-5 sm:p-6">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <div className="text-xs uppercase tracking-[0.35em] text-red-200/70">Now Playing</div>
-              <h2 className="mt-2 text-3xl font-semibold text-white">Current live board</h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="rounded-full border border-red-400/25 bg-red-500/10 px-3 py-1.5 text-xs text-red-100">
+              {snapshot.liveCount} live
+            </div>
+            <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-200">
+              {snapshot.readyCount} ready
+            </div>
+            <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-300">
+              {formatTime(snapshot.updatedAt)}
             </div>
             <Link
               href="/lobby"
@@ -89,12 +65,25 @@ export default async function LiveGamesPage() {
               Open Lobby
             </Link>
           </div>
+        </div>
+      </section>
+
+      <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+        <div className="rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-5 sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <div className="text-xs uppercase tracking-[0.35em] text-red-200/70">Now Playing</div>
+                <h2 className="mt-2 text-3xl font-semibold text-white">Live board</h2>
+              </div>
+            <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+              {snapshot.liveMatches.length} live
+            </div>
+          </div>
 
           <div className="mt-5 space-y-4">
             {snapshot.liveMatches.length === 0 ? (
               <div className="rounded-[1.5rem] border border-white/10 bg-white/5 px-5 py-6 text-sm leading-6 text-slate-300">
-                No tournament matches are marked live yet. The page is ready, the nav count will flip as
-                soon as admins or match automation move games into `live`.
+                No live matches flagged yet.
               </div>
             ) : (
               snapshot.liveMatches.map((match) => (
@@ -109,7 +98,7 @@ export default async function LiveGamesPage() {
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <div className="text-xs uppercase tracking-[0.35em] text-amber-200/70">On Deck</div>
-                <h2 className="mt-2 text-2xl font-semibold text-white">Ready to spectate</h2>
+                <h2 className="mt-2 text-2xl font-semibold text-white">Ready next</h2>
               </div>
               <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-200">
                 {snapshot.readyMatches.length} ready
@@ -119,7 +108,7 @@ export default async function LiveGamesPage() {
             <div className="mt-5 space-y-3">
               {snapshot.readyMatches.length === 0 ? (
                 <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-5 text-sm text-slate-300">
-                  No matches are queued in `ready` right now.
+                  Nothing queued in ready.
                 </div>
               ) : (
                 snapshot.readyMatches.map((match) => (
@@ -133,7 +122,7 @@ export default async function LiveGamesPage() {
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <div className="text-xs uppercase tracking-[0.35em] text-white/45">Fresh Proof</div>
-                <h2 className="mt-2 text-2xl font-semibold text-white">Recent parsed games</h2>
+                <h2 className="mt-2 text-2xl font-semibold text-white">Recent proof</h2>
               </div>
               <Link
                 href="/game-stats"
@@ -146,7 +135,7 @@ export default async function LiveGamesPage() {
             <div className="mt-5 space-y-3">
               {snapshot.recentMatches.length === 0 ? (
                 <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-5 text-sm text-slate-300">
-                  Recent parsed proof will land here as soon as the watcher pushes it.
+                  Waiting on the next parsed result.
                 </div>
               ) : (
                 snapshot.recentMatches.slice(0, 4).map((match) => (
@@ -182,28 +171,6 @@ export default async function LiveGamesPage() {
         </div>
       </section>
     </main>
-  );
-}
-
-function StatTile({
-  label,
-  value,
-  detail,
-  compact = false,
-}: {
-  label: string;
-  value: string;
-  detail: string;
-  compact?: boolean;
-}) {
-  return (
-    <div className="rounded-[1.45rem] border border-white/10 bg-white/5 px-4 py-4">
-      <div className="text-[11px] uppercase tracking-[0.32em] text-slate-400">{label}</div>
-      <div className={compact ? "mt-3 text-lg font-semibold text-white" : "mt-3 text-4xl font-semibold text-white"}>
-        {value}
-      </div>
-      <div className="mt-2 text-xs leading-5 text-slate-400">{detail}</div>
-    </div>
   );
 }
 
@@ -293,4 +260,3 @@ function LiveMatchCard({
     </div>
   );
 }
-

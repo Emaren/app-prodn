@@ -55,6 +55,7 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sendPending, setSendPending] = useState(false);
+  const [reactingMessageId, setReactingMessageId] = useState<number | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
   useClickOutside(panelRef as React.RefObject<HTMLElement>, () => setOpen(false));
@@ -229,6 +230,43 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
                 setSendPending(false);
               }
             }}
+            onToggleReaction={async (messageId, emoji) => {
+              setReactingMessageId(messageId);
+              setError(null);
+              try {
+                const response = await fetch("/api/contact-emaren", {
+                  method: "PATCH",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    action: "toggle_reaction",
+                    targetUid: selectedTargetUid,
+                    messageId,
+                    emoji,
+                  }),
+                });
+
+                const payload = (await response.json().catch(() => ({}))) as
+                  | ContactInboxPayload
+                  | { detail?: string };
+
+                if (!response.ok) {
+                  throw new Error(readDetail(payload) || "Reaction failed.");
+                }
+
+                setPanelData(payload as ContactInboxPayload);
+                setSummary(payload as ContactInboxPayload);
+                setSelectedTargetUid((payload as ContactInboxPayload).activeTargetUid);
+              } catch (reactionError) {
+                setError(
+                  reactionError instanceof Error ? reactionError.message : "Reaction failed."
+                );
+              } finally {
+                setReactingMessageId(null);
+              }
+            }}
+            reactingMessageId={reactingMessageId}
             openPageHref={openPageHref}
           />
         </div>
