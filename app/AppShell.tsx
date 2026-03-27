@@ -16,7 +16,6 @@ import { Providers } from "./Providers";
 import { UserAuthProvider, useUserAuth } from "@/context/UserAuthContext";
 
 const HEADER_LINKS = [
-  { href: "/", label: "Lobby" },
   { href: "/players", label: "Players" },
   { href: "/rivalries", label: "Rivalries" },
   { href: "/wolo", label: "$WOLO" },
@@ -28,7 +27,36 @@ function InnerShell({ children }: { children: React.ReactNode }) {
   const { uid, playerName, setPlayerName } = useUserAuth();
   const { themeKey, setThemeKey, presentationTone, pageStyle } = useLobbyAppearance();
   const [pendingBetsCount] = React.useState(0);
+  const [liveGamesCount, setLiveGamesCount] = React.useState(0);
   const headerSkin = getLobbyHeaderSkin(themeKey);
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    async function loadLiveGamesSummary() {
+      try {
+        const response = await fetch("/api/live-games?summary=1", { cache: "no-store" });
+        if (!response.ok) return;
+
+        const payload = (await response.json()) as { liveCount?: number };
+        if (!cancelled) {
+          setLiveGamesCount(typeof payload.liveCount === "number" ? payload.liveCount : 0);
+        }
+      } catch (error) {
+        console.warn("Failed to load live games summary:", error);
+      }
+    }
+
+    void loadLiveGamesSummary();
+    const interval = window.setInterval(() => {
+      void loadLiveGamesSummary();
+    }, 30_000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, []);
 
   return (
     <div className="min-h-screen text-white transition-[background-image,background-color] duration-500" style={pageStyle}>
@@ -39,13 +67,23 @@ function InnerShell({ children }: { children: React.ReactNode }) {
         <div className="mx-auto max-w-6xl overflow-visible">
           <div className="flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:items-center">
             <div className="min-w-0">
-              <div className={`text-xs uppercase tracking-[0.35em] ${presentationTone.eyebrow}`}>
-                AoE2HD Bets
-              </div>
-              <h1 className="text-xl font-semibold text-white">Tournament Lobby</h1>
+              <Link href="/lobby" className="inline-block min-w-0">
+                <div className={`text-xs uppercase tracking-[0.35em] transition ${presentationTone.eyebrow}`}>
+                  AoE2HD Bets
+                </div>
+                <h1 className="text-xl font-semibold text-white transition hover:text-amber-100">
+                  Tournament Lobby
+                </h1>
+              </Link>
             </div>
 
             <nav className="flex max-w-full items-center gap-2 overflow-x-auto whitespace-nowrap pb-1 [scrollbar-width:none] [-ms-overflow-style:none] lg:justify-self-center lg:pb-0">
+              <Link
+                href="/live-games"
+                className="rounded-full border border-red-400/25 bg-red-500/10 px-3 py-1 text-xs text-red-100 transition hover:border-red-300/40 hover:bg-red-500/15"
+              >
+                {liveGamesCount} Live Games🔥
+              </Link>
               {HEADER_LINKS.map((link) => (
                 <Link
                   key={link.href}
@@ -65,6 +103,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                   playerName={playerName}
                   setPlayerName={setPlayerName}
                   uid={uid}
+                  liveGamesCount={liveGamesCount}
                   buttonClassName={headerSkin.surface}
                   menuClassName={headerSkin.popover}
                   linkClassName={headerSkin.menuItem}

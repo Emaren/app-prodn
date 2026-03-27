@@ -6,6 +6,11 @@ import {
   normalizeInboxMessageBody,
   resolvePrimaryAdminContact,
 } from "@/lib/contactInbox";
+import {
+  DIRECT_MESSAGE_REACTIONS,
+  MAX_DIRECT_AUDIO_BYTES,
+  MAX_DIRECT_IMAGE_BYTES,
+} from "@/lib/contactInboxConfig";
 import { recordUserActivity } from "@/lib/userExperience";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
@@ -20,6 +25,97 @@ const VIEWER_SELECT = {
   inGameName: true,
   steamPersonaName: true,
 } as const;
+
+type InboxAttachmentInput = {
+  kind: "image" | "audio";
+  name: string | null;
+  mimeType: string | null;
+  dataUrl: string;
+  durationSeconds: number | null;
+};
+
+function readTargetUid(value: FormDataEntryValue | string | null | undefined) {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function readDurationSeconds(value: FormDataEntryValue | null) {
+  if (typeof value !== "string" || !value.trim()) {
+    return null;
+  }
+
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return null;
+  }
+
+  return Math.round(parsed);
+}
+
+async function readAttachmentInput(
+  file: File,
+  durationValue: FormDataEntryValue | null
+): Promise<InboxAttachmentInput> {
+  const mimeType = file.type || "application/octet-stream";
+  const kind = mimeType.startsWith("image/")
+    ? "image"
+    : mimeType.startsWith("audio/")
+      ? "audio"
+      : null;
+
+  if (!kind) {
+    throw new Error("Only screenshots and voice notes are supported.");
+  }
+
+  if (kind === "image" && file.size > MAX_DIRECT_IMAGE_BYTES) {
+    throw new Error("Screenshots must be 2.5MB or smaller.");
+  }
+
+  if (kind === "audio" && file.size > MAX_DIRECT_AUDIO_BYTES) {
+    throw new Error("Voice notes must be 6MB or smaller.");
+  }
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+  return {
+    kind,
+    name: file.name || null,
+    mimeType,
+    dataUrl: `data:${mimeType};base64,${buffer.toString("base64")}`,
+    durationSeconds: kind === "audio" ? readDurationSeconds(durationValue) : null,
+  };
+}
+
+async function readMessageInput(request: NextRequest) {
+  const contentType = request.headers.get("content-type") || "";
+
+  if (contentType.includes("multipart/form-data")) {
+    const formData = await request.formData();
+    const attachmentEntry = formData.get("attachment");
+    const attachment =
+      attachmentEntry instanceof File && attachmentEntry.size > 0
+        ? await readAttachmentInput(
+            attachmentEntry,
+            formData.get("attachmentDurationSeconds")
+          )
+        : null;
+
+    return {
+      body: normalizeInboxMessageBody(String(formData.get("body") || "")),
+      targetUid: readTargetUid(formData.get("targetUid")),
+      attachment,
+    };
+  }
+
+  const payload = (await request.json().catch(() => ({}))) as {
+    body?: string;
+    targetUid?: string;
+  };
+
+  return {
+    body: normalizeInboxMessageBody(payload.body || ""),
+    targetUid: readTargetUid(payload.targetUid),
+    attachment: null,
+  };
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -60,14 +156,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ detail: "Viewer not found" }, { status: 404 });
     }
 
-    const payload = (await request.json().catch(() => ({}))) as {
-      body?: string;
-      targetUid?: string;
-    };
+    const payload = await readMessageInput(request);
 
-    const messageBody = normalizeInboxMessageBody(payload.body || "");
-    if (messageBody.length < 1) {
-      return NextResponse.json({ detail: "Message cannot be empty" }, { status: 400 });
+    if (payload.body.length < 1 && !payload.attachment) {
+      return NextResponse.json(
+        { detail: "Message cannot be empty unless you attach a screenshot or voice note." },
+        { status: 400 }
+      );
     }
 
     let targetUser =
@@ -102,7 +197,12 @@ export async function POST(request: NextRequest) {
       data: {
         conversationId: conversation.id,
         senderUserId: viewer.id,
-        body: messageBody,
+        body: payload.body || null,
+        attachmentKind: payload.attachment?.kind ?? null,
+        attachmentName: payload.attachment?.name ?? null,
+        attachmentMimeType: payload.attachment?.mimeType ?? null,
+        attachmentDataUrl: payload.attachment?.dataUrl ?? null,
+        attachmentDurationSeconds: payload.attachment?.durationSeconds ?? null,
       },
     });
 
@@ -121,6 +221,7 @@ export async function POST(request: NextRequest) {
       },
       data: {
         lastReadAt: now,
+        typingUpdatedAt: null,
       },
     });
 
@@ -142,7 +243,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(refreshed);
   } catch (error) {
     console.error("Failed to send Contact Emaren message:", error);
-    return NextResponse.json({ detail: "Message failed." }, { status: 500 });
+    const detail = error instanceof Error ? error.message : "Message failed.";
+    const status =
+      detail.includes("supported") ||
+      detail.includes("smaller") ||
+      detail.includes("empty")
+        ? 400
+        : 500;
+    return NextResponse.json({ detail }, { status });
   }
 }
 
@@ -169,6 +277,9 @@ export async function PATCH(request: NextRequest) {
       giftId?: number;
       targetUid?: string;
       displayOnProfile?: boolean;
+      messageId?: number;
+      emoji?: string;
+      isTyping?: boolean;
     };
 
     let targetUser =
@@ -456,6 +567,88 @@ export async function PATCH(request: NextRequest) {
           dedupeWithinSeconds: 0,
         });
         break;
+      }
+
+      case "toggle_reaction": {
+        if (typeof payload.messageId !== "number") {
+          return NextResponse.json({ detail: "Message id is required" }, { status: 400 });
+        }
+
+        if (
+          typeof payload.emoji !== "string" ||
+          !DIRECT_MESSAGE_REACTIONS.includes(payload.emoji as (typeof DIRECT_MESSAGE_REACTIONS)[number])
+        ) {
+          return NextResponse.json({ detail: "Reaction is not supported" }, { status: 400 });
+        }
+
+        const conversation = await prisma.directConversation.findUnique({
+          where: { pairKey: [viewer.id, targetUser.id].sort((a, b) => a - b).join(":") },
+          select: { id: true },
+        });
+
+        if (!conversation) {
+          return NextResponse.json({ detail: "Conversation not found" }, { status: 404 });
+        }
+
+        const message = await prisma.directMessage.findFirst({
+          where: {
+            id: payload.messageId,
+            conversationId: conversation.id,
+          },
+          select: { id: true },
+        });
+
+        if (!message) {
+          return NextResponse.json({ detail: "Message not found" }, { status: 404 });
+        }
+
+        const existingReaction = await prisma.directMessageReaction.findUnique({
+          where: {
+            messageId_userId_emoji: {
+              messageId: message.id,
+              userId: viewer.id,
+              emoji: payload.emoji,
+            },
+          },
+          select: { id: true },
+        });
+
+        if (existingReaction) {
+          await prisma.directMessageReaction.delete({
+            where: {
+              messageId_userId_emoji: {
+                messageId: message.id,
+                userId: viewer.id,
+                emoji: payload.emoji,
+              },
+            },
+          });
+        } else {
+          await prisma.directMessageReaction.create({
+            data: {
+              messageId: message.id,
+              userId: viewer.id,
+              emoji: payload.emoji,
+            },
+          });
+        }
+        break;
+      }
+
+      case "set_typing": {
+        const conversation = await getOrCreateConversationByUsers(prisma, viewer.id, targetUser.id);
+
+        await prisma.directConversationParticipant.updateMany({
+          where: {
+            conversationId: conversation.id,
+            userId: viewer.id,
+          },
+          data: {
+            typingUpdatedAt: payload.isTyping ? new Date() : null,
+          },
+        });
+
+        return NextResponse.json({ ok: true });
       }
 
       default:

@@ -13,6 +13,7 @@ interface Props {
   playerName: string;
   setPlayerName: (name: string) => void;
   uid: string | null;
+  liveGamesCount?: number;
   buttonClassName?: string;
   menuClassName?: string;
   linkClassName?: string;
@@ -23,6 +24,7 @@ export default function HeaderMenu({
   pendingBetsCount,
   playerName,
   uid,
+  liveGamesCount = 0,
   buttonClassName,
   menuClassName,
   linkClassName,
@@ -38,10 +40,10 @@ export default function HeaderMenu({
     return (
       <div className="flex flex-wrap items-center gap-3">
         <Link
-          href="/game-stats"
+          href="/live-games"
           className="rounded-full border border-white/15 px-4 py-2 text-sm text-white/80 transition hover:border-white/30 hover:text-white"
         >
-          Live Matches
+          {liveGamesCount} Live Games🔥
         </Link>
         <SteamLoginButton
           className="rounded-full bg-amber-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-amber-200"
@@ -82,6 +84,9 @@ export default function HeaderMenu({
           </MenuLink>
           <MenuLink href="/players" linkClassName={linkClassName} onNavigate={() => setMenuOpen(false)}>
             Players
+          </MenuLink>
+          <MenuLink href="/live-games" linkClassName={linkClassName} onNavigate={() => setMenuOpen(false)}>
+            Live Games ({liveGamesCount})
           </MenuLink>
           <MenuLink href="/rivalries" linkClassName={linkClassName} onNavigate={() => setMenuOpen(false)}>
             Rivalries

@@ -6,6 +6,8 @@ import { useChainId } from "@/hooks/useChainId";
 import { useKeplr } from "@/hooks/use-keplr";
 import { useWoloBalance } from "@/hooks/useWoloBalance";
 
+const KEPLR_DOWNLOAD_URL = "https://www.keplr.app/get";
+
 function formatAddress(address?: string) {
   if (!address) return "Not connected";
   return `${address.slice(0, 12)}…${address.slice(-8)}`;
@@ -102,6 +104,14 @@ export default function WoloPage() {
               >
                 Download Watcher
               </Link>
+              <a
+                href={KEPLR_DOWNLOAD_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-5 py-3 text-sm text-emerald-100 transition hover:border-emerald-300/40 hover:bg-emerald-500/15"
+              >
+                Get Keplr Wallet
+              </a>
             </div>
           </div>
 
@@ -143,15 +153,25 @@ export default function WoloPage() {
               ) : null}
 
               {status !== "connected" && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    void handleConnect();
-                  }}
-                  className="w-full rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-200"
-                >
-                  Connect Keplr
-                </button>
+                <div className="space-y-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void handleConnect();
+                    }}
+                    className="w-full rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-200"
+                  >
+                    {status === "not_installed" ? "Try Connect After Install" : "Connect Keplr"}
+                  </button>
+                  <a
+                    href={KEPLR_DOWNLOAD_URL}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="block w-full rounded-full border border-white/12 bg-white/5 px-5 py-3 text-center text-sm text-white/85 transition hover:border-white/25 hover:text-white"
+                  >
+                    Get Keplr Wallet
+                  </a>
+                </div>
               )}
             </div>
           </div>
@@ -217,7 +237,7 @@ function WoloMiniStatCard({
       <div className="flex h-full flex-col justify-between gap-4">
         <div className="space-y-2">
           <div className="text-[11px] uppercase tracking-[0.32em] text-slate-400">{label}</div>
-          <div className="text-4xl font-semibold leading-none tracking-tight text-white">
+          <div className="max-w-[11ch] break-words text-3xl font-semibold leading-tight tracking-tight text-white sm:text-4xl">
             {value}
           </div>
         </div>

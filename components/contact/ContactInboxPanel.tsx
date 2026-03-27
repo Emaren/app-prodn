@@ -1,8 +1,11 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 import CommunityBadgePill from "@/components/contact/CommunityBadgePill";
+import { DIRECT_MESSAGE_REACTIONS } from "@/lib/contactInboxConfig";
 import type {
   ContactInboxMessage,
   ContactInboxPayload,
@@ -20,6 +23,9 @@ type ContactInboxPanelProps = {
   onSend: () => void;
   onSelectConversation: (targetUid: string) => void;
   onInboxAction: (action: Record<string, unknown>) => void;
+  onToggleReaction?: (messageId: number, emoji: string) => void;
+  reactingMessageId?: number | null;
+  richComposer?: ReactNode;
   openPageHref?: string;
 };
 
@@ -79,7 +85,7 @@ function SummaryButton({
 
       {summary.badges.length > 0 ? (
         <div className="mt-3 flex flex-wrap gap-2">
-          {summary.badges.slice(0, 3).map((badge) => (
+          {summary.badges.slice(0, 2).map((badge) => (
             <CommunityBadgePill key={badge.id} label={badge.label} />
           ))}
         </div>
@@ -253,38 +259,91 @@ function InboxEventCard({
   viewerUid,
   viewerIsAdmin,
   onInboxAction,
+  onToggleReaction,
+  reactingMessageId,
 }: {
   message: ContactInboxMessage;
   viewerUid: string;
   viewerIsAdmin: boolean;
   onInboxAction: (action: Record<string, unknown>) => void;
+  onToggleReaction?: (messageId: number, emoji: string) => void;
+  reactingMessageId?: number | null;
 }) {
   const isViewer = message.sender.uid === viewerUid;
 
-  if (message.kind === "text" && message.body) {
+  if (message.kind === "text") {
     return (
       <div className={`flex ${isViewer ? "justify-end" : "justify-start"}`}>
         <div
-          className={`max-w-[88%] rounded-2xl border px-4 py-3 ${
+          className={`max-w-[92%] rounded-[1.4rem] border px-4 py-3 ${
             isViewer
-              ? "border-amber-300/30 bg-amber-400/12 text-amber-50"
+              ? "border-amber-300/25 bg-amber-400/8 text-amber-50"
               : "border-white/10 bg-white/5 text-slate-100"
           }`}
         >
-          <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.24em] text-slate-300/80">
+          <div className="flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.24em] text-slate-400">
             <span>{message.sender.displayName}</span>
             <span>{formatTimestamp(message.createdAt)}</span>
           </div>
 
           {message.sender.badges.length > 0 ? (
             <div className="mt-2 flex flex-wrap gap-2">
-              {message.sender.badges.slice(0, 3).map((badge) => (
+              {message.sender.badges.slice(0, 2).map((badge) => (
                 <CommunityBadgePill key={badge.id} label={badge.label} />
               ))}
             </div>
           ) : null}
 
-          <p className="mt-3 whitespace-pre-wrap text-sm leading-6">{message.body}</p>
+          {message.body ? (
+            <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-100">{message.body}</p>
+          ) : null}
+
+          {message.attachment ? (
+            <div className="mt-3 overflow-hidden rounded-[1.1rem] border border-white/10 bg-slate-950/45 p-2">
+              {message.attachment.kind === "image" ? (
+                <Image
+                  src={message.attachment.dataUrl}
+                  alt={message.attachment.name || "Chat screenshot"}
+                  width={1440}
+                  height={900}
+                  unoptimized
+                  className="max-h-72 w-full rounded-xl object-cover"
+                />
+              ) : (
+                <audio src={message.attachment.dataUrl} controls className="w-full" />
+              )}
+              <div className="mt-2 text-[11px] uppercase tracking-[0.22em] text-slate-400">
+                {message.attachment.kind === "image" ? "Screenshot" : "Voice note"}
+                {message.attachment.durationSeconds ? ` · ${message.attachment.durationSeconds}s` : ""}
+              </div>
+            </div>
+          ) : null}
+
+          {onToggleReaction ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {DIRECT_MESSAGE_REACTIONS.map((emoji) => {
+                const existing = message.reactions.find((reaction) => reaction.emoji === emoji);
+                const isActive = Boolean(existing?.viewerReacted);
+                return (
+                  <button
+                    key={`${message.messageId}-${emoji}`}
+                    type="button"
+                    onClick={() => onToggleReaction(message.messageId, emoji)}
+                    disabled={reactingMessageId === message.messageId}
+                    className={`rounded-full border px-2.5 py-1 text-xs transition ${
+                      isActive
+                        ? "border-amber-300/35 bg-amber-400/12 text-amber-100"
+                        : "border-white/10 bg-white/5 text-slate-300 hover:border-white/20 hover:text-white"
+                    } disabled:cursor-not-allowed disabled:opacity-60`}
+                  >
+                    {emoji}
+                    {existing ? ` ${existing.count}` : ""}
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
+
           <ReceiptLine message={message} />
         </div>
       </div>
@@ -362,6 +421,9 @@ export default function ContactInboxPanel({
   onSend,
   onSelectConversation,
   onInboxAction,
+  onToggleReaction,
+  reactingMessageId,
+  richComposer,
   openPageHref,
 }: ContactInboxPanelProps) {
   const counterpart = data?.activeCounterpart ?? null;
@@ -369,6 +431,10 @@ export default function ContactInboxPanel({
   const showConversationRail = Boolean(data?.viewer.isAdmin && (data?.summaries.length ?? 0) > 0);
   const unreadCount = data?.totalUnreadCount ?? 0;
   const heading = data?.viewer.isAdmin ? "Direct Threads" : counterpart?.displayName || "Private Thread";
+  const typingLabel =
+    data?.conversation?.counterpartTyping && counterpart
+      ? `${counterpart.displayName} is typing...`
+      : null;
 
   return (
     <div
@@ -446,6 +512,12 @@ export default function ContactInboxPanel({
           ) : null}
 
           <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4">
+            {typingLabel ? (
+              <div className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-300">
+                {typingLabel}
+              </div>
+            ) : null}
+
             {loading ? (
               <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-5 text-sm text-slate-300">
                 Loading the private line...
@@ -472,28 +544,42 @@ export default function ContactInboxPanel({
                   viewerUid={data.viewer.uid}
                   viewerIsAdmin={data.viewer.isAdmin}
                   onInboxAction={onInboxAction}
+                  onToggleReaction={onToggleReaction}
+                  reactingMessageId={reactingMessageId}
                 />
               ))
             )}
           </div>
 
           <div className="border-t border-white/10 px-4 py-4">
-            <div className="flex gap-3">
-              <textarea
-                value={body}
-                onChange={(event) => onBodyChange(event.target.value)}
-                placeholder={buildPrompt(data, counterpart?.displayName ?? null)}
-                className="min-h-[3.8rem] flex-1 resize-none rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-amber-300/35 focus:bg-white/7"
-              />
-              <button
-                type="button"
-                onClick={onSend}
-                disabled={sendPending || !body.trim() || Boolean(data?.unavailableReason)}
-                className="self-end rounded-full bg-amber-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {sendPending ? "Sending..." : "Send"}
-              </button>
-            </div>
+            {richComposer ? (
+              richComposer
+            ) : (
+              <div className="flex gap-3">
+                <textarea
+                  value={body}
+                  onChange={(event) => onBodyChange(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && !event.shiftKey) {
+                      event.preventDefault();
+                      if (!sendPending && body.trim() && !data?.unavailableReason) {
+                        onSend();
+                      }
+                    }
+                  }}
+                  placeholder={buildPrompt(data, counterpart?.displayName ?? null)}
+                  className="min-h-[3.8rem] flex-1 resize-none rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-amber-300/35 focus:bg-white/7"
+                />
+                <button
+                  type="button"
+                  onClick={onSend}
+                  disabled={sendPending || !body.trim() || Boolean(data?.unavailableReason)}
+                  className="self-end rounded-full bg-amber-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {sendPending ? "Sending..." : "Send"}
+                </button>
+              </div>
+            )}
 
             {openPageHref ? (
               <div className="mt-3 flex justify-end">

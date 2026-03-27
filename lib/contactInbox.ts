@@ -6,6 +6,10 @@ import {
   normalizeHonorStatus,
   type CommunityBadge,
 } from "@/lib/communityHonors";
+import {
+  DIRECT_MESSAGE_REACTIONS,
+  DIRECT_MESSAGE_TYPING_WINDOW_MS,
+} from "@/lib/contactInboxConfig";
 import { recordUserActivity } from "@/lib/userExperience";
 
 export type InboxCounterpart = {
@@ -37,6 +41,20 @@ type InboxSender = {
 type InboxReadReceipt = {
   status: "sent" | "read";
   readAt: string | null;
+};
+
+type InboxMessageReaction = {
+  emoji: string;
+  count: number;
+  viewerReacted: boolean;
+};
+
+type InboxMessageAttachment = {
+  kind: "image" | "audio";
+  name: string | null;
+  mimeType: string | null;
+  dataUrl: string;
+  durationSeconds: number | null;
 };
 
 type InboxHonorBase = {
@@ -72,11 +90,14 @@ export type InboxGiftMessage = {
 
 export type InboxTextMessage = {
   id: string;
+  messageId: number;
   kind: "text";
   createdAt: string;
   sender: InboxSender;
   receipt: InboxReadReceipt | null;
   body: string;
+  attachment: InboxMessageAttachment | null;
+  reactions: InboxMessageReaction[];
 };
 
 export type InboxMessage = InboxTextMessage | InboxBadgeMessage | InboxGiftMessage;
@@ -95,6 +116,7 @@ export type InboxPayload = {
   unavailableReason: string | null;
   conversation: {
     counterpartLastReadAt: string | null;
+    counterpartTyping: boolean;
   } | null;
 };
 
@@ -143,6 +165,84 @@ function buildGiftSnippet(kind: string, amount: number | null, status: string) {
     return `${prefix} declined`;
   }
   return `${prefix} waiting`;
+}
+
+function buildDirectMessageSnippet(message: {
+  body: string | null;
+  attachmentKind: string | null;
+}) {
+  const trimmedBody = message.body?.trim();
+  if (trimmedBody) {
+    return trimmedBody.slice(0, 120);
+  }
+
+  if (message.attachmentKind === "image") {
+    return "Screenshot";
+  }
+
+  if (message.attachmentKind === "audio") {
+    return "Voice note";
+  }
+
+  return "Message";
+}
+
+function buildMessageAttachment(message: {
+  attachmentKind: string | null;
+  attachmentName: string | null;
+  attachmentMimeType: string | null;
+  attachmentDataUrl: string | null;
+  attachmentDurationSeconds: number | null;
+}): InboxMessageAttachment | null {
+  if (!message.attachmentDataUrl) {
+    return null;
+  }
+
+  if (message.attachmentKind !== "image" && message.attachmentKind !== "audio") {
+    return null;
+  }
+
+  return {
+    kind: message.attachmentKind,
+    name: message.attachmentName ?? null,
+    mimeType: message.attachmentMimeType ?? null,
+    dataUrl: message.attachmentDataUrl,
+    durationSeconds:
+      typeof message.attachmentDurationSeconds === "number"
+        ? message.attachmentDurationSeconds
+        : null,
+  };
+}
+
+function buildMessageReactions(
+  reactions: Array<{ emoji: string; userId: number }>,
+  viewerUserId: number
+): InboxMessageReaction[] {
+  const grouped = new Map<string, InboxMessageReaction>();
+
+  for (const reaction of reactions) {
+    const current = grouped.get(reaction.emoji);
+    if (current) {
+      current.count += 1;
+      current.viewerReacted = current.viewerReacted || reaction.userId === viewerUserId;
+      continue;
+    }
+
+    grouped.set(reaction.emoji, {
+      emoji: reaction.emoji,
+      count: 1,
+      viewerReacted: reaction.userId === viewerUserId,
+    });
+  }
+
+  const order = new Map<string, number>(DIRECT_MESSAGE_REACTIONS.map((emoji, index) => [emoji, index]));
+  return Array.from(grouped.values()).sort((left, right) => {
+    if (left.count !== right.count) {
+      return right.count - left.count;
+    }
+
+    return (order.get(left.emoji) ?? 999) - (order.get(right.emoji) ?? 999);
+  });
 }
 
 function senderShapeFromUser(
@@ -457,7 +557,9 @@ async function loadConversationSummaries(prisma: PrismaClient, viewerUserId: num
       const lastSnippet =
         honorSummary.latestAt && (!lastDirectTime || honorSummary.latestAt.getTime() >= lastDirectTime.getTime())
           ? honorSummary.latestSnippet
-          : lastMessage?.body.slice(0, 120) ?? honorSummary.latestSnippet;
+          : lastMessage
+            ? buildDirectMessageSnippet(lastMessage)
+            : honorSummary.latestSnippet;
 
       return {
         targetUid: counterpartParticipant.user.uid,
@@ -496,6 +598,14 @@ async function loadConversationMessages(
       messages: {
         orderBy: [{ createdAt: "asc" }, { id: "asc" }],
         take: 80,
+        include: {
+          reactions: {
+            select: {
+              emoji: true,
+              userId: true,
+            },
+          },
+        },
       },
       participants: {
         include: {
@@ -519,6 +629,7 @@ async function loadConversationMessages(
       messages: [] as InboxMessage[],
       counterpart: null as InboxCounterpart | null,
       counterpartLastReadAt: null as string | null,
+      counterpartTyping: false,
     };
   }
 
@@ -587,6 +698,10 @@ async function loadConversationMessages(
   const senderCommunityMap = await loadUserCommunitySummaries(prisma, senderIds);
 
   const counterpartLastReadAt = counterpartParticipant?.lastReadAt?.toISOString() ?? null;
+  const counterpartTyping = Boolean(
+    counterpartParticipant?.typingUpdatedAt &&
+      Date.now() - counterpartParticipant.typingUpdatedAt.getTime() <= DIRECT_MESSAGE_TYPING_WINDOW_MS
+  );
 
   const messageEvents: InboxMessage[] = conversation.messages.map((message) => {
     const sender = conversation.participants.find(
@@ -606,10 +721,13 @@ async function loadConversationMessages(
 
     return {
       id: `message-${message.id}`,
+      messageId: message.id,
       kind: "text",
-      body: message.body,
+      body: message.body ?? "",
       createdAt: message.createdAt.toISOString(),
       sender: senderShapeFromUser(sender, senderCommunity?.badges ?? []),
+      attachment: buildMessageAttachment(message),
+      reactions: buildMessageReactions(message.reactions, viewerUserId),
       receipt:
         sender?.id === viewerUserId
           ? {
@@ -660,6 +778,7 @@ async function loadConversationMessages(
         } satisfies InboxCounterpart)
       : null,
     counterpartLastReadAt,
+    counterpartTyping,
   };
 }
 
@@ -795,6 +914,7 @@ export async function loadInboxPayload(
       unavailableReason,
       conversation: {
         counterpartLastReadAt: null,
+        counterpartTyping: false,
       },
     };
   }
@@ -813,6 +933,7 @@ export async function loadInboxPayload(
     unavailableReason,
     conversation: {
       counterpartLastReadAt: activeConversation.counterpartLastReadAt,
+      counterpartTyping: activeConversation.counterpartTyping,
     },
   };
 }

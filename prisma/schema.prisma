@@ -36,6 +36,7 @@ model User {
   createdTournaments Tournament[] @relation("TournamentCreator")
   directConversationParticipants DirectConversationParticipant[] @relation("DirectConversationParticipantUser")
   directMessagesSent            DirectMessage[]                 @relation("DirectMessageSender")
+  directMessageReactions        DirectMessageReaction[]
   receivedBadges               UserBadge[]                     @relation("UserBadgeRecipient")
   grantedBadges                UserBadge[]                     @relation("UserBadgeCreator")
   receivedGifts                UserGift[]                      @relation("UserGiftRecipient")
@@ -242,6 +243,7 @@ model DirectConversationParticipant {
   userId         Int       @map("user_id")
   joinedAt       DateTime  @default(now()) @map("joined_at") @db.Timestamp(6)
   lastReadAt     DateTime? @map("last_read_at") @db.Timestamp(6)
+  typingUpdatedAt DateTime? @map("typing_updated_at") @db.Timestamp(6)
 
   conversation DirectConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   user         User               @relation("DirectConversationParticipantUser", fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -253,18 +255,40 @@ model DirectConversationParticipant {
 }
 
 model DirectMessage {
-  id             Int      @id @default(autoincrement())
-  conversationId Int      @map("conversation_id")
-  senderUserId   Int      @map("sender_user_id")
-  body           String   @db.VarChar(1000)
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  id                        Int      @id @default(autoincrement())
+  conversationId            Int      @map("conversation_id")
+  senderUserId              Int      @map("sender_user_id")
+  body                      String?  @db.Text
+  attachmentKind            String?  @map("attachment_kind") @db.VarChar(20)
+  attachmentName            String?  @map("attachment_name") @db.VarChar(255)
+  attachmentMimeType        String?  @map("attachment_mime_type") @db.VarChar(120)
+  attachmentDataUrl         String?  @map("attachment_data_url") @db.Text
+  attachmentDurationSeconds Int?     @map("attachment_duration_seconds")
+  createdAt                 DateTime @default(now()) @map("created_at") @db.Timestamp(6)
 
   conversation DirectConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   sender       User               @relation("DirectMessageSender", fields: [senderUserId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  reactions    DirectMessageReaction[]
 
   @@index([conversationId, createdAt], map: "ix_direct_messages_conversation_created_at")
   @@index([senderUserId, createdAt], map: "ix_direct_messages_sender_created_at")
   @@map("direct_messages")
+}
+
+model DirectMessageReaction {
+  id        Int      @id @default(autoincrement())
+  messageId Int      @map("message_id")
+  userId    Int      @map("user_id")
+  emoji     String   @db.VarChar(24)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  message DirectMessage @relation(fields: [messageId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user    User          @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([messageId, userId, emoji], map: "uq_direct_message_reactions_message_user_emoji")
+  @@index([messageId, createdAt], map: "ix_direct_message_reactions_message_id")
+  @@index([userId, createdAt], map: "ix_direct_message_reactions_user_id")
+  @@map("direct_message_reactions")
 }
 
 model UserBadge {

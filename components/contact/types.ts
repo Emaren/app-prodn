@@ -30,6 +30,20 @@ export type ContactInboxSummary = {
   giftedWolo: number;
 };
 
+export type ContactMessageReaction = {
+  emoji: string;
+  count: number;
+  viewerReacted: boolean;
+};
+
+export type ContactMessageAttachment = {
+  kind: "image" | "audio";
+  name: string | null;
+  mimeType: string | null;
+  dataUrl: string;
+  durationSeconds: number | null;
+};
+
 type ContactInboxSender = {
   uid: string;
   displayName: string;
@@ -44,11 +58,14 @@ type ContactInboxReceipt = {
 
 export type ContactTextMessage = {
   id: string;
+  messageId: number;
   kind: "text";
   createdAt: string;
   sender: ContactInboxSender;
   receipt: ContactInboxReceipt | null;
   body: string;
+  attachment: ContactMessageAttachment | null;
+  reactions: ContactMessageReaction[];
 };
 
 export type ContactBadgeMessage = {
@@ -96,5 +113,6 @@ export type ContactInboxPayload = {
   unavailableReason: string | null;
   conversation: {
     counterpartLastReadAt: string | null;
+    counterpartTyping: boolean;
   } | null;
 };
