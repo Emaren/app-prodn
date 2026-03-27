@@ -2,6 +2,12 @@
 
 Production Next.js frontend for AoE2HDBets.
 
+## Canonical docs
+
+- [ARCHITECTURE.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/ARCHITECTURE.md)
+- [DEPLOY.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/DEPLOY.md)
+- [PRODUCT_STATE.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/PRODUCT_STATE.md)
+
 ## Stack
 
 - Next.js App Router
@@ -62,8 +68,13 @@ Optional migration compatibility:
 
 ## Production routing
 
-- `aoe2hdbets.com/*` should proxy to `app-prodn` (Next.js on `127.0.0.1:3004`)
+- `aoe2hdbets.com/*` should proxy to `app-prodn` (Next.js on `127.0.0.1:3030`)
 - Keep browser calls same-origin (`/api/...`) so Next local API handlers enforce session/admin checks
 - Next rewrites selected API paths to backend using `AOE2_BACKEND_UPSTREAM`
 - `api-prodn.aoe2hdbets.com/*` should proxy directly to `api-prodn` (`127.0.0.1:3330`) for watcher/automation uploads
-- Reference nginx template: `deploy/nginx.conf.example`
+
+## Production runtime truth
+
+- VPS repo path: `/var/www/AoE2HDBets/app-prodn`
+- service: `aoe2hdbets-web.service`
+- env file: `/etc/aoe2hdbets/aoe2hdbets-web.env`
