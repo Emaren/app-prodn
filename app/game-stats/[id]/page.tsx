@@ -118,6 +118,7 @@ export default async function GameStatsDetailPage({
       )
     : [];
   const outcomeLabel = outcomeBadgeLabel(game.parse_reason, game.winner);
+  const suppressPlayerWinnerState = game.parse_reason === "hd_early_exit_under_60s";
 
   return (
     <main className="space-y-6 py-6 text-white">
@@ -235,24 +236,24 @@ export default async function GameStatsDetailPage({
                     <Link
                       key={`${playerName}-${index}`}
                       href={playerRef?.href || getPublicPlayerHref(playerName, claimedPlayers)}
-                      className="group block cursor-pointer rounded-2xl border border-white/8 bg-white/5 p-5 transition hover:border-sky-300/30 hover:bg-white/10"
+                      className="group block min-w-0 cursor-pointer rounded-2xl border border-white/8 bg-white/5 p-5 transition hover:border-sky-300/30 hover:bg-white/10"
                     >
                       <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <div className="text-lg font-semibold text-white transition group-hover:text-sky-100">
+                        <div className="min-w-0 flex-1">
+                          <div className="break-words text-lg font-semibold leading-7 text-white transition group-hover:text-sky-100">
                             {playerName}
                           </div>
                           <div className="mt-1 text-[11px] uppercase tracking-[0.22em] text-slate-400">
                             {claimedPlayer
-                              ? Boolean(player.winner)
+                              ? !suppressPlayerWinnerState && player.winner === true
                                 ? "claimed player · winner"
                                 : "claimed player"
-                              : Boolean(player.winner)
+                              : !suppressPlayerWinnerState && player.winner === true
                                 ? "unclaimed warrior · winner"
                                 : "unclaimed warrior"}
                           </div>
                         </div>
-                        <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+                        <div className="shrink-0 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
                           {readPlayerCivilizationLabel(player)}
                         </div>
                       </div>
@@ -283,8 +284,8 @@ export default async function GameStatsDetailPage({
                       </div>
 
                       <div className="mt-5 flex items-center justify-between gap-3 border-t border-white/8 pt-4 text-sm text-slate-400">
-                        <span className="font-medium text-slate-300">Public player page</span>
-                        <span className="text-sky-200 transition group-hover:translate-x-0.5 group-hover:text-sky-100">
+                        <span className="min-w-0 font-medium text-slate-300">Public player page</span>
+                        <span className="shrink-0 text-sky-200 transition group-hover:translate-x-0.5 group-hover:text-sky-100">
                           Open profile
                         </span>
                       </div>
@@ -448,7 +449,9 @@ function StatRow({
   return (
     <div className={compact ? "" : "rounded-2xl border border-white/8 bg-white/5 px-4 py-4"}>
       <dt className="text-xs uppercase tracking-[0.25em] text-slate-500">{label}</dt>
-      <dd className="mt-2 text-sm text-slate-200">{value}</dd>
+      <dd className="mt-2 break-words text-sm leading-6 text-slate-200 [overflow-wrap:anywhere]">
+        {value}
+      </dd>
     </div>
   );
 }
@@ -463,9 +466,11 @@ function EmptyPanel({ message }: { message: string }) {
 
 function PlayerMetric({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <div className="rounded-[1rem] border border-white/8 bg-slate-950/40 px-3 py-3">
+    <div className="min-w-0 rounded-[1rem] border border-white/8 bg-slate-950/40 px-3 py-3">
       <dt className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{label}</dt>
-      <dd className="mt-1 text-sm font-medium text-slate-100">{value}</dd>
+      <dd className="mt-1 break-words text-sm font-medium leading-5 text-slate-100 [overflow-wrap:anywhere]">
+        {value}
+      </dd>
     </div>
   );
 }

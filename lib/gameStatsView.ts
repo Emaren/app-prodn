@@ -1,5 +1,7 @@
 type ReplayPlayerRecord = Record<string, unknown>;
 
+const EARLY_EXIT_PARSE_REASON = "hd_early_exit_under_60s";
+
 const HD_CIVILIZATION_NAMES: Record<number, string> = {
   1: "Britons",
   2: "Franks",
@@ -137,8 +139,13 @@ export function isInferredOutcome(parseReason: string | null | undefined) {
   return Boolean(parseReason && parseReason.startsWith("watcher_inferred_"));
 }
 
+export function isEarlyExitNoResult(parseReason: string | null | undefined) {
+  return parseReason === EARLY_EXIT_PARSE_REASON;
+}
+
 export function isResignationOutcome(parseReason: string | null | undefined) {
   if (!parseReason) return false;
+  if (isEarlyExitNoResult(parseReason)) return false;
 
   return (
     parseReason.startsWith("watcher_inferred_") ||
@@ -148,7 +155,9 @@ export function isResignationOutcome(parseReason: string | null | undefined) {
 }
 
 export function winnerLabel(winner: string | null | undefined, parseReason?: string | null | undefined) {
-  void parseReason;
+  if (isEarlyExitNoResult(parseReason)) {
+    return "No rated result";
+  }
   if (winner && winner !== "Unknown") {
     return winner;
   }
@@ -159,6 +168,7 @@ export function outcomeBadgeLabel(
   parseReason: string | null | undefined,
   winner?: string | null | undefined
 ) {
+  if (isEarlyExitNoResult(parseReason)) return "Under 60s drop";
   if (!winner || winner === "Unknown") return null;
   return isResignationOutcome(parseReason) ? "Win by resignation" : null;
 }
@@ -186,6 +196,8 @@ export function displayParseReason(value: string | null | undefined) {
       return "Replay inference";
     case "watcher_inferred_backfill":
       return "Replay backfill";
+    case EARLY_EXIT_PARSE_REASON:
+      return "Under 60s drop";
     default:
       break;
   }
