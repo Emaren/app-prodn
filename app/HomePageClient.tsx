@@ -1,6 +1,6 @@
 "use client";
 
-import { type CSSProperties, useCallback, useEffect, useRef, useState } from "react";
+import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LobbyChat } from "@/components/lobby/LobbyChat";
 import { LobbyHero } from "@/components/lobby/LobbyHero";
 import {
@@ -42,7 +42,6 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
 
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
   const rightColumnRef = useRef<HTMLDivElement | null>(null);
-  const chatInitializedRef = useRef(false);
 
   const loadLobby = useCallback(async () => {
     try {
@@ -127,6 +126,13 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
   const recentMatches = lobby?.recentMatches ?? [];
   const messages = lobby?.messages ?? EMPTY_MESSAGES;
   const chatItems = buildChatItems(messages);
+  const latestChatMessageKey = useMemo(
+    () =>
+      messages.length > 0
+        ? `${messages[messages.length - 1]?.id ?? "last"}:${messages[messages.length - 1]?.createdAt ?? ""}`
+        : "empty",
+    [messages]
+  );
 
   const chatRoomTitle =
     messages.length > 0 && messages[0]?.roomSlug === tournament.roomSlug && !tournament.isFallback
@@ -142,17 +148,26 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (chatInitializedRef.current || chatItems.length === 0) return;
+    if (chatItems.length === 0) return;
+
+    let secondFrame = 0;
+    const timeout = window.setTimeout(() => {
+      scrollChatToBottom();
+    }, 140);
 
     const frame = window.requestAnimationFrame(() => {
       scrollChatToBottom();
-      chatInitializedRef.current = true;
+      secondFrame = window.requestAnimationFrame(() => {
+        scrollChatToBottom();
+      });
     });
 
     return () => {
+      window.clearTimeout(timeout);
       window.cancelAnimationFrame(frame);
+      window.cancelAnimationFrame(secondFrame);
     };
-  }, [chatItems.length, scrollChatToBottom]);
+  }, [chatCardHeight, latestChatMessageKey, chatItems.length, scrollChatToBottom]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -308,7 +323,6 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
             isAuthenticated={isAuthenticated}
             loading={loading}
             leaderboard={leaderboard}
-            onlineCount={onlineUsers.length}
             themeKey={themeKey}
             viewMode={viewMode}
             onViewModeChange={setViewMode}

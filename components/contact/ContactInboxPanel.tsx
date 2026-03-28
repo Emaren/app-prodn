@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { MessageCirclePlus, Mic, Paperclip } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
 import CommunityBadgePill from "@/components/contact/CommunityBadgePill";
@@ -48,6 +48,28 @@ type TimelineRow =
 function formatTimestamp(value: string | null) {
   if (!value) return "No messages yet";
   return new Date(value).toLocaleString([], {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function formatReceiptTimestamp(value: string, compareTo?: string | null) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "recently";
+
+  const comparisonDate = compareTo ? new Date(compareTo) : new Date();
+  const sameDay =
+    !Number.isNaN(comparisonDate.getTime()) && date.toDateString() === comparisonDate.toDateString();
+  if (sameDay) {
+    return date.toLocaleTimeString([], {
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  }
+
+  return date.toLocaleString([], {
     month: "short",
     day: "numeric",
     hour: "numeric",
@@ -159,7 +181,7 @@ function ReceiptLine({
 
   const copy =
     message.receipt.status === "read" && message.receipt.readAt
-      ? `Read ${formatTimestamp(message.receipt.readAt)}`
+      ? `Read ${formatReceiptTimestamp(message.receipt.readAt, message.createdAt)}`
       : "Sent";
 
   return <div className="mt-1 text-right text-[10px] italic text-slate-500/80">{copy}</div>;
@@ -398,9 +420,9 @@ function TextMessageBubble({
 
         {onToggleReaction ? (
           <div
-            className={`absolute top-full z-20 mt-1 flex max-w-[19rem] flex-wrap gap-2 rounded-full bg-slate-950/96 px-2 py-2 shadow-[0_16px_40px_rgba(0,0,0,0.42)] transition ${
+            className={`absolute z-20 flex max-w-[20rem] flex-wrap items-center gap-2 rounded-[1.35rem] border border-white/8 bg-slate-950/96 px-2.5 py-2.5 shadow-[0_20px_42px_rgba(0,0,0,0.46)] transition ${
               isViewer ? "right-0" : "left-0"
-            } ${
+            } bottom-[calc(100%+0.75rem)] ${
               pickerPinned
                 ? "pointer-events-auto opacity-100"
                 : "pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100"
@@ -419,14 +441,18 @@ function TextMessageBubble({
                   }}
                   aria-pressed={isActive}
                   disabled={reactingMessageId === message.messageId}
-                  className={`rounded-full px-2.5 py-1 text-xs transition ${
+                  className={`flex h-10 min-w-10 items-center justify-center gap-1.5 rounded-full px-3 text-[12px] font-medium transition ${
                     isActive
                       ? "bg-amber-400/15 text-amber-100 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.24)]"
                       : "bg-white/[0.06] text-slate-200 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.07)] hover:bg-white/[0.12]"
                   } disabled:cursor-not-allowed disabled:opacity-60`}
                 >
                   <span>{emoji}</span>
-                  {existing?.count ? <span className="ml-1 text-[10px]">{existing.count}</span> : null}
+                  {existing?.count ? (
+                    <span className="text-[10px] tracking-[0.08em] text-slate-300/90">
+                      {existing.count}
+                    </span>
+                  ) : null}
                 </button>
               );
             })}
@@ -550,6 +576,8 @@ export default function ContactInboxPanel({
 }: ContactInboxPanelProps) {
   const counterpart = data?.activeCounterpart ?? null;
   const activeTargetUid = data?.activeTargetUid ?? null;
+  const timelineViewportRef = useRef<HTMLDivElement | null>(null);
+  const timelineBottomRef = useRef<HTMLDivElement | null>(null);
   const hasConversationChoices = (data?.summaries.length ?? 0) > 1;
   const showConversationRail = Boolean(
     mode === "page" && data?.viewer.isAdmin && hasConversationChoices
@@ -562,6 +590,41 @@ export default function ContactInboxPanel({
       ? `${counterpart.displayName} is typing…`
       : null;
   const timelineRows = useMemo(() => buildTimelineRows(data?.messages ?? []), [data?.messages]);
+  const latestTimelineKey = timelineRows[timelineRows.length - 1]?.key ?? "empty";
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!timelineRows.length) return;
+
+    const viewport = timelineViewportRef.current;
+    if (!viewport) return;
+
+    let secondFrame = 0;
+    const scrollToLatest = () => {
+      timelineBottomRef.current?.scrollIntoView({ block: "end" });
+      viewport.scrollTo({
+        top: viewport.scrollHeight,
+        behavior: "auto",
+      });
+    };
+
+    const timeout = window.setTimeout(() => {
+      scrollToLatest();
+    }, 140);
+
+    const frame = window.requestAnimationFrame(() => {
+      scrollToLatest();
+      secondFrame = window.requestAnimationFrame(() => {
+        scrollToLatest();
+      });
+    });
+
+    return () => {
+      window.clearTimeout(timeout);
+      window.cancelAnimationFrame(frame);
+      window.cancelAnimationFrame(secondFrame);
+    };
+  }, [activeTargetUid, latestTimelineKey, loading, timelineRows.length]);
 
   return (
     <div
@@ -643,7 +706,10 @@ export default function ContactInboxPanel({
             </div>
           ) : null}
 
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4">
+          <div
+            ref={timelineViewportRef}
+            className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4"
+          >
             {typingLabel ? (
               <div className="mb-3 flex justify-center">
                 <div className="rounded-full bg-white/[0.05] px-3 py-2 text-xs text-slate-300 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]">
@@ -693,6 +759,7 @@ export default function ContactInboxPanel({
                     />
                   )
                 )}
+                <div ref={timelineBottomRef} className="h-px w-full" />
               </div>
             )}
           </div>

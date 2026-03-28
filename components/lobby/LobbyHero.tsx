@@ -18,7 +18,6 @@ type LobbyHeroProps = {
   isAuthenticated: boolean;
   loading: boolean;
   leaderboard: LobbySnapshot["leaderboard"];
-  onlineCount: number;
   themeKey: LobbyThemeKey;
   viewMode: LobbyViewMode;
   onViewModeChange: (viewMode: LobbyViewMode) => void;
@@ -32,7 +31,6 @@ export function LobbyHero({
   isAuthenticated,
   loading,
   leaderboard,
-  onlineCount,
   themeKey,
   viewMode,
   onViewModeChange,
@@ -61,15 +59,6 @@ export function LobbyHero({
         >
           {liveConnected ? "Live updates connected" : "Polling fallback"}
         </div>
-        <div
-          className={`rounded-full px-3 py-1 text-xs ${
-            viewMode === "field"
-              ? "border border-emerald-300/22 bg-emerald-500/10 text-emerald-100"
-              : "border border-amber-300/22 bg-amber-400/10 text-amber-100"
-          }`}
-        >
-          {onlineCount} Online
-        </div>
       </div>
 
       {authError && (
@@ -86,6 +75,7 @@ export function LobbyHero({
 
       <LeaderboardPanel
         leaderboard={leaderboard}
+        onlineCount={leaderboard.activePlayers}
         themeKey={themeKey}
         viewMode={viewMode}
         onViewModeChange={onViewModeChange}

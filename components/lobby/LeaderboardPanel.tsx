@@ -11,6 +11,7 @@ import type { LobbyLeaderboardSummary } from "@/lib/lobby";
 
 type LeaderboardPanelProps = {
   leaderboard: LobbyLeaderboardSummary;
+  onlineCount: number;
   themeKey: LobbyThemeKey;
   viewMode: LobbyViewMode;
   onViewModeChange: (viewMode: LobbyViewMode) => void;
@@ -36,6 +37,7 @@ function buildRecordLabel(entry: LobbyLeaderboardSummary["entries"][number]) {
 
 export function LeaderboardPanel({
   leaderboard,
+  onlineCount,
   themeKey,
   viewMode,
   onViewModeChange,
@@ -63,6 +65,9 @@ export function LeaderboardPanel({
           <div className="flex flex-wrap items-center gap-2 lg:justify-end">
             <div className={`rounded-full border px-3 py-1 text-xs font-medium ${tone.statusBadge}`}>
               {leaderboard.statusLabel}
+            </div>
+            <div className={`rounded-full border px-3 py-1 text-xs font-medium ${tone.activeBadge}`}>
+              {onlineCount} Online
             </div>
 
             <LobbyViewToggle

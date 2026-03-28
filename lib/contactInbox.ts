@@ -177,7 +177,7 @@ function buildDirectMessageSnippet(message: {
   }
 
   if (message.attachmentKind === "image") {
-    return "Screenshot";
+    return "Attachment";
   }
 
   if (message.attachmentKind === "audio") {
