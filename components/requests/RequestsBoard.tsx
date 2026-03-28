@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { CheckCircle2 } from "lucide-react";
 
 import SteamLoginButton from "@/components/SteamLoginButton";
 import { useUserAuth } from "@/context/UserAuthContext";
@@ -261,7 +262,7 @@ function RequestCard(props: RequestCardProps) {
           </button>
           <div
             className="min-w-[3rem] rounded-2xl border border-white/10 bg-slate-950/45 px-3 py-3 text-center"
-            aria-label={`Vote total ${item.score}`}
+            aria-label={`Votes ${item.score}`}
           >
             <div className="text-xl font-semibold text-white tabular-nums">{item.score}</div>
           </div>
@@ -290,8 +291,9 @@ function RequestCard(props: RequestCardProps) {
                   {formatTimestamp(item.createdAt)}
                 </div>
                 {item.status === "completed" ? (
-                  <span className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.24em] text-emerald-100">
-                    Completed
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/25 bg-emerald-500/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.24em] text-emerald-100">
+                    <span>Completed</span>
+                    <CheckCircle2 className="h-3.5 w-3.5" />
                   </span>
                 ) : null}
               </div>
@@ -343,9 +345,16 @@ function RequestCard(props: RequestCardProps) {
                 <button
                   type="button"
                   onClick={() => onToggleComplete(item.id, item.status === "completed" ? "open" : "completed")}
-                  className="rounded-full border border-emerald-400/25 px-3 py-1.5 text-emerald-100 transition hover:bg-emerald-500/10"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/25 px-3 py-1.5 text-emerald-100 transition hover:bg-emerald-500/10"
                 >
-                  {item.status === "completed" ? "Reopen" : "Complete"}
+                  {item.status === "completed" ? (
+                    "Reopen"
+                  ) : (
+                    <>
+                      <span>Complete</span>
+                      <CheckCircle2 className="h-4 w-4" />
+                    </>
+                  )}
                 </button>
               ) : null}
               {item.canDelete ? (
@@ -710,7 +719,10 @@ export default function RequestsBoard() {
 
       {snapshot?.completedItems.length ? (
         <section className="rounded-[1.7rem] border border-white/10 bg-slate-950/70 p-5 sm:p-6">
-          <div className="text-[11px] uppercase tracking-[0.3em] text-slate-500">Completed</div>
+          <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.3em] text-slate-500">
+            <span>Completed</span>
+            <CheckCircle2 className="h-5 w-5 text-emerald-300" />
+          </div>
           <div className="mt-4 space-y-3">
             {snapshot.completedItems.map((item) => (
               <div
@@ -721,7 +733,7 @@ export default function RequestsBoard() {
                   <div>
                     <div className="text-base font-semibold text-white">{item.title}</div>
                     <div className="mt-1 text-sm text-slate-400">
-                      Score {item.score} · Completed {item.completedAt ? formatTimestamp(item.completedAt) : "recently"}
+                      {item.score} votes · Completed {item.completedAt ? formatTimestamp(item.completedAt) : "recently"}
                       {item.completedBy ? ` by ${item.completedBy.displayName}` : ""}
                     </div>
                   </div>

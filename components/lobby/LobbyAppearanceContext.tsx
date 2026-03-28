@@ -140,10 +140,64 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
     [tileThemeKey, viewMode]
   );
 
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+
+    const html = document.documentElement;
+    const body = document.body;
+    const previousHtmlBackground = html.style.background;
+    const previousHtmlColor = html.style.backgroundColor;
+    const previousHtmlBackgroundImage = html.style.backgroundImage;
+    const previousHtmlAttachment = html.style.backgroundAttachment;
+    const previousHtmlRepeat = html.style.backgroundRepeat;
+    const previousHtmlSize = html.style.backgroundSize;
+    const previousHtmlPosition = html.style.backgroundPosition;
+    const previousBodyBackgroundImage = body.style.backgroundImage;
+    const previousBodyColor = body.style.backgroundColor;
+    const previousBodyAttachment = body.style.backgroundAttachment;
+    const previousBodyRepeat = body.style.backgroundRepeat;
+    const previousBodySize = body.style.backgroundSize;
+    const previousBodyPosition = body.style.backgroundPosition;
+    const backgroundImage = getLobbyPageBackground(themeKey, viewMode);
+
+    html.style.backgroundImage = backgroundImage;
+    html.style.backgroundAttachment = "fixed";
+    html.style.backgroundRepeat = "no-repeat";
+    html.style.backgroundSize = "cover";
+    html.style.backgroundPosition = "center top";
+    html.style.backgroundColor = "#020617";
+    body.style.backgroundImage = backgroundImage;
+    body.style.backgroundColor = "#020617";
+    body.style.backgroundAttachment = "fixed";
+    body.style.backgroundRepeat = "no-repeat";
+    body.style.backgroundSize = "cover";
+    body.style.backgroundPosition = "center top";
+
+    return () => {
+      html.style.background = previousHtmlBackground;
+      html.style.backgroundImage = previousHtmlBackgroundImage;
+      html.style.backgroundColor = previousHtmlColor;
+      html.style.backgroundAttachment = previousHtmlAttachment;
+      html.style.backgroundRepeat = previousHtmlRepeat;
+      html.style.backgroundSize = previousHtmlSize;
+      html.style.backgroundPosition = previousHtmlPosition;
+      body.style.backgroundImage = previousBodyBackgroundImage;
+      body.style.backgroundColor = previousBodyColor;
+      body.style.backgroundAttachment = previousBodyAttachment;
+      body.style.backgroundRepeat = previousBodyRepeat;
+      body.style.backgroundSize = previousBodySize;
+      body.style.backgroundPosition = previousBodyPosition;
+    };
+  }, [themeKey, viewMode]);
+
   const pageStyle = useMemo<CSSProperties>(
     () => ({
       backgroundImage: getLobbyPageBackground(themeKey, viewMode),
       backgroundColor: "#020617",
+      backgroundAttachment: "fixed",
+      backgroundRepeat: "no-repeat",
+      backgroundPosition: "center top",
+      backgroundSize: "cover",
     }),
     [themeKey, viewMode]
   );

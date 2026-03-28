@@ -46,10 +46,10 @@ export function LeaderboardPanel({
 
   return (
     <div
-      className={`rounded-[1.85rem] border p-5 transition-all duration-300 sm:p-6 ${tone.panelShell}`}
+      className={`relative rounded-[1.85rem] border p-5 transition-all duration-300 sm:p-6 ${tone.panelShell}`}
     >
-      <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-        <div className="min-w-0">
+      <div className="flex flex-col gap-5">
+        <div className="min-w-0 pr-28 sm:pr-32">
           <div className={`text-xs uppercase tracking-[0.35em] ${tone.eyebrow}`}>Leaderboard</div>
           <div className="mt-4 flex flex-wrap items-end gap-8 sm:gap-10">
             <div className={`text-5xl font-semibold tracking-tight tabular-nums ${tone.count}`}>
@@ -61,11 +61,13 @@ export function LeaderboardPanel({
           </div>
         </div>
 
-        <div className="flex flex-col gap-3 lg:items-end">
+        <div className="absolute right-5 top-5 sm:right-6 sm:top-6">
           <div className={`rounded-full border px-3 py-1 text-xs font-medium ${tone.activeBadge}`}>
             {onlineCount} Online
           </div>
+        </div>
 
+        <div className="flex flex-wrap items-center gap-2 lg:justify-end">
           <div className="flex flex-wrap items-center gap-2 lg:justify-end">
             <div className={`rounded-full border px-3 py-1 text-xs font-medium ${tone.statusBadge}`}>
               {leaderboard.statusLabel}

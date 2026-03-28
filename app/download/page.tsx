@@ -22,12 +22,17 @@ const OPTIONAL_ENV = `AOE2_API_BASE_URL=https://api-prodn.aoe2hdbets.com
 AOE2_UPLOAD_API_KEY=your_key_here`;
 
 const FEATURE_CHIPS = [
+  "Live v1.1",
+  "Mar 28, 2026",
   "Julio-tested",
   "Live board feed",
   "Final replay proof",
   "Auto retry",
   "CrossOver ready",
 ];
+
+const WATCHER_VERSION = "Live v1.1";
+const WATCHER_RELEASE_STAMP = "Mar 28, 2026";
 
 const STATUS_CARDS = [
   {
@@ -60,9 +65,12 @@ export default function DownloadPage() {
             <h1 className="mt-4 text-4xl font-semibold tracking-tight text-white sm:text-5xl">
               AoE2 Watcher
             </h1>
+            <div className="mt-4 flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.28em] text-slate-400">
+              <span className={`rounded-full border px-3 py-1 ${tone.statusBadge}`}>{WATCHER_VERSION}</span>
+              <span>Released {WATCHER_RELEASE_STAMP}</span>
+            </div>
             <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300">
-              Julio already got it running and parsed his own match. Download the newest package,
-              keep it updated, and let it feed live snapshots plus final proof into AoE2HDBets.
+              Julio already got it running. Keep the package current and let it stream live snapshots plus final proof into AoE2HDBets.
             </p>
 
             <div className="mt-5 flex flex-wrap gap-2">
@@ -98,8 +106,12 @@ export default function DownloadPage() {
             <div className="flex items-center justify-between gap-3">
               <div className={`text-xs uppercase tracking-[0.32em] ${tone.accentText}`}>Runtime</div>
               <div className={`rounded-full border px-3 py-1 text-[11px] ${tone.statusBadge}`}>
-                Latest build
+                {WATCHER_VERSION}
               </div>
+            </div>
+
+            <div className="mt-3 text-xs uppercase tracking-[0.24em] text-slate-400">
+              Released {WATCHER_RELEASE_STAMP}
             </div>
 
             <div className="mt-5 space-y-3">
@@ -132,6 +144,9 @@ export default function DownloadPage() {
           <div className={`mt-4 rounded-[1.4rem] border p-4 ${tone.insetPanel}`}>
             <div className="text-[11px] uppercase tracking-[0.28em] text-slate-400">
               From the extracted watcher folder
+            </div>
+            <div className="mt-2 text-xs text-slate-400">
+              {WATCHER_VERSION} · {WATCHER_RELEASE_STAMP}
             </div>
             <pre className="mt-3 overflow-x-auto text-sm leading-7 text-slate-100">
               <code>{INSTALL_COMMANDS}</code>
