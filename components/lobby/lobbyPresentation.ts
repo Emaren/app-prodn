@@ -8,11 +8,14 @@ export type LobbyThemeKey =
   | "midnight";
 
 export type LobbyViewMode = "steel" | "field";
+export type LobbyTextColor = "white" | "grey" | "black";
 
 export const LOBBY_THEME_STORAGE_KEY = "aoe2hdbets:lobby-theme";
 export const LOBBY_VIEW_STORAGE_KEY = "aoe2hdbets:lobby-view";
+export const LOBBY_TEXT_COLOR_STORAGE_KEY = "aoe2hdbets:lobby-text-color";
 export const DEFAULT_LOBBY_THEME: LobbyThemeKey = "midnight";
 export const DEFAULT_LOBBY_VIEW: LobbyViewMode = "steel";
+export const DEFAULT_LOBBY_TEXT_COLOR: LobbyTextColor = "white";
 
 type LobbyThemeOption = {
   key: LobbyThemeKey;
@@ -24,6 +27,11 @@ type LobbyThemeOption = {
 
 type LobbyViewOption = {
   key: LobbyViewMode;
+  label: string;
+};
+
+type LobbyTextColorOption = {
+  key: LobbyTextColor;
   label: string;
 };
 
@@ -140,6 +148,12 @@ export const LOBBY_VIEW_OPTIONS: LobbyViewOption[] = [
   { key: "field", label: "Field" },
 ];
 
+export const LOBBY_TEXT_COLOR_OPTIONS: LobbyTextColorOption[] = [
+  { key: "white", label: "White" },
+  { key: "grey", label: "Grey" },
+  { key: "black", label: "Black" },
+];
+
 function findThemeOption(themeKey: LobbyThemeKey) {
   return (
     LOBBY_THEME_OPTIONS.find((option) => option.key === themeKey) ||
@@ -154,6 +168,10 @@ export function isLobbyThemeKey(value: string | null): value is LobbyThemeKey {
 
 export function isLobbyViewMode(value: string | null): value is LobbyViewMode {
   return LOBBY_VIEW_OPTIONS.some((option) => option.key === value);
+}
+
+export function isLobbyTextColor(value: string | null): value is LobbyTextColor {
+  return LOBBY_TEXT_COLOR_OPTIONS.some((option) => option.key === value);
 }
 
 export function getLobbyHeroBackground(themeKey: LobbyThemeKey, viewMode: LobbyViewMode) {
@@ -467,4 +485,18 @@ export function readStoredLobbyViewMode(): LobbyViewMode {
 export function writeStoredLobbyViewMode(viewMode: LobbyViewMode) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(LOBBY_VIEW_STORAGE_KEY, viewMode);
+}
+
+export function readStoredLobbyTextColor(): LobbyTextColor {
+  if (typeof window === "undefined") {
+    return DEFAULT_LOBBY_TEXT_COLOR;
+  }
+
+  const storedTextColor = window.localStorage.getItem(LOBBY_TEXT_COLOR_STORAGE_KEY);
+  return isLobbyTextColor(storedTextColor) ? storedTextColor : DEFAULT_LOBBY_TEXT_COLOR;
+}
+
+export function writeStoredLobbyTextColor(textColor: LobbyTextColor) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(LOBBY_TEXT_COLOR_STORAGE_KEY, textColor);
 }

@@ -35,7 +35,7 @@ export function TournamentPanel({
   const tone = getLobbyPresentationTone(themeKey, viewMode);
 
   return (
-    <div className={`rounded-[1.75rem] border p-6 ${tone.panelShell}`}>
+    <div className={`flex h-full flex-col rounded-[1.75rem] border p-6 ${tone.panelShell}`}>
       <div className="flex items-start justify-between gap-4">
         <div className={`text-xs uppercase tracking-[0.35em] ${tone.accentText}`}>
           Next Tournament
@@ -45,7 +45,7 @@ export function TournamentPanel({
         </div>
       </div>
 
-      <div className="mt-4 space-y-3">
+      <div className="mt-4 flex flex-1 flex-col space-y-3">
         <h3 className="text-2xl font-semibold text-white">{tournament.title}</h3>
         <p className="text-sm text-slate-300">
           <span className="font-semibold text-white">{tournament.format}</span>
@@ -157,7 +157,7 @@ export function TournamentPanel({
           </div>
         )}
 
-        <div className="flex flex-wrap gap-3">
+        <div className="mt-auto flex flex-wrap gap-3 pt-1">
           <button
             type="button"
             onClick={onJoinTournament}

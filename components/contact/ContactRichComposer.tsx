@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { ImagePlus, Mic, SendHorizonal, Square, X } from "lucide-react";
+import { Mic, Paperclip, SendHorizonal, Square, X } from "lucide-react";
 import { useId, useRef } from "react";
 
 type ComposerAttachment = {
@@ -60,7 +60,7 @@ export default function ContactRichComposer({
           <div className="flex items-start justify-between gap-3">
             <div>
               <div className="text-xs uppercase tracking-[0.24em] text-slate-500">
-                {attachment.kind === "image" ? "Screenshot attached" : "Voice note attached"}
+                {attachment.kind === "image" ? "Attachment ready" : "Voice note ready"}
               </div>
               <div className="mt-1 text-sm font-medium text-white">{attachment.name}</div>
               {attachment.durationSeconds ? (
@@ -105,7 +105,7 @@ export default function ContactRichComposer({
             }
           }}
           placeholder={counterpartName ? `Message ${counterpartName}...` : "Message the thread..."}
-          className="min-h-[6.5rem] w-full resize-none bg-transparent px-1 py-1 text-sm leading-6 text-white outline-none placeholder:text-slate-500"
+          className="min-h-[5.25rem] w-full resize-none bg-transparent px-1 py-1 text-sm leading-6 text-white outline-none placeholder:text-slate-500"
         />
 
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-white/8 pt-3">
@@ -127,9 +127,10 @@ export default function ContactRichComposer({
               type="button"
               onClick={() => fileInputRef.current?.click()}
               className="inline-flex items-center gap-2 rounded-full bg-white/[0.06] px-3 py-2 text-sm text-slate-200 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)] transition hover:bg-white/[0.1] hover:text-white"
+              aria-label="Attach image"
             >
-              <ImagePlus className="h-4 w-4" />
-              Screenshot
+              <Paperclip className="h-4 w-4" />
+              <span className="hidden sm:inline">Attach</span>
             </button>
 
             <button

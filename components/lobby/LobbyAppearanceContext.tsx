@@ -12,14 +12,18 @@ import {
 
 import { useUserAuth } from "@/context/UserAuthContext";
 import {
+  DEFAULT_LOBBY_TEXT_COLOR,
   DEFAULT_LOBBY_THEME,
   DEFAULT_LOBBY_VIEW,
   getLobbyPageBackground,
   getLobbyPresentationTone,
+  readStoredLobbyTextColor,
   readStoredLobbyTheme,
   readStoredLobbyViewMode,
+  writeStoredLobbyTextColor,
   writeStoredLobbyTheme,
   writeStoredLobbyViewMode,
+  type LobbyTextColor,
   type LobbyThemeKey,
   type LobbyViewMode,
 } from "@/components/lobby/lobbyPresentation";
@@ -33,6 +37,8 @@ type LobbyAppearanceContextValue = {
   setThemeKey: (themeKey: LobbyThemeKey) => void;
   viewMode: LobbyViewMode;
   setViewMode: (viewMode: LobbyViewMode) => void;
+  textColor: LobbyTextColor;
+  setTextColor: (textColor: LobbyTextColor) => void;
   appearanceLoaded: boolean;
   presentationTone: ReturnType<typeof getLobbyPresentationTone>;
   pageStyle: CSSProperties;
@@ -44,6 +50,7 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
   const { user } = useUserAuth();
   const [themeKey, setThemeKey] = useState<LobbyThemeKey>(DEFAULT_LOBBY_THEME);
   const [viewMode, setViewMode] = useState<LobbyViewMode>(DEFAULT_LOBBY_VIEW);
+  const [textColor, setTextColor] = useState<LobbyTextColor>(DEFAULT_LOBBY_TEXT_COLOR);
   const [appearanceLoaded, setAppearanceLoaded] = useState(false);
 
   useEffect(() => {
@@ -52,6 +59,7 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     const storedTheme = readStoredLobbyTheme();
     const storedView = readStoredLobbyViewMode();
+    const storedTextColor = readStoredLobbyTextColor();
     setAppearanceLoaded(false);
 
     const hydrateAppearance = async () => {
@@ -59,6 +67,7 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
         if (!cancelled) {
           setThemeKey(storedTheme);
           setViewMode(storedView);
+          setTextColor(storedTextColor);
           setAppearanceLoaded(true);
         }
         return;
@@ -69,11 +78,13 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
         if (cancelled) return;
         setThemeKey(preference.themeKey);
         setViewMode(preference.viewMode);
+        setTextColor(preference.textColor);
       } catch (error) {
         console.warn("Failed to hydrate appearance from account:", error);
         if (cancelled) return;
         setThemeKey(storedTheme);
         setViewMode(storedView);
+        setTextColor(storedTextColor);
       } finally {
         if (!cancelled) {
           setAppearanceLoaded(true);
@@ -97,12 +108,16 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
   }, [viewMode]);
 
   useEffect(() => {
+    writeStoredLobbyTextColor(textColor);
+  }, [textColor]);
+
+  useEffect(() => {
     if (!appearanceLoaded || !user?.uid) return;
 
-    void saveUserAppearancePreference({ themeKey, viewMode }).catch((error) => {
+    void saveUserAppearancePreference({ themeKey, viewMode, textColor }).catch((error) => {
       console.warn("Failed to save appearance preference:", error);
     });
-  }, [appearanceLoaded, themeKey, user?.uid, viewMode]);
+  }, [appearanceLoaded, textColor, themeKey, user?.uid, viewMode]);
 
   const presentationTone = useMemo(
     () => getLobbyPresentationTone(themeKey, viewMode),
@@ -124,6 +139,8 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
         setThemeKey,
         viewMode,
         setViewMode,
+        textColor,
+        setTextColor,
         appearanceLoaded,
         presentationTone,
         pageStyle,

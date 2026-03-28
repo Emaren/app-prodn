@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
+  LobbyTextColorPicker,
   LobbyThemePicker,
   LobbyViewToggle,
 } from "@/components/lobby/LobbyAppearanceControls";
@@ -49,8 +50,15 @@ function ProfilePageContent() {
   const [status, setStatus] = useState("");
   const [savingName, setSavingName] = useState(false);
   const [claimSeedApplied, setClaimSeedApplied] = useState(false);
-  const { themeKey, setThemeKey, viewMode, setViewMode, presentationTone: appearanceTone } =
-    useLobbyAppearance();
+  const {
+    themeKey,
+    setThemeKey,
+    viewMode,
+    setViewMode,
+    textColor,
+    setTextColor,
+    presentationTone: appearanceTone,
+  } = useLobbyAppearance();
 
   const claimName = searchParams?.get("claim_name")?.trim() || "";
 
@@ -273,7 +281,8 @@ function ProfilePageContent() {
             <h2 className="mt-2 text-2xl font-semibold text-white">Tune your command room</h2>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
               Theme circles set the lobby atmosphere and tile palette. Steel versus Field changes the
-              skin treatment across the homepage tiles.
+              skin treatment across the homepage tiles. Text color lets you push the copy brighter,
+              softer, or darker.
             </p>
           </div>
           <div className={`rounded-2xl border px-4 py-3 text-sm ${appearanceTone.neutralPill}`}>
@@ -281,7 +290,7 @@ function ProfilePageContent() {
           </div>
         </div>
 
-        <div className="mt-6 grid gap-6 md:grid-cols-2">
+        <div className="mt-6 grid gap-6 md:grid-cols-3">
           <div className={`rounded-2xl border p-5 ${appearanceTone.insetPanel}`}>
             <div className="text-sm font-medium text-white">Theme</div>
             <p className="mt-2 text-sm leading-6 text-slate-300">
@@ -304,6 +313,19 @@ function ProfilePageContent() {
             <LobbyViewToggle
               viewMode={viewMode}
               onViewModeChange={setViewMode}
+              tone={appearanceTone}
+              className="mt-4"
+            />
+          </div>
+
+          <div className={`rounded-2xl border p-5 ${appearanceTone.insetPanel}`}>
+            <div className="text-sm font-medium text-white">Text Color</div>
+            <p className="mt-2 text-sm leading-6 text-slate-300">
+              White is crisp, Grey is softer, and Black works best when you pair it with lighter themes.
+            </p>
+            <LobbyTextColorPicker
+              textColor={textColor}
+              onTextColorChange={setTextColor}
               tone={appearanceTone}
               className="mt-4"
             />
@@ -340,6 +362,9 @@ function ProfilePageContent() {
                 </span>
                 <span className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${appearanceTone.rankBadge}`}>
                   lobby tiles
+                </span>
+                <span className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${appearanceTone.neutralPill}`}>
+                  {textColor} text
                 </span>
               </div>
             </div>

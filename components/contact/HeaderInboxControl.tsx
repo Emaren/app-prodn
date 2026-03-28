@@ -142,6 +142,8 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
           .filter(Boolean)
           .join(" ")}
         aria-label="Open Contact Emaren inbox"
+        aria-expanded={open}
+        aria-haspopup="dialog"
       >
         <MessageSquareMore className="h-5 w-5" />
         {unreadCount > 0 ? (
@@ -152,7 +154,7 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
       </button>
 
       {open ? (
-        <div className="fixed inset-x-3 top-28 z-50 flex justify-center sm:absolute sm:right-0 sm:top-14 sm:left-auto sm:block">
+        <div className="fixed inset-x-3 bottom-4 top-24 z-50 sm:absolute sm:bottom-auto sm:left-auto sm:right-0 sm:top-14 sm:h-[min(44rem,calc(100dvh-7rem))] sm:w-[26rem] sm:max-w-[calc(100vw-2rem)]">
           <ContactInboxPanel
             data={panelData ?? summary}
             loading={loading && !(panelData ?? summary)}

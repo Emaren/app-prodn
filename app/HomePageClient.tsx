@@ -308,12 +308,13 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
             isAuthenticated={isAuthenticated}
             loading={loading}
             leaderboard={leaderboard}
+            onlineCount={onlineUsers.length}
             themeKey={themeKey}
             viewMode={viewMode}
             onViewModeChange={setViewMode}
           />
 
-          <div className="lg:pt-14">
+          <div className="lg:-mt-4 lg:self-start">
             <TournamentPanel
               tournament={tournament}
               themeKey={themeKey}

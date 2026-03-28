@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { MessageCirclePlus } from "lucide-react";
+import { MessageCirclePlus, Mic, Paperclip } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
@@ -383,8 +383,13 @@ function TextMessageBubble({
               ) : (
                 <audio src={message.attachment.dataUrl} controls className="w-full" />
               )}
-              <div className="mt-2 text-[11px] uppercase tracking-[0.22em] text-slate-300/75">
-                {message.attachment.kind === "image" ? "Screenshot" : "Voice note"}
+              <div className="mt-2 inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.22em] text-slate-300/75">
+                {message.attachment.kind === "image" ? (
+                  <Paperclip className="h-3.5 w-3.5" />
+                ) : (
+                  <Mic className="h-3.5 w-3.5" />
+                )}
+                {message.attachment.kind === "image" ? "Attachment" : "Voice note"}
                 {message.attachment.durationSeconds ? ` · ${message.attachment.durationSeconds}s` : ""}
               </div>
             </div>
@@ -545,7 +550,11 @@ export default function ContactInboxPanel({
 }: ContactInboxPanelProps) {
   const counterpart = data?.activeCounterpart ?? null;
   const activeTargetUid = data?.activeTargetUid ?? null;
-  const showConversationRail = Boolean(data?.viewer.isAdmin && (data?.summaries.length ?? 0) > 0);
+  const hasConversationChoices = (data?.summaries.length ?? 0) > 1;
+  const showConversationRail = Boolean(
+    mode === "page" && data?.viewer.isAdmin && hasConversationChoices
+  );
+  const showConversationChips = !showConversationRail && hasConversationChoices;
   const unreadCount = data?.totalUnreadCount ?? 0;
   const heading = data?.viewer.isAdmin ? "Direct Threads" : counterpart?.displayName || "Private Thread";
   const typingLabel =
@@ -556,12 +565,14 @@ export default function ContactInboxPanel({
 
   return (
     <div
-      className={`overflow-hidden rounded-[1.6rem] bg-[linear-gradient(180deg,rgba(15,23,42,0.98),rgba(2,6,23,0.98))] text-white shadow-[0_28px_120px_rgba(0,0,0,0.45)] ${
-        mode === "page" ? "min-h-[40rem] shadow-[0_32px_140px_rgba(0,0,0,0.5)]" : "w-[24rem] max-w-[calc(100vw-2rem)]"
+      className={`flex min-h-0 flex-col overflow-hidden rounded-[1.6rem] bg-[linear-gradient(180deg,rgba(15,23,42,0.98),rgba(2,6,23,0.98))] text-white shadow-[0_28px_120px_rgba(0,0,0,0.45)] ${
+        mode === "page"
+          ? "h-full flex-1 shadow-[0_32px_140px_rgba(0,0,0,0.5)]"
+          : "h-full w-full"
       }`}
       style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.07), 0 32px 120px rgba(0,0,0,0.45)" }}
     >
-      <div className="border-b border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01))] px-4 py-4">
+      <div className="shrink-0 border-b border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01))] px-4 py-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="text-[11px] uppercase tracking-[0.32em] text-amber-200/70">
@@ -589,9 +600,15 @@ export default function ContactInboxPanel({
         ) : null}
       </div>
 
-      <div className={mode === "page" && showConversationRail ? "grid min-h-[34rem] lg:grid-cols-[18rem_1fr]" : ""}>
+      <div
+        className={
+          showConversationRail
+            ? "grid min-h-0 flex-1 lg:grid-cols-[17.5rem_minmax(0,1fr)]"
+            : "flex min-h-0 flex-1 flex-col"
+        }
+      >
         {showConversationRail ? (
-          <aside className="border-b border-white/8 bg-white/[0.02] p-4 lg:border-b-0 lg:border-r">
+          <aside className="max-h-64 overflow-y-auto overscroll-contain border-b border-white/8 bg-white/[0.02] p-4 lg:max-h-none lg:border-b-0 lg:border-r">
             <div className="space-y-3">
               {data?.summaries.map((summary) => (
                 <SummaryButton
@@ -605,9 +622,9 @@ export default function ContactInboxPanel({
           </aside>
         ) : null}
 
-        <div className="flex min-h-[22rem] flex-col">
-          {!showConversationRail && (data?.summaries.length ?? 0) > 1 ? (
-            <div className="flex gap-2 overflow-x-auto border-b border-white/8 px-4 py-3">
+        <div className="flex min-h-0 flex-1 flex-col">
+          {showConversationChips ? (
+            <div className="flex shrink-0 gap-2 overflow-x-auto overscroll-contain border-b border-white/8 px-4 py-3">
               {data?.summaries.map((summary) => (
                 <button
                   key={summary.targetUid}
@@ -626,7 +643,7 @@ export default function ContactInboxPanel({
             </div>
           ) : null}
 
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4">
             {typingLabel ? (
               <div className="mb-3 flex justify-center">
                 <div className="rounded-full bg-white/[0.05] px-3 py-2 text-xs text-slate-300 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]">
@@ -680,7 +697,7 @@ export default function ContactInboxPanel({
             )}
           </div>
 
-          <div className="border-t border-white/8 bg-white/[0.015] px-4 py-4">
+          <div className="shrink-0 border-t border-white/8 bg-white/[0.015] px-4 py-4">
             {richComposer ? (
               richComposer
             ) : (

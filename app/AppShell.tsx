@@ -30,7 +30,7 @@ const HEADER_LINKS: ReadonlyArray<{
 
 function InnerShell({ children }: { children: React.ReactNode }) {
   const { uid, playerName, setPlayerName } = useUserAuth();
-  const { themeKey, setThemeKey, presentationTone, pageStyle } = useLobbyAppearance();
+  const { themeKey, setThemeKey, textColor, presentationTone, pageStyle } = useLobbyAppearance();
   const [pendingBetsCount] = React.useState(0);
   const [liveGamesCount, setLiveGamesCount] = React.useState(0);
   const [requestCount, setRequestCount] = React.useState(0);
@@ -76,7 +76,12 @@ function InnerShell({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <div className="min-h-screen text-white transition-[background-image,background-color] duration-500" style={pageStyle}>
+    <div
+      className="flex min-h-screen flex-col overflow-x-clip text-white transition-[background-image,background-color] duration-500"
+      style={pageStyle}
+      data-text-tone={textColor}
+      data-theme-key={themeKey}
+    >
       <UserExperienceTracker />
       <header
         className={`border-b px-3 py-4 backdrop-blur-xl transition-[background-color,border-color] duration-500 sm:px-4 ${headerSkin.shell}`}
@@ -140,7 +145,9 @@ function InnerShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <main className="mx-auto flex-1 w-full max-w-6xl px-3 py-4 sm:px-4">{children}</main>
+      <main className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col px-3 py-4 sm:px-4">
+        {children}
+      </main>
       <Toaster richColors />
     </div>
   );

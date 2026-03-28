@@ -4,11 +4,50 @@
 
 /* Ensure body is full height */
 html, body {
+    height: 100%;
     min-height: 100vh;
     margin: 0;
     padding: 0;
     background-color: #111827; /* Dark background */
     color: white;
+}
+
+:root {
+    --app-text-strong: #ffffff;
+    --app-text-default: #e2e8f0;
+    --app-text-muted: #94a3b8;
+}
+
+[data-text-tone="grey"] {
+    --app-text-strong: #d9e2ec;
+    --app-text-default: #cbd5e1;
+    --app-text-muted: #94a3b8;
+}
+
+[data-text-tone="black"] {
+    --app-text-strong: #0f172a;
+    --app-text-default: #1e293b;
+    --app-text-muted: #334155;
+}
+
+[data-text-tone="grey"] :is(.text-white, .text-slate-100, .text-stone-50),
+[data-text-tone="black"] :is(.text-white, .text-slate-100, .text-stone-50) {
+    color: var(--app-text-strong) !important;
+}
+
+[data-text-tone="grey"] :is(.text-slate-200, .text-slate-300, .text-white\/80, .text-white\/85),
+[data-text-tone="black"] :is(.text-slate-200, .text-slate-300, .text-white\/80, .text-white\/85) {
+    color: var(--app-text-default) !important;
+}
+
+[data-text-tone="grey"] :is(.text-slate-400, .text-slate-500, .text-white\/45),
+[data-text-tone="black"] :is(.text-slate-400, .text-slate-500, .text-white\/45) {
+    color: var(--app-text-muted) !important;
+}
+
+[data-text-tone="grey"] :is(input, textarea)::placeholder,
+[data-text-tone="black"] :is(input, textarea)::placeholder {
+    color: var(--app-text-muted);
 }
 
 a[href],

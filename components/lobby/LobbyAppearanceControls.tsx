@@ -1,8 +1,10 @@
 "use client";
 
 import {
+  LOBBY_TEXT_COLOR_OPTIONS,
   LOBBY_THEME_OPTIONS,
   LOBBY_VIEW_OPTIONS,
+  type LobbyTextColor,
   type LobbyThemeKey,
   type LobbyViewMode,
   type LobbyPresentationTone,
@@ -20,6 +22,14 @@ type LobbyThemePickerProps = {
 type LobbyViewToggleProps = {
   viewMode: LobbyViewMode;
   onViewModeChange: (viewMode: LobbyViewMode) => void;
+  tone: LobbyPresentationTone;
+  label?: string;
+  className?: string;
+};
+
+type LobbyTextColorPickerProps = {
+  textColor: LobbyTextColor;
+  onTextColorChange: (textColor: LobbyTextColor) => void;
   tone: LobbyPresentationTone;
   label?: string;
   className?: string;
@@ -87,6 +97,42 @@ export function LobbyViewToggle({
               key={option.key}
               type="button"
               onClick={() => onViewModeChange(option.key)}
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                isActive ? tone.viewToggleActive : "text-current hover:bg-white/10"
+              }`}
+              aria-pressed={isActive}
+            >
+              {option.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+export function LobbyTextColorPicker({
+  textColor,
+  onTextColorChange,
+  tone,
+  label,
+  className,
+}: LobbyTextColorPickerProps) {
+  return (
+    <div className={["flex flex-wrap items-center gap-2", className].filter(Boolean).join(" ")}>
+      {label ? (
+        <div className="text-[10px] font-medium uppercase tracking-[0.28em] text-slate-400">
+          {label}
+        </div>
+      ) : null}
+      <div className={`inline-flex rounded-full border p-1 ${tone.viewToggle}`}>
+        {LOBBY_TEXT_COLOR_OPTIONS.map((option) => {
+          const isActive = option.key === textColor;
+          return (
+            <button
+              key={option.key}
+              type="button"
+              onClick={() => onTextColorChange(option.key)}
               className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
                 isActive ? tone.viewToggleActive : "text-current hover:bg-white/10"
               }`}

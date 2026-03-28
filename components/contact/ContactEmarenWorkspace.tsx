@@ -144,7 +144,7 @@ export default function ContactEmarenWorkspace() {
         headers: {
           "Content-Type": "application/json",
         },
-      body: JSON.stringify({
+        body: JSON.stringify({
           action: "set_typing",
           targetUid: selectedTargetUid,
           isTyping,
@@ -329,7 +329,7 @@ export default function ContactEmarenWorkspace() {
 
   if (loading) {
     return (
-      <div className="rounded-[1.75rem] border border-white/10 bg-slate-950/70 px-5 py-8 text-white sm:px-6 sm:py-10">
+      <div className="flex h-full min-h-0 flex-col justify-center rounded-[1.75rem] border border-white/10 bg-slate-950/70 px-5 py-8 text-white sm:px-6 sm:py-10">
         Loading your direct line...
       </div>
     );
@@ -337,7 +337,7 @@ export default function ContactEmarenWorkspace() {
 
   if (!isAuthenticated) {
     return (
-      <div className="rounded-[1.75rem] border border-white/10 bg-slate-950/70 px-5 py-8 text-white sm:px-6 sm:py-10">
+      <div className="flex h-full min-h-0 flex-col justify-center rounded-[1.75rem] border border-white/10 bg-slate-950/70 px-5 py-8 text-white sm:px-6 sm:py-10">
         <div className="text-xs uppercase tracking-[0.35em] text-amber-200/70">Contact Emaren</div>
         <h1 className="mt-3 text-3xl font-semibold text-white">Sign in to message Emaren.</h1>
         <p className="mt-4 max-w-xl text-sm leading-6 text-slate-300 sm:text-base">
@@ -351,83 +351,85 @@ export default function ContactEmarenWorkspace() {
   }
 
   return (
-    <ContactInboxPanel
-      data={data}
-      loading={pending && !data}
-      error={error}
-      body={body}
-      sendPending={sendPending}
-      mode="page"
-      reactingMessageId={reactingMessageId}
-      onBodyChange={(value) => {
-        setBody(value);
-        scheduleTypingState(value);
-      }}
-      onInboxAction={async (action) => {
-        setError(null);
-        try {
-          await performInboxAction(action);
-        } catch (actionError) {
-          setError(actionError instanceof Error ? actionError.message : "Inbox action failed.");
-        }
-      }}
-      onToggleReaction={async (messageId, emoji) => {
-        setReactingMessageId(messageId);
-        setError(null);
-        try {
-          await performInboxAction({ action: "toggle_reaction", messageId, emoji });
-        } catch (reactionError) {
-          setError(reactionError instanceof Error ? reactionError.message : "Reaction failed.");
-        } finally {
-          setReactingMessageId(null);
-        }
-      }}
-      onSelectConversation={(targetUid) => {
-        void sendTypingState(false);
-        setBody("");
-        clearAttachment();
-        setSelectedTargetUid(targetUid);
-        void refresh(targetUid);
-      }}
-      onSend={() => {
-        void handleSend();
-      }}
-      richComposer={
-        <ContactRichComposer
-          body={body}
-          sendPending={sendPending}
-          unavailableReason={data?.unavailableReason ?? null}
-          counterpartName={data?.activeCounterpart?.displayName ?? null}
-          attachment={
-            attachment
-              ? {
-                  kind: attachment.kind,
-                  name: attachment.file.name,
-                  previewUrl: attachment.previewUrl,
-                  durationSeconds: attachment.durationSeconds,
-                }
-              : null
+    <div className="flex h-full min-h-0 flex-col">
+      <ContactInboxPanel
+        data={data}
+        loading={pending && !data}
+        error={error}
+        body={body}
+        sendPending={sendPending}
+        mode="page"
+        reactingMessageId={reactingMessageId}
+        onBodyChange={(value) => {
+          setBody(value);
+          scheduleTypingState(value);
+        }}
+        onInboxAction={async (action) => {
+          setError(null);
+          try {
+            await performInboxAction(action);
+          } catch (actionError) {
+            setError(actionError instanceof Error ? actionError.message : "Inbox action failed.");
           }
-          voiceSupported={voiceSupported}
-          voiceRecording={voiceRecording}
-          onBodyChange={(value) => {
-            setBody(value);
-            scheduleTypingState(value);
-          }}
-          onSend={() => {
-            if (!sendPending) {
-              void handleSend();
+        }}
+        onToggleReaction={async (messageId, emoji) => {
+          setReactingMessageId(messageId);
+          setError(null);
+          try {
+            await performInboxAction({ action: "toggle_reaction", messageId, emoji });
+          } catch (reactionError) {
+            setError(reactionError instanceof Error ? reactionError.message : "Reaction failed.");
+          } finally {
+            setReactingMessageId(null);
+          }
+        }}
+        onSelectConversation={(targetUid) => {
+          void sendTypingState(false);
+          setBody("");
+          clearAttachment();
+          setSelectedTargetUid(targetUid);
+          void refresh(targetUid);
+        }}
+        onSend={() => {
+          void handleSend();
+        }}
+        richComposer={
+          <ContactRichComposer
+            body={body}
+            sendPending={sendPending}
+            unavailableReason={data?.unavailableReason ?? null}
+            counterpartName={data?.activeCounterpart?.displayName ?? null}
+            attachment={
+              attachment
+                ? {
+                    kind: attachment.kind,
+                    name: attachment.file.name,
+                    previewUrl: attachment.previewUrl,
+                    durationSeconds: attachment.durationSeconds,
+                  }
+                : null
             }
-          }}
-          onAttachScreenshot={(file) => {
-            void handleAttachScreenshot(file);
-          }}
-          onClearAttachment={clearAttachment}
-          onToggleVoiceRecording={() => {
-            void handleToggleVoiceRecording();
-          }}
-        />
-      }
-    />
+            voiceSupported={voiceSupported}
+            voiceRecording={voiceRecording}
+            onBodyChange={(value) => {
+              setBody(value);
+              scheduleTypingState(value);
+            }}
+            onSend={() => {
+              if (!sendPending) {
+                void handleSend();
+              }
+            }}
+            onAttachScreenshot={(file) => {
+              void handleAttachScreenshot(file);
+            }}
+            onClearAttachment={clearAttachment}
+            onToggleVoiceRecording={() => {
+              void handleToggleVoiceRecording();
+            }}
+          />
+        }
+      />
+    </div>
   );
 }

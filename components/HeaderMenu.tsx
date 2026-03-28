@@ -64,6 +64,8 @@ export default function HeaderMenu({
           .filter(Boolean)
           .join(" ")}
         onClick={() => setMenuOpen((open) => !open)}
+        aria-expanded={menuOpen}
+        aria-haspopup="menu"
       >
         <UserCircle className="h-5 w-5" />
         <span className="max-w-[8.5rem] truncate sm:max-w-none">{playerName || "Account"}</span>
@@ -72,11 +74,12 @@ export default function HeaderMenu({
       {menuOpen && (
         <div
           className={[
-            "absolute right-0 top-14 z-50 w-64 rounded-2xl border p-2 shadow-2xl backdrop-blur",
+            "fixed inset-x-3 bottom-4 top-24 z-50 overflow-y-auto overscroll-contain rounded-[1.65rem] border p-2 shadow-2xl backdrop-blur sm:absolute sm:bottom-auto sm:left-auto sm:right-0 sm:top-14 sm:max-h-[min(42rem,calc(100dvh-7rem))] sm:w-72",
             menuClassName || "border-white/10 bg-slate-950/95",
           ]
             .filter(Boolean)
             .join(" ")}
+          role="menu"
         >
           <MenuLink href="/profile" linkClassName={linkClassName} onNavigate={() => setMenuOpen(false)}>
             Profile
