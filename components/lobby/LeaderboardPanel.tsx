@@ -48,23 +48,24 @@ export function LeaderboardPanel({
     <div
       className={`rounded-[1.85rem] border p-5 transition-all duration-300 sm:p-6 ${tone.panelShell}`}
     >
-      <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
           <div className={`text-xs uppercase tracking-[0.35em] ${tone.eyebrow}`}>Leaderboard</div>
-          <div className="mt-4 flex flex-wrap items-center gap-8 sm:gap-10">
+          <div className="mt-4 flex flex-wrap items-end gap-8 sm:gap-10">
             <div className={`text-5xl font-semibold tracking-tight tabular-nums ${tone.count}`}>
               {leaderboard.trackedPlayers}
             </div>
-            <div className={`rounded-full border px-3 py-1 text-xs font-medium ${tone.activeBadge}`}>
-              {onlineCount} Online
-            </div>
           </div>
           <div className={`mt-2 text-[11px] uppercase tracking-[0.34em] ${tone.countLabel}`}>
-              Players On Board
+            Players On Board
           </div>
         </div>
 
         <div className="flex flex-col gap-3 lg:items-end">
+          <div className={`rounded-full border px-3 py-1 text-xs font-medium ${tone.activeBadge}`}>
+            {onlineCount} Online
+          </div>
+
           <div className="flex flex-wrap items-center gap-2 lg:justify-end">
             <div className={`rounded-full border px-3 py-1 text-xs font-medium ${tone.statusBadge}`}>
               {leaderboard.statusLabel}

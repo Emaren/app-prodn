@@ -11,6 +11,7 @@ import {
   type PublicPlayerDirectoryEntry,
 } from "@/lib/publicPlayerDirectory";
 import { normalizePublicPlayerName } from "@/lib/publicPlayers";
+import { dedupeFinalReplayRows } from "@/lib/finalReplayIdentity";
 
 const BASE_ARENA_ELO = 1500;
 const ARENA_ELO_K_FACTOR = 32;
@@ -335,37 +336,33 @@ export async function loadLobbyLeaderboard(
   const dayStart = new Date();
   dayStart.setHours(0, 0, 0, 0);
 
-  const [directory, leaderboardGames, matchesToday] = await Promise.all([
+  const [directory, leaderboardGames] = await Promise.all([
     loadPublicPlayerDirectory(prisma),
     prisma.gameStats.findMany({
       where: { is_final: true },
       orderBy: [{ played_on: "asc" }, { timestamp: "asc" }, { createdAt: "asc" }],
       take: 600,
       select: {
+        id: true,
+        replayHash: true,
         winner: true,
         players: true,
+        key_events: true,
         played_on: true,
         timestamp: true,
       },
     }),
-    prisma.gameStats.count({
-      where: {
-        is_final: true,
-        OR: [
-          { played_on: { gte: dayStart } },
-          { played_on: null, timestamp: { gte: dayStart } },
-          { played_on: null, timestamp: null, createdAt: { gte: dayStart } },
-        ],
-      },
-    }),
   ]);
 
-  const preparedGames: PreparedLeaderboardGame[] = leaderboardGames.map((game) => ({
+  const uniqueGames = dedupeFinalReplayRows(leaderboardGames);
+  const preparedGames: PreparedLeaderboardGame[] = uniqueGames.map((game) => ({
     winner: game.winner,
     players: parsePlayers(game.players),
     playedAtMs: new Date(game.played_on ?? game.timestamp ?? 0).getTime(),
   }));
   const recentGames = [...preparedGames].sort((left, right) => right.playedAtMs - left.playedAtMs);
+  const dayStartMs = dayStart.getTime();
+  const matchesToday = preparedGames.filter((game) => Number.isFinite(game.playedAtMs) && game.playedAtMs >= dayStartMs).length;
 
   const candidates = directory.allEntries
     .filter((entry) => entry.totalMatches > 0 || entry.claimed)

@@ -16,6 +16,7 @@ import {
   normalizePublicPlayerName,
 } from "@/lib/publicPlayers";
 import { loadUserCommunitySummaries } from "@/lib/communityHonors";
+import { dedupeFinalReplayRows } from "@/lib/finalReplayIdentity";
 
 export type PublicPlayerDirectoryEntry = {
   key: string;
@@ -229,8 +230,10 @@ export async function loadPublicPlayerDirectory(
       take: 300,
       select: {
         id: true,
+        replayHash: true,
         winner: true,
         players: true,
+        key_events: true,
         played_on: true,
         timestamp: true,
       },
@@ -241,9 +244,11 @@ export async function loadPublicPlayerDirectory(
     users.map((user) => user.id)
   );
 
+  const uniqueGames = dedupeFinalReplayRows(games);
+
   const replayNames = Array.from(
     new Set(
-      games.flatMap((game) =>
+      uniqueGames.flatMap((game) =>
         parsePlayers(game.players)
           .map((player) => normalizePublicPlayerName(displayPlayerName(player)))
           .filter(Boolean)
@@ -284,7 +289,7 @@ export async function loadPublicPlayerDirectory(
     directory.set(entry.key, entry);
   }
 
-  for (const game of games) {
+  for (const game of uniqueGames) {
     const players = parsePlayers(game.players);
     const playedAt = readPlayedAt(game);
 

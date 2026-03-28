@@ -328,7 +328,7 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
             onViewModeChange={setViewMode}
           />
 
-          <div className="lg:-mt-4 lg:self-start">
+          <div className="lg:mt-2 lg:self-start">
             <TournamentPanel
               tournament={tournament}
               themeKey={tileThemeKey}

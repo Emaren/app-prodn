@@ -259,9 +259,11 @@ function RequestCard(props: RequestCardProps) {
           >
             ▲
           </button>
-          <div className="min-w-[3rem] rounded-2xl border border-white/10 bg-slate-950/45 px-3 py-3 text-center">
+          <div
+            className="min-w-[3rem] rounded-2xl border border-white/10 bg-slate-950/45 px-3 py-3 text-center"
+            aria-label={`Vote total ${item.score}`}
+          >
             <div className="text-xl font-semibold text-white tabular-nums">{item.score}</div>
-            <div className="mt-1 text-[10px] uppercase tracking-[0.24em] text-slate-500">score</div>
           </div>
           <button
             type="button"

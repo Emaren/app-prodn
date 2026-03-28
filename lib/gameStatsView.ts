@@ -257,6 +257,8 @@ export function parseStatusLabel(status: string) {
       return "Parse Failed";
     case "duplicate_final":
       return "Duplicate Final";
+    case "duplicate_reviewed_match":
+      return "Reviewed Match";
     default:
       return status.replace(/_/g, " ");
   }
