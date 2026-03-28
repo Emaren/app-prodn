@@ -114,7 +114,6 @@ export function LeaderboardPanel({
                         </MiniTag>
                       )}
                       {entry.isOnline ? <MiniTag toneClassName={tone.activeBadge}>Online</MiniTag> : null}
-                      {entry.provisional ? <MiniTag toneClassName={tone.neutralPill}>Provisional</MiniTag> : null}
                     </div>
                   </div>
                 </div>

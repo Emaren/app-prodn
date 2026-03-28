@@ -26,6 +26,8 @@ export type LobbyMatchRow = {
   played_on: string | null;
   timestamp: string | null;
   parse_reason?: string | null;
+  original_filename?: string | null;
+  replay_file?: string | null;
 };
 
 export type LobbyTournamentEntrant = {

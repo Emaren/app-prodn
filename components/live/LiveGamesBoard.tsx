@@ -33,6 +33,20 @@ function formatUpdatedTime(value: string | null) {
   });
 }
 
+function formatDurationCompact(value: number | null) {
+  if (!value || value <= 0) return null;
+
+  const totalSeconds = Math.floor(value);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`;
+  }
+
+  return `${minutes}m`;
+}
+
 function playerLabel(
   entrant:
     | {
@@ -81,9 +95,15 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
   }, []);
 
   const liveItems = useMemo(
-    () => [...snapshot.activeSessions, ...snapshot.liveMatches],
-    [snapshot.activeSessions, snapshot.liveMatches]
+    () => [...snapshot.activeSessions, ...snapshot.liveMatches, ...snapshot.recentlyCompletedSessions],
+    [snapshot.activeSessions, snapshot.liveMatches, snapshot.recentlyCompletedSessions]
   );
+  const sectionStatusLabel =
+    snapshot.liveCount > 0
+      ? `${snapshot.liveCount} live`
+      : snapshot.recentlyCompletedSessions.length > 0
+        ? `${snapshot.recentlyCompletedSessions.length} recent`
+        : "0 live";
 
   return (
     <main className="space-y-4 py-2 text-white sm:space-y-6 sm:py-3">
@@ -122,7 +142,7 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
               <h2 className="mt-2 text-3xl font-semibold text-white">Playing now</h2>
             </div>
             <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-              {liveItems.length} live
+              {sectionStatusLabel}
             </div>
           </div>
 
@@ -138,6 +158,9 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
                 ))}
                 {snapshot.liveMatches.map((match) => (
                   <TournamentLiveMatchCard key={`match-${match.id}`} match={match} emphasis="live" />
+                ))}
+                {snapshot.recentlyCompletedSessions.map((session) => (
+                  <LiveSessionCard key={`completed-${session.id}`} session={session} />
                 ))}
               </>
             )}
@@ -171,10 +194,7 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
 
           <section className="rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-5 sm:p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <div className="text-xs uppercase tracking-[0.35em] text-white/45">Fresh Proof</div>
-                <h2 className="mt-2 text-2xl font-semibold text-white">Recent proof</h2>
-              </div>
+              <h2 className="text-2xl font-semibold text-white">Recently Played</h2>
               <Link
                 href="/game-stats"
                 className="rounded-full border border-white/15 px-4 py-2 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
@@ -186,7 +206,7 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
             <div className="mt-5 space-y-3">
               {snapshot.recentMatches.length === 0 ? (
                 <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-5 text-sm text-slate-300">
-                  Waiting on the next parsed result.
+                  Waiting on the next completed match.
                 </div>
               ) : (
                 snapshot.recentMatches.slice(0, 4).map((match) => (
@@ -230,16 +250,27 @@ function LiveSessionCard({
 }: {
   session: LiveGamesSnapshot["activeSessions"][number];
 }) {
+  const isCompleted = session.state === "completed";
   const title =
     session.players.length > 0
       ? session.players.map((player) => player.name).join(" vs ")
       : session.originalFilename || "Game in progress";
+  const shellClass = isCompleted
+    ? "border-emerald-400/20 bg-emerald-500/10"
+    : "border-red-400/20 bg-red-500/10";
+  const badgeClass = isCompleted
+    ? "border-emerald-400/25 bg-emerald-500/12 text-emerald-50"
+    : "border-red-400/25 bg-red-500/12 text-red-50";
+  const eyebrowClass = isCompleted ? "text-emerald-100/80" : "text-red-100/80";
+  const eyebrowLabel = isCompleted ? "Just finished" : "Watcher live";
+  const badgeLabel = isCompleted ? "Final stored" : "Live parse";
+  const compactDuration = formatDurationCompact(session.durationSeconds);
 
   return (
-    <div className="rounded-[1.5rem] border border-red-400/20 bg-red-500/10 px-4 py-4">
+    <div className={`rounded-[1.5rem] border px-4 py-4 ${shellClass}`}>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
-          <div className="text-xs uppercase tracking-[0.3em] text-red-100/80">Watcher live</div>
+          <div className={`text-xs uppercase tracking-[0.3em] ${eyebrowClass}`}>{eyebrowLabel}</div>
           <div className="mt-2 text-xl font-semibold text-white">{title}</div>
           <div className="mt-3 flex flex-wrap gap-2">
             {session.mapName ? (
@@ -251,22 +282,27 @@ function LiveSessionCard({
               Parse #{session.parseIteration}
             </span>
             <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-              Updated {formatUpdatedTime(session.createdAt)}
+              Updated {formatUpdatedTime(session.completedAt || session.createdAt)}
             </span>
             {session.uploader ? (
               <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
                 {session.uploader.displayName}
               </span>
             ) : null}
+            {isCompleted && session.winner && session.winner !== "Unknown" ? (
+              <span className="rounded-full border border-emerald-300/25 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-100">
+                Winner {session.winner}
+              </span>
+            ) : null}
           </div>
         </div>
 
         <div className="space-y-2 text-right">
-          <div className="rounded-full border border-red-400/25 bg-red-500/12 px-3 py-1 text-xs text-red-50">
-            Live parse
+          <div className={`rounded-full border px-3 py-1 text-xs ${badgeClass}`}>
+            {badgeLabel}
           </div>
-          {session.durationSeconds ? (
-            <div className="text-xs text-slate-300">{Math.floor(session.durationSeconds / 60)}m</div>
+          {compactDuration ? (
+            <div className="text-xs text-slate-300">{compactDuration}</div>
           ) : null}
         </div>
       </div>
@@ -276,7 +312,7 @@ function LiveSessionCard({
           href="/lobby"
           className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-slate-200"
         >
-          Open Lobby
+          {isCompleted ? "View Lobby" : "Open Lobby"}
         </Link>
         <Link
           href="/wolo"
