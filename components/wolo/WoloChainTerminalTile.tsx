@@ -72,14 +72,15 @@ export default function WoloChainTerminalTile() {
   }, []);
 
   return (
-    <section className="rounded-[1.75rem] border border-white/10 bg-slate-950/80 p-5 sm:rounded-[2rem] sm:p-6 lg:p-8">
+    <section className="rounded-[1.75rem] border border-white/10 bg-[#050b15] p-5 sm:rounded-[2rem] sm:p-6 lg:p-8">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <div className="text-xs uppercase tracking-[0.35em] text-emerald-200/70">WoloChain Terminal</div>
-          <h3 className="mt-2 text-3xl font-semibold text-white">Peek under the hood.</h3>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
-            Live node pulse, latest block rail, and the terminal feel of the chain engine actually moving.
-          </p>
+        <div className="space-y-2">
+          <div className="text-xs uppercase tracking-[0.35em] text-emerald-200/70">WoloChain Runtime</div>
+          <div className="flex flex-wrap items-center gap-2">
+            <RuntimeChip label={`height ${snapshot?.latestBlockHeight || "0"}`} />
+            <RuntimeChip label={`peers ${snapshot?.peers ?? 0}`} />
+            <RuntimeChip label={snapshot?.catchingUp ? "catching up" : "in sync"} />
+          </div>
         </div>
         <div
           className={`rounded-full px-3 py-1 text-xs ${
@@ -100,7 +101,7 @@ export default function WoloChainTerminalTile() {
           <TerminalStat label="Block Time" value={formatTime(snapshot?.latestBlockTime || null)} compact />
         </div>
 
-        <div className="overflow-hidden rounded-[1.5rem] bg-[#030712] shadow-[inset_0_0_0_1px_rgba(52,211,153,0.15)]">
+        <div className="overflow-hidden rounded-[1.5rem] bg-[#020712] shadow-[inset_0_0_0_1px_rgba(52,211,153,0.15)]">
           <div className="flex items-center justify-between border-b border-emerald-500/10 px-4 py-3">
             <div className="text-[11px] uppercase tracking-[0.28em] text-emerald-200/70">
               {snapshot?.source || "rpc.aoe2hdbets.com"}
@@ -119,6 +120,14 @@ export default function WoloChainTerminalTile() {
         </div>
       </div>
     </section>
+  );
+}
+
+function RuntimeChip({ label }: { label: string }) {
+  return (
+    <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-200">
+      {label}
+    </div>
   );
 }
 

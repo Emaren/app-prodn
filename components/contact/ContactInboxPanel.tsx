@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { MessageCirclePlus, Mic, Paperclip } from "lucide-react";
+import { MessageCirclePlus, Mic, Paperclip, Plus } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
@@ -326,21 +326,45 @@ function DateDivider({ label }: { label: string }) {
 function TextMessageBubble({
   message,
   viewerUid,
+  mode,
   showMeta,
-  showTail,
   onToggleReaction,
   reactingMessageId,
 }: {
   message: Extract<ContactInboxMessage, { kind: "text" }>;
   viewerUid: string;
+  mode: "popover" | "page";
   showMeta: boolean;
-  showTail: boolean;
   onToggleReaction?: (messageId: number, emoji: string) => void;
   reactingMessageId?: number | null;
 }) {
   const isViewer = message.sender.uid === viewerUid;
-  const [pickerPinned, setPickerPinned] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const holdTimerRef = useRef<number | null>(null);
+  const bubbleRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!pickerOpen || typeof document === "undefined") {
+      return;
+    }
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!bubbleRef.current?.contains(event.target as Node)) {
+        setPickerOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, [pickerOpen]);
+
+  useEffect(() => {
+    return () => {
+      clearHoldTimer();
+    };
+  }, []);
 
   function clearHoldTimer() {
     if (holdTimerRef.current) {
@@ -353,24 +377,34 @@ function TextMessageBubble({
     if (pointerType === "mouse") return;
     clearHoldTimer();
     holdTimerRef.current = window.setTimeout(() => {
-      setPickerPinned(true);
+      setPickerOpen(true);
     }, 420);
   }
 
   const bubbleTone = isViewer
-    ? "bg-[linear-gradient(180deg,rgba(251,191,36,0.30),rgba(245,158,11,0.16))] text-amber-50 shadow-[0_14px_28px_rgba(245,158,11,0.10)]"
-    : "bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] text-slate-100 shadow-[0_14px_28px_rgba(0,0,0,0.18)]";
-  const tailTone = isViewer ? "bg-amber-300/30" : "bg-white/10";
+    ? mode === "popover"
+      ? "border border-amber-300/14 bg-[linear-gradient(180deg,rgba(138,94,18,0.96),rgba(103,70,14,0.94))] text-amber-50 shadow-[0_18px_34px_rgba(76,54,15,0.34)]"
+      : "border border-amber-300/10 bg-[linear-gradient(180deg,rgba(251,191,36,0.28),rgba(245,158,11,0.16))] text-amber-50 shadow-[0_16px_32px_rgba(245,158,11,0.12)]"
+    : mode === "popover"
+      ? "border border-slate-200/10 bg-[linear-gradient(180deg,rgba(22,31,47,0.98),rgba(14,21,34,0.96))] text-slate-100 shadow-[0_18px_34px_rgba(2,6,23,0.42)]"
+      : "border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] text-slate-100 shadow-[0_14px_28px_rgba(0,0,0,0.18)]";
+  const launcherClassName = isViewer ? "-left-3.5" : "-right-3.5";
+
+  function handleReactionPick(emoji: string) {
+    if (!onToggleReaction) return;
+    onToggleReaction(message.messageId, emoji);
+    setPickerOpen(false);
+  }
 
   return (
     <div className={`flex ${isViewer ? "justify-end" : "justify-start"}`}>
       <div
+        ref={bubbleRef}
         className={`group relative max-w-[88%] sm:max-w-[78%]`}
         onPointerDown={(event) => beginLongPress(event.pointerType)}
         onPointerUp={clearHoldTimer}
         onPointerCancel={clearHoldTimer}
         onPointerLeave={clearHoldTimer}
-        onMouseLeave={() => setPickerPinned(false)}
       >
         {showMeta ? (
           <div className={`mb-1 px-2 text-[11px] uppercase tracking-[0.24em] text-slate-500 ${isViewer ? "text-right" : "text-left"}`}>
@@ -378,55 +412,63 @@ function TextMessageBubble({
           </div>
         ) : null}
 
-        <div className={`relative rounded-[1.45rem] px-4 py-3 ${bubbleTone}`}>
-          {showTail ? (
-            <span
-              className={`absolute bottom-2 h-3.5 w-3.5 rotate-45 rounded-[0.3rem] ${tailTone} ${
-                isViewer ? "right-[-0.22rem]" : "left-[-0.22rem]"
-              }`}
-            />
+        <div className="relative">
+          {onToggleReaction ? (
+            <button
+              type="button"
+              onClick={() => setPickerOpen((current) => !current)}
+              aria-label="Open reactions"
+              aria-expanded={pickerOpen}
+              className={`absolute top-1/2 z-20 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-[#0b1120] text-slate-300 shadow-[0_14px_30px_rgba(2,6,23,0.42)] transition ${
+                launcherClassName
+              } ${
+                pickerOpen
+                  ? "scale-100 opacity-100"
+                  : "scale-95 opacity-0 group-hover:scale-100 group-hover:opacity-100 group-focus-within:scale-100 group-focus-within:opacity-100"
+              } hover:border-white/20 hover:text-white`}
+            >
+              <Plus className="h-4 w-4" />
+            </button>
           ) : null}
 
-          {message.body ? (
-            <div className="relative whitespace-pre-wrap text-sm leading-6">{message.body}</div>
-          ) : null}
+          <div className={`relative rounded-[1.45rem] px-4 py-3 ${bubbleTone}`}>
+            {message.body ? (
+              <div className="relative whitespace-pre-wrap text-sm leading-6">{message.body}</div>
+            ) : null}
 
-          {message.attachment ? (
-            <div className="mt-3 overflow-hidden rounded-[1.15rem] bg-slate-950/40 p-2 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]">
-              {message.attachment.kind === "image" ? (
-                <Image
-                  src={message.attachment.dataUrl}
-                  alt={message.attachment.name || "Chat screenshot"}
-                  width={1440}
-                  height={900}
-                  unoptimized
-                  className="max-h-72 w-full rounded-[1rem] object-cover"
-                />
-              ) : (
-                <audio src={message.attachment.dataUrl} controls className="w-full" />
-              )}
-              <div className="mt-2 inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.22em] text-slate-300/75">
+            {message.attachment ? (
+              <div className="mt-3 overflow-hidden rounded-[1.15rem] bg-slate-950/40 p-2 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]">
                 {message.attachment.kind === "image" ? (
-                  <Paperclip className="h-3.5 w-3.5" />
+                  <Image
+                    src={message.attachment.dataUrl}
+                    alt={message.attachment.name || "Chat screenshot"}
+                    width={1440}
+                    height={900}
+                    unoptimized
+                    className="max-h-72 w-full rounded-[1rem] object-cover"
+                  />
                 ) : (
-                  <Mic className="h-3.5 w-3.5" />
+                  <audio src={message.attachment.dataUrl} controls className="w-full" />
                 )}
-                {message.attachment.kind === "image" ? "Attachment" : "Voice note"}
-                {message.attachment.durationSeconds ? ` · ${message.attachment.durationSeconds}s` : ""}
+                <div className="mt-2 inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.22em] text-slate-300/75">
+                  {message.attachment.kind === "image" ? (
+                    <Paperclip className="h-3.5 w-3.5" />
+                  ) : (
+                    <Mic className="h-3.5 w-3.5" />
+                  )}
+                  {message.attachment.kind === "image" ? "Attachment" : "Voice note"}
+                  {message.attachment.durationSeconds ? ` · ${message.attachment.durationSeconds}s` : ""}
+                </div>
               </div>
-            </div>
-          ) : null}
+            ) : null}
+          </div>
         </div>
 
-        {onToggleReaction ? (
+        {pickerOpen && onToggleReaction ? (
           <div
-            className={`absolute z-20 flex max-w-[20rem] flex-wrap items-center gap-2 rounded-[1.35rem] border border-white/8 bg-slate-950/96 px-2.5 py-2.5 shadow-[0_20px_42px_rgba(0,0,0,0.46)] transition ${
+            className={`absolute z-30 flex max-w-[20rem] flex-wrap items-center gap-2 rounded-[999px] border border-white/10 bg-[#09111d] px-2.5 py-2.5 shadow-[0_24px_54px_rgba(2,6,23,0.6)] ${
               isViewer ? "right-0" : "left-0"
-            } bottom-[calc(100%+0.75rem)] ${
-              pickerPinned
-                ? "pointer-events-auto opacity-100"
-                : "pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100"
-            }`}
+            } bottom-[calc(100%+0.7rem)]`}
           >
             {DIRECT_MESSAGE_REACTIONS.map((emoji) => {
               const existing = message.reactions.find((reaction) => reaction.emoji === emoji);
@@ -435,27 +477,39 @@ function TextMessageBubble({
                 <button
                   key={`${message.messageId}-${emoji}`}
                   type="button"
-                  onClick={() => {
-                    onToggleReaction(message.messageId, emoji);
-                    setPickerPinned(false);
-                  }}
+                  onClick={() => handleReactionPick(emoji)}
                   aria-pressed={isActive}
                   disabled={reactingMessageId === message.messageId}
-                  className={`flex h-10 min-w-10 items-center justify-center gap-1.5 rounded-full px-3 text-[12px] font-medium transition ${
+                  className={`flex h-11 w-11 items-center justify-center rounded-full text-lg transition ${
                     isActive
-                      ? "bg-amber-400/15 text-amber-100 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.24)]"
-                      : "bg-white/[0.06] text-slate-200 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.07)] hover:bg-white/[0.12]"
+                      ? "bg-amber-400/18 text-amber-100 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.26)]"
+                      : "bg-white/[0.05] text-slate-200 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)] hover:bg-white/[0.12]"
                   } disabled:cursor-not-allowed disabled:opacity-60`}
                 >
                   <span>{emoji}</span>
-                  {existing?.count ? (
-                    <span className="text-[10px] tracking-[0.08em] text-slate-300/90">
-                      {existing.count}
-                    </span>
-                  ) : null}
                 </button>
               );
             })}
+          </div>
+        ) : null}
+
+        {message.reactions.length > 0 ? (
+          <div className={`mt-2 flex flex-wrap gap-1.5 px-1 ${isViewer ? "justify-end" : "justify-start"}`}>
+            {message.reactions.map((reaction) => (
+              <button
+                key={`${message.messageId}-${reaction.emoji}-summary`}
+                type="button"
+                onClick={() => onToggleReaction?.(message.messageId, reaction.emoji)}
+                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition ${
+                  reaction.viewerReacted
+                    ? "border-amber-300/18 bg-amber-400/12 text-amber-100"
+                    : "border-white/10 bg-[#0c1524] text-slate-300 hover:border-white/18 hover:text-white"
+                }`}
+              >
+                <span>{reaction.emoji}</span>
+                <span>{reaction.count}</span>
+              </button>
+            ))}
           </div>
         ) : null}
 
@@ -591,6 +645,20 @@ export default function ContactInboxPanel({
       : null;
   const timelineRows = useMemo(() => buildTimelineRows(data?.messages ?? []), [data?.messages]);
   const latestTimelineKey = timelineRows[timelineRows.length - 1]?.key ?? "empty";
+  const shellClassName =
+    mode === "page"
+      ? "bg-[linear-gradient(180deg,rgba(15,23,42,0.98),rgba(2,6,23,0.98))]"
+      : "bg-[#09111d]";
+  const chromeClassName =
+    mode === "page"
+      ? "border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01))]"
+      : "border-white/10 bg-[#101a2b]";
+  const railClassName = mode === "page" ? "bg-white/[0.02]" : "bg-[#0d1626]";
+  const composerClassName = mode === "page" ? "bg-white/[0.015]" : "bg-[#0f1828]";
+  const plainComposerInputClassName =
+    mode === "page"
+      ? "bg-white/[0.055] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]"
+      : "bg-[#0c1524] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]";
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -628,14 +696,14 @@ export default function ContactInboxPanel({
 
   return (
     <div
-      className={`flex min-h-0 flex-col overflow-hidden rounded-[1.6rem] bg-[linear-gradient(180deg,rgba(15,23,42,0.98),rgba(2,6,23,0.98))] text-white shadow-[0_28px_120px_rgba(0,0,0,0.45)] ${
+      className={`flex min-h-0 flex-col overflow-hidden rounded-[1.6rem] text-white shadow-[0_28px_120px_rgba(0,0,0,0.45)] ${shellClassName} ${
         mode === "page"
           ? "h-full flex-1 shadow-[0_32px_140px_rgba(0,0,0,0.5)]"
-          : "h-full w-full"
+          : "h-full w-full shadow-[0_34px_120px_rgba(2,6,23,0.68)]"
       }`}
       style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.07), 0 32px 120px rgba(0,0,0,0.45)" }}
     >
-      <div className="shrink-0 border-b border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01))] px-4 py-4">
+      <div className={`shrink-0 border-b px-4 py-4 ${chromeClassName}`}>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="text-[11px] uppercase tracking-[0.32em] text-amber-200/70">
@@ -671,7 +739,7 @@ export default function ContactInboxPanel({
         }
       >
         {showConversationRail ? (
-          <aside className="max-h-64 overflow-y-auto overscroll-contain border-b border-white/8 bg-white/[0.02] p-4 lg:max-h-none lg:border-b-0 lg:border-r">
+          <aside className={`max-h-64 overflow-y-auto overscroll-contain border-b p-4 lg:max-h-none lg:border-b-0 lg:border-r ${chromeClassName} ${railClassName}`}>
             <div className="space-y-3">
               {data?.summaries.map((summary) => (
                 <SummaryButton
@@ -687,7 +755,7 @@ export default function ContactInboxPanel({
 
         <div className="flex min-h-0 flex-1 flex-col">
           {showConversationChips ? (
-            <div className="flex shrink-0 gap-2 overflow-x-auto overscroll-contain border-b border-white/8 px-4 py-3">
+            <div className={`flex shrink-0 gap-2 overflow-x-auto overscroll-contain border-b px-4 py-3 ${chromeClassName}`}>
               {data?.summaries.map((summary) => (
                 <button
                   key={summary.targetUid}
@@ -744,8 +812,8 @@ export default function ContactInboxPanel({
                       key={row.key}
                       message={row.message}
                       viewerUid={data?.viewer.uid || ""}
+                      mode={mode}
                       showMeta={row.showMeta}
-                      showTail={row.showTail}
                       onToggleReaction={onToggleReaction}
                       reactingMessageId={reactingMessageId}
                     />
@@ -764,7 +832,7 @@ export default function ContactInboxPanel({
             )}
           </div>
 
-          <div className="shrink-0 border-t border-white/8 bg-white/[0.015] px-4 py-4">
+          <div className={`shrink-0 border-t px-4 py-4 ${chromeClassName} ${composerClassName}`}>
             {richComposer ? (
               richComposer
             ) : (
@@ -781,7 +849,7 @@ export default function ContactInboxPanel({
                     }
                   }}
                   placeholder={buildPrompt(data, counterpart?.displayName ?? null)}
-                  className="min-h-[3.8rem] flex-1 resize-none rounded-[1.25rem] bg-white/[0.055] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)] transition focus:shadow-[inset_0_0_0_1px_rgba(251,191,36,0.25)]"
+                  className={`min-h-[3.8rem] flex-1 resize-none rounded-[1.25rem] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 transition focus:shadow-[inset_0_0_0_1px_rgba(251,191,36,0.25)] ${plainComposerInputClassName}`}
                 />
                 <button
                   type="button"

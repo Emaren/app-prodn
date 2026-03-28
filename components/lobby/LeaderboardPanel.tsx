@@ -51,13 +51,16 @@ export function LeaderboardPanel({
       <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
           <div className={`text-xs uppercase tracking-[0.35em] ${tone.eyebrow}`}>Leaderboard</div>
-          <div className="mt-4 flex flex-wrap items-end gap-3">
+          <div className="mt-4 flex flex-wrap items-center gap-3">
             <div className={`text-5xl font-semibold tracking-tight tabular-nums ${tone.count}`}>
               {leaderboard.trackedPlayers}
             </div>
-            <div className={`pb-2 text-[11px] uppercase tracking-[0.34em] ${tone.countLabel}`}>
-              Players On Board
+            <div className={`rounded-full border px-3 py-1 text-xs font-medium ${tone.activeBadge}`}>
+              {onlineCount} Online
             </div>
+          </div>
+          <div className={`mt-2 text-[11px] uppercase tracking-[0.34em] ${tone.countLabel}`}>
+              Players On Board
           </div>
         </div>
 
@@ -65,9 +68,6 @@ export function LeaderboardPanel({
           <div className="flex flex-wrap items-center gap-2 lg:justify-end">
             <div className={`rounded-full border px-3 py-1 text-xs font-medium ${tone.statusBadge}`}>
               {leaderboard.statusLabel}
-            </div>
-            <div className={`rounded-full border px-3 py-1 text-xs font-medium ${tone.activeBadge}`}>
-              {onlineCount} Online
             </div>
 
             <LobbyViewToggle
