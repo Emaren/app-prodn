@@ -1,5 +1,15 @@
 import Link from "next/link";
 
+const ROADMAP_UPDATED_AT = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/Edmonton",
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+  timeZoneName: "short",
+}).format(new Date());
+
 const MODULES = [
   {
     title: "Leaderboard + Lobby",
@@ -50,15 +60,9 @@ export default function RoadmapPage() {
     <main className="space-y-6 py-6 text-white">
       <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(34,197,94,0.14),_transparent_30%),linear-gradient(135deg,_#0f172a,_#111827_55%,_#020617)] p-8">
         <div className="grid gap-6 lg:grid-cols-[1.08fr_0.92fr]">
-          <div className="space-y-4">
+          <div className="space-y-5">
             <div className="text-sm uppercase tracking-[0.4em] text-emerald-200/70">Roadmap</div>
-            <h2 className="max-w-3xl text-4xl font-semibold leading-tight text-white sm:text-5xl">
-              Build order, live module score, and distance from perfect.
-            </h2>
-            <p className="max-w-3xl text-base leading-7 text-slate-300 sm:text-lg">
-              These scores are not fluff. They are the current relative value of each AoE2HDBets
-              surface compared with where it should ultimately land.
-            </p>
+            <h1 className="sr-only">AoE2HDBets roadmap</h1>
 
             <div className="flex flex-wrap gap-3">
               <Link
@@ -77,7 +81,7 @@ export default function RoadmapPage() {
           </div>
 
           <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-            <MiniStat label="Top Score" value="79 / 100" />
+            <MiniStat label="Top Score" value="83 / 100" />
             <MiniStat label="Best Next Move" value="/players" />
             <MiniStat label="Theme Pass" value="War Room next" />
           </div>
@@ -86,7 +90,7 @@ export default function RoadmapPage() {
 
       <section className="grid gap-4 lg:grid-cols-2">
         {MODULES.map((module) => (
-          <ModuleCard key={module.title} {...module} />
+          <ModuleCard key={module.title} updatedAt={ROADMAP_UPDATED_AT} {...module} />
         ))}
       </section>
     </main>
@@ -98,11 +102,13 @@ function ModuleCard({
   score,
   status,
   detail,
+  updatedAt,
 }: {
   title: string;
   score: number;
   status: string;
   detail: string;
+  updatedAt: string;
 }) {
   return (
     <section className="rounded-[1.75rem] border border-white/10 bg-slate-950/70 p-6">
@@ -110,6 +116,7 @@ function ModuleCard({
         <div>
           <div className="text-xs uppercase tracking-[0.3em] text-white/45">{status}</div>
           <h3 className="mt-2 text-2xl font-semibold text-white">{title}</h3>
+          <div className="mt-2 text-xs text-slate-400">Updated {updatedAt}</div>
         </div>
         <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm text-white">
           {score} / 100

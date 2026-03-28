@@ -8,6 +8,7 @@ import type {
 
 export type AppearancePayload = {
   themeKey: LobbyThemeKey;
+  tileThemeKey: LobbyThemeKey;
   viewMode: LobbyViewMode;
   textColor: LobbyTextColor;
   updatedAt: string | null;
@@ -24,6 +25,7 @@ export async function fetchUserAppearancePreference() {
 
 export async function saveUserAppearancePreference(input: {
   themeKey: LobbyThemeKey;
+  tileThemeKey: LobbyThemeKey;
   viewMode: LobbyViewMode;
   textColor: LobbyTextColor;
 }) {

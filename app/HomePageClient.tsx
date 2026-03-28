@@ -26,7 +26,7 @@ type HomePageClientProps = {
 
 export default function HomePageClient({ initialLobby }: HomePageClientProps) {
   const { isAdmin, isAuthenticated, loading, loginWithSteam, playerName, user } = useUserAuth();
-  const { themeKey, viewMode, setViewMode } = useLobbyAppearance();
+  const { themeKey, tileThemeKey, viewMode, setViewMode } = useLobbyAppearance();
 
   const [lobby, setLobby] = useState<LobbySnapshot | null>(initialLobby);
   const [liveConnected, setLiveConnected] = useState(false);
@@ -323,7 +323,7 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
             isAuthenticated={isAuthenticated}
             loading={loading}
             leaderboard={leaderboard}
-            themeKey={themeKey}
+            themeKey={tileThemeKey}
             viewMode={viewMode}
             onViewModeChange={setViewMode}
           />
@@ -331,7 +331,7 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
           <div className="lg:-mt-4 lg:self-start">
             <TournamentPanel
               tournament={tournament}
-              themeKey={themeKey}
+              themeKey={tileThemeKey}
               viewMode={viewMode}
               isAdmin={isAdmin}
               isAuthenticated={isAuthenticated}
@@ -349,7 +349,7 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
       <section className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr] lg:items-start">
         <LobbyChat
           style={chatCardStyle}
-          themeKey={themeKey}
+          themeKey={tileThemeKey}
           viewMode={viewMode}
           chatRoomTitle={chatRoomTitle}
           messagesCount={messages.length}
@@ -370,10 +370,14 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
         />
 
         <div ref={rightColumnRef} className="flex min-w-0 flex-col gap-6">
-          <OnlinePlayersPanel onlineUsers={onlineUsers} themeKey={themeKey} viewMode={viewMode} />
+          <OnlinePlayersPanel
+            onlineUsers={onlineUsers}
+            themeKey={tileThemeKey}
+            viewMode={viewMode}
+          />
           <RecentMatchesPanel
             recentMatches={recentMatches}
-            themeKey={themeKey}
+            themeKey={tileThemeKey}
             viewMode={viewMode}
           />
         </div>

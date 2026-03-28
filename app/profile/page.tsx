@@ -53,6 +53,8 @@ function ProfilePageContent() {
   const {
     themeKey,
     setThemeKey,
+    tileThemeKey,
+    setTileThemeKey,
     viewMode,
     setViewMode,
     textColor,
@@ -280,9 +282,9 @@ function ProfilePageContent() {
             </div>
             <h2 className="mt-2 text-2xl font-semibold text-white">Tune your command room</h2>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
-              Theme circles set the lobby atmosphere and tile palette. Steel versus Field changes the
-              skin treatment across the homepage tiles. Text color lets you push the copy brighter,
-              softer, or darker.
+              Theme now drives the page background and navbar. Tile Style drives the panels. Skin
+              controls the steel-versus-field treatment, and Text Color lets you push the copy
+              brighter, softer, or darker.
             </p>
           </div>
           <div className={`rounded-2xl border px-4 py-3 text-sm ${appearanceTone.neutralPill}`}>
@@ -290,15 +292,29 @@ function ProfilePageContent() {
           </div>
         </div>
 
-        <div className="mt-6 grid gap-6 md:grid-cols-3">
+        <div className="mt-6 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
           <div className={`rounded-2xl border p-5 ${appearanceTone.insetPanel}`}>
             <div className="text-sm font-medium text-white">Theme</div>
             <p className="mt-2 text-sm leading-6 text-slate-300">
-              Moves the page atmosphere and the tile palette together.
+              Controls the room backdrop and the navbar shell.
             </p>
             <LobbyThemePicker
               themeKey={themeKey}
               onThemeChange={setThemeKey}
+              tone={appearanceTone}
+              size="sm"
+              className="mt-4"
+            />
+          </div>
+
+          <div className={`rounded-2xl border p-5 ${appearanceTone.insetPanel}`}>
+            <div className="text-sm font-medium text-white">Tile Style (Color)</div>
+            <p className="mt-2 text-sm leading-6 text-slate-300">
+              Recolors cards, panels, and board surfaces without touching the wallpaper.
+            </p>
+            <LobbyThemePicker
+              themeKey={tileThemeKey}
+              onThemeChange={setTileThemeKey}
               tone={appearanceTone}
               size="sm"
               className="mt-4"
@@ -358,10 +374,13 @@ function ProfilePageContent() {
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
                 <span className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${appearanceTone.neutralPill}`}>
-                  {themeKey}
+                  bg {themeKey}
                 </span>
                 <span className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${appearanceTone.rankBadge}`}>
-                  lobby tiles
+                  tiles {tileThemeKey}
+                </span>
+                <span className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${appearanceTone.neutralPill}`}>
+                  {viewMode}
                 </span>
                 <span className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${appearanceTone.neutralPill}`}>
                   {textColor} text

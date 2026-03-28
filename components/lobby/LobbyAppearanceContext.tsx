@@ -13,14 +13,17 @@ import {
 import { useUserAuth } from "@/context/UserAuthContext";
 import {
   DEFAULT_LOBBY_TEXT_COLOR,
+  DEFAULT_LOBBY_TILE_THEME,
   DEFAULT_LOBBY_THEME,
   DEFAULT_LOBBY_VIEW,
   getLobbyPageBackground,
   getLobbyPresentationTone,
   readStoredLobbyTextColor,
+  readStoredLobbyTileTheme,
   readStoredLobbyTheme,
   readStoredLobbyViewMode,
   writeStoredLobbyTextColor,
+  writeStoredLobbyTileTheme,
   writeStoredLobbyTheme,
   writeStoredLobbyViewMode,
   type LobbyTextColor,
@@ -35,6 +38,8 @@ import {
 type LobbyAppearanceContextValue = {
   themeKey: LobbyThemeKey;
   setThemeKey: (themeKey: LobbyThemeKey) => void;
+  tileThemeKey: LobbyThemeKey;
+  setTileThemeKey: (themeKey: LobbyThemeKey) => void;
   viewMode: LobbyViewMode;
   setViewMode: (viewMode: LobbyViewMode) => void;
   textColor: LobbyTextColor;
@@ -49,6 +54,7 @@ const LobbyAppearanceContext = createContext<LobbyAppearanceContextValue | undef
 export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
   const { user } = useUserAuth();
   const [themeKey, setThemeKey] = useState<LobbyThemeKey>(DEFAULT_LOBBY_THEME);
+  const [tileThemeKey, setTileThemeKey] = useState<LobbyThemeKey>(DEFAULT_LOBBY_TILE_THEME);
   const [viewMode, setViewMode] = useState<LobbyViewMode>(DEFAULT_LOBBY_VIEW);
   const [textColor, setTextColor] = useState<LobbyTextColor>(DEFAULT_LOBBY_TEXT_COLOR);
   const [appearanceLoaded, setAppearanceLoaded] = useState(false);
@@ -58,6 +64,7 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
 
     let cancelled = false;
     const storedTheme = readStoredLobbyTheme();
+    const storedTileTheme = readStoredLobbyTileTheme();
     const storedView = readStoredLobbyViewMode();
     const storedTextColor = readStoredLobbyTextColor();
     setAppearanceLoaded(false);
@@ -66,6 +73,7 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
       if (!user?.uid) {
         if (!cancelled) {
           setThemeKey(storedTheme);
+          setTileThemeKey(storedTileTheme);
           setViewMode(storedView);
           setTextColor(storedTextColor);
           setAppearanceLoaded(true);
@@ -77,12 +85,14 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
         const preference = await fetchUserAppearancePreference();
         if (cancelled) return;
         setThemeKey(preference.themeKey);
+        setTileThemeKey(preference.tileThemeKey);
         setViewMode(preference.viewMode);
         setTextColor(preference.textColor);
       } catch (error) {
         console.warn("Failed to hydrate appearance from account:", error);
         if (cancelled) return;
         setThemeKey(storedTheme);
+        setTileThemeKey(storedTileTheme);
         setViewMode(storedView);
         setTextColor(storedTextColor);
       } finally {
@@ -104,6 +114,10 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
   }, [themeKey]);
 
   useEffect(() => {
+    writeStoredLobbyTileTheme(tileThemeKey);
+  }, [tileThemeKey]);
+
+  useEffect(() => {
     writeStoredLobbyViewMode(viewMode);
   }, [viewMode]);
 
@@ -114,14 +128,16 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!appearanceLoaded || !user?.uid) return;
 
-    void saveUserAppearancePreference({ themeKey, viewMode, textColor }).catch((error) => {
-      console.warn("Failed to save appearance preference:", error);
-    });
-  }, [appearanceLoaded, textColor, themeKey, user?.uid, viewMode]);
+    void saveUserAppearancePreference({ themeKey, tileThemeKey, viewMode, textColor }).catch(
+      (error) => {
+        console.warn("Failed to save appearance preference:", error);
+      }
+    );
+  }, [appearanceLoaded, textColor, themeKey, tileThemeKey, user?.uid, viewMode]);
 
   const presentationTone = useMemo(
-    () => getLobbyPresentationTone(themeKey, viewMode),
-    [themeKey, viewMode]
+    () => getLobbyPresentationTone(tileThemeKey, viewMode),
+    [tileThemeKey, viewMode]
   );
 
   const pageStyle = useMemo<CSSProperties>(
@@ -140,6 +156,8 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
       value={{
         themeKey,
         setThemeKey,
+        tileThemeKey,
+        setTileThemeKey,
         viewMode,
         setViewMode,
         textColor,

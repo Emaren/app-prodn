@@ -6,7 +6,10 @@ import UserExperienceTracker from "@/components/analytics/UserExperienceTracker"
 import HeaderInboxControl from "@/components/contact/HeaderInboxControl";
 import HeaderMenu from "@/components/HeaderMenu";
 import { LobbyThemePicker } from "@/components/lobby/LobbyAppearanceControls";
-import { getLobbyHeaderSkin } from "@/components/lobby/lobbyPresentation";
+import {
+  getLobbyHeaderSkin,
+  getLobbyPresentationTone,
+} from "@/components/lobby/lobbyPresentation";
 import {
   LobbyAppearanceProvider,
   useLobbyAppearance,
@@ -30,11 +33,15 @@ const HEADER_LINKS: ReadonlyArray<{
 
 function InnerShell({ children }: { children: React.ReactNode }) {
   const { uid, playerName, setPlayerName } = useUserAuth();
-  const { themeKey, setThemeKey, textColor, presentationTone, pageStyle } = useLobbyAppearance();
+  const { themeKey, setThemeKey, viewMode, textColor, pageStyle } = useLobbyAppearance();
   const [pendingBetsCount] = React.useState(0);
   const [liveGamesCount, setLiveGamesCount] = React.useState(0);
   const [requestCount, setRequestCount] = React.useState(0);
   const headerSkin = getLobbyHeaderSkin(themeKey);
+  const headerTone = React.useMemo(
+    () => getLobbyPresentationTone(themeKey, viewMode),
+    [themeKey, viewMode]
+  );
 
   React.useEffect(() => {
     let cancelled = false;
@@ -90,7 +97,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
           <div className="flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:items-center">
             <div className="min-w-0">
               <Link href="/lobby" className="inline-block min-w-0">
-                <div className={`text-xs uppercase tracking-[0.35em] transition ${presentationTone.eyebrow}`}>
+                <div className={`text-xs uppercase tracking-[0.35em] transition ${headerTone.eyebrow}`}>
                   AoE2HD Bets
                 </div>
                 <h1 className="text-xl font-semibold text-white transition hover:text-amber-100">
@@ -136,7 +143,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
               <LobbyThemePicker
                 themeKey={themeKey}
                 onThemeChange={setThemeKey}
-                tone={presentationTone}
+                tone={headerTone}
                 size="sm"
                 className="gap-1.5"
               />

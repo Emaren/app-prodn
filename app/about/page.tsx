@@ -11,22 +11,22 @@ const SURFACES = [
   {
     href: "/lobby",
     title: "Lobby",
-    note: "Leaderboard, tournament pull, live chat.",
+    note: "Board, bracket, crowd.",
   },
   {
     href: "/players",
     title: "Players",
-    note: "Claimed warriors, rankings, replay proof.",
+    note: "Identity, ladder, proof.",
   },
   {
     href: "/rivalries",
     title: "Rivalries",
-    note: "Scorelines, grudges, rematches.",
+    note: "Heat, scorelines, rematches.",
   },
   {
     href: "/live-games",
     title: "Live Games",
-    note: "The board that lights up first.",
+    note: "The rail that lights first.",
   },
 ] as const;
 
@@ -39,9 +39,7 @@ export default function AboutPage() {
         <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
           <div className="space-y-5">
             <div className="text-sm uppercase tracking-[0.4em] text-sky-200/70">About</div>
-            <h1 className="max-w-4xl text-4xl font-semibold leading-tight text-white sm:text-5xl">
-              Replay truth. Rivalry heat. Tournament gravity.
-            </h1>
+            <h1 className="sr-only">About AoE2HDBets</h1>
 
             <div className="flex flex-wrap gap-2">
               {PILLARS.map((pillar) => (

@@ -1,6 +1,7 @@
 import { Prisma, type PrismaClient } from "@/lib/generated/prisma";
 import {
   DEFAULT_LOBBY_TEXT_COLOR,
+  DEFAULT_LOBBY_TILE_THEME,
   DEFAULT_LOBBY_THEME,
   DEFAULT_LOBBY_VIEW,
   isLobbyTextColor,
@@ -13,6 +14,7 @@ import {
 
 export type StoredAppearancePreference = {
   themeKey: LobbyThemeKey;
+  tileThemeKey: LobbyThemeKey;
   viewMode: LobbyViewMode;
   textColor: LobbyTextColor;
   updatedAt: string | null;
@@ -43,15 +45,20 @@ export function normalizeActivityLabel(value: string | null | undefined) {
 
 export function normalizeAppearancePreference(input: {
   themeKey?: string | null;
+  tileThemeKey?: string | null;
   viewMode?: string | null;
   textColor?: string | null;
 }) {
   const rawThemeKey = input.themeKey ?? null;
+  const rawTileThemeKey = input.tileThemeKey ?? null;
   const rawViewMode = input.viewMode ?? null;
   const rawTextColor = input.textColor ?? null;
   const themeKey: LobbyThemeKey = isLobbyThemeKey(rawThemeKey)
     ? rawThemeKey
     : DEFAULT_LOBBY_THEME;
+  const tileThemeKey: LobbyThemeKey = isLobbyThemeKey(rawTileThemeKey)
+    ? rawTileThemeKey
+    : DEFAULT_LOBBY_TILE_THEME;
   const viewMode: LobbyViewMode = isLobbyViewMode(rawViewMode)
     ? rawViewMode
     : DEFAULT_LOBBY_VIEW;
@@ -61,10 +68,12 @@ export function normalizeAppearancePreference(input: {
 
   return {
     themeKey,
+    tileThemeKey,
     viewMode,
     textColor,
   } satisfies {
     themeKey: LobbyThemeKey;
+    tileThemeKey: LobbyThemeKey;
     viewMode: LobbyViewMode;
     textColor: LobbyTextColor;
   };
@@ -78,6 +87,7 @@ export async function loadAppearancePreferenceForUser(
     where: { userId },
     select: {
       themeKey: true,
+      tileThemeKey: true,
       viewMode: true,
       textColor: true,
       updatedAt: true,
@@ -86,6 +96,7 @@ export async function loadAppearancePreferenceForUser(
 
   const normalized = normalizeAppearancePreference({
     themeKey: preference?.themeKey ?? null,
+    tileThemeKey: preference?.tileThemeKey ?? null,
     viewMode: preference?.viewMode ?? null,
     textColor: preference?.textColor ?? null,
   });
@@ -112,6 +123,7 @@ export async function loadAppearancePreferenceMap(
     select: {
       userId: true,
       themeKey: true,
+      tileThemeKey: true,
       viewMode: true,
       textColor: true,
       updatedAt: true,
@@ -121,6 +133,7 @@ export async function loadAppearancePreferenceMap(
   for (const userId of uniqueUserIds) {
     preferenceMap.set(userId, {
       themeKey: DEFAULT_LOBBY_THEME,
+      tileThemeKey: DEFAULT_LOBBY_TILE_THEME,
       viewMode: DEFAULT_LOBBY_VIEW,
       textColor: DEFAULT_LOBBY_TEXT_COLOR,
       updatedAt: null,
@@ -141,7 +154,12 @@ export async function loadAppearancePreferenceMap(
 export async function upsertAppearancePreference(
   prisma: PrismaClient,
   userId: number,
-  input: { themeKey?: string | null; viewMode?: string | null; textColor?: string | null }
+  input: {
+    themeKey?: string | null;
+    tileThemeKey?: string | null;
+    viewMode?: string | null;
+    textColor?: string | null;
+  }
 ) {
   const normalized = normalizeAppearancePreference(input);
 

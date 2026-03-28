@@ -154,124 +154,132 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
       </button>
 
       {open ? (
-        <div className="fixed inset-x-3 bottom-4 top-24 z-50 sm:absolute sm:bottom-auto sm:left-auto sm:right-0 sm:top-14 sm:h-[min(42rem,calc(100dvh-6.5rem))] sm:w-[28rem] sm:max-w-[calc(100vw-2rem)]">
-          <ContactInboxPanel
-            data={panelData ?? summary}
-            loading={loading && !(panelData ?? summary)}
-            error={error}
-            body={body}
-            sendPending={sendPending}
-            mode="popover"
-            onBodyChange={setBody}
-            onInboxAction={async (action) => {
-              setError(null);
-              try {
-                const response = await fetch("/api/contact-emaren", {
-                  method: "PATCH",
-                  headers: {
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({
-                    targetUid: selectedTargetUid,
-                    ...action,
-                  }),
-                });
-
-                const payload = (await response.json().catch(() => ({}))) as
-                  | ContactInboxPayload
-                  | { detail?: string };
-
-                if (!response.ok) {
-                  throw new Error(readDetail(payload) || "Inbox action failed.");
-                }
-
-                setPanelData(payload as ContactInboxPayload);
-                setSummary(payload as ContactInboxPayload);
-                setSelectedTargetUid((payload as ContactInboxPayload).activeTargetUid);
-              } catch (actionError) {
-                setError(
-                  actionError instanceof Error ? actionError.message : "Inbox action failed."
-                );
-              }
-            }}
-            onSelectConversation={(targetUid) => {
-              setSelectedTargetUid(targetUid);
-              void refreshPanel(targetUid);
-            }}
-            onSend={async () => {
-              if (!body.trim()) return;
-              setSendPending(true);
-              setError(null);
-              try {
-                const response = await fetch("/api/contact-emaren", {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({
-                    targetUid: selectedTargetUid,
-                    body,
-                  }),
-                });
-
-                const payload = (await response.json().catch(() => ({}))) as
-                  | ContactInboxPayload
-                  | { detail?: string };
-
-                if (!response.ok) {
-                  throw new Error(readDetail(payload) || "Message failed.");
-                }
-
-                setBody("");
-                setPanelData(payload as ContactInboxPayload);
-                setSummary(payload as ContactInboxPayload);
-                setSelectedTargetUid((payload as ContactInboxPayload).activeTargetUid);
-              } catch (sendError) {
-                setError(sendError instanceof Error ? sendError.message : "Message failed.");
-              } finally {
-                setSendPending(false);
-              }
-            }}
-            onToggleReaction={async (messageId, emoji) => {
-              setReactingMessageId(messageId);
-              setError(null);
-              try {
-                const response = await fetch("/api/contact-emaren", {
-                  method: "PATCH",
-                  headers: {
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({
-                    action: "toggle_reaction",
-                    targetUid: selectedTargetUid,
-                    messageId,
-                    emoji,
-                  }),
-                });
-
-                const payload = (await response.json().catch(() => ({}))) as
-                  | ContactInboxPayload
-                  | { detail?: string };
-
-                if (!response.ok) {
-                  throw new Error(readDetail(payload) || "Reaction failed.");
-                }
-
-                setPanelData(payload as ContactInboxPayload);
-                setSummary(payload as ContactInboxPayload);
-                setSelectedTargetUid((payload as ContactInboxPayload).activeTargetUid);
-              } catch (reactionError) {
-                setError(
-                  reactionError instanceof Error ? reactionError.message : "Reaction failed."
-                );
-              } finally {
-                setReactingMessageId(null);
-              }
-            }}
-            reactingMessageId={reactingMessageId}
-            openPageHref={openPageHref}
+        <>
+          <button
+            type="button"
+            aria-label="Close inbox overlay"
+            onClick={() => setOpen(false)}
+            className="fixed inset-0 z-40 bg-[#02060f]/78 backdrop-blur-[2px]"
           />
-        </div>
+          <div className="fixed inset-x-3 bottom-4 top-24 z-50 sm:absolute sm:bottom-auto sm:left-auto sm:right-0 sm:top-14 sm:h-[min(42rem,calc(100dvh-6.5rem))] sm:w-[28rem] sm:max-w-[calc(100vw-2rem)]">
+            <ContactInboxPanel
+              data={panelData ?? summary}
+              loading={loading && !(panelData ?? summary)}
+              error={error}
+              body={body}
+              sendPending={sendPending}
+              mode="popover"
+              onBodyChange={setBody}
+              onInboxAction={async (action) => {
+                setError(null);
+                try {
+                  const response = await fetch("/api/contact-emaren", {
+                    method: "PATCH",
+                    headers: {
+                      "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                      targetUid: selectedTargetUid,
+                      ...action,
+                    }),
+                  });
+
+                  const payload = (await response.json().catch(() => ({}))) as
+                    | ContactInboxPayload
+                    | { detail?: string };
+
+                  if (!response.ok) {
+                    throw new Error(readDetail(payload) || "Inbox action failed.");
+                  }
+
+                  setPanelData(payload as ContactInboxPayload);
+                  setSummary(payload as ContactInboxPayload);
+                  setSelectedTargetUid((payload as ContactInboxPayload).activeTargetUid);
+                } catch (actionError) {
+                  setError(
+                    actionError instanceof Error ? actionError.message : "Inbox action failed."
+                  );
+                }
+              }}
+              onSelectConversation={(targetUid) => {
+                setSelectedTargetUid(targetUid);
+                void refreshPanel(targetUid);
+              }}
+              onSend={async () => {
+                if (!body.trim()) return;
+                setSendPending(true);
+                setError(null);
+                try {
+                  const response = await fetch("/api/contact-emaren", {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                      targetUid: selectedTargetUid,
+                      body,
+                    }),
+                  });
+
+                  const payload = (await response.json().catch(() => ({}))) as
+                    | ContactInboxPayload
+                    | { detail?: string };
+
+                  if (!response.ok) {
+                    throw new Error(readDetail(payload) || "Message failed.");
+                  }
+
+                  setBody("");
+                  setPanelData(payload as ContactInboxPayload);
+                  setSummary(payload as ContactInboxPayload);
+                  setSelectedTargetUid((payload as ContactInboxPayload).activeTargetUid);
+                } catch (sendError) {
+                  setError(sendError instanceof Error ? sendError.message : "Message failed.");
+                } finally {
+                  setSendPending(false);
+                }
+              }}
+              onToggleReaction={async (messageId, emoji) => {
+                setReactingMessageId(messageId);
+                setError(null);
+                try {
+                  const response = await fetch("/api/contact-emaren", {
+                    method: "PATCH",
+                    headers: {
+                      "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                      action: "toggle_reaction",
+                      targetUid: selectedTargetUid,
+                      messageId,
+                      emoji,
+                    }),
+                  });
+
+                  const payload = (await response.json().catch(() => ({}))) as
+                    | ContactInboxPayload
+                    | { detail?: string };
+
+                  if (!response.ok) {
+                    throw new Error(readDetail(payload) || "Reaction failed.");
+                  }
+
+                  setPanelData(payload as ContactInboxPayload);
+                  setSummary(payload as ContactInboxPayload);
+                  setSelectedTargetUid((payload as ContactInboxPayload).activeTargetUid);
+                } catch (reactionError) {
+                  setError(
+                    reactionError instanceof Error ? reactionError.message : "Reaction failed."
+                  );
+                } finally {
+                  setReactingMessageId(null);
+                }
+              }}
+              reactingMessageId={reactingMessageId}
+              openPageHref={openPageHref}
+            />
+          </div>
+        </>
       ) : null}
     </div>
   );

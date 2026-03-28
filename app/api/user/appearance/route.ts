@@ -46,6 +46,7 @@ export async function POST(request: NextRequest) {
 
     const payload = (await request.json().catch(() => ({}))) as {
       themeKey?: string | null;
+      tileThemeKey?: string | null;
       viewMode?: string | null;
       textColor?: string | null;
     };
@@ -67,13 +68,14 @@ export async function POST(request: NextRequest) {
       userId: user.id,
       type: "appearance_changed",
       path: request.nextUrl.pathname,
-      label: `${normalized.themeKey}/${normalized.viewMode}/${normalized.textColor}`,
+      label: `${normalized.themeKey}/${normalized.tileThemeKey}/${normalized.viewMode}/${normalized.textColor}`,
       metadata: normalized,
       dedupeWithinSeconds: 90,
     });
 
     return NextResponse.json({
       themeKey: saved.themeKey,
+      tileThemeKey: saved.tileThemeKey,
       viewMode: saved.viewMode,
       textColor: saved.textColor,
       updatedAt: saved.updatedAt.toISOString(),

@@ -11,9 +11,11 @@ export type LobbyViewMode = "steel" | "field";
 export type LobbyTextColor = "white" | "grey" | "black";
 
 export const LOBBY_THEME_STORAGE_KEY = "aoe2hdbets:lobby-theme";
+export const LOBBY_TILE_THEME_STORAGE_KEY = "aoe2hdbets:lobby-tile-theme";
 export const LOBBY_VIEW_STORAGE_KEY = "aoe2hdbets:lobby-view";
 export const LOBBY_TEXT_COLOR_STORAGE_KEY = "aoe2hdbets:lobby-text-color";
 export const DEFAULT_LOBBY_THEME: LobbyThemeKey = "midnight";
+export const DEFAULT_LOBBY_TILE_THEME: LobbyThemeKey = "midnight";
 export const DEFAULT_LOBBY_VIEW: LobbyViewMode = "steel";
 export const DEFAULT_LOBBY_TEXT_COLOR: LobbyTextColor = "white";
 
@@ -471,6 +473,20 @@ export function readStoredLobbyTheme(): LobbyThemeKey {
 export function writeStoredLobbyTheme(themeKey: LobbyThemeKey) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(LOBBY_THEME_STORAGE_KEY, themeKey);
+}
+
+export function readStoredLobbyTileTheme(): LobbyThemeKey {
+  if (typeof window === "undefined") {
+    return DEFAULT_LOBBY_TILE_THEME;
+  }
+
+  const storedTheme = window.localStorage.getItem(LOBBY_TILE_THEME_STORAGE_KEY);
+  return isLobbyThemeKey(storedTheme) ? storedTheme : DEFAULT_LOBBY_TILE_THEME;
+}
+
+export function writeStoredLobbyTileTheme(themeKey: LobbyThemeKey) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(LOBBY_TILE_THEME_STORAGE_KEY, themeKey);
 }
 
 export function readStoredLobbyViewMode(): LobbyViewMode {

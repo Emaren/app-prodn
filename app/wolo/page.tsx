@@ -42,6 +42,8 @@ export default function WoloPage() {
       : status === "not_installed"
         ? "Keplr missing"
         : "Disconnected";
+  const walletHeadline =
+    status === "connected" ? "Live" : status === "not_installed" ? "Install" : "Offline";
 
   async function handleConnect() {
     try {
@@ -55,8 +57,8 @@ export default function WoloPage() {
   return (
     <main className="space-y-4 py-2 text-white sm:space-y-6 sm:py-3">
       <section className="overflow-hidden rounded-[1.85rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(251,191,36,0.16),_transparent_26%),radial-gradient(circle_at_bottom_right,_rgba(56,189,248,0.10),_transparent_28%),linear-gradient(135deg,_#0f172a,_#111827_56%,_#050816)] p-4 sm:rounded-[2rem] sm:p-6 lg:p-8">
-        <div className="grid gap-5 lg:grid-cols-[1.08fr_0.92fr] lg:gap-8">
-          <div className="space-y-5">
+        <div className="grid gap-5 lg:grid-cols-[1.12fr_0.88fr] lg:items-start lg:gap-8">
+          <div className="space-y-6">
             <div className="flex flex-wrap items-center gap-2">
               <SignalChip label="$WOLO" tone="amber" />
               <SignalChip
@@ -67,26 +69,52 @@ export default function WoloPage() {
               <SignalChip label={walletStatus} title="Wallet status" />
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-5">
               <div className="text-[11px] uppercase tracking-[0.35em] text-amber-200/70">
                 WoloChain
               </div>
-              <div className="text-5xl font-semibold leading-none tracking-tight text-white sm:text-6xl">
-                1,000,000 WOLO
+              <div className="space-y-3">
+                <div className="text-[11px] uppercase tracking-[0.32em] text-white/45">
+                  Max Supply
+                </div>
+                <div className="flex flex-wrap items-end gap-3">
+                  <div
+                    className="text-6xl font-semibold leading-[0.9] tracking-[-0.04em] text-white sm:text-7xl lg:text-[5.75rem]"
+                    style={{
+                      fontFamily:
+                        '"Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif',
+                    }}
+                  >
+                    1,000,000
+                  </div>
+                  <div className="pb-2 text-lg uppercase tracking-[0.42em] text-amber-100/80 sm:text-2xl">
+                    WOLO
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <SignalChip label={`Denom uwolo`} />
+                <SignalChip
+                  label={balanceLoading ? "Balance syncing" : `Balance ${formattedBalance} WOLO`}
+                  tone="emerald"
+                />
+                <SignalChip label={`Wallet ${walletHeadline}`} />
               </div>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-4 md:grid-cols-2">
               <WoloMiniStatCard label="Chain ID" value={chainLoading ? "..." : chainId} />
               <WoloMiniStatCard label="Denom" value="uwolo" />
-              <WoloMiniStatCard label="Wallet" value={walletStatus} />
+              <WoloMiniStatCard label="Wallet" value={walletHeadline} />
               <WoloMiniStatCard
                 label="Balance"
-                value={balanceLoading ? "..." : `${formattedBalance} WOLO`}
+                value={balanceLoading ? "..." : formattedBalance}
+                valueSuffix={balanceLoading ? undefined : "WOLO"}
               />
             </div>
 
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-3 pt-1">
               <Link
                 href="/wallet"
                 className="rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200"
@@ -119,7 +147,7 @@ export default function WoloPage() {
             </div>
           </div>
 
-          <div className="rounded-[1.75rem] border border-white/10 bg-[#151d2c] p-5 shadow-[0_30px_80px_rgba(2,6,23,0.36)] sm:p-6">
+          <div className="rounded-[1.75rem] border border-white/10 bg-[#131b2a] p-5 shadow-[0_30px_80px_rgba(2,6,23,0.36)] sm:p-6">
             <div className="flex items-start justify-between gap-4">
               <div className="text-[11px] uppercase tracking-[0.35em] text-amber-200/70">
                 Wallet Snapshot
@@ -204,15 +232,24 @@ function SignalChip({
 function WoloMiniStatCard({
   label,
   value,
+  valueSuffix,
 }: {
   label: string;
   value: string;
+  valueSuffix?: string;
 }) {
   return (
-    <div className="rounded-[1.4rem] border border-white/10 bg-white/5 px-5 py-5">
+    <div className="rounded-[1.45rem] border border-white/10 bg-white/5 px-5 py-5">
       <div className="text-[11px] uppercase tracking-[0.32em] text-slate-400">{label}</div>
-      <div className="mt-3 break-words text-3xl font-semibold leading-tight tracking-tight text-white">
-        {value}
+      <div className="mt-4 flex flex-wrap items-end gap-2">
+        <div className="break-words text-[2rem] font-semibold leading-none tracking-tight text-white sm:text-[2.2rem]">
+          {value}
+        </div>
+        {valueSuffix ? (
+          <div className="pb-1 text-[11px] uppercase tracking-[0.32em] text-slate-400">
+            {valueSuffix}
+          </div>
+        ) : null}
       </div>
     </div>
   );
