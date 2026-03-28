@@ -17,15 +17,17 @@ export default async function RivalriesPage() {
     <main className="space-y-6 py-6 text-white">
       <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(96,165,250,0.22),_transparent_28%),radial-gradient(circle_at_bottom_right,_rgba(245,158,11,0.14),_transparent_30%),linear-gradient(135deg,_#0f172a,_#111827_56%,_#020617)] p-8 shadow-[0_30px_90px_rgba(2,6,23,0.35)]">
         <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
-          <div className="space-y-4">
+          <div className="space-y-5">
             <div className="text-sm uppercase tracking-[0.4em] text-sky-200/70">Rivalries</div>
             <h1 className="max-w-3xl text-4xl font-semibold leading-tight text-white sm:text-5xl">
-              Head-to-head records built from parsed AoE2HD replays.
+              Grudges. Scorelines. Rematches.
             </h1>
-            <p className="max-w-3xl text-base leading-7 text-slate-300 sm:text-lg">
-              See who has battled who, how each series stands, and which matchups are starting to heat
-              up. This is the fastest way for new players to find the drama.
-            </p>
+
+            <div className="flex flex-wrap gap-2">
+              <Tag>{rivalries.length} boards live</Tag>
+              <Tag>{featuredRivalries.length} featured</Tag>
+              <Tag>{freshFeuds.length} fresh</Tag>
+            </div>
 
             <div className="flex flex-wrap gap-3">
               <Link
@@ -51,9 +53,9 @@ export default async function RivalriesPage() {
         </div>
       </section>
 
-      <Panel title="Featured Rivalries" eyebrow="Replay-backed Battles">
+      <Panel title="Featured" eyebrow="Replay-backed Battles">
         {featuredRivalries.length === 0 ? (
-          <EmptyPanel message="No featured rivalries yet. Once players meet multiple times, their series will show up here." />
+          <EmptyPanel message="No featured rivalries yet." />
         ) : (
           <div className="grid gap-4 xl:grid-cols-2">
             {featuredRivalries.map((entry) => (
@@ -63,9 +65,9 @@ export default async function RivalriesPage() {
         )}
       </Panel>
 
-      <Panel title="Fresh Feuds" eyebrow="New Blood">
+      <Panel title="Fresh" eyebrow="New Blood">
         {freshFeuds.length === 0 ? (
-          <EmptyPanel message="No fresh feuds yet. The next new 1v1 replay will light this section up." />
+          <EmptyPanel message="No fresh feuds yet." />
         ) : (
           <div className="grid gap-4 xl:grid-cols-2">
             {freshFeuds.map((entry) => (
@@ -113,11 +115,8 @@ function RivalryCard({ entry }: { entry: PublicRivalryEntry }) {
 
       <div className="mt-5 grid gap-3 md:grid-cols-3">
         <SummaryMetric label="Unknown Results" value={String(entry.unknowns)} />
-        <SummaryMetric
-          label="Last Meeting"
-          value={lastPlayedLabel}
-        />
-        <SummaryMetric label="Route" value="Open Rivalry" />
+        <SummaryMetric label="Last Meeting" value={lastPlayedLabel} />
+        <SummaryMetric label="Action" value="Open Rivalry" />
       </div>
     </Link>
   );

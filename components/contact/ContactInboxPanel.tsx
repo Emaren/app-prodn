@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { MessageCirclePlus, Mic, Paperclip, Plus } from "lucide-react";
+import { MessageCirclePlus, Mic, Paperclip } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
@@ -134,8 +134,8 @@ function SummaryButton({
       onClick={onClick}
       className={`w-full rounded-[1.35rem] px-3 py-3 text-left transition ${
         active
-          ? "bg-amber-400/12 text-white shadow-[inset_0_0_0_1px_rgba(251,191,36,0.18)]"
-          : "bg-white/[0.045] text-slate-200 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.07)] hover:bg-white/[0.075]"
+          ? "bg-[#16233a] text-white shadow-[inset_0_0_0_1px_rgba(251,191,36,0.18)]"
+          : "bg-[#111a2c] text-slate-200 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.07)] hover:bg-[#172339]"
       }`}
     >
       <div className="flex items-start justify-between gap-3">
@@ -339,18 +339,19 @@ function TextMessageBubble({
   reactingMessageId?: number | null;
 }) {
   const isViewer = message.sender.uid === viewerUid;
-  const [pickerOpen, setPickerOpen] = useState(false);
+  const [touchPickerOpen, setTouchPickerOpen] = useState(false);
   const holdTimerRef = useRef<number | null>(null);
+  const longPressTriggeredRef = useRef(false);
   const bubbleRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (!pickerOpen || typeof document === "undefined") {
+    if (!touchPickerOpen || typeof document === "undefined") {
       return;
     }
 
     const handlePointerDown = (event: PointerEvent) => {
       if (!bubbleRef.current?.contains(event.target as Node)) {
-        setPickerOpen(false);
+        setTouchPickerOpen(false);
       }
     };
 
@@ -358,7 +359,7 @@ function TextMessageBubble({
     return () => {
       document.removeEventListener("pointerdown", handlePointerDown);
     };
-  }, [pickerOpen]);
+  }, [touchPickerOpen]);
 
   useEffect(() => {
     return () => {
@@ -375,10 +376,24 @@ function TextMessageBubble({
 
   function beginLongPress(pointerType: string) {
     if (pointerType === "mouse") return;
+    longPressTriggeredRef.current = false;
     clearHoldTimer();
     holdTimerRef.current = window.setTimeout(() => {
-      setPickerOpen(true);
-    }, 420);
+      longPressTriggeredRef.current = true;
+      setTouchPickerOpen(true);
+    }, 360);
+  }
+
+  function handleBubbleClick() {
+    if (typeof window === "undefined") return;
+    if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+      return;
+    }
+    if (longPressTriggeredRef.current) {
+      longPressTriggeredRef.current = false;
+      return;
+    }
+    setTouchPickerOpen((current) => !current);
   }
 
   const bubbleTone = isViewer
@@ -388,12 +403,11 @@ function TextMessageBubble({
     : mode === "popover"
       ? "border border-slate-200/10 bg-[linear-gradient(180deg,rgba(22,31,47,0.98),rgba(14,21,34,0.96))] text-slate-100 shadow-[0_18px_34px_rgba(2,6,23,0.42)]"
       : "border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] text-slate-100 shadow-[0_14px_28px_rgba(0,0,0,0.18)]";
-  const launcherClassName = isViewer ? "-left-3.5" : "-right-3.5";
 
   function handleReactionPick(emoji: string) {
     if (!onToggleReaction) return;
     onToggleReaction(message.messageId, emoji);
-    setPickerOpen(false);
+    setTouchPickerOpen(false);
   }
 
   return (
@@ -413,25 +427,10 @@ function TextMessageBubble({
         ) : null}
 
         <div className="relative">
-          {onToggleReaction ? (
-            <button
-              type="button"
-              onClick={() => setPickerOpen((current) => !current)}
-              aria-label="Open reactions"
-              aria-expanded={pickerOpen}
-              className={`absolute top-1/2 z-20 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-[#0b1120] text-slate-300 shadow-[0_14px_30px_rgba(2,6,23,0.42)] transition ${
-                launcherClassName
-              } ${
-                pickerOpen
-                  ? "scale-100 opacity-100"
-                  : "scale-95 opacity-0 group-hover:scale-100 group-hover:opacity-100 group-focus-within:scale-100 group-focus-within:opacity-100"
-              } hover:border-white/20 hover:text-white`}
-            >
-              <Plus className="h-4 w-4" />
-            </button>
-          ) : null}
-
-          <div className={`relative rounded-[1.45rem] px-4 py-3 ${bubbleTone}`}>
+          <div
+            className={`relative rounded-[1.45rem] px-4 py-3 ${bubbleTone}`}
+            onClick={handleBubbleClick}
+          >
             {message.body ? (
               <div className="relative whitespace-pre-wrap text-sm leading-6">{message.body}</div>
             ) : null}
@@ -462,47 +461,56 @@ function TextMessageBubble({
               </div>
             ) : null}
           </div>
+
+          {onToggleReaction ? (
+            <div
+              className={`absolute z-30 ${isViewer ? "right-3" : "left-3"} top-full mt-2 transition-all duration-150 ${
+                touchPickerOpen
+                  ? "pointer-events-auto translate-y-0 opacity-100"
+                  : "pointer-events-none translate-y-1 opacity-0 group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:translate-y-0 group-focus-within:opacity-100"
+              }`}
+            >
+              <div className="inline-flex items-center gap-2 whitespace-nowrap rounded-full border border-white/10 bg-[#091321] px-2.5 py-2 shadow-[0_22px_48px_rgba(2,6,23,0.6)]">
+                {DIRECT_MESSAGE_REACTIONS.map((emoji) => {
+                  const existing = message.reactions.find((reaction) => reaction.emoji === emoji);
+                  const isActive = Boolean(existing?.viewerReacted);
+                  const isTextReaction = emoji === "GG";
+                  return (
+                    <button
+                      key={`${message.messageId}-${emoji}`}
+                      type="button"
+                      onClick={() => handleReactionPick(emoji)}
+                      aria-pressed={isActive}
+                      disabled={reactingMessageId === message.messageId}
+                      className={`flex h-10 items-center justify-center rounded-full border px-3 transition ${
+                        isTextReaction ? "min-w-[3.25rem] text-[13px] font-semibold" : "min-w-10 text-base"
+                      } ${
+                        isActive
+                          ? "border-amber-300/30 bg-amber-400/16 text-amber-50 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.12)]"
+                          : "border-white/10 bg-white/[0.045] text-slate-200 hover:border-white/18 hover:bg-white/[0.1] hover:text-white"
+                      } disabled:cursor-not-allowed disabled:opacity-60`}
+                    >
+                      <span>{emoji}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
         </div>
 
-        {pickerOpen && onToggleReaction ? (
-          <div
-            className={`absolute z-30 flex max-w-[20rem] flex-wrap items-center gap-2 rounded-[999px] border border-white/10 bg-[#09111d] px-2.5 py-2.5 shadow-[0_24px_54px_rgba(2,6,23,0.6)] ${
-              isViewer ? "right-0" : "left-0"
-            } bottom-[calc(100%+0.7rem)]`}
-          >
-            {DIRECT_MESSAGE_REACTIONS.map((emoji) => {
-              const existing = message.reactions.find((reaction) => reaction.emoji === emoji);
-              const isActive = Boolean(existing?.viewerReacted);
-              return (
-                <button
-                  key={`${message.messageId}-${emoji}`}
-                  type="button"
-                  onClick={() => handleReactionPick(emoji)}
-                  aria-pressed={isActive}
-                  disabled={reactingMessageId === message.messageId}
-                  className={`flex h-11 w-11 items-center justify-center rounded-full text-lg transition ${
-                    isActive
-                      ? "bg-amber-400/18 text-amber-100 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.26)]"
-                      : "bg-white/[0.05] text-slate-200 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)] hover:bg-white/[0.12]"
-                  } disabled:cursor-not-allowed disabled:opacity-60`}
-                >
-                  <span>{emoji}</span>
-                </button>
-              );
-            })}
-          </div>
-        ) : null}
-
         {message.reactions.length > 0 ? (
-          <div className={`mt-2 flex flex-wrap gap-1.5 px-1 ${isViewer ? "justify-end" : "justify-start"}`}>
+          <div
+            className={`mt-3 flex flex-wrap gap-2 px-1 ${isViewer ? "justify-end" : "justify-start"}`}
+          >
             {message.reactions.map((reaction) => (
               <button
                 key={`${message.messageId}-${reaction.emoji}-summary`}
                 type="button"
                 onClick={() => onToggleReaction?.(message.messageId, reaction.emoji)}
-                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition ${
+                className={`inline-flex min-w-[3rem] items-center justify-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-medium transition ${
                   reaction.viewerReacted
-                    ? "border-amber-300/18 bg-amber-400/12 text-amber-100"
+                    ? "border-amber-300/20 bg-amber-400/12 text-amber-100"
                     : "border-white/10 bg-[#0c1524] text-slate-300 hover:border-white/18 hover:text-white"
                 }`}
               >
@@ -648,17 +656,17 @@ export default function ContactInboxPanel({
   const shellClassName =
     mode === "page"
       ? "bg-[linear-gradient(180deg,rgba(15,23,42,0.98),rgba(2,6,23,0.98))]"
-      : "bg-[#09111d]";
+      : "bg-[linear-gradient(180deg,rgba(11,18,32,1),rgba(8,13,24,0.995))]";
   const chromeClassName =
     mode === "page"
       ? "border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01))]"
-      : "border-white/10 bg-[#101a2b]";
-  const railClassName = mode === "page" ? "bg-white/[0.02]" : "bg-[#0d1626]";
-  const composerClassName = mode === "page" ? "bg-white/[0.015]" : "bg-[#0f1828]";
+      : "border-slate-200/10 bg-[#121c2e]";
+  const railClassName = mode === "page" ? "bg-white/[0.02]" : "bg-[#0c1524]";
+  const composerClassName = mode === "page" ? "bg-white/[0.015]" : "bg-[#0d1625]";
   const plainComposerInputClassName =
     mode === "page"
       ? "bg-white/[0.055] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]"
-      : "bg-[#0c1524] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]";
+      : "bg-[#0a1220] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]";
 
   useEffect(() => {
     if (typeof window === "undefined") return;

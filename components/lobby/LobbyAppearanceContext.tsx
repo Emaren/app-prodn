@@ -128,6 +128,9 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
     () => ({
       backgroundImage: getLobbyPageBackground(themeKey, viewMode),
       backgroundColor: "#020617",
+      backgroundPosition: "center top",
+      backgroundRepeat: "no-repeat",
+      backgroundSize: "cover",
     }),
     [themeKey, viewMode]
   );

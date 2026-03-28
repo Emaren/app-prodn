@@ -51,7 +51,7 @@ export function LeaderboardPanel({
       <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
           <div className={`text-xs uppercase tracking-[0.35em] ${tone.eyebrow}`}>Leaderboard</div>
-          <div className="mt-4 flex flex-wrap items-center gap-3">
+          <div className="mt-4 flex flex-wrap items-center gap-8 sm:gap-10">
             <div className={`text-5xl font-semibold tracking-tight tabular-nums ${tone.count}`}>
               {leaderboard.trackedPlayers}
             </div>

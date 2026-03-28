@@ -321,7 +321,7 @@ function ProfilePageContent() {
           <div className={`rounded-2xl border p-5 ${appearanceTone.insetPanel}`}>
             <div className="text-sm font-medium text-white">Text Color</div>
             <p className="mt-2 text-sm leading-6 text-slate-300">
-              White is crisp, Grey is softer, and Black works best when you pair it with lighter themes.
+              White stays sharp, Grey softens the room, and Black pushes the body copy inkier without flattening the headers.
             </p>
             <LobbyTextColorPicker
               textColor={textColor}

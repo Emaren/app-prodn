@@ -56,7 +56,7 @@ export default function WoloPage() {
     <main className="space-y-4 py-2 text-white sm:space-y-6 sm:py-3">
       <section className="overflow-hidden rounded-[1.85rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(251,191,36,0.16),_transparent_26%),radial-gradient(circle_at_bottom_right,_rgba(56,189,248,0.10),_transparent_28%),linear-gradient(135deg,_#0f172a,_#111827_56%,_#050816)] p-4 sm:rounded-[2rem] sm:p-6 lg:p-8">
         <div className="grid gap-5 lg:grid-cols-[1.08fr_0.92fr] lg:gap-8">
-          <div className="space-y-6">
+          <div className="space-y-5">
             <div className="flex flex-wrap items-center gap-2">
               <SignalChip label="$WOLO" tone="amber" />
               <SignalChip
@@ -74,20 +74,16 @@ export default function WoloPage() {
               <div className="text-5xl font-semibold leading-none tracking-tight text-white sm:text-6xl">
                 1,000,000 WOLO
               </div>
-              <div className="flex flex-wrap gap-2">
-                <MetricChip label="Denom" value="uwolo" />
-                <MetricChip
-                  label="Balance"
-                  value={balanceLoading ? "Loading..." : `${formattedBalance} WOLO`}
-                />
-                <MetricChip label="Wallet" value={walletStatus} />
-              </div>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               <WoloMiniStatCard label="Chain ID" value={chainLoading ? "..." : chainId} />
               <WoloMiniStatCard label="Denom" value="uwolo" />
               <WoloMiniStatCard label="Wallet" value={walletStatus} />
+              <WoloMiniStatCard
+                label="Balance"
+                value={balanceLoading ? "..." : `${formattedBalance} WOLO`}
+              />
             </div>
 
             <div className="flex flex-wrap gap-3">
@@ -201,15 +197,6 @@ function SignalChip({
       className={`rounded-full border px-3 py-1.5 text-xs font-medium ${toneClassName}`}
     >
       {label}
-    </div>
-  );
-}
-
-function MetricChip({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-slate-200">
-      <span className="mr-2 text-[10px] uppercase tracking-[0.22em] text-slate-400">{label}</span>
-      <span className="font-medium text-white">{value}</span>
     </div>
   );
 }
