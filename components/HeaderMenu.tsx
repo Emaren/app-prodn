@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { useMemo, useRef, useState, type ReactNode, useId } from "react";
 import {
   BarChart3,
   Clock3,
@@ -60,6 +60,7 @@ export default function HeaderMenu({
 }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const panelId = useId();
   const { logout, isAdmin } = useUserAuth();
 
   useClickOutside(menuRef as React.RefObject<HTMLElement>, () => setMenuOpen(false));
@@ -110,14 +111,11 @@ export default function HeaderMenu({
 
   if (!uid) {
     return (
-      <div className="flex flex-wrap items-center gap-3">
-        <Link
-          href="/live-games"
-          className="rounded-full border border-white/15 px-4 py-2 text-sm text-white/80 transition hover:border-white/30 hover:text-white"
-        >
-          {liveGamesCount} Live Games🔥
-        </Link>
-        <SteamLoginButton className="rounded-full bg-amber-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-amber-200" />
+      <div className="flex w-full">
+        <SteamLoginButton
+          label="Steam Sign In"
+          className="inline-flex w-full items-center justify-center rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 sm:w-auto sm:px-4 sm:py-2"
+        />
       </div>
     );
   }
@@ -125,6 +123,7 @@ export default function HeaderMenu({
   return (
     <div className="relative flex items-center gap-2" ref={menuRef}>
       <button
+        type="button"
         className={[
           "flex min-w-0 items-center gap-2 rounded-full border px-4 py-2 text-sm text-white transition",
           buttonClassName || "border-white/15 bg-white/5 hover:border-white/30 hover:bg-white/10",
@@ -132,8 +131,9 @@ export default function HeaderMenu({
           .filter(Boolean)
           .join(" ")}
         onClick={() => setMenuOpen((open) => !open)}
-        aria-expanded={menuOpen}
-        aria-haspopup="menu"
+        aria-expanded={menuOpen ? "true" : "false"}
+        aria-haspopup="dialog"
+        aria-controls={panelId}
       >
         <UserCircle className="h-5 w-5" />
         <span className="max-w-[8.5rem] truncate sm:max-w-none">{playerName || "Account"}</span>
@@ -142,13 +142,16 @@ export default function HeaderMenu({
 
       {menuOpen ? (
         <div
+          id={panelId}
           className={[
             "fixed inset-x-2 bottom-2 top-[4.75rem] z-50 overflow-hidden rounded-[1.85rem] border p-2 shadow-2xl sm:absolute sm:bottom-auto sm:left-auto sm:right-0 sm:top-14 sm:max-h-[min(42rem,calc(100dvh-7rem))] sm:w-72",
             menuClassName || "border-white/10 bg-[#0b1324]",
           ]
             .filter(Boolean)
             .join(" ")}
-          role="menu"
+          role="dialog"
+          aria-modal="false"
+          aria-label="Account menu"
         >
           <div className="flex h-full flex-col sm:hidden">
             <div className="rounded-[1.45rem] border border-white/10 bg-white/[0.035] p-4">
@@ -199,9 +202,11 @@ export default function HeaderMenu({
             </div>
 
             <button
+              type="button"
               className={[
                 "mt-3 w-full rounded-[1.35rem] px-4 py-3 text-left text-sm transition",
-                logoutClassName || "border border-red-400/20 bg-red-500/10 text-red-200 hover:bg-red-500/16 hover:text-red-100",
+                logoutClassName ||
+                  "border border-red-400/20 bg-red-500/10 text-red-200 hover:bg-red-500/16 hover:text-red-100",
               ]
                 .filter(Boolean)
                 .join(" ")}
@@ -232,6 +237,7 @@ export default function HeaderMenu({
             ))}
 
             <button
+              type="button"
               className={[
                 "mt-2 w-full rounded-xl px-3 py-2 text-left text-sm transition",
                 logoutClassName || "text-red-300 hover:bg-red-500/10 hover:text-red-200",

@@ -95,20 +95,39 @@ function InnerShell({ children }: { children: React.ReactNode }) {
       >
         <div className="mx-auto max-w-6xl overflow-visible">
           <div className="space-y-3 lg:hidden">
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0 pt-1">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1 pt-1">
                 <Link href="/lobby" className="inline-block min-w-0">
                   <div className={`text-[11px] uppercase tracking-[0.35em] transition ${headerTone.eyebrow}`}>
                     AoE2HD Bets
                   </div>
-                  <h1 className="text-2xl font-semibold text-white transition hover:text-amber-100">
+                  <h1 className="text-2xl font-semibold leading-tight text-white transition hover:text-amber-100">
                     Tournament Lobby
                   </h1>
                 </Link>
               </div>
 
-              <div className="flex shrink-0 items-center gap-2">
-                <HeaderInboxControl buttonClassName={headerSkin.surface} />
+              {uid ? (
+                <div className="flex shrink-0 items-center gap-2">
+                  <HeaderInboxControl buttonClassName={headerSkin.surface} />
+                  <HeaderMenu
+                    pendingBetsCount={pendingBetsCount}
+                    playerName={playerName}
+                    setPlayerName={setPlayerName}
+                    uid={uid}
+                    liveGamesCount={liveGamesCount}
+                    requestCount={requestCount}
+                    buttonClassName={headerSkin.surface}
+                    menuClassName={headerSkin.popover}
+                    linkClassName={headerSkin.menuItem}
+                    logoutClassName={headerSkin.logout}
+                  />
+                </div>
+              ) : null}
+            </div>
+
+            {!uid ? (
+              <div className="w-full">
                 <HeaderMenu
                   pendingBetsCount={pendingBetsCount}
                   playerName={playerName}
@@ -122,43 +141,45 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                   logoutClassName={headerSkin.logout}
                 />
               </div>
-            </div>
+            ) : null}
 
-            <div className="flex w-full overflow-hidden">
+            <div className="w-full overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none]">
               <LobbyThemePicker
                 themeKey={themeKey}
                 onThemeChange={setThemeKey}
                 tone={headerTone}
                 size="sm"
-                className="w-full"
-                trackClassName="w-full justify-between gap-1.5"
+                className="min-w-max"
+                trackClassName="min-w-max justify-start gap-3"
               />
             </div>
 
-            <nav className="flex w-full max-w-full flex-wrap items-center gap-2 pb-1 pr-1">
-              <Link
-                href="/live-games"
-                className="rounded-full border border-red-400/25 bg-red-500/10 px-3 py-1.5 text-xs text-red-100 transition hover:border-red-300/40 hover:bg-red-500/15"
-              >
-                {liveGamesCount} Live Games🔥
-              </Link>
-              {HEADER_LINKS.map((link) => (
+            <nav className="w-full overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none]">
+              <div className="flex min-w-max items-center gap-2 pr-1 whitespace-nowrap">
                 <Link
-                  key={link.href}
-                  href={link.href}
-                  className={`rounded-full border px-3 py-1.5 text-xs transition ${headerSkin.surface}`}
+                  href="/live-games"
+                  className="rounded-full border border-red-400/25 bg-red-500/10 px-3 py-1.5 text-xs text-red-100 transition hover:border-red-300/40 hover:bg-red-500/15"
                 >
-                  {link.countKey === "requests" ? `${requestCount} ${link.label}` : link.label}
+                  {liveGamesCount} Live Games🔥
                 </Link>
-              ))}
-              {isAdmin ? (
-                <Link
-                  href="/admin/user-list"
-                  className="rounded-full border border-emerald-300/25 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-100 transition hover:border-emerald-200/40 hover:bg-emerald-500/15"
-                >
-                  Admin
-                </Link>
-              ) : null}
+                {HEADER_LINKS.map((link) => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={`rounded-full border px-3 py-1.5 text-xs transition ${headerSkin.surface}`}
+                  >
+                    {link.countKey === "requests" ? `${requestCount} ${link.label}` : link.label}
+                  </Link>
+                ))}
+                {isAdmin ? (
+                  <Link
+                    href="/admin/user-list"
+                    className="rounded-full border border-emerald-300/25 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-100 transition hover:border-emerald-200/40 hover:bg-emerald-500/15"
+                  >
+                    Admin
+                  </Link>
+                ) : null}
+              </div>
             </nav>
           </div>
 
@@ -192,9 +213,9 @@ function InnerShell({ children }: { children: React.ReactNode }) {
               ))}
             </nav>
 
-            <div className="flex flex-col items-start gap-2 lg:justify-self-end lg:items-end">
+            <div className="flex flex-col items-start gap-2 lg:items-end lg:justify-self-end">
               <div className="flex items-center justify-start gap-3 lg:justify-end">
-                <HeaderInboxControl buttonClassName={headerSkin.surface} />
+                {uid ? <HeaderInboxControl buttonClassName={headerSkin.surface} /> : null}
                 <HeaderMenu
                   pendingBetsCount={pendingBetsCount}
                   playerName={playerName}

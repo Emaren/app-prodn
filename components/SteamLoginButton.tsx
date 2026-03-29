@@ -1,6 +1,6 @@
 "use client";
 
-import { ButtonHTMLAttributes } from "react";
+import { ButtonHTMLAttributes, MouseEvent } from "react";
 import { useUserAuth } from "@/context/UserAuthContext";
 
 type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -12,6 +12,7 @@ export default function SteamLoginButton({
   label = "Sign In With Steam",
   returnTo,
   className,
+  onClick,
   ...props
 }: Props) {
   const { loginWithSteam } = useUserAuth();
@@ -20,12 +21,16 @@ export default function SteamLoginButton({
     <button
       type="button"
       className={className}
-      onClick={() => {
+      onClick={(event: MouseEvent<HTMLButtonElement>) => {
+        onClick?.(event);
+        if (event.defaultPrevented) return;
+
         const nextReturnTo =
           returnTo ||
           (typeof window !== "undefined"
             ? `${window.location.pathname}${window.location.search}`
             : "/");
+
         loginWithSteam(nextReturnTo);
       }}
       {...props}
