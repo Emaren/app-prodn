@@ -56,26 +56,26 @@ export function LeaderboardPanel({
               {leaderboard.trackedPlayers}
             </div>
           </div>
-          <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className={`min-w-0 text-[11px] uppercase tracking-[0.34em] ${tone.countLabel}`}>
-              Players On Board
-            </div>
-            <div className="flex min-w-0 flex-wrap items-center gap-2 sm:ml-auto sm:justify-end">
-              <div
-                className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-medium ${tone.statusBadge}`}
-              >
-                {leaderboard.statusLabel}
-              </div>
-
-              <LobbyViewToggle
-                viewMode={viewMode}
-                onViewModeChange={onViewModeChange}
-                tone={tone}
-                size="xs"
-                className="max-w-full"
-              />
-            </div>
+          <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className={`min-w-0 text-[11px] uppercase tracking-[0.34em] ${tone.countLabel}`}>
+            Players On Board
           </div>
+          <div className="flex shrink-0 flex-nowrap items-center gap-2 sm:ml-auto sm:justify-end">
+            <div
+              className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-medium ${tone.statusBadge}`}
+            >
+              {leaderboard.statusLabel}
+            </div>
+
+            <LobbyViewToggle
+              viewMode={viewMode}
+              onViewModeChange={onViewModeChange}
+              tone={tone}
+              size="xs"
+              className="shrink-0"
+            />
+          </div>
+        </div>
         </div>
 
         <div className="absolute right-5 top-5 sm:right-6 sm:top-6">
