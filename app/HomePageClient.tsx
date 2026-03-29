@@ -309,7 +309,7 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
       : "border-white/10 shadow-[0_28px_80px_rgba(15,23,42,0.4)]";
 
   return (
-    <div className="space-y-4 py-2 text-white sm:space-y-6 sm:py-3">
+    <div className="space-y-4 overflow-x-hidden py-2 text-white sm:space-y-6 sm:py-3">
       <section
         className={`overflow-hidden rounded-[1.75rem] border p-4 transition-all duration-500 sm:rounded-[2rem] sm:p-6 lg:p-8 ${heroShellClassName}`}
         style={heroStyle}

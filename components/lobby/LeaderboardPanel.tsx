@@ -56,28 +56,31 @@ export function LeaderboardPanel({
               {leaderboard.trackedPlayers}
             </div>
           </div>
-          <div className={`mt-2 text-[11px] uppercase tracking-[0.34em] ${tone.countLabel}`}>
-            Players On Board
+          <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className={`min-w-0 text-[11px] uppercase tracking-[0.34em] ${tone.countLabel}`}>
+              Players On Board
+            </div>
+            <div className="flex min-w-0 flex-wrap items-center gap-2 sm:ml-auto sm:justify-end">
+              <div
+                className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-medium ${tone.statusBadge}`}
+              >
+                {leaderboard.statusLabel}
+              </div>
+
+              <LobbyViewToggle
+                viewMode={viewMode}
+                onViewModeChange={onViewModeChange}
+                tone={tone}
+                size="xs"
+                className="max-w-full"
+              />
+            </div>
           </div>
         </div>
 
         <div className="absolute right-5 top-5 sm:right-6 sm:top-6">
           <div className={`rounded-full border px-3 py-1 text-xs font-medium ${tone.activeBadge}`}>
             {onlineCount} Online
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-          <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-            <div className={`rounded-full border px-3 py-1 text-xs font-medium ${tone.statusBadge}`}>
-              {leaderboard.statusLabel}
-            </div>
-
-            <LobbyViewToggle
-              viewMode={viewMode}
-              onViewModeChange={onViewModeChange}
-              tone={tone}
-            />
           </div>
         </div>
       </div>

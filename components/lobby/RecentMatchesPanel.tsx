@@ -30,7 +30,7 @@ export function RecentMatchesPanel({
 
   return (
     <div className={`rounded-[1.75rem] border p-6 ${tone.panelShell}`}>
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <div className={`text-xs uppercase tracking-[0.35em] ${tone.eyebrow}`}>Match Feed</div>
           <h3 className="mt-2 text-2xl font-semibold text-white">Recent Parsed Games</h3>

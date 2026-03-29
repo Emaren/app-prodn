@@ -196,6 +196,8 @@ export function displayParseReason(value: string | null | undefined) {
       return "Replay inference";
     case "watcher_inferred_backfill":
       return "Replay backfill";
+    case "recorded_resignation_final":
+      return "Recorded resignation";
     case EARLY_EXIT_PARSE_REASON:
       return "Under 60s drop";
     default:

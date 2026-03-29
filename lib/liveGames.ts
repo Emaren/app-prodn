@@ -31,6 +31,7 @@ export type LiveGameSession = {
   replayHash: string;
   parseIteration: number;
   createdAt: string;
+  updatedAt: string;
   completedAt: string | null;
   playedOn: string | null;
   mapName: string | null;
@@ -53,6 +54,7 @@ export type LiveGameSession = {
 
 const LIVE_SESSION_FRESHNESS_MS = 12 * 60 * 1000;
 const LIVE_SESSION_LINGER_MS = 60 * 1000;
+const SUPERSEDED_PARSE_REASON = "superseded_by_later_upload";
 
 function normalizeSessionKey(row: {
   original_filename?: string | null;
@@ -105,12 +107,15 @@ type SessionRow = {
   original_filename: string | null;
   parse_iteration: number;
   createdAt: Date;
+  timestamp: Date | null;
   played_on: Date | null;
   map: unknown;
   game_duration: number | null;
   winner: string | null;
   players: unknown;
+  key_events?: unknown;
   disconnect_detected: boolean;
+  parse_reason?: string | null;
   parse_source?: string;
   user: {
     uid: string;
@@ -119,18 +124,32 @@ type SessionRow = {
   } | null;
 };
 
+function getRowActivityTime(row: Pick<SessionRow, "timestamp" | "createdAt">) {
+  return row.timestamp ?? row.createdAt;
+}
+
+function readCompletedSignal(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+
+  return (value as Record<string, unknown>).completed === true;
+}
+
 function buildSessionFromRow(
   row: SessionRow,
   sessionKey: string,
   state: LiveGameSession["state"]
 ): LiveGameSession {
+  const activityTime = getRowActivityTime(row);
   return {
     id: row.id,
     sessionKey,
     replayHash: row.replayHash,
     parseIteration: row.parse_iteration,
     createdAt: row.createdAt.toISOString(),
-    completedAt: state === "completed" ? row.createdAt.toISOString() : null,
+    updatedAt: activityTime.toISOString(),
+    completedAt: state === "completed" ? activityTime.toISOString() : null,
     playedOn: row.played_on?.toISOString() ?? null,
     mapName: parseMapName(row.map),
     durationSeconds:
@@ -162,11 +181,23 @@ async function loadSessionSnapshot(prisma: PrismaClient): Promise<{
     prisma.gameStats.findMany({
       where: {
         is_final: false,
-        createdAt: {
-          gte: freshnessCutoff,
-        },
         parse_iteration: {
           gt: 0,
+        },
+        OR: [
+          {
+            timestamp: {
+              gte: freshnessCutoff,
+            },
+          },
+          {
+            createdAt: {
+              gte: freshnessCutoff,
+            },
+          },
+        ],
+        NOT: {
+          parse_reason: SUPERSEDED_PARSE_REASON,
         },
       },
       orderBy: [{ createdAt: "desc" }, { parse_iteration: "desc" }, { id: "desc" }],
@@ -178,12 +209,15 @@ async function loadSessionSnapshot(prisma: PrismaClient): Promise<{
         original_filename: true,
         parse_iteration: true,
         createdAt: true,
+        timestamp: true,
         played_on: true,
         map: true,
         game_duration: true,
         winner: true,
         players: true,
+        key_events: true,
         disconnect_detected: true,
+        parse_reason: true,
         user: {
           select: {
             uid: true,
@@ -196,8 +230,20 @@ async function loadSessionSnapshot(prisma: PrismaClient): Promise<{
     prisma.gameStats.findMany({
       where: {
         is_final: true,
-        createdAt: {
-          gte: freshnessCutoff,
+        OR: [
+          {
+            timestamp: {
+              gte: freshnessCutoff,
+            },
+          },
+          {
+            createdAt: {
+              gte: freshnessCutoff,
+            },
+          },
+        ],
+        NOT: {
+          parse_reason: SUPERSEDED_PARSE_REASON,
         },
       },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
@@ -209,6 +255,7 @@ async function loadSessionSnapshot(prisma: PrismaClient): Promise<{
         original_filename: true,
         parse_iteration: true,
         createdAt: true,
+        timestamp: true,
         played_on: true,
         map: true,
         game_duration: true,
@@ -230,7 +277,15 @@ async function loadSessionSnapshot(prisma: PrismaClient): Promise<{
   const latestLiveBySession = new Map<string, (typeof activeRows)[number]>();
   for (const row of activeRows) {
     const sessionKey = normalizeSessionKey(row);
-    if (!latestLiveBySession.has(sessionKey)) {
+    const existing = latestLiveBySession.get(sessionKey);
+    if (
+      !existing ||
+      getRowActivityTime(row).getTime() > getRowActivityTime(existing).getTime() ||
+      (
+        getRowActivityTime(row).getTime() === getRowActivityTime(existing).getTime() &&
+        row.parse_iteration > existing.parse_iteration
+      )
+    ) {
       latestLiveBySession.set(sessionKey, row);
     }
   }
@@ -238,7 +293,15 @@ async function loadSessionSnapshot(prisma: PrismaClient): Promise<{
   const latestFinalBySession = new Map<string, (typeof finalRows)[number]>();
   for (const row of finalRows) {
     const sessionKey = normalizeSessionKey(row);
-    if (!latestFinalBySession.has(sessionKey)) {
+    const existing = latestFinalBySession.get(sessionKey);
+    if (
+      !existing ||
+      getRowActivityTime(row).getTime() > getRowActivityTime(existing).getTime() ||
+      (
+        getRowActivityTime(row).getTime() === getRowActivityTime(existing).getTime() &&
+        row.parse_iteration > existing.parse_iteration
+      )
+    ) {
       latestFinalBySession.set(sessionKey, row);
     }
   }
@@ -248,9 +311,21 @@ async function loadSessionSnapshot(prisma: PrismaClient): Promise<{
 
   for (const [sessionKey, row] of latestLiveBySession.entries()) {
     const finalRow = latestFinalBySession.get(sessionKey);
+    const liveActivityAt = getRowActivityTime(row).getTime();
+    const liveCompleted = readCompletedSignal(row.key_events);
     if (finalRow) {
-      if (finalRow.createdAt.getTime() >= lingerCutoff) {
-        recentlyCompletedSessions.push(buildSessionFromRow(finalRow, sessionKey, "completed"));
+      const finalActivityAt = getRowActivityTime(finalRow).getTime();
+      if (finalActivityAt >= liveActivityAt) {
+        if (finalActivityAt >= lingerCutoff) {
+          recentlyCompletedSessions.push(buildSessionFromRow(finalRow, sessionKey, "completed"));
+        }
+        continue;
+      }
+    }
+
+    if (liveCompleted) {
+      if (liveActivityAt >= lingerCutoff) {
+        recentlyCompletedSessions.push(buildSessionFromRow(row, sessionKey, "completed"));
       }
       continue;
     }
@@ -265,13 +340,17 @@ async function loadSessionSnapshot(prisma: PrismaClient): Promise<{
     if (!String(row.parse_source || "").startsWith("watcher")) {
       continue;
     }
-    if (row.createdAt.getTime() < lingerCutoff) {
+    if (getRowActivityTime(row).getTime() < lingerCutoff) {
       continue;
     }
     recentlyCompletedSessions.push(buildSessionFromRow(row, sessionKey, "completed"));
   }
 
-  activeSessions.sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime());
+  activeSessions.sort((left, right) => {
+    const leftActivityAt = new Date(left.updatedAt).getTime();
+    const rightActivityAt = new Date(right.updatedAt).getTime();
+    return rightActivityAt - leftActivityAt;
+  });
   recentlyCompletedSessions.sort(
     (left, right) =>
       new Date(right.completedAt || right.createdAt).getTime() -

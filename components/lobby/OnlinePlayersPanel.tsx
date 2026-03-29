@@ -25,12 +25,12 @@ export function OnlinePlayersPanel({
 
   return (
     <div className={`rounded-[1.75rem] border p-6 ${tone.panelShell}`}>
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <div className={`text-xs uppercase tracking-[0.35em] ${tone.eyebrow}`}>Lobby</div>
           <h3 className="mt-2 text-2xl font-semibold text-white">Online Players</h3>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Link
             href="/players"
             className={`rounded-full border px-3 py-1 text-xs transition ${tone.secondaryButton}`}
@@ -73,7 +73,7 @@ function OnlineUserCard({
   return (
     <Link
       href={`/players/${user.uid}`}
-      className={`flex items-center justify-between rounded-2xl border px-4 py-4 transition ${tone.card} ${tone.cardHover}`}
+      className={`flex flex-wrap items-center justify-between gap-3 rounded-2xl border px-4 py-4 transition ${tone.card} ${tone.cardHover}`}
     >
       <div>
         <div className="font-medium text-white">{user.in_game_name}</div>

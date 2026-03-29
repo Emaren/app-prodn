@@ -6,6 +6,7 @@ import {
   BarChart3,
   Clock3,
   Coins,
+  ChevronDown,
   Download,
   Info,
   ListChecks,
@@ -17,6 +18,7 @@ import {
   Upload,
   UserCircle,
   Users,
+  X,
 } from "lucide-react";
 
 import { useClickOutside } from "@/hooks/useClickOutside";
@@ -135,12 +137,13 @@ export default function HeaderMenu({
       >
         <UserCircle className="h-5 w-5" />
         <span className="max-w-[8.5rem] truncate sm:max-w-none">{playerName || "Account"}</span>
+        <ChevronDown className="h-4 w-4 opacity-70" />
       </button>
 
       {menuOpen ? (
         <div
           className={[
-            "fixed inset-x-2 bottom-2 top-3 z-50 overflow-hidden rounded-[1.85rem] border p-2 shadow-2xl sm:absolute sm:bottom-auto sm:left-auto sm:right-0 sm:top-14 sm:max-h-[min(42rem,calc(100dvh-7rem))] sm:w-72",
+            "fixed inset-x-2 bottom-2 top-[4.75rem] z-50 overflow-hidden rounded-[1.85rem] border p-2 shadow-2xl sm:absolute sm:bottom-auto sm:left-auto sm:right-0 sm:top-14 sm:max-h-[min(42rem,calc(100dvh-7rem))] sm:w-72",
             menuClassName || "border-white/10 bg-[#0b1324]",
           ]
             .filter(Boolean)
@@ -149,7 +152,17 @@ export default function HeaderMenu({
         >
           <div className="flex h-full flex-col sm:hidden">
             <div className="rounded-[1.45rem] border border-white/10 bg-white/[0.035] p-4">
-              <div className="text-[11px] uppercase tracking-[0.32em] text-slate-400">Command Deck</div>
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-[11px] uppercase tracking-[0.32em] text-slate-400">Command Deck</div>
+                <button
+                  type="button"
+                  onClick={() => setMenuOpen(false)}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-slate-300 transition hover:border-white/20 hover:text-white"
+                  aria-label="Close menu"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
               <div className="mt-3 flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="truncate text-xl font-semibold text-white">{playerName || "Account"}</div>

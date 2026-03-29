@@ -17,6 +17,7 @@ type LobbyThemePickerProps = {
   size?: "sm" | "md";
   label?: string;
   className?: string;
+  trackClassName?: string;
 };
 
 type LobbyViewToggleProps = {
@@ -25,6 +26,7 @@ type LobbyViewToggleProps = {
   tone: LobbyPresentationTone;
   label?: string;
   className?: string;
+  size?: "sm" | "xs";
 };
 
 type LobbyTextColorPickerProps = {
@@ -42,17 +44,18 @@ export function LobbyThemePicker({
   size = "sm",
   label,
   className,
+  trackClassName,
 }: LobbyThemePickerProps) {
   const circleSizeClassName = size === "md" ? "h-5 w-5" : "h-4 w-4";
 
   return (
-    <div className={["flex flex-wrap items-center gap-2", className].filter(Boolean).join(" ")}>
+    <div className={["flex max-w-full items-center gap-2", className].filter(Boolean).join(" ")}>
       {label ? (
         <div className="text-[10px] font-medium uppercase tracking-[0.28em] text-slate-400">
           {label}
         </div>
       ) : null}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className={["flex items-center gap-2", trackClassName].filter(Boolean).join(" ")}>
         {LOBBY_THEME_OPTIONS.map((option) => {
           const isActive = option.key === themeKey;
           return (
@@ -81,15 +84,21 @@ export function LobbyViewToggle({
   tone,
   label,
   className,
+  size = "sm",
 }: LobbyViewToggleProps) {
+  const buttonClassName =
+    size === "xs"
+      ? "whitespace-nowrap rounded-full px-2.5 py-1.5 text-[11px] font-semibold transition"
+      : "whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold transition";
+
   return (
-    <div className={["flex flex-wrap items-center gap-2", className].filter(Boolean).join(" ")}>
+    <div className={["flex items-center gap-2", className].filter(Boolean).join(" ")}>
       {label ? (
         <div className="text-[10px] font-medium uppercase tracking-[0.28em] text-slate-400">
           {label}
         </div>
       ) : null}
-      <div className={`inline-flex rounded-full border p-1 ${tone.viewToggle}`}>
+      <div className={`inline-flex max-w-full flex-wrap rounded-full border p-1 ${tone.viewToggle}`}>
         {LOBBY_VIEW_OPTIONS.map((option) => {
           const isActive = option.key === viewMode;
           return (
@@ -97,7 +106,7 @@ export function LobbyViewToggle({
               key={option.key}
               type="button"
               onClick={() => onViewModeChange(option.key)}
-              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+              className={`${buttonClassName} ${
                 isActive ? tone.viewToggleActive : "text-current hover:bg-white/10"
               }`}
               aria-pressed={isActive}

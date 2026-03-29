@@ -12,6 +12,7 @@ import Link from "next/link";
 
 import { useLobbyAppearance } from "@/components/lobby/LobbyAppearanceContext";
 import { getLobbyPresentationTone } from "@/components/lobby/lobbyPresentation";
+import { WATCHER_RELEASE } from "@/lib/watcherRelease";
 
 const INSTALL_COMMANDS = `cp .env.example .env
 npm install
@@ -20,19 +21,6 @@ npm run start`;
 const OPTIONAL_ENV = `AOE2_API_BASE_URL=https://api-prodn.aoe2hdbets.com
 # optional if uploads are protected
 AOE2_UPLOAD_API_KEY=your_key_here`;
-
-const FEATURE_CHIPS = [
-  "Live v1.1",
-  "Mar 28, 2026",
-  "Julio-tested",
-  "Live board feed",
-  "Final replay proof",
-  "Auto retry",
-  "CrossOver ready",
-];
-
-const WATCHER_VERSION = "Live v1.1";
-const WATCHER_RELEASE_STAMP = "Mar 28, 2026";
 
 const STATUS_CARDS = [
   {
@@ -66,15 +54,15 @@ export default function DownloadPage() {
               AoE2 Watcher
             </h1>
             <div className="mt-4 flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.28em] text-slate-400">
-              <span className={`rounded-full border px-3 py-1 ${tone.statusBadge}`}>{WATCHER_VERSION}</span>
-              <span>Released {WATCHER_RELEASE_STAMP}</span>
+              <span className={`rounded-full border px-3 py-1 ${tone.statusBadge}`}>{WATCHER_RELEASE.label}</span>
+              <span>Released {WATCHER_RELEASE.releasedOn}</span>
             </div>
             <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300">
               Julio already got it running. Keep the package current and let it stream live snapshots plus final proof into AoE2HDBets.
             </p>
 
             <div className="mt-5 flex flex-wrap gap-2">
-              {FEATURE_CHIPS.map((chip) => (
+              {WATCHER_RELEASE.featureChips.map((chip) => (
                 <div
                   key={chip}
                   className={`rounded-full border px-3 py-1 text-[11px] font-medium ${tone.neutralPill}`}
@@ -86,7 +74,7 @@ export default function DownloadPage() {
 
             <div className="mt-6 flex flex-wrap gap-3">
               <Link
-                href="/downloads/aoe2-watcher-mac.zip"
+                href={WATCHER_RELEASE.downloadHref}
                 className={`inline-flex items-center gap-3 rounded-full px-5 py-3 text-sm font-semibold transition ${tone.primaryButton}`}
                 download
               >
@@ -106,12 +94,12 @@ export default function DownloadPage() {
             <div className="flex items-center justify-between gap-3">
               <div className={`text-xs uppercase tracking-[0.32em] ${tone.accentText}`}>Runtime</div>
               <div className={`rounded-full border px-3 py-1 text-[11px] ${tone.statusBadge}`}>
-                {WATCHER_VERSION}
+                {WATCHER_RELEASE.label}
               </div>
             </div>
 
             <div className="mt-3 text-xs uppercase tracking-[0.24em] text-slate-400">
-              Released {WATCHER_RELEASE_STAMP}
+              Released {WATCHER_RELEASE.releasedOn}
             </div>
 
             <div className="mt-5 space-y-3">
@@ -146,7 +134,7 @@ export default function DownloadPage() {
               From the extracted watcher folder
             </div>
             <div className="mt-2 text-xs text-slate-400">
-              {WATCHER_VERSION} · {WATCHER_RELEASE_STAMP}
+              {WATCHER_RELEASE.label} · {WATCHER_RELEASE.releasedOn}
             </div>
             <pre className="mt-3 overflow-x-auto text-sm leading-7 text-slate-100">
               <code>{INSTALL_COMMANDS}</code>

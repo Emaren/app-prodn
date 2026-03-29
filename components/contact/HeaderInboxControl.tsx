@@ -1,6 +1,6 @@
 "use client";
 
-import { MessageSquareMore } from "lucide-react";
+import { MessageSquareMore, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import ContactInboxPanel from "@/components/contact/ContactInboxPanel";
@@ -161,7 +161,17 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
             onClick={() => setOpen(false)}
             className="fixed inset-0 z-40 bg-[#02060f]/78 backdrop-blur-[2px]"
           />
-          <div className="fixed inset-x-3 bottom-4 top-24 z-50 sm:absolute sm:bottom-auto sm:left-auto sm:right-0 sm:top-14 sm:h-[min(42rem,calc(100dvh-6.5rem))] sm:w-[28rem] sm:max-w-[calc(100vw-2rem)]">
+          <div className="fixed inset-x-2 bottom-2 top-[4.75rem] z-50 sm:absolute sm:bottom-auto sm:left-auto sm:right-0 sm:top-14 sm:h-[min(42rem,calc(100dvh-6.5rem))] sm:w-[28rem] sm:max-w-[calc(100vw-2rem)]">
+            <div className="mb-2 flex justify-end sm:hidden">
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-[#0b1324]/90 text-slate-300 transition hover:border-white/20 hover:text-white"
+                aria-label="Close inbox"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
             <ContactInboxPanel
               data={panelData ?? summary}
               loading={loading && !(panelData ?? summary)}

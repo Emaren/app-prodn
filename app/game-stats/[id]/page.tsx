@@ -91,6 +91,10 @@ export default async function GameStatsDetailPage({
   });
 
   const players = parsePlayers(game.players);
+  const battleTapeSessionKey = game.original_filename || game.replay_file || null;
+  const battleTapeHref = battleTapeSessionKey
+    ? `/game-stats/live/${encodeURIComponent(battleTapeSessionKey)}`
+    : null;
   const claimedPlayers = await findClaimedUsersForReplayNames(
     prisma,
     players.map((player) => displayPlayerName(player))
@@ -164,6 +168,14 @@ export default async function GameStatsDetailPage({
                 className="rounded-full border border-white/15 px-5 py-3 text-sm text-white/85 transition hover:border-sky-300/40 hover:text-white"
               >
                 Open Rivalry
+              </Link>
+            ) : null}
+            {battleTapeHref ? (
+              <Link
+                href={battleTapeHref}
+                className="rounded-full border border-amber-300/30 bg-amber-400/10 px-5 py-3 text-sm text-amber-100 transition hover:bg-amber-400/15"
+              >
+                Open Battle Tape
               </Link>
             ) : null}
             <Link

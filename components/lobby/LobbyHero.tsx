@@ -99,17 +99,17 @@ export function LobbyHero({
         />
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {isAuthenticated ? (
           <Link
             href="/profile"
-            className={primaryActionClassName}
+            className={`${primaryActionClassName} block text-center`}
           >
             Open Profile
           </Link>
         ) : (
           <SteamLoginButton
-            className={primaryActionClassName}
+            className={`${primaryActionClassName} block w-full text-center`}
             label={loading ? "Loading..." : "Claim Your Steam Identity"}
             disabled={loading}
           />
@@ -117,14 +117,14 @@ export function LobbyHero({
 
         <Link
           href={isAuthenticated ? "/upload" : "/download"}
-          className="rounded-full border border-white/15 px-5 py-3 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
+          className="block rounded-full border border-white/15 px-5 py-3 text-center text-sm text-white/85 transition hover:border-white/30 hover:text-white"
         >
           {isAuthenticated ? "Upload Replay" : "Download Watcher"}
         </Link>
 
         <Link
           href="/rivalries"
-          className="rounded-full border border-white/15 px-5 py-3 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
+          className="block rounded-full border border-white/15 px-5 py-3 text-center text-sm text-white/85 transition hover:border-white/30 hover:text-white"
         >
           View Rivalries
         </Link>

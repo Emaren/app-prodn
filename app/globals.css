@@ -2,14 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Ensure body is full height */
 html, body {
-    height: 100%;
-    min-height: 100vh;
+    width: 100%;
+    min-height: 100%;
     margin: 0;
     padding: 0;
     background-color: #111827; /* Dark background */
     color: white;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+body {
+    min-height: 100vh;
 }
 
 :root {

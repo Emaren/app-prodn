@@ -7,27 +7,54 @@ import { reconcileTournamentMatchProofs } from "@/lib/tournamentProofReconciler"
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+function readHeader(request: NextRequest, name: string) {
+  const value = request.headers.get(name);
+  if (!value) {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
 export async function POST(request: NextRequest) {
-  const uid = await getSessionUid(request);
+  const watcherApiKey = readHeader(request, "x-api-key");
+  const watcherUid = readHeader(request, "x-user-uid");
+  const isWatcherProxyUpload = Boolean(watcherApiKey && watcherUid);
+
+  const sessionUid = isWatcherProxyUpload ? null : await getSessionUid(request);
+  const uid = watcherUid || sessionUid;
+
   if (!uid) {
     return NextResponse.json({ detail: "Sign in with Steam before uploading replays." }, { status: 401 });
   }
 
   const prisma = getPrisma();
-  const user = await prisma.user.findUnique({
-    where: { uid },
-    select: {
-      uid: true,
-      inGameName: true,
-    },
-  });
-  if (!user) {
-    await prisma.user.create({
-      data: {
-        uid,
-        isAdmin: false,
+  let playerName: string | null = readHeader(request, "x-player-name");
+  let user:
+    | {
+        uid: string;
+        inGameName: string | null;
+      }
+    | null = null;
+
+  if (!isWatcherProxyUpload) {
+    user = await prisma.user.findUnique({
+      where: { uid },
+      select: {
+        uid: true,
+        inGameName: true,
       },
     });
+    if (!user) {
+      await prisma.user.create({
+        data: {
+          uid,
+          isAdmin: false,
+        },
+      });
+    }
+    playerName = user?.inGameName || null;
   }
 
   const base = getBackendUpstreamBase();
@@ -36,11 +63,18 @@ export async function POST(request: NextRequest) {
   const headers = new Headers();
   if (contentType) headers.set("content-type", contentType);
   headers.set("x-user-uid", uid);
-  const playerName = user?.inGameName;
   if (playerName) {
     headers.set("x-player-name", playerName);
   }
-  if (process.env.INTERNAL_API_KEY) {
+  if (isWatcherProxyUpload && watcherApiKey) {
+    headers.set("x-api-key", watcherApiKey);
+    for (const headerName of ["x-parse-iteration", "x-is-final", "x-parse-source", "x-parse-reason"]) {
+      const value = readHeader(request, headerName);
+      if (value) {
+        headers.set(headerName, value);
+      }
+    }
+  } else if (process.env.INTERNAL_API_KEY) {
     headers.set("x-api-key", process.env.INTERNAL_API_KEY);
   }
 

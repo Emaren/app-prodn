@@ -11,6 +11,8 @@ type LiveGamesBoardProps = {
   initialSnapshot: LiveGamesSnapshot;
 };
 
+const LIVE_GAMES_POLL_INTERVAL_MS = 5_000;
+
 function formatTime(value: string | null) {
   if (!value) return "Now";
   const date = new Date(value);
@@ -84,9 +86,11 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
       }
     };
 
+    void refresh();
+
     const interval = window.setInterval(() => {
       void refresh();
-    }, 15_000);
+    }, LIVE_GAMES_POLL_INTERVAL_MS);
 
     return () => {
       cancelled = true;
@@ -251,6 +255,7 @@ function LiveSessionCard({
   session: LiveGamesSnapshot["activeSessions"][number];
 }) {
   const isCompleted = session.state === "completed";
+  const gameHref = `/game-stats/live/${encodeURIComponent(session.sessionKey)}`;
   const title =
     session.players.length > 0
       ? session.players.map((player) => player.name).join(" vs ")
@@ -282,7 +287,7 @@ function LiveSessionCard({
               Parse #{session.parseIteration}
             </span>
             <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-              Updated {formatUpdatedTime(session.completedAt || session.createdAt)}
+              Updated {formatUpdatedTime(session.completedAt || session.updatedAt)}
             </span>
             {session.uploader ? (
               <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
@@ -309,10 +314,16 @@ function LiveSessionCard({
 
       <div className="mt-4 flex flex-wrap gap-3">
         <Link
-          href="/lobby"
+          href={gameHref}
           className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-slate-200"
         >
-          {isCompleted ? "View Lobby" : "Open Lobby"}
+          {isCompleted ? "Open Final Stats" : "Watch Live Stats"}
+        </Link>
+        <Link
+          href="/lobby"
+          className="rounded-full border border-white/15 px-4 py-2 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
+        >
+          Open Lobby
         </Link>
         <Link
           href="/wolo"

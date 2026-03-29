@@ -74,7 +74,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
     void loadHeaderCounts();
     const interval = window.setInterval(() => {
       void loadHeaderCounts();
-    }, 30_000);
+    }, 10_000);
 
     return () => {
       cancelled = true;
@@ -84,7 +84,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div
-      className="flex min-h-screen flex-col overflow-x-clip text-white transition-[background-image,background-color] duration-500"
+      className="flex min-h-screen w-full flex-col overflow-x-hidden text-white transition-[background-image,background-color] duration-500"
       style={pageStyle}
       data-text-tone={textColor}
       data-theme-key={themeKey}
@@ -95,8 +95,8 @@ function InnerShell({ children }: { children: React.ReactNode }) {
       >
         <div className="mx-auto max-w-6xl overflow-visible">
           <div className="space-y-3 lg:hidden">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0 pt-1">
                 <Link href="/lobby" className="inline-block min-w-0">
                   <div className={`text-[11px] uppercase tracking-[0.35em] transition ${headerTone.eyebrow}`}>
                     AoE2HD Bets
@@ -124,7 +124,18 @@ function InnerShell({ children }: { children: React.ReactNode }) {
               </div>
             </div>
 
-            <nav className="flex max-w-full items-center gap-2 overflow-x-auto whitespace-nowrap pb-1 [scrollbar-width:none] [-ms-overflow-style:none]">
+            <div className="flex w-full overflow-hidden">
+              <LobbyThemePicker
+                themeKey={themeKey}
+                onThemeChange={setThemeKey}
+                tone={headerTone}
+                size="sm"
+                className="w-full"
+                trackClassName="w-full justify-between gap-1.5"
+              />
+            </div>
+
+            <nav className="flex w-full max-w-full flex-wrap items-center gap-2 pb-1 pr-1">
               <Link
                 href="/live-games"
                 className="rounded-full border border-red-400/25 bg-red-500/10 px-3 py-1.5 text-xs text-red-100 transition hover:border-red-300/40 hover:bg-red-500/15"
@@ -149,16 +160,6 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                 </Link>
               ) : null}
             </nav>
-
-            <div className="flex justify-end">
-              <LobbyThemePicker
-                themeKey={themeKey}
-                onThemeChange={setThemeKey}
-                tone={headerTone}
-                size="sm"
-                className="gap-1.5"
-              />
-            </div>
           </div>
 
           <div className="hidden lg:grid lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:items-center lg:gap-3">
@@ -219,7 +220,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <main className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col px-3 py-4 sm:px-4">
+      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col overflow-x-hidden px-3 py-4 sm:px-4">
         {children}
       </main>
       <Toaster richColors />
