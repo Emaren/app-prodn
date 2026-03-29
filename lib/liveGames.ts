@@ -53,7 +53,7 @@ export type LiveGameSession = {
 };
 
 const LIVE_SESSION_FRESHNESS_MS = 12 * 60 * 1000;
-const LIVE_SESSION_LINGER_MS = 60 * 1000;
+const LIVE_SESSION_LINGER_MS = 15 * 60 * 1000;
 const SUPERSEDED_PARSE_REASON = "superseded_by_later_upload";
 
 function normalizeSessionKey(row: {
@@ -313,6 +313,7 @@ async function loadSessionSnapshot(prisma: PrismaClient): Promise<{
     const finalRow = latestFinalBySession.get(sessionKey);
     const liveActivityAt = getRowActivityTime(row).getTime();
     const liveCompleted = readCompletedSignal(row.key_events);
+
     if (finalRow) {
       const finalActivityAt = getRowActivityTime(finalRow).getTime();
       if (finalActivityAt >= liveActivityAt) {
@@ -337,9 +338,6 @@ async function loadSessionSnapshot(prisma: PrismaClient): Promise<{
     if (latestLiveBySession.has(sessionKey)) {
       continue;
     }
-    if (!String(row.parse_source || "").startsWith("watcher")) {
-      continue;
-    }
     if (getRowActivityTime(row).getTime() < lingerCutoff) {
       continue;
     }
@@ -351,6 +349,7 @@ async function loadSessionSnapshot(prisma: PrismaClient): Promise<{
     const rightActivityAt = new Date(right.updatedAt).getTime();
     return rightActivityAt - leftActivityAt;
   });
+
   recentlyCompletedSessions.sort(
     (left, right) =>
       new Date(right.completedAt || right.createdAt).getTime() -
@@ -370,7 +369,7 @@ async function loadRecentMatches(): Promise<LobbyMatchRow[]> {
     if (!response.ok) return [];
 
     const payload = (await response.json()) as LobbyMatchRow[] | unknown;
-    return Array.isArray(payload) ? payload.slice(0, 12) : [];
+    return Array.isArray(payload) ? payload.slice(0, 24) : [];
   } catch (error) {
     console.warn("Failed to load recent matches for live games:", error);
     return [];
@@ -387,10 +386,13 @@ export async function loadLiveGamesSnapshot(prisma: PrismaClient): Promise<LiveG
   const { activeSessions, recentlyCompletedSessions } = sessionSnapshot;
   const liveMatches = tournament.matches.filter((match) => match.status === "live");
   const readyMatches = tournament.matches.filter((match) => match.status === "ready");
-  const recentlyCompletedKeys = new Set(recentlyCompletedSessions.map((session) => session.sessionKey));
+  const recentlyCompletedKeys = new Set(
+    recentlyCompletedSessions.map((session) => session.sessionKey)
+  );
+
   const filteredRecentMatches = recentMatches
     .filter((match) => !recentlyCompletedKeys.has(normalizeSessionKey(match)))
-    .slice(0, 8);
+    .slice(0, 12);
 
   return {
     liveCount: liveMatches.length + activeSessions.length,
