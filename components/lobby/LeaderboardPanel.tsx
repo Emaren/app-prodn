@@ -49,18 +49,21 @@ export function LeaderboardPanel({
       className={`relative rounded-[1.85rem] border p-5 transition-all duration-300 sm:p-6 ${tone.panelShell}`}
     >
       <div className="flex flex-col gap-5">
-        <div className="min-w-0 pr-28 sm:pr-32">
+      <div className="min-w-0">
+        <div className="pr-28 sm:pr-32">
           <div className={`text-xs uppercase tracking-[0.35em] ${tone.eyebrow}`}>Leaderboard</div>
           <div className="mt-4 flex flex-wrap items-end gap-8 sm:gap-10">
             <div className={`text-5xl font-semibold tracking-tight tabular-nums ${tone.count}`}>
               {leaderboard.trackedPlayers}
             </div>
           </div>
-          <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        </div>
+
+        <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className={`min-w-0 text-[11px] uppercase tracking-[0.34em] ${tone.countLabel}`}>
             Players On Board
           </div>
-          <div className="flex shrink-0 flex-nowrap items-center gap-2 sm:ml-auto sm:justify-end">
+          <div className="flex flex-nowrap items-center gap-2 sm:ml-auto">
             <div
               className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-medium ${tone.statusBadge}`}
             >
@@ -76,14 +79,14 @@ export function LeaderboardPanel({
             />
           </div>
         </div>
-        </div>
+      </div>
 
-        <div className="absolute right-5 top-5 sm:right-6 sm:top-6">
-          <div className={`rounded-full border px-3 py-1 text-xs font-medium ${tone.activeBadge}`}>
-            {onlineCount} Online
-          </div>
+      <div className="absolute right-5 top-5 sm:right-6 sm:top-6">
+        <div className={`rounded-full border px-3 py-1 text-xs font-medium ${tone.activeBadge}`}>
+          {onlineCount} Online
         </div>
       </div>
+    </div>
 
       <div className="mt-6 max-h-[58vh] space-y-3 overflow-y-auto pr-2 sm:max-h-[62vh] lg:max-h-[46rem]">
         {leaderboard.entries.length === 0 ? (
