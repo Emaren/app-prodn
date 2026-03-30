@@ -26,9 +26,12 @@ async function requestInbox(targetUid?: string | null, summaryOnly?: boolean) {
     params.set("summary", "1");
   }
 
-  const response = await fetch(`/api/contact-emaren${params.size > 0 ? `?${params.toString()}` : ""}`, {
-    cache: "no-store",
-  });
+  const response = await fetch(
+    `/api/contact-emaren${params.size > 0 ? `?${params.toString()}` : ""}`,
+    {
+      cache: "no-store",
+    }
+  );
 
   const payload = (await response.json().catch(() => ({}))) as
     | ContactInboxPayload
@@ -74,10 +77,12 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
     async (targetUid?: string | null, options?: { silent?: boolean }) => {
       if (!uid) return;
       const silent = Boolean(options?.silent);
+
       if (!silent) {
         setLoading(true);
         setError(null);
       }
+
       try {
         const payload = await requestInbox(targetUid ?? selectedTargetUid ?? undefined, false);
         setPanelData(payload);
@@ -159,9 +164,10 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
             type="button"
             aria-label="Close inbox overlay"
             onClick={() => setOpen(false)}
-            className="fixed inset-0 z-40 bg-[#02060f]/78 backdrop-blur-[2px]"
+            className="fixed inset-0 z-40 bg-[#02060f]/78 backdrop-blur-[2px] sm:hidden"
           />
-          <div className="fixed inset-x-2 bottom-2 top-[4.75rem] z-50 sm:absolute sm:bottom-auto sm:left-auto sm:right-0 sm:top-14 sm:h-[min(42rem,calc(100dvh-6.5rem))] sm:w-[28rem] sm:max-w-[calc(100vw-2rem)]">
+
+          <div className="fixed inset-x-3 top-[5.75rem] z-50 h-[min(34rem,calc(100dvh-8.5rem))] sm:absolute sm:inset-x-auto sm:right-0 sm:top-14 sm:h-[min(36rem,calc(100dvh-7rem))] sm:w-[28rem] sm:max-w-[calc(100vw-2rem)]">
             <div className="mb-2 flex justify-end sm:hidden">
               <button
                 type="button"
@@ -172,122 +178,127 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <ContactInboxPanel
-              data={panelData ?? summary}
-              loading={loading && !(panelData ?? summary)}
-              error={error}
-              body={body}
-              sendPending={sendPending}
-              mode="popover"
-              onBodyChange={setBody}
-              onInboxAction={async (action) => {
-                setError(null);
-                try {
-                  const response = await fetch("/api/contact-emaren", {
-                    method: "PATCH",
-                    headers: {
-                      "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                      targetUid: selectedTargetUid,
-                      ...action,
-                    }),
-                  });
 
-                  const payload = (await response.json().catch(() => ({}))) as
-                    | ContactInboxPayload
-                    | { detail?: string };
+            <div className="h-[calc(100%-2.75rem)] min-h-0 overflow-hidden rounded-[1.5rem] sm:h-full">
+              <ContactInboxPanel
+                data={panelData ?? summary}
+                loading={loading && !(panelData ?? summary)}
+                error={error}
+                body={body}
+                sendPending={sendPending}
+                mode="popover"
+                onBodyChange={setBody}
+                onInboxAction={async (action) => {
+                  setError(null);
+                  try {
+                    const response = await fetch("/api/contact-emaren", {
+                      method: "PATCH",
+                      headers: {
+                        "Content-Type": "application/json",
+                      },
+                      body: JSON.stringify({
+                        targetUid: selectedTargetUid,
+                        ...action,
+                      }),
+                    });
 
-                  if (!response.ok) {
-                    throw new Error(readDetail(payload) || "Inbox action failed.");
+                    const payload = (await response.json().catch(() => ({}))) as
+                      | ContactInboxPayload
+                      | { detail?: string };
+
+                    if (!response.ok) {
+                      throw new Error(readDetail(payload) || "Inbox action failed.");
+                    }
+
+                    setPanelData(payload as ContactInboxPayload);
+                    setSummary(payload as ContactInboxPayload);
+                    setSelectedTargetUid((payload as ContactInboxPayload).activeTargetUid);
+                  } catch (actionError) {
+                    setError(
+                      actionError instanceof Error ? actionError.message : "Inbox action failed."
+                    );
                   }
+                }}
+                onSelectConversation={(targetUid) => {
+                  setSelectedTargetUid(targetUid);
+                  void refreshPanel(targetUid);
+                }}
+                onSend={async () => {
+                  if (!body.trim()) return;
+                  setSendPending(true);
+                  setError(null);
 
-                  setPanelData(payload as ContactInboxPayload);
-                  setSummary(payload as ContactInboxPayload);
-                  setSelectedTargetUid((payload as ContactInboxPayload).activeTargetUid);
-                } catch (actionError) {
-                  setError(
-                    actionError instanceof Error ? actionError.message : "Inbox action failed."
-                  );
-                }
-              }}
-              onSelectConversation={(targetUid) => {
-                setSelectedTargetUid(targetUid);
-                void refreshPanel(targetUid);
-              }}
-              onSend={async () => {
-                if (!body.trim()) return;
-                setSendPending(true);
-                setError(null);
-                try {
-                  const response = await fetch("/api/contact-emaren", {
-                    method: "POST",
-                    headers: {
-                      "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                      targetUid: selectedTargetUid,
-                      body,
-                    }),
-                  });
+                  try {
+                    const response = await fetch("/api/contact-emaren", {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                      },
+                      body: JSON.stringify({
+                        targetUid: selectedTargetUid,
+                        body,
+                      }),
+                    });
 
-                  const payload = (await response.json().catch(() => ({}))) as
-                    | ContactInboxPayload
-                    | { detail?: string };
+                    const payload = (await response.json().catch(() => ({}))) as
+                      | ContactInboxPayload
+                      | { detail?: string };
 
-                  if (!response.ok) {
-                    throw new Error(readDetail(payload) || "Message failed.");
+                    if (!response.ok) {
+                      throw new Error(readDetail(payload) || "Message failed.");
+                    }
+
+                    setBody("");
+                    setPanelData(payload as ContactInboxPayload);
+                    setSummary(payload as ContactInboxPayload);
+                    setSelectedTargetUid((payload as ContactInboxPayload).activeTargetUid);
+                  } catch (sendError) {
+                    setError(sendError instanceof Error ? sendError.message : "Message failed.");
+                  } finally {
+                    setSendPending(false);
                   }
+                }}
+                onToggleReaction={async (messageId, emoji) => {
+                  setReactingMessageId(messageId);
+                  setError(null);
 
-                  setBody("");
-                  setPanelData(payload as ContactInboxPayload);
-                  setSummary(payload as ContactInboxPayload);
-                  setSelectedTargetUid((payload as ContactInboxPayload).activeTargetUid);
-                } catch (sendError) {
-                  setError(sendError instanceof Error ? sendError.message : "Message failed.");
-                } finally {
-                  setSendPending(false);
-                }
-              }}
-              onToggleReaction={async (messageId, emoji) => {
-                setReactingMessageId(messageId);
-                setError(null);
-                try {
-                  const response = await fetch("/api/contact-emaren", {
-                    method: "PATCH",
-                    headers: {
-                      "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                      action: "toggle_reaction",
-                      targetUid: selectedTargetUid,
-                      messageId,
-                      emoji,
-                    }),
-                  });
+                  try {
+                    const response = await fetch("/api/contact-emaren", {
+                      method: "PATCH",
+                      headers: {
+                        "Content-Type": "application/json",
+                      },
+                      body: JSON.stringify({
+                        action: "toggle_reaction",
+                        targetUid: selectedTargetUid,
+                        messageId,
+                        emoji,
+                      }),
+                    });
 
-                  const payload = (await response.json().catch(() => ({}))) as
-                    | ContactInboxPayload
-                    | { detail?: string };
+                    const payload = (await response.json().catch(() => ({}))) as
+                      | ContactInboxPayload
+                      | { detail?: string };
 
-                  if (!response.ok) {
-                    throw new Error(readDetail(payload) || "Reaction failed.");
+                    if (!response.ok) {
+                      throw new Error(readDetail(payload) || "Reaction failed.");
+                    }
+
+                    setPanelData(payload as ContactInboxPayload);
+                    setSummary(payload as ContactInboxPayload);
+                    setSelectedTargetUid((payload as ContactInboxPayload).activeTargetUid);
+                  } catch (reactionError) {
+                    setError(
+                      reactionError instanceof Error ? reactionError.message : "Reaction failed."
+                    );
+                  } finally {
+                    setReactingMessageId(null);
                   }
-
-                  setPanelData(payload as ContactInboxPayload);
-                  setSummary(payload as ContactInboxPayload);
-                  setSelectedTargetUid((payload as ContactInboxPayload).activeTargetUid);
-                } catch (reactionError) {
-                  setError(
-                    reactionError instanceof Error ? reactionError.message : "Reaction failed."
-                  );
-                } finally {
-                  setReactingMessageId(null);
-                }
-              }}
-              reactingMessageId={reactingMessageId}
-              openPageHref={openPageHref}
-            />
+                }}
+                reactingMessageId={reactingMessageId}
+                openPageHref={openPageHref}
+              />
+            </div>
           </div>
         </>
       ) : null}
