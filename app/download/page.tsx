@@ -61,11 +61,20 @@ const HOW_IT_WORKS = [
 const PLATFORM_RELEASES = [
   {
     key: "mac",
-    title: "macOS",
+    title: "macOS App",
     subtitle: "Apple Silicon · DMG",
     href: WATCHER_RELEASE.downloadHref,
     icon: Apple,
     status: "Live now",
+    isReady: true,
+  },
+  {
+    key: "zip",
+    title: "Manual ZIP",
+    subtitle: "Fallback while signing is offline",
+    href: "/downloads/aoe2-watcher-manual.zip",
+    icon: HardDriveDownload,
+    status: "Fallback",
     isReady: true,
   },
   {
@@ -109,22 +118,34 @@ export default function DownloadPage() {
             </p>
 
             <div className="mt-5 flex flex-wrap gap-2">
-              <div className={`rounded-full border px-3 py-1 text-[11px] font-medium ${tone.neutralPill}`}>
+              <div
+                className={`rounded-full border px-3 py-1 text-[11px] font-medium ${tone.neutralPill}`}
+              >
                 DMG Release
               </div>
-              <div className={`rounded-full border px-3 py-1 text-[11px] font-medium ${tone.neutralPill}`}>
+              <div
+                className={`rounded-full border px-3 py-1 text-[11px] font-medium ${tone.neutralPill}`}
+              >
                 macOS Apple Silicon
               </div>
-              <div className={`rounded-full border px-3 py-1 text-[11px] font-medium ${tone.neutralPill}`}>
+              <div
+                className={`rounded-full border px-3 py-1 text-[11px] font-medium ${tone.neutralPill}`}
+              >
                 CrossOver Ready
               </div>
-              <div className={`rounded-full border px-3 py-1 text-[11px] font-medium ${tone.neutralPill}`}>
+              <div
+                className={`rounded-full border px-3 py-1 text-[11px] font-medium ${tone.neutralPill}`}
+              >
                 Live Snapshots
               </div>
-              <div className={`rounded-full border px-3 py-1 text-[11px] font-medium ${tone.neutralPill}`}>
+              <div
+                className={`rounded-full border px-3 py-1 text-[11px] font-medium ${tone.neutralPill}`}
+              >
                 Final Proof
               </div>
-              <div className={`rounded-full border px-3 py-1 text-[11px] font-medium ${tone.statusBadge}`}>
+              <div
+                className={`rounded-full border px-3 py-1 text-[11px] font-medium ${tone.statusBadge}`}
+              >
                 Unsigned for now
               </div>
             </div>
@@ -140,24 +161,29 @@ export default function DownloadPage() {
               </Link>
 
               <Link
-                href="/upload"
+                href="/downloads/aoe2-watcher-manual.zip"
                 className={`inline-flex items-center gap-3 rounded-full border px-5 py-3 text-sm transition ${tone.secondaryButton}`}
+                download
               >
-                Manual Upload
+                Manual ZIP Fallback
               </Link>
             </div>
 
             <div className="mt-4 rounded-2xl border border-amber-300/15 bg-amber-300/5 px-4 py-3 text-xs leading-6 text-amber-50/85">
-              First launch on macOS may require an extra confirmation until Developer ID
-              signing and notarization are restored.
+              The DMG is the preferred install path. If macOS blocks launch while signing and
+              notarization are offline, use the Manual ZIP fallback.
             </div>
           </div>
 
           <div className={`rounded-[1.6rem] border p-5 ${tone.insetPanel}`}>
             <div className="flex items-start justify-between gap-4">
               <div>
-                <div className={`text-xs uppercase tracking-[0.32em] ${tone.accentText}`}>Release</div>
-                <div className="mt-3 text-lg font-semibold text-white">{WATCHER_RELEASE.label}</div>
+                <div className={`text-xs uppercase tracking-[0.32em] ${tone.accentText}`}>
+                  Release
+                </div>
+                <div className="mt-3 text-lg font-semibold text-white">
+                  {WATCHER_RELEASE.label}
+                </div>
                 <div className="mt-1 text-sm text-slate-400">Premium replay companion</div>
               </div>
 
@@ -173,23 +199,35 @@ export default function DownloadPage() {
 
             <div className="mt-5 space-y-3">
               <div className={`rounded-2xl border p-4 ${tone.card}`}>
-                <div className="text-[11px] uppercase tracking-[0.28em] text-slate-400">Package</div>
+                <div className="text-[11px] uppercase tracking-[0.28em] text-slate-400">
+                  Package
+                </div>
                 <div className="mt-2 text-sm font-semibold text-white">DMG</div>
               </div>
 
               <div className={`rounded-2xl border p-4 ${tone.card}`}>
-                <div className="text-[11px] uppercase tracking-[0.28em] text-slate-400">Platform</div>
+                <div className="text-[11px] uppercase tracking-[0.28em] text-slate-400">
+                  Platform
+                </div>
                 <div className="mt-2 text-sm font-semibold text-white">macOS Apple Silicon</div>
               </div>
 
               <div className={`rounded-2xl border p-4 ${tone.card}`}>
-                <div className="text-[11px] uppercase tracking-[0.28em] text-slate-400">Released</div>
-                <div className="mt-2 text-sm font-semibold text-white">{WATCHER_RELEASE.releasedOn}</div>
+                <div className="text-[11px] uppercase tracking-[0.28em] text-slate-400">
+                  Released
+                </div>
+                <div className="mt-2 text-sm font-semibold text-white">
+                  {WATCHER_RELEASE.releasedOn}
+                </div>
               </div>
 
               <div className="rounded-2xl border border-amber-300/18 bg-amber-300/8 p-4">
-                <div className="text-[11px] uppercase tracking-[0.28em] text-amber-100/75">Signing</div>
-                <div className="mt-2 text-sm font-semibold text-amber-50">Unsigned for now</div>
+                <div className="text-[11px] uppercase tracking-[0.28em] text-amber-100/75">
+                  Signing
+                </div>
+                <div className="mt-2 text-sm font-semibold text-amber-50">
+                  Unsigned for now
+                </div>
               </div>
             </div>
           </div>
@@ -200,10 +238,12 @@ export default function DownloadPage() {
         <div className={`rounded-[1.8rem] border p-6 ${tone.panelShell}`}>
           <div className="flex items-center gap-3">
             <HardDriveDownload className="h-4 w-4 text-white" />
-            <div className={`text-xs uppercase tracking-[0.34em] ${tone.eyebrow}`}>Downloads</div>
+            <div className={`text-xs uppercase tracking-[0.34em] ${tone.eyebrow}`}>
+              Downloads
+            </div>
           </div>
 
-          <div className="mt-5 grid gap-4 md:grid-cols-3">
+          <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {PLATFORM_RELEASES.map((platform) => {
               const Icon = platform.icon;
 
@@ -219,7 +259,11 @@ export default function DownloadPage() {
                       <div className={`rounded-2xl border p-2 ${tone.neutralPill}`}>
                         <Icon className="h-4 w-4" />
                       </div>
-                      <div className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${tone.statusBadge}`}>
+                      <div
+                        className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${
+                          platform.key === "zip" ? tone.neutralPill : tone.statusBadge
+                        }`}
+                      >
                         {platform.status}
                       </div>
                     </div>
@@ -253,7 +297,7 @@ export default function DownloadPage() {
                   <div className="mt-1 text-sm text-slate-400">{platform.subtitle}</div>
 
                   <div className="mt-5 text-xs leading-6 text-slate-500">
-                    We’ll add the native package and hook this link up next.
+                    We&apos;ll add the native package and hook this link up next.
                   </div>
                 </div>
               );
@@ -268,7 +312,9 @@ export default function DownloadPage() {
             {HOW_IT_WORKS.map((item) => (
               <div key={item.step} className={`rounded-[1.35rem] border p-4 ${tone.insetPanel}`}>
                 <div className="flex items-center gap-3">
-                  <div className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${tone.statusBadge}`}>
+                  <div
+                    className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${tone.statusBadge}`}
+                  >
                     {item.step}
                   </div>
                   <div className="text-sm font-semibold text-white">{item.title}</div>
@@ -300,18 +346,18 @@ export default function DownloadPage() {
 
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
         <div className={`rounded-[1.8rem] border p-6 ${tone.panelShell}`}>
-          <div className="text-xs uppercase tracking-[0.34em] text-sky-100/55">Platform plan</div>
+          <div className="text-xs uppercase tracking-[0.34em] text-sky-100/55">
+            Platform plan
+          </div>
 
           <div className="mt-4 space-y-3 text-sm leading-7 text-slate-300">
             <p>
-              macOS now has the real packaged app path. Windows and Linux links are shown here
-              so the platform story feels complete, but those packages still need to be built and
-              hooked up.
+              macOS now has the real packaged app path, and the Manual ZIP fallback stays
+              available while Apple signing and notarization are offline.
             </p>
             <p>
-              The old zip behaved more like a developer bundle. The new direction is native
-              packaging per operating system: DMG for macOS, installer for Windows, and AppImage
-              or package build for Linux.
+              Windows and Linux links are shown here so the platform story feels complete, but
+              those native packages still need to be built and hooked up.
             </p>
           </div>
         </div>
@@ -325,8 +371,8 @@ export default function DownloadPage() {
           </div>
 
           <div className="mt-4 text-sm leading-6 text-slate-300">
-            Most users should just download the packaged app. These variables are only for manual
-            or protected-upload setups.
+            Most users should just download the packaged app. These variables are only for
+            manual or protected-upload setups.
           </div>
 
           <div className={`mt-4 rounded-[1.4rem] border p-4 ${tone.insetPanel}`}>
