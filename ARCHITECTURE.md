@@ -5,11 +5,12 @@
 `app-prodn` is the public product shell for AoE2HDBets.
 
 It owns:
-- homepage / lobby presentation
-- players, rivalries, tournaments, `$WOLO`, profile, and admin pages
+- community lobby and homepage presentation
+- leaderboard, players, rivalries, live-games, tournaments, requests, `$WOLO`, profile, inbox, and admin pages
 - same-origin browser API routes for auth/session-gated actions
-- Prisma-backed user, inbox, badge, gift, and appearance state
+- Prisma-backed user, inbox, badge, gift, request, and appearance state
 - server-side proxying to `api-prodn` where game/replay data still lives there
+- premium shell behavior, theme selection, and lobby-level presentation logic
 
 It does not own:
 - replay parsing truth
@@ -17,6 +18,7 @@ It does not own:
 - watcher uploads
 - chain infrastructure
 - cross-project analytics ownership
+- final authority over replay-derived match records
 
 ## Runtime shape
 
@@ -33,18 +35,24 @@ It does not own:
 
 Primary pages live under `app/`.
 
-High-traffic surfaces:
-- `app/page.tsx` and `app/HomePageClient.tsx`
+Important public surfaces include:
+- `app/page.tsx`
+- `app/lobby/page.tsx`
+- `app/live-games/page.tsx`
 - `app/players/page.tsx`
 - `app/players/[uid]/page.tsx`
 - `app/players/by-name/[name]/page.tsx`
+- `app/rivalries/page.tsx`
 - `app/contact-emaren/page.tsx`
+- `app/requests/page.tsx`
 - `app/admin/user-list/page.tsx`
 - `app/wolo/page.tsx`
 
+The current public spine is no longer just a homepage plus a few leaf pages. The real first-impression product path is now the lobby/community shell and its linked destinations.
+
 ### Same-origin API routes
 
-Key browser-facing routes:
+Key browser-facing routes include:
 - `app/api/lobby/route.ts`
 - `app/api/lobby/stream/route.ts`
 - `app/api/contact-emaren/route.ts`
@@ -52,11 +60,12 @@ Key browser-facing routes:
 - `app/api/user/appearance/route.ts`
 - `app/api/replay/upload/route.ts`
 
-These routes enforce session/admin behavior and often proxy or merge with backend data.
+These routes enforce session/admin behavior and often proxy, merge, or reshape backend data for the browser.
 
 ### Product/domain libraries
 
-Important ownership files:
+Important ownership files include:
+- `lib/lobby.ts`
 - `lib/lobbySnapshot.ts`
 - `lib/lobbyLeaderboard.ts`
 - `lib/publicPlayerDirectory.ts`
@@ -64,49 +73,83 @@ Important ownership files:
 - `lib/communityHonors.ts`
 - `lib/userExperience.ts`
 
+These files form the app-level product contract for the lobby, leaderboard, player directory, inbox/honors flow, and related user-facing aggregation.
+
 ### Presentation system
 
-Homepage and shared premium shell behavior currently flow through:
+Lobby and premium shell behavior currently flow through:
 - `components/lobby/lobbyPresentation.ts`
 - `components/lobby/LobbyAppearanceContext.tsx`
 - `app/AppShell.tsx`
 
-Theme circles currently affect the overall page shell, header, and major lobby surfaces.
+Theme circles affect the overall shell, header, and major lobby surfaces.
+
+The shipped product now depends much more heavily on lobby-specific presentation consistency than before. Visual hierarchy in the lobby matters because it now carries leaderboard, tournament, and live-product credibility in one place.
 
 ## Current product data model
 
-### Homepage leaderboard
+### Lobby snapshot
 
-The homepage leaderboard is not just “ranked players.”
+The lobby is an aggregate product surface, not a single raw backend table.
+
+Its snapshot contract is responsible for bringing together:
+- leaderboard state
+- tournament panel state
+- live/recent match visibility
+- online/readiness summary where available
+- UI-facing counts and labels used by the lobby shell
+
+`app/api/lobby/route.ts` is the browser-facing snapshot entrypoint. `lib/lobby.ts` and `lib/lobbySnapshot.ts` are the key app-level composition files.
+
+### Homepage / lobby leaderboard
+
+The lobby leaderboard is not just “ranked players.”
 
 It now includes:
 - replay-backed players with stored match history
 - claimed profiles with zero matches as `Pending`
 
 Important semantics:
-- `trackedPlayers` should match `entries.length`
-- `rankedPlayers` means players at or above the minimum-match threshold
+- `trackedPlayers` should match rendered entry count
+- `rankedPlayers` means players at or above the ranking threshold
 - a claimed zero-match profile can appear with:
   - `primaryRatingLabel: Pending`
   - `primaryRatingSourceLabel: Profile`
 
+The leaderboard is now part of the product spine, not decorative filler. Changes here affect first impression, credibility, and navigation quality.
+
 ### Players directory
 
-`/players` is the broader network view:
-- `claimedEntries` contains all claimed profiles
-- `activeClaimed` contains the currently live subset
-- `replayEntries` contains replay-built public identities
+`/players` is the broader network view.
+
+Expected conceptual buckets:
+- claimed entries
+- active/live claimed subset
+- replay-built public identities
+
+The directory should remain broader than the leaderboard. The leaderboard answers who is on top; the directory answers who is in the ecosystem.
 
 ### Contact / honors / admin
 
 The private inbox and community honors loop are owned here.
 
-Current behavior:
+Current behavior includes:
 - users can message Emaren directly
 - admins can award badges and gifts
-- gifts/badges appear in chat threads
+- gifts/badges can appear in chat threads
 - users can accept privately, accept publicly, or decline
 - appearance choices and user activity are recorded for admin insight
+
+### Appearance / theme state
+
+Appearance is app-owned state.
+
+Current responsibilities include:
+- storing user appearance preference
+- exposing that preference to the app shell
+- applying premium theme-circle presentation across lobby-oriented surfaces
+
+This is product state, not just decoration, because the current lobby identity depends heavily on shell cohesion.
 
 ## Production services and dependencies
 
@@ -120,9 +163,39 @@ Canonical VPS truth:
 - web env file: `/etc/aoe2hdbets/aoe2hdbets-web.env`
 - web build output must exist at `.next/BUILD_ID`
 
+## Current ownership boundaries
+
+`app-prodn` should own:
+- page hierarchy
+- lobby composition
+- leaderboard presentation
+- player directory presentation
+- inbox/admin/community UX
+- session-gated browser actions
+- theme and shell behavior
+
+`app-prodn` should not become the owner of:
+- replay parse rules
+- raw replay ingest lifecycle
+- backend `game_stats` truth
+- chain settlement logic
+- cross-project attribution truth
+
+When something looks wrong in the browser, identify whether the problem starts in:
+1. app composition / snapshot shaping
+2. backend response shape
+3. replay parse truth
+4. auth/session behavior
+5. presentation hierarchy
+
+Do not assume every visible issue is a page bug.
+
 ## Known architecture debt
 
 - `next-env.d.ts` still drifts on the VPS during builds/deploys
-- individual player pages are behind the homepage and directory in polish
+- individual player pages are behind the lobby and directory in polish
+- leaderboard/ranking semantics are stronger than before but still deserve tighter long-term consistency
+- tournament depth is improving, but still not the full “event gravity” version
 - exact postgame achievement-table capture is still not part of the replay pipeline
 - `$WOLO` is still an app-level product rail, not full settlement infrastructure
+- watcher behavior now looks healthier end-to-end, but the app should still document the live/final replay contract truthfully as it evolves
