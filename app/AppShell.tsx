@@ -5,6 +5,7 @@ import Link from "next/link";
 import UserExperienceTracker from "@/components/analytics/UserExperienceTracker";
 import HeaderInboxControl from "@/components/contact/HeaderInboxControl";
 import HeaderMenu from "@/components/HeaderMenu";
+import SteamLoginButton from "@/components/SteamLoginButton";
 import { LobbyThemePicker } from "@/components/lobby/LobbyAppearanceControls";
 import {
   getLobbyHeaderSkin,
@@ -107,51 +108,39 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                 </Link>
               </div>
 
-              {uid ? (
-                <div className="flex shrink-0 items-center gap-2">
-                  <HeaderInboxControl buttonClassName={headerSkin.surface} />
-                  <HeaderMenu
-                    pendingBetsCount={pendingBetsCount}
-                    playerName={playerName}
-                    setPlayerName={setPlayerName}
-                    uid={uid}
-                    liveGamesCount={liveGamesCount}
-                    requestCount={requestCount}
-                    buttonClassName={headerSkin.surface}
-                    menuClassName={headerSkin.popover}
-                    linkClassName={headerSkin.menuItem}
-                    logoutClassName={headerSkin.logout}
+              <div className="flex shrink-0 flex-col items-end gap-2 pt-1">
+                {uid ? (
+                  <div className="flex items-center justify-end gap-2">
+                    <HeaderInboxControl buttonClassName={headerSkin.surface} />
+                    <HeaderMenu
+                      pendingBetsCount={pendingBetsCount}
+                      playerName={playerName}
+                      setPlayerName={setPlayerName}
+                      uid={uid}
+                      liveGamesCount={liveGamesCount}
+                      requestCount={requestCount}
+                      buttonClassName={headerSkin.surface}
+                      menuClassName={headerSkin.popover}
+                      linkClassName={headerSkin.menuItem}
+                      logoutClassName={headerSkin.logout}
+                    />
+                  </div>
+                ) : (
+                  <SteamLoginButton
+                    label="Steam Sign In"
+                    className="inline-flex min-w-[10.5rem] items-center justify-center rounded-full bg-amber-300 px-4 py-2.5 text-sm font-semibold text-slate-950 shadow-[0_10px_30px_rgba(251,191,36,0.18)] transition hover:bg-amber-200"
                   />
-                </div>
-              ) : null}
-            </div>
+                )}
 
-            {!uid ? (
-              <div className="w-full">
-                <HeaderMenu
-                  pendingBetsCount={pendingBetsCount}
-                  playerName={playerName}
-                  setPlayerName={setPlayerName}
-                  uid={uid}
-                  liveGamesCount={liveGamesCount}
-                  requestCount={requestCount}
-                  buttonClassName={headerSkin.surface}
-                  menuClassName={headerSkin.popover}
-                  linkClassName={headerSkin.menuItem}
-                  logoutClassName={headerSkin.logout}
+                <LobbyThemePicker
+                  themeKey={themeKey}
+                  onThemeChange={setThemeKey}
+                  tone={headerTone}
+                  size="sm"
+                  className="justify-end self-end"
+                  trackClassName="justify-end gap-2.5"
                 />
               </div>
-            ) : null}
-
-            <div className="w-full overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none]">
-              <LobbyThemePicker
-                themeKey={themeKey}
-                onThemeChange={setThemeKey}
-                tone={headerTone}
-                size="sm"
-                className="min-w-max"
-                trackClassName="min-w-max justify-start gap-3"
-              />
             </div>
 
             <nav className="w-full overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none]">
@@ -213,8 +202,8 @@ function InnerShell({ children }: { children: React.ReactNode }) {
               ))}
             </nav>
 
-            <div className="flex flex-col items-start gap-2 lg:items-end lg:justify-self-end">
-              <div className="flex items-center justify-start gap-3 lg:justify-end">
+            <div className="flex flex-col items-end gap-2 lg:justify-self-end">
+              <div className="flex items-center justify-end gap-3">
                 {uid ? <HeaderInboxControl buttonClassName={headerSkin.surface} /> : null}
                 <HeaderMenu
                   pendingBetsCount={pendingBetsCount}
@@ -229,12 +218,14 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                   logoutClassName={headerSkin.logout}
                 />
               </div>
+
               <LobbyThemePicker
                 themeKey={themeKey}
                 onThemeChange={setThemeKey}
                 tone={headerTone}
                 size="sm"
-                className="gap-1.5"
+                className="justify-end self-end"
+                trackClassName="justify-end gap-2.5"
               />
             </div>
           </div>

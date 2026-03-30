@@ -46,6 +46,7 @@ export function LobbyThemePicker({
   className,
   trackClassName,
 }: LobbyThemePickerProps) {
+  const outerSizeClassName = size === "md" ? "h-7 w-7" : "h-6 w-6";
   const circleSizeClassName = size === "md" ? "h-5 w-5" : "h-4 w-4";
 
   return (
@@ -55,22 +56,35 @@ export function LobbyThemePicker({
           {label}
         </div>
       ) : null}
+
       <div className={["flex items-center gap-2", trackClassName].filter(Boolean).join(" ")}>
         {LOBBY_THEME_OPTIONS.map((option) => {
           const isActive = option.key === themeKey;
+
           return (
             <button
               key={option.key}
               type="button"
               onClick={() => onThemeChange(option.key)}
-              className={`${circleSizeClassName} rounded-full border border-white/10 transition hover:scale-105 ${
-                isActive ? `ring-1 ${tone.circleRing}` : ""
-              }`}
-              style={{ backgroundImage: option.swatch }}
+              className={[
+                "relative inline-flex shrink-0 items-center justify-center rounded-full border border-white/5 transition duration-150 hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/35",
+                outerSizeClassName,
+                isActive ? `ring-1 ring-inset ${tone.circleRing} bg-white/[0.045]` : "bg-transparent",
+              ]
+                .filter(Boolean)
+                .join(" ")}
               title={option.label}
               aria-label={`${option.label} theme`}
               aria-pressed={isActive}
-            />
+            >
+              <span
+                className={[
+                  "block rounded-full border border-white/10 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)]",
+                  circleSizeClassName,
+                ].join(" ")}
+                style={{ backgroundImage: option.swatch }}
+              />
+            </button>
           );
         })}
       </div>
