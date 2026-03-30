@@ -52,7 +52,22 @@ export function LeaderboardPanel({
         <div className="min-w-0">
           <div className="pr-28 sm:pr-32">
             <div className={`text-xs uppercase tracking-[0.35em] ${tone.eyebrow}`}>Leaderboard</div>
-            <div className="mt-4 flex flex-wrap items-end gap-8 sm:gap-10">
+
+            <div className="mt-4 sm:hidden">
+              <div className="flex items-start justify-between gap-3">
+                <div className={`text-5xl font-semibold tracking-tight tabular-nums ${tone.count}`}>
+                  {leaderboard.trackedPlayers}
+                </div>
+
+                <div
+                  className={`shrink-0 whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-medium ${tone.statusBadge}`}
+                >
+                  {leaderboard.statusLabel}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 hidden sm:flex sm:flex-wrap sm:items-end sm:gap-8 lg:gap-10">
               <div className={`text-5xl font-semibold tracking-tight tabular-nums ${tone.count}`}>
                 {leaderboard.trackedPlayers}
               </div>
@@ -60,17 +75,9 @@ export function LeaderboardPanel({
           </div>
 
           <div className="mt-3 sm:hidden">
-            <div className="flex justify-end">
+            <div className="flex flex-nowrap items-center justify-between gap-2">
               <div
-                className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-medium ${tone.statusBadge}`}
-              >
-                {leaderboard.statusLabel}
-              </div>
-            </div>
-
-            <div className="mt-2 flex flex-nowrap items-center justify-between gap-2">
-              <div
-                className={`min-w-0 flex-1 whitespace-nowrap text-[10px] uppercase tracking-[0.3em] ${tone.countLabel}`}
+                className={`min-w-0 flex-1 whitespace-nowrap text-[10px] uppercase tracking-[0.28em] ${tone.countLabel}`}
               >
                 Players On Board
               </div>
@@ -146,6 +153,7 @@ export function LeaderboardPanel({
                           {entry.claimed ? "Claimed" : "Claimable"}
                         </MiniTag>
                       )}
+
                       {entry.isOnline ? <MiniTag toneClassName={tone.activeBadge}>Online</MiniTag> : null}
                     </div>
                   </div>
@@ -155,14 +163,18 @@ export function LeaderboardPanel({
                   <div className="text-[10px] uppercase tracking-[0.28em] text-slate-400">
                     {entry.primaryRatingSourceLabel}
                   </div>
+
                   <div className={`mt-1 text-lg font-semibold ${tone.rating}`}>
                     {entry.primaryRatingLabel}
                   </div>
+
                   {entry.secondaryRatingLabel ? (
                     <div className="mt-1 text-xs text-slate-400">{entry.secondaryRatingLabel}</div>
                   ) : null}
+
                   <div className="mt-2 flex flex-wrap gap-2 sm:justify-end">
                     <MetricPill toneClassName={tone.neutralPill}>{buildRecordLabel(entry)}</MetricPill>
+
                     {entry.streakLabel ? (
                       <MetricPill
                         toneClassName={
@@ -175,6 +187,7 @@ export function LeaderboardPanel({
                       </MetricPill>
                     ) : null}
                   </div>
+
                   <div className="mt-3 text-xs text-slate-400">
                     Last game {formatLastGame(entry.lastPlayedAt)}
                   </div>
@@ -192,6 +205,7 @@ export function LeaderboardPanel({
         >
           Players
         </Link>
+
         <Link
           href="/rivalries"
           className={`rounded-full border px-4 py-2 text-sm transition ${tone.secondaryButton}`}
