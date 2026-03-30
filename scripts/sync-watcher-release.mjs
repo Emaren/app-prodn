@@ -6,10 +6,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const FEATURE_CHIPS = [
-  "Growth-aware retry",
-  "Replay-size gate",
-  "Battle archive link",
-  "Recorded resignation",
+  "DMG release",
+  "Custom app icon",
+  "Hardened runtime",
+  "Entitlements ready",
   "CrossOver ready",
 ];
 
@@ -22,7 +22,7 @@ const WATCHER_RELEASE_TEMPLATE = ({
   version: ${JSON.stringify(version)},
   label: ${JSON.stringify(label)},
   releasedOn: ${JSON.stringify(releasedOn)},
-  downloadHref: "/downloads/aoe2-watcher-mac.zip",
+  downloadHref: "/downloads/aoe2hd-watcher-1.0.0-arm64.dmg",
   featureChips: ${JSON.stringify(featureChips, null, 2).replace(/\n/g, "\n  ")},
 } as const;
 `;
@@ -45,11 +45,14 @@ async function main() {
   const watcherPackagePath = path.join(watcherDir, "package.json");
   const releaseModulePath = path.join(appDir, "lib", "watcherRelease.ts");
   const downloadsDir = path.join(appDir, "public", "downloads");
-  const zipPath = path.join(downloadsDir, "aoe2-watcher-mac.zip");
+
+  const dmgPath = path.join(downloadsDir, "aoe2hd-watcher-1.0.0-arm64.dmg");
+  const blockmapPath = path.join(downloadsDir, "aoe2hd-watcher-1.0.0-arm64.dmg.blockmap");
+  const latestYamlPath = path.join(downloadsDir, "latest-mac.yml");
 
   const watcherPackage = JSON.parse(await fs.readFile(watcherPackagePath, "utf8"));
   const version = watcherPackage.version;
-  const label = `Live v${version}`;
+  const label = `AoE2HD Watcher ${version}`;
 
   let releasedOn = new Intl.DateTimeFormat("en-US", {
     month: "short",
@@ -77,25 +80,17 @@ async function main() {
   );
 
   await fs.mkdir(downloadsDir, { recursive: true });
-  await fs.rm(zipPath, { force: true });
 
-  execFileSync(
-    "zip",
-    [
-      "-qj",
-      zipPath,
-      "README.md",
-      ".env.example",
-      ".gitignore",
-      "main.js",
-      "package.json",
-      "package-lock.json",
-      "watcher.js",
-    ],
-    { cwd: watcherDir, stdio: "inherit" },
-  );
+  const watcherDistDir = path.join(watcherDir, "dist");
+  const sourceDmg = path.join(watcherDistDir, "AoE2HD Watcher-1.0.0-arm64.dmg");
+  const sourceBlockmap = path.join(watcherDistDir, "AoE2HD Watcher-1.0.0-arm64.dmg.blockmap");
+  const sourceLatestYaml = path.join(watcherDistDir, "latest-mac.yml");
 
-  process.stdout.write(`Synced watcher release ${label} -> ${zipPath}\n`);
+  await fs.copyFile(sourceDmg, dmgPath);
+  await fs.copyFile(sourceBlockmap, blockmapPath);
+  await fs.copyFile(sourceLatestYaml, latestYamlPath);
+
+  process.stdout.write(`Synced watcher release ${label} -> ${dmgPath}\n`);
 }
 
 main().catch((error) => {

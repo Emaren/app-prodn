@@ -1,15 +1,15 @@
 export const WATCHER_RELEASE = {
-  version: "1.2.2",
-  label: "Live v1.2.2",
-  releasedOn: "Mar 28, 2026",
-  downloadHref: "/downloads/aoe2-watcher-mac.zip",
+  version: "1.0.0",
+  label: "AoE2HD Watcher 1.0.0",
+  releasedOn: "Mar 30, 2026",
+  downloadHref: "/downloads/aoe2hd-watcher-1.0.0-arm64.dmg",
   featureChips: [
-    "Live v1.2.2",
-    "Mar 28, 2026",
-    "Growth-aware retry",
-    "Replay-size gate",
-    "Battle archive link",
-    "Recorded resignation",
+    "AoE2HD Watcher 1.0.0",
+    "Mar 30, 2026",
+    "DMG release",
+    "Custom app icon",
+    "Hardened runtime",
+    "Entitlements ready",
     "CrossOver ready"
   ],
 } as const;

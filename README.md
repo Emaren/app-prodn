@@ -98,7 +98,7 @@ These routes are important because they often do more than simple pass-through w
 - Browser replay upload endpoint: `/api/replay/upload` (proxied to `api-prodn`)
 - Lobby snapshot endpoint: `/api/lobby`
 - Lobby stream endpoint: `/api/lobby/stream`
-- Watcher package: `public/downloads/aoe2-watcher-mac.zip`
+- Watcher package: `public/downloads/aoe2hd-watcher-1.0.0-arm64.dmg`
 - Replay parser page: `/replay-parser`
 
 The app owns the browser-facing lobby experience and presentation truth, but does not own replay parse truth itself.
