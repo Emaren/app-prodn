@@ -60,26 +60,28 @@ export function LeaderboardPanel({
           </div>
 
           <div className="mt-3 sm:hidden">
-            <div className="flex items-start justify-between gap-3">
-              <div className={`min-w-0 pt-2 text-[11px] uppercase tracking-[0.34em] ${tone.countLabel}`}>
+            <div className="flex justify-end">
+              <div
+                className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-medium ${tone.statusBadge}`}
+              >
+                {leaderboard.statusLabel}
+              </div>
+            </div>
+
+            <div className="mt-2 flex flex-nowrap items-center justify-between gap-2">
+              <div
+                className={`min-w-0 flex-1 whitespace-nowrap text-[10px] uppercase tracking-[0.3em] ${tone.countLabel}`}
+              >
                 Players On Board
               </div>
 
-              <div className="flex shrink-0 flex-col items-end gap-2">
-                <div
-                  className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-medium ${tone.statusBadge}`}
-                >
-                  {leaderboard.statusLabel}
-                </div>
-
-                <LobbyViewToggle
-                  viewMode={viewMode}
-                  onViewModeChange={onViewModeChange}
-                  tone={tone}
-                  size="xs"
-                  className="shrink-0"
-                />
-              </div>
+              <LobbyViewToggle
+                viewMode={viewMode}
+                onViewModeChange={onViewModeChange}
+                tone={tone}
+                size="xs"
+                className="ml-2 shrink-0"
+              />
             </div>
           </div>
 
