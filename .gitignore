@@ -49,6 +49,7 @@ localhost*-key.pem
 **/*.bak-*
 
 # AoE2 watcher release artifacts
+public/downloads/aoe2-watcher-mac.zip
 public/downloads/aoe2-watcher-manual.zip
 public/downloads/aoe2hd-watcher-*.dmg
 public/downloads/aoe2hd-watcher-*.dmg.blockmap
