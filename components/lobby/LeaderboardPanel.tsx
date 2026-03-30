@@ -50,7 +50,7 @@ export function LeaderboardPanel({
     >
       <div className="flex flex-col gap-5">
         <div className="min-w-0">
-          <div className="pr-28 sm:pr-32">
+          <div className="sm:pr-32">
             <div className={`text-xs uppercase tracking-[0.35em] ${tone.eyebrow}`}>Leaderboard</div>
 
             <div className="mt-4 sm:hidden">
@@ -75,9 +75,9 @@ export function LeaderboardPanel({
           </div>
 
           <div className="mt-3 sm:hidden">
-            <div className="flex flex-nowrap items-center justify-between gap-2">
+            <div className="flex items-center justify-between gap-2">
               <div
-                className={`min-w-0 flex-1 whitespace-nowrap text-[10px] uppercase tracking-[0.28em] ${tone.countLabel}`}
+                className={`min-w-0 flex-1 whitespace-nowrap text-[10px] uppercase tracking-[0.22em] ${tone.countLabel}`}
               >
                 Players On Board
               </div>
@@ -87,7 +87,7 @@ export function LeaderboardPanel({
                 onViewModeChange={onViewModeChange}
                 tone={tone}
                 size="xs"
-                className="ml-2 shrink-0"
+                className="shrink-0"
               />
             </div>
           </div>
