@@ -18,10 +18,26 @@ type LobbyHeroProps = {
   isAuthenticated: boolean;
   loading: boolean;
   leaderboard: LobbySnapshot["leaderboard"];
+  wolo: LobbySnapshot["wolo"];
   themeKey: LobbyThemeKey;
   viewMode: LobbyViewMode;
   onViewModeChange: (viewMode: LobbyViewMode) => void;
 };
+
+function formatCompactWolo(value: number | null | undefined) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "—";
+  return new Intl.NumberFormat("en-US", {
+    maximumFractionDigits: 1,
+    notation: value >= 1000 ? "compact" : "standard",
+  }).format(value);
+}
+
+function formatUpdatedAt(value: string | null | undefined) {
+  if (!value) return "Waiting for snapshot";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Waiting for snapshot";
+  return `Updated ${date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
+}
 
 export function LobbyHero({
   liveConnected,
@@ -31,16 +47,32 @@ export function LobbyHero({
   isAuthenticated,
   loading,
   leaderboard,
+  wolo,
   themeKey,
   viewMode,
   onViewModeChange,
 }: LobbyHeroProps) {
   const accentTextClassName =
     viewMode === "field" ? "text-emerald-200/70" : "text-amber-200/70";
+
   const primaryActionClassName =
     viewMode === "field"
       ? "rounded-full bg-emerald-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-200"
       : "rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200";
+
+  const woloShellClassName =
+    viewMode === "field"
+      ? "border border-emerald-300/20 bg-emerald-950/20"
+      : "border border-amber-200/15 bg-slate-950/25";
+
+  const woloPillClassName =
+    viewMode === "field"
+      ? "border border-emerald-300/25 bg-emerald-400/10 text-emerald-100"
+      : "border border-amber-300/20 bg-amber-300/10 text-amber-100";
+
+  const faucetPool = wolo?.accounts.faucetgrowth?.wolo ?? null;
+  const treasury = wolo?.accounts.communitytreasury?.wolo ?? null;
+  const liquidity = wolo?.accounts.dexliquidity?.wolo ?? null;
 
   return (
     <div className="space-y-6">
@@ -59,6 +91,12 @@ export function LobbyHero({
         >
           {liveConnected ? "Live updates connected" : "Polling fallback"}
         </div>
+
+        {wolo?.enabled && (
+          <div className={`rounded-full px-3 py-1 text-xs ${woloPillClassName}`}>
+            WoloChain {wolo.chainId}
+          </div>
+        )}
       </div>
 
       {authError && (
@@ -99,12 +137,50 @@ export function LobbyHero({
         />
       </div>
 
+      {wolo?.enabled && (
+        <div className={`rounded-[1.5rem] p-4 sm:p-5 ${woloShellClassName}`}>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div className="text-xs uppercase tracking-[0.35em] text-white/45">
+                WOLO Dev Rail
+              </div>
+              <div className="mt-1 text-sm text-white/70">
+                Local chain snapshot feeding AoE2HDBets dev mode.
+              </div>
+            </div>
+            <div className="text-xs text-white/45">{formatUpdatedAt(wolo.updatedAt)}</div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            <StatCard
+              label="Faucet Pool"
+              value={formatCompactWolo(faucetPool)}
+              subtext="Daily claim fuel."
+              tone="emerald"
+              themeKey={themeKey}
+              viewMode={viewMode}
+            />
+            <StatCard
+              label="Treasury"
+              value={formatCompactWolo(treasury)}
+              subtext="Community war chest."
+              themeKey={themeKey}
+              viewMode={viewMode}
+            />
+            <StatCard
+              label="DEX Liquidity"
+              value={formatCompactWolo(liquidity)}
+              subtext="Reserved market depth."
+              themeKey={themeKey}
+              viewMode={viewMode}
+            />
+          </div>
+        </div>
+      )}
+
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {isAuthenticated ? (
-          <Link
-            href="/profile"
-            className={`${primaryActionClassName} block text-center`}
-          >
+          <Link href="/profile" className={`${primaryActionClassName} block text-center`}>
             Open Profile
           </Link>
         ) : (

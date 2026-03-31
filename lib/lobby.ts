@@ -144,12 +144,32 @@ export type LobbyLeaderboardSummary = {
   minimumMatches: number;
 };
 
+export type LobbyWoloAccount = {
+  address: string;
+  uwolo: number;
+  wolo: number;
+};
+
+export type LobbyWoloSnapshot = {
+  enabled: boolean;
+  chainId: string;
+  denom: {
+    base: string;
+    display: string;
+    decimals: number;
+  };
+  source: string;
+  updatedAt: string | null;
+  accounts: Record<string, LobbyWoloAccount>;
+};
+
 export type LobbySnapshot = {
   tournament: LobbyTournament;
   onlineUsers: LobbyOnlineUser[];
   recentMatches: LobbyMatchRow[];
   messages: LobbyMessage[];
   leaderboard: LobbyLeaderboardSummary;
+  wolo: LobbyWoloSnapshot | null;
 };
 
 export function slugifyTournamentTitle(value: string) {

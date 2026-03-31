@@ -4,11 +4,14 @@ import { getFeaturedTournament, getLobbyMessages } from "@/lib/communityStore";
 import { loadLobbyLeaderboard } from "@/lib/lobbyLeaderboard";
 import {
   LOBBY_ROOM_SLUG,
+  getFallbackLeaderboard,
+  getFallbackTournament,
   type LobbyMatchRow,
   type LobbyOnlineUser,
   type LobbySnapshot,
 } from "@/lib/lobby";
 import { reconcileTournamentMatchProofs } from "@/lib/tournamentProofReconciler";
+import { loadWoloDevSnapshot } from "@/lib/woloDevSnapshot";
 
 async function loadRecentMatches(): Promise<LobbyMatchRow[]> {
   try {
@@ -25,58 +28,79 @@ async function loadRecentMatches(): Promise<LobbyMatchRow[]> {
 }
 
 async function loadOnlineUsers(prisma: PrismaClient): Promise<LobbyOnlineUser[]> {
-  const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
+  try {
+    const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
 
-  const users = await prisma.user.findMany({
-    where: {
-      inGameName: { not: null },
-      lastSeen: { gt: twoMinutesAgo },
-    },
-    orderBy: { lastSeen: "desc" },
-    select: {
-      uid: true,
-      inGameName: true,
-      verified: true,
-      verificationLevel: true,
-    },
-    take: 12,
-  });
+    const users = await prisma.user.findMany({
+      where: {
+        inGameName: { not: null },
+        lastSeen: { gt: twoMinutesAgo },
+      },
+      orderBy: { lastSeen: "desc" },
+      select: {
+        uid: true,
+        inGameName: true,
+        verified: true,
+        verificationLevel: true,
+      },
+      take: 12,
+    });
 
-  return users.map(
-    (user) =>
-      ({
-        uid: user.uid,
-        in_game_name: user.inGameName || user.uid,
-        verified: user.verified,
-        verificationLevel: user.verificationLevel,
-      }) satisfies LobbyOnlineUser
-  );
+    return users.map(
+      (user) =>
+        ({
+          uid: user.uid,
+          in_game_name: user.inGameName || user.uid,
+          verified: user.verified,
+          verificationLevel: user.verificationLevel,
+        }) satisfies LobbyOnlineUser
+    );
+  } catch (error) {
+    console.warn("Failed to load online users for lobby:", error);
+    return [];
+  }
 }
 
 export async function loadLobbySnapshot(
   prisma: PrismaClient,
   viewerUid?: string | null
 ): Promise<LobbySnapshot> {
-  await reconcileTournamentMatchProofs(prisma);
-  const tournament = await getFeaturedTournament(prisma, viewerUid);
+  const wolo = await loadWoloDevSnapshot();
 
-  const [tournamentMessages, onlineUsers, recentMatches, leaderboard] = await Promise.all([
-    getLobbyMessages(prisma, tournament.roomSlug),
-    loadOnlineUsers(prisma),
-    loadRecentMatches(),
-    loadLobbyLeaderboard(prisma),
-  ]);
+  try {
+    await reconcileTournamentMatchProofs(prisma);
+    const tournament = await getFeaturedTournament(prisma, viewerUid);
 
-  const messages =
-    tournamentMessages.length > 0 || tournament.roomSlug === LOBBY_ROOM_SLUG
-      ? tournamentMessages
-      : await getLobbyMessages(prisma, LOBBY_ROOM_SLUG);
+    const [tournamentMessages, onlineUsers, recentMatches, leaderboard] = await Promise.all([
+      getLobbyMessages(prisma, tournament.roomSlug),
+      loadOnlineUsers(prisma),
+      loadRecentMatches(),
+      loadLobbyLeaderboard(prisma),
+    ]);
 
-  return {
-    tournament,
-    messages,
-    onlineUsers,
-    recentMatches,
-    leaderboard,
-  };
+    const messages =
+      tournamentMessages.length > 0 || tournament.roomSlug === LOBBY_ROOM_SLUG
+        ? tournamentMessages
+        : await getLobbyMessages(prisma, LOBBY_ROOM_SLUG);
+
+    return {
+      tournament,
+      messages,
+      onlineUsers,
+      recentMatches,
+      leaderboard,
+      wolo,
+    };
+  } catch (error) {
+    console.warn("Falling back to lobby snapshot defaults:", error);
+
+    return {
+      tournament: getFallbackTournament(false),
+      messages: [],
+      onlineUsers: [],
+      recentMatches: await loadRecentMatches(),
+      leaderboard: getFallbackLeaderboard(),
+      wolo,
+    };
+  }
 }

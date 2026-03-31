@@ -3,9 +3,7 @@
 import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LobbyChat } from "@/components/lobby/LobbyChat";
 import { LobbyHero } from "@/components/lobby/LobbyHero";
-import {
-  getLobbyHeroBackground,
-} from "@/components/lobby/lobbyPresentation";
+import { getLobbyHeroBackground } from "@/components/lobby/lobbyPresentation";
 import { useLobbyAppearance } from "@/components/lobby/LobbyAppearanceContext";
 import { OnlinePlayersPanel } from "@/components/lobby/OnlinePlayersPanel";
 import { RecentMatchesPanel } from "@/components/lobby/RecentMatchesPanel";
@@ -20,6 +18,7 @@ import {
 } from "@/lib/lobby";
 
 const EMPTY_MESSAGES: LobbyMessage[] = [];
+
 type HomePageClientProps = {
   initialLobby: LobbySnapshot | null;
 };
@@ -125,6 +124,8 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
   const onlineUsers = lobby?.onlineUsers ?? [];
   const recentMatches = lobby?.recentMatches ?? [];
   const messages = lobby?.messages ?? EMPTY_MESSAGES;
+  const wolo = lobby?.wolo ?? null;
+
   const chatItems = buildChatItems(messages);
   const latestChatMessageKey = useMemo(
     () =>
@@ -300,9 +301,11 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
     chatCardHeight && typeof window !== "undefined" && window.innerWidth >= 1024
       ? { height: `${chatCardHeight}px` }
       : undefined;
+
   const heroStyle: CSSProperties = {
     backgroundImage: getLobbyHeroBackground(themeKey, viewMode),
   };
+
   const heroShellClassName =
     viewMode === "field"
       ? "border-emerald-400/20 shadow-[0_28px_80px_rgba(5,46,22,0.32)]"
@@ -323,6 +326,7 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
             isAuthenticated={isAuthenticated}
             loading={loading}
             leaderboard={leaderboard}
+            wolo={wolo}
             themeKey={tileThemeKey}
             viewMode={viewMode}
             onViewModeChange={setViewMode}
