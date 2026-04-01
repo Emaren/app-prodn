@@ -1,68 +1,25 @@
 import Link from "next/link";
-
-const ROADMAP_UPDATED_AT = new Intl.DateTimeFormat("en-US", {
-  timeZone: "America/Edmonton",
-  month: "short",
-  day: "numeric",
-  year: "numeric",
-  hour: "numeric",
-  minute: "2-digit",
-  timeZoneName: "short",
-}).format(new Date());
-
-const MODULES = [
-  {
-    title: "Leaderboard + Lobby",
-    score: 83,
-    status: "Now",
-    detail: "Centered nav, Steam RM first when available, Arena support, and a tighter lobby board with less dead copy.",
-  },
-  {
-    title: "Rivalries",
-    score: 71,
-    status: "Now",
-    detail: "Strong surface already. Next step is more heat, timelines, and tournament overlap.",
-  },
-  {
-    title: "Player Graph",
-    score: 68,
-    status: "Next",
-    detail: "Needs a true full-rankings destination and better player signature stats.",
-  },
-  {
-    title: "Tournament Surface",
-    score: 64,
-    status: "Next",
-    detail: "Good shell. Needs standings, results pulse, and stronger bracket gravity.",
-  },
-  {
-    title: "Replay Trust",
-    score: 61,
-    status: "Next",
-    detail: "Parser is real, but tests, fixtures, and edge-case handling still need tightening.",
-  },
-  {
-    title: "WOLO Rail",
-    score: 44,
-    status: "Later",
-    detail: "Visible now, but it should stay secondary until competition and trust fully dominate.",
-  },
-  {
-    title: "Docs + Ops Truth",
-    score: 49,
-    status: "Later",
-    detail: "Runtime truth still drifts from docs. We need one brutal architecture source of record.",
-  },
-] as const;
+import {
+  ABOUT_PILLARS,
+  ABOUT_SIGNALS,
+  ABOUT_SURFACES,
+  ROADMAP_LAST_UPDATED_AT,
+  ROADMAP_MODULES,
+  ROADMAP_UPDATES,
+} from "@/lib/siteRoadmapContent";
 
 export default function RoadmapPage() {
   return (
     <main className="space-y-6 py-6 text-white">
-      <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(34,197,94,0.14),_transparent_30%),linear-gradient(135deg,_#0f172a,_#111827_55%,_#020617)] p-8">
+      <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(34,197,94,0.16),_transparent_30%),radial-gradient(circle_at_bottom_right,_rgba(56,189,248,0.14),_transparent_26%),linear-gradient(135deg,_#0f172a,_#111827_55%,_#020617)] p-6 sm:p-8">
         <div className="grid gap-6 lg:grid-cols-[1.08fr_0.92fr]">
           <div className="space-y-5">
             <div className="text-sm uppercase tracking-[0.4em] text-emerald-200/70">Roadmap</div>
             <h1 className="sr-only">AoE2HDBets roadmap</h1>
+            <p className="max-w-3xl text-base leading-7 text-slate-300 sm:text-lg">
+              Updates first, product stance second, roadmap lanes last. This page is the single
+              surface for where AoE2HDBets is moving and why.
+            </p>
 
             <div className="flex flex-wrap gap-3">
               <Link
@@ -71,27 +28,98 @@ export default function RoadmapPage() {
               >
                 Back To Lobby
               </Link>
-              <Link
-                href="/about"
-                className="rounded-full border border-white/15 px-5 py-3 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
-              >
-                About
-              </Link>
             </div>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+            <MiniStat label="Updates" value={String(ROADMAP_UPDATES.length)} />
             <MiniStat label="Top Score" value="83 / 100" />
-            <MiniStat label="Best Next Move" value="/players" />
             <MiniStat label="Theme Pass" value="War Room next" />
           </div>
         </div>
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-2">
-        {MODULES.map((module) => (
-          <ModuleCard key={module.title} updatedAt={ROADMAP_UPDATED_AT} {...module} />
-        ))}
+      <section id="updates" className="space-y-4">
+        <div>
+          <div className="text-[11px] uppercase tracking-[0.36em] text-emerald-200/70">Updates</div>
+          <h2 className="mt-2 text-3xl font-semibold text-white">What just moved.</h2>
+        </div>
+        <div className="grid gap-4 lg:grid-cols-3">
+          {ROADMAP_UPDATES.map((update, index) => (
+            <section
+              key={update.title}
+              className="rounded-[1.75rem] border border-white/10 bg-slate-950/70 p-6"
+            >
+              <div className="text-[11px] uppercase tracking-[0.28em] text-white/45">
+                Update {String(index + 1).padStart(2, "0")}
+              </div>
+              <h3 className="mt-3 text-2xl font-semibold text-white">{update.title}</h3>
+              <p className="mt-4 text-sm leading-6 text-slate-300">{update.detail}</p>
+              <div className="mt-4 text-xs text-slate-500">Updated {ROADMAP_LAST_UPDATED_AT}</div>
+            </section>
+          ))}
+        </div>
+      </section>
+
+      <section id="about" className="space-y-4">
+        <div>
+          <div className="text-[11px] uppercase tracking-[0.36em] text-sky-200/70">About</div>
+          <h2 className="mt-2 text-3xl font-semibold text-white">What this product is trying to be.</h2>
+        </div>
+
+        <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(56,189,248,0.18),_transparent_28%),radial-gradient(circle_at_bottom_right,_rgba(251,191,36,0.12),_transparent_28%),linear-gradient(135deg,_#0f172a,_#111827_56%,_#020617)] p-6 sm:p-8 shadow-[0_30px_90px_rgba(2,6,23,0.35)]">
+          <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+            <div className="space-y-5">
+              <div className="flex flex-wrap gap-2">
+                {ABOUT_PILLARS.map((pillar) => (
+                  <span
+                    key={pillar}
+                    className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-200"
+                  >
+                    {pillar}
+                  </span>
+                ))}
+              </div>
+
+              <p className="max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
+                AoE2HDBets is trying to make the important part obvious: who matters, what
+                happened, why the rivalry matters, and where the real proof lives.
+              </p>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              {ABOUT_SIGNALS.map((signal) => (
+                <MiniStat key={signal.label} label={signal.label} value={signal.value} />
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
+            {ABOUT_SURFACES.map((surface) => (
+              <Link
+                key={surface.href}
+                href={surface.href}
+                className="rounded-[1.75rem] border border-white/10 bg-slate-950/70 p-6 transition hover:border-sky-300/30 hover:bg-white/[0.06]"
+              >
+                <div className="text-[11px] uppercase tracking-[0.32em] text-white/45">Surface</div>
+                <div className="mt-3 text-3xl font-semibold text-white">{surface.title}</div>
+                <div className="mt-3 text-sm leading-6 text-slate-300">{surface.note}</div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      </section>
+
+      <section id="roadmap" className="space-y-4">
+        <div>
+          <div className="text-[11px] uppercase tracking-[0.36em] text-amber-200/70">Roadmap</div>
+          <h2 className="mt-2 text-3xl font-semibold text-white">Where the pressure goes next.</h2>
+        </div>
+        <div className="grid gap-4 lg:grid-cols-2">
+          {ROADMAP_MODULES.map((module) => (
+            <ModuleCard key={module.title} updatedAt={ROADMAP_LAST_UPDATED_AT} {...module} />
+          ))}
+        </div>
       </section>
     </main>
   );

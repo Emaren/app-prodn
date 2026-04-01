@@ -54,7 +54,7 @@ export function LeaderboardPanel({
             <div className={`text-xs uppercase tracking-[0.35em] ${tone.eyebrow}`}>Leaderboard</div>
 
             <div className="mt-4 sm:hidden">
-              <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center justify-between gap-3">
                 <div className={`text-5xl font-semibold tracking-tight tabular-nums ${tone.count}`}>
                   {leaderboard.trackedPlayers}
                 </div>
@@ -134,7 +134,7 @@ export function LeaderboardPanel({
               href={entry.href}
               className={`block rounded-2xl border px-4 py-4 transition ${tone.card} ${tone.cardHover}`}
             >
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="grid gap-4 grid-cols-[minmax(0,1fr)_auto] items-start">
                 <div className="flex min-w-0 items-start gap-4">
                   <div
                     className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border text-sm font-semibold ${tone.rankBadge}`}
@@ -159,7 +159,7 @@ export function LeaderboardPanel({
                   </div>
                 </div>
 
-                <div className="sm:text-right">
+                <div className="min-w-[5.5rem] text-right">
                   <div className="text-[10px] uppercase tracking-[0.28em] text-slate-400">
                     {entry.primaryRatingSourceLabel}
                   </div>
@@ -172,7 +172,7 @@ export function LeaderboardPanel({
                     <div className="mt-1 text-xs text-slate-400">{entry.secondaryRatingLabel}</div>
                   ) : null}
 
-                  <div className="mt-2 flex flex-wrap gap-2 sm:justify-end">
+                  <div className="mt-2 flex flex-wrap justify-end gap-2">
                     <MetricPill toneClassName={tone.neutralPill}>{buildRecordLabel(entry)}</MetricPill>
 
                     {entry.streakLabel ? (

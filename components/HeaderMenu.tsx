@@ -8,7 +8,6 @@ import {
   Coins,
   ChevronDown,
   Download,
-  Info,
   ListChecks,
   Map,
   MessageSquareMore,
@@ -24,6 +23,7 @@ import {
 import { useClickOutside } from "@/hooks/useClickOutside";
 import { useUserAuth } from "@/context/UserAuthContext";
 import SteamLoginButton from "@/components/SteamLoginButton";
+import { ROADMAP_UPDATE_COUNT } from "@/lib/siteRoadmapContent";
 
 interface Props {
   pendingBetsCount: number;
@@ -91,8 +91,12 @@ export default function HeaderMenu({
       { href: "/game-stats", label: "Game Stats", icon: BarChart3 },
       { href: "/download", label: "Download Watcher", icon: Download },
       { href: "/wolo", label: "$WOLO", icon: Coins },
-      { href: "/roadmap", label: "Roadmap", icon: Map },
-      { href: "/about", label: "About", icon: Info },
+      {
+        href: "/roadmap",
+        label: "Roadmap",
+        icon: Map,
+        badge: ROADMAP_UPDATE_COUNT > 0 ? String(ROADMAP_UPDATE_COUNT) : null,
+      },
       {
         href: "/pending-bets",
         label: "Pending Bets",

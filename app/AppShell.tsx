@@ -15,6 +15,7 @@ import {
   LobbyAppearanceProvider,
   useLobbyAppearance,
 } from "@/components/lobby/LobbyAppearanceContext";
+import { ROADMAP_UPDATE_COUNT } from "@/lib/siteRoadmapContent";
 import { Toaster } from "sonner";
 import { Providers } from "./Providers";
 import { UserAuthProvider, useUserAuth } from "@/context/UserAuthContext";
@@ -23,12 +24,12 @@ const HEADER_LINKS: ReadonlyArray<{
   href: string;
   label: string;
   countKey?: "requests";
+  badgeCount?: number;
 }> = [
   { href: "/players", label: "Players" },
   { href: "/rivalries", label: "Rivalries" },
   { href: "/wolo", label: "$WOLO" },
-  { href: "/roadmap", label: "Roadmap" },
-  { href: "/about", label: "About" },
+  { href: "/roadmap", label: "Roadmap", badgeCount: ROADMAP_UPDATE_COUNT },
   { href: "/requests", label: "Requests", countKey: "requests" },
 ];
 
@@ -155,9 +156,18 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                   <Link
                     key={link.href}
                     href={link.href}
-                    className={`rounded-full border px-3 py-1.5 text-xs transition ${headerSkin.surface}`}
+                    className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition ${headerSkin.surface}`}
                   >
-                    {link.countKey === "requests" ? `${requestCount} ${link.label}` : link.label}
+                    <span>{link.label}</span>
+                    {link.countKey === "requests" ? (
+                      <span className="rounded-full border border-white/10 bg-white/5 px-1.5 py-0.5 text-[10px] text-slate-200">
+                        {requestCount}
+                      </span>
+                    ) : link.badgeCount ? (
+                      <span className="rounded-full border border-amber-300/20 bg-amber-300/10 px-1.5 py-0.5 text-[10px] text-amber-100">
+                        {link.badgeCount}
+                      </span>
+                    ) : null}
                   </Link>
                 ))}
                 {isAdmin ? (
@@ -195,9 +205,18 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`rounded-full border px-3 py-1 text-xs transition ${headerSkin.surface}`}
+                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs transition ${headerSkin.surface}`}
                 >
-                  {link.countKey === "requests" ? `${requestCount} ${link.label}` : link.label}
+                  <span>{link.label}</span>
+                  {link.countKey === "requests" ? (
+                    <span className="rounded-full border border-white/10 bg-white/5 px-1.5 py-0.5 text-[10px] text-slate-200">
+                      {requestCount}
+                    </span>
+                  ) : link.badgeCount ? (
+                    <span className="rounded-full border border-amber-300/20 bg-amber-300/10 px-1.5 py-0.5 text-[10px] text-amber-100">
+                      {link.badgeCount}
+                    </span>
+                  ) : null}
                 </Link>
               ))}
             </nav>

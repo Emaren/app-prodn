@@ -186,8 +186,8 @@ export default function LiveReplayDetail({
   const achievementSignalLabel = describeAchievementSignal(snapshot);
 
   return (
-    <main className="space-y-6 overflow-x-hidden py-6 text-white">
-      <section className="min-w-0 overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(248,113,113,0.16),_transparent_32%),radial-gradient(circle_at_bottom_right,_rgba(251,191,36,0.10),_transparent_28%),linear-gradient(135deg,_#111827,_#0f172a_55%,_#020617)] p-6 sm:p-8">
+    <main className="space-y-5 overflow-x-hidden py-4 text-white sm:space-y-6 sm:py-6">
+      <section className="min-w-0 overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(248,113,113,0.16),_transparent_32%),radial-gradient(circle_at_bottom_right,_rgba(251,191,36,0.10),_transparent_28%),linear-gradient(135deg,_#111827,_#0f172a_55%,_#020617)] p-5 sm:p-8">
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)] xl:items-start">
           <div className="space-y-4 min-w-0">
             <div className="text-xs uppercase tracking-[0.35em] text-red-200/75">
@@ -242,33 +242,33 @@ export default function LiveReplayDetail({
           {snapshot.finalGameId ? (
             <Link
               href={`/game-stats/${snapshot.finalGameId}`}
-              className="rounded-full bg-sky-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-200"
+              className="w-full rounded-full bg-sky-300 px-5 py-3 text-center text-sm font-semibold text-slate-950 transition hover:bg-sky-200 sm:w-auto"
             >
               Open Final Stats
             </Link>
           ) : null}
           <Link
             href="/live-games"
-            className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-200"
+            className="w-full rounded-full bg-white px-5 py-3 text-center text-sm font-semibold text-slate-950 transition hover:bg-slate-200 sm:w-auto"
           >
             {isBattleArchive ? "Back To Battle Board" : "Back To Live Games"}
           </Link>
           <Link
             href="/game-stats"
-            className="rounded-full border border-white/15 px-5 py-3 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
+            className="w-full rounded-full border border-white/15 px-5 py-3 text-center text-sm text-white/85 transition hover:border-white/30 hover:text-white sm:w-auto"
           >
             Parser Lab
           </Link>
           <Link
             href="/lobby"
-            className="rounded-full border border-amber-300/30 bg-amber-400/10 px-5 py-3 text-sm text-amber-100 transition hover:bg-amber-400/15"
+            className="w-full rounded-full border border-amber-300/30 bg-amber-400/10 px-5 py-3 text-center text-sm text-amber-100 transition hover:bg-amber-400/15 sm:w-auto"
           >
             Open Lobby
           </Link>
         </div>
       </section>
 
-      <section className="min-w-0 overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(56,189,248,0.16),_transparent_26%),radial-gradient(circle_at_top_right,_rgba(251,191,36,0.12),_transparent_28%),linear-gradient(135deg,_rgba(8,15,29,0.98),_rgba(7,12,24,0.99))] p-6 sm:p-8">
+      <section className="min-w-0 overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(56,189,248,0.16),_transparent_26%),radial-gradient(circle_at_top_right,_rgba(251,191,36,0.12),_transparent_28%),linear-gradient(135deg,_rgba(8,15,29,0.98),_rgba(7,12,24,0.99))] p-5 sm:p-8">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <div className="text-xs uppercase tracking-[0.35em] text-sky-200/70">Battle Matrix</div>
@@ -669,7 +669,7 @@ function Panel({
   children: ReactNode;
 }) {
   return (
-    <section className="min-w-0 overflow-hidden rounded-[1.75rem] border border-white/10 bg-slate-950/70 p-6">
+    <section className="min-w-0 overflow-hidden rounded-[1.75rem] border border-white/10 bg-slate-950/70 p-4 sm:p-6">
       <div className="text-xs uppercase tracking-[0.35em] text-white/45">{eyebrow}</div>
       <h2 className="mt-2 text-2xl font-semibold text-white">{title}</h2>
       <div className="mt-5">{children}</div>
@@ -793,7 +793,7 @@ function BattleMatrixLane({
             <span>Pulse strip</span>
             <span>{series.length} pulses</span>
           </div>
-          <div className="mt-3 grid grid-cols-6 gap-2">
+          <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-6">
             {series.map((point) => (
               <div
                 key={`${summary.name}-${point.parseIteration}`}

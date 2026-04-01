@@ -179,7 +179,7 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
               </button>
             </div>
 
-            <div className="h-[calc(100%-2.75rem)] min-h-0 overflow-hidden rounded-[1.5rem] sm:h-full">
+            <div className="h-[calc(100%-2.75rem)] min-h-0 overflow-hidden rounded-[1.6rem] border border-white/12 bg-[#07111d] shadow-[0_28px_80px_rgba(2,6,23,0.68)] sm:h-full">
               <ContactInboxPanel
                 data={panelData ?? summary}
                 loading={loading && !(panelData ?? summary)}

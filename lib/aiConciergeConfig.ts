@@ -1,5 +1,5 @@
 export const AI_CONCIERGE_UID = "aoe2hd_ai_concierge";
-export const AI_CONCIERGE_NAME = "AI Concierge";
+export const AI_CONCIERGE_NAME = "The AI Scribe";
 
 function getDefaultLlamaChatGatewayUrl() {
   const defaultPort = process.env.NODE_ENV === "production" ? "3350" : "8006";

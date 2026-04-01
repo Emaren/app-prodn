@@ -157,7 +157,7 @@ export async function POST(request: NextRequest) {
           data: {
             roomId: room.id,
             userId: aiUser.id,
-            body: normalizeChatBody(aiReply.body) || "AI Concierge checked in.",
+            body: normalizeChatBody(aiReply.body) || "The AI Scribe checked in.",
           },
           select: { id: true },
         });
@@ -170,14 +170,14 @@ export async function POST(request: NextRequest) {
         });
       }
     } catch (aiError) {
-      console.warn("Lobby AI concierge reply failed:", aiError);
-      aiWarning = "AI Concierge is offline right now. Your message still posted.";
+      console.warn("Lobby AI scribe reply failed:", aiError);
+      aiWarning = "The AI Scribe is offline right now. Your message still posted.";
 
       await prisma.directMessage.create({
         data: {
           conversationId: aiConversation.id,
           senderUserId: aiUser.id,
-          body: "AI Concierge is offline for a moment. Try again shortly.",
+          body: "The AI Scribe is offline for a moment. Try again shortly.",
         },
       });
     }

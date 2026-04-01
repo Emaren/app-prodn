@@ -66,7 +66,7 @@ async function loadRecentMatchesForAi(): Promise<LobbyMatchRow[]> {
     const payload = (await response.json()) as LobbyMatchRow[] | unknown;
     return Array.isArray(payload) ? payload.slice(0, 6) : [];
   } catch (error) {
-    console.warn("Failed to load recent matches for AI concierge:", error);
+    console.warn("Failed to load recent matches for AI scribe:", error);
     return [];
   }
 }
@@ -259,12 +259,12 @@ export async function requestAiConciergeReply(args: RequestAiConciergeReplyArgs)
   };
 
   if (!response.ok) {
-    throw new Error(payload.error || `AI concierge unavailable (${response.status}).`);
+    throw new Error(payload.error || `The AI Scribe is unavailable (${response.status}).`);
   }
 
   const reply = normalizeAiReply(payload.text || "", args.source);
   if (!reply) {
-    throw new Error("AI concierge returned an empty reply.");
+    throw new Error("The AI Scribe returned an empty reply.");
   }
 
   return {

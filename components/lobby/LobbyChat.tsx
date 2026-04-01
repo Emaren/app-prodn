@@ -89,12 +89,14 @@ export function LobbyChat({
       style={style}
     >
       <div className="flex items-center justify-between gap-4">
-        <div>
+        <div className="min-w-0 flex-1">
           <div className={`text-xs uppercase tracking-[0.35em] ${tone.eyebrow}`}>Chat</div>
-          <h3 className="mt-2 text-2xl font-semibold text-white">{chatRoomTitle}</h3>
+          <h3 className="mt-1.5 min-w-0 truncate whitespace-nowrap text-[clamp(1.35rem,4.8vw,2rem)] font-semibold leading-tight text-white">
+            {chatRoomTitle}
+          </h3>
         </div>
 
-        <div className={`rounded-full border px-3 py-1 text-xs ${tone.neutralPill}`}>
+        <div className={`shrink-0 rounded-full border px-3 py-1 text-xs ${tone.neutralPill}`}>
           {messagesCount} recent
         </div>
       </div>
@@ -408,7 +410,7 @@ function LobbyMessageCard({
       <div className="mt-2 flex flex-wrap gap-2">
         {isAi ? (
           <MiniIdentityPill toneClassName="border-cyan-400/20 bg-cyan-400/10 text-cyan-50">
-            AI concierge
+            The AI Scribe
           </MiniIdentityPill>
         ) : item.message.user.verificationLevel > 0 ? (
           <SteamLinkedBadge compact />

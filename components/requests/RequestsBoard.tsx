@@ -282,7 +282,7 @@ function RequestCard(props: RequestCardProps) {
 
         <div className="space-y-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
+            <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <div className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
                   {item.author.displayName}
@@ -297,6 +297,57 @@ function RequestCard(props: RequestCardProps) {
                   </span>
                 ) : null}
               </div>
+
+              <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-slate-300">
+                  {item.commentCount} comments
+                </span>
+                {item.canEdit ? (
+                  <button
+                    type="button"
+                    onClick={() => (isEditing ? onCancelEditRequest(item.id) : onStartEditRequest(item))}
+                    className="rounded-full border border-white/10 px-3 py-1.5 text-slate-300 transition hover:border-white/20 hover:text-white"
+                  >
+                    {isEditing ? "Cancel" : "Edit"}
+                  </button>
+                ) : null}
+                {isEditing ? (
+                  <button
+                    type="button"
+                    onClick={() => onSaveRequest(item.id)}
+                    disabled={sending || !requestDraft.title.trim() || !requestDraft.body.trim()}
+                    className="rounded-full bg-amber-300 px-3 py-1.5 font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Save
+                  </button>
+                ) : null}
+                {item.canComplete ? (
+                  <button
+                    type="button"
+                    onClick={() => onToggleComplete(item.id, item.status === "completed" ? "open" : "completed")}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/25 px-3 py-1.5 text-emerald-100 transition hover:bg-emerald-500/10"
+                  >
+                    {item.status === "completed" ? (
+                      "Reopen"
+                    ) : (
+                      <>
+                        <span>Complete</span>
+                        <CheckCircle2 className="h-4 w-4" />
+                      </>
+                    )}
+                  </button>
+                ) : null}
+                {item.canDelete ? (
+                  <button
+                    type="button"
+                    onClick={() => onDeleteRequest(item.id)}
+                    className="rounded-full border border-red-400/25 px-3 py-1.5 text-red-200 transition hover:bg-red-500/10"
+                  >
+                    Delete
+                  </button>
+                ) : null}
+              </div>
+
               {isEditing ? (
                 <div className="mt-3 space-y-3">
                   <input
@@ -316,56 +367,6 @@ function RequestCard(props: RequestCardProps) {
                   <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-slate-300">{item.body}</p>
                 </>
               )}
-            </div>
-
-            <div className="flex flex-wrap justify-end gap-2 text-xs">
-              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-slate-300">
-                {item.commentCount} comments
-              </span>
-              {item.canEdit ? (
-                <button
-                  type="button"
-                  onClick={() => (isEditing ? onCancelEditRequest(item.id) : onStartEditRequest(item))}
-                  className="rounded-full border border-white/10 px-3 py-1.5 text-slate-300 transition hover:border-white/20 hover:text-white"
-                >
-                  {isEditing ? "Cancel" : "Edit"}
-                </button>
-              ) : null}
-              {isEditing ? (
-                <button
-                  type="button"
-                  onClick={() => onSaveRequest(item.id)}
-                  disabled={sending || !requestDraft.title.trim() || !requestDraft.body.trim()}
-                  className="rounded-full bg-amber-300 px-3 py-1.5 font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Save
-                </button>
-              ) : null}
-              {item.canComplete ? (
-                <button
-                  type="button"
-                  onClick={() => onToggleComplete(item.id, item.status === "completed" ? "open" : "completed")}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/25 px-3 py-1.5 text-emerald-100 transition hover:bg-emerald-500/10"
-                >
-                  {item.status === "completed" ? (
-                    "Reopen"
-                  ) : (
-                    <>
-                      <span>Complete</span>
-                      <CheckCircle2 className="h-4 w-4" />
-                    </>
-                  )}
-                </button>
-              ) : null}
-              {item.canDelete ? (
-                <button
-                  type="button"
-                  onClick={() => onDeleteRequest(item.id)}
-                  className="rounded-full border border-red-400/25 px-3 py-1.5 text-red-200 transition hover:bg-red-500/10"
-                >
-                  Delete
-                </button>
-              ) : null}
             </div>
           </div>
 
@@ -438,6 +439,7 @@ export default function RequestsBoard() {
   const [editingRequestId, setEditingRequestId] = useState<number | null>(null);
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
   const [replyTargetId, setReplyTargetId] = useState<number | null>(null);
+  const [expandedCompletedIds, setExpandedCompletedIds] = useState<number[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -729,14 +731,24 @@ export default function RequestsBoard() {
                 key={item.id}
                 className="rounded-[1.3rem] border border-white/10 bg-white/[0.04] px-4 py-4"
               >
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
+                <div className="flex items-start justify-between gap-3">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setExpandedCompletedIds((current) =>
+                        current.includes(item.id)
+                          ? current.filter((value) => value !== item.id)
+                          : [...current, item.id]
+                      )
+                    }
+                    className="min-w-0 flex-1 text-left"
+                  >
                     <div className="text-base font-semibold text-white">{item.title}</div>
                     <div className="mt-1 text-sm text-slate-400">
                       {item.score} votes · Completed {item.completedAt ? formatTimestamp(item.completedAt) : "recently"}
                       {item.completedBy ? ` by ${item.completedBy.displayName}` : ""}
                     </div>
-                  </div>
+                  </button>
                   {item.canComplete ? (
                     <button
                       type="button"
@@ -753,6 +765,11 @@ export default function RequestsBoard() {
                     </button>
                   ) : null}
                 </div>
+                {expandedCompletedIds.includes(item.id) ? (
+                  <div className="mt-4 rounded-2xl border border-white/8 bg-slate-950/45 px-4 py-4 text-sm leading-6 text-slate-300">
+                    {item.body}
+                  </div>
+                ) : null}
               </div>
             ))}
           </div>

@@ -8,7 +8,7 @@ import type { ReactNode } from "react";
 
 import CommunityBadgePill from "@/components/contact/CommunityBadgePill";
 import { DIRECT_MESSAGE_REACTIONS } from "@/lib/contactInboxConfig";
-import { AI_CONCIERGE_UID } from "@/lib/aiConciergeConfig";
+import { AI_CONCIERGE_NAME, AI_CONCIERGE_UID } from "@/lib/aiConciergeConfig";
 import type {
   ContactInboxMessage,
   ContactInboxPayload,
@@ -121,7 +121,7 @@ function buildPrompt(
     if (counterpart?.threadKind === "ai") {
       return counterpartName
         ? `Ask ${counterpartName} about the site, players, replays, or WOLO...`
-        : "Ask AI about the site, players, replays, or WOLO...";
+        : `Ask ${AI_CONCIERGE_NAME} about the site, players, replays, or WOLO...`;
     }
     return counterpartName ? `Message ${counterpartName}...` : "Message Emaren...";
   }
@@ -153,7 +153,7 @@ function SummaryButton({
           <div className="truncate text-sm font-semibold text-white">{summary.displayName}</div>
           <div className="mt-1 text-[11px] uppercase tracking-[0.24em] text-slate-500">
             {summary.threadKind === "ai"
-              ? "AI concierge"
+              ? "AI scribe"
               : summary.isAdmin
                 ? "Admin thread"
                 : "Direct thread"}
@@ -507,20 +507,23 @@ function TextMessageBubble({
                   attachmentPreviewFailed ? (
                     <a
                       href={message.attachment.url}
-                      download={message.attachment.name || "chat-attachment"}
+                      target="_blank"
+                      rel="noreferrer"
                       className="flex min-h-44 items-center justify-center rounded-[1rem] border border-white/10 bg-[#0b1322] px-4 py-6 text-center text-sm text-slate-200 transition hover:border-white/18 hover:text-white"
                     >
-                      Open screenshot attachment
+                      View screenshot
                     </a>
                   ) : (
-                    <img
-                      src={message.attachment.url}
-                      alt={message.attachment.name || "Chat screenshot"}
-                      loading="lazy"
-                      decoding="async"
-                      onError={() => setAttachmentPreviewFailed(true)}
-                      className="max-h-72 w-full rounded-[1rem] object-cover"
-                    />
+                    <a href={message.attachment.url} target="_blank" rel="noreferrer" className="block">
+                      <img
+                        src={message.attachment.url}
+                        alt={message.attachment.name || "Chat screenshot"}
+                        loading="lazy"
+                        decoding="async"
+                        onError={() => setAttachmentPreviewFailed(true)}
+                        className="max-h-72 w-full rounded-[1rem] bg-[#08111d] object-contain"
+                      />
+                    </a>
                   )
                 ) : (
                   <audio src={message.attachment.url} controls className="w-full" />
@@ -746,12 +749,12 @@ export default function ContactInboxPanel({
   const shellClassName =
     mode === "page"
       ? "bg-[linear-gradient(180deg,rgba(15,23,42,0.98),rgba(2,6,23,0.98))]"
-      : "bg-[linear-gradient(180deg,rgba(11,18,32,1),rgba(8,13,24,0.995))]";
+      : "bg-[linear-gradient(180deg,rgba(7,12,22,1),rgba(4,8,16,1))]";
   const chromeClassName =
     mode === "page"
       ? "border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01))]"
-      : "border-slate-200/10 bg-[#121c2e]";
-  const railClassName = mode === "page" ? "bg-white/[0.02]" : "bg-[#0c1524]";
+      : "border-slate-200/12 bg-[#101a2c]";
+  const railClassName = mode === "page" ? "bg-white/[0.02]" : "bg-[#0b1423]";
   const composerClassName = mode === "page" ? "bg-white/[0.015]" : "bg-[#0d1625]";
   const plainComposerInputClassName =
     mode === "page"
@@ -806,7 +809,7 @@ export default function ContactInboxPanel({
           <div className="min-w-0">
             <div className="text-[11px] uppercase tracking-[0.32em] text-amber-200/70">
               {counterpart?.threadKind === "ai"
-                ? "AI concierge"
+                ? "AI scribe"
                 : data?.viewer.isAdmin
                   ? "Private inbox"
                   : "Direct line"}
@@ -816,7 +819,7 @@ export default function ContactInboxPanel({
               <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-400">
                 <span>
                   {counterpart.threadKind === "ai"
-                    ? "Private AI thread with site context"
+                    ? "Private AI scribe thread with site context"
                     : counterpart.isAdmin
                       ? "Private thread with Emaren"
                       : "Private community thread"}

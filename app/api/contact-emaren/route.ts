@@ -288,8 +288,8 @@ export async function POST(request: NextRequest) {
         });
         aiReplyBody = aiReply.body;
       } catch (aiError) {
-        console.warn("AI concierge contact reply failed:", aiError);
-        aiReplyBody = "AI Concierge is offline for a moment. Try again shortly.";
+        console.warn("AI scribe contact reply failed:", aiError);
+        aiReplyBody = "The AI Scribe is offline for a moment. Try again shortly.";
       }
 
       await prisma.directMessage.create({
@@ -737,7 +737,7 @@ export async function PATCH(request: NextRequest) {
       case "toggle_ai_lobby_share": {
         if (targetUser.uid !== AI_CONCIERGE_UID) {
           return NextResponse.json(
-            { detail: "Only AI concierge replies can be posted to the lobby." },
+            { detail: "Only AI scribe replies can be posted to the lobby." },
             { status: 400 }
           );
         }

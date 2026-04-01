@@ -24,7 +24,11 @@ import {
   stringifyJson,
   winnerLabel,
 } from "@/lib/gameStatsView";
-import { buildMatchupHref } from "@/lib/publicMatchups";
+import {
+  buildMatchupHref,
+  filterHeadToHeadMatches,
+  summarizeHeadToHead,
+} from "@/lib/publicMatchups";
 import { getPrisma } from "@/lib/prisma";
 import {
   buildPublicPlayerRef,
@@ -103,6 +107,32 @@ export default async function GameStatsDetailPage({
     buildPublicPlayerRef(displayPlayerName(player), claimedPlayers)
   );
   const matchupHref = playerRefs.length === 2 ? buildMatchupHref(playerRefs[0], playerRefs[1]) : null;
+  const rivalryCandidates =
+    playerRefs.length === 2
+      ? await prisma.gameStats.findMany({
+          where: { is_final: true },
+          orderBy: [{ played_on: "desc" }, { timestamp: "desc" }, { createdAt: "desc" }],
+          take: 300,
+          select: {
+            id: true,
+            winner: true,
+            players: true,
+            played_on: true,
+            timestamp: true,
+            parse_reason: true,
+            map: true,
+            disconnect_detected: true,
+          },
+        })
+      : [];
+  const rivalrySummary =
+    playerRefs.length === 2
+      ? summarizeHeadToHead(
+          filterHeadToHeadMatches(rivalryCandidates, playerRefs[0], playerRefs[1]),
+          playerRefs[0],
+          playerRefs[1]
+        )
+      : null;
   const playedAt = readPlayedAt(game);
   const eventTypes = Array.isArray(game.event_types) ? game.event_types : [];
   const keyEvents =
@@ -123,11 +153,24 @@ export default async function GameStatsDetailPage({
     : [];
   const outcomeLabel = outcomeBadgeLabel(game.parse_reason, game.winner);
   const suppressPlayerWinnerState = game.parse_reason === "hd_early_exit_under_60s";
+  const rivalryMatchCountLabel = rivalrySummary
+    ? rivalrySummary.totalMatches === 1
+      ? "1 replay-backed meeting"
+      : `${rivalrySummary.totalMatches} replay-backed meetings`
+    : null;
+  const rivalryLastPlayedLabel = rivalrySummary?.lastPlayedAt
+    ? new Date(rivalrySummary.lastPlayedAt).toLocaleString([], {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      })
+    : "Waiting for the first stored clash";
 
   return (
-    <main className="space-y-6 py-6 text-white">
-      <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(56,189,248,0.16),_transparent_32%),linear-gradient(135deg,_#0f172a,_#111827_60%,_#020617)] p-8">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+    <main className="space-y-6 overflow-x-hidden py-4 text-white sm:py-6">
+      <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(56,189,248,0.16),_transparent_32%),linear-gradient(135deg,_#0f172a,_#111827_60%,_#020617)] p-5 sm:p-8">
+        <div className="space-y-6">
           <div className="space-y-4">
             <div className="text-xs uppercase tracking-[0.35em] text-sky-200/70">Replay Detail</div>
             <h1 className="text-4xl font-semibold text-white sm:text-5xl">{readMapName(game.map)}</h1>
@@ -165,7 +208,7 @@ export default async function GameStatsDetailPage({
             {matchupHref ? (
               <Link
                 href={matchupHref}
-                className="rounded-full border border-white/15 px-5 py-3 text-sm text-white/85 transition hover:border-sky-300/40 hover:text-white"
+                className="w-full rounded-full border border-white/15 px-5 py-3 text-center text-sm text-white/85 transition hover:border-sky-300/40 hover:text-white sm:w-auto"
               >
                 Open Rivalry
               </Link>
@@ -173,24 +216,57 @@ export default async function GameStatsDetailPage({
             {battleTapeHref ? (
               <Link
                 href={battleTapeHref}
-                className="rounded-full border border-amber-300/30 bg-amber-400/10 px-5 py-3 text-sm text-amber-100 transition hover:bg-amber-400/15"
+                className="w-full rounded-full border border-amber-300/30 bg-amber-400/10 px-5 py-3 text-center text-sm text-amber-100 transition hover:bg-amber-400/15 sm:w-auto"
               >
                 Open Battle Tape
               </Link>
             ) : null}
             <Link
               href="/game-stats"
-              className="rounded-full border border-white/15 px-5 py-3 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
+              className="w-full rounded-full border border-white/15 px-5 py-3 text-center text-sm text-white/85 transition hover:border-white/30 hover:text-white sm:w-auto"
             >
               Back To Parser Lab
             </Link>
             <Link
               href="/"
-              className="rounded-full bg-sky-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-200"
+              className="w-full rounded-full bg-sky-300 px-5 py-3 text-center text-sm font-semibold text-slate-950 transition hover:bg-sky-200 sm:w-auto"
             >
               Back To Lobby
             </Link>
           </div>
+
+          {rivalrySummary && playerRefs.length === 2 ? (
+            <div className="rounded-[1.75rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.09),rgba(255,255,255,0.03))] p-5 shadow-2xl shadow-black/25 sm:p-6">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <div className="text-[11px] uppercase tracking-[0.35em] text-white/45">Rivalry Score</div>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
+                    This is the first thing most people want: the replay-backed series record between
+                    these two players.
+                  </p>
+                </div>
+                {rivalryMatchCountLabel ? <Tag>{rivalryMatchCountLabel}</Tag> : null}
+              </div>
+
+              <div className="mt-5 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-center">
+                <RivalryHeroSide name={playerRefs[0].name} wins={rivalrySummary.leftWins} align="left" />
+                <div className="rounded-[1.6rem] border border-white/10 bg-slate-950/70 px-5 py-4 text-center">
+                  <div className="text-[11px] uppercase tracking-[0.28em] text-slate-500">Series</div>
+                  <div className="mt-2 text-4xl font-semibold tracking-tight text-white sm:text-5xl">
+                    {rivalrySummary.leftWins}
+                    <span className="px-3 text-slate-500">-</span>
+                    {rivalrySummary.rightWins}
+                  </div>
+                </div>
+                <RivalryHeroSide name={playerRefs[1].name} wins={rivalrySummary.rightWins} align="right" />
+              </div>
+
+              <div className="mt-5 flex flex-wrap gap-2">
+                <Tag>Last played {rivalryLastPlayedLabel}</Tag>
+                {rivalrySummary.unknowns > 0 ? <Tag>{rivalrySummary.unknowns} unknown results</Tag> : null}
+              </div>
+            </div>
+          ) : null}
         </div>
       </section>
 
@@ -422,7 +498,7 @@ function Panel({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-[1.75rem] border border-white/10 bg-slate-950/70 p-6">
+    <section className="rounded-[1.75rem] border border-white/10 bg-slate-950/70 p-4 sm:p-6">
       <div className="text-xs uppercase tracking-[0.35em] text-white/45">{eyebrow}</div>
       <h2 className="mt-2 text-2xl font-semibold text-white">{title}</h2>
       <div className="mt-5">{children}</div>
@@ -483,6 +559,30 @@ function PlayerMetric({ label, value }: { label: string; value: ReactNode }) {
       <dd className="mt-1 break-words text-sm font-medium leading-5 text-slate-100 [overflow-wrap:anywhere]">
         {value}
       </dd>
+    </div>
+  );
+}
+
+function RivalryHeroSide({
+  name,
+  wins,
+  align,
+}: {
+  name: string;
+  wins: number;
+  align: "left" | "right";
+}) {
+  return (
+    <div
+      className={`rounded-[1.5rem] border border-white/8 bg-white/5 px-4 py-4 ${
+        align === "right" ? "text-left sm:text-right" : "text-left"
+      }`}
+    >
+      <div className="text-[11px] uppercase tracking-[0.24em] text-slate-500">
+        {align === "left" ? "Left side" : "Right side"}
+      </div>
+      <div className="mt-2 break-words text-2xl font-semibold text-white">{name}</div>
+      <div className="mt-3 text-sm text-slate-300">{wins} wins in stored finals</div>
     </div>
   );
 }
