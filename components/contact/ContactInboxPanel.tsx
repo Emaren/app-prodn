@@ -1,6 +1,6 @@
 "use client";
+/* eslint-disable @next/next/no-img-element */
 
-import Image from "next/image";
 import Link from "next/link";
 import { MessageCirclePlus, Mic, Paperclip } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -359,6 +359,7 @@ function TextMessageBubble({
     message.sender.uid === AI_CONCIERGE_UID && !message.attachment && message.body.trim().length > 0;
   const [trayPinnedOpen, setTrayPinnedOpen] = useState(false);
   const [trayHovered, setTrayHovered] = useState(false);
+  const [attachmentPreviewFailed, setAttachmentPreviewFailed] = useState(false);
   const holdTimerRef = useRef<number | null>(null);
   const hoverCloseTimerRef = useRef<number | null>(null);
   const longPressTriggeredRef = useRef(false);
@@ -387,6 +388,10 @@ function TextMessageBubble({
       clearHoverCloseTimer();
     };
   }, []);
+
+  useEffect(() => {
+    setAttachmentPreviewFailed(false);
+  }, [message.messageId]);
 
   function clearHoldTimer() {
     if (holdTimerRef.current) {
@@ -499,14 +504,24 @@ function TextMessageBubble({
             {message.attachment ? (
               <div className="mt-3 overflow-hidden rounded-[1.15rem] bg-slate-950/40 p-2 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]">
                 {message.attachment.kind === "image" ? (
-                  <Image
-                    src={message.attachment.dataUrl}
-                    alt={message.attachment.name || "Chat screenshot"}
-                    width={1440}
-                    height={900}
-                    unoptimized
-                    className="max-h-72 w-full rounded-[1rem] object-cover"
-                  />
+                  attachmentPreviewFailed ? (
+                    <a
+                      href={message.attachment.dataUrl}
+                      download={message.attachment.name || "chat-attachment"}
+                      className="flex min-h-44 items-center justify-center rounded-[1rem] border border-white/10 bg-[#0b1322] px-4 py-6 text-center text-sm text-slate-200 transition hover:border-white/18 hover:text-white"
+                    >
+                      Open screenshot attachment
+                    </a>
+                  ) : (
+                    <img
+                      src={message.attachment.dataUrl}
+                      alt={message.attachment.name || "Chat screenshot"}
+                      loading="lazy"
+                      decoding="async"
+                      onError={() => setAttachmentPreviewFailed(true)}
+                      className="max-h-72 w-full rounded-[1rem] object-cover"
+                    />
+                  )
                 ) : (
                   <audio src={message.attachment.dataUrl} controls className="w-full" />
                 )}

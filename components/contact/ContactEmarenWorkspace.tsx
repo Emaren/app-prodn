@@ -16,6 +16,9 @@ type ComposerAttachment = {
   durationSeconds: number | null;
 };
 
+const MAX_SCREENSHOT_DIMENSION = 1600;
+const TARGET_SCREENSHOT_BYTES = 900_000;
+
 function readDetail(payload: unknown) {
   if (!payload || typeof payload !== "object") {
     return null;
@@ -23,6 +26,75 @@ function readDetail(payload: unknown) {
 
   const detail = "detail" in payload ? payload.detail : null;
   return typeof detail === "string" ? detail : null;
+}
+
+async function optimizeScreenshotAttachment(file: File) {
+  if (typeof window === "undefined") {
+    return file;
+  }
+
+  if (!file.type.startsWith("image/") || file.type === "image/gif") {
+    return file;
+  }
+
+  if (file.size <= TARGET_SCREENSHOT_BYTES) {
+    return file;
+  }
+
+  const sourceUrl = URL.createObjectURL(file);
+
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const nextImage = new window.Image();
+      nextImage.onload = () => resolve(nextImage);
+      nextImage.onerror = () => reject(new Error("Screenshot preview failed."));
+      nextImage.src = sourceUrl;
+    });
+
+    const sourceWidth = Math.max(1, image.naturalWidth || image.width || 1);
+    const sourceHeight = Math.max(1, image.naturalHeight || image.height || 1);
+    const scale = Math.min(
+      1,
+      MAX_SCREENSHOT_DIMENSION / sourceWidth,
+      MAX_SCREENSHOT_DIMENSION / sourceHeight
+    );
+
+    const width = Math.max(1, Math.round(sourceWidth * scale));
+    const height = Math.max(1, Math.round(sourceHeight * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+
+    const context = canvas.getContext("2d");
+    if (!context) {
+      return file;
+    }
+
+    context.drawImage(image, 0, 0, width, height);
+
+    const optimizedBlob = await new Promise<Blob | null>((resolve) => {
+      canvas.toBlob(resolve, "image/webp", 0.94);
+    });
+
+    if (!optimizedBlob) {
+      return file;
+    }
+
+    if (optimizedBlob.size >= file.size * 0.97) {
+      return file;
+    }
+
+    const baseName = file.name.replace(/\.[^.]+$/, "") || `screenshot-${Date.now()}`;
+    return new File([optimizedBlob], `${baseName}.webp`, {
+      type: optimizedBlob.type || "image/webp",
+      lastModified: Date.now(),
+    });
+  } catch (error) {
+    console.warn("Screenshot optimization failed:", error);
+    return file;
+  } finally {
+    URL.revokeObjectURL(sourceUrl);
+  }
 }
 
 async function requestInbox(targetUid?: string | null) {
@@ -216,9 +288,10 @@ export default function ContactEmarenWorkspace() {
     if (!file) return;
 
     clearAttachment();
-    const previewUrl = URL.createObjectURL(file);
+    const preparedFile = await optimizeScreenshotAttachment(file);
+    const previewUrl = URL.createObjectURL(preparedFile);
     setAttachment({
-      file,
+      file: preparedFile,
       kind: "image",
       previewUrl,
       durationSeconds: null,

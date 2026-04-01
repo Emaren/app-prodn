@@ -1,6 +1,6 @@
 "use client";
+/* eslint-disable @next/next/no-img-element */
 
-import Image from "next/image";
 import { Mic, Paperclip, SendHorizonal, Square, X } from "lucide-react";
 import { useId, useRef } from "react";
 
@@ -78,12 +78,11 @@ export default function ContactRichComposer({
           </div>
 
           {attachment.kind === "image" ? (
-            <Image
+            <img
               src={attachment.previewUrl}
               alt={attachment.name}
-              width={1440}
-              height={900}
-              unoptimized
+              loading="lazy"
+              decoding="async"
               className="mt-3 max-h-56 w-full rounded-2xl object-cover"
             />
           ) : (
