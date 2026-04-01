@@ -481,7 +481,7 @@ export default function ContactEmarenWorkspace() {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="flex h-full min-h-0 max-h-full flex-col overflow-hidden">
       <ContactInboxPanel
         data={displayData}
         loading={summaryPending && !displayData ? true : pending}

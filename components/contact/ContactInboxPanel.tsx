@@ -166,7 +166,7 @@ function SummaryButton({
         ) : null}
       </div>
 
-      <div className="mt-3 text-xs leading-5 text-slate-400">
+      <div className="mt-3 overflow-hidden text-xs leading-5 text-slate-400 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:4]">
         {summary.lastMessageSnippet || "No messages yet."}
       </div>
       <div className="mt-2 text-[11px] text-slate-600">{formatTimestamp(summary.lastMessageAt)}</div>
@@ -355,6 +355,8 @@ function TextMessageBubble({
   reactingMessageId?: number | null;
 }) {
   const isViewer = message.sender.uid === viewerUid;
+  const maxBubbleWidthClass =
+    mode === "page" ? "max-w-[min(96%,56rem)]" : "max-w-[94%] sm:max-w-[82%]";
   const canToggleLobbyShare =
     message.sender.uid === AI_CONCIERGE_UID && !message.attachment && message.body.trim().length > 0;
   const [trayPinnedOpen, setTrayPinnedOpen] = useState(false);
@@ -478,7 +480,7 @@ function TextMessageBubble({
     <div className={`flex ${isViewer ? "justify-end" : "justify-start"}`}>
       <div
         ref={bubbleRef}
-        className={`group relative max-w-[88%] sm:max-w-[78%]`}
+        className={`group relative ${maxBubbleWidthClass}`}
         onPointerDown={(event) => beginLongPress(event.pointerType)}
         onPointerUp={clearHoldTimer}
         onPointerCancel={clearHoldTimer}
@@ -498,7 +500,13 @@ function TextMessageBubble({
             onClick={handleBubbleClick}
           >
             {message.body ? (
-              <div className="relative whitespace-pre-wrap text-sm leading-6">{message.body}</div>
+              <div
+                className={`relative whitespace-pre-wrap text-sm leading-6 [overflow-wrap:anywhere] ${
+                  mode === "popover" ? "max-h-48 overflow-y-auto pr-1" : ""
+                }`}
+              >
+                {message.body}
+              </div>
             ) : null}
 
             {message.attachment ? (
@@ -799,8 +807,8 @@ export default function ContactInboxPanel({
     <div
       className={`flex min-h-0 flex-col overflow-hidden rounded-[1.6rem] text-white shadow-[0_28px_120px_rgba(0,0,0,0.45)] ${shellClassName} ${
         mode === "page"
-          ? "h-full flex-1 shadow-[0_32px_140px_rgba(0,0,0,0.5)]"
-          : "h-full w-full shadow-[0_34px_120px_rgba(2,6,23,0.68)]"
+          ? "h-full max-h-full flex-1 shadow-[0_32px_140px_rgba(0,0,0,0.5)]"
+          : "h-full w-full shadow-[0_34px_120px_rgba(2,6,23,0.82)]"
       }`}
       style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.07), 0 32px 120px rgba(0,0,0,0.45)" }}
     >
@@ -845,7 +853,7 @@ export default function ContactInboxPanel({
       <div
         className={
           showConversationRail
-            ? "grid min-h-0 flex-1 lg:grid-cols-[17.5rem_minmax(0,1fr)]"
+            ? "grid min-h-0 flex-1 lg:grid-cols-[15rem_minmax(0,1fr)]"
             : "flex min-h-0 flex-1 flex-col"
         }
       >

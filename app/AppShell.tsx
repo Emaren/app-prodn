@@ -251,7 +251,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col overflow-x-hidden px-3 py-4 sm:px-4">
+      <main className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col overflow-x-hidden px-3 py-4 sm:px-4">
         {children}
       </main>
       <Toaster richColors />

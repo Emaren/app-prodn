@@ -134,7 +134,7 @@ export function LeaderboardPanel({
               href={entry.href}
               className={`block rounded-2xl border px-4 py-4 transition ${tone.card} ${tone.cardHover}`}
             >
-              <div className="grid gap-4 grid-cols-[minmax(0,1fr)_auto] items-start">
+              <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
                 <div className="flex min-w-0 items-start gap-4">
                   <div
                     className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border text-sm font-semibold ${tone.rankBadge}`}
@@ -142,8 +142,10 @@ export function LeaderboardPanel({
                     #{entry.rank}
                   </div>
 
-                  <div className="min-w-0">
-                    <div className="truncate text-lg font-semibold text-white">{entry.name}</div>
+                  <div className="min-w-0 flex-1">
+                    <div className="break-words text-base font-semibold leading-tight text-white sm:truncate sm:text-lg">
+                      {entry.name}
+                    </div>
 
                     <div className="mt-3 flex flex-wrap gap-2">
                       {entry.verified ? (
@@ -159,7 +161,7 @@ export function LeaderboardPanel({
                   </div>
                 </div>
 
-                <div className="min-w-[5.5rem] text-right">
+                <div className="border-t border-white/8 pt-3 sm:min-w-[5.5rem] sm:border-t-0 sm:pt-0 sm:text-right">
                   <div className="text-[10px] uppercase tracking-[0.28em] text-slate-400">
                     {entry.primaryRatingSourceLabel}
                   </div>

@@ -167,7 +167,7 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
             className="fixed inset-0 z-40 bg-[#02060f]/78 backdrop-blur-[2px] sm:hidden"
           />
 
-          <div className="fixed inset-x-3 top-[5.75rem] z-50 h-[min(34rem,calc(100dvh-8.5rem))] sm:absolute sm:inset-x-auto sm:right-0 sm:top-14 sm:h-[min(36rem,calc(100dvh-7rem))] sm:w-[28rem] sm:max-w-[calc(100vw-2rem)]">
+          <div className="fixed inset-x-3 top-[5.75rem] z-50 h-[min(34rem,calc(100dvh-8.5rem))] sm:absolute sm:inset-x-auto sm:right-0 sm:top-14 sm:h-[min(31rem,calc(100dvh-7rem))] sm:w-[26.5rem] sm:max-w-[calc(100vw-2rem)]">
             <div className="mb-2 flex justify-end sm:hidden">
               <button
                 type="button"
@@ -179,7 +179,7 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
               </button>
             </div>
 
-            <div className="h-[calc(100%-2.75rem)] min-h-0 overflow-hidden rounded-[1.6rem] border border-white/12 bg-[#07111d] shadow-[0_28px_80px_rgba(2,6,23,0.68)] sm:h-full">
+            <div className="h-[calc(100%-2.75rem)] min-h-0 overflow-hidden rounded-[1.6rem] border border-white/12 bg-[#050c16] shadow-[0_34px_96px_rgba(2,6,23,0.82)] sm:h-full">
               <ContactInboxPanel
                 data={panelData ?? summary}
                 loading={loading && !(panelData ?? summary)}
