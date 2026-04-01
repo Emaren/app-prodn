@@ -506,7 +506,7 @@ function TextMessageBubble({
                 {message.attachment.kind === "image" ? (
                   attachmentPreviewFailed ? (
                     <a
-                      href={message.attachment.dataUrl}
+                      href={message.attachment.url}
                       download={message.attachment.name || "chat-attachment"}
                       className="flex min-h-44 items-center justify-center rounded-[1rem] border border-white/10 bg-[#0b1322] px-4 py-6 text-center text-sm text-slate-200 transition hover:border-white/18 hover:text-white"
                     >
@@ -514,7 +514,7 @@ function TextMessageBubble({
                     </a>
                   ) : (
                     <img
-                      src={message.attachment.dataUrl}
+                      src={message.attachment.url}
                       alt={message.attachment.name || "Chat screenshot"}
                       loading="lazy"
                       decoding="async"
@@ -523,7 +523,7 @@ function TextMessageBubble({
                     />
                   )
                 ) : (
-                  <audio src={message.attachment.dataUrl} controls className="w-full" />
+                  <audio src={message.attachment.url} controls className="w-full" />
                 )}
                 <div className="mt-2 inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.22em] text-slate-300/75">
                   {message.attachment.kind === "image" ? (

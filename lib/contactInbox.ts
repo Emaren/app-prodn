@@ -57,7 +57,7 @@ type InboxMessageAttachment = {
   kind: "image" | "audio";
   name: string | null;
   mimeType: string | null;
-  dataUrl: string;
+  url: string;
   durationSeconds: number | null;
 };
 
@@ -197,6 +197,7 @@ function buildDirectMessageSnippet(message: {
 }
 
 function buildMessageAttachment(message: {
+  id: number;
   attachmentKind: string | null;
   attachmentName: string | null;
   attachmentMimeType: string | null;
@@ -215,7 +216,7 @@ function buildMessageAttachment(message: {
     kind: message.attachmentKind,
     name: message.attachmentName ?? null,
     mimeType: message.attachmentMimeType ?? null,
-    dataUrl: message.attachmentDataUrl,
+    url: `/api/contact-emaren/attachments/${message.id}`,
     durationSeconds:
       typeof message.attachmentDurationSeconds === "number"
         ? message.attachmentDurationSeconds

@@ -97,10 +97,13 @@ async function optimizeScreenshotAttachment(file: File) {
   }
 }
 
-async function requestInbox(targetUid?: string | null) {
+async function requestInbox(targetUid?: string | null, summaryOnly?: boolean) {
   const params = new URLSearchParams();
   if (targetUid) {
     params.set("user", targetUid);
+  }
+  if (summaryOnly) {
+    params.set("summary", "1");
   }
 
   const response = await fetch(`/api/contact-emaren${params.size > 0 ? `?${params.toString()}` : ""}`, {
@@ -122,12 +125,14 @@ export default function ContactEmarenWorkspace() {
   const searchParams = useSearchParams();
   const requestedUser = searchParams?.get("user") ?? null;
   const { uid, isAuthenticated, loading } = useUserAuth();
-  const [data, setData] = useState<ContactInboxPayload | null>(null);
+  const [summaryData, setSummaryData] = useState<ContactInboxPayload | null>(null);
+  const [panelData, setPanelData] = useState<ContactInboxPayload | null>(null);
   const [selectedTargetUid, setSelectedTargetUid] = useState<string | null>(requestedUser);
   const [body, setBody] = useState("");
   const [attachment, setAttachment] = useState<ComposerAttachment | null>(null);
   const [sendPending, setSendPending] = useState(false);
   const [pending, setPending] = useState(false);
+  const [summaryPending, setSummaryPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reactingMessageId, setReactingMessageId] = useState<number | null>(null);
   const [voiceSupported, setVoiceSupported] = useState(false);
@@ -148,20 +153,48 @@ export default function ContactEmarenWorkspace() {
     });
   }, []);
 
-  const refresh = useCallback(
+  const refreshSummary = useCallback(
     async (targetUid?: string | null, options?: { silent?: boolean }) => {
       if (!uid) return;
+      const silent = Boolean(options?.silent);
+      if (!silent) {
+        setSummaryPending(true);
+        setError(null);
+      }
+      try {
+        const payload = await requestInbox(targetUid ?? selectedTargetUid ?? undefined, true);
+        setSummaryData(payload);
+        setSelectedTargetUid(payload.activeTargetUid);
+        return payload;
+      } catch (fetchError) {
+        setError(fetchError instanceof Error ? fetchError.message : "Inbox failed.");
+        return null;
+      } finally {
+        if (!silent) {
+          setSummaryPending(false);
+        }
+      }
+    },
+    [selectedTargetUid, uid]
+  );
+
+  const refreshPanel = useCallback(
+    async (targetUid?: string | null, options?: { silent?: boolean }) => {
+      if (!uid) return null;
       const silent = Boolean(options?.silent);
       if (!silent) {
         setPending(true);
         setError(null);
       }
       try {
-        const payload = await requestInbox(targetUid ?? selectedTargetUid ?? undefined);
-        setData(payload);
+        const payload = await requestInbox(targetUid ?? selectedTargetUid ?? undefined, false);
+        setPanelData(payload);
+        setSummaryData(payload);
         setSelectedTargetUid(payload.activeTargetUid);
+        return payload;
       } catch (fetchError) {
         setError(fetchError instanceof Error ? fetchError.message : "Inbox failed.");
+        return null;
       } finally {
         if (!silent) {
           setPending(false);
@@ -173,19 +206,39 @@ export default function ContactEmarenWorkspace() {
 
   useEffect(() => {
     if (!uid) return;
-    void refresh(requestedUser);
-  }, [refresh, requestedUser, uid]);
+    let cancelled = false;
+
+    (async () => {
+      const summaryPayload = await refreshSummary(requestedUser);
+      if (cancelled) return;
+
+      const targetUid = requestedUser ?? summaryPayload?.activeTargetUid ?? null;
+      if (targetUid) {
+        await refreshPanel(targetUid);
+      } else if (summaryPayload) {
+        setPanelData(summaryPayload);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshPanel, refreshSummary, requestedUser, uid]);
 
   useEffect(() => {
     if (!uid) return;
     const interval = window.setInterval(() => {
-      void refresh(undefined, { silent: true });
+      if (selectedTargetUid) {
+        void refreshPanel(undefined, { silent: true });
+      } else {
+        void refreshSummary(undefined, { silent: true });
+      }
     }, 4_000);
 
     return () => {
       window.clearInterval(interval);
     };
-  }, [refresh, uid]);
+  }, [refreshPanel, refreshSummary, selectedTargetUid, uid]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -279,7 +332,8 @@ export default function ContactEmarenWorkspace() {
       return payload;
     }
 
-    setData(payload as ContactInboxPayload);
+    setPanelData(payload as ContactInboxPayload);
+    setSummaryData(payload as ContactInboxPayload);
     setSelectedTargetUid((payload as ContactInboxPayload).activeTargetUid);
     return payload;
   }
@@ -391,14 +445,17 @@ export default function ContactEmarenWorkspace() {
       void sendTypingState(false);
       setBody("");
       clearAttachment();
-      setData(payload as ContactInboxPayload);
-      setSelectedTargetUid((payload as ContactInboxPayload).activeTargetUid);
-    } catch (sendError) {
-      setError(sendError instanceof Error ? sendError.message : "Message failed.");
+        setPanelData(payload as ContactInboxPayload);
+        setSummaryData(payload as ContactInboxPayload);
+        setSelectedTargetUid((payload as ContactInboxPayload).activeTargetUid);
+      } catch (sendError) {
+        setError(sendError instanceof Error ? sendError.message : "Message failed.");
     } finally {
       setSendPending(false);
     }
   }
+
+  const displayData = panelData ?? summaryData;
 
   if (loading) {
     return (
@@ -426,8 +483,8 @@ export default function ContactEmarenWorkspace() {
   return (
     <div className="flex h-full min-h-0 flex-col">
       <ContactInboxPanel
-        data={data}
-        loading={pending && !data}
+        data={displayData}
+        loading={summaryPending && !displayData ? true : pending}
         error={error}
         body={body}
         sendPending={sendPending}
@@ -460,8 +517,17 @@ export default function ContactEmarenWorkspace() {
           void sendTypingState(false);
           setBody("");
           clearAttachment();
+          setPanelData(null);
           setSelectedTargetUid(targetUid);
-          void refresh(targetUid);
+          setSummaryData((current) =>
+            current
+              ? {
+                  ...current,
+                  activeTargetUid: targetUid,
+                }
+              : current
+          );
+          void refreshPanel(targetUid);
         }}
         onSend={() => {
           void handleSend();
@@ -470,8 +536,8 @@ export default function ContactEmarenWorkspace() {
           <ContactRichComposer
             body={body}
             sendPending={sendPending}
-            unavailableReason={data?.unavailableReason ?? null}
-            counterpartName={data?.activeCounterpart?.displayName ?? null}
+            unavailableReason={displayData?.unavailableReason ?? null}
+            counterpartName={displayData?.activeCounterpart?.displayName ?? null}
             attachment={
               attachment
                 ? {

@@ -41,7 +41,7 @@ export type ContactMessageAttachment = {
   kind: "image" | "audio";
   name: string | null;
   mimeType: string | null;
-  dataUrl: string;
+  url: string;
   durationSeconds: number | null;
 };
 
