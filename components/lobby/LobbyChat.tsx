@@ -85,7 +85,7 @@ export function LobbyChat({
 
   return (
     <div
-      className={`flex min-h-[31rem] min-w-0 max-h-[min(86dvh,46rem)] flex-col rounded-[1.75rem] border p-4 sm:min-h-[34rem] sm:max-h-[50rem] sm:p-5 lg:min-h-[34rem] lg:max-h-none lg:p-6 ${tone.panelShell}`}
+      className={`flex min-h-[32rem] min-w-0 max-h-[min(88dvh,48rem)] flex-col rounded-[1.75rem] border p-4 sm:min-h-[35rem] sm:max-h-[52rem] sm:p-5 lg:min-h-[34rem] lg:max-h-none lg:p-6 ${tone.panelShell}`}
       style={style}
     >
       <div className="flex items-center justify-between gap-4">
@@ -99,11 +99,11 @@ export function LobbyChat({
         </div>
       </div>
 
-      <div className="mt-5 flex min-h-0 flex-1 flex-col gap-4">
+      <div className="mt-4 flex min-h-0 flex-1 flex-col gap-3">
         <div
           className={`flex min-h-0 flex-1 flex-col overflow-hidden rounded-[1.5rem] border p-3 sm:p-4 ${tone.insetPanel}`}
         >
-          <div ref={chatScrollRef} className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
+          <div ref={chatScrollRef} className="min-h-0 flex-1 space-y-2 overflow-y-auto pb-12 pr-1">
             {chatItems.length === 0 ? (
               <div className={`rounded-xl border px-4 py-5 text-sm text-slate-300 ${tone.subduedCard}`}>
                 No messages yet. The first tournament chatter starts here.
@@ -139,82 +139,82 @@ export function LobbyChat({
           </div>
         ) : null}
 
-        <div className={`rounded-[1.5rem] border px-3 py-3 sm:px-4 sm:py-4 ${tone.insetPanel}`}>
+        <div className={`rounded-[1.4rem] border px-3 py-3 sm:px-4 sm:py-3 ${tone.insetPanel}`}>
           {isAuthenticated ? (
-            <div className="space-y-4">
-              <div className="space-y-1">
-                <div className="text-[11px] uppercase tracking-[0.28em] text-slate-500">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0 text-[11px] uppercase tracking-[0.28em] text-slate-500">
                   Chatting as
                 </div>
-                <div className="text-xl font-semibold text-white">
+                <div className="truncate text-sm font-semibold text-white">
                   {playerName || displayName(currentUserInGameName, currentUserSteamPersonaName)}
                 </div>
               </div>
 
-              <div className="rounded-[1.25rem] border border-white/8 bg-white/[0.035] px-3 py-3.5 text-sm text-slate-200 sm:px-4">
-                <div className="flex flex-col gap-3.5">
-                  <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-                    <label className="inline-flex flex-wrap items-center gap-3 text-sm text-white">
-                      <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-amber-300/18 bg-amber-300/12 text-amber-200">
-                        <input
-                          type="checkbox"
-                          checked={aiEnabled}
-                          onChange={(event) => onAiEnabledChange(event.target.checked)}
-                          className="h-4 w-4 rounded border-white/20 bg-transparent accent-amber-300"
-                        />
-                      </span>
-                      <span className="space-y-0.5">
-                        <span className="block text-lg font-semibold text-white">AI response</span>
-                        <span className="block text-xs text-slate-400">
-                          Keep the concierge in the loop for this message.
-                        </span>
-                      </span>
-                    </label>
+              <div className="flex items-center gap-2 rounded-full border border-white/8 bg-white/[0.035] px-2.5 py-2 text-sm text-slate-200">
+                <select
+                  aria-label="AI model"
+                  value={aiModel}
+                  onChange={(event) => onAiModelChange(event.target.value as AiModelId)}
+                  disabled={!aiEnabled}
+                  className="h-10 min-w-0 flex-1 rounded-full border border-white/10 bg-[#0d1524] px-3 text-sm font-medium text-white outline-none disabled:cursor-not-allowed disabled:opacity-50 sm:max-w-[13rem]"
+                >
+                  {AI_MODEL_OPTIONS.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
 
-                    <label className="flex min-w-0 flex-col gap-2 text-[11px] uppercase tracking-[0.26em] text-slate-500">
-                      <span>Model</span>
-                      <select
-                        value={aiModel}
-                        onChange={(event) => onAiModelChange(event.target.value as AiModelId)}
-                        disabled={!aiEnabled}
-                        className="h-11 min-w-0 rounded-full border border-white/10 bg-[#0d1524] px-4 text-sm font-medium tracking-normal text-white outline-none disabled:cursor-not-allowed disabled:opacity-50 lg:min-w-[15rem]"
-                      >
-                        {AI_MODEL_OPTIONS.map((option) => (
-                          <option key={option.id} value={option.id}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  </div>
+                <button
+                  type="button"
+                  onClick={() => onAiEnabledChange(!aiEnabled)}
+                  aria-pressed={aiEnabled}
+                  aria-label={aiEnabled ? "AI responses enabled" : "AI responses disabled"}
+                  title={aiEnabled ? "AI responses enabled" : "AI responses disabled"}
+                  className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition ${
+                    aiEnabled
+                      ? "border-emerald-300/30 bg-emerald-400/14 text-emerald-100 shadow-[0_0_18px_rgba(52,211,153,0.18)]"
+                      : "border-red-300/24 bg-red-400/10 text-red-100 shadow-[0_0_18px_rgba(248,113,113,0.12)]"
+                  }`}
+                >
+                  <svg viewBox="0 0 20 20" className="h-4 w-4" fill="none" aria-hidden="true">
+                    <path
+                      d="M10 2.75v5.5"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                    />
+                    <path
+                      d="M6.35 5.2a6 6 0 1 0 7.3 0"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </button>
 
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="text-[11px] uppercase tracking-[0.26em] text-slate-500">
-                      AI lane
-                    </div>
-                    <div className="inline-flex w-fit rounded-full border border-white/10 bg-[#0b1322] p-1">
-                      {(["private", "public"] as const).map((option) => (
-                        <button
-                          key={option}
-                          type="button"
-                          onClick={() => onAiVisibilityChange(option)}
-                          disabled={!aiEnabled}
-                          className={`rounded-full px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.18em] transition sm:px-4 ${
-                            aiVisibility === option
-                              ? "bg-amber-300 text-slate-950"
-                              : "text-slate-300 hover:text-white"
-                          } disabled:cursor-not-allowed disabled:opacity-50`}
-                        >
-                          {option === "private" ? "Private AI" : "Public AI"}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                <div className="inline-flex shrink-0 rounded-full border border-white/10 bg-[#0b1322] p-1">
+                  {(["private", "public"] as const).map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => onAiVisibilityChange(option)}
+                      disabled={!aiEnabled}
+                      className={`rounded-full px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.16em] transition sm:px-4 ${
+                        aiVisibility === option
+                          ? "bg-amber-300 text-slate-950"
+                          : "text-slate-300 hover:text-white"
+                      } disabled:cursor-not-allowed disabled:opacity-50`}
+                    >
+                      {option === "private" ? "Private" : "Public"}
+                    </button>
+                  ))}
                 </div>
               </div>
 
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                <div className="flex-1 rounded-[1.3rem] border border-white/8 bg-[#09111d]/75 p-2 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03)]">
+              <div className="flex items-center gap-2">
+                <div className="flex-1 rounded-[1.2rem] border border-white/8 bg-[#09111d]/75 p-1.5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03)]">
                   <input
                     value={messageBody}
                     onChange={(event) => onMessageBodyChange(event.target.value)}
@@ -225,8 +225,12 @@ export function LobbyChat({
                       }
                     }}
                     maxLength={280}
-                    placeholder="Call out the matchup, look for practice games, or talk bracket."
-                    className={`min-w-0 w-full rounded-full border px-4 py-3.5 text-sm outline-none ${tone.input}`}
+                    placeholder={
+                      aiEnabled
+                        ? "Message the lobby. AI can answer in this lane."
+                        : "Message the lobby chat."
+                    }
+                    className={`min-w-0 w-full rounded-full border px-4 py-3 text-sm outline-none ${tone.input}`}
                   />
                 </div>
 
@@ -234,7 +238,7 @@ export function LobbyChat({
                   type="button"
                   onClick={onSendMessage}
                   disabled={chatPending || messageBody.trim().length === 0}
-                  className={`min-h-[3.5rem] rounded-full px-6 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 sm:min-w-[6.75rem] ${tone.primaryButton}`}
+                  className={`min-h-[3.25rem] shrink-0 rounded-full px-5 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 sm:min-w-[6.25rem] ${tone.primaryButton}`}
                 >
                   {chatPending ? "Sending..." : "Send"}
                 </button>
@@ -274,20 +278,22 @@ function LobbyMessageCard({
   reactingMessageId: number | null;
   onToggleReaction: (messageId: number, emoji: string) => void;
 }) {
-  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerPinnedOpen, setPickerPinnedOpen] = useState(false);
+  const [pickerHovered, setPickerHovered] = useState(false);
   const holdTimerRef = useRef<number | null>(null);
+  const hoverCloseTimerRef = useRef<number | null>(null);
   const longPressTriggeredRef = useRef(false);
   const cardRef = useRef<HTMLDivElement | null>(null);
   const isAi = item.message.user.isAi;
 
   useEffect(() => {
-    if (!pickerOpen || typeof document === "undefined") {
+    if (!pickerPinnedOpen || typeof document === "undefined") {
       return;
     }
 
     const handlePointerDown = (event: PointerEvent) => {
       if (!cardRef.current?.contains(event.target as Node)) {
-        setPickerOpen(false);
+        setPickerPinnedOpen(false);
       }
     };
 
@@ -295,11 +301,12 @@ function LobbyMessageCard({
     return () => {
       document.removeEventListener("pointerdown", handlePointerDown);
     };
-  }, [pickerOpen]);
+  }, [pickerPinnedOpen]);
 
   useEffect(() => {
     return () => {
       clearHoldTimer();
+      clearHoverCloseTimer();
     };
   }, []);
 
@@ -310,33 +317,68 @@ function LobbyMessageCard({
     }
   }
 
+  function clearHoverCloseTimer() {
+    if (hoverCloseTimerRef.current) {
+      window.clearTimeout(hoverCloseTimerRef.current);
+      hoverCloseTimerRef.current = null;
+    }
+  }
+
+  function prefersHover() {
+    return (
+      typeof window !== "undefined" &&
+      window.matchMedia("(hover: hover) and (pointer: fine)").matches
+    );
+  }
+
   function beginLongPress(pointerType: string) {
     if (pointerType === "mouse") return;
     longPressTriggeredRef.current = false;
     clearHoldTimer();
     holdTimerRef.current = window.setTimeout(() => {
       longPressTriggeredRef.current = true;
-      setPickerOpen(true);
+      setPickerPinnedOpen(true);
     }, 360);
   }
 
   function handleCardTap() {
-    if (typeof window === "undefined") return;
-    if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+    if (prefersHover()) {
       return;
     }
     if (longPressTriggeredRef.current) {
       longPressTriggeredRef.current = false;
       return;
     }
-    setPickerOpen((current) => !current);
+    setPickerPinnedOpen((current) => !current);
+  }
+
+  function handleDesktopHoverStart() {
+    if (!prefersHover()) return;
+    clearHoverCloseTimer();
+    setPickerHovered(true);
+  }
+
+  function handleDesktopHoverEnd() {
+    if (!prefersHover()) return;
+    clearHoverCloseTimer();
+    hoverCloseTimerRef.current = window.setTimeout(() => {
+      setPickerHovered(false);
+    }, 140);
   }
 
   function handleReactionToggle(event: MouseEvent<HTMLButtonElement>, emoji: string) {
     event.stopPropagation();
     onToggleReaction(item.message.id, emoji);
-    setPickerOpen(false);
+    setPickerPinnedOpen(false);
   }
+
+  function handleReactionHandleClick(event: MouseEvent<HTMLButtonElement>) {
+    event.stopPropagation();
+    clearHoverCloseTimer();
+    setPickerPinnedOpen((current) => !current);
+  }
+
+  const pickerVisible = pickerPinnedOpen || pickerHovered;
 
   return (
     <div
@@ -347,6 +389,8 @@ function LobbyMessageCard({
       onPointerUp={clearHoldTimer}
       onPointerCancel={clearHoldTimer}
       onPointerLeave={clearHoldTimer}
+      onMouseEnter={handleDesktopHoverStart}
+      onMouseLeave={handleDesktopHoverEnd}
     >
       <div className="flex items-center justify-between gap-3">
         <div className="font-medium text-white">
@@ -405,14 +449,26 @@ function LobbyMessageCard({
             </button>
           );
         })}
+
+        <button
+          type="button"
+          onClick={handleReactionHandleClick}
+          aria-label={pickerVisible ? "Hide reactions" : "Show reactions"}
+          aria-expanded={pickerVisible}
+          className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-[#0c1524] text-sm text-slate-300 transition hover:border-white/18 hover:text-white"
+        >
+          +
+        </button>
       </div>
 
       <div
         className={`absolute left-4 top-full z-30 mt-2 transition-all duration-150 ${
-          pickerOpen
+          pickerVisible
             ? "pointer-events-auto translate-y-0 opacity-100"
-            : "pointer-events-none translate-y-1 opacity-0 group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:translate-y-0 group-focus-within:opacity-100"
+            : "pointer-events-none translate-y-1 opacity-0"
         }`}
+        onMouseEnter={handleDesktopHoverStart}
+        onMouseLeave={handleDesktopHoverEnd}
       >
         <div className="inline-flex max-w-[calc(100vw-6rem)] flex-wrap items-center gap-2 rounded-full border border-white/10 bg-[#091321] px-2.5 py-2 shadow-[0_18px_40px_rgba(2,6,23,0.4)]">
           {LOBBY_MESSAGE_REACTIONS.map((emoji) => {
