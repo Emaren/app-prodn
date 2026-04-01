@@ -67,6 +67,7 @@ export type ContactTextMessage = {
   body: string;
   attachment: ContactMessageAttachment | null;
   reactions: ContactMessageReaction[];
+  sharedLobbyMessageId: number | null;
 };
 
 export type ContactBadgeMessage = {

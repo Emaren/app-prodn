@@ -102,6 +102,7 @@ export type InboxTextMessage = {
   body: string;
   attachment: InboxMessageAttachment | null;
   reactions: InboxMessageReaction[];
+  sharedLobbyMessageId: number | null;
 };
 
 export type InboxMessage = InboxTextMessage | InboxBadgeMessage | InboxGiftMessage;
@@ -752,6 +753,7 @@ async function loadConversationMessages(
       sender: senderShapeFromUser(sender, senderCommunity?.badges ?? []),
       attachment: buildMessageAttachment(message),
       reactions: buildMessageReactions(message.reactions, viewerUserId),
+      sharedLobbyMessageId: message.sharedLobbyMessageId ?? null,
       receipt:
         isReceiptAnchor
           ? {

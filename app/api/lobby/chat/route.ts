@@ -143,20 +143,29 @@ export async function POST(request: NextRequest) {
           })),
       });
 
-      await prisma.directMessage.create({
+      const aiThreadMessage = await prisma.directMessage.create({
         data: {
           conversationId: aiConversation.id,
           senderUserId: aiUser.id,
           body: aiReply.body,
         },
+        select: { id: true },
       });
 
       if (aiVisibility === "public") {
-        await prisma.chatMessage.create({
+        const publicAiMessage = await prisma.chatMessage.create({
           data: {
             roomId: room.id,
             userId: aiUser.id,
             body: normalizeChatBody(aiReply.body) || "AI Concierge checked in.",
+          },
+          select: { id: true },
+        });
+
+        await prisma.directMessage.update({
+          where: { id: aiThreadMessage.id },
+          data: {
+            sharedLobbyMessageId: publicAiMessage.id,
           },
         });
       }

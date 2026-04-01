@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { requestAiConciergeReply, ensureAiConciergeUser } from "@/lib/aiConcierge";
 import { AI_CONCIERGE_UID } from "@/lib/aiConciergeConfig";
+import { ensureLobbyRoom, getFeaturedTournament } from "@/lib/communityStore";
 import {
   getOrCreateConversationByUsers,
   loadInboxPayload,
@@ -16,6 +17,7 @@ import {
 import { recordUserActivity } from "@/lib/userExperience";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
+import { LOBBY_ROOM_SLUG, normalizeChatBody } from "@/lib/lobby";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -134,6 +136,24 @@ function buildAiPromptBody(payload: Awaited<ReturnType<typeof readMessageInput>>
   }
 
   return lines.join("\n").trim();
+}
+
+async function resolveLobbyShareRoom(
+  prisma: ReturnType<typeof getPrisma>,
+  viewerUid: string
+) {
+  const featuredTournament = await getFeaturedTournament(prisma, viewerUid);
+
+  if (featuredTournament.roomSlug === LOBBY_ROOM_SLUG) {
+    return ensureLobbyRoom(prisma);
+  }
+
+  const featuredRoom = await prisma.chatRoom.findUnique({
+    where: { slug: featuredTournament.roomSlug },
+    select: { id: true, slug: true },
+  });
+
+  return featuredRoom ?? ensureLobbyRoom(prisma);
 }
 
 export async function GET(request: NextRequest) {
@@ -711,6 +731,118 @@ export async function PATCH(request: NextRequest) {
             },
           });
         }
+        break;
+      }
+
+      case "toggle_ai_lobby_share": {
+        if (targetUser.uid !== AI_CONCIERGE_UID) {
+          return NextResponse.json(
+            { detail: "Only AI concierge replies can be posted to the lobby." },
+            { status: 400 }
+          );
+        }
+
+        if (typeof payload.messageId !== "number") {
+          return NextResponse.json({ detail: "Message id is required" }, { status: 400 });
+        }
+
+        const conversation = await prisma.directConversation.findUnique({
+          where: { pairKey: [viewer.id, targetUser.id].sort((a, b) => a - b).join(":") },
+          select: { id: true },
+        });
+
+        if (!conversation) {
+          return NextResponse.json({ detail: "Conversation not found" }, { status: 404 });
+        }
+
+        const message = await prisma.directMessage.findFirst({
+          where: {
+            id: payload.messageId,
+            conversationId: conversation.id,
+            senderUserId: targetUser.id,
+          },
+          select: {
+            id: true,
+            body: true,
+            attachmentKind: true,
+            sharedLobbyMessageId: true,
+          },
+        });
+
+        if (!message) {
+          return NextResponse.json({ detail: "AI message not found" }, { status: 404 });
+        }
+
+        if (message.attachmentKind) {
+          return NextResponse.json(
+            { detail: "Only text AI replies can be posted to the lobby." },
+            { status: 400 }
+          );
+        }
+
+        if (message.sharedLobbyMessageId) {
+          await prisma.$transaction([
+            prisma.chatMessage.deleteMany({
+              where: {
+                id: message.sharedLobbyMessageId,
+                userId: targetUser.id,
+              },
+            }),
+            prisma.directMessage.update({
+              where: { id: message.id },
+              data: { sharedLobbyMessageId: null },
+            }),
+          ]);
+
+          await recordUserActivity(prisma, {
+            userId: viewer.id,
+            type: "ai_reply_unshared",
+            path: "/contact-emaren",
+            label: targetUser.uid,
+            metadata: {
+              messageId: message.id,
+              sharedLobbyMessageId: message.sharedLobbyMessageId,
+            },
+            dedupeWithinSeconds: 0,
+          });
+          break;
+        }
+
+        const lobbyBody = normalizeChatBody(message.body || "");
+        if (!lobbyBody) {
+          return NextResponse.json(
+            { detail: "This AI reply is empty once trimmed for the lobby." },
+            { status: 400 }
+          );
+        }
+
+        const room = await resolveLobbyShareRoom(prisma, viewer.uid);
+        const lobbyMessage = await prisma.chatMessage.create({
+          data: {
+            roomId: room.id,
+            userId: targetUser.id,
+            body: lobbyBody,
+          },
+          select: { id: true },
+        });
+
+        await prisma.directMessage.update({
+          where: { id: message.id },
+          data: { sharedLobbyMessageId: lobbyMessage.id },
+        });
+
+        await recordUserActivity(prisma, {
+          userId: viewer.id,
+          type: "ai_reply_shared",
+          path: "/contact-emaren",
+          label: targetUser.uid,
+          metadata: {
+            messageId: message.id,
+            sharedLobbyMessageId: lobbyMessage.id,
+            roomSlug: room.slug,
+          },
+          dedupeWithinSeconds: 0,
+        });
         break;
       }
 

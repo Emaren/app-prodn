@@ -8,6 +8,7 @@ import type { ReactNode } from "react";
 
 import CommunityBadgePill from "@/components/contact/CommunityBadgePill";
 import { DIRECT_MESSAGE_REACTIONS } from "@/lib/contactInboxConfig";
+import { AI_CONCIERGE_UID } from "@/lib/aiConciergeConfig";
 import type {
   ContactInboxMessage,
   ContactInboxPayload,
@@ -341,6 +342,7 @@ function TextMessageBubble({
   viewerUid,
   mode,
   showMeta,
+  onInboxAction,
   onToggleReaction,
   reactingMessageId,
 }: {
@@ -348,23 +350,28 @@ function TextMessageBubble({
   viewerUid: string;
   mode: "popover" | "page";
   showMeta: boolean;
+  onInboxAction: (action: Record<string, unknown>) => void;
   onToggleReaction?: (messageId: number, emoji: string) => void;
   reactingMessageId?: number | null;
 }) {
   const isViewer = message.sender.uid === viewerUid;
-  const [touchPickerOpen, setTouchPickerOpen] = useState(false);
+  const canToggleLobbyShare =
+    message.sender.uid === AI_CONCIERGE_UID && !message.attachment && message.body.trim().length > 0;
+  const [trayPinnedOpen, setTrayPinnedOpen] = useState(false);
+  const [trayHovered, setTrayHovered] = useState(false);
   const holdTimerRef = useRef<number | null>(null);
+  const hoverCloseTimerRef = useRef<number | null>(null);
   const longPressTriggeredRef = useRef(false);
   const bubbleRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (!touchPickerOpen || typeof document === "undefined") {
+    if (!trayPinnedOpen || typeof document === "undefined") {
       return;
     }
 
     const handlePointerDown = (event: PointerEvent) => {
       if (!bubbleRef.current?.contains(event.target as Node)) {
-        setTouchPickerOpen(false);
+        setTrayPinnedOpen(false);
       }
     };
 
@@ -372,11 +379,12 @@ function TextMessageBubble({
     return () => {
       document.removeEventListener("pointerdown", handlePointerDown);
     };
-  }, [touchPickerOpen]);
+  }, [trayPinnedOpen]);
 
   useEffect(() => {
     return () => {
       clearHoldTimer();
+      clearHoverCloseTimer();
     };
   }, []);
 
@@ -387,26 +395,53 @@ function TextMessageBubble({
     }
   }
 
+  function clearHoverCloseTimer() {
+    if (hoverCloseTimerRef.current) {
+      window.clearTimeout(hoverCloseTimerRef.current);
+      hoverCloseTimerRef.current = null;
+    }
+  }
+
+  function prefersHover() {
+    return (
+      typeof window !== "undefined" &&
+      window.matchMedia("(hover: hover) and (pointer: fine)").matches
+    );
+  }
+
   function beginLongPress(pointerType: string) {
     if (pointerType === "mouse") return;
     longPressTriggeredRef.current = false;
     clearHoldTimer();
     holdTimerRef.current = window.setTimeout(() => {
       longPressTriggeredRef.current = true;
-      setTouchPickerOpen(true);
+      setTrayPinnedOpen(true);
     }, 360);
   }
 
   function handleBubbleClick() {
-    if (typeof window === "undefined") return;
-    if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+    if (prefersHover()) {
       return;
     }
     if (longPressTriggeredRef.current) {
       longPressTriggeredRef.current = false;
       return;
     }
-    setTouchPickerOpen((current) => !current);
+    setTrayPinnedOpen((current) => !current);
+  }
+
+  function handleDesktopHoverStart() {
+    if (!prefersHover()) return;
+    clearHoverCloseTimer();
+    setTrayHovered(true);
+  }
+
+  function handleDesktopHoverEnd() {
+    if (!prefersHover()) return;
+    clearHoverCloseTimer();
+    hoverCloseTimerRef.current = window.setTimeout(() => {
+      setTrayHovered(false);
+    }, 140);
   }
 
   const bubbleTone = isViewer
@@ -420,8 +455,19 @@ function TextMessageBubble({
   function handleReactionPick(emoji: string) {
     if (!onToggleReaction) return;
     onToggleReaction(message.messageId, emoji);
-    setTouchPickerOpen(false);
+    setTrayPinnedOpen(false);
   }
+
+  function handleLobbyShareToggle() {
+    onInboxAction({
+      action: "toggle_ai_lobby_share",
+      messageId: message.messageId,
+    });
+    setTrayPinnedOpen(false);
+  }
+
+  const trayVisible = trayPinnedOpen || trayHovered;
+  const hasTray = Boolean(onToggleReaction || canToggleLobbyShare);
 
   return (
     <div className={`flex ${isViewer ? "justify-end" : "justify-start"}`}>
@@ -432,6 +478,8 @@ function TextMessageBubble({
         onPointerUp={clearHoldTimer}
         onPointerCancel={clearHoldTimer}
         onPointerLeave={clearHoldTimer}
+        onMouseEnter={handleDesktopHoverStart}
+        onMouseLeave={handleDesktopHoverEnd}
       >
         {showMeta ? (
           <div className={`mb-1 px-2 text-[11px] uppercase tracking-[0.24em] text-slate-500 ${isViewer ? "text-right" : "text-left"}`}>
@@ -475,15 +523,31 @@ function TextMessageBubble({
             ) : null}
           </div>
 
-          {onToggleReaction ? (
+          {hasTray ? (
             <div
               className={`absolute z-30 ${isViewer ? "right-3" : "left-3"} top-full mt-2 transition-all duration-150 ${
-                touchPickerOpen
+                trayVisible
                   ? "pointer-events-auto translate-y-0 opacity-100"
-                  : "pointer-events-none translate-y-1 opacity-0 group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:translate-y-0 group-focus-within:opacity-100"
+                  : "pointer-events-none translate-y-1 opacity-0"
               }`}
+              onMouseEnter={handleDesktopHoverStart}
+              onMouseLeave={handleDesktopHoverEnd}
             >
               <div className="inline-flex items-center gap-2 whitespace-nowrap rounded-full border border-white/10 bg-[#091321] px-2.5 py-2 shadow-[0_22px_48px_rgba(2,6,23,0.6)]">
+                {canToggleLobbyShare ? (
+                  <button
+                    type="button"
+                    onClick={handleLobbyShareToggle}
+                    className={`inline-flex h-10 items-center justify-center rounded-full border px-3 text-[11px] font-medium uppercase tracking-[0.16em] transition ${
+                      message.sharedLobbyMessageId
+                        ? "border-cyan-300/22 bg-cyan-400/10 text-cyan-50 hover:border-cyan-200/30 hover:bg-cyan-400/16"
+                        : "border-white/10 bg-white/[0.045] text-slate-200 hover:border-white/18 hover:bg-white/[0.1] hover:text-white"
+                    }`}
+                  >
+                    {message.sharedLobbyMessageId ? "Make Private" : "Make Public"}
+                  </button>
+                ) : null}
+
                 {DIRECT_MESSAGE_REACTIONS.map((emoji) => {
                   const existing = message.reactions.find((reaction) => reaction.emoji === emoji);
                   const isActive = Boolean(existing?.viewerReacted);
@@ -843,6 +907,7 @@ export default function ContactInboxPanel({
                       viewerUid={data?.viewer.uid || ""}
                       mode={mode}
                       showMeta={row.showMeta}
+                      onInboxAction={onInboxAction}
                       onToggleReaction={onToggleReaction}
                       reactingMessageId={reactingMessageId}
                     />

@@ -226,6 +226,7 @@ model ChatMessage {
   user           User                      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   reactions      ChatMessageReaction[]
   guestReactions ChatMessageGuestReaction[]
+  sharedFromDirectMessage DirectMessage?   @relation("DirectMessageLobbyShare")
 
   @@index([roomId, createdAt], map: "ix_chat_messages_room_created_at")
   @@index([userId, createdAt], map: "ix_chat_messages_user_created_at")
@@ -302,11 +303,13 @@ model DirectMessage {
   attachmentMimeType        String?  @map("attachment_mime_type") @db.VarChar(120)
   attachmentDataUrl         String?  @map("attachment_data_url") @db.Text
   attachmentDurationSeconds Int?     @map("attachment_duration_seconds")
+  sharedLobbyMessageId      Int?     @unique(map: "uq_direct_messages_shared_lobby_message_id") @map("shared_lobby_message_id")
   createdAt                 DateTime @default(now()) @map("created_at") @db.Timestamp(6)
 
   conversation DirectConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   sender       User               @relation("DirectMessageSender", fields: [senderUserId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   reactions    DirectMessageReaction[]
+  sharedLobbyMessage ChatMessage? @relation("DirectMessageLobbyShare", fields: [sharedLobbyMessageId], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
   @@index([conversationId, createdAt], map: "ix_direct_messages_conversation_created_at")
   @@index([senderUserId, createdAt], map: "ix_direct_messages_sender_created_at")

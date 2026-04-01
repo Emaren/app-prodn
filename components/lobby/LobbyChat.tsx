@@ -139,7 +139,7 @@ export function LobbyChat({
           </div>
         ) : null}
 
-        <div className={`rounded-[1.4rem] border px-3 py-3 sm:px-4 sm:py-3 ${tone.insetPanel}`}>
+        <div className="rounded-[1.4rem] px-1 py-1 sm:px-1.5 sm:py-1">
           {isAuthenticated ? (
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-3">
@@ -151,13 +151,13 @@ export function LobbyChat({
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 rounded-full border border-white/8 bg-white/[0.035] px-2.5 py-2 text-sm text-slate-200">
+              <div className="flex items-center gap-2 rounded-full bg-[#10192a]/72 px-2 py-2 text-sm text-slate-200 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)]">
                 <select
                   aria-label="AI model"
                   value={aiModel}
                   onChange={(event) => onAiModelChange(event.target.value as AiModelId)}
                   disabled={!aiEnabled}
-                  className="h-10 min-w-0 flex-1 rounded-full border border-white/10 bg-[#0d1524] px-3 text-sm font-medium text-white outline-none disabled:cursor-not-allowed disabled:opacity-50 sm:max-w-[13rem]"
+                  className="h-10 min-w-0 flex-1 rounded-full border border-transparent bg-[#0d1524] px-3 text-sm font-medium text-white outline-none shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)] disabled:cursor-not-allowed disabled:opacity-50 sm:max-w-[13rem]"
                 >
                   {AI_MODEL_OPTIONS.map((option) => (
                     <option key={option.id} value={option.id}>
@@ -194,7 +194,7 @@ export function LobbyChat({
                   </svg>
                 </button>
 
-                <div className="inline-flex shrink-0 rounded-full border border-white/10 bg-[#0b1322] p-1">
+                <div className="ml-auto inline-flex shrink-0 rounded-full bg-[#0b1322] p-1 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05)]">
                   {(["private", "public"] as const).map((option) => (
                     <button
                       key={option}
@@ -214,7 +214,7 @@ export function LobbyChat({
               </div>
 
               <div className="flex items-center gap-2">
-                <div className="flex-1 rounded-[1.2rem] border border-white/8 bg-[#09111d]/75 p-1.5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03)]">
+                <div className="flex-1 rounded-[1.2rem] bg-[#09111d]/75 p-1.5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)]">
                   <input
                     value={messageBody}
                     onChange={(event) => onMessageBodyChange(event.target.value)}
