@@ -63,7 +63,8 @@ async function loadOnlineUsers(prisma: PrismaClient): Promise<LobbyOnlineUser[]>
 
 export async function loadLobbySnapshot(
   prisma: PrismaClient,
-  viewerUid?: string | null
+  viewerUid?: string | null,
+  guestReactionSessionId?: string | null
 ): Promise<LobbySnapshot> {
   const wolo = await loadWoloDevSnapshot();
 
@@ -72,7 +73,10 @@ export async function loadLobbySnapshot(
     const tournament = await getFeaturedTournament(prisma, viewerUid);
 
     const [tournamentMessages, onlineUsers, recentMatches, leaderboard] = await Promise.all([
-      getLobbyMessages(prisma, tournament.roomSlug),
+      getLobbyMessages(prisma, tournament.roomSlug, 60, {
+        uid: viewerUid,
+        guestSessionId: guestReactionSessionId,
+      }),
       loadOnlineUsers(prisma),
       loadRecentMatches(),
       loadLobbyLeaderboard(prisma),
@@ -81,7 +85,10 @@ export async function loadLobbySnapshot(
     const messages =
       tournamentMessages.length > 0 || tournament.roomSlug === LOBBY_ROOM_SLUG
         ? tournamentMessages
-        : await getLobbyMessages(prisma, LOBBY_ROOM_SLUG);
+        : await getLobbyMessages(prisma, LOBBY_ROOM_SLUG, 60, {
+            uid: viewerUid,
+            guestSessionId: guestReactionSessionId,
+          });
 
     return {
       tournament,

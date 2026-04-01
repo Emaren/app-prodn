@@ -111,8 +111,17 @@ function isTightTextSequence(previous: ContactInboxMessage | null, current: Cont
   return delta <= 5 * 60 * 1000;
 }
 
-function buildPrompt(data: ContactInboxPayload | null, counterpartName: string | null) {
+function buildPrompt(
+  data: ContactInboxPayload | null,
+  counterpart: ContactInboxPayload["activeCounterpart"]
+) {
+  const counterpartName = counterpart?.displayName ?? null;
   if (!data?.viewer.isAdmin) {
+    if (counterpart?.threadKind === "ai") {
+      return counterpartName
+        ? `Ask ${counterpartName} about the site, players, replays, or WOLO...`
+        : "Ask AI about the site, players, replays, or WOLO...";
+    }
     return counterpartName ? `Message ${counterpartName}...` : "Message Emaren...";
   }
 
@@ -142,7 +151,11 @@ function SummaryButton({
         <div className="min-w-0">
           <div className="truncate text-sm font-semibold text-white">{summary.displayName}</div>
           <div className="mt-1 text-[11px] uppercase tracking-[0.24em] text-slate-500">
-            {summary.isAdmin ? "Admin thread" : "Direct thread"}
+            {summary.threadKind === "ai"
+              ? "AI concierge"
+              : summary.isAdmin
+                ? "Admin thread"
+                : "Direct thread"}
           </div>
         </div>
         {summary.unreadCount > 0 ? (
@@ -641,9 +654,7 @@ export default function ContactInboxPanel({
   const timelineViewportRef = useRef<HTMLDivElement | null>(null);
   const timelineBottomRef = useRef<HTMLDivElement | null>(null);
   const hasConversationChoices = (data?.summaries.length ?? 0) > 1;
-  const showConversationRail = Boolean(
-    mode === "page" && data?.viewer.isAdmin && hasConversationChoices
-  );
+  const showConversationRail = Boolean(mode === "page" && hasConversationChoices);
   const showConversationChips = !showConversationRail && hasConversationChoices;
   const unreadCount = data?.totalUnreadCount ?? 0;
   const heading = data?.viewer.isAdmin ? "Direct Threads" : counterpart?.displayName || "Private Thread";
@@ -715,12 +726,22 @@ export default function ContactInboxPanel({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="text-[11px] uppercase tracking-[0.32em] text-amber-200/70">
-              {data?.viewer.isAdmin ? "Private inbox" : "Direct line"}
+              {counterpart?.threadKind === "ai"
+                ? "AI concierge"
+                : data?.viewer.isAdmin
+                  ? "Private inbox"
+                  : "Direct line"}
             </div>
             <h2 className="mt-2 truncate text-xl font-semibold text-white">{heading}</h2>
             {counterpart ? (
               <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-400">
-                <span>{counterpart.isAdmin ? "Private thread with Emaren" : "Private community thread"}</span>
+                <span>
+                  {counterpart.threadKind === "ai"
+                    ? "Private AI thread with site context"
+                    : counterpart.isAdmin
+                      ? "Private thread with Emaren"
+                      : "Private community thread"}
+                </span>
                 {counterpart.giftedWolo > 0 ? <span>· {counterpart.giftedWolo} WOLO gifted</span> : null}
               </div>
             ) : null}
@@ -856,7 +877,7 @@ export default function ContactInboxPanel({
                       }
                     }
                   }}
-                  placeholder={buildPrompt(data, counterpart?.displayName ?? null)}
+                  placeholder={buildPrompt(data, counterpart)}
                   className={`min-h-[3.8rem] flex-1 resize-none rounded-[1.25rem] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 transition focus:shadow-[inset_0_0_0_1px_rgba(251,191,36,0.25)] ${plainComposerInputClassName}`}
                 />
                 <button

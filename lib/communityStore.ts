@@ -1,11 +1,90 @@
 import { PrismaClient } from "@/lib/generated/prisma";
+import { isAiConciergeUid } from "@/lib/aiConciergeConfig";
 import {
   getFallbackTournament,
   LOBBY_ROOM_SLUG,
   type LobbyMessage,
+  type LobbyMessageReaction,
   type LobbyTournament,
 } from "@/lib/lobby";
+import { LOBBY_MESSAGE_REACTIONS } from "@/lib/lobbyReactionConfig";
 import { toLobbyEntrant, toLobbyTournamentMatch } from "@/lib/tournamentMatchView";
+
+function displayNameForUser(user: {
+  uid: string;
+  inGameName: string | null;
+  steamPersonaName: string | null;
+}) {
+  return user.inGameName || user.steamPersonaName || user.uid;
+}
+
+function buildLobbyMessageReactions(
+  reactions: Array<{
+    emoji: string;
+    user: {
+      uid: string;
+      inGameName: string | null;
+      steamPersonaName: string | null;
+    };
+  }>,
+  guestReactions: Array<{
+    emoji: string;
+    guestSessionId: string;
+  }>,
+  viewerUid?: string | null,
+  guestSessionId?: string | null
+): LobbyMessageReaction[] {
+  const grouped = new Map<string, LobbyMessageReaction>();
+
+  for (const reaction of reactions) {
+    const current =
+      grouped.get(reaction.emoji) ||
+      ({
+        emoji: reaction.emoji,
+        count: 0,
+        viewerReacted: false,
+        anonymousCount: 0,
+        users: [],
+      } satisfies LobbyMessageReaction);
+
+    current.count += 1;
+    current.viewerReacted = current.viewerReacted || reaction.user.uid === viewerUid;
+    current.users.push({
+      uid: reaction.user.uid,
+      displayName: displayNameForUser(reaction.user),
+    });
+    grouped.set(reaction.emoji, current);
+  }
+
+  for (const reaction of guestReactions) {
+    const current =
+      grouped.get(reaction.emoji) ||
+      ({
+        emoji: reaction.emoji,
+        count: 0,
+        viewerReacted: false,
+        anonymousCount: 0,
+        users: [],
+      } satisfies LobbyMessageReaction);
+
+    current.count += 1;
+    current.anonymousCount += 1;
+    current.viewerReacted =
+      current.viewerReacted || reaction.guestSessionId === guestSessionId;
+    grouped.set(reaction.emoji, current);
+  }
+
+  const order = new Map<string, number>(
+    LOBBY_MESSAGE_REACTIONS.map((emoji, index) => [emoji, index])
+  );
+  return Array.from(grouped.values()).sort((left, right) => {
+    if (left.count !== right.count) {
+      return right.count - left.count;
+    }
+
+    return (order.get(left.emoji) ?? 999) - (order.get(right.emoji) ?? 999);
+  });
+}
 
 export async function ensureLobbyRoom(prisma: PrismaClient) {
   return prisma.chatRoom.upsert({
@@ -160,7 +239,11 @@ export async function getFeaturedTournament(
 export async function getLobbyMessages(
   prisma: PrismaClient,
   roomSlug = LOBBY_ROOM_SLUG,
-  limit = 60
+  limit = 60,
+  viewer?: {
+    uid?: string | null;
+    guestSessionId?: string | null;
+  }
 ): Promise<LobbyMessage[]> {
   const room =
     roomSlug === LOBBY_ROOM_SLUG
@@ -186,6 +269,26 @@ export async function getLobbyMessages(
           verified: true,
         },
       },
+      reactions: {
+        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+        select: {
+          emoji: true,
+          user: {
+            select: {
+              uid: true,
+              inGameName: true,
+              steamPersonaName: true,
+            },
+          },
+        },
+      },
+      guestReactions: {
+        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+        select: {
+          emoji: true,
+          guestSessionId: true,
+        },
+      },
     },
   });
 
@@ -196,12 +299,19 @@ export async function getLobbyMessages(
       roomSlug: room.slug,
       body: message.body,
       createdAt: message.createdAt.toISOString(),
+      reactions: buildLobbyMessageReactions(
+        message.reactions,
+        message.guestReactions,
+        viewer?.uid ?? null,
+        viewer?.guestSessionId ?? null
+      ),
       user: {
         uid: message.user.uid,
         inGameName: message.user.inGameName,
         steamPersonaName: message.user.steamPersonaName,
         verificationLevel: message.user.verificationLevel,
         verified: message.user.verified,
+        isAi: isAiConciergeUid(message.user.uid),
       },
     }));
 }

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { requestAiConciergeReply, ensureAiConciergeUser } from "@/lib/aiConcierge";
+import { AI_CONCIERGE_UID } from "@/lib/aiConciergeConfig";
 import {
   getOrCreateConversationByUsers,
   loadInboxPayload,
@@ -117,6 +119,23 @@ async function readMessageInput(request: NextRequest) {
   };
 }
 
+function buildAiPromptBody(payload: Awaited<ReturnType<typeof readMessageInput>>) {
+  const lines: string[] = [];
+  if (payload.body) {
+    lines.push(payload.body);
+  }
+
+  if (payload.attachment) {
+    lines.push(
+      payload.attachment.kind === "image"
+        ? `Attachment included: image${payload.attachment.name ? ` (${payload.attachment.name})` : ""}.`
+        : `Attachment included: voice note${payload.attachment.durationSeconds ? ` (${payload.attachment.durationSeconds}s)` : ""}.`
+    );
+  }
+
+  return lines.join("\n").trim();
+}
+
 export async function GET(request: NextRequest) {
   try {
     const sessionUid = await getSessionUid(request);
@@ -174,7 +193,11 @@ export async function POST(request: NextRequest) {
         : null;
 
     if (!viewer.isAdmin) {
-      targetUser = await resolvePrimaryAdminContact(prisma);
+      if (payload.targetUid === AI_CONCIERGE_UID) {
+        targetUser = await ensureAiConciergeUser(prisma);
+      } else {
+        targetUser = await resolvePrimaryAdminContact(prisma);
+      }
       if (!targetUser) {
         return NextResponse.json(
           { detail: "Emaren contact is not configured yet." },
@@ -192,6 +215,22 @@ export async function POST(request: NextRequest) {
     }
 
     const conversation = await getOrCreateConversationByUsers(prisma, viewer.id, targetUser.id);
+    const aiPromptBody =
+      targetUser.uid === AI_CONCIERGE_UID ? buildAiPromptBody(payload) : "";
+    const priorAiThreadMessages =
+      targetUser.uid === AI_CONCIERGE_UID
+        ? await prisma.directMessage.findMany({
+            where: {
+              conversationId: conversation.id,
+            },
+            orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+            take: 10,
+            select: {
+              body: true,
+              senderUserId: true,
+            },
+          })
+        : [];
 
     await prisma.directMessage.create({
       data: {
@@ -205,6 +244,42 @@ export async function POST(request: NextRequest) {
         attachmentDurationSeconds: payload.attachment?.durationSeconds ?? null,
       },
     });
+
+    if (targetUser.uid === AI_CONCIERGE_UID && aiPromptBody) {
+      let aiReplyBody: string;
+
+      try {
+        const aiReply = await requestAiConciergeReply({
+          prisma,
+          viewer: {
+            uid: viewer.uid,
+            displayName: viewer.inGameName || viewer.steamPersonaName || viewer.uid,
+          },
+          source: "contact_thread",
+          userMessage: aiPromptBody,
+          conversationHistory: priorAiThreadMessages
+            .slice()
+            .reverse()
+            .filter((message) => Boolean(message.body?.trim()))
+            .map((message) => ({
+              role: message.senderUserId === viewer.id ? "user" : "assistant",
+              content: String(message.body || "").trim(),
+            })),
+        });
+        aiReplyBody = aiReply.body;
+      } catch (aiError) {
+        console.warn("AI concierge contact reply failed:", aiError);
+        aiReplyBody = "AI Concierge is offline for a moment. Try again shortly.";
+      }
+
+      await prisma.directMessage.create({
+        data: {
+          conversationId: conversation.id,
+          senderUserId: targetUser.id,
+          body: aiReplyBody,
+        },
+      });
+    }
 
     const now = new Date();
     await prisma.directConversation.update({
@@ -291,7 +366,11 @@ export async function PATCH(request: NextRequest) {
         : null;
 
     if (!viewer.isAdmin) {
-      targetUser = await resolvePrimaryAdminContact(prisma);
+      if (payload.targetUid === AI_CONCIERGE_UID) {
+        targetUser = await ensureAiConciergeUser(prisma);
+      } else {
+        targetUser = await resolvePrimaryAdminContact(prisma);
+      }
       if (!targetUser) {
         return NextResponse.json(
           { detail: "Emaren contact is not configured yet." },

@@ -22,6 +22,7 @@ export type ContactGift = {
 export type ContactInboxSummary = {
   targetUid: string;
   displayName: string;
+  threadKind: "direct" | "ai";
   isAdmin: boolean;
   unreadCount: number;
   lastMessageAt: string | null;
@@ -94,6 +95,7 @@ export type ContactInboxMessage =
 export type ContactInboxCounterpart = {
   uid: string;
   displayName: string;
+  threadKind: "direct" | "ai";
   isAdmin: boolean;
   badges: ContactBadge[];
   giftedWolo: number;

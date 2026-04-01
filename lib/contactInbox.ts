@@ -1,5 +1,7 @@
 import type { PrismaClient } from "@/lib/generated/prisma";
 
+import { AI_CONCIERGE_UID } from "@/lib/aiConciergeConfig";
+import { ensureAiConciergeUser } from "@/lib/aiConcierge";
 import {
   loadUserCommunitySummaries,
   normalizeGiftKind,
@@ -15,6 +17,7 @@ import { recordUserActivity } from "@/lib/userExperience";
 export type InboxCounterpart = {
   uid: string;
   displayName: string;
+  threadKind: "direct" | "ai";
   isAdmin: boolean;
   badges: CommunityBadge[];
   giftedWolo: number;
@@ -23,6 +26,7 @@ export type InboxCounterpart = {
 export type InboxSummary = {
   targetUid: string;
   displayName: string;
+  threadKind: "direct" | "ai";
   isAdmin: boolean;
   unreadCount: number;
   lastMessageAt: string | null;
@@ -140,6 +144,10 @@ function displayNameForUser(user: {
   steamPersonaName: string | null;
 }) {
   return user.inGameName || user.steamPersonaName || user.uid;
+}
+
+function resolveThreadKind(uid: string) {
+  return uid === AI_CONCIERGE_UID ? "ai" : "direct";
 }
 
 function buildPairKey(leftUserId: number, rightUserId: number) {
@@ -564,6 +572,7 @@ async function loadConversationSummaries(prisma: PrismaClient, viewerUserId: num
       return {
         targetUid: counterpartParticipant.user.uid,
         displayName: displayNameForUser(counterpartParticipant.user),
+        threadKind: resolveThreadKind(counterpartParticipant.user.uid),
         isAdmin: counterpartParticipant.user.isAdmin,
         unreadCount: unreadMessageCount + honorSummary.unreadCount,
         lastMessageAt: lastEventAt?.toISOString() ?? null,
@@ -787,6 +796,7 @@ async function loadConversationMessages(
       ? ({
           uid: counterpartParticipant.user.uid,
           displayName: displayNameForUser(counterpartParticipant.user),
+          threadKind: resolveThreadKind(counterpartParticipant.user.uid),
           isAdmin: counterpartParticipant.user.isAdmin,
           badges: community.badges,
           giftedWolo: community.giftedWolo,
@@ -852,7 +862,21 @@ export async function loadInboxPayload(
       });
     }
   } else {
-    activeTargetUser = await resolvePrimaryAdminContact(prisma);
+    const aiConcierge = await ensureAiConciergeUser(prisma);
+    await getOrCreateConversationByUsers(prisma, viewer.id, aiConcierge.id);
+
+    if (options?.targetUid === AI_CONCIERGE_UID) {
+      activeTargetUser = {
+        id: aiConcierge.id,
+        uid: aiConcierge.uid,
+        isAdmin: false,
+        inGameName: aiConcierge.inGameName,
+        steamPersonaName: aiConcierge.steamPersonaName,
+      };
+    } else {
+      activeTargetUser = await resolvePrimaryAdminContact(prisma);
+    }
+
     if (!activeTargetUser) {
       unavailableReason = "Emaren contact is not configured yet.";
     }
@@ -921,6 +945,7 @@ export async function loadInboxPayload(
       activeCounterpart: {
         uid: activeTargetUser.uid,
         displayName: displayNameForUser(activeTargetUser),
+        threadKind: resolveThreadKind(activeTargetUser.uid),
         isAdmin: activeTargetUser.isAdmin,
         badges: community.badges,
         giftedWolo: community.giftedWolo,

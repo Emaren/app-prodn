@@ -1,6 +1,6 @@
 "use client";
 
-import { type CSSProperties, type ReactNode, type RefObject } from "react";
+import { type CSSProperties, type ReactNode, type RefObject, useState } from "react";
 import {
   getLobbyPresentationTone,
   type LobbyThemeKey,
@@ -9,6 +9,12 @@ import {
 import SteamLinkedBadge from "@/components/SteamLinkedBadge";
 import type { ChatRenderItem } from "@/components/lobby/utils";
 import { displayName } from "@/components/lobby/utils";
+import {
+  AI_MODEL_OPTIONS,
+  type AiModelId,
+  type AiVisibilityOption,
+} from "@/lib/aiConciergeConfig";
+import { LOBBY_MESSAGE_REACTIONS } from "@/lib/lobbyReactionConfig";
 
 type LobbyChatProps = {
   style?: CSSProperties;
@@ -19,14 +25,23 @@ type LobbyChatProps = {
   chatItems: ChatRenderItem[];
   chatScrollRef: RefObject<HTMLDivElement | null>;
   chatError: string | null;
+  chatNotice: string | null;
   isAuthenticated: boolean;
   playerName: string | null;
   currentUserInGameName: string | null;
   currentUserSteamPersonaName: string | null;
   messageBody: string;
   chatPending: boolean;
+  reactingMessageId: number | null;
+  aiEnabled: boolean;
+  aiVisibility: AiVisibilityOption;
+  aiModel: AiModelId;
   onMessageBodyChange: (value: string) => void;
   onSendMessage: () => void;
+  onAiEnabledChange: (value: boolean) => void;
+  onAiVisibilityChange: (value: AiVisibilityOption) => void;
+  onAiModelChange: (value: AiModelId) => void;
+  onToggleReaction: (messageId: number, emoji: string) => void;
   onLogin: () => void;
 };
 
@@ -39,21 +54,30 @@ export function LobbyChat({
   chatItems,
   chatScrollRef,
   chatError,
+  chatNotice,
   isAuthenticated,
   playerName,
   currentUserInGameName,
   currentUserSteamPersonaName,
   messageBody,
   chatPending,
+  reactingMessageId,
+  aiEnabled,
+  aiVisibility,
+  aiModel,
   onMessageBodyChange,
   onSendMessage,
+  onAiEnabledChange,
+  onAiVisibilityChange,
+  onAiModelChange,
+  onToggleReaction,
   onLogin,
 }: LobbyChatProps) {
   const tone = getLobbyPresentationTone(themeKey, viewMode);
 
   return (
     <div
-      className={`flex min-h-[34rem] min-w-0 flex-col rounded-[1.75rem] border p-6 ${tone.panelShell}`}
+      className={`flex min-h-[24rem] min-w-0 max-h-[min(78dvh,38rem)] flex-col rounded-[1.75rem] border p-5 sm:min-h-[32rem] sm:max-h-[42rem] sm:p-6 lg:min-h-[34rem] lg:max-h-none ${tone.panelShell}`}
       style={style}
     >
       <div className="flex items-center justify-between gap-4">
@@ -79,39 +103,25 @@ export function LobbyChat({
                 item.type === "divider" ? (
                   <ChatDateDivider key={item.key} label={item.label} dividerClassName={tone.divider} />
                 ) : (
-                  <div key={item.key} className={`rounded-xl border px-4 py-4 ${tone.subduedCard}`}>
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="font-medium text-white">
-                        {displayName(item.message.user.inGameName, item.message.user.steamPersonaName)}
-                      </div>
-
-                      <div className="text-xs text-slate-400">
-                        {new Date(item.message.createdAt).toLocaleTimeString([], {
-                          hour: "numeric",
-                          minute: "2-digit",
-                        })}
-                      </div>
-                    </div>
-
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {item.message.user.verificationLevel > 0 ? (
-                        <SteamLinkedBadge compact />
-                      ) : (
-                        <MiniIdentityPill toneClassName={tone.neutralPill}>Unverified</MiniIdentityPill>
-                      )}
-
-                      {item.message.user.verified ? (
-                        <MiniIdentityPill toneClassName={tone.neutralPill}>Replay verified</MiniIdentityPill>
-                      ) : null}
-                    </div>
-
-                    <p className="mt-3 text-sm leading-6 text-slate-200">{item.message.body}</p>
-                  </div>
+                  <LobbyMessageCard
+                    key={item.key}
+                    item={item}
+                    tone={tone}
+                    isAuthenticated={isAuthenticated}
+                    reactingMessageId={reactingMessageId}
+                    onToggleReaction={onToggleReaction}
+                  />
                 )
               )
             )}
           </div>
         </div>
+
+        {chatNotice && !chatError ? (
+          <div className="rounded-2xl border border-amber-300/20 bg-amber-400/8 px-4 py-3 text-sm text-amber-50/90">
+            {chatNotice}
+          </div>
+        ) : null}
 
         {chatError && (
           <div className="rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
@@ -124,6 +134,59 @@ export function LobbyChat({
             <div className="space-y-3">
               <div className="text-sm text-slate-300">
                 Chatting as {playerName || displayName(currentUserInGameName, currentUserSteamPersonaName)}
+              </div>
+
+              <div className="flex flex-col gap-3 rounded-[1.2rem] border border-white/8 bg-white/[0.035] px-3 py-3 text-sm text-slate-200">
+                <div className="flex flex-wrap items-center gap-3">
+                  <label className="inline-flex items-center gap-2 text-sm text-white">
+                    <input
+                      type="checkbox"
+                      checked={aiEnabled}
+                      onChange={(event) => onAiEnabledChange(event.target.checked)}
+                      className="h-4 w-4 rounded border-white/20 bg-transparent accent-amber-300"
+                    />
+                    <span>AI response</span>
+                  </label>
+
+                  <label className="flex min-w-0 items-center gap-2 text-xs uppercase tracking-[0.22em] text-slate-400">
+                    <span className="shrink-0">Model</span>
+                    <select
+                      value={aiModel}
+                      onChange={(event) => onAiModelChange(event.target.value as AiModelId)}
+                      disabled={!aiEnabled}
+                      className="min-w-0 rounded-full border border-white/10 bg-[#0d1524] px-3 py-2 text-xs font-medium tracking-normal text-white outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {AI_MODEL_OPTIONS.map((option) => (
+                        <option key={option.id} value={option.id}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="text-[11px] uppercase tracking-[0.24em] text-slate-500">
+                    AI lane
+                  </div>
+                  <div className="inline-flex rounded-full border border-white/10 bg-[#0b1322] p-1">
+                    {(["private", "public"] as const).map((option) => (
+                      <button
+                        key={option}
+                        type="button"
+                        onClick={() => onAiVisibilityChange(option)}
+                        disabled={!aiEnabled}
+                        className={`rounded-full px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.18em] transition ${
+                          aiVisibility === option
+                            ? "bg-amber-300 text-slate-950"
+                            : "text-slate-300 hover:text-white"
+                        } disabled:cursor-not-allowed disabled:opacity-50`}
+                      >
+                        {option === "private" ? "Private AI" : "Public AI"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               <div className="flex flex-col gap-3 sm:flex-row">
@@ -172,6 +235,126 @@ export function LobbyChat({
   );
 }
 
+function LobbyMessageCard({
+  item,
+  tone,
+  isAuthenticated,
+  reactingMessageId,
+  onToggleReaction,
+}: {
+  item: Extract<ChatRenderItem, { type: "message" }>;
+  tone: ReturnType<typeof getLobbyPresentationTone>;
+  isAuthenticated: boolean;
+  reactingMessageId: number | null;
+  onToggleReaction: (messageId: number, emoji: string) => void;
+}) {
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const isAi = item.message.user.isAi;
+
+  return (
+    <div className={`rounded-xl border px-4 py-4 ${tone.subduedCard}`}>
+      <div className="flex items-center justify-between gap-3">
+        <div className="font-medium text-white">
+          {displayName(item.message.user.inGameName, item.message.user.steamPersonaName)}
+        </div>
+
+        <div className="text-xs text-slate-400">
+          {new Date(item.message.createdAt).toLocaleTimeString([], {
+            hour: "numeric",
+            minute: "2-digit",
+          })}
+        </div>
+      </div>
+
+      <div className="mt-2 flex flex-wrap gap-2">
+        {isAi ? (
+          <MiniIdentityPill toneClassName="border-cyan-400/20 bg-cyan-400/10 text-cyan-50">
+            AI concierge
+          </MiniIdentityPill>
+        ) : item.message.user.verificationLevel > 0 ? (
+          <SteamLinkedBadge compact />
+        ) : (
+          <MiniIdentityPill toneClassName={tone.neutralPill}>Unverified</MiniIdentityPill>
+        )}
+
+        {!isAi && item.message.user.verified ? (
+          <MiniIdentityPill toneClassName={tone.neutralPill}>Replay verified</MiniIdentityPill>
+        ) : null}
+      </div>
+
+      <p className="mt-3 text-sm leading-6 text-slate-200">{item.message.body}</p>
+
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        {item.message.reactions.map((reaction) => {
+          const tooltip =
+            isAuthenticated && (reaction.users.length > 0 || reaction.anonymousCount > 0)
+              ? formatReactionTooltip(reaction)
+              : undefined;
+
+          return (
+            <button
+              key={`${item.message.id}-${reaction.emoji}-summary`}
+              type="button"
+              onClick={() => onToggleReaction(item.message.id, reaction.emoji)}
+              title={tooltip}
+              aria-pressed={reaction.viewerReacted}
+              disabled={reactingMessageId === item.message.id}
+              className={`inline-flex min-w-[3rem] items-center justify-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-medium transition ${
+                reaction.viewerReacted
+                  ? "border-amber-300/20 bg-amber-400/12 text-amber-100"
+                  : "border-white/10 bg-[#0c1524] text-slate-300 hover:border-white/18 hover:text-white"
+              } disabled:cursor-not-allowed disabled:opacity-60`}
+            >
+              <span>{reaction.emoji}</span>
+              <span>{reaction.count}</span>
+            </button>
+          );
+        })}
+
+        <button
+          type="button"
+          onClick={() => setPickerOpen((current) => !current)}
+          className={`inline-flex items-center rounded-full border px-3 py-1.5 text-[11px] font-medium transition ${
+            pickerOpen
+              ? "border-white/18 bg-white/[0.08] text-white"
+              : "border-white/10 bg-white/[0.04] text-slate-300 hover:border-white/16 hover:text-white"
+          }`}
+          aria-expanded={pickerOpen}
+        >
+          React
+        </button>
+      </div>
+
+      {pickerOpen ? (
+        <div className="mt-3 inline-flex max-w-full flex-wrap items-center gap-2 rounded-full border border-white/10 bg-[#091321] px-2.5 py-2 shadow-[0_18px_40px_rgba(2,6,23,0.4)]">
+          {LOBBY_MESSAGE_REACTIONS.map((emoji) => {
+            const existing = item.message.reactions.find((reaction) => reaction.emoji === emoji);
+            const isActive = Boolean(existing?.viewerReacted);
+            return (
+              <button
+                key={`${item.message.id}-${emoji}`}
+                type="button"
+                onClick={() => {
+                  onToggleReaction(item.message.id, emoji);
+                }}
+                aria-pressed={isActive}
+                disabled={reactingMessageId === item.message.id}
+                className={`flex h-9 min-w-9 items-center justify-center rounded-full border px-3 text-sm transition ${
+                  isActive
+                    ? "border-amber-300/30 bg-amber-400/16 text-amber-50 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.12)]"
+                    : "border-white/10 bg-white/[0.045] text-slate-200 hover:border-white/18 hover:bg-white/[0.1] hover:text-white"
+                } disabled:cursor-not-allowed disabled:opacity-60`}
+              >
+                <span>{emoji}</span>
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function ChatDateDivider({
   label,
   dividerClassName,
@@ -202,4 +385,15 @@ function MiniIdentityPill({
       {children}
     </span>
   );
+}
+
+function formatReactionTooltip(reaction: {
+  users: Array<{ displayName: string }>;
+  anonymousCount: number;
+}) {
+  const named = reaction.users.map((user) => user.displayName);
+  if (reaction.anonymousCount > 0) {
+    named.push(`${reaction.anonymousCount} guest${reaction.anonymousCount === 1 ? "" : "s"}`);
+  }
+  return named.join(", ");
 }

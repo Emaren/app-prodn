@@ -92,17 +92,32 @@ export type LobbyTournamentMatch = {
   playerTwo: LobbyTournamentEntrant | null;
 };
 
+export type LobbyReactionUser = {
+  uid: string;
+  displayName: string;
+};
+
+export type LobbyMessageReaction = {
+  emoji: string;
+  count: number;
+  viewerReacted: boolean;
+  anonymousCount: number;
+  users: LobbyReactionUser[];
+};
+
 export type LobbyMessage = {
   id: number;
   roomSlug: string;
   body: string;
   createdAt: string;
+  reactions: LobbyMessageReaction[];
   user: {
     uid: string;
     inGameName: string | null;
     steamPersonaName: string | null;
     verificationLevel: number;
     verified: boolean;
+    isAi: boolean;
   };
 };
 

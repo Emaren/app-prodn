@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { readGuestReactionSessionIdFromRequest } from "@/lib/guestReactionSession";
 import { loadLobbySnapshot } from "@/lib/lobbySnapshot";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
@@ -15,6 +16,7 @@ function formatSse(event: string, data: unknown) {
 export async function GET(request: NextRequest) {
   const prisma = getPrisma();
   const viewerUid = await getSessionUid(request);
+  const guestReactionSessionId = readGuestReactionSessionIdFromRequest(request);
 
   let interval: NodeJS.Timeout | null = null;
   let heartbeat: NodeJS.Timeout | null = null;
@@ -49,7 +51,11 @@ export async function GET(request: NextRequest) {
         }
 
         try {
-          const snapshot = await loadLobbySnapshot(prisma, viewerUid);
+          const snapshot = await loadLobbySnapshot(
+            prisma,
+            viewerUid,
+            guestReactionSessionId
+          );
           safeEnqueue(formatSse("snapshot", snapshot));
         } catch (error) {
           console.warn("Failed to stream lobby snapshot:", error);

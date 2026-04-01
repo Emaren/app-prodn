@@ -33,6 +33,7 @@ model User {
   gameStats GameStats[]
   tournamentEntries TournamentEntry[]
   chatMessages      ChatMessage[]
+  chatMessageReactions ChatMessageReaction[]
   createdTournaments Tournament[] @relation("TournamentCreator")
   directConversationParticipants DirectConversationParticipant[] @relation("DirectConversationParticipantUser")
   directMessagesSent            DirectMessage[]                 @relation("DirectMessageSender")
@@ -221,12 +222,45 @@ model ChatMessage {
   body      String   @db.VarChar(500)
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
 
-  room ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  user User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  room           ChatRoom                  @relation(fields: [roomId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user           User                      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  reactions      ChatMessageReaction[]
+  guestReactions ChatMessageGuestReaction[]
 
   @@index([roomId, createdAt], map: "ix_chat_messages_room_created_at")
   @@index([userId, createdAt], map: "ix_chat_messages_user_created_at")
   @@map("chat_messages")
+}
+
+model ChatMessageReaction {
+  id        Int      @id @default(autoincrement())
+  messageId Int      @map("message_id")
+  userId    Int      @map("user_id")
+  emoji     String   @db.VarChar(24)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  message ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([messageId, userId, emoji], map: "uq_chat_message_reactions_message_user_emoji")
+  @@index([messageId, createdAt], map: "ix_chat_message_reactions_message_id")
+  @@index([userId, createdAt], map: "ix_chat_message_reactions_user_id")
+  @@map("chat_message_reactions")
+}
+
+model ChatMessageGuestReaction {
+  id             Int      @id @default(autoincrement())
+  messageId      Int      @map("message_id")
+  guestSessionId String   @map("guest_session_id") @db.VarChar(64)
+  emoji          String   @db.VarChar(24)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  message ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([messageId, guestSessionId, emoji], map: "uq_chat_message_guest_reactions_message_session_emoji")
+  @@index([messageId, createdAt], map: "ix_chat_message_guest_reactions_message_id")
+  @@index([guestSessionId, createdAt], map: "ix_chat_message_guest_reactions_guest_session_id")
+  @@map("chat_message_guest_reactions")
 }
 
 model DirectConversation {

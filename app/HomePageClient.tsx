@@ -11,6 +11,12 @@ import { TournamentPanel } from "@/components/lobby/TournamentPanel";
 import { buildChatItems } from "@/components/lobby/utils";
 import { useUserAuth } from "@/context/UserAuthContext";
 import {
+  AI_MODEL_OPTIONS,
+  AI_VISIBILITY_OPTIONS,
+  type AiModelId,
+  type AiVisibilityOption,
+} from "@/lib/aiConciergeConfig";
+import {
   getFallbackLeaderboard,
   getFallbackTournament,
   type LobbyMessage,
@@ -34,10 +40,17 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
   const [lobbyError, setLobbyError] = useState<string | null>(null);
   const [messageBody, setMessageBody] = useState("");
   const [chatError, setChatError] = useState<string | null>(null);
+  const [chatNotice, setChatNotice] = useState<string | null>(null);
   const [joinError, setJoinError] = useState<string | null>(null);
   const [chatPending, setChatPending] = useState(false);
   const [joinPending, setJoinPending] = useState(false);
   const [chatCardHeight, setChatCardHeight] = useState<number | null>(null);
+  const [reactingMessageId, setReactingMessageId] = useState<number | null>(null);
+  const [aiEnabled, setAiEnabled] = useState(true);
+  const [aiVisibility, setAiVisibility] = useState<AiVisibilityOption>(
+    AI_VISIBILITY_OPTIONS[0]
+  );
+  const [aiModel, setAiModel] = useState<AiModelId>(AI_MODEL_OPTIONS[0].id);
 
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
   const rightColumnRef = useRef<HTMLDivElement | null>(null);
@@ -270,11 +283,17 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
       const response = await fetch("/api/lobby/chat", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ message: trimmed, roomSlug: tournament.roomSlug }),
+        body: JSON.stringify({
+          message: trimmed,
+          roomSlug: tournament.roomSlug,
+          aiEnabled,
+          aiVisibility,
+          aiModel,
+        }),
       });
 
       const payload = (await response.json().catch(() => ({}))) as
-        | { detail?: string; messages?: LobbyMessage[] }
+        | { detail?: string; messages?: LobbyMessage[]; aiWarning?: string | null }
         | Record<string, unknown>;
 
       if (!response.ok) {
@@ -282,6 +301,7 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
       }
 
       setMessageBody("");
+      setChatNotice(typeof payload.aiWarning === "string" ? payload.aiWarning : null);
       setLobby((current) =>
         current
           ? {
@@ -292,8 +312,43 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
       );
     } catch (error) {
       setChatError(error instanceof Error ? error.message : "Message failed.");
+      setChatNotice(null);
     } finally {
       setChatPending(false);
+    }
+  }
+
+  async function handleToggleReaction(messageId: number, emoji: string) {
+    try {
+      setReactingMessageId(messageId);
+      setChatError(null);
+
+      const response = await fetch("/api/lobby/chat/reaction", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ messageId, emoji }),
+      });
+
+      const payload = (await response.json().catch(() => ({}))) as
+        | { detail?: string; messages?: LobbyMessage[] }
+        | Record<string, unknown>;
+
+      if (!response.ok) {
+        throw new Error(typeof payload.detail === "string" ? payload.detail : "Reaction failed.");
+      }
+
+      setLobby((current) =>
+        current
+          ? {
+              ...current,
+              messages: Array.isArray(payload.messages) ? payload.messages : current.messages,
+            }
+          : current
+      );
+    } catch (error) {
+      setChatError(error instanceof Error ? error.message : "Reaction failed.");
+    } finally {
+      setReactingMessageId(null);
     }
   }
 
@@ -360,15 +415,26 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
           chatItems={chatItems}
           chatScrollRef={chatScrollRef}
           chatError={chatError}
+          chatNotice={chatNotice}
           isAuthenticated={isAuthenticated}
           playerName={playerName}
           currentUserInGameName={user?.inGameName ?? null}
           currentUserSteamPersonaName={user?.steamPersonaName ?? null}
           messageBody={messageBody}
           chatPending={chatPending}
+          reactingMessageId={reactingMessageId}
+          aiEnabled={aiEnabled}
+          aiVisibility={aiVisibility}
+          aiModel={aiModel}
           onMessageBodyChange={setMessageBody}
           onSendMessage={() => {
             void handleSendMessage();
+          }}
+          onAiEnabledChange={setAiEnabled}
+          onAiVisibilityChange={setAiVisibility}
+          onAiModelChange={setAiModel}
+          onToggleReaction={(messageId, emoji) => {
+            void handleToggleReaction(messageId, emoji);
           }}
           onLogin={() => loginWithSteam("/")}
         />
