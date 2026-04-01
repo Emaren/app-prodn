@@ -1,7 +1,16 @@
 import http from "http";
 import https from "https";
 
-import { woloChainConfig } from "@/lib/woloChain";
+import {
+  WOLO_ADDRESS_PREFIX,
+  WOLO_BASE_DENOM,
+  WOLO_CHAIN_ID,
+  WOLO_CHAIN_NAME,
+  WOLO_COIN_DECIMALS,
+  WOLO_DISPLAY_DENOM,
+  WOLO_MONETARY_POLICY_LABEL,
+  woloChainConfig,
+} from "@/lib/woloChain";
 
 const insecureHttpsAgent = new https.Agent({
   rejectUnauthorized: false,
@@ -43,6 +52,12 @@ type BankBalancesPayload = {
 export type WoloStatusSnapshot = {
   healthy: boolean;
   chainId: string;
+  chainName: string;
+  addressPrefix: string;
+  baseDenom: string;
+  displayDenom: string;
+  coinDecimals: number;
+  monetaryPolicy: string;
   moniker: string;
   nodeVersion: string;
   latestBlockHeight: string;
@@ -53,6 +68,7 @@ export type WoloStatusSnapshot = {
   latestBlockHash: string | null;
   latestAppHash: string | null;
   source: string;
+  sourceLabel: string;
   terminalLines: string[];
 };
 
@@ -79,10 +95,12 @@ function requestText(url: string) {
 
         response.on("end", () => {
           const body = Buffer.concat(chunks).toString("utf8");
+
           if ((response.statusCode || 500) >= 400) {
             reject(new Error(`Upstream ${target.hostname} returned ${response.statusCode}`));
             return;
           }
+
           resolve(body);
         });
       }
@@ -91,6 +109,7 @@ function requestText(url: string) {
     request.setTimeout(5000, () => {
       request.destroy(new Error(`Timed out reaching ${target.hostname}`));
     });
+
     request.on("error", reject);
     request.end();
   });
@@ -101,9 +120,17 @@ async function requestJson<T>(url: string) {
   return JSON.parse(text) as T;
 }
 
-function trimHash(value: string | null | undefined) {
+function trimHash(value: string | null | undefined, length = 16) {
   if (!value) return "n/a";
-  return value.slice(0, 14);
+  return value.slice(0, length);
+}
+
+function getSourceLabel(value: string) {
+  try {
+    return new URL(value).host;
+  } catch {
+    return value;
+  }
 }
 
 function buildTerminalLines(snapshot: Omit<WoloStatusSnapshot, "terminalLines">) {
@@ -114,49 +141,51 @@ function buildTerminalLines(snapshot: Omit<WoloStatusSnapshot, "terminalLines">)
   });
 
   return [
-    `[${stamp}] dial rpc ${snapshot.source}`,
-    `[${stamp}] chain ${snapshot.chainId} moniker ${snapshot.moniker}`,
-    `[${stamp}] height ${snapshot.latestBlockHeight} peers ${snapshot.peers} catching_up ${snapshot.catchingUp ? "yes" : "no"}`,
+    `[${stamp}] dial rpc ${snapshot.sourceLabel}`,
+    `[${stamp}] handshake chain ${snapshot.chainId} moniker ${snapshot.moniker}`,
+    `[${stamp}] prefix ${snapshot.addressPrefix}1... denom ${snapshot.baseDenom} display ${snapshot.displayDenom}`,
+    `[${stamp}] policy ${snapshot.monetaryPolicy}`,
+    `[${stamp}] height ${snapshot.latestBlockHeight} peers ${snapshot.peers} sync ${snapshot.catchingUp ? "catching_up" : "ready"}`,
     `[${stamp}] block_hash ${trimHash(snapshot.latestBlockHash)}`,
     `[${stamp}] app_hash ${trimHash(snapshot.latestAppHash)}`,
     `[${stamp}] validator ${trimHash(snapshot.validatorAddress)}`,
-    `[${stamp}] block_time ${snapshot.latestBlockTime || "unknown"}`,
-    `[${stamp}] watcher armed for next block`,
+    `[${stamp}] last_block ${snapshot.latestBlockTime || "unknown"}`,
+    `[${stamp}] rail armed for next state transition`,
   ];
 }
 
 export async function fetchWoloStatusSnapshot(): Promise<WoloStatusSnapshot> {
   const source = woloChainConfig.rpc;
+  const sourceLabel = getSourceLabel(source);
 
   try {
     const [payload, netInfo] = await Promise.all([
       requestJson<TendermintStatusPayload>(`${source.replace(/\/$/, "")}/status`),
-      requestJson<TendermintNetInfoPayload>(`${source.replace(/\/$/, "")}/net_info`).catch(() => null),
+      requestJson<TendermintNetInfoPayload>(`${source.replace(/\/$/, "")}/net_info`).catch(
+        () => null
+      ),
     ]);
-    const network = payload.result?.node_info?.network || woloChainConfig.chainId;
-    const moniker = payload.result?.node_info?.moniker || "WoloChain";
-    const nodeVersion = payload.result?.node_info?.version || "unknown";
-    const latestBlockHeight = payload.result?.sync_info?.latest_block_height || "0";
-    const latestBlockTime = payload.result?.sync_info?.latest_block_time || null;
-    const catchingUp = Boolean(payload.result?.sync_info?.catching_up);
-    const latestBlockHash = payload.result?.sync_info?.latest_block_hash || null;
-    const latestAppHash = payload.result?.sync_info?.latest_app_hash || null;
-    const peers = Number.parseInt(String(netInfo?.result?.n_peers ?? "0"), 10) || 0;
-    const validatorAddress = payload.result?.validator_info?.address || null;
 
     const snapshotWithoutLines: Omit<WoloStatusSnapshot, "terminalLines"> = {
       healthy: true,
-      chainId: network,
-      moniker,
-      nodeVersion,
-      latestBlockHeight,
-      latestBlockTime,
-      peers,
-      catchingUp,
-      validatorAddress,
-      latestBlockHash,
-      latestAppHash,
+      chainId: payload.result?.node_info?.network || WOLO_CHAIN_ID,
+      chainName: WOLO_CHAIN_NAME,
+      addressPrefix: WOLO_ADDRESS_PREFIX,
+      baseDenom: WOLO_BASE_DENOM,
+      displayDenom: WOLO_DISPLAY_DENOM,
+      coinDecimals: WOLO_COIN_DECIMALS,
+      monetaryPolicy: WOLO_MONETARY_POLICY_LABEL,
+      moniker: payload.result?.node_info?.moniker || WOLO_CHAIN_NAME,
+      nodeVersion: payload.result?.node_info?.version || "unknown",
+      latestBlockHeight: payload.result?.sync_info?.latest_block_height || "0",
+      latestBlockTime: payload.result?.sync_info?.latest_block_time || null,
+      peers: Number.parseInt(String(netInfo?.result?.n_peers ?? "0"), 10) || 0,
+      catchingUp: Boolean(payload.result?.sync_info?.catching_up),
+      validatorAddress: payload.result?.validator_info?.address || null,
+      latestBlockHash: payload.result?.sync_info?.latest_block_hash || null,
+      latestAppHash: payload.result?.sync_info?.latest_app_hash || null,
       source,
+      sourceLabel,
     };
 
     return {
@@ -165,10 +194,17 @@ export async function fetchWoloStatusSnapshot(): Promise<WoloStatusSnapshot> {
     };
   } catch (error) {
     const detail = error instanceof Error ? error.message : "unknown node error";
+
     const fallback: Omit<WoloStatusSnapshot, "terminalLines"> = {
       healthy: false,
-      chainId: woloChainConfig.chainId,
-      moniker: "WoloChain",
+      chainId: WOLO_CHAIN_ID,
+      chainName: WOLO_CHAIN_NAME,
+      addressPrefix: WOLO_ADDRESS_PREFIX,
+      baseDenom: WOLO_BASE_DENOM,
+      displayDenom: WOLO_DISPLAY_DENOM,
+      coinDecimals: WOLO_COIN_DECIMALS,
+      monetaryPolicy: WOLO_MONETARY_POLICY_LABEL,
+      moniker: WOLO_CHAIN_NAME,
       nodeVersion: "unknown",
       latestBlockHeight: "0",
       latestBlockTime: null,
@@ -178,14 +214,15 @@ export async function fetchWoloStatusSnapshot(): Promise<WoloStatusSnapshot> {
       latestBlockHash: null,
       latestAppHash: null,
       source,
+      sourceLabel,
     };
 
     return {
       ...fallback,
       terminalLines: [
-        `[offline] dial rpc ${source}`,
+        `[offline] dial rpc ${sourceLabel}`,
         `[offline] ${detail}`,
-        `[offline] chain rail still mounted in builder mode`,
+        `[offline] chain truth still mounted: ${WOLO_CHAIN_ID} / ${WOLO_BASE_DENOM} / ${WOLO_ADDRESS_PREFIX}1...`,
         `[offline] waiting for next successful node handshake`,
       ],
     };
@@ -193,12 +230,19 @@ export async function fetchWoloStatusSnapshot(): Promise<WoloStatusSnapshot> {
 }
 
 export async function fetchWoloBalanceAmount(address: string) {
+  const trimmed = address.trim();
+
+  if (!trimmed) {
+    throw new Error("Address is required.");
+  }
+
+  if (!trimmed.startsWith(`${WOLO_ADDRESS_PREFIX}1`)) {
+    throw new Error(`Address must start with ${WOLO_ADDRESS_PREFIX}1`);
+  }
+
   const payload = await requestJson<BankBalancesPayload>(
-    `${woloChainConfig.rest.replace(/\/$/, "")}/cosmos/bank/v1beta1/balances/${encodeURIComponent(address)}`
+    `${woloChainConfig.rest.replace(/\/$/, "")}/cosmos/bank/v1beta1/balances/${encodeURIComponent(trimmed)}`
   );
 
-  return (
-    payload.balances?.find((coin) => coin.denom === "uwolo")?.amount ||
-    "0"
-  );
+  return payload.balances?.find((coin) => coin.denom === WOLO_BASE_DENOM)?.amount || "0";
 }
