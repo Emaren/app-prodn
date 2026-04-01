@@ -1,15 +1,16 @@
 "use client";
 
 import {
-  Activity,
   Apple,
   ArrowDownToLine,
+  ExternalLink,
   FolderSearch,
+  Gamepad2,
   HardDriveDownload,
-  Laptop,
-  Monitor,
+  KeyRound,
   Radar,
   ShieldCheck,
+  Terminal,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -18,82 +19,75 @@ import { useLobbyAppearance } from "@/components/lobby/LobbyAppearanceContext";
 import { getLobbyPresentationTone } from "@/components/lobby/lobbyPresentation";
 import { WATCHER_RELEASE } from "@/lib/watcherRelease";
 
-const OPTIONAL_ENV = `AOE2_API_BASE_URL=https://api-prodn.aoe2hdbets.com
-# optional if uploads are protected
-AOE2_UPLOAD_API_KEY=your_key_here`;
+const TERMINAL_FALLBACK = `xattr -dr com.apple.quarantine "/Applications/AoE2HD Watcher.app"
+open "/Applications/AoE2HD Watcher.app"`;
 
-const CAPABILITY_CARDS = [
+const OPTIONAL_ENV = `AOE2_API_BASE_URL=https://api-prodn.aoe2hdbets.com
+AOE2_UPLOAD_API_KEY=your_watcher_key_here`;
+
+const INSTALL_OPTIONS = [
+  {
+    key: "dmg",
+    title: "DMG Install",
+    subtitle: "Preferred on macOS",
+    href: WATCHER_RELEASE.downloadHref,
+    icon: Apple,
+    badge: "Preferred",
+    body: "Best when macOS opens it cleanly. Drag the app in, launch it, paste your watcher key once, and play.",
+  },
+  {
+    key: "zip",
+    title: "Direct ZIP",
+    subtitle: "Same app, same uploads",
+    href: WATCHER_RELEASE.manualZipHref,
+    icon: HardDriveDownload,
+    badge: "Fallback",
+    body: "Contains the same AoE2HD Watcher app bundle as the DMG. Use it if the DMG or Gatekeeper gets weird.",
+  },
+] as const;
+
+const SETUP_STEPS = [
+  {
+    step: "01",
+    title: "Open your profile and mint a watcher key",
+    body: "This is the one-time identity step. Paste the key into the app once per Mac.",
+    icon: KeyRound,
+  },
+  {
+    step: "02",
+    title: "Download the DMG or the Direct ZIP",
+    body: "DMG is easier. The Direct ZIP is a real fallback, not a reduced version.",
+    icon: ArrowDownToLine,
+  },
+  {
+    step: "03",
+    title: "Launch the app and confirm the replay folder",
+    body: "Auto-detect usually finds the AoE2HD or CrossOver SaveGame path immediately.",
+    icon: FolderSearch,
+  },
+  {
+    step: "04",
+    title: "Leave it open while you play",
+    body: "AoE2HDBets receives live replay pulses during the match and final proof after the replay settles.",
+    icon: Gamepad2,
+  },
+] as const;
+
+const TRUST_CARDS = [
   {
     icon: Radar,
     title: "Live Match Feed",
-    body: "Uploads in-progress replay snapshots while the match is still being played.",
+    body: "The watcher can send in-progress replay snapshots while the match is still being played.",
   },
   {
     icon: ShieldCheck,
     title: "Final Replay Proof",
-    body: "Sends the settled replay at the end so match results land clean.",
+    body: "When the replay file settles, the watcher pushes the final parse so results land clean.",
   },
   {
-    icon: FolderSearch,
-    title: "CrossOver Ready",
-    body: "Built around the AoE2HD replay folder flow already being used successfully.",
-  },
-] as const;
-
-const HOW_IT_WORKS = [
-  {
-    step: "01",
-    title: "Download",
-    body: "Grab the latest package for your platform.",
-  },
-  {
-    step: "02",
-    title: "Open",
-    body: "Launch the watcher and allow it the first time if your OS asks.",
-  },
-  {
-    step: "03",
-    title: "Play",
-    body: "Leave it running while you play so AoE2HDBets receives live and final replay proof.",
-  },
-] as const;
-
-const PLATFORM_RELEASES = [
-  {
-    key: "mac",
-    title: "macOS App",
-    subtitle: "Apple Silicon · DMG",
-    href: WATCHER_RELEASE.downloadHref,
-    icon: Apple,
-    status: "Live now",
-    isReady: true,
-  },
-  {
-    key: "zip",
-    title: "Manual ZIP",
-    subtitle: "Fallback while signing is offline",
-    href: "/downloads/aoe2-watcher-manual.zip",
     icon: HardDriveDownload,
-    status: "Fallback",
-    isReady: true,
-  },
-  {
-    key: "windows",
-    title: "Windows",
-    subtitle: "Installer coming next",
-    href: "",
-    icon: Monitor,
-    status: "Coming soon",
-    isReady: false,
-  },
-  {
-    key: "linux",
-    title: "Linux",
-    subtitle: "AppImage / package next",
-    href: "",
-    icon: Laptop,
-    status: "Coming soon",
-    isReady: false,
+    title: "Direct ZIP Is Legit",
+    body: "The ZIP contains the same app bundle and the same upload pipeline as the DMG. No feature loss.",
   },
 ] as const;
 
@@ -109,20 +103,16 @@ export default function DownloadPage() {
             <div className={`text-xs uppercase tracking-[0.38em] ${tone.eyebrow}`}>Watcher</div>
 
             <h1 className="mt-4 text-4xl font-semibold tracking-tight text-white sm:text-5xl">
-              AoE2HD Watcher
+              Download it. Paste your key once. Play.
             </h1>
 
             <p className="mt-5 max-w-3xl text-sm leading-7 text-slate-300 sm:text-[15px]">
-              Watches your AoE2HD SaveGame folder, sends live match snapshots, and lands
-              final replay proof automatically.
+              AoE2HD Watcher sits on your Mac, watches the SaveGame folder, sends live replay
+              pulses during the match, and lands final replay proof automatically when the file
+              settles.
             </p>
 
             <div className="mt-5 flex flex-wrap gap-2">
-              <div
-                className={`rounded-full border px-3 py-1 text-[11px] font-medium ${tone.neutralPill}`}
-              >
-                DMG Release
-              </div>
               <div
                 className={`rounded-full border px-3 py-1 text-[11px] font-medium ${tone.neutralPill}`}
               >
@@ -131,22 +121,22 @@ export default function DownloadPage() {
               <div
                 className={`rounded-full border px-3 py-1 text-[11px] font-medium ${tone.neutralPill}`}
               >
-                CrossOver Ready
+                CrossOver ready
               </div>
               <div
                 className={`rounded-full border px-3 py-1 text-[11px] font-medium ${tone.neutralPill}`}
               >
-                Live Snapshots
+                One-time watcher key
               </div>
               <div
                 className={`rounded-full border px-3 py-1 text-[11px] font-medium ${tone.neutralPill}`}
               >
-                Final Proof
+                Direct ZIP works too
               </div>
               <div
                 className={`rounded-full border px-3 py-1 text-[11px] font-medium ${tone.statusBadge}`}
               >
-                Unsigned for now
+                {WATCHER_RELEASE.signingStatus}
               </div>
             </div>
 
@@ -157,21 +147,30 @@ export default function DownloadPage() {
                 download
               >
                 <ArrowDownToLine className="h-4 w-4" />
-                Download for macOS
+                Download DMG
               </Link>
 
               <Link
-                href="/downloads/aoe2-watcher-manual.zip"
+                href={WATCHER_RELEASE.manualZipHref}
                 className={`inline-flex items-center gap-3 rounded-full border px-5 py-3 text-sm transition ${tone.secondaryButton}`}
                 download
               >
-                Manual ZIP Fallback
+                <HardDriveDownload className="h-4 w-4" />
+                Download Direct ZIP
+              </Link>
+
+              <Link
+                href="/profile"
+                className={`inline-flex items-center gap-3 rounded-full border px-5 py-3 text-sm transition ${tone.secondaryButton}`}
+              >
+                <ExternalLink className="h-4 w-4" />
+                Open Profile For Key
               </Link>
             </div>
 
             <div className="mt-4 rounded-2xl border border-amber-300/15 bg-amber-300/5 px-4 py-3 text-xs leading-6 text-amber-50/85">
-              The DMG is the preferred install path. If macOS blocks launch while signing and
-              notarization are offline, use the Manual ZIP fallback.
+              The DMG is the easiest path. The Direct ZIP contains the same watcher app and the
+              same upload flow. Terminal is only needed if macOS blocks the unsigned app.
             </div>
           </div>
 
@@ -200,16 +199,16 @@ export default function DownloadPage() {
             <div className="mt-5 space-y-3">
               <div className={`rounded-2xl border p-4 ${tone.card}`}>
                 <div className="text-[11px] uppercase tracking-[0.28em] text-slate-400">
-                  Package
+                  Primary package
                 </div>
                 <div className="mt-2 text-sm font-semibold text-white">DMG</div>
               </div>
 
               <div className={`rounded-2xl border p-4 ${tone.card}`}>
                 <div className="text-[11px] uppercase tracking-[0.28em] text-slate-400">
-                  Platform
+                  Legit fallback
                 </div>
-                <div className="mt-2 text-sm font-semibold text-white">macOS Apple Silicon</div>
+                <div className="mt-2 text-sm font-semibold text-white">Direct ZIP</div>
               </div>
 
               <div className={`rounded-2xl border p-4 ${tone.card}`}>
@@ -226,7 +225,7 @@ export default function DownloadPage() {
                   Signing
                 </div>
                 <div className="mt-2 text-sm font-semibold text-amber-50">
-                  Unsigned for now
+                  {WATCHER_RELEASE.signingStatus}
                 </div>
               </div>
             </div>
@@ -234,100 +233,83 @@ export default function DownloadPage() {
         </div>
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
+      <section className="grid gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
         <div className={`rounded-[1.8rem] border p-6 ${tone.panelShell}`}>
           <div className="flex items-center gap-3">
             <HardDriveDownload className="h-4 w-4 text-white" />
             <div className={`text-xs uppercase tracking-[0.34em] ${tone.eyebrow}`}>
-              Downloads
+              Choose Your Install
             </div>
           </div>
 
-          <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            {PLATFORM_RELEASES.map((platform) => {
-              const Icon = platform.icon;
-
-              if (platform.isReady) {
-                return (
-                  <Link
-                    key={platform.key}
-                    href={platform.href}
-                    download
-                    className={`group rounded-[1.35rem] border p-4 transition ${tone.insetPanel} hover:border-white/20 hover:bg-white/[0.06]`}
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className={`rounded-2xl border p-2 ${tone.neutralPill}`}>
-                        <Icon className="h-4 w-4" />
-                      </div>
-                      <div
-                        className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${
-                          platform.key === "zip" ? tone.neutralPill : tone.statusBadge
-                        }`}
-                      >
-                        {platform.status}
-                      </div>
-                    </div>
-
-                    <div className="mt-4 text-base font-semibold text-white">{platform.title}</div>
-                    <div className="mt-1 text-sm text-slate-400">{platform.subtitle}</div>
-
-                    <div className="mt-5 inline-flex items-center gap-2 text-sm font-medium text-amber-100 transition group-hover:text-white">
-                      <ArrowDownToLine className="h-4 w-4" />
-                      Download
-                    </div>
-                  </Link>
-                );
-              }
+          <div className="mt-5 grid gap-4 md:grid-cols-2">
+            {INSTALL_OPTIONS.map((option) => {
+              const Icon = option.icon;
 
               return (
-                <div
-                  key={platform.key}
-                  className="rounded-[1.35rem] border border-white/8 bg-slate-950/30 p-4 opacity-90"
+                <Link
+                  key={option.key}
+                  href={option.href}
+                  download
+                  className={`group rounded-[1.5rem] border p-5 transition ${tone.insetPanel} hover:border-white/20 hover:bg-white/[0.06]`}
                 >
                   <div className="flex items-center justify-between gap-3">
-                    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-2 text-slate-200">
+                    <div className={`rounded-2xl border p-2 ${tone.neutralPill}`}>
                       <Icon className="h-4 w-4" />
                     </div>
-                    <div className="rounded-full border border-white/10 px-2.5 py-1 text-[11px] font-medium text-slate-300">
-                      {platform.status}
+                    <div
+                      className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${
+                        option.key === "dmg" ? tone.statusBadge : tone.neutralPill
+                      }`}
+                    >
+                      {option.badge}
                     </div>
                   </div>
 
-                  <div className="mt-4 text-base font-semibold text-white">{platform.title}</div>
-                  <div className="mt-1 text-sm text-slate-400">{platform.subtitle}</div>
+                  <div className="mt-4 text-lg font-semibold text-white">{option.title}</div>
+                  <div className="mt-1 text-sm text-slate-400">{option.subtitle}</div>
+                  <p className="mt-4 text-sm leading-6 text-slate-300">{option.body}</p>
 
-                  <div className="mt-5 text-xs leading-6 text-slate-500">
-                    We&apos;ll add the native package and hook this link up next.
+                  <div className="mt-5 inline-flex items-center gap-2 text-sm font-medium text-amber-100 transition group-hover:text-white">
+                    <ArrowDownToLine className="h-4 w-4" />
+                    Download
                   </div>
-                </div>
+                </Link>
               );
             })}
           </div>
         </div>
 
         <div className={`rounded-[1.8rem] border p-6 ${tone.panelShell}`}>
-          <div className="text-xs uppercase tracking-[0.34em] text-sky-100/55">Quick Start</div>
+          <div className="text-xs uppercase tracking-[0.34em] text-sky-100/55">One-Time Setup</div>
 
           <div className="mt-5 space-y-4">
-            {HOW_IT_WORKS.map((item) => (
-              <div key={item.step} className={`rounded-[1.35rem] border p-4 ${tone.insetPanel}`}>
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${tone.statusBadge}`}
-                  >
-                    {item.step}
+            {SETUP_STEPS.map((item) => {
+              const Icon = item.icon;
+
+              return (
+                <div key={item.step} className={`rounded-[1.35rem] border p-4 ${tone.insetPanel}`}>
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${tone.statusBadge}`}
+                    >
+                      {item.step}
+                    </div>
+                    <div className={`rounded-2xl border p-2 ${tone.neutralPill}`}>
+                      <Icon className="h-4 w-4" />
+                    </div>
+                    <div className="text-sm font-semibold text-white">{item.title}</div>
                   </div>
-                  <div className="text-sm font-semibold text-white">{item.title}</div>
+                  <p className="mt-3 text-sm leading-6 text-slate-300">{item.body}</p>
                 </div>
-                <p className="mt-3 text-sm leading-6 text-slate-300">{item.body}</p>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
 
       <section className="grid gap-4 md:grid-cols-3">
-        {CAPABILITY_CARDS.map((card) => {
+        {TRUST_CARDS.map((card) => {
           const Icon = card.icon;
 
           return (
@@ -346,33 +328,47 @@ export default function DownloadPage() {
 
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
         <div className={`rounded-[1.8rem] border p-6 ${tone.panelShell}`}>
-          <div className="text-xs uppercase tracking-[0.34em] text-sky-100/55">
-            Platform plan
+          <div className="flex items-center gap-3">
+            <Terminal className="h-4 w-4 text-white" />
+            <div className={`text-xs uppercase tracking-[0.34em] ${tone.eyebrow}`}>
+              Unsigned Mac Fallback
+            </div>
           </div>
 
           <div className="mt-4 space-y-3 text-sm leading-7 text-slate-300">
             <p>
-              macOS now has the real packaged app path, and the Manual ZIP fallback stays
-              available while Apple signing and notarization are offline.
+              Most users should never need Terminal. If the DMG or Direct ZIP opens and the app
+              launches, you are done.
             </p>
             <p>
-              Windows and Linux links are shown here so the platform story feels complete, but
-              those native packages still need to be built and hooked up.
+              If Gatekeeper blocks the unsigned app, clear the quarantine attribute once and open
+              it again:
             </p>
+          </div>
+
+          <div className={`mt-4 rounded-[1.4rem] border p-4 ${tone.insetPanel}`}>
+            <pre className="overflow-x-auto text-sm leading-7 text-slate-100">
+              <code>{TERMINAL_FALLBACK}</code>
+            </pre>
+          </div>
+
+          <div className="mt-4 text-xs leading-6 text-slate-400">
+            Swap the path if you keep the app outside <code>/Applications</code>. The command is
+            only for launch friction, not a different watcher mode.
           </div>
         </div>
 
         <div className={`rounded-[1.8rem] border p-6 ${tone.panelShell}`}>
-          <div className="flex items-center gap-3">
-            <Activity className="h-4 w-4 text-white" />
-            <div className={`text-xs uppercase tracking-[0.34em] ${tone.eyebrow}`}>
-              Advanced
-            </div>
-          </div>
+          <div className="text-xs uppercase tracking-[0.34em] text-sky-100/55">Advanced / Manual</div>
 
-          <div className="mt-4 text-sm leading-6 text-slate-300">
-            Most users should just download the packaged app. These variables are only for
-            manual or protected-upload setups.
+          <div className="mt-4 space-y-3 text-sm leading-7 text-slate-300">
+            <p>
+              The packaged app already points at production. Most users do not need to touch any
+              variables at all.
+            </p>
+            <p>
+              These are only useful for protected uploads or manual terminal launches.
+            </p>
           </div>
 
           <div className={`mt-4 rounded-[1.4rem] border p-4 ${tone.insetPanel}`}>
@@ -382,8 +378,8 @@ export default function DownloadPage() {
           </div>
 
           <div className="mt-4 text-xs leading-6 text-slate-400">
-            Default upload host already points at AoE2HDBets production. Only add the API key if
-            the backend is locked down.
+            Windows and Linux packaging are still next up. Right now the honest path is macOS with
+            DMG first and Direct ZIP as the real fallback.
           </div>
         </div>
       </section>

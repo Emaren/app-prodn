@@ -23,6 +23,9 @@ const WATCHER_RELEASE_TEMPLATE = ({
   label: ${JSON.stringify(label)},
   releasedOn: ${JSON.stringify(releasedOn)},
   downloadHref: "/downloads/aoe2hd-watcher-1.0.0-arm64.dmg",
+  manualZipHref: "/downloads/aoe2-watcher-manual.zip",
+  manualZipLabel: "AoE2HD Watcher Direct ZIP",
+  signingStatus: "Unsigned for now",
   featureChips: ${JSON.stringify(featureChips, null, 2).replace(/\n/g, "\n  ")},
 } as const;
 `;
@@ -49,6 +52,7 @@ async function main() {
   const dmgPath = path.join(downloadsDir, "aoe2hd-watcher-1.0.0-arm64.dmg");
   const blockmapPath = path.join(downloadsDir, "aoe2hd-watcher-1.0.0-arm64.dmg.blockmap");
   const latestYamlPath = path.join(downloadsDir, "latest-mac.yml");
+  const manualZipPath = path.join(downloadsDir, "aoe2-watcher-manual.zip");
 
   const watcherPackage = JSON.parse(await fs.readFile(watcherPackagePath, "utf8"));
   const version = watcherPackage.version;
@@ -85,10 +89,12 @@ async function main() {
   const sourceDmg = path.join(watcherDistDir, "AoE2HD Watcher-1.0.0-arm64.dmg");
   const sourceBlockmap = path.join(watcherDistDir, "AoE2HD Watcher-1.0.0-arm64.dmg.blockmap");
   const sourceLatestYaml = path.join(watcherDistDir, "latest-mac.yml");
+  const sourceManualZip = path.join(watcherDistDir, "aoe2-watcher-manual.zip");
 
   await fs.copyFile(sourceDmg, dmgPath);
   await fs.copyFile(sourceBlockmap, blockmapPath);
   await fs.copyFile(sourceLatestYaml, latestYamlPath);
+  await fs.copyFile(sourceManualZip, manualZipPath);
 
   process.stdout.write(`Synced watcher release ${label} -> ${dmgPath}\n`);
 }
