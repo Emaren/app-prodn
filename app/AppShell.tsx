@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import UserExperienceTracker from "@/components/analytics/UserExperienceTracker";
 import HeaderInboxControl from "@/components/contact/HeaderInboxControl";
 import HeaderMenu from "@/components/HeaderMenu";
@@ -35,10 +36,12 @@ const HEADER_LINKS: ReadonlyArray<{
 
 function InnerShell({ children }: { children: React.ReactNode }) {
   const { uid, playerName, setPlayerName, isAdmin } = useUserAuth();
+  const pathname = usePathname();
   const { themeKey, setThemeKey, viewMode, textColor, pageStyle } = useLobbyAppearance();
   const [pendingBetsCount] = React.useState(0);
   const [liveGamesCount, setLiveGamesCount] = React.useState(0);
   const [requestCount, setRequestCount] = React.useState(0);
+  const isContactPage = pathname?.startsWith("/contact-emaren");
   const headerSkin = getLobbyHeaderSkin(themeKey);
   const headerTone = React.useMemo(
     () => getLobbyPresentationTone(themeKey, viewMode),
@@ -86,14 +89,16 @@ function InnerShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div
-      className="flex min-h-screen w-full flex-col overflow-x-hidden text-white transition-[background-image,background-color] duration-500"
+      className={`flex w-full flex-col overflow-x-hidden text-white transition-[background-image,background-color] duration-500 ${
+        isContactPage ? "h-[100dvh] overflow-y-hidden" : "min-h-screen"
+      }`}
       style={pageStyle}
       data-text-tone={textColor}
       data-theme-key={themeKey}
     >
       <UserExperienceTracker />
       <header
-        className={`border-b px-3 py-4 backdrop-blur-xl transition-[background-color,border-color] duration-500 sm:px-4 ${headerSkin.shell}`}
+        className={`relative z-[90] border-b px-3 py-4 backdrop-blur-xl transition-[background-color,border-color] duration-500 sm:px-4 ${headerSkin.shell}`}
       >
         <div className="mx-auto max-w-6xl overflow-visible">
           <div className="space-y-3 lg:hidden">
@@ -251,7 +256,11 @@ function InnerShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <main className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col overflow-x-hidden px-3 py-4 sm:px-4">
+      <main
+        className={`mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col px-3 py-4 sm:px-4 ${
+          isContactPage ? "overflow-hidden" : "overflow-x-hidden"
+        }`}
+      >
         {children}
       </main>
       <Toaster richColors />

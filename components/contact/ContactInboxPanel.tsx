@@ -357,6 +357,8 @@ function TextMessageBubble({
   const isViewer = message.sender.uid === viewerUid;
   const maxBubbleWidthClass =
     mode === "page" ? "max-w-[min(96%,56rem)]" : "max-w-[94%] sm:max-w-[82%]";
+  const messageBodyViewportClass =
+    mode === "page" ? "max-h-[min(46vh,28rem)] overflow-y-auto pr-1" : "max-h-48 overflow-y-auto pr-1";
   const canToggleLobbyShare =
     message.sender.uid === AI_CONCIERGE_UID && !message.attachment && message.body.trim().length > 0;
   const [trayPinnedOpen, setTrayPinnedOpen] = useState(false);
@@ -501,9 +503,7 @@ function TextMessageBubble({
           >
             {message.body ? (
               <div
-                className={`relative whitespace-pre-wrap text-sm leading-6 [overflow-wrap:anywhere] ${
-                  mode === "popover" ? "max-h-48 overflow-y-auto pr-1" : ""
-                }`}
+                className={`relative whitespace-pre-wrap text-sm leading-6 [overflow-wrap:anywhere] ${messageBodyViewportClass}`}
               >
                 {message.body}
               </div>
