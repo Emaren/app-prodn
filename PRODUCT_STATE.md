@@ -116,7 +116,8 @@ Current state:
 - gifts exist in app logic
 - token rail is visible in product language and navigation
 - wallet snapshot is the right-rail anchor on `/wolo`, with Market Context living directly below it
-- wallet/action CTAs use a deliberate two-lane dock so `Open Wallet` / `Connect Keplr` stay primary while `Download Watcher` / `Get Keplr` / `Open Ping.pub` remain grouped and never orphan into a stray wrap row
+- default `/wolo` hero keeps the simpler legacy action row, while premium mode uses the two-lane action dock with borderless utility pills so `Open Ping.pub` stays grouped without a harsh white outline treatment
+- default WOLO runtime/daemon consoles stay in the raw green matrix style without per-line separators; premium runtime/daemon consoles keep the darker structured shell
 - not yet true settlement / chain-complete behavior
 
 ### Replay trust / postgame depth

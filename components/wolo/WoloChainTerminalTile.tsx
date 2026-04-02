@@ -162,7 +162,7 @@ export default function WoloChainTerminalTile() {
     readStoredPremiumPreference(RUNTIME_VIEW_KEY, false)
   );
   const [premiumDaemonView, setPremiumDaemonView] = useState(() =>
-    readStoredPremiumPreference(DAEMON_VIEW_KEY, true)
+    readStoredPremiumPreference(DAEMON_VIEW_KEY, false)
   );
 
   useEffect(() => {
@@ -483,18 +483,16 @@ function ConsolePanel({
   lines: string[];
 }) {
   return (
-    <div className="overflow-hidden rounded-[1.35rem] border border-white/8 bg-[#030814] shadow-[inset_0_0_0_1px_rgba(52,211,153,0.10)]">
-      <div className="flex items-center justify-between border-b border-emerald-500/10 px-4 py-3.5">
-        <div className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-200/78">
+    <div className="overflow-hidden rounded-[1.5rem] bg-[#020712] shadow-[inset_0_0_0_1px_rgba(52,211,153,0.15)]">
+      <div className="flex items-center justify-between border-b border-emerald-500/10 px-4 py-3">
+        <div className="text-[11px] uppercase tracking-[0.28em] text-emerald-200/70">
           {title}
         </div>
         <div className="text-xs text-emerald-100/70">{badge}</div>
       </div>
-      <div className="divide-y divide-emerald-500/10 font-mono text-[13px] leading-7 text-emerald-200 sm:text-[14px]">
+      <div className="space-y-2 px-4 py-4 font-mono text-[12px] leading-6 text-emerald-300">
         {lines.map((line, index) => (
-          <div key={`${line}-${index}`} className="px-4 py-2.5">
-            {line}
-          </div>
+          <div key={`${line}-${index}`}>{line}</div>
         ))}
       </div>
     </div>
@@ -579,7 +577,7 @@ function DaemonConsolePanel({
 
 function RuntimeChip({ label }: { label: string }) {
   return (
-    <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-200">
+    <div className="rounded-full border border-emerald-400/15 bg-emerald-500/5 px-3 py-1 text-xs text-emerald-100">
       {label}
     </div>
   );
@@ -595,13 +593,13 @@ function TerminalStat({
   compact?: boolean;
 }) {
   return (
-    <div className="rounded-[1.25rem] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
-      <div className="text-[11px] uppercase tracking-[0.18em] text-slate-400">{label}</div>
+    <div className="rounded-[1.4rem] border border-emerald-400/12 bg-emerald-500/5 px-4 py-4">
+      <div className="text-[11px] uppercase tracking-[0.28em] text-emerald-100/60">{label}</div>
       <div
         className={
           compact
-            ? "mt-3 text-xl font-semibold leading-tight text-white"
-            : "mt-3 text-[2.6rem] font-semibold leading-none tracking-tight text-white"
+            ? "mt-3 text-lg font-semibold text-emerald-100"
+            : "mt-3 text-3xl font-semibold text-emerald-100"
         }
       >
         {value}

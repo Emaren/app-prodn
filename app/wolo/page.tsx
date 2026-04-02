@@ -20,12 +20,17 @@ const PING_PUB_BASE_URL = "https://ping.pub";
 const OSMOSIS_DEX_URL = "https://app.osmosis.zone";
 const WOLO_EMBLEM_SRC = "/legacy/wolo-logo-transparent.png";
 const DEFAULT_WOLO_MARKET_PRICE = "$0.001";
-const WOLO_BASE_ACTION_CLASSNAME =
+const WOLO_PROD_ACTION_CLASSNAME =
+  "inline-flex items-center justify-center whitespace-nowrap rounded-full px-4 py-2.5 text-[13px] transition";
+const WOLO_PROD_PRIMARY_ACTION_CLASSNAME = `${WOLO_PROD_ACTION_CLASSNAME} bg-amber-300 font-semibold text-slate-950 hover:bg-amber-200`;
+const WOLO_PROD_SECONDARY_ACTION_CLASSNAME = `${WOLO_PROD_ACTION_CLASSNAME} border border-white/12 bg-white/5 text-white/90 hover:border-white/25 hover:bg-white/10 hover:text-white`;
+const WOLO_PROD_TERTIARY_ACTION_CLASSNAME = `${WOLO_PROD_ACTION_CLASSNAME} border border-emerald-400/25 bg-emerald-500/10 text-emerald-100 hover:border-emerald-300/40 hover:bg-emerald-500/15`;
+const WOLO_PREMIUM_ACTION_CLASSNAME =
   "inline-flex min-h-11 w-full items-center justify-center whitespace-nowrap rounded-full px-4 py-2.5 text-[13px] transition";
-const WOLO_PRIMARY_ACTION_CLASSNAME = `${WOLO_BASE_ACTION_CLASSNAME} bg-amber-300 font-semibold text-slate-950 hover:bg-amber-200`;
-const WOLO_SECONDARY_ACTION_CLASSNAME = `${WOLO_BASE_ACTION_CLASSNAME} border border-white/12 bg-white/5 text-white/90 hover:border-white/25 hover:bg-white/10 hover:text-white`;
-const WOLO_TERTIARY_ACTION_CLASSNAME = `${WOLO_BASE_ACTION_CLASSNAME} border border-emerald-400/25 bg-emerald-500/10 text-emerald-100 hover:border-emerald-300/40 hover:bg-emerald-500/15`;
-const WOLO_PING_ACTION_CLASSNAME = `${WOLO_BASE_ACTION_CLASSNAME} border border-amber-300/20 bg-amber-400/10 text-amber-100 hover:border-amber-200/35 hover:bg-amber-400/14`;
+const WOLO_PREMIUM_PRIMARY_ACTION_CLASSNAME = `${WOLO_PREMIUM_ACTION_CLASSNAME} bg-amber-300 font-semibold text-slate-950 hover:bg-amber-200`;
+const WOLO_PREMIUM_SECONDARY_ACTION_CLASSNAME = `${WOLO_PREMIUM_ACTION_CLASSNAME} bg-white/6 text-white/90 hover:bg-white/10 hover:text-white`;
+const WOLO_PREMIUM_TERTIARY_ACTION_CLASSNAME = `${WOLO_PREMIUM_ACTION_CLASSNAME} bg-emerald-500/10 text-emerald-100 hover:bg-emerald-500/15`;
+const WOLO_PREMIUM_PING_ACTION_CLASSNAME = `${WOLO_PREMIUM_ACTION_CLASSNAME} bg-amber-400/10 text-amber-100 hover:bg-amber-400/14`;
 
 function formatAddress(address?: string) {
   if (!address) return "Not connected";
@@ -171,11 +176,31 @@ export default function WoloPage() {
                 />
               </div>
 
-              <WoloHeroActionDock
-                connectLabel={status === "connected" ? "Wallet Live" : "Connect Keplr"}
-                onConnect={handleConnect}
-                showPingPub={false}
-              />
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <Link href="/wallet" className={WOLO_PROD_PRIMARY_ACTION_CLASSNAME}>
+                  Open Wallet
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void handleConnect();
+                  }}
+                  className={WOLO_PROD_SECONDARY_ACTION_CLASSNAME}
+                >
+                  {status === "connected" ? "Wallet Live" : "Connect Keplr"}
+                </button>
+                <Link href="/download" className={WOLO_PROD_SECONDARY_ACTION_CLASSNAME}>
+                  Download Watcher
+                </Link>
+                <a
+                  href={KEPLR_DOWNLOAD_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={WOLO_PROD_TERTIARY_ACTION_CLASSNAME}
+                >
+                  Get Keplr
+                </a>
+              </div>
             </div>
 
             <div className="space-y-4">
@@ -624,9 +649,9 @@ function WoloHeroActionDock({
   showPingPub: boolean;
 }) {
   return (
-    <div className="grid max-w-[46rem] gap-2 rounded-[1.45rem] border border-white/8 bg-white/[0.03] p-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] sm:p-3">
+    <div className="grid max-w-[46rem] gap-2 rounded-[1.45rem] bg-white/[0.03] p-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] sm:p-3">
       <div className="grid gap-2 sm:grid-cols-2">
-        <Link href="/wallet" className={WOLO_PRIMARY_ACTION_CLASSNAME}>
+        <Link href="/wallet" className={WOLO_PREMIUM_PRIMARY_ACTION_CLASSNAME}>
           Open Wallet
         </Link>
         <button
@@ -634,7 +659,7 @@ function WoloHeroActionDock({
           onClick={() => {
             void onConnect();
           }}
-          className={WOLO_SECONDARY_ACTION_CLASSNAME}
+          className={WOLO_PREMIUM_SECONDARY_ACTION_CLASSNAME}
         >
           {connectLabel}
         </button>
@@ -645,14 +670,14 @@ function WoloHeroActionDock({
           showPingPub ? "sm:grid-cols-3" : "sm:grid-cols-2"
         }`}
       >
-        <Link href="/download" className={WOLO_SECONDARY_ACTION_CLASSNAME}>
+        <Link href="/download" className={WOLO_PREMIUM_SECONDARY_ACTION_CLASSNAME}>
           Download Watcher
         </Link>
         <a
           href={KEPLR_DOWNLOAD_URL}
           target="_blank"
           rel="noreferrer"
-          className={WOLO_TERTIARY_ACTION_CLASSNAME}
+          className={WOLO_PREMIUM_TERTIARY_ACTION_CLASSNAME}
         >
           Get Keplr
         </a>
@@ -661,7 +686,7 @@ function WoloHeroActionDock({
             href={pingPubUrl}
             target="_blank"
             rel="noreferrer"
-            className={WOLO_PING_ACTION_CLASSNAME}
+            className={WOLO_PREMIUM_PING_ACTION_CLASSNAME}
           >
             Open Ping.pub
           </a>
