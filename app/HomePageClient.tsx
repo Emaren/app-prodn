@@ -7,6 +7,7 @@ import { getLobbyHeroBackground } from "@/components/lobby/lobbyPresentation";
 import { useLobbyAppearance } from "@/components/lobby/LobbyAppearanceContext";
 import { OnlinePlayersPanel } from "@/components/lobby/OnlinePlayersPanel";
 import { RecentMatchesPanel } from "@/components/lobby/RecentMatchesPanel";
+import { TopWoloEarnersTile } from "@/components/lobby/TopWoloEarnersTile";
 import { TournamentPanel } from "@/components/lobby/TournamentPanel";
 import { buildChatItems } from "@/components/lobby/utils";
 import { useUserAuth } from "@/context/UserAuthContext";
@@ -387,7 +388,7 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
             onViewModeChange={setViewMode}
           />
 
-          <div className="lg:mt-5 lg:self-start">
+          <div className="space-y-4 lg:mt-5 lg:self-start">
             <TournamentPanel
               tournament={tournament}
               themeKey={tileThemeKey}
@@ -401,6 +402,8 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
               }}
               onLogin={() => loginWithSteam("/")}
             />
+
+            <TopWoloEarnersTile wolo={wolo} themeKey={tileThemeKey} viewMode={viewMode} />
           </div>
         </div>
       </section>

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import {
   useEffect,
@@ -15,6 +16,7 @@ import WoloChainTerminalTile from "@/components/wolo/WoloChainTerminalTile";
 
 const KEPLR_DOWNLOAD_URL = "https://www.keplr.app/get";
 const HERO_VIEW_KEY = "wolo-hero-view";
+const WOLO_EMBLEM_SRC = "/legacy/wolo_emblem.png";
 
 function formatAddress(address?: string) {
   if (!address) return "Not connected";
@@ -104,37 +106,42 @@ export default function WoloPage() {
                 <SignalChip label={walletStatus} title="Wallet status" />
               </div>
 
-              <div className="space-y-5">
-                <div className="text-[11px] uppercase tracking-[0.35em] text-amber-200/70">
-                  WoloChain
-                </div>
-                <div className="space-y-3">
-                  <div className="text-[11px] uppercase tracking-[0.32em] text-white/45">
-                    Max Supply
+              <div className="relative isolate overflow-hidden rounded-[1.8rem] border border-white/8 bg-[linear-gradient(135deg,rgba(251,191,36,0.10),rgba(15,23,42,0.84)_34%,rgba(9,13,24,0.96)_100%)] px-5 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] sm:px-6 sm:py-6">
+                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.18),transparent_28%),radial-gradient(circle_at_86%_28%,rgba(59,130,246,0.12),transparent_24%)]" />
+                <WoloSupplyWatermark />
+                <div className="relative z-10 max-w-[38rem] space-y-5">
+                  <div className="text-[11px] uppercase tracking-[0.35em] text-amber-200/70">
+                    WoloChain
                   </div>
-                  <div className="flex flex-wrap items-end gap-3">
-                    <div
-                      className="text-5xl font-semibold leading-[0.9] tracking-[-0.04em] text-white sm:text-6xl lg:text-[5rem]"
-                      style={{
-                        fontFamily:
-                          '"Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif',
-                      }}
-                    >
-                      100,000,000
-                    </div>
-                    <div className="pb-2 text-lg uppercase tracking-[0.42em] text-amber-100/80 sm:text-2xl">
-                      WOLO
-                    </div>
-                  </div>
-                </div>
 
-                <div className="flex flex-wrap gap-2">
-                  <SignalChip label="Denom uwolo" />
-                  <SignalChip
-                    label={balanceLoading ? "Balance syncing" : `Balance ${formattedBalance} WOLO`}
-                    tone="emerald"
-                  />
-                  <SignalChip label={`Wallet ${walletHeadline}`} />
+                  <div className="space-y-3">
+                    <div className="text-[11px] uppercase tracking-[0.32em] text-white/45">
+                      Max Supply
+                    </div>
+                    <div className="flex flex-wrap items-end gap-3">
+                      <div
+                        className="text-5xl font-semibold leading-[0.9] tracking-[-0.04em] text-white sm:text-6xl lg:text-[5rem]"
+                        style={{
+                          fontFamily:
+                            '"Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif',
+                        }}
+                      >
+                        100,000,000
+                      </div>
+                      <div className="pb-2 text-lg uppercase tracking-[0.42em] text-amber-100/80 sm:text-2xl">
+                        WOLO
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    <SignalChip label="Denom uwolo" />
+                    <SignalChip
+                      label={balanceLoading ? "Balance syncing" : `Balance ${formattedBalance} WOLO`}
+                      tone="emerald"
+                    />
+                    <SignalChip label={`Wallet ${walletHeadline}`} />
+                  </div>
                 </div>
               </div>
 
@@ -260,18 +267,21 @@ export default function WoloPage() {
               <PremiumStatusPill label="Rail standby" />
             </div>
 
-            <div className="space-y-4">
-              <div className="text-[11px] uppercase tracking-[0.38em] text-amber-200/70">
-                WoloChain
-              </div>
-
-              <div className="space-y-2">
-                <div className="text-[11px] uppercase tracking-[0.32em] text-white/45">
-                  Max Supply
+            <div className="relative isolate overflow-hidden rounded-[1.85rem] border border-white/10 bg-[linear-gradient(135deg,rgba(251,191,36,0.10),rgba(9,15,27,0.94)_34%,rgba(5,8,20,0.98)_100%)] px-5 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] sm:px-6 sm:py-6">
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.14),transparent_26%),radial-gradient(circle_at_84%_22%,rgba(59,130,246,0.12),transparent_20%)]" />
+              <WoloSupplyWatermark />
+              <div className="relative z-10 max-w-[40rem] space-y-4">
+                <div className="text-[11px] uppercase tracking-[0.38em] text-amber-200/70">
+                  WoloChain
                 </div>
 
-                <div className="flex flex-wrap items-end gap-x-4 gap-y-1 md:flex-nowrap">
-                  <div
+                <div className="space-y-2">
+                  <div className="text-[11px] uppercase tracking-[0.32em] text-white/45">
+                    Max Supply
+                  </div>
+
+                  <div className="flex flex-wrap items-end gap-x-4 gap-y-1 md:flex-nowrap">
+                    <div
                       className="text-5xl font-semibold leading-[0.9] tracking-[-0.04em] text-white sm:text-6xl lg:text-[5rem]"
                       style={{
                         fontFamily:
@@ -280,8 +290,9 @@ export default function WoloPage() {
                     >
                       100,000,000
                     </div>
-                  <div className="whitespace-nowrap pb-2 text-xl uppercase tracking-[0.38em] text-amber-100/85 sm:text-2xl">
-                    WOLO
+                    <div className="whitespace-nowrap pb-2 text-xl uppercase tracking-[0.38em] text-amber-100/85 sm:text-2xl">
+                      WOLO
+                    </div>
                   </div>
                 </div>
               </div>
@@ -518,6 +529,24 @@ function PremiumHeroCard({
       >
         {value}
       </div>
+    </div>
+  );
+}
+
+function WoloSupplyWatermark() {
+  return (
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-y-0 right-[-1.5rem] flex items-center justify-center opacity-[0.085] sm:right-[-2.25rem]"
+    >
+      <Image
+        src={WOLO_EMBLEM_SRC}
+        alt=""
+        width={420}
+        height={420}
+        className="h-[13.5rem] w-[13.5rem] object-contain sm:h-[18rem] sm:w-[18rem] lg:h-[22rem] lg:w-[22rem]"
+        priority={false}
+      />
     </div>
   );
 }

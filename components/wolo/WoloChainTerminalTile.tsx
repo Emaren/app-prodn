@@ -165,7 +165,7 @@ export default function WoloChainTerminalTile() {
       <div className="space-y-3">
         <section
           onClick={handleRuntimeToggle}
-          className="rounded-[1.75rem] border border-white/10 bg-[#050b15] p-5 sm:rounded-[2rem] sm:p-6 lg:p-8"
+          className="overflow-hidden rounded-[1.75rem] border border-white/10 bg-[linear-gradient(135deg,#06101c,#08111d_52%,#040914)] p-5 shadow-[0_26px_90px_rgba(0,0,0,0.28)] sm:rounded-[2rem] sm:p-6 lg:p-8"
         >
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="space-y-2">
@@ -211,7 +211,7 @@ export default function WoloChainTerminalTile() {
 
         <section
           onClick={handleRuntimeToggle}
-          className="rounded-[1.75rem] border border-white/10 bg-[#050b15] p-5 sm:rounded-[2rem] sm:p-6 lg:p-8"
+          className="overflow-hidden rounded-[1.75rem] border border-white/10 bg-[linear-gradient(135deg,#06101c,#08111d_52%,#040914)] p-5 shadow-[0_26px_90px_rgba(0,0,0,0.28)] sm:rounded-[2rem] sm:p-6 lg:p-8"
         >
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="space-y-2">
@@ -347,16 +347,18 @@ function ConsolePanel({
   lines: string[];
 }) {
   return (
-    <div className="overflow-hidden rounded-[1.5rem] bg-[#020712] shadow-[inset_0_0_0_1px_rgba(52,211,153,0.15)]">
-      <div className="flex items-center justify-between border-b border-emerald-500/10 px-4 py-3">
-        <div className="text-[11px] uppercase tracking-[0.28em] text-emerald-200/70">
+    <div className="overflow-hidden rounded-[1.35rem] border border-white/8 bg-[#030814] shadow-[inset_0_0_0_1px_rgba(52,211,153,0.10)]">
+      <div className="flex items-center justify-between border-b border-emerald-500/10 px-4 py-3.5">
+        <div className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-200/78">
           {title}
         </div>
         <div className="text-xs text-emerald-100/70">{badge}</div>
       </div>
-      <div className="space-y-2 px-4 py-4 font-mono text-[12px] leading-6 text-emerald-300">
+      <div className="divide-y divide-emerald-500/10 font-mono text-[13px] leading-7 text-emerald-200 sm:text-[14px]">
         {lines.map((line, index) => (
-          <div key={`${line}-${index}`}>{line}</div>
+          <div key={`${line}-${index}`} className="px-4 py-2.5">
+            {line}
+          </div>
         ))}
       </div>
     </div>
@@ -375,14 +377,14 @@ function PremiumConsolePanel({
   lines: string[];
 }) {
   return (
-    <div className="overflow-hidden rounded-[1.6rem] border border-emerald-400/15 bg-[#020712] shadow-[inset_0_0_0_1px_rgba(16,185,129,0.08)]">
+    <div className="overflow-hidden rounded-[1.45rem] border border-emerald-400/15 bg-[#020712] shadow-[inset_0_0_0_1px_rgba(16,185,129,0.08)]">
       <div className="border-b border-white/6 px-5 py-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <div className="text-[11px] uppercase tracking-[0.28em] text-emerald-200/75">
+            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-200/78">
               {title}
             </div>
-            <div className="mt-1 text-xs text-slate-400 sm:text-sm">{subtitle}</div>
+            <div className="mt-1.5 text-sm leading-6 text-slate-300">{subtitle}</div>
           </div>
 
           <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-200 whitespace-nowrap">
@@ -391,9 +393,11 @@ function PremiumConsolePanel({
         </div>
       </div>
 
-      <div className="space-y-2 px-5 py-4 font-mono text-[12px] leading-6 text-emerald-300 sm:text-[13px]">
+      <div className="divide-y divide-emerald-500/10 font-mono text-[13px] leading-7 text-emerald-200 sm:text-[14px]">
         {lines.map((line, index) => (
-          <div key={`${line}-${index}`}>{line}</div>
+          <div key={`${line}-${index}`} className="px-5 py-2.5">
+            {line}
+          </div>
         ))}
       </div>
     </div>
@@ -418,13 +422,13 @@ function TerminalStat({
   compact?: boolean;
 }) {
   return (
-    <div className="rounded-[1.4rem] border border-white/8 bg-white/5 px-4 py-4">
-      <div className="text-[11px] uppercase tracking-[0.28em] text-slate-400">{label}</div>
+    <div className="rounded-[1.25rem] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+      <div className="text-[11px] uppercase tracking-[0.18em] text-slate-400">{label}</div>
       <div
         className={
           compact
-            ? "mt-3 text-lg font-semibold text-white"
-            : "mt-3 text-3xl font-semibold text-white"
+            ? "mt-3 text-xl font-semibold leading-tight text-white"
+            : "mt-3 text-[2.6rem] font-semibold leading-none tracking-tight text-white"
         }
       >
         {value}
@@ -451,13 +455,13 @@ function PremiumRuntimeStat({
   compact?: boolean;
 }) {
   return (
-    <div className="rounded-[1.45rem] border border-white/10 bg-white/5 px-5 py-5">
-      <div className="text-[11px] uppercase tracking-[0.28em] text-slate-400">{label}</div>
+    <div className="rounded-[1.35rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] px-5 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+      <div className="text-[11px] uppercase tracking-[0.18em] text-slate-400">{label}</div>
       <div
         className={
           compact
-            ? "mt-3 text-lg font-semibold text-white"
-            : "mt-3 text-[2rem] font-semibold tracking-tight text-white"
+            ? "mt-3 text-xl font-semibold leading-tight text-white"
+            : "mt-3 text-[2.55rem] font-semibold leading-none tracking-tight text-white"
         }
       >
         {value}
