@@ -49,6 +49,8 @@ model User {
   appearancePreference         UserAppearancePreference?
   activityEvents               UserActivityEvent[]
   betWagers                    BetWager[]
+  scheduledChallengesCreated   ScheduledMatch[]               @relation("ScheduledMatchChallenger")
+  scheduledChallengesReceived  ScheduledMatch[]               @relation("ScheduledMatchChallenged")
 
   @@map("users")
 }
@@ -199,6 +201,28 @@ model TournamentMatch {
   @@index([tournamentId, status], map: "ix_tournament_matches_tournament_status")
   @@index([scheduledAt], map: "ix_tournament_matches_scheduled_at")
   @@map("tournament_matches")
+}
+
+model ScheduledMatch {
+  id               Int       @id @default(autoincrement())
+  challengerUserId Int       @map("challenger_user_id")
+  challengedUserId Int       @map("challenged_user_id")
+  status           String    @default("pending") @db.VarChar(20)
+  scheduledAt      DateTime  @map("scheduled_at") @db.Timestamp(6)
+  challengeNote    String?   @map("challenge_note") @db.VarChar(160)
+  acceptedAt       DateTime? @map("accepted_at") @db.Timestamp(6)
+  declinedAt       DateTime? @map("declined_at") @db.Timestamp(6)
+  cancelledAt      DateTime? @map("cancelled_at") @db.Timestamp(6)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  challenger User @relation("ScheduledMatchChallenger", fields: [challengerUserId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  challenged User @relation("ScheduledMatchChallenged", fields: [challengedUserId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([status, scheduledAt], map: "ix_scheduled_matches_status_scheduled_at")
+  @@index([challengerUserId, scheduledAt], map: "ix_scheduled_matches_challenger_scheduled_at")
+  @@index([challengedUserId, scheduledAt], map: "ix_scheduled_matches_challenged_scheduled_at")
+  @@map("scheduled_matches")
 }
 
 model ChatRoom {

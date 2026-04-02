@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
+import ScheduledMatchCard from "@/components/challenge/ScheduledMatchCard";
 import { displayName } from "@/components/lobby/utils";
+import { useUserAuth } from "@/context/UserAuthContext";
 import type { LiveGamesSnapshot } from "@/lib/liveGames";
 import { getTournamentMatchStatusLabel } from "@/lib/lobby";
 
@@ -63,12 +65,32 @@ function playerLabel(
 }
 
 export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps) {
+  const { uid } = useUserAuth();
   const [snapshot, setSnapshot] = useState(initialSnapshot);
+  const [acceptingId, setAcceptingId] = useState<number | null>(null);
+  const [boardError, setBoardError] = useState<string | null>(null);
+  const [boardNotice, setBoardNotice] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    try {
+      const response = await fetch("/api/live-games", {
+        cache: "no-store",
+      });
+      if (!response.ok) {
+        return;
+      }
+
+      const payload = (await response.json()) as LiveGamesSnapshot;
+      setSnapshot(payload);
+    } catch (error) {
+      console.warn("Failed to refresh live games:", error);
+    }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
 
-    const refresh = async () => {
+    const runRefresh = async () => {
       try {
         const response = await fetch("/api/live-games", {
           cache: "no-store",
@@ -86,10 +108,10 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
       }
     };
 
-    void refresh();
+    void runRefresh();
 
     const interval = window.setInterval(() => {
-      void refresh();
+      void runRefresh();
     }, LIVE_GAMES_POLL_INTERVAL_MS);
 
     return () => {
@@ -98,16 +120,74 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
     };
   }, []);
 
-  const liveItems = useMemo(
-    () => [...snapshot.activeSessions, ...snapshot.liveMatches, ...snapshot.recentlyCompletedSessions],
-    [snapshot.activeSessions, snapshot.liveMatches, snapshot.recentlyCompletedSessions]
+  const liveScheduledMatches = useMemo(
+    () => snapshot.scheduledMatches.filter((match) => match.displayState === "live"),
+    [snapshot.scheduledMatches]
   );
+  const recentScheduledMatches = useMemo(
+    () =>
+      snapshot.scheduledMatches.filter((match) =>
+        ["completed", "forfeited"].includes(match.displayState)
+      ),
+    [snapshot.scheduledMatches]
+  );
+  const acceptedScheduledMatches = useMemo(
+    () => snapshot.scheduledMatches.filter((match) => match.displayState === "accepted"),
+    [snapshot.scheduledMatches]
+  );
+  const pendingScheduledMatches = useMemo(
+    () => snapshot.scheduledMatches.filter((match) => match.displayState === "pending"),
+    [snapshot.scheduledMatches]
+  );
+  const liveItemsCount =
+    liveScheduledMatches.length +
+    snapshot.activeSessions.length +
+    snapshot.liveMatches.length +
+    recentScheduledMatches.length +
+    snapshot.recentlyCompletedSessions.length;
   const sectionStatusLabel =
     snapshot.liveCount > 0
       ? `${snapshot.liveCount} live`
-      : snapshot.recentlyCompletedSessions.length > 0
-        ? `${snapshot.recentlyCompletedSessions.length} recent`
+      : recentScheduledMatches.length + snapshot.recentlyCompletedSessions.length > 0
+        ? `${recentScheduledMatches.length + snapshot.recentlyCompletedSessions.length} recent`
         : "0 live";
+
+  const onDeckCount =
+    snapshot.readyMatches.length + acceptedScheduledMatches.length + pendingScheduledMatches.length;
+
+  const acceptChallenge = useCallback(
+    async (challengeId: number) => {
+      setAcceptingId(challengeId);
+      setBoardError(null);
+      setBoardNotice(null);
+
+      try {
+        const response = await fetch(`/api/challenges/${challengeId}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            action: "accept",
+          }),
+        });
+
+        const payload = (await response.json().catch(() => null)) as { detail?: string } | null;
+        if (!response.ok) {
+          throw new Error(payload?.detail || "Challenge could not be accepted.");
+        }
+
+        setBoardNotice("Challenge accepted. The match is now locked in on deck.");
+        await refresh();
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Challenge could not be accepted.";
+        setBoardError(message);
+      } finally {
+        setAcceptingId(null);
+      }
+    },
+    [refresh]
+  );
 
   return (
     <main className="space-y-4 py-2 text-white sm:space-y-6 sm:py-3">
@@ -129,6 +209,12 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
               {formatUpdatedTime(snapshot.updatedAt)}
             </div>
             <Link
+              href="/challenge"
+              className="rounded-full bg-amber-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-amber-200"
+            >
+              Schedule New Game
+            </Link>
+            <Link
               href="/lobby"
               className="rounded-full border border-white/15 px-4 py-2 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
             >
@@ -136,6 +222,18 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
             </Link>
           </div>
         </div>
+
+        {boardError ? (
+          <div className="mt-4 rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+            {boardError}
+          </div>
+        ) : null}
+
+        {boardNotice ? (
+          <div className="mt-4 rounded-2xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+            {boardNotice}
+          </div>
+        ) : null}
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
@@ -151,17 +249,35 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
           </div>
 
           <div className="mt-5 space-y-4">
-            {liveItems.length === 0 ? (
+            {liveItemsCount === 0 ? (
               <div className="rounded-[1.5rem] border border-white/10 bg-white/5 px-5 py-6 text-sm text-slate-300">
                 No live games yet.
               </div>
             ) : (
               <>
+                {liveScheduledMatches.map((match) => (
+                  <ScheduledMatchCard
+                    key={`scheduled-live-${match.id}`}
+                    match={match}
+                    viewerUid={uid}
+                    onAccept={acceptChallenge}
+                    accepting={acceptingId === match.id}
+                  />
+                ))}
                 {snapshot.activeSessions.map((session) => (
                   <LiveSessionCard key={`session-${session.id}`} session={session} />
                 ))}
                 {snapshot.liveMatches.map((match) => (
                   <TournamentLiveMatchCard key={`match-${match.id}`} match={match} emphasis="live" />
+                ))}
+                {recentScheduledMatches.map((match) => (
+                  <ScheduledMatchCard
+                    key={`scheduled-recent-${match.id}`}
+                    match={match}
+                    viewerUid={uid}
+                    onAccept={acceptChallenge}
+                    accepting={acceptingId === match.id}
+                  />
                 ))}
                 {snapshot.recentlyCompletedSessions.map((session) => (
                   <LiveSessionCard key={`completed-${session.id}`} session={session} />
@@ -179,19 +295,41 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
                 <h2 className="mt-2 text-2xl font-semibold text-white">Ready next</h2>
               </div>
               <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-200">
-                {snapshot.readyMatches.length} ready
+                {onDeckCount} queued
               </div>
             </div>
 
             <div className="mt-5 space-y-3">
-              {snapshot.readyMatches.length === 0 ? (
+              {onDeckCount === 0 ? (
                 <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-5 text-sm text-slate-300">
                   Nothing queued in ready.
                 </div>
               ) : (
-                snapshot.readyMatches.map((match) => (
-                  <TournamentLiveMatchCard key={`ready-${match.id}`} match={match} emphasis="ready" compact />
-                ))
+                <>
+                  {snapshot.readyMatches.map((match) => (
+                    <TournamentLiveMatchCard key={`ready-${match.id}`} match={match} emphasis="ready" compact />
+                  ))}
+                  {acceptedScheduledMatches.map((match) => (
+                    <ScheduledMatchCard
+                      key={`scheduled-accepted-${match.id}`}
+                      match={match}
+                      viewerUid={uid}
+                      onAccept={acceptChallenge}
+                      accepting={acceptingId === match.id}
+                      compact
+                    />
+                  ))}
+                  {pendingScheduledMatches.map((match) => (
+                    <ScheduledMatchCard
+                      key={`scheduled-pending-${match.id}`}
+                      match={match}
+                      viewerUid={uid}
+                      onAccept={acceptChallenge}
+                      accepting={acceptingId === match.id}
+                      compact
+                    />
+                  ))}
+                </>
               )}
             </div>
           </section>
