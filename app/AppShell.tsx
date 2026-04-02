@@ -36,10 +36,9 @@ const HEADER_LINKS: ReadonlyArray<{
 ];
 
 function InnerShell({ children }: { children: React.ReactNode }) {
-  const { uid, playerName, setPlayerName, isAdmin } = useUserAuth();
+  const { uid, playerName, isAdmin } = useUserAuth();
   const pathname = usePathname();
   const { themeKey, setThemeKey, viewMode, textColor, pageStyle } = useLobbyAppearance();
-  const [pendingBetsCount] = React.useState(0);
   const [liveGamesCount, setLiveGamesCount] = React.useState(0);
   const [requestCount, setRequestCount] = React.useState(0);
   const isContactPage = pathname?.startsWith("/contact-emaren");
@@ -120,9 +119,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                   <div className="flex items-center justify-end gap-2">
                     <HeaderInboxControl buttonClassName={headerSkin.surface} />
                     <HeaderMenu
-                      pendingBetsCount={pendingBetsCount}
                       playerName={playerName}
-                      setPlayerName={setPlayerName}
                       uid={uid}
                       liveGamesCount={liveGamesCount}
                       requestCount={requestCount}
@@ -231,9 +228,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
               <div className="flex items-center justify-end gap-3">
                 {uid ? <HeaderInboxControl buttonClassName={headerSkin.surface} /> : null}
                 <HeaderMenu
-                  pendingBetsCount={pendingBetsCount}
                   playerName={playerName}
-                  setPlayerName={setPlayerName}
                   uid={uid}
                   liveGamesCount={liveGamesCount}
                   requestCount={requestCount}

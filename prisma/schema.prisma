@@ -48,6 +48,7 @@ model User {
   grantedGifts                 UserGift[]                      @relation("UserGiftCreator")
   appearancePreference         UserAppearancePreference?
   activityEvents               UserActivityEvent[]
+  betWagers                    BetWager[]
 
   @@map("users")
 }
@@ -461,6 +462,54 @@ model UserActivityEvent {
   @@index([userId, createdAt], map: "ix_user_activity_events_user_created_at")
   @@index([type, createdAt], map: "ix_user_activity_events_type_created_at")
   @@map("user_activity_events")
+}
+
+model BetMarket {
+  id            Int       @id @default(autoincrement())
+  slug          String    @unique @db.VarChar(120)
+  title         String    @db.VarChar(160)
+  eventLabel    String    @map("event_label") @db.VarChar(120)
+  marketType    String    @default("winner") @map("market_type") @db.VarChar(32)
+  status        String    @default("open") @db.VarChar(20)
+  featured      Boolean   @default(false)
+  sortOrder     Int       @default(0) @map("sort_order")
+  leftLabel     String    @map("left_label") @db.VarChar(80)
+  rightLabel    String    @map("right_label") @db.VarChar(80)
+  leftHref      String?   @map("left_href") @db.VarChar(160)
+  rightHref     String?   @map("right_href") @db.VarChar(160)
+  seedLeftWolo  Int       @default(0) @map("seed_left_wolo")
+  seedRightWolo Int       @default(0) @map("seed_right_wolo")
+  closeAt       DateTime? @map("close_at") @db.Timestamp(6)
+  settledAt     DateTime? @map("settled_at") @db.Timestamp(6)
+  winnerSide    String?   @map("winner_side") @db.VarChar(20)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  wagers BetWager[]
+
+  @@index([status, featured, sortOrder], map: "ix_bet_markets_status_featured_sort_order")
+  @@index([closeAt], map: "ix_bet_markets_close_at")
+  @@map("bet_markets")
+}
+
+model BetWager {
+  id         Int       @id @default(autoincrement())
+  marketId   Int       @map("market_id")
+  userId     Int       @map("user_id")
+  side       String    @db.VarChar(20)
+  amountWolo Int       @map("amount_wolo")
+  status     String    @default("active") @db.VarChar(20)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+  settledAt  DateTime? @map("settled_at") @db.Timestamp(6)
+
+  market BetMarket @relation(fields: [marketId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user   User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([marketId, userId], map: "uq_bet_wagers_market_user")
+  @@index([userId, status, updatedAt], map: "ix_bet_wagers_user_status_updated_at")
+  @@index([marketId, status, updatedAt], map: "ix_bet_wagers_market_status_updated_at")
+  @@map("bet_wagers")
 }
 
 model alembic_version {

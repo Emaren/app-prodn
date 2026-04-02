@@ -5,7 +5,6 @@ import { useMemo, useRef, useState, type ReactNode, useId } from "react";
 import {
   BarChart3,
   BadgeDollarSign,
-  Clock3,
   Coins,
   ChevronDown,
   Download,
@@ -27,9 +26,7 @@ import SteamLoginButton from "@/components/SteamLoginButton";
 import { ROADMAP_UPDATE_COUNT } from "@/lib/siteRoadmapContent";
 
 interface Props {
-  pendingBetsCount: number;
   playerName: string;
-  setPlayerName: (name: string) => void;
   uid: string | null;
   liveGamesCount?: number;
   requestCount?: number;
@@ -49,7 +46,6 @@ type MenuEntry = {
 };
 
 export default function HeaderMenu({
-  pendingBetsCount,
   playerName,
   uid,
   liveGamesCount = 0,
@@ -99,14 +95,8 @@ export default function HeaderMenu({
         icon: Map,
         badge: ROADMAP_UPDATE_COUNT > 0 ? String(ROADMAP_UPDATE_COUNT) : null,
       },
-      {
-        href: "/pending-bets",
-        label: "Pending Bets",
-        icon: Clock3,
-        badge: pendingBetsCount > 0 ? String(pendingBetsCount) : null,
-      },
     ],
-    [liveGamesCount, pendingBetsCount, requestCount]
+    [liveGamesCount, requestCount]
   );
 
   const primaryMobileEntries = menuEntries.filter((entry) => entry.featured && (!entry.adminOnly || isAdmin));

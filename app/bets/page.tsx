@@ -1,734 +1,158 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 
-import {
-  getLobbyHeroBackground,
-  getLobbyPresentationTone,
-} from "@/components/lobby/lobbyPresentation";
-import { useLobbyAppearance } from "@/components/lobby/LobbyAppearanceContext";
 import { useUserAuth } from "@/context/UserAuthContext";
-import {
-  getFallbackLeaderboard,
-  getFallbackTournament,
-  getTournamentStatusLabel,
-  type LobbyLeaderboardEntry,
-  type LobbyMatchRow,
-  type LobbySnapshot,
-} from "@/lib/lobby";
 
 const WOLO_LOGO_SRC = "/legacy/wolo-logo-transparent.png";
+const STAKE_OPTIONS = [10, 25, 50, 100] as const;
 
-type PendingBet = {
-  challenger: string;
-  betAmount: number;
-  inactive?: boolean;
+type BetSide = "left" | "right";
+type BetStatus = "open" | "closing" | "live" | "settled";
+
+type BetBoardSide = {
+  key: BetSide;
+  name: string;
+  href: string | null;
+  poolWolo: number;
+  crowdPercent: number;
+  slips: number;
+  seededWolo: number;
 };
 
-type MarketStatus = "Open" | "Closing" | "Live";
-
-type MarketCard = {
-  id: string;
+type BetBoardMarket = {
+  id: number;
+  slug: string;
+  title: string;
   eventLabel: string;
-  stageLabel: string;
-  leftName: string;
-  rightName: string;
-  leftHref: string;
-  rightHref: string;
-  status: MarketStatus;
-  potWolo: number;
-  leftPayout: string;
-  rightPayout: string;
-  closingLabel: string;
-  spotlight: string;
+  status: BetStatus;
+  featured: boolean;
+  closeLabel: string;
+  totalPotWolo: number;
+  left: BetBoardSide;
+  right: BetBoardSide;
+  viewerWager: {
+    side: BetSide;
+    amountWolo: number;
+  } | null;
+  winnerSide: BetSide | null;
 };
 
-type SettledCard = {
-  id: string;
-  map: string;
-  leftName: string;
-  rightName: string;
+type BetBookEntry = {
+  marketId: number;
+  marketSlug: string;
+  title: string;
+  eventLabel: string;
+  side: BetSide;
+  pickedLabel: string;
+  amountWolo: number;
+  projectedReturnWolo: number;
+  closeLabel: string;
+  status: BetStatus;
+};
+
+type BetSettledResult = {
+  id: number;
+  title: string;
+  eventLabel: string;
   winner: string;
-  label: string;
+  mapName: string;
   payoutWolo: number;
 };
 
-const FALLBACK_FIGHTERS = [
-  "Emaren",
-  "Julio Alvarez",
-  "Sniper",
-  "Kaos",
-  "Quadro",
-  "Latin_k",
-] as const;
-const EMPTY_MATCHES: LobbyMatchRow[] = [];
+type BetBoardSnapshot = {
+  generatedAt: string;
+  viewerName: string | null;
+  featuredMarket: BetBoardMarket | null;
+  openMarkets: BetBoardMarket[];
+  settledResults: BetSettledResult[];
+  yourBook: {
+    activeCount: number;
+    stakedWolo: number;
+    projectedReturnWolo: number;
+    openWagers: BetBookEntry[];
+  };
+  heat: {
+    biggestPot: {
+      label: string;
+      potWolo: number;
+    } | null;
+    bestReturn: {
+      label: string;
+      returnMultiplier: number;
+    } | null;
+    liveCount: number;
+  };
+};
 
-function formatCompactWolo(value: number) {
+type SelectionState = {
+  marketId: number;
+  side: BetSide;
+  stake: number;
+};
+
+function formatCompact(value: number) {
   return new Intl.NumberFormat("en-US", {
     maximumFractionDigits: 0,
     notation: value >= 1000 ? "compact" : "standard",
   }).format(value);
 }
 
-function hashValue(value: string) {
-  let hash = 0;
-  for (let index = 0; index < value.length; index += 1) {
-    hash = (hash * 31 + value.charCodeAt(index)) % 1_000_003;
+function projectReturn(stakeWolo: number, selectedPoolWolo: number, oppositePoolWolo: number) {
+  if (stakeWolo <= 0) return 0;
+  const nextSelectedPool = selectedPoolWolo + stakeWolo;
+  if (nextSelectedPool <= 0) return stakeWolo;
+  return Math.max(
+    stakeWolo,
+    Math.round(stakeWolo + oppositePoolWolo * (stakeWolo / nextSelectedPool))
+  );
+}
+
+function statusPill(status: BetStatus) {
+  if (status === "live") {
+    return "border-red-300/18 bg-[linear-gradient(135deg,rgba(127,29,29,0.58),rgba(185,28,28,0.20))] text-red-100";
   }
-  return Math.abs(hash);
-}
-
-function uniqueNames(values: Array<string | null | undefined>) {
-  const seen = new Set<string>();
-  const results: string[] = [];
-
-  for (const value of values) {
-    const normalized = value?.trim();
-    if (!normalized) continue;
-    const key = normalized.toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    results.push(normalized);
+  if (status === "closing") {
+    return "border-amber-300/18 bg-[linear-gradient(135deg,rgba(146,64,14,0.50),rgba(217,119,6,0.16))] text-amber-50";
   }
-
-  return results;
-}
-
-function marketStatusFromTournament(status: LobbySnapshot["tournament"]["status"]): MarketStatus {
-  if (status === "active") return "Live";
-  if (status === "open") return "Closing";
-  return "Open";
-}
-
-function payoutPair(seed: string) {
-  const hash = hashValue(seed);
-  const favorite = 1.45 + (hash % 45) / 100;
-  const underdog = 1.9 + ((Math.floor(hash / 7) % 70) / 100);
-
-  return {
-    left: `${favorite.toFixed(2)}x`,
-    right: `${underdog.toFixed(2)}x`,
-  };
-}
-
-function playerHrefByName(entries: LobbyLeaderboardEntry[]) {
-  const mapping = new Map<string, string>();
-  for (const entry of entries) {
-    mapping.set(entry.name.toLowerCase(), entry.href);
+  if (status === "settled") {
+    return "border-emerald-300/18 bg-[linear-gradient(135deg,rgba(6,95,70,0.50),rgba(16,185,129,0.14))] text-emerald-50";
   }
-  return mapping;
+  return "border-sky-300/16 bg-[linear-gradient(135deg,rgba(30,64,175,0.34),rgba(59,130,246,0.12))] text-sky-100";
 }
 
-function buildOpenMarkets(
-  names: string[],
-  hrefs: Map<string, string>,
-  featuredLabel: string,
-  featuredStatus: MarketStatus
-) {
-  const combinations: ReadonlyArray<readonly [number, number, string, MarketStatus, string]> = [
-    [0, 1, featuredLabel, featuredStatus, "Main book"],
-    [1, 2, "Rivalry board", "Closing", "Heavy action"],
-    [0, 3, "Underdog line", "Open", "Spoils swing"],
-    [2, 4, "Ladder heat", "Open", "Sharp action"],
-    [3, 5, "Night raid", "Live", "Volume spike"],
-  ];
-
-  return combinations
-    .map(([leftIndex, rightIndex, eventLabel, status, spotlight], index) => {
-      const leftName = names[leftIndex] ?? FALLBACK_FIGHTERS[leftIndex % FALLBACK_FIGHTERS.length];
-      const rightName =
-        names[rightIndex] ?? FALLBACK_FIGHTERS[rightIndex % FALLBACK_FIGHTERS.length];
-      if (!leftName || !rightName || leftName === rightName) return null;
-
-      const seed = `${leftName}:${rightName}:${eventLabel}:${index}`;
-      const payouts = payoutPair(seed);
-      const potWolo = 140 + (hashValue(seed) % 360);
-      const closingMinutes = 18 + (hashValue(`${seed}:time`) % 54);
-
-      return {
-        id: seed,
-        eventLabel,
-        stageLabel: index === 0 ? "Featured market" : "Open bet",
-        leftName,
-        rightName,
-        leftHref: hrefs.get(leftName.toLowerCase()) || "/players",
-        rightHref: hrefs.get(rightName.toLowerCase()) || "/players",
-        status,
-        potWolo,
-        leftPayout: payouts.left,
-        rightPayout: payouts.right,
-        closingLabel: status === "Live" ? "In play now" : `Locks in ${closingMinutes}m`,
-        spotlight: spotlight as string,
-      } satisfies MarketCard;
-    })
-    .filter((market): market is MarketCard => Boolean(market));
-}
-
-function buildSettledCards(recentMatches: LobbyMatchRow[]) {
-  const settled = recentMatches
-    .map((match, index) => {
-      const players =
-        Array.isArray(match.players) && match.players.length > 1
-          ? match.players
-          : [{ name: "Unknown" }, { name: "Unknown" }];
-      const leftName = players[0]?.name || "Unknown";
-      const rightName = players[1]?.name || "Unknown";
-      const winner = match.winner || leftName;
-      const map =
-        typeof match.map === "string"
-          ? match.map
-          : match.map && typeof match.map === "object" && "name" in match.map
-            ? String(match.map.name || "Battlefield")
-            : "Battlefield";
-      const payoutWolo = 110 + (hashValue(`${match.id}:${winner}`) % 220);
-
-      return {
-        id: `${match.id}-${index}`,
-        map,
-        leftName,
-        rightName,
-        winner,
-        label: match.parse_reason || "Replay-backed result",
-        payoutWolo,
-      } satisfies SettledCard;
-    })
-    .slice(0, 3);
-
-  if (settled.length > 0) return settled;
-
-  return [
-    {
-      id: "fallback-1",
-      map: "Yucatan",
-      leftName: "Emaren",
-      rightName: "Julio Alvarez",
-      winner: "Emaren",
-      label: "Settlement rail armed",
-      payoutWolo: 188,
-    },
-    {
-      id: "fallback-2",
-      map: "Arabia",
-      leftName: "Sniper",
-      rightName: "Kaos",
-      winner: "Sniper",
-      label: "Verified upset",
-      payoutWolo: 162,
-    },
-    {
-      id: "fallback-3",
-      map: "Arena",
-      leftName: "Quadro",
-      rightName: "Latin_k",
-      winner: "Latin_k",
-      label: "War chest settled",
-      payoutWolo: 144,
-    },
-  ];
-}
-
-function statusClasses(status: MarketStatus) {
-  if (status === "Live") {
-    return "border-red-400/25 bg-red-500/12 text-red-100";
+function sideSurface(selected: boolean, emphasis: "warm" | "cool") {
+  if (selected && emphasis === "warm") {
+    return "border-amber-200/18 bg-[linear-gradient(155deg,rgba(251,191,36,0.32),rgba(180,83,9,0.18)_58%,rgba(15,23,42,0.72))] text-white shadow-[0_16px_38px_rgba(245,158,11,0.18)]";
   }
-  if (status === "Closing") {
-    return "border-amber-300/20 bg-amber-400/10 text-amber-100";
+  if (selected) {
+    return "border-sky-200/18 bg-[linear-gradient(155deg,rgba(125,211,252,0.22),rgba(37,99,235,0.18)_58%,rgba(15,23,42,0.72))] text-white shadow-[0_16px_38px_rgba(37,99,235,0.18)]";
   }
-  return "border-emerald-300/20 bg-emerald-500/10 text-emerald-100";
+  return "border-white/[0.06] bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.025))] text-slate-100 hover:border-white/10 hover:bg-white/[0.06]";
 }
 
-export default function BetsPage() {
-  const { themeKey, viewMode } = useLobbyAppearance();
-  const { isAuthenticated, loading, loginWithSteam, user } = useUserAuth();
-  const [lobby, setLobby] = useState<LobbySnapshot | null>(null);
-  const [pendingBets, setPendingBets] = useState<PendingBet[]>([]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadLobby() {
-      try {
-        const response = await fetch("/api/lobby", { cache: "no-store" });
-        if (!response.ok) throw new Error("Lobby load failed.");
-        const payload = (await response.json()) as LobbySnapshot;
-        if (!cancelled) setLobby(payload);
-      } catch (error) {
-        console.warn("Failed to load betting context:", error);
-      }
-    }
-
-    void loadLobby();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const stored = JSON.parse(window.localStorage.getItem("pendingBets") || "[]") as PendingBet[];
-      setPendingBets(Array.isArray(stored) ? stored : []);
-    } catch {
-      setPendingBets([]);
-    }
-  }, []);
-
-  const tone = useMemo(() => getLobbyPresentationTone(themeKey, viewMode), [themeKey, viewMode]);
-  const heroStyle = useMemo(
-    () => ({ backgroundImage: getLobbyHeroBackground(themeKey, viewMode) }),
-    [themeKey, viewMode]
-  );
-
-  const tournament = lobby?.tournament ?? getFallbackTournament(false);
-  const leaderboard = lobby?.leaderboard ?? getFallbackLeaderboard();
-  const recentMatches = lobby?.recentMatches ?? EMPTY_MATCHES;
-
-  const fighterNames = useMemo(() => {
-    const tournamentNames = tournament.entrants.map(
-      (entrant) => entrant.inGameName || entrant.steamPersonaName
-    );
-    const leaderboardNames = leaderboard.entries.map((entry) => entry.name);
-    return uniqueNames([...tournamentNames, ...leaderboardNames, ...FALLBACK_FIGHTERS]).slice(0, 6);
-  }, [leaderboard.entries, tournament.entrants]);
-
-  const hrefs = useMemo(() => playerHrefByName(leaderboard.entries), [leaderboard.entries]);
-  const openMarkets = useMemo(
-    () =>
-      buildOpenMarkets(
-        fighterNames,
-        hrefs,
-        tournament.isFallback ? "Founders book" : tournament.title,
-        marketStatusFromTournament(tournament.status)
-      ),
-    [fighterNames, hrefs, tournament.isFallback, tournament.status, tournament.title]
-  );
-  const featuredMarket = openMarkets[0];
-  const secondaryMarkets = openMarkets.slice(1, 5);
-  const settledCards = useMemo(() => buildSettledCards(recentMatches), [recentMatches]);
-
-  const activePendingBets = pendingBets.filter((bet) => !bet.inactive);
-  const pendingStake = activePendingBets.reduce((sum, bet) => sum + (bet.betAmount || 0), 0);
-  const largestPot = openMarkets.reduce((max, market) => Math.max(max, market.potWolo), 0);
-  const hottestMarket = openMarkets.reduce<MarketCard | null>(
-    (current, market) => (!current || market.potWolo > current.potWolo ? market : current),
-    null
-  );
-  const upsetCard = settledCards.reduce<SettledCard | null>(
-    (current, market) => (!current || market.payoutWolo > current.payoutWolo ? market : current),
-    null
-  );
-
-  const featuredPotLabel = featuredMarket ? formatCompactWolo(featuredMarket.potWolo) : "248";
-  const spotlightEntrants = tournament.entryCount > 0 ? `${tournament.entryCount} entrants` : "Book opening";
-  const userDisplayName = user?.inGameName || user?.steamPersonaName || "your war chest";
-
-  return (
-    <main className="space-y-4 overflow-x-hidden py-2 text-white sm:space-y-6 sm:py-3">
-      <section
-        className={`relative overflow-hidden rounded-[1.85rem] border p-5 shadow-[0_30px_90px_rgba(4,9,20,0.34)] sm:rounded-[2rem] sm:p-6 lg:p-8 ${tone.panelShell}`}
-        style={heroStyle}
-      >
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(251,191,36,0.12),transparent_24%),radial-gradient(circle_at_bottom_left,rgba(59,130,246,0.09),transparent_28%)]" />
-        <div className="pointer-events-none absolute right-[-3.5rem] top-[-2rem] opacity-[0.10] sm:right-[-2rem]">
-          <Image
-            src={WOLO_LOGO_SRC}
-            alt=""
-            width={360}
-            height={368}
-            className="h-[13rem] w-[13rem] object-contain sm:h-[17rem] sm:w-[17rem] lg:h-[20rem] lg:w-[20rem]"
-          />
-        </div>
-
-        <div className="relative grid gap-6 xl:grid-cols-[1.04fr_0.96fr] xl:items-start">
-          <div className="space-y-6">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className={`rounded-full border px-3 py-1 text-xs uppercase tracking-[0.28em] ${tone.statusBadge}`}>
-                Bets
-              </span>
-              <span className={`rounded-full border px-3 py-1 text-xs ${tone.neutralPill}`}>
-                {featuredMarket?.status || "Open"} markets
-              </span>
-              <span className={`rounded-full border px-3 py-1 text-xs ${tone.neutralPill}`}>
-                {spotlightEntrants}
-              </span>
-            </div>
-
-            <div className="max-w-2xl">
-              <div className={`text-[11px] uppercase tracking-[0.38em] ${tone.accentText}`}>
-                War Book
-              </div>
-              <h1 className="mt-3 max-w-[12ch] text-4xl font-semibold leading-[0.95] tracking-[-0.04em] text-white sm:text-5xl lg:text-[4.25rem]">
-                Where rivalries get priced.
-              </h1>
-              <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-200/88 sm:text-base">
-                Tournament markets, rivalry wagers, and $WOLO-backed stakes for the fighters who
-                matter. Back your read, watch the pot swell, and claim the spoils when the proof lands.
-              </p>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-3">
-              <MetricCard label="Open markets" value={String(Math.max(openMarkets.length, 4))} tone={tone} />
-              <MetricCard label="Largest pot" value={`${formatCompactWolo(largestPot || 248)} WOLO`} tone={tone} />
-              <MetricCard label="Settled tonight" value={String(settledCards.length)} tone={tone} />
-            </div>
-
-            <div className="flex flex-wrap gap-3">
-              {isAuthenticated ? (
-                <>
-                  <Link
-                    href="/wallet"
-                    className={`rounded-full px-5 py-3 text-sm font-semibold transition ${tone.primaryButton}`}
-                  >
-                    Open Wallet
-                  </Link>
-                  <Link
-                    href="/pending-bets"
-                    className={`rounded-full border px-5 py-3 text-sm transition ${tone.secondaryButton}`}
-                  >
-                    Open Your Book
-                  </Link>
-                </>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => loginWithSteam("/bets")}
-                    disabled={loading}
-                    className={`rounded-full px-5 py-3 text-sm font-semibold transition ${tone.primaryButton}`}
-                  >
-                    {loading ? "Loading..." : "Sign In To Wager"}
-                  </button>
-                  <Link
-                    href="/wallet"
-                    className={`rounded-full border px-5 py-3 text-sm transition ${tone.secondaryButton}`}
-                  >
-                    View Wallet Rail
-                  </Link>
-                </>
-              )}
-            </div>
-          </div>
-
-          <div className={`relative overflow-hidden rounded-[1.8rem] border p-5 shadow-[0_26px_80px_rgba(4,9,20,0.34)] ${tone.insetPanel}`}>
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(251,191,36,0.10),transparent_24%)]" />
-            <div className="pointer-events-none absolute right-[-1rem] top-[-1rem] opacity-[0.08]">
-              <Image
-                src={WOLO_LOGO_SRC}
-                alt=""
-                width={240}
-                height={246}
-                className="h-[10rem] w-[10rem] object-contain sm:h-[12rem] sm:w-[12rem]"
-              />
-            </div>
-
-            {featuredMarket ? (
-              <div className="relative">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <div className={`text-[11px] uppercase tracking-[0.34em] ${tone.accentText}`}>
-                      Featured Market
-                    </div>
-                    <div className="mt-2 text-xl font-semibold text-white">{featuredMarket.eventLabel}</div>
-                    <div className="mt-1 text-sm text-slate-300">{featuredMarket.stageLabel}</div>
-                  </div>
-                  <span className={`rounded-full border px-3 py-1 text-xs ${statusClasses(featuredMarket.status)}`}>
-                    {featuredMarket.status}
-                  </span>
-                </div>
-
-                <div className="mt-6 grid gap-4 rounded-[1.5rem] border border-white/8 bg-white/[0.04] p-4 sm:grid-cols-[1fr_auto_1fr] sm:items-center">
-                  <MarketSide name={featuredMarket.leftName} href={featuredMarket.leftHref} payout={featuredMarket.leftPayout} align="left" />
-                  <div className="text-center">
-                    <div className="text-[11px] uppercase tracking-[0.34em] text-slate-400">Pot</div>
-                    <div className="mt-2 flex items-center justify-center gap-2 text-2xl font-semibold text-white">
-                      <CoinMark />
-                      <span>{featuredPotLabel}</span>
-                    </div>
-                    <div className="mt-1 text-xs text-slate-400">{featuredMarket.closingLabel}</div>
-                  </div>
-                  <MarketSide name={featuredMarket.rightName} href={featuredMarket.rightHref} payout={featuredMarket.rightPayout} align="right" />
-                </div>
-
-                <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                  <ActionLink href={featuredMarket.leftHref} className={tone.primaryButton}>
-                    Back {featuredMarket.leftName}
-                  </ActionLink>
-                  <ActionLink href={featuredMarket.rightHref} className={tone.secondaryButton}>
-                    Back {featuredMarket.rightName}
-                  </ActionLink>
-                </div>
-
-                <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-300">
-                  <span>{featuredMarket.spotlight}</span>
-                  <span>{getTournamentStatusLabel(tournament.status)} tournament rail</span>
-                </div>
-              </div>
-            ) : null}
-          </div>
-        </div>
-      </section>
-
-      <section className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
-        <div className="space-y-6">
-          <SectionCard title="Open Bets" eyebrow="Market Board" tone={tone}>
-            <div className="grid gap-4 md:grid-cols-2">
-              {secondaryMarkets.map((market) => (
-                <article
-                  key={market.id}
-                  className={`rounded-[1.5rem] border p-4 transition ${tone.card}`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className={`text-[11px] uppercase tracking-[0.28em] ${tone.accentText}`}>
-                        {market.eventLabel}
-                      </div>
-                      <div className="mt-2 text-lg font-semibold text-white">
-                        {market.leftName} vs {market.rightName}
-                      </div>
-                    </div>
-                    <span className={`rounded-full border px-3 py-1 text-xs ${statusClasses(market.status)}`}>
-                      {market.status}
-                    </span>
-                  </div>
-
-                  <div className="mt-4 flex items-center justify-between gap-3 rounded-[1.15rem] border border-white/8 bg-white/[0.035] px-4 py-3">
-                    <div>
-                      <div className="text-[11px] uppercase tracking-[0.22em] text-slate-400">Pot</div>
-                      <div className="mt-1 flex items-center gap-2 text-base font-semibold text-white">
-                        <CoinMark small />
-                        <span>{formatCompactWolo(market.potWolo)} WOLO</span>
-                      </div>
-                    </div>
-                    <div className="text-right text-sm text-slate-300">
-                      <div>{market.leftPayout}</div>
-                      <div>{market.rightPayout}</div>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 grid grid-cols-2 gap-2">
-                    <ActionLink href={market.leftHref} className={tone.primaryButton}>
-                      {market.leftName}
-                    </ActionLink>
-                    <ActionLink href={market.rightHref} className={tone.secondaryButton}>
-                      {market.rightName}
-                    </ActionLink>
-                  </div>
-
-                  <div className="mt-4 flex items-center justify-between gap-3 text-xs text-slate-400">
-                    <span>{market.spotlight}</span>
-                    <span>{market.closingLabel}</span>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </SectionCard>
-
-          <SectionCard title="Settled Results" eyebrow="Payout Proof" tone={tone}>
-            <div className="grid gap-4">
-              {settledCards.map((card) => (
-                <article
-                  key={card.id}
-                  className={`rounded-[1.5rem] border p-4 ${tone.card}`}
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <div className={`text-[11px] uppercase tracking-[0.28em] ${tone.accentText}`}>
-                        {card.map}
-                      </div>
-                      <div className="mt-2 text-lg font-semibold text-white">
-                        {card.leftName} vs {card.rightName}
-                      </div>
-                      <div className="mt-1 text-sm text-slate-300">{card.label}</div>
-                    </div>
-                    <div className={`rounded-full border px-3 py-1 text-xs ${tone.resultPill}`}>
-                      Winner: {card.winner}
-                    </div>
-                  </div>
-
-                  <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-white/8 pt-4">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-white">
-                      <CoinMark small />
-                      <span>{formatCompactWolo(card.payoutWolo)} WOLO paid</span>
-                    </div>
-                    <div className="text-sm text-slate-400">Replay-backed result</div>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </SectionCard>
-        </div>
-
-        <div className="space-y-6">
-          <SectionCard title="Your Wagers" eyebrow="Personal Book" tone={tone}>
-            {isAuthenticated ? (
-              <div className="space-y-4">
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <MetricCard label="Active" value={String(activePendingBets.length)} tone={tone} compact />
-                  <MetricCard label="Staked" value={`${formatCompactWolo(pendingStake || 0)} WOLO`} tone={tone} compact />
-                  <MetricCard label="Rail" value={userDisplayName} tone={tone} compact />
-                </div>
-
-                {activePendingBets.length > 0 ? (
-                  <div className="space-y-3">
-                    {activePendingBets.slice(0, 3).map((bet, index) => (
-                      <div
-                        key={`${bet.challenger}-${index}`}
-                        className={`flex items-center justify-between gap-3 rounded-[1.2rem] border px-4 py-3 ${tone.card}`}
-                      >
-                        <div>
-                          <div className="text-sm font-semibold text-white">{bet.challenger}</div>
-                          <div className="text-xs text-slate-400">Pending wager</div>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm font-semibold text-white">
-                          <CoinMark small />
-                          <span>{formatCompactWolo(bet.betAmount || 0)} WOLO</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className={`rounded-[1.35rem] border p-4 ${tone.card}`}>
-                    <div className="text-base font-semibold text-white">No wagers posted yet.</div>
-                    <p className="mt-2 text-sm leading-6 text-slate-300">
-                      Read the board, wait for the line to feel wrong, then strike.
-                    </p>
-                  </div>
-                )}
-
-                <div className="flex flex-wrap gap-3">
-                  <Link
-                    href="/pending-bets"
-                    className={`rounded-full border px-4 py-2.5 text-sm transition ${tone.secondaryButton}`}
-                  >
-                    Open Pending Bets
-                  </Link>
-                  <Link
-                    href="/wallet"
-                    className={`rounded-full px-4 py-2.5 text-sm font-semibold transition ${tone.primaryButton}`}
-                  >
-                    Fund War Chest
-                  </Link>
-                </div>
-              </div>
-            ) : (
-              <div className={`rounded-[1.35rem] border p-4 ${tone.card}`}>
-                <div className="text-base font-semibold text-white">Sign in to place wagers and track your book.</div>
-                <p className="mt-2 text-sm leading-6 text-slate-300">
-                  The public board is open to everyone, but your personal war chest only comes alive after Steam sign-in.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => loginWithSteam("/bets")}
-                  className={`mt-4 rounded-full px-4 py-2.5 text-sm font-semibold transition ${tone.primaryButton}`}
-                >
-                  Sign In To Enter The Book
-                </button>
-              </div>
-            )}
-          </SectionCard>
-
-          <SectionCard title="Hot Markets" eyebrow="Heat Check" tone={tone}>
-            <div className="space-y-3">
-              <HeatRow
-                label="Biggest pot"
-                value={
-                  hottestMarket
-                    ? `${hottestMarket.leftName} vs ${hottestMarket.rightName}`
-                    : "Market arming"
-                }
-                detail={`${formatCompactWolo(largestPot || 248)} WOLO in the book`}
-                tone={tone}
-              />
-              <HeatRow
-                label="Best underdog"
-                value={secondaryMarkets[1]?.rightName || "Julio Alvarez"}
-                detail={secondaryMarkets[1]?.rightPayout || "2.24x payout rail"}
-                tone={tone}
-              />
-              <HeatRow
-                label="Latest upset"
-                value={upsetCard?.winner || "Sniper"}
-                detail={upsetCard ? `${formatCompactWolo(upsetCard.payoutWolo)} WOLO paid` : "Upset rail arming"}
-                tone={tone}
-              />
-              <HeatRow
-                label="Tournament spotlight"
-                value={tournament.title}
-                detail={tournament.entryCount > 0 ? `${tournament.entryCount} fighters on deck` : "Book opens with the first bracket"}
-                tone={tone}
-              />
-            </div>
-          </SectionCard>
-        </div>
-      </section>
-    </main>
-  );
+function edgeButton(kind: "gold" | "blue" | "glass") {
+  if (kind === "gold") {
+    return "border border-amber-200/14 bg-[linear-gradient(135deg,#fde68a_0%,#f5c95f_28%,#d7a73e_72%,#8c5e10_100%)] text-slate-950 shadow-[0_14px_34px_rgba(245,158,11,0.18)] hover:brightness-105";
+  }
+  if (kind === "blue") {
+    return "border border-sky-200/12 bg-[linear-gradient(135deg,#dbeafe_0%,#93c5fd_26%,#3b82f6_68%,#1d4ed8_100%)] text-slate-950 shadow-[0_14px_34px_rgba(59,130,246,0.16)] hover:brightness-105";
+  }
+  return "border border-white/[0.08] bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] text-slate-100 hover:border-white/14 hover:bg-white/[0.08]";
 }
 
-function SectionCard({
-  title,
-  eyebrow,
-  tone,
-  children,
-}: {
-  title: string;
-  eyebrow: string;
-  tone: ReturnType<typeof getLobbyPresentationTone>;
-  children: ReactNode;
-}) {
-  return (
-    <section className={`rounded-[1.75rem] border p-5 shadow-[0_24px_70px_rgba(4,9,20,0.26)] sm:p-6 ${tone.panelShell}`}>
-      <div className={`text-[11px] uppercase tracking-[0.34em] ${tone.accentText}`}>{eyebrow}</div>
-      <h2 className="mt-2 text-2xl font-semibold text-white">{title}</h2>
-      <div className="mt-5">{children}</div>
-    </section>
-  );
+function shellClass() {
+  return "rounded-[1.9rem] border border-white/[0.06] bg-[radial-gradient(circle_at_top_left,rgba(96,165,250,0.08),transparent_26%),radial-gradient(circle_at_bottom_right,rgba(251,191,36,0.08),transparent_30%),linear-gradient(180deg,rgba(13,20,36,0.98),rgba(8,13,24,0.98))] shadow-[0_28px_80px_rgba(2,6,23,0.36)]";
 }
 
-function MetricCard({
-  label,
-  value,
-  tone,
-  compact = false,
-}: {
-  label: string;
-  value: string;
-  tone: ReturnType<typeof getLobbyPresentationTone>;
-  compact?: boolean;
-}) {
-  return (
-    <div className={`rounded-[1.35rem] border px-4 py-4 ${tone.statDefault}`}>
-      <div className="text-[11px] uppercase tracking-[0.28em] text-slate-400">{label}</div>
-      <div className={`mt-3 font-semibold tracking-tight text-white ${compact ? "text-xl" : "text-3xl"}`}>
-        {value}
-      </div>
-    </div>
-  );
+function insetClass() {
+  return "rounded-[1.55rem] border border-white/[0.06] bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.024))] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]";
 }
 
-function MarketSide({
-  name,
-  href,
-  payout,
-  align,
-}: {
-  name: string;
-  href: string;
-  payout: string;
-  align: "left" | "right";
-}) {
-  return (
-    <Link
-      href={href}
-      className={`rounded-[1.2rem] border border-white/8 bg-white/[0.035] px-4 py-4 transition hover:border-white/16 hover:bg-white/[0.06] ${align === "right" ? "text-right" : ""}`}
-    >
-      <div className="text-xs uppercase tracking-[0.24em] text-slate-400">{align === "left" ? "Back" : "Fade"}</div>
-      <div className="mt-2 text-xl font-semibold text-white">{name}</div>
-      <div className="mt-1 text-sm text-slate-300">{payout} payout</div>
-    </Link>
-  );
+function cardClass() {
+  return "rounded-[1.45rem] border border-white/[0.06] bg-[linear-gradient(180deg,rgba(255,255,255,0.038),rgba(255,255,255,0.02))] shadow-[0_18px_42px_rgba(2,6,23,0.22)]";
 }
 
 function CoinMark({ small = false }: { small?: boolean }) {
@@ -736,26 +160,826 @@ function CoinMark({ small = false }: { small?: boolean }) {
     <Image
       src={WOLO_LOGO_SRC}
       alt=""
-      width={small ? 18 : 24}
-      height={small ? 18 : 24}
-      className={small ? "h-[18px] w-[18px] object-contain" : "h-6 w-6 object-contain"}
+      width={small ? 18 : 22}
+      height={small ? 18 : 22}
+      className={small ? "h-[18px] w-[18px] object-contain" : "h-[22px] w-[22px] object-contain"}
     />
   );
 }
 
-function ActionLink({
-  href,
-  className,
-  children,
+export default function BetsPage() {
+  const { isAuthenticated, loading, loginWithSteam, user } = useUserAuth();
+  const [board, setBoard] = useState<BetBoardSnapshot | null>(null);
+  const [selection, setSelection] = useState<SelectionState | null>(null);
+  const [loadingBoard, setLoadingBoard] = useState(true);
+  const [workingKey, setWorkingKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadBoard() {
+      try {
+        const response = await fetch("/api/bets", { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error("Bet board failed to load.");
+        }
+        const payload = (await response.json()) as BetBoardSnapshot;
+        if (!cancelled) {
+          setBoard(payload);
+        }
+      } catch (error) {
+        console.error("Failed to load bet board:", error);
+        if (!cancelled) {
+          toast.error("The book is quiet right now.");
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingBoard(false);
+        }
+      }
+    }
+
+    void loadBoard();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const featuredMarket = board?.featuredMarket ?? null;
+  const openMarkets = useMemo(
+    () =>
+      (board?.openMarkets || []).filter((market) => !featuredMarket || market.id !== featuredMarket.id),
+    [board?.openMarkets, featuredMarket]
+  );
+  const totalBookPot = useMemo(
+    () => (board?.openMarkets || []).reduce((sum, market) => sum + market.totalPotWolo, 0),
+    [board?.openMarkets]
+  );
+  const liveCount = board?.heat.liveCount || 0;
+  const openCount = board?.openMarkets.length || 0;
+
+  async function refreshBoard(nextPayload?: BetBoardSnapshot) {
+    if (nextPayload) {
+      setBoard(nextPayload);
+      return;
+    }
+
+    const response = await fetch("/api/bets", { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error("Book refresh failed.");
+    }
+    const payload = (await response.json()) as BetBoardSnapshot;
+    setBoard(payload);
+  }
+
+  function requireSignIn() {
+    if (isAuthenticated) return true;
+    loginWithSteam("/bets");
+    return false;
+  }
+
+  function handleSelect(market: BetBoardMarket, side: BetSide) {
+    if (!requireSignIn()) return;
+    const existingStake = market.viewerWager?.amountWolo || 25;
+    setSelection({
+      marketId: market.id,
+      side,
+      stake: STAKE_OPTIONS.includes(existingStake as (typeof STAKE_OPTIONS)[number])
+        ? existingStake
+        : 25,
+    });
+  }
+
+  async function handleLock(market: BetBoardMarket) {
+    if (!selection || selection.marketId !== market.id) return;
+    if (!requireSignIn()) return;
+
+    setWorkingKey(`lock-${market.id}`);
+    try {
+      const response = await fetch("/api/bets/wager", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          marketId: market.id,
+          side: selection.side,
+          amountWolo: selection.stake,
+        }),
+      });
+
+      const payload = (await response.json().catch(() => ({}))) as BetBoardSnapshot & {
+        detail?: string;
+      };
+
+      if (!response.ok) {
+        throw new Error(payload.detail || "Could not lock the wager.");
+      }
+
+      await refreshBoard(payload);
+      setSelection(null);
+      toast.success(`Locked ${selection.stake} WOLO on ${selection.side === "left" ? market.left.name : market.right.name}.`);
+    } catch (error) {
+      console.error("Failed to lock wager:", error);
+      toast.error(error instanceof Error ? error.message : "Could not lock the wager.");
+    } finally {
+      setWorkingKey(null);
+    }
+  }
+
+  async function handleClear(marketId: number) {
+    if (!requireSignIn()) return;
+
+    setWorkingKey(`clear-${marketId}`);
+    try {
+      const response = await fetch(`/api/bets/wager?marketId=${marketId}`, {
+        method: "DELETE",
+      });
+      const payload = (await response.json().catch(() => ({}))) as BetBoardSnapshot & {
+        detail?: string;
+      };
+      if (!response.ok) {
+        throw new Error(payload.detail || "Could not clear the wager.");
+      }
+      await refreshBoard(payload);
+      if (selection?.marketId === marketId) {
+        setSelection(null);
+      }
+      toast.success("Slip cleared.");
+    } catch (error) {
+      console.error("Failed to clear wager:", error);
+      toast.error(error instanceof Error ? error.message : "Could not clear the wager.");
+    } finally {
+      setWorkingKey(null);
+    }
+  }
+
+  const viewerName = board?.viewerName || user?.inGameName || user?.steamPersonaName || "Your book";
+
+  return (
+    <main className="space-y-5 overflow-x-hidden py-4 text-white sm:space-y-6 sm:py-5">
+      <section className="grid gap-5 xl:grid-cols-[0.78fr_1.22fr]">
+        <div className={`${shellClass()} p-5 sm:p-6`}>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-amber-200/12 bg-amber-400/10 px-3 py-1 text-[11px] uppercase tracking-[0.35em] text-amber-100">
+              Bets
+            </span>
+            <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-slate-300">
+              {openCount} books
+            </span>
+            <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-slate-300">
+              {liveCount} live
+            </span>
+          </div>
+
+          <div className="mt-5">
+            <div className="text-[11px] uppercase tracking-[0.38em] text-slate-400">The War Book</div>
+            <h1 className="mt-3 text-4xl font-semibold tracking-[-0.05em] text-white sm:text-5xl">
+              Bets
+            </h1>
+          </div>
+
+          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            <MiniMetric label="Open" value={String(openCount)} />
+            <MiniMetric label="In Play" value={String(liveCount)} />
+            <MiniMetric label="Book Pot" value={`${formatCompact(totalBookPot || 0)} WOLO`} />
+            <MiniMetric
+              label="Your Slips"
+              value={isAuthenticated ? String(board?.yourBook.activeCount || 0) : "Sign in"}
+            />
+          </div>
+
+          <div className={`mt-5 ${insetClass()} px-4 py-4`}>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-[11px] uppercase tracking-[0.32em] text-slate-500">Your Book</div>
+                <div className="mt-2 text-lg font-semibold text-white">{viewerName}</div>
+              </div>
+              <div className="text-right">
+                <div className="text-[11px] uppercase tracking-[0.28em] text-slate-500">If Right</div>
+                <div className="mt-2 text-lg font-semibold text-white">
+                  {isAuthenticated
+                    ? `${formatCompact(board?.yourBook.projectedReturnWolo || 0)} WOLO`
+                    : "Open"}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <section className={`${shellClass()} relative overflow-hidden p-5 sm:p-6`}>
+          <div className="pointer-events-none absolute right-[-1.25rem] top-[-1.25rem] opacity-[0.08]">
+            <Image
+              src={WOLO_LOGO_SRC}
+              alt=""
+              width={260}
+              height={265}
+              className="h-[12rem] w-[12rem] object-contain sm:h-[14rem] sm:w-[14rem]"
+            />
+          </div>
+
+          {loadingBoard ? (
+            <LoadingMarket />
+          ) : featuredMarket ? (
+            <MarketFeature
+              market={featuredMarket}
+              selection={selection}
+              workingKey={workingKey}
+              isAuthenticated={isAuthenticated}
+              loadingAuth={loading}
+              onSelect={handleSelect}
+              onStakeChange={(stake) =>
+                setSelection((current) =>
+                  current && current.marketId === featuredMarket.id ? { ...current, stake } : current
+                )
+              }
+              onLock={() => handleLock(featuredMarket)}
+              onClear={() => handleClear(featuredMarket.id)}
+            />
+          ) : (
+            <EmptyShell label="No books armed yet." />
+          )}
+        </section>
+      </section>
+
+      <section className="grid gap-5 xl:grid-cols-[1.08fr_0.92fr]">
+        <section className={`${shellClass()} p-5 sm:p-6`}>
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <div className="text-[11px] uppercase tracking-[0.35em] text-slate-500">Open Books</div>
+              <h2 className="mt-2 text-2xl font-semibold text-white">Pick a side.</h2>
+            </div>
+            <div className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-slate-300">
+              {openMarkets.length} more
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-4 md:grid-cols-2">
+            {loadingBoard ? (
+              <>
+                <LoadingCard />
+                <LoadingCard />
+              </>
+            ) : openMarkets.length > 0 ? (
+              openMarkets.map((market, index) => (
+                <MarketCard
+                  key={market.id}
+                  market={market}
+                  selection={selection}
+                  workingKey={workingKey}
+                  onSelect={handleSelect}
+                  onStakeChange={(stake) =>
+                    setSelection((current) =>
+                      current && current.marketId === market.id ? { ...current, stake } : current
+                    )
+                  }
+                  onLock={() => handleLock(market)}
+                  onClear={() => handleClear(market.id)}
+                  accent={index % 2 === 0 ? "warm" : "cool"}
+                />
+              ))
+            ) : (
+              <EmptyShell label="No open books right now." />
+            )}
+          </div>
+        </section>
+
+        <div className="space-y-5">
+          <section id="your-book" className={`${shellClass()} p-5 sm:p-6`}>
+            <div className="flex items-end justify-between gap-3">
+              <div>
+                <div className="text-[11px] uppercase tracking-[0.35em] text-slate-500">Your Book</div>
+                <h2 className="mt-2 text-2xl font-semibold text-white">Slips</h2>
+              </div>
+              {isAuthenticated ? (
+                <div className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-slate-300">
+                  {board?.yourBook.activeCount || 0}
+                </div>
+              ) : null}
+            </div>
+
+            {isAuthenticated ? (
+              <>
+                <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                  <MiniMetric label="Active" value={String(board?.yourBook.activeCount || 0)} />
+                  <MiniMetric
+                    label="Staked"
+                    value={`${formatCompact(board?.yourBook.stakedWolo || 0)} WOLO`}
+                  />
+                  <MiniMetric
+                    label="If Right"
+                    value={`${formatCompact(board?.yourBook.projectedReturnWolo || 0)} WOLO`}
+                  />
+                </div>
+
+                <div className="mt-5 space-y-3">
+                  {board?.yourBook.openWagers.length ? (
+                    board.yourBook.openWagers.map((wager) => (
+                      <article
+                        key={wager.marketId}
+                        className={`${cardClass()} flex items-center justify-between gap-4 px-4 py-4`}
+                      >
+                        <div className="min-w-0">
+                          <div className="truncate text-sm uppercase tracking-[0.28em] text-slate-500">
+                            {wager.eventLabel}
+                          </div>
+                          <div className="mt-2 truncate text-lg font-semibold text-white">
+                            {wager.pickedLabel}
+                          </div>
+                          <div className="mt-1 text-sm text-slate-400">{wager.closeLabel}</div>
+                        </div>
+
+                        <div className="text-right">
+                          <div className="flex items-center justify-end gap-2 text-sm font-semibold text-white">
+                            <CoinMark small />
+                            <span>{formatCompact(wager.amountWolo)}</span>
+                          </div>
+                          <div className="mt-1 text-xs text-slate-400">
+                            {formatCompact(wager.projectedReturnWolo)} back
+                          </div>
+                        </div>
+                      </article>
+                    ))
+                  ) : (
+                    <div className={`${insetClass()} px-4 py-5`}>
+                      <div className="text-base font-semibold text-white">No slips yet.</div>
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className={`${insetClass()} mt-5 px-4 py-5`}>
+                <div className="text-base font-semibold text-white">Sign in to lock slips.</div>
+                <button
+                  type="button"
+                  onClick={() => loginWithSteam("/bets")}
+                  className={`mt-4 inline-flex items-center rounded-full px-4 py-2.5 text-sm font-semibold transition ${edgeButton("blue")}`}
+                >
+                  {loading ? "Loading..." : "Steam Sign In"}
+                </button>
+              </div>
+            )}
+          </section>
+
+          <section className={`${shellClass()} p-5 sm:p-6`}>
+            <div className="text-[11px] uppercase tracking-[0.35em] text-slate-500">Heat</div>
+            <h2 className="mt-2 text-2xl font-semibold text-white">What’s moving.</h2>
+
+            <div className="mt-5 space-y-3">
+              <HeatRow
+                label="Biggest pot"
+                value={board?.heat.biggestPot?.label || "Market arming"}
+                detail={
+                  board?.heat.biggestPot
+                    ? `${formatCompact(board.heat.biggestPot.potWolo)} WOLO`
+                    : "Quiet"
+                }
+              />
+              <HeatRow
+                label="Best return"
+                value={board?.heat.bestReturn?.label || "Reading the board"}
+                detail={
+                  board?.heat.bestReturn
+                    ? `${board.heat.bestReturn.returnMultiplier.toFixed(2)}x`
+                    : "Waiting"
+                }
+              />
+              <HeatRow
+                label="Latest proof"
+                value={board?.settledResults[0]?.winner || "No result yet"}
+                detail={board?.settledResults[0]?.mapName || "Pending"}
+              />
+            </div>
+          </section>
+
+          <section className={`${shellClass()} p-5 sm:p-6`}>
+            <div className="flex items-end justify-between gap-3">
+              <div>
+                <div className="text-[11px] uppercase tracking-[0.35em] text-slate-500">
+                  Payout Proof
+                </div>
+                <h2 className="mt-2 text-2xl font-semibold text-white">Settled</h2>
+              </div>
+              <div className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-slate-300">
+                {board?.settledResults.length || 0}
+              </div>
+            </div>
+
+            <div className="mt-5 space-y-3">
+              {board?.settledResults.length ? (
+                board.settledResults.map((result) => (
+                  <article key={result.id} className={`${cardClass()} px-4 py-4`}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="truncate text-sm uppercase tracking-[0.28em] text-slate-500">
+                          {result.mapName}
+                        </div>
+                        <div className="mt-2 truncate text-lg font-semibold text-white">
+                          {result.title}
+                        </div>
+                        <div className="mt-1 text-sm text-slate-400">{result.winner} took it</div>
+                      </div>
+                      <div className="flex items-center gap-2 rounded-full border border-emerald-300/16 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-100">
+                        <CoinMark small />
+                        <span>{formatCompact(result.payoutWolo)}</span>
+                      </div>
+                    </div>
+                  </article>
+                ))
+              ) : (
+                <EmptyShell label="No proof landed yet." />
+              )}
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+  );
+}
+
+function MarketFeature({
+  market,
+  selection,
+  workingKey,
+  isAuthenticated,
+  loadingAuth,
+  onSelect,
+  onStakeChange,
+  onLock,
+  onClear,
 }: {
-  href: string;
-  className: string;
-  children: ReactNode;
+  market: BetBoardMarket;
+  selection: SelectionState | null;
+  workingKey: string | null;
+  isAuthenticated: boolean;
+  loadingAuth: boolean;
+  onSelect: (market: BetBoardMarket, side: BetSide) => void;
+  onStakeChange: (stake: number) => void;
+  onLock: () => void;
+  onClear: () => void;
+}) {
+  const activeSelection =
+    selection && selection.marketId === market.id
+      ? selection
+      : market.viewerWager
+        ? {
+            marketId: market.id,
+            side: market.viewerWager.side,
+            stake: market.viewerWager.amountWolo,
+          }
+        : null;
+
+  const selectedPool = activeSelection
+    ? activeSelection.side === "left"
+      ? market.left.poolWolo - (market.viewerWager?.side === "left" ? market.viewerWager.amountWolo : 0)
+      : market.right.poolWolo - (market.viewerWager?.side === "right" ? market.viewerWager.amountWolo : 0)
+    : 0;
+  const oppositePool = activeSelection
+    ? activeSelection.side === "left"
+      ? market.right.poolWolo
+      : market.left.poolWolo
+    : 0;
+  const projectedReturn = activeSelection
+    ? projectReturn(activeSelection.stake, Math.max(0, selectedPool), oppositePool)
+    : 0;
+
+  return (
+    <div className="relative">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="text-[11px] uppercase tracking-[0.35em] text-slate-500">Featured Market</div>
+          <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl">
+            {market.title}
+          </h2>
+          <div className="mt-2 text-sm text-slate-400">{market.eventLabel}</div>
+        </div>
+        <span className={`rounded-full border px-3 py-1 text-xs ${statusPill(market.status)}`}>
+          {market.closeLabel}
+        </span>
+      </div>
+
+      <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_auto_1fr] lg:items-center">
+        <SideChoice
+          side={market.left}
+          selected={activeSelection?.side === "left"}
+          emphasis="warm"
+          onSelect={() => onSelect(market, "left")}
+        />
+
+        <div className={`${insetClass()} px-5 py-5 text-center`}>
+          <div className="text-[11px] uppercase tracking-[0.3em] text-slate-500" title="Total WOLO already sitting in the book.">
+            Pot
+          </div>
+          <div className="mt-3 flex items-center justify-center gap-2 text-3xl font-semibold text-white">
+            <CoinMark />
+            <span>{formatCompact(market.totalPotWolo)}</span>
+          </div>
+          <div className="mt-2 text-xs text-slate-400">{market.left.crowdPercent}% / {market.right.crowdPercent}%</div>
+        </div>
+
+        <SideChoice
+          side={market.right}
+          selected={activeSelection?.side === "right"}
+          emphasis="cool"
+          onSelect={() => onSelect(market, "right")}
+        />
+      </div>
+
+      <div className={`${insetClass()} mt-5 px-4 py-4`}>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap gap-2">
+            {STAKE_OPTIONS.map((stake) => (
+              <button
+                key={stake}
+                type="button"
+                onClick={() => activeSelection && onStakeChange(stake)}
+                disabled={!activeSelection}
+                className={`inline-flex items-center rounded-full px-3 py-1.5 text-sm transition ${
+                  activeSelection?.stake === stake ? edgeButton("gold") : edgeButton("glass")
+                } ${!activeSelection ? "cursor-not-allowed opacity-50" : ""}`}
+              >
+                {stake}
+              </button>
+            ))}
+          </div>
+
+          <div className="text-right">
+            <div className="text-[11px] uppercase tracking-[0.28em] text-slate-500" title="Projected book return if this side wins right now.">
+              If Right
+            </div>
+            <div className="mt-2 text-xl font-semibold text-white">
+              {activeSelection ? `${formatCompact(projectedReturn)} WOLO` : "Pick a side"}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="text-sm text-slate-400">
+            {market.viewerWager
+              ? `Locked on ${market.viewerWager.side === "left" ? market.left.name : market.right.name}`
+              : isAuthenticated
+                ? "Ready"
+                : loadingAuth
+                  ? "Loading"
+                  : "Steam sign-in required"}
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {market.viewerWager ? (
+              <button
+                type="button"
+                onClick={onClear}
+                disabled={workingKey === `clear-${market.id}`}
+                className={`inline-flex items-center rounded-full px-4 py-2.5 text-sm transition ${edgeButton("glass")} ${
+                  workingKey === `clear-${market.id}` ? "opacity-60" : ""
+                }`}
+              >
+                {workingKey === `clear-${market.id}` ? "Clearing..." : "Clear"}
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={onLock}
+              disabled={!activeSelection || workingKey === `lock-${market.id}`}
+              className={`inline-flex items-center rounded-full px-4 py-2.5 text-sm font-semibold transition ${edgeButton("gold")} ${
+                !activeSelection || workingKey === `lock-${market.id}` ? "opacity-60" : ""
+              }`}
+            >
+              {workingKey === `lock-${market.id}`
+                ? "Locking..."
+                : activeSelection
+                  ? `Lock ${activeSelection.stake}`
+                  : "Lock"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MarketCard({
+  market,
+  selection,
+  workingKey,
+  onSelect,
+  onStakeChange,
+  onLock,
+  onClear,
+  accent,
+}: {
+  market: BetBoardMarket;
+  selection: SelectionState | null;
+  workingKey: string | null;
+  onSelect: (market: BetBoardMarket, side: BetSide) => void;
+  onStakeChange: (stake: number) => void;
+  onLock: () => void;
+  onClear: () => void;
+  accent: "warm" | "cool";
+}) {
+  const activeSelection =
+    selection && selection.marketId === market.id
+      ? selection
+      : market.viewerWager
+        ? {
+            marketId: market.id,
+            side: market.viewerWager.side,
+            stake: market.viewerWager.amountWolo,
+          }
+        : null;
+
+  const selectedPool = activeSelection
+    ? activeSelection.side === "left"
+      ? market.left.poolWolo - (market.viewerWager?.side === "left" ? market.viewerWager.amountWolo : 0)
+      : market.right.poolWolo - (market.viewerWager?.side === "right" ? market.viewerWager.amountWolo : 0)
+    : 0;
+  const oppositePool = activeSelection
+    ? activeSelection.side === "left"
+      ? market.right.poolWolo
+      : market.left.poolWolo
+    : 0;
+  const projectedReturn = activeSelection
+    ? projectReturn(activeSelection.stake, Math.max(0, selectedPool), oppositePool)
+    : 0;
+
+  return (
+    <article className={`${cardClass()} overflow-hidden p-4`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="truncate text-[11px] uppercase tracking-[0.32em] text-slate-500">
+            {market.eventLabel}
+          </div>
+          <div className="mt-2 truncate text-xl font-semibold text-white">{market.title}</div>
+        </div>
+        <span className={`rounded-full border px-3 py-1 text-xs ${statusPill(market.status)}`}>
+          {market.closeLabel}
+        </span>
+      </div>
+
+      <div className={`${insetClass()} mt-4 px-4 py-3`}>
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <div className="text-[11px] uppercase tracking-[0.26em] text-slate-500">Pot</div>
+            <div className="mt-2 flex items-center gap-2 text-base font-semibold text-white">
+              <CoinMark small />
+              <span>{formatCompact(market.totalPotWolo)} WOLO</span>
+            </div>
+          </div>
+          <div className="text-right text-xs text-slate-400">
+            <div>{market.left.crowdPercent}% left</div>
+            <div>{market.right.crowdPercent}% right</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-2">
+        <SideMiniChoice
+          side={market.left}
+          selected={activeSelection?.side === "left"}
+          emphasis={accent === "warm" ? "warm" : "cool"}
+          onSelect={() => onSelect(market, "left")}
+        />
+        <SideMiniChoice
+          side={market.right}
+          selected={activeSelection?.side === "right"}
+          emphasis={accent === "warm" ? "cool" : "warm"}
+          onSelect={() => onSelect(market, "right")}
+        />
+      </div>
+
+      <div className={`${insetClass()} mt-4 px-4 py-4`}>
+        <div className="flex flex-wrap gap-2">
+          {STAKE_OPTIONS.map((stake) => (
+            <button
+              key={stake}
+              type="button"
+              onClick={() => activeSelection && onStakeChange(stake)}
+              disabled={!activeSelection}
+              className={`rounded-full px-3 py-1.5 text-xs transition ${
+                activeSelection?.stake === stake ? edgeButton("gold") : edgeButton("glass")
+              } ${!activeSelection ? "cursor-not-allowed opacity-50" : ""}`}
+            >
+              {stake}
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-4 flex items-center justify-between gap-3">
+          <div>
+            <div className="text-[11px] uppercase tracking-[0.26em] text-slate-500">If Right</div>
+            <div className="mt-2 text-base font-semibold text-white">
+              {activeSelection ? `${formatCompact(projectedReturn)} WOLO` : "Pick"}
+            </div>
+          </div>
+
+          <div className="flex gap-2">
+            {market.viewerWager ? (
+              <button
+                type="button"
+                onClick={onClear}
+                disabled={workingKey === `clear-${market.id}`}
+                className={`rounded-full px-3 py-2 text-xs transition ${edgeButton("glass")} ${
+                  workingKey === `clear-${market.id}` ? "opacity-60" : ""
+                }`}
+              >
+                Clear
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={onLock}
+              disabled={!activeSelection || workingKey === `lock-${market.id}`}
+              className={`rounded-full px-3 py-2 text-xs font-semibold transition ${edgeButton(
+                accent === "warm" ? "gold" : "blue"
+              )} ${!activeSelection || workingKey === `lock-${market.id}` ? "opacity-60" : ""}`}
+            >
+              {workingKey === `lock-${market.id}`
+                ? "Locking..."
+                : activeSelection
+                  ? `Lock ${activeSelection.stake}`
+                  : "Lock"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function SideChoice({
+  side,
+  selected,
+  emphasis,
+  onSelect,
+}: {
+  side: BetBoardSide;
+  selected: boolean;
+  emphasis: "warm" | "cool";
+  onSelect: () => void;
 }) {
   return (
-    <Link href={href} className={`inline-flex items-center justify-center rounded-full px-4 py-2.5 text-sm transition ${className}`}>
-      {children}
-    </Link>
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`rounded-[1.45rem] border px-4 py-4 text-left transition ${sideSurface(
+        selected,
+        emphasis
+      )}`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-[11px] uppercase tracking-[0.28em] text-slate-400">Pick</div>
+          <div className="mt-2 text-2xl font-semibold leading-tight text-white">{side.name}</div>
+        </div>
+        <div className="rounded-full border border-white/[0.08] bg-black/10 px-3 py-1 text-xs text-slate-200">
+          {side.crowdPercent}%
+        </div>
+      </div>
+
+      <div className="mt-4 flex items-center justify-between gap-3 text-sm text-slate-200">
+        <div className="flex items-center gap-2">
+          <CoinMark small />
+          <span>{formatCompact(side.poolWolo)}</span>
+        </div>
+        <span>{side.slips} slips</span>
+      </div>
+    </button>
+  );
+}
+
+function SideMiniChoice({
+  side,
+  selected,
+  emphasis,
+  onSelect,
+}: {
+  side: BetBoardSide;
+  selected: boolean;
+  emphasis: "warm" | "cool";
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`rounded-[1.15rem] border px-3 py-3 text-left transition ${sideSurface(
+        selected,
+        emphasis
+      )}`}
+    >
+      <div className="truncate text-sm font-semibold text-white">{side.name}</div>
+      <div className="mt-2 flex items-center justify-between gap-2 text-xs text-slate-300">
+        <span>{side.crowdPercent}%</span>
+        <span>{formatCompact(side.poolWolo)}</span>
+      </div>
+    </button>
+  );
+}
+
+function MiniMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className={`${cardClass()} px-4 py-4`}>
+      <div className="text-[11px] uppercase tracking-[0.28em] text-slate-500">{label}</div>
+      <div className="mt-2 text-2xl font-semibold tracking-tight text-white">{value}</div>
+    </div>
   );
 }
 
@@ -763,18 +987,41 @@ function HeatRow({
   label,
   value,
   detail,
-  tone,
 }: {
   label: string;
   value: string;
   detail: string;
-  tone: ReturnType<typeof getLobbyPresentationTone>;
 }) {
   return (
-    <div className={`rounded-[1.2rem] border px-4 py-3 ${tone.card}`}>
-      <div className="text-[11px] uppercase tracking-[0.24em] text-slate-400">{label}</div>
+    <div className={`${cardClass()} px-4 py-4`}>
+      <div className="text-[11px] uppercase tracking-[0.28em] text-slate-500">{label}</div>
       <div className="mt-2 text-base font-semibold text-white">{value}</div>
-      <div className="mt-1 text-sm text-slate-300">{detail}</div>
+      <div className="mt-1 text-sm text-slate-400">{detail}</div>
     </div>
+  );
+}
+
+function LoadingMarket() {
+  return (
+    <div className="animate-pulse space-y-4">
+      <div className="h-4 w-32 rounded-full bg-white/10" />
+      <div className="h-12 w-72 rounded-2xl bg-white/10" />
+      <div className="grid gap-4 lg:grid-cols-[1fr_auto_1fr]">
+        <div className="h-32 rounded-[1.4rem] bg-white/10" />
+        <div className="h-32 rounded-[1.4rem] bg-white/10" />
+        <div className="h-32 rounded-[1.4rem] bg-white/10" />
+      </div>
+      <div className="h-24 rounded-[1.4rem] bg-white/10" />
+    </div>
+  );
+}
+
+function LoadingCard() {
+  return <div className={`${cardClass()} h-[18rem] animate-pulse bg-white/[0.03]`} />;
+}
+
+function EmptyShell({ label }: { label: string }) {
+  return (
+    <div className={`${insetClass()} px-4 py-5 text-sm text-slate-300`}>{label}</div>
   );
 }
