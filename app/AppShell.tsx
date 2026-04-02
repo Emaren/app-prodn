@@ -178,7 +178,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
               </div>
             </div>
 
-            <nav className="w-full overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none]">
+            <nav className="w-full overflow-x-auto overflow-y-visible pb-1 pt-2 [scrollbar-width:none] [-ms-overflow-style:none]">
               <div className="flex min-w-max items-center gap-2 pr-1 whitespace-nowrap">
                 <Link
                   href="/live-games"
@@ -220,7 +220,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
               </Link>
             </div>
 
-            <nav className="flex max-w-full items-center gap-2 overflow-x-auto whitespace-nowrap pb-1 [scrollbar-width:none] [-ms-overflow-style:none] lg:justify-self-center lg:pb-0">
+            <nav className="flex max-w-full items-center gap-2 overflow-x-auto overflow-y-visible whitespace-nowrap pb-1 pt-2 [scrollbar-width:none] [-ms-overflow-style:none] lg:justify-self-center lg:pb-0">
               <Link
                 href="/live-games"
                 className="rounded-full border border-red-400/25 bg-red-500/10 px-3 py-1 text-xs text-red-100 transition hover:border-red-300/40 hover:bg-red-500/15"
