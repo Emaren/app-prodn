@@ -39,6 +39,7 @@ Important public surfaces include:
 - `app/page.tsx`
 - `app/lobby/page.tsx`
 - `app/live-games/page.tsx`
+- `app/game-stats/live/[sessionKey]/page.tsx`
 - `app/players/page.tsx`
 - `app/players/[uid]/page.tsx`
 - `app/players/by-name/[name]/page.tsx`
@@ -49,6 +50,8 @@ Important public surfaces include:
 - `app/wolo/page.tsx`
 
 The current public spine is no longer just a homepage plus a few leaf pages. The real first-impression product path is now the lobby/community shell and its linked destinations.
+
+Live replay detail presentation is currently owned by `components/game-stats/LiveReplayDetail.tsx`. The Battle Matrix lane cards should keep their pulse rail and pulse strip in roomy subpanels with auto-fit pulse tiles so EAPM/history chips stay readable instead of squeezing into fixed-width micro-columns.
 
 ### Same-origin API routes
 

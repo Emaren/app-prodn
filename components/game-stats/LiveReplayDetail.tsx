@@ -739,8 +739,8 @@ function BattleMatrixLane({
         };
 
   return (
-    <div className={`min-w-0 overflow-hidden rounded-[1.75rem] border p-5 ${toneClass.shell}`}>
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className={`min-w-0 overflow-hidden rounded-[1.75rem] border p-5 sm:p-6 ${toneClass.shell}`}>
+      <div className="flex flex-wrap items-start justify-between gap-6">
         <div className="min-w-0">
           <div className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Activity lane</div>
           <div className={`mt-2 break-words text-2xl font-semibold ${toneClass.accent}`}>
@@ -753,15 +753,15 @@ function BattleMatrixLane({
           </div>
         </div>
 
-        <div className="text-right">
+        <div className="rounded-[1.35rem] border border-white/8 bg-slate-950/30 px-4 py-3 text-right">
           <div className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Current EAPM</div>
           <div className="mt-2 text-4xl font-semibold text-white">{formatActivityMetric(summary.currentEapm)}</div>
           <div className="mt-1 text-sm text-slate-300">{formatDeltaMetric(summary.eapmDelta)} from opening</div>
         </div>
       </div>
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
-        <div>
+      <div className="mt-6 grid gap-5 2xl:grid-cols-[minmax(0,1.08fr)_minmax(16rem,0.92fr)]">
+        <div className="rounded-[1.35rem] border border-white/8 bg-slate-950/25 p-4 sm:p-5">
           <div className="flex items-center justify-between gap-3 text-[11px] uppercase tracking-[0.22em] text-slate-500">
             <span>Live activity rail</span>
             <span>{formatActivityMetric(summary.peakEapm)} peak EAPM</span>
@@ -777,7 +777,7 @@ function BattleMatrixLane({
               }}
             />
           </div>
-          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="mt-5 grid grid-cols-2 gap-3">
             <MatrixMetric label="Opening" value={formatActivityMetric(summary.openingEapm)} />
             <MatrixMetric label="Peak" value={formatActivityMetric(summary.peakEapm)} />
             <MatrixMetric label="Coverage" value={`${summary.pulseCount}/${Math.max(1, series.length)}`} />
@@ -788,23 +788,23 @@ function BattleMatrixLane({
           </div>
         </div>
 
-        <div>
+        <div className="rounded-[1.35rem] border border-white/8 bg-slate-950/25 p-4 sm:p-5">
           <div className="flex items-center justify-between gap-3 text-[11px] uppercase tracking-[0.22em] text-slate-500">
             <span>Pulse strip</span>
             <span>{series.length} pulses</span>
           </div>
-          <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-6">
+          <div className="mt-4 grid grid-cols-[repeat(auto-fit,minmax(3.65rem,1fr))] gap-2.5">
             {series.map((point) => (
               <div
                 key={`${summary.name}-${point.parseIteration}`}
-                className={`rounded-xl border px-2 py-2 text-center ${toneClass.active}`}
+                className={`rounded-[1rem] border px-3 py-3 text-center ${toneClass.active}`}
               >
                 <div className="text-[10px] uppercase tracking-[0.18em] opacity-70">#{point.parseIteration}</div>
-                <div className="mt-1 text-sm font-semibold">{formatPulseMetric(point.eapm)}</div>
+                <div className="mt-1.5 text-base font-semibold leading-none">{formatPulseMetric(point.eapm)}</div>
               </div>
             ))}
           </div>
-          <div className="mt-4 text-sm leading-6 text-slate-300">{describePulseSummary(summary)}</div>
+          <div className="mt-5 text-sm leading-6 text-slate-300">{describePulseSummary(summary)}</div>
         </div>
       </div>
     </div>
@@ -857,9 +857,9 @@ function SignalWarmupPanel({
 
 function MatrixMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-white/8 bg-slate-950/40 px-3 py-3">
-      <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{label}</div>
-      <div className="mt-2 text-sm font-semibold text-slate-100">{value}</div>
+    <div className="rounded-[1.2rem] border border-white/8 bg-slate-950/40 px-4 py-3.5">
+      <div className="text-[10px] uppercase tracking-[0.2em] text-slate-500">{label}</div>
+      <div className="mt-2 text-base font-semibold leading-none text-slate-100">{value}</div>
     </div>
   );
 }
