@@ -1,65 +1,62 @@
-import { readFile } from "fs/promises";
-import path from "path";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { NextResponse } from "next/server";
 
-export const runtime = "nodejs";
+const execFileAsync = promisify(execFile);
+
+const DEFAULT_UNIT = process.env.WOLO_DAEMON_SYSTEMD_UNIT?.trim() || "wolochaind-testnet";
+const DEFAULT_LINES =
+  Number.parseInt(process.env.WOLO_DAEMON_TAIL_LINES?.trim() || "40", 10) || 40;
+
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
-const NO_STORE_HEADERS = {
-  "Cache-Control": "no-store, max-age=0",
-};
-
-function tailLines(text: string, limit = 40) {
-  return text
-    .split(/\r?\n/)
+function sanitizeLines(raw: string) {
+  return raw
+    .split("\n")
     .map((line) => line.trimEnd())
     .filter(Boolean)
-    .slice(-limit);
+    .slice(-DEFAULT_LINES);
 }
 
 export async function GET() {
-  const logPath = process.env.WOLO_DAEMON_LOG_PATH?.trim();
-
-  if (!logPath) {
-    return NextResponse.json(
-      {
-        ok: false,
-        label: "daemon.log",
-        lines: [
-          "[daemon] WOLO_DAEMON_LOG_PATH is not set",
-          "[daemon] point this route at a real local daemon log file",
-        ],
-      },
-      { headers: NO_STORE_HEADERS }
-    );
-  }
-
   try {
-    const text = await readFile(logPath, "utf8");
-    const lines = tailLines(text, 40);
-
-    return NextResponse.json(
+    const { stdout } = await execFileAsync(
+      "journalctl",
+      [
+        "-u",
+        DEFAULT_UNIT,
+        "-n",
+        String(DEFAULT_LINES),
+        "--no-pager",
+        "-o",
+        "cat",
+      ],
       {
-        ok: true,
-        label: path.basename(logPath),
-        lines:
-          lines.length > 0
-            ? lines
-            : ["[daemon] log file is empty", "[daemon] waiting for chain output"],
-      },
-      { headers: NO_STORE_HEADERS }
+        env: {
+          ...process.env,
+          SYSTEMD_COLORS: "1",
+        },
+      }
     );
+
+    const lines = sanitizeLines(stdout);
+
+    return NextResponse.json({
+      ok: true,
+      label: `${DEFAULT_UNIT}.journal`,
+      lines:
+        lines.length > 0
+          ? lines
+          : ["[daemon] journal is reachable but no lines were returned yet"],
+    });
   } catch (error) {
-    const detail =
-      error instanceof Error ? error.message : "Could not read daemon log.";
+    const detail = error instanceof Error ? error.message : "unknown journalctl error";
 
-    return NextResponse.json(
-      {
-        ok: false,
-        label: path.basename(logPath),
-        lines: [`[daemon] ${detail}`],
-      },
-      { headers: NO_STORE_HEADERS }
-    );
+    return NextResponse.json({
+      ok: false,
+      label: `${DEFAULT_UNIT}.journal`,
+      lines: ["[daemon] failed to read live systemd journal", `[daemon] ${detail}`],
+    });
   }
 }

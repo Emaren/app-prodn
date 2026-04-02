@@ -1,7 +1,9 @@
 import { Bech32Address } from "@keplr-wallet/cosmos";
 
-export const WOLO_CHAIN_ID = "wolo";
-export const WOLO_CHAIN_NAME = "WoloChain";
+export const WOLO_CHAIN_ID =
+  process.env.NEXT_PUBLIC_WOLO_CHAIN_ID?.trim() || "wolo-1";
+
+export const WOLO_CHAIN_NAME = "WoloChain Testnet";
 export const WOLO_ADDRESS_PREFIX = "wolo";
 export const WOLO_BASE_DENOM = "uwolo";
 export const WOLO_DISPLAY_DENOM = "WOLO";
@@ -14,7 +16,7 @@ export const WOLO_RPC_URL =
   process.env.NEXT_PUBLIC_WOLO_RPC_URL?.trim() || "https://rpc.aoe2hdbets.com";
 
 export const WOLO_REST_URL =
-  process.env.NEXT_PUBLIC_WOLO_REST_URL?.trim() || "https://api.aoe2hdbets.com";
+  process.env.NEXT_PUBLIC_WOLO_REST_URL?.trim() || "https://rest.aoe2hdbets.com";
 
 export const WOLO_KEPLR_DOWNLOAD_URL = "https://www.keplr.app/get";
 export const WOLO_MONETARY_POLICY_LABEL = "Fixed Supply";

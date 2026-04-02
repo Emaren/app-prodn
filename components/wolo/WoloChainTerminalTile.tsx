@@ -50,6 +50,95 @@ function shouldToggleFromTarget(target: EventTarget | null) {
   );
 }
 
+function cx(...parts: Array<string | false | null | undefined>) {
+  return parts.filter(Boolean).join(" ");
+}
+
+function ansiClassFromCodes(codes: number[]) {
+  let fg = "text-slate-200";
+  let bold = false;
+
+  for (const code of codes) {
+    if (code === 0) {
+      fg = "text-slate-200";
+      bold = false;
+    } else if (code === 1) {
+      bold = true;
+    } else if (code === 22) {
+      bold = false;
+    } else if (code === 32) {
+      fg = "text-emerald-400";
+    } else if (code === 36) {
+      fg = "text-cyan-300";
+    } else if (code === 37) {
+      fg = "text-slate-100";
+    } else if (code === 90) {
+      fg = "text-slate-400";
+    } else if (code === 92) {
+      fg = "text-emerald-300";
+    } else if (code === 96) {
+      fg = "text-cyan-200";
+    } else if (code === 39) {
+      fg = "text-slate-200";
+    }
+  }
+
+  return `${fg} ${bold ? "font-semibold" : ""}`.trim();
+}
+
+function renderDaemonLine(line: string, index: number) {
+  const ansiRegex = /(?:\u001b\[|\[)([0-9;]*)m/g;
+
+  const spans: Array<{ text: string; className: string }> = [];
+  let lastIndex = 0;
+  let currentClass = "text-slate-200";
+  let match: RegExpExecArray | null;
+
+  while ((match = ansiRegex.exec(line)) !== null) {
+    if (match.index > lastIndex) {
+      spans.push({
+        text: line.slice(lastIndex, match.index),
+        className: currentClass,
+      });
+    }
+
+    const codes =
+      match[1]?.length > 0
+        ? match[1]
+            .split(";")
+            .map((part) => Number.parseInt(part, 10))
+            .filter((value) => Number.isFinite(value))
+        : [0];
+
+    currentClass = ansiClassFromCodes(codes);
+    lastIndex = ansiRegex.lastIndex;
+  }
+
+  if (lastIndex < line.length) {
+    spans.push({
+      text: line.slice(lastIndex),
+      className: currentClass,
+    });
+  }
+
+  if (spans.length === 0) {
+    spans.push({
+      text: line,
+      className: "text-slate-200",
+    });
+  }
+
+  return (
+    <div key={`${line}-${index}`} className="break-words whitespace-pre-wrap">
+      {spans.map((span, spanIndex) => (
+        <span key={spanIndex} className={span.className}>
+          {span.text}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 export default function WoloChainTerminalTile() {
   const [snapshot, setSnapshot] = useState<WoloStatusSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -179,11 +268,12 @@ export default function WoloChainTerminalTile() {
               </div>
             </div>
             <div
-              className={`rounded-full px-3 py-1 text-xs ${
+              className={cx(
+                "rounded-full px-3 py-1 text-xs",
                 snapshot?.healthy
                   ? "border border-emerald-400/25 bg-emerald-500/10 text-emerald-100"
                   : "border border-amber-300/25 bg-amber-400/10 text-amber-100"
-              }`}
+              )}
             >
               {snapshot?.healthy ? "Node live" : "Standby"}
             </div>
@@ -215,7 +305,7 @@ export default function WoloChainTerminalTile() {
         >
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="space-y-2">
-              <div className="text-xs uppercase tracking-[0.35em] text-emerald-200/70">
+              <div className="text-xs uppercase tracking-[0.35em] text-slate-200/75">
                 WoloChain Daemon
               </div>
               <div className="flex flex-wrap items-center gap-2">
@@ -224,18 +314,23 @@ export default function WoloChainTerminalTile() {
               </div>
             </div>
             <div
-              className={`rounded-full px-3 py-1 text-xs ${
+              className={cx(
+                "rounded-full px-3 py-1 text-xs",
                 daemon?.ok
-                  ? "border border-emerald-400/25 bg-emerald-500/10 text-emerald-100"
+                  ? "border border-sky-400/20 bg-sky-500/10 text-sky-100"
                   : "border border-amber-300/25 bg-amber-400/10 text-amber-100"
-              }`}
+              )}
             >
               {daemon?.ok ? "Streaming" : "Waiting"}
             </div>
           </div>
 
           <div className="mt-5">
-            <ConsolePanel title={daemon?.label || "daemon.log"} badge="local" lines={daemonLines} />
+            <DaemonConsolePanel
+              title={daemon?.label || "daemon.log"}
+              badge="local"
+              lines={daemonLines}
+            />
           </div>
         </section>
       </div>
@@ -264,13 +359,14 @@ export default function WoloChainTerminalTile() {
           </div>
 
           <div
-            className={`rounded-full border px-4 py-2 text-sm ${
+            className={cx(
+              "rounded-full border px-4 py-2 text-sm",
               snapshot?.healthy
                 ? "border-emerald-400/25 bg-emerald-500/10 text-emerald-100"
                 : "border-amber-300/25 bg-amber-400/10 text-amber-100"
-            }`}
+            )}
           >
-            {snapshot?.healthy ? "Ready" : "Standby"}
+            {snapshot?.healthy ? "Node live" : "Standby"}
           </div>
         </div>
 
@@ -299,12 +395,12 @@ export default function WoloChainTerminalTile() {
         onClick={handleRuntimeToggle}
         className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#040914] px-5 py-5 shadow-[0_35px_120px_rgba(0,0,0,0.32)] sm:px-6 sm:py-6 lg:px-8 lg:py-7"
       >
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.08),transparent_22%),radial-gradient(circle_at_top_right,rgba(59,130,246,0.06),transparent_20%)]" />
-        <div className="pointer-events-none absolute inset-0 opacity-[0.04] [background-image:linear-gradient(to_right,rgba(255,255,255,0.10)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:34px_34px]" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(148,163,184,0.10),transparent_20%),radial-gradient(circle_at_bottom_right,rgba(34,211,238,0.08),transparent_22%)]" />
+        <div className="pointer-events-none absolute inset-0 opacity-[0.04] [background-image:linear-gradient(to_right,rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.06)_1px,transparent_1px)] [background-size:34px_34px]" />
 
         <div className="relative flex flex-wrap items-start justify-between gap-4">
           <div className="space-y-2">
-            <div className="text-[11px] uppercase tracking-[0.35em] text-emerald-200/70">
+            <div className="text-[11px] uppercase tracking-[0.35em] text-slate-200/75">
               WoloChain Daemon
             </div>
             <div className="flex flex-wrap gap-2">
@@ -314,20 +410,20 @@ export default function WoloChainTerminalTile() {
           </div>
 
           <div
-            className={`rounded-full border px-4 py-2 text-sm ${
+            className={cx(
+              "rounded-full border px-4 py-2 text-sm",
               daemon?.ok
-                ? "border-emerald-400/25 bg-emerald-500/10 text-emerald-100"
+                ? "border-sky-400/25 bg-sky-500/10 text-sky-100"
                 : "border-amber-300/25 bg-amber-400/10 text-amber-100"
-            }`}
+            )}
           >
             {daemon?.ok ? "Streaming" : "Waiting"}
           </div>
         </div>
 
         <div className="relative mt-4">
-          <PremiumConsolePanel
+          <DaemonConsolePanel
             title={(daemon?.label || "daemon.log").toUpperCase()}
-            subtitle="raw chain output · live local tail"
             badge="local"
             lines={daemonLines}
           />
@@ -399,6 +495,43 @@ function PremiumConsolePanel({
             {line}
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function DaemonConsolePanel({
+  title,
+  badge,
+  lines,
+}: {
+  title: string;
+  badge: string;
+  lines: string[];
+}) {
+  return (
+    <div className="overflow-hidden rounded-[1.6rem] border border-slate-500/20 bg-[#0a1018] shadow-[inset_0_0_0_1px_rgba(148,163,184,0.06)]">
+      <div className="border-b border-slate-400/15 px-5 py-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-[11px] uppercase tracking-[0.28em] text-slate-300/80">
+              {title}
+            </div>
+            <div className="mt-1 text-xs text-slate-400 sm:text-sm">
+              live validator output · terminal color rail
+            </div>
+          </div>
+
+          <div className="rounded-full border border-slate-400/15 bg-slate-300/5 px-3 py-1 text-xs text-slate-200 whitespace-nowrap">
+            {badge}
+          </div>
+        </div>
+      </div>
+
+      <div className="max-h-[26rem] overflow-auto bg-[#0b1118] px-5 py-4 font-mono text-[13px] leading-7">
+        <div className="space-y-1.5">
+          {lines.map((line, index) => renderDaemonLine(line, index))}
+        </div>
       </div>
     </div>
   );

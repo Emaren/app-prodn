@@ -133,6 +133,22 @@ function getSourceLabel(value: string) {
   }
 }
 
+function getRpcSource() {
+  return (
+    process.env.WOLO_INTERNAL_RPC_URL ||
+    process.env.NEXT_PUBLIC_WOLO_RPC_URL ||
+    woloChainConfig.rpc
+  );
+}
+
+function getRestSource() {
+  return (
+    process.env.WOLO_INTERNAL_REST_URL ||
+    process.env.NEXT_PUBLIC_WOLO_REST_URL ||
+    woloChainConfig.rest
+  );
+}
+
 function buildTerminalLines(snapshot: Omit<WoloStatusSnapshot, "terminalLines">) {
   const stamp = new Date().toLocaleTimeString([], {
     hour: "2-digit",
@@ -155,7 +171,7 @@ function buildTerminalLines(snapshot: Omit<WoloStatusSnapshot, "terminalLines">)
 }
 
 export async function fetchWoloStatusSnapshot(): Promise<WoloStatusSnapshot> {
-  const source = woloChainConfig.rpc;
+  const source = getRpcSource();
   const sourceLabel = getSourceLabel(source);
 
   try {
@@ -240,8 +256,10 @@ export async function fetchWoloBalanceAmount(address: string) {
     throw new Error(`Address must start with ${WOLO_ADDRESS_PREFIX}1`);
   }
 
+  const restSource = getRestSource();
+
   const payload = await requestJson<BankBalancesPayload>(
-    `${woloChainConfig.rest.replace(/\/$/, "")}/cosmos/bank/v1beta1/balances/${encodeURIComponent(trimmed)}`
+    `${restSource.replace(/\/$/, "")}/cosmos/bank/v1beta1/balances/${encodeURIComponent(trimmed)}`
   );
 
   return payload.balances?.find((coin) => coin.denom === WOLO_BASE_DENOM)?.amount || "0";
