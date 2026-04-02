@@ -213,15 +213,22 @@ model ScheduledMatch {
   acceptedAt       DateTime? @map("accepted_at") @db.Timestamp(6)
   declinedAt       DateTime? @map("declined_at") @db.Timestamp(6)
   cancelledAt      DateTime? @map("cancelled_at") @db.Timestamp(6)
+  resultAt         DateTime? @map("result_at") @db.Timestamp(6)
+  linkedSessionKey String?   @map("linked_session_key") @db.VarChar(255)
+  linkedMapName    String?   @map("linked_map_name") @db.VarChar(120)
+  linkedWinner     String?   @map("linked_winner") @db.VarChar(100)
+  linkedDurationSeconds Int? @map("linked_duration_seconds")
   createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
 
   challenger User @relation("ScheduledMatchChallenger", fields: [challengerUserId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   challenged User @relation("ScheduledMatchChallenged", fields: [challengedUserId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  betMarket  BetMarket?
 
   @@index([status, scheduledAt], map: "ix_scheduled_matches_status_scheduled_at")
   @@index([challengerUserId, scheduledAt], map: "ix_scheduled_matches_challenger_scheduled_at")
   @@index([challengedUserId, scheduledAt], map: "ix_scheduled_matches_challenged_scheduled_at")
+  @@index([status, resultAt], map: "ix_scheduled_matches_status_result_at")
   @@map("scheduled_matches")
 }
 
@@ -490,6 +497,7 @@ model UserActivityEvent {
 
 model BetMarket {
   id            Int       @id @default(autoincrement())
+  scheduledMatchId Int?   @unique(map: "uq_bet_markets_scheduled_match_id") @map("scheduled_match_id")
   slug          String    @unique @db.VarChar(120)
   title         String    @db.VarChar(160)
   eventLabel    String    @map("event_label") @db.VarChar(120)
@@ -509,6 +517,7 @@ model BetMarket {
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
 
+  scheduledMatch ScheduledMatch? @relation(fields: [scheduledMatchId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   wagers BetWager[]
 
   @@index([status, featured, sortOrder], map: "ix_bet_markets_status_featured_sort_order")
@@ -522,6 +531,7 @@ model BetWager {
   userId     Int       @map("user_id")
   side       String    @db.VarChar(20)
   amountWolo Int       @map("amount_wolo")
+  payoutWolo Int?      @map("payout_wolo")
   status     String    @default("active") @db.VarChar(20)
   createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)

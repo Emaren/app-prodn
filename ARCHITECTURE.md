@@ -78,8 +78,18 @@ Important ownership files include:
 - `lib/challengeConfig.ts`
 - `lib/communityHonors.ts`
 - `lib/userExperience.ts`
+- `lib/bets.ts`
 
 These files form the app-level product contract for the lobby, leaderboard, player directory, inbox/honors flow, and related user-facing aggregation.
+
+`lib/bets.ts` is now also a bridge layer between scheduled Challenge runway matches and the public `/bets` book. Challenge-derived markets use `challenge-runway-{scheduledMatchId}` slugs, can become featured books ahead of fallback seeded markets, and are retired once their runway source no longer appears. Fallback leaderboard/tournament books still exist as synthetic fill when no Challenge slate is active.
+
+Challenge and bet settlement are now persisted app-side:
+- `scheduled_matches` stores `result_at`, `linked_session_key`, `linked_map_name`, `linked_winner`, and `linked_duration_seconds`
+- `bet_markets.scheduled_match_id` links challenge-derived books to their source match row
+- `bet_wagers.payout_wolo` stores the settled app-side payout value when a slip moves to `won`, `lost`, or `void`
+
+This is still not chain execution. Do not present these fields as canonical on-chain settlement until a WoloChain-side transfer executor exists.
 
 ### Presentation system
 
@@ -219,4 +229,5 @@ Do not assume every visible issue is a page bug.
 - tournament depth is improving, but still not the full “event gravity” version
 - exact postgame achievement-table capture is still not part of the replay pipeline
 - `$WOLO` is still an app-level product rail, not full settlement infrastructure
+- Challenge -> Bets is connected for market seeding and app-side payout persistence, but wager settlement still does not move real on-chain WOLO balances
 - watcher behavior now looks healthier end-to-end, but the app should still document the live/final replay contract truthfully as it evolves

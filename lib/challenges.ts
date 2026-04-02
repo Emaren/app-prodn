@@ -11,6 +11,7 @@ const CHALLENGE_START_GRACE_MS = 60 * 1000;
 const SESSION_MATCH_LOOKBACK_MS = 45 * 60 * 1000;
 const SESSION_MATCH_LOOKAHEAD_MS = 8 * 60 * 60 * 1000;
 const ACTIVE_SCHEDULED_STATUSES = ["pending", "accepted"] as const;
+const RESULT_SCHEDULED_STATUSES = ["completed", "forfeited"] as const;
 
 type ChallengeUserRow = {
   id: number;
@@ -30,6 +31,11 @@ type ScheduledMatchRow = {
   acceptedAt: Date | null;
   declinedAt: Date | null;
   cancelledAt: Date | null;
+  resultAt: Date | null;
+  linkedSessionKey: string | null;
+  linkedMapName: string | null;
+  linkedWinner: string | null;
+  linkedDurationSeconds: number | null;
   challengeNote: string | null;
   challenger: ChallengeUserRow;
   challenged: ChallengeUserRow;
@@ -60,7 +66,13 @@ export type ChallengePlayerSurface = {
 
 export type ScheduledMatchTile = {
   id: number;
-  status: "pending" | "accepted" | "declined" | "cancelled";
+  status:
+    | "pending"
+    | "accepted"
+    | "declined"
+    | "cancelled"
+    | "completed"
+    | "forfeited";
   displayState:
     | "pending"
     | "accepted"
@@ -110,6 +122,11 @@ const SCHEDULED_MATCH_SELECT = {
   acceptedAt: true,
   declinedAt: true,
   cancelledAt: true,
+  resultAt: true,
+  linkedSessionKey: true,
+  linkedMapName: true,
+  linkedWinner: true,
+  linkedDurationSeconds: true,
   challengeNote: true,
   challenger: {
     select: CHALLENGE_PLAYER_SELECT,
@@ -217,7 +234,11 @@ function buildScheduledMatchTile(
           ? "declined"
           : row.status === "cancelled"
             ? "cancelled"
-            : "pending",
+            : row.status === "completed"
+              ? "completed"
+              : row.status === "forfeited"
+                ? "forfeited"
+                : "pending",
     displayState,
     scheduledAt: row.scheduledAt.toISOString(),
     createdAt: row.createdAt.toISOString(),
@@ -228,12 +249,150 @@ function buildScheduledMatchTile(
     challengeNote: row.challengeNote ?? null,
     challenger: buildPlayerSurface(row.challenger),
     challenged: buildPlayerSurface(row.challenged),
-    linkedSessionKey: linkedSession?.sessionKey ?? null,
-    linkedSessionState: linkedSession?.state ?? null,
-    linkedMapName: linkedSession?.mapName ?? null,
-    linkedWinner: linkedSession?.winner ?? null,
-    durationSeconds: linkedSession?.durationSeconds ?? null,
+    linkedSessionKey: linkedSession?.sessionKey ?? row.linkedSessionKey ?? null,
+    linkedSessionState:
+      linkedSession?.state ?? (row.status === "completed" ? "completed" : null),
+    linkedMapName: linkedSession?.mapName ?? row.linkedMapName ?? null,
+    linkedWinner: linkedSession?.winner ?? row.linkedWinner ?? null,
+    durationSeconds: linkedSession?.durationSeconds ?? row.linkedDurationSeconds ?? null,
   };
+}
+
+function rowAlreadyFinalized(row: ScheduledMatchRow) {
+  return (
+    RESULT_SCHEDULED_STATUSES.includes(row.status as (typeof RESULT_SCHEDULED_STATUSES)[number]) &&
+    row.resultAt !== null
+  );
+}
+
+function rowsMatchLinkedSession(row: ScheduledMatchRow, session: ComparableSession | null) {
+  if (!session) {
+    return (
+      row.linkedSessionKey === null &&
+      row.linkedMapName === null &&
+      row.linkedWinner === null &&
+      row.linkedDurationSeconds === null
+    );
+  }
+
+  return (
+    row.linkedSessionKey === session.sessionKey &&
+    row.linkedMapName === (session.mapName ?? null) &&
+    row.linkedWinner === (session.winner ?? null) &&
+    row.linkedDurationSeconds === (session.durationSeconds ?? null)
+  );
+}
+
+async function persistScheduledMatchResults(
+  prisma: PrismaClient,
+  rows: ScheduledMatchRow[],
+  activeSessions: ComparableSession[],
+  recentlyCompletedSessions: ComparableSession[],
+  now = new Date()
+) {
+  const updatedRows: ScheduledMatchRow[] = [];
+  const matchedActiveSessionKeys = new Set<string>();
+  const matchedCompletedSessionKeys = new Set<string>();
+
+  for (const row of rows) {
+    if (row.status !== "accepted" || rowAlreadyFinalized(row)) {
+      updatedRows.push(row);
+      continue;
+    }
+
+    const completedSession = findLinkedSession(
+      recentlyCompletedSessions,
+      row,
+      matchedCompletedSessionKeys
+    );
+
+    if (completedSession) {
+      matchedCompletedSessionKeys.add(completedSession.sessionKey);
+      const completedAt = new Date(completedSession.completedAt || completedSession.updatedAt);
+      const nextRow = {
+        ...row,
+        status: "completed",
+        resultAt: completedAt,
+        linkedSessionKey: completedSession.sessionKey,
+        linkedMapName: completedSession.mapName ?? null,
+        linkedWinner: completedSession.winner ?? null,
+        linkedDurationSeconds: completedSession.durationSeconds ?? null,
+      } satisfies ScheduledMatchRow;
+
+      await prisma.scheduledMatch.update({
+        where: { id: row.id },
+        data: {
+          status: "completed",
+          resultAt: completedAt,
+          linkedSessionKey: completedSession.sessionKey,
+          linkedMapName: completedSession.mapName,
+          linkedWinner: completedSession.winner,
+          linkedDurationSeconds: completedSession.durationSeconds,
+        },
+      });
+
+      updatedRows.push(nextRow);
+      continue;
+    }
+
+    const activeSession = findLinkedSession(activeSessions, row, matchedActiveSessionKeys);
+
+    if (activeSession) {
+      matchedActiveSessionKeys.add(activeSession.sessionKey);
+      if (!rowsMatchLinkedSession(row, activeSession)) {
+        await prisma.scheduledMatch.update({
+          where: { id: row.id },
+          data: {
+            linkedSessionKey: activeSession.sessionKey,
+            linkedMapName: activeSession.mapName,
+            linkedWinner: activeSession.winner,
+            linkedDurationSeconds: activeSession.durationSeconds,
+          },
+        });
+      }
+
+      updatedRows.push({
+        ...row,
+        linkedSessionKey: activeSession.sessionKey,
+        linkedMapName: activeSession.mapName ?? null,
+        linkedWinner: activeSession.winner ?? null,
+        linkedDurationSeconds: activeSession.durationSeconds ?? null,
+      });
+      continue;
+    }
+
+    const forfeitedAt = new Date(row.scheduledAt.getTime() + CHALLENGE_START_GRACE_MS);
+    if (now.getTime() >= forfeitedAt.getTime()) {
+      const nextRow = {
+        ...row,
+        status: "forfeited",
+        resultAt: forfeitedAt,
+        linkedSessionKey: null,
+        linkedMapName: null,
+        linkedWinner: null,
+        linkedDurationSeconds: null,
+      } satisfies ScheduledMatchRow;
+
+      await prisma.scheduledMatch.update({
+        where: { id: row.id },
+        data: {
+          status: "forfeited",
+          resultAt: forfeitedAt,
+          linkedSessionKey: null,
+          linkedMapName: null,
+          linkedWinner: null,
+          linkedDurationSeconds: null,
+        },
+      });
+
+      updatedRows.push(nextRow);
+      continue;
+    }
+
+    updatedRows.push(row);
+  }
+
+  return updatedRows;
 }
 
 function compareScheduledTileOrder(left: ScheduledMatchTile, right: ScheduledMatchTile) {
@@ -316,6 +475,18 @@ async function loadScheduledMatchRows(
         lte: latest,
       },
     },
+    {
+      status: "completed",
+      resultAt: {
+        gte: recentResolvedCutoff,
+      },
+    },
+    {
+      status: "forfeited",
+      resultAt: {
+        gte: recentResolvedCutoff,
+      },
+    },
     ...(options?.includeResolved
       ? [
           {
@@ -383,6 +554,21 @@ export function deriveScheduledMatchTiles(
     const scheduledAt = row.scheduledAt.getTime();
     const declinedAt = row.declinedAt;
     const cancelledAt = row.cancelledAt;
+    const resultAt = row.resultAt;
+
+    if (row.status === "completed") {
+      if (resultAt && now.getTime() - resultAt.getTime() <= CHALLENGE_RECENT_LINGER_MS) {
+        tiles.push(buildScheduledMatchTile(row, "completed", resultAt, null));
+      }
+      continue;
+    }
+
+    if (row.status === "forfeited") {
+      if (resultAt && now.getTime() - resultAt.getTime() <= CHALLENGE_RECENT_LINGER_MS) {
+        tiles.push(buildScheduledMatchTile(row, "forfeited", resultAt, null));
+      }
+      continue;
+    }
 
     if (row.status === "declined") {
       if (declinedAt && now.getTime() - declinedAt.getTime() <= CHALLENGE_RECENT_LINGER_MS) {
@@ -461,7 +647,13 @@ export async function loadScheduledMatchTilesForLiveBoard(
   recentlyCompletedSessions: ComparableSession[]
 ) {
   const rows = await loadScheduledMatchRows(prisma);
-  return deriveScheduledMatchTiles(rows, activeSessions, recentlyCompletedSessions);
+  const reconciledRows = await persistScheduledMatchResults(
+    prisma,
+    rows,
+    activeSessions,
+    recentlyCompletedSessions
+  );
+  return deriveScheduledMatchTiles(reconciledRows, activeSessions, recentlyCompletedSessions);
 }
 
 export async function loadChallengeThreadTile(
@@ -479,7 +671,12 @@ export async function loadChallengeThreadTile(
   ]);
 
   const { tiles } = deriveScheduledMatchTiles(
-    rows,
+    await persistScheduledMatchResults(
+      prisma,
+      rows,
+      sessionSnapshot.activeSessions,
+      sessionSnapshot.recentlyCompletedSessions
+    ),
     sessionSnapshot.activeSessions,
     sessionSnapshot.recentlyCompletedSessions
   );
@@ -533,7 +730,12 @@ export async function loadChallengeHubSnapshot(
   ]);
 
   const { tiles } = deriveScheduledMatchTiles(
-    scheduledRows,
+    await persistScheduledMatchResults(
+      prisma,
+      scheduledRows,
+      sessionSnapshot.activeSessions,
+      sessionSnapshot.recentlyCompletedSessions
+    ),
     sessionSnapshot.activeSessions,
     sessionSnapshot.recentlyCompletedSessions
   );

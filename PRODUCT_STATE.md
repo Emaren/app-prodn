@@ -39,6 +39,16 @@ Current strengths:
 - recent match surfaces feel more connected to the actual product state
 - live replay Battle Matrix defaults to a two-column versus layout with one activity lane per player, and a header layout icon can switch into a one-column full-width lane view; inside each lane the activity rail stays stacked above the pulse strip, current-EAPM is boxed, and pulse/metric labels wrap safely to avoid overlap
 
+### Challenge / Bets runway
+
+Current strengths:
+- `/challenge` can schedule, accept, decline, cancel, and reschedule player matches
+- challenge state now appears inside inbox threads and on `/live-games`
+- `/bets` now promotes active challenge-runway pairings into first-class markets when they exist
+- completed and forfeited challenge outcomes are persisted back onto `scheduled_matches`, including linked session/map/winner metadata when replay proof exists
+- settled bet slips now persist `won` / `lost` / `void` plus app-side `payout_wolo` on `bet_wagers`
+- challenge-linked settled market cards now use the market side labels, winner side, and pooled WOLO total instead of only the old hash-style replay fallback
+
 ### Players directory
 
 Current strengths:
@@ -119,7 +129,7 @@ Current state:
 - wallet snapshot is the right-rail anchor on `/wolo`, with Market Context living directly below it
 - default `/wolo` hero keeps the simpler legacy action row, while premium mode uses the two-lane action dock with borderless utility pills so `Open Ping.pub` stays grouped without a harsh white outline treatment
 - default WOLO runtime/daemon consoles stay in the raw green matrix style without per-line separators; premium runtime/daemon consoles keep the darker structured shell
-- not yet true settlement / chain-complete behavior
+- not yet true on-chain debit/credit settlement for challenge markets or player wagering
 
 ### Replay trust / postgame depth
 
@@ -155,6 +165,18 @@ Still needed:
 - make lobby/leaderboard ownership files explicit in docs
 - keep replay/live/final behavior documented truthfully
 
+### Challenge/Bets settlement depth
+
+Current state:
+- Challenge scheduling and bet-market seeding are now connected at the app snapshot layer
+- stale challenge-derived bet books are retired when the matching runway tile disappears
+- final/forfeit challenge outcomes are persisted onto the source scheduled match row
+- settled challenge-market wagers persist `payout_wolo` and slip outcome state in Postgres
+
+Still wanted:
+- settle user wagers into real WOLO balance effects instead of UI-only pool totals
+- remove or further de-emphasize fallback synthetic books when the challenge slate is rich enough
+
 ## Current known product rough edges
 
 - player profile pages lag behind directory and lobby polish
@@ -162,6 +184,7 @@ Still needed:
 - leaderboard is now real, but deeper ranking semantics still need tightening
 - some surfaces still carry more explanatory copy than ideal
 - token rail is visually present faster than it is infrastructurally complete
+- challenge-derived bet markets are better than before, but final settlement still stops at app-side payout bookkeeping rather than chain-backed wallet transfer truth
 - exact postgame achievement extraction is still the big missing depth layer
 - watcher behavior works better than before, but still feels somewhat noisy under the hood
 
