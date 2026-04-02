@@ -22,6 +22,8 @@ import {
   type AiModelId,
   type AiVisibilityOption,
 } from "@/lib/aiConciergeConfig";
+import AutoGrowTextarea from "@/components/ui/AutoGrowTextarea";
+import { LOBBY_MESSAGE_MAX_CHARS } from "@/lib/lobby";
 import { LOBBY_MESSAGE_REACTIONS } from "@/lib/lobbyReactionConfig";
 
 type LobbyChatProps = {
@@ -215,24 +217,27 @@ export function LobbyChat({
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-end gap-2">
                 <div className="flex-1 rounded-[1.2rem] bg-[#09111d]/75 p-1.5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)]">
-                  <input
+                  <AutoGrowTextarea
                     value={messageBody}
-                    onChange={(event) => onMessageBodyChange(event.target.value)}
+                    maxRows={4}
+                    maxLength={LOBBY_MESSAGE_MAX_CHARS}
+                    onChange={(event) =>
+                      onMessageBodyChange(event.target.value.slice(0, LOBBY_MESSAGE_MAX_CHARS))
+                    }
                     onKeyDown={(event) => {
                       if (event.key === "Enter" && !event.shiftKey) {
                         event.preventDefault();
                         onSendMessage();
                       }
                     }}
-                    maxLength={280}
                     placeholder={
                       aiEnabled
                         ? "Message the lobby. AI can answer in this lane."
                         : "Message the lobby chat."
                     }
-                    className={`min-w-0 w-full rounded-full border px-4 py-3 text-sm outline-none ${tone.input}`}
+                    className={`min-w-0 w-full rounded-[1rem] border px-4 py-3 text-sm leading-6 outline-none ${tone.input}`}
                   />
                 </div>
 
@@ -244,6 +249,10 @@ export function LobbyChat({
                 >
                   {chatPending ? "Sending..." : "Send"}
                 </button>
+              </div>
+
+              <div className="flex justify-end text-[11px] uppercase tracking-[0.18em] text-slate-600">
+                {messageBody.length}/{LOBBY_MESSAGE_MAX_CHARS}
               </div>
             </div>
           ) : (

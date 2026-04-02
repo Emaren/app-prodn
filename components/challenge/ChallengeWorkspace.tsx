@@ -9,7 +9,9 @@ import ScheduledMatchCard, {
   type ScheduledMatchCardActionState,
 } from "@/components/challenge/ScheduledMatchCard";
 import SteamLoginButton from "@/components/SteamLoginButton";
+import AutoGrowTextarea from "@/components/ui/AutoGrowTextarea";
 import { useUserAuth } from "@/context/UserAuthContext";
+import { CHALLENGE_NOTE_MAX_CHARS } from "@/lib/challengeConfig";
 import type { ChallengeHubSnapshot } from "@/lib/challenges";
 
 const EMPTY_SNAPSHOT: ChallengeHubSnapshot = {
@@ -317,13 +319,19 @@ export default function ChallengeWorkspace() {
 
               <label className="block space-y-2">
                 <span className="text-sm text-slate-300">Message</span>
-                <textarea
+                <AutoGrowTextarea
                   value={challengeNote}
-                  onChange={(event) => setChallengeNote(event.target.value)}
-                  rows={4}
-                  className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-amber-300/50"
+                  onChange={(event) =>
+                    setChallengeNote(event.target.value.slice(0, CHALLENGE_NOTE_MAX_CHARS))
+                  }
+                  maxRows={4}
+                  maxLength={CHALLENGE_NOTE_MAX_CHARS}
+                  className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm leading-6 text-white outline-none focus:border-amber-300/50"
                   placeholder="Bo3 on Yucatan in an hour? Let's put it on the board."
                 />
+                <div className="text-right text-[11px] uppercase tracking-[0.18em] text-slate-500">
+                  {challengeNote.length}/{CHALLENGE_NOTE_MAX_CHARS}
+                </div>
               </label>
 
               {error ? (

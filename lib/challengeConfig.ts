@@ -1,0 +1,1 @@
+export const CHALLENGE_NOTE_MAX_CHARS = 160;

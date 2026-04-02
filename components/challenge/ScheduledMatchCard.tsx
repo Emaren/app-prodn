@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 
+import AutoGrowTextarea from "@/components/ui/AutoGrowTextarea";
+import { CHALLENGE_NOTE_MAX_CHARS } from "@/lib/challengeConfig";
 import type { ScheduledMatchTile } from "@/lib/challenges";
 
 export type ScheduledMatchCardActionKind =
@@ -254,8 +256,8 @@ export default function ScheduledMatchCard({
   }
 
   return (
-    <div className={`rounded-[1.5rem] border px-4 py-4 ${accent.shell}`}>
-      <div className="flex flex-wrap items-start justify-between gap-4">
+    <div className={`rounded-[1.5rem] border p-4 sm:p-5 ${accent.shell}`}>
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(12rem,0.65fr)]">
         <div className="min-w-0">
           <div className={`text-xs uppercase tracking-[0.3em] ${accent.eyebrow}`}>
             Scheduled match
@@ -263,12 +265,10 @@ export default function ScheduledMatchCard({
           <div className="mt-2 text-xl font-semibold text-white">
             {match.challenger.name} vs {match.challenged.name}
           </div>
-          <div className="mt-2 text-sm font-medium text-white/90">{statusLine.status}</div>
-          <div className="mt-1 text-sm text-slate-200">{statusLine.time}</div>
           {match.challengeNote ? (
             <div className="mt-3 max-w-2xl text-sm text-slate-300">{match.challengeNote}</div>
           ) : null}
-          <div className="mt-3 flex flex-wrap gap-2">
+          <div className="mt-4 flex flex-wrap gap-2">
             {match.linkedMapName ? (
               <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-200">
                 {match.linkedMapName}
@@ -290,19 +290,25 @@ export default function ScheduledMatchCard({
           </div>
         </div>
 
-        <div className="space-y-2 text-right">
-          <div className={`rounded-full border px-3 py-1 text-xs ${accent.badge}`}>
+        <div className="rounded-[1.25rem] border border-white/10 bg-slate-950/25 px-4 py-3 text-left lg:text-right">
+          <div className={`inline-flex rounded-full border px-3 py-1 text-xs ${accent.badge}`}>
             {statusLine.status}
           </div>
+          <div className="mt-3 text-lg font-semibold text-white/95">{statusLine.status}</div>
+          <div className="mt-1 text-sm text-slate-200">{statusLine.time}</div>
           {match.durationSeconds && match.durationSeconds > 0 ? (
-            <div className="text-xs text-slate-300">
+            <div className="mt-3 text-xs uppercase tracking-[0.22em] text-slate-400">
               {Math.max(1, Math.floor(match.durationSeconds / 60))}m
             </div>
           ) : null}
         </div>
       </div>
 
-      <div className={`mt-4 flex flex-wrap gap-3 ${compact ? "" : "pt-1"}`}>
+      <div
+        className={`mt-4 flex flex-wrap gap-3 border-t border-white/10 pt-4 ${
+          compact ? "" : "justify-end"
+        }`}
+      >
         {canAccept ? (
           <button
             type="button"
@@ -380,14 +386,20 @@ export default function ScheduledMatchCard({
 
             <label className="block space-y-2">
               <span className="text-xs uppercase tracking-[0.2em] text-slate-300">Updated Note</span>
-              <textarea
+              <AutoGrowTextarea
                 value={rescheduleNote}
-                onChange={(event) => setRescheduleNote(event.target.value)}
-                rows={compact ? 3 : 4}
+                onChange={(event) =>
+                  setRescheduleNote(event.target.value.slice(0, CHALLENGE_NOTE_MAX_CHARS))
+                }
+                maxRows={compact ? 3 : 4}
+                maxLength={CHALLENGE_NOTE_MAX_CHARS}
                 disabled={cardBusy}
-                className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-amber-300/50 disabled:cursor-not-allowed disabled:opacity-60"
+                className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm leading-6 text-white outline-none focus:border-amber-300/50 disabled:cursor-not-allowed disabled:opacity-60"
                 placeholder="Push it back 30 minutes and keep the map."
               />
+              <div className="text-right text-[11px] uppercase tracking-[0.18em] text-slate-500">
+                {rescheduleNote.length}/{CHALLENGE_NOTE_MAX_CHARS}
+              </div>
             </label>
           </div>
 

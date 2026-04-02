@@ -221,7 +221,7 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
             className="fixed inset-0 z-40 bg-[#02060f]/78 backdrop-blur-[2px] sm:hidden"
           />
 
-          <div className="fixed inset-x-3 top-[5.75rem] z-[140] h-[min(34rem,calc(100dvh-8.5rem))] sm:absolute sm:inset-x-auto sm:right-0 sm:top-14 sm:h-[min(31rem,calc(100dvh-7rem))] sm:w-[26.5rem] sm:max-w-[calc(100vw-2rem)]">
+          <div className="fixed inset-x-3 top-[5.75rem] z-[140] h-[min(35rem,calc(100dvh-8.5rem))] sm:absolute sm:inset-x-auto sm:right-0 sm:top-14 sm:h-[min(38rem,calc(100dvh-6.5rem))] sm:w-[29.5rem] sm:max-w-[calc(100vw-2rem)]">
             <div className="mb-2 flex justify-end sm:hidden">
               <button
                 type="button"

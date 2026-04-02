@@ -1,3 +1,4 @@
+import { CHALLENGE_NOTE_MAX_CHARS } from "@/lib/challengeConfig";
 import type { PrismaClient } from "@/lib/generated/prisma";
 import { loadLiveSessionSnapshot } from "@/lib/liveSessionSnapshot";
 import { buildClaimedPlayerHref } from "@/lib/publicPlayers";
@@ -273,7 +274,10 @@ function compareScheduledTileOrder(left: ScheduledMatchTile, right: ScheduledMat
 
 export function normalizeChallengeNote(value: unknown) {
   if (typeof value !== "string") return null;
-  const normalized = value.trim().replace(/\s+/g, " ").slice(0, 160);
+  const normalized = value
+    .trim()
+    .replace(/\s+/g, " ")
+    .slice(0, CHALLENGE_NOTE_MAX_CHARS);
   return normalized || null;
 }
 

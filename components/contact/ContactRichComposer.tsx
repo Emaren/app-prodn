@@ -4,6 +4,9 @@
 import { Mic, Paperclip, SendHorizonal, Square, X } from "lucide-react";
 import { useId, useRef } from "react";
 
+import AutoGrowTextarea from "@/components/ui/AutoGrowTextarea";
+import { DIRECT_MESSAGE_MAX_CHARS } from "@/lib/contactInboxConfig";
+
 type ComposerAttachment = {
   kind: "image" | "audio";
   name: string;
@@ -51,7 +54,7 @@ export default function ContactRichComposer({
           {counterpartName ? `Replying to ${counterpartName}` : "Private reply"}
         </div>
         <div className="text-xs text-slate-600">
-          Enter sends. Shift+Enter keeps writing.
+          {body.length}/{DIRECT_MESSAGE_MAX_CHARS}
         </div>
       </div>
 
@@ -92,9 +95,11 @@ export default function ContactRichComposer({
       ) : null}
 
       <div className="rounded-[1.35rem] bg-white/[0.055] p-3 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]">
-        <textarea
+        <AutoGrowTextarea
           value={body}
-          onChange={(event) => onBodyChange(event.target.value)}
+          maxRows={4}
+          maxLength={DIRECT_MESSAGE_MAX_CHARS}
+          onChange={(event) => onBodyChange(event.target.value.slice(0, DIRECT_MESSAGE_MAX_CHARS))}
           onKeyDown={(event) => {
             if (event.key === "Enter" && !event.shiftKey) {
               event.preventDefault();
@@ -104,7 +109,7 @@ export default function ContactRichComposer({
             }
           }}
           placeholder={counterpartName ? `Message ${counterpartName}...` : "Message the thread..."}
-          className="min-h-[5.25rem] w-full resize-none bg-transparent px-1 py-1 text-sm leading-6 text-white outline-none placeholder:text-slate-500"
+          className="w-full bg-transparent px-1 py-1 text-sm leading-6 text-white outline-none placeholder:text-slate-500"
         />
 
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-white/8 pt-3">

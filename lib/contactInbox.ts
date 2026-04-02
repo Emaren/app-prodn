@@ -11,6 +11,7 @@ import {
 } from "@/lib/communityHonors";
 import {
   DIRECT_MESSAGE_REACTIONS,
+  DIRECT_MESSAGE_MAX_CHARS,
   DIRECT_MESSAGE_TYPING_WINDOW_MS,
 } from "@/lib/contactInboxConfig";
 import { recordUserActivity } from "@/lib/userExperience";
@@ -358,7 +359,7 @@ function serializeGift(
 }
 
 export function normalizeInboxMessageBody(value: string) {
-  return value.replace(/\r\n?/g, "\n").trim().slice(0, 1000);
+  return value.replace(/\r\n?/g, "\n").trim().slice(0, DIRECT_MESSAGE_MAX_CHARS);
 }
 
 async function findViewer(prisma: PrismaClient, viewerUid: string) {

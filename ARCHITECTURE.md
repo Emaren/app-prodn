@@ -71,6 +71,8 @@ Important ownership files include:
 - `lib/lobbyLeaderboard.ts`
 - `lib/publicPlayerDirectory.ts`
 - `lib/contactInbox.ts`
+- `lib/contactInboxConfig.ts`
+- `lib/challengeConfig.ts`
 - `lib/communityHonors.ts`
 - `lib/userExperience.ts`
 
@@ -146,6 +148,14 @@ Important runtime note:
 - attachment rendering depends on `app/api/contact-emaren/attachments/[messageId]/route.ts`
 - that route is session-protected and returns raw binary responses
 - attachment failures may come from route/header generation, not the chat component
+
+Composer UX and text-length rules are part of this contract:
+- use `components/ui/AutoGrowTextarea.tsx` for multiline chat/challenge composers that should start at one line and grow naturally up to a capped height
+- do not hardcode message limits in components when a shared config constant exists
+- direct-thread text is capped by `DIRECT_MESSAGE_MAX_CHARS` in `lib/contactInboxConfig.ts`
+- lobby chat text is capped by `LOBBY_MESSAGE_MAX_CHARS` in `lib/lobby.ts`
+- challenge notes are capped by `CHALLENGE_NOTE_MAX_CHARS` in `lib/challengeConfig.ts`
+- UI inputs should enforce the same caps and show live remaining/used count so users do not lose text to backend truncation
 
 ### Appearance / theme state
 

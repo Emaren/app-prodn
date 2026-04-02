@@ -7,7 +7,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 
 import CommunityBadgePill from "@/components/contact/CommunityBadgePill";
-import { DIRECT_MESSAGE_REACTIONS } from "@/lib/contactInboxConfig";
+import AutoGrowTextarea from "@/components/ui/AutoGrowTextarea";
+import {
+  DIRECT_MESSAGE_MAX_CHARS,
+  DIRECT_MESSAGE_REACTIONS,
+} from "@/lib/contactInboxConfig";
 import { AI_CONCIERGE_NAME, AI_CONCIERGE_UID } from "@/lib/aiConciergeConfig";
 import type {
   ContactChallengeActionKind,
@@ -16,6 +20,7 @@ import type {
   ContactInboxPayload,
   ContactInboxSummary,
 } from "@/components/contact/types";
+import { CHALLENGE_NOTE_MAX_CHARS } from "@/lib/challengeConfig";
 
 type ContactInboxPanelProps = {
   data: ContactInboxPayload | null;
@@ -309,6 +314,7 @@ function ChallengeThreadStrip({
     challenge.displayState === "declined" || challenge.displayState === "cancelled"
       ? "Challenge Again"
       : "Reschedule";
+  const compact = mode === "popover";
 
   async function handleReschedule(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -326,8 +332,12 @@ function ChallengeThreadStrip({
   }
 
   return (
-    <div className={`mt-4 rounded-[1.35rem] border px-4 py-4 ${tone.shell}`}>
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <div
+      className={`rounded-[1.35rem] border ${compact ? "mt-3 px-3 py-3" : "mt-4 px-4 py-4"} ${
+        tone.shell
+      }`}
+    >
+      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
         <div className="min-w-0">
           <div className={`text-[11px] uppercase tracking-[0.28em] ${tone.eyebrow}`}>
             Challenge runway
@@ -335,8 +345,11 @@ function ChallengeThreadStrip({
           <div className="mt-2 text-sm font-semibold text-white">
             {challenge.challenger.name} vs {challenge.challenged.name}
           </div>
-          <div className="mt-2 text-sm text-white/90">{status.status}</div>
-          <div className="mt-1 text-xs text-slate-200">{status.detail}</div>
+          {!compact && challenge.challengeNote ? (
+            <div className="mt-2 line-clamp-2 text-xs text-slate-300">
+              {challenge.challengeNote}
+            </div>
+          ) : null}
           <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-slate-200">
             <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1">
               {new Date(challenge.scheduledAt).toLocaleString([], {
@@ -354,12 +367,16 @@ function ChallengeThreadStrip({
           </div>
         </div>
 
-        <div className={`rounded-full border px-3 py-1 text-[11px] ${tone.badge}`}>
-          {status.status}
+        <div className="rounded-[1.1rem] border border-white/10 bg-slate-950/25 px-3 py-2 text-left sm:text-right">
+          <div className={`inline-flex rounded-full border px-3 py-1 text-[11px] ${tone.badge}`}>
+            {status.status}
+          </div>
+          <div className="mt-2 text-sm font-semibold text-white/95">{status.status}</div>
+          <div className="mt-1 text-xs text-slate-300">{status.detail}</div>
         </div>
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className={`flex flex-wrap gap-2 ${compact ? "mt-3" : "mt-4 justify-end"}`}>
         {canAccept ? (
           <button
             type="button"
@@ -419,7 +436,7 @@ function ChallengeThreadStrip({
       {canReschedule && showRescheduleForm ? (
         <form
           onSubmit={handleReschedule}
-          className="mt-4 space-y-3 rounded-[1.1rem] border border-white/10 bg-slate-950/35 p-3"
+          className="mt-3 space-y-3 rounded-[1.1rem] border border-white/10 bg-slate-950/35 p-3"
         >
           <label className="block space-y-2">
             <span className="text-[11px] uppercase tracking-[0.2em] text-slate-300">New Start</span>
@@ -433,14 +450,20 @@ function ChallengeThreadStrip({
           </label>
           <label className="block space-y-2">
             <span className="text-[11px] uppercase tracking-[0.2em] text-slate-300">Updated Note</span>
-            <textarea
+            <AutoGrowTextarea
               value={challengeNote}
-              onChange={(event) => setChallengeNote(event.target.value)}
-              rows={mode === "popover" ? 2 : 3}
+              onChange={(event) =>
+                setChallengeNote(event.target.value.slice(0, CHALLENGE_NOTE_MAX_CHARS))
+              }
+              maxRows={mode === "popover" ? 3 : 4}
+              maxLength={CHALLENGE_NOTE_MAX_CHARS}
               disabled={isBusy}
               className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-amber-300/50 disabled:cursor-not-allowed disabled:opacity-60"
-              placeholder="Push it back 30 minutes and keep the board warm."
+              placeholder="Push it back 30 minutes."
             />
+            <div className="text-right text-[11px] uppercase tracking-[0.18em] text-slate-500">
+              {challengeNote.length}/{CHALLENGE_NOTE_MAX_CHARS}
+            </div>
           </label>
           <div className="flex flex-wrap gap-2">
             <button
@@ -1304,9 +1327,13 @@ export default function ContactInboxPanel({
               richComposer
             ) : (
               <div className="flex gap-3">
-                <textarea
+                <AutoGrowTextarea
                   value={body}
-                  onChange={(event) => onBodyChange(event.target.value)}
+                  maxRows={4}
+                  maxLength={DIRECT_MESSAGE_MAX_CHARS}
+                  onChange={(event) =>
+                    onBodyChange(event.target.value.slice(0, DIRECT_MESSAGE_MAX_CHARS))
+                  }
                   onKeyDown={(event) => {
                     if (event.key === "Enter" && !event.shiftKey) {
                       event.preventDefault();
@@ -1316,7 +1343,7 @@ export default function ContactInboxPanel({
                     }
                   }}
                   placeholder={buildPrompt(data, counterpart)}
-                  className={`min-h-[3.8rem] flex-1 resize-none rounded-[1.25rem] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 transition focus:shadow-[inset_0_0_0_1px_rgba(251,191,36,0.25)] ${plainComposerInputClassName}`}
+                  className={`flex-1 rounded-[1.25rem] px-4 py-3 text-sm leading-6 text-white outline-none placeholder:text-slate-500 transition focus:shadow-[inset_0_0_0_1px_rgba(251,191,36,0.25)] ${plainComposerInputClassName}`}
                 />
                 <button
                   type="button"
@@ -1328,6 +1355,12 @@ export default function ContactInboxPanel({
                 </button>
               </div>
             )}
+
+            {!richComposer ? (
+              <div className="mt-2 text-right text-[11px] uppercase tracking-[0.18em] text-slate-600">
+                {body.length}/{DIRECT_MESSAGE_MAX_CHARS}
+              </div>
+            ) : null}
 
             {openPageHref ? (
               <div className="mt-3 flex justify-end">

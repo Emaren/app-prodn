@@ -1,4 +1,5 @@
 export const LOBBY_ROOM_SLUG = "main-lobby";
+export const LOBBY_MESSAGE_MAX_CHARS = 280;
 export const TOURNAMENT_STATUSES = ["planning", "open", "active", "completed"] as const;
 export const TOURNAMENT_MATCH_STATUSES = ["scheduled", "ready", "live", "completed"] as const;
 export const LOBBY_LEADERBOARD_MIN_MATCHES = 3;
@@ -205,7 +206,7 @@ export function normalizeTournamentStatus(value: unknown): TournamentStatus {
 
 export function normalizeChatBody(value: unknown) {
   if (typeof value !== "string") return "";
-  return value.replace(/\s+/g, " ").trim().slice(0, 280);
+  return value.replace(/\s+/g, " ").trim().slice(0, LOBBY_MESSAGE_MAX_CHARS);
 }
 
 export function getFallbackTournament(viewerJoined = false): LobbyTournament {
