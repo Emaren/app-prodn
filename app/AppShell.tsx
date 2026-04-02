@@ -35,6 +35,37 @@ const HEADER_LINKS: ReadonlyArray<{
   { href: "/requests", label: "Requests", countKey: "requests" },
 ];
 
+function HeaderPillLink({
+  href,
+  label,
+  className,
+  requestCount,
+  badgeCount,
+}: {
+  href: string;
+  label: string;
+  className: string;
+  requestCount?: number;
+  badgeCount?: number;
+}) {
+  const isRoadmap = href === "/roadmap" && typeof badgeCount === "number" && badgeCount > 0;
+  const displayLabel = href === "/requests" ? `${requestCount ?? 0} Requests` : label;
+
+  return (
+    <Link
+      href={href}
+      className={`relative inline-flex items-center justify-center overflow-visible rounded-full border px-3 py-1.5 text-xs transition ${className}`}
+    >
+      {isRoadmap ? (
+        <span className="pointer-events-none absolute left-1/2 top-0 z-0 inline-flex h-5 min-w-[1.45rem] -translate-x-1/2 -translate-y-[48%] items-center justify-center rounded-full border border-amber-200/25 bg-[linear-gradient(135deg,rgba(253,230,138,0.95),rgba(245,158,11,0.92))] px-1.5 text-[10px] font-semibold text-slate-950 shadow-[0_10px_24px_rgba(245,158,11,0.22)]">
+          {badgeCount}
+        </span>
+      ) : null}
+      <span className="relative z-10">{displayLabel}</span>
+    </Link>
+  );
+}
+
 function InnerShell({ children }: { children: React.ReactNode }) {
   const { uid, playerName, isAdmin } = useUserAuth();
   const pathname = usePathname();
@@ -156,22 +187,14 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                   {liveGamesCount} Live Games🔥
                 </Link>
                 {HEADER_LINKS.map((link) => (
-                  <Link
+                  <HeaderPillLink
                     key={link.href}
                     href={link.href}
-                    className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition ${headerSkin.surface}`}
-                  >
-                    <span>{link.label}</span>
-                    {link.countKey === "requests" ? (
-                      <span className="rounded-full border border-white/10 bg-white/5 px-1.5 py-0.5 text-[10px] text-slate-200">
-                        {requestCount}
-                      </span>
-                    ) : link.badgeCount ? (
-                      <span className="rounded-full border border-amber-300/20 bg-amber-300/10 px-1.5 py-0.5 text-[10px] text-amber-100">
-                        {link.badgeCount}
-                      </span>
-                    ) : null}
-                  </Link>
+                    label={link.label}
+                    className={headerSkin.surface}
+                    requestCount={link.countKey === "requests" ? requestCount : undefined}
+                    badgeCount={link.badgeCount}
+                  />
                 ))}
                 {isAdmin ? (
                   <Link
@@ -205,22 +228,14 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                 {liveGamesCount} Live Games🔥
               </Link>
               {HEADER_LINKS.map((link) => (
-                <Link
+                <HeaderPillLink
                   key={link.href}
                   href={link.href}
-                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs transition ${headerSkin.surface}`}
-                >
-                  <span>{link.label}</span>
-                  {link.countKey === "requests" ? (
-                    <span className="rounded-full border border-white/10 bg-white/5 px-1.5 py-0.5 text-[10px] text-slate-200">
-                      {requestCount}
-                    </span>
-                  ) : link.badgeCount ? (
-                    <span className="rounded-full border border-amber-300/20 bg-amber-300/10 px-1.5 py-0.5 text-[10px] text-amber-100">
-                      {link.badgeCount}
-                    </span>
-                  ) : null}
-                </Link>
+                  label={link.label}
+                  className={headerSkin.surface}
+                  requestCount={link.countKey === "requests" ? requestCount : undefined}
+                  badgeCount={link.badgeCount}
+                />
               ))}
             </nav>
 

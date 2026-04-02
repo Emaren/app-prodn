@@ -35,7 +35,7 @@ export function TournamentPanel({
   const tone = getLobbyPresentationTone(themeKey, viewMode);
 
   return (
-    <div className={`flex h-full flex-col rounded-[1.75rem] border p-6 pt-7 ${tone.panelShell}`}>
+    <div className={`flex flex-col rounded-[1.75rem] border p-6 pt-7 ${tone.panelShell}`}>
       <div className="flex items-start justify-between gap-4">
         <div className={`text-xs uppercase tracking-[0.35em] ${tone.accentText}`}>
           Next Tournament

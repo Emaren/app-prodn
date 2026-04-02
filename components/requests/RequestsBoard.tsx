@@ -297,78 +297,78 @@ function RequestCard(props: RequestCardProps) {
                   </span>
                 ) : null}
               </div>
+            </div>
 
-              <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-slate-300">
-                  {item.commentCount} comments
-                </span>
-                {item.canEdit ? (
-                  <button
-                    type="button"
-                    onClick={() => (isEditing ? onCancelEditRequest(item.id) : onStartEditRequest(item))}
-                    className="rounded-full border border-white/10 px-3 py-1.5 text-slate-300 transition hover:border-white/20 hover:text-white"
-                  >
-                    {isEditing ? "Cancel" : "Edit"}
-                  </button>
-                ) : null}
-                {isEditing ? (
-                  <button
-                    type="button"
-                    onClick={() => onSaveRequest(item.id)}
-                    disabled={sending || !requestDraft.title.trim() || !requestDraft.body.trim()}
-                    className="rounded-full bg-amber-300 px-3 py-1.5 font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    Save
-                  </button>
-                ) : null}
-                {item.canComplete ? (
-                  <button
-                    type="button"
-                    onClick={() => onToggleComplete(item.id, item.status === "completed" ? "open" : "completed")}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/25 px-3 py-1.5 text-emerald-100 transition hover:bg-emerald-500/10"
-                  >
-                    {item.status === "completed" ? (
-                      "Reopen"
-                    ) : (
-                      <>
-                        <span>Complete</span>
-                        <CheckCircle2 className="h-4 w-4" />
-                      </>
-                    )}
-                  </button>
-                ) : null}
-                {item.canDelete ? (
-                  <button
-                    type="button"
-                    onClick={() => onDeleteRequest(item.id)}
-                    className="rounded-full border border-red-400/25 px-3 py-1.5 text-red-200 transition hover:bg-red-500/10"
-                  >
-                    Delete
-                  </button>
-                ) : null}
-              </div>
-
+            <div className="flex flex-wrap items-center justify-end gap-2 text-xs">
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-slate-300">
+                {item.commentCount} comments
+              </span>
+              {item.canEdit ? (
+                <button
+                  type="button"
+                  onClick={() => (isEditing ? onCancelEditRequest(item.id) : onStartEditRequest(item))}
+                  className="rounded-full border border-white/10 px-3 py-1.5 text-slate-300 transition hover:border-white/20 hover:text-white"
+                >
+                  {isEditing ? "Cancel" : "Edit"}
+                </button>
+              ) : null}
               {isEditing ? (
-                <div className="mt-3 space-y-3">
-                  <input
-                    value={requestDraft.title}
-                    onChange={(event) => onRequestDraftChange(item.id, "title", event.target.value)}
-                    className="w-full rounded-2xl border border-white/10 bg-slate-950/55 px-4 py-3 text-lg font-semibold text-white outline-none placeholder:text-slate-500 focus:border-amber-300/35"
-                  />
-                  <textarea
-                    value={requestDraft.body}
-                    onChange={(event) => onRequestDraftChange(item.id, "body", event.target.value)}
-                    className="min-h-[7rem] w-full resize-none rounded-2xl border border-white/10 bg-slate-950/55 px-4 py-3 text-sm leading-6 text-white outline-none placeholder:text-slate-500 focus:border-amber-300/35"
-                  />
-                </div>
-              ) : (
-                <>
-                  <h2 className="mt-3 text-2xl font-semibold text-white">{item.title}</h2>
-                  <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-slate-300">{item.body}</p>
-                </>
-              )}
+                <button
+                  type="button"
+                  onClick={() => onSaveRequest(item.id)}
+                  disabled={sending || !requestDraft.title.trim() || !requestDraft.body.trim()}
+                  className="rounded-full bg-amber-300 px-3 py-1.5 font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Save
+                </button>
+              ) : null}
+              {item.canComplete ? (
+                <button
+                  type="button"
+                  onClick={() => onToggleComplete(item.id, item.status === "completed" ? "open" : "completed")}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/25 px-3 py-1.5 text-emerald-100 transition hover:bg-emerald-500/10"
+                >
+                  {item.status === "completed" ? (
+                    "Reopen"
+                  ) : (
+                    <>
+                      <span>Complete</span>
+                      <CheckCircle2 className="h-4 w-4" />
+                    </>
+                  )}
+                </button>
+              ) : null}
+              {item.canDelete ? (
+                <button
+                  type="button"
+                  onClick={() => onDeleteRequest(item.id)}
+                  className="rounded-full border border-red-400/25 px-3 py-1.5 text-red-200 transition hover:bg-red-500/10"
+                >
+                  Delete
+                </button>
+              ) : null}
             </div>
           </div>
+
+          {isEditing ? (
+            <div className="space-y-3">
+              <input
+                value={requestDraft.title}
+                onChange={(event) => onRequestDraftChange(item.id, "title", event.target.value)}
+                className="w-full rounded-2xl border border-white/10 bg-slate-950/55 px-4 py-3 text-lg font-semibold text-white outline-none placeholder:text-slate-500 focus:border-amber-300/35"
+              />
+              <textarea
+                value={requestDraft.body}
+                onChange={(event) => onRequestDraftChange(item.id, "body", event.target.value)}
+                className="min-h-[7rem] w-full resize-none rounded-2xl border border-white/10 bg-slate-950/55 px-4 py-3 text-sm leading-6 text-white outline-none placeholder:text-slate-500 focus:border-amber-300/35"
+              />
+            </div>
+          ) : (
+            <>
+              <h2 className="text-2xl font-semibold text-white">{item.title}</h2>
+              <p className="whitespace-pre-wrap text-sm leading-7 text-slate-300">{item.body}</p>
+            </>
+          )}
 
           {item.completedAt ? (
             <div className="rounded-2xl border border-emerald-400/15 bg-emerald-500/[0.08] px-4 py-3 text-sm text-emerald-100/90">

@@ -46,6 +46,7 @@ export function LeaderboardPanel({
 
   return (
     <div
+      data-lobby-leaderboard-panel="true"
       className={`relative rounded-[1.85rem] border p-5 transition-all duration-300 sm:p-6 ${tone.panelShell}`}
     >
       <div className="flex flex-col gap-5">

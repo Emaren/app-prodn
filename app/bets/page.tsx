@@ -478,12 +478,12 @@ export default function BetsPage() {
                         className={`${cardClass()} flex items-center justify-between gap-4 px-4 py-4`}
                       >
                         <div className="min-w-0">
-                          <div className="truncate text-sm uppercase tracking-[0.28em] text-slate-500">
-                            {wager.eventLabel}
-                          </div>
-                          <div className="mt-2 truncate text-lg font-semibold text-white">
-                            {wager.pickedLabel}
-                          </div>
+                        <div className="text-sm uppercase tracking-[0.28em] text-slate-500 break-words">
+                          {wager.eventLabel}
+                        </div>
+                        <div className="mt-2 text-lg font-semibold leading-tight text-white break-words">
+                          {wager.pickedLabel}
+                        </div>
                           <div className="mt-1 text-sm text-slate-400">{wager.closeLabel}</div>
                         </div>
 
@@ -569,10 +569,10 @@ export default function BetsPage() {
                   <article key={result.id} className={`${cardClass()} px-4 py-4`}>
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <div className="truncate text-sm uppercase tracking-[0.28em] text-slate-500">
+                        <div className="text-sm uppercase tracking-[0.28em] text-slate-500 break-words">
                           {result.mapName}
                         </div>
-                        <div className="mt-2 truncate text-lg font-semibold text-white">
+                        <div className="mt-2 text-lg font-semibold leading-tight text-white break-words">
                           {result.title}
                         </div>
                         <div className="mt-1 text-sm text-slate-400">{result.winner} took it</div>
@@ -803,11 +803,13 @@ function MarketCard({
   return (
     <article className={`${cardClass()} overflow-hidden p-4`}>
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="truncate text-[11px] uppercase tracking-[0.32em] text-slate-500">
+        <div className="min-w-0 flex-1 pr-2">
+          <div className="text-[11px] uppercase tracking-[0.32em] text-slate-500 break-words">
             {market.eventLabel}
           </div>
-          <div className="mt-2 truncate text-xl font-semibold text-white">{market.title}</div>
+          <div className="mt-2 text-[1.65rem] font-semibold leading-[1.05] text-white break-words">
+            {market.title}
+          </div>
         </div>
         <span className={`rounded-full border px-3 py-1 text-xs ${statusPill(market.status)}`}>
           {market.closeLabel}
@@ -965,7 +967,9 @@ function SideMiniChoice({
         emphasis
       )}`}
     >
-      <div className="truncate text-sm font-semibold text-white">{side.name}</div>
+      <div className="min-h-[2.5rem] text-sm font-semibold leading-snug text-white break-words">
+        {side.name}
+      </div>
       <div className="mt-2 flex items-center justify-between gap-2 text-xs text-slate-300">
         <span>{side.crowdPercent}%</span>
         <span>{formatCompact(side.poolWolo)}</span>

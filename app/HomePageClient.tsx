@@ -46,6 +46,7 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
   const [chatPending, setChatPending] = useState(false);
   const [joinPending, setJoinPending] = useState(false);
   const [chatCardHeight, setChatCardHeight] = useState<number | null>(null);
+  const [heroRailHeight, setHeroRailHeight] = useState<number | null>(null);
   const [reactingMessageId, setReactingMessageId] = useState<number | null>(null);
   const [aiEnabled, setAiEnabled] = useState(true);
   const [aiVisibility, setAiVisibility] = useState<AiVisibilityOption>(
@@ -183,6 +184,52 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
       window.cancelAnimationFrame(secondFrame);
     };
   }, [chatCardHeight, latestChatMessageKey, chatItems.length, scrollChatToBottom]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const syncHeroRailHeight = () => {
+      if (window.innerWidth < 1024) {
+        setHeroRailHeight(null);
+        return;
+      }
+
+      const leaderboardPanel = document.querySelector<HTMLElement>(
+        "[data-lobby-leaderboard-panel='true']"
+      );
+      const nextHeight = leaderboardPanel?.getBoundingClientRect().height ?? 0;
+      setHeroRailHeight(nextHeight > 0 ? Math.ceil(nextHeight) : null);
+    };
+
+    syncHeroRailHeight();
+
+    const handleResize = () => {
+      syncHeroRailHeight();
+    };
+
+    window.addEventListener("resize", handleResize);
+
+    const leaderboardPanel = document.querySelector<HTMLElement>(
+      "[data-lobby-leaderboard-panel='true']"
+    );
+
+    if (typeof ResizeObserver === "undefined" || !leaderboardPanel) {
+      return () => {
+        window.removeEventListener("resize", handleResize);
+      };
+    }
+
+    const observer = new ResizeObserver(() => {
+      syncHeroRailHeight();
+    });
+
+    observer.observe(leaderboardPanel);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [leaderboard.entries.length, leaderboard.trackedPlayers, viewMode, tileThemeKey]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -357,6 +404,10 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
     chatCardHeight && typeof window !== "undefined" && window.innerWidth >= 1024
       ? { height: `${chatCardHeight}px` }
       : undefined;
+  const heroRailStyle: CSSProperties | undefined =
+    heroRailHeight && typeof window !== "undefined" && window.innerWidth >= 1024
+      ? { height: `${heroRailHeight}px` }
+      : undefined;
 
   const heroStyle: CSSProperties = {
     backgroundImage: getLobbyHeroBackground(themeKey, viewMode),
@@ -388,7 +439,10 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
             onViewModeChange={setViewMode}
           />
 
-          <div className="flex min-w-0 flex-col gap-4 lg:self-stretch lg:pt-5">
+          <div
+            className="grid min-w-0 gap-4 lg:grid-rows-[auto_minmax(0,1fr)] lg:self-start lg:pt-5"
+            style={heroRailStyle}
+          >
             <TournamentPanel
               tournament={tournament}
               themeKey={tileThemeKey}
@@ -403,12 +457,12 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
               onLogin={() => loginWithSteam("/")}
             />
 
-            <div className="min-h-0 flex-1">
+            <div className="min-h-0">
               <TopWoloEarnersTile
                 wolo={wolo}
                 themeKey={tileThemeKey}
                 viewMode={viewMode}
-                className="min-h-full"
+                className="h-full"
               />
             </div>
           </div>
