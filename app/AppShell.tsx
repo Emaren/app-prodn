@@ -52,19 +52,17 @@ function HeaderPillLink({
   const displayLabel = href === "/requests" ? `${requestCount ?? 0} Requests` : label;
 
   return (
-    <span className="relative inline-flex overflow-visible">
+    <Link
+      href={href}
+      className={`relative inline-flex items-center justify-center overflow-visible rounded-full border px-3 py-1.5 text-xs transition ${className}`}
+    >
       {isRoadmap ? (
-        <span className="pointer-events-none absolute left-1/2 top-0 z-0 inline-flex h-6 min-w-[1.7rem] -translate-x-1/2 -translate-y-[58%] items-center justify-center rounded-full border border-white/90 bg-[linear-gradient(135deg,rgba(191,219,254,0.98),rgba(96,165,250,0.96)_30%,rgba(37,99,235,0.96)_72%,rgba(30,64,175,0.98))] px-1.5 text-[11px] font-bold text-white shadow-[0_12px_28px_rgba(37,99,235,0.32)]">
+        <span className="pointer-events-none absolute -right-2 -top-2 z-20 inline-flex h-6 min-w-[1.7rem] items-center justify-center rounded-full border border-sky-200/85 bg-[linear-gradient(135deg,rgba(191,219,254,0.98),rgba(96,165,250,0.96)_30%,rgba(37,99,235,0.96)_72%,rgba(30,64,175,0.98))] px-1.5 text-[11px] font-bold text-white shadow-[0_12px_28px_rgba(37,99,235,0.32)]">
           {badgeCount}
         </span>
       ) : null}
-      <Link
-        href={href}
-        className={`relative z-10 inline-flex items-center justify-center overflow-visible rounded-full border px-3 py-1.5 text-xs transition ${className}`}
-      >
-        <span className="relative z-10">{displayLabel}</span>
-      </Link>
-    </span>
+      <span className="relative z-10">{displayLabel}</span>
+    </Link>
   );
 }
 
