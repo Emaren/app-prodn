@@ -2,6 +2,7 @@ import type { PrismaClient } from "@/lib/generated/prisma";
 
 import { AI_CONCIERGE_UID } from "@/lib/aiConciergeConfig";
 import { ensureAiConciergeUser } from "@/lib/aiConcierge";
+import { loadChallengeThreadTile, type ScheduledMatchTile } from "@/lib/challenges";
 import {
   loadUserCommunitySummaries,
   normalizeGiftKind,
@@ -117,6 +118,7 @@ export type InboxPayload = {
   summaries: InboxSummary[];
   activeTargetUid: string | null;
   activeCounterpart: InboxCounterpart | null;
+  activeChallenge: ScheduledMatchTile | null;
   messages: InboxMessage[];
   unavailableReason: string | null;
   conversation: {
@@ -1001,6 +1003,14 @@ export async function loadInboxPayload(
     });
   }
 
+  const activeChallenge =
+    !options?.summaryOnly &&
+    activeTargetUser &&
+    activeTargetUser.id !== viewer.id &&
+    activeTargetUser.uid !== AI_CONCIERGE_UID
+      ? await loadChallengeThreadTile(prisma, viewer.id, activeTargetUser.id)
+      : null;
+
   if (options?.summaryOnly || !activeTargetUser || activeTargetUser.id === viewer.id) {
     return {
       viewer: {
@@ -1012,6 +1022,7 @@ export async function loadInboxPayload(
       summaries,
       activeTargetUid: activeTargetUser && activeTargetUser.id !== viewer.id ? activeTargetUser.uid : null,
       activeCounterpart: null,
+      activeChallenge: null,
       messages: [],
       unavailableReason,
       conversation: null,
@@ -1041,6 +1052,7 @@ export async function loadInboxPayload(
         badges: community.badges,
         giftedWolo: community.giftedWolo,
       },
+      activeChallenge,
       messages: [],
       unavailableReason,
       conversation: {
@@ -1060,6 +1072,7 @@ export async function loadInboxPayload(
     summaries,
     activeTargetUid: activeTargetUser.uid,
     activeCounterpart: activeConversation.counterpart,
+    activeChallenge,
     messages: activeConversation.messages,
     unavailableReason,
     conversation: {

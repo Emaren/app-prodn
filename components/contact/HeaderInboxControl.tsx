@@ -4,7 +4,11 @@ import { MessageSquareMore, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import ContactInboxPanel from "@/components/contact/ContactInboxPanel";
-import type { ContactInboxPayload } from "@/components/contact/types";
+import type {
+  ContactChallengeActionKind,
+  ContactChallengeActionState,
+  ContactInboxPayload,
+} from "@/components/contact/types";
 import { useUserAuth } from "@/context/UserAuthContext";
 import { useClickOutside } from "@/hooks/useClickOutside";
 
@@ -58,6 +62,10 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sendPending, setSendPending] = useState(false);
+  const [challengeActionState, setChallengeActionState] = useState<ContactChallengeActionState>({
+    challengeId: null,
+    action: null,
+  });
   const [reactingMessageId, setReactingMessageId] = useState<number | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -130,6 +138,52 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
     if (!selectedTargetUid) return "/contact-emaren";
     return `/contact-emaren?user=${encodeURIComponent(selectedTargetUid)}`;
   }, [selectedTargetUid]);
+
+  const handleChallengeAction = useCallback(
+    async (payload: {
+      challengeId: number;
+      action: ContactChallengeActionKind;
+      scheduledAt?: string;
+      challengeNote?: string;
+    }) => {
+      setChallengeActionState({
+        challengeId: payload.challengeId,
+        action: payload.action,
+      });
+      setError(null);
+
+      try {
+        const response = await fetch(`/api/challenges/${payload.challengeId}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            action: payload.action,
+            scheduledAt: payload.scheduledAt,
+            challengeNote: payload.challengeNote,
+          }),
+        });
+
+        const nextPayload = (await response.json().catch(() => ({}))) as { detail?: string };
+        if (!response.ok) {
+          throw new Error(readDetail(nextPayload) || "Challenge action failed.");
+        }
+
+        await refreshPanel(selectedTargetUid);
+      } catch (challengeError) {
+        setError(
+          challengeError instanceof Error ? challengeError.message : "Challenge action failed."
+        );
+      } finally {
+        setChallengeActionState({
+          challengeId: null,
+          action: null,
+        });
+      }
+    },
+    [refreshPanel, selectedTargetUid]
+  );
 
   if (!uid) {
     return null;
@@ -219,6 +273,10 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
                     );
                   }
                 }}
+                onChallengeAction={(payload) => {
+                  void handleChallengeAction(payload);
+                }}
+                challengeActionState={challengeActionState}
                 onSelectConversation={(targetUid) => {
                   setSelectedTargetUid(targetUid);
                   void refreshPanel(targetUid);

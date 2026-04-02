@@ -5,7 +5,11 @@ import { useSearchParams } from "next/navigation";
 
 import ContactInboxPanel from "@/components/contact/ContactInboxPanel";
 import ContactRichComposer from "@/components/contact/ContactRichComposer";
-import type { ContactInboxPayload } from "@/components/contact/types";
+import type {
+  ContactChallengeActionKind,
+  ContactChallengeActionState,
+  ContactInboxPayload,
+} from "@/components/contact/types";
 import { useUserAuth } from "@/context/UserAuthContext";
 import SteamLoginButton from "@/components/SteamLoginButton";
 
@@ -131,6 +135,10 @@ export default function ContactEmarenWorkspace() {
   const [body, setBody] = useState("");
   const [attachment, setAttachment] = useState<ComposerAttachment | null>(null);
   const [sendPending, setSendPending] = useState(false);
+  const [challengeActionState, setChallengeActionState] = useState<ContactChallengeActionState>({
+    challengeId: null,
+    action: null,
+  });
   const [pending, setPending] = useState(false);
   const [summaryPending, setSummaryPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -445,13 +453,54 @@ export default function ContactEmarenWorkspace() {
       void sendTypingState(false);
       setBody("");
       clearAttachment();
-        setPanelData(payload as ContactInboxPayload);
-        setSummaryData(payload as ContactInboxPayload);
-        setSelectedTargetUid((payload as ContactInboxPayload).activeTargetUid);
-      } catch (sendError) {
-        setError(sendError instanceof Error ? sendError.message : "Message failed.");
+      setPanelData(payload as ContactInboxPayload);
+      setSummaryData(payload as ContactInboxPayload);
+      setSelectedTargetUid((payload as ContactInboxPayload).activeTargetUid);
+    } catch (sendError) {
+      setError(sendError instanceof Error ? sendError.message : "Message failed.");
     } finally {
       setSendPending(false);
+    }
+  }
+
+  async function handleChallengeAction(payload: {
+    challengeId: number;
+    action: ContactChallengeActionKind;
+    scheduledAt?: string;
+    challengeNote?: string;
+  }) {
+    setChallengeActionState({
+      challengeId: payload.challengeId,
+      action: payload.action,
+    });
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/challenges/${payload.challengeId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action: payload.action,
+          scheduledAt: payload.scheduledAt,
+          challengeNote: payload.challengeNote,
+        }),
+      });
+
+      const nextPayload = (await response.json().catch(() => ({}))) as { detail?: string };
+      if (!response.ok) {
+        throw new Error(readDetail(nextPayload) || "Challenge action failed.");
+      }
+
+      await refreshPanel(selectedTargetUid);
+    } catch (challengeError) {
+      setError(challengeError instanceof Error ? challengeError.message : "Challenge action failed.");
+    } finally {
+      setChallengeActionState({
+        challengeId: null,
+        action: null,
+      });
     }
   }
 
@@ -502,6 +551,10 @@ export default function ContactEmarenWorkspace() {
             setError(actionError instanceof Error ? actionError.message : "Inbox action failed.");
           }
         }}
+        onChallengeAction={(payload) => {
+          void handleChallengeAction(payload);
+        }}
+        challengeActionState={challengeActionState}
         onToggleReaction={async (messageId, emoji) => {
           setReactingMessageId(messageId);
           setError(null);

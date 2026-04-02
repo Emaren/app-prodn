@@ -4,7 +4,10 @@ import Link from "next/link";
 import type { FormEvent, ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 
-import ScheduledMatchCard from "@/components/challenge/ScheduledMatchCard";
+import ScheduledMatchCard, {
+  type ScheduledMatchCardActionKind,
+  type ScheduledMatchCardActionState,
+} from "@/components/challenge/ScheduledMatchCard";
 import SteamLoginButton from "@/components/SteamLoginButton";
 import { useUserAuth } from "@/context/UserAuthContext";
 import type { ChallengeHubSnapshot } from "@/lib/challenges";
@@ -37,7 +40,10 @@ export default function ChallengeWorkspace() {
   const [snapshot, setSnapshot] = useState<ChallengeHubSnapshot>(EMPTY_SNAPSHOT);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [acceptingId, setAcceptingId] = useState<number | null>(null);
+  const [actionState, setActionState] = useState<ScheduledMatchCardActionState>({
+    challengeId: null,
+    kind: null,
+  });
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [challengedUid, setChallengedUid] = useState("");
@@ -98,10 +104,87 @@ export default function ChallengeWorkspace() {
     [snapshot.scheduledMatches, uid]
   );
 
+  const activeRunwayCount = useMemo(
+    () =>
+      snapshot.scheduledMatches.filter((match) =>
+        ["pending", "accepted", "live"].includes(match.displayState)
+      ).length,
+    [snapshot.scheduledMatches]
+  );
+
   const readyCount = useMemo(
     () => snapshot.scheduledMatches.filter((match) => match.displayState === "accepted").length,
     [snapshot.scheduledMatches]
   );
+  const activeRunwayMatches = useMemo(
+    () =>
+      snapshot.scheduledMatches.filter((match) =>
+        ["pending", "accepted", "live"].includes(match.displayState)
+      ),
+    [snapshot.scheduledMatches]
+  );
+  const recentDecisionMatches = useMemo(
+    () =>
+      snapshot.scheduledMatches.filter((match) =>
+        ["declined", "cancelled", "completed", "forfeited"].includes(match.displayState)
+      ),
+    [snapshot.scheduledMatches]
+  );
+
+  async function updateMatch(
+    challengeId: number,
+    action: ScheduledMatchCardActionKind,
+    extra?: {
+      scheduledAt?: string;
+      challengeNote?: string;
+    }
+  ) {
+    setActionState({
+      challengeId,
+      kind: action,
+    });
+    setError(null);
+    setNotice(null);
+
+    try {
+      const response = await fetch(`/api/challenges/${challengeId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action,
+          ...extra,
+        }),
+      });
+
+      const payload = (await response.json().catch(() => null)) as
+        | (ChallengeHubSnapshot & { detail?: string })
+        | null;
+
+      if (!response.ok || !payload) {
+        throw new Error(payload?.detail || "Challenge update failed.");
+      }
+
+      setSnapshot(payload);
+      setNotice(
+        action === "accept"
+          ? "Challenge accepted. Ready on board."
+          : action === "decline"
+            ? "Challenge declined."
+            : action === "cancel"
+              ? "Challenge cancelled."
+              : "New start time sent. Waiting on acceptance again."
+      );
+    } catch (updateError) {
+      setError(updateError instanceof Error ? updateError.message : "Challenge update failed.");
+    } finally {
+      setActionState({
+        challengeId: null,
+        kind: null,
+      });
+    }
+  }
 
   async function submitChallenge(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -142,39 +225,6 @@ export default function ChallengeWorkspace() {
     }
   }
 
-  async function acceptChallenge(challengeId: number) {
-    setAcceptingId(challengeId);
-    setError(null);
-    setNotice(null);
-
-    try {
-      const response = await fetch(`/api/challenges/${challengeId}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          action: "accept",
-        }),
-      });
-
-      const payload = (await response.json().catch(() => null)) as
-        | (ChallengeHubSnapshot & { detail?: string })
-        | null;
-
-      if (!response.ok || !payload) {
-        throw new Error(payload?.detail || "Could not accept challenge.");
-      }
-
-      setSnapshot(payload);
-      setNotice("Challenge accepted. Ready on board.");
-    } catch (acceptError) {
-      setError(acceptError instanceof Error ? acceptError.message : "Could not accept challenge.");
-    } finally {
-      setAcceptingId(null);
-    }
-  }
-
   return (
     <main className="space-y-5 py-5 text-white sm:space-y-6 sm:py-6">
       <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(251,191,36,0.16),_transparent_30%),radial-gradient(circle_at_bottom_right,_rgba(34,197,94,0.10),_transparent_24%),linear-gradient(135deg,_#101828,_#0f172a_45%,_#020617)] p-6 sm:p-8">
@@ -208,7 +258,7 @@ export default function ChallengeWorkspace() {
           </div>
 
           <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-            <StatCard label="Your Runway" value={String(snapshot.scheduledMatches.length)} />
+            <StatCard label="Your Runway" value={String(activeRunwayCount)} />
             <StatCard label="Incoming" value={String(pendingIncomingCount)} />
             <StatCard label="Ready" value={String(readyCount)} live helper="Accepted scheduled games" />
           </div>
@@ -303,30 +353,68 @@ export default function ChallengeWorkspace() {
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <div className="text-xs uppercase tracking-[0.35em] text-cyan-200/70">Your Runway</div>
-              <h2 className="mt-2 text-2xl font-semibold text-white">Scheduled Matches</h2>
+              <h2 className="mt-2 text-2xl font-semibold text-white">Active Match Tiles</h2>
             </div>
             <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-              {snapshot.scheduledMatches.length}
+              {activeRunwayMatches.length} active
             </div>
           </div>
 
           <div className="mt-5 space-y-4">
-            {snapshot.scheduledMatches.length === 0 ? (
+            {activeRunwayMatches.length === 0 ? (
               <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-5 text-sm text-slate-300">
-                No scheduled matches.
+                No active scheduled matches.
               </div>
             ) : (
-              snapshot.scheduledMatches.map((match) => (
+              activeRunwayMatches.map((match) => (
                 <ScheduledMatchCard
                   key={match.id}
                   match={match}
                   viewerUid={uid}
-                  onAccept={acceptChallenge}
-                  accepting={acceptingId === match.id}
+                  onAccept={(challengeId) => updateMatch(challengeId, "accept")}
+                  onDecline={(challengeId) => updateMatch(challengeId, "decline")}
+                  onCancel={(challengeId) => updateMatch(challengeId, "cancel")}
+                  onReschedule={(challengeId, payload) =>
+                    updateMatch(challengeId, "reschedule", payload)
+                  }
+                  actionState={actionState}
                 />
               ))
             )}
           </div>
+
+          {recentDecisionMatches.length > 0 ? (
+            <div className="mt-6 border-t border-white/10 pt-6">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <div className="text-xs uppercase tracking-[0.35em] text-slate-300/70">
+                    Recent Decisions
+                  </div>
+                  <h3 className="mt-2 text-xl font-semibold text-white">Recent Updates</h3>
+                </div>
+                <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+                  {recentDecisionMatches.length} recent
+                </div>
+              </div>
+
+              <div className="mt-5 space-y-4">
+                {recentDecisionMatches.map((match) => (
+                  <ScheduledMatchCard
+                    key={`recent-${match.id}`}
+                    match={match}
+                    viewerUid={uid}
+                    onAccept={(challengeId) => updateMatch(challengeId, "accept")}
+                    onDecline={(challengeId) => updateMatch(challengeId, "decline")}
+                    onCancel={(challengeId) => updateMatch(challengeId, "cancel")}
+                    onReschedule={(challengeId, payload) =>
+                      updateMatch(challengeId, "reschedule", payload)
+                    }
+                    actionState={actionState}
+                  />
+                ))}
+              </div>
+            </div>
+          ) : null}
         </section>
       </section>
     </main>

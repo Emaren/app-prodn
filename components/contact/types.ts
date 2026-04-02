@@ -1,3 +1,16 @@
+import type { ScheduledMatchTile } from "@/lib/challenges";
+
+export type ContactChallengeActionKind =
+  | "accept"
+  | "decline"
+  | "cancel"
+  | "reschedule";
+
+export type ContactChallengeActionState = {
+  challengeId: number | null;
+  action: ContactChallengeActionKind | null;
+};
+
 export type ContactBadge = {
   id: number;
   label: string;
@@ -112,6 +125,7 @@ export type ContactInboxPayload = {
   summaries: ContactInboxSummary[];
   activeTargetUid: string | null;
   activeCounterpart: ContactInboxCounterpart | null;
+  activeChallenge: ScheduledMatchTile | null;
   messages: ContactInboxMessage[];
   unavailableReason: string | null;
   conversation: {

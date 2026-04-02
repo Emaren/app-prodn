@@ -3,7 +3,10 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import ScheduledMatchCard from "@/components/challenge/ScheduledMatchCard";
+import ScheduledMatchCard, {
+  type ScheduledMatchCardActionKind,
+  type ScheduledMatchCardActionState,
+} from "@/components/challenge/ScheduledMatchCard";
 import { displayName } from "@/components/lobby/utils";
 import { useUserAuth } from "@/context/UserAuthContext";
 import type { LiveGamesSnapshot } from "@/lib/liveGames";
@@ -67,7 +70,10 @@ function playerLabel(
 export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps) {
   const { uid } = useUserAuth();
   const [snapshot, setSnapshot] = useState(initialSnapshot);
-  const [acceptingId, setAcceptingId] = useState<number | null>(null);
+  const [actionState, setActionState] = useState<ScheduledMatchCardActionState>({
+    challengeId: null,
+    kind: null,
+  });
   const [boardError, setBoardError] = useState<string | null>(null);
   const [boardNotice, setBoardNotice] = useState<string | null>(null);
 
@@ -155,9 +161,12 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
   const onDeckCount =
     snapshot.readyMatches.length + acceptedScheduledMatches.length + pendingScheduledMatches.length;
 
-  const acceptChallenge = useCallback(
-    async (challengeId: number) => {
-      setAcceptingId(challengeId);
+  const updateChallenge = useCallback(
+    async (challengeId: number, action: ScheduledMatchCardActionKind) => {
+      setActionState({
+        challengeId,
+        kind: action,
+      });
       setBoardError(null);
       setBoardNotice(null);
 
@@ -168,22 +177,31 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            action: "accept",
+            action,
           }),
         });
 
         const payload = (await response.json().catch(() => null)) as { detail?: string } | null;
         if (!response.ok) {
-          throw new Error(payload?.detail || "Challenge could not be accepted.");
+          throw new Error(payload?.detail || "Challenge could not be updated.");
         }
 
-        setBoardNotice("Challenge accepted. The match is now locked in on deck.");
+        setBoardNotice(
+          action === "accept"
+            ? "Challenge accepted. The match is now locked in on deck."
+            : action === "decline"
+              ? "Challenge declined."
+              : "Challenge cancelled."
+        );
         await refresh();
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Challenge could not be accepted.";
+        const message = error instanceof Error ? error.message : "Challenge could not be updated.";
         setBoardError(message);
       } finally {
-        setAcceptingId(null);
+        setActionState({
+          challengeId: null,
+          kind: null,
+        });
       }
     },
     [refresh]
@@ -260,8 +278,10 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
                     key={`scheduled-live-${match.id}`}
                     match={match}
                     viewerUid={uid}
-                    onAccept={acceptChallenge}
-                    accepting={acceptingId === match.id}
+                    onAccept={(challengeId) => updateChallenge(challengeId, "accept")}
+                    onDecline={(challengeId) => updateChallenge(challengeId, "decline")}
+                    onCancel={(challengeId) => updateChallenge(challengeId, "cancel")}
+                    actionState={actionState}
                   />
                 ))}
                 {snapshot.activeSessions.map((session) => (
@@ -275,8 +295,10 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
                     key={`scheduled-recent-${match.id}`}
                     match={match}
                     viewerUid={uid}
-                    onAccept={acceptChallenge}
-                    accepting={acceptingId === match.id}
+                    onAccept={(challengeId) => updateChallenge(challengeId, "accept")}
+                    onDecline={(challengeId) => updateChallenge(challengeId, "decline")}
+                    onCancel={(challengeId) => updateChallenge(challengeId, "cancel")}
+                    actionState={actionState}
                   />
                 ))}
                 {snapshot.recentlyCompletedSessions.map((session) => (
@@ -314,8 +336,10 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
                       key={`scheduled-accepted-${match.id}`}
                       match={match}
                       viewerUid={uid}
-                      onAccept={acceptChallenge}
-                      accepting={acceptingId === match.id}
+                      onAccept={(challengeId) => updateChallenge(challengeId, "accept")}
+                      onDecline={(challengeId) => updateChallenge(challengeId, "decline")}
+                      onCancel={(challengeId) => updateChallenge(challengeId, "cancel")}
+                      actionState={actionState}
                       compact
                     />
                   ))}
@@ -324,8 +348,10 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
                       key={`scheduled-pending-${match.id}`}
                       match={match}
                       viewerUid={uid}
-                      onAccept={acceptChallenge}
-                      accepting={acceptingId === match.id}
+                      onAccept={(challengeId) => updateChallenge(challengeId, "accept")}
+                      onDecline={(challengeId) => updateChallenge(challengeId, "decline")}
+                      onCancel={(challengeId) => updateChallenge(challengeId, "cancel")}
+                      actionState={actionState}
                       compact
                     />
                   ))}

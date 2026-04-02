@@ -27,6 +27,8 @@ type ScheduledMatchRow = {
   scheduledAt: Date;
   createdAt: Date;
   acceptedAt: Date | null;
+  declinedAt: Date | null;
+  cancelledAt: Date | null;
   challengeNote: string | null;
   challenger: ChallengeUserRow;
   challenged: ChallengeUserRow;
@@ -57,11 +59,20 @@ export type ChallengePlayerSurface = {
 
 export type ScheduledMatchTile = {
   id: number;
-  status: "pending" | "accepted";
-  displayState: "pending" | "accepted" | "live" | "completed" | "forfeited";
+  status: "pending" | "accepted" | "declined" | "cancelled";
+  displayState:
+    | "pending"
+    | "accepted"
+    | "live"
+    | "completed"
+    | "forfeited"
+    | "declined"
+    | "cancelled";
   scheduledAt: string;
   createdAt: string;
   acceptedAt: string | null;
+  declinedAt: string | null;
+  cancelledAt: string | null;
   activityAt: string;
   challengeNote: string | null;
   challenger: ChallengePlayerSurface;
@@ -96,6 +107,8 @@ const SCHEDULED_MATCH_SELECT = {
   scheduledAt: true,
   createdAt: true,
   acceptedAt: true,
+  declinedAt: true,
+  cancelledAt: true,
   challengeNote: true,
   challenger: {
     select: CHALLENGE_PLAYER_SELECT,
@@ -196,11 +209,20 @@ function buildScheduledMatchTile(
 ): ScheduledMatchTile {
   return {
     id: row.id,
-    status: row.status === "accepted" ? "accepted" : "pending",
+    status:
+      row.status === "accepted"
+        ? "accepted"
+        : row.status === "declined"
+          ? "declined"
+          : row.status === "cancelled"
+            ? "cancelled"
+            : "pending",
     displayState,
     scheduledAt: row.scheduledAt.toISOString(),
     createdAt: row.createdAt.toISOString(),
     acceptedAt: row.acceptedAt?.toISOString() ?? null,
+    declinedAt: row.declinedAt?.toISOString() ?? null,
+    cancelledAt: row.cancelledAt?.toISOString() ?? null,
     activityAt: activityAt.toISOString(),
     challengeNote: row.challengeNote ?? null,
     challenger: buildPlayerSurface(row.challenger),
@@ -216,18 +238,22 @@ function buildScheduledMatchTile(
 function compareScheduledTileOrder(left: ScheduledMatchTile, right: ScheduledMatchTile) {
   const priority = (tile: ScheduledMatchTile) => {
     switch (tile.displayState) {
-      case "accepted":
-        return 0;
-      case "pending":
-        return 1;
       case "live":
         return 0;
-      case "completed":
+      case "accepted":
         return 1;
-      case "forfeited":
+      case "pending":
         return 2;
-      default:
+      case "completed":
         return 3;
+      case "forfeited":
+        return 4;
+      case "declined":
+        return 5;
+      case "cancelled":
+        return 6;
+      default:
+        return 7;
     }
   };
 
@@ -268,14 +294,16 @@ async function loadScheduledMatchRows(
   prisma: PrismaClient,
   options?: {
     viewerUserId?: number | null;
+    counterpartUserId?: number | null;
+    includeResolved?: boolean;
   }
 ) {
   const now = Date.now();
   const earliest = new Date(now - CHALLENGE_HISTORY_LOOKBACK_MS);
   const latest = new Date(now + CHALLENGE_LOOKAHEAD_MS);
-
-  return prisma.scheduledMatch.findMany({
-    where: {
+  const recentResolvedCutoff = new Date(now - CHALLENGE_RECENT_LINGER_MS);
+  const statusFilters = [
+    {
       status: {
         in: [...ACTIVE_SCHEDULED_STATUSES],
       },
@@ -283,14 +311,54 @@ async function loadScheduledMatchRows(
         gte: earliest,
         lte: latest,
       },
-      ...(options?.viewerUserId
-        ? {
+    },
+    ...(options?.includeResolved
+      ? [
+          {
+            status: "declined",
+            declinedAt: {
+              gte: recentResolvedCutoff,
+            },
+          },
+          {
+            status: "cancelled",
+            cancelledAt: {
+              gte: recentResolvedCutoff,
+            },
+          },
+        ]
+      : []),
+  ];
+  const participantFilters =
+    options?.viewerUserId && options?.counterpartUserId
+      ? [
+          {
             OR: [
-              { challengerUserId: options.viewerUserId },
-              { challengedUserId: options.viewerUserId },
+              {
+                challengerUserId: options.viewerUserId,
+                challengedUserId: options.counterpartUserId,
+              },
+              {
+                challengerUserId: options.counterpartUserId,
+                challengedUserId: options.viewerUserId,
+              },
             ],
-          }
-        : {}),
+          },
+        ]
+      : options?.viewerUserId
+        ? [
+            {
+              OR: [
+                { challengerUserId: options.viewerUserId },
+                { challengedUserId: options.viewerUserId },
+              ],
+            },
+          ]
+        : [];
+
+  return prisma.scheduledMatch.findMany({
+    where: {
+      AND: [{ OR: statusFilters }, ...participantFilters],
     },
     orderBy: [{ scheduledAt: "asc" }, { createdAt: "desc" }],
     select: SCHEDULED_MATCH_SELECT,
@@ -309,6 +377,23 @@ export function deriveScheduledMatchTiles(
 
   for (const row of rows) {
     const scheduledAt = row.scheduledAt.getTime();
+    const declinedAt = row.declinedAt;
+    const cancelledAt = row.cancelledAt;
+
+    if (row.status === "declined") {
+      if (declinedAt && now.getTime() - declinedAt.getTime() <= CHALLENGE_RECENT_LINGER_MS) {
+        tiles.push(buildScheduledMatchTile(row, "declined", declinedAt, null));
+      }
+      continue;
+    }
+
+    if (row.status === "cancelled") {
+      if (cancelledAt && now.getTime() - cancelledAt.getTime() <= CHALLENGE_RECENT_LINGER_MS) {
+        tiles.push(buildScheduledMatchTile(row, "cancelled", cancelledAt, null));
+      }
+      continue;
+    }
+
     const activeSession =
       row.status === "accepted"
         ? findLinkedSession(activeSessions, row, matchedActiveSessionKeys)
@@ -375,6 +460,29 @@ export async function loadScheduledMatchTilesForLiveBoard(
   return deriveScheduledMatchTiles(rows, activeSessions, recentlyCompletedSessions);
 }
 
+export async function loadChallengeThreadTile(
+  prisma: PrismaClient,
+  viewerUserId: number,
+  counterpartUserId: number
+): Promise<ScheduledMatchTile | null> {
+  const [rows, sessionSnapshot] = await Promise.all([
+    loadScheduledMatchRows(prisma, {
+      viewerUserId,
+      counterpartUserId,
+      includeResolved: true,
+    }),
+    loadLiveSessionSnapshot(prisma),
+  ]);
+
+  const { tiles } = deriveScheduledMatchTiles(
+    rows,
+    sessionSnapshot.activeSessions,
+    sessionSnapshot.recentlyCompletedSessions
+  );
+
+  return tiles[0] ?? null;
+}
+
 export async function loadChallengeHubSnapshot(
   prisma: PrismaClient,
   viewerUid: string | null
@@ -416,7 +524,7 @@ export async function loadChallengeHubSnapshot(
       orderBy: [{ lastSeen: "desc" }, { verificationLevel: "desc" }, { createdAt: "desc" }],
       take: 80,
     }),
-    loadScheduledMatchRows(prisma, { viewerUserId: viewer.id }),
+    loadScheduledMatchRows(prisma, { viewerUserId: viewer.id, includeResolved: true }),
     loadLiveSessionSnapshot(prisma),
   ]);
 

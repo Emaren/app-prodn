@@ -11,6 +11,10 @@ import { getSessionUid } from "@/lib/session";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+const ACTIVE_SCHEDULED_MATCH_STATUSES = ["pending", "accepted"] as const;
+const SCHEDULE_WINDOW_MIN_MS = 2 * 60 * 1000;
+const SCHEDULE_WINDOW_MAX_MS = 7 * 24 * 60 * 60 * 1000;
+const EXISTING_MATCH_LOOKBACK_MS = 12 * 60 * 60 * 1000;
 
 const VIEWER_SELECT = {
   id: true,
@@ -59,6 +63,20 @@ function buildChallengeInviteMessage({
   }
 
   return lines.join("\n");
+}
+
+function validateScheduledAtWindow(scheduledAt: Date) {
+  const now = Date.now();
+
+  if (scheduledAt.getTime() < now + SCHEDULE_WINDOW_MIN_MS) {
+    return "Schedule the game at least two minutes ahead.";
+  }
+
+  if (scheduledAt.getTime() > now + SCHEDULE_WINDOW_MAX_MS) {
+    return "Keep scheduled matches inside the next seven days for now.";
+  }
+
+  return null;
 }
 
 async function requireViewer(request: NextRequest) {
@@ -123,19 +141,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ detail: "Choose a valid start time." }, { status: 400 });
     }
 
-    const now = Date.now();
-    if (scheduledAt.getTime() < now + 2 * 60 * 1000) {
-      return NextResponse.json(
-        { detail: "Schedule the game at least two minutes ahead." },
-        { status: 400 }
-      );
-    }
-
-    if (scheduledAt.getTime() > now + 7 * 24 * 60 * 60 * 1000) {
-      return NextResponse.json(
-        { detail: "Keep scheduled matches inside the next seven days for now." },
-        { status: 400 }
-      );
+    const scheduledAtWindowError = validateScheduledAtWindow(scheduledAt);
+    if (scheduledAtWindowError) {
+      return NextResponse.json({ detail: scheduledAtWindowError }, { status: 400 });
     }
 
     const challenged = await prisma.user.findUnique({
@@ -150,6 +158,44 @@ export async function POST(request: NextRequest) {
 
     if (!challenged) {
       return NextResponse.json({ detail: "Challenged player not found." }, { status: 404 });
+    }
+
+    const now = Date.now();
+    const existingActiveMatch = await prisma.scheduledMatch.findFirst({
+      where: {
+        status: {
+          in: [...ACTIVE_SCHEDULED_MATCH_STATUSES],
+        },
+        scheduledAt: {
+          gte: new Date(now - EXISTING_MATCH_LOOKBACK_MS),
+          lte: new Date(now + SCHEDULE_WINDOW_MAX_MS),
+        },
+        OR: [
+          {
+            challengerUserId: viewer.id,
+            challengedUserId: challenged.id,
+          },
+          {
+            challengerUserId: challenged.id,
+            challengedUserId: viewer.id,
+          },
+        ],
+      },
+      select: {
+        id: true,
+        scheduledAt: true,
+      },
+    });
+
+    if (existingActiveMatch) {
+      return NextResponse.json(
+        {
+          detail: `A scheduled match between these players is already active for ${formatScheduledAtForInbox(
+            existingActiveMatch.scheduledAt
+          )}.`,
+        },
+        { status: 409 }
+      );
     }
 
     await prisma.$transaction(async (tx) => {
