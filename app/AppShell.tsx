@@ -57,7 +57,7 @@ function HeaderPillLink({
       className={`relative inline-flex items-center justify-center overflow-visible rounded-full border px-3 py-1.5 text-xs transition ${className}`}
     >
       {isRoadmap ? (
-        <span className="pointer-events-none absolute left-1/2 top-0 z-0 inline-flex h-5 min-w-[1.45rem] -translate-x-1/2 -translate-y-[48%] items-center justify-center rounded-full border border-amber-200/25 bg-[linear-gradient(135deg,rgba(253,230,138,0.95),rgba(245,158,11,0.92))] px-1.5 text-[10px] font-semibold text-slate-950 shadow-[0_10px_24px_rgba(245,158,11,0.22)]">
+        <span className="pointer-events-none absolute left-1/2 top-0 z-0 inline-flex h-5 min-w-[1.45rem] -translate-x-1/2 -translate-y-[64%] items-center justify-center rounded-full border border-white/85 bg-[linear-gradient(135deg,rgba(191,219,254,0.98),rgba(96,165,250,0.96)_30%,rgba(37,99,235,0.96)_72%,rgba(30,64,175,0.98))] px-1.5 text-[10px] font-semibold text-white shadow-[0_12px_28px_rgba(37,99,235,0.32)]">
           {badgeCount}
         </span>
       ) : null}
