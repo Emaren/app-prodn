@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import {
   loadChallengeHubSnapshot,
+  loadChallengeThreadTile,
   normalizeChallengeNote,
   parseScheduledMatchDate,
 } from "@/lib/challenges";
@@ -11,10 +12,9 @@ import { getSessionUid } from "@/lib/session";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-const ACTIVE_SCHEDULED_MATCH_STATUSES = ["pending", "accepted"] as const;
 const SCHEDULE_WINDOW_MIN_MS = 2 * 60 * 1000;
 const SCHEDULE_WINDOW_MAX_MS = 7 * 24 * 60 * 60 * 1000;
-const EXISTING_MATCH_LOOKBACK_MS = 12 * 60 * 60 * 1000;
+const DUPLICATE_BLOCKING_STATES = new Set(["pending", "accepted", "live"]);
 
 const VIEWER_SELECT = {
   id: true,
@@ -160,38 +160,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ detail: "Challenged player not found." }, { status: 404 });
     }
 
-    const now = Date.now();
-    const existingActiveMatch = await prisma.scheduledMatch.findFirst({
-      where: {
-        status: {
-          in: [...ACTIVE_SCHEDULED_MATCH_STATUSES],
-        },
-        scheduledAt: {
-          gte: new Date(now - EXISTING_MATCH_LOOKBACK_MS),
-          lte: new Date(now + SCHEDULE_WINDOW_MAX_MS),
-        },
-        OR: [
-          {
-            challengerUserId: viewer.id,
-            challengedUserId: challenged.id,
-          },
-          {
-            challengerUserId: challenged.id,
-            challengedUserId: viewer.id,
-          },
-        ],
-      },
-      select: {
-        id: true,
-        scheduledAt: true,
-      },
-    });
+    const existingActiveMatch = await loadChallengeThreadTile(prisma, viewer.id, challenged.id);
 
-    if (existingActiveMatch) {
+    if (
+      existingActiveMatch &&
+      DUPLICATE_BLOCKING_STATES.has(existingActiveMatch.displayState)
+    ) {
       return NextResponse.json(
         {
           detail: `A scheduled match between these players is already active for ${formatScheduledAtForInbox(
-            existingActiveMatch.scheduledAt
+            new Date(existingActiveMatch.scheduledAt)
           )}.`,
         },
         { status: 409 }
