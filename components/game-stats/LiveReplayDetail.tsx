@@ -98,6 +98,7 @@ export default function LiveReplayDetail({
   initialSnapshot: LiveReplayDetailSnapshot;
 }) {
   const [snapshot, setSnapshot] = useState(initialSnapshot);
+  const [battleMatrixFullWidth, setBattleMatrixFullWidth] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -269,7 +270,7 @@ export default function LiveReplayDetail({
       </section>
 
       <section className="min-w-0 overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(56,189,248,0.16),_transparent_26%),radial-gradient(circle_at_top_right,_rgba(251,191,36,0.12),_transparent_28%),linear-gradient(135deg,_rgba(8,15,29,0.98),_rgba(7,12,24,0.99))] p-5 sm:p-8">
-        <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="text-xs uppercase tracking-[0.35em] text-sky-200/70">Battle Matrix</div>
             <h2 className="mt-2 text-3xl font-semibold text-white sm:text-4xl">Live Activity Lanes</h2>
@@ -279,15 +280,33 @@ export default function LiveReplayDetail({
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            <Tag>{snapshot.telemetry.uniqueEventTypeCount} event families tracked</Tag>
-            <Tag>{snapshot.telemetry.latestChatCount ?? 0} live chat signals</Tag>
-            <Tag>{snapshot.telemetry.hasScores ? "scores visible" : "scores dark"}</Tag>
-            <Tag>{achievementSignalLabel}</Tag>
+          <div className="flex flex-wrap items-start justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setBattleMatrixFullWidth((current) => !current);
+              }}
+              className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-sky-300/20 bg-sky-300/10 text-sky-100 transition hover:border-sky-200/40 hover:bg-sky-300/15 hover:text-white"
+              title={battleMatrixFullWidth ? "Switch to versus split lanes" : "Switch to full-width lanes"}
+              aria-label={battleMatrixFullWidth ? "Switch to versus split lanes" : "Switch to full-width lanes"}
+              aria-pressed={battleMatrixFullWidth}
+            >
+              <BattleMatrixLayoutIcon fullWidth={battleMatrixFullWidth} />
+            </button>
+            <div className="flex flex-wrap justify-end gap-2">
+              <Tag>{snapshot.telemetry.uniqueEventTypeCount} event families tracked</Tag>
+              <Tag>{snapshot.telemetry.latestChatCount ?? 0} live chat signals</Tag>
+              <Tag>{snapshot.telemetry.hasScores ? "scores visible" : "scores dark"}</Tag>
+              <Tag>{achievementSignalLabel}</Tag>
+            </div>
           </div>
         </div>
 
-        <div className="mt-6 grid gap-4">
+        <div
+          className={`mt-6 grid gap-4 ${
+            battleMatrixFullWidth ? "" : "xl:grid-cols-2"
+          }`}
+        >
           {players.length === 0 ? (
             <EmptyPanel message="No player pulse payload has landed yet for the battle matrix." />
           ) : battleMatrixWarming ? (
@@ -707,6 +726,32 @@ function SignalTile({
       <div className="text-[11px] uppercase tracking-[0.22em] opacity-70">{label}</div>
       <div className="mt-2 text-lg font-semibold">{value}</div>
     </div>
+  );
+}
+
+function BattleMatrixLayoutIcon({ fullWidth }: { fullWidth: boolean }) {
+  return fullWidth ? (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="h-5 w-5"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <rect x="4" y="5" width="16" height="5" rx="2" stroke="currentColor" strokeWidth="1.8" />
+      <rect x="4" y="14" width="16" height="5" rx="2" stroke="currentColor" strokeWidth="1.8" />
+    </svg>
+  ) : (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="h-5 w-5"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <rect x="4" y="5" width="6.5" height="14" rx="2" stroke="currentColor" strokeWidth="1.8" />
+      <rect x="13.5" y="5" width="6.5" height="14" rx="2" stroke="currentColor" strokeWidth="1.8" />
+    </svg>
   );
 }
 

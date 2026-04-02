@@ -37,7 +37,7 @@ Current strengths:
 - live board can show just-finished matches in a believable way
 - final replay storage no longer has the old obviously broken feel on a normal valid game
 - recent match surfaces feel more connected to the actual product state
-- live replay Battle Matrix now renders one full-width player lane per row, stacks the activity rail above the pulse strip, boxes current-EAPM stats, and lets pulse/metric labels wrap safely so the lane never collapses into cramped micro-tiles or text overlap
+- live replay Battle Matrix defaults to a two-column versus layout with one activity lane per player, and a header layout icon can switch into a one-column full-width lane view; inside each lane the activity rail stays stacked above the pulse strip, current-EAPM is boxed, and pulse/metric labels wrap safely to avoid overlap
 
 ### Players directory
 
