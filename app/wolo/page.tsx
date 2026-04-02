@@ -20,6 +20,12 @@ const PING_PUB_BASE_URL = "https://ping.pub";
 const OSMOSIS_DEX_URL = "https://app.osmosis.zone";
 const WOLO_EMBLEM_SRC = "/legacy/wolo-logo-transparent.png";
 const DEFAULT_WOLO_MARKET_PRICE = "$0.001";
+const WOLO_BASE_ACTION_CLASSNAME =
+  "inline-flex items-center justify-center whitespace-nowrap rounded-full px-4 py-2.5 text-[13px] transition";
+const WOLO_PRIMARY_ACTION_CLASSNAME = `${WOLO_BASE_ACTION_CLASSNAME} bg-amber-300 font-semibold text-slate-950 hover:bg-amber-200`;
+const WOLO_SECONDARY_ACTION_CLASSNAME = `${WOLO_BASE_ACTION_CLASSNAME} border border-white/12 bg-white/5 text-white/90 hover:border-white/25 hover:bg-white/10 hover:text-white`;
+const WOLO_TERTIARY_ACTION_CLASSNAME = `${WOLO_BASE_ACTION_CLASSNAME} border border-emerald-400/25 bg-emerald-500/10 text-emerald-100 hover:border-emerald-300/40 hover:bg-emerald-500/15`;
+const WOLO_PING_ACTION_CLASSNAME = `${WOLO_BASE_ACTION_CLASSNAME} border border-amber-300/20 bg-amber-400/10 text-amber-100 hover:border-amber-200/35 hover:bg-amber-400/14`;
 
 function formatAddress(address?: string) {
   if (!address) return "Not connected";
@@ -118,7 +124,6 @@ export default function WoloPage() {
                   title="Active chain id"
                 />
                 <SignalChip label={walletStatus} title="Wallet status" />
-                <MarketContextTile href={OSMOSIS_DEX_URL} variant="prod" />
               </div>
 
               <div className="space-y-5">
@@ -166,10 +171,10 @@ export default function WoloPage() {
                 />
               </div>
 
-              <div className="flex flex-wrap gap-3 pt-1">
+              <div className="flex flex-wrap items-center gap-2 pt-1">
                 <Link
                   href="/wallet"
-                  className="rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200"
+                  className={WOLO_PRIMARY_ACTION_CLASSNAME}
                 >
                   Open Wallet
                 </Link>
@@ -178,13 +183,13 @@ export default function WoloPage() {
                   onClick={() => {
                     void handleConnect();
                   }}
-                  className="rounded-full border border-white/12 bg-white/5 px-5 py-3 text-sm text-white/85 transition hover:border-white/25 hover:bg-white/10 hover:text-white"
+                  className={WOLO_SECONDARY_ACTION_CLASSNAME}
                 >
                   {status === "connected" ? "Wallet Live" : "Connect Keplr"}
                 </button>
                 <Link
                   href="/download"
-                  className="rounded-full border border-white/12 bg-white/5 px-5 py-3 text-sm text-white/85 transition hover:border-white/25 hover:bg-white/10 hover:text-white"
+                  className={WOLO_SECONDARY_ACTION_CLASSNAME}
                 >
                   Download Watcher
                 </Link>
@@ -192,60 +197,64 @@ export default function WoloPage() {
                   href={KEPLR_DOWNLOAD_URL}
                   target="_blank"
                   rel="noreferrer"
-                  className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-5 py-3 text-sm text-emerald-100 transition hover:border-emerald-300/40 hover:bg-emerald-500/15"
+                  className={WOLO_TERTIARY_ACTION_CLASSNAME}
                 >
                   Get Keplr
                 </a>
               </div>
             </div>
 
-            <div className="rounded-[1.75rem] border border-white/10 bg-[#131b2a] p-5 shadow-[0_30px_80px_rgba(2,6,23,0.36)] sm:p-6">
-              <div className="flex items-start justify-between gap-4">
-                <div className="text-[11px] uppercase tracking-[0.35em] text-amber-200/70">
-                  Wallet Snapshot
+            <div className="space-y-4">
+              <div className="rounded-[1.75rem] border border-white/10 bg-[#131b2a] p-5 shadow-[0_30px_80px_rgba(2,6,23,0.36)] sm:p-6">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="text-[11px] uppercase tracking-[0.35em] text-amber-200/70">
+                    Wallet Snapshot
+                  </div>
+                  <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-200">
+                    {walletStatus}
+                  </div>
                 </div>
-                <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-200">
-                  {walletStatus}
+
+                <div className="mt-5 grid gap-4">
+                  <WalletPanel label="Address" value={formatAddress(address)} mono />
+                  <WalletPanel
+                    label="Balance"
+                    value={balanceLoading ? "Loading..." : `${formattedBalance} WOLO`}
+                    emphasis
+                  />
+                  <WalletPanel label="Network" value={chainId} />
                 </div>
+
+                {walletError ? (
+                  <div className="mt-4 rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+                    {walletError}
+                  </div>
+                ) : null}
+
+                {status !== "connected" ? (
+                  <div className="mt-5 grid gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void handleConnect();
+                      }}
+                      className="w-full rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-200"
+                    >
+                      {status === "not_installed" ? "Try Connect After Install" : "Connect Keplr"}
+                    </button>
+                    <a
+                      href={KEPLR_DOWNLOAD_URL}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="block w-full rounded-full border border-white/12 bg-white/5 px-5 py-3 text-center text-sm text-white/85 transition hover:border-white/25 hover:text-white"
+                    >
+                      Get Keplr Wallet
+                    </a>
+                  </div>
+                ) : null}
               </div>
 
-              <div className="mt-5 grid gap-4">
-                <WalletPanel label="Address" value={formatAddress(address)} mono />
-                <WalletPanel
-                  label="Balance"
-                  value={balanceLoading ? "Loading..." : `${formattedBalance} WOLO`}
-                  emphasis
-                />
-                <WalletPanel label="Network" value={chainId} />
-              </div>
-
-              {walletError ? (
-                <div className="mt-4 rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
-                  {walletError}
-                </div>
-              ) : null}
-
-              {status !== "connected" ? (
-                <div className="mt-5 grid gap-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void handleConnect();
-                    }}
-                    className="w-full rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-200"
-                  >
-                    {status === "not_installed" ? "Try Connect After Install" : "Connect Keplr"}
-                  </button>
-                  <a
-                    href={KEPLR_DOWNLOAD_URL}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="block w-full rounded-full border border-white/12 bg-white/5 px-5 py-3 text-center text-sm text-white/85 transition hover:border-white/25 hover:text-white"
-                  >
-                    Get Keplr Wallet
-                  </a>
-                </div>
-              ) : null}
+              <MarketContextTile href={OSMOSIS_DEX_URL} variant="prod" />
             </div>
           </div>
         </section>
@@ -275,7 +284,6 @@ export default function WoloPage() {
               <PremiumStatusPill label={`Balance ${formattedBalance} WOLO`} tone="emerald" />
               <PremiumStatusPill label={walletStatus} />
               <PremiumStatusPill label="Rail standby" />
-              <MarketContextTile href={OSMOSIS_DEX_URL} variant="premium" />
             </div>
 
             <div className="relative isolate overflow-hidden rounded-[1.85rem] border border-white/10 bg-[linear-gradient(135deg,rgba(251,191,36,0.10),rgba(9,15,27,0.94)_34%,rgba(5,8,20,0.98)_100%)] px-5 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] sm:px-6 sm:py-6">
@@ -316,10 +324,10 @@ export default function WoloPage() {
               <PremiumHeroCard label="Balance" value={`${formattedBalance} WOLO`} compact />
             </div>
 
-            <div className="flex flex-wrap gap-3 pt-1">
+            <div className="flex flex-wrap items-center gap-2 pt-1">
               <Link
                 href="/wallet"
-                className="rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200"
+                className={WOLO_PRIMARY_ACTION_CLASSNAME}
               >
                 Open Wallet
               </Link>
@@ -329,7 +337,7 @@ export default function WoloPage() {
                 onClick={() => {
                   void handleConnect();
                 }}
-                className="rounded-full border border-white/12 bg-white/5 px-5 py-3 text-sm text-white/90 transition hover:border-white/25 hover:bg-white/10 hover:text-white"
+                className={WOLO_SECONDARY_ACTION_CLASSNAME}
               >
                 {status === "connected"
                   ? "Wallet Live"
@@ -340,7 +348,7 @@ export default function WoloPage() {
 
               <Link
                 href="/download"
-                className="rounded-full border border-white/12 bg-white/5 px-5 py-3 text-sm text-white/90 transition hover:border-white/25 hover:bg-white/10 hover:text-white"
+                className={WOLO_SECONDARY_ACTION_CLASSNAME}
               >
                 Download Watcher
               </Link>
@@ -349,7 +357,7 @@ export default function WoloPage() {
                 href={KEPLR_DOWNLOAD_URL}
                 target="_blank"
                 rel="noreferrer"
-                className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-5 py-3 text-sm text-emerald-100 transition hover:border-emerald-300/40 hover:bg-emerald-500/15"
+                className={WOLO_TERTIARY_ACTION_CLASSNAME}
               >
                 Get Keplr
               </a>
@@ -358,65 +366,69 @@ export default function WoloPage() {
                 href={pingPubUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="rounded-full border border-amber-300/20 bg-amber-400/10 px-5 py-3 text-sm text-amber-100 transition hover:border-amber-200/35 hover:bg-amber-400/14"
+                className={WOLO_PING_ACTION_CLASSNAME}
               >
                 Open Ping.pub
               </a>
             </div>
           </div>
 
-          <div className="rounded-[1.8rem] border border-white/10 bg-[linear-gradient(180deg,rgba(11,17,30,0.96),rgba(7,11,19,0.96))] p-5 shadow-[0_28px_80px_rgba(2,6,23,0.34)] sm:p-6">
-            <div className="flex items-start justify-between gap-4">
-              <div className="text-[11px] uppercase tracking-[0.35em] text-amber-200/70">
-                Wallet Snapshot
+          <div className="space-y-4">
+            <div className="rounded-[1.8rem] border border-white/10 bg-[linear-gradient(180deg,rgba(11,17,30,0.96),rgba(7,11,19,0.96))] p-5 shadow-[0_28px_80px_rgba(2,6,23,0.34)] sm:p-6">
+              <div className="flex items-start justify-between gap-4">
+                <div className="text-[11px] uppercase tracking-[0.35em] text-amber-200/70">
+                  Wallet Snapshot
+                </div>
+
+                <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-200">
+                  {walletStatus}
+                </div>
               </div>
 
-              <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-200">
-                {walletStatus}
+              <div className="mt-5 grid gap-4">
+                <PremiumWalletPanel label="Address" value={formatAddress(address)} mono />
+                <PremiumWalletPanel
+                  label="Balance"
+                  value={balanceLoading ? "Loading..." : `${formattedBalance} WOLO`}
+                  emphasis
+                />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <PremiumWalletPanel label="Network" value={chainId} />
+                  <PremiumWalletPanel label="Prefix" value="wolo1..." mono />
+                </div>
               </div>
+
+              {walletError ? (
+                <div className="mt-4 rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+                  {walletError}
+                </div>
+              ) : null}
+
+              {status !== "connected" ? (
+                <div className="mt-5 grid gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void handleConnect();
+                    }}
+                    className="w-full rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-200"
+                  >
+                    {status === "not_installed" ? "Try Connect After Install" : "Connect Keplr"}
+                  </button>
+
+                  <a
+                    href={KEPLR_DOWNLOAD_URL}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="block w-full rounded-full border border-white/12 bg-white/5 px-5 py-3 text-center text-sm text-white/90 transition hover:border-white/25 hover:text-white"
+                  >
+                    Get Keplr Wallet
+                  </a>
+                </div>
+              ) : null}
             </div>
 
-            <div className="mt-5 grid gap-4">
-              <PremiumWalletPanel label="Address" value={formatAddress(address)} mono />
-              <PremiumWalletPanel
-                label="Balance"
-                value={balanceLoading ? "Loading..." : `${formattedBalance} WOLO`}
-                emphasis
-              />
-              <div className="grid gap-3 sm:grid-cols-2">
-                <PremiumWalletPanel label="Network" value={chainId} />
-                <PremiumWalletPanel label="Prefix" value="wolo1..." mono />
-              </div>
-            </div>
-
-            {walletError ? (
-              <div className="mt-4 rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
-                {walletError}
-              </div>
-            ) : null}
-
-            {status !== "connected" ? (
-              <div className="mt-5 grid gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    void handleConnect();
-                  }}
-                  className="w-full rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-200"
-                >
-                  {status === "not_installed" ? "Try Connect After Install" : "Connect Keplr"}
-                </button>
-
-                <a
-                  href={KEPLR_DOWNLOAD_URL}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="block w-full rounded-full border border-white/12 bg-white/5 px-5 py-3 text-center text-sm text-white/90 transition hover:border-white/25 hover:text-white"
-                >
-                  Get Keplr Wallet
-                </a>
-              </div>
-            ) : null}
+            <MarketContextTile href={OSMOSIS_DEX_URL} variant="premium" />
           </div>
         </div>
       </section>
@@ -615,10 +627,10 @@ function MarketContextTile({
       target="_blank"
       rel="noreferrer"
       data-no-toggle="true"
-      className={`group sm:ml-auto ${
+      className={`group block w-full ${
         compact
-          ? "min-w-[15.25rem] flex-1 rounded-[1.15rem] border border-cyan-300/15 bg-[linear-gradient(135deg,rgba(255,255,255,0.05),rgba(9,15,28,0.95)_52%,rgba(8,35,46,0.78))] px-3.5 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition hover:border-cyan-200/28 hover:bg-[linear-gradient(135deg,rgba(255,255,255,0.08),rgba(10,18,34,0.95)_52%,rgba(8,42,54,0.84))]"
-          : "min-w-[18rem] flex-1 rounded-[1.35rem] border border-cyan-300/18 bg-[linear-gradient(135deg,rgba(255,255,255,0.05),rgba(8,14,27,0.96)_48%,rgba(8,35,46,0.82))] px-4 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition hover:border-cyan-200/28 hover:bg-[linear-gradient(135deg,rgba(255,255,255,0.08),rgba(9,18,34,0.96)_48%,rgba(8,42,54,0.86))]"
+          ? "rounded-[1.15rem] border border-cyan-300/15 bg-[linear-gradient(135deg,rgba(255,255,255,0.05),rgba(9,15,28,0.95)_52%,rgba(8,35,46,0.78))] px-3.5 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition hover:border-cyan-200/28 hover:bg-[linear-gradient(135deg,rgba(255,255,255,0.08),rgba(10,18,34,0.95)_52%,rgba(8,42,54,0.84))]"
+          : "rounded-[1.35rem] border border-cyan-300/18 bg-[linear-gradient(135deg,rgba(255,255,255,0.05),rgba(8,14,27,0.96)_48%,rgba(8,35,46,0.82))] px-4 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition hover:border-cyan-200/28 hover:bg-[linear-gradient(135deg,rgba(255,255,255,0.08),rgba(9,18,34,0.96)_48%,rgba(8,42,54,0.86))]"
       }`}
       title="Market context via Osmosis DEX"
     >

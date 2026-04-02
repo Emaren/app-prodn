@@ -115,6 +115,8 @@ Current state:
 - has a real page and UI surface
 - gifts exist in app logic
 - token rail is visible in product language and navigation
+- wallet snapshot is the right-rail anchor on `/wolo`, with Market Context living directly below it
+- action pills should stay compact and single-line so `Open Ping.pub` does not fall into a lonely second row on normal desktop widths
 - not yet true settlement / chain-complete behavior
 
 ### Replay trust / postgame depth
