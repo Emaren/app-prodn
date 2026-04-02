@@ -37,7 +37,7 @@ Current strengths:
 - live board can show just-finished matches in a believable way
 - final replay storage no longer has the old obviously broken feel on a normal valid game
 - recent match surfaces feel more connected to the actual product state
-- live replay Battle Matrix cards now use roomier lane headers, boxed current-EAPM stats, and auto-fit pulse chips so the activity strip does not collapse into cramped micro-tiles on normal desktop widths
+- live replay Battle Matrix now renders one full-width player lane per row, stacks the activity rail above the pulse strip, boxes current-EAPM stats, and lets pulse/metric labels wrap safely so the lane never collapses into cramped micro-tiles or text overlap
 
 ### Players directory
 

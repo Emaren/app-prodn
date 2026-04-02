@@ -287,7 +287,7 @@ export default function LiveReplayDetail({
           </div>
         </div>
 
-        <div className="mt-6 grid gap-4 xl:grid-cols-2">
+        <div className="mt-6 grid gap-4">
           {players.length === 0 ? (
             <EmptyPanel message="No player pulse payload has landed yet for the battle matrix." />
           ) : battleMatrixWarming ? (
@@ -760,7 +760,7 @@ function BattleMatrixLane({
         </div>
       </div>
 
-      <div className="mt-6 grid gap-5 2xl:grid-cols-[minmax(0,1.08fr)_minmax(16rem,0.92fr)]">
+      <div className="mt-6 grid gap-5">
         <div className="rounded-[1.35rem] border border-white/8 bg-slate-950/25 p-4 sm:p-5">
           <div className="flex items-center justify-between gap-3 text-[11px] uppercase tracking-[0.22em] text-slate-500">
             <span>Live activity rail</span>
@@ -777,7 +777,7 @@ function BattleMatrixLane({
               }}
             />
           </div>
-          <div className="mt-5 grid grid-cols-2 gap-3">
+          <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
             <MatrixMetric label="Opening" value={formatActivityMetric(summary.openingEapm)} />
             <MatrixMetric label="Peak" value={formatActivityMetric(summary.peakEapm)} />
             <MatrixMetric label="Coverage" value={`${summary.pulseCount}/${Math.max(1, series.length)}`} />
@@ -857,8 +857,10 @@ function SignalWarmupPanel({
 
 function MatrixMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[1.2rem] border border-white/8 bg-slate-950/40 px-4 py-3.5">
-      <div className="text-[10px] uppercase tracking-[0.2em] text-slate-500">{label}</div>
+    <div className="min-w-0 rounded-[1.2rem] border border-white/8 bg-slate-950/40 px-4 py-3.5">
+      <div className="break-words text-[10px] uppercase leading-4 tracking-[0.16em] text-slate-500">
+        {label}
+      </div>
       <div className="mt-2 text-base font-semibold leading-none text-slate-100">{value}</div>
     </div>
   );

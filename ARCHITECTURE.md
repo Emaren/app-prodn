@@ -51,7 +51,7 @@ Important public surfaces include:
 
 The current public spine is no longer just a homepage plus a few leaf pages. The real first-impression product path is now the lobby/community shell and its linked destinations.
 
-Live replay detail presentation is currently owned by `components/game-stats/LiveReplayDetail.tsx`. The Battle Matrix lane cards should keep their pulse rail and pulse strip in roomy subpanels with auto-fit pulse tiles so EAPM/history chips stay readable instead of squeezing into fixed-width micro-columns.
+Live replay detail presentation is currently owned by `components/game-stats/LiveReplayDetail.tsx`. The Battle Matrix should render one full-width player lane per row, stack the activity rail above the pulse strip inside each lane, and keep metric labels wrap-safe so EAPM/history chips stay readable instead of squeezing into fixed-width micro-columns or overlapping their values.
 
 ### Same-origin API routes
 
