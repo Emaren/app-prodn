@@ -16,7 +16,8 @@ import WoloChainTerminalTile from "@/components/wolo/WoloChainTerminalTile";
 
 const KEPLR_DOWNLOAD_URL = "https://www.keplr.app/get";
 const HERO_VIEW_KEY = "wolo-hero-view";
-const WOLO_EMBLEM_SRC = "/legacy/wolo_emblem.png";
+const PING_PUB_BASE_URL = "https://ping.pub";
+const WOLO_EMBLEM_SRC = "/legacy/wolo-logo-transparent.png";
 
 function formatAddress(address?: string) {
   if (!address) return "Not connected";
@@ -37,6 +38,11 @@ function shouldToggleFromTarget(target: EventTarget | null) {
     target instanceof Element &&
     target.closest("a, button, input, textarea, select, label, [data-no-toggle='true']")
   );
+}
+
+function buildPingPubUrl(chainId: string) {
+  const normalized = chainId.trim() || "wolo-testnet";
+  return `${PING_PUB_BASE_URL}/${normalized}`;
 }
 
 export default function WoloPage() {
@@ -62,6 +68,7 @@ export default function WoloPage() {
       : "wolo";
 
   const formattedBalance = useMemo(() => formatTokenAmount(rawBalance), [rawBalance]);
+  const pingPubUrl = useMemo(() => buildPingPubUrl(chainId), [chainId]);
 
   const walletStatus =
     status === "connected"
@@ -106,42 +113,37 @@ export default function WoloPage() {
                 <SignalChip label={walletStatus} title="Wallet status" />
               </div>
 
-              <div className="relative isolate overflow-hidden rounded-[1.8rem] border border-white/8 bg-[linear-gradient(135deg,rgba(251,191,36,0.10),rgba(15,23,42,0.84)_34%,rgba(9,13,24,0.96)_100%)] px-5 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] sm:px-6 sm:py-6">
-                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.18),transparent_28%),radial-gradient(circle_at_86%_28%,rgba(59,130,246,0.12),transparent_24%)]" />
-                <WoloSupplyWatermark />
-                <div className="relative z-10 max-w-[38rem] space-y-5">
-                  <div className="text-[11px] uppercase tracking-[0.35em] text-amber-200/70">
-                    WoloChain
+              <div className="space-y-5">
+                <div className="text-[11px] uppercase tracking-[0.35em] text-amber-200/70">
+                  WoloChain
+                </div>
+                <div className="space-y-3">
+                  <div className="text-[11px] uppercase tracking-[0.32em] text-white/45">
+                    Max Supply
                   </div>
-
-                  <div className="space-y-3">
-                    <div className="text-[11px] uppercase tracking-[0.32em] text-white/45">
-                      Max Supply
+                  <div className="flex flex-wrap items-end gap-3">
+                    <div
+                      className="text-5xl font-semibold leading-[0.9] tracking-[-0.04em] text-white sm:text-6xl lg:text-[5rem]"
+                      style={{
+                        fontFamily:
+                          '"Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif',
+                      }}
+                    >
+                      100,000,000
                     </div>
-                    <div className="flex flex-wrap items-end gap-3">
-                      <div
-                        className="text-5xl font-semibold leading-[0.9] tracking-[-0.04em] text-white sm:text-6xl lg:text-[5rem]"
-                        style={{
-                          fontFamily:
-                            '"Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif',
-                        }}
-                      >
-                        100,000,000
-                      </div>
-                      <div className="pb-2 text-lg uppercase tracking-[0.42em] text-amber-100/80 sm:text-2xl">
-                        WOLO
-                      </div>
+                    <div className="pb-2 text-lg uppercase tracking-[0.42em] text-amber-100/80 sm:text-2xl">
+                      WOLO
                     </div>
                   </div>
+                </div>
 
-                  <div className="flex flex-wrap gap-2">
-                    <SignalChip label="Denom uwolo" />
-                    <SignalChip
-                      label={balanceLoading ? "Balance syncing" : `Balance ${formattedBalance} WOLO`}
-                      tone="emerald"
-                    />
-                    <SignalChip label={`Wallet ${walletHeadline}`} />
-                  </div>
+                <div className="flex flex-wrap gap-2">
+                  <SignalChip label="Denom uwolo" />
+                  <SignalChip
+                    label={balanceLoading ? "Balance syncing" : `Balance ${formattedBalance} WOLO`}
+                    tone="emerald"
+                  />
+                  <SignalChip label={`Wallet ${walletHeadline}`} />
                 </div>
               </div>
 
@@ -341,6 +343,15 @@ export default function WoloPage() {
                 className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-5 py-3 text-sm text-emerald-100 transition hover:border-emerald-300/40 hover:bg-emerald-500/15"
               >
                 Get Keplr
+              </a>
+
+              <a
+                href={pingPubUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="rounded-full border border-amber-300/20 bg-amber-400/10 px-5 py-3 text-sm text-amber-100 transition hover:border-amber-200/35 hover:bg-amber-400/14"
+              >
+                Open Ping.pub
               </a>
             </div>
           </div>

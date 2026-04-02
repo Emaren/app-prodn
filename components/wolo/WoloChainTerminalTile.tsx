@@ -25,6 +25,8 @@ type DaemonLogPayload = {
 };
 
 const RUNTIME_VIEW_KEY = "wolo-runtime-view";
+const DAEMON_VIEW_KEY = "wolo-daemon-view";
+const ANSI_TOKEN_REGEX = /(?:\u001b\[|\[)([0-9;]*)m/g;
 
 function formatTime(value: string | null) {
   if (!value) return "Waiting on node";
@@ -52,6 +54,11 @@ function shouldToggleFromTarget(target: EventTarget | null) {
 
 function cx(...parts: Array<string | false | null | undefined>) {
   return parts.filter(Boolean).join(" ");
+}
+
+function stripAnsi(line: string) {
+  ANSI_TOKEN_REGEX.lastIndex = 0;
+  return line.replace(ANSI_TOKEN_REGEX, "");
 }
 
 function ansiClassFromCodes(codes: number[]) {
@@ -87,14 +94,13 @@ function ansiClassFromCodes(codes: number[]) {
 }
 
 function renderDaemonLine(line: string, index: number) {
-  const ansiRegex = /(?:\u001b\[|\[)([0-9;]*)m/g;
-
+  ANSI_TOKEN_REGEX.lastIndex = 0;
   const spans: Array<{ text: string; className: string }> = [];
   let lastIndex = 0;
   let currentClass = "text-slate-200";
   let match: RegExpExecArray | null;
 
-  while ((match = ansiRegex.exec(line)) !== null) {
+  while ((match = ANSI_TOKEN_REGEX.exec(line)) !== null) {
     if (match.index > lastIndex) {
       spans.push({
         text: line.slice(lastIndex, match.index),
@@ -111,7 +117,7 @@ function renderDaemonLine(line: string, index: number) {
         : [0];
 
     currentClass = ansiClassFromCodes(codes);
-    lastIndex = ansiRegex.lastIndex;
+    lastIndex = ANSI_TOKEN_REGEX.lastIndex;
   }
 
   if (lastIndex < line.length) {
@@ -144,16 +150,23 @@ export default function WoloChainTerminalTile() {
   const [error, setError] = useState<string | null>(null);
   const [daemon, setDaemon] = useState<DaemonLogPayload | null>(null);
   const [premiumRuntimeView, setPremiumRuntimeView] = useState(false);
+  const [premiumDaemonView, setPremiumDaemonView] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     setPremiumRuntimeView(window.localStorage.getItem(RUNTIME_VIEW_KEY) === "premium");
+    setPremiumDaemonView(window.localStorage.getItem(DAEMON_VIEW_KEY) === "premium");
   }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(RUNTIME_VIEW_KEY, premiumRuntimeView ? "premium" : "prod");
   }, [premiumRuntimeView]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(DAEMON_VIEW_KEY, premiumDaemonView ? "premium" : "prod");
+  }, [premiumDaemonView]);
 
   useEffect(() => {
     let cancelled = false;
@@ -225,6 +238,11 @@ export default function WoloChainTerminalTile() {
     setPremiumRuntimeView((current) => !current);
   }
 
+  function handleDaemonToggle(event: ReactMouseEvent<HTMLElement>) {
+    if (!shouldToggleFromTarget(event.target)) return;
+    setPremiumDaemonView((current) => !current);
+  }
+
   const runtimeLines =
     snapshot?.terminalLines?.length && snapshot.terminalLines.length > 0
       ? snapshot.terminalLines
@@ -248,13 +266,69 @@ export default function WoloChainTerminalTile() {
     daemon?.lines?.length && daemon.lines.length > 0
       ? daemon.lines
       : ["[daemon] waiting for log output"];
+  const plainDaemonLines = daemonLines.map(stripAnsi).filter((line) => line.trim().length > 0);
 
-  if (!premiumRuntimeView) {
-    return (
-      <div className="space-y-3">
+  return (
+    <div className="space-y-3">
+      {premiumRuntimeView ? (
         <section
           onClick={handleRuntimeToggle}
-          className="overflow-hidden rounded-[1.75rem] border border-white/10 bg-[linear-gradient(135deg,#06101c,#08111d_52%,#040914)] p-5 shadow-[0_26px_90px_rgba(0,0,0,0.28)] sm:rounded-[2rem] sm:p-6 lg:p-8"
+          className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#040914] px-5 py-5 shadow-[0_35px_120px_rgba(0,0,0,0.32)] sm:px-6 sm:py-6 lg:px-8 lg:py-7"
+        >
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.08),transparent_22%),radial-gradient(circle_at_top_right,rgba(59,130,246,0.06),transparent_20%)]" />
+          <div className="pointer-events-none absolute inset-0 opacity-[0.04] [background-image:linear-gradient(to_right,rgba(255,255,255,0.10)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:34px_34px]" />
+
+          <div className="relative flex flex-wrap items-start justify-between gap-4">
+            <div className="space-y-2">
+              <div className="text-[11px] uppercase tracking-[0.35em] text-emerald-200/70">
+                WoloChain Runtime
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <PremiumRuntimeChip label={`height ${snapshot?.latestBlockHeight || "0"}`} />
+                <PremiumRuntimeChip label={`peers ${snapshot?.peers ?? 0}`} />
+                <PremiumRuntimeChip label={snapshot?.catchingUp ? "catching up" : "in sync"} />
+              </div>
+            </div>
+
+            <div
+              className={cx(
+                "rounded-full border px-4 py-2 text-sm",
+                snapshot?.healthy
+                  ? "border-emerald-400/25 bg-emerald-500/10 text-emerald-100"
+                  : "border-amber-300/25 bg-amber-400/10 text-amber-100"
+              )}
+            >
+              {snapshot?.healthy ? "Node live" : "Standby"}
+            </div>
+          </div>
+
+          <div className="relative mt-4 grid gap-4 xl:grid-cols-[0.88fr_1.12fr]">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <PremiumRuntimeStat label="Chain ID" value={snapshot?.chainId || "wolo"} />
+              <PremiumRuntimeStat
+                label="Latest Height"
+                value={snapshot?.latestBlockHeight || "0"}
+              />
+              <PremiumRuntimeStat label="Peers" value={String(snapshot?.peers ?? 0)} />
+              <PremiumRuntimeStat
+                label="Block Time"
+                value={formatTime(snapshot?.latestBlockTime || null)}
+                compact
+              />
+            </div>
+
+            <PremiumConsolePanel
+              title={prettySource(snapshot?.source).toUpperCase()}
+              subtitle={`${snapshot?.moniker || "WoloChain"} · wolo1... · uwolo · Fixed Supply`}
+              badge={snapshot?.moniker || "WoloChain"}
+              lines={premiumRuntimeLines}
+            />
+          </div>
+        </section>
+      ) : (
+        <section
+          onClick={handleRuntimeToggle}
+          className="rounded-[1.75rem] border border-white/10 bg-[#050b15] p-5 sm:rounded-[2rem] sm:p-6 lg:p-8"
         >
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="space-y-2">
@@ -298,14 +372,55 @@ export default function WoloChainTerminalTile() {
             />
           </div>
         </section>
+      )}
 
+      {premiumDaemonView ? (
         <section
-          onClick={handleRuntimeToggle}
-          className="overflow-hidden rounded-[1.75rem] border border-white/10 bg-[linear-gradient(135deg,#06101c,#08111d_52%,#040914)] p-5 shadow-[0_26px_90px_rgba(0,0,0,0.28)] sm:rounded-[2rem] sm:p-6 lg:p-8"
+          onClick={handleDaemonToggle}
+          className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#040914] px-5 py-5 shadow-[0_35px_120px_rgba(0,0,0,0.32)] sm:px-6 sm:py-6 lg:px-8 lg:py-7"
+        >
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(148,163,184,0.10),transparent_20%),radial-gradient(circle_at_bottom_right,rgba(34,211,238,0.08),transparent_22%)]" />
+          <div className="pointer-events-none absolute inset-0 opacity-[0.04] [background-image:linear-gradient(to_right,rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.06)_1px,transparent_1px)] [background-size:34px_34px]" />
+
+          <div className="relative flex flex-wrap items-start justify-between gap-4">
+            <div className="space-y-2">
+              <div className="text-[11px] uppercase tracking-[0.35em] text-slate-200/75">
+                WoloChain Daemon
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <PremiumRuntimeChip label="raw live tail" />
+                <PremiumRuntimeChip label="last 40 lines" />
+              </div>
+            </div>
+
+            <div
+              className={cx(
+                "rounded-full border px-4 py-2 text-sm",
+                daemon?.ok
+                  ? "border-sky-400/25 bg-sky-500/10 text-sky-100"
+                  : "border-amber-300/25 bg-amber-400/10 text-amber-100"
+              )}
+            >
+              {daemon?.ok ? "Streaming" : "Waiting"}
+            </div>
+          </div>
+
+          <div className="relative mt-4">
+            <DaemonConsolePanel
+              title={(daemon?.label || "daemon.log").toUpperCase()}
+              badge="local"
+              lines={daemonLines}
+            />
+          </div>
+        </section>
+      ) : (
+        <section
+          onClick={handleDaemonToggle}
+          className="rounded-[1.75rem] border border-white/10 bg-[#050b15] p-5 sm:rounded-[2rem] sm:p-6 lg:p-8"
         >
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="space-y-2">
-              <div className="text-xs uppercase tracking-[0.35em] text-slate-200/75">
+              <div className="text-xs uppercase tracking-[0.35em] text-emerald-200/70">
                 WoloChain Daemon
               </div>
               <div className="flex flex-wrap items-center gap-2">
@@ -317,7 +432,7 @@ export default function WoloChainTerminalTile() {
               className={cx(
                 "rounded-full px-3 py-1 text-xs",
                 daemon?.ok
-                  ? "border border-sky-400/20 bg-sky-500/10 text-sky-100"
+                  ? "border border-emerald-400/25 bg-emerald-500/10 text-emerald-100"
                   : "border border-amber-300/25 bg-amber-400/10 text-amber-100"
               )}
             >
@@ -326,109 +441,14 @@ export default function WoloChainTerminalTile() {
           </div>
 
           <div className="mt-5">
-            <DaemonConsolePanel
+            <ConsolePanel
               title={daemon?.label || "daemon.log"}
               badge="local"
-              lines={daemonLines}
+              lines={plainDaemonLines.length > 0 ? plainDaemonLines : daemonLines}
             />
           </div>
         </section>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-3">
-      <section
-        onClick={handleRuntimeToggle}
-        className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#040914] px-5 py-5 shadow-[0_35px_120px_rgba(0,0,0,0.32)] sm:px-6 sm:py-6 lg:px-8 lg:py-7"
-      >
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.08),transparent_22%),radial-gradient(circle_at_top_right,rgba(59,130,246,0.06),transparent_20%)]" />
-        <div className="pointer-events-none absolute inset-0 opacity-[0.04] [background-image:linear-gradient(to_right,rgba(255,255,255,0.10)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:34px_34px]" />
-
-        <div className="relative flex flex-wrap items-start justify-between gap-4">
-          <div className="space-y-2">
-            <div className="text-[11px] uppercase tracking-[0.35em] text-emerald-200/70">
-              WoloChain Runtime
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <PremiumRuntimeChip label={`height ${snapshot?.latestBlockHeight || "0"}`} />
-              <PremiumRuntimeChip label={`peers ${snapshot?.peers ?? 0}`} />
-              <PremiumRuntimeChip label={snapshot?.catchingUp ? "catching up" : "in sync"} />
-            </div>
-          </div>
-
-          <div
-            className={cx(
-              "rounded-full border px-4 py-2 text-sm",
-              snapshot?.healthy
-                ? "border-emerald-400/25 bg-emerald-500/10 text-emerald-100"
-                : "border-amber-300/25 bg-amber-400/10 text-amber-100"
-            )}
-          >
-            {snapshot?.healthy ? "Node live" : "Standby"}
-          </div>
-        </div>
-
-        <div className="relative mt-4 grid gap-4 xl:grid-cols-[0.88fr_1.12fr]">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <PremiumRuntimeStat label="Chain ID" value={snapshot?.chainId || "wolo"} />
-            <PremiumRuntimeStat label="Latest Height" value={snapshot?.latestBlockHeight || "0"} />
-            <PremiumRuntimeStat label="Peers" value={String(snapshot?.peers ?? 0)} />
-            <PremiumRuntimeStat
-              label="Block Time"
-              value={formatTime(snapshot?.latestBlockTime || null)}
-              compact
-            />
-          </div>
-
-          <PremiumConsolePanel
-            title={prettySource(snapshot?.source).toUpperCase()}
-            subtitle={`${snapshot?.moniker || "WoloChain"} · wolo1... · uwolo · Fixed Supply`}
-            badge={snapshot?.moniker || "WoloChain"}
-            lines={premiumRuntimeLines}
-          />
-        </div>
-      </section>
-
-      <section
-        onClick={handleRuntimeToggle}
-        className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#040914] px-5 py-5 shadow-[0_35px_120px_rgba(0,0,0,0.32)] sm:px-6 sm:py-6 lg:px-8 lg:py-7"
-      >
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(148,163,184,0.10),transparent_20%),radial-gradient(circle_at_bottom_right,rgba(34,211,238,0.08),transparent_22%)]" />
-        <div className="pointer-events-none absolute inset-0 opacity-[0.04] [background-image:linear-gradient(to_right,rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.06)_1px,transparent_1px)] [background-size:34px_34px]" />
-
-        <div className="relative flex flex-wrap items-start justify-between gap-4">
-          <div className="space-y-2">
-            <div className="text-[11px] uppercase tracking-[0.35em] text-slate-200/75">
-              WoloChain Daemon
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <PremiumRuntimeChip label="raw live tail" />
-              <PremiumRuntimeChip label="last 40 lines" />
-            </div>
-          </div>
-
-          <div
-            className={cx(
-              "rounded-full border px-4 py-2 text-sm",
-              daemon?.ok
-                ? "border-sky-400/25 bg-sky-500/10 text-sky-100"
-                : "border-amber-300/25 bg-amber-400/10 text-amber-100"
-            )}
-          >
-            {daemon?.ok ? "Streaming" : "Waiting"}
-          </div>
-        </div>
-
-        <div className="relative mt-4">
-          <DaemonConsolePanel
-            title={(daemon?.label || "daemon.log").toUpperCase()}
-            badge="local"
-            lines={daemonLines}
-          />
-        </div>
-      </section>
+      )}
     </div>
   );
 }
@@ -528,8 +548,8 @@ function DaemonConsolePanel({
         </div>
       </div>
 
-      <div className="max-h-[26rem] overflow-auto bg-[#0b1118] px-5 py-4 font-mono text-[13px] leading-7">
-        <div className="space-y-1.5">
+      <div className="max-h-[26rem] overflow-auto bg-[#0b1118] px-5 py-4 font-mono text-[14px] leading-[1.55] sm:text-[15px]">
+        <div>
           {lines.map((line, index) => renderDaemonLine(line, index))}
         </div>
       </div>
