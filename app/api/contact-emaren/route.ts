@@ -7,6 +7,7 @@ import {
   getOrCreateConversationByUsers,
   loadInboxPayload,
   normalizeInboxMessageBody,
+  resolveInboxTargetForViewer,
   resolvePrimaryAdminContact,
 } from "@/lib/contactInbox";
 import {
@@ -204,17 +205,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let targetUser =
-      viewer.isAdmin && payload.targetUid
-        ? await prisma.user.findUnique({
-            where: { uid: payload.targetUid },
-            select: VIEWER_SELECT,
-          })
-        : null;
+    let targetUser = await resolveInboxTargetForViewer(prisma, viewer, payload.targetUid);
 
     if (!viewer.isAdmin) {
       if (payload.targetUid === AI_CONCIERGE_UID) {
         targetUser = await ensureAiConciergeUser(prisma);
+      } else if (payload.targetUid) {
+        if (!targetUser) {
+          return NextResponse.json({ detail: "That private thread is unavailable." }, { status: 404 });
+        }
       } else {
         targetUser = await resolvePrimaryAdminContact(prisma);
       }
@@ -377,17 +376,15 @@ export async function PATCH(request: NextRequest) {
       isTyping?: boolean;
     };
 
-    let targetUser =
-      viewer.isAdmin && payload.targetUid
-        ? await prisma.user.findUnique({
-            where: { uid: payload.targetUid },
-            select: VIEWER_SELECT,
-          })
-        : null;
+    let targetUser = await resolveInboxTargetForViewer(prisma, viewer, payload.targetUid);
 
     if (!viewer.isAdmin) {
       if (payload.targetUid === AI_CONCIERGE_UID) {
         targetUser = await ensureAiConciergeUser(prisma);
+      } else if (payload.targetUid) {
+        if (!targetUser) {
+          return NextResponse.json({ detail: "That private thread is unavailable." }, { status: 404 });
+        }
       } else {
         targetUser = await resolvePrimaryAdminContact(prisma);
       }

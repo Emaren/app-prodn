@@ -135,15 +135,18 @@ export default function ScheduledMatchCard({
   );
   const spotlightPlayer =
     viewerUid && viewerUid === match.challenged.uid ? match.challenger : match.challenged;
-  const primaryHref = match.linkedSessionKey
-    ? `/game-stats/live/${encodeURIComponent(match.linkedSessionKey)}`
-    : "/challenge";
+  const primaryHref =
+    match.displayState === "completed" && match.linkedSessionKey
+      ? `/game-stats/live/${encodeURIComponent(match.linkedSessionKey)}`
+      : match.displayState === "live" && match.linkedSessionKey
+        ? `/game-stats/live/${encodeURIComponent(match.linkedSessionKey)}`
+        : `/contact-emaren?user=${encodeURIComponent(spotlightPlayer.uid)}`;
   const primaryLabel =
     match.displayState === "completed"
       ? "Open Final Stats"
       : match.displayState === "live" && match.linkedSessionKey
         ? "Watch Live Stats"
-        : "Open Challenge Hub";
+        : "Open Inbox";
 
   return (
     <div className={`rounded-[1.5rem] border px-4 py-4 ${accent.shell}`}>

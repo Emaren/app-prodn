@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { loadChallengeHubSnapshot } from "@/lib/challenges";
+import { postDirectInboxMessage } from "@/lib/contactInbox";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 
@@ -10,7 +11,43 @@ export const dynamic = "force-dynamic";
 const VIEWER_SELECT = {
   id: true,
   uid: true,
+  inGameName: true,
+  steamPersonaName: true,
 } as const;
+
+function playerName(user: {
+  uid: string;
+  inGameName: string | null;
+  steamPersonaName: string | null;
+}) {
+  return user.inGameName || user.steamPersonaName || user.uid;
+}
+
+function formatScheduledAtForInbox(date: Date) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function buildAcceptanceMessage({
+  challengerName,
+  challengedName,
+  scheduledAt,
+}: {
+  challengerName: string;
+  challengedName: string;
+  scheduledAt: Date;
+}) {
+  return [
+    "Challenge accepted",
+    `${challengerName} vs ${challengedName}`,
+    `Start: ${formatScheduledAtForInbox(scheduledAt)}`,
+    "Status: Ready",
+  ].join("\n");
+}
 
 async function requireViewer(request: NextRequest) {
   const sessionUid = await getSessionUid(request);
@@ -58,7 +95,15 @@ export async function PATCH(
       select: {
         id: true,
         status: true,
+        scheduledAt: true,
+        challengerUserId: true,
         challengedUserId: true,
+        challenger: {
+          select: VIEWER_SELECT,
+        },
+        challenged: {
+          select: VIEWER_SELECT,
+        },
       },
     });
 
@@ -78,12 +123,26 @@ export async function PATCH(
       return NextResponse.json({ detail: "This challenge is no longer awaiting acceptance." }, { status: 409 });
     }
 
-    await prisma.scheduledMatch.update({
-      where: { id: challengeId },
-      data: {
-        status: "accepted",
-        acceptedAt: new Date(),
-      },
+    const acceptedAt = new Date();
+    await prisma.$transaction(async (tx) => {
+      await tx.scheduledMatch.update({
+        where: { id: challengeId },
+        data: {
+          status: "accepted",
+          acceptedAt,
+        },
+      });
+
+      await postDirectInboxMessage(tx, {
+        senderUserId: viewer.id,
+        targetUserId: scheduledMatch.challengerUserId,
+        body: buildAcceptanceMessage({
+          challengerName: playerName(scheduledMatch.challenger),
+          challengedName: playerName(scheduledMatch.challenged),
+          scheduledAt: scheduledMatch.scheduledAt,
+        }),
+        now: acceptedAt,
+      });
     });
 
     const refreshed = await loadChallengeHubSnapshot(prisma, viewer.uid);

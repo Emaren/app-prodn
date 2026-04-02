@@ -5,6 +5,7 @@ import {
   normalizeChallengeNote,
   parseScheduledMatchDate,
 } from "@/lib/challenges";
+import { postDirectInboxMessage } from "@/lib/contactInbox";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 
@@ -17,6 +18,48 @@ const VIEWER_SELECT = {
   inGameName: true,
   steamPersonaName: true,
 } as const;
+
+function playerName(user: {
+  uid: string;
+  inGameName: string | null;
+  steamPersonaName: string | null;
+}) {
+  return user.inGameName || user.steamPersonaName || user.uid;
+}
+
+function formatScheduledAtForInbox(date: Date) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function buildChallengeInviteMessage({
+  challengerName,
+  challengedName,
+  scheduledAt,
+  challengeNote,
+}: {
+  challengerName: string;
+  challengedName: string;
+  scheduledAt: Date;
+  challengeNote: string | null;
+}) {
+  const lines = [
+    "Challenge scheduled",
+    `${challengerName} vs ${challengedName}`,
+    `Start: ${formatScheduledAtForInbox(scheduledAt)}`,
+    "Status: Awaiting acceptance",
+  ];
+
+  if (challengeNote) {
+    lines.push(`Note: ${challengeNote}`);
+  }
+
+  return lines.join("\n");
+}
 
 async function requireViewer(request: NextRequest) {
   const sessionUid = await getSessionUid(request);
@@ -99,6 +142,9 @@ export async function POST(request: NextRequest) {
       where: { uid: challengedUid },
       select: {
         id: true,
+        uid: true,
+        inGameName: true,
+        steamPersonaName: true,
       },
     });
 
@@ -106,13 +152,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ detail: "Challenged player not found." }, { status: 404 });
     }
 
-    await prisma.scheduledMatch.create({
-      data: {
-        challengerUserId: viewer.id,
-        challengedUserId: challenged.id,
-        scheduledAt,
-        challengeNote,
-      },
+    await prisma.$transaction(async (tx) => {
+      await tx.scheduledMatch.create({
+        data: {
+          challengerUserId: viewer.id,
+          challengedUserId: challenged.id,
+          scheduledAt,
+          challengeNote,
+        },
+      });
+
+      await postDirectInboxMessage(tx, {
+        senderUserId: viewer.id,
+        targetUserId: challenged.id,
+        body: buildChallengeInviteMessage({
+          challengerName: playerName(viewer),
+          challengedName: playerName(challenged),
+          scheduledAt,
+          challengeNote,
+        }),
+      });
     });
 
     const refreshed = await loadChallengeHubSnapshot(prisma, viewer.uid);

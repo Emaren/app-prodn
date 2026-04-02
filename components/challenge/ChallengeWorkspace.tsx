@@ -131,7 +131,7 @@ export default function ChallengeWorkspace() {
       }
 
       setSnapshot(payload);
-      setNotice("Scheduled match added to the runway.");
+      setNotice("Challenge sent to inbox and board.");
       setChallengedUid("");
       setChallengeNote("");
       setScheduledAt(defaultScheduledAtValue());
@@ -167,7 +167,7 @@ export default function ChallengeWorkspace() {
       }
 
       setSnapshot(payload);
-      setNotice("Challenge accepted. The tile is now locked in as ready.");
+      setNotice("Challenge accepted. Ready on board.");
     } catch (acceptError) {
       setError(acceptError instanceof Error ? acceptError.message : "Could not accept challenge.");
     } finally {
@@ -180,14 +180,10 @@ export default function ChallengeWorkspace() {
       <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(251,191,36,0.16),_transparent_30%),radial-gradient(circle_at_bottom_right,_rgba(34,197,94,0.10),_transparent_24%),linear-gradient(135deg,_#101828,_#0f172a_45%,_#020617)] p-6 sm:p-8">
         <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
           <div className="space-y-5">
-            <div className="text-sm uppercase tracking-[0.4em] text-amber-200/70">Challenge Runway</div>
+            <div className="text-sm uppercase tracking-[0.4em] text-amber-200/70">Challenge</div>
             <h1 className="max-w-3xl text-4xl font-semibold leading-[1.02] text-white sm:text-5xl">
-              Schedule the next duel before the board goes cold.
+              Schedule Matches
             </h1>
-            <p className="max-w-2xl text-sm leading-6 text-slate-300">
-              Send a challenge, lock a start time, and let Live Games carry the countdown from
-              pending to ready to now playing.
-            </p>
 
             <div className="flex flex-wrap gap-2">
               <HeroPill>{snapshot.candidates.length} players available</HeroPill>
@@ -223,10 +219,6 @@ export default function ChallengeWorkspace() {
         <section className="rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-5 sm:p-6">
           <div className="text-xs uppercase tracking-[0.35em] text-amber-200/70">New Match</div>
           <h2 className="mt-2 text-2xl font-semibold text-white">Schedule New Game</h2>
-          <p className="mt-3 text-sm leading-6 text-slate-300">
-            Pick the opponent, pick the start time, and the live board will take care of the
-            countdown state.
-          </p>
 
           {authLoading || loading ? (
             <div className="mt-5 rounded-2xl border border-white/10 bg-white/5 px-4 py-5 text-sm text-slate-300">
@@ -311,7 +303,7 @@ export default function ChallengeWorkspace() {
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <div className="text-xs uppercase tracking-[0.35em] text-cyan-200/70">Your Runway</div>
-              <h2 className="mt-2 text-2xl font-semibold text-white">Scheduled Match Tiles</h2>
+              <h2 className="mt-2 text-2xl font-semibold text-white">Scheduled Matches</h2>
             </div>
             <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
               {snapshot.scheduledMatches.length}
@@ -321,8 +313,7 @@ export default function ChallengeWorkspace() {
           <div className="mt-5 space-y-4">
             {snapshot.scheduledMatches.length === 0 ? (
               <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-5 text-sm text-slate-300">
-                Nothing scheduled yet. Send the first challenge and it will appear here and on the
-                live board.
+                No scheduled matches.
               </div>
             ) : (
               snapshot.scheduledMatches.map((match) => (

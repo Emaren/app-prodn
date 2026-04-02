@@ -38,8 +38,69 @@ function decodeDataUrl(dataUrl: string) {
 }
 
 function safeFilename(name: string | null, fallback: string) {
-  const value = (name || fallback).replace(/["\r\n]+/g, "").trim();
+  const value = (name || fallback)
+    .normalize("NFKD")
+    .replace(/[^\x20-\x7E]+/g, " ")
+    .replace(/[<>:"/\\|?*\u0000-\u001F]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
   return value || fallback;
+}
+
+function inferExtension(name: string | null, mimeType: string | null, fallback: string) {
+  const extensionMatch = name?.trim().match(/\.([A-Za-z0-9]{1,10})$/);
+  if (extensionMatch?.[1]) {
+    return `.${extensionMatch[1].toLowerCase()}`;
+  }
+
+  switch (mimeType) {
+    case "image/jpeg":
+      return ".jpg";
+    case "image/png":
+      return ".png";
+    case "image/webp":
+      return ".webp";
+    case "image/gif":
+      return ".gif";
+    case "audio/mpeg":
+      return ".mp3";
+    case "audio/mp4":
+      return ".m4a";
+    case "audio/ogg":
+      return ".ogg";
+    case "audio/wav":
+      return ".wav";
+    case "audio/webm":
+      return ".webm";
+    default:
+      return fallback;
+  }
+}
+
+function buildContentDisposition({
+  name,
+  mimeType,
+  kind,
+}: {
+  name: string | null;
+  mimeType: string | null;
+  kind: "image" | "audio";
+}) {
+  const fallbackBase = kind === "audio" ? "voice-note" : "screenshot";
+  const extension = inferExtension(
+    name,
+    mimeType,
+    kind === "audio" ? ".webm" : ".png"
+  );
+  const providedBase = (name || "").replace(/\.[^.]+$/, "");
+  const asciiFilename = `${safeFilename(providedBase, fallbackBase)}${extension}`;
+  const originalFilename = (name || asciiFilename).replace(/[\r\n"]+/g, "").trim() || asciiFilename;
+  const encodedFilename = encodeURIComponent(originalFilename).replace(
+    /['()*]/g,
+    (character) => `%${character.charCodeAt(0).toString(16).toUpperCase()}`
+  );
+
+  return `inline; filename="${asciiFilename}"; filename*=UTF-8''${encodedFilename}`;
 }
 
 export async function GET(
@@ -91,6 +152,10 @@ export async function GET(
       return NextResponse.json({ detail: "Attachment not found" }, { status: 404 });
     }
 
+    if (message.attachmentKind !== "image" && message.attachmentKind !== "audio") {
+      return NextResponse.json({ detail: "Attachment type is unsupported" }, { status: 415 });
+    }
+
     const isParticipant = message.conversation.participants.some(
       (participant) => participant.userId === viewer.id
     );
@@ -103,16 +168,15 @@ export async function GET(
       return NextResponse.json({ detail: "Attachment is unreadable" }, { status: 422 });
     }
 
-    const filename = safeFilename(
-      message.attachmentName,
-      message.attachmentKind === "audio" ? "voice-note" : "screenshot"
-    );
-
     return new NextResponse(decoded.buffer, {
       headers: {
         "Content-Type": message.attachmentMimeType || decoded.mimeType,
         "Content-Length": String(decoded.buffer.length),
-        "Content-Disposition": `inline; filename="${filename}"`,
+        "Content-Disposition": buildContentDisposition({
+          name: message.attachmentName,
+          mimeType: message.attachmentMimeType || decoded.mimeType,
+          kind: message.attachmentKind,
+        }),
         "Cache-Control": "private, max-age=300",
       },
     });

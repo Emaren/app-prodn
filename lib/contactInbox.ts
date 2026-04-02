@@ -139,6 +139,11 @@ type PairHonorSummary = {
   latestSnippet: string | null;
 };
 
+type DirectInboxWriteClient = Pick<
+  PrismaClient,
+  "directConversation" | "directConversationParticipant" | "directMessage"
+>;
+
 function displayNameForUser(user: {
   uid: string;
   inGameName: string | null;
@@ -396,7 +401,7 @@ export async function resolvePrimaryAdminContact(
 }
 
 export async function getOrCreateConversationByUsers(
-  prisma: PrismaClient,
+  prisma: DirectInboxWriteClient,
   leftUserId: number,
   rightUserId: number
 ) {
@@ -417,6 +422,60 @@ export async function getOrCreateConversationByUsers(
       participants: true,
     },
   });
+}
+
+export async function postDirectInboxMessage(
+  prisma: DirectInboxWriteClient,
+  {
+    senderUserId,
+    targetUserId,
+    body,
+    now = new Date(),
+  }: {
+    senderUserId: number;
+    targetUserId: number;
+    body: string;
+    now?: Date;
+  }
+) {
+  const normalizedBody = normalizeInboxMessageBody(body);
+  if (!normalizedBody) {
+    throw new Error("Direct inbox message body cannot be empty.");
+  }
+
+  const conversation = await getOrCreateConversationByUsers(
+    prisma,
+    senderUserId,
+    targetUserId
+  );
+
+  await prisma.directMessage.create({
+    data: {
+      conversationId: conversation.id,
+      senderUserId,
+      body: normalizedBody,
+    },
+  });
+
+  await prisma.directConversation.update({
+    where: { id: conversation.id },
+    data: {
+      updatedAt: now,
+    },
+  });
+
+  await prisma.directConversationParticipant.updateMany({
+    where: {
+      conversationId: conversation.id,
+      userId: senderUserId,
+    },
+    data: {
+      lastReadAt: now,
+      typingUpdatedAt: null,
+    },
+  });
+
+  return conversation;
 }
 
 async function loadHonorSummary(
@@ -835,6 +894,44 @@ async function markConversationRead(
   });
 }
 
+export async function resolveInboxTargetForViewer(
+  prisma: PrismaClient,
+  viewer: ViewerUser,
+  targetUid: string | null | undefined
+) {
+  if (!targetUid) {
+    return null;
+  }
+
+  const targetUser = await prisma.user.findUnique({
+    where: { uid: targetUid },
+    select: {
+      id: true,
+      uid: true,
+      isAdmin: true,
+      inGameName: true,
+      steamPersonaName: true,
+    },
+  });
+
+  if (!targetUser || targetUser.id === viewer.id) {
+    return null;
+  }
+
+  if (viewer.isAdmin || targetUser.isAdmin) {
+    return targetUser;
+  }
+
+  const existingConversation = await prisma.directConversation.findUnique({
+    where: {
+      pairKey: buildPairKey(viewer.id, targetUser.id),
+    },
+    select: { id: true },
+  });
+
+  return existingConversation ? targetUser : null;
+}
+
 export async function loadInboxPayload(
   prisma: PrismaClient,
   viewerUid: string,
@@ -852,18 +949,7 @@ export async function loadInboxPayload(
   let unavailableReason: string | null = null;
 
   if (viewer.isAdmin) {
-    if (options?.targetUid) {
-      activeTargetUser = await prisma.user.findUnique({
-        where: { uid: options.targetUid },
-        select: {
-          id: true,
-          uid: true,
-          isAdmin: true,
-          inGameName: true,
-          steamPersonaName: true,
-        },
-      });
-    }
+    activeTargetUser = await resolveInboxTargetForViewer(prisma, viewer, options?.targetUid);
   } else {
     const aiConcierge = await ensureAiConciergeUser(prisma);
     await getOrCreateConversationByUsers(prisma, viewer.id, aiConcierge.id);
@@ -877,7 +963,9 @@ export async function loadInboxPayload(
         steamPersonaName: aiConcierge.steamPersonaName,
       };
     } else {
-      activeTargetUser = await resolvePrimaryAdminContact(prisma);
+      activeTargetUser =
+        (await resolveInboxTargetForViewer(prisma, viewer, options?.targetUid)) ||
+        (await resolvePrimaryAdminContact(prisma));
     }
 
     if (!activeTargetUser) {
