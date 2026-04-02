@@ -27,6 +27,7 @@ type DaemonLogPayload = {
 const RUNTIME_VIEW_KEY = "wolo-runtime-view";
 const DAEMON_VIEW_KEY = "wolo-daemon-view";
 const ANSI_TOKEN_REGEX = /(?:\u001b\[|\[)([0-9;]*)m/g;
+const WOLO_STATUS_POLL_MS = 3000;
 
 function formatTime(value: string | null) {
   if (!value) return "Waiting on node";
@@ -59,6 +60,14 @@ function cx(...parts: Array<string | false | null | undefined>) {
 function stripAnsi(line: string) {
   ANSI_TOKEN_REGEX.lastIndex = 0;
   return line.replace(ANSI_TOKEN_REGEX, "");
+}
+
+function readStoredPremiumPreference(storageKey: string, fallback: boolean) {
+  if (typeof window === "undefined") return fallback;
+  const stored = window.localStorage.getItem(storageKey);
+  if (stored === "premium") return true;
+  if (stored === "prod") return false;
+  return fallback;
 }
 
 function ansiClassFromCodes(codes: number[]) {
@@ -149,14 +158,12 @@ export default function WoloChainTerminalTile() {
   const [snapshot, setSnapshot] = useState<WoloStatusSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [daemon, setDaemon] = useState<DaemonLogPayload | null>(null);
-  const [premiumRuntimeView, setPremiumRuntimeView] = useState(false);
-  const [premiumDaemonView, setPremiumDaemonView] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    setPremiumRuntimeView(window.localStorage.getItem(RUNTIME_VIEW_KEY) === "premium");
-    setPremiumDaemonView(window.localStorage.getItem(DAEMON_VIEW_KEY) === "premium");
-  }, []);
+  const [premiumRuntimeView, setPremiumRuntimeView] = useState(() =>
+    readStoredPremiumPreference(RUNTIME_VIEW_KEY, false)
+  );
+  const [premiumDaemonView, setPremiumDaemonView] = useState(() =>
+    readStoredPremiumPreference(DAEMON_VIEW_KEY, true)
+  );
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -219,17 +226,30 @@ export default function WoloChainTerminalTile() {
       }
     }
 
-    void loadStatus();
-    void loadDaemonLog();
+    const loadIfVisible = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+        return;
+      }
 
-    const interval = window.setInterval(() => {
       void loadStatus();
       void loadDaemonLog();
-    }, 3000);
+    };
+
+    loadIfVisible();
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        loadIfVisible();
+      }
+    };
+
+    const interval = window.setInterval(loadIfVisible, WOLO_STATUS_POLL_MS);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
       cancelled = true;
       window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, []);
 

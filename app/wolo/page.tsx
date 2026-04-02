@@ -17,7 +17,9 @@ import WoloChainTerminalTile from "@/components/wolo/WoloChainTerminalTile";
 const KEPLR_DOWNLOAD_URL = "https://www.keplr.app/get";
 const HERO_VIEW_KEY = "wolo-hero-view";
 const PING_PUB_BASE_URL = "https://ping.pub";
+const OSMOSIS_DEX_URL = "https://app.osmosis.zone";
 const WOLO_EMBLEM_SRC = "/legacy/wolo-logo-transparent.png";
+const DEFAULT_WOLO_MARKET_PRICE = "$0.001";
 
 function formatAddress(address?: string) {
   if (!address) return "Not connected";
@@ -45,17 +47,22 @@ function buildPingPubUrl(chainId: string) {
   return `${PING_PUB_BASE_URL}/${normalized}`;
 }
 
+function readStoredPremiumPreference(storageKey: string, fallback: boolean) {
+  if (typeof window === "undefined") return fallback;
+  const stored = window.localStorage.getItem(storageKey);
+  if (stored === "premium") return true;
+  if (stored === "prod") return false;
+  return fallback;
+}
+
 export default function WoloPage() {
   const { data: chainData, isLoading: chainLoading } = useChainId();
   const { address, status, connect } = useKeplr();
   const { data: rawBalance, isLoading: balanceLoading } = useWoloBalance(address);
   const [walletError, setWalletError] = useState<string | null>(null);
-  const [premiumHeroView, setPremiumHeroView] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    setPremiumHeroView(window.localStorage.getItem(HERO_VIEW_KEY) === "premium");
-  }, []);
+  const [premiumHeroView, setPremiumHeroView] = useState(() =>
+    readStoredPremiumPreference(HERO_VIEW_KEY, false)
+  );
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -111,6 +118,7 @@ export default function WoloPage() {
                   title="Active chain id"
                 />
                 <SignalChip label={walletStatus} title="Wallet status" />
+                <MarketContextTile href={OSMOSIS_DEX_URL} variant="prod" />
               </div>
 
               <div className="space-y-5">
@@ -267,6 +275,7 @@ export default function WoloPage() {
               <PremiumStatusPill label={`Balance ${formattedBalance} WOLO`} tone="emerald" />
               <PremiumStatusPill label={walletStatus} />
               <PremiumStatusPill label="Rail standby" />
+              <MarketContextTile href={OSMOSIS_DEX_URL} variant="premium" />
             </div>
 
             <div className="relative isolate overflow-hidden rounded-[1.85rem] border border-white/10 bg-[linear-gradient(135deg,rgba(251,191,36,0.10),rgba(9,15,27,0.94)_34%,rgba(5,8,20,0.98)_100%)] px-5 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] sm:px-6 sm:py-6">
@@ -588,5 +597,127 @@ function PremiumWalletPanel({
         {value}
       </div>
     </div>
+  );
+}
+
+function MarketContextTile({
+  href,
+  variant,
+}: {
+  href: string;
+  variant: "prod" | "premium";
+}) {
+  const compact = variant === "prod";
+
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      data-no-toggle="true"
+      className={`group sm:ml-auto ${
+        compact
+          ? "min-w-[15.25rem] flex-1 rounded-[1.15rem] border border-cyan-300/15 bg-[linear-gradient(135deg,rgba(255,255,255,0.05),rgba(9,15,28,0.95)_52%,rgba(8,35,46,0.78))] px-3.5 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition hover:border-cyan-200/28 hover:bg-[linear-gradient(135deg,rgba(255,255,255,0.08),rgba(10,18,34,0.95)_52%,rgba(8,42,54,0.84))]"
+          : "min-w-[18rem] flex-1 rounded-[1.35rem] border border-cyan-300/18 bg-[linear-gradient(135deg,rgba(255,255,255,0.05),rgba(8,14,27,0.96)_48%,rgba(8,35,46,0.82))] px-4 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition hover:border-cyan-200/28 hover:bg-[linear-gradient(135deg,rgba(255,255,255,0.08),rgba(9,18,34,0.96)_48%,rgba(8,42,54,0.86))]"
+      }`}
+      title="Market context via Osmosis DEX"
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <div
+            className={`flex shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5 ${
+              compact ? "h-10 w-10" : "h-11 w-11"
+            }`}
+          >
+            <DexOrbitMark />
+          </div>
+
+          <div className="min-w-0">
+            <div className="text-[10px] uppercase tracking-[0.28em] text-cyan-200/68">
+              Market Context
+            </div>
+            <div className="mt-1 flex flex-wrap items-end gap-x-1.5 gap-y-0.5">
+              <div className={compact ? "text-lg font-semibold text-white" : "text-xl font-semibold text-white"}>
+                {DEFAULT_WOLO_MARKET_PRICE}
+              </div>
+              <div className="pb-0.5 text-[10px] uppercase tracking-[0.24em] text-white/55">
+                / WOLO
+              </div>
+            </div>
+            <div className="mt-1 text-xs text-slate-300/78">
+              Osmosis DEX route with guide price, not the hero.
+            </div>
+          </div>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-2">
+          <MarketTileGraph compact={compact} />
+          <div className="rounded-full border border-cyan-300/18 bg-cyan-400/10 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.24em] text-cyan-100">
+            DEX
+          </div>
+        </div>
+      </div>
+    </a>
+  );
+}
+
+function DexOrbitMark() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 40 40"
+      className="h-5 w-5 text-cyan-200"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <circle cx="20" cy="20" r="4.5" fill="currentColor" fillOpacity="0.88" />
+      <path
+        d="M8 20c0-6.1 4.8-11 12-11s12 4.9 12 11-4.8 11-12 11S8 26.1 8 20Z"
+        stroke="currentColor"
+        strokeOpacity="0.9"
+        strokeWidth="1.7"
+      />
+      <path
+        d="M12 12.5c5.1-3 10.7-2.8 15.7 0.7 5 3.6 7 8.8 5.9 15.5"
+        stroke="currentColor"
+        strokeOpacity="0.62"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+      <circle cx="29.8" cy="13.3" r="2.1" fill="currentColor" fillOpacity="0.76" />
+      <circle cx="11.2" cy="27.8" r="1.8" fill="currentColor" fillOpacity="0.45" />
+    </svg>
+  );
+}
+
+function MarketTileGraph({ compact }: { compact: boolean }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 64 28"
+      className={compact ? "h-7 w-14" : "h-8 w-16"}
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M2 22.5H62"
+        stroke="rgba(148,163,184,0.3)"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+      />
+      <path
+        d="M4 20.5C10.8 20.4 13 14.8 18.5 15.2C24.3 15.7 24.8 22 31.2 21.7C38.2 21.4 38.4 9.2 46.1 8.6C52 8.1 55.1 12.4 60 6.8"
+        stroke="rgba(255,255,255,0.58)"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      <path
+        d="M4 22.5C11.6 22.4 15 18 20.8 18.2C26.6 18.4 28.1 23.6 34.1 23.2C41 22.8 42.3 12.2 49 11.6C54.2 11.2 57.2 14.2 60 12.5"
+        stroke="rgba(34,211,238,0.9)"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+      />
+      <circle cx="60" cy="12.5" r="2.6" fill="rgba(34,211,238,0.95)" />
+    </svg>
   );
 }
