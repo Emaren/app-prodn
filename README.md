@@ -128,6 +128,15 @@ python /var/www/AoE2HDBets/api-prodn/scripts/set_admin.py --email you@example.co
 - env file: `/etc/aoe2hdbets/aoe2hdbets-web.env`
 - production bind: `127.0.0.1:3030`
 - production build output must exist at `.next/BUILD_ID`
+- preferred SSH alias from MBP: `hel1`
+- service runs as `tony`
+
+## Operational reminders
+
+- A local fix is not live until `main` is pushed, the VPS checkout is pulled, the app is rebuilt, and `aoe2hdbets-web.service` is restarted.
+- If deploys fail with `Permission denied` or Next logs `EACCES` writing `.next/cache/images`, check ownership drift in `/var/www/AoE2HDBets/app-prodn` before assuming the app code is broken.
+- Direct-message attachments are served through a session-protected binary route: `/api/contact-emaren/attachments/[messageId]`.
+- Attachment preview failures should be debugged with the attachment route response and `journalctl`, not from the chat UI alone.
 
 ## Current notes
 

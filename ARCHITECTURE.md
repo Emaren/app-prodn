@@ -56,6 +56,7 @@ Key browser-facing routes include:
 - `app/api/lobby/route.ts`
 - `app/api/lobby/stream/route.ts`
 - `app/api/contact-emaren/route.ts`
+- `app/api/contact-emaren/attachments/[messageId]/route.ts`
 - `app/api/admin/users/route.ts`
 - `app/api/user/appearance/route.ts`
 - `app/api/replay/upload/route.ts`
@@ -135,10 +136,16 @@ The private inbox and community honors loop are owned here.
 
 Current behavior includes:
 - users can message Emaren directly
+- existing peer direct threads can also exist for challenge-related inbox flow
 - admins can award badges and gifts
 - gifts/badges can appear in chat threads
 - users can accept privately, accept publicly, or decline
 - appearance choices and user activity are recorded for admin insight
+
+Important runtime note:
+- attachment rendering depends on `app/api/contact-emaren/attachments/[messageId]/route.ts`
+- that route is session-protected and returns raw binary responses
+- attachment failures may come from route/header generation, not the chat component
 
 ### Appearance / theme state
 
@@ -193,6 +200,7 @@ Do not assume every visible issue is a page bug.
 ## Known architecture debt
 
 - `next-env.d.ts` still drifts on the VPS during builds/deploys
+- VPS file ownership drift can block `git pull`, break rebuilds, or stop `.next/cache/images` writes
 - individual player pages are behind the lobby and directory in polish
 - leaderboard/ranking semantics are stronger than before but still deserve tighter long-term consistency
 - tournament depth is improving, but still not the full “event gravity” version

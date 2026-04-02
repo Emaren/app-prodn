@@ -59,9 +59,13 @@ Single-branch model (`main`) used across repos:
 
 1. Develop locally on MBP in each repo
 2. Commit and push `main` to origin
-3. On VPS, pull `main` for each repo as `tony`
+3. On VPS, connect with `ssh hel1` and pull `main` for each repo as `tony`
 4. Run migrations (`api-prodn`) before restart when schema changes exist
 5. Build/restart services (`systemd` + nginx)
+
+Important:
+- a local code change is not a production fix until the VPS pull/build/restart is complete
+- if deploys fail with `Permission denied`, inspect ownership drift before changing code
 
 ## Required production routing model
 
@@ -110,6 +114,7 @@ python /var/www/AoE2HDBets/api-prodn/scripts/set_admin.py --email you@example.co
 - web binds to `127.0.0.1:3030`
 - api binds to `127.0.0.1:3330`
 - production uses systemd, not PM2
+- preferred VPS SSH alias from MBP: `hel1`
 - current service names:
   - `aoe2hdbets-web.service`
   - `aoe2hdbets-api.service`
@@ -120,3 +125,5 @@ python /var/www/AoE2HDBets/api-prodn/scripts/set_admin.py --email you@example.co
 - exact postgame achievement-table extraction is still not solved
 - watcher behavior is materially healthier, but still a little noisy while iterating
 - docs should stay aligned with the shipped lobby/leaderboard reality as the product evolves
+- VPS ownership drift can block deploys or `.next` image-cache writes
+- inbox attachment debugging requires a valid participant session because the binary route is protected
