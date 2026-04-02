@@ -116,7 +116,7 @@ Current state:
 - gifts exist in app logic
 - token rail is visible in product language and navigation
 - wallet snapshot is the right-rail anchor on `/wolo`, with Market Context living directly below it
-- action pills should stay compact and single-line so `Open Ping.pub` does not fall into a lonely second row on normal desktop widths
+- wallet/action CTAs use a deliberate two-lane dock so `Open Wallet` / `Connect Keplr` stay primary while `Download Watcher` / `Get Keplr` / `Open Ping.pub` remain grouped and never orphan into a stray wrap row
 - not yet true settlement / chain-complete behavior
 
 ### Replay trust / postgame depth
