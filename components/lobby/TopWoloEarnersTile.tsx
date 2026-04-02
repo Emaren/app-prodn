@@ -11,6 +11,7 @@ type TopWoloEarnersTileProps = {
   wolo: LobbySnapshot["wolo"];
   themeKey: LobbyThemeKey;
   viewMode: LobbyViewMode;
+  className?: string;
 };
 
 const PODIUM_LANES = [
@@ -40,13 +41,14 @@ export function TopWoloEarnersTile({
   wolo,
   themeKey,
   viewMode,
+  className,
 }: TopWoloEarnersTileProps) {
   const tone = getLobbyPresentationTone(themeKey, viewMode);
   const reserve = formatCompactWolo(wolo?.accounts.ecosystembounties?.wolo ?? null);
   const statusLabel = wolo?.enabled ? "Arming" : "Offline";
 
   return (
-    <section className={`rounded-[1.7rem] border p-5 ${tone.panelShell}`}>
+    <section className={`flex h-full flex-col rounded-[1.7rem] border p-5 ${tone.panelShell} ${className ?? ""}`}>
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <div className={`text-xs uppercase tracking-[0.35em] ${tone.accentText}`}>
@@ -88,7 +90,7 @@ export function TopWoloEarnersTile({
         ))}
       </div>
 
-      <div className={`mt-4 rounded-[1.25rem] border px-4 py-3 ${tone.insetPanel}`}>
+      <div className={`mt-auto rounded-[1.25rem] border px-4 py-3 ${tone.insetPanel}`}>
         <div className="text-[11px] uppercase tracking-[0.24em] text-slate-400">War Chest</div>
         <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
           <div className="text-sm text-slate-300">To the victors go the spoils.</div>

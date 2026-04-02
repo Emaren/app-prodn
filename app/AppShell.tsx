@@ -27,6 +27,7 @@ const HEADER_LINKS: ReadonlyArray<{
   countKey?: "requests";
   badgeCount?: number;
 }> = [
+  { href: "/bets", label: "Bets" },
   { href: "/players", label: "Players" },
   { href: "/rivalries", label: "Rivalries" },
   { href: "/wolo", label: "$WOLO" },

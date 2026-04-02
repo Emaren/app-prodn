@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useRef, useState, type ReactNode, useId } from "react";
 import {
   BarChart3,
+  BadgeDollarSign,
   Clock3,
   Coins,
   ChevronDown,
@@ -77,6 +78,7 @@ export default function HeaderMenu({
         badge: liveGamesCount > 0 ? String(liveGamesCount) : null,
         featured: true,
       },
+      { href: "/bets", label: "Bets", icon: BadgeDollarSign, featured: true },
       { href: "/players", label: "Players", icon: Users, featured: true },
       {
         href: "/requests",

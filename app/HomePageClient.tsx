@@ -388,7 +388,7 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
             onViewModeChange={setViewMode}
           />
 
-          <div className="space-y-4 lg:mt-5 lg:self-start">
+          <div className="flex min-w-0 flex-col gap-4 lg:self-stretch lg:pt-5">
             <TournamentPanel
               tournament={tournament}
               themeKey={tileThemeKey}
@@ -403,7 +403,14 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
               onLogin={() => loginWithSteam("/")}
             />
 
-            <TopWoloEarnersTile wolo={wolo} themeKey={tileThemeKey} viewMode={viewMode} />
+            <div className="min-h-0 flex-1">
+              <TopWoloEarnersTile
+                wolo={wolo}
+                themeKey={tileThemeKey}
+                viewMode={viewMode}
+                className="min-h-full"
+              />
+            </div>
           </div>
         </div>
       </section>
