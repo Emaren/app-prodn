@@ -41,10 +41,7 @@ function coerceAccount(value: RawWoloAccount | undefined): LobbyWoloAccount | nu
 }
 
 export async function loadWoloDevSnapshot(): Promise<LobbyWoloSnapshot | null> {
-  const allow =
-    process.env.NODE_ENV !== "production" ||
-    process.env.AOE2_ENABLE_WOLO_DEV_SNAPSHOT === "1";
-
+  const allow = process.env.AOE2_ENABLE_WOLO_DEV_SNAPSHOT === "1";
   if (!allow) return null;
 
   const filePath =

@@ -43,9 +43,13 @@ export function TopWoloEarnersTile({
   viewMode,
   className,
 }: TopWoloEarnersTileProps) {
+  if (!wolo?.enabled) {
+    return null;
+  }
+
   const tone = getLobbyPresentationTone(themeKey, viewMode);
-  const reserve = formatCompactWolo(wolo?.accounts.ecosystembounties?.wolo ?? null);
-  const statusLabel = wolo?.enabled ? "Arming" : "Offline";
+  const reserve = formatCompactWolo(wolo.accounts.ecosystembounties?.wolo ?? null);
+  const statusLabel = "Arming";
 
   return (
     <section className={`flex h-full flex-col rounded-[1.7rem] border p-5 ${tone.panelShell} ${className ?? ""}`}>
@@ -63,7 +67,7 @@ export function TopWoloEarnersTile({
             {statusLabel}
           </div>
           <div className="mt-2 text-lg font-semibold text-white">
-            {reserve ? `${reserve} WOLO` : "3 slots"}
+            {reserve ? `${reserve} WOLO` : "Awaiting reserve"}
           </div>
           <div className="text-[11px] uppercase tracking-[0.24em] text-slate-400">
             {reserve ? "Reserve armed" : "Board filling soon"}
