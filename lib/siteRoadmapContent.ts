@@ -12,7 +12,7 @@ export const ROADMAP_UPDATES = [
   {
     title: "Watcher install lane is cleaner",
     detail:
-      "DMG stays the preferred path, Direct ZIP is now clearly presented as a real fallback, and the one-time watcher key step is explained without detours.",
+      "DMG stays the preferred path, Direct ZIP is still a real fallback, and profile-to-app one-click pairing now replaces manual key paste as the default Watcher setup path.",
   },
   {
     title: "Lobby now reads like a war room",

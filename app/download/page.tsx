@@ -33,7 +33,7 @@ const INSTALL_OPTIONS = [
     href: WATCHER_RELEASE.downloadHref,
     icon: Apple,
     badge: "Preferred",
-    body: "Best when macOS opens it cleanly. Drag the app in, launch it, paste your watcher key once, and play.",
+    body: "Best when macOS opens it cleanly. Drag the app in, launch it, click Profile Pairing once, and play.",
   },
   {
     key: "zip",
@@ -49,8 +49,8 @@ const INSTALL_OPTIONS = [
 const SETUP_STEPS = [
   {
     step: "01",
-    title: "Open your profile and mint a watcher key",
-    body: "This is the one-time identity step. Paste the key into the app once per Mac.",
+    title: "Open your profile and click Pair Watcher",
+    body: "This is the one-click identity handoff. The app saves the key locally, and manual paste remains as a fallback.",
     icon: KeyRound,
   },
   {
@@ -103,7 +103,7 @@ export default function DownloadPage() {
             <div className={`text-xs uppercase tracking-[0.38em] ${tone.eyebrow}`}>Watcher</div>
 
             <h1 className="mt-4 text-4xl font-semibold tracking-tight text-white sm:text-5xl">
-              Download it. Paste your key once. Play.
+              Download it. Pair once. Play.
             </h1>
 
             <p className="mt-5 max-w-3xl text-sm leading-7 text-slate-300 sm:text-[15px]">
@@ -126,7 +126,7 @@ export default function DownloadPage() {
               <div
                 className={`rounded-full border px-3 py-1 text-[11px] font-medium ${tone.neutralPill}`}
               >
-                One-time watcher key
+                One-click pairing
               </div>
               <div
                 className={`rounded-full border px-3 py-1 text-[11px] font-medium ${tone.neutralPill}`}
@@ -160,11 +160,11 @@ export default function DownloadPage() {
               </Link>
 
               <Link
-                href="/profile"
+                href="/profile?watcher_pair=1"
                 className={`inline-flex items-center gap-3 rounded-full border px-5 py-3 text-sm transition ${tone.secondaryButton}`}
               >
                 <ExternalLink className="h-4 w-4" />
-                Open Profile For Key
+                Open Profile Pairing
               </Link>
             </div>
 

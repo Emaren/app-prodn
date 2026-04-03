@@ -31,6 +31,7 @@ Together, they power the AoE2HDBets public product, replay ingest pipeline, and 
 
 - Electron helper app installed on client machines
 - Watches AoE2HD SaveGame folder and uploads replay files directly to backend
+- Supports one-click pairing from `/profile?watcher_pair=1` through `aoe2hd-watcher://pair?...`
 - Emits live replay iterations during a match and a final replay when the file settles
 
 ## Current product reality
@@ -96,7 +97,7 @@ Important:
 
 - optional `AOE2_API_BASE_URL` (default points to `api-prodn`)
 - optional `WATCHER_USER_UID`
-- optional `AOE2_UPLOAD_API_KEY` (if backend enforces internal API key)
+- optional `AOE2_UPLOAD_API_KEY` (manual fallback; one-click pairing usually saves this locally)
 
 ## Admin tooling
 

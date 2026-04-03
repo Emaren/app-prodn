@@ -164,12 +164,15 @@ export default function ReplayParserPage() {
             The watcher should be tied to a real account, not an anonymous session. That makes replay uploads useful as betting evidence and identity proof.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
-            <SteamLoginButton className="rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200" />
+            <SteamLoginButton
+              returnTo="/profile?watcher_pair=1"
+              className="rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200"
+            />
             <Link
-              href="/profile"
+              href="/profile?watcher_pair=1"
               className="rounded-full border border-white/15 px-5 py-3 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
             >
-              Open Profile
+              Open Profile Pairing
             </Link>
           </div>
         </div>

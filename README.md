@@ -99,6 +99,7 @@ These routes are important because they often do more than simple pass-through w
 - Lobby snapshot endpoint: `/api/lobby`
 - Lobby stream endpoint: `/api/lobby/stream`
 - Watcher package: `public/downloads/aoe2hd-watcher-1.0.0-arm64.dmg`
+- Watcher pairing route: `/profile?watcher_pair=1` (mints a key and launches `aoe2hd-watcher://pair?...`)
 - Replay parser page: `/replay-parser`
 
 The app owns the browser-facing lobby experience and presentation truth, but does not own replay parse truth itself.

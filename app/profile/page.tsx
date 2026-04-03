@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
@@ -33,6 +33,10 @@ type WatcherKeyRow = {
   lastUsedAt: string | null;
 };
 
+function buildWatcherPairUrl(apiKey: string) {
+  return `aoe2hd-watcher://pair?apiKey=${encodeURIComponent(apiKey)}`;
+}
+
 export default function ProfilePage() {
   return (
     <Suspense fallback={<ProfilePageFallback />}>
@@ -47,6 +51,8 @@ function ProfilePageContent() {
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
   const [watcherKeys, setWatcherKeys] = useState<WatcherKeyRow[]>([]);
   const [newWatcherKey, setNewWatcherKey] = useState<string | null>(null);
+  const [mintingWatcherKey, setMintingWatcherKey] = useState(false);
+  const [watcherPairRequestStarted, setWatcherPairRequestStarted] = useState(false);
   const [status, setStatus] = useState("");
   const [savingName, setSavingName] = useState(false);
   const [claimSeedApplied, setClaimSeedApplied] = useState(false);
@@ -63,6 +69,21 @@ function ProfilePageContent() {
   } = useLobbyAppearance();
 
   const claimName = searchParams?.get("claim_name")?.trim() || "";
+  const watcherPairIntent = searchParams?.get("watcher_pair") === "1";
+  const returnToParams = new URLSearchParams();
+  if (claimName) {
+    returnToParams.set("claim_name", claimName);
+  }
+  if (watcherPairIntent) {
+    returnToParams.set("watcher_pair", "1");
+  }
+  const profileReturnTo = returnToParams.toString()
+    ? `/profile?${returnToParams.toString()}`
+    : "/profile";
+
+  const launchWatcherPairing = useCallback((apiKey: string) => {
+    window.location.assign(buildWatcherPairUrl(apiKey));
+  }, []);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -151,7 +172,8 @@ function ProfilePageContent() {
     }
   };
 
-  const createWatcherKey = async () => {
+  const createWatcherKey = useCallback(async ({ pairToWatcher = false } = {}) => {
+    setMintingWatcherKey(true);
     setStatus("");
     setNewWatcherKey(null);
 
@@ -171,11 +193,31 @@ function ProfilePageContent() {
         const nextPayload = (await refreshKeys.json()) as { keys?: WatcherKeyRow[] };
         setWatcherKeys(Array.isArray(nextPayload.keys) ? nextPayload.keys : []);
       }
+
+      if (pairToWatcher) {
+        launchWatcherPairing(payload.apiKey);
+        setStatus(
+          "Watcher key minted and sent to the desktop app. If macOS did not switch windows, paste the fallback key below."
+        );
+      } else {
+        setStatus("Watcher key minted. Pair from the desktop app, or copy the fallback key below.");
+      }
     } catch (error) {
       console.error("Failed to create watcher key:", error);
       setStatus("Failed to create watcher key.");
+    } finally {
+      setMintingWatcherKey(false);
     }
-  };
+  }, [launchWatcherPairing]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !watcherPairIntent || watcherPairRequestStarted) {
+      return;
+    }
+
+    setWatcherPairRequestStarted(true);
+    void createWatcherKey({ pairToWatcher: true });
+  }, [createWatcherKey, isAuthenticated, watcherPairIntent, watcherPairRequestStarted]);
 
   if (!isAuthenticated) {
     return (
@@ -198,7 +240,7 @@ function ProfilePageContent() {
           ) : null}
           <div className="mt-6 flex flex-wrap gap-3">
             <SteamLoginButton
-              returnTo={claimName ? `/profile?claim_name=${encodeURIComponent(claimName)}` : "/profile"}
+              returnTo={profileReturnTo}
               className="rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200"
             />
             <Link
@@ -395,23 +437,41 @@ function ProfilePageContent() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="text-xs uppercase tracking-[0.35em] text-white/45">Watcher</div>
-            <h2 className="mt-2 text-2xl font-semibold">Mint a replay uploader key</h2>
+            <h2 className="mt-2 text-2xl font-semibold">Pair Watcher in one click</h2>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
-              This is the clean bridge between your account and the watcher app. Replays uploaded with your watcher key can auto-strengthen trust in your claimed in-game identity.
+              Click Pair Watcher App to mint a fresh key and hand it straight to the desktop client. If the browser deep link is blocked, the fallback key still appears below for manual paste.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={createWatcherKey}
-            className="rounded-full border border-white/15 px-5 py-3 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
-          >
-            Create Watcher Key
-          </button>
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={() => void createWatcherKey({ pairToWatcher: true })}
+              disabled={mintingWatcherKey}
+              className="rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {mintingWatcherKey ? "Pairing..." : "Pair Watcher App"}
+            </button>
+            <button
+              type="button"
+              onClick={() => void createWatcherKey()}
+              disabled={mintingWatcherKey}
+              className="rounded-full border border-white/15 px-5 py-3 text-sm text-white/85 transition hover:border-white/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              Mint Key Only
+            </button>
+          </div>
         </div>
+
+        {watcherPairIntent && (
+          <div className="mt-6 rounded-2xl border border-emerald-300/20 bg-emerald-400/10 px-4 py-4 text-sm text-emerald-100">
+            Pairing request received from the Watcher app. If macOS prompts you, choose Open
+            AoE2HD Watcher to finish the handoff.
+          </div>
+        )}
 
         {newWatcherKey && (
           <div className="mt-6 rounded-2xl border border-amber-300/20 bg-amber-400/10 p-5">
-            <div className="text-sm font-medium text-amber-100">Copy this once</div>
+            <div className="text-sm font-medium text-amber-100">Fallback key if one-click pairing is blocked</div>
             <div className="mt-3 break-all font-mono text-sm text-white">{newWatcherKey}</div>
           </div>
         )}
