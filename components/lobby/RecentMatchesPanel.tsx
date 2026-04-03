@@ -14,38 +14,13 @@ import {
   winnerLabel,
 } from "@/lib/gameStatsView";
 import type { LobbyMatchRow } from "@/lib/lobby";
+import { pickLobbyMatchPlayedAt } from "@/lib/lobbyMatchTime";
 
 type RecentMatchesPanelProps = {
   recentMatches: LobbyMatchRow[];
   themeKey: LobbyThemeKey;
   viewMode: LobbyViewMode;
 };
-
-type DateLike = string | number | Date;
-
-type LobbyMatchRowWithDerivedDates = LobbyMatchRow & {
-  derived_played_on?: unknown;
-  created_at?: unknown;
-  createdAt?: unknown;
-};
-
-function pickPlayedAt(match: LobbyMatchRow): DateLike | null {
-  const enriched = match as LobbyMatchRowWithDerivedDates;
-
-  const candidates: unknown[] = [
-    match.played_on,
-    enriched.derived_played_on,
-    enriched.created_at,
-    enriched.createdAt,
-  ];
-
-  for (const value of candidates) {
-    if (value instanceof Date) return value;
-    if (typeof value === "string" || typeof value === "number") return value;
-  }
-
-  return null;
-}
 
 export function RecentMatchesPanel({
   recentMatches,
@@ -108,7 +83,7 @@ function MatchCard({
     .map((player) => String(player.name || ""))
     .filter(Boolean);
 
-  const playedAt = pickPlayedAt(match);
+  const playedAt = pickLobbyMatchPlayedAt(match);
   const outcomeLabel = outcomeBadgeLabel(match.parse_reason, match.winner);
 
   return (

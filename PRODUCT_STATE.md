@@ -35,6 +35,7 @@ Current strengths:
 - live uploads are working end-to-end in real usage
 - recent good test replay parsed cleanly and displayed correctly
 - live board can show just-finished matches in a believable way
+- Recent Match Feed now uses one canonical `played_at` ordering/display path, so old saved-game reparses do not jump above newer actual matches
 - final replay storage no longer has the old obviously broken feel on a normal valid game
 - recent match surfaces feel more connected to the actual product state
 - live replay Battle Matrix defaults to a two-column versus layout with one activity lane per player, and a header layout icon can switch into a one-column full-width lane view; inside each lane the activity rail stays stacked above the pulse strip, current-EAPM is boxed, and pulse/metric labels wrap safely to avoid overlap

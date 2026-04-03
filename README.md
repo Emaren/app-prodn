@@ -100,6 +100,7 @@ These routes are important because they often do more than simple pass-through w
 - Browser replay upload endpoint: `/api/replay/upload` (proxied to `api-prodn`)
 - Lobby snapshot endpoint: `/api/lobby`
 - Lobby stream endpoint: `/api/lobby/stream`
+- Recent Match Feed sorts and displays the backend `played_at` contract so bulk reparses of old saved games do not outrank newer actual matches
 - Watcher package: `public/downloads/aoe2hd-watcher-1.0.0-arm64.dmg`
 - Watcher pairing route: `/profile?watcher_pair=1` (mints a key and launches `aoe2hd-watcher://pair?...`)
 - Replay parser page: `/replay-parser`

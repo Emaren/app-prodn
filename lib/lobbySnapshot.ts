@@ -10,6 +10,7 @@ import {
   type LobbyOnlineUser,
   type LobbySnapshot,
 } from "@/lib/lobby";
+import { getLobbyMatchPlayedAtMs } from "@/lib/lobbyMatchTime";
 import { reconcileTournamentMatchProofs } from "@/lib/tournamentProofReconciler";
 import { loadWoloDevSnapshot } from "@/lib/woloDevSnapshot";
 
@@ -22,31 +23,9 @@ async function loadRecentMatches(): Promise<LobbyMatchRow[]> {
     const payload = (await response.json()) as LobbyMatchRow[] | unknown;
     if (!Array.isArray(payload)) return [];
 
-    const toMs = (value: unknown): number => {
-      if (!value) return 0;
-      const ms = new Date(String(value)).getTime();
-      return Number.isFinite(ms) ? ms : 0;
-    };
-
     return payload
       .slice()
-      .sort((a, b) => {
-        const aMs = Math.max(
-          toMs((a as Record<string, unknown>).played_on),
-          toMs((a as Record<string, unknown>).derived_played_on),
-          toMs((a as Record<string, unknown>).created_at),
-          toMs((a as Record<string, unknown>).createdAt)
-        );
-
-        const bMs = Math.max(
-          toMs((b as Record<string, unknown>).played_on),
-          toMs((b as Record<string, unknown>).derived_played_on),
-          toMs((b as Record<string, unknown>).created_at),
-          toMs((b as Record<string, unknown>).createdAt)
-        );
-
-        return bMs - aMs;
-      })
+      .sort((a, b) => getLobbyMatchPlayedAtMs(b) - getLobbyMatchPlayedAtMs(a))
       .slice(0, 6);
   } catch (error) {
     console.warn("Failed to load recent matches for lobby:", error);

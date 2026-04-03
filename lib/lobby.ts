@@ -24,6 +24,10 @@ export type LobbyMatchRow = {
   winner: string | null;
   map: { name?: string } | string | null;
   players: LobbyMatchPlayer[] | string;
+  created_at?: string | null;
+  createdAt?: string | null;
+  derived_played_on?: string | null;
+  played_at?: string | null;
   played_on: string | null;
   timestamp: string | null;
   parse_reason?: string | null;
