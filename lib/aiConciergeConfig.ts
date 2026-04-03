@@ -14,13 +14,13 @@ export type AiVisibilityOption = (typeof AI_VISIBILITY_OPTIONS)[number];
 
 export const AI_MODEL_OPTIONS = [
   {
-    id: "Agent4.1M",
-    label: "OpenAI GPT-4.1",
+    id: "Agent4.1Scribe",
+    label: "OpenAI GPT-4.1 Scribe",
     provider: "openai",
   },
   {
-    id: "Agent4oM",
-    label: "OpenAI GPT-4o",
+    id: "Agent4.1M",
+    label: "OpenAI GPT-4.1",
     provider: "openai",
   },
   {
