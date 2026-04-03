@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import ScheduledMatchCard, {
   type ScheduledMatchCardActionKind,
@@ -76,8 +76,16 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
   });
   const [boardError, setBoardError] = useState<string | null>(null);
   const [boardNotice, setBoardNotice] = useState<string | null>(null);
+  const refreshInFlightRef = useRef(false);
+  const mountedRef = useRef(true);
 
   const refresh = useCallback(async () => {
+    if (refreshInFlightRef.current) {
+      return;
+    }
+
+    refreshInFlightRef.current = true;
+
     try {
       const response = await fetch("/api/live-games", {
         cache: "no-store",
@@ -87,42 +95,31 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
       }
 
       const payload = (await response.json()) as LiveGamesSnapshot;
-      setSnapshot(payload);
+      if (mountedRef.current) {
+        setSnapshot(payload);
+      }
     } catch (error) {
       console.warn("Failed to refresh live games:", error);
+    } finally {
+      refreshInFlightRef.current = false;
     }
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
-
-    const runRefresh = async () => {
-      try {
-        const response = await fetch("/api/live-games", {
-          cache: "no-store",
-        });
-        if (!response.ok) {
-          return;
-        }
-
-        const payload = (await response.json()) as LiveGamesSnapshot;
-        if (!cancelled) {
-          setSnapshot(payload);
-        }
-      } catch (error) {
-        console.warn("Failed to refresh live games:", error);
-      }
-    };
-
-    void runRefresh();
+    void refresh();
 
     const interval = window.setInterval(() => {
-      void runRefresh();
+      void refresh();
     }, LIVE_GAMES_POLL_INTERVAL_MS);
 
     return () => {
-      cancelled = true;
       window.clearInterval(interval);
+    };
+  }, [refresh]);
+
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
     };
   }, []);
 

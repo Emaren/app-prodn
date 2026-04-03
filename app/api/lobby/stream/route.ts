@@ -20,6 +20,7 @@ export async function GET(request: NextRequest) {
 
   let interval: NodeJS.Timeout | null = null;
   let heartbeat: NodeJS.Timeout | null = null;
+  let snapshotInFlight = false;
   let closed = false;
 
   const stream = new ReadableStream<Uint8Array>({
@@ -46,9 +47,11 @@ export async function GET(request: NextRequest) {
       };
 
       const pushSnapshot = async () => {
-        if (closed || request.signal.aborted) {
+        if (closed || request.signal.aborted || snapshotInFlight) {
           return;
         }
+
+        snapshotInFlight = true;
 
         try {
           const snapshot = await loadLobbySnapshot(
@@ -60,6 +63,8 @@ export async function GET(request: NextRequest) {
         } catch (error) {
           console.warn("Failed to stream lobby snapshot:", error);
           safeEnqueue(formatSse("error", { detail: "Failed to load live lobby snapshot." }));
+        } finally {
+          snapshotInFlight = false;
         }
       };
 

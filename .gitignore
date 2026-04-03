@@ -54,3 +54,6 @@ public/downloads/aoe2-watcher-manual.zip
 public/downloads/aoe2hd-watcher-*.dmg
 public/downloads/aoe2hd-watcher-*.dmg.blockmap
 public/downloads/latest-mac.yml
+
+# Local direct-message attachment blobs
+storage/direct-message-attachments/

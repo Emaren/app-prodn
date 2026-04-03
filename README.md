@@ -19,6 +19,7 @@ It currently owns the premium lobby/community surface, leaderboard presentation,
 - Prisma 7 (`@prisma/client` + `@prisma/adapter-pg`) for user/profile/community APIs
 - Same-origin browser API routes for replay upload, lobby snapshot, inbox/admin actions, and appearance state
 - Premium lobby presentation layer with theme circles and lobby-specific shell behavior
+- Lazy client islands for wallet-heavy `/wolo`, `/wallet`, and `/connect-wallet` routes so the server shell paints with a small first-load bundle
 
 ## Shipped public surfaces
 
@@ -70,6 +71,7 @@ Common:
 - `ADMIN_TOKEN` (required for admin proxy routes)
 - `INTERNAL_API_KEY` (optional; forwarded on replay upload when backend enforces API keys)
 - `ALLOW_GUEST_SESSIONS=false` (recommended; keep guest sessions off so replay evidence ties to signed identities)
+- `DIRECT_MESSAGE_ATTACHMENT_DIR` (optional; default `storage/direct-message-attachments/`; new inbox uploads store file refs there instead of base64 rows)
 
 Optional migration compatibility:
 
@@ -137,6 +139,7 @@ python /var/www/AoE2HDBets/api-prodn/scripts/set_admin.py --email you@example.co
 - A local fix is not live until `main` is pushed, the VPS checkout is pulled, the app is rebuilt, and `aoe2hdbets-web.service` is restarted.
 - If deploys fail with `Permission denied` or Next logs `EACCES` writing `.next/cache/images`, check ownership drift in `/var/www/AoE2HDBets/app-prodn` before assuming the app code is broken.
 - Direct-message attachments are served through a session-protected binary route: `/api/contact-emaren/attachments/[messageId]`.
+- New direct-message uploads are stored as disk-backed `file:v1:` refs under `DIRECT_MESSAGE_ATTACHMENT_DIR`; older `data:` rows are still readable as a fallback.
 - Attachment preview failures should be debugged with the attachment route response and `journalctl`, not from the chat UI alone.
 
 ## Current notes

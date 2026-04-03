@@ -142,6 +142,28 @@ type PairHonorSummary = {
   latestSnippet: string | null;
 };
 
+type ConversationSummaryMembership = {
+  conversationId: number;
+  lastReadAt: Date | null;
+  conversation: {
+    participants: Array<{
+      userId: number;
+      user: {
+        id: number;
+        uid: string;
+        isAdmin: boolean;
+        inGameName: string | null;
+        steamPersonaName: string | null;
+      };
+    }>;
+    messages: Array<{
+      body: string | null;
+      attachmentKind: string | null;
+      createdAt: Date;
+    }>;
+  };
+};
+
 type DirectInboxWriteClient = Pick<
   PrismaClient,
   "directConversation" | "directConversationParticipant" | "directMessage"
@@ -209,13 +231,8 @@ function buildMessageAttachment(message: {
   attachmentKind: string | null;
   attachmentName: string | null;
   attachmentMimeType: string | null;
-  attachmentDataUrl: string | null;
   attachmentDurationSeconds: number | null;
 }): InboxMessageAttachment | null {
-  if (!message.attachmentDataUrl) {
-    return null;
-  }
-
   if (message.attachmentKind !== "image" && message.attachmentKind !== "audio") {
     return null;
   }
@@ -481,85 +498,187 @@ export async function postDirectInboxMessage(
   return conversation;
 }
 
-async function loadHonorSummary(
+function resolveCounterpartParticipant(
+  membership: ConversationSummaryMembership,
+  viewerUserId: number
+) {
+  return membership.conversation.participants.find(
+    (participant) => participant.userId !== viewerUserId
+  ) ?? null;
+}
+
+async function loadUnreadMessageCounts(
   prisma: PrismaClient,
   viewerUserId: number,
-  counterpartUserId: number,
-  lastReadAt: Date | null
-): Promise<PairHonorSummary> {
-  const unreadWhere = {
-    userId: viewerUserId,
-    createdByUserId: counterpartUserId,
-    ...(lastReadAt ? { createdAt: { gt: lastReadAt } } : {}),
-  };
+  memberships: ConversationSummaryMembership[]
+) {
+  if (memberships.length === 0) {
+    return new Map<number, number>();
+  }
 
-  const [latestBadge, latestGift, unreadBadgeCount, unreadGiftCount] = await Promise.all([
-    prisma.userBadge.findFirst({
+  const unreadRows = await prisma.directMessage.groupBy({
+    by: ["conversationId"],
+    where: {
+      senderUserId: { not: viewerUserId },
+      OR: memberships.map((membership) => ({
+        conversationId: membership.conversationId,
+        ...(membership.lastReadAt ? { createdAt: { gt: membership.lastReadAt } } : {}),
+      })),
+    },
+    _count: {
+      _all: true,
+    },
+  });
+
+  return new Map(unreadRows.map((row) => [row.conversationId, row._count._all]));
+}
+
+async function loadHonorSummaryMap(
+  prisma: PrismaClient,
+  viewerUserId: number,
+  counterpartLastReadAt: Map<number, Date | null>
+): Promise<Map<number, PairHonorSummary>> {
+  const counterpartIds = Array.from(counterpartLastReadAt.keys());
+  if (counterpartIds.length === 0) {
+    return new Map();
+  }
+
+  const unreadHonorFilters = counterpartIds.map((counterpartUserId) => {
+    const lastReadAt = counterpartLastReadAt.get(counterpartUserId) ?? null;
+    return {
+      createdByUserId: counterpartUserId,
+      ...(lastReadAt ? { createdAt: { gt: lastReadAt } } : {}),
+    };
+  });
+
+  const [latestBadges, latestGifts, unreadBadgeRows, unreadGiftRows] = await Promise.all([
+    prisma.userBadge.findMany({
       where: {
         userId: viewerUserId,
-        createdByUserId: counterpartUserId,
+        createdByUserId: { in: counterpartIds },
       },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       select: {
+        createdByUserId: true,
         label: true,
         status: true,
         createdAt: true,
       },
     }),
-    prisma.userGift.findFirst({
+    prisma.userGift.findMany({
       where: {
         userId: viewerUserId,
-        createdByUserId: counterpartUserId,
+        createdByUserId: { in: counterpartIds },
       },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       select: {
+        createdByUserId: true,
         kind: true,
         amount: true,
         status: true,
         createdAt: true,
       },
     }),
-    prisma.userBadge.count({ where: unreadWhere }),
-    prisma.userGift.count({ where: unreadWhere }),
+    prisma.userBadge.groupBy({
+      by: ["createdByUserId"],
+      where: {
+        userId: viewerUserId,
+        OR: unreadHonorFilters,
+      },
+      _count: {
+        _all: true,
+      },
+    }),
+    prisma.userGift.groupBy({
+      by: ["createdByUserId"],
+      where: {
+        userId: viewerUserId,
+        OR: unreadHonorFilters,
+      },
+      _count: {
+        _all: true,
+      },
+    }),
   ]);
 
-  const badgeSnippet = latestBadge
-    ? buildBadgeSnippet(latestBadge.label, normalizeHonorStatus(latestBadge.status))
-    : null;
-  const giftSnippet = latestGift
-    ? buildGiftSnippet(
-        normalizeGiftKind(latestGift.kind),
-        typeof latestGift.amount === "number" ? latestGift.amount : null,
-        normalizeHonorStatus(latestGift.status)
-      )
-    : null;
-
-  if (
-    latestGift?.createdAt &&
-    (!latestBadge?.createdAt || latestGift.createdAt.getTime() >= latestBadge.createdAt.getTime())
-  ) {
-    return {
-      unreadCount: unreadBadgeCount + unreadGiftCount,
-      latestAt: latestGift.createdAt,
-      latestSnippet: giftSnippet,
-    };
+  const latestBadgeMap = new Map<number, (typeof latestBadges)[number]>();
+  for (const badge of latestBadges) {
+    if (badge.createdByUserId !== null && !latestBadgeMap.has(badge.createdByUserId)) {
+      latestBadgeMap.set(badge.createdByUserId, badge);
+    }
   }
 
-  return {
-    unreadCount: unreadBadgeCount + unreadGiftCount,
-    latestAt: latestBadge?.createdAt ?? null,
-    latestSnippet: badgeSnippet,
-  };
+  const latestGiftMap = new Map<number, (typeof latestGifts)[number]>();
+  for (const gift of latestGifts) {
+    if (gift.createdByUserId !== null && !latestGiftMap.has(gift.createdByUserId)) {
+      latestGiftMap.set(gift.createdByUserId, gift);
+    }
+  }
+
+  const unreadBadgeCountMap = new Map<number, number>();
+  for (const row of unreadBadgeRows) {
+    if (row.createdByUserId !== null) {
+      unreadBadgeCountMap.set(row.createdByUserId, row._count._all);
+    }
+  }
+
+  const unreadGiftCountMap = new Map<number, number>();
+  for (const row of unreadGiftRows) {
+    if (row.createdByUserId !== null) {
+      unreadGiftCountMap.set(row.createdByUserId, row._count._all);
+    }
+  }
+  const summaries = new Map<number, PairHonorSummary>();
+
+  for (const counterpartUserId of counterpartIds) {
+    const latestBadge = latestBadgeMap.get(counterpartUserId) ?? null;
+    const latestGift = latestGiftMap.get(counterpartUserId) ?? null;
+    const badgeSnippet = latestBadge
+      ? buildBadgeSnippet(latestBadge.label, normalizeHonorStatus(latestBadge.status))
+      : null;
+    const giftSnippet = latestGift
+      ? buildGiftSnippet(
+          normalizeGiftKind(latestGift.kind),
+          typeof latestGift.amount === "number" ? latestGift.amount : null,
+          normalizeHonorStatus(latestGift.status)
+        )
+      : null;
+
+    const latestHonor =
+      latestGift?.createdAt &&
+      (!latestBadge?.createdAt || latestGift.createdAt.getTime() >= latestBadge.createdAt.getTime())
+        ? {
+            latestAt: latestGift.createdAt,
+            latestSnippet: giftSnippet,
+          }
+        : {
+            latestAt: latestBadge?.createdAt ?? null,
+            latestSnippet: badgeSnippet,
+          };
+
+    summaries.set(counterpartUserId, {
+      unreadCount:
+        (unreadBadgeCountMap.get(counterpartUserId) ?? 0) +
+        (unreadGiftCountMap.get(counterpartUserId) ?? 0),
+      latestAt: latestHonor.latestAt,
+      latestSnippet: latestHonor.latestSnippet,
+    });
+  }
+
+  return summaries;
 }
 
 async function loadConversationSummaries(prisma: PrismaClient, viewerUserId: number) {
   const memberships = await prisma.directConversationParticipant.findMany({
     where: { userId: viewerUserId },
-    include: {
+    select: {
+      conversationId: true,
+      lastReadAt: true,
       conversation: {
-        include: {
+        select: {
           participants: {
-            include: {
+            select: {
+              userId: true,
               user: {
                 select: {
                   id: true,
@@ -574,78 +693,80 @@ async function loadConversationSummaries(prisma: PrismaClient, viewerUserId: num
           messages: {
             orderBy: [{ createdAt: "desc" }, { id: "desc" }],
             take: 1,
+            select: {
+              body: true,
+              attachmentKind: true,
+              createdAt: true,
+            },
           },
         },
       },
     },
   });
 
+  const counterpartLastReadAt = new Map<number, Date | null>();
   const counterpartIds = memberships
-    .map((membership) =>
-      membership.conversation.participants.find((participant) => participant.userId !== viewerUserId)?.userId
-    )
-    .filter((value): value is number => typeof value === "number");
-
-  const communityMap = await loadUserCommunitySummaries(prisma, counterpartIds);
-
-  const summaries = await Promise.all(
-    memberships.map(async (membership) => {
-      const counterpartParticipant = membership.conversation.participants.find(
-        (participant) => participant.userId !== viewerUserId
-      );
-
+    .map((membership) => {
+      const counterpartParticipant = resolveCounterpartParticipant(membership, viewerUserId);
       if (!counterpartParticipant) {
         return null;
       }
-
-      const [unreadMessageCount, honorSummary] = await Promise.all([
-        prisma.directMessage.count({
-          where: {
-            conversationId: membership.conversationId,
-            senderUserId: { not: viewerUserId },
-            ...(membership.lastReadAt ? { createdAt: { gt: membership.lastReadAt } } : {}),
-          },
-        }),
-        loadHonorSummary(
-          prisma,
-          viewerUserId,
-          counterpartParticipant.userId,
-          membership.lastReadAt
-        ),
-      ]);
-
-      const lastMessage = membership.conversation.messages[0] ?? null;
-      const community = communityMap.get(counterpartParticipant.userId) ?? {
-        badges: [],
-        gifts: [],
-        giftedWolo: 0,
-      };
-
-      const lastDirectTime = lastMessage?.createdAt ?? null;
-      const lastEventAt =
-        honorSummary.latestAt && (!lastDirectTime || honorSummary.latestAt.getTime() >= lastDirectTime.getTime())
-          ? honorSummary.latestAt
-          : lastDirectTime;
-      const lastSnippet =
-        honorSummary.latestAt && (!lastDirectTime || honorSummary.latestAt.getTime() >= lastDirectTime.getTime())
-          ? honorSummary.latestSnippet
-          : lastMessage
-            ? buildDirectMessageSnippet(lastMessage)
-            : honorSummary.latestSnippet;
-
-      return {
-        targetUid: counterpartParticipant.user.uid,
-        displayName: displayNameForUser(counterpartParticipant.user),
-        threadKind: resolveThreadKind(counterpartParticipant.user.uid),
-        isAdmin: counterpartParticipant.user.isAdmin,
-        unreadCount: unreadMessageCount + honorSummary.unreadCount,
-        lastMessageAt: lastEventAt?.toISOString() ?? null,
-        lastMessageSnippet: lastSnippet ?? null,
-        badges: community.badges,
-        giftedWolo: community.giftedWolo,
-      } satisfies InboxSummary;
+      counterpartLastReadAt.set(counterpartParticipant.userId, membership.lastReadAt);
+      return counterpartParticipant.userId;
     })
-  );
+    .filter((value): value is number => typeof value === "number");
+
+  const [communityMap, unreadMessageCountMap, honorSummaryMap] = await Promise.all([
+    loadUserCommunitySummaries(prisma, counterpartIds),
+    loadUnreadMessageCounts(prisma, viewerUserId, memberships),
+    loadHonorSummaryMap(prisma, viewerUserId, counterpartLastReadAt),
+  ]);
+
+  const summaries = memberships.map((membership) => {
+    const counterpartParticipant = resolveCounterpartParticipant(membership, viewerUserId);
+
+    if (!counterpartParticipant) {
+      return null;
+    }
+
+    const unreadMessageCount = unreadMessageCountMap.get(membership.conversationId) ?? 0;
+    const honorSummary = honorSummaryMap.get(counterpartParticipant.userId) ?? {
+      unreadCount: 0,
+      latestAt: null,
+      latestSnippet: null,
+    };
+
+    const lastMessage = membership.conversation.messages[0] ?? null;
+    const community = communityMap.get(counterpartParticipant.userId) ?? {
+      badges: [],
+      gifts: [],
+      giftedWolo: 0,
+    };
+
+    const lastDirectTime = lastMessage?.createdAt ?? null;
+    const lastEventAt =
+      honorSummary.latestAt && (!lastDirectTime || honorSummary.latestAt.getTime() >= lastDirectTime.getTime())
+        ? honorSummary.latestAt
+        : lastDirectTime;
+    const lastSnippet =
+      honorSummary.latestAt && (!lastDirectTime || honorSummary.latestAt.getTime() >= lastDirectTime.getTime())
+        ? honorSummary.latestSnippet
+        : lastMessage
+          ? buildDirectMessageSnippet(lastMessage)
+          : honorSummary.latestSnippet;
+
+    return {
+      targetUid: counterpartParticipant.user.uid,
+      displayName: displayNameForUser(counterpartParticipant.user),
+      threadKind: resolveThreadKind(counterpartParticipant.user.uid),
+      isAdmin: counterpartParticipant.user.isAdmin,
+      unreadCount: unreadMessageCount + honorSummary.unreadCount,
+      lastMessageAt: lastEventAt?.toISOString() ?? null,
+      lastMessageSnippet: lastSnippet ?? null,
+      badges: community.badges,
+      giftedWolo: community.giftedWolo,
+    } satisfies InboxSummary;
+  });
 
   return summaries
     .filter((summary): summary is NonNullable<typeof summary> => summary !== null)
@@ -671,7 +792,16 @@ async function loadConversationMessages(
       messages: {
         orderBy: [{ createdAt: "asc" }, { id: "asc" }],
         take: 80,
-        include: {
+        select: {
+          id: true,
+          senderUserId: true,
+          body: true,
+          attachmentKind: true,
+          attachmentName: true,
+          attachmentMimeType: true,
+          attachmentDurationSeconds: true,
+          sharedLobbyMessageId: true,
+          createdAt: true,
           reactions: {
             select: {
               emoji: true,

@@ -1,7 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { startTransition, useEffect, useState, type ReactNode } from "react";
+import {
+  startTransition,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 
 import SteamLinkedBadge from "@/components/SteamLinkedBadge";
 import {
@@ -99,31 +106,41 @@ export default function LiveReplayDetail({
 }) {
   const [snapshot, setSnapshot] = useState(initialSnapshot);
   const [battleMatrixFullWidth, setBattleMatrixFullWidth] = useState(false);
+  const refreshInFlightRef = useRef(false);
+  const mountedRef = useRef(true);
+
+  const refresh = useCallback(async () => {
+    if (refreshInFlightRef.current) {
+      return;
+    }
+
+    refreshInFlightRef.current = true;
+
+    try {
+      const response = await fetch(
+        `/api/game-stats/live?session=${encodeURIComponent(initialSnapshot.sessionKey)}`,
+        { cache: "no-store" }
+      );
+      if (!response.ok) {
+        return;
+      }
+
+      const payload = (await response.json()) as LiveReplayDetailSnapshot;
+      if (mountedRef.current) {
+        startTransition(() => {
+          if (mountedRef.current) {
+            setSnapshot(payload);
+          }
+        });
+      }
+    } catch (error) {
+      console.warn("Failed to refresh live replay detail:", error);
+    } finally {
+      refreshInFlightRef.current = false;
+    }
+  }, [initialSnapshot.sessionKey]);
 
   useEffect(() => {
-    let cancelled = false;
-
-    const refresh = async () => {
-      try {
-        const response = await fetch(
-          `/api/game-stats/live?session=${encodeURIComponent(initialSnapshot.sessionKey)}`,
-          { cache: "no-store" }
-        );
-        if (!response.ok) {
-          return;
-        }
-
-        const payload = (await response.json()) as LiveReplayDetailSnapshot;
-        if (!cancelled) {
-          startTransition(() => {
-            setSnapshot(payload);
-          });
-        }
-      } catch (error) {
-        console.warn("Failed to refresh live replay detail:", error);
-      }
-    };
-
     void refresh();
 
     const interval = window.setInterval(() => {
@@ -131,10 +148,15 @@ export default function LiveReplayDetail({
     }, POLL_INTERVAL_MS);
 
     return () => {
-      cancelled = true;
       window.clearInterval(interval);
     };
-  }, [initialSnapshot.sessionKey]);
+  }, [refresh]);
+
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   const game = snapshot.game;
   const isBattleArchive = snapshot.mode === "final" || game.isFinal;

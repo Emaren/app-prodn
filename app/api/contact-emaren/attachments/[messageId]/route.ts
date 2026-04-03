@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { loadDirectMessageAttachmentContent } from "@/lib/directMessageAttachments";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 
@@ -12,29 +13,6 @@ function parseMessageId(raw: string) {
     return null;
   }
   return messageId;
-}
-
-function decodeDataUrl(dataUrl: string) {
-  const commaIndex = dataUrl.indexOf(",");
-  if (!dataUrl.startsWith("data:") || commaIndex < 0) {
-    return null;
-  }
-
-  const meta = dataUrl.slice(5, commaIndex);
-  const data = dataUrl.slice(commaIndex + 1);
-  const [mimeType = "application/octet-stream"] = meta.split(";");
-  const isBase64 = meta.includes(";base64");
-
-  try {
-    return {
-      mimeType,
-      buffer: isBase64
-        ? Buffer.from(data, "base64")
-        : Buffer.from(decodeURIComponent(data), "utf8"),
-    };
-  } catch {
-    return null;
-  }
 }
 
 function safeFilename(name: string | null, fallback: string) {
@@ -163,18 +141,21 @@ export async function GET(
       return NextResponse.json({ detail: "Forbidden" }, { status: 403 });
     }
 
-    const decoded = decodeDataUrl(message.attachmentDataUrl);
+    const decoded = await loadDirectMessageAttachmentContent(message.attachmentDataUrl);
     if (!decoded) {
       return NextResponse.json({ detail: "Attachment is unreadable" }, { status: 422 });
     }
 
+    const responseMimeType =
+      message.attachmentMimeType || decoded.mimeType || "application/octet-stream";
+
     return new NextResponse(decoded.buffer, {
       headers: {
-        "Content-Type": message.attachmentMimeType || decoded.mimeType,
+        "Content-Type": responseMimeType,
         "Content-Length": String(decoded.buffer.length),
         "Content-Disposition": buildContentDisposition({
           name: message.attachmentName,
-          mimeType: message.attachmentMimeType || decoded.mimeType,
+          mimeType: responseMimeType,
           kind: message.attachmentKind,
         }),
         "Cache-Control": "private, max-age=300",

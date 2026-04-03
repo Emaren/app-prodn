@@ -15,6 +15,11 @@ import {
   MAX_DIRECT_AUDIO_BYTES,
   MAX_DIRECT_IMAGE_BYTES,
 } from "@/lib/contactInboxConfig";
+import {
+  encodeLegacyAttachmentDataUrl,
+  persistDirectMessageAttachment,
+  removePersistedDirectMessageAttachment,
+} from "@/lib/directMessageAttachments";
 import { recordUserActivity } from "@/lib/userExperience";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
@@ -35,7 +40,7 @@ type InboxAttachmentInput = {
   kind: "image" | "audio";
   name: string | null;
   mimeType: string | null;
-  dataUrl: string;
+  buffer: Buffer;
   durationSeconds: number | null;
 };
 
@@ -84,7 +89,7 @@ async function readAttachmentInput(
     kind,
     name: file.name || null,
     mimeType,
-    dataUrl: `data:${mimeType};base64,${buffer.toString("base64")}`,
+    buffer,
     durationSeconds: kind === "audio" ? readDurationSeconds(durationValue) : null,
   };
 }
@@ -251,18 +256,39 @@ export async function POST(request: NextRequest) {
           })
         : [];
 
-    await prisma.directMessage.create({
-      data: {
-        conversationId: conversation.id,
-        senderUserId: viewer.id,
-        body: payload.body || null,
-        attachmentKind: payload.attachment?.kind ?? null,
-        attachmentName: payload.attachment?.name ?? null,
-        attachmentMimeType: payload.attachment?.mimeType ?? null,
-        attachmentDataUrl: payload.attachment?.dataUrl ?? null,
-        attachmentDurationSeconds: payload.attachment?.durationSeconds ?? null,
-      },
-    });
+    const attachment = payload.attachment;
+    let attachmentStorageRef: string | null = null;
+
+    if (attachment) {
+      const attachmentMimeType = attachment.mimeType || "application/octet-stream";
+      attachmentStorageRef = await persistDirectMessageAttachment({
+        buffer: attachment.buffer,
+        kind: attachment.kind,
+        mimeType: attachmentMimeType,
+        name: attachment.name,
+      }).catch((storageError) => {
+        console.warn("Failed to persist DM attachment to disk, falling back to legacy data URL:", storageError);
+        return encodeLegacyAttachmentDataUrl(attachmentMimeType, attachment.buffer);
+      });
+    }
+
+    try {
+      await prisma.directMessage.create({
+        data: {
+          conversationId: conversation.id,
+          senderUserId: viewer.id,
+          body: payload.body || null,
+          attachmentKind: attachment?.kind ?? null,
+          attachmentName: attachment?.name ?? null,
+          attachmentMimeType: attachment?.mimeType ?? null,
+          attachmentDataUrl: attachmentStorageRef,
+          attachmentDurationSeconds: attachment?.durationSeconds ?? null,
+        },
+      });
+    } catch (createMessageError) {
+      await removePersistedDirectMessageAttachment(attachmentStorageRef);
+      throw createMessageError;
+    }
 
     if (targetUser.uid === AI_CONCIERGE_UID && aiPromptBody) {
       let aiReplyBody: string;

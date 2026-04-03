@@ -19,6 +19,7 @@ Together, they power the AoE2HDBets public product, replay ingest pipeline, and 
 - Public product shell for lobby, leaderboard, players, rivalries, live-games, requests, inbox/admin, and `$WOLO`
 - Prisma-backed user/profile/community APIs and auth session cookie handling
 - Same-origin browser API routes that proxy or reshape selected `api-prodn` data
+- Lazy client-loader shells for wallet-heavy routes so `/wolo`, `/wallet`, and `/connect-wallet` avoid pulling Keplr/Cosmos bundles into the initial server page
 
 ### 2. `api-prodn`
 
@@ -84,6 +85,7 @@ Important:
 - `AOE2_BACKEND_UPSTREAM=http://127.0.0.1:3330`
 - `ADMIN_TOKEN`
 - optional `INTERNAL_API_KEY`
+- optional `DIRECT_MESSAGE_ATTACHMENT_DIR` (default `storage/direct-message-attachments/`)
 
 ### `api-prodn`
 
@@ -128,3 +130,4 @@ python /var/www/AoE2HDBets/api-prodn/scripts/set_admin.py --email you@example.co
 - docs should stay aligned with the shipped lobby/leaderboard reality as the product evolves
 - VPS ownership drift can block deploys or `.next` image-cache writes
 - inbox attachment debugging requires a valid participant session because the binary route is protected
+- old inbox attachments may still be legacy `data:` rows, but new uploads are written to disk-backed `file:v1:` refs
