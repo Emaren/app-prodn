@@ -1,6 +1,6 @@
 import type { PrismaClient } from "@/lib/generated/prisma";
 
-import { displayPlayerName, parsePlayers } from "@/lib/gameStatsView";
+import { displayPlayerName, parsePlayers, readPlayedAt } from "@/lib/gameStatsView";
 import {
   LOBBY_LEADERBOARD_MIN_MATCHES,
   type LobbyLeaderboardEntry,
@@ -343,23 +343,30 @@ export async function loadLobbyLeaderboard(
       orderBy: [{ played_on: "asc" }, { timestamp: "asc" }, { createdAt: "asc" }],
       take: 600,
       select: {
+        createdAt: true,
         id: true,
-        replayHash: true,
-        winner: true,
-        players: true,
         key_events: true,
+        original_filename: true,
         played_on: true,
+        players: true,
+        replay_file: true,
+        replayHash: true,
         timestamp: true,
+        winner: true,
       },
     }),
   ]);
 
   const uniqueGames = dedupeFinalReplayRows(leaderboardGames);
-  const preparedGames: PreparedLeaderboardGame[] = uniqueGames.map((game) => ({
-    winner: game.winner,
-    players: parsePlayers(game.players),
-    playedAtMs: new Date(game.played_on ?? game.timestamp ?? 0).getTime(),
-  }));
+  const preparedGames: PreparedLeaderboardGame[] = uniqueGames.map((game) => {
+    const playedAt = readPlayedAt(game);
+
+    return {
+      winner: game.winner,
+      players: parsePlayers(game.players),
+      playedAtMs: playedAt ? new Date(playedAt).getTime() : 0,
+    };
+  });
   const recentGames = [...preparedGames].sort((left, right) => right.playedAtMs - left.playedAtMs);
   const dayStartMs = dayStart.getTime();
   const matchesToday = preparedGames.filter((game) => Number.isFinite(game.playedAtMs) && game.playedAtMs >= dayStartMs).length;

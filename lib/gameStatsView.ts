@@ -1,3 +1,8 @@
+import {
+  pickLobbyMatchPlayedAt,
+  type LobbyMatchTimeSource,
+} from "@/lib/lobbyMatchTime";
+
 type ReplayPlayerRecord = Record<string, unknown>;
 
 const EARLY_EXIT_PARSE_REASON = "hd_early_exit_under_60s";
@@ -86,8 +91,8 @@ export function readMapSize(value: unknown) {
   return typeof size === "string" && size.trim() ? size : "Unknown";
 }
 
-export function readPlayedAt(value: { played_on?: Date | string | null; timestamp?: Date | string | null }) {
-  return value.played_on ?? value.timestamp ?? null;
+export function readPlayedAt(value: LobbyMatchTimeSource) {
+  return pickLobbyMatchPlayedAt(value);
 }
 
 function cleanVersionName(value: string) {
