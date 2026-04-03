@@ -20,7 +20,34 @@ async function loadRecentMatches(): Promise<LobbyMatchRow[]> {
     if (!response.ok) return [];
 
     const payload = (await response.json()) as LobbyMatchRow[] | unknown;
-    return Array.isArray(payload) ? payload.slice(0, 6) : [];
+    if (!Array.isArray(payload)) return [];
+
+    const toMs = (value: unknown): number => {
+      if (!value) return 0;
+      const ms = new Date(String(value)).getTime();
+      return Number.isFinite(ms) ? ms : 0;
+    };
+
+    return payload
+      .slice()
+      .sort((a, b) => {
+        const aMs = Math.max(
+          toMs((a as Record<string, unknown>).played_on),
+          toMs((a as Record<string, unknown>).derived_played_on),
+          toMs((a as Record<string, unknown>).created_at),
+          toMs((a as Record<string, unknown>).createdAt)
+        );
+
+        const bMs = Math.max(
+          toMs((b as Record<string, unknown>).played_on),
+          toMs((b as Record<string, unknown>).derived_played_on),
+          toMs((b as Record<string, unknown>).created_at),
+          toMs((b as Record<string, unknown>).createdAt)
+        );
+
+        return bMs - aMs;
+      })
+      .slice(0, 6);
   } catch (error) {
     console.warn("Failed to load recent matches for lobby:", error);
     return [];

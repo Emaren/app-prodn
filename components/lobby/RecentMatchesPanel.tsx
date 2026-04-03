@@ -21,6 +21,32 @@ type RecentMatchesPanelProps = {
   viewMode: LobbyViewMode;
 };
 
+type DateLike = string | number | Date;
+
+type LobbyMatchRowWithDerivedDates = LobbyMatchRow & {
+  derived_played_on?: unknown;
+  created_at?: unknown;
+  createdAt?: unknown;
+};
+
+function pickPlayedAt(match: LobbyMatchRow): DateLike | null {
+  const enriched = match as LobbyMatchRowWithDerivedDates;
+
+  const candidates: unknown[] = [
+    match.played_on,
+    enriched.derived_played_on,
+    enriched.created_at,
+    enriched.createdAt,
+  ];
+
+  for (const value of candidates) {
+    if (value instanceof Date) return value;
+    if (typeof value === "string" || typeof value === "number") return value;
+  }
+
+  return null;
+}
+
 export function RecentMatchesPanel({
   recentMatches,
   themeKey,
@@ -32,8 +58,12 @@ export function RecentMatchesPanel({
     <div className={`rounded-[1.75rem] border p-6 ${tone.panelShell}`}>
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <div className={`text-xs uppercase tracking-[0.35em] ${tone.eyebrow}`}>Match Feed</div>
-          <h3 className="mt-2 text-2xl font-semibold text-white">Recent Parsed Games</h3>
+          <div className={`text-xs uppercase tracking-[0.35em] ${tone.eyebrow}`}>
+            Match Feed
+          </div>
+          <h3 className="mt-2 text-2xl font-semibold text-white">
+            Recent Parsed Games
+          </h3>
         </div>
 
         <Link
@@ -51,7 +81,12 @@ export function RecentMatchesPanel({
           </p>
         ) : (
           recentMatches.map((match) => (
-            <MatchCard key={match.id} match={match} themeKey={themeKey} viewMode={viewMode} />
+            <MatchCard
+              key={match.id}
+              match={match}
+              themeKey={themeKey}
+              viewMode={viewMode}
+            />
           ))
         )}
       </div>
@@ -73,7 +108,7 @@ function MatchCard({
     .map((player) => String(player.name || ""))
     .filter(Boolean);
 
-  const playedAt = match.played_on || match.timestamp;
+  const playedAt = pickPlayedAt(match);
   const outcomeLabel = outcomeBadgeLabel(match.parse_reason, match.winner);
 
   return (
@@ -84,14 +119,20 @@ function MatchCard({
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="font-medium text-white">{readMapName(match.map)}</div>
-          <div className="mt-1 truncate text-sm text-slate-300">{players.join(" vs ")}</div>
+          <div className="mt-1 truncate text-sm text-slate-300">
+            {players.join(" vs ")}
+          </div>
         </div>
 
         <div className="shrink-0 space-y-2 text-right">
           <div className="text-xs uppercase tracking-[0.25em] text-slate-400">
             {winnerLabel(match.winner, match.parse_reason)}
           </div>
-          {outcomeLabel ? <ResultTypePill toneClassName={tone.resultPill}>{outcomeLabel}</ResultTypePill> : null}
+          {outcomeLabel ? (
+            <ResultTypePill toneClassName={tone.resultPill}>
+              {outcomeLabel}
+            </ResultTypePill>
+          ) : null}
         </div>
       </div>
 
@@ -112,7 +153,9 @@ function ResultTypePill({
   toneClassName: string;
 }) {
   return (
-    <span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.18em] ${toneClassName}`}>
+    <span
+      className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.18em] ${toneClassName}`}
+    >
       {children}
     </span>
   );
