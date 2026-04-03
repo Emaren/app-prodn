@@ -1,7 +1,7 @@
 import { Bech32Address } from "@keplr-wallet/cosmos";
 
 export const WOLO_CHAIN_ID =
-  process.env.NEXT_PUBLIC_WOLO_CHAIN_ID?.trim() || "wolo-1";
+  process.env.NEXT_PUBLIC_WOLO_CHAIN_ID?.trim() || "wolo-testnet";
 
 export const WOLO_CHAIN_NAME = "WoloChain Testnet";
 export const WOLO_ADDRESS_PREFIX = "wolo";
