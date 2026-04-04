@@ -15,11 +15,25 @@ import { dedupeFinalReplayRows } from "@/lib/finalReplayIdentity";
 
 const BASE_ARENA_ELO = 1500;
 const ARENA_ELO_K_FACTOR = 32;
+const LEADERBOARD_GAME_WINDOW = 5000;
 
 type PreparedLeaderboardGame = {
   winner: string | null;
   players: ReturnType<typeof parsePlayers>;
   playedAtMs: number;
+};
+
+type CandidateLeaderboardGame = {
+  createdAt: Date;
+  id: number;
+  key_events: unknown;
+  original_filename: string | null;
+  played_on: Date | null;
+  players: unknown;
+  replay_file: string | null;
+  replayHash: string | null;
+  timestamp: Date | null;
+  winner: string | null;
 };
 
 type EnrichedLeaderboardEntry = PublicPlayerDirectoryEntry & {
@@ -330,18 +344,45 @@ function toLobbyLeaderboardEntry(
   };
 }
 
+function getCandidateGamePlayedAtMs(game: CandidateLeaderboardGame) {
+  const playedAt = readPlayedAt(game);
+  if (!playedAt) return 0;
+
+  const playedAtMs = new Date(playedAt).getTime();
+  return Number.isFinite(playedAtMs) ? playedAtMs : 0;
+}
+
+function sortCandidateGamesByPlayedAtDesc(
+  left: CandidateLeaderboardGame,
+  right: CandidateLeaderboardGame
+) {
+  const playedAtDiff = getCandidateGamePlayedAtMs(right) - getCandidateGamePlayedAtMs(left);
+  if (playedAtDiff !== 0) {
+    return playedAtDiff;
+  }
+
+  const timestampDiff =
+    new Date(right.timestamp ?? right.createdAt).getTime() -
+    new Date(left.timestamp ?? left.createdAt).getTime();
+  if (timestampDiff !== 0) {
+    return timestampDiff;
+  }
+
+  return right.id - left.id;
+}
+
 export async function loadLobbyLeaderboard(
   prisma: PrismaClient
 ): Promise<LobbyLeaderboardSummary> {
   const dayStart = new Date();
   dayStart.setHours(0, 0, 0, 0);
 
-  const [directory, leaderboardGames] = await Promise.all([
+  const [directory, rawLeaderboardGames] = await Promise.all([
     loadPublicPlayerDirectory(prisma),
     prisma.gameStats.findMany({
       where: { is_final: true },
-      orderBy: [{ played_on: "asc" }, { timestamp: "asc" }, { createdAt: "asc" }],
-      take: 600,
+      orderBy: [{ timestamp: "desc" }, { createdAt: "desc" }, { id: "desc" }],
+      take: LEADERBOARD_GAME_WINDOW,
       select: {
         createdAt: true,
         id: true,
@@ -357,7 +398,9 @@ export async function loadLobbyLeaderboard(
     }),
   ]);
 
+  const leaderboardGames = [...rawLeaderboardGames].sort(sortCandidateGamesByPlayedAtDesc);
   const uniqueGames = dedupeFinalReplayRows(leaderboardGames);
+
   const preparedGames: PreparedLeaderboardGame[] = uniqueGames.map((game) => {
     const playedAt = readPlayedAt(game);
 
@@ -367,9 +410,12 @@ export async function loadLobbyLeaderboard(
       playedAtMs: playedAt ? new Date(playedAt).getTime() : 0,
     };
   });
+
   const recentGames = [...preparedGames].sort((left, right) => right.playedAtMs - left.playedAtMs);
   const dayStartMs = dayStart.getTime();
-  const matchesToday = preparedGames.filter((game) => Number.isFinite(game.playedAtMs) && game.playedAtMs >= dayStartMs).length;
+  const matchesToday = preparedGames.filter(
+    (game) => Number.isFinite(game.playedAtMs) && game.playedAtMs >= dayStartMs
+  ).length;
 
   const candidates = directory.allEntries
     .filter((entry) => entry.totalMatches > 0 || entry.claimed)

@@ -49,6 +49,21 @@ export type PublicPlayerDirectory = {
   replayEntries: PublicPlayerDirectoryEntry[];
 };
 
+type CandidateGameRow = {
+  createdAt: Date;
+  id: number;
+  key_events: unknown;
+  original_filename: string | null;
+  played_on: Date | null;
+  players: unknown;
+  replay_file: string | null;
+  replayHash: string | null;
+  timestamp: Date | null;
+  winner: string | null;
+};
+
+const PLAYER_DIRECTORY_GAME_WINDOW = 5000;
+
 function normalizeDirectoryKey(value: string | null | undefined) {
   return normalizePublicPlayerName(value).toLowerCase();
 }
@@ -131,7 +146,8 @@ function updateSteamRatings(
   entry.steamId = steamId ?? entry.steamId;
   entry.steamRmRating = steamRmRating;
   entry.steamDmRating = steamDmRating;
-  entry.ratingLastSeenAt = nextTimestamp !== null ? new Date(nextTimestamp).toISOString() : entry.ratingLastSeenAt;
+  entry.ratingLastSeenAt =
+    nextTimestamp !== null ? new Date(nextTimestamp).toISOString() : entry.ratingLastSeenAt;
 }
 
 function compareOfficialRatings(left: PublicPlayerDirectoryEntry, right: PublicPlayerDirectoryEntry) {
@@ -204,12 +220,36 @@ function sortReplayEntries(left: PublicPlayerDirectoryEntry, right: PublicPlayer
   return left.name.localeCompare(right.name);
 }
 
+function getCandidateGamePlayedAtMs(game: CandidateGameRow) {
+  const playedAt = readPlayedAt(game);
+  if (!playedAt) return 0;
+
+  const playedAtMs = new Date(playedAt).getTime();
+  return Number.isFinite(playedAtMs) ? playedAtMs : 0;
+}
+
+function sortCandidateGamesByPlayedAtDesc(left: CandidateGameRow, right: CandidateGameRow) {
+  const playedAtDiff = getCandidateGamePlayedAtMs(right) - getCandidateGamePlayedAtMs(left);
+  if (playedAtDiff !== 0) {
+    return playedAtDiff;
+  }
+
+  const timestampDiff =
+    new Date(right.timestamp ?? right.createdAt).getTime() -
+    new Date(left.timestamp ?? left.createdAt).getTime();
+  if (timestampDiff !== 0) {
+    return timestampDiff;
+  }
+
+  return right.id - left.id;
+}
+
 export async function loadPublicPlayerDirectory(
   prisma: PrismaClient
 ): Promise<PublicPlayerDirectory> {
   const onlineThreshold = new Date(Date.now() - 2 * 60 * 1000);
 
-  const [users, games] = await Promise.all([
+  const [users, rawGames] = await Promise.all([
     prisma.user.findMany({
       select: {
         id: true,
@@ -226,8 +266,8 @@ export async function loadPublicPlayerDirectory(
     }),
     prisma.gameStats.findMany({
       where: { is_final: true },
-      orderBy: [{ played_on: "desc" }, { timestamp: "desc" }, { createdAt: "desc" }],
-      take: 300,
+      orderBy: [{ timestamp: "desc" }, { createdAt: "desc" }, { id: "desc" }],
+      take: PLAYER_DIRECTORY_GAME_WINDOW,
       select: {
         createdAt: true,
         id: true,
@@ -242,6 +282,9 @@ export async function loadPublicPlayerDirectory(
       },
     }),
   ]);
+
+  const games = [...rawGames].sort(sortCandidateGamesByPlayedAtDesc);
+
   const communityMap = await loadUserCommunitySummaries(
     prisma,
     users.map((user) => user.id)
