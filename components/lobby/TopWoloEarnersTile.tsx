@@ -43,16 +43,14 @@ export function TopWoloEarnersTile({
   viewMode,
   className,
 }: TopWoloEarnersTileProps) {
-  if (!wolo?.enabled) {
-    return null;
-  }
-
   const tone = getLobbyPresentationTone(themeKey, viewMode);
-  const reserve = formatCompactWolo(wolo.accounts.ecosystembounties?.wolo ?? null);
-  const statusLabel = "Arming";
+  const reserve = formatCompactWolo(wolo?.accounts.ecosystembounties?.wolo ?? null);
+  const statusLabel = wolo?.enabled ? "Arming" : "Standby";
 
   return (
-    <section className={`flex h-full flex-col rounded-[1.7rem] border p-5 ${tone.panelShell} ${className ?? ""}`}>
+    <section
+      className={`flex h-full flex-col rounded-[1.7rem] border p-5 ${tone.panelShell} ${className ?? ""}`}
+    >
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <div className={`text-xs uppercase tracking-[0.35em] ${tone.accentText}`}>
@@ -63,11 +61,13 @@ export function TopWoloEarnersTile({
         </div>
 
         <div className="text-right">
-          <div className={`inline-flex rounded-full border px-3 py-1 text-xs ${tone.neutralPill}`}>
+          <div
+            className={`inline-flex rounded-full border px-3 py-1 text-xs ${tone.neutralPill}`}
+          >
             {statusLabel}
           </div>
           <div className="mt-2 text-lg font-semibold text-white">
-            {reserve ? `${reserve} WOLO` : "Awaiting reserve"}
+            {reserve ? `${reserve} WOLO` : "3 slots"}
           </div>
           <div className="text-[11px] uppercase tracking-[0.24em] text-slate-400">
             {reserve ? "Reserve armed" : "Board filling soon"}
