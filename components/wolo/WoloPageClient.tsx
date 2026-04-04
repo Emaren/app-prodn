@@ -10,6 +10,7 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from "react";
 
+import WoloFaucetCard from "@/components/wolo/WoloFaucetCard";
 import { useChainId } from "@/hooks/useChainId";
 import { useKeplr } from "@/hooks/use-keplr";
 import { useWoloBalance } from "@/hooks/useWoloBalance";
@@ -79,6 +80,7 @@ export default function WoloPage() {
   const { address, status, connect } = useKeplr();
   const { data: rawBalance, isLoading: balanceLoading } = useWoloBalance(address);
   const [walletError, setWalletError] = useState<string | null>(null);
+  const [balanceOverride, setBalanceOverride] = useState<string | null>(null);
   const [premiumHeroView, setPremiumHeroView] = useState(() =>
     readStoredPremiumPreference(HERO_VIEW_KEY, false)
   );
@@ -93,7 +95,15 @@ export default function WoloPage() {
       ? String(chainData.chainId)
       : "wolo";
 
-  const formattedBalance = useMemo(() => formatTokenAmount(rawBalance), [rawBalance]);
+  useEffect(() => {
+    setBalanceOverride(null);
+  }, [address]);
+
+  const displayedBalance = balanceOverride ?? rawBalance;
+  const formattedBalance = useMemo(
+    () => formatTokenAmount(displayedBalance),
+    [displayedBalance]
+  );
   const pingPubUrl = useMemo(() => buildPingPubUrl(chainId), [chainId]);
 
   const walletStatus =
@@ -105,6 +115,12 @@ export default function WoloPage() {
 
   const walletHeadline =
     status === "connected" ? "Live" : status === "not_installed" ? "Install" : "Offline";
+  const walletConnectLabel =
+    status === "connected"
+      ? "Wallet Live"
+      : status === "not_installed"
+        ? "Install Keplr"
+        : "Connect Keplr";
 
   async function handleConnect() {
     try {
@@ -112,6 +128,12 @@ export default function WoloPage() {
       await connect();
     } catch (error) {
       setWalletError(error instanceof Error ? error.message : "Could not connect wallet.");
+    }
+  }
+
+  function handleFaucetClaimed(payload: { balanceAfterUwoLo?: string | null }) {
+    if (payload.balanceAfterUwoLo) {
+      setBalanceOverride(payload.balanceAfterUwoLo);
     }
   }
 
@@ -149,7 +171,7 @@ export default function WoloPage() {
                   </div>
                   <div className="flex flex-wrap items-end gap-3">
                     <div
-                      className="text-5xl font-semibold leading-[0.9] tracking-[-0.04em] text-white sm:text-6xl lg:text-[5rem]"
+                      className="text-[2.75rem] font-semibold leading-[0.9] tracking-[-0.04em] text-white sm:text-[3.35rem] lg:text-[4.5rem]"
                       style={{
                         fontFamily:
                           '"Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif',
@@ -209,9 +231,10 @@ export default function WoloPage() {
                   Get Keplr
                 </a>
               </div>
+
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-3.5">
               <div className="rounded-[1.75rem] border border-white/10 bg-[#131b2a] p-5 shadow-[0_30px_80px_rgba(2,6,23,0.36)] sm:p-6">
                 <div className="flex items-start justify-between gap-4">
                   <div className="text-[11px] uppercase tracking-[0.35em] text-amber-200/70">
@@ -232,36 +255,46 @@ export default function WoloPage() {
                   <WalletPanel label="Network" value={chainId} />
                 </div>
 
+                <div className="mt-5 grid gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void handleConnect();
+                    }}
+                    className="w-full rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-200"
+                  >
+                    {walletConnectLabel}
+                  </button>
+
+                  {status !== "connected" ? (
+                    <a
+                      href={KEPLR_DOWNLOAD_URL}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="block w-full rounded-full border border-white/12 bg-white/5 px-5 py-3 text-center text-sm text-white/90 transition hover:border-white/25 hover:text-white"
+                    >
+                      Get Keplr Wallet
+                    </a>
+                  ) : null}
+                </div>
+
                 {walletError ? (
                   <div className="mt-4 rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
                     {walletError}
                   </div>
                 ) : null}
-
-                {status !== "connected" ? (
-                  <div className="mt-5 grid gap-3">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        void handleConnect();
-                      }}
-                      className="w-full rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-200"
-                    >
-                      {status === "not_installed" ? "Try Connect After Install" : "Connect Keplr"}
-                    </button>
-                    <a
-                      href={KEPLR_DOWNLOAD_URL}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="block w-full rounded-full border border-white/12 bg-white/5 px-5 py-3 text-center text-sm text-white/85 transition hover:border-white/25 hover:text-white"
-                    >
-                      Get Keplr Wallet
-                    </a>
-                  </div>
-                ) : null}
               </div>
 
-              <MarketContextTile href={OSMOSIS_DEX_URL} variant="prod" />
+              <div className="space-y-1.5">
+                <MarketContextTile href={OSMOSIS_DEX_URL} variant="prod" />
+                <WoloFaucetCard
+                  address={address}
+                  status={status}
+                  chainId={chainId}
+                  onClaimed={handleFaucetClaimed}
+                  variant="prod"
+                />
+              </div>
             </div>
           </div>
         </section>
@@ -308,7 +341,7 @@ export default function WoloPage() {
 
                   <div className="flex flex-wrap items-end gap-x-4 gap-y-1 md:flex-nowrap">
                     <div
-                      className="text-5xl font-semibold leading-[0.9] tracking-[-0.04em] text-white sm:text-6xl lg:text-[5rem]"
+                      className="text-[2.75rem] font-semibold leading-[0.9] tracking-[-0.04em] text-white sm:text-[3.35rem] lg:text-[4.5rem]"
                       style={{
                         fontFamily:
                           '"Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif',
@@ -343,9 +376,10 @@ export default function WoloPage() {
               pingPubUrl={pingPubUrl}
               showPingPub
             />
+
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-3.5">
             <div className="rounded-[1.8rem] border border-white/10 bg-[linear-gradient(180deg,rgba(11,17,30,0.96),rgba(7,11,19,0.96))] p-5 shadow-[0_28px_80px_rgba(2,6,23,0.34)] sm:p-6">
               <div className="flex items-start justify-between gap-4">
                 <div className="text-[11px] uppercase tracking-[0.35em] text-amber-200/70">
@@ -364,19 +398,12 @@ export default function WoloPage() {
                   value={balanceLoading ? "Loading..." : `${formattedBalance} WOLO`}
                   emphasis
                 />
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <PremiumWalletPanel label="Network" value={chainId} />
-                  <PremiumWalletPanel label="Prefix" value="wolo1..." mono />
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <PremiumWalletPanel label="Network" value={chainId} />
+                    <PremiumWalletPanel label="Prefix" value="wolo1..." mono />
+                  </div>
                 </div>
-              </div>
 
-              {walletError ? (
-                <div className="mt-4 rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
-                  {walletError}
-                </div>
-              ) : null}
-
-              {status !== "connected" ? (
                 <div className="mt-5 grid gap-3">
                   <button
                     type="button"
@@ -385,22 +412,38 @@ export default function WoloPage() {
                     }}
                     className="w-full rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-200"
                   >
-                    {status === "not_installed" ? "Try Connect After Install" : "Connect Keplr"}
+                    {walletConnectLabel}
                   </button>
 
-                  <a
-                    href={KEPLR_DOWNLOAD_URL}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="block w-full rounded-full border border-white/12 bg-white/5 px-5 py-3 text-center text-sm text-white/90 transition hover:border-white/25 hover:text-white"
-                  >
-                    Get Keplr Wallet
-                  </a>
+                  {status !== "connected" ? (
+                    <a
+                      href={KEPLR_DOWNLOAD_URL}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="block w-full rounded-full border border-white/12 bg-white/5 px-5 py-3 text-center text-sm text-white/90 transition hover:border-white/25 hover:text-white"
+                    >
+                      Get Keplr Wallet
+                    </a>
+                  ) : null}
+                </div>
+
+              {walletError ? (
+                <div className="mt-4 rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+                  {walletError}
                 </div>
               ) : null}
             </div>
 
-            <MarketContextTile href={OSMOSIS_DEX_URL} variant="premium" />
+            <div className="space-y-1.5">
+              <MarketContextTile href={OSMOSIS_DEX_URL} variant="premium" />
+              <WoloFaucetCard
+                address={address}
+                status={status}
+                chainId={chainId}
+                onClaimed={handleFaucetClaimed}
+                variant="premium"
+              />
+            </div>
           </div>
         </div>
       </section>
@@ -599,46 +642,44 @@ function MarketContextTile({
       target="_blank"
       rel="noreferrer"
       data-no-toggle="true"
-      className={`group block w-full ${
+      title="WOLO Market via Osmosis DEX"
+      className={`group flex w-full items-center justify-between gap-3 ${
         compact
-          ? "rounded-[1.15rem] border border-cyan-300/15 bg-[linear-gradient(135deg,rgba(255,255,255,0.05),rgba(9,15,28,0.95)_52%,rgba(8,35,46,0.78))] px-3.5 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition hover:border-cyan-200/28 hover:bg-[linear-gradient(135deg,rgba(255,255,255,0.08),rgba(10,18,34,0.95)_52%,rgba(8,42,54,0.84))]"
-          : "rounded-[1.35rem] border border-cyan-300/18 bg-[linear-gradient(135deg,rgba(255,255,255,0.05),rgba(8,14,27,0.96)_48%,rgba(8,35,46,0.82))] px-4 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition hover:border-cyan-200/28 hover:bg-[linear-gradient(135deg,rgba(255,255,255,0.08),rgba(9,18,34,0.96)_48%,rgba(8,42,54,0.86))]"
+          ? "rounded-[1.15rem] border border-cyan-300/15 bg-[linear-gradient(135deg,rgba(255,255,255,0.05),rgba(9,15,28,0.95)_52%,rgba(8,35,46,0.78))] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
+          : "rounded-[1.35rem] border border-cyan-300/18 bg-[linear-gradient(135deg,rgba(255,255,255,0.05),rgba(8,14,27,0.96)_48%,rgba(8,35,46,0.82))] px-5 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
       }`}
-      title="Market context via Osmosis DEX"
     >
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <div
-            className={`flex shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5 ${
-              compact ? "h-10 w-10" : "h-11 w-11"
-            }`}
-          >
-            <DexOrbitMark />
-          </div>
-
-          <div className="min-w-0">
-            <div className="text-[10px] uppercase tracking-[0.28em] text-cyan-200/68">
-              Market Context
-            </div>
-            <div className="mt-1 flex flex-wrap items-end gap-x-1.5 gap-y-0.5">
-              <div className={compact ? "text-lg font-semibold text-white" : "text-xl font-semibold text-white"}>
-                {DEFAULT_WOLO_MARKET_PRICE}
-              </div>
-              <div className="pb-0.5 text-[10px] uppercase tracking-[0.24em] text-white/55">
-                / WOLO
-              </div>
-            </div>
-            <div className="mt-1 text-xs text-slate-300/78">
-              Osmosis DEX route with guide price, not the hero.
-            </div>
-          </div>
+      <div className="flex min-w-0 items-center gap-3">
+        <div
+          className={`flex shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5 ${
+            compact ? "h-10 w-10" : "h-11 w-11"
+          }`}
+        >
+          <DexOrbitMark />
         </div>
 
-        <div className="flex shrink-0 items-center gap-2">
-          <MarketTileGraph compact={compact} />
-          <div className="rounded-full border border-cyan-300/18 bg-cyan-400/10 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.24em] text-cyan-100">
-            DEX
+        <div className="min-w-0">
+          <div className="text-[10px] uppercase tracking-[0.28em] text-cyan-200/68">
+            WOLO Market
           </div>
+          <div className="mt-1 flex flex-wrap items-end gap-x-1.5 gap-y-0.5">
+            <div className={compact ? "text-lg font-semibold text-white" : "text-xl font-semibold text-white"}>
+              {DEFAULT_WOLO_MARKET_PRICE}
+            </div>
+            <div className="pb-0.5 text-[10px] uppercase tracking-[0.24em] text-white/55">
+              / WOLO
+            </div>
+          </div>
+          <div className="mt-2 text-xs text-slate-300/78">
+            Osmosis listing soon.
+          </div>
+        </div>
+      </div>
+
+      <div className="flex shrink-0 items-center gap-2">
+        <MarketTileGraph compact={compact} />
+        <div className="rounded-full border border-cyan-300/18 bg-cyan-400/10 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.24em] text-cyan-100">
+          DEX
         </div>
       </div>
     </a>

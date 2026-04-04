@@ -1,5 +1,9 @@
+import { execFile } from "node:child_process";
 import http from "http";
 import https from "https";
+import os from "node:os";
+import path from "node:path";
+import { promisify } from "node:util";
 
 import {
   WOLO_ADDRESS_PREFIX,
@@ -15,6 +19,7 @@ import {
 const insecureHttpsAgent = new https.Agent({
   rejectUnauthorized: false,
 });
+const execFileAsync = promisify(execFile);
 
 type TendermintStatusPayload = {
   result?: {
@@ -149,6 +154,51 @@ function getRestSource() {
   );
 }
 
+function getQueryCliPath() {
+  return (
+    process.env.WOLO_FAUCET_CLI?.trim() ||
+    path.join(os.homedir(), "projects", "WoloChain", "build", "wolochaind")
+  );
+}
+
+function getQueryCliHome() {
+  return process.env.WOLO_FAUCET_HOME?.trim() || path.join(os.homedir(), ".wolochain");
+}
+
+function getQueryCliNode() {
+  return (
+    process.env.WOLO_FAUCET_NODE_RPC?.trim() ||
+    process.env.WOLO_INTERNAL_RPC_URL?.trim() ||
+    process.env.NEXT_PUBLIC_WOLO_RPC_URL?.trim() ||
+    "http://127.0.0.1:26657"
+  );
+}
+
+async function fetchWoloBalanceAmountFromCli(address: string) {
+  const { stdout } = await execFileAsync(
+    getQueryCliPath(),
+    [
+      "query",
+      "bank",
+      "balances",
+      address,
+      "--home",
+      getQueryCliHome(),
+      "--node",
+      getQueryCliNode(),
+      "--output",
+      "json",
+    ],
+    {
+      maxBuffer: 1024 * 1024,
+      timeout: 15_000,
+    }
+  );
+
+  const payload = JSON.parse(stdout) as BankBalancesPayload;
+  return payload.balances?.find((coin) => coin.denom === WOLO_BASE_DENOM)?.amount || "0";
+}
+
 function buildTerminalLines(snapshot: Omit<WoloStatusSnapshot, "terminalLines">) {
   const stamp = new Date().toLocaleTimeString([], {
     hour: "2-digit",
@@ -258,9 +308,13 @@ export async function fetchWoloBalanceAmount(address: string) {
 
   const restSource = getRestSource();
 
-  const payload = await requestJson<BankBalancesPayload>(
-    `${restSource.replace(/\/$/, "")}/cosmos/bank/v1beta1/balances/${encodeURIComponent(trimmed)}`
-  );
+  try {
+    const payload = await requestJson<BankBalancesPayload>(
+      `${restSource.replace(/\/$/, "")}/cosmos/bank/v1beta1/balances/${encodeURIComponent(trimmed)}`
+    );
 
-  return payload.balances?.find((coin) => coin.denom === WOLO_BASE_DENOM)?.amount || "0";
+    return payload.balances?.find((coin) => coin.denom === WOLO_BASE_DENOM)?.amount || "0";
+  } catch {
+    return fetchWoloBalanceAmountFromCli(trimmed);
+  }
 }

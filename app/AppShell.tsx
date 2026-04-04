@@ -16,7 +16,6 @@ import {
   LobbyAppearanceProvider,
   useLobbyAppearance,
 } from "@/components/lobby/LobbyAppearanceContext";
-import { ROADMAP_UPDATE_COUNT } from "@/lib/siteRoadmapContent";
 import { Toaster } from "sonner";
 import { Providers } from "./Providers";
 import { UserAuthProvider, useUserAuth } from "@/context/UserAuthContext";
@@ -31,7 +30,7 @@ const HEADER_LINKS: ReadonlyArray<{
   { href: "/players", label: "Players" },
   { href: "/rivalries", label: "Rivalries" },
   { href: "/wolo", label: "$WOLO" },
-  { href: "/roadmap", label: "Roadmap", badgeCount: ROADMAP_UPDATE_COUNT },
+  { href: "/roadmap", label: "Roadmap" },
   { href: "/requests", label: "Requests", countKey: "requests" },
 ];
 

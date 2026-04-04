@@ -23,7 +23,6 @@ import {
 import { useClickOutside } from "@/hooks/useClickOutside";
 import { useUserAuth } from "@/context/UserAuthContext";
 import SteamLoginButton from "@/components/SteamLoginButton";
-import { ROADMAP_UPDATE_COUNT } from "@/lib/siteRoadmapContent";
 
 interface Props {
   playerName: string;
@@ -93,7 +92,6 @@ export default function HeaderMenu({
         href: "/roadmap",
         label: "Roadmap",
         icon: Map,
-        badge: ROADMAP_UPDATE_COUNT > 0 ? String(ROADMAP_UPDATE_COUNT) : null,
       },
     ],
     [liveGamesCount, requestCount]

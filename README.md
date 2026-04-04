@@ -148,4 +148,6 @@ python /var/www/AoE2HDBets/api-prodn/scripts/set_admin.py --email you@example.co
 - `/lobby` is now a real product destination with leaderboard + tournament surface
 - player pages still need another premium pass
 - the app presents `$WOLO` as a product rail before full settlement infrastructure is complete
+- `/wolo` now includes an app-side starter faucet claim path, a clean Wallet Snapshot connect surface, a tight `WOLO Market` tile, and a slim faucet claim row underneath
+- the top-nav Roadmap link intentionally renders without the old blue count badge
 - exact replay/postgame authority still belongs to `api-prodn`

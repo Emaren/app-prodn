@@ -127,9 +127,10 @@ Current state:
 - has a real page and UI surface
 - gifts exist in app logic
 - token rail is visible in product language and navigation
-- wallet snapshot is the right-rail anchor on `/wolo`, with Market Context living directly below it
+- wallet snapshot is the right-rail anchor on `/wolo`, with the tight `WOLO Market` tile living directly below it and the starter faucet claim strip tucked underneath
+- `/wolo` now has a real app-side starter faucet claim route that sends `2 WOLO`, enforces a 24-hour cooldown, and updates the wallet snapshot from the returned balance
 - default `/wolo` hero keeps the simpler legacy action row, while premium mode uses the two-lane action dock with borderless utility pills so `Open Ping.pub` stays grouped without a harsh white outline treatment
-- default WOLO runtime/daemon consoles stay in the raw green matrix style without per-line separators; premium runtime/daemon consoles keep the darker structured shell
+- default WOLO runtime/daemon consoles stay in the raw matrix style without per-line separators, but the stat-card labels/values use the normal slate/white treatment again; premium runtime/daemon consoles keep the darker structured shell
 - not yet true on-chain debit/credit settlement for challenge markets or player wagering
 
 ### Replay trust / postgame depth

@@ -57,3 +57,6 @@ public/downloads/latest-mac.yml
 
 # Local direct-message attachment blobs
 storage/direct-message-attachments/
+
+# Local faucet cooldown ledger
+storage/wolo-faucet/

@@ -27,7 +27,7 @@ type DaemonLogPayload = {
 const RUNTIME_VIEW_KEY = "wolo-runtime-view";
 const DAEMON_VIEW_KEY = "wolo-daemon-view";
 const ANSI_TOKEN_REGEX = /(?:\u001b\[|\[)([0-9;]*)m/g;
-const WOLO_STATUS_POLL_MS = 3000;
+const WOLO_STATUS_POLL_MS = 8000;
 
 function formatTime(value: string | null) {
   if (!value) return "Waiting on node";
@@ -594,12 +594,12 @@ function TerminalStat({
 }) {
   return (
     <div className="rounded-[1.4rem] border border-emerald-400/12 bg-emerald-500/5 px-4 py-4">
-      <div className="text-[11px] uppercase tracking-[0.28em] text-emerald-100/60">{label}</div>
+      <div className="text-[11px] uppercase tracking-[0.28em] text-slate-400">{label}</div>
       <div
         className={
           compact
-            ? "mt-3 text-lg font-semibold text-emerald-100"
-            : "mt-3 text-3xl font-semibold text-emerald-100"
+            ? "mt-3 text-lg font-semibold text-white"
+            : "mt-3 text-3xl font-semibold text-white"
         }
       >
         {value}
