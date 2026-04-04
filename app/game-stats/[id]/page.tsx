@@ -27,6 +27,7 @@ import {
 import {
   buildMatchupHref,
   filterHeadToHeadMatches,
+  loadRecentFinalMatchupRows,
   summarizeHeadToHead,
 } from "@/lib/publicMatchups";
 import { getPrisma } from "@/lib/prisma";
@@ -109,21 +110,7 @@ export default async function GameStatsDetailPage({
   const matchupHref = playerRefs.length === 2 ? buildMatchupHref(playerRefs[0], playerRefs[1]) : null;
   const rivalryCandidates =
     playerRefs.length === 2
-      ? await prisma.gameStats.findMany({
-          where: { is_final: true },
-          orderBy: [{ played_on: "desc" }, { timestamp: "desc" }, { createdAt: "desc" }],
-          take: 300,
-          select: {
-            id: true,
-            winner: true,
-            players: true,
-            played_on: true,
-            timestamp: true,
-            parse_reason: true,
-            map: true,
-            disconnect_detected: true,
-          },
-        })
+      ? await loadRecentFinalMatchupRows(prisma, 800)
       : [];
   const rivalrySummary =
     playerRefs.length === 2

@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@/lib/generated/prisma";
 
 import { displayPlayerName, parsePlayers, readPlayedAt } from "@/lib/gameStatsView";
+import { getLobbyMatchPlayedAtMs } from "@/lib/lobbyMatchTime";
 import {
   buildPublicPlayerRef,
   type PublicPlayerRef,
@@ -9,15 +10,23 @@ import {
   publicPlayerMatchesName,
 } from "@/lib/publicPlayers";
 
+const RECENT_FINAL_MATCH_SCAN_LIMIT = 5000;
+
 export type MatchupGameRow = {
   id: number;
   winner: string | null;
   players: unknown;
   played_on: Date | string | null;
   timestamp: Date | string | null;
+  createdAt?: Date | string | null;
+  original_filename?: string | null;
+  replay_file?: string | null;
   parse_reason?: string | null;
   map?: unknown;
   disconnect_detected?: boolean;
+  duration?: number | null;
+  game_duration?: number | null;
+  key_events?: unknown;
 };
 
 export type RivalSummary = {
@@ -97,6 +106,41 @@ function extractDistinctReplayNames(players: unknown) {
   }
 
   return names;
+}
+
+function sortMatchRowsByPlayedAtDesc(left: MatchupGameRow, right: MatchupGameRow) {
+  const playedAtDelta = getLobbyMatchPlayedAtMs(right) - getLobbyMatchPlayedAtMs(left);
+  if (playedAtDelta !== 0) {
+    return playedAtDelta;
+  }
+
+  return right.id - left.id;
+}
+
+export async function loadRecentFinalMatchupRows(prisma: PrismaClient, take: number) {
+  const candidateMatches = await prisma.gameStats.findMany({
+    where: { is_final: true },
+    orderBy: [{ timestamp: "desc" }, { createdAt: "desc" }, { id: "desc" }],
+    take: Math.max(take, RECENT_FINAL_MATCH_SCAN_LIMIT),
+    select: {
+      id: true,
+      winner: true,
+      players: true,
+      played_on: true,
+      timestamp: true,
+      createdAt: true,
+      original_filename: true,
+      replay_file: true,
+      parse_reason: true,
+      map: true,
+      disconnect_detected: true,
+      duration: true,
+      game_duration: true,
+      key_events: true,
+    },
+  });
+
+  return candidateMatches.sort(sortMatchRowsByPlayedAtDesc).slice(0, take);
 }
 
 export function filterHeadToHeadMatches(
@@ -221,21 +265,7 @@ export async function loadPublicRivalries(
   prisma: PrismaClient,
   options?: { take?: number }
 ): Promise<PublicRivalryEntry[]> {
-  const candidateMatches = await prisma.gameStats.findMany({
-    where: { is_final: true },
-    orderBy: [{ played_on: "desc" }, { timestamp: "desc" }, { createdAt: "desc" }],
-    take: options?.take ?? 400,
-    select: {
-      id: true,
-      winner: true,
-      players: true,
-      played_on: true,
-      timestamp: true,
-      parse_reason: true,
-      map: true,
-      disconnect_detected: true,
-    },
-  });
+  const candidateMatches = await loadRecentFinalMatchupRows(prisma, options?.take ?? 400);
 
   const duelSeeds = candidateMatches
     .map((match) => ({

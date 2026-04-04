@@ -2,7 +2,11 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
-import { buildMatchupHref, buildRivalSummaries } from "@/lib/publicMatchups";
+import {
+  buildMatchupHref,
+  buildRivalSummaries,
+  loadRecentFinalMatchupRows,
+} from "@/lib/publicMatchups";
 import {
   displayParseReason,
   displayPlayerName,
@@ -46,24 +50,7 @@ export default async function ReplayOnlyPlayerPage({
   }
 
   const normalizedPlayerName = normalizePublicPlayerName(playerName);
-  const candidateMatches = await prisma.gameStats.findMany({
-    where: { is_final: true },
-    orderBy: [{ played_on: "desc" }, { timestamp: "desc" }, { createdAt: "desc" }],
-    take: 200,
-    select: {
-      id: true,
-      map: true,
-      winner: true,
-      players: true,
-      played_on: true,
-      timestamp: true,
-      parse_reason: true,
-      disconnect_detected: true,
-      duration: true,
-      game_duration: true,
-      key_events: true,
-    },
-  });
+  const candidateMatches = await loadRecentFinalMatchupRows(prisma, 600);
 
   const matchedGames = candidateMatches
     .filter((match) =>
