@@ -303,8 +303,7 @@ function ChallengeThreadStrip({
     (viewerIsChallenger && challenge.displayState === "pending") ||
     ((viewerIsChallenger || viewerIsChallenged) && challenge.displayState === "accepted");
   const canReschedule =
-    viewerIsChallenger ||
-    viewerIsChallenged
+    viewerIsChallenger || viewerIsChallenged
       ? ["pending", "accepted", "declined", "cancelled"].includes(challenge.displayState)
       : false;
   const currentAction =
@@ -315,6 +314,7 @@ function ChallengeThreadStrip({
       ? "Challenge Again"
       : "Reschedule";
   const compact = mode === "popover";
+  const actionSizing = compact ? "px-2.5 py-1.5 text-[11px]" : "px-3 py-2 text-xs";
 
   async function handleReschedule(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -333,25 +333,27 @@ function ChallengeThreadStrip({
 
   return (
     <div
-      className={`rounded-[1.25rem] border ${compact ? "mt-3 px-3 py-3" : "mt-3 px-3.5 py-3"} ${
+      className={`rounded-[1.1rem] border ${compact ? "mt-2.5 px-3 py-2.5" : "mt-3 px-3.5 py-3"} ${
         tone.shell
       }`}
     >
-      <div className="grid gap-2.5 sm:grid-cols-[minmax(0,1fr)_auto]">
+      <div
+        className={`grid ${compact ? "gap-2 sm:grid-cols-[minmax(0,1fr)_124px]" : "gap-2.5 sm:grid-cols-[minmax(0,1fr)_auto]"}`}
+      >
         <div className="min-w-0">
-          <div className={`text-[10px] uppercase tracking-[0.26em] ${tone.eyebrow}`}>
+          <div className={`${compact ? "text-[9px]" : "text-[10px]"} uppercase tracking-[0.26em] ${tone.eyebrow}`}>
             Challenge runway
           </div>
-          <div className="mt-1.5 text-sm font-semibold text-white">
+          <div className={`mt-1 ${compact ? "text-[15px]" : "text-sm"} font-semibold text-white`}>
             {challenge.challenger.name} vs {challenge.challenged.name}
           </div>
           {challenge.challengeNote ? (
-            <div className="mt-1.5 line-clamp-1 text-xs text-slate-300">
+            <div className="mt-1 line-clamp-1 text-[11px] text-slate-300">
               {challenge.challengeNote}
             </div>
           ) : null}
-          <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] text-slate-200">
-            <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1">
+          <div className="mt-1.5 flex flex-wrap gap-1.5 text-[10px] text-slate-200">
+            <span className="rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-0.5">
               {new Date(challenge.scheduledAt).toLocaleString([], {
                 month: "short",
                 day: "numeric",
@@ -360,29 +362,29 @@ function ChallengeThreadStrip({
               })}
             </span>
             {challenge.linkedMapName ? (
-              <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1">
+              <span className="rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-0.5">
                 {challenge.linkedMapName}
               </span>
             ) : null}
           </div>
         </div>
 
-        <div className="rounded-[1rem] border border-white/10 bg-slate-950/25 px-3 py-2 text-left sm:text-right">
-          <div className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] ${tone.badge}`}>
+        <div className={`rounded-[0.95rem] border border-white/10 bg-slate-950/25 ${compact ? "px-2.5 py-1.5" : "px-3 py-2"} text-left sm:text-right`}>
+          <div className={`inline-flex rounded-full border px-2 py-0.5 text-[9px] ${tone.badge}`}>
             {status.status}
           </div>
-          <div className="mt-1.5 text-sm font-semibold text-white/95">{status.status}</div>
-          <div className="mt-1 text-xs text-slate-300">{status.detail}</div>
+          <div className="mt-1 text-xs font-semibold text-white/95">{status.status}</div>
+          <div className="mt-0.5 text-[11px] text-slate-300">{status.detail}</div>
         </div>
       </div>
 
-      <div className={`flex flex-wrap gap-2 ${compact ? "mt-3" : "mt-3 justify-end"}`}>
+      <div className={`mt-2.5 flex flex-wrap gap-1.5 ${compact ? "" : "justify-end"}`}>
         {canAccept ? (
           <button
             type="button"
             disabled={isBusy}
             onClick={() => void onChallengeAction?.({ challengeId: challenge.id, action: "accept" })}
-            className="rounded-full bg-white px-3 py-2 text-xs font-semibold text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
+            className={`rounded-full bg-white font-semibold text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60 ${actionSizing}`}
           >
             {currentAction === "accept" ? "Accepting..." : "Accept"}
           </button>
@@ -392,7 +394,7 @@ function ChallengeThreadStrip({
             type="button"
             disabled={isBusy}
             onClick={() => void onChallengeAction?.({ challengeId: challenge.id, action: "decline" })}
-            className="rounded-full border border-rose-300/30 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-50 transition hover:bg-rose-500/15 disabled:cursor-not-allowed disabled:opacity-60"
+            className={`rounded-full border border-rose-300/30 bg-rose-500/10 font-semibold text-rose-50 transition hover:bg-rose-500/15 disabled:cursor-not-allowed disabled:opacity-60 ${actionSizing}`}
           >
             {currentAction === "decline" ? "Declining..." : "Decline"}
           </button>
@@ -402,7 +404,7 @@ function ChallengeThreadStrip({
             type="button"
             disabled={isBusy}
             onClick={() => void onChallengeAction?.({ challengeId: challenge.id, action: "cancel" })}
-            className="rounded-full border border-white/15 px-3 py-2 text-xs text-white/85 transition hover:border-white/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+            className={`rounded-full border border-white/15 text-white/85 transition hover:border-white/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-60 ${actionSizing}`}
           >
             {currentAction === "cancel" ? "Cancelling..." : "Cancel"}
           </button>
@@ -412,7 +414,7 @@ function ChallengeThreadStrip({
             type="button"
             disabled={isBusy}
             onClick={() => setShowRescheduleForm((current) => !current)}
-            className="rounded-full border border-amber-300/30 bg-amber-400/10 px-3 py-2 text-xs text-amber-100 transition hover:bg-amber-400/15 disabled:cursor-not-allowed disabled:opacity-60"
+            className={`rounded-full border border-amber-300/30 bg-amber-400/10 text-amber-100 transition hover:bg-amber-400/15 disabled:cursor-not-allowed disabled:opacity-60 ${actionSizing}`}
           >
             {showRescheduleForm ? "Close" : reopenLabel}
           </button>
@@ -423,7 +425,7 @@ function ChallengeThreadStrip({
               ? `/game-stats/live/${encodeURIComponent(challenge.linkedSessionKey)}`
               : "/challenge"
           }
-          className="rounded-full border border-white/15 px-3 py-2 text-xs text-white/85 transition hover:border-white/30 hover:text-white"
+          className={`rounded-full border border-white/15 text-white/85 transition hover:border-white/30 hover:text-white ${actionSizing}`}
         >
           {challenge.displayState === "live" && challenge.linkedSessionKey
             ? "Watch Live Stats"
@@ -436,20 +438,20 @@ function ChallengeThreadStrip({
       {canReschedule && showRescheduleForm ? (
         <form
           onSubmit={handleReschedule}
-          className="mt-3 space-y-3 rounded-[1rem] border border-white/10 bg-slate-950/35 p-3"
+          className={`mt-2.5 space-y-2.5 rounded-[0.95rem] border border-white/10 bg-slate-950/35 ${compact ? "p-2.5" : "p-3"}`}
         >
-          <label className="block space-y-2">
-            <span className="text-[11px] uppercase tracking-[0.2em] text-slate-300">New Start</span>
+          <label className="block space-y-1.5">
+            <span className="text-[10px] uppercase tracking-[0.2em] text-slate-300">New Start</span>
             <input
               type="datetime-local"
               value={scheduledAt}
               onChange={(event) => setScheduledAt(event.target.value)}
               disabled={isBusy}
-              className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-amber-300/50 disabled:cursor-not-allowed disabled:opacity-60"
+              className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white outline-none focus:border-amber-300/50 disabled:cursor-not-allowed disabled:opacity-60"
             />
           </label>
-          <label className="block space-y-2">
-            <span className="text-[11px] uppercase tracking-[0.2em] text-slate-300">Updated Note</span>
+          <label className="block space-y-1.5">
+            <span className="text-[10px] uppercase tracking-[0.2em] text-slate-300">Updated Note</span>
             <AutoGrowTextarea
               value={challengeNote}
               onChange={(event) =>
@@ -458,18 +460,18 @@ function ChallengeThreadStrip({
               maxRows={mode === "popover" ? 3 : 4}
               maxLength={CHALLENGE_NOTE_MAX_CHARS}
               disabled={isBusy}
-              className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-amber-300/50 disabled:cursor-not-allowed disabled:opacity-60"
+              className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white outline-none focus:border-amber-300/50 disabled:cursor-not-allowed disabled:opacity-60"
               placeholder="Push it back 30 minutes."
             />
-            <div className="text-right text-[11px] uppercase tracking-[0.18em] text-slate-500">
+            <div className="text-right text-[10px] uppercase tracking-[0.18em] text-slate-500">
               {challengeNote.length}/{CHALLENGE_NOTE_MAX_CHARS}
             </div>
           </label>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1.5">
             <button
               type="submit"
               disabled={isBusy}
-              className="rounded-full bg-amber-300 px-3 py-2 text-xs font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-60"
+              className={`rounded-full bg-amber-300 font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-60 ${actionSizing}`}
             >
               {currentAction === "reschedule" ? "Sending..." : "Send New Time"}
             </button>
@@ -477,7 +479,7 @@ function ChallengeThreadStrip({
               type="button"
               disabled={isBusy}
               onClick={() => setShowRescheduleForm(false)}
-              className="rounded-full border border-white/15 px-3 py-2 text-xs text-white/85 transition hover:border-white/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+              className={`rounded-full border border-white/15 text-white/85 transition hover:border-white/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-60 ${actionSizing}`}
             >
               Close
             </button>

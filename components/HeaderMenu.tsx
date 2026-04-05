@@ -66,6 +66,7 @@ export default function HeaderMenu({
       { href: "/profile", label: "Profile", icon: UserCircle, featured: true },
       { href: "/admin/user-list", label: "Admin", icon: Shield, adminOnly: true, featured: true },
       { href: "/contact-emaren", label: "Contact", icon: MessageSquareMore, featured: true },
+      { href: "/bets", label: "Bets", icon: BadgeDollarSign, featured: true },
       {
         href: "/live-games",
         label: "Live Games",
@@ -73,7 +74,6 @@ export default function HeaderMenu({
         badge: liveGamesCount > 0 ? String(liveGamesCount) : null,
         featured: true,
       },
-      { href: "/bets", label: "Bets", icon: BadgeDollarSign, featured: true },
       { href: "/players", label: "Players", icon: Users, featured: true },
       {
         href: "/requests",

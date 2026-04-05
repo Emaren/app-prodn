@@ -65,6 +65,17 @@ function HeaderPillLink({
   );
 }
 
+function HeaderLiveGamesLink({ liveGamesCount }: { liveGamesCount: number }) {
+  return (
+    <Link
+      href="/live-games"
+      className="rounded-full border border-red-400/25 bg-red-500/10 px-3 py-1.5 text-xs text-red-100 transition hover:border-red-300/40 hover:bg-red-500/15"
+    >
+      {liveGamesCount} Live Games🔥
+    </Link>
+  );
+}
+
 function InnerShell({ children }: { children: React.ReactNode }) {
   const { uid, playerName, isAdmin } = useUserAuth();
   const pathname = usePathname();
@@ -179,21 +190,17 @@ function InnerShell({ children }: { children: React.ReactNode }) {
 
             <nav className="w-full overflow-x-auto overflow-y-visible pb-1 pt-2 [scrollbar-width:none] [-ms-overflow-style:none]">
               <div className="flex min-w-max items-center gap-2 pr-1 whitespace-nowrap">
-                <Link
-                  href="/live-games"
-                  className="rounded-full border border-red-400/25 bg-red-500/10 px-3 py-1.5 text-xs text-red-100 transition hover:border-red-300/40 hover:bg-red-500/15"
-                >
-                  {liveGamesCount} Live Games🔥
-                </Link>
-                {HEADER_LINKS.map((link) => (
-                  <HeaderPillLink
-                    key={link.href}
-                    href={link.href}
-                    label={link.label}
-                    className={headerSkin.surface}
-                    requestCount={link.countKey === "requests" ? requestCount : undefined}
-                    badgeCount={link.badgeCount}
-                  />
+                {HEADER_LINKS.map((link, index) => (
+                  <React.Fragment key={link.href}>
+                    <HeaderPillLink
+                      href={link.href}
+                      label={link.label}
+                      className={headerSkin.surface}
+                      requestCount={link.countKey === "requests" ? requestCount : undefined}
+                      badgeCount={link.badgeCount}
+                    />
+                    {index === 0 ? <HeaderLiveGamesLink liveGamesCount={liveGamesCount} /> : null}
+                  </React.Fragment>
                 ))}
                 {isAdmin ? (
                   <Link
@@ -220,21 +227,17 @@ function InnerShell({ children }: { children: React.ReactNode }) {
             </div>
 
             <nav className="flex max-w-full items-center gap-2 overflow-x-auto overflow-y-visible whitespace-nowrap pb-1 pt-2 [scrollbar-width:none] [-ms-overflow-style:none] lg:justify-self-center lg:pb-0">
-              <Link
-                href="/live-games"
-                className="rounded-full border border-red-400/25 bg-red-500/10 px-3 py-1 text-xs text-red-100 transition hover:border-red-300/40 hover:bg-red-500/15"
-              >
-                {liveGamesCount} Live Games🔥
-              </Link>
-              {HEADER_LINKS.map((link) => (
-                <HeaderPillLink
-                  key={link.href}
-                  href={link.href}
-                  label={link.label}
-                  className={headerSkin.surface}
-                  requestCount={link.countKey === "requests" ? requestCount : undefined}
-                  badgeCount={link.badgeCount}
-                />
+              {HEADER_LINKS.map((link, index) => (
+                <React.Fragment key={link.href}>
+                  <HeaderPillLink
+                    href={link.href}
+                    label={link.label}
+                    className={headerSkin.surface}
+                    requestCount={link.countKey === "requests" ? requestCount : undefined}
+                    badgeCount={link.badgeCount}
+                  />
+                  {index === 0 ? <HeaderLiveGamesLink liveGamesCount={liveGamesCount} /> : null}
+                </React.Fragment>
               ))}
             </nav>
 
