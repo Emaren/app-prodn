@@ -4,6 +4,9 @@ export const AI_CONCIERGE_NAME = "The AI Scribe";
 export const AI_GRIMER_UID = "aoe2hd_ai_grimer";
 export const AI_GRIMER_NAME = "Grimer";
 
+export const AI_GUY_UID = "aoe2hd_ai_guy";
+export const AI_GUY_NAME = "Guy of Moxica";
+
 function getDefaultLlamaChatGatewayUrl() {
   const defaultPort = process.env.NODE_ENV === "production" ? "3350" : "8006";
   return `http://127.0.0.1:${defaultPort}/api/chat/send`;
@@ -24,6 +27,16 @@ export const AI_MODEL_OPTIONS = [
     provider: "openai",
   },
   {
+    id: "Agent4.1Grimer",
+    label: "OpenAI GPT-4.1 Grimer",
+    provider: "openai",
+  },
+  {
+    id: "Agent4.1Guy",
+    label: "OpenAI GPT-4.1 Guy",
+    provider: "openai",
+  },
+  {
     id: "Agent4.1M",
     label: "OpenAI GPT-4.1",
     provider: "openai",
@@ -38,7 +51,8 @@ export const AI_MODEL_OPTIONS = [
 export type AiModelId = (typeof AI_MODEL_OPTIONS)[number]["id"];
 
 export const DEFAULT_AI_CONCIERGE_MODEL_ID: AiModelId = "Agent4.1Scribe";
-export const DEFAULT_AI_GRIMER_MODEL_ID: AiModelId = "Agent4.1M";
+export const DEFAULT_AI_GRIMER_MODEL_ID: AiModelId = "Agent4.1Grimer";
+export const DEFAULT_AI_GUY_MODEL_ID: AiModelId = "Agent4.1Guy";
 
 export const AI_PERSONA_OPTIONS = [
   {
@@ -54,6 +68,13 @@ export const AI_PERSONA_OPTIONS = [
     name: AI_GRIMER_NAME,
     requestedModel: DEFAULT_AI_GRIMER_MODEL_ID,
     toneLabel: "dark sidecar",
+  },
+  {
+    id: "guy",
+    uid: AI_GUY_UID,
+    name: AI_GUY_NAME,
+    requestedModel: DEFAULT_AI_GUY_MODEL_ID,
+    toneLabel: "velvet knife",
   },
 ] as const;
 

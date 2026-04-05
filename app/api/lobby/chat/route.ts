@@ -2,15 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   ensureAiPersonaUser,
   requestAiConciergeReply,
+  type RequestAiConciergeReplyArgs,
 } from "@/lib/aiConcierge";
 import {
   AI_VISIBILITY_OPTIONS,
   DEFAULT_AI_VISIBILITY,
   getAiPersonaConfig,
-  isAiModelId,
   type AiPersonaId,
   type AiVisibilityOption,
 } from "@/lib/aiConciergeConfig";
+import { requestEnabledAiReplies } from "@/lib/aiPersonaOrchestrator";
 import { ensureLobbyRoom, getLobbyMessages } from "@/lib/communityStore";
 import { getOrCreateConversationByUsers } from "@/lib/contactInbox";
 import { readGuestReactionSessionIdFromRequest } from "@/lib/guestReactionSession";
@@ -21,18 +22,33 @@ import { resolveRequestUid } from "@/lib/requestIdentity";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+type ConversationHistoryTurn = {
+  role: "user" | "assistant";
+  content: string;
+};
+
+type PreparedPersonaThread = {
+  personaId: AiPersonaId;
+  aiUserId: number;
+  conversationId: number;
+  history: ConversationHistoryTurn[];
+};
+
 function parseAiVisibility(value: unknown): AiVisibilityOption {
   return typeof value === "string" && AI_VISIBILITY_OPTIONS.includes(value as AiVisibilityOption)
     ? (value as AiVisibilityOption)
     : DEFAULT_AI_VISIBILITY;
 }
 
-function parseSelectedPersonaIds(body: Record<string, unknown>, aiEnabled: boolean): AiPersonaId[] {
+function parseSelectedPersonaIds(
+  body: Record<string, unknown>,
+  aiEnabled: boolean
+): Exclude<AiPersonaId, "guy">[] {
   if (!aiEnabled) {
     return [];
   }
 
-  const personaIds: AiPersonaId[] = [];
+  const personaIds: Exclude<AiPersonaId, "guy">[] = [];
 
   if (body.aiScribeEnabled !== false) {
     personaIds.push("scribe");
@@ -59,6 +75,51 @@ function buildPrivateNotice(personaIds: AiPersonaId[]) {
   return `Message sent privately to ${personaNames.join(", ")} and ${lastName}.`;
 }
 
+async function preparePersonaThread(args: {
+  prisma: ReturnType<typeof getPrisma>;
+  viewerUserId: number;
+  personaId: AiPersonaId;
+  messageBody: string;
+}): Promise<PreparedPersonaThread> {
+  const { prisma, viewerUserId, personaId, messageBody } = args;
+
+  const aiUser = await ensureAiPersonaUser(prisma, personaId);
+  const aiConversation = await getOrCreateConversationByUsers(prisma, viewerUserId, aiUser.id);
+  const priorAiThreadMessages = await prisma.directMessage.findMany({
+    where: {
+      conversationId: aiConversation.id,
+    },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: 10,
+    select: {
+      body: true,
+      senderUserId: true,
+    },
+  });
+
+  await prisma.directMessage.create({
+    data: {
+      conversationId: aiConversation.id,
+      senderUserId: viewerUserId,
+      body: messageBody,
+    },
+  });
+
+  return {
+    personaId,
+    aiUserId: aiUser.id,
+    conversationId: aiConversation.id,
+    history: priorAiThreadMessages
+      .slice()
+      .reverse()
+      .filter((message) => Boolean(message.body?.trim()))
+      .map((message) => ({
+        role: message.senderUserId === viewerUserId ? "user" : "assistant",
+        content: String(message.body || "").trim(),
+      })),
+  };
+}
+
 export async function POST(request: NextRequest) {
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
   const uid = await resolveRequestUid(request, body);
@@ -74,11 +135,8 @@ export async function POST(request: NextRequest) {
 
   const aiEnabled = body.aiEnabled !== false;
   const aiVisibility = parseAiVisibility(body.aiVisibility);
-  const requestedAiModel =
-    typeof body.aiModel === "string" && isAiModelId(body.aiModel) ? body.aiModel : null;
-
   const selectedPersonaIds = parseSelectedPersonaIds(body, aiEnabled);
-  const privateThreadPersonaIds: AiPersonaId[] =
+  const privateThreadPersonaIds: Exclude<AiPersonaId, "guy">[] =
     aiVisibility === "private"
       ? selectedPersonaIds.length > 0
         ? selectedPersonaIds
@@ -167,95 +225,89 @@ export async function POST(request: NextRequest) {
     notices.push(buildPrivateNotice(privateThreadPersonaIds));
   }
 
+  const preparedThreads = new Map<AiPersonaId, PreparedPersonaThread>();
+
   for (const personaId of privateThreadPersonaIds) {
-    const aiUser = await ensureAiPersonaUser(prisma, personaId);
-    const aiConversation = await getOrCreateConversationByUsers(prisma, user.id, aiUser.id);
-    const priorAiThreadMessages = await prisma.directMessage.findMany({
-      where: {
-        conversationId: aiConversation.id,
-      },
-      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-      take: 10,
-      select: {
-        body: true,
-        senderUserId: true,
-      },
+    const thread = await preparePersonaThread({
+      prisma,
+      viewerUserId: user.id,
+      personaId,
+      messageBody,
     });
+    preparedThreads.set(personaId, thread);
+  }
 
-    await prisma.directMessage.create({
-      data: {
-        conversationId: aiConversation.id,
-        senderUserId: user.id,
-        body: messageBody,
-      },
-    });
-
-    const shouldGenerateReply = aiEnabled && selectedPersonaIds.includes(personaId);
-    if (!shouldGenerateReply) {
-      continue;
-    }
-
+  if (aiEnabled && selectedPersonaIds.length > 0) {
     try {
-      const aiReply = await requestAiConciergeReply({
-        prisma,
-        viewer: {
-          uid: user.uid,
-          displayName: user.inGameName || user.steamPersonaName || user.uid,
+      const aiReplies = await requestEnabledAiReplies(
+        {
+          prisma,
+          viewer: {
+            uid: user.uid,
+            displayName: user.inGameName || user.steamPersonaName || user.uid,
+          },
+          source: aiVisibility === "public" ? "lobby_public" : "lobby_private",
+          userMessage: messageBody,
+          visibility: aiVisibility,
+          roomSlug: room.slug,
+          selectedPersonaIds,
+          guyEnabled: aiVisibility === "public",
         },
-        source: aiVisibility === "public" ? "lobby_public" : "lobby_private",
-        userMessage: messageBody,
-        requestedModel: requestedAiModel,
-        visibility: aiVisibility,
-        roomSlug: room.slug,
-        personaId,
-        conversationHistory: priorAiThreadMessages
-          .slice()
-          .reverse()
-          .filter((message) => Boolean(message.body?.trim()))
-          .map((message) => ({
-            role: message.senderUserId === user.id ? "user" : "assistant",
-            content: String(message.body || "").trim(),
-          })),
-      });
+        async (requestArgs: RequestAiConciergeReplyArgs) => {
+          const personaId = requestArgs.personaId as AiPersonaId;
+          const thread = preparedThreads.get(personaId);
 
-      const aiThreadMessage = await prisma.directMessage.create({
-        data: {
-          conversationId: aiConversation.id,
-          senderUserId: aiUser.id,
-          body: aiReply.body,
-        },
-        select: { id: true },
-      });
+          return requestAiConciergeReply({
+            ...requestArgs,
+            conversationHistory: thread?.history ?? [],
+          });
+        }
+      );
 
-      if (aiVisibility === "public") {
-        const publicAiMessage = await prisma.chatMessage.create({
+      for (const aiReply of aiReplies) {
+        const personaId = aiReply.personaId as AiPersonaId;
+        let thread = preparedThreads.get(personaId);
+
+        if (!thread) {
+          thread = await preparePersonaThread({
+            prisma,
+            viewerUserId: user.id,
+            personaId,
+            messageBody,
+          });
+          preparedThreads.set(personaId, thread);
+        }
+
+        const aiThreadMessage = await prisma.directMessage.create({
           data: {
-            roomId: room.id,
-            userId: aiUser.id,
-            body: normalizeChatBody(aiReply.body) || `${aiReply.personaName} checked in.`,
+            conversationId: thread.conversationId,
+            senderUserId: thread.aiUserId,
+            body: aiReply.body,
           },
           select: { id: true },
         });
 
-        await prisma.directMessage.update({
-          where: { id: aiThreadMessage.id },
-          data: {
-            sharedLobbyMessageId: publicAiMessage.id,
-          },
-        });
+        if (aiVisibility === "public") {
+          const publicAiMessage = await prisma.chatMessage.create({
+            data: {
+              roomId: room.id,
+              userId: thread.aiUserId,
+              body: normalizeChatBody(aiReply.body) || `${aiReply.personaName} checked in.`,
+            },
+            select: { id: true },
+          });
+
+          await prisma.directMessage.update({
+            where: { id: aiThreadMessage.id },
+            data: {
+              sharedLobbyMessageId: publicAiMessage.id,
+            },
+          });
+        }
       }
     } catch (aiError) {
-      const persona = getAiPersonaConfig(personaId);
-      console.warn(`Lobby ${persona.name} reply failed:`, aiError);
-      warnings.push(`${persona.name} is offline right now. Your message still posted.`);
-
-      await prisma.directMessage.create({
-        data: {
-          conversationId: aiConversation.id,
-          senderUserId: aiUser.id,
-          body: `${persona.name} is offline for a moment. Try again shortly.`,
-        },
-      });
+      console.warn("Lobby booth reply failed:", aiError);
+      warnings.push("The booth is offline right now. Your message still posted.");
     }
   }
 

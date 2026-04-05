@@ -5,7 +5,6 @@ import {
   LLAMA_CHAT_GATEWAY_URL,
   getAiModelLabel,
   getAiPersonaConfig,
-  isAiModelId,
   type AiModelId,
   type AiPersonaId,
   type AiVisibilityOption,
@@ -20,7 +19,7 @@ type AiConversationTurn = {
   content: string;
 };
 
-type RequestAiConciergeReplyArgs = {
+export type RequestAiConciergeReplyArgs = {
   prisma: PrismaClient;
   viewer: {
     uid: string;
@@ -145,6 +144,15 @@ function buildSiteKnowledge(personaId: AiPersonaId) {
     "WOLO explanations should stay app-side and user-facing. Do not invent chain identity or supply facts beyond provided context.",
   ];
 
+  if (personaId === "guy") {
+    return [
+      ...common,
+      "Guy of Moxica is the rare velvet-knife lane: sly, elegant, amused, treacherous, and selective.",
+      "Guy should feel like a silk-gloved final twist, not a second Grimer or a second lecture.",
+      "A good Guy line is cultured, dangerous, concise, and faintly theatrical.",
+    ].join("\n");
+  }
+
   if (personaId === "grimer") {
     return [
       ...common,
@@ -173,6 +181,22 @@ function buildSystemPrompt(args: RequestAiConciergeReplyArgs, personaId: AiPerso
   ];
 
   if (args.source === "lobby_public") {
+    if (personaId === "guy") {
+      return [
+        ...basePrompt,
+        [
+          "Lobby lane rules:",
+          "Return exactly one post-ready reply for lobby_public.",
+          `Hard limit: ${AI_LOBBY_PUBLIC_REPLY_MAX_CHARS} characters including spaces.`,
+          "Default to one sentence.",
+          "Use no markdown, no bullets, no numbered options, no multiple variants, and no reasoning or explanations.",
+          "Tone should be elegant, sly, theatrical, concise, and dangerous without becoming abusive.",
+          "No threats, slurs, gore, sexual content, or personal attacks. Keep it sharp, not toxic.",
+          "If the strongest move is a velvet one-liner, take it.",
+        ].join(" "),
+      ].join("\n\n");
+    }
+
     if (personaId === "grimer") {
       return [
         ...basePrompt,
@@ -199,6 +223,22 @@ function buildSystemPrompt(args: RequestAiConciergeReplyArgs, personaId: AiPerso
         "Use no markdown, no bullets, no numbered options, no multiple variants, and no reasoning or explanations.",
         "Tone should be stoic, clever, masculine, concise, and room-aware.",
         "If the reply runs long, compress aggressively and keep only the strongest line.",
+      ].join(" "),
+    ].join("\n\n");
+  }
+
+  if (personaId === "guy") {
+    return [
+      ...basePrompt,
+      [
+        "Private lane rules:",
+        `Return exactly one clean reply for ${args.source}.`,
+        `Hard limit: ${AI_PRIVATE_REPLY_MAX_CHARS} characters including spaces.`,
+        "Default to under 400 characters unless the user clearly asks for more.",
+        "Use one or two short paragraphs max.",
+        "Use no markdown unless the user clearly asks for it.",
+        "Be sly, elegant, and dangerous, but never graphic or cruel.",
+        "Do not provide multiple variants unless explicitly requested.",
       ].join(" "),
     ].join("\n\n");
   }
@@ -307,7 +347,7 @@ export async function requestAiConciergeReply(args: RequestAiConciergeReplyArgs)
   const personaId = args.personaId ?? "scribe";
   const persona = getAiPersonaConfig(personaId);
   const requestedModel: AiModelId =
-    isAiModelId(args.requestedModel) ? args.requestedModel : persona.requestedModel;
+    (args.requestedModel as AiModelId | null | undefined) || persona.requestedModel;
 
   const [chatMessages, leaderboard, recentMatches] = await Promise.all([
     getLobbyMessages(args.prisma, args.roomSlug || LOBBY_ROOM_SLUG, 24, {

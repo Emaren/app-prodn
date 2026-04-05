@@ -2,6 +2,7 @@ import type { PrismaClient } from "@/lib/generated/prisma";
 
 import { AI_CONCIERGE_UID } from "@/lib/aiConciergeConfig";
 import { ensureAiConciergeUser } from "@/lib/aiConcierge";
+import { getAiThreadKind } from "@/lib/aiPersonaInbox";
 import { loadChallengeThreadTile, type ScheduledMatchTile } from "@/lib/challenges";
 import {
   loadUserCommunitySummaries,
@@ -178,7 +179,7 @@ function displayNameForUser(user: {
 }
 
 function resolveThreadKind(uid: string) {
-  return uid === AI_CONCIERGE_UID ? "ai" : "direct";
+  return getAiThreadKind(uid);
 }
 
 function buildPairKey(leftUserId: number, rightUserId: number) {
