@@ -97,32 +97,10 @@ export type ScheduledMatchTile = {
   durationSeconds: number | null;
 };
 
-export type ChallengeActivityItem = {
-  id: number;
-  scheduledMatchId: number;
-  eventType: string;
-  detail: string | null;
-  actorUid: string | null;
-  actorName: string | null;
-  createdAt: string;
-  metadata: Record<string, unknown> | null;
-};
-
-export type ChallengeActivityRow = {
-  id: number;
-  scheduledMatchId: number;
-  eventType: string;
-  detail: string | null;
-  createdAt: Date;
-  metadata: unknown;
-  actor: Pick<ChallengeUserRow, "uid" | "inGameName" | "steamPersonaName"> | null;
-};
-
 export type ChallengeHubSnapshot = {
   viewer: ChallengePlayerSurface | null;
   candidates: ChallengePlayerSurface[];
   scheduledMatches: ScheduledMatchTile[];
-  activities: ChallengeActivityItem[];
   updatedAt: string;
 };
 
@@ -190,75 +168,6 @@ function buildPlayerSurface(user: ChallengeUserRow): ChallengePlayerSurface {
     verificationLevel: user.verificationLevel,
     isOnline: playerIsOnline(user.lastSeen),
   };
-}
-
-function challengeActivityActorName(
-  user: Pick<ChallengeUserRow, "uid" | "inGameName" | "steamPersonaName"> | null
-) {
-  if (!user) return null;
-  return user.inGameName || user.steamPersonaName || user.uid;
-}
-
-function normalizeActivityMetadata(value: unknown): Record<string, unknown> | null {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return null;
-  }
-
-  return value as Record<string, unknown>;
-}
-
-function buildChallengeActivityItem(row: ChallengeActivityRow): ChallengeActivityItem {
-  return {
-    id: row.id,
-    scheduledMatchId: row.scheduledMatchId,
-    eventType: row.eventType,
-    detail: row.detail ?? null,
-    actorUid: row.actor?.uid ?? null,
-    actorName: challengeActivityActorName(row.actor),
-    createdAt: row.createdAt.toISOString(),
-    metadata: normalizeActivityMetadata(row.metadata),
-  };
-}
-
-async function loadChallengeActivityRows(
-  prisma: PrismaClient,
-  scheduledMatchIds: number[]
-): Promise<ChallengeActivityItem[]> {
-  if (scheduledMatchIds.length === 0) {
-    return [];
-  }
-
-  const rows = await prisma.scheduledMatchActivity.findMany({
-    where: {
-      scheduledMatchId: {
-        in: scheduledMatchIds,
-      },
-    },
-    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-    take: 40,
-    select: {
-      id: true,
-      scheduledMatchId: true,
-      eventType: true,
-      detail: true,
-      createdAt: true,
-      metadata: true,
-      actor: {
-        select: {
-          uid: true,
-          inGameName: true,
-          steamPersonaName: true,
-        },
-      },
-    },
-  });
-
-  return rows.map((row) =>
-    buildChallengeActivityItem({
-      ...row,
-      actor: row.actor,
-    })
-  );
 }
 
 function readSessionTime(session: Pick<ComparableSession, "updatedAt" | "completedAt">) {
@@ -784,7 +693,6 @@ export async function loadChallengeHubSnapshot(
       viewer: null,
       candidates: [],
       scheduledMatches: [],
-      activities: [],
       updatedAt: new Date().toISOString(),
     };
   }
@@ -799,7 +707,6 @@ export async function loadChallengeHubSnapshot(
       viewer: null,
       candidates: [],
       scheduledMatches: [],
-      activities: [],
       updatedAt: new Date().toISOString(),
     };
   }
@@ -833,16 +740,10 @@ export async function loadChallengeHubSnapshot(
     sessionSnapshot.recentlyCompletedSessions
   );
 
-  const activities = await loadChallengeActivityRows(
-    prisma,
-    tiles.map((tile) => tile.id)
-  );
-
   return {
     viewer: buildPlayerSurface(viewer),
     candidates: candidateRows.map((candidate) => buildPlayerSurface(candidate)),
     scheduledMatches: tiles,
-    activities,
     updatedAt: new Date().toISOString(),
   };
 }

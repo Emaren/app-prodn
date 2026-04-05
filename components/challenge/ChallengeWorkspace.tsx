@@ -13,32 +13,28 @@ import AutoGrowTextarea from "@/components/ui/AutoGrowTextarea";
 import { useUserAuth } from "@/context/UserAuthContext";
 import { CHALLENGE_NOTE_MAX_CHARS } from "@/lib/challengeConfig";
 import type { ChallengeHubSnapshot } from "@/lib/challenges";
-import {
-  buildUtcDateTimeInputValue,
-  parseUtcDateTimeInputValue,
-} from "@/lib/timeDisplay";
 
 const EMPTY_SNAPSHOT: ChallengeHubSnapshot = {
   viewer: null,
   candidates: [],
   scheduledMatches: [],
-  activities: [],
   updatedAt: new Date(0).toISOString(),
 };
 
 function defaultScheduledAtValue() {
   const next = new Date(Date.now() + 60 * 60 * 1000);
-  next.setUTCSeconds(0, 0);
+  next.setSeconds(0, 0);
 
-  const roundedMinutes = Math.ceil(next.getUTCMinutes() / 15) * 15;
+  const roundedMinutes = Math.ceil(next.getMinutes() / 15) * 15;
   if (roundedMinutes >= 60) {
-    next.setUTCHours(next.getUTCHours() + 1);
-    next.setUTCMinutes(0, 0, 0);
+    next.setHours(next.getHours() + 1);
+    next.setMinutes(0);
   } else {
-    next.setUTCMinutes(roundedMinutes, 0, 0);
+    next.setMinutes(roundedMinutes);
   }
 
-  return buildUtcDateTimeInputValue(next);
+  const local = new Date(next.getTime() - next.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 16);
 }
 
 export default function ChallengeWorkspace() {
@@ -197,12 +193,6 @@ export default function ChallengeWorkspace() {
     setSaving(true);
     setError(null);
     setNotice(null);
-        const parsedScheduledAt = parseUtcDateTimeInputValue(scheduledAt);
-    if (!parsedScheduledAt) {
-      setError("Choose a valid UTC start time.");
-      setSaving(false);
-      return;
-    }
 
     try {
       const response = await fetch("/api/challenges", {
@@ -212,7 +202,7 @@ export default function ChallengeWorkspace() {
         },
         body: JSON.stringify({
           challengedUid,
-          scheduledAt: parsedScheduledAt.toISOString(),
+          scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : "",
           challengeNote,
         }),
       });
@@ -318,17 +308,13 @@ export default function ChallengeWorkspace() {
               </label>
 
               <label className="block space-y-2">
-                <span className="text-sm text-slate-300">Start Time (UTC)</span>
+                <span className="text-sm text-slate-300">Start Time</span>
                 <input
                   type="datetime-local"
                   value={scheduledAt}
                   onChange={(event) => setScheduledAt(event.target.value)}
                   className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-amber-300/50"
                 />
-                                <div className="mt-2 text-xs text-slate-500">
-                  All scheduled match times are anchored to UTC so both players share one
-                  universal clock.
-                </div>
               </label>
 
               <label className="block space-y-2">
