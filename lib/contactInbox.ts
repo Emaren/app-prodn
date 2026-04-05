@@ -427,21 +427,58 @@ export async function getOrCreateConversationByUsers(
 ) {
   const pairKey = buildPairKey(leftUserId, rightUserId);
 
-  return prisma.directConversation.upsert({
+  const existing = await prisma.directConversation.findUnique({
     where: { pairKey },
-    update: {
-      updatedAt: new Date(),
-    },
-    create: {
-      pairKey,
-      participants: {
-        create: [{ userId: leftUserId }, { userId: rightUserId }],
-      },
-    },
     include: {
       participants: true,
     },
   });
+
+  if (existing) {
+    return prisma.directConversation.update({
+      where: { pairKey },
+      data: {
+        updatedAt: new Date(),
+      },
+      include: {
+        participants: true,
+      },
+    });
+  }
+
+  try {
+    return await prisma.directConversation.create({
+      data: {
+        pairKey,
+        participants: {
+          create: [{ userId: leftUserId }, { userId: rightUserId }],
+        },
+      },
+      include: {
+        participants: true,
+      },
+    });
+  } catch (error) {
+    const isUniquePairKeyRace =
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      (error as { code?: string }).code === "P2002";
+
+    if (!isUniquePairKeyRace) {
+      throw error;
+    }
+
+    return prisma.directConversation.update({
+      where: { pairKey },
+      data: {
+        updatedAt: new Date(),
+      },
+      include: {
+        participants: true,
+      },
+    });
+  }
 }
 
 export async function postDirectInboxMessage(
@@ -790,23 +827,23 @@ async function loadConversationMessages(
     where: { pairKey: buildPairKey(viewerUserId, targetUserId) },
     include: {
       messages: {
-        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         take: 80,
         select: {
-          id: true,
-          senderUserId: true,
-          body: true,
-          attachmentKind: true,
-          attachmentName: true,
-          attachmentMimeType: true,
-          attachmentDurationSeconds: true,
-          sharedLobbyMessageId: true,
-          createdAt: true,
-          reactions: {
-            select: {
-              emoji: true,
-              userId: true,
-            },
+        id: true,
+        senderUserId: true,
+        body: true,
+        attachmentKind: true,
+        attachmentName: true,
+        attachmentMimeType: true,
+        attachmentDurationSeconds: true,
+        sharedLobbyMessageId: true,
+        createdAt: true,
+        reactions: {
+          select: {
+            emoji: true,
+            userId: true,
+          },
           },
         },
       },
@@ -835,6 +872,8 @@ async function loadConversationMessages(
       counterpartTyping: false,
     };
   }
+
+  const orderedMessages = [...conversation.messages].reverse();
 
   const counterpartParticipant = conversation.participants.find(
     (participant) => participant.userId === targetUserId
@@ -893,7 +932,7 @@ async function loadConversationMessages(
 
   const senderIds = Array.from(
     new Set([
-      ...conversation.messages.map((message) => message.senderUserId),
+      ...orderedMessages.map((message) => message.senderUserId),
       ...badges.map((badge) => badge.createdByUserId).filter((value): value is number => typeof value === "number"),
       ...gifts.map((gift) => gift.createdByUserId).filter((value): value is number => typeof value === "number"),
     ])
@@ -906,10 +945,10 @@ async function loadConversationMessages(
       Date.now() - counterpartParticipant.typingUpdatedAt.getTime() <= DIRECT_MESSAGE_TYPING_WINDOW_MS
   );
   const latestOutgoingTextMessage =
-    [...conversation.messages].reverse().find((message) => message.senderUserId === viewerUserId) ?? null;
+    [...orderedMessages].reverse().find((message) => message.senderUserId === viewerUserId) ?? null;
   const latestReadOutgoingTextMessage =
     counterpartParticipant?.lastReadAt
-      ? [...conversation.messages]
+      ? [...orderedMessages]
           .reverse()
           .find(
             (message) =>
@@ -919,7 +958,7 @@ async function loadConversationMessages(
           ) ?? null
       : null;
 
-  const messageEvents: InboxMessage[] = conversation.messages.map((message) => {
+  const messageEvents: InboxMessage[] = orderedMessages.map((message) => {
     const sender = conversation.participants.find(
       (participant) => participant.userId === message.senderUserId
     )?.user;
