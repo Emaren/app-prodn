@@ -29,28 +29,29 @@ model User {
   verificationMethod String    @default("none") @map("verification_method") @db.VarChar(32)
   verifiedAt         DateTime? @map("verified_at") @db.Timestamp(6)
 
-  apiKeys   ApiKey[]
-  gameStats GameStats[]
-  tournamentEntries TournamentEntry[]
-  chatMessages      ChatMessage[]
-  chatMessageReactions ChatMessageReaction[]
-  createdTournaments Tournament[] @relation("TournamentCreator")
+  apiKeys                        ApiKey[]
+  gameStats                      GameStats[]
+  tournamentEntries              TournamentEntry[]
+  chatMessages                   ChatMessage[]
+  chatMessageReactions           ChatMessageReaction[]
+  createdTournaments             Tournament[]                    @relation("TournamentCreator")
   directConversationParticipants DirectConversationParticipant[] @relation("DirectConversationParticipantUser")
-  directMessagesSent            DirectMessage[]                 @relation("DirectMessageSender")
-  directMessageReactions        DirectMessageReaction[]
-  communityRequestsCreated      CommunityRequest[]             @relation("CommunityRequestAuthor")
-  communityRequestsCompleted    CommunityRequest[]             @relation("CommunityRequestCompleter")
-  communityRequestVotes         CommunityRequestVote[]
-  communityRequestComments      CommunityRequestComment[]      @relation("CommunityRequestCommentAuthor")
-  receivedBadges               UserBadge[]                     @relation("UserBadgeRecipient")
-  grantedBadges                UserBadge[]                     @relation("UserBadgeCreator")
-  receivedGifts                UserGift[]                      @relation("UserGiftRecipient")
-  grantedGifts                 UserGift[]                      @relation("UserGiftCreator")
-  appearancePreference         UserAppearancePreference?
-  activityEvents               UserActivityEvent[]
-  betWagers                    BetWager[]
-  scheduledChallengesCreated   ScheduledMatch[]               @relation("ScheduledMatchChallenger")
-  scheduledChallengesReceived  ScheduledMatch[]               @relation("ScheduledMatchChallenged")
+  directMessagesSent             DirectMessage[]                 @relation("DirectMessageSender")
+  directMessageReactions         DirectMessageReaction[]
+  communityRequestsCreated       CommunityRequest[]              @relation("CommunityRequestAuthor")
+  communityRequestsCompleted     CommunityRequest[]              @relation("CommunityRequestCompleter")
+  communityRequestVotes          CommunityRequestVote[]
+  communityRequestComments       CommunityRequestComment[]       @relation("CommunityRequestCommentAuthor")
+  receivedBadges                 UserBadge[]                     @relation("UserBadgeRecipient")
+  grantedBadges                  UserBadge[]                     @relation("UserBadgeCreator")
+  receivedGifts                  UserGift[]                      @relation("UserGiftRecipient")
+  grantedGifts                   UserGift[]                      @relation("UserGiftCreator")
+  appearancePreference           UserAppearancePreference?
+  activityEvents                 UserActivityEvent[]
+  betWagers                      BetWager[]
+  scheduledChallengesCreated     ScheduledMatch[]                @relation("ScheduledMatchChallenger")
+  scheduledChallengesReceived    ScheduledMatch[]                @relation("ScheduledMatchChallenged")
+  scheduledMatchActivities       ScheduledMatchActivity[]        @relation("ScheduledMatchActivityActor")
 
   @@map("users")
 }
@@ -96,8 +97,8 @@ model GameStats {
   parse_reason        String    @default("unspecified") @db.VarChar(50)
   original_filename   String?   @db.VarChar(255)
 
-  user                 User?            @relation(fields: [userUid], references: [uid], onDelete: NoAction, onUpdate: NoAction)
-  tournamentMatchProof TournamentMatch? @relation("TournamentMatchProof")
+  user                 User?                @relation(fields: [userUid], references: [uid], onDelete: NoAction, onUpdate: NoAction)
+  tournamentMatchProof TournamentMatch?     @relation("TournamentMatchProof")
   replayParseAttempts  ReplayParseAttempt[] @relation("GameStatsParseAttempts")
 
   @@unique([replayHash, is_final], map: "uq_replay_final")
@@ -156,15 +157,15 @@ model Tournament {
 }
 
 model TournamentEntry {
-  id           Int       @id @default(autoincrement())
-  tournamentId Int       @map("tournament_id")
-  userId       Int       @map("user_id")
-  status       String    @default("joined") @db.VarChar(20)
-  note         String?   @db.VarChar(160)
-  joinedAt     DateTime  @default(now()) @map("joined_at") @db.Timestamp(6)
+  id           Int      @id @default(autoincrement())
+  tournamentId Int      @map("tournament_id")
+  userId       Int      @map("user_id")
+  status       String   @default("joined") @db.VarChar(20)
+  note         String?  @db.VarChar(160)
+  joinedAt     DateTime @default(now()) @map("joined_at") @db.Timestamp(6)
 
-  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tournament       Tournament        @relation(fields: [tournamentId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   playerOneMatches TournamentMatch[] @relation("TournamentMatchPlayerOne")
   playerTwoMatches TournamentMatch[] @relation("TournamentMatchPlayerTwo")
   winnerMatches    TournamentMatch[] @relation("TournamentMatchWinner")
@@ -176,26 +177,26 @@ model TournamentEntry {
 }
 
 model TournamentMatch {
-  id             Int       @id @default(autoincrement())
-  tournamentId   Int       @map("tournament_id")
-  round          Int       @default(1)
-  position       Int       @default(1)
-  label          String?   @db.VarChar(80)
-  status         String    @default("scheduled") @db.VarChar(20)
-  sourceGameStatsId Int?   @unique(map: "uq_tournament_matches_source_game_stats_id") @map("source_game_stats_id")
-  playerOneEntryId Int?    @map("player_one_entry_id")
-  playerTwoEntryId Int?    @map("player_two_entry_id")
-  winnerEntryId    Int?    @map("winner_entry_id")
-  scheduledAt    DateTime? @map("scheduled_at") @db.Timestamp(6)
-  completedAt    DateTime? @map("completed_at") @db.Timestamp(6)
-  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+  id                Int       @id @default(autoincrement())
+  tournamentId      Int       @map("tournament_id")
+  round             Int       @default(1)
+  position          Int       @default(1)
+  label             String?   @db.VarChar(80)
+  status            String    @default("scheduled") @db.VarChar(20)
+  sourceGameStatsId Int?      @unique(map: "uq_tournament_matches_source_game_stats_id") @map("source_game_stats_id")
+  playerOneEntryId  Int?      @map("player_one_entry_id")
+  playerTwoEntryId  Int?      @map("player_two_entry_id")
+  winnerEntryId     Int?      @map("winner_entry_id")
+  scheduledAt       DateTime? @map("scheduled_at") @db.Timestamp(6)
+  completedAt       DateTime? @map("completed_at") @db.Timestamp(6)
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
 
-  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  sourceGameStats GameStats? @relation("TournamentMatchProof", fields: [sourceGameStatsId], references: [id], onDelete: SetNull, onUpdate: NoAction)
-  playerOne  TournamentEntry? @relation("TournamentMatchPlayerOne", fields: [playerOneEntryId], references: [id], onDelete: SetNull, onUpdate: NoAction)
-  playerTwo  TournamentEntry? @relation("TournamentMatchPlayerTwo", fields: [playerTwoEntryId], references: [id], onDelete: SetNull, onUpdate: NoAction)
-  winner     TournamentEntry? @relation("TournamentMatchWinner", fields: [winnerEntryId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  tournament      Tournament       @relation(fields: [tournamentId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  sourceGameStats GameStats?       @relation("TournamentMatchProof", fields: [sourceGameStatsId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  playerOne       TournamentEntry? @relation("TournamentMatchPlayerOne", fields: [playerOneEntryId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  playerTwo       TournamentEntry? @relation("TournamentMatchPlayerTwo", fields: [playerTwoEntryId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  winner          TournamentEntry? @relation("TournamentMatchWinner", fields: [winnerEntryId], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
   @@unique([tournamentId, round, position], map: "uq_tournament_matches_round_position")
   @@index([tournamentId, status], map: "ix_tournament_matches_tournament_status")
@@ -204,25 +205,26 @@ model TournamentMatch {
 }
 
 model ScheduledMatch {
-  id               Int       @id @default(autoincrement())
-  challengerUserId Int       @map("challenger_user_id")
-  challengedUserId Int       @map("challenged_user_id")
-  status           String    @default("pending") @db.VarChar(20)
-  scheduledAt      DateTime  @map("scheduled_at") @db.Timestamp(6)
-  challengeNote    String?   @map("challenge_note") @db.VarChar(160)
-  acceptedAt       DateTime? @map("accepted_at") @db.Timestamp(6)
-  declinedAt       DateTime? @map("declined_at") @db.Timestamp(6)
-  cancelledAt      DateTime? @map("cancelled_at") @db.Timestamp(6)
-  resultAt         DateTime? @map("result_at") @db.Timestamp(6)
-  linkedSessionKey String?   @map("linked_session_key") @db.VarChar(255)
-  linkedMapName    String?   @map("linked_map_name") @db.VarChar(120)
-  linkedWinner     String?   @map("linked_winner") @db.VarChar(100)
-  linkedDurationSeconds Int? @map("linked_duration_seconds")
-  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+  id                    Int                      @id @default(autoincrement())
+  challengerUserId      Int                      @map("challenger_user_id")
+  challengedUserId      Int                      @map("challenged_user_id")
+  status                String                   @default("pending") @db.VarChar(20)
+  scheduledAt           DateTime                 @map("scheduled_at") @db.Timestamp(6)
+  challengeNote         String?                  @map("challenge_note") @db.VarChar(160)
+  acceptedAt            DateTime?                @map("accepted_at") @db.Timestamp(6)
+  declinedAt            DateTime?                @map("declined_at") @db.Timestamp(6)
+  cancelledAt           DateTime?                @map("cancelled_at") @db.Timestamp(6)
+  resultAt              DateTime?                @map("result_at") @db.Timestamp(6)
+  linkedSessionKey      String?                  @map("linked_session_key") @db.VarChar(255)
+  linkedMapName         String?                  @map("linked_map_name") @db.VarChar(120)
+  linkedWinner          String?                  @map("linked_winner") @db.VarChar(100)
+  linkedDurationSeconds Int?                     @map("linked_duration_seconds")
+  createdAt             DateTime                 @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt             DateTime                 @updatedAt @map("updated_at") @db.Timestamp(6)
+  activities            ScheduledMatchActivity[]
 
-  challenger User @relation("ScheduledMatchChallenger", fields: [challengerUserId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  challenged User @relation("ScheduledMatchChallenged", fields: [challengedUserId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  challenger User       @relation("ScheduledMatchChallenger", fields: [challengerUserId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  challenged User       @relation("ScheduledMatchChallenged", fields: [challengedUserId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   betMarket  BetMarket?
 
   @@index([status, scheduledAt], map: "ix_scheduled_matches_status_scheduled_at")
@@ -232,14 +234,32 @@ model ScheduledMatch {
   @@map("scheduled_matches")
 }
 
+model ScheduledMatchActivity {
+  id               Int      @id @default(autoincrement())
+  scheduledMatchId Int      @map("scheduled_match_id")
+  actorUserId      Int?     @map("actor_user_id")
+  eventType        String   @map("event_type") @db.VarChar(32)
+  detail           String?  @db.VarChar(255)
+  metadata         Json?
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  scheduledMatch ScheduledMatch @relation(fields: [scheduledMatchId], references: [id], onDelete: Cascade)
+  actor          User?          @relation("ScheduledMatchActivityActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([scheduledMatchId, createdAt], map: "ix_scheduled_match_activities_match_created_at")
+  @@index([actorUserId, createdAt], map: "ix_scheduled_match_activities_actor_created_at")
+  @@index([eventType, createdAt], map: "ix_scheduled_match_activities_type_created_at")
+  @@map("scheduled_match_activities")
+}
+
 model ChatRoom {
-  id          Int       @id @default(autoincrement())
-  slug        String    @unique @db.VarChar(80)
-  name        String    @db.VarChar(120)
-  description String?   @db.Text
-  scope       String    @default("lobby") @db.VarChar(20)
-  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+  id          Int      @id @default(autoincrement())
+  slug        String   @unique @db.VarChar(80)
+  name        String   @db.VarChar(120)
+  description String?  @db.Text
+  scope       String   @default("lobby") @db.VarChar(20)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
 
   messages   ChatMessage[]
   tournament Tournament?
@@ -254,11 +274,11 @@ model ChatMessage {
   body      String   @db.VarChar(500)
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
 
-  room           ChatRoom                  @relation(fields: [roomId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  user           User                      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  reactions      ChatMessageReaction[]
-  guestReactions ChatMessageGuestReaction[]
-  sharedFromDirectMessage DirectMessage?   @relation("DirectMessageLobbyShare")
+  room                    ChatRoom                   @relation(fields: [roomId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user                    User                       @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  reactions               ChatMessageReaction[]
+  guestReactions          ChatMessageGuestReaction[]
+  sharedFromDirectMessage DirectMessage?             @relation("DirectMessageLobbyShare")
 
   @@index([roomId, createdAt], map: "ix_chat_messages_room_created_at")
   @@index([userId, createdAt], map: "ix_chat_messages_user_created_at")
@@ -309,11 +329,11 @@ model DirectConversation {
 }
 
 model DirectConversationParticipant {
-  id             Int       @id @default(autoincrement())
-  conversationId Int       @map("conversation_id")
-  userId         Int       @map("user_id")
-  joinedAt       DateTime  @default(now()) @map("joined_at") @db.Timestamp(6)
-  lastReadAt     DateTime? @map("last_read_at") @db.Timestamp(6)
+  id              Int       @id @default(autoincrement())
+  conversationId  Int       @map("conversation_id")
+  userId          Int       @map("user_id")
+  joinedAt        DateTime  @default(now()) @map("joined_at") @db.Timestamp(6)
+  lastReadAt      DateTime? @map("last_read_at") @db.Timestamp(6)
   typingUpdatedAt DateTime? @map("typing_updated_at") @db.Timestamp(6)
 
   conversation DirectConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -338,10 +358,10 @@ model DirectMessage {
   sharedLobbyMessageId      Int?     @unique(map: "uq_direct_messages_shared_lobby_message_id") @map("shared_lobby_message_id")
   createdAt                 DateTime @default(now()) @map("created_at") @db.Timestamp(6)
 
-  conversation DirectConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  sender       User               @relation("DirectMessageSender", fields: [senderUserId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  reactions    DirectMessageReaction[]
-  sharedLobbyMessage ChatMessage? @relation("DirectMessageLobbyShare", fields: [sharedLobbyMessageId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  conversation       DirectConversation      @relation(fields: [conversationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  sender             User                    @relation("DirectMessageSender", fields: [senderUserId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  reactions          DirectMessageReaction[]
+  sharedLobbyMessage ChatMessage?            @relation("DirectMessageLobbyShare", fields: [sharedLobbyMessageId], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
   @@index([conversationId, createdAt], map: "ix_direct_messages_conversation_created_at")
   @@index([senderUserId, createdAt], map: "ix_direct_messages_sender_created_at")
@@ -375,8 +395,8 @@ model CommunityRequest {
   createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
 
-  author      User                     @relation("CommunityRequestAuthor", fields: [createdByUserId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  completedBy User?                    @relation("CommunityRequestCompleter", fields: [completedByUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  author      User                      @relation("CommunityRequestAuthor", fields: [createdByUserId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  completedBy User?                     @relation("CommunityRequestCompleter", fields: [completedByUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   votes       CommunityRequestVote[]
   comments    CommunityRequestComment[]
 
@@ -412,8 +432,8 @@ model CommunityRequestComment {
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
 
-  request CommunityRequest @relation(fields: [requestId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  author  User             @relation("CommunityRequestCommentAuthor", fields: [authorUserId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  request CommunityRequest          @relation(fields: [requestId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  author  User                      @relation("CommunityRequestCommentAuthor", fields: [authorUserId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   parent  CommunityRequestComment?  @relation("CommunityRequestCommentReplies", fields: [parentId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   replies CommunityRequestComment[] @relation("CommunityRequestCommentReplies")
 
@@ -423,15 +443,15 @@ model CommunityRequestComment {
 }
 
 model UserBadge {
-  id              Int       @id @default(autoincrement())
-  userId          Int       @map("user_id")
-  label           String    @db.VarChar(40)
-  note            String?   @db.VarChar(160)
-  status          String    @default("pending") @db.VarChar(20)
-  displayOnProfile Boolean  @default(false) @map("display_on_profile")
-  acceptedAt      DateTime? @map("accepted_at") @db.Timestamp(6)
-  createdByUserId Int?      @map("created_by_user_id")
-  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  id               Int       @id @default(autoincrement())
+  userId           Int       @map("user_id")
+  label            String    @db.VarChar(40)
+  note             String?   @db.VarChar(160)
+  status           String    @default("pending") @db.VarChar(20)
+  displayOnProfile Boolean   @default(false) @map("display_on_profile")
+  acceptedAt       DateTime? @map("accepted_at") @db.Timestamp(6)
+  createdByUserId  Int?      @map("created_by_user_id")
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
 
   user      User  @relation("UserBadgeRecipient", fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   createdBy User? @relation("UserBadgeCreator", fields: [createdByUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
@@ -444,16 +464,16 @@ model UserBadge {
 }
 
 model UserGift {
-  id              Int       @id @default(autoincrement())
-  userId          Int       @map("user_id")
-  kind            String    @default("WOLO") @db.VarChar(40)
-  amount          Int?
-  note            String?   @db.VarChar(160)
-  status          String    @default("pending") @db.VarChar(20)
-  displayOnProfile Boolean  @default(false) @map("display_on_profile")
-  acceptedAt      DateTime? @map("accepted_at") @db.Timestamp(6)
-  createdByUserId Int?      @map("created_by_user_id")
-  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  id               Int       @id @default(autoincrement())
+  userId           Int       @map("user_id")
+  kind             String    @default("WOLO") @db.VarChar(40)
+  amount           Int?
+  note             String?   @db.VarChar(160)
+  status           String    @default("pending") @db.VarChar(20)
+  displayOnProfile Boolean   @default(false) @map("display_on_profile")
+  acceptedAt       DateTime? @map("accepted_at") @db.Timestamp(6)
+  createdByUserId  Int?      @map("created_by_user_id")
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
 
   user      User  @relation("UserGiftRecipient", fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   createdBy User? @relation("UserGiftCreator", fields: [createdByUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
@@ -474,7 +494,9 @@ model UserAppearancePreference {
   textColor    String   @default("white") @map("text_color") @db.VarChar(20)
   updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user             User    @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  timeDisplayMode  String  @default("utc") @map("time_display_mode") @db.VarChar(20)
+  timezoneOverride String? @map("timezone_override") @db.VarChar(80)
 
   @@map("user_appearance_preferences")
 }
@@ -496,29 +518,29 @@ model UserActivityEvent {
 }
 
 model BetMarket {
-  id            Int       @id @default(autoincrement())
-  scheduledMatchId Int?   @unique(map: "uq_bet_markets_scheduled_match_id") @map("scheduled_match_id")
-  slug          String    @unique @db.VarChar(120)
-  title         String    @db.VarChar(160)
-  eventLabel    String    @map("event_label") @db.VarChar(120)
-  marketType    String    @default("winner") @map("market_type") @db.VarChar(32)
-  status        String    @default("open") @db.VarChar(20)
-  featured      Boolean   @default(false)
-  sortOrder     Int       @default(0) @map("sort_order")
-  leftLabel     String    @map("left_label") @db.VarChar(80)
-  rightLabel    String    @map("right_label") @db.VarChar(80)
-  leftHref      String?   @map("left_href") @db.VarChar(160)
-  rightHref     String?   @map("right_href") @db.VarChar(160)
-  seedLeftWolo  Int       @default(0) @map("seed_left_wolo")
-  seedRightWolo Int       @default(0) @map("seed_right_wolo")
-  closeAt       DateTime? @map("close_at") @db.Timestamp(6)
-  settledAt     DateTime? @map("settled_at") @db.Timestamp(6)
-  winnerSide    String?   @map("winner_side") @db.VarChar(20)
-  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+  id               Int       @id @default(autoincrement())
+  scheduledMatchId Int?      @unique(map: "uq_bet_markets_scheduled_match_id") @map("scheduled_match_id")
+  slug             String    @unique @db.VarChar(120)
+  title            String    @db.VarChar(160)
+  eventLabel       String    @map("event_label") @db.VarChar(120)
+  marketType       String    @default("winner") @map("market_type") @db.VarChar(32)
+  status           String    @default("open") @db.VarChar(20)
+  featured         Boolean   @default(false)
+  sortOrder        Int       @default(0) @map("sort_order")
+  leftLabel        String    @map("left_label") @db.VarChar(80)
+  rightLabel       String    @map("right_label") @db.VarChar(80)
+  leftHref         String?   @map("left_href") @db.VarChar(160)
+  rightHref        String?   @map("right_href") @db.VarChar(160)
+  seedLeftWolo     Int       @default(0) @map("seed_left_wolo")
+  seedRightWolo    Int       @default(0) @map("seed_right_wolo")
+  closeAt          DateTime? @map("close_at") @db.Timestamp(6)
+  settledAt        DateTime? @map("settled_at") @db.Timestamp(6)
+  winnerSide       String?   @map("winner_side") @db.VarChar(20)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
 
   scheduledMatch ScheduledMatch? @relation(fields: [scheduledMatchId], references: [id], onDelete: SetNull, onUpdate: NoAction)
-  wagers BetWager[]
+  wagers         BetWager[]
 
   @@index([status, featured, sortOrder], map: "ix_bet_markets_status_featured_sort_order")
   @@index([closeAt], map: "ix_bet_markets_close_at")
