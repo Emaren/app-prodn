@@ -1,6 +1,9 @@
 export const AI_CONCIERGE_UID = "aoe2hd_ai_concierge";
 export const AI_CONCIERGE_NAME = "The AI Scribe";
 
+export const AI_GRIMER_UID = "aoe2hd_ai_grimer";
+export const AI_GRIMER_NAME = "Grimer";
+
 function getDefaultLlamaChatGatewayUrl() {
   const defaultPort = process.env.NODE_ENV === "production" ? "3350" : "8006";
   return `http://127.0.0.1:${defaultPort}/api/chat/send`;
@@ -11,6 +14,8 @@ export const LLAMA_CHAT_GATEWAY_URL =
 
 export const AI_VISIBILITY_OPTIONS = ["private", "public"] as const;
 export type AiVisibilityOption = (typeof AI_VISIBILITY_OPTIONS)[number];
+
+export const DEFAULT_AI_VISIBILITY: AiVisibilityOption = "public";
 
 export const AI_MODEL_OPTIONS = [
   {
@@ -32,9 +37,27 @@ export const AI_MODEL_OPTIONS = [
 
 export type AiModelId = (typeof AI_MODEL_OPTIONS)[number]["id"];
 
-export function isAiConciergeUid(uid: string | null | undefined) {
-  return uid === AI_CONCIERGE_UID;
-}
+export const DEFAULT_AI_CONCIERGE_MODEL_ID: AiModelId = "Agent4.1Scribe";
+export const DEFAULT_AI_GRIMER_MODEL_ID: AiModelId = "Agent4.1M";
+
+export const AI_PERSONA_OPTIONS = [
+  {
+    id: "scribe",
+    uid: AI_CONCIERGE_UID,
+    name: AI_CONCIERGE_NAME,
+    requestedModel: DEFAULT_AI_CONCIERGE_MODEL_ID,
+    toneLabel: "premium match scribe",
+  },
+  {
+    id: "grimer",
+    uid: AI_GRIMER_UID,
+    name: AI_GRIMER_NAME,
+    requestedModel: DEFAULT_AI_GRIMER_MODEL_ID,
+    toneLabel: "dark sidecar",
+  },
+] as const;
+
+export type AiPersonaId = (typeof AI_PERSONA_OPTIONS)[number]["id"];
 
 export function isAiModelId(value: string | null | undefined): value is AiModelId {
   return AI_MODEL_OPTIONS.some((option) => option.id === value);
@@ -42,4 +65,28 @@ export function isAiModelId(value: string | null | undefined): value is AiModelI
 
 export function getAiModelLabel(modelId: string | null | undefined) {
   return AI_MODEL_OPTIONS.find((option) => option.id === modelId)?.label || "AI model";
+}
+
+export function isAiPersonaId(value: string | null | undefined): value is AiPersonaId {
+  return AI_PERSONA_OPTIONS.some((option) => option.id === value);
+}
+
+export function getAiPersonaConfig(personaId: AiPersonaId) {
+  return AI_PERSONA_OPTIONS.find((option) => option.id === personaId) ?? AI_PERSONA_OPTIONS[0];
+}
+
+export function getAiPersonaByUid(uid: string | null | undefined) {
+  return AI_PERSONA_OPTIONS.find((option) => option.uid === uid) ?? null;
+}
+
+export function getAiPersonaName(uid: string | null | undefined) {
+  return getAiPersonaByUid(uid)?.name || "AI";
+}
+
+export function isAiPersonaUid(uid: string | null | undefined) {
+  return getAiPersonaByUid(uid) !== null;
+}
+
+export function isAiConciergeUid(uid: string | null | undefined) {
+  return isAiPersonaUid(uid);
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import ContactInboxPanel from "@/components/contact/ContactInboxPanel";
 import ContactRichComposer from "@/components/contact/ContactRichComposer";
@@ -126,6 +126,8 @@ async function requestInbox(targetUid?: string | null, summaryOnly?: boolean) {
 }
 
 export default function ContactEmarenWorkspace() {
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const requestedUser = searchParams?.get("user") ?? null;
   const { uid, isAuthenticated, loading } = useUserAuth();
@@ -151,6 +153,7 @@ export default function ContactEmarenWorkspace() {
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const typingTimerRef = useRef<number | null>(null);
   const typingActiveRef = useRef(false);
+  const selectedTargetUidRef = useRef<string | null>(requestedUser);
 
   const clearAttachment = useCallback(() => {
     setAttachment((current) => {
@@ -161,18 +164,46 @@ export default function ContactEmarenWorkspace() {
     });
   }, []);
 
+  const syncThreadUrl = useCallback(
+    (targetUid: string | null) => {
+      const params = new URLSearchParams(searchParams?.toString() ?? "");
+      if (targetUid) {
+        params.set("user", targetUid);
+      } else {
+        params.delete("user");
+      }
+
+      const nextQuery = params.toString();
+      const nextHref = nextQuery ? `${pathname}?${nextQuery}` : pathname;
+      router.replace(nextHref, { scroll: false });
+    },
+    [pathname, router, searchParams]
+  );
+
+  const applySelectedTargetUid = useCallback(
+    (targetUid: string | null, options?: { syncUrl?: boolean }) => {
+      selectedTargetUidRef.current = targetUid;
+      setSelectedTargetUid(targetUid);
+      if (options?.syncUrl !== false) {
+        syncThreadUrl(targetUid);
+      }
+    },
+    [syncThreadUrl]
+  );
+
   const refreshSummary = useCallback(
     async (targetUid?: string | null, options?: { silent?: boolean }) => {
-      if (!uid) return;
+      if (!uid) return null;
       const silent = Boolean(options?.silent);
+      const nextTargetUid = targetUid ?? selectedTargetUidRef.current ?? undefined;
       if (!silent) {
         setSummaryPending(true);
         setError(null);
       }
       try {
-        const payload = await requestInbox(targetUid ?? selectedTargetUid ?? undefined, true);
+        const payload = await requestInbox(nextTargetUid, true);
         setSummaryData(payload);
-        setSelectedTargetUid(payload.activeTargetUid);
+        applySelectedTargetUid(payload.activeTargetUid, { syncUrl: true });
         return payload;
       } catch (fetchError) {
         setError(fetchError instanceof Error ? fetchError.message : "Inbox failed.");
@@ -183,22 +214,23 @@ export default function ContactEmarenWorkspace() {
         }
       }
     },
-    [selectedTargetUid, uid]
+    [applySelectedTargetUid, uid]
   );
 
   const refreshPanel = useCallback(
     async (targetUid?: string | null, options?: { silent?: boolean }) => {
       if (!uid) return null;
       const silent = Boolean(options?.silent);
+      const nextTargetUid = targetUid ?? selectedTargetUidRef.current ?? undefined;
       if (!silent) {
         setPending(true);
         setError(null);
       }
       try {
-        const payload = await requestInbox(targetUid ?? selectedTargetUid ?? undefined, false);
+        const payload = await requestInbox(nextTargetUid, false);
         setPanelData(payload);
         setSummaryData(payload);
-        setSelectedTargetUid(payload.activeTargetUid);
+        applySelectedTargetUid(payload.activeTargetUid, { syncUrl: true });
         return payload;
       } catch (fetchError) {
         setError(fetchError instanceof Error ? fetchError.message : "Inbox failed.");
@@ -209,20 +241,43 @@ export default function ContactEmarenWorkspace() {
         }
       }
     },
-    [selectedTargetUid, uid]
+    [applySelectedTargetUid, uid]
   );
 
   useEffect(() => {
     if (!uid) return;
     let cancelled = false;
 
+    typingActiveRef.current = false;
+    if (typingTimerRef.current) {
+      window.clearTimeout(typingTimerRef.current);
+      typingTimerRef.current = null;
+    }
+    setBody("");
+    clearAttachment();
+
+    if (requestedUser !== selectedTargetUidRef.current) {
+      selectedTargetUidRef.current = requestedUser;
+      setSelectedTargetUid(requestedUser);
+      setPanelData(null);
+      setSummaryData((current) =>
+        current
+          ? {
+              ...current,
+              activeTargetUid: requestedUser,
+            }
+          : current
+      );
+    }
+
     (async () => {
-      const summaryPayload = await refreshSummary(requestedUser);
+      const initialTargetUid = requestedUser ?? selectedTargetUidRef.current ?? null;
+      const summaryPayload = await refreshSummary(initialTargetUid, { silent: false });
       if (cancelled) return;
 
-      const targetUid = requestedUser ?? summaryPayload?.activeTargetUid ?? null;
+      const targetUid = initialTargetUid ?? summaryPayload?.activeTargetUid ?? null;
       if (targetUid) {
-        await refreshPanel(targetUid);
+        await refreshPanel(targetUid, { silent: false });
       } else if (summaryPayload) {
         setPanelData(summaryPayload);
       }
@@ -231,7 +286,7 @@ export default function ContactEmarenWorkspace() {
     return () => {
       cancelled = true;
     };
-  }, [refreshPanel, refreshSummary, requestedUser, uid]);
+  }, [clearAttachment, refreshPanel, refreshSummary, requestedUser, uid]);
 
   useEffect(() => {
     if (!uid) return;
@@ -342,7 +397,7 @@ export default function ContactEmarenWorkspace() {
 
     setPanelData(payload as ContactInboxPayload);
     setSummaryData(payload as ContactInboxPayload);
-    setSelectedTargetUid((payload as ContactInboxPayload).activeTargetUid);
+    applySelectedTargetUid((payload as ContactInboxPayload).activeTargetUid, { syncUrl: true });
     return payload;
   }
 
@@ -455,7 +510,7 @@ export default function ContactEmarenWorkspace() {
       clearAttachment();
       setPanelData(payload as ContactInboxPayload);
       setSummaryData(payload as ContactInboxPayload);
-      setSelectedTargetUid((payload as ContactInboxPayload).activeTargetUid);
+      applySelectedTargetUid((payload as ContactInboxPayload).activeTargetUid, { syncUrl: true });
     } catch (sendError) {
       setError(sendError instanceof Error ? sendError.message : "Message failed.");
     } finally {
@@ -571,7 +626,7 @@ export default function ContactEmarenWorkspace() {
           setBody("");
           clearAttachment();
           setPanelData(null);
-          setSelectedTargetUid(targetUid);
+          applySelectedTargetUid(targetUid, { syncUrl: true });
           setSummaryData((current) =>
             current
               ? {
@@ -580,7 +635,7 @@ export default function ContactEmarenWorkspace() {
                 }
               : current
           );
-          void refreshPanel(targetUid);
+          void refreshPanel(targetUid, { silent: false });
         }}
         onSend={() => {
           void handleSend();

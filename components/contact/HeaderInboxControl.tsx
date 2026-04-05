@@ -68,22 +68,43 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
   });
   const [reactingMessageId, setReactingMessageId] = useState<number | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const selectedTargetUidRef = useRef<string | null>(null);
 
   useClickOutside(panelRef as React.RefObject<HTMLElement>, () => setOpen(false));
 
-  const refreshSummary = useCallback(async () => {
-    if (!uid) return;
-    try {
-      const payload = await requestInbox(selectedTargetUid, true);
+  const applySelectedTargetUid = useCallback((targetUid: string | null) => {
+    selectedTargetUidRef.current = targetUid;
+    setSelectedTargetUid(targetUid);
+  }, []);
+
+  const applyInboxPayload = useCallback(
+    (payload: ContactInboxPayload) => {
+      setPanelData(payload);
       setSummary(payload);
+      applySelectedTargetUid(payload.activeTargetUid);
+    },
+    [applySelectedTargetUid]
+  );
+
+  const refreshSummary = useCallback(async (targetUid?: string | null) => {
+    if (!uid) return null;
+
+    try {
+      const payload = await requestInbox(targetUid ?? selectedTargetUidRef.current ?? undefined, true);
+      setSummary(payload);
+      if (!selectedTargetUidRef.current || targetUid) {
+        applySelectedTargetUid(payload.activeTargetUid);
+      }
+      return payload;
     } catch (fetchError) {
       console.warn("Failed to refresh inbox summary:", fetchError);
+      return null;
     }
-  }, [selectedTargetUid, uid]);
+  }, [applySelectedTargetUid, uid]);
 
   const refreshPanel = useCallback(
     async (targetUid?: string | null, options?: { silent?: boolean }) => {
-      if (!uid) return;
+      if (!uid) return null;
       const silent = Boolean(options?.silent);
 
       if (!silent) {
@@ -92,46 +113,46 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
       }
 
       try {
-        const payload = await requestInbox(targetUid ?? selectedTargetUid ?? undefined, false);
-        setPanelData(payload);
-        setSummary(payload);
-        setSelectedTargetUid(payload.activeTargetUid);
+        const payload = await requestInbox(targetUid ?? selectedTargetUidRef.current ?? undefined, false);
+        applyInboxPayload(payload);
+        return payload;
       } catch (fetchError) {
         setError(fetchError instanceof Error ? fetchError.message : "Inbox failed.");
+        return null;
       } finally {
         if (!silent) {
           setLoading(false);
         }
       }
     },
-    [selectedTargetUid, uid]
+    [applyInboxPayload, uid]
   );
 
   useEffect(() => {
-    if (!uid) return;
+    if (!uid || open) return;
 
     void refreshSummary();
     const interval = window.setInterval(() => {
       void refreshSummary();
-    }, 15_000);
+    }, 5_000);
 
     return () => {
       window.clearInterval(interval);
     };
-  }, [refreshSummary, uid]);
+  }, [open, refreshSummary, uid]);
 
   useEffect(() => {
     if (!open || !uid) return;
 
-    void refreshPanel(selectedTargetUid);
+    void refreshPanel(selectedTargetUidRef.current);
     const interval = window.setInterval(() => {
-      void refreshPanel(selectedTargetUid, { silent: true });
-    }, 12_000);
+      void refreshPanel(undefined, { silent: true });
+    }, 4_000);
 
     return () => {
       window.clearInterval(interval);
     };
-  }, [open, refreshPanel, selectedTargetUid, uid]);
+  }, [open, refreshPanel, uid]);
 
   const unreadCount = summary?.totalUnreadCount ?? 0;
   const openPageHref = useMemo(() => {
@@ -170,7 +191,7 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
           throw new Error(readDetail(nextPayload) || "Challenge action failed.");
         }
 
-        await refreshPanel(selectedTargetUid);
+        await refreshPanel(selectedTargetUidRef.current);
       } catch (challengeError) {
         setError(
           challengeError instanceof Error ? challengeError.message : "Challenge action failed."
@@ -182,7 +203,7 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
         });
       }
     },
-    [refreshPanel, selectedTargetUid]
+    [refreshPanel]
   );
 
   if (!uid) {
@@ -251,7 +272,7 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
                         "Content-Type": "application/json",
                       },
                       body: JSON.stringify({
-                        targetUid: selectedTargetUid,
+                        targetUid: selectedTargetUidRef.current,
                         ...action,
                       }),
                     });
@@ -264,9 +285,7 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
                       throw new Error(readDetail(payload) || "Inbox action failed.");
                     }
 
-                    setPanelData(payload as ContactInboxPayload);
-                    setSummary(payload as ContactInboxPayload);
-                    setSelectedTargetUid((payload as ContactInboxPayload).activeTargetUid);
+                    applyInboxPayload(payload as ContactInboxPayload);
                   } catch (actionError) {
                     setError(
                       actionError instanceof Error ? actionError.message : "Inbox action failed."
@@ -278,7 +297,7 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
                 }}
                 challengeActionState={challengeActionState}
                 onSelectConversation={(targetUid) => {
-                  setSelectedTargetUid(targetUid);
+                  applySelectedTargetUid(targetUid);
                   void refreshPanel(targetUid);
                 }}
                 onSend={async () => {
@@ -293,7 +312,7 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
                         "Content-Type": "application/json",
                       },
                       body: JSON.stringify({
-                        targetUid: selectedTargetUid,
+                        targetUid: selectedTargetUidRef.current,
                         body,
                       }),
                     });
@@ -307,9 +326,7 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
                     }
 
                     setBody("");
-                    setPanelData(payload as ContactInboxPayload);
-                    setSummary(payload as ContactInboxPayload);
-                    setSelectedTargetUid((payload as ContactInboxPayload).activeTargetUid);
+                    applyInboxPayload(payload as ContactInboxPayload);
                   } catch (sendError) {
                     setError(sendError instanceof Error ? sendError.message : "Message failed.");
                   } finally {
@@ -328,7 +345,7 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
                       },
                       body: JSON.stringify({
                         action: "toggle_reaction",
-                        targetUid: selectedTargetUid,
+                        targetUid: selectedTargetUidRef.current,
                         messageId,
                         emoji,
                       }),
@@ -342,9 +359,7 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
                       throw new Error(readDetail(payload) || "Reaction failed.");
                     }
 
-                    setPanelData(payload as ContactInboxPayload);
-                    setSummary(payload as ContactInboxPayload);
-                    setSelectedTargetUid((payload as ContactInboxPayload).activeTargetUid);
+                    applyInboxPayload(payload as ContactInboxPayload);
                   } catch (reactionError) {
                     setError(
                       reactionError instanceof Error ? reactionError.message : "Reaction failed."

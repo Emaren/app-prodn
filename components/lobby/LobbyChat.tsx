@@ -17,11 +17,7 @@ import {
 import SteamLinkedBadge from "@/components/SteamLinkedBadge";
 import type { ChatRenderItem } from "@/components/lobby/utils";
 import { displayName } from "@/components/lobby/utils";
-import {
-  AI_MODEL_OPTIONS,
-  type AiModelId,
-  type AiVisibilityOption,
-} from "@/lib/aiConciergeConfig";
+import { type AiVisibilityOption } from "@/lib/aiConciergeConfig";
 import AutoGrowTextarea from "@/components/ui/AutoGrowTextarea";
 import { LOBBY_MESSAGE_MAX_CHARS } from "@/lib/lobby";
 import { LOBBY_MESSAGE_REACTIONS } from "@/lib/lobbyReactionConfig";
@@ -45,12 +41,14 @@ type LobbyChatProps = {
   reactingMessageId: number | null;
   aiEnabled: boolean;
   aiVisibility: AiVisibilityOption;
-  aiModel: AiModelId;
+  aiScribeEnabled: boolean;
+  aiGrimerEnabled: boolean;
   onMessageBodyChange: (value: string) => void;
   onSendMessage: () => void;
   onAiEnabledChange: (value: boolean) => void;
   onAiVisibilityChange: (value: AiVisibilityOption) => void;
-  onAiModelChange: (value: AiModelId) => void;
+  onAiScribeEnabledChange: (value: boolean) => void;
+  onAiGrimerEnabledChange: (value: boolean) => void;
   onToggleReaction: (messageId: number, emoji: string) => void;
   onLogin: () => void;
 };
@@ -74,16 +72,19 @@ export function LobbyChat({
   reactingMessageId,
   aiEnabled,
   aiVisibility,
-  aiModel,
+  aiScribeEnabled,
+  aiGrimerEnabled,
   onMessageBodyChange,
   onSendMessage,
   onAiEnabledChange,
   onAiVisibilityChange,
-  onAiModelChange,
+  onAiScribeEnabledChange,
+  onAiGrimerEnabledChange,
   onToggleReaction,
   onLogin,
 }: LobbyChatProps) {
   const tone = getLobbyPresentationTone(themeKey, viewMode);
+  const anyPersonaEnabled = aiScribeEnabled || aiGrimerEnabled;
 
   return (
     <div
@@ -155,65 +156,87 @@ export function LobbyChat({
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 rounded-full bg-[#10192a]/72 px-2 py-2 text-sm text-slate-200 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)]">
-                <select
-                  aria-label="AI model"
-                  value={aiModel}
-                  onChange={(event) => onAiModelChange(event.target.value as AiModelId)}
-                  disabled={!aiEnabled}
-                  className="h-10 min-w-0 flex-1 rounded-full border border-transparent bg-[#0d1524] px-3 text-sm font-medium text-white outline-none shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)] disabled:cursor-not-allowed disabled:opacity-50 sm:max-w-[13rem]"
-                >
-                  {AI_MODEL_OPTIONS.map((option) => (
-                    <option key={option.id} value={option.id}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
+              <div className="rounded-[1.25rem] bg-[#10192a]/72 px-2.5 py-2.5 text-sm text-slate-200 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)]">
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onAiEnabledChange(!aiEnabled)}
+                    aria-pressed={aiEnabled}
+                    aria-label={aiEnabled ? "AI responses enabled" : "AI responses disabled"}
+                    title={aiEnabled ? "AI responses enabled" : "AI responses disabled"}
+                    className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition ${
+                      aiEnabled
+                        ? "border-emerald-300/30 bg-emerald-400/14 text-emerald-100 shadow-[0_0_18px_rgba(52,211,153,0.18)]"
+                        : "border-red-300/24 bg-red-400/10 text-red-100 shadow-[0_0_18px_rgba(248,113,113,0.12)]"
+                    }`}
+                  >
+                    <svg viewBox="0 0 20 20" className="h-4 w-4" fill="none" aria-hidden="true">
+                      <path
+                        d="M10 2.75v5.5"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                        strokeLinecap="round"
+                      />
+                      <path
+                        d="M6.35 5.2a6 6 0 1 0 7.3 0"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={() => onAiEnabledChange(!aiEnabled)}
-                  aria-pressed={aiEnabled}
-                  aria-label={aiEnabled ? "AI responses enabled" : "AI responses disabled"}
-                  title={aiEnabled ? "AI responses enabled" : "AI responses disabled"}
-                  className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition ${
-                    aiEnabled
-                      ? "border-emerald-300/30 bg-emerald-400/14 text-emerald-100 shadow-[0_0_18px_rgba(52,211,153,0.18)]"
-                      : "border-red-300/24 bg-red-400/10 text-red-100 shadow-[0_0_18px_rgba(248,113,113,0.12)]"
-                  }`}
-                >
-                  <svg viewBox="0 0 20 20" className="h-4 w-4" fill="none" aria-hidden="true">
-                    <path
-                      d="M10 2.75v5.5"
-                      stroke="currentColor"
-                      strokeWidth="1.8"
-                      strokeLinecap="round"
-                    />
-                    <path
-                      d="M6.35 5.2a6 6 0 1 0 7.3 0"
-                      stroke="currentColor"
-                      strokeWidth="1.8"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                </button>
+                  <AiPersonaToggle
+                    label="The AI Scribe"
+                    checked={aiScribeEnabled}
+                    disabled={!aiEnabled}
+                    onToggle={() => onAiScribeEnabledChange(!aiScribeEnabled)}
+                  />
 
-                <div className="ml-auto inline-flex shrink-0 rounded-full bg-[#0b1322] p-1 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05)]">
-                  {(["private", "public"] as const).map((option) => (
-                    <button
-                      key={option}
-                      type="button"
-                      onClick={() => onAiVisibilityChange(option)}
-                      disabled={!aiEnabled}
-                      className={`rounded-full px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.16em] transition sm:px-4 ${
-                        aiVisibility === option
-                          ? "bg-amber-300 text-slate-950"
-                          : "text-slate-300 hover:text-white"
-                      } disabled:cursor-not-allowed disabled:opacity-50`}
-                    >
-                      {option === "private" ? "Private" : "Public"}
-                    </button>
-                  ))}
+                  <AiPersonaToggle
+                    label="Grimer"
+                    checked={aiGrimerEnabled}
+                    disabled={!aiEnabled}
+                    onToggle={() => onAiGrimerEnabledChange(!aiGrimerEnabled)}
+                  />
+
+                  <div className="ml-auto inline-flex shrink-0 rounded-full bg-[#0b1322] p-1 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05)] max-sm:w-full max-sm:justify-between">
+                    {(["private", "public"] as const).map((option) => (
+                      <button
+                        key={option}
+                        type="button"
+                        onClick={() => onAiVisibilityChange(option)}
+                        className={`rounded-full px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.16em] transition sm:px-4 ${
+                          aiVisibility === option
+                            ? "bg-amber-300 text-slate-950"
+                            : "text-slate-300 hover:text-white"
+                        }`}
+                      >
+                        {option === "private" ? "Private" : "Public"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mt-2 flex flex-wrap items-center justify-between gap-2 px-1 text-[11px] uppercase tracking-[0.16em] text-slate-500">
+                  <span>
+                    {aiEnabled
+                      ? anyPersonaEnabled
+                        ? aiVisibility === "public"
+                          ? "Lobby reply lane is public"
+                          : "Lobby reply lane is private"
+                        : "AI power is on, but no persona is selected"
+                      : "AI power is off"}
+                  </span>
+                  <span className="text-slate-400">
+                    {aiEnabled && anyPersonaEnabled
+                      ? aiScribeEnabled && aiGrimerEnabled
+                        ? "Scribe + Grimer armed"
+                        : aiScribeEnabled
+                          ? "Scribe armed"
+                          : "Grimer armed"
+                      : "Human-only lane"}
+                  </span>
                 </div>
               </div>
 
@@ -234,7 +257,11 @@ export function LobbyChat({
                     }}
                     placeholder={
                       aiEnabled
-                        ? "Message the lobby. AI can answer in this lane."
+                        ? anyPersonaEnabled
+                          ? aiVisibility === "public"
+                            ? "Message the lobby. Your AI lane is public."
+                            : "Message the lobby. Your AI lane stays private."
+                          : "Message the lobby chat."
                         : "Message the lobby chat."
                     }
                     className={`min-w-0 w-full rounded-[1rem] border px-4 py-3 text-sm leading-6 outline-none ${tone.input}`}
@@ -276,6 +303,44 @@ export function LobbyChat({
   );
 }
 
+function AiPersonaToggle({
+  label,
+  checked,
+  disabled,
+  onToggle,
+}: {
+  label: string;
+  checked: boolean;
+  disabled: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      disabled={disabled}
+      aria-pressed={checked}
+      className={`inline-flex h-10 min-w-0 items-center gap-2 rounded-full border px-3.5 text-left text-[11px] font-medium uppercase tracking-[0.16em] transition sm:px-4 ${
+        checked
+          ? "border-cyan-300/24 bg-cyan-400/12 text-cyan-50 shadow-[inset_0_0_0_1px_rgba(34,211,238,0.12)]"
+          : "border-white/10 bg-[#0d1524] text-slate-300 hover:border-white/18 hover:text-white"
+      } disabled:cursor-not-allowed disabled:opacity-50`}
+    >
+      <span
+        aria-hidden="true"
+        className={`flex h-4 w-4 items-center justify-center rounded-[0.32rem] border text-[10px] leading-none transition ${
+          checked
+            ? "border-cyan-200/50 bg-cyan-300/20 text-cyan-50"
+            : "border-white/15 bg-white/[0.03] text-transparent"
+        }`}
+      >
+        ✓
+      </span>
+      <span className="truncate">{label}</span>
+    </button>
+  );
+}
+
 function LobbyMessageCard({
   item,
   tone,
@@ -296,6 +361,8 @@ function LobbyMessageCard({
   const longPressTriggeredRef = useRef(false);
   const cardRef = useRef<HTMLDivElement | null>(null);
   const isAi = item.message.user.isAi;
+  const aiLabel =
+    displayName(item.message.user.inGameName, item.message.user.steamPersonaName) || "The AI Scribe";
 
   useEffect(() => {
     if (!pickerPinnedOpen || typeof document === "undefined") {
@@ -419,7 +486,7 @@ function LobbyMessageCard({
       <div className="mt-2 flex flex-wrap gap-2">
         {isAi ? (
           <MiniIdentityPill toneClassName="border-cyan-400/20 bg-cyan-400/10 text-cyan-50">
-            The AI Scribe
+            {aiLabel}
           </MiniIdentityPill>
         ) : item.message.user.verificationLevel > 0 ? (
           <SteamLinkedBadge compact />
@@ -518,9 +585,7 @@ function ChatDateDivider({
   return (
     <div className="flex items-center gap-3 px-1 py-2">
       <div className={`h-px flex-1 border-t ${dividerClassName}`} />
-      <div className="text-[10px] font-medium uppercase tracking-[0.28em] text-slate-500">
-        {label}
-      </div>
+      <span className="text-[11px] uppercase tracking-[0.18em] text-slate-500">{label}</span>
       <div className={`h-px flex-1 border-t ${dividerClassName}`} />
     </div>
   );
@@ -534,19 +599,25 @@ function MiniIdentityPill({
   toneClassName: string;
 }) {
   return (
-    <span className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${toneClassName}`}>
+    <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.16em] ${toneClassName}`}>
       {children}
     </span>
   );
 }
 
-function formatReactionTooltip(reaction: {
-  users: Array<{ displayName: string }>;
-  anonymousCount: number;
-}) {
-  const named = reaction.users.map((user) => user.displayName);
-  if (reaction.anonymousCount > 0) {
-    named.push(`${reaction.anonymousCount} guest${reaction.anonymousCount === 1 ? "" : "s"}`);
+function formatReactionTooltip(reaction: Extract<ChatRenderItem, { type: "message" }>["message"]["reactions"][number]) {
+  const named = reaction.users.map((user) => user.displayName).filter(Boolean);
+  const fragments: string[] = [];
+
+  if (named.length > 0) {
+    fragments.push(named.join(", "));
   }
-  return named.join(", ");
+
+  if (reaction.anonymousCount > 0) {
+    fragments.push(
+      reaction.anonymousCount === 1 ? "1 anonymous player" : `${reaction.anonymousCount} anonymous players`
+    );
+  }
+
+  return fragments.join(" • ");
 }

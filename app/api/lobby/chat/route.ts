@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requestAiConciergeReply, ensureAiConciergeUser } from "@/lib/aiConcierge";
+import {
+  ensureAiPersonaUser,
+  requestAiConciergeReply,
+} from "@/lib/aiConcierge";
 import {
   AI_VISIBILITY_OPTIONS,
-  type AiVisibilityOption,
+  DEFAULT_AI_VISIBILITY,
+  getAiPersonaConfig,
   isAiModelId,
+  type AiPersonaId,
+  type AiVisibilityOption,
 } from "@/lib/aiConciergeConfig";
 import { ensureLobbyRoom, getLobbyMessages } from "@/lib/communityStore";
 import { getOrCreateConversationByUsers } from "@/lib/contactInbox";
@@ -14,6 +20,44 @@ import { resolveRequestUid } from "@/lib/requestIdentity";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+function parseAiVisibility(value: unknown): AiVisibilityOption {
+  return typeof value === "string" && AI_VISIBILITY_OPTIONS.includes(value as AiVisibilityOption)
+    ? (value as AiVisibilityOption)
+    : DEFAULT_AI_VISIBILITY;
+}
+
+function parseSelectedPersonaIds(body: Record<string, unknown>, aiEnabled: boolean): AiPersonaId[] {
+  if (!aiEnabled) {
+    return [];
+  }
+
+  const personaIds: AiPersonaId[] = [];
+
+  if (body.aiScribeEnabled !== false) {
+    personaIds.push("scribe");
+  }
+
+  if (body.aiGrimerEnabled !== false) {
+    personaIds.push("grimer");
+  }
+
+  return personaIds;
+}
+
+function buildPrivateNotice(personaIds: AiPersonaId[]) {
+  if (personaIds.length === 0) {
+    return "Message sent privately.";
+  }
+
+  if (personaIds.length === 1) {
+    return `Message sent privately to ${getAiPersonaConfig(personaIds[0]).name}.`;
+  }
+
+  const personaNames = personaIds.map((personaId) => getAiPersonaConfig(personaId).name);
+  const lastName = personaNames.pop();
+  return `Message sent privately to ${personaNames.join(", ")} and ${lastName}.`;
+}
 
 export async function POST(request: NextRequest) {
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
@@ -29,13 +73,17 @@ export async function POST(request: NextRequest) {
   }
 
   const aiEnabled = body.aiEnabled !== false;
-  const aiVisibility =
-    typeof body.aiVisibility === "string" &&
-    AI_VISIBILITY_OPTIONS.includes(body.aiVisibility as AiVisibilityOption)
-      ? (body.aiVisibility as AiVisibilityOption)
-      : "private";
+  const aiVisibility = parseAiVisibility(body.aiVisibility);
   const requestedAiModel =
     typeof body.aiModel === "string" && isAiModelId(body.aiModel) ? body.aiModel : null;
+
+  const selectedPersonaIds = parseSelectedPersonaIds(body, aiEnabled);
+  const privateThreadPersonaIds: AiPersonaId[] =
+    aiVisibility === "private"
+      ? selectedPersonaIds.length > 0
+        ? selectedPersonaIds
+        : ["scribe"]
+      : selectedPersonaIds;
 
   const prisma = getPrisma();
   const user = await prisma.user.findUnique({
@@ -69,37 +117,58 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ detail: "Chat room not found." }, { status: 404 });
   }
 
-  const recentMessage = await prisma.chatMessage.findFirst({
-    where: {
-      roomId: room.id,
-      userId: user.id,
-    },
-    orderBy: { createdAt: "desc" },
-    select: { createdAt: true },
-  });
+  if (aiVisibility === "public") {
+    const recentMessage = await prisma.chatMessage.findFirst({
+      where: {
+        roomId: room.id,
+        userId: user.id,
+      },
+      orderBy: { createdAt: "desc" },
+      select: { createdAt: true },
+    });
 
-  if (
-    recentMessage &&
-    Date.now() - recentMessage.createdAt.getTime() < 4_000
-  ) {
-    return NextResponse.json(
-      { detail: "You are sending messages too quickly. Wait a few seconds." },
-      { status: 429 }
-    );
+    if (recentMessage && Date.now() - recentMessage.createdAt.getTime() < 4_000) {
+      return NextResponse.json(
+        { detail: "You are sending messages too quickly. Wait a few seconds." },
+        { status: 429 }
+      );
+    }
+  } else {
+    const recentDirectMessage = await prisma.directMessage.findFirst({
+      where: {
+        senderUserId: user.id,
+      },
+      orderBy: { createdAt: "desc" },
+      select: { createdAt: true },
+    });
+
+    if (recentDirectMessage && Date.now() - recentDirectMessage.createdAt.getTime() < 4_000) {
+      return NextResponse.json(
+        { detail: "You are sending messages too quickly. Wait a few seconds." },
+        { status: 429 }
+      );
+    }
   }
 
-  await prisma.chatMessage.create({
-    data: {
-      roomId: room.id,
-      userId: user.id,
-      body: messageBody,
-    },
-  });
+  if (aiVisibility === "public") {
+    await prisma.chatMessage.create({
+      data: {
+        roomId: room.id,
+        userId: user.id,
+        body: messageBody,
+      },
+    });
+  }
 
-  let aiWarning: string | null = null;
+  const notices: string[] = [];
+  const warnings: string[] = [];
 
-  if (aiEnabled) {
-    const aiUser = await ensureAiConciergeUser(prisma);
+  if (aiVisibility === "private") {
+    notices.push(buildPrivateNotice(privateThreadPersonaIds));
+  }
+
+  for (const personaId of privateThreadPersonaIds) {
+    const aiUser = await ensureAiPersonaUser(prisma, personaId);
     const aiConversation = await getOrCreateConversationByUsers(prisma, user.id, aiUser.id);
     const priorAiThreadMessages = await prisma.directMessage.findMany({
       where: {
@@ -121,6 +190,11 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    const shouldGenerateReply = aiEnabled && selectedPersonaIds.includes(personaId);
+    if (!shouldGenerateReply) {
+      continue;
+    }
+
     try {
       const aiReply = await requestAiConciergeReply({
         prisma,
@@ -133,6 +207,7 @@ export async function POST(request: NextRequest) {
         requestedModel: requestedAiModel,
         visibility: aiVisibility,
         roomSlug: room.slug,
+        personaId,
         conversationHistory: priorAiThreadMessages
           .slice()
           .reverse()
@@ -157,7 +232,7 @@ export async function POST(request: NextRequest) {
           data: {
             roomId: room.id,
             userId: aiUser.id,
-            body: normalizeChatBody(aiReply.body) || "The AI Scribe checked in.",
+            body: normalizeChatBody(aiReply.body) || `${aiReply.personaName} checked in.`,
           },
           select: { id: true },
         });
@@ -170,14 +245,15 @@ export async function POST(request: NextRequest) {
         });
       }
     } catch (aiError) {
-      console.warn("Lobby AI scribe reply failed:", aiError);
-      aiWarning = "The AI Scribe is offline right now. Your message still posted.";
+      const persona = getAiPersonaConfig(personaId);
+      console.warn(`Lobby ${persona.name} reply failed:`, aiError);
+      warnings.push(`${persona.name} is offline right now. Your message still posted.`);
 
       await prisma.directMessage.create({
         data: {
           conversationId: aiConversation.id,
           senderUserId: aiUser.id,
-          body: "The AI Scribe is offline for a moment. Try again shortly.",
+          body: `${persona.name} is offline for a moment. Try again shortly.`,
         },
       });
     }
@@ -187,5 +263,10 @@ export async function POST(request: NextRequest) {
     uid,
     guestSessionId: readGuestReactionSessionIdFromRequest(request),
   });
-  return NextResponse.json({ ok: true, messages, aiWarning });
+
+  return NextResponse.json({
+    ok: true,
+    messages,
+    aiWarning: [...notices, ...warnings].join(" ").trim() || null,
+  });
 }

@@ -333,24 +333,24 @@ function ChallengeThreadStrip({
 
   return (
     <div
-      className={`rounded-[1.35rem] border ${compact ? "mt-3 px-3 py-3" : "mt-4 px-4 py-4"} ${
+      className={`rounded-[1.25rem] border ${compact ? "mt-3 px-3 py-3" : "mt-3 px-3.5 py-3"} ${
         tone.shell
       }`}
     >
-      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+      <div className="grid gap-2.5 sm:grid-cols-[minmax(0,1fr)_auto]">
         <div className="min-w-0">
-          <div className={`text-[11px] uppercase tracking-[0.28em] ${tone.eyebrow}`}>
+          <div className={`text-[10px] uppercase tracking-[0.26em] ${tone.eyebrow}`}>
             Challenge runway
           </div>
-          <div className="mt-2 text-sm font-semibold text-white">
+          <div className="mt-1.5 text-sm font-semibold text-white">
             {challenge.challenger.name} vs {challenge.challenged.name}
           </div>
-          {!compact && challenge.challengeNote ? (
-            <div className="mt-2 line-clamp-2 text-xs text-slate-300">
+          {challenge.challengeNote ? (
+            <div className="mt-1.5 line-clamp-1 text-xs text-slate-300">
               {challenge.challengeNote}
             </div>
           ) : null}
-          <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-slate-200">
+          <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] text-slate-200">
             <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1">
               {new Date(challenge.scheduledAt).toLocaleString([], {
                 month: "short",
@@ -367,16 +367,16 @@ function ChallengeThreadStrip({
           </div>
         </div>
 
-        <div className="rounded-[1.1rem] border border-white/10 bg-slate-950/25 px-3 py-2 text-left sm:text-right">
-          <div className={`inline-flex rounded-full border px-3 py-1 text-[11px] ${tone.badge}`}>
+        <div className="rounded-[1rem] border border-white/10 bg-slate-950/25 px-3 py-2 text-left sm:text-right">
+          <div className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] ${tone.badge}`}>
             {status.status}
           </div>
-          <div className="mt-2 text-sm font-semibold text-white/95">{status.status}</div>
+          <div className="mt-1.5 text-sm font-semibold text-white/95">{status.status}</div>
           <div className="mt-1 text-xs text-slate-300">{status.detail}</div>
         </div>
       </div>
 
-      <div className={`flex flex-wrap gap-2 ${compact ? "mt-3" : "mt-4 justify-end"}`}>
+      <div className={`flex flex-wrap gap-2 ${compact ? "mt-3" : "mt-3 justify-end"}`}>
         {canAccept ? (
           <button
             type="button"
@@ -436,7 +436,7 @@ function ChallengeThreadStrip({
       {canReschedule && showRescheduleForm ? (
         <form
           onSubmit={handleReschedule}
-          className="mt-3 space-y-3 rounded-[1.1rem] border border-white/10 bg-slate-950/35 p-3"
+          className="mt-3 space-y-3 rounded-[1rem] border border-white/10 bg-slate-950/35 p-3"
         >
           <label className="block space-y-2">
             <span className="text-[11px] uppercase tracking-[0.2em] text-slate-300">New Start</span>
@@ -1108,7 +1108,7 @@ export default function ContactInboxPanel({
   const showConversationRail = Boolean(mode === "page" && hasConversationChoices);
   const showConversationChips = !showConversationRail && hasConversationChoices;
   const unreadCount = data?.totalUnreadCount ?? 0;
-  const heading = data?.viewer.isAdmin ? "Direct Threads" : counterpart?.displayName || "Private Thread";
+  const heading = counterpart?.displayName || (data?.viewer.isAdmin ? "Private inbox" : "Private Thread");
   const typingLabel =
     data?.conversation?.counterpartTyping && counterpart
       ? `${counterpart.displayName} is typing…`
@@ -1173,7 +1173,7 @@ export default function ContactInboxPanel({
       }`}
       style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.07), 0 32px 120px rgba(0,0,0,0.45)" }}
     >
-      <div className={`shrink-0 border-b px-4 py-4 ${chromeClassName}`}>
+      <div className={`shrink-0 border-b px-4 py-3 ${chromeClassName}`}>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="text-[11px] uppercase tracking-[0.32em] text-amber-200/70">
