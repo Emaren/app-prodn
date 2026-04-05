@@ -320,17 +320,17 @@ function AiPersonaToggle({
       onClick={onToggle}
       disabled={disabled}
       aria-pressed={checked}
-      className={`inline-flex h-10 min-w-0 items-center gap-2 rounded-full border px-3.5 text-left text-[11px] font-medium uppercase tracking-[0.16em] transition sm:px-4 ${
+      className={`inline-flex h-10 min-w-0 items-center gap-2 rounded-full px-3.5 text-left text-[11px] font-medium uppercase tracking-[0.16em] transition sm:px-4 ${
         checked
-          ? "border-cyan-300/16 bg-cyan-400/10 text-cyan-50"
-          : "border-white/[0.06] bg-[#0d1524]/90 text-slate-300 hover:border-white/[0.10] hover:bg-[#10192a] hover:text-white"
+          ? "border border-transparent bg-[#132338] text-cyan-50 shadow-[inset_0_0_0_1px_rgba(34,211,238,0.12)]"
+          : "border border-white/[0.05] bg-[#0d1524]/90 text-slate-300 hover:border-white/[0.08] hover:bg-[#10192a] hover:text-white"
       } disabled:cursor-not-allowed disabled:opacity-50`}
     >
       <span
         aria-hidden="true"
         className={`flex h-4 w-4 items-center justify-center rounded-[0.32rem] border text-[10px] leading-none transition ${
           checked
-            ? "border-cyan-200/35 bg-cyan-300/16 text-cyan-50"
+            ? "border-cyan-200/30 bg-cyan-300/14 text-cyan-50"
             : "border-white/10 bg-white/[0.02] text-transparent"
         }`}
       >
@@ -340,7 +340,6 @@ function AiPersonaToggle({
     </button>
   );
 }
-
 
 function LobbyMessageCard({
   item,
