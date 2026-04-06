@@ -1,6 +1,8 @@
 import type { PrismaClient } from "@/lib/generated/prisma";
 import { normalizePublicPlayerName } from "@/lib/publicPlayers";
 
+type PendingWoloClaimDb = Pick<PrismaClient, "pendingWoloClaim">;
+
 export type PendingWoloClaimSummary = {
   pendingAmountWolo: number;
   pendingCount: number;
@@ -64,7 +66,7 @@ function mergeSummary(
 }
 
 export async function loadPendingWoloClaimSummariesByName(
-  prisma: PrismaClient,
+  prisma: PendingWoloClaimDb,
   names: Array<string | null | undefined>
 ) {
   const keys = uniqueNameKeys(names);
@@ -99,7 +101,7 @@ export async function loadPendingWoloClaimSummariesByName(
 }
 
 export async function loadPendingWoloClaimSummaryForUser(
-  prisma: PrismaClient,
+  prisma: PendingWoloClaimDb,
   user: PendingWoloClaimLookupUser
 ): Promise<PendingWoloClaimSummary> {
   const keys = uniqueNameKeys([user.inGameName, user.steamPersonaName]);
@@ -134,7 +136,7 @@ export async function loadPendingWoloClaimSummaryForUser(
 }
 
 export async function createPendingWoloClaim(
-  prisma: PrismaClient,
+  prisma: PendingWoloClaimDb,
   input: {
     playerName: string;
     displayPlayerName?: string | null;
@@ -199,7 +201,7 @@ export async function createPendingWoloClaim(
 }
 
 export async function claimPendingWoloClaimsForUser(
-  prisma: PrismaClient,
+  prisma: PendingWoloClaimDb,
   user: PendingWoloClaimLookupUser
 ) {
   const keys = uniqueNameKeys([user.inGameName, user.steamPersonaName]);
@@ -252,7 +254,7 @@ export async function claimPendingWoloClaimsForUser(
 }
 
 export async function rescindPendingWoloClaim(
-  prisma: PrismaClient,
+  prisma: PendingWoloClaimDb,
   input: {
     claimId: number;
     adminUserId?: number | null;
@@ -271,7 +273,7 @@ export async function rescindPendingWoloClaim(
 }
 
 export async function loadPendingWoloClaimsForAdmin(
-  prisma: PrismaClient,
+  prisma: PendingWoloClaimDb,
   options?: {
     status?: "pending" | "claimed" | "rescinded";
     take?: number;

@@ -469,7 +469,7 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
             payoutWolo,
             settledAt: settledAt.toISOString(),
             outcome: nextStatus,
-            winnerSide,
+            winnerSide: winningSide,
           },
           dedupeWithinSeconds: 5,
         });
