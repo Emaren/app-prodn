@@ -3,10 +3,12 @@ import {
   loadScheduledMatchTilesForLiveBoard,
   type ScheduledMatchTile,
 } from "@/lib/challenges";
+import { getFeaturedTournament } from "@/lib/communityStore";
 import { parsePlayers, readMapName } from "@/lib/gameStatsView";
 import { loadLiveSessionSnapshot } from "@/lib/liveSessionSnapshot";
 import { loadLobbyLeaderboard } from "@/lib/lobbyLeaderboard";
-import { getFeaturedTournament } from "@/lib/communityStore";
+import { createPendingWoloClaim } from "@/lib/pendingWoloClaims";
+import { recordUserActivity } from "@/lib/userExperience";
 
 export type BetSide = "left" | "right";
 export type BetStatus = "open" | "closing" | "live" | "settled";
@@ -335,6 +337,23 @@ function buildChallengeMarketSeeds(
   });
 }
 
+function claimPlayerNameForUser(user: {
+  uid: string;
+  inGameName: string | null;
+  steamPersonaName: string | null;
+}) {
+  return normalizeName(user.inGameName) || normalizeName(user.steamPersonaName) || user.uid;
+}
+
+function buildPendingClaimNote(
+  market: { title: string; eventLabel: string },
+  outcome: "won" | "void",
+  payoutWolo: number
+) {
+  const reason = outcome === "void" ? "Void refund" : "Settled payout";
+  return `${reason} · ${market.title} · ${market.eventLabel} · ${payoutWolo} WOLO`;
+}
+
 async function settleResolvedMarketWagers(prisma: PrismaClient) {
   const markets = await prisma.betMarket.findMany({
     where: {
@@ -347,6 +366,8 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
     },
     select: {
       id: true,
+      title: true,
+      eventLabel: true,
       winnerSide: true,
       seedLeftWolo: true,
       seedRightWolo: true,
@@ -355,8 +376,17 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
         where: { status: "active" },
         select: {
           id: true,
+          userId: true,
           side: true,
           amountWolo: true,
+          user: {
+            select: {
+              id: true,
+              uid: true,
+              inGameName: true,
+              steamPersonaName: true,
+            },
+          },
         },
       },
     },
@@ -386,51 +416,94 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
               .reduce((sum, wager) => sum + wager.amountWolo, 0)
           : 0;
 
-    await prisma.$transaction(
-      market.wagers.map((wager) => {
+    await prisma.$transaction(async (tx) => {
+      for (const wager of market.wagers) {
+        let nextStatus: "won" | "lost" | "void";
+        let payoutWolo: number;
+
         if (!winningSide) {
-          return prisma.betWager.update({
-            where: { id: wager.id },
-            data: {
-              status: "void",
-              payoutWolo: wager.amountWolo,
-              settledAt,
-            },
-          });
-        }
-
-        if (wager.side !== winningSide) {
-          return prisma.betWager.update({
-            where: { id: wager.id },
-            data: {
-              status: "lost",
-              payoutWolo: 0,
-              settledAt,
-            },
-          });
-        }
-
-        const payoutWolo =
-          winningUserPool > 0
-            ? Math.max(
-                wager.amountWolo,
-                Math.round(
-                  wager.amountWolo +
-                    losingSidePool * (wager.amountWolo / winningUserPool)
+          nextStatus = "void";
+          payoutWolo = wager.amountWolo;
+        } else if (wager.side !== winningSide) {
+          nextStatus = "lost";
+          payoutWolo = 0;
+        } else {
+          nextStatus = "won";
+          payoutWolo =
+            winningUserPool > 0
+              ? Math.max(
+                  wager.amountWolo,
+                  Math.round(
+                    wager.amountWolo +
+                      losingSidePool * (wager.amountWolo / winningUserPool)
+                  )
                 )
-              )
-            : wager.amountWolo;
+              : wager.amountWolo;
+        }
 
-        return prisma.betWager.update({
+        await tx.betWager.update({
           where: { id: wager.id },
           data: {
-            status: "won",
+            status: nextStatus,
             payoutWolo,
             settledAt,
           },
         });
-      })
-    );
+
+        await recordUserActivity(tx, {
+          userId: wager.userId,
+          type:
+            nextStatus === "won"
+              ? "bet_wager_won"
+              : nextStatus === "void"
+                ? "bet_wager_voided"
+                : "bet_wager_lost",
+          path: "/bets",
+          label: market.title,
+          metadata: {
+            marketId: market.id,
+            wagerId: wager.id,
+            eventLabel: market.eventLabel,
+            side: wager.side,
+            amountWolo: wager.amountWolo,
+            payoutWolo,
+            settledAt: settledAt.toISOString(),
+            outcome: nextStatus,
+            winnerSide,
+          },
+          dedupeWithinSeconds: 5,
+        });
+
+        if (nextStatus === "lost" || payoutWolo < 1) {
+          continue;
+        }
+
+        const claimPlayerName = claimPlayerNameForUser(wager.user);
+        await createPendingWoloClaim(tx, {
+          playerName: claimPlayerName,
+          displayPlayerName: claimPlayerName,
+          amountWolo: payoutWolo,
+          sourceMarketId: market.id,
+          note: buildPendingClaimNote(market, nextStatus, payoutWolo),
+        });
+
+        await recordUserActivity(tx, {
+          userId: wager.userId,
+          type: "pending_wolo_claim_created",
+          path: "/bets",
+          label: market.title,
+          metadata: {
+            marketId: market.id,
+            wagerId: wager.id,
+            eventLabel: market.eventLabel,
+            amountWolo: payoutWolo,
+            claimReason: nextStatus === "void" ? "bet_refund" : "bet_payout",
+            settledAt: settledAt.toISOString(),
+          },
+          dedupeWithinSeconds: 5,
+        });
+      }
+    });
   }
 }
 
