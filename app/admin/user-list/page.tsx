@@ -1,7 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { BellDot, Eye, Gift, MessageSquareMore, Palette, Shield, Sparkles } from "lucide-react";
+import {
+  BellDot,
+  Coins,
+  Gift,
+  MessageSquareMore,
+  Palette,
+  ScrollText,
+  Shield,
+  Sparkles,
+  Swords,
+  Ticket,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import CommunityBadgePill from "@/components/contact/CommunityBadgePill";
@@ -28,6 +39,20 @@ type GiftRow = {
   createdAt: string;
 };
 
+type ClaimRow = {
+  id: number;
+  displayPlayerName: string;
+  normalizedPlayerName: string;
+  amountWolo: number;
+  status: string;
+  note: string | null;
+  createdAt: string;
+  claimedAt: string | null;
+  rescindedAt: string | null;
+  sourceMarketId: number | null;
+  sourceGameStatsId: number | null;
+};
+
 type Appearance = {
   themeKey: string;
   viewMode: string;
@@ -41,6 +66,32 @@ type Activity = {
   label: string | null;
   metadata: Record<string, unknown> | null;
   createdAt: string;
+};
+
+type ScheduledMatchSummary = {
+  id: number;
+  status: string;
+  role: "challenger" | "challenged";
+  opponentName: string;
+  opponentUid: string;
+  scheduledAt: string;
+  activityAt: string;
+  linkedMapName: string | null;
+  linkedWinner: string | null;
+};
+
+type BetLedgerRow = {
+  id: number;
+  marketId: number;
+  marketTitle: string;
+  eventLabel: string;
+  side: string;
+  amountWolo: number;
+  payoutWolo: number | null;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  settledAt: string | null;
 };
 
 type AdminUserRow = {
@@ -64,8 +115,26 @@ type AdminUserRow = {
   adminLastInboxReadAt: string | null;
   appearance: Appearance | null;
   recentActions: Activity[];
+  recentActionsTotalCount: number;
+  lastActivityAt: string | null;
   pendingBadgeCount: number;
   pendingGiftCount: number;
+  pendingWoloClaims: ClaimRow[];
+  pendingWoloClaimCount: number;
+  pendingWoloClaimAmount: number;
+  claimedWoloClaims: ClaimRow[];
+  claimedWoloClaimCount: number;
+  claimedWoloClaimAmount: number;
+  rescindedWoloClaims: ClaimRow[];
+  scheduledMatches: ScheduledMatchSummary[];
+  betLedger: BetLedgerRow[];
+  betStats: {
+    activeCount: number;
+    wonCount: number;
+    lostCount: number;
+    stakedWolo: number;
+    paidOutWolo: number;
+  };
 };
 
 type AdminOverview = {
@@ -74,6 +143,11 @@ type AdminOverview = {
   unreadForAdmin: number;
   unreadForUsers: number;
   pendingHonors: number;
+  pendingWoloClaims: number;
+  pendingWoloClaimAmount: number;
+  claimedWoloClaims: number;
+  claimedWoloClaimAmount: number;
+  totalActionEvents: number;
   themeBreakdown: Array<{ themeKey: string; count: number }>;
   viewBreakdown: Array<{ viewMode: string; count: number }>;
 };
@@ -83,11 +157,18 @@ type AdminUsersPayload = {
   overview: AdminOverview;
 };
 
+type ActivityHistoryPayload = {
+  items: Activity[];
+  total: number;
+  nextOffset: number | null;
+};
+
 type DraftState = {
   customBadge: string;
   giftKind: string;
   giftAmount: string;
   giftNote: string;
+  rescindNote: string;
 };
 
 const EMPTY_DRAFT: DraftState = {
@@ -95,7 +176,11 @@ const EMPTY_DRAFT: DraftState = {
   giftKind: "WOLO",
   giftAmount: "",
   giftNote: "",
+  rescindNote: "",
 };
+
+const INITIAL_ACTIVITY_BATCH = 20;
+const PERSONA_BOTTOM_ORDER = ["emaren", "the ai scribe", "grimer"] as const;
 
 function formatDate(value: string | null) {
   if (!value) return "—";
@@ -129,11 +214,14 @@ function findLatestPageView(actions: Activity[]) {
 }
 
 function statusTone(status: string) {
-  if (status === "accepted") {
+  if (status === "accepted" || status === "claimed" || status === "won") {
     return "border-emerald-400/30 bg-emerald-500/10 text-emerald-100";
   }
-  if (status === "declined") {
+  if (status === "declined" || status === "rescinded" || status === "lost") {
     return "border-red-400/30 bg-red-500/10 text-red-100";
+  }
+  if (status === "completed") {
+    return "border-sky-300/30 bg-sky-400/10 text-sky-100";
   }
   return "border-amber-300/30 bg-amber-400/10 text-amber-100";
 }
@@ -142,6 +230,28 @@ function unreadTone(count: number) {
   return count > 0
     ? "border-red-400/30 bg-red-500/12 text-red-100"
     : "border-white/10 bg-white/5 text-slate-400";
+}
+
+function formatWolo(value: number) {
+  return new Intl.NumberFormat().format(value);
+}
+
+function normalizedDisplayName(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function pinnedBottomRank(user: AdminUserRow) {
+  const name = normalizedDisplayName(user.displayName);
+  const directMatch = PERSONA_BOTTOM_ORDER.indexOf(name as (typeof PERSONA_BOTTOM_ORDER)[number]);
+  if (directMatch >= 0) {
+    return directMatch + 1;
+  }
+
+  if (user.isAdmin) {
+    return 1;
+  }
+
+  return 0;
 }
 
 function StatCard({
@@ -167,6 +277,9 @@ export default function UsersPage() {
   const [error, setError] = useState("");
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, DraftState>>({});
+  const [activityByUid, setActivityByUid] = useState<Record<string, Activity[]>>({});
+  const [activityTotals, setActivityTotals] = useState<Record<string, number>>({});
+  const [activityNextOffsets, setActivityNextOffsets] = useState<Record<string, number | null>>({});
 
   const getDraft = useCallback(
     (uid: string) => drafts[uid] ?? EMPTY_DRAFT,
@@ -190,6 +303,22 @@ export default function UsersPage() {
       if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
       const data = (await res.json()) as AdminUsersPayload;
       setPayload(data);
+      setActivityByUid(
+        Object.fromEntries(data.users.map((user) => [user.uid, user.recentActions]))
+      );
+      setActivityTotals(
+        Object.fromEntries(data.users.map((user) => [user.uid, user.recentActionsTotalCount]))
+      );
+      setActivityNextOffsets(
+        Object.fromEntries(
+          data.users.map((user) => [
+            user.uid,
+            user.recentActions.length < user.recentActionsTotalCount
+              ? user.recentActions.length
+              : null,
+          ])
+        )
+      );
     } catch (err) {
       console.error("Failed to fetch users:", err);
       setError(err instanceof Error ? err.message : "Unknown error");
@@ -213,6 +342,24 @@ export default function UsersPage() {
   const sortedUsers = useMemo(() => {
     const users = payload?.users ?? [];
     return [...users].sort((left, right) => {
+      const leftPinned = pinnedBottomRank(left);
+      const rightPinned = pinnedBottomRank(right);
+      if (leftPinned !== rightPinned) {
+        if (leftPinned === 0) return -1;
+        if (rightPinned === 0) return 1;
+        return leftPinned - rightPinned;
+      }
+
+      const leftActivity = left.lastActivityAt ? new Date(left.lastActivityAt).getTime() : 0;
+      const rightActivity = right.lastActivityAt ? new Date(right.lastActivityAt).getTime() : 0;
+      if (leftActivity !== rightActivity) {
+        return rightActivity - leftActivity;
+      }
+
+      if (left.recentActionsTotalCount !== right.recentActionsTotalCount) {
+        return right.recentActionsTotalCount - left.recentActionsTotalCount;
+      }
+
       if (left.userUnreadCount !== right.userUnreadCount) {
         return right.userUnreadCount - left.userUnreadCount;
       }
@@ -226,6 +373,41 @@ export default function UsersPage() {
       return rightSeen - leftSeen;
     });
   }, [payload?.users]);
+
+  async function loadNextActions(uid: string) {
+    const offset = activityNextOffsets[uid];
+    if (offset == null) return;
+
+    setBusyKey(`${uid}:next_actions`);
+    try {
+      const response = await fetch(
+        `/api/admin/users/${encodeURIComponent(uid)}/activity?offset=${offset}&take=50`,
+        { cache: "no-store" }
+      );
+      if (!response.ok) {
+        throw new Error(`Activity history failed: ${response.status}`);
+      }
+
+      const payload = (await response.json()) as ActivityHistoryPayload;
+      setActivityByUid((current) => ({
+        ...current,
+        [uid]: [...(current[uid] ?? []), ...payload.items],
+      }));
+      setActivityTotals((current) => ({
+        ...current,
+        [uid]: payload.total,
+      }));
+      setActivityNextOffsets((current) => ({
+        ...current,
+        [uid]: payload.nextOffset,
+      }));
+    } catch (historyError) {
+      console.error("Failed to load activity history:", historyError);
+      alert(historyError instanceof Error ? historyError.message : "Activity history failed.");
+    } finally {
+      setBusyKey(null);
+    }
+  }
 
   async function runCommunityAction(uid: string, body: Record<string, unknown>) {
     setBusyKey(`${uid}:${String(body.action)}`);
@@ -281,19 +463,21 @@ export default function UsersPage() {
             Admin dashboard for the real player experience
           </h1>
           <p className="max-w-3xl text-base leading-7 text-slate-300 sm:text-lg">
-            Theme choices, unread surprises, direct-line reads, badge acceptance, WOLO gift state,
-            and recent actions now sit together so you can see who is engaged, who is drifting, and
-            where the product needs love next.
+            Full activity rails, WOLO claim state, schedule pressure, bet history, direct-line
+            unread danger, and the product signals that tell you who is alive, who is drifting,
+            and where the heat is building.
           </p>
         </div>
       </section>
 
       {payload?.overview ? (
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
           <StatCard label="Users" value={payload.overview.totalUsers} sublabel={`${payload.overview.activeUsers24h} active in 24h`} />
           <StatCard label="Needs Reply" value={payload.overview.unreadForAdmin} sublabel="Unread from players to you" />
           <StatCard label="Player Surprise" value={payload.overview.unreadForUsers} sublabel="Unread items currently showing for players" />
           <StatCard label="Pending Honors" value={payload.overview.pendingHonors} sublabel="Badges + gifts waiting on acceptance" />
+          <StatCard label="Pending Claims" value={payload.overview.pendingWoloClaims} sublabel={`${formatWolo(payload.overview.pendingWoloClaimAmount)} WOLO unclaimed`} />
+          <StatCard label="Claimed Claims" value={payload.overview.claimedWoloClaims} sublabel={`${formatWolo(payload.overview.claimedWoloClaimAmount)} WOLO resolved`} />
         </section>
       ) : null}
 
@@ -319,13 +503,17 @@ export default function UsersPage() {
               <Sparkles className="h-4 w-4" />
               Tile Skin Split
             </div>
-            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            <div className="mt-4 grid gap-2 sm:grid-cols-3">
               {payload.overview.viewBreakdown.map((entry) => (
                 <div key={entry.viewMode} className="rounded-2xl border border-white/8 bg-white/5 px-4 py-4">
                   <div className="text-[11px] uppercase tracking-[0.24em] text-slate-500">{entry.viewMode}</div>
                   <div className="mt-2 text-3xl font-semibold text-white">{entry.count}</div>
                 </div>
               ))}
+              <div className="rounded-2xl border border-white/8 bg-white/5 px-4 py-4">
+                <div className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Tracked Actions</div>
+                <div className="mt-2 text-3xl font-semibold text-white">{payload.overview.totalActionEvents}</div>
+              </div>
             </div>
           </div>
         </section>
@@ -340,7 +528,10 @@ export default function UsersPage() {
       <section className="space-y-4">
         {sortedUsers.map((user) => {
           const draft = getDraft(user.uid);
-          const latestPath = findLatestPageView(user.recentActions);
+          const latestPath = findLatestPageView(activityByUid[user.uid] ?? user.recentActions);
+          const renderedActions = activityByUid[user.uid] ?? user.recentActions;
+          const activityTotal = activityTotals[user.uid] ?? user.recentActionsTotalCount;
+          const nextOffset = activityNextOffsets[user.uid] ?? null;
 
           return (
             <article
@@ -382,9 +573,24 @@ export default function UsersPage() {
                         {user.pendingBadgeCount + user.pendingGiftCount} honors pending
                       </span>
                     ) : null}
+                    {user.pendingWoloClaimCount > 0 ? (
+                      <span className="rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-100">
+                        {formatWolo(user.pendingWoloClaimAmount)} WOLO unclaimed
+                      </span>
+                    ) : null}
                     {user.giftedWolo > 0 ? (
                       <span className="rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-100">
                         {user.giftedWolo} accepted WOLO live
+                      </span>
+                    ) : null}
+                    {user.betStats.activeCount > 0 ? (
+                      <span className="rounded-full border border-sky-300/30 bg-sky-400/10 px-3 py-1 text-xs text-sky-100">
+                        {user.betStats.activeCount} live bets
+                      </span>
+                    ) : null}
+                    {user.scheduledMatches.length > 0 ? (
+                      <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+                        {user.scheduledMatches.length} scheduled games
                       </span>
                     ) : null}
                   </div>
@@ -445,7 +651,7 @@ export default function UsersPage() {
                     />
                     <IdentityRow label="Theme Updated" value={formatDate(user.appearance?.updatedAt ?? null)} />
                     <IdentityRow label="Last Route" value={latestPath || "No tracked page yet"} />
-                    <IdentityRow label="Inbox Read" value={formatShortDate(user.lastInboxReadAt)} />
+                    <IdentityRow label="Last Activity" value={formatDate(user.lastActivityAt)} />
                   </dl>
                 </section>
 
@@ -474,22 +680,25 @@ export default function UsersPage() {
                       sublabel="Last time they opened or read the thread"
                     />
                     <MiniStat
-                      label="Honors Pending"
-                      value={String(user.pendingBadgeCount + user.pendingGiftCount)}
-                      tone={user.pendingBadgeCount + user.pendingGiftCount > 0 ? "alert" : "neutral"}
-                      sublabel="Waiting for accept / display decision"
+                      label="Tracked Actions"
+                      value={String(activityTotal)}
+                      tone={activityTotal > INITIAL_ACTIVITY_BATCH ? "alert" : "neutral"}
+                      sublabel="Persisted user activity events on file"
                     />
                   </div>
                 </section>
 
                 <section className="rounded-2xl border border-white/8 bg-white/5 p-4">
-                  <div className="flex items-center gap-2 text-xs uppercase tracking-[0.25em] text-slate-500">
-                    <Eye className="h-4 w-4" />
-                    Recent Actions
+                  <div className="flex items-center justify-between gap-2 text-xs uppercase tracking-[0.25em] text-slate-500">
+                    <div className="flex items-center gap-2">
+                      <ScrollText className="h-4 w-4" />
+                      Recent Actions
+                    </div>
+                    <div>{renderedActions.length}/{activityTotal}</div>
                   </div>
-                  <div className="mt-4 space-y-3">
-                    {user.recentActions.length > 0 ? (
-                      user.recentActions.map((activity) => (
+                  <div className="mt-4 max-h-[28rem] space-y-3 overflow-y-auto pr-1">
+                    {renderedActions.length > 0 ? (
+                      renderedActions.map((activity) => (
                         <div
                           key={activity.id}
                           className="rounded-xl border border-white/8 bg-slate-900/70 px-3 py-3"
@@ -506,6 +715,18 @@ export default function UsersPage() {
                       </div>
                     )}
                   </div>
+                  {nextOffset !== null ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void loadNextActions(user.uid);
+                      }}
+                      disabled={busyKey === `${user.uid}:next_actions`}
+                      className="mt-3 rounded-full border border-white/10 bg-slate-900/70 px-3 py-1.5 text-xs uppercase tracking-[0.24em] text-slate-300 transition hover:border-white/25 hover:text-white disabled:opacity-50"
+                    >
+                      {busyKey === `${user.uid}:next_actions` ? "Loading..." : "Next 50"}
+                    </button>
+                  ) : null}
                 </section>
               </div>
 
@@ -695,6 +916,213 @@ export default function UsersPage() {
                     >
                       Grant
                     </button>
+                  </div>
+                </section>
+              </div>
+
+              <div className="mt-4 grid gap-4 xl:grid-cols-[1fr_1fr]">
+                <section className="rounded-2xl border border-white/8 bg-white/5 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 text-xs uppercase tracking-[0.25em] text-slate-500">
+                      <Coins className="h-4 w-4" />
+                      WOLO Claim Rail
+                    </div>
+                    <div className="text-xs text-slate-400">
+                      {user.pendingWoloClaimCount} pending · {user.claimedWoloClaimCount} claimed
+                    </div>
+                  </div>
+
+                  <div className="mt-4 space-y-2">
+                    {user.pendingWoloClaims.length > 0 ? (
+                      user.pendingWoloClaims.map((claim) => (
+                        <div
+                          key={claim.id}
+                          className="rounded-xl border border-white/8 bg-slate-900/70 px-3 py-3"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="text-sm font-medium text-white">
+                                {formatWolo(claim.amountWolo)} WOLO · {claim.displayPlayerName}
+                              </div>
+                              <div className="mt-1 text-xs text-slate-400">
+                                {claim.note || "Pending replay-winner claim"} · {formatShortDate(claim.createdAt)}
+                              </div>
+                              <div className="mt-1 text-[11px] text-slate-500">
+                                market {claim.sourceMarketId ?? "—"} · game {claim.sourceGameStatsId ?? "—"}
+                              </div>
+                            </div>
+                            <span className={`rounded-full border px-2 py-0.5 text-[11px] ${statusTone(claim.status)}`}>
+                              {claim.status}
+                            </span>
+                          </div>
+                          <div className="mt-3 flex gap-2">
+                            <input
+                              value={draft.rescindNote}
+                              onChange={(event) =>
+                                updateDraft(user.uid, { rescindNote: event.target.value })
+                              }
+                              placeholder="Rescind note"
+                              className="flex-1 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-red-300/35"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                void runCommunityAction(user.uid, {
+                                  action: "rescind_wolo_claim",
+                                  claimId: claim.id,
+                                  note: draft.rescindNote,
+                                });
+                                updateDraft(user.uid, { rescindNote: "" });
+                              }}
+                              className="rounded-xl border border-red-400/30 px-3 py-2 text-sm text-red-200 transition hover:bg-red-500/10"
+                            >
+                              Rescind
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="rounded-xl border border-white/8 bg-slate-900/70 px-3 py-3 text-sm text-slate-400">
+                        No pending WOLO claims matched to this user yet.
+                      </div>
+                    )}
+
+                    {user.claimedWoloClaims.length > 0 ? (
+                      <div className="pt-2">
+                        <div className="mb-2 text-[11px] uppercase tracking-[0.24em] text-slate-500">
+                          Claimed history
+                        </div>
+                        <div className="space-y-2">
+                          {user.claimedWoloClaims.map((claim) => (
+                            <div
+                              key={claim.id}
+                              className="rounded-xl border border-white/8 bg-slate-900/70 px-3 py-3"
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="text-sm text-white">
+                                  {formatWolo(claim.amountWolo)} WOLO · {claim.displayPlayerName}
+                                </div>
+                                <span className={`rounded-full border px-2 py-0.5 text-[11px] ${statusTone(claim.status)}`}>
+                                  {claim.status}
+                                </span>
+                              </div>
+                              <div className="mt-1 text-xs text-slate-400">
+                                {formatShortDate(claim.claimedAt || claim.createdAt)}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                </section>
+
+                <section className="rounded-2xl border border-white/8 bg-white/5 p-4">
+                  <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+                    <div>
+                      <div className="flex items-center gap-2 text-xs uppercase tracking-[0.25em] text-slate-500">
+                        <Swords className="h-4 w-4" />
+                        Scheduled Games
+                      </div>
+                      <div className="mt-4 space-y-2">
+                        {user.scheduledMatches.length > 0 ? (
+                          user.scheduledMatches.map((match) => (
+                            <div
+                              key={`${user.uid}-match-${match.id}-${match.role}`}
+                              className="rounded-xl border border-white/8 bg-slate-900/70 px-3 py-3"
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                  <div className="text-sm font-medium text-white">
+                                    {match.role === "challenger" ? "vs" : "from"} {match.opponentName}
+                                  </div>
+                                  <div className="mt-1 text-xs text-slate-400">
+                                    {formatShortDate(match.activityAt)} · {match.status}
+                                  </div>
+                                  {match.linkedMapName ? (
+                                    <div className="mt-1 text-[11px] text-slate-500">
+                                      {match.linkedMapName}
+                                      {match.linkedWinner ? ` · winner ${match.linkedWinner}` : ""}
+                                    </div>
+                                  ) : null}
+                                </div>
+                                <span className={`rounded-full border px-2 py-0.5 text-[11px] ${statusTone(match.status)}`}>
+                                  {match.status}
+                                </span>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="rounded-xl border border-white/8 bg-slate-900/70 px-3 py-3 text-sm text-slate-400">
+                            No tracked scheduled games yet.
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="flex items-center gap-2 text-xs uppercase tracking-[0.25em] text-slate-500">
+                        <Ticket className="h-4 w-4" />
+                        Bet Rail
+                      </div>
+                      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                        <MiniStat
+                          label="Active"
+                          value={String(user.betStats.activeCount)}
+                          tone={user.betStats.activeCount > 0 ? "alert" : "neutral"}
+                          sublabel="Live positions"
+                        />
+                        <MiniStat
+                          label="Staked"
+                          value={`${formatWolo(user.betStats.stakedWolo)} WOLO`}
+                          tone="neutral"
+                          sublabel="Total stake on file"
+                        />
+                        <MiniStat
+                          label="Won"
+                          value={String(user.betStats.wonCount)}
+                          tone={user.betStats.wonCount > 0 ? "alert" : "neutral"}
+                          sublabel="Settled wins"
+                        />
+                        <MiniStat
+                          label="Paid Out"
+                          value={`${formatWolo(user.betStats.paidOutWolo)} WOLO`}
+                          tone="neutral"
+                          sublabel="Total payout recorded"
+                        />
+                      </div>
+
+                      <div className="mt-4 space-y-2">
+                        {user.betLedger.length > 0 ? (
+                          user.betLedger.map((wager) => (
+                            <div
+                              key={wager.id}
+                              className="rounded-xl border border-white/8 bg-slate-900/70 px-3 py-3"
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                  <div className="text-sm font-medium text-white">{wager.marketTitle}</div>
+                                  <div className="mt-1 text-xs text-slate-400">
+                                    {wager.eventLabel} · {wager.side} · {formatWolo(wager.amountWolo)} WOLO
+                                  </div>
+                                  <div className="mt-1 text-[11px] text-slate-500">
+                                    {formatShortDate(wager.updatedAt)}
+                                    {wager.payoutWolo ? ` · payout ${formatWolo(wager.payoutWolo)} WOLO` : ""}
+                                  </div>
+                                </div>
+                                <span className={`rounded-full border px-2 py-0.5 text-[11px] ${statusTone(wager.status)}`}>
+                                  {wager.status}
+                                </span>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="rounded-xl border border-white/8 bg-slate-900/70 px-3 py-3 text-sm text-slate-400">
+                            No wager history yet.
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </section>
               </div>

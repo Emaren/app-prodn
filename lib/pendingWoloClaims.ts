@@ -1,0 +1,285 @@
+import type { PrismaClient } from "@/lib/generated/prisma";
+import { normalizePublicPlayerName } from "@/lib/publicPlayers";
+
+export type PendingWoloClaimSummary = {
+  pendingAmountWolo: number;
+  pendingCount: number;
+  latestCreatedAt: string | null;
+  claimIds: number[];
+};
+
+export type PendingWoloClaimLookupUser = {
+  id: number;
+  inGameName: string | null;
+  steamPersonaName: string | null;
+};
+
+export function normalizePendingWoloClaimName(value: string | null | undefined) {
+  return normalizePublicPlayerName(value).toLowerCase().slice(0, 64);
+}
+
+function normalizePendingWoloDisplayName(value: string | null | undefined) {
+  return normalizePublicPlayerName(value).slice(0, 100);
+}
+
+function uniqueNameKeys(values: Array<string | null | undefined>) {
+  const seen = new Set<string>();
+  const result: string[] = [];
+
+  for (const value of values) {
+    const key = normalizePendingWoloClaimName(value);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    result.push(key);
+  }
+
+  return result;
+}
+
+function emptySummary(): PendingWoloClaimSummary {
+  return {
+    pendingAmountWolo: 0,
+    pendingCount: 0,
+    latestCreatedAt: null,
+    claimIds: [],
+  };
+}
+
+function mergeSummary(
+  current: PendingWoloClaimSummary,
+  row: { id: number; amountWolo: number; createdAt: Date }
+) {
+  current.pendingAmountWolo += row.amountWolo;
+  current.pendingCount += 1;
+  current.claimIds.push(row.id);
+
+  const currentMs = current.latestCreatedAt
+    ? new Date(current.latestCreatedAt).getTime()
+    : 0;
+  const nextMs = row.createdAt.getTime();
+
+  if (!current.latestCreatedAt || nextMs > currentMs) {
+    current.latestCreatedAt = row.createdAt.toISOString();
+  }
+}
+
+export async function loadPendingWoloClaimSummariesByName(
+  prisma: PrismaClient,
+  names: Array<string | null | undefined>
+) {
+  const keys = uniqueNameKeys(names);
+  const summaryMap = new Map<string, PendingWoloClaimSummary>();
+
+  if (keys.length === 0) {
+    return summaryMap;
+  }
+
+  const rows = await prisma.pendingWoloClaim.findMany({
+    where: {
+      status: "pending",
+      normalizedPlayerName: { in: keys },
+    },
+    select: {
+      id: true,
+      normalizedPlayerName: true,
+      amountWolo: true,
+      createdAt: true,
+    },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+  });
+
+  for (const row of rows) {
+    const key = row.normalizedPlayerName;
+    const current = summaryMap.get(key) ?? emptySummary();
+    mergeSummary(current, row);
+    summaryMap.set(key, current);
+  }
+
+  return summaryMap;
+}
+
+export async function loadPendingWoloClaimSummaryForUser(
+  prisma: PrismaClient,
+  user: PendingWoloClaimLookupUser
+): Promise<PendingWoloClaimSummary> {
+  const keys = uniqueNameKeys([user.inGameName, user.steamPersonaName]);
+  if (keys.length === 0) {
+    return emptySummary();
+  }
+
+  const summaryMap = await loadPendingWoloClaimSummariesByName(prisma, keys);
+  const merged = emptySummary();
+
+  for (const key of keys) {
+    const summary = summaryMap.get(key);
+    if (!summary) continue;
+
+    merged.pendingAmountWolo += summary.pendingAmountWolo;
+    merged.pendingCount += summary.pendingCount;
+    merged.claimIds.push(...summary.claimIds);
+
+    const mergedMs = merged.latestCreatedAt
+      ? new Date(merged.latestCreatedAt).getTime()
+      : 0;
+    const nextMs = summary.latestCreatedAt
+      ? new Date(summary.latestCreatedAt).getTime()
+      : 0;
+
+    if (summary.latestCreatedAt && nextMs > mergedMs) {
+      merged.latestCreatedAt = summary.latestCreatedAt;
+    }
+  }
+
+  return merged;
+}
+
+export async function createPendingWoloClaim(
+  prisma: PrismaClient,
+  input: {
+    playerName: string;
+    displayPlayerName?: string | null;
+    amountWolo: number;
+    sourceMarketId?: number | null;
+    sourceGameStatsId?: number | null;
+    note?: string | null;
+  }
+) {
+  const normalizedPlayerName = normalizePendingWoloClaimName(input.playerName);
+  const displayPlayerName =
+    normalizePendingWoloDisplayName(input.displayPlayerName || input.playerName) ||
+    "Unknown player";
+  const amountWolo = Math.max(0, Math.round(input.amountWolo || 0));
+
+  if (!normalizedPlayerName || amountWolo < 1) {
+    return null;
+  }
+
+  if (typeof input.sourceMarketId === "number" && Number.isFinite(input.sourceMarketId)) {
+    return prisma.pendingWoloClaim.upsert({
+      where: {
+        sourceMarketId_normalizedPlayerName: {
+          sourceMarketId: input.sourceMarketId,
+          normalizedPlayerName,
+        },
+      },
+      update: {
+        displayPlayerName,
+        amountWolo,
+        status: "pending",
+        sourceGameStatsId: input.sourceGameStatsId ?? null,
+        claimedByUserId: null,
+        rescindedByUserId: null,
+        claimedAt: null,
+        rescindedAt: null,
+        note: input.note?.trim().slice(0, 160) || null,
+      },
+      create: {
+        normalizedPlayerName,
+        displayPlayerName,
+        amountWolo,
+        status: "pending",
+        sourceMarketId: input.sourceMarketId,
+        sourceGameStatsId: input.sourceGameStatsId ?? null,
+        note: input.note?.trim().slice(0, 160) || null,
+      },
+    });
+  }
+
+  return prisma.pendingWoloClaim.create({
+    data: {
+      normalizedPlayerName,
+      displayPlayerName,
+      amountWolo,
+      status: "pending",
+      sourceMarketId: input.sourceMarketId ?? null,
+      sourceGameStatsId: input.sourceGameStatsId ?? null,
+      note: input.note?.trim().slice(0, 160) || null,
+    },
+  });
+}
+
+export async function claimPendingWoloClaimsForUser(
+  prisma: PrismaClient,
+  user: PendingWoloClaimLookupUser
+) {
+  const keys = uniqueNameKeys([user.inGameName, user.steamPersonaName]);
+  if (keys.length === 0) {
+    return {
+      claimedCount: 0,
+      claimedAmountWolo: 0,
+      claimIds: [] as number[],
+    };
+  }
+
+  const rows = await prisma.pendingWoloClaim.findMany({
+    where: {
+      status: "pending",
+      normalizedPlayerName: { in: keys },
+    },
+    select: {
+      id: true,
+      amountWolo: true,
+    },
+  });
+
+  if (rows.length === 0) {
+    return {
+      claimedCount: 0,
+      claimedAmountWolo: 0,
+      claimIds: [] as number[],
+    };
+  }
+
+  const claimIds = rows.map((row) => row.id);
+  const claimedAmountWolo = rows.reduce((sum, row) => sum + row.amountWolo, 0);
+
+  await prisma.pendingWoloClaim.updateMany({
+    where: {
+      id: { in: claimIds },
+    },
+    data: {
+      status: "claimed",
+      claimedByUserId: user.id,
+      claimedAt: new Date(),
+    },
+  });
+
+  return {
+    claimedCount: rows.length,
+    claimedAmountWolo,
+    claimIds,
+  };
+}
+
+export async function rescindPendingWoloClaim(
+  prisma: PrismaClient,
+  input: {
+    claimId: number;
+    adminUserId?: number | null;
+    note?: string | null;
+  }
+) {
+  return prisma.pendingWoloClaim.update({
+    where: { id: input.claimId },
+    data: {
+      status: "rescinded",
+      rescindedByUserId: input.adminUserId ?? null,
+      rescindedAt: new Date(),
+      note: input.note?.trim().slice(0, 160) || null,
+    },
+  });
+}
+
+export async function loadPendingWoloClaimsForAdmin(
+  prisma: PrismaClient,
+  options?: {
+    status?: "pending" | "claimed" | "rescinded";
+    take?: number;
+  }
+) {
+  return prisma.pendingWoloClaim.findMany({
+    where: options?.status ? { status: options.status } : undefined,
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: options?.take ?? 100,
+  });
+}

@@ -5,6 +5,7 @@ import {
   normalizeGiftKind,
 } from "@/lib/communityHonors";
 import { getOrCreateConversationByUsers } from "@/lib/contactInbox";
+import { rescindPendingWoloClaim } from "@/lib/pendingWoloClaims";
 import { recordUserActivity } from "@/lib/userExperience";
 import { requireAdmin } from "@/lib/adminSession";
 
@@ -40,7 +41,7 @@ export async function POST(
     const { uid } = await context.params;
     const target = await prisma.user.findUnique({
       where: { uid },
-      select: { id: true, uid: true },
+      select: { id: true, uid: true, inGameName: true, steamPersonaName: true },
     });
 
     if (!target) {
@@ -51,6 +52,7 @@ export async function POST(
       action?: string;
       badgeId?: number;
       giftId?: number;
+      claimId?: number;
       label?: string;
       note?: string;
       kind?: string;
@@ -185,6 +187,32 @@ export async function POST(
           label: String(payload.giftId),
           metadata: {
             giftId: payload.giftId,
+          },
+          dedupeWithinSeconds: 0,
+        });
+        break;
+      }
+
+      case "rescind_wolo_claim": {
+        if (typeof payload.claimId !== "number") {
+          return NextResponse.json({ detail: "Claim id is required" }, { status: 400 });
+        }
+
+        const claim = await rescindPendingWoloClaim(prisma, {
+          claimId: payload.claimId,
+          adminUserId: admin.id,
+          note: typeof payload.note === "string" ? payload.note : null,
+        });
+
+        await recordUserActivity(prisma, {
+          userId: target.id,
+          type: "wolo_claim_rescinded",
+          path: "/admin/user-list",
+          label: claim.displayPlayerName,
+          metadata: {
+            claimId: claim.id,
+            amountWolo: claim.amountWolo,
+            note: claim.note,
           },
           dedupeWithinSeconds: 0,
         });

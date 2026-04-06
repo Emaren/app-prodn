@@ -568,6 +568,30 @@ model BetWager {
   @@map("bet_wagers")
 }
 
+model PendingWoloClaim {
+  id                   Int       @id @default(autoincrement())
+  normalizedPlayerName String    @map("normalized_player_name") @db.VarChar(64)
+  displayPlayerName    String    @map("display_player_name") @db.VarChar(100)
+  amountWolo           Int       @map("amount_wolo")
+  status               String    @default("pending") @db.VarChar(20)
+  sourceMarketId       Int?      @map("source_market_id")
+  sourceGameStatsId    Int?      @map("source_game_stats_id")
+  claimedByUserId      Int?      @map("claimed_by_user_id")
+  rescindedByUserId    Int?      @map("rescinded_by_user_id")
+  note                 String?   @db.VarChar(160)
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+  claimedAt            DateTime? @map("claimed_at") @db.Timestamp(6)
+  rescindedAt          DateTime? @map("rescinded_at") @db.Timestamp(6)
+
+  @@unique([sourceMarketId, normalizedPlayerName], map: "uq_pending_wolo_claims_market_player")
+  @@index([normalizedPlayerName, status], map: "ix_pending_wolo_claims_name_status")
+  @@index([claimedByUserId, status], map: "ix_pending_wolo_claims_claimed_by_status")
+  @@index([sourceMarketId], map: "ix_pending_wolo_claims_source_market_id")
+  @@index([sourceGameStatsId], map: "ix_pending_wolo_claims_source_game_stats_id")
+  @@map("pending_wolo_claims")
+}
+
 model alembic_version {
   version_num String @id(map: "alembic_version_pkc") @db.VarChar(32)
 }
