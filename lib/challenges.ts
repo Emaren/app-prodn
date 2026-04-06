@@ -1,3 +1,4 @@
+
 import { CHALLENGE_NOTE_MAX_CHARS } from "@/lib/challengeConfig";
 import type { PrismaClient } from "@/lib/generated/prisma";
 import { loadLiveSessionSnapshot } from "@/lib/liveSessionSnapshot";
@@ -10,6 +11,8 @@ const CHALLENGE_RECENT_LINGER_MS = 15 * 60 * 1000;
 const CHALLENGE_START_GRACE_MS = 60 * 1000;
 const SESSION_MATCH_LOOKBACK_MS = 45 * 60 * 1000;
 const SESSION_MATCH_LOOKAHEAD_MS = 8 * 60 * 60 * 1000;
+const CHALLENGE_LEDGER_LOOKBACK_MS = 45 * 24 * 60 * 60 * 1000;
+const CHALLENGE_ACTIVITY_LIMIT = 40;
 const ACTIVE_SCHEDULED_STATUSES = ["pending", "accepted"] as const;
 const RESULT_SCHEDULED_STATUSES = ["completed", "forfeited"] as const;
 
@@ -118,11 +121,25 @@ export type ChallengeActivityRow = {
   actor: Pick<ChallengeUserRow, "uid" | "inGameName" | "steamPersonaName"> | null;
 };
 
+export type ChallengeRecordSummary = {
+  wins: number;
+  losses: number;
+  pending: number;
+  accepted: number;
+  declined: number;
+  cancelled: number;
+  completed: number;
+  forfeited: number;
+  total: number;
+};
+
 export type ChallengeHubSnapshot = {
   viewer: ChallengePlayerSurface | null;
   candidates: ChallengePlayerSurface[];
   scheduledMatches: ScheduledMatchTile[];
+  historyMatches: ScheduledMatchTile[];
   activities: ChallengeActivityItem[];
+  record: ChallengeRecordSummary;
   updatedAt: string;
 };
 
@@ -158,11 +175,27 @@ const SCHEDULED_MATCH_SELECT = {
   },
 } as const;
 
+function emptyChallengeRecord(): ChallengeRecordSummary {
+  return {
+    wins: 0,
+    losses: 0,
+    pending: 0,
+    accepted: 0,
+    declined: 0,
+    cancelled: 0,
+    completed: 0,
+    forfeited: 0,
+    total: 0,
+  };
+}
+
 function normalizeNameKey(value: string | null | undefined) {
   return (value || "").trim().replace(/\s+/g, " ").toLowerCase();
 }
 
-function challengePlayerName(user: Pick<ChallengeUserRow, "uid" | "inGameName" | "steamPersonaName">) {
+function challengePlayerName(
+  user: Pick<ChallengeUserRow, "uid" | "inGameName" | "steamPersonaName">
+) {
   return user.inGameName || user.steamPersonaName || user.uid;
 }
 
@@ -220,7 +253,7 @@ function buildChallengeActivityItem(row: ChallengeActivityRow): ChallengeActivit
   };
 }
 
-async function loadChallengeActivityRows(
+async function loadPersistedChallengeActivityRows(
   prisma: PrismaClient,
   scheduledMatchIds: number[]
 ): Promise<ChallengeActivityItem[]> {
@@ -235,7 +268,7 @@ async function loadChallengeActivityRows(
       },
     },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-    take: 40,
+    take: CHALLENGE_ACTIVITY_LIMIT,
     select: {
       id: true,
       scheduledMatchId: true,
@@ -259,6 +292,128 @@ async function loadChallengeActivityRows(
       actor: row.actor,
     })
   );
+}
+
+function buildSyntheticChallengeActivities(rows: ScheduledMatchRow[]): ChallengeActivityItem[] {
+  const items: ChallengeActivityItem[] = [];
+
+  for (const row of rows) {
+    items.push({
+      id: row.id * 10_000 + 1,
+      scheduledMatchId: row.id,
+      eventType: "scheduled",
+      detail: row.challengeNote
+        ? `Scheduled for ${row.challenger.inGameName || row.challenger.steamPersonaName || row.challenger.uid} vs ${row.challenged.inGameName || row.challenged.steamPersonaName || row.challenged.uid}. Note: ${row.challengeNote}`
+        : `Scheduled for ${row.challenger.inGameName || row.challenger.steamPersonaName || row.challenger.uid} vs ${row.challenged.inGameName || row.challenged.steamPersonaName || row.challenged.uid}.`,
+      actorUid: row.challenger.uid,
+      actorName: challengePlayerName(row.challenger),
+      createdAt: row.createdAt.toISOString(),
+      metadata: {
+        scheduledAt: row.scheduledAt.toISOString(),
+      },
+    });
+
+    if (row.acceptedAt) {
+      items.push({
+        id: row.id * 10_000 + 2,
+        scheduledMatchId: row.id,
+        eventType: "accepted",
+        detail: `Accepted for ${row.scheduledAt.toLocaleString()}.`,
+        actorUid: row.challenged.uid,
+        actorName: challengePlayerName(row.challenged),
+        createdAt: row.acceptedAt.toISOString(),
+        metadata: null,
+      });
+    }
+
+    if (row.declinedAt) {
+      items.push({
+        id: row.id * 10_000 + 3,
+        scheduledMatchId: row.id,
+        eventType: "declined",
+        detail: "Challenge declined.",
+        actorUid: row.challenged.uid,
+        actorName: challengePlayerName(row.challenged),
+        createdAt: row.declinedAt.toISOString(),
+        metadata: null,
+      });
+    }
+
+    if (row.cancelledAt) {
+      items.push({
+        id: row.id * 10_000 + 4,
+        scheduledMatchId: row.id,
+        eventType: "cancelled",
+        detail: "Challenge cancelled.",
+        actorUid: null,
+        actorName: null,
+        createdAt: row.cancelledAt.toISOString(),
+        metadata: null,
+      });
+    }
+
+    if (row.resultAt && row.status === "completed") {
+      items.push({
+        id: row.id * 10_000 + 5,
+        scheduledMatchId: row.id,
+        eventType: "completed",
+        detail: row.linkedWinner
+          ? `Completed. Winner: ${row.linkedWinner}.`
+          : "Completed and stored.",
+        actorUid: null,
+        actorName: null,
+        createdAt: row.resultAt.toISOString(),
+        metadata: row.linkedMapName
+          ? { mapName: row.linkedMapName, linkedSessionKey: row.linkedSessionKey }
+          : row.linkedSessionKey
+            ? { linkedSessionKey: row.linkedSessionKey }
+            : null,
+      });
+    }
+
+    if (row.resultAt && row.status === "forfeited") {
+      items.push({
+        id: row.id * 10_000 + 6,
+        scheduledMatchId: row.id,
+        eventType: "forfeited",
+        detail: "Marked forfeited after the start grace window passed.",
+        actorUid: null,
+        actorName: null,
+        createdAt: row.resultAt.toISOString(),
+        metadata: null,
+      });
+    }
+  }
+
+  items.sort(
+    (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
+  );
+
+  return items.slice(0, CHALLENGE_ACTIVITY_LIMIT);
+}
+
+async function loadChallengeActivityRows(
+  prisma: PrismaClient,
+  rows: ScheduledMatchRow[]
+): Promise<ChallengeActivityItem[]> {
+  const scheduledMatchIds = rows.map((row) => row.id);
+  const persisted = await loadPersistedChallengeActivityRows(prisma, scheduledMatchIds);
+  const synthetic = buildSyntheticChallengeActivities(rows);
+
+  const merged = new Map<string, ChallengeActivityItem>();
+
+  for (const item of [...persisted, ...synthetic]) {
+    const key = `${item.scheduledMatchId}:${item.eventType}:${item.createdAt}`;
+    if (!merged.has(key)) {
+      merged.set(key, item);
+    }
+  }
+
+  return Array.from(merged.values())
+    .sort(
+      (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
+    )
+    .slice(0, CHALLENGE_ACTIVITY_LIMIT);
 }
 
 function readSessionTime(session: Pick<ComparableSession, "updatedAt" | "completedAt">) {
@@ -522,6 +677,10 @@ function compareScheduledTileOrder(left: ScheduledMatchTile, right: ScheduledMat
   return new Date(right.activityAt).getTime() - new Date(left.activityAt).getTime();
 }
 
+function compareHistoryTileOrder(left: ScheduledMatchTile, right: ScheduledMatchTile) {
+  return new Date(right.activityAt).getTime() - new Date(left.activityAt).getTime();
+}
+
 export function normalizeChallengeNote(value: unknown) {
   if (typeof value !== "string") return null;
   const normalized = value
@@ -631,6 +790,39 @@ async function loadScheduledMatchRows(
   });
 }
 
+async function loadChallengeHistoryRows(
+  prisma: PrismaClient,
+  viewerUserId: number
+) {
+  const lookbackCutoff = new Date(Date.now() - CHALLENGE_LEDGER_LOOKBACK_MS);
+
+  return prisma.scheduledMatch.findMany({
+    where: {
+      AND: [
+        {
+          OR: [
+            { challengerUserId: viewerUserId },
+            { challengedUserId: viewerUserId },
+          ],
+        },
+        {
+          OR: [
+            { createdAt: { gte: lookbackCutoff } },
+            { scheduledAt: { gte: lookbackCutoff } },
+            { acceptedAt: { gte: lookbackCutoff } },
+            { declinedAt: { gte: lookbackCutoff } },
+            { cancelledAt: { gte: lookbackCutoff } },
+            { resultAt: { gte: lookbackCutoff } },
+          ],
+        },
+      ],
+    },
+    orderBy: [{ scheduledAt: "desc" }, { createdAt: "desc" }],
+    take: 120,
+    select: SCHEDULED_MATCH_SELECT,
+  });
+}
+
 export function deriveScheduledMatchTiles(
   rows: ScheduledMatchRow[],
   activeSessions: ComparableSession[],
@@ -732,6 +924,159 @@ export function deriveScheduledMatchTiles(
   };
 }
 
+function deriveChallengeHistoryTiles(
+  rows: ScheduledMatchRow[],
+  activeSessions: ComparableSession[],
+  recentlyCompletedSessions: ComparableSession[],
+  excludedIds: Set<number>,
+  now = new Date()
+) {
+  const tiles: ScheduledMatchTile[] = [];
+  const matchedActiveSessionKeys = new Set<string>();
+  const matchedCompletedSessionKeys = new Set<string>();
+
+  for (const row of rows) {
+    if (excludedIds.has(row.id)) {
+      continue;
+    }
+
+    const scheduledAt = row.scheduledAt.getTime();
+
+    if (row.status === "completed") {
+      tiles.push(
+        buildScheduledMatchTile(
+          row,
+          "completed",
+          row.resultAt ?? row.createdAt,
+          null
+        )
+      );
+      continue;
+    }
+
+    if (row.status === "forfeited") {
+      tiles.push(
+        buildScheduledMatchTile(
+          row,
+          "forfeited",
+          row.resultAt ?? row.createdAt,
+          null
+        )
+      );
+      continue;
+    }
+
+    if (row.status === "declined") {
+      tiles.push(
+        buildScheduledMatchTile(
+          row,
+          "declined",
+          row.declinedAt ?? row.createdAt,
+          null
+        )
+      );
+      continue;
+    }
+
+    if (row.status === "cancelled") {
+      tiles.push(
+        buildScheduledMatchTile(
+          row,
+          "cancelled",
+          row.cancelledAt ?? row.createdAt,
+          null
+        )
+      );
+      continue;
+    }
+
+    const activeSession =
+      row.status === "accepted"
+        ? findLinkedSession(activeSessions, row, matchedActiveSessionKeys)
+        : null;
+
+    if (activeSession?.sessionKey) {
+      matchedActiveSessionKeys.add(activeSession.sessionKey);
+      continue;
+    }
+
+    const completedSession =
+      row.status === "accepted"
+        ? findLinkedSession(recentlyCompletedSessions, row, matchedCompletedSessionKeys)
+        : null;
+
+    if (completedSession) {
+      matchedCompletedSessionKeys.add(completedSession.sessionKey);
+      const completedAt = new Date(completedSession.completedAt || completedSession.updatedAt);
+      tiles.push(buildScheduledMatchTile(row, "completed", completedAt, completedSession));
+      continue;
+    }
+
+    if (row.status === "accepted") {
+      if (now.getTime() >= scheduledAt + CHALLENGE_START_GRACE_MS) {
+        const forfeitedAt = new Date(scheduledAt + CHALLENGE_START_GRACE_MS);
+        tiles.push(buildScheduledMatchTile(row, "forfeited", forfeitedAt, null));
+      }
+      continue;
+    }
+
+    tiles.push(
+      buildScheduledMatchTile(
+        row,
+        "pending",
+        row.scheduledAt > row.createdAt ? row.scheduledAt : row.createdAt,
+        null
+      )
+    );
+  }
+
+  tiles.sort(compareHistoryTileOrder);
+
+  return tiles;
+}
+
+function buildChallengeRecordSummary(
+  rows: ScheduledMatchRow[],
+  viewer: Pick<ChallengeUserRow, "id" | "uid" | "inGameName" | "steamPersonaName">
+): ChallengeRecordSummary {
+  const summary = emptyChallengeRecord();
+  const aliases = new Set(playerAliases(viewer));
+
+  for (const row of rows) {
+    summary.total += 1;
+
+    switch (row.status) {
+      case "pending":
+        summary.pending += 1;
+        break;
+      case "accepted":
+        summary.accepted += 1;
+        break;
+      case "declined":
+        summary.declined += 1;
+        break;
+      case "cancelled":
+        summary.cancelled += 1;
+        break;
+      case "completed":
+        summary.completed += 1;
+        if (row.linkedWinner && aliases.has(normalizeNameKey(row.linkedWinner))) {
+          summary.wins += 1;
+        } else if (row.linkedWinner) {
+          summary.losses += 1;
+        }
+        break;
+      case "forfeited":
+        summary.forfeited += 1;
+        break;
+      default:
+        break;
+    }
+  }
+
+  return summary;
+}
+
 export async function loadScheduledMatchTilesForLiveBoard(
   prisma: PrismaClient,
   activeSessions: ComparableSession[],
@@ -784,7 +1129,9 @@ export async function loadChallengeHubSnapshot(
       viewer: null,
       candidates: [],
       scheduledMatches: [],
+      historyMatches: [],
       activities: [],
+      record: emptyChallengeRecord(),
       updatedAt: new Date().toISOString(),
     };
   }
@@ -799,12 +1146,14 @@ export async function loadChallengeHubSnapshot(
       viewer: null,
       candidates: [],
       scheduledMatches: [],
+      historyMatches: [],
       activities: [],
+      record: emptyChallengeRecord(),
       updatedAt: new Date().toISOString(),
     };
   }
 
-  const [candidateRows, scheduledRows, sessionSnapshot] = await Promise.all([
+  const [candidateRows, historyRows, sessionSnapshot] = await Promise.all([
     prisma.user.findMany({
       where: {
         uid: {
@@ -818,31 +1167,40 @@ export async function loadChallengeHubSnapshot(
       orderBy: [{ lastSeen: "desc" }, { verificationLevel: "desc" }, { createdAt: "desc" }],
       take: 80,
     }),
-    loadScheduledMatchRows(prisma, { viewerUserId: viewer.id, includeResolved: true }),
+    loadChallengeHistoryRows(prisma, viewer.id),
     loadLiveSessionSnapshot(prisma),
   ]);
 
-  const { tiles } = deriveScheduledMatchTiles(
-    await persistScheduledMatchResults(
-      prisma,
-      scheduledRows,
-      sessionSnapshot.activeSessions,
-      sessionSnapshot.recentlyCompletedSessions
-    ),
+  const reconciledRows = await persistScheduledMatchResults(
+    prisma,
+    historyRows,
     sessionSnapshot.activeSessions,
     sessionSnapshot.recentlyCompletedSessions
   );
 
-  const activities = await loadChallengeActivityRows(
-    prisma,
-    tiles.map((tile) => tile.id)
+  const { tiles } = deriveScheduledMatchTiles(
+    reconciledRows,
+    sessionSnapshot.activeSessions,
+    sessionSnapshot.recentlyCompletedSessions
   );
+
+  const historyMatches = deriveChallengeHistoryTiles(
+    reconciledRows,
+    sessionSnapshot.activeSessions,
+    sessionSnapshot.recentlyCompletedSessions,
+    new Set(tiles.map((tile) => tile.id))
+  );
+
+  const activities = await loadChallengeActivityRows(prisma, reconciledRows);
+  const record = buildChallengeRecordSummary(reconciledRows, viewer);
 
   return {
     viewer: buildPlayerSurface(viewer),
     candidates: candidateRows.map((candidate) => buildPlayerSurface(candidate)),
     scheduledMatches: tiles,
+    historyMatches,
     activities,
+    record,
     updatedAt: new Date().toISOString(),
   };
 }

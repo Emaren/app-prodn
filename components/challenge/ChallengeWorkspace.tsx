@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -12,7 +13,7 @@ import SteamLoginButton from "@/components/SteamLoginButton";
 import AutoGrowTextarea from "@/components/ui/AutoGrowTextarea";
 import { useUserAuth } from "@/context/UserAuthContext";
 import { CHALLENGE_NOTE_MAX_CHARS } from "@/lib/challengeConfig";
-import type { ChallengeHubSnapshot } from "@/lib/challenges";
+import type { ChallengeActivityItem, ChallengeHubSnapshot } from "@/lib/challenges";
 import {
   buildUtcDateTimeInputValue,
   parseUtcDateTimeInputValue,
@@ -22,7 +23,19 @@ const EMPTY_SNAPSHOT: ChallengeHubSnapshot = {
   viewer: null,
   candidates: [],
   scheduledMatches: [],
+  historyMatches: [],
   activities: [],
+  record: {
+    wins: 0,
+    losses: 0,
+    pending: 0,
+    accepted: 0,
+    declined: 0,
+    cancelled: 0,
+    completed: 0,
+    forfeited: 0,
+    total: 0,
+  },
   updatedAt: new Date(0).toISOString(),
 };
 
@@ -39,6 +52,34 @@ function defaultScheduledAtValue() {
   }
 
   return buildUtcDateTimeInputValue(next);
+}
+
+function formatActivityTitle(activity: ChallengeActivityItem) {
+  switch (activity.eventType) {
+    case "scheduled":
+      return "Challenge scheduled";
+    case "accepted":
+      return "Challenge accepted";
+    case "declined":
+      return "Challenge declined";
+    case "cancelled":
+      return "Challenge cancelled";
+    case "completed":
+      return "Match completed";
+    case "forfeited":
+      return "Match forfeited";
+    default:
+      return activity.eventType.replace(/_/g, " ");
+  }
+}
+
+function formatActivityTime(value: string) {
+  return new Date(value).toLocaleString([], {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }
 
 export default function ChallengeWorkspace() {
@@ -122,6 +163,7 @@ export default function ChallengeWorkspace() {
     () => snapshot.scheduledMatches.filter((match) => match.displayState === "accepted").length,
     [snapshot.scheduledMatches]
   );
+
   const activeRunwayMatches = useMemo(
     () =>
       snapshot.scheduledMatches.filter((match) =>
@@ -129,12 +171,15 @@ export default function ChallengeWorkspace() {
       ),
     [snapshot.scheduledMatches]
   );
-  const recentDecisionMatches = useMemo(
-    () =>
-      snapshot.scheduledMatches.filter((match) =>
-        ["declined", "cancelled", "completed", "forfeited"].includes(match.displayState)
-      ),
-    [snapshot.scheduledMatches]
+
+  const historyMatches = useMemo(
+    () => snapshot.historyMatches.slice(0, 8),
+    [snapshot.historyMatches]
+  );
+
+  const recentActivities = useMemo(
+    () => snapshot.activities.slice(0, 8),
+    [snapshot.activities]
   );
 
   async function updateMatch(
@@ -197,7 +242,8 @@ export default function ChallengeWorkspace() {
     setSaving(true);
     setError(null);
     setNotice(null);
-        const parsedScheduledAt = parseUtcDateTimeInputValue(scheduledAt);
+
+    const parsedScheduledAt = parseUtcDateTimeInputValue(scheduledAt);
     if (!parsedScheduledAt) {
       setError("Choose a valid UTC start time.");
       setSaving(false);
@@ -269,160 +315,157 @@ export default function ChallengeWorkspace() {
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+          <div className="grid gap-3 sm:grid-cols-4 lg:grid-cols-2">
             <StatCard label="Your Runway" value={String(activeRunwayCount)} />
             <StatCard label="Incoming" value={String(pendingIncomingCount)} />
             <StatCard label="Ready" value={String(readyCount)} live helper="Accepted scheduled games" />
+            <StatCard label="Ledger" value={String(snapshot.record.total)} helper="Recent challenge history" />
           </div>
         </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-        <section className="rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-5 sm:p-6">
-          <div className="text-xs uppercase tracking-[0.35em] text-amber-200/70">New Match</div>
-          <h2 className="mt-2 text-2xl font-semibold text-white">Schedule New Game</h2>
+      <section className="grid gap-6 xl:grid-cols-[0.88fr_1.12fr]">
+        <section className="space-y-6">
+          <section className="rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-5 sm:p-6">
+            <div className="text-xs uppercase tracking-[0.35em] text-amber-200/70">New Match</div>
+            <h2 className="mt-2 text-2xl font-semibold text-white">Schedule New Game</h2>
 
-          {authLoading || loading ? (
-            <div className="mt-5 rounded-2xl border border-white/10 bg-white/5 px-4 py-5 text-sm text-slate-300">
-              Loading challenge hub...
-            </div>
-          ) : !isAuthenticated ? (
-            <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-white/5 p-5">
-              <div className="text-lg font-semibold text-white">Sign in to challenge another player.</div>
-              <div className="mt-2 text-sm text-slate-300">
-                Steam sign-in keeps the scheduled match tied to a real identity.
+            {authLoading || loading ? (
+              <div className="mt-5 rounded-2xl border border-white/10 bg-white/5 px-4 py-5 text-sm text-slate-300">
+                Loading challenge hub...
               </div>
-              <SteamLoginButton
-                returnTo="/challenge"
-                className="mt-4 rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-200"
-              />
-            </div>
-          ) : (
-            <form onSubmit={submitChallenge} className="mt-5 space-y-4">
-              <label className="block space-y-2">
-                <span className="text-sm text-slate-300">Challenge Player</span>
-                <select
-                  value={challengedUid}
-                  onChange={(event) => setChallengedUid(event.target.value)}
-                  className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-amber-300/50"
-                >
-                  <option value="">Choose a warrior</option>
-                  {snapshot.candidates.map((candidate) => (
-                    <option key={candidate.uid} value={candidate.uid}>
-                      {candidate.name}
-                      {candidate.isOnline ? " · Online" : ""}
-                      {candidate.verified ? " · Verified" : ""}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="block space-y-2">
-                <span className="text-sm text-slate-300">Start Time (UTC)</span>
-                <input
-                  type="datetime-local"
-                  value={scheduledAt}
-                  onChange={(event) => setScheduledAt(event.target.value)}
-                  className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-amber-300/50"
+            ) : !isAuthenticated ? (
+              <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-white/5 p-5">
+                <div className="text-lg font-semibold text-white">Sign in to challenge another player.</div>
+                <div className="mt-2 text-sm text-slate-300">
+                  Steam sign-in keeps the scheduled match tied to a real identity.
+                </div>
+                <SteamLoginButton
+                  returnTo="/challenge"
+                  className="mt-4 rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-200"
                 />
-                                <div className="mt-2 text-xs text-slate-500">
-                  All scheduled match times are anchored to UTC so both players share one
-                  universal clock.
-                </div>
-              </label>
-
-              <label className="block space-y-2">
-                <span className="text-sm text-slate-300">Message</span>
-                <AutoGrowTextarea
-                  value={challengeNote}
-                  onChange={(event) =>
-                    setChallengeNote(event.target.value.slice(0, CHALLENGE_NOTE_MAX_CHARS))
-                  }
-                  maxRows={4}
-                  maxLength={CHALLENGE_NOTE_MAX_CHARS}
-                  className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm leading-6 text-white outline-none focus:border-amber-300/50"
-                  placeholder="Bo3 on Yucatan in an hour? Let's put it on the board."
-                />
-                <div className="text-right text-[11px] uppercase tracking-[0.18em] text-slate-500">
-                  {challengeNote.length}/{CHALLENGE_NOTE_MAX_CHARS}
-                </div>
-              </label>
-
-              {error ? (
-                <div className="rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
-                  {error}
-                </div>
-              ) : null}
-
-              {notice ? (
-                <div className="rounded-2xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
-                  {notice}
-                </div>
-              ) : null}
-
-              <button
-                type="submit"
-                disabled={saving}
-                className="rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {saving ? "Scheduling..." : "Schedule Match"}
-              </button>
-            </form>
-          )}
-        </section>
-
-        <section className="rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-5 sm:p-6">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <div className="text-xs uppercase tracking-[0.35em] text-cyan-200/70">Your Runway</div>
-              <h2 className="mt-2 text-2xl font-semibold text-white">Active Match Tiles</h2>
-            </div>
-            <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-              {activeRunwayMatches.length} active
-            </div>
-          </div>
-
-          <div className="mt-5 space-y-4">
-            {activeRunwayMatches.length === 0 ? (
-              <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-5 text-sm text-slate-300">
-                No active scheduled matches.
               </div>
             ) : (
-              activeRunwayMatches.map((match) => (
-                <ScheduledMatchCard
-                  key={match.id}
-                  match={match}
-                  viewerUid={uid}
-                  onAccept={(challengeId) => updateMatch(challengeId, "accept")}
-                  onDecline={(challengeId) => updateMatch(challengeId, "decline")}
-                  onCancel={(challengeId) => updateMatch(challengeId, "cancel")}
-                  onReschedule={(challengeId, payload) =>
-                    updateMatch(challengeId, "reschedule", payload)
-                  }
-                  actionState={actionState}
-                />
-              ))
-            )}
-          </div>
+              <form onSubmit={submitChallenge} className="mt-5 space-y-4">
+                <label className="block space-y-2">
+                  <span className="text-sm text-slate-300">Challenge Player</span>
+                  <select
+                    value={challengedUid}
+                    onChange={(event) => setChallengedUid(event.target.value)}
+                    className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-amber-300/50"
+                  >
+                    <option value="">Choose a warrior</option>
+                    {snapshot.candidates.map((candidate) => (
+                      <option key={candidate.uid} value={candidate.uid}>
+                        {candidate.name}
+                        {candidate.isOnline ? " · Online" : ""}
+                        {candidate.verified ? " · Verified" : ""}
+                      </option>
+                    ))}
+                  </select>
+                </label>
 
-          {recentDecisionMatches.length > 0 ? (
-            <div className="mt-6 border-t border-white/10 pt-6">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                  <div className="text-xs uppercase tracking-[0.35em] text-slate-300/70">
-                    Recent Decisions
+                <label className="block space-y-2">
+                  <span className="text-sm text-slate-300">Start Time (UTC)</span>
+                  <input
+                    type="datetime-local"
+                    value={scheduledAt}
+                    onChange={(event) => setScheduledAt(event.target.value)}
+                    className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-amber-300/50"
+                  />
+                  <div className="mt-2 text-xs text-slate-500">
+                    All scheduled match times are anchored to UTC so both players share one
+                    universal clock.
                   </div>
-                  <h3 className="mt-2 text-xl font-semibold text-white">Recent Updates</h3>
-                </div>
-                <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-                  {recentDecisionMatches.length} recent
-                </div>
-              </div>
+                </label>
 
-              <div className="mt-5 space-y-4">
-                {recentDecisionMatches.map((match) => (
+                <label className="block space-y-2">
+                  <span className="text-sm text-slate-300">Message</span>
+                  <AutoGrowTextarea
+                    value={challengeNote}
+                    onChange={(event) =>
+                      setChallengeNote(event.target.value.slice(0, CHALLENGE_NOTE_MAX_CHARS))
+                    }
+                    maxRows={4}
+                    maxLength={CHALLENGE_NOTE_MAX_CHARS}
+                    className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm leading-6 text-white outline-none focus:border-amber-300/50"
+                    placeholder="Bo3 on Yucatan in an hour? Let's put it on the board."
+                  />
+                  <div className="text-right text-[11px] uppercase tracking-[0.18em] text-slate-500">
+                    {challengeNote.length}/{CHALLENGE_NOTE_MAX_CHARS}
+                  </div>
+                </label>
+
+                {error ? (
+                  <div className="rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+                    {error}
+                  </div>
+                ) : null}
+
+                {notice ? (
+                  <div className="rounded-2xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+                    {notice}
+                  </div>
+                ) : null}
+
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {saving ? "Scheduling..." : "Schedule Match"}
+                </button>
+              </form>
+            )}
+          </section>
+
+          <section className="rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-5 sm:p-6">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <div className="text-xs uppercase tracking-[0.35em] text-slate-300/70">
+                  Challenge Record
+                </div>
+                <h2 className="mt-2 text-2xl font-semibold text-white">Your Numbers</h2>
+              </div>
+              <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+                {snapshot.record.total} total
+              </div>
+            </div>
+
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <StatCard label="Wins" value={String(snapshot.record.wins)} />
+              <StatCard label="Losses" value={String(snapshot.record.losses)} />
+              <StatCard label="Completed" value={String(snapshot.record.completed)} />
+              <StatCard label="Forfeited" value={String(snapshot.record.forfeited)} />
+              <StatCard label="Pending" value={String(snapshot.record.pending)} />
+              <StatCard label="Accepted" value={String(snapshot.record.accepted)} />
+              <StatCard label="Declined" value={String(snapshot.record.declined)} />
+              <StatCard label="Cancelled" value={String(snapshot.record.cancelled)} />
+            </div>
+          </section>
+        </section>
+
+        <section className="space-y-6">
+          <section className="rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-5 sm:p-6">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <div className="text-xs uppercase tracking-[0.35em] text-cyan-200/70">Your Runway</div>
+                <h2 className="mt-2 text-2xl font-semibold text-white">Active Match Tiles</h2>
+              </div>
+              <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+                {activeRunwayMatches.length} active
+              </div>
+            </div>
+
+            <div className="mt-5 space-y-4">
+              {activeRunwayMatches.length === 0 ? (
+                <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-5 text-sm text-slate-300">
+                  No active scheduled matches.
+                </div>
+              ) : (
+                activeRunwayMatches.map((match) => (
                   <ScheduledMatchCard
-                    key={`recent-${match.id}`}
+                    key={match.id}
                     match={match}
                     viewerUid={uid}
                     onAccept={(challengeId) => updateMatch(challengeId, "accept")}
@@ -433,10 +476,94 @@ export default function ChallengeWorkspace() {
                     }
                     actionState={actionState}
                   />
-                ))}
+                ))
+              )}
+            </div>
+          </section>
+
+          <section className="rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-5 sm:p-6">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <div className="text-xs uppercase tracking-[0.35em] text-slate-300/70">
+                  Challenge Activity
+                </div>
+                <h3 className="mt-2 text-xl font-semibold text-white">Recent Challenge Activity</h3>
+              </div>
+              <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+                {recentActivities.length} shown
               </div>
             </div>
-          ) : null}
+
+            <div className="mt-5 space-y-3">
+              {recentActivities.length === 0 ? (
+                <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-5 text-sm text-slate-300">
+                  Challenge activity will land here as the ledger fills out.
+                </div>
+              ) : (
+                recentActivities.map((activity) => (
+                  <div
+                    key={`${activity.scheduledMatchId}-${activity.id}`}
+                    className="rounded-[1.25rem] border border-white/10 bg-white/[0.04] px-4 py-3"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <div className="text-sm font-semibold text-white">
+                          {formatActivityTitle(activity)}
+                        </div>
+                        <div className="mt-1 text-[11px] uppercase tracking-[0.22em] text-slate-500">
+                          {activity.actorName ? `${activity.actorName} · ` : ""}{formatActivityTime(activity.createdAt)}
+                        </div>
+                      </div>
+                      <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-slate-300">
+                        Match #{activity.scheduledMatchId}
+                      </div>
+                    </div>
+                    {activity.detail ? (
+                      <div className="mt-3 text-sm leading-6 text-slate-300">{activity.detail}</div>
+                    ) : null}
+                  </div>
+                ))
+              )}
+            </div>
+          </section>
+
+          <section className="rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-5 sm:p-6">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <div className="text-xs uppercase tracking-[0.35em] text-slate-300/70">
+                  Challenge History
+                </div>
+                <h3 className="mt-2 text-xl font-semibold text-white">Past Scheduled Matches</h3>
+              </div>
+              <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+                {snapshot.historyMatches.length} tracked
+              </div>
+            </div>
+
+            <div className="mt-5 space-y-4">
+              {historyMatches.length === 0 ? (
+                <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-5 text-sm text-slate-300">
+                  No older challenge history yet.
+                </div>
+              ) : (
+                historyMatches.map((match) => (
+                  <ScheduledMatchCard
+                    key={`history-${match.id}`}
+                    match={match}
+                    viewerUid={uid}
+                    onAccept={(challengeId) => updateMatch(challengeId, "accept")}
+                    onDecline={(challengeId) => updateMatch(challengeId, "decline")}
+                    onCancel={(challengeId) => updateMatch(challengeId, "cancel")}
+                    onReschedule={(challengeId, payload) =>
+                      updateMatch(challengeId, "reschedule", payload)
+                    }
+                    actionState={actionState}
+                    compact
+                  />
+                ))
+              )}
+            </div>
+          </section>
         </section>
       </section>
     </main>
