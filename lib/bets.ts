@@ -102,22 +102,6 @@ function slugify(value: string) {
     .slice(0, 100);
 }
 
-function uniqueNames(values: Array<string | null | undefined>) {
-  const seen = new Set<string>();
-  const result: string[] = [];
-
-  for (const value of values) {
-    const normalized = normalizeName(value);
-    if (!normalized) continue;
-    const key = normalized.toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    result.push(normalized);
-  }
-
-  return result;
-}
-
 function hashValue(value: string) {
   let hash = 0;
   for (let index = 0; index < value.length; index += 1) {
