@@ -90,10 +90,7 @@ export default function WoloPage() {
     window.localStorage.setItem(HERO_VIEW_KEY, premiumHeroView ? "premium" : "prod");
   }, [premiumHeroView]);
 
-  const chainId =
-    chainData && typeof chainData === "object" && "chainId" in chainData
-      ? String(chainData.chainId)
-      : "wolo";
+  const chainId = chainData || "wolo-testnet";
 
   useEffect(() => {
     setBalanceOverride(null);
