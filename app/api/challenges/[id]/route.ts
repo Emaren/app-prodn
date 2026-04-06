@@ -8,6 +8,7 @@ import {
 import { postDirectInboxMessage } from "@/lib/contactInbox";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
+import { recordUserActivity } from "@/lib/userExperience";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -38,6 +39,16 @@ function formatScheduledAtForInbox(date: Date) {
     hour: "numeric",
     minute: "2-digit",
   }).format(date);
+}
+
+function buildChallengeLabel({
+  challengerName,
+  challengedName,
+}: {
+  challengerName: string;
+  challengedName: string;
+}) {
+  return `${challengerName} vs ${challengedName}`;
 }
 
 function buildAcceptanceMessage({
@@ -220,6 +231,10 @@ export async function PATCH(
       return NextResponse.json({ detail: "Unknown challenge action." }, { status: 400 });
     }
 
+    const challengerName = playerName(scheduledMatch.challenger);
+    const challengedName = playerName(scheduledMatch.challenged);
+    const challengeLabel = buildChallengeLabel({ challengerName, challengedName });
+
     if (payload.action === "accept") {
       if (!viewerIsChallenged) {
         return NextResponse.json(
@@ -251,11 +266,37 @@ export async function PATCH(
           senderUserId: viewer.id,
           targetUserId: scheduledMatch.challengerUserId,
           body: buildAcceptanceMessage({
-            challengerName: playerName(scheduledMatch.challenger),
-            challengedName: playerName(scheduledMatch.challenged),
+            challengerName,
+            challengedName,
             scheduledAt: scheduledMatch.scheduledAt,
           }),
           now: acceptedAt,
+        });
+
+        await recordUserActivity(tx, {
+          userId: scheduledMatch.challengerUserId,
+          type: "challenge_accepted",
+          path: "/challenge",
+          label: challengeLabel,
+          metadata: {
+            challengeId,
+            role: "challenger",
+            acceptedByUid: viewer.uid,
+            scheduledAt: scheduledMatch.scheduledAt.toISOString(),
+          },
+        });
+
+        await recordUserActivity(tx, {
+          userId: scheduledMatch.challengedUserId,
+          type: "challenge_accepted",
+          path: "/challenge",
+          label: challengeLabel,
+          metadata: {
+            challengeId,
+            role: "challenged",
+            acceptedByUid: viewer.uid,
+            scheduledAt: scheduledMatch.scheduledAt.toISOString(),
+          },
         });
       });
     }
@@ -289,11 +330,37 @@ export async function PATCH(
           senderUserId: viewer.id,
           targetUserId: scheduledMatch.challengerUserId,
           body: buildDeclineMessage({
-            challengerName: playerName(scheduledMatch.challenger),
-            challengedName: playerName(scheduledMatch.challenged),
+            challengerName,
+            challengedName,
             scheduledAt: scheduledMatch.scheduledAt,
           }),
           now: declinedAt,
+        });
+
+        await recordUserActivity(tx, {
+          userId: scheduledMatch.challengerUserId,
+          type: "challenge_declined",
+          path: "/challenge",
+          label: challengeLabel,
+          metadata: {
+            challengeId,
+            role: "challenger",
+            declinedByUid: viewer.uid,
+            scheduledAt: scheduledMatch.scheduledAt.toISOString(),
+          },
+        });
+
+        await recordUserActivity(tx, {
+          userId: scheduledMatch.challengedUserId,
+          type: "challenge_declined",
+          path: "/challenge",
+          label: challengeLabel,
+          metadata: {
+            challengeId,
+            role: "challenged",
+            declinedByUid: viewer.uid,
+            scheduledAt: scheduledMatch.scheduledAt.toISOString(),
+          },
         });
       });
     }
@@ -333,12 +400,38 @@ export async function PATCH(
           senderUserId: viewer.id,
           targetUserId,
           body: buildCancellationMessage({
-            challengerName: playerName(scheduledMatch.challenger),
-            challengedName: playerName(scheduledMatch.challenged),
+            challengerName,
+            challengedName,
             scheduledAt: scheduledMatch.scheduledAt,
             cancelledByName: playerName(viewer),
           }),
           now: cancelledAt,
+        });
+
+        await recordUserActivity(tx, {
+          userId: scheduledMatch.challengerUserId,
+          type: "challenge_cancelled",
+          path: "/challenge",
+          label: challengeLabel,
+          metadata: {
+            challengeId,
+            cancelledByUid: viewer.uid,
+            role: viewerIsChallenger ? "challenger" : "challenged",
+            scheduledAt: scheduledMatch.scheduledAt.toISOString(),
+          },
+        });
+
+        await recordUserActivity(tx, {
+          userId: scheduledMatch.challengedUserId,
+          type: "challenge_cancelled",
+          path: "/challenge",
+          label: challengeLabel,
+          metadata: {
+            challengeId,
+            cancelledByUid: viewer.uid,
+            role: viewerIsChallenger ? "challenged" : "challenger",
+            scheduledAt: scheduledMatch.scheduledAt.toISOString(),
+          },
         });
       });
     }
@@ -426,13 +519,41 @@ export async function PATCH(
           senderUserId: viewer.id,
           targetUserId,
           body: buildRescheduleMessage({
-            challengerName: playerName(scheduledMatch.challenger),
-            challengedName: playerName(scheduledMatch.challenged),
+            challengerName,
+            challengedName,
             scheduledAt: nextScheduledAt,
             challengeNote: nextChallengeNote,
             updatedByName: playerName(viewer),
           }),
           now: rescheduledAt,
+        });
+
+        await recordUserActivity(tx, {
+          userId: scheduledMatch.challengerUserId,
+          type: "challenge_rescheduled",
+          path: "/challenge",
+          label: challengeLabel,
+          metadata: {
+            challengeId,
+            updatedByUid: viewer.uid,
+            role: viewerIsChallenger ? "challenger" : "challenged",
+            scheduledAt: nextScheduledAt.toISOString(),
+            challengeNote: nextChallengeNote,
+          },
+        });
+
+        await recordUserActivity(tx, {
+          userId: scheduledMatch.challengedUserId,
+          type: "challenge_rescheduled",
+          path: "/challenge",
+          label: challengeLabel,
+          metadata: {
+            challengeId,
+            updatedByUid: viewer.uid,
+            role: viewerIsChallenger ? "challenged" : "challenger",
+            scheduledAt: nextScheduledAt.toISOString(),
+            challengeNote: nextChallengeNote,
+          },
         });
       });
     }

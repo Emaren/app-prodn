@@ -4,10 +4,13 @@ import path from "node:path";
 import { promises as fs } from "node:fs";
 import { promisify } from "node:util";
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 import { WOLO_ADDRESS_PREFIX, WOLO_BASE_DENOM, WOLO_CHAIN_ID } from "@/lib/woloChain";
 import { fetchWoloBalanceAmount } from "@/lib/woloRuntime";
+import { getPrisma } from "@/lib/prisma";
+import { resolveRequestUid } from "@/lib/requestIdentity";
+import { recordUserActivity } from "@/lib/userExperience";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -181,8 +184,11 @@ function cooldownPayload(record: FaucetClaimRecord) {
   };
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    const prisma = getPrisma();
+    const sessionUid = await resolveRequestUid(request);
+
     const body = (await request.json().catch(() => ({}))) as { address?: string };
     const address = normalizeAddress(body.address);
     const addressError = validateWoloAddress(address);
@@ -216,6 +222,29 @@ export async function POST(request: Request) {
     await writeFaucetLedger(ledger);
 
     const balanceAfterAmount = await fetchBalanceAfterClaim(address, balanceBeforeAmount);
+
+    if (sessionUid) {
+      const user = await prisma.user.findUnique({
+        where: { uid: sessionUid },
+        select: { id: true },
+      });
+
+      if (user) {
+        await recordUserActivity(prisma, {
+          userId: user.id,
+          type: "wolo_faucet_claimed",
+          path: "/wallet",
+          label: "WOLO faucet",
+          metadata: {
+            address,
+            txhash,
+            claimedAmountWolo: CLAIM_AMOUNT_WOLO,
+            claimedAmountUwoLo: CLAIM_AMOUNT_UWOLO,
+          },
+          dedupeWithinSeconds: 30,
+        });
+      }
+    }
 
     return NextResponse.json(
       {

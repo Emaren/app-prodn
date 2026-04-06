@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { loadBetBoardSnapshot } from "@/lib/bets";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
+import { recordUserActivity } from "@/lib/userExperience";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -73,6 +74,10 @@ export async function POST(request: NextRequest) {
       select: {
         id: true,
         status: true,
+        title: true,
+        leftLabel: true,
+        rightLabel: true,
+        marketType: true,
       },
     });
 
@@ -105,6 +110,23 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    await recordUserActivity(prisma, {
+      userId: viewer.id,
+      type: "bet_wager_placed",
+      path: "/bets",
+      label: market.title,
+      metadata: {
+        marketId: market.id,
+        marketType: market.marketType,
+        side,
+        amountWolo,
+        leftLabel: market.leftLabel,
+        rightLabel: market.rightLabel,
+        status: market.status,
+      },
+      dedupeWithinSeconds: 5,
+    });
+
     const refreshed = await loadBetBoardSnapshot(prisma, viewer.uid);
     return NextResponse.json(refreshed);
   } catch (error) {
@@ -130,7 +152,14 @@ export async function DELETE(request: NextRequest) {
 
     const market = await prisma.betMarket.findUnique({
       where: { id: marketId },
-      select: { id: true, status: true },
+      select: {
+        id: true,
+        status: true,
+        title: true,
+        leftLabel: true,
+        rightLabel: true,
+        marketType: true,
+      },
     });
 
     if (!market) {
@@ -146,6 +175,21 @@ export async function DELETE(request: NextRequest) {
         marketId,
         userId: viewer.id,
       },
+    });
+
+    await recordUserActivity(prisma, {
+      userId: viewer.id,
+      type: "bet_wager_cancelled",
+      path: "/bets",
+      label: market.title,
+      metadata: {
+        marketId: market.id,
+        marketType: market.marketType,
+        leftLabel: market.leftLabel,
+        rightLabel: market.rightLabel,
+        status: market.status,
+      },
+      dedupeWithinSeconds: 5,
     });
 
     const refreshed = await loadBetBoardSnapshot(prisma, viewer.uid);

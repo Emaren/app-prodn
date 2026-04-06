@@ -3,6 +3,7 @@ import { getBackendUpstreamBase } from "@/lib/backendUpstream";
 import { getSessionUid } from "@/lib/session";
 import { getPrisma } from "@/lib/prisma";
 import { reconcileTournamentMatchProofs } from "@/lib/tournamentProofReconciler";
+import { recordUserActivity } from "@/lib/userExperience";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -33,6 +34,7 @@ export async function POST(request: NextRequest) {
   let playerName: string | null = readHeader(request, "x-player-name");
   let user:
     | {
+        id: number;
         uid: string;
         inGameName: string | null;
       }
@@ -42,19 +44,25 @@ export async function POST(request: NextRequest) {
     user = await prisma.user.findUnique({
       where: { uid },
       select: {
+        id: true,
         uid: true,
         inGameName: true,
       },
     });
     if (!user) {
-      await prisma.user.create({
+      user = await prisma.user.create({
         data: {
           uid,
           isAdmin: false,
         },
+        select: {
+          id: true,
+          uid: true,
+          inGameName: true,
+        },
       });
     }
-    playerName = user?.inGameName || null;
+    playerName = user.inGameName || null;
   }
 
   const base = getBackendUpstreamBase();
@@ -92,6 +100,34 @@ export async function POST(request: NextRequest) {
       await reconcileTournamentMatchProofs(prisma, { force: true });
     } catch (error) {
       console.warn("Replay upload succeeded but tournament proof reconciliation failed:", error);
+    }
+
+    const activityUser =
+      user ||
+      (await prisma.user.findUnique({
+        where: { uid },
+        select: {
+          id: true,
+          uid: true,
+          inGameName: true,
+        },
+      }));
+
+    if (activityUser) {
+      await recordUserActivity(prisma, {
+        userId: activityUser.id,
+        type: "replay_upload",
+        path: "/upload",
+        label: playerName || "Replay upload",
+        metadata: {
+          viaWatcher: isWatcherProxyUpload,
+          parseIteration: readHeader(request, "x-parse-iteration"),
+          isFinal: readHeader(request, "x-is-final"),
+          parseSource: readHeader(request, "x-parse-source"),
+          parseReason: readHeader(request, "x-parse-reason"),
+        },
+        dedupeWithinSeconds: 5,
+      });
     }
   }
   return new NextResponse(upstreamResponse.body, {

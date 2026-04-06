@@ -9,6 +9,7 @@ import {
 import { postDirectInboxMessage } from "@/lib/contactInbox";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
+import { recordUserActivity } from "@/lib/userExperience";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -63,6 +64,16 @@ function buildChallengeInviteMessage({
   }
 
   return lines.join("\n");
+}
+
+function buildChallengeLabel({
+  challengerName,
+  challengedName,
+}: {
+  challengerName: string;
+  challengedName: string;
+}) {
+  return `${challengerName} vs ${challengedName}`;
 }
 
 function validateScheduledAtWindow(scheduledAt: Date) {
@@ -176,8 +187,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const challengerName = playerName(viewer);
+    const challengedName = playerName(challenged);
+    const challengeLabel = buildChallengeLabel({ challengerName, challengedName });
+
     await prisma.$transaction(async (tx) => {
-      await tx.scheduledMatch.create({
+      const createdMatch = await tx.scheduledMatch.create({
         data: {
           challengerUserId: viewer.id,
           challengedUserId: challenged.id,
@@ -190,11 +205,41 @@ export async function POST(request: NextRequest) {
         senderUserId: viewer.id,
         targetUserId: challenged.id,
         body: buildChallengeInviteMessage({
-          challengerName: playerName(viewer),
-          challengedName: playerName(challenged),
+          challengerName,
+          challengedName,
           scheduledAt,
           challengeNote,
         }),
+      });
+
+      await recordUserActivity(tx, {
+        userId: viewer.id,
+        type: "challenge_created",
+        path: "/challenge",
+        label: challengeLabel,
+        metadata: {
+          challengeId: createdMatch.id,
+          role: "challenger",
+          opponentUid: challenged.uid,
+          scheduledAt: scheduledAt.toISOString(),
+          challengeNote,
+        },
+        dedupeWithinSeconds: 5,
+      });
+
+      await recordUserActivity(tx, {
+        userId: challenged.id,
+        type: "challenge_received",
+        path: "/challenge",
+        label: challengeLabel,
+        metadata: {
+          challengeId: createdMatch.id,
+          role: "challenged",
+          opponentUid: viewer.uid,
+          scheduledAt: scheduledAt.toISOString(),
+          challengeNote,
+        },
+        dedupeWithinSeconds: 5,
       });
     });
 

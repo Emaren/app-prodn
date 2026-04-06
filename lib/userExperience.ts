@@ -29,6 +29,8 @@ export type UserActivityEntry = {
   createdAt: string;
 };
 
+type ActivityDbClient = PrismaClient | Prisma.TransactionClient;
+
 export function normalizeActivityType(value: string) {
   return value.trim().replace(/\s+/g, "_").toLowerCase().slice(0, 40);
 }
@@ -187,7 +189,7 @@ function normalizeMetadata(
 }
 
 export async function recordUserActivity(
-  prisma: PrismaClient,
+  prisma: ActivityDbClient,
   input: {
     userId: number;
     type: string;

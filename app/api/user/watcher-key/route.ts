@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import crypto from "crypto";
 import { getPrisma } from "@/lib/prisma";
 import { resolveRequestUid } from "@/lib/requestIdentity";
+import { recordUserActivity } from "@/lib/userExperience";
 
 export const runtime = "nodejs";
 
@@ -39,6 +40,17 @@ export async function POST(request: NextRequest) {
     VALUES (${user.id}, ${"watcher"}, ${prefix}, ${hash})
   `;
 
+  await recordUserActivity(prisma, {
+    userId: user.id,
+    type: "watcher_key_created",
+    path: "/profile",
+    label: "Watcher key minted",
+    metadata: {
+      keyPrefix: prefix,
+    },
+    dedupeWithinSeconds: 3,
+  });
+
   return NextResponse.json({ apiKey, prefix });
 }
 
@@ -58,6 +70,17 @@ export async function GET(request: NextRequest) {
       AND kind = ${"watcher"}
     ORDER BY created_at DESC
   `;
+
+  await recordUserActivity(prisma, {
+    userId: user.id,
+    type: "watcher_keys_viewed",
+    path: "/profile",
+    label: "Watcher keys",
+    metadata: {
+      activeKeyCount: keys.length,
+    },
+    dedupeWithinSeconds: 30,
+  });
 
   return NextResponse.json({
     keys: keys.map((k) => ({
