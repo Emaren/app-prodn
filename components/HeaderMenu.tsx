@@ -9,7 +9,6 @@ import {
   ChevronDown,
   Download,
   ListChecks,
-  Map,
   MessageSquareMore,
   Radio,
   Shield,
@@ -88,11 +87,6 @@ export default function HeaderMenu({
       { href: "/game-stats", label: "Game Stats", icon: BarChart3 },
       { href: "/download", label: "Download Watcher", icon: Download },
       { href: "/wolo", label: "$WOLO", icon: Coins },
-      {
-        href: "/roadmap",
-        label: "Roadmap",
-        icon: Map,
-      },
     ],
     [liveGamesCount, requestCount]
   );
