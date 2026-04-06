@@ -5,11 +5,7 @@ import {
   type RequestAiConciergeReplyArgs,
 } from "@/lib/aiConcierge";
 import {
-  AI_VISIBILITY_OPTIONS,
-  DEFAULT_AI_VISIBILITY,
-  getAiPersonaConfig,
   type AiPersonaId,
-  type AiVisibilityOption,
 } from "@/lib/aiConciergeConfig";
 import { requestEnabledAiReplies } from "@/lib/aiPersonaOrchestrator";
 import { ensureLobbyRoom, getLobbyMessages } from "@/lib/communityStore";
@@ -34,12 +30,6 @@ type PreparedPersonaThread = {
   history: ConversationHistoryTurn[];
 };
 
-function parseAiVisibility(value: unknown): AiVisibilityOption {
-  return typeof value === "string" && AI_VISIBILITY_OPTIONS.includes(value as AiVisibilityOption)
-    ? (value as AiVisibilityOption)
-    : DEFAULT_AI_VISIBILITY;
-}
-
 function parseSelectedPersonaIds(
   body: Record<string, unknown>,
   aiEnabled: boolean
@@ -59,20 +49,6 @@ function parseSelectedPersonaIds(
   }
 
   return personaIds;
-}
-
-function buildPrivateNotice(personaIds: AiPersonaId[]) {
-  if (personaIds.length === 0) {
-    return "Message sent privately.";
-  }
-
-  if (personaIds.length === 1) {
-    return `Message sent privately to ${getAiPersonaConfig(personaIds[0]).name}.`;
-  }
-
-  const personaNames = personaIds.map((personaId) => getAiPersonaConfig(personaId).name);
-  const lastName = personaNames.pop();
-  return `Message sent privately to ${personaNames.join(", ")} and ${lastName}.`;
 }
 
 async function preparePersonaThread(args: {
@@ -134,14 +110,7 @@ export async function POST(request: NextRequest) {
   }
 
   const aiEnabled = body.aiEnabled !== false;
-  const aiVisibility = parseAiVisibility(body.aiVisibility);
   const selectedPersonaIds = parseSelectedPersonaIds(body, aiEnabled);
-  const privateThreadPersonaIds: Exclude<AiPersonaId, "guy">[] =
-    aiVisibility === "private"
-      ? selectedPersonaIds.length > 0
-        ? selectedPersonaIds
-        : ["scribe"]
-      : selectedPersonaIds;
 
   const prisma = getPrisma();
   const user = await prisma.user.findUnique({
@@ -175,59 +144,34 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ detail: "Chat room not found." }, { status: 404 });
   }
 
-  if (aiVisibility === "public") {
-    const recentMessage = await prisma.chatMessage.findFirst({
-      where: {
-        roomId: room.id,
-        userId: user.id,
-      },
-      orderBy: { createdAt: "desc" },
-      select: { createdAt: true },
-    });
+  const recentMessage = await prisma.chatMessage.findFirst({
+    where: {
+      roomId: room.id,
+      userId: user.id,
+    },
+    orderBy: { createdAt: "desc" },
+    select: { createdAt: true },
+  });
 
-    if (recentMessage && Date.now() - recentMessage.createdAt.getTime() < 4_000) {
-      return NextResponse.json(
-        { detail: "You are sending messages too quickly. Wait a few seconds." },
-        { status: 429 }
-      );
-    }
-  } else {
-    const recentDirectMessage = await prisma.directMessage.findFirst({
-      where: {
-        senderUserId: user.id,
-      },
-      orderBy: { createdAt: "desc" },
-      select: { createdAt: true },
-    });
-
-    if (recentDirectMessage && Date.now() - recentDirectMessage.createdAt.getTime() < 4_000) {
-      return NextResponse.json(
-        { detail: "You are sending messages too quickly. Wait a few seconds." },
-        { status: 429 }
-      );
-    }
+  if (recentMessage && Date.now() - recentMessage.createdAt.getTime() < 4_000) {
+    return NextResponse.json(
+      { detail: "You are sending messages too quickly. Wait a few seconds." },
+      { status: 429 }
+    );
   }
 
-  if (aiVisibility === "public") {
-    await prisma.chatMessage.create({
-      data: {
-        roomId: room.id,
-        userId: user.id,
-        body: messageBody,
-      },
-    });
-  }
+  await prisma.chatMessage.create({
+    data: {
+      roomId: room.id,
+      userId: user.id,
+      body: messageBody,
+    },
+  });
 
-  const notices: string[] = [];
   const warnings: string[] = [];
-
-  if (aiVisibility === "private") {
-    notices.push(buildPrivateNotice(privateThreadPersonaIds));
-  }
-
   const preparedThreads = new Map<AiPersonaId, PreparedPersonaThread>();
 
-  for (const personaId of privateThreadPersonaIds) {
+  for (const personaId of selectedPersonaIds) {
     const thread = await preparePersonaThread({
       prisma,
       viewerUserId: user.id,
@@ -246,12 +190,12 @@ export async function POST(request: NextRequest) {
             uid: user.uid,
             displayName: user.inGameName || user.steamPersonaName || user.uid,
           },
-          source: aiVisibility === "public" ? "lobby_public" : "lobby_private",
+          source: "lobby_public",
           userMessage: messageBody,
-          visibility: aiVisibility,
+          visibility: "public",
           roomSlug: room.slug,
           selectedPersonaIds,
-          guyEnabled: aiVisibility === "public",
+          guyEnabled: true,
         },
         async (requestArgs: RequestAiConciergeReplyArgs) => {
           const personaId = requestArgs.personaId as AiPersonaId;
@@ -287,23 +231,21 @@ export async function POST(request: NextRequest) {
           select: { id: true },
         });
 
-        if (aiVisibility === "public") {
-          const publicAiMessage = await prisma.chatMessage.create({
-            data: {
-              roomId: room.id,
-              userId: thread.aiUserId,
-              body: normalizeChatBody(aiReply.body) || `${aiReply.personaName} checked in.`,
-            },
-            select: { id: true },
-          });
+        const publicAiMessage = await prisma.chatMessage.create({
+          data: {
+            roomId: room.id,
+            userId: thread.aiUserId,
+            body: normalizeChatBody(aiReply.body) || `${aiReply.personaName} checked in.`,
+          },
+          select: { id: true },
+        });
 
-          await prisma.directMessage.update({
-            where: { id: aiThreadMessage.id },
-            data: {
-              sharedLobbyMessageId: publicAiMessage.id,
-            },
-          });
-        }
+        await prisma.directMessage.update({
+          where: { id: aiThreadMessage.id },
+          data: {
+            sharedLobbyMessageId: publicAiMessage.id,
+          },
+        });
       }
     } catch (aiError) {
       console.warn("Lobby booth reply failed:", aiError);
@@ -319,6 +261,6 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({
     ok: true,
     messages,
-    aiWarning: [...notices, ...warnings].join(" ").trim() || null,
+    aiWarning: warnings.join(" ").trim() || null,
   });
 }

@@ -17,7 +17,7 @@ import {
 import SteamLinkedBadge from "@/components/SteamLinkedBadge";
 import type { ChatRenderItem } from "@/components/lobby/utils";
 import { displayName } from "@/components/lobby/utils";
-import { type AiVisibilityOption } from "@/lib/aiConciergeConfig";
+import type { AiVisibilityOption } from "@/lib/aiConciergeConfig";
 import AutoGrowTextarea from "@/components/ui/AutoGrowTextarea";
 import { LOBBY_MESSAGE_MAX_CHARS } from "@/lib/lobby";
 import { LOBBY_MESSAGE_REACTIONS } from "@/lib/lobbyReactionConfig";
@@ -53,38 +53,37 @@ type LobbyChatProps = {
   onLogin: () => void;
 };
 
-export function LobbyChat({
-  style,
-  themeKey,
-  viewMode,
-  chatRoomTitle,
-  messagesCount,
-  chatItems,
-  chatScrollRef,
-  chatError,
-  chatNotice,
-  isAuthenticated,
-  playerName,
-  currentUserInGameName,
-  currentUserSteamPersonaName,
-  messageBody,
-  chatPending,
-  reactingMessageId,
-  aiEnabled,
-  aiVisibility,
-  aiScribeEnabled,
-  aiGrimerEnabled,
-  onMessageBodyChange,
-  onSendMessage,
-  onAiEnabledChange,
-  onAiVisibilityChange,
-  onAiScribeEnabledChange,
-  onAiGrimerEnabledChange,
-  onToggleReaction,
-  onLogin,
-}: LobbyChatProps) {
+export function LobbyChat(props: LobbyChatProps) {
+  const {
+    style,
+    themeKey,
+    viewMode,
+    chatRoomTitle,
+    messagesCount,
+    chatItems,
+    chatScrollRef,
+    chatError,
+    chatNotice,
+    isAuthenticated,
+    playerName,
+    currentUserInGameName,
+    currentUserSteamPersonaName,
+    messageBody,
+    chatPending,
+    reactingMessageId,
+    aiEnabled,
+    aiScribeEnabled,
+    aiGrimerEnabled,
+    onMessageBodyChange,
+    onSendMessage,
+    onAiEnabledChange,
+    onAiScribeEnabledChange,
+    onAiGrimerEnabledChange,
+    onToggleReaction,
+    onLogin,
+  } = props;
+
   const tone = getLobbyPresentationTone(themeKey, viewMode);
-  const anyPersonaEnabled = aiScribeEnabled || aiGrimerEnabled;
 
   return (
     <div
@@ -157,20 +156,30 @@ export function LobbyChat({
               </div>
 
               <div className="rounded-[1.25rem] bg-[#10192a]/72 px-2.5 py-2.5 text-sm text-slate-200 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)]">
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
+                  <div className="flex justify-end">
+                    <AiVoicePill
+                      label="The AI Scribe"
+                      checked={aiScribeEnabled}
+                      disabled={!aiEnabled}
+                      onToggle={() => onAiScribeEnabledChange(!aiScribeEnabled)}
+                      align="right"
+                    />
+                  </div>
+
                   <button
                     type="button"
                     onClick={() => onAiEnabledChange(!aiEnabled)}
                     aria-pressed={aiEnabled}
-                    aria-label={aiEnabled ? "AI responses enabled" : "AI responses disabled"}
-                    title={aiEnabled ? "AI responses enabled" : "AI responses disabled"}
-                    className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition ${
+                    aria-label={aiEnabled ? "House voices enabled" : "House voices disabled"}
+                    title={aiEnabled ? "House voices enabled" : "House voices disabled"}
+                    className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition ${
                       aiEnabled
                         ? "border-emerald-300/30 bg-emerald-400/14 text-emerald-100 shadow-[0_0_18px_rgba(52,211,153,0.18)]"
                         : "border-red-300/24 bg-red-400/10 text-red-100 shadow-[0_0_18px_rgba(248,113,113,0.12)]"
                     }`}
                   >
-                    <svg viewBox="0 0 20 20" className="h-4 w-4" fill="none" aria-hidden="true">
+                    <svg viewBox="0 0 20 20" className="h-4.5 w-4.5" fill="none" aria-hidden="true">
                       <path
                         d="M10 2.75v5.5"
                         stroke="currentColor"
@@ -186,57 +195,15 @@ export function LobbyChat({
                     </svg>
                   </button>
 
-                  <AiPersonaToggle
-                    label="The AI Scribe"
-                    checked={aiScribeEnabled}
-                    disabled={!aiEnabled}
-                    onToggle={() => onAiScribeEnabledChange(!aiScribeEnabled)}
-                  />
-
-                  <AiPersonaToggle
-                    label="Grimer"
-                    checked={aiGrimerEnabled}
-                    disabled={!aiEnabled}
-                    onToggle={() => onAiGrimerEnabledChange(!aiGrimerEnabled)}
-                  />
-
-                  <div className="ml-auto inline-flex shrink-0 rounded-full bg-[#0b1322] p-1 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05)] max-sm:w-full max-sm:justify-between">
-                    {(["private", "public"] as const).map((option) => (
-                      <button
-                        key={option}
-                        type="button"
-                        onClick={() => onAiVisibilityChange(option)}
-                        className={`rounded-full px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.16em] transition sm:px-4 ${
-                          aiVisibility === option
-                            ? "bg-amber-300 text-slate-950"
-                            : "text-slate-300 hover:text-white"
-                        }`}
-                      >
-                        {option === "private" ? "Private" : "Public"}
-                      </button>
-                    ))}
+                  <div className="flex justify-start">
+                    <AiVoicePill
+                      label="Grimer"
+                      checked={aiGrimerEnabled}
+                      disabled={!aiEnabled}
+                      onToggle={() => onAiGrimerEnabledChange(!aiGrimerEnabled)}
+                      align="left"
+                    />
                   </div>
-                </div>
-
-                <div className="mt-2 flex flex-wrap items-center justify-between gap-2 px-1 text-[11px] uppercase tracking-[0.16em] text-slate-500">
-                  <span>
-                    {aiEnabled
-                      ? anyPersonaEnabled
-                        ? aiVisibility === "public"
-                          ? "Lobby reply lane is public"
-                          : "Lobby reply lane is private"
-                        : "AI power is on, but no persona is selected"
-                      : "AI power is off"}
-                  </span>
-                  <span className="text-slate-400">
-                    {aiEnabled && anyPersonaEnabled
-                      ? aiScribeEnabled && aiGrimerEnabled
-                        ? "Scribe + Grimer armed"
-                        : aiScribeEnabled
-                          ? "Scribe armed"
-                          : "Grimer armed"
-                      : "Human-only lane"}
-                  </span>
                 </div>
               </div>
 
@@ -255,15 +222,7 @@ export function LobbyChat({
                         onSendMessage();
                       }
                     }}
-                    placeholder={
-                      aiEnabled
-                        ? anyPersonaEnabled
-                          ? aiVisibility === "public"
-                            ? "Message the lobby. Your AI lane is public."
-                            : "Message the lobby. Your AI lane stays private."
-                          : "Message the lobby chat."
-                        : "Message the lobby chat."
-                    }
+                    placeholder="Message the lobby..."
                     className={`min-w-0 w-full rounded-[1rem] border px-4 py-3 text-sm leading-6 outline-none ${tone.input}`}
                   />
                 </div>
@@ -303,16 +262,18 @@ export function LobbyChat({
   );
 }
 
-function AiPersonaToggle({
+function AiVoicePill({
   label,
   checked,
   disabled,
   onToggle,
+  align,
 }: {
   label: string;
   checked: boolean;
   disabled: boolean;
   onToggle: () => void;
+  align: "left" | "right";
 }) {
   return (
     <button
@@ -320,22 +281,14 @@ function AiPersonaToggle({
       onClick={onToggle}
       disabled={disabled}
       aria-pressed={checked}
-      className={`inline-flex h-10 min-w-0 items-center gap-2 rounded-full px-3.5 text-left text-[11px] font-medium uppercase tracking-[0.16em] transition sm:px-4 ${
+      className={`inline-flex h-10 max-w-full items-center rounded-full px-4 text-[11px] font-medium uppercase tracking-[0.16em] transition ${
         checked
-          ? "border border-transparent bg-[#132338] text-cyan-50 shadow-[inset_0_0_0_1px_rgba(34,211,238,0.12)]"
-          : "border border-white/[0.05] bg-[#0d1524]/90 text-slate-300 hover:border-white/[0.08] hover:bg-[#10192a] hover:text-white"
+          ? "bg-[#132338] text-cyan-50 shadow-[inset_0_0_0_1px_rgba(34,211,238,0.14)]"
+          : "bg-[#0d1524]/90 text-slate-300 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05)] hover:bg-[#10192a] hover:text-white"
+      } ${
+        align === "right" ? "justify-end text-right" : "justify-start text-left"
       } disabled:cursor-not-allowed disabled:opacity-50`}
     >
-      <span
-        aria-hidden="true"
-        className={`flex h-4 w-4 items-center justify-center rounded-[0.32rem] border text-[10px] leading-none transition ${
-          checked
-            ? "border-cyan-200/30 bg-cyan-300/14 text-cyan-50"
-            : "border-white/10 bg-white/[0.02] text-transparent"
-        }`}
-      >
-        ✓
-      </span>
       <span className="truncate">{label}</span>
     </button>
   );
@@ -599,13 +552,17 @@ function MiniIdentityPill({
   toneClassName: string;
 }) {
   return (
-    <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.16em] ${toneClassName}`}>
+    <span
+      className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.16em] ${toneClassName}`}
+    >
       {children}
     </span>
   );
 }
 
-function formatReactionTooltip(reaction: Extract<ChatRenderItem, { type: "message" }>["message"]["reactions"][number]) {
+function formatReactionTooltip(
+  reaction: Extract<ChatRenderItem, { type: "message" }>["message"]["reactions"][number]
+) {
   const named = reaction.users.map((user) => user.displayName).filter(Boolean);
   const fragments: string[] = [];
 
@@ -615,7 +572,9 @@ function formatReactionTooltip(reaction: Extract<ChatRenderItem, { type: "messag
 
   if (reaction.anonymousCount > 0) {
     fragments.push(
-      reaction.anonymousCount === 1 ? "1 anonymous player" : `${reaction.anonymousCount} anonymous players`
+      reaction.anonymousCount === 1
+        ? "1 anonymous player"
+        : `${reaction.anonymousCount} anonymous players`
     );
   }
 
