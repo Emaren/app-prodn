@@ -1,12 +1,9 @@
 import type { PrismaClient } from "@/lib/generated/prisma";
-import {
-  loadScheduledMatchTilesForLiveBoard,
-  type ScheduledMatchTile,
-} from "@/lib/challenges";
-import { getFeaturedTournament } from "@/lib/communityStore";
 import { parsePlayers, readMapName } from "@/lib/gameStatsView";
-import { loadLiveSessionSnapshot } from "@/lib/liveSessionSnapshot";
-import { loadLobbyLeaderboard } from "@/lib/lobbyLeaderboard";
+import {
+  loadLiveSessionSnapshot,
+  type LiveGameSession,
+} from "@/lib/liveSessionSnapshot";
 import { createPendingWoloClaim } from "@/lib/pendingWoloClaims";
 import { recordUserActivity } from "@/lib/userExperience";
 
@@ -88,17 +85,9 @@ export type BetBoardSnapshot = {
   };
 };
 
-const FALLBACK_FIGHTERS = [
-  "Emaren",
-  "Julio Alvarez",
-  "Sniper",
-  "Kaos",
-  "Quadro",
-  "Latin_k",
-] as const;
 
 const OPEN_STATUSES: BetStatus[] = ["open", "closing", "live"];
-const CHALLENGE_MARKET_SLUG_PREFIX = "challenge-runway-";
+const WATCHER_MARKET_SLUG_PREFIX = "watcher-live-";
 
 function normalizeName(value: string | null | undefined) {
   return (value || "").trim().replace(/\s+/g, " ");
@@ -152,12 +141,6 @@ function computeSharePercent(sidePoolWolo: number, totalPotWolo: number) {
   return Math.round((sidePoolWolo / totalPotWolo) * 100);
 }
 
-function statusFromTournament(status: string): BetStatus {
-  if (status === "active") return "live";
-  if (status === "open") return "closing";
-  return "open";
-}
-
 function formatCloseLabel(status: BetStatus, closeAt: Date | null) {
   if (status === "settled") return "Settled";
   if (status === "live") return "Live";
@@ -175,71 +158,37 @@ function formatCloseLabel(status: BetStatus, closeAt: Date | null) {
   return `${diffMinutes}m left`;
 }
 
-function buildSeedPools(
-  leftRating: number | null | undefined,
-  rightRating: number | null | undefined,
-  featured: boolean,
-  seedKey: string
-) {
-  const base = featured ? 180 : 120;
-  const hash = hashValue(seedKey);
-  const fallbackShift = 14 + (hash % 24);
+function getSessionPlayerPair(session: LiveGameSession) {
+  const players = session.players
+    .map((player) => ({
+      name: normalizeName(player.name),
+      winner: player.winner,
+    }))
+    .filter((player) => Boolean(player.name));
 
-  if (
-    typeof leftRating !== "number" ||
-    !Number.isFinite(leftRating) ||
-    typeof rightRating !== "number" ||
-    !Number.isFinite(rightRating)
-  ) {
-    return {
-      left: base + fallbackShift,
-      right: Math.max(60, base - Math.round(fallbackShift / 1.4)),
-    };
+  if (players.length !== 2) {
+    return null;
   }
 
-  const diff = leftRating - rightRating;
-  const spread = Math.min(72, Math.max(12, Math.round(Math.abs(diff) / 6)));
-
-  if (diff >= 0) {
-    return {
-      left: base + spread,
-      right: Math.max(60, base - Math.round(spread / 1.25)),
-    };
+  if (players[0].name.toLowerCase() === players[1].name.toLowerCase()) {
+    return null;
   }
 
-  return {
-    left: Math.max(60, base - Math.round(spread / 1.25)),
-    right: base + spread,
-  };
+  return players as [{ name: string; winner: boolean | null }, { name: string; winner: boolean | null }];
 }
 
-function marketStatusFromScheduledMatch(displayState: ScheduledMatchTile["displayState"]): BetStatus {
-  if (displayState === "completed") return "settled";
-  if (displayState === "live") return "live";
-  if (displayState === "accepted") return "closing";
-  return "open";
-}
+function inferWinnerSideFromSession(session: LiveGameSession): BetSide | null {
+  const pair = getSessionPlayerPair(session);
+  if (!pair) return null;
 
-function inferWinnerSideFromChallenge(match: ScheduledMatchTile): BetSide | null {
-  const winnerKey = normalizeName(match.linkedWinner);
-  if (!winnerKey) return null;
+  const normalizedWinner = normalizeName(session.winner).toLowerCase();
+  if (normalizedWinner) {
+    if (pair[0].name.toLowerCase() === normalizedWinner) return "left";
+    if (pair[1].name.toLowerCase() === normalizedWinner) return "right";
+  }
 
-  const challengerNames = uniqueNames([
-    match.challenger.name,
-    match.challenger.inGameName,
-    match.challenger.steamPersonaName,
-    match.challenger.uid,
-  ]).map((value) => value.toLowerCase());
-
-  const challengedNames = uniqueNames([
-    match.challenged.name,
-    match.challenged.inGameName,
-    match.challenged.steamPersonaName,
-    match.challenged.uid,
-  ]).map((value) => value.toLowerCase());
-
-  if (challengerNames.includes(winnerKey)) return "left";
-  if (challengedNames.includes(winnerKey)) return "right";
+  if (pair[0].winner === true && pair[1].winner !== true) return "left";
+  if (pair[1].winner === true && pair[0].winner !== true) return "right";
 
   return null;
 }
@@ -252,7 +201,7 @@ type MarketSeed = {
   status: BetStatus;
   featured: boolean;
   sortOrder: number;
-  source: "challenge" | "fallback";
+  source: "session";
   leftLabel: string;
   rightLabel: string;
   leftHref: string | null;
@@ -285,57 +234,52 @@ function marketSeedCreateData(seed: MarketSeed) {
   };
 }
 
-function buildChallengeMarketSeeds(
-  scheduledMatches: ScheduledMatchTile[],
-  ratingByName: Map<string, number | null>
-) {
-  const challengeMatches = scheduledMatches.filter((match) =>
-    ["pending", "accepted", "live", "completed"].includes(match.displayState)
-  );
-  const featuredChallengeIndex = challengeMatches.findIndex((match) =>
-    ["accepted", "live"].includes(match.displayState)
-  );
+function buildSessionMarketSlug(session: LiveGameSession, leftLabel: string, rightLabel: string) {
+  if (session.replayHash?.trim()) {
+    return `${WATCHER_MARKET_SLUG_PREFIX}${session.replayHash.trim().toLowerCase().slice(0, 24)}`;
+  }
 
-  return challengeMatches.map((match, index) => {
-    const slug = `${CHALLENGE_MARKET_SLUG_PREFIX}${match.id}`;
-    const seedPools = buildSeedPools(
-      ratingByName.get(match.challenger.name.trim().toLowerCase()) ?? null,
-      ratingByName.get(match.challenged.name.trim().toLowerCase()) ?? null,
-      index === 0,
-      slug
-    );
-    const eventLabel = match.linkedMapName
-      ? `Challenge Runway • ${match.linkedMapName}`
-      : "Challenge Runway";
-
-    return {
-      scheduledMatchId: match.id,
-      slug,
-      title: `${match.challenger.name} vs ${match.challenged.name}`,
-      eventLabel,
-      status: marketStatusFromScheduledMatch(match.displayState),
-      featured:
-        featuredChallengeIndex >= 0
-          ? index === featuredChallengeIndex
-          : index === 0 && match.displayState !== "pending",
-      sortOrder: -100 + index,
-      source: "challenge",
-      leftLabel: match.challenger.name,
-      rightLabel: match.challenged.name,
-      leftHref: match.challenger.href,
-      rightHref: match.challenged.href,
-      seedLeftWolo: seedPools.left,
-      seedRightWolo: seedPools.right,
-      closeAt:
-        match.displayState === "completed"
-          ? new Date(match.activityAt)
-          : new Date(match.scheduledAt),
-      settledAt: match.displayState === "completed" ? new Date(match.activityAt) : null,
-      winnerSide:
-        match.displayState === "completed" ? inferWinnerSideFromChallenge(match) : null,
-    } satisfies MarketSeed;
-  });
+  const sessionKey = slugify(session.sessionKey || `${leftLabel}-vs-${rightLabel}`);
+  return `${WATCHER_MARKET_SLUG_PREFIX}${sessionKey}`.slice(0, 120);
 }
+
+function buildSessionEventLabel(session: LiveGameSession) {
+  const rail = session.state === "live" ? "Watcher Live" : "Watcher Final";
+  return session.mapName ? `${rail} • ${session.mapName}` : rail;
+}
+
+function buildSessionMarketSeed(
+  session: LiveGameSession,
+  index: number,
+  featured: boolean
+): MarketSeed | null {
+  const pair = getSessionPlayerPair(session);
+  if (!pair) return null;
+
+  const [left, right] = pair;
+  const settledAtRaw = session.completedAt || session.updatedAt || session.createdAt;
+
+  return {
+    scheduledMatchId: null,
+    slug: buildSessionMarketSlug(session, left.name, right.name),
+    title: `${left.name} vs ${right.name}`,
+    eventLabel: buildSessionEventLabel(session),
+    status: session.state === "completed" ? "settled" : "live",
+    featured,
+    sortOrder: index,
+    source: "session",
+    leftLabel: left.name,
+    rightLabel: right.name,
+    leftHref: `/players/by-name/${encodeURIComponent(left.name)}`,
+    rightHref: `/players/by-name/${encodeURIComponent(right.name)}`,
+    seedLeftWolo: 0,
+    seedRightWolo: 0,
+    closeAt: null,
+    settledAt: session.state === "completed" ? new Date(settledAtRaw) : null,
+    winnerSide: session.state === "completed" ? inferWinnerSideFromSession(session) : null,
+  } satisfies MarketSeed;
+}
+
 
 function claimPlayerNameForUser(user: {
   uid: string;
@@ -507,157 +451,39 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
   }
 }
 
+
 async function buildOpenMarketSeeds(prisma: PrismaClient) {
-  const [tournament, leaderboard, sessionSnapshot] = await Promise.all([
-    getFeaturedTournament(prisma),
-    loadLobbyLeaderboard(prisma),
-    loadLiveSessionSnapshot(prisma),
-  ]);
-  const { tiles: scheduledMatchTiles } = await loadScheduledMatchTilesForLiveBoard(
-    prisma,
-    sessionSnapshot.activeSessions,
-    sessionSnapshot.recentlyCompletedSessions
-  );
+  const sessionSnapshot = await loadLiveSessionSnapshot(prisma);
 
-  const fighterNames = uniqueNames([
-    ...tournament.entrants.map((entrant) => entrant.inGameName || entrant.steamPersonaName),
-    ...leaderboard.entries.map((entry) => entry.name),
-    ...FALLBACK_FIGHTERS,
-  ]).slice(0, 6);
+  const seeds: MarketSeed[] = [];
+  const seenSlugs = new Set<string>();
 
-  const hrefByName = new Map(
-    leaderboard.entries.map((entry) => [entry.name.trim().toLowerCase(), entry.href] as const)
-  );
-  const ratingByName = new Map(
-    leaderboard.entries.map((entry) => [
-      entry.name.trim().toLowerCase(),
-      entry.primaryRating ?? entry.arenaElo ?? entry.steamRmRating ?? null,
-    ])
-  );
-  const challengeSeeds = buildChallengeMarketSeeds(scheduledMatchTiles, ratingByName);
-  const hasFeaturedChallenge = challengeSeeds.some((seed) => seed.featured);
+  sessionSnapshot.activeSessions.forEach((session, index) => {
+    const seed = buildSessionMarketSeed(session, index, seeds.length === 0);
+    if (!seed || seenSlugs.has(seed.slug)) return;
+    seenSlugs.add(seed.slug);
+    seeds.push(seed);
+  });
 
-  const featuredCloseAt = tournament.startsAt ? new Date(tournament.startsAt) : null;
-  const candidates: Array<{
-    leftIndex: number;
-    rightIndex: number;
-    eventLabel: string;
-    status: BetStatus;
-    featured: boolean;
-    sortOrder: number;
-    closeMinutes: number;
-  }> = [
-    {
-      leftIndex: 0,
-      rightIndex: 1,
-      eventLabel: tournament.isFallback ? "Founders Book" : tournament.title,
-      status: statusFromTournament(tournament.status),
-      featured: true,
-      sortOrder: 0,
-      closeMinutes: 96,
-    },
-    {
-      leftIndex: 1,
-      rightIndex: 2,
-      eventLabel: "Rivalry Book",
-      status: "closing",
-      featured: false,
-      sortOrder: 1,
-      closeMinutes: 38,
-    },
-    {
-      leftIndex: 0,
-      rightIndex: 3,
-      eventLabel: "Ladder Board",
-      status: "open",
-      featured: false,
-      sortOrder: 2,
-      closeMinutes: 74,
-    },
-    {
-      leftIndex: 2,
-      rightIndex: 4,
-      eventLabel: "Night Book",
-      status: "live",
-      featured: false,
-      sortOrder: 3,
-      closeMinutes: 12,
-    },
-    {
-      leftIndex: 3,
-      rightIndex: 5,
-      eventLabel: "Fresh Read",
-      status: "open",
-      featured: false,
-      sortOrder: 4,
-      closeMinutes: 86,
-    },
-  ];
+  sessionSnapshot.recentlyCompletedSessions.forEach((session, index) => {
+    const seed = buildSessionMarketSeed(session, 100 + index, false);
+    if (!seed || seenSlugs.has(seed.slug)) return;
+    seenSlugs.add(seed.slug);
+    seeds.push(seed);
+  });
 
-  const now = Date.now();
-  const fallbackSeeds: MarketSeed[] = [];
-
-  for (const candidate of candidates) {
-    const leftLabel = fighterNames[candidate.leftIndex] || FALLBACK_FIGHTERS[candidate.leftIndex];
-    const rightLabel = fighterNames[candidate.rightIndex] || FALLBACK_FIGHTERS[candidate.rightIndex];
-
-    if (!leftLabel || !rightLabel || leftLabel.toLowerCase() === rightLabel.toLowerCase()) {
-      continue;
-    }
-
-    const slug = slugify(`${candidate.eventLabel}-${leftLabel}-vs-${rightLabel}`);
-    const ratings = buildSeedPools(
-      ratingByName.get(leftLabel.toLowerCase()) ?? null,
-      ratingByName.get(rightLabel.toLowerCase()) ?? null,
-      candidate.featured,
-      slug
-    );
-
-    fallbackSeeds.push({
-      scheduledMatchId: null,
-      slug,
-      title: `${leftLabel} vs ${rightLabel}`,
-      eventLabel: candidate.eventLabel,
-      status: candidate.status,
-      featured: candidate.featured && !hasFeaturedChallenge,
-      sortOrder: candidate.sortOrder,
-      source: "fallback",
-      leftLabel,
-      rightLabel,
-      leftHref:
-        hrefByName.get(leftLabel.toLowerCase()) ||
-        `/players/by-name/${encodeURIComponent(leftLabel)}`,
-      rightHref:
-        hrefByName.get(rightLabel.toLowerCase()) ||
-        `/players/by-name/${encodeURIComponent(rightLabel)}`,
-      seedLeftWolo: ratings.left,
-      seedRightWolo: ratings.right,
-      closeAt:
-        candidate.featured && featuredCloseAt
-          ? featuredCloseAt
-          : new Date(now + candidate.closeMinutes * 60_000),
-      settledAt: null,
-      winnerSide: null,
-    } satisfies MarketSeed);
-  }
-
-  return [...challengeSeeds, ...fallbackSeeds];
+  return seeds;
 }
 
 export async function ensureBetMarkets(prisma: PrismaClient) {
   const seeds = await buildOpenMarketSeeds(prisma);
   const slugs = seeds.map((seed) => seed.slug);
-  const activeChallengeSlugs = seeds
-    .filter((seed) => seed.source === "challenge")
-    .map((seed) => seed.slug);
+
   const existing = await prisma.betMarket.findMany({
-    where: { slug: { in: slugs } },
+    where: slugs.length > 0 ? { slug: { in: slugs } } : undefined,
     select: {
       id: true,
       slug: true,
-      status: true,
-      winnerSide: true,
-      settledAt: true,
     },
   });
   const existingBySlug = new Map(existing.map((market) => [market.slug, market] as const));
@@ -669,10 +495,6 @@ export async function ensureBetMarkets(prisma: PrismaClient) {
         await prisma.betMarket.create({
           data: marketSeedCreateData(seed),
         });
-        return;
-      }
-
-      if (current.status === "settled" && seed.source === "fallback") {
         return;
       }
 
@@ -700,19 +522,21 @@ export async function ensureBetMarkets(prisma: PrismaClient) {
   );
 
   await prisma.betMarket.updateMany({
-    where: {
-      slug: {
-        startsWith: CHALLENGE_MARKET_SLUG_PREFIX,
-        notIn: activeChallengeSlugs,
-      },
-      status: {
-        in: OPEN_STATUSES,
-      },
-    },
+    where:
+      slugs.length > 0
+        ? {
+            slug: { notIn: slugs },
+            status: { in: OPEN_STATUSES },
+          }
+        : {
+            status: { in: OPEN_STATUSES },
+          },
     data: {
       status: "settled",
+      featured: false,
       settledAt: new Date(),
       winnerSide: null,
+      closeAt: null,
     },
   });
 
