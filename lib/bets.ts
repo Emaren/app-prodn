@@ -102,6 +102,7 @@ function slugify(value: string) {
     .slice(0, 100);
 }
 
+
 function hashValue(value: string) {
   let hash = 0;
   for (let index = 0; index < value.length; index += 1) {
@@ -219,12 +220,10 @@ function marketSeedCreateData(seed: MarketSeed) {
 }
 
 function buildSessionMarketSlug(session: LiveGameSession, leftLabel: string, rightLabel: string) {
-  if (session.replayHash?.trim()) {
-    return `${WATCHER_MARKET_SLUG_PREFIX}${session.replayHash.trim().toLowerCase().slice(0, 24)}`;
-  }
-
-  const sessionKey = slugify(session.sessionKey || `${leftLabel}-vs-${rightLabel}`);
-  return `${WATCHER_MARKET_SLUG_PREFIX}${sessionKey}`.slice(0, 120);
+  const stableKey = slugify(
+    session.sessionKey || session.originalFilename || `${leftLabel}-vs-${rightLabel}`
+  );
+  return `${WATCHER_MARKET_SLUG_PREFIX}${stableKey}`.slice(0, 120);
 }
 
 function buildSessionEventLabel(session: LiveGameSession) {
@@ -281,6 +280,22 @@ function buildPendingClaimNote(
   const reason = outcome === "void" ? "Void refund" : "Settled payout";
   return `${reason} · ${market.title} · ${market.eventLabel} · ${payoutWolo} WOLO`;
 }
+function buildWinnerBountyNote(
+  market: { title: string; eventLabel: string },
+  winnerName: string,
+  losingName: string,
+  payoutWolo: number
+) {
+  return `Winner bounty · ${market.title} · ${winnerName} beat ${losingName} · ${payoutWolo} WOLO`;
+}
+
+function getWinningPlayerName(market: { leftLabel: string; rightLabel: string }, winningSide: BetSide) {
+  return winningSide === "left" ? market.leftLabel : market.rightLabel;
+}
+
+function getLosingPlayerName(market: { leftLabel: string; rightLabel: string }, winningSide: BetSide) {
+  return winningSide === "left" ? market.rightLabel : market.leftLabel;
+}
 
 async function settleResolvedMarketWagers(prisma: PrismaClient) {
   const markets = await prisma.betMarket.findMany({
@@ -296,6 +311,8 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
       id: true,
       title: true,
       eventLabel: true,
+      leftLabel: true,
+      rightLabel: true,
       winnerSide: true,
       seedLeftWolo: true,
       seedRightWolo: true,
@@ -431,6 +448,25 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
           dedupeWithinSeconds: 5,
         });
       }
+
+      if (winningSide) {
+        const winningWagers = market.wagers.filter((wager) => wager.side === winningSide);
+        const losingWagers = market.wagers.filter((wager) => wager.side !== winningSide);
+        const winnerBountyWolo = losingWagers.reduce((sum, wager) => sum + wager.amountWolo, 0);
+
+        if (winningWagers.length === 0 && winnerBountyWolo > 0) {
+          const winnerName = getWinningPlayerName(market, winningSide);
+          const losingName = getLosingPlayerName(market, winningSide);
+
+          await createPendingWoloClaim(tx, {
+            playerName: winnerName,
+            displayPlayerName: winnerName,
+            amountWolo: winnerBountyWolo,
+            sourceMarketId: market.id,
+            note: buildWinnerBountyNote(market, winnerName, losingName, winnerBountyWolo),
+          });
+        }
+      }
     });
   }
 }
@@ -462,6 +498,7 @@ async function buildOpenMarketSeeds(prisma: PrismaClient) {
 export async function ensureBetMarkets(prisma: PrismaClient) {
   const seeds = await buildOpenMarketSeeds(prisma);
   const slugs = seeds.map((seed) => seed.slug);
+  const staleMarketCutoff = new Date(Date.now() - 2 * 60_000);
 
   const existing = await prisma.betMarket.findMany({
     where: slugs.length > 0 ? { slug: { in: slugs } } : undefined,
@@ -511,9 +548,11 @@ export async function ensureBetMarkets(prisma: PrismaClient) {
         ? {
             slug: { notIn: slugs },
             status: { in: OPEN_STATUSES },
+            updatedAt: { lt: staleMarketCutoff },
           }
         : {
             status: { in: OPEN_STATUSES },
+            updatedAt: { lt: staleMarketCutoff },
           },
     data: {
       status: "settled",
