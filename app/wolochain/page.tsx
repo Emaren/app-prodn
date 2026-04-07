@@ -98,8 +98,9 @@ export default function WoloChainExplainerPage() {
     <main className="space-y-6 py-3 text-white sm:space-y-7 sm:py-4">
       <section className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(251,191,36,0.18),_transparent_24%),radial-gradient(circle_at_78%_18%,_rgba(56,189,248,0.16),_transparent_20%),radial-gradient(circle_at_65%_78%,_rgba(52,211,153,0.12),_transparent_22%),linear-gradient(135deg,_#08111f,_#0b1324_44%,_#050814)] p-6 shadow-[0_40px_120px_rgba(2,6,23,0.42)] sm:p-8 lg:p-10">
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(115deg,transparent,rgba(255,255,255,0.035),transparent)]" />
-        <div className="grid gap-8 xl:grid-cols-[1.06fr_0.94fr] xl:items-start">
-          <div className="relative z-10 space-y-6">
+
+        <div className="relative z-10 grid gap-6 xl:grid-cols-[1.08fr_0.92fr] xl:items-start">
+          <div className="space-y-6">
             <div className="flex flex-wrap gap-2">
               <TonePill tone="amber">WoloChain</TonePill>
               <TonePill tone="emerald">1 validator live</TonePill>
@@ -112,17 +113,18 @@ export default function WoloChainExplainerPage() {
                 Serious chain. Serious game.
               </div>
               <h1 className="max-w-5xl text-4xl font-semibold leading-[0.95] tracking-[-0.045em] text-white sm:text-5xl lg:text-7xl">
-                Clean rail. Hard cap. <br className="hidden sm:block" />
+                Clean rail. Hard cap.
+                <br className="hidden sm:block" />
                 No inflation games.
               </h1>
               <p className="max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
                 WOLO is the fixed-supply settlement rail for AoE2HD betting. One token. One hard cap.
-                Clean transfers, clean balances, clean payout logic. Built for players who want the chain
-                to feel as sharp as the game.
+                Clean transfers, clean balances, clean payout logic. Built for players who want the
+                chain to feel as sharp as the game.
               </p>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <HeroStat label="Supply" value="100M" sublabel="No mint games" />
               <HeroStat label="Validators" value="1" sublabel="More wanted" />
               <HeroStat label="Bet Fees" value="Treasury" sublabel="Community pot" />
@@ -151,27 +153,22 @@ export default function WoloChainExplainerPage() {
             </div>
           </div>
 
-          <div className="relative z-10 grid gap-4">
-            <div className="overflow-hidden rounded-[1.8rem] border border-white/10 bg-[linear-gradient(180deg,rgba(10,15,28,0.96),rgba(5,8,20,0.98))] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] sm:p-6">
-              <div className="flex items-start justify-between gap-4">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
+            <div className="rounded-[1.75rem] border border-white/10 bg-[linear-gradient(180deg,rgba(9,14,26,0.96),rgba(5,8,20,0.98))] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+              <div className="flex items-center justify-between gap-3">
                 <div>
-                  <div className="text-[11px] uppercase tracking-[0.34em] text-amber-200/70">
-                    Supply map
+                  <div className="text-[11px] uppercase tracking-[0.34em] text-white/45">
+                    Live chain facts
                   </div>
-                  <h2 className="mt-2 text-2xl font-semibold text-white">Protocol split</h2>
+                  <h2 className="mt-2 text-2xl font-semibold text-white">Chain brief</h2>
                 </div>
-                <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-                  Fixed forever
-                </div>
+                <TonePill tone="slate">Fast read</TonePill>
               </div>
 
-              <div className="mt-5 grid gap-5 sm:grid-cols-[0.92fr_1.08fr] sm:items-center">
-                <TokenRingChart />
-                <div className="space-y-2.5">
-                  {treasurySlices.map((slice) => (
-                    <AllocationRow key={slice.label} slice={slice} />
-                  ))}
-                </div>
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                {chainFacts.map(([label, value]) => (
+                  <FactTile key={label} label={label} value={value} />
+                ))}
               </div>
             </div>
 
@@ -187,7 +184,7 @@ export default function WoloChainExplainerPage() {
                 eyebrow="Chain rail"
                 title="Tx fees"
                 body="Chain fees follow validator economics. Right now one validator means one validator lane."
-                footer="When more validators join, fee share follows stake and commission."
+                footer="More validators = stake-led split."
                 tone="sky"
               />
             </div>
@@ -195,8 +192,30 @@ export default function WoloChainExplainerPage() {
         </div>
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
-        <section className="rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-6 shadow-[0_28px_80px_rgba(2,6,23,0.28)]">
+      <section className="rounded-[1.9rem] border border-white/10 bg-slate-950/75 p-6 shadow-[0_28px_80px_rgba(2,6,23,0.28)] sm:p-7">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <div className="text-[11px] uppercase tracking-[0.34em] text-white/45">Supply map</div>
+            <h2 className="mt-2 text-2xl font-semibold text-white sm:text-3xl">Protocol split</h2>
+          </div>
+          <TonePill tone="amber">Fixed forever</TonePill>
+        </div>
+
+        <div className="mt-6 grid gap-6 xl:grid-cols-[0.78fr_1.22fr] xl:items-center">
+          <div className="flex justify-center">
+            <TokenRingChart />
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2">
+            {treasurySlices.map((slice) => (
+              <AllocationRow key={slice.label} slice={slice} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-3">
+        <section className="rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-6 shadow-[0_28px_80px_rgba(2,6,23,0.28)] lg:col-span-2">
           <div className="flex items-center justify-between gap-4">
             <div>
               <div className="text-[11px] uppercase tracking-[0.34em] text-white/45">Why it exists</div>
@@ -225,26 +244,18 @@ export default function WoloChainExplainerPage() {
         </section>
 
         <section className="rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-6 shadow-[0_28px_80px_rgba(2,6,23,0.28)]">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <div className="text-[11px] uppercase tracking-[0.34em] text-white/45">Live chain facts</div>
-              <h2 className="mt-2 text-2xl font-semibold text-white">Chain brief</h2>
-            </div>
-            <TonePill tone="slate">Fast read</TonePill>
-          </div>
-
-          <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            {chainFacts.map(([label, value]) => (
-              <FactTile key={label} label={label} value={value} />
-            ))}
-          </div>
-
-          <div className="mt-5 rounded-[1.4rem] border border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),rgba(8,13,25,0.96)_52%,rgba(9,30,39,0.74))] p-4">
-            <div className="text-[11px] uppercase tracking-[0.28em] text-cyan-200/68">Current validator set</div>
-            <div className="mt-2 text-lg font-semibold text-white">1 validator live right now</div>
+          <div className="text-[11px] uppercase tracking-[0.34em] text-white/45">Current validator set</div>
+          <h2 className="mt-2 text-2xl font-semibold text-white">1 validator live right now</h2>
+          <p className="mt-4 text-sm leading-6 text-slate-300">
+            That keeps the rail alive, but it is not the end state. WoloChain wants more real operators.
+            Not fake decentralization theater. Real boxes. Real uptime. Real keys.
+          </p>
+          <div className="mt-5 rounded-[1.4rem] border border-cyan-300/16 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),rgba(8,13,25,0.96)_52%,rgba(9,30,39,0.74))] p-4">
+            <div className="text-[11px] uppercase tracking-[0.28em] text-cyan-200/68">Why it matters</div>
+            <div className="mt-2 text-lg font-semibold text-white">More operators. Better chain.</div>
             <p className="mt-2 text-sm leading-6 text-slate-300">
-              That keeps the rail alive, but it is not the end state. WoloChain wants more real operators.
-              Not fake decentralization theater. Real boxes. Real uptime. Real keys.
+              Validator count is not a cosmetic number. More serious operators means better uptime,
+              better resilience, and a stronger trust story when real money is moving.
             </p>
           </div>
         </section>
@@ -274,8 +285,8 @@ export default function WoloChainExplainerPage() {
           <div className="mt-5 rounded-[1.4rem] border border-amber-300/20 bg-amber-400/10 p-4 text-sm leading-6 text-amber-100">
             <div className="font-medium text-white">Important</div>
             Validators do <span className="font-semibold">not</span> share one hot validator wallet.
-            Each validator runs its own validator identity and signing keys. Fee share tracks validator stake
-            and commission. Shared treasury policy is fine. Shared validator keys are not.
+            Each validator runs its own validator identity and signing keys. Fee share tracks validator
+            stake and commission. Shared treasury policy is fine. Shared validator keys are not.
           </div>
         </section>
 
@@ -374,7 +385,7 @@ function HeroStat({
 
 function TokenRingChart() {
   return (
-    <div className="relative mx-auto flex h-64 w-64 items-center justify-center sm:h-72 sm:w-72">
+    <div className="relative flex h-72 w-72 items-center justify-center sm:h-80 sm:w-80">
       <div
         className="absolute inset-0 rounded-full blur-2xl"
         style={{
