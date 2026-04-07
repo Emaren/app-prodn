@@ -63,6 +63,30 @@ function userNameKeys(entry: { inGameName: string | null; steamPersonaName: stri
   );
 }
 
+function extractPayoutTxHash(note: string | null | undefined) {
+  if (!note) return null;
+  const match = note.match(/tx\s+([A-Za-z0-9]{16,128})/);
+  return match?.[1] ?? null;
+}
+
+function extractAutoSettleError(note: string | null | undefined) {
+  if (!note) return null;
+  const marker = "auto-settle failed:";
+  const index = note.toLowerCase().indexOf(marker);
+  if (index < 0) return null;
+  return note.slice(index + marker.length).trim() || null;
+}
+
+function deriveSettlementMode(
+  status: "pending" | "claimed" | "rescinded",
+  payoutTxHash: string | null
+) {
+  if (status === "rescinded") return "rescinded" as const;
+  if (status === "claimed" && payoutTxHash) return "auto_settled" as const;
+  if (status === "claimed") return "claimed_manual" as const;
+  return "pending" as const;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const gate = await requireAdmin(request);
@@ -461,27 +485,82 @@ export async function GET(request: NextRequest) {
       })
     );
 
-    const matchedPendingClaimIds = new Set(
-      userRows.flatMap((user) => user.pendingWoloClaims.map((claim) => claim.id))
+    const settlementMarketIds = Array.from(
+      new Set(
+        allClaims
+          .map((claim) => claim.sourceMarketId)
+          .filter((value): value is number => typeof value === "number" && Number.isFinite(value))
+      )
     );
-    const unmatchedPendingWoloClaims = allClaims
-      .filter((claim) => claim.status === "pending" && !matchedPendingClaimIds.has(claim.id))
-      .map((claim) => ({
+
+    const settlementMarkets = settlementMarketIds.length
+      ? await prisma.betMarket.findMany({
+          where: { id: { in: settlementMarketIds } },
+          select: {
+            id: true,
+            title: true,
+            eventLabel: true,
+          },
+        })
+      : [];
+
+    const settlementMarketById = new Map(
+      settlementMarkets.map((market) => [market.id, market] as const)
+    );
+
+    const settlementRows = allClaims.slice(0, 60).map((claim) => {
+      const market = typeof claim.sourceMarketId === "number"
+        ? settlementMarketById.get(claim.sourceMarketId)
+        : null;
+
+      const payoutTxHash = extractPayoutTxHash(claim.note);
+      const errorState = extractAutoSettleError(claim.note);
+      const settlementMode = deriveSettlementMode(
+        claim.status as "pending" | "claimed" | "rescinded",
+        payoutTxHash
+      );
+
+      return {
         id: claim.id,
+        marketId: claim.sourceMarketId ?? null,
+        marketTitle: market?.title ?? null,
+        eventLabel: market?.eventLabel ?? null,
         displayPlayerName: claim.displayPlayerName,
-        normalizedPlayerName: claim.normalizedPlayerName,
         amountWolo: claim.amountWolo,
-        status: claim.status,
-        note: claim.note,
+        claimStatus: claim.status,
+        settlementMode,
+        payoutTxHash,
+        errorState,
+        note: claim.note ?? null,
         createdAt: claim.createdAt.toISOString(),
         claimedAt: claim.claimedAt?.toISOString() ?? null,
         rescindedAt: claim.rescindedAt?.toISOString() ?? null,
-        sourceMarketId: claim.sourceMarketId ?? null,
-        sourceGameStatsId: claim.sourceGameStatsId ?? null,
-      }));
+      };
+    });
 
-    const allPendingClaims = allClaims.filter((claim) => claim.status === "pending");
-    const allClaimedClaims = allClaims.filter((claim) => claim.status === "claimed");
+    const settlementRail = {
+      summary: {
+        totalCount: allClaims.length,
+        totalAmountWolo: allClaims.reduce((sum, claim) => sum + claim.amountWolo, 0),
+        pendingCount: allClaims.filter((claim) => claim.status === "pending").length,
+        pendingAmountWolo: allClaims
+          .filter((claim) => claim.status === "pending")
+          .reduce((sum, claim) => sum + claim.amountWolo, 0),
+        claimedCount: allClaims.filter((claim) => claim.status === "claimed").length,
+        claimedAmountWolo: allClaims
+          .filter((claim) => claim.status === "claimed")
+          .reduce((sum, claim) => sum + claim.amountWolo, 0),
+        rescindedCount: allClaims.filter((claim) => claim.status === "rescinded").length,
+        rescindedAmountWolo: allClaims
+          .filter((claim) => claim.status === "rescinded")
+          .reduce((sum, claim) => sum + claim.amountWolo, 0),
+        autoSettledCount: settlementRows.filter((row) => row.settlementMode === "auto_settled").length,
+        autoSettledAmountWolo: settlementRows
+          .filter((row) => row.settlementMode === "auto_settled")
+          .reduce((sum, row) => sum + row.amountWolo, 0),
+      },
+      rows: settlementRows,
+    };
 
     const overview = {
       totalUsers: userRows.length,
@@ -495,10 +574,10 @@ export async function GET(request: NextRequest) {
         (sum, user) => sum + user.pendingBadgeCount + user.pendingGiftCount,
         0
       ),
-      pendingWoloClaims: allPendingClaims.length,
-      pendingWoloClaimAmount: allPendingClaims.reduce((sum, claim) => sum + claim.amountWolo, 0),
-      claimedWoloClaims: allClaimedClaims.length,
-      claimedWoloClaimAmount: allClaimedClaims.reduce((sum, claim) => sum + claim.amountWolo, 0),
+      pendingWoloClaims: userRows.reduce((sum, user) => sum + user.pendingWoloClaimCount, 0),
+      pendingWoloClaimAmount: userRows.reduce((sum, user) => sum + user.pendingWoloClaimAmount, 0),
+      claimedWoloClaims: userRows.reduce((sum, user) => sum + user.claimedWoloClaimCount, 0),
+      claimedWoloClaimAmount: userRows.reduce((sum, user) => sum + user.claimedWoloClaimAmount, 0),
       totalActionEvents: userRows.reduce((sum, user) => sum + user.recentActionsTotalCount, 0),
       themeBreakdown: ["black", "grey", "white", "sepia", "walnut", "crimson", "midnight"].map(
         (themeKey) => ({
@@ -515,12 +594,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       users: userRows,
       overview,
-      unmatchedPendingWoloClaims: unmatchedPendingWoloClaims.slice(0, 24),
-      unmatchedPendingWoloClaimCount: unmatchedPendingWoloClaims.length,
-      unmatchedPendingWoloClaimAmount: unmatchedPendingWoloClaims.reduce(
-        (sum, claim) => sum + claim.amountWolo,
-        0
-      ),
+      settlementRail,
     });
   } catch (err) {
     console.error("Failed to load admin users:", err);

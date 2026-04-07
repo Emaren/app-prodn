@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { WoloSettlementRail } from "@/components/admin/WoloSettlementRail";
 import CommunityBadgePill from "@/components/contact/CommunityBadgePill";
 import { DEFAULT_BADGE_LABELS } from "@/lib/communityHonors";
 
@@ -152,12 +153,43 @@ type AdminOverview = {
   viewBreakdown: Array<{ viewMode: string; count: number }>;
 };
 
+type SettlementRailRow = {
+  id: number;
+  marketId: number | null;
+  marketTitle: string | null;
+  eventLabel: string | null;
+  displayPlayerName: string;
+  amountWolo: number;
+  claimStatus: "pending" | "claimed" | "rescinded";
+  settlementMode: "pending" | "auto_settled" | "claimed_manual" | "rescinded";
+  payoutTxHash: string | null;
+  errorState: string | null;
+  note: string | null;
+  createdAt: string;
+  claimedAt: string | null;
+  rescindedAt: string | null;
+};
+
+type SettlementRailSummary = {
+  totalCount: number;
+  totalAmountWolo: number;
+  pendingCount: number;
+  pendingAmountWolo: number;
+  claimedCount: number;
+  claimedAmountWolo: number;
+  rescindedCount: number;
+  rescindedAmountWolo: number;
+  autoSettledCount: number;
+  autoSettledAmountWolo: number;
+};
+
 type AdminUsersPayload = {
   users: AdminUserRow[];
   overview: AdminOverview;
-  unmatchedPendingWoloClaims: ClaimRow[];
-  unmatchedPendingWoloClaimCount: number;
-  unmatchedPendingWoloClaimAmount: number;
+  settlementRail: {
+    summary: SettlementRailSummary;
+    rows: SettlementRailRow[];
+  };
 };
 
 type ActivityHistoryPayload = {
@@ -283,6 +315,7 @@ export default function UsersPage() {
   const [activityByUid, setActivityByUid] = useState<Record<string, Activity[]>>({});
   const [activityTotals, setActivityTotals] = useState<Record<string, number>>({});
   const [activityNextOffsets, setActivityNextOffsets] = useState<Record<string, number | null>>({});
+  const [rescindingSettlementClaimId, setRescindingSettlementClaimId] = useState<number | null>(null);
 
   const getDraft = useCallback(
     (uid: string) => drafts[uid] ?? EMPTY_DRAFT,
@@ -327,6 +360,38 @@ export default function UsersPage() {
       setError(err instanceof Error ? err.message : "Unknown error");
     }
   }, []);
+
+  const rescindSettlementClaim = useCallback(async (claimId: number) => {
+    const confirmed = window.confirm("Rescind this WOLO settlement row?");
+    if (!confirmed) return;
+
+    setRescindingSettlementClaimId(claimId);
+
+    try {
+      const response = await fetch(`/api/admin/wolo-claims/${claimId}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          note: "Rescinded from admin settlement rail",
+        }),
+      });
+
+      if (!response.ok) {
+        const detail = await response.text();
+        throw new Error(detail || "Failed to rescind WOLO claim.");
+      }
+
+      await fetchUsers();
+    } catch (error) {
+      const detail =
+        error instanceof Error ? error.message : "Failed to rescind WOLO claim.";
+      window.alert(detail);
+    } finally {
+      setRescindingSettlementClaimId(null);
+    }
+  }, [fetchUsers]);
 
   useEffect(() => {
     void fetchUsers();
@@ -437,31 +502,6 @@ export default function UsersPage() {
     }
   }
 
-  async function runUnmatchedClaimAction(claimId: number, note: string) {
-    setBusyKey(`unmatched_claim:${claimId}`);
-    try {
-      const response = await fetch(`/api/admin/wolo-claims/${claimId}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ action: "rescind", note }),
-      });
-
-      if (!response.ok) {
-        const actionPayload = (await response.json().catch(() => ({}))) as { detail?: string };
-        throw new Error(actionPayload.detail || `Request failed: ${response.status}`);
-      }
-
-      await fetchUsers();
-    } catch (actionError) {
-      console.error("Unmatched claim action failed:", actionError);
-      alert(actionError instanceof Error ? actionError.message : "Action failed.");
-    } finally {
-      setBusyKey(null);
-    }
-  }
-
   async function deleteUser(uid: string) {
     if (!confirm("Are you sure you want to delete this user?")) return;
 
@@ -547,91 +587,21 @@ export default function UsersPage() {
         </section>
       ) : null}
 
+      {payload ? (
+        <div className="mt-6">
+          <WoloSettlementRail
+            summary={payload.settlementRail.summary}
+            rows={payload.settlementRail.rows}
+            rescindingClaimId={rescindingSettlementClaimId}
+            onRescind={rescindSettlementClaim}
+          />
+        </div>
+      ) : null}
+
       {error ? (
         <div className="rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-4 text-sm text-red-100">
           {error}
         </div>
-      ) : null}
-
-      {payload?.unmatchedPendingWoloClaimCount ? (
-        <section className="rounded-[1.5rem] border border-white/10 bg-slate-950/75 p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-2 text-xs uppercase tracking-[0.25em] text-slate-500">
-                <Coins className="h-4 w-4" />
-                Unmatched WOLO Claim Rail
-              </div>
-              <div className="mt-2 text-sm text-slate-400">
-                Name-only winners waiting to claim. This is the operator reserve rail until they log in.
-              </div>
-            </div>
-            <div className="text-sm text-slate-300">
-              {payload.unmatchedPendingWoloClaimCount} pending · {formatWolo(payload.unmatchedPendingWoloClaimAmount)} WOLO
-            </div>
-          </div>
-
-          <div className="mt-4 grid gap-3 xl:grid-cols-2">
-            {payload.unmatchedPendingWoloClaims.map((claim) => (
-              <div
-                key={`unmatched-claim-${claim.id}`}
-                className="rounded-2xl border border-white/8 bg-slate-900/70 px-4 py-4"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="text-sm font-medium text-white">
-                      {formatWolo(claim.amountWolo)} WOLO · {claim.displayPlayerName}
-                    </div>
-                    <div className="mt-1 text-xs text-slate-400">
-                      {claim.note || "Pending replay-winner claim"} · {formatShortDate(claim.createdAt)}
-                    </div>
-                    <div className="mt-1 text-[11px] text-slate-500">
-                      market {claim.sourceMarketId ?? "—"} · game {claim.sourceGameStatsId ?? "—"}
-                    </div>
-                  </div>
-                  <span className={`rounded-full border px-2 py-0.5 text-[11px] ${statusTone(claim.status)}`}>
-                    {claim.status}
-                  </span>
-                </div>
-
-                <div className="mt-3 flex gap-2">
-                  <input
-                    value={drafts.__unmatched__?.rescindNote ?? ""}
-                    onChange={(event) =>
-                      setDrafts((current) => ({
-                        ...current,
-                        __unmatched__: {
-                          ...(current.__unmatched__ ?? EMPTY_DRAFT),
-                          rescindNote: event.target.value,
-                        },
-                      }))
-                    }
-                    placeholder="Rescind note"
-                    className="flex-1 rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-red-300/35"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void runUnmatchedClaimAction(
-                        claim.id,
-                        drafts.__unmatched__?.rescindNote ?? ""
-                      );
-                      setDrafts((current) => ({
-                        ...current,
-                        __unmatched__: {
-                          ...(current.__unmatched__ ?? EMPTY_DRAFT),
-                          rescindNote: "",
-                        },
-                      }));
-                    }}
-                    className="rounded-xl border border-red-400/30 px-3 py-2 text-sm text-red-200 transition hover:bg-red-500/10"
-                  >
-                    Rescind
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
       ) : null}
 
       <section className="space-y-4">
