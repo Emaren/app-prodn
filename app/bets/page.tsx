@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -8,6 +9,7 @@ import { useUserAuth } from "@/context/UserAuthContext";
 
 const WOLO_LOGO_SRC = "/legacy/wolo-logo-transparent.png";
 const STAKE_OPTIONS = [10, 25, 50, 100] as const;
+const BETS_POLL_INTERVAL_MS = 5_000;
 
 type BetSide = "left" | "right";
 type BetStatus = "open" | "closing" | "live" | "settled";
@@ -60,6 +62,8 @@ type BetSettledResult = {
   winner: string;
   mapName: string;
   payoutWolo: number;
+  settledAt: string | null;
+  href: string | null;
 };
 
 type BetBoardSnapshot = {
@@ -98,6 +102,18 @@ function formatCompact(value: number) {
     maximumFractionDigits: 0,
     notation: value >= 1000 ? "compact" : "standard",
   }).format(value);
+}
+
+function formatSettledTime(value: string | null) {
+  if (!value) return "Just now";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Just now";
+  return date.toLocaleString([], {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }
 
 function projectReturn(stakeWolo: number, selectedPoolWolo: number, oppositePoolWolo: number) {
@@ -177,7 +193,7 @@ export default function BetsPage() {
   useEffect(() => {
     let cancelled = false;
 
-    async function loadBoard() {
+    async function loadBoard(quiet = false) {
       try {
         const response = await fetch("/api/bets", { cache: "no-store" });
         if (!response.ok) {
@@ -189,7 +205,7 @@ export default function BetsPage() {
         }
       } catch (error) {
         console.error("Failed to load bet board:", error);
-        if (!cancelled) {
+        if (!cancelled && !quiet) {
           toast.error("The book is quiet right now.");
         }
       } finally {
@@ -199,9 +215,28 @@ export default function BetsPage() {
       }
     }
 
+    function handleForegroundRefresh() {
+      if (document.visibilityState === "visible") {
+        void loadBoard(true);
+      }
+    }
+
     void loadBoard();
+
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === "visible") {
+        void loadBoard(true);
+      }
+    }, BETS_POLL_INTERVAL_MS);
+
+    window.addEventListener("focus", handleForegroundRefresh);
+    document.addEventListener("visibilitychange", handleForegroundRefresh);
+
     return () => {
       cancelled = true;
+      window.clearInterval(interval);
+      window.removeEventListener("focus", handleForegroundRefresh);
+      document.removeEventListener("visibilitychange", handleForegroundRefresh);
     };
   }, []);
 
@@ -520,6 +555,63 @@ export default function BetsPage() {
           </section>
 
           <section className={`${shellClass()} p-5 sm:p-6`}>
+            <div className="flex items-end justify-between gap-3">
+              <div>
+                <div className="text-[11px] uppercase tracking-[0.35em] text-slate-500">
+                  Payout Proof
+                </div>
+                <h2 className="mt-2 text-2xl font-semibold text-white">Settled</h2>
+              </div>
+              <div className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-slate-300">
+                {board?.settledResults.length || 0}
+              </div>
+            </div>
+
+            <div className="mt-5 space-y-3">
+              {board?.settledResults.length ? (
+                board.settledResults.map((result) => {
+                  const content = (
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="text-sm uppercase tracking-[0.28em] text-slate-500 break-words">
+                          {result.mapName}
+                        </div>
+                        <div className="mt-2 text-lg font-semibold leading-tight text-white break-words">
+                          {result.title}
+                        </div>
+                        <div className="mt-1 text-sm text-slate-400">{result.winner} took it</div>
+                        <div className="mt-2 text-xs uppercase tracking-[0.24em] text-slate-500">
+                          {formatSettledTime(result.settledAt)}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 rounded-full border border-emerald-300/16 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-100">
+                        <CoinMark small />
+                        <span>{formatCompact(result.payoutWolo)}</span>
+                      </div>
+                    </div>
+                  );
+
+                  return result.href ? (
+                    <Link
+                      key={result.id}
+                      href={result.href}
+                      className={`${cardClass()} block px-4 py-4 transition hover:border-white/14 hover:bg-white/[0.05]`}
+                    >
+                      {content}
+                    </Link>
+                  ) : (
+                    <article key={result.id} className={`${cardClass()} px-4 py-4`}>
+                      {content}
+                    </article>
+                  );
+                })
+              ) : (
+                <EmptyShell label="No proof landed yet." />
+              )}
+            </div>
+          </section>
+
+          <section className={`${shellClass()} p-5 sm:p-6`}>
             <div className="text-[11px] uppercase tracking-[0.35em] text-slate-500">Heat</div>
             <h2 className="mt-2 text-2xl font-semibold text-white">What’s moving.</h2>
 
@@ -544,49 +636,13 @@ export default function BetsPage() {
               />
               <HeatRow
                 label="Latest proof"
-                value={board?.settledResults[0]?.winner || "No result yet"}
-                detail={board?.settledResults[0]?.mapName || "Pending"}
+                value={board?.settledResults[0]?.title || "No result yet"}
+                detail={
+                  board?.settledResults[0]
+                    ? `${board.settledResults[0].winner} · ${formatSettledTime(board.settledResults[0].settledAt)}`
+                    : "Pending"
+                }
               />
-            </div>
-          </section>
-
-          <section className={`${shellClass()} p-5 sm:p-6`}>
-            <div className="flex items-end justify-between gap-3">
-              <div>
-                <div className="text-[11px] uppercase tracking-[0.35em] text-slate-500">
-                  Payout Proof
-                </div>
-                <h2 className="mt-2 text-2xl font-semibold text-white">Settled</h2>
-              </div>
-              <div className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-slate-300">
-                {board?.settledResults.length || 0}
-              </div>
-            </div>
-
-            <div className="mt-5 space-y-3">
-              {board?.settledResults.length ? (
-                board.settledResults.map((result) => (
-                  <article key={result.id} className={`${cardClass()} px-4 py-4`}>
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="text-sm uppercase tracking-[0.28em] text-slate-500 break-words">
-                          {result.mapName}
-                        </div>
-                        <div className="mt-2 text-lg font-semibold leading-tight text-white break-words">
-                          {result.title}
-                        </div>
-                        <div className="mt-1 text-sm text-slate-400">{result.winner} took it</div>
-                      </div>
-                      <div className="flex items-center gap-2 rounded-full border border-emerald-300/16 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-100">
-                        <CoinMark small />
-                        <span>{formatCompact(result.payoutWolo)}</span>
-                      </div>
-                    </div>
-                  </article>
-                ))
-              ) : (
-                <EmptyShell label="No proof landed yet." />
-              )}
             </div>
           </section>
         </div>

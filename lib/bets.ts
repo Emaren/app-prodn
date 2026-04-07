@@ -58,6 +58,8 @@ export type BetSettledResult = {
   winner: string;
   mapName: string;
   payoutWolo: number;
+  settledAt: string | null;
+  href: string | null;
 };
 
 export type BetBoardSnapshot = {
@@ -143,37 +145,80 @@ function formatCloseLabel(status: BetStatus, closeAt: Date | null) {
   return `${diffMinutes}m left`;
 }
 
-function getSessionPlayerPair(session: LiveGameSession) {
-  const players = session.players
-    .map((player) => ({
-      name: normalizeName(player.name),
-      winner: player.winner,
-    }))
-    .filter((player) => Boolean(player.name));
+function getNamedSessionPlayers(session: LiveGameSession) {
+  const seen = new Map<string, { name: string; winner: boolean | null }>();
 
-  if (players.length !== 2) {
+  for (const player of session.players) {
+    const name = normalizeName(player.name);
+    if (!name) continue;
+    const key = name.toLowerCase();
+    const existing = seen.get(key);
+
+    if (!existing) {
+      seen.set(key, { name, winner: player.winner });
+      continue;
+    }
+
+    if (player.winner === true && existing.winner !== true) {
+      existing.winner = true;
+    }
+  }
+
+  return Array.from(seen.values());
+}
+
+type SessionSideDescription = {
+  title: string;
+  leftLabel: string;
+  rightLabel: string;
+  leftNames: string[];
+  rightNames: string[];
+};
+
+function describeSessionSides(session: LiveGameSession): SessionSideDescription | null {
+  const players = getNamedSessionPlayers(session);
+
+  if (players.length < 2) {
     return null;
   }
 
-  if (players[0].name.toLowerCase() === players[1].name.toLowerCase()) {
+  const [focusPlayer, ...fieldPlayers] = players;
+  if (fieldPlayers.length === 0) {
     return null;
   }
 
-  return players as [{ name: string; winner: boolean | null }, { name: string; winner: boolean | null }];
+  return {
+    title: players.map((player) => player.name).join(" vs "),
+    leftLabel: focusPlayer.name,
+    rightLabel:
+      fieldPlayers.length === 1
+        ? fieldPlayers[0].name
+        : fieldPlayers.map((player) => player.name).join(" / "),
+    leftNames: [focusPlayer.name],
+    rightNames: fieldPlayers.map((player) => player.name),
+  };
 }
 
 function inferWinnerSideFromSession(session: LiveGameSession): BetSide | null {
-  const pair = getSessionPlayerPair(session);
-  if (!pair) return null;
+  const sides = describeSessionSides(session);
+  if (!sides) return null;
 
   const normalizedWinner = normalizeName(session.winner).toLowerCase();
   if (normalizedWinner) {
-    if (pair[0].name.toLowerCase() === normalizedWinner) return "left";
-    if (pair[1].name.toLowerCase() === normalizedWinner) return "right";
+    if (sides.leftNames.some((name) => name.toLowerCase() === normalizedWinner)) return "left";
+    if (sides.rightNames.some((name) => name.toLowerCase() === normalizedWinner)) return "right";
   }
 
-  if (pair[0].winner === true && pair[1].winner !== true) return "left";
-  if (pair[1].winner === true && pair[0].winner !== true) return "right";
+  const players = getNamedSessionPlayers(session);
+  const leftWinner = players.some(
+    (player) => player.winner === true && sides.leftNames.includes(player.name)
+  );
+  const rightWinner = players.some(
+    (player) => player.winner === true && sides.rightNames.includes(player.name)
+  );
+
+  if (leftWinner && !rightWinner) return "left";
+  if (rightWinner && !leftWinner) return "right";
 
   return null;
 }
@@ -231,30 +276,47 @@ function buildSessionEventLabel(session: LiveGameSession) {
   return session.mapName ? `${rail} • ${session.mapName}` : rail;
 }
 
+function buildSessionMarketTitle(session: LiveGameSession) {
+  const sides = describeSessionSides(session);
+  if (sides) {
+    return sides.title;
+  }
+
+  return session.players.length > 0
+    ? session.players.map((player) => normalizeName(player.name)).filter(Boolean).join(" vs ")
+    : session.originalFilename || "Replay-backed result";
+}
+
+function normalizeSettledMatchKey(title: string, mapName: string | null | undefined) {
+  return `${normalizeName(title).toLowerCase()}::${normalizeName(mapName).toLowerCase()}`;
+}
+
 function buildSessionMarketSeed(
   session: LiveGameSession,
   index: number,
   featured: boolean
 ): MarketSeed | null {
-  const pair = getSessionPlayerPair(session);
-  if (!pair) return null;
+  const sides = describeSessionSides(session);
+  if (!sides) return null;
 
-  const [left, right] = pair;
   const settledAtRaw = session.completedAt || session.updatedAt || session.createdAt;
 
   return {
     scheduledMatchId: null,
-    slug: buildSessionMarketSlug(session, left.name, right.name),
-    title: `${left.name} vs ${right.name}`,
+    slug: buildSessionMarketSlug(session, sides.leftLabel, sides.rightLabel),
+    title: sides.title,
     eventLabel: buildSessionEventLabel(session),
     status: session.state === "completed" ? "settled" : "live",
     featured,
     sortOrder: index,
     source: "session",
-    leftLabel: left.name,
-    rightLabel: right.name,
-    leftHref: `/players/by-name/${encodeURIComponent(left.name)}`,
-    rightHref: `/players/by-name/${encodeURIComponent(right.name)}`,
+    leftLabel: sides.leftLabel,
+    rightLabel: sides.rightLabel,
+    leftHref: `/players/by-name/${encodeURIComponent(sides.leftLabel)}`,
+    rightHref:
+      sides.rightNames.length === 1
+        ? `/players/by-name/${encodeURIComponent(sides.rightNames[0])}`
+        : null,
     seedLeftWolo: 0,
     seedRightWolo: 0,
     closeAt: null,
@@ -637,25 +699,38 @@ async function loadOpenMarkets(prisma: PrismaClient) {
 }
 
 async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettledResult[]> {
-  const settledMarkets = await prisma.betMarket.findMany({
-    where: {
-      status: "settled",
-      winnerSide: {
-        in: ["left", "right"],
-      },
-    },
-    orderBy: [{ settledAt: "desc" }, { updatedAt: "desc" }, { id: "desc" }],
-    take: 4,
-    include: {
-      wagers: {
-        select: {
-          amountWolo: true,
-          payoutWolo: true,
-          status: true,
+  const [settledMarkets, sessionSnapshot] = await Promise.all([
+    prisma.betMarket.findMany({
+      where: {
+        status: "settled",
+        winnerSide: {
+          in: ["left", "right"],
         },
       },
-    },
-  });
+      orderBy: [{ settledAt: "desc" }, { updatedAt: "desc" }, { id: "desc" }],
+      take: 4,
+      include: {
+        wagers: {
+          select: {
+            amountWolo: true,
+            payoutWolo: true,
+            status: true,
+          },
+        },
+      },
+    }),
+    loadLiveSessionSnapshot(prisma),
+  ]);
+
+  const sessionHrefByMatchKey = new Map(
+    sessionSnapshot.recentlyCompletedSessions.map((session) => [
+      normalizeSettledMatchKey(buildSessionMarketTitle(session), session.mapName),
+      {
+        href: `/game-stats/live/${encodeURIComponent(session.sessionKey)}`,
+        settledAt: session.completedAt || session.updatedAt || session.createdAt,
+      },
+    ])
+  );
 
   if (settledMarkets.length > 0) {
     return settledMarkets.map((market) => {
@@ -672,6 +747,9 @@ async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettle
       const mapName = market.eventLabel.includes("•")
         ? market.eventLabel.split("•").slice(1).join("•").trim() || market.eventLabel
         : market.eventLabel;
+      const matchedSession = sessionHrefByMatchKey.get(
+        normalizeSettledMatchKey(market.title, mapName)
+      );
 
       return {
         id: market.id,
@@ -680,6 +758,8 @@ async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettle
         winner,
         mapName,
         payoutWolo,
+        settledAt: matchedSession?.settledAt || market.settledAt?.toISOString() || null,
+        href: matchedSession?.href || null,
       } satisfies BetSettledResult;
     });
   }
@@ -697,6 +777,8 @@ async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettle
       map: true,
       players: true,
       parse_reason: true,
+      played_on: true,
+      timestamp: true,
     },
   });
 
@@ -720,6 +802,8 @@ async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettle
       winner: row.winner || "Unknown",
       mapName,
       payoutWolo: 110 + (hashValue(`${row.id}:${row.winner}`) % 240),
+      settledAt: row.played_on?.toISOString() || row.timestamp?.toISOString() || null,
+      href: null,
     };
   });
 }
