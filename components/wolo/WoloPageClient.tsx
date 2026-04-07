@@ -90,7 +90,10 @@ export default function WoloPage() {
     window.localStorage.setItem(HERO_VIEW_KEY, premiumHeroView ? "premium" : "prod");
   }, [premiumHeroView]);
 
-  const chainId = chainData || "wolo-testnet";
+  const chainId =
+    typeof chainData === "string" && chainData.trim().length > 0
+      ? chainData.trim()
+      : "wolo-testnet";
 
   useEffect(() => {
     setBalanceOverride(null);
@@ -149,7 +152,9 @@ export default function WoloPage() {
           <div className="grid gap-5 lg:grid-cols-[1.12fr_0.88fr] lg:items-start lg:gap-8">
             <div className="space-y-6">
               <div className="flex flex-wrap items-center gap-2">
-                <SignalChip label="$WOLO" tone="amber" />
+                <Link href="/wolochain" data-no-toggle="true" className="inline-flex">
+                  <SignalChip label="WOLO" tone="amber" title="Open the WoloChain brief" />
+                </Link>
                 <SignalChip
                   label={chainLoading ? "Syncing chain" : chainId}
                   tone="emerald"
@@ -203,8 +208,8 @@ export default function WoloPage() {
                 />
               </div>
 
-              <div className="flex flex-wrap items-center gap-2 pt-1">
-                <Link href="/wallet" className={WOLO_PROD_PRIMARY_ACTION_CLASSNAME}>
+              <div className="grid gap-2 rounded-[1.45rem] bg-white/[0.03] p-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] sm:grid-cols-2 sm:p-3">
+                <Link href="/wallet" className={WOLO_PROD_PRIMARY_ACTION_CLASSNAME} data-no-toggle="true">
                   Open Wallet
                 </Link>
                 <button
@@ -213,10 +218,14 @@ export default function WoloPage() {
                     void handleConnect();
                   }}
                   className={WOLO_PROD_SECONDARY_ACTION_CLASSNAME}
+                  data-no-toggle="true"
                 >
-                  {status === "connected" ? "Wallet Live" : "Connect Keplr"}
+                  {walletConnectLabel}
                 </button>
-                <Link href="/download" className={WOLO_PROD_SECONDARY_ACTION_CLASSNAME}>
+                <Link href="/wolochain" className={WOLO_PROD_SECONDARY_ACTION_CLASSNAME} data-no-toggle="true">
+                  WoloChain Brief
+                </Link>
+                <Link href="/download" className={WOLO_PROD_SECONDARY_ACTION_CLASSNAME} data-no-toggle="true">
                   Download Watcher
                 </Link>
                 <a
@@ -224,32 +233,72 @@ export default function WoloPage() {
                   target="_blank"
                   rel="noreferrer"
                   className={WOLO_PROD_TERTIARY_ACTION_CLASSNAME}
+                  data-no-toggle="true"
                 >
                   Get Keplr
                 </a>
+                <a
+                  href={pingPubUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={WOLO_PROD_SECONDARY_ACTION_CLASSNAME}
+                  data-no-toggle="true"
+                >
+                  Open Ping.pub
+                </a>
               </div>
 
+              <div className="rounded-[1.45rem] border border-cyan-300/14 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),rgba(10,16,29,0.96)_54%,rgba(6,28,39,0.76))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-[0.28em] text-cyan-200/68">
+                      New
+                    </div>
+                    <div className="mt-2 text-lg font-semibold text-white">Read the WoloChain brief</div>
+                    <div className="mt-2 max-w-xl text-sm leading-6 text-slate-300">
+                      Fixed supply. Supply split. Validator lane. Fee flow. Everything important, fast.
+                    </div>
+                  </div>
+                  <Link
+                    href="/wolochain"
+                    data-no-toggle="true"
+                    className="inline-flex shrink-0 items-center justify-center rounded-full border border-cyan-300/18 bg-cyan-400/10 px-4 py-2 text-xs font-medium uppercase tracking-[0.24em] text-cyan-100 transition hover:bg-cyan-400/16"
+                  >
+                    Open
+                  </Link>
+                </div>
+              </div>
+
+              {walletError ? (
+                <div className="rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+                  {walletError}
+                </div>
+              ) : null}
             </div>
 
             <div className="space-y-3.5">
-              <div className="rounded-[1.75rem] border border-white/10 bg-[#131b2a] p-5 shadow-[0_30px_80px_rgba(2,6,23,0.36)] sm:p-6">
+              <div className="rounded-[1.8rem] border border-white/10 bg-[linear-gradient(180deg,rgba(11,17,30,0.96),rgba(7,11,19,0.96))] p-5 shadow-[0_28px_80px_rgba(2,6,23,0.34)] sm:p-6">
                 <div className="flex items-start justify-between gap-4">
                   <div className="text-[11px] uppercase tracking-[0.35em] text-amber-200/70">
                     Wallet Snapshot
                   </div>
-                  <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-200">
+
+                  <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-200">
                     {walletStatus}
                   </div>
                 </div>
 
                 <div className="mt-5 grid gap-4">
-                  <WalletPanel label="Address" value={formatAddress(address)} mono />
-                  <WalletPanel
+                  <PremiumWalletPanel label="Address" value={formatAddress(address)} mono />
+                  <PremiumWalletPanel
                     label="Balance"
                     value={balanceLoading ? "Loading..." : `${formattedBalance} WOLO`}
                     emphasis
                   />
-                  <WalletPanel label="Network" value={chainId} />
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <PremiumWalletPanel label="Network" value={chainId} />
+                    <PremiumWalletPanel label="Prefix" value="wolo1..." mono />
+                  </div>
                 </div>
 
                 <div className="mt-5 grid gap-3">
@@ -305,15 +354,14 @@ export default function WoloPage() {
     <main className="space-y-4 py-2 text-white sm:space-y-6 sm:py-3">
       <section
         onClick={handleHeroToggle}
-        className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#040814] px-5 py-5 shadow-[0_40px_120px_rgba(0,0,0,0.34)] sm:px-6 sm:py-6 lg:px-8 lg:py-8"
+        className="overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(251,191,36,0.16),_transparent_24%),radial-gradient(circle_at_82%_18%,_rgba(56,189,248,0.12),_transparent_20%),linear-gradient(135deg,_#08111f,_#0b1324_44%,_#050814)] px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8"
       >
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.14),transparent_28%),radial-gradient(circle_at_82%_18%,rgba(59,130,246,0.09),transparent_22%),radial-gradient(circle_at_bottom_right,rgba(16,185,129,0.08),transparent_24%)]" />
-        <div className="pointer-events-none absolute inset-0 opacity-[0.05] [background-image:linear-gradient(to_right,rgba(255,255,255,0.10)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:38px_38px]" />
-
-        <div className="relative grid gap-6 xl:grid-cols-[1.08fr_0.92fr] xl:items-start">
-          <div className="space-y-6">
+        <div className="grid gap-5 xl:grid-cols-[1.08fr_0.92fr] xl:items-start xl:gap-8">
+          <div className="space-y-5">
             <div className="flex flex-wrap items-center gap-2">
-              <PremiumStatusPill label="WOLO" tone="amber" />
+              <Link href="/wolochain" data-no-toggle="true" className="inline-flex">
+                <PremiumStatusPill label="WOLO" tone="amber" />
+              </Link>
               <PremiumStatusPill
                 label={chainLoading ? "Syncing chain" : chainId}
                 tone="emerald"
@@ -374,6 +422,28 @@ export default function WoloPage() {
               showPingPub
             />
 
+            <div className="max-w-[46rem] rounded-[1.4rem] border border-cyan-300/16 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),rgba(10,16,29,0.96)_52%,rgba(7,31,42,0.76))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <div className="text-[10px] uppercase tracking-[0.28em] text-cyan-200/68">
+                    Chain brief
+                  </div>
+                  <div className="mt-2 text-lg font-semibold text-white">
+                    See the full WoloChain explainer
+                  </div>
+                  <div className="mt-2 text-sm leading-6 text-slate-300">
+                    Validator path. Supply split. Betting-fee route. Tx-fee route. One clean read.
+                  </div>
+                </div>
+                <Link
+                  href="/wolochain"
+                  data-no-toggle="true"
+                  className="inline-flex shrink-0 items-center justify-center rounded-full border border-cyan-300/18 bg-cyan-400/10 px-4 py-2 text-xs font-medium uppercase tracking-[0.24em] text-cyan-100 transition hover:bg-cyan-400/16"
+                >
+                  Open Brief
+                </Link>
+              </div>
+            </div>
           </div>
 
           <div className="space-y-3.5">
@@ -395,34 +465,34 @@ export default function WoloPage() {
                   value={balanceLoading ? "Loading..." : `${formattedBalance} WOLO`}
                   emphasis
                 />
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <PremiumWalletPanel label="Network" value={chainId} />
-                    <PremiumWalletPanel label="Prefix" value="wolo1..." mono />
-                  </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <PremiumWalletPanel label="Network" value={chainId} />
+                  <PremiumWalletPanel label="Prefix" value="wolo1..." mono />
                 </div>
+              </div>
 
-                <div className="mt-5 grid gap-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void handleConnect();
-                    }}
-                    className="w-full rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-200"
+              <div className="mt-5 grid gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    void handleConnect();
+                  }}
+                  className="w-full rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-200"
+                >
+                  {walletConnectLabel}
+                </button>
+
+                {status !== "connected" ? (
+                  <a
+                    href={KEPLR_DOWNLOAD_URL}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="block w-full rounded-full border border-white/12 bg-white/5 px-5 py-3 text-center text-sm text-white/90 transition hover:border-white/25 hover:text-white"
                   >
-                    {walletConnectLabel}
-                  </button>
-
-                  {status !== "connected" ? (
-                    <a
-                      href={KEPLR_DOWNLOAD_URL}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="block w-full rounded-full border border-white/12 bg-white/5 px-5 py-3 text-center text-sm text-white/90 transition hover:border-white/25 hover:text-white"
-                    >
-                      Get Keplr Wallet
-                    </a>
-                  ) : null}
-                </div>
+                    Get Keplr Wallet
+                  </a>
+                ) : null}
+              </div>
 
               {walletError ? (
                 <div className="mt-4 rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
@@ -497,35 +567,6 @@ function WoloMiniStatCard({
             {valueSuffix}
           </div>
         ) : null}
-      </div>
-    </div>
-  );
-}
-
-function WalletPanel({
-  label,
-  value,
-  mono = false,
-  emphasis = false,
-}: {
-  label: string;
-  value: string;
-  mono?: boolean;
-  emphasis?: boolean;
-}) {
-  return (
-    <div className="rounded-2xl border border-white/8 bg-[#0f1624] p-4">
-      <div className="text-[11px] uppercase tracking-[0.25em] text-slate-400">{label}</div>
-      <div
-        className={`mt-2 break-all ${
-          emphasis
-            ? "text-3xl font-semibold text-white"
-            : mono
-              ? "font-mono text-sm text-white"
-              : "text-lg font-semibold text-white"
-        }`}
-      >
-        {value}
       </div>
     </div>
   );
@@ -711,11 +752,10 @@ function WoloHeroActionDock({
         </button>
       </div>
 
-      <div
-        className={`grid gap-2 ${
-          showPingPub ? "sm:grid-cols-3" : "sm:grid-cols-2"
-        }`}
-      >
+      <div className={`grid gap-2 ${showPingPub ? "sm:grid-cols-4" : "sm:grid-cols-3"}`}>
+        <Link href="/wolochain" className={WOLO_PREMIUM_SECONDARY_ACTION_CLASSNAME}>
+          WoloChain Brief
+        </Link>
         <Link href="/download" className={WOLO_PREMIUM_SECONDARY_ACTION_CLASSNAME}>
           Download Watcher
         </Link>

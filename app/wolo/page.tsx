@@ -1,5 +1,7 @@
-import WoloPageLoader from "@/components/wolo/WoloPageLoader";
+import WoloPageClient from "@/components/wolo/WoloPageClient";
+
+export const dynamic = "force-dynamic";
 
 export default function WoloPage() {
-  return <WoloPageLoader />;
+  return <WoloPageClient />;
 }
