@@ -736,31 +736,15 @@ async function buildOpenMarketSeeds(prisma: PrismaClient) {
 
 export async function ensureBetMarkets(prisma: PrismaClient) {
   const seeds = await buildOpenMarketSeeds(prisma);
-  const slugs = seeds.map((seed) => seed.slug);
+  const slugs = [...new Set(seeds.map((seed) => seed.slug))];
   const staleMarketCutoff = new Date(Date.now() - 2 * 60_000);
-
-  const existing = await prisma.betMarket.findMany({
-    where: slugs.length > 0 ? { slug: { in: slugs } } : undefined,
-    select: {
-      id: true,
-      slug: true,
-    },
-  });
-  const existingBySlug = new Map(existing.map((market) => [market.slug, market] as const));
 
   await Promise.all(
     seeds.map(async (seed) => {
-      const current = existingBySlug.get(seed.slug);
-      if (!current) {
-        await prisma.betMarket.create({
-          data: marketSeedCreateData(seed),
-        });
-        return;
-      }
-
-      await prisma.betMarket.update({
-        where: { id: current.id },
-        data: {
+      await prisma.betMarket.upsert({
+        where: { slug: seed.slug },
+        create: marketSeedCreateData(seed),
+        update: {
           scheduledMatchId: seed.scheduledMatchId,
           title: seed.title,
           eventLabel: seed.eventLabel,
