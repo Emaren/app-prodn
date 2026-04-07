@@ -3,13 +3,26 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { GasPrice, SigningStargateClient } from "@cosmjs/stargate";
 import { toast } from "sonner";
 
 import { useUserAuth } from "@/context/UserAuthContext";
+import { useKeplr } from "@/hooks/use-keplr";
+import {
+  WOLO_BASE_DENOM,
+  WOLO_BET_ESCROW_ADDRESS,
+  WOLO_CHAIN_ID,
+  WOLO_DEFAULT_GAS_PRICE,
+  WOLO_RPC_URL,
+  toUwoLoAmount,
+} from "@/lib/woloChain";
 
 const WOLO_LOGO_SRC = "/legacy/wolo-logo-transparent.png";
 const STAKE_OPTIONS = [10, 25, 50, 100] as const;
 const BETS_POLL_INTERVAL_MS = 5_000;
+const ONCHAIN_BET_ESCROW_ENABLED = Boolean(WOLO_BET_ESCROW_ADDRESS);
+type StargateOfflineSigner = Parameters<typeof SigningStargateClient.connectWithSigner>[1];
+
 
 type BetSide = "left" | "right";
 type BetStatus = "open" | "closing" | "live" | "settled";
@@ -96,6 +109,11 @@ type SelectionState = {
   side: BetSide;
   stake: number;
 };
+
+function shortTxHash(value: string) {
+  if (value.length <= 18) return value;
+  return `${value.slice(0, 10)}…${value.slice(-6)}`;
+}
 
 function formatCompact(value: number) {
   return new Intl.NumberFormat("en-US", {
@@ -185,6 +203,7 @@ function CoinMark({ small = false }: { small?: boolean }) {
 
 export default function BetsPage() {
   const { isAuthenticated, loading, loginWithSteam, user } = useUserAuth();
+  const { address: connectedWalletAddress, connect: connectKeplr } = useKeplr();
   const [board, setBoard] = useState<BetBoardSnapshot | null>(null);
   const [selection, setSelection] = useState<SelectionState | null>(null);
   const [loadingBoard, setLoadingBoard] = useState(true);
@@ -285,12 +304,74 @@ export default function BetsPage() {
     });
   }
 
+  async function ensureWalletAddress() {
+    if (!ONCHAIN_BET_ESCROW_ENABLED) {
+      return null;
+    }
+
+    if (connectedWalletAddress) {
+      return connectedWalletAddress;
+    }
+
+    return connectKeplr();
+  }
+
+  async function lockStakeOnChain(market: BetBoardMarket, amountWolo: number) {
+    if (!ONCHAIN_BET_ESCROW_ENABLED) {
+      return {
+        walletAddress: null as string | null,
+        stakeTxHash: null as string | null,
+        executionMode: "app_only" as const,
+      };
+    }
+
+    const walletAddress = await ensureWalletAddress();
+    if (!walletAddress) {
+      throw new Error("Connect Keplr before locking a real WOLO stake.");
+    }
+
+    const keplrWindow = window as Window & {
+      getOfflineSigner?: (chainId: string) => unknown;
+      keplr?: {
+        getOfflineSignerAuto?: (chainId: string) => Promise<unknown>;
+      };
+    };
+
+    const signer = (keplrWindow.keplr?.getOfflineSignerAuto
+      ? await keplrWindow.keplr.getOfflineSignerAuto(WOLO_CHAIN_ID)
+      : keplrWindow.getOfflineSigner?.(WOLO_CHAIN_ID)) as unknown as
+      | StargateOfflineSigner
+      | undefined;
+
+    if (!signer) {
+      throw new Error("Keplr offline signer was not found in this browser.");
+    }
+    const client = await SigningStargateClient.connectWithSigner(WOLO_RPC_URL, signer, {
+      gasPrice: GasPrice.fromString(WOLO_DEFAULT_GAS_PRICE),
+    });
+
+    const result = await client.sendTokens(
+      walletAddress,
+      WOLO_BET_ESCROW_ADDRESS,
+      [{ amount: toUwoLoAmount(amountWolo), denom: WOLO_BASE_DENOM }],
+      "auto",
+      `AoE2HDBets bet stake · market ${market.id}`
+    );
+
+    return {
+      walletAddress,
+      stakeTxHash: result.transactionHash,
+      executionMode: "onchain_escrow" as const,
+    };
+  }
+
   async function handleLock(market: BetBoardMarket) {
     if (!selection || selection.marketId !== market.id) return;
     if (!requireSignIn()) return;
 
     setWorkingKey(`lock-${market.id}`);
     try {
+      const stakeExecution = await lockStakeOnChain(market, selection.stake);
       const response = await fetch("/api/bets/wager", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -298,6 +379,8 @@ export default function BetsPage() {
           marketId: market.id,
           side: selection.side,
           amountWolo: selection.stake,
+          walletAddress: stakeExecution.walletAddress,
+          stakeTxHash: stakeExecution.stakeTxHash,
         }),
       });
 
@@ -311,7 +394,11 @@ export default function BetsPage() {
 
       await refreshBoard(payload);
       setSelection(null);
-      toast.success(`Locked ${selection.stake} WOLO on ${selection.side === "left" ? market.left.name : market.right.name}.`);
+      if (stakeExecution.executionMode === "onchain_escrow" && stakeExecution.stakeTxHash) {
+        toast.success(`Locked ${selection.stake} WOLO on-chain on ${selection.side === "left" ? market.left.name : market.right.name}. ${shortTxHash(stakeExecution.stakeTxHash)}`);
+      } else {
+        toast.success(`Locked ${selection.stake} WOLO on ${selection.side === "left" ? market.left.name : market.right.name}.`);
+      }
     } catch (error) {
       console.error("Failed to lock wager:", error);
       toast.error(error instanceof Error ? error.message : "Could not lock the wager.");

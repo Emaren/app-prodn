@@ -4,7 +4,14 @@ import {
   loadLiveSessionSnapshot,
   type LiveGameSession,
 } from "@/lib/liveSessionSnapshot";
-import { createPendingWoloClaim } from "@/lib/pendingWoloClaims";
+import {
+  createPendingWoloClaim,
+  normalizePendingWoloClaimName,
+} from "@/lib/pendingWoloClaims";
+import {
+  executeWoloPayout,
+  hasWoloPayoutExecutionConfigured,
+} from "@/lib/woloBetSettlement";
 import { recordUserActivity } from "@/lib/userExperience";
 
 export type BetSide = "left" | "right";
@@ -338,9 +345,11 @@ function canAutoClaimForKnownUser(user: {
   verified?: boolean | null;
   inGameName: string | null;
   steamPersonaName: string | null;
+  walletAddress?: string | null;
 }) {
   return Boolean(
     user.verified &&
+      user.walletAddress &&
       (normalizeName(user.inGameName) || normalizeName(user.steamPersonaName))
   );
 }
@@ -364,6 +373,7 @@ async function findAutoClaimUserForPlayerName(
       inGameName: true,
       steamPersonaName: true,
       verified: true,
+      walletAddress: true,
     },
     take: 250,
   });
@@ -373,7 +383,7 @@ async function findAutoClaimUserForPlayerName(
       const names = [user.inGameName, user.steamPersonaName]
         .map((value) => normalizeName(value).toLowerCase())
         .filter(Boolean);
-      return names.includes(normalized);
+      return Boolean(user.walletAddress) && names.includes(normalized);
     }) || null
   );
 }
@@ -401,6 +411,96 @@ function getWinningPlayerName(market: { leftLabel: string; rightLabel: string },
 
 function getLosingPlayerName(market: { leftLabel: string; rightLabel: string }, winningSide: BetSide) {
   return winningSide === "left" ? market.rightLabel : market.leftLabel;
+}
+
+
+function buildOnchainSettlementNote(
+  market: { title: string; eventLabel: string },
+  payoutWolo: number,
+  txHash: string
+) {
+  return `Auto-settled on-chain · ${market.title} · ${market.eventLabel} · ${payoutWolo} WOLO · tx ${txHash}`;
+}
+
+async function settleClaimRail(
+  tx: Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends">,
+  input: {
+    marketId: number;
+    playerName: string;
+    displayPlayerName?: string | null;
+    amountWolo: number;
+    note: string;
+    walletAddress?: string | null;
+    claimedByUserId?: number | null;
+    settledAt: Date;
+    claimReason: string;
+    market: { title: string; eventLabel: string };
+  }
+) {
+  const normalizedPlayerName = normalizePendingWoloClaimName(input.playerName);
+  if (!normalizedPlayerName || input.amountWolo < 1) {
+    return { claimStatus: "ignored" as const, txHash: null as string | null };
+  }
+
+  const existingClaim = await tx.pendingWoloClaim.findUnique({
+    where: {
+      sourceMarketId_normalizedPlayerName: {
+        sourceMarketId: input.marketId,
+        normalizedPlayerName,
+      },
+    },
+    select: {
+      id: true,
+      status: true,
+      note: true,
+    },
+  });
+
+  if (existingClaim?.status === "claimed") {
+    return { claimStatus: "claimed" as const, txHash: null as string | null };
+  }
+
+  const canAutoSettle = Boolean(
+    input.walletAddress && input.claimedByUserId && hasWoloPayoutExecutionConfigured()
+  );
+
+  if (canAutoSettle) {
+    try {
+      const payout = await executeWoloPayout({
+        toAddress: input.walletAddress as string,
+        amountWolo: input.amountWolo,
+        memo: `${input.market.title} · ${input.claimReason}`,
+      });
+
+      if (payout?.txHash) {
+        await createPendingWoloClaim(tx as PrismaClient, {
+          playerName: input.playerName,
+          displayPlayerName: input.displayPlayerName || input.playerName,
+          amountWolo: input.amountWolo,
+          sourceMarketId: input.marketId,
+          note: buildOnchainSettlementNote(input.market, input.amountWolo, payout.txHash),
+          status: "claimed",
+          claimedByUserId: input.claimedByUserId,
+          claimedAt: input.settledAt,
+        });
+
+        return { claimStatus: "claimed" as const, txHash: payout.txHash };
+      }
+    } catch (error) {
+      console.error("Failed to auto-settle WOLO payout on-chain:", error);
+    }
+  }
+
+  await createPendingWoloClaim(tx as PrismaClient, {
+    playerName: input.playerName,
+    displayPlayerName: input.displayPlayerName || input.playerName,
+    amountWolo: input.amountWolo,
+    sourceMarketId: input.marketId,
+    note: input.note,
+    status: "pending",
+  });
+
+  return { claimStatus: "pending" as const, txHash: null as string | null };
 }
 
 async function settleResolvedMarketWagers(prisma: PrismaClient) {
@@ -437,6 +537,7 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
               inGameName: true,
               steamPersonaName: true,
               verified: true,
+              walletAddress: true,
             },
           },
         },
@@ -531,21 +632,22 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
         }
 
         const claimPlayerName = claimPlayerNameForUser(wager.user);
-        const autoClaim = canAutoClaimForKnownUser(wager.user);
-
-        await createPendingWoloClaim(tx, {
+        const settlement = await settleClaimRail(tx, {
+          marketId: market.id,
           playerName: claimPlayerName,
           displayPlayerName: claimPlayerName,
           amountWolo: payoutWolo,
-          sourceMarketId: market.id,
           note: buildPendingClaimNote(market, nextStatus, payoutWolo),
-          status: autoClaim ? "claimed" : "pending",
-          claimedByUserId: autoClaim ? wager.user.id : null,
+          walletAddress: canAutoClaimForKnownUser(wager.user) ? wager.user.walletAddress ?? null : null,
+          claimedByUserId: canAutoClaimForKnownUser(wager.user) ? wager.user.id : null,
+          settledAt,
+          claimReason: nextStatus === "void" ? "bet_refund" : "bet_payout",
+          market,
         });
 
         await recordUserActivity(tx, {
           userId: wager.userId,
-          type: autoClaim ? "wolo_claim_auto_settled" : "pending_wolo_claim_created",
+          type: settlement.claimStatus === "claimed" ? "wolo_claim_auto_settled" : "pending_wolo_claim_created",
           path: "/bets",
           label: market.title,
           metadata: {
@@ -554,7 +656,8 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
             eventLabel: market.eventLabel,
             amountWolo: payoutWolo,
             claimReason: nextStatus === "void" ? "bet_refund" : "bet_payout",
-            claimStatus: autoClaim ? "claimed" : "pending",
+            claimStatus: settlement.claimStatus,
+            payoutTxHash: settlement.txHash,
             settledAt: settledAt.toISOString(),
           },
           dedupeWithinSeconds: 5,
@@ -570,16 +673,37 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
           const winnerName = getWinningPlayerName(market, winningSide);
           const losingName = getLosingPlayerName(market, winningSide);
           const autoClaimUser = await findAutoClaimUserForPlayerName(tx as PrismaClient, winnerName);
-
-          await createPendingWoloClaim(tx, {
+          const bountySettlement = await settleClaimRail(tx, {
+            marketId: market.id,
             playerName: winnerName,
             displayPlayerName: winnerName,
             amountWolo: winnerBountyWolo,
-            sourceMarketId: market.id,
             note: buildWinnerBountyNote(market, winnerName, losingName, winnerBountyWolo),
-            status: autoClaimUser ? "claimed" : "pending",
+            walletAddress: autoClaimUser?.walletAddress ?? null,
             claimedByUserId: autoClaimUser?.id ?? null,
+            settledAt,
+            claimReason: "winner_bounty",
+            market,
           });
+
+          if (autoClaimUser?.id) {
+            await recordUserActivity(tx, {
+              userId: autoClaimUser.id,
+              type: bountySettlement.claimStatus === "claimed" ? "wolo_claim_auto_settled" : "pending_wolo_claim_created",
+              path: "/bets",
+              label: market.title,
+              metadata: {
+                marketId: market.id,
+                eventLabel: market.eventLabel,
+                amountWolo: winnerBountyWolo,
+                claimReason: "winner_bounty",
+                claimStatus: bountySettlement.claimStatus,
+                payoutTxHash: bountySettlement.txHash,
+                settledAt: settledAt.toISOString(),
+              },
+              dedupeWithinSeconds: 5,
+            });
+          }
         }
       }
     });

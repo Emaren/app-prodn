@@ -5,6 +5,11 @@ import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 import { recordUserActivity } from "@/lib/userExperience";
 import { normalizePublicPlayerName } from "@/lib/publicPlayers";
+import {
+  requiresOnchainStakeProof,
+  validateWoloAddress,
+  verifyStakeTransfer,
+} from "@/lib/woloBetSettlement";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,6 +19,7 @@ const VIEWER_SELECT = {
   uid: true,
   inGameName: true,
   steamPersonaName: true,
+  walletAddress: true,
 } as const;
 
 async function requireViewer(request: NextRequest) {
@@ -82,11 +88,16 @@ export async function POST(request: NextRequest) {
       marketId?: number;
       side?: string;
       amountWolo?: number;
+      stakeTxHash?: string;
+      walletAddress?: string;
     };
 
     const side = normalizeSide(payload.side);
     const amountWolo = normalizeAmount(payload.amountWolo);
     const marketId = typeof payload.marketId === "number" ? payload.marketId : null;
+    const walletAddress = typeof payload.walletAddress === "string" ? payload.walletAddress.trim() : "";
+    const stakeTxHash = typeof payload.stakeTxHash === "string" ? payload.stakeTxHash.trim() : "";
+    const onchainRequired = requiresOnchainStakeProof();
 
     if (!marketId || !side || !amountWolo) {
       return NextResponse.json({ detail: "Market, side, and stake are required." }, { status: 400 });
@@ -119,6 +130,48 @@ export async function POST(request: NextRequest) {
         { detail: `You can only back yourself in matches you are playing. Lock ${forcedLabel}.` },
         { status: 409 }
       );
+    }
+
+    let resolvedWalletAddress = viewer.walletAddress || null;
+
+    if (onchainRequired) {
+      if (!walletAddress) {
+        return NextResponse.json(
+          { detail: "Connect Keplr and lock your WOLO stake before recording the wager." },
+          { status: 409 }
+        );
+      }
+
+      const addressError = validateWoloAddress(walletAddress);
+      if (addressError) {
+        return NextResponse.json({ detail: addressError }, { status: 400 });
+      }
+
+      if (!stakeTxHash) {
+        return NextResponse.json(
+          { detail: "Missing WOLO stake transaction hash for this wager." },
+          { status: 409 }
+        );
+      }
+
+      const verification = await verifyStakeTransfer({
+        txHash: stakeTxHash,
+        fromAddress: walletAddress,
+        expectedAmountWolo: amountWolo,
+      });
+
+      if (!verification.verified) {
+        return NextResponse.json({ detail: verification.detail }, { status: 409 });
+      }
+
+      if (viewer.walletAddress !== walletAddress) {
+        await prisma.user.update({
+          where: { id: viewer.id },
+          data: { walletAddress },
+        });
+      }
+
+      resolvedWalletAddress = walletAddress;
     }
 
     await prisma.betWager.upsert({
@@ -156,6 +209,9 @@ export async function POST(request: NextRequest) {
         rightLabel: market.rightLabel,
         status: market.status,
         forcedSide,
+        executionMode: onchainRequired ? "onchain_escrow" : "app_only",
+        stakeTxHash: stakeTxHash || null,
+        walletAddress: resolvedWalletAddress,
       },
       dedupeWithinSeconds: 5,
     });
@@ -201,6 +257,13 @@ export async function DELETE(request: NextRequest) {
 
     if (!["open", "closing", "live"].includes(market.status)) {
       return NextResponse.json({ detail: "This book is already closed." }, { status: 409 });
+    }
+
+    if (requiresOnchainStakeProof()) {
+      return NextResponse.json(
+        { detail: "On-chain slips cannot be cleared from the app once WOLO has been escrowed." },
+        { status: 409 }
+      );
     }
 
     await prisma.betWager.deleteMany({

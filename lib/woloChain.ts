@@ -18,6 +18,16 @@ export const WOLO_RPC_URL =
 export const WOLO_REST_URL =
   process.env.NEXT_PUBLIC_WOLO_REST_URL?.trim() || "https://rest.aoe2hdbets.com";
 
+export const WOLO_BET_ESCROW_ADDRESS =
+  process.env.NEXT_PUBLIC_WOLO_BET_ESCROW_ADDRESS?.trim() ||
+  process.env.WOLO_BET_ESCROW_ADDRESS?.trim() ||
+  "";
+
+export const WOLO_DEFAULT_GAS_PRICE =
+  process.env.NEXT_PUBLIC_WOLO_GAS_PRICE?.trim() ||
+  process.env.WOLO_GAS_PRICE?.trim() ||
+  `0.025${WOLO_BASE_DENOM}`;
+
 export const WOLO_KEPLR_DOWNLOAD_URL = "https://www.keplr.app/get";
 export const WOLO_MONETARY_POLICY_LABEL = "Fixed Supply";
 export const WOLO_SCARCITY_COPY = "Fixed supply. Clean settlement. No inflation games.";
@@ -39,6 +49,10 @@ export function shortenAddress(address?: string, lead = 12, tail = 8) {
   if (!address) return "Not connected";
   if (address.length <= lead + tail + 1) return address;
   return `${address.slice(0, lead)}…${address.slice(-tail)}`;
+}
+
+export function toUwoLoAmount(amountWolo: number) {
+  return String(Math.max(0, Math.round(amountWolo * 10 ** WOLO_COIN_DECIMALS)));
 }
 
 export const woloChainConfig = {
@@ -72,5 +86,5 @@ export const woloChainConfig = {
       },
     },
   ],
-  features: ["ibc-transfer"],
+  features: ["stargate", "ibc-transfer"],
 } as const;
