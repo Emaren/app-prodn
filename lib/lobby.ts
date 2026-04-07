@@ -148,6 +148,8 @@ export type LobbyLeaderboardEntry = {
   verificationLevel: number;
   isOnline: boolean;
   claimed: boolean;
+  pendingWoloClaimCount: number;
+  pendingWoloClaimAmount: number;
   totalMatches: number;
   lastPlayedAt: string | null;
   provisional: boolean;

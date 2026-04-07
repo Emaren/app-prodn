@@ -4,6 +4,7 @@ import { loadBetBoardSnapshot } from "@/lib/bets";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 import { recordUserActivity } from "@/lib/userExperience";
+import { normalizePublicPlayerName } from "@/lib/publicPlayers";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,6 +37,28 @@ async function requireViewer(request: NextRequest) {
 
 function normalizeSide(value: unknown) {
   return value === "right" ? "right" : value === "left" ? "left" : null;
+}
+
+function normalizePlayerKey(value: string | null | undefined) {
+  return normalizePublicPlayerName(value).toLowerCase();
+}
+
+function resolveViewerMatchSide(
+  viewer: { inGameName: string | null; steamPersonaName: string | null },
+  market: { leftLabel: string; rightLabel: string }
+) {
+  const viewerKeys = [viewer.inGameName, viewer.steamPersonaName]
+    .map((value) => normalizePlayerKey(value))
+    .filter(Boolean);
+  const leftKey = normalizePlayerKey(market.leftLabel);
+  const rightKey = normalizePlayerKey(market.rightLabel);
+
+  const matchesLeft = leftKey && viewerKeys.includes(leftKey);
+  const matchesRight = rightKey && viewerKeys.includes(rightKey);
+
+  if (matchesLeft && !matchesRight) return "left" as const;
+  if (matchesRight && !matchesLeft) return "right" as const;
+  return null;
 }
 
 function normalizeAmount(value: unknown) {
@@ -89,6 +112,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ detail: "This book is closed." }, { status: 409 });
     }
 
+    const forcedSide = resolveViewerMatchSide(viewer, market);
+    if (forcedSide && side !== forcedSide) {
+      const forcedLabel = forcedSide === "left" ? market.leftLabel : market.rightLabel;
+      return NextResponse.json(
+        { detail: `You can only back yourself in matches you are playing. Lock ${forcedLabel}.` },
+        { status: 409 }
+      );
+    }
+
     await prisma.betWager.upsert({
       where: {
         marketId_userId: {
@@ -123,6 +155,7 @@ export async function POST(request: NextRequest) {
         leftLabel: market.leftLabel,
         rightLabel: market.rightLabel,
         status: market.status,
+        forcedSide,
       },
       dedupeWithinSeconds: 5,
     });

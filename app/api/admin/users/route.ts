@@ -461,6 +461,28 @@ export async function GET(request: NextRequest) {
       })
     );
 
+    const matchedPendingClaimIds = new Set(
+      userRows.flatMap((user) => user.pendingWoloClaims.map((claim) => claim.id))
+    );
+    const unmatchedPendingWoloClaims = allClaims
+      .filter((claim) => claim.status === "pending" && !matchedPendingClaimIds.has(claim.id))
+      .map((claim) => ({
+        id: claim.id,
+        displayPlayerName: claim.displayPlayerName,
+        normalizedPlayerName: claim.normalizedPlayerName,
+        amountWolo: claim.amountWolo,
+        status: claim.status,
+        note: claim.note,
+        createdAt: claim.createdAt.toISOString(),
+        claimedAt: claim.claimedAt?.toISOString() ?? null,
+        rescindedAt: claim.rescindedAt?.toISOString() ?? null,
+        sourceMarketId: claim.sourceMarketId ?? null,
+        sourceGameStatsId: claim.sourceGameStatsId ?? null,
+      }));
+
+    const allPendingClaims = allClaims.filter((claim) => claim.status === "pending");
+    const allClaimedClaims = allClaims.filter((claim) => claim.status === "claimed");
+
     const overview = {
       totalUsers: userRows.length,
       activeUsers24h: userRows.filter((user) => {
@@ -473,10 +495,10 @@ export async function GET(request: NextRequest) {
         (sum, user) => sum + user.pendingBadgeCount + user.pendingGiftCount,
         0
       ),
-      pendingWoloClaims: userRows.reduce((sum, user) => sum + user.pendingWoloClaimCount, 0),
-      pendingWoloClaimAmount: userRows.reduce((sum, user) => sum + user.pendingWoloClaimAmount, 0),
-      claimedWoloClaims: userRows.reduce((sum, user) => sum + user.claimedWoloClaimCount, 0),
-      claimedWoloClaimAmount: userRows.reduce((sum, user) => sum + user.claimedWoloClaimAmount, 0),
+      pendingWoloClaims: allPendingClaims.length,
+      pendingWoloClaimAmount: allPendingClaims.reduce((sum, claim) => sum + claim.amountWolo, 0),
+      claimedWoloClaims: allClaimedClaims.length,
+      claimedWoloClaimAmount: allClaimedClaims.reduce((sum, claim) => sum + claim.amountWolo, 0),
       totalActionEvents: userRows.reduce((sum, user) => sum + user.recentActionsTotalCount, 0),
       themeBreakdown: ["black", "grey", "white", "sepia", "walnut", "crimson", "midnight"].map(
         (themeKey) => ({
@@ -493,6 +515,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       users: userRows,
       overview,
+      unmatchedPendingWoloClaims: unmatchedPendingWoloClaims.slice(0, 24),
+      unmatchedPendingWoloClaimCount: unmatchedPendingWoloClaims.length,
+      unmatchedPendingWoloClaimAmount: unmatchedPendingWoloClaims.reduce(
+        (sum, claim) => sum + claim.amountWolo,
+        0
+      ),
     });
   } catch (err) {
     console.error("Failed to load admin users:", err);

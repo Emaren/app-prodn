@@ -334,6 +334,50 @@ function claimPlayerNameForUser(user: {
   return normalizeName(user.inGameName) || normalizeName(user.steamPersonaName) || user.uid;
 }
 
+function canAutoClaimForKnownUser(user: {
+  verified?: boolean | null;
+  inGameName: string | null;
+  steamPersonaName: string | null;
+}) {
+  return Boolean(
+    user.verified &&
+      (normalizeName(user.inGameName) || normalizeName(user.steamPersonaName))
+  );
+}
+
+async function findAutoClaimUserForPlayerName(
+  prisma: PrismaClient,
+  playerName: string
+) {
+  const normalized = normalizeName(playerName).toLowerCase();
+  if (!normalized) {
+    return null;
+  }
+
+  const users = await prisma.user.findMany({
+    where: {
+      verified: true,
+      OR: [{ inGameName: { not: null } }, { steamPersonaName: { not: null } }],
+    },
+    select: {
+      id: true,
+      inGameName: true,
+      steamPersonaName: true,
+      verified: true,
+    },
+    take: 250,
+  });
+
+  return (
+    users.find((user) => {
+      const names = [user.inGameName, user.steamPersonaName]
+        .map((value) => normalizeName(value).toLowerCase())
+        .filter(Boolean);
+      return names.includes(normalized);
+    }) || null
+  );
+}
+
 function buildPendingClaimNote(
   market: { title: string; eventLabel: string },
   outcome: "won" | "void",
@@ -392,6 +436,7 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
               uid: true,
               inGameName: true,
               steamPersonaName: true,
+              verified: true,
             },
           },
         },
@@ -486,17 +531,21 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
         }
 
         const claimPlayerName = claimPlayerNameForUser(wager.user);
+        const autoClaim = canAutoClaimForKnownUser(wager.user);
+
         await createPendingWoloClaim(tx, {
           playerName: claimPlayerName,
           displayPlayerName: claimPlayerName,
           amountWolo: payoutWolo,
           sourceMarketId: market.id,
           note: buildPendingClaimNote(market, nextStatus, payoutWolo),
+          status: autoClaim ? "claimed" : "pending",
+          claimedByUserId: autoClaim ? wager.user.id : null,
         });
 
         await recordUserActivity(tx, {
           userId: wager.userId,
-          type: "pending_wolo_claim_created",
+          type: autoClaim ? "wolo_claim_auto_settled" : "pending_wolo_claim_created",
           path: "/bets",
           label: market.title,
           metadata: {
@@ -505,6 +554,7 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
             eventLabel: market.eventLabel,
             amountWolo: payoutWolo,
             claimReason: nextStatus === "void" ? "bet_refund" : "bet_payout",
+            claimStatus: autoClaim ? "claimed" : "pending",
             settledAt: settledAt.toISOString(),
           },
           dedupeWithinSeconds: 5,
@@ -519,6 +569,7 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
         if (winningWagers.length === 0 && winnerBountyWolo > 0) {
           const winnerName = getWinningPlayerName(market, winningSide);
           const losingName = getLosingPlayerName(market, winningSide);
+          const autoClaimUser = await findAutoClaimUserForPlayerName(tx as PrismaClient, winnerName);
 
           await createPendingWoloClaim(tx, {
             playerName: winnerName,
@@ -526,6 +577,8 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
             amountWolo: winnerBountyWolo,
             sourceMarketId: market.id,
             note: buildWinnerBountyNote(market, winnerName, losingName, winnerBountyWolo),
+            status: autoClaimUser ? "claimed" : "pending",
+            claimedByUserId: autoClaimUser?.id ?? null,
           });
         }
       }

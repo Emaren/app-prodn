@@ -1,8 +1,6 @@
 import type { PrismaClient } from "@/lib/generated/prisma";
 import { normalizePublicPlayerName } from "@/lib/publicPlayers";
 
-type PendingWoloClaimDb = Pick<PrismaClient, "pendingWoloClaim">;
-
 export type PendingWoloClaimSummary = {
   pendingAmountWolo: number;
   pendingCount: number;
@@ -15,6 +13,20 @@ export type PendingWoloClaimLookupUser = {
   inGameName: string | null;
   steamPersonaName: string | null;
 };
+
+type PendingWoloClaimDb = Pick<PrismaClient, "pendingWoloClaim">;
+
+export function pendingWoloClaimNameKeys(values: Array<string | null | undefined>) {
+  return uniqueNameKeys(values);
+}
+
+export function claimMatchesPlayerNames(
+  claim: { normalizedPlayerName: string },
+  values: Array<string | null | undefined>
+) {
+  const keys = uniqueNameKeys(values);
+  return keys.includes(claim.normalizedPlayerName);
+}
 
 export function normalizePendingWoloClaimName(value: string | null | undefined) {
   return normalizePublicPlayerName(value).toLowerCase().slice(0, 64);
@@ -144,6 +156,9 @@ export async function createPendingWoloClaim(
     sourceMarketId?: number | null;
     sourceGameStatsId?: number | null;
     note?: string | null;
+    status?: "pending" | "claimed";
+    claimedByUserId?: number | null;
+    claimedAt?: Date | null;
   }
 ) {
   const normalizedPlayerName = normalizePendingWoloClaimName(input.playerName);
@@ -156,6 +171,10 @@ export async function createPendingWoloClaim(
     return null;
   }
 
+  const nextStatus = input.status === "claimed" ? "claimed" : "pending";
+  const nextClaimedAt = nextStatus === "claimed" ? input.claimedAt ?? new Date() : null;
+  const nextClaimedByUserId = nextStatus === "claimed" ? input.claimedByUserId ?? null : null;
+
   if (typeof input.sourceMarketId === "number" && Number.isFinite(input.sourceMarketId)) {
     return prisma.pendingWoloClaim.upsert({
       where: {
@@ -167,11 +186,11 @@ export async function createPendingWoloClaim(
       update: {
         displayPlayerName,
         amountWolo,
-        status: "pending",
+        status: nextStatus,
         sourceGameStatsId: input.sourceGameStatsId ?? null,
-        claimedByUserId: null,
+        claimedByUserId: nextClaimedByUserId,
         rescindedByUserId: null,
-        claimedAt: null,
+        claimedAt: nextClaimedAt,
         rescindedAt: null,
         note: input.note?.trim().slice(0, 160) || null,
       },
@@ -179,9 +198,11 @@ export async function createPendingWoloClaim(
         normalizedPlayerName,
         displayPlayerName,
         amountWolo,
-        status: "pending",
+        status: nextStatus,
         sourceMarketId: input.sourceMarketId,
         sourceGameStatsId: input.sourceGameStatsId ?? null,
+        claimedByUserId: nextClaimedByUserId,
+        claimedAt: nextClaimedAt,
         note: input.note?.trim().slice(0, 160) || null,
       },
     });
@@ -192,9 +213,11 @@ export async function createPendingWoloClaim(
       normalizedPlayerName,
       displayPlayerName,
       amountWolo,
-      status: "pending",
+      status: nextStatus,
       sourceMarketId: input.sourceMarketId ?? null,
       sourceGameStatsId: input.sourceGameStatsId ?? null,
+      claimedByUserId: nextClaimedByUserId,
+      claimedAt: nextClaimedAt,
       note: input.note?.trim().slice(0, 160) || null,
     },
   });

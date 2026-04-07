@@ -12,6 +12,7 @@ import {
 } from "@/lib/publicPlayerDirectory";
 import { normalizePublicPlayerName } from "@/lib/publicPlayers";
 import { dedupeFinalReplayRows } from "@/lib/finalReplayIdentity";
+import { loadPendingWoloClaimSummariesByName } from "@/lib/pendingWoloClaims";
 
 const BASE_ARENA_ELO = 1500;
 const ARENA_ELO_K_FACTOR = 32;
@@ -42,6 +43,8 @@ type EnrichedLeaderboardEntry = PublicPlayerDirectoryEntry & {
   winRate: number;
   lastPlayedAtMs: number;
   arenaElo: number;
+  pendingWoloClaimCount: number;
+  pendingWoloClaimAmount: number;
 };
 
 function normalizeLeaderboardKey(value: string | null | undefined) {
@@ -71,6 +74,8 @@ function buildEnrichedEntry(entry: PublicPlayerDirectoryEntry): EnrichedLeaderbo
     winRate: resolvedMatches > 0 ? entry.wins / resolvedMatches : 0,
     lastPlayedAtMs: entry.lastPlayedAt ? new Date(entry.lastPlayedAt).getTime() : 0,
     arenaElo: BASE_ARENA_ELO,
+    pendingWoloClaimCount: 0,
+    pendingWoloClaimAmount: 0,
   };
 }
 
@@ -185,6 +190,42 @@ function buildAliasEntryMap(entries: EnrichedLeaderboardEntry[]) {
   }
 
   return aliasToEntry;
+}
+
+
+function applyPendingClaimSummaries(
+  entries: EnrichedLeaderboardEntry[],
+  summaryMap: Map<
+    string,
+    {
+      pendingAmountWolo: number;
+      pendingCount: number;
+      latestCreatedAt: string | null;
+      claimIds: number[];
+    }
+  >
+) {
+  for (const entry of entries) {
+    const seenClaimIds = new Set<number>();
+    let pendingCount = 0;
+    let pendingAmountWolo = 0;
+
+    for (const aliasKey of entry.aliasKeys) {
+      const summary = summaryMap.get(aliasKey);
+      if (!summary) continue;
+
+      for (const claimId of summary.claimIds) {
+        if (seenClaimIds.has(claimId)) continue;
+        seenClaimIds.add(claimId);
+        pendingCount += 1;
+      }
+
+      pendingAmountWolo += summary.pendingAmountWolo;
+    }
+
+    entry.pendingWoloClaimCount = pendingCount;
+    entry.pendingWoloClaimAmount = pendingAmountWolo;
+  }
 }
 
 function buildArenaElo(entries: EnrichedLeaderboardEntry[], games: PreparedLeaderboardGame[]) {
@@ -338,6 +379,8 @@ function toLobbyLeaderboardEntry(
     verificationLevel: entry.verificationLevel,
     isOnline: entry.isOnline,
     claimed: entry.claimed,
+    pendingWoloClaimCount: entry.pendingWoloClaimCount,
+    pendingWoloClaimAmount: entry.pendingWoloClaimAmount,
     totalMatches: entry.totalMatches,
     lastPlayedAt: entry.lastPlayedAt,
     provisional: entry.totalMatches < LOBBY_LEADERBOARD_MIN_MATCHES,
@@ -420,6 +463,12 @@ export async function loadLobbyLeaderboard(
   const candidates = directory.allEntries
     .filter((entry) => entry.totalMatches > 0 || entry.claimed)
     .map(buildEnrichedEntry);
+
+  const pendingSummaries = await loadPendingWoloClaimSummariesByName(
+    prisma,
+    candidates.flatMap((entry) => [entry.name, entry.inGameName, entry.steamPersonaName, ...entry.aliases])
+  );
+  applyPendingClaimSummaries(candidates, pendingSummaries);
   buildArenaElo(candidates, preparedGames);
 
   const { eligibleEntries, selectedEntries } = buildLeaderboardSelection(candidates);

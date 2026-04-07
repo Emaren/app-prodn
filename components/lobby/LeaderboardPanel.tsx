@@ -157,6 +157,11 @@ export function LeaderboardPanel({
                         </MiniTag>
                       )}
 
+                      {entry.pendingWoloClaimCount > 0 ? (
+                        <MiniTag toneClassName="border-amber-300/30 bg-amber-400/10 text-amber-100">
+                          Unclaimed $WOLO
+                        </MiniTag>
+                      ) : null}
                       {entry.isOnline ? <MiniTag toneClassName={tone.activeBadge}>Online</MiniTag> : null}
                     </div>
                   </div>
