@@ -75,7 +75,7 @@ export function LobbyHero({
   const liquidity = wolo?.accounts.dexliquidity?.wolo ?? null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-lobby-hero-stack="true">
       <div className="flex flex-wrap items-center gap-3">
         <div className={`text-sm uppercase tracking-[0.4em] ${accentTextClassName}`}>
           Community Lobby

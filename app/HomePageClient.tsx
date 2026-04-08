@@ -190,10 +190,10 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
         return;
       }
 
-      const leaderboardPanel = document.querySelector<HTMLElement>(
-        "[data-lobby-leaderboard-panel='true']"
-      );
-      const nextHeight = leaderboardPanel?.getBoundingClientRect().height ?? 0;
+      const heroStack =
+        document.querySelector<HTMLElement>("[data-lobby-hero-stack='true']") ||
+        document.querySelector<HTMLElement>("[data-lobby-leaderboard-panel='true']");
+      const nextHeight = heroStack?.getBoundingClientRect().height ?? 0;
       setHeroRailHeight(nextHeight > 0 ? Math.ceil(nextHeight) : null);
     };
 
@@ -205,11 +205,11 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
 
     window.addEventListener("resize", handleResize);
 
-    const leaderboardPanel = document.querySelector<HTMLElement>(
-      "[data-lobby-leaderboard-panel='true']"
-    );
+    const heroStack =
+      document.querySelector<HTMLElement>("[data-lobby-hero-stack='true']") ||
+      document.querySelector<HTMLElement>("[data-lobby-leaderboard-panel='true']");
 
-    if (typeof ResizeObserver === "undefined" || !leaderboardPanel) {
+    if (typeof ResizeObserver === "undefined" || !heroStack) {
       return () => {
         window.removeEventListener("resize", handleResize);
       };
@@ -219,7 +219,7 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
       syncHeroRailHeight();
     });
 
-    observer.observe(leaderboardPanel);
+    observer.observe(heroStack);
 
     return () => {
       observer.disconnect();
@@ -480,7 +480,7 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
           />
 
           <div
-            className="grid min-w-0 gap-3.5 lg:grid-rows-[auto_minmax(0,1fr)] lg:self-start lg:pt-4"
+            className="grid min-w-0 gap-3.5 lg:grid-rows-[auto_minmax(0,1fr)] lg:self-stretch lg:pt-4"
             style={heroRailStyle}
           >
             <TournamentPanel

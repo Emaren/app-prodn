@@ -121,7 +121,7 @@ export function TopWoloEarnersTile({
 
   return (
     <section
-      className={`flex h-full min-h-0 cursor-pointer flex-col overflow-hidden rounded-[1.7rem] border p-5 transition ${tone.panelShell} ${tone.cardHover} lg:h-[35rem] ${className ?? ""}`}
+      className={`flex h-full min-h-0 cursor-pointer flex-col overflow-hidden rounded-[1.7rem] border p-5 transition ${tone.panelShell} ${tone.cardHover} ${className ?? ""}`}
       role="link"
       tabIndex={0}
       aria-label="Open War Chest analytics"
@@ -155,7 +155,7 @@ export function TopWoloEarnersTile({
         </div>
       </div>
 
-      <div className="mt-4 min-h-0 flex-1">
+      <div className="mt-4 flex min-h-0 flex-1 flex-col">
         {entries.length === 0 ? (
           <div className="grid gap-2.5">
             {PLACEHOLDER_LANES.map((lane) => (
