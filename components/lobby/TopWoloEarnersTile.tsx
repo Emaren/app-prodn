@@ -153,7 +153,7 @@ export function TopWoloEarnersTile({
             ))}
           </div>
         ) : (
-          <div className="flex min-h-0 flex-1 flex-col gap-2.5">
+          <div className="min-h-0 flex-1 overflow-y-auto pr-1">
             <div className="grid gap-2.5">
               {topEntries.map((entry) => {
                 const primaryMetric = entry.earnedWolo > 0 ? entry.earnedWolo : entry.wageredWolo;
@@ -220,6 +220,39 @@ export function TopWoloEarnersTile({
                 );
               })}
 
+              {overflowEntries.map((entry) => {
+                const primaryMetric = entry.earnedWolo > 0 ? entry.earnedWolo : entry.wageredWolo;
+
+                return (
+                  <Link
+                    key={entry.key}
+                    href={entry.href}
+                    className={`grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-[1rem] border px-3 py-2.5 transition ${tone.subduedCard} ${tone.cardHover}`}
+                  >
+                    <div className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold ${tone.rankBadge}`}>
+                      {formatOrdinal(entry.rank)}
+                    </div>
+
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-semibold text-white">{entry.name}</div>
+                      <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-400">
+                        <span className="whitespace-nowrap">{entry.wagerCount} bets</span>
+                        <span className="h-1 w-1 rounded-full bg-white/15" />
+                        <span className="whitespace-nowrap">{entry.claimCount} payouts</span>
+                        <span className="h-1 w-1 rounded-full bg-white/15" />
+                        <span className="truncate">{formatLastActive(entry.lastActiveAt)}</span>
+                      </div>
+                    </div>
+
+                    <div className="text-right">
+                      <div className={`text-sm font-semibold ${tone.rating}`}>
+                        {formatWolo(primaryMetric)}
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+
               {PLACEHOLDER_LANES.slice(topEntries.length, topEntries.length + placeholderCount).map((lane) => (
                 <div
                   key={lane.rank}
@@ -237,48 +270,6 @@ export function TopWoloEarnersTile({
                 </div>
               ))}
             </div>
-
-            {overflowEntries.length > 0 ? (
-              <div className="min-h-0 flex-1 overflow-hidden rounded-[1.2rem] border border-white/8 bg-white/[0.02]">
-                <div className="flex items-center justify-between gap-3 border-b border-white/8 px-4 py-2 text-[10px] uppercase tracking-[0.24em] text-slate-400">
-                  <span>More Earners</span>
-                  <span>Scroll</span>
-                </div>
-
-                <div className="max-h-[10rem] overflow-y-auto px-2 py-2">
-                  <div className="grid gap-2">
-                    {overflowEntries.map((entry) => {
-                      const primaryMetric = entry.earnedWolo > 0 ? entry.earnedWolo : entry.wageredWolo;
-
-                      return (
-                        <Link
-                          key={entry.key}
-                          href={entry.href}
-                          className={`grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-[1rem] px-3 py-2 transition ${tone.subduedCard} ${tone.cardHover}`}
-                        >
-                          <div className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold ${tone.rankBadge}`}>
-                            {formatOrdinal(entry.rank)}
-                          </div>
-
-                          <div className="min-w-0">
-                            <div className="truncate text-sm font-semibold text-white">{entry.name}</div>
-                            <div className="mt-0.5 text-[11px] text-slate-400">
-                              {entry.wagerCount} bets · {entry.claimCount} payouts · {formatLastActive(entry.lastActiveAt)}
-                            </div>
-                          </div>
-
-                          <div className="text-right">
-                            <div className={`text-sm font-semibold ${tone.rating}`}>
-                              {formatWolo(primaryMetric)}
-                            </div>
-                          </div>
-                        </Link>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            ) : null}
           </div>
         )}
       </div>
