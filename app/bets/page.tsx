@@ -15,6 +15,7 @@ import {
   WOLO_DEFAULT_GAS_PRICE,
   WOLO_RPC_URL,
   toUwoLoAmount,
+  woloChainConfig,
 } from "@/lib/woloChain";
 
 const WOLO_LOGO_SRC = "/legacy/wolo-logo-transparent.png";
@@ -359,9 +360,23 @@ export default function BetsPage() {
     const keplrWindow = window as Window & {
       getOfflineSigner?: (chainId: string) => unknown;
       keplr?: {
+        enable?: (chainId: string) => Promise<void>;
+        experimentalSuggestChain?: (config: typeof woloChainConfig) => Promise<void>;
         getOfflineSignerAuto?: (chainId: string) => Promise<unknown>;
       };
     };
+
+    if (keplrWindow.keplr?.experimentalSuggestChain) {
+      try {
+        await keplrWindow.keplr.experimentalSuggestChain(woloChainConfig);
+      } catch (error) {
+        console.warn("WoloChain suggest failed or already exists:", error);
+      }
+    }
+
+    if (keplrWindow.keplr?.enable) {
+      await keplrWindow.keplr.enable(WOLO_CHAIN_ID);
+    }
 
     const signer = (keplrWindow.keplr?.getOfflineSignerAuto
       ? await keplrWindow.keplr.getOfflineSignerAuto(WOLO_CHAIN_ID)
@@ -371,6 +386,12 @@ export default function BetsPage() {
 
     if (!signer) {
       throw new Error("Keplr offline signer was not found in this browser.");
+    }
+
+    const accounts = await signer.getAccounts();
+    const signerAddress = accounts[0]?.address?.trim() || walletAddress;
+    if (!signerAddress) {
+      throw new Error("Connected wallet returned no WOLO address for this bet.");
     }
 
     setLockWorkflow({
@@ -388,7 +409,7 @@ export default function BetsPage() {
     });
 
     const result = await client.sendTokens(
-      walletAddress,
+      signerAddress,
       WOLO_BET_ESCROW_ADDRESS,
       [{ amount: toUwoLoAmount(amountWolo), denom: WOLO_BASE_DENOM }],
       "auto",
@@ -396,7 +417,7 @@ export default function BetsPage() {
     );
 
     return {
-      walletAddress,
+      walletAddress: signerAddress,
       stakeTxHash: result.transactionHash,
       executionMode: "onchain_escrow" as const,
     };
