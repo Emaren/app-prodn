@@ -446,7 +446,7 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
       : undefined;
   const heroRailStyle: CSSProperties | undefined =
     heroRailHeight && typeof window !== "undefined" && window.innerWidth >= 1024
-      ? { height: `${heroRailHeight}px` }
+      ? { minHeight: `${heroRailHeight}px` }
       : undefined;
 
   const heroStyle: CSSProperties = {

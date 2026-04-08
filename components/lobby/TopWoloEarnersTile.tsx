@@ -70,7 +70,7 @@ function MiniTag({
   toneClassName: string;
 }) {
   return (
-    <span className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${toneClassName}`}>
+    <span className={`rounded-full border px-2 py-0.5 text-[10px] leading-none ${toneClassName}`}>
       {children}
     </span>
   );
@@ -95,7 +95,7 @@ export function TopWoloEarnersTile({
 
   return (
     <section
-      className={`flex h-full min-h-0 flex-col overflow-hidden rounded-[1.7rem] border p-5 ${tone.panelShell} ${className ?? ""}`}
+      className={`flex h-full min-h-0 flex-col overflow-hidden rounded-[1.7rem] border p-5 lg:min-h-[34rem] ${tone.panelShell} ${className ?? ""}`}
     >
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
@@ -127,7 +127,7 @@ export function TopWoloEarnersTile({
           </div>
           <div className="mt-2 text-lg font-semibold text-white">{headlineValue}</div>
           <div className="text-[11px] uppercase tracking-[0.24em] text-slate-400">
-            {entries.length > 0 ? `Top ${board?.visibleSlots ?? 3} always on deck` : reserve ? "Reserve armed" : "Board filling soon"}
+            {entries.length > 0 ? `Top ${board?.visibleSlots ?? 3} on deck` : reserve ? "Reserve armed" : "Board filling soon"}
           </div>
         </div>
       </div>
@@ -170,9 +170,9 @@ export function TopWoloEarnersTile({
                   <Link
                     key={entry.key}
                     href={entry.href}
-                    className={`block rounded-[1.2rem] border px-4 py-3 transition ${tone.card} ${tone.cardHover}`}
+                    className={`block rounded-[1.25rem] border px-4 py-4 transition ${tone.card} ${tone.cardHover}`}
                   >
-                    <div className="grid gap-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center">
+                    <div className="grid gap-x-3 gap-y-2 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-start">
                       <div
                         className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border text-xs font-semibold ${tone.rankBadge}`}
                       >
@@ -180,9 +180,9 @@ export function TopWoloEarnersTile({
                       </div>
 
                       <div className="min-w-0">
-                        <div className="truncate text-sm font-semibold text-white">{entry.name}</div>
+                        <div className="truncate text-[15px] font-semibold text-white">{entry.name}</div>
 
-                        <div className="mt-1 flex flex-wrap gap-2">
+                        <div className="mt-1.5 flex flex-wrap gap-1.5">
                           <MiniTag toneClassName={entry.verified ? "border-emerald-400/25 bg-emerald-500/10 text-emerald-100" : tone.neutralPill}>
                             {entry.verified ? "Steam linked" : entry.claimed ? "Claimed" : "Claimable"}
                           </MiniTag>
@@ -193,18 +193,26 @@ export function TopWoloEarnersTile({
                             </MiniTag>
                           ) : null}
                         </div>
+                      </div>
 
-                        <div className="mt-2 text-xs text-slate-300">
-                          <span className="font-medium text-slate-200">Earned</span> {formatWolo(entry.earnedWolo)} · <span className="font-medium text-slate-200">Wagered</span> {formatWolo(entry.wageredWolo)} WOLO
+                      <div className="sm:min-w-[5.5rem] sm:pt-0.5 sm:text-right">
+                        <div className="text-[10px] uppercase tracking-[0.28em] text-slate-400">
+                          {entry.sourceWindow === "weekly" ? "Weekly take" : primaryLabel}
+                        </div>
+                        <div className={`mt-1 text-[1.45rem] font-semibold leading-none ${tone.rating}`}>
+                          {formatWolo(primaryMetric)}
                         </div>
                       </div>
 
-                      <div className="sm:min-w-[7rem] sm:text-right">
-                        <div className="text-[10px] uppercase tracking-[0.28em] text-slate-400">
-                          {primaryLabel}
-                        </div>
-                        <div className={`mt-1 text-lg font-semibold ${tone.rating}`}>
-                          {formatWolo(primaryMetric)}
+                      <div className="sm:col-span-2 sm:col-start-2">
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-300">
+                          <span className="whitespace-nowrap">
+                            <span className="font-medium text-slate-200">Earned</span> {formatWolo(entry.earnedWolo)} WOLO
+                          </span>
+                          <span className="hidden h-1 w-1 rounded-full bg-white/15 sm:inline-block" />
+                          <span className="whitespace-nowrap">
+                            <span className="font-medium text-slate-200">Wagered</span> {formatWolo(entry.wageredWolo)}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -237,7 +245,7 @@ export function TopWoloEarnersTile({
                   <span>Scroll</span>
                 </div>
 
-                <div className="max-h-[8.5rem] overflow-y-auto px-2 py-2">
+                <div className="max-h-[10rem] overflow-y-auto px-2 py-2">
                   <div className="grid gap-2">
                     {overflowEntries.map((entry) => {
                       const primaryMetric = entry.earnedWolo > 0 ? entry.earnedWolo : entry.wageredWolo;
