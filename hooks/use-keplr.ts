@@ -38,6 +38,33 @@ let snapshot: WalletSnapshot = {
 };
 let storeInitialized = false;
 let restorePromise: Promise<string | null> | null = null;
+let linkedWalletAddress = "";
+
+async function persistWalletLink(address: string) {
+  const normalized = address.trim();
+  if (typeof window === "undefined" || !normalized || linkedWalletAddress === normalized) {
+    return;
+  }
+
+  try {
+    const response = await fetch("/api/user/me", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ walletAddress: normalized }),
+    });
+
+    if (response.ok) {
+      linkedWalletAddress = normalized;
+      return;
+    }
+
+    if (response.status !== 401) {
+      console.warn(`Failed to persist linked WOLO wallet: ${response.status}`);
+    }
+  } catch (error) {
+    console.warn("Failed to persist linked WOLO wallet:", error);
+  }
+}
 
 function getAvailabilitySnapshot() {
   if (typeof window === "undefined") {
@@ -129,6 +156,7 @@ async function restoreStoredConnection() {
   try {
     const nextAddress = await resolveKeplrAddress();
     publishSnapshot({ status: "connected", address: nextAddress });
+    void persistWalletLink(nextAddress);
     return nextAddress;
   } catch (error) {
     console.warn("Stored Keplr session could not be restored:", error);
@@ -197,6 +225,7 @@ export function useKeplr() {
     try {
       const nextAddress = await resolveKeplrAddress({ suggestChain: true });
       publishSnapshot({ status: "connected", address: nextAddress });
+      void persistWalletLink(nextAddress);
       restorePromise = Promise.resolve(nextAddress);
       return nextAddress;
     } catch (error) {

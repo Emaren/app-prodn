@@ -5,6 +5,7 @@ import { getPrisma } from "@/lib/prisma";
 import { hydrateSteamIdentity } from "@/lib/steamIdentity";
 import { fetchUserVerification, toUserApi } from "@/lib/userDto";
 import { resolveRequestUid, resolveRequestEmail } from "@/lib/requestIdentity";
+import { validateWoloAddress } from "@/lib/woloBetSettlement";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,6 +23,10 @@ function nameLooksValid(name: string) {
 
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
+}
+
+function normalizeWalletAddress(address: string) {
+  return address.trim();
 }
 
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -106,6 +111,19 @@ export async function POST(request: NextRequest) {
       : typeof body?.in_game_name === "string"
         ? body.in_game_name
         : null;
+  const incomingWalletAddress =
+    typeof body?.walletAddress === "string"
+      ? normalizeWalletAddress(body.walletAddress)
+      : typeof body?.wallet_address === "string"
+        ? normalizeWalletAddress(body.wallet_address)
+        : null;
+
+  if (incomingWalletAddress) {
+    const addressError = validateWoloAddress(incomingWalletAddress);
+    if (addressError) {
+      return NextResponse.json({ detail: addressError }, { status: 400 });
+    }
+  }
 
   const prisma = getPrisma();
 
@@ -146,6 +164,7 @@ export async function POST(request: NextRequest) {
             uid,
             // keep email as-is (already emailNorm)
             inGameName: nextName,
+            walletAddress: incomingWalletAddress || byEmail.walletAddress,
           },
           select: USER_SELECT,
         });
@@ -161,6 +180,7 @@ export async function POST(request: NextRequest) {
           uid,
           email: emailNorm,
           inGameName: incomingName ? normalizeInGameName(incomingName) : null,
+          walletAddress: incomingWalletAddress,
           isAdmin: false,
         },
         select: USER_SELECT,
@@ -178,7 +198,10 @@ export async function POST(request: NextRequest) {
         if (byEmail) {
           const updated = await prisma.user.update({
             where: { email: emailNorm },
-            data: { uid },
+            data: {
+              uid,
+              walletAddress: incomingWalletAddress || byEmail.walletAddress,
+            },
             select: USER_SELECT,
           });
 
@@ -201,8 +224,12 @@ export async function POST(request: NextRequest) {
   const wantsNameUpdate =
     typeof incomingName === "string" &&
     normalizeInGameName(incomingName) !== (existing.inGameName ?? "");
+  const wantsWalletUpdate =
+    typeof incomingWalletAddress === "string" &&
+    incomingWalletAddress.length > 0 &&
+    incomingWalletAddress !== (existing.walletAddress ?? "");
 
-  if (!wantsEmailUpdate && !wantsNameUpdate) {
+  if (!wantsEmailUpdate && !wantsNameUpdate && !wantsWalletUpdate) {
     return NextResponse.json(toUserApi(existing, await fetchUserVerification(prisma, existing.uid)));
   }
 
@@ -225,6 +252,7 @@ export async function POST(request: NextRequest) {
         data: {
           email: wantsEmailUpdate ? (emailNorm as string) : existing.email,
           inGameName: nextName,
+          walletAddress: wantsWalletUpdate ? incomingWalletAddress : existing.walletAddress,
           verified: false,
           lockName: false,
         },
@@ -259,17 +287,19 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // only email update
   try {
     const updated = await prisma.user.update({
       where: { uid },
-      data: { email: emailNorm as string },
+      data: {
+        email: wantsEmailUpdate ? (emailNorm as string) : existing.email,
+        walletAddress: wantsWalletUpdate ? incomingWalletAddress : existing.walletAddress,
+      },
       select: USER_SELECT,
     });
 
-    return NextResponse.json(toUserApi(updated, await fetchUserVerification(prisma, uid)));
+    return NextResponse.json(toUserApi(updated, await fetchUserVerification(prisma, updated.uid)));
   } catch (err) {
-    if (isPrismaUnique(err, "email")) {
+    if (wantsEmailUpdate && isPrismaUnique(err, "email")) {
       return NextResponse.json({ detail: "Email already in use" }, { status: 409 });
     }
     throw err;
