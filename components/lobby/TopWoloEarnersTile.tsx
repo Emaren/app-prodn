@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import type { KeyboardEvent, MouseEvent, ReactNode } from "react";
 
 import {
@@ -73,7 +72,6 @@ export function TopWoloEarnersTile({
   viewMode,
   className,
 }: TopWoloEarnersTileProps) {
-  const router = useRouter();
   const tone = getLobbyPresentationTone(themeKey, viewMode);
   const reserve = formatCompactWolo(wolo?.accounts.ecosystembounties?.wolo ?? null);
   const entries = board?.entries ?? [];
@@ -83,18 +81,29 @@ export function TopWoloEarnersTile({
   const placeholderCount = Math.max(0, VISIBLE_ROWS - entries.length);
   const destinationHref = "/war-chest";
 
-  function shouldIgnoreTileClick(target: EventTarget | null) {
-    return target instanceof Element
-      ? Boolean(target.closest("a,button,input,textarea,select,[role='button'],[role='link']"))
-      : false;
+  function shouldIgnoreTileClick(target: EventTarget | null, currentTarget: EventTarget | null) {
+    if (!(target instanceof Element)) {
+      return false;
+    }
+
+    const interactiveAncestor = target.closest("a,button,input,textarea,select,[role='button']");
+    return Boolean(interactiveAncestor && interactiveAncestor !== currentTarget);
   }
 
-  function handleTileClick(event: MouseEvent<HTMLElement>) {
-    if (shouldIgnoreTileClick(event.target)) {
+  function navigateToTileDestination() {
+    if (typeof window === "undefined") {
       return;
     }
 
-    router.push(destinationHref);
+    window.location.assign(destinationHref);
+  }
+
+  function handleTileClick(event: MouseEvent<HTMLElement>) {
+    if (shouldIgnoreTileClick(event.target, event.currentTarget)) {
+      return;
+    }
+
+    navigateToTileDestination();
   }
 
   function handleTileKeyDown(event: KeyboardEvent<HTMLElement>) {
@@ -102,12 +111,12 @@ export function TopWoloEarnersTile({
       return;
     }
 
-    if (shouldIgnoreTileClick(event.target)) {
+    if (shouldIgnoreTileClick(event.target, event.currentTarget)) {
       return;
     }
 
     event.preventDefault();
-    router.push(destinationHref);
+    navigateToTileDestination();
   }
 
   return (

@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import type { KeyboardEvent, MouseEvent } from "react";
 import {
   getLobbyPresentationTone,
@@ -34,22 +33,32 @@ export function TournamentPanel({
   onJoinTournament,
   onLogin,
 }: TournamentPanelProps) {
-  const router = useRouter();
   const tone = getLobbyPresentationTone(themeKey, viewMode);
   const destinationHref = `/tournaments/${encodeURIComponent(tournament.slug || "next-community-tournament")}`;
 
-  function shouldIgnoreTileClick(target: EventTarget | null) {
-    return target instanceof Element
-      ? Boolean(target.closest("a,button,input,textarea,select,[role='button'],[role='link']"))
-      : false;
+  function shouldIgnoreTileClick(target: EventTarget | null, currentTarget: EventTarget | null) {
+    if (!(target instanceof Element)) {
+      return false;
+    }
+
+    const interactiveAncestor = target.closest("a,button,input,textarea,select,[role='button']");
+    return Boolean(interactiveAncestor && interactiveAncestor !== currentTarget);
   }
 
-  function handleTileClick(event: MouseEvent<HTMLElement>) {
-    if (shouldIgnoreTileClick(event.target)) {
+  function navigateToTileDestination() {
+    if (typeof window === "undefined") {
       return;
     }
 
-    router.push(destinationHref);
+    window.location.assign(destinationHref);
+  }
+
+  function handleTileClick(event: MouseEvent<HTMLElement>) {
+    if (shouldIgnoreTileClick(event.target, event.currentTarget)) {
+      return;
+    }
+
+    navigateToTileDestination();
   }
 
   function handleTileKeyDown(event: KeyboardEvent<HTMLElement>) {
@@ -57,12 +66,12 @@ export function TournamentPanel({
       return;
     }
 
-    if (shouldIgnoreTileClick(event.target)) {
+    if (shouldIgnoreTileClick(event.target, event.currentTarget)) {
       return;
     }
 
     event.preventDefault();
-    router.push(destinationHref);
+    navigateToTileDestination();
   }
 
   return (
