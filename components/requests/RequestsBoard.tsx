@@ -98,14 +98,14 @@ function CommentCard({
 
   return (
     <div className={`rounded-[1.3rem] border px-4 py-3 ${cardTone}`}>
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <div>
           <div className="text-sm font-medium text-white">{comment.author.displayName}</div>
           <div className="mt-1 text-[11px] uppercase tracking-[0.24em] text-slate-500">
             {formatTimestamp(comment.createdAt)}
           </div>
         </div>
-        <div className="flex flex-wrap gap-2 text-xs text-slate-400">
+        <div className="flex w-full flex-wrap gap-2 text-xs text-slate-400 sm:w-auto sm:justify-end">
           {canInteract ? (
             <button
               type="button"
@@ -143,7 +143,7 @@ function CommentCard({
             onChange={(event) => onCommentDraftChange(editKey, event.target.value)}
             className="min-h-[5rem] w-full resize-none rounded-2xl border border-white/10 bg-slate-950/55 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-amber-300/35"
           />
-          <div className="flex justify-end">
+          <div className="flex justify-start sm:justify-end">
             <button
               type="button"
               onClick={() => onSaveComment(comment.id)}
@@ -191,7 +191,7 @@ function CommentCard({
             placeholder={`Reply to ${comment.author.displayName}...`}
             className="min-h-[4.5rem] w-full resize-none rounded-2xl border border-white/10 bg-slate-950/55 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-amber-300/35"
           />
-          <div className="flex justify-end gap-2">
+          <div className="flex justify-start gap-2 sm:justify-end">
             <button
               type="button"
               onClick={() => onSetReplyTarget(null)}
@@ -245,9 +245,9 @@ function RequestCard(props: RequestCardProps) {
   const commentKey = `request:${item.id}`;
 
   return (
-    <article className="rounded-[1.7rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] p-4 shadow-[0_18px_60px_rgba(0,0,0,0.28)] sm:p-5">
+    <article className="overflow-hidden rounded-[1.7rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] p-3.5 shadow-[0_18px_60px_rgba(0,0,0,0.28)] sm:p-5">
       <div className="grid gap-4 lg:grid-cols-[5.5rem_minmax(0,1fr)]">
-        <div className="flex items-center gap-2 lg:flex-col lg:items-stretch">
+        <div className="flex items-center gap-2 self-start lg:flex-col lg:items-stretch">
           <button
             type="button"
             onClick={() => onVote(item.id, item.viewerVote === 1 ? 0 : 1)}
@@ -261,7 +261,7 @@ function RequestCard(props: RequestCardProps) {
             ▲
           </button>
           <div
-            className="min-w-[3rem] rounded-2xl border border-white/10 bg-slate-950/45 px-3 py-3 text-center"
+            className="min-w-[2.75rem] rounded-2xl border border-white/10 bg-slate-950/45 px-3 py-3 text-center"
             aria-label={`Votes ${item.score}`}
           >
             <div className="text-xl font-semibold text-white tabular-nums">{item.score}</div>
@@ -281,7 +281,7 @@ function RequestCard(props: RequestCardProps) {
         </div>
 
         <div className="space-y-4">
-          <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <div className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
@@ -299,15 +299,15 @@ function RequestCard(props: RequestCardProps) {
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center justify-end gap-2 text-xs">
-              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-slate-300">
+            <div className="flex w-full flex-wrap items-center gap-2 text-xs sm:w-auto sm:justify-end">
+              <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-slate-300 sm:px-3 sm:py-1.5">
                 {item.commentCount} comments
               </span>
               {item.canEdit ? (
                 <button
                   type="button"
                   onClick={() => (isEditing ? onCancelEditRequest(item.id) : onStartEditRequest(item))}
-                  className="rounded-full border border-white/10 px-3 py-1.5 text-slate-300 transition hover:border-white/20 hover:text-white"
+                  className="rounded-full border border-white/10 px-2.5 py-1 text-slate-300 transition hover:border-white/20 hover:text-white sm:px-3 sm:py-1.5"
                 >
                   {isEditing ? "Cancel" : "Edit"}
                 </button>
@@ -317,7 +317,7 @@ function RequestCard(props: RequestCardProps) {
                   type="button"
                   onClick={() => onSaveRequest(item.id)}
                   disabled={sending || !requestDraft.title.trim() || !requestDraft.body.trim()}
-                  className="rounded-full bg-amber-300 px-3 py-1.5 font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-full bg-amber-300 px-2.5 py-1 font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-50 sm:px-3 sm:py-1.5"
                 >
                   Save
                 </button>
@@ -326,7 +326,7 @@ function RequestCard(props: RequestCardProps) {
                 <button
                   type="button"
                   onClick={() => onToggleComplete(item.id, item.status === "completed" ? "open" : "completed")}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/25 px-3 py-1.5 text-emerald-100 transition hover:bg-emerald-500/10"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/25 px-2.5 py-1 text-emerald-100 transition hover:bg-emerald-500/10 sm:px-3 sm:py-1.5"
                 >
                   {item.status === "completed" ? (
                     "Reopen"
@@ -342,7 +342,7 @@ function RequestCard(props: RequestCardProps) {
                 <button
                   type="button"
                   onClick={() => onDeleteRequest(item.id)}
-                  className="rounded-full border border-red-400/25 px-3 py-1.5 text-red-200 transition hover:bg-red-500/10"
+                  className="rounded-full border border-red-400/25 px-2.5 py-1 text-red-200 transition hover:bg-red-500/10 sm:px-3 sm:py-1.5"
                 >
                   Delete
                 </button>
@@ -365,7 +365,7 @@ function RequestCard(props: RequestCardProps) {
             </div>
           ) : (
             <>
-              <h2 className="text-2xl font-semibold text-white">{item.title}</h2>
+              <h2 className="text-xl font-semibold text-white sm:text-2xl">{item.title}</h2>
               <p className="whitespace-pre-wrap text-sm leading-7 text-slate-300">{item.body}</p>
             </>
           )}
@@ -409,7 +409,7 @@ function RequestCard(props: RequestCardProps) {
               disabled={!canInteract}
               className="mt-3 min-h-[5rem] w-full resize-none rounded-2xl border border-white/10 bg-slate-950/55 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-amber-300/35"
             />
-            <div className="mt-3 flex justify-end">
+            <div className="mt-3 flex justify-start sm:justify-end">
               <button
                 type="button"
                 onClick={() => onSubmitComment(item.id, commentDrafts[commentKey] || "", null)}
@@ -513,7 +513,7 @@ export default function RequestsBoard() {
   }, [snapshot]);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 overflow-x-hidden">
       <section className="rounded-[1.75rem] border border-white/10 bg-[linear-gradient(135deg,rgba(251,191,36,0.08),rgba(15,23,42,0.86)_38%,rgba(2,6,23,0.96))] p-5 sm:p-6">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>

@@ -24,8 +24,9 @@ const PLACEHOLDER_LANES = [
   { rank: "1st", title: "Awaiting first earner" },
   { rank: "2nd", title: "Awaiting first earner" },
   { rank: "3rd", title: "Awaiting first earner" },
+  { rank: "4th", title: "Awaiting first earner" },
 ] as const;
-const MIN_VISIBLE_ROWS = 3;
+const VISIBLE_ROWS = 4;
 
 function formatCompactWolo(value: number | null | undefined) {
   if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) return null;
@@ -38,19 +39,6 @@ function formatCompactWolo(value: number | null | undefined) {
 function formatWolo(value: number | null | undefined) {
   if (typeof value !== "number" || !Number.isFinite(value)) return "0";
   return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(value);
-}
-
-function formatLastActive(value: string | null) {
-  if (!value) {
-    return "Waiting for the next swing";
-  }
-
-  return new Date(value).toLocaleString([], {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
 }
 
 function formatOrdinal(value: number) {
@@ -89,13 +77,11 @@ export function TopWoloEarnersTile({
   const statusLabel = entries.length > 0 ? (board?.backfilled ? "Weekly + regulars" : "Weekly") : "Standby";
   const headlineValue =
     entries.length > 0 ? `${entries.length} tracked` : reserve ? `${reserve} WOLO` : "3 slots";
-  const topEntries = entries.slice(0, MIN_VISIBLE_ROWS);
-  const overflowEntries = entries.slice(MIN_VISIBLE_ROWS);
-  const placeholderCount = Math.max(0, MIN_VISIBLE_ROWS - topEntries.length);
+  const placeholderCount = Math.max(0, VISIBLE_ROWS - entries.length);
 
   return (
     <section
-      className={`flex h-full min-h-0 flex-col overflow-hidden rounded-[1.7rem] border p-5 lg:min-h-[34rem] ${tone.panelShell} ${className ?? ""}`}
+      className={`flex h-full min-h-0 flex-col overflow-hidden rounded-[1.7rem] border p-5 lg:h-[35rem] ${tone.panelShell} ${className ?? ""}`}
     >
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
@@ -114,9 +100,6 @@ export function TopWoloEarnersTile({
             </div>
             <h3 className="text-[1.65rem] font-semibold text-white">WAR CHEST</h3>
           </div>
-          <p className="mt-1 text-sm text-slate-300">
-            Weekly earners lead. Active WOLO bettors break the ties.
-          </p>
         </div>
 
         <div className="text-right">
@@ -126,9 +109,6 @@ export function TopWoloEarnersTile({
             {statusLabel}
           </div>
           <div className="mt-2 text-lg font-semibold text-white">{headlineValue}</div>
-          <div className="text-[11px] uppercase tracking-[0.24em] text-slate-400">
-            {entries.length > 0 ? `Top ${board?.visibleSlots ?? 3} on deck` : reserve ? "Reserve armed" : "Board filling soon"}
-          </div>
         </div>
       </div>
 
@@ -155,7 +135,7 @@ export function TopWoloEarnersTile({
         ) : (
           <div className="min-h-0 flex-1 overflow-y-auto pr-1">
             <div className="grid gap-2.5">
-              {topEntries.map((entry) => {
+              {entries.map((entry) => {
                 const primaryMetric = entry.earnedWolo > 0 ? entry.earnedWolo : entry.wageredWolo;
                 const primaryLabel =
                   entry.earnedWolo > 0
@@ -220,40 +200,7 @@ export function TopWoloEarnersTile({
                 );
               })}
 
-              {overflowEntries.map((entry) => {
-                const primaryMetric = entry.earnedWolo > 0 ? entry.earnedWolo : entry.wageredWolo;
-
-                return (
-                  <Link
-                    key={entry.key}
-                    href={entry.href}
-                    className={`grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-[1rem] border px-3 py-2.5 transition ${tone.subduedCard} ${tone.cardHover}`}
-                  >
-                    <div className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold ${tone.rankBadge}`}>
-                      {formatOrdinal(entry.rank)}
-                    </div>
-
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-semibold text-white">{entry.name}</div>
-                      <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-400">
-                        <span className="whitespace-nowrap">{entry.wagerCount} bets</span>
-                        <span className="h-1 w-1 rounded-full bg-white/15" />
-                        <span className="whitespace-nowrap">{entry.claimCount} payouts</span>
-                        <span className="h-1 w-1 rounded-full bg-white/15" />
-                        <span className="truncate">{formatLastActive(entry.lastActiveAt)}</span>
-                      </div>
-                    </div>
-
-                    <div className="text-right">
-                      <div className={`text-sm font-semibold ${tone.rating}`}>
-                        {formatWolo(primaryMetric)}
-                      </div>
-                    </div>
-                  </Link>
-                );
-              })}
-
-              {PLACEHOLDER_LANES.slice(topEntries.length, topEntries.length + placeholderCount).map((lane) => (
+              {PLACEHOLDER_LANES.slice(entries.length, entries.length + placeholderCount).map((lane) => (
                 <div
                   key={lane.rank}
                   className={`grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-[1.2rem] border px-4 py-3 ${tone.card}`}
