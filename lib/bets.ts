@@ -13,6 +13,7 @@ import {
   hasWoloPayoutExecutionConfigured,
 } from "@/lib/woloBetSettlement";
 import { recordUserActivity } from "@/lib/userExperience";
+import { WOLO_BET_ESCROW_ADDRESS } from "@/lib/woloChain";
 
 export type BetSide = "left" | "right";
 export type BetStatus = "open" | "closing" | "live" | "settled";
@@ -76,6 +77,10 @@ export type BetSettledResult = {
 export type BetBoardSnapshot = {
   generatedAt: string;
   viewerName: string | null;
+  wolo: {
+    betEscrowAddress: string | null;
+    onchainEscrowEnabled: boolean;
+  };
   featuredMarket: BetBoardMarket | null;
   openMarkets: BetBoardMarket[];
   settledResults: BetSettledResult[];
@@ -1101,6 +1106,10 @@ export async function loadBetBoardSnapshot(
   return {
     generatedAt: new Date().toISOString(),
     viewerName: viewer?.inGameName || viewer?.steamPersonaName || null,
+    wolo: {
+      betEscrowAddress: WOLO_BET_ESCROW_ADDRESS || null,
+      onchainEscrowEnabled: Boolean(WOLO_BET_ESCROW_ADDRESS),
+    },
     featuredMarket,
     openMarkets,
     settledResults,

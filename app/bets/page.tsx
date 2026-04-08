@@ -10,7 +10,6 @@ import { useUserAuth } from "@/context/UserAuthContext";
 import { useKeplr } from "@/hooks/use-keplr";
 import {
   WOLO_BASE_DENOM,
-  WOLO_BET_ESCROW_ADDRESS,
   WOLO_CHAIN_ID,
   WOLO_DEFAULT_GAS_PRICE,
   WOLO_RPC_URL,
@@ -21,8 +20,6 @@ import {
 const WOLO_LOGO_SRC = "/legacy/wolo-logo-transparent.png";
 const STAKE_OPTIONS = [10, 25, 50, 100] as const;
 const BETS_POLL_INTERVAL_MS = 5_000;
-const ONCHAIN_BET_ESCROW_ENABLED = Boolean(WOLO_BET_ESCROW_ADDRESS);
-
 type BetSide = "left" | "right";
 type BetStatus = "open" | "closing" | "live" | "settled";
 
@@ -85,6 +82,10 @@ type BetSettledResult = {
 type BetBoardSnapshot = {
   generatedAt: string;
   viewerName: string | null;
+  wolo: {
+    betEscrowAddress: string | null;
+    onchainEscrowEnabled: boolean;
+  };
   featuredMarket: BetBoardMarket | null;
   openMarkets: BetBoardMarket[];
   settledResults: BetSettledResult[];
@@ -287,6 +288,8 @@ export default function BetsPage() {
   );
   const liveCount = board?.heat.liveCount || 0;
   const openCount = board?.openMarkets.length || 0;
+  const runtimeBetEscrowAddress = board?.wolo.betEscrowAddress?.trim() || "";
+  const onchainBetEscrowEnabled = board?.wolo.onchainEscrowEnabled ?? false;
 
   async function refreshBoard(nextPayload?: BetBoardSnapshot) {
     if (nextPayload) {
@@ -326,7 +329,7 @@ export default function BetsPage() {
   }
 
   async function ensureWalletAddress() {
-    if (!ONCHAIN_BET_ESCROW_ENABLED) {
+    if (!onchainBetEscrowEnabled) {
       return null;
     }
 
@@ -338,7 +341,7 @@ export default function BetsPage() {
   }
 
   async function lockStakeOnChain(market: BetBoardMarket, amountWolo: number) {
-    if (!ONCHAIN_BET_ESCROW_ENABLED) {
+    if (!onchainBetEscrowEnabled || !runtimeBetEscrowAddress) {
       return {
         walletAddress: null as string | null,
         stakeTxHash: null as string | null,
@@ -410,7 +413,7 @@ export default function BetsPage() {
 
     const result = await client.sendTokens(
       signerAddress,
-      WOLO_BET_ESCROW_ADDRESS,
+      runtimeBetEscrowAddress,
       [{ amount: toUwoLoAmount(amountWolo), denom: WOLO_BASE_DENOM }],
       "auto",
       `AoE2HDBets bet stake · market ${market.id}`
