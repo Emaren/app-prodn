@@ -66,9 +66,11 @@ export async function findMatchedClaimUser(
 
   const users = await prisma.user.findMany({
     where: {
-      verified: true,
       walletAddress: { not: null },
-      OR: [{ inGameName: { not: null } }, { steamPersonaName: { not: null } }],
+      AND: [
+        { OR: [{ verified: true }, { verificationLevel: { gt: 0 } }, { steamId: { not: null } }] },
+        { OR: [{ inGameName: { not: null } }, { steamPersonaName: { not: null } }] },
+      ],
     },
     select: {
       id: true,

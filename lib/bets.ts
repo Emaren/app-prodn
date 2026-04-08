@@ -347,12 +347,17 @@ function claimPlayerNameForUser(user: {
 
 function canAutoClaimForKnownUser(user: {
   verified?: boolean | null;
+  verificationLevel?: number | null;
+  steamId?: string | null;
   inGameName: string | null;
   steamPersonaName: string | null;
   walletAddress?: string | null;
 }) {
+  const hasTrustedIdentity = Boolean(
+    user.verified || (typeof user.verificationLevel === "number" && user.verificationLevel > 0) || user.steamId
+  );
   return Boolean(
-    user.verified &&
+    hasTrustedIdentity &&
       user.walletAddress &&
       (normalizeName(user.inGameName) || normalizeName(user.steamPersonaName))
   );
@@ -369,14 +374,18 @@ async function findAutoClaimUserForPlayerName(
 
   const users = await prisma.user.findMany({
     where: {
-      verified: true,
-      OR: [{ inGameName: { not: null } }, { steamPersonaName: { not: null } }],
+      AND: [
+        { OR: [{ verified: true }, { verificationLevel: { gt: 0 } }, { steamId: { not: null } }] },
+        { OR: [{ inGameName: { not: null } }, { steamPersonaName: { not: null } }] },
+      ],
     },
     select: {
       id: true,
       inGameName: true,
       steamPersonaName: true,
       verified: true,
+      verificationLevel: true,
+      steamId: true,
       walletAddress: true,
     },
     take: 250,
@@ -566,6 +575,8 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
               inGameName: true,
               steamPersonaName: true,
               verified: true,
+              verificationLevel: true,
+              steamId: true,
               walletAddress: true,
             },
           },
