@@ -104,8 +104,8 @@ function extractTransferEvents(payload: unknown): TransferEvent[] {
   const logs = asRecordArray(txResponse?.logs);
   const events: TransferEvent[] = [];
 
-  for (const log of logs) {
-    for (const event of asRecordArray(log.events)) {
+  const appendFromEvents = (eventEntries: Array<Record<string, unknown>>) => {
+    for (const event of eventEntries) {
       if (getStringField(event, "type") !== "transfer") continue;
       const attributes = asRecordArray(event.attributes);
       const sender = getStringField(attributes.find((attr) => getStringField(attr, "key") === "sender") || {}, "value");
@@ -114,6 +114,14 @@ function extractTransferEvents(payload: unknown): TransferEvent[] {
       if (!sender || !recipient || !amount) continue;
       events.push({ sender, recipient, amount });
     }
+  };
+
+  for (const log of logs) {
+    appendFromEvents(asRecordArray(log.events));
+  }
+
+  if (events.length === 0) {
+    appendFromEvents(asRecordArray(txResponse?.events));
   }
 
   return events;
