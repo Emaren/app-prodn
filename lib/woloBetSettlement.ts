@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import type { StdFee } from "@cosmjs/amino";
 import { DirectSecp256k1HdWallet } from "@cosmjs/proto-signing";
 import { GasPrice, SigningStargateClient } from "@cosmjs/stargate";
@@ -28,6 +30,8 @@ const WOLO_PAYOUT_MNEMONIC = process.env.WOLO_BET_PAYOUT_MNEMONIC?.trim() || "";
 const WOLO_PAYOUT_ADDRESS = process.env.WOLO_BET_PAYOUT_ADDRESS?.trim() || WOLO_BET_ESCROW_ADDRESS;
 const WOLO_PAYOUT_FEE = process.env.WOLO_BET_PAYOUT_FEE?.trim() || "auto";
 const WOLO_REQUIRE_ONCHAIN_STAKE = process.env.WOLO_BET_REQUIRE_ONCHAIN === "1";
+const WOLO_SETTLEMENT_URL = process.env.WOLO_SETTLEMENT_URL?.trim() || "";
+const WOLO_SETTLEMENT_AUTH_TOKEN = process.env.WOLO_SETTLEMENT_AUTH_TOKEN?.trim() || "";
 
 function normalizeAddress(value: string | null | undefined) {
   return (value || "").trim();
@@ -46,7 +50,7 @@ export function requiresOnchainStakeProof() {
 }
 
 export function hasWoloPayoutExecutionConfigured() {
-  return Boolean(WOLO_PAYOUT_MNEMONIC && WOLO_PAYOUT_ADDRESS);
+  return Boolean(WOLO_SETTLEMENT_URL || (WOLO_PAYOUT_MNEMONIC && WOLO_PAYOUT_ADDRESS));
 }
 
 export function validateWoloAddress(address: string) {
@@ -129,6 +133,69 @@ function resolvePayoutFee(value: string): number | "auto" | StdFee {
   return "auto";
 }
 
+function normalizeSettlementBaseUrl(value: string) {
+  return value.replace(/\/+$/, "");
+}
+
+function buildSettlementRequestId(input: { toAddress: string; amountWolo: number; memo: string }) {
+  const fingerprint = createHash("sha256")
+    .update(`${normalizeAddress(input.toAddress)}|${input.amountWolo}|${input.memo.trim()}`)
+    .digest("hex")
+    .slice(0, 40);
+
+  return `aoe2-payout-${fingerprint}`;
+}
+
+type SettlementExecutePayload = {
+  ok?: boolean;
+  status?: string;
+  failure_code?: string;
+  detail?: string;
+  tx_hash?: string;
+  raw_log?: string;
+};
+
+async function executeWoloPayoutViaSettlementService(input: {
+  toAddress: string;
+  amountWolo: number;
+  memo: string;
+}): Promise<PayoutExecutionResult> {
+  const baseUrl = normalizeSettlementBaseUrl(WOLO_SETTLEMENT_URL);
+  const response = await fetch(`${baseUrl}/settlement/v1/payouts`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      ...(WOLO_SETTLEMENT_AUTH_TOKEN
+        ? { authorization: `Bearer ${WOLO_SETTLEMENT_AUTH_TOKEN}` }
+        : {}),
+    },
+    body: JSON.stringify({
+      request_id: buildSettlementRequestId(input),
+      to_address: input.toAddress,
+      amount_uwolo: toUwoLoAmount(input.amountWolo),
+      memo: input.memo.slice(0, 180),
+    }),
+    cache: "no-store",
+  });
+
+  const payload = (await response.json().catch(() => ({}))) as SettlementExecutePayload;
+
+  if (!response.ok || !payload.ok || !payload.tx_hash) {
+    const detail =
+      payload.detail ||
+      payload.failure_code ||
+      payload.raw_log ||
+      `WOLO settlement service returned ${response.status}`;
+    throw new Error(detail);
+  }
+
+  return {
+    txHash: payload.tx_hash,
+    amountWolo: input.amountWolo,
+    toAddress: input.toAddress,
+  };
+}
+
 export async function verifyStakeTransfer(input: {
   txHash: string;
   fromAddress: string;
@@ -190,6 +257,10 @@ export async function executeWoloPayout(input: {
   amountWolo: number;
   memo: string;
 }): Promise<PayoutExecutionResult | null> {
+  if (WOLO_SETTLEMENT_URL) {
+    return executeWoloPayoutViaSettlementService(input);
+  }
+
   if (!hasWoloPayoutExecutionConfigured()) {
     return null;
   }
