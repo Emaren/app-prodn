@@ -101,12 +101,10 @@ export default function WoloFaucetCard({
   const [now, setNow] = useState(() => Date.now());
   const [claimError, setClaimError] = useState<string | null>(null);
   const [isClaiming, setIsClaiming] = useState(false);
-  const [justClaimed, setJustClaimed] = useState(false);
   const isCompact = variant === "prod";
 
   useEffect(() => {
     setClaimError(null);
-    setJustClaimed(false);
 
     if (typeof window === "undefined") return;
     if (!isConnected) {
@@ -180,7 +178,6 @@ export default function WoloFaucetCard({
       setClaimState(nextClaim);
       writeStoredClaimState(storageKey, nextClaim);
       setNow(nextClaim.claimedAtMs);
-      setJustClaimed(true);
       onClaimed?.({ balanceAfterUwoLo: payload.balanceAfter?.amount ?? null });
     } catch (error) {
       setClaimError(error instanceof Error ? error.message : "Could not claim faucet.");
@@ -188,28 +185,6 @@ export default function WoloFaucetCard({
       setIsClaiming(false);
     }
   }
-
-  const primaryLabel = !isConnected
-    ? `Claim ${FAUCET_AMOUNT_WOLO} WOLO`
-    : !isTestnet
-      ? "Testnet only"
-      : isClaiming
-        ? "Sending..."
-        : isCoolingDown
-          ? justClaimed
-            ? "Claimed"
-            : "Cooling down"
-          : `Claim ${FAUCET_AMOUNT_WOLO} WOLO`;
-
-  const statusTone = claimError
-    ? "border-red-400/25 bg-red-500/10 text-red-100"
-    : isClaiming
-      ? "border-cyan-300/25 bg-cyan-400/10 text-cyan-100"
-      : isCoolingDown
-        ? "border-emerald-400/25 bg-emerald-500/10 text-emerald-100"
-        : isEligible
-          ? "border-amber-300/25 bg-amber-400/10 text-amber-100"
-          : "border-white/10 bg-white/5 text-slate-300";
 
   const statusLabel = !isConnected
     ? "Connect Keplr to claim."
@@ -229,10 +204,22 @@ export default function WoloFaucetCard({
 
   const txhash = claimState?.txhash ?? null;
   const txUrl = buildPingPubTxUrl(chainId, txhash);
+  const compactLabel = isClaiming
+    ? "Sending..."
+    : isCoolingDown
+      ? formatCooldown(msRemaining)
+      : `Claim ${FAUCET_AMOUNT_WOLO} WOLO`;
+  const premiumStatusClassName = claimError
+    ? "text-red-200/85"
+    : isCoolingDown
+      ? "text-emerald-100/80"
+      : isClaiming
+        ? "text-cyan-100/80"
+        : "text-slate-400";
 
   if (isCompact) {
     return (
-      <div className="rounded-[1.15rem] border border-white/10 bg-[linear-gradient(180deg,rgba(8,14,24,0.96),rgba(6,10,18,0.96))] px-4 py-3">
+      <div className="px-1 py-0.5">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="text-[10px] uppercase tracking-[0.28em] text-cyan-100/55">
@@ -250,11 +237,7 @@ export default function WoloFaucetCard({
             className={actionClassName}
             title={statusLabel}
           >
-            {isClaiming
-              ? "Sending..."
-              : isCoolingDown
-                ? formatCooldown(msRemaining)
-                : `Claim ${FAUCET_AMOUNT_WOLO} WOLO`}
+            {compactLabel}
           </button>
         </div>
 
@@ -266,17 +249,17 @@ export default function WoloFaucetCard({
   }
 
   return (
-    <div className="rounded-[1.45rem] border border-white/10 bg-[linear-gradient(180deg,rgba(10,16,28,0.96),rgba(7,11,19,0.96))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+    <div className="rounded-[1.35rem] border border-white/10 bg-[linear-gradient(180deg,rgba(8,14,24,0.98),rgba(6,10,18,0.98))] px-4 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
       <div className="flex items-start justify-between gap-4">
-        <div>
+        <div className="min-w-0">
           <div className="text-[10px] uppercase tracking-[0.28em] text-cyan-100/55">
             Starter Faucet
           </div>
-          <div className="mt-2 text-lg font-semibold text-white">
+          <div className="mt-1 text-sm font-medium text-white">
             Claim {FAUCET_AMOUNT_WOLO} WOLO on testnet
           </div>
-          <div className="mt-2 text-sm leading-6 text-slate-300">
-            Real chain. Real wallet. One claim every 24 hours while WoloChain is in testnet mode.
+          <div className={`mt-1 text-[11px] leading-5 ${premiumStatusClassName}`}>
+            {statusLabel}
           </div>
         </div>
 
@@ -287,49 +270,18 @@ export default function WoloFaucetCard({
             void handleClaimClick();
           }}
           disabled={!isEligible}
-          className={`shrink-0 rounded-full border px-4 py-2 text-xs font-medium uppercase tracking-[0.24em] transition ${
+          className={`shrink-0 rounded-full border px-4 py-2 text-[10px] font-medium uppercase tracking-[0.24em] transition ${
             isEligible
               ? "border-cyan-300/70 bg-cyan-400/10 text-cyan-100 hover:border-cyan-200 hover:bg-cyan-400/15 hover:text-white"
               : "cursor-not-allowed border-white/10 bg-white/5 text-slate-400"
           }`}
         >
-          {primaryLabel}
+          {compactLabel}
         </button>
       </div>
 
-      <div className={`mt-4 rounded-2xl border px-4 py-3 text-sm ${statusTone}`}>
-        {statusLabel}
-      </div>
-
-      <div className="mt-4 grid gap-3 sm:grid-cols-3">
-        <div className="rounded-2xl border border-white/8 bg-white/5 px-4 py-3">
-          <div className="text-[11px] uppercase tracking-[0.24em] text-slate-500">
-            Amount
-          </div>
-          <div className="mt-2 text-lg font-semibold text-white">
-            {FAUCET_AMOUNT_WOLO} WOLO
-          </div>
-        </div>
-        <div className="rounded-2xl border border-white/8 bg-white/5 px-4 py-3">
-          <div className="text-[11px] uppercase tracking-[0.24em] text-slate-500">
-            Cooldown
-          </div>
-          <div className="mt-2 text-lg font-semibold text-white">
-            {isCoolingDown ? formatCooldown(msRemaining) : "Ready"}
-          </div>
-        </div>
-        <div className="rounded-2xl border border-white/8 bg-white/5 px-4 py-3">
-          <div className="text-[11px] uppercase tracking-[0.24em] text-slate-500">
-            Last Tx
-          </div>
-          <div className="mt-2 text-sm font-medium text-white">
-            {txhash ? formatTxhash(txhash) : "None yet"}
-          </div>
-        </div>
-      </div>
-
       {txhash ? (
-        <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-slate-300">
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-slate-300">
           <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
             tx {formatTxhash(txhash)}
           </span>
