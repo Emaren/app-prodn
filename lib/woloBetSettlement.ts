@@ -33,6 +33,10 @@ function normalizeAddress(value: string | null | undefined) {
   return (value || "").trim();
 }
 
+function normalizeTxHash(value: string | null | undefined) {
+  return (value || "").trim().toUpperCase();
+}
+
 export function isWoloBetEscrowEnabled() {
   return Boolean(WOLO_BET_ESCROW_ADDRESS);
 }
@@ -55,7 +59,7 @@ export function validateWoloAddress(address: string) {
 }
 
 async function fetchTx(txHash: string) {
-  const normalizedHash = txHash.trim();
+  const normalizedHash = normalizeTxHash(txHash);
   if (!normalizedHash) return null;
 
   const response = await fetch(`${WOLO_REST_URL}/cosmos/tx/v1beta1/txs/${normalizedHash}`, {
@@ -130,11 +134,13 @@ export async function verifyStakeTransfer(input: {
   fromAddress: string;
   expectedAmountWolo: number;
 }): Promise<StakeVerificationResult> {
+  const normalizedTxHash = normalizeTxHash(input.txHash);
+
   if (!requiresOnchainStakeProof()) {
     return {
       verified: true,
       detail: "On-chain stake proof is not required by current env.",
-      txHash: input.txHash,
+      txHash: normalizedTxHash,
     };
   }
 
@@ -147,7 +153,7 @@ export async function verifyStakeTransfer(input: {
     return { verified: false, detail: addressError };
   }
 
-  const payload = await fetchTx(input.txHash);
+  const payload = await fetchTx(normalizedTxHash);
   if (!payload) {
     return { verified: false, detail: "Stake tx could not be loaded from the WOLO REST API." };
   }
@@ -176,7 +182,7 @@ export async function verifyStakeTransfer(input: {
     };
   }
 
-  return { verified: true, detail: "Stake tx verified.", txHash: input.txHash.trim() };
+  return { verified: true, detail: "Stake tx verified.", txHash: normalizedTxHash };
 }
 
 export async function executeWoloPayout(input: {

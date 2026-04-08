@@ -179,3 +179,4 @@ Do not restart blindly before the schema is in place.
 - backend upstream should remain `http://127.0.0.1:3330`
 - browser should stay same-origin for `/api/*`
 - watcher uploads should continue to target `api-prodn.aoe2hdbets.com`, not the public web host
+- dedicated nginx request-log runbook for AoE2 Phase 1 lives at [deploy/aoe2-access-logging-phase1.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/deploy/aoe2-access-logging-phase1.md)

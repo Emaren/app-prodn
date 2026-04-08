@@ -137,6 +137,7 @@ function RivalryPlayer({
       </div>
       <div className={`mt-3 flex flex-wrap gap-2 ${align === "right" ? "lg:justify-end" : ""}`}>
         {player.claimed ? <SteamLinkedBadge compact /> : <Tag>Claimable identity</Tag>}
+        {player.pendingWoloClaimCount > 0 ? <Tag>{player.pendingWoloClaimAmount} WOLO unclaimed</Tag> : null}
       </div>
     </div>
   );

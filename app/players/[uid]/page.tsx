@@ -18,8 +18,13 @@ import {
 import { buildPlayerPerformanceStats } from "@/lib/playerPerformance";
 import { buildMatchupHref, buildRivalSummaries } from "@/lib/publicMatchups";
 import { getPrisma } from "@/lib/prisma";
-import { buildClaimedPublicPlayerRef, normalizePublicPlayerName } from "@/lib/publicPlayers";
+import {
+  applyPendingWoloClaimSummary,
+  buildClaimedPublicPlayerRef,
+  normalizePublicPlayerName,
+} from "@/lib/publicPlayers";
 import { loadUserCommunitySummaries } from "@/lib/communityHonors";
+import { loadPendingWoloClaimSummariesByName } from "@/lib/pendingWoloClaims";
 
 export const dynamic = "force-dynamic";
 
@@ -90,7 +95,11 @@ export default async function PublicPlayerPage({
     giftedWolo: 0,
   };
   const aliases = Array.from(aliasSet);
-  const currentPlayer = buildClaimedPublicPlayerRef(user, displayName);
+  const pendingClaimSummaries = await loadPendingWoloClaimSummariesByName(prisma, aliases);
+  const currentPlayer = applyPendingWoloClaimSummary(
+    buildClaimedPublicPlayerRef(user, displayName),
+    pendingClaimSummaries
+  );
   const performance = buildPlayerPerformanceStats(matchedGames, currentPlayer);
   const publicMatches = matchedGames.slice(0, 24);
   const rivalries = await buildRivalSummaries(prisma, publicMatches, currentPlayer);
@@ -110,6 +119,9 @@ export default async function PublicPlayerPage({
               {user.verificationLevel > 0 ? <SteamLinkedBadge compact /> : null}
               <Tag>{user.verified ? "Replay verified" : "Claimed profile"}</Tag>
               <Tag>verification level {user.verificationLevel}</Tag>
+              {currentPlayer.pendingWoloClaimCount > 0 ? (
+                <Tag>Unclaimed WOLO · {currentPlayer.pendingWoloClaimAmount}</Tag>
+              ) : null}
               {isLive ? <Tag>online now</Tag> : null}
               {community.badges.map((badge) => (
                 <CommunityBadgePill key={badge.id} label={badge.label} />
@@ -202,6 +214,16 @@ export default async function PublicPlayerPage({
               />
             </dl>
           </Panel>
+
+          {currentPlayer.pendingWoloClaimCount > 0 ? (
+            <Panel title="Unclaimed WOLO" eyebrow="Claim Rail">
+              <div className="rounded-2xl border border-amber-300/20 bg-amber-400/10 px-4 py-4 text-sm leading-6 text-amber-100">
+                {currentPlayer.pendingWoloClaimAmount} WOLO is still waiting in the app-side claim
+                ledger for this identity across {currentPlayer.pendingWoloClaimCount} row
+                {currentPlayer.pendingWoloClaimCount === 1 ? "" : "s"}.
+              </div>
+            </Panel>
+          ) : null}
 
           {community.badges.length > 0 || community.giftedWolo > 0 ? (
             <Panel title="Community Honors" eyebrow="Recognition">

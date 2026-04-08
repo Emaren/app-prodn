@@ -3,12 +3,14 @@ import type { PrismaClient } from "@/lib/generated/prisma";
 import { displayPlayerName, parsePlayers, readPlayedAt } from "@/lib/gameStatsView";
 import { getLobbyMatchPlayedAtMs } from "@/lib/lobbyMatchTime";
 import {
+  applyPendingWoloClaimSummary,
   buildPublicPlayerRef,
   type PublicPlayerRef,
   findClaimedUsersForReplayNames,
   normalizePublicPlayerName,
   publicPlayerMatchesName,
 } from "@/lib/publicPlayers";
+import { loadPendingWoloClaimSummariesByName } from "@/lib/pendingWoloClaims";
 
 const RECENT_FINAL_MATCH_SCAN_LIMIT = 5000;
 
@@ -203,6 +205,7 @@ export async function buildRivalSummaries(
   );
 
   const claimedPlayers = await findClaimedUsersForReplayNames(prisma, opponentNames);
+  const pendingClaimSummaries = await loadPendingWoloClaimSummariesByName(prisma, opponentNames);
   const summaries = new Map<string, RivalSummary>();
 
   for (const match of matches) {
@@ -213,7 +216,10 @@ export async function buildRivalSummaries(
     const playedAt = readPlayedAt(match);
 
     for (const opponentName of opponents) {
-      const ref = buildPublicPlayerRef(opponentName, claimedPlayers);
+      const ref = applyPendingWoloClaimSummary(
+        buildPublicPlayerRef(opponentName, claimedPlayers),
+        pendingClaimSummaries
+      );
       const summary =
         summaries.get(ref.token) ||
         ({
@@ -278,12 +284,22 @@ export async function loadPublicRivalries(
     prisma,
     Array.from(new Set(duelSeeds.flatMap((entry) => entry.names)))
   );
+  const pendingClaimSummaries = await loadPendingWoloClaimSummariesByName(
+    prisma,
+    Array.from(new Set(duelSeeds.flatMap((entry) => entry.names)))
+  );
 
   const rivalries = new Map<string, PublicRivalryEntry>();
 
   for (const entry of duelSeeds) {
-    const firstRef = buildPublicPlayerRef(entry.names[0], claimedPlayers);
-    const secondRef = buildPublicPlayerRef(entry.names[1], claimedPlayers);
+    const firstRef = applyPendingWoloClaimSummary(
+      buildPublicPlayerRef(entry.names[0], claimedPlayers),
+      pendingClaimSummaries
+    );
+    const secondRef = applyPendingWoloClaimSummary(
+      buildPublicPlayerRef(entry.names[1], claimedPlayers),
+      pendingClaimSummaries
+    );
     const [left, right] = canonicalizeMatchupPlayers(firstRef, secondRef);
     const key = `${left.token}::${right.token}`;
 

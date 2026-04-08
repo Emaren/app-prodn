@@ -87,6 +87,20 @@ function deriveSettlementMode(
   return "pending" as const;
 }
 
+function resolveSettlementTxHash(claim: {
+  payoutTxHash?: string | null;
+  note?: string | null;
+}) {
+  return claim.payoutTxHash?.trim() || extractPayoutTxHash(claim.note);
+}
+
+function resolveSettlementError(claim: {
+  errorState?: string | null;
+  note?: string | null;
+}) {
+  return claim.errorState?.trim() || extractAutoSettleError(claim.note);
+}
+
 export async function GET(request: NextRequest) {
   try {
     const gate = await requireAdmin(request);
@@ -350,6 +364,10 @@ export async function GET(request: NextRequest) {
       amountWolo: number;
       payoutWolo: number | null;
       status: string;
+      executionMode: string;
+      stakeTxHash: string | null;
+      stakeWalletAddress: string | null;
+      stakeLockedAt: string | null;
       createdAt: string;
       updatedAt: string;
       settledAt: string | null;
@@ -374,6 +392,10 @@ export async function GET(request: NextRequest) {
           amountWolo: row.amountWolo,
           payoutWolo: row.payoutWolo ?? null,
           status: row.status,
+          executionMode: row.executionMode,
+          stakeTxHash: row.stakeTxHash ?? null,
+          stakeWalletAddress: row.stakeWalletAddress ?? null,
+          stakeLockedAt: row.stakeLockedAt?.toISOString() ?? null,
           createdAt: row.createdAt.toISOString(),
           updatedAt: row.updatedAt.toISOString(),
           settledAt: row.settledAt?.toISOString() ?? null,
@@ -513,8 +535,8 @@ export async function GET(request: NextRequest) {
         ? settlementMarketById.get(claim.sourceMarketId)
         : null;
 
-      const payoutTxHash = extractPayoutTxHash(claim.note);
-      const errorState = extractAutoSettleError(claim.note);
+      const payoutTxHash = resolveSettlementTxHash(claim);
+      const errorState = resolveSettlementError(claim);
       const settlementMode = deriveSettlementMode(
         claim.status as "pending" | "claimed" | "rescinded",
         payoutTxHash
@@ -532,6 +554,7 @@ export async function GET(request: NextRequest) {
         payoutTxHash,
         errorState,
         note: claim.note ?? null,
+        payoutAttemptedAt: claim.payoutAttemptedAt?.toISOString() ?? null,
         createdAt: claim.createdAt.toISOString(),
         claimedAt: claim.claimedAt?.toISOString() ?? null,
         rescindedAt: claim.rescindedAt?.toISOString() ?? null,
@@ -557,6 +580,10 @@ export async function GET(request: NextRequest) {
         autoSettledCount: settlementRows.filter((row) => row.settlementMode === "auto_settled").length,
         autoSettledAmountWolo: settlementRows
           .filter((row) => row.settlementMode === "auto_settled")
+          .reduce((sum, row) => sum + row.amountWolo, 0),
+        failedCount: settlementRows.filter((row) => Boolean(row.errorState)).length,
+        failedAmountWolo: settlementRows
+          .filter((row) => Boolean(row.errorState))
           .reduce((sum, row) => sum + row.amountWolo, 0),
       },
       rows: settlementRows,

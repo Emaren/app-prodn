@@ -17,7 +17,12 @@ import {
   summarizeHeadToHead,
 } from "@/lib/publicMatchups";
 import { getPrisma } from "@/lib/prisma";
-import { resolvePublicPlayerToken, type PublicPlayerRef } from "@/lib/publicPlayers";
+import {
+  applyPendingWoloClaimSummary,
+  resolvePublicPlayerToken,
+  type PublicPlayerRef,
+} from "@/lib/publicPlayers";
+import { loadPendingWoloClaimSummariesByName } from "@/lib/pendingWoloClaims";
 
 export const dynamic = "force-dynamic";
 
@@ -29,14 +34,21 @@ export default async function MatchupPage({
   const { left, right } = await params;
   const prisma = getPrisma();
 
-  const [leftPlayer, rightPlayer] = await Promise.all([
+  const [rawLeftPlayer, rawRightPlayer] = await Promise.all([
     resolvePublicPlayerToken(prisma, decodeURIComponent(left)),
     resolvePublicPlayerToken(prisma, decodeURIComponent(right)),
   ]);
 
-  if (!leftPlayer || !rightPlayer || leftPlayer.token === rightPlayer.token) {
+  if (!rawLeftPlayer || !rawRightPlayer || rawLeftPlayer.token === rawRightPlayer.token) {
     notFound();
   }
+
+  const pendingClaimSummaries = await loadPendingWoloClaimSummariesByName(prisma, [
+    ...rawLeftPlayer.aliases,
+    ...rawRightPlayer.aliases,
+  ]);
+  const leftPlayer = applyPendingWoloClaimSummary(rawLeftPlayer, pendingClaimSummaries);
+  const rightPlayer = applyPendingWoloClaimSummary(rawRightPlayer, pendingClaimSummaries);
 
   const canonicalHref = buildMatchupHref(leftPlayer, rightPlayer);
   const currentHref = `/matchups/${encodeURIComponent(decodeURIComponent(left))}/${encodeURIComponent(
@@ -240,6 +252,7 @@ function HeroPlayer({
         ) : (
           <Tag>Replay-built identity</Tag>
         )}
+        {player.pendingWoloClaimCount > 0 ? <Tag>{player.pendingWoloClaimAmount} WOLO unclaimed</Tag> : null}
       </div>
     </div>
   );
@@ -275,6 +288,7 @@ function PlayerSummaryCard({
           <div className="mt-3 flex flex-wrap gap-2">
             <Tag>{identityLabel}</Tag>
             <Tag>{wins + losses + unknowns} recorded</Tag>
+            {player.pendingWoloClaimCount > 0 ? <Tag>{player.pendingWoloClaimAmount} WOLO unclaimed</Tag> : null}
           </div>
         </div>
 

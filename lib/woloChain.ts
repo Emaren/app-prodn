@@ -1,5 +1,3 @@
-import { Bech32Address } from "@keplr-wallet/cosmos";
-
 export const WOLO_CHAIN_ID =
   process.env.NEXT_PUBLIC_WOLO_CHAIN_ID?.trim() || "wolo-testnet";
 
@@ -55,13 +53,24 @@ export function toUwoLoAmount(amountWolo: number) {
   return String(Math.max(0, Math.round(amountWolo * 10 ** WOLO_COIN_DECIMALS)));
 }
 
+function buildBech32Config(prefix: string) {
+  return {
+    bech32PrefixAccAddr: prefix,
+    bech32PrefixAccPub: `${prefix}pub`,
+    bech32PrefixValAddr: `${prefix}valoper`,
+    bech32PrefixValPub: `${prefix}valoperpub`,
+    bech32PrefixConsAddr: `${prefix}valcons`,
+    bech32PrefixConsPub: `${prefix}valconspub`,
+  } as const;
+}
+
 export const woloChainConfig = {
   chainId: WOLO_CHAIN_ID,
   chainName: WOLO_CHAIN_NAME,
   rpc: WOLO_RPC_URL,
   rest: WOLO_REST_URL,
   bip44: { coinType: WOLO_COIN_TYPE },
-  bech32Config: Bech32Address.defaultBech32Config(WOLO_ADDRESS_PREFIX),
+  bech32Config: buildBech32Config(WOLO_ADDRESS_PREFIX),
   stakeCurrency: {
     coinDenom: WOLO_DISPLAY_DENOM,
     coinMinimalDenom: WOLO_BASE_DENOM,

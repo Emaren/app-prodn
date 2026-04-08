@@ -90,6 +90,10 @@ type BetLedgerRow = {
   amountWolo: number;
   payoutWolo: number | null;
   status: string;
+  executionMode: string;
+  stakeTxHash: string | null;
+  stakeWalletAddress: string | null;
+  stakeLockedAt: string | null;
   createdAt: string;
   updatedAt: string;
   settledAt: string | null;
@@ -165,6 +169,7 @@ type SettlementRailRow = {
   payoutTxHash: string | null;
   errorState: string | null;
   note: string | null;
+  payoutAttemptedAt: string | null;
   createdAt: string;
   claimedAt: string | null;
   rescindedAt: string | null;
@@ -181,6 +186,8 @@ type SettlementRailSummary = {
   rescindedAmountWolo: number;
   autoSettledCount: number;
   autoSettledAmountWolo: number;
+  failedCount: number;
+  failedAmountWolo: number;
 };
 
 type AdminUsersPayload = {
@@ -196,6 +203,18 @@ type ActivityHistoryPayload = {
   items: Activity[];
   total: number;
   nextOffset: number | null;
+};
+
+type ReconcilePendingClaimsPayload = {
+  ok: boolean;
+  summary: {
+    scannedCount: number;
+    claimedCount: number;
+    claimedAmountWolo: number;
+    failedCount: number;
+    skippedUnmatchedCount: number;
+    skippedHasTxHashCount: number;
+  };
 };
 
 type DraftState = {
@@ -230,6 +249,12 @@ function formatShortDate(value: string | null) {
     hour: "numeric",
     minute: "2-digit",
   });
+}
+
+function shortHash(value: string | null) {
+  if (!value) return null;
+  if (value.length <= 18) return value;
+  return `${value.slice(0, 10)}…${value.slice(-6)}`;
 }
 
 function formatActivityType(value: string) {
@@ -316,6 +341,8 @@ export default function UsersPage() {
   const [activityTotals, setActivityTotals] = useState<Record<string, number>>({});
   const [activityNextOffsets, setActivityNextOffsets] = useState<Record<string, number | null>>({});
   const [rescindingSettlementClaimId, setRescindingSettlementClaimId] = useState<number | null>(null);
+  const [retryingSettlementClaimId, setRetryingSettlementClaimId] = useState<number | null>(null);
+  const [reconcilingPendingClaims, setReconcilingPendingClaims] = useState(false);
 
   const getDraft = useCallback(
     (uid: string) => drafts[uid] ?? EMPTY_DRAFT,
@@ -390,6 +417,84 @@ export default function UsersPage() {
       window.alert(detail);
     } finally {
       setRescindingSettlementClaimId(null);
+    }
+  }, [fetchUsers]);
+
+  const retrySettlementClaim = useCallback(async (claimId: number) => {
+    const confirmed = window.confirm("Retry this failed WOLO payout from the admin rail?");
+    if (!confirmed) return;
+
+    setRetryingSettlementClaimId(claimId);
+
+    try {
+      const response = await fetch(`/api/admin/wolo-claims/${claimId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action: "retry_settlement",
+        }),
+      });
+
+      if (!response.ok) {
+        const detail = await response.text();
+        throw new Error(detail || "Failed to retry WOLO payout.");
+      }
+
+      await fetchUsers();
+    } catch (error) {
+      const detail =
+        error instanceof Error ? error.message : "Failed to retry WOLO payout.";
+      window.alert(detail);
+    } finally {
+      setRetryingSettlementClaimId(null);
+    }
+  }, [fetchUsers]);
+
+  const reconcilePendingClaims = useCallback(async () => {
+    const confirmed = window.confirm(
+      "Sweep pending WOLO claims and auto-settle any rows that now match verified wallet-linked users?"
+    );
+    if (!confirmed) return;
+
+    setReconcilingPendingClaims(true);
+
+    try {
+      const response = await fetch("/api/admin/wolo-claims", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action: "reconcile_pending",
+          take: 40,
+        }),
+      });
+
+      if (!response.ok) {
+        const detail = await response.text();
+        throw new Error(detail || "Failed to reconcile pending WOLO claims.");
+      }
+
+      const result = (await response.json()) as ReconcilePendingClaimsPayload;
+      await fetchUsers();
+
+      window.alert(
+        [
+          `Scanned ${result.summary.scannedCount} pending claims.`,
+          `Settled ${result.summary.claimedCount} for ${formatWolo(result.summary.claimedAmountWolo)} WOLO.`,
+          `Failed ${result.summary.failedCount}.`,
+          `Still unmatched ${result.summary.skippedUnmatchedCount}.`,
+          `Already had tx hash ${result.summary.skippedHasTxHashCount}.`,
+        ].join("\n")
+      );
+    } catch (error) {
+      const detail =
+        error instanceof Error ? error.message : "Failed to reconcile pending WOLO claims.";
+      window.alert(detail);
+    } finally {
+      setReconcilingPendingClaims(false);
     }
   }, [fetchUsers]);
 
@@ -593,7 +698,11 @@ export default function UsersPage() {
             summary={payload.settlementRail.summary}
             rows={payload.settlementRail.rows}
             rescindingClaimId={rescindingSettlementClaimId}
+            retryingClaimId={retryingSettlementClaimId}
+            reconcilingPending={reconcilingPendingClaims}
             onRescind={rescindSettlementClaim}
+            onRetry={retrySettlementClaim}
+            onReconcilePending={reconcilePendingClaims}
           />
         </div>
       ) : null}
@@ -1187,7 +1296,19 @@ export default function UsersPage() {
                                   <div className="mt-1 text-[11px] text-slate-500">
                                     {formatShortDate(wager.updatedAt)}
                                     {wager.payoutWolo ? ` · payout ${formatWolo(wager.payoutWolo)} WOLO` : ""}
+                                    {` · ${wager.executionMode}`}
+                                    {wager.stakeLockedAt ? ` · escrow ${formatShortDate(wager.stakeLockedAt)}` : ""}
                                   </div>
+                                  {wager.stakeTxHash ? (
+                                    <div className="mt-1 text-[11px] text-slate-500">
+                                      tx {shortHash(wager.stakeTxHash)}
+                                    </div>
+                                  ) : null}
+                                  {wager.stakeWalletAddress ? (
+                                    <div className="mt-1 break-all text-[11px] text-slate-500">
+                                      {wager.stakeWalletAddress}
+                                    </div>
+                                  ) : null}
                                 </div>
                                 <span className={`rounded-full border px-2 py-0.5 text-[11px] ${statusTone(wager.status)}`}>
                                   {wager.status}

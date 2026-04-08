@@ -169,15 +169,25 @@ function PlayerCard({
         <div className="mt-3 flex flex-wrap gap-2">
           <SteamLinkedBadge compact />
           {entry.verified ? <Tag>Replay verified</Tag> : null}
+          {entry.pendingWoloClaimCount > 0 ? (
+            <Tag>Unclaimed WOLO · {entry.pendingWoloClaimAmount}</Tag>
+          ) : null}
           {entry.badges.map((badge) => (
             <CommunityBadgePill key={badge.id} label={badge.label} />
           ))}
         </div>
       ) : entry.badges.length > 0 ? (
         <div className="mt-3 flex flex-wrap gap-2">
+          {entry.pendingWoloClaimCount > 0 ? (
+            <Tag>Unclaimed WOLO · {entry.pendingWoloClaimAmount}</Tag>
+          ) : null}
           {entry.badges.map((badge) => (
             <CommunityBadgePill key={badge.id} label={badge.label} />
           ))}
+        </div>
+      ) : entry.pendingWoloClaimCount > 0 ? (
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Tag>Unclaimed WOLO · {entry.pendingWoloClaimAmount}</Tag>
         </div>
       ) : null}
 

@@ -10,6 +10,7 @@ import {
   readPlayerSteamRmRating,
 } from "@/lib/gameStatsView";
 import {
+  applyPendingWoloClaimSummary,
   buildReplayPlayerHref,
   findClaimedUsersForReplayNames,
   getClaimedPublicPlayer,
@@ -17,6 +18,7 @@ import {
 } from "@/lib/publicPlayers";
 import { loadUserCommunitySummaries } from "@/lib/communityHonors";
 import { dedupeFinalReplayRows } from "@/lib/finalReplayIdentity";
+import { loadPendingWoloClaimSummariesByName } from "@/lib/pendingWoloClaims";
 
 export type PublicPlayerDirectoryEntry = {
   key: string;
@@ -39,6 +41,8 @@ export type PublicPlayerDirectoryEntry = {
   aliases: string[];
   steamPersonaName: string | null;
   inGameName: string | null;
+  pendingWoloClaimCount: number;
+  pendingWoloClaimAmount: number;
   badges: CommunityBadge[];
 };
 
@@ -327,6 +331,8 @@ export async function loadPublicPlayerDirectory(
       aliases: [],
       steamPersonaName: user.steamPersonaName,
       inGameName: user.inGameName,
+      pendingWoloClaimCount: 0,
+      pendingWoloClaimAmount: 0,
       badges: communityMap.get(user.id)?.badges ?? [],
     };
 
@@ -372,6 +378,8 @@ export async function loadPublicPlayerDirectory(
           aliases: [],
           steamPersonaName: null,
           inGameName: null,
+          pendingWoloClaimCount: 0,
+          pendingWoloClaimAmount: 0,
           badges: [],
         };
         directory.set(entry.key, entry);
@@ -385,7 +393,14 @@ export async function loadPublicPlayerDirectory(
     }
   }
 
-  const allEntries = Array.from(directory.values()).filter((entry) => {
+  const pendingClaimSummaries = await loadPendingWoloClaimSummariesByName(
+    prisma,
+    Array.from(directory.values()).flatMap((entry) => entry.aliases)
+  );
+
+  const allEntries = Array.from(directory.values())
+    .map((entry) => applyPendingWoloClaimSummary(entry, pendingClaimSummaries))
+    .filter((entry) => {
     if (!entry.claimed) {
       return true;
     }

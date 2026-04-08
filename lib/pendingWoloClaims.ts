@@ -155,6 +155,9 @@ export async function createPendingWoloClaim(
     amountWolo: number;
     sourceMarketId?: number | null;
     sourceGameStatsId?: number | null;
+    payoutTxHash?: string | null;
+    errorState?: string | null;
+    payoutAttemptedAt?: Date | null;
     note?: string | null;
     status?: "pending" | "claimed";
     claimedByUserId?: number | null;
@@ -174,6 +177,9 @@ export async function createPendingWoloClaim(
   const nextStatus = input.status === "claimed" ? "claimed" : "pending";
   const nextClaimedAt = nextStatus === "claimed" ? input.claimedAt ?? new Date() : null;
   const nextClaimedByUserId = nextStatus === "claimed" ? input.claimedByUserId ?? null : null;
+  const nextPayoutTxHash = input.payoutTxHash?.trim().slice(0, 128) || null;
+  const nextErrorState = input.errorState?.trim().slice(0, 255) || null;
+  const nextPayoutAttemptedAt = input.payoutAttemptedAt ?? null;
 
   if (typeof input.sourceMarketId === "number" && Number.isFinite(input.sourceMarketId)) {
     return prisma.pendingWoloClaim.upsert({
@@ -190,6 +196,9 @@ export async function createPendingWoloClaim(
         sourceGameStatsId: input.sourceGameStatsId ?? null,
         claimedByUserId: nextClaimedByUserId,
         rescindedByUserId: null,
+        payoutTxHash: nextPayoutTxHash,
+        errorState: nextErrorState,
+        payoutAttemptedAt: nextPayoutAttemptedAt,
         claimedAt: nextClaimedAt,
         rescindedAt: null,
         note: input.note?.trim().slice(0, 160) || null,
@@ -202,6 +211,9 @@ export async function createPendingWoloClaim(
         sourceMarketId: input.sourceMarketId,
         sourceGameStatsId: input.sourceGameStatsId ?? null,
         claimedByUserId: nextClaimedByUserId,
+        payoutTxHash: nextPayoutTxHash,
+        errorState: nextErrorState,
+        payoutAttemptedAt: nextPayoutAttemptedAt,
         claimedAt: nextClaimedAt,
         note: input.note?.trim().slice(0, 160) || null,
       },
@@ -217,6 +229,9 @@ export async function createPendingWoloClaim(
       sourceMarketId: input.sourceMarketId ?? null,
       sourceGameStatsId: input.sourceGameStatsId ?? null,
       claimedByUserId: nextClaimedByUserId,
+      payoutTxHash: nextPayoutTxHash,
+      errorState: nextErrorState,
+      payoutAttemptedAt: nextPayoutAttemptedAt,
       claimedAt: nextClaimedAt,
       note: input.note?.trim().slice(0, 160) || null,
     },

@@ -12,6 +12,7 @@ export type SettlementRailRow = {
   payoutTxHash: string | null;
   errorState: string | null;
   note: string | null;
+  payoutAttemptedAt: string | null;
   createdAt: string;
   claimedAt: string | null;
   rescindedAt: string | null;
@@ -28,13 +29,19 @@ export type SettlementRailSummary = {
   rescindedAmountWolo: number;
   autoSettledCount: number;
   autoSettledAmountWolo: number;
+  failedCount: number;
+  failedAmountWolo: number;
 };
 
 type Props = {
   summary: SettlementRailSummary;
   rows: SettlementRailRow[];
   rescindingClaimId: number | null;
+  retryingClaimId: number | null;
+  reconcilingPending: boolean;
   onRescind: (claimId: number) => void | Promise<void>;
+  onRetry: (claimId: number) => void | Promise<void>;
+  onReconcilePending: () => void | Promise<void>;
 };
 
 function formatWolo(value: number) {
@@ -89,7 +96,11 @@ export function WoloSettlementRail({
   summary,
   rows,
   rescindingClaimId,
+  retryingClaimId,
+  reconcilingPending,
   onRescind,
+  onRetry,
+  onReconcilePending,
 }: Props) {
   return (
     <section className="rounded-3xl border border-white/10 bg-black/30 p-5 shadow-[0_20px_60px_rgba(0,0,0,0.35)] backdrop-blur">
@@ -106,35 +117,52 @@ export function WoloSettlementRail({
           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-5">
-          <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
-            <div className="text-slate-400">Pending</div>
-            <div className="mt-1 font-medium text-white">
-              {summary.pendingCount} · {formatWolo(summary.pendingAmountWolo)} WOLO
+        <div className="flex flex-col gap-3 lg:items-end">
+          <button
+            type="button"
+            onClick={() => onReconcilePending()}
+            disabled={reconcilingPending || summary.pendingCount === 0}
+            className="inline-flex items-center justify-center rounded-full border border-amber-300/30 bg-amber-400/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-amber-100 transition hover:bg-amber-400/20 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {reconcilingPending ? "Sweeping pending..." : "Sweep pending claims"}
+          </button>
+
+          <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-3 xl:grid-cols-6">
+            <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
+              <div className="text-slate-400">Pending</div>
+              <div className="mt-1 font-medium text-white">
+                {summary.pendingCount} · {formatWolo(summary.pendingAmountWolo)} WOLO
+              </div>
             </div>
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
-            <div className="text-slate-400">Auto-settled</div>
-            <div className="mt-1 font-medium text-white">
-              {summary.autoSettledCount} · {formatWolo(summary.autoSettledAmountWolo)} WOLO
+            <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
+              <div className="text-slate-400">Auto-settled</div>
+              <div className="mt-1 font-medium text-white">
+                {summary.autoSettledCount} · {formatWolo(summary.autoSettledAmountWolo)} WOLO
+              </div>
             </div>
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
-            <div className="text-slate-400">Claimed</div>
-            <div className="mt-1 font-medium text-white">
-              {summary.claimedCount} · {formatWolo(summary.claimedAmountWolo)} WOLO
+            <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
+              <div className="text-slate-400">Claimed</div>
+              <div className="mt-1 font-medium text-white">
+                {summary.claimedCount} · {formatWolo(summary.claimedAmountWolo)} WOLO
+              </div>
             </div>
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
-            <div className="text-slate-400">Rescinded</div>
-            <div className="mt-1 font-medium text-white">
-              {summary.rescindedCount} · {formatWolo(summary.rescindedAmountWolo)} WOLO
+            <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
+              <div className="text-slate-400">Rescinded</div>
+              <div className="mt-1 font-medium text-white">
+                {summary.rescindedCount} · {formatWolo(summary.rescindedAmountWolo)} WOLO
+              </div>
             </div>
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
-            <div className="text-slate-400">All</div>
-            <div className="mt-1 font-medium text-white">
-              {summary.totalCount} · {formatWolo(summary.totalAmountWolo)} WOLO
+            <div className="rounded-2xl border border-rose-400/15 bg-rose-500/5 px-3 py-2">
+              <div className="text-slate-400">Failures</div>
+              <div className="mt-1 font-medium text-white">
+                {summary.failedCount} · {formatWolo(summary.failedAmountWolo)} WOLO
+              </div>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
+              <div className="text-slate-400">All</div>
+              <div className="mt-1 font-medium text-white">
+                {summary.totalCount} · {formatWolo(summary.totalAmountWolo)} WOLO
+              </div>
             </div>
           </div>
         </div>
@@ -201,6 +229,9 @@ export function WoloSettlementRail({
 
                   <td className="px-3 py-3 text-xs text-slate-400">
                     <div>created {formatShortDate(row.createdAt)}</div>
+                    {row.payoutAttemptedAt ? (
+                      <div className="mt-1">attempted {formatShortDate(row.payoutAttemptedAt)}</div>
+                    ) : null}
                     {row.claimedAt ? (
                       <div className="mt-1">claimed {formatShortDate(row.claimedAt)}</div>
                     ) : null}
@@ -211,14 +242,26 @@ export function WoloSettlementRail({
 
                   <td className="px-3 py-3">
                     {row.claimStatus === "pending" ? (
-                      <button
-                        type="button"
-                        onClick={() => onRescind(row.id)}
-                        disabled={rescindingClaimId === row.id}
-                        className="rounded-full border border-rose-400/30 bg-rose-500/10 px-3 py-1.5 text-xs font-medium text-rose-200 transition hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {rescindingClaimId === row.id ? "Rescinding..." : "Rescind"}
-                      </button>
+                      <div className="flex flex-wrap gap-2">
+                        {row.errorState ? (
+                          <button
+                            type="button"
+                            onClick={() => onRetry(row.id)}
+                            disabled={retryingClaimId === row.id}
+                            className="rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1.5 text-xs font-medium text-sky-100 transition hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {retryingClaimId === row.id ? "Retrying..." : "Retry payout"}
+                          </button>
+                        ) : null}
+                        <button
+                          type="button"
+                          onClick={() => onRescind(row.id)}
+                          disabled={rescindingClaimId === row.id}
+                          className="rounded-full border border-rose-400/30 bg-rose-500/10 px-3 py-1.5 text-xs font-medium text-rose-200 transition hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {rescindingClaimId === row.id ? "Rescinding..." : "Rescind"}
+                        </button>
+                      </div>
                     ) : (
                       <span className="text-xs text-slate-500">—</span>
                     )}

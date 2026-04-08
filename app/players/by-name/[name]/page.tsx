@@ -19,7 +19,12 @@ import {
 } from "@/lib/gameStatsView";
 import { buildPlayerPerformanceStats } from "@/lib/playerPerformance";
 import { getPrisma } from "@/lib/prisma";
-import { buildReplayPublicPlayerRef, normalizePublicPlayerName } from "@/lib/publicPlayers";
+import {
+  applyPendingWoloClaimSummary,
+  buildReplayPublicPlayerRef,
+  normalizePublicPlayerName,
+} from "@/lib/publicPlayers";
+import { loadPendingWoloClaimSummariesByName } from "@/lib/pendingWoloClaims";
 
 export const dynamic = "force-dynamic";
 
@@ -67,7 +72,11 @@ export default async function ReplayOnlyPlayerPage({
   const losses = matchedGames.filter((match) => match.winner && match.winner !== playerName).length;
   const unknowns = matchedGames.length - wins - losses;
   const claimHref = `/profile?claim_name=${encodeURIComponent(playerName)}`;
-  const currentPlayer = buildReplayPublicPlayerRef(playerName);
+  const pendingClaimSummaries = await loadPendingWoloClaimSummariesByName(prisma, [playerName]);
+  const currentPlayer = applyPendingWoloClaimSummary(
+    buildReplayPublicPlayerRef(playerName),
+    pendingClaimSummaries
+  );
   const performance = buildPlayerPerformanceStats(matchedGames, currentPlayer);
   const matches = matchedGames.slice(0, 24);
   const rivalries = await buildRivalSummaries(prisma, matches, currentPlayer);
@@ -87,6 +96,9 @@ export default async function ReplayOnlyPlayerPage({
             <div className="flex flex-wrap gap-2">
               <Tag>unclaimed identity</Tag>
               <Tag>{matchedGames.length} parsed matches</Tag>
+              {currentPlayer.pendingWoloClaimCount > 0 ? (
+                <Tag>{currentPlayer.pendingWoloClaimAmount} WOLO unclaimed</Tag>
+              ) : null}
               {wins > 0 ? <Tag>{wins} wins</Tag> : null}
               {losses > 0 ? <Tag>{losses} losses</Tag> : null}
               {unknowns > 0 ? <Tag>{unknowns} unknown outcomes</Tag> : null}
@@ -119,6 +131,12 @@ export default async function ReplayOnlyPlayerPage({
       <section className="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
         <section className="space-y-6">
           <section className="rounded-[1.75rem] border border-white/10 bg-slate-950/70 p-6">
+            {currentPlayer.pendingWoloClaimCount > 0 ? (
+              <div className="mb-5 rounded-2xl border border-amber-300/20 bg-amber-400/10 px-4 py-4 text-sm leading-6 text-amber-100">
+                {currentPlayer.pendingWoloClaimAmount} WOLO is still waiting in the claim ledger for
+                this replay-built warrior page.
+              </div>
+            ) : null}
             <div className="text-xs uppercase tracking-[0.35em] text-white/45">Stats</div>
             <h2 className="mt-2 text-2xl font-semibold text-white">Performance Snapshot</h2>
 

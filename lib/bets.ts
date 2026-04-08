@@ -41,6 +41,10 @@ export type BetBoardMarket = {
   viewerWager: {
     side: BetSide;
     amountWolo: number;
+    executionMode: "app_only" | "onchain_escrow";
+    stakeTxHash: string | null;
+    stakeWalletAddress: string | null;
+    stakeLockedAt: string | null;
   } | null;
   winnerSide: BetSide | null;
 };
@@ -422,6 +426,11 @@ function buildOnchainSettlementNote(
   return `Auto-settled on-chain · ${market.title} · ${market.eventLabel} · ${payoutWolo} WOLO · tx ${txHash}`;
 }
 
+function summarizeSettlementError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error || "Unknown settlement error");
+  return message.trim().replace(/\s+/g, " ").slice(0, 255);
+}
+
 async function settleClaimRail(
   tx: Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends">,
   input: {
@@ -478,6 +487,9 @@ async function settleClaimRail(
           displayPlayerName: input.displayPlayerName || input.playerName,
           amountWolo: input.amountWolo,
           sourceMarketId: input.marketId,
+          payoutTxHash: payout.txHash,
+          errorState: null,
+          payoutAttemptedAt: input.settledAt,
           note: buildOnchainSettlementNote(input.market, input.amountWolo, payout.txHash),
           status: "claimed",
           claimedByUserId: input.claimedByUserId,
@@ -488,6 +500,20 @@ async function settleClaimRail(
       }
     } catch (error) {
       console.error("Failed to auto-settle WOLO payout on-chain:", error);
+
+      await createPendingWoloClaim(tx as PrismaClient, {
+        playerName: input.playerName,
+        displayPlayerName: input.displayPlayerName || input.playerName,
+        amountWolo: input.amountWolo,
+        sourceMarketId: input.marketId,
+        payoutTxHash: null,
+        errorState: summarizeSettlementError(error),
+        payoutAttemptedAt: input.settledAt,
+        note: input.note,
+        status: "pending",
+      });
+
+      return { claimStatus: "pending" as const, txHash: null as string | null };
     }
   }
 
@@ -496,6 +522,9 @@ async function settleClaimRail(
     displayPlayerName: input.displayPlayerName || input.playerName,
     amountWolo: input.amountWolo,
     sourceMarketId: input.marketId,
+    payoutTxHash: null,
+    errorState: null,
+    payoutAttemptedAt: null,
     note: input.note,
     status: "pending",
   });
@@ -837,6 +866,11 @@ function buildMarketCard(
       ? {
           side: viewerWager.side as BetSide,
           amountWolo: viewerWager.amountWolo,
+          executionMode:
+            viewerWager.executionMode === "onchain_escrow" ? "onchain_escrow" : "app_only",
+          stakeTxHash: viewerWager.stakeTxHash ?? null,
+          stakeWalletAddress: viewerWager.stakeWalletAddress ?? null,
+          stakeLockedAt: viewerWager.stakeLockedAt?.toISOString() ?? null,
         }
       : null,
     winnerSide:

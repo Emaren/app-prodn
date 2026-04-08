@@ -19,6 +19,13 @@ export type PublicPlayerRef = {
   aliases: string[];
   steamPersonaName: string | null;
   inGameName: string | null;
+  pendingWoloClaimCount: number;
+  pendingWoloClaimAmount: number;
+};
+
+type PendingClaimSummaryLike = {
+  pendingAmountWolo: number;
+  pendingCount: number;
 };
 
 function normalizeKey(value: string | null | undefined) {
@@ -99,6 +106,8 @@ export function buildClaimedPublicPlayerRef(
     aliases,
     steamPersonaName: claimed.steamPersonaName,
     inGameName: claimed.inGameName,
+    pendingWoloClaimCount: 0,
+    pendingWoloClaimAmount: 0,
   };
 }
 
@@ -116,6 +125,38 @@ export function buildReplayPublicPlayerRef(name: string): PublicPlayerRef {
     aliases: [normalizedName],
     steamPersonaName: null,
     inGameName: null,
+    pendingWoloClaimCount: 0,
+    pendingWoloClaimAmount: 0,
+  };
+}
+
+export function applyPendingWoloClaimSummary<
+  T extends {
+    aliases: string[];
+    pendingWoloClaimCount: number;
+    pendingWoloClaimAmount: number;
+  },
+>(entry: T, summaryMap: Map<string, PendingClaimSummaryLike>) {
+  const seen = new Set<string>();
+  let pendingWoloClaimCount = 0;
+  let pendingWoloClaimAmount = 0;
+
+  for (const alias of entry.aliases) {
+    const key = normalizeKey(alias);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+
+    const summary = summaryMap.get(key);
+    if (!summary) continue;
+
+    pendingWoloClaimCount += summary.pendingCount;
+    pendingWoloClaimAmount += summary.pendingAmountWolo;
+  }
+
+  return {
+    ...entry,
+    pendingWoloClaimCount,
+    pendingWoloClaimAmount,
   };
 }
 

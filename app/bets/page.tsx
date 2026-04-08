@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { GasPrice, SigningStargateClient } from "@cosmjs/stargate";
+import type { OfflineSigner } from "@cosmjs/proto-signing";
 import { toast } from "sonner";
 
 import { useUserAuth } from "@/context/UserAuthContext";
@@ -21,8 +21,6 @@ const WOLO_LOGO_SRC = "/legacy/wolo-logo-transparent.png";
 const STAKE_OPTIONS = [10, 25, 50, 100] as const;
 const BETS_POLL_INTERVAL_MS = 5_000;
 const ONCHAIN_BET_ESCROW_ENABLED = Boolean(WOLO_BET_ESCROW_ADDRESS);
-type StargateOfflineSigner = Parameters<typeof SigningStargateClient.connectWithSigner>[1];
-
 
 type BetSide = "left" | "right";
 type BetStatus = "open" | "closing" | "live" | "settled";
@@ -51,6 +49,10 @@ type BetBoardMarket = {
   viewerWager: {
     side: BetSide;
     amountWolo: number;
+    executionMode: "app_only" | "onchain_escrow";
+    stakeTxHash: string | null;
+    stakeWalletAddress: string | null;
+    stakeLockedAt: string | null;
   } | null;
   winnerSide: BetSide | null;
 };
@@ -110,9 +112,21 @@ type SelectionState = {
   stake: number;
 };
 
+type LockWorkflow = {
+  marketId: number;
+  phase: "awaiting_wallet" | "confirming_chain" | "recording_wager";
+  stakeTxHash: string | null;
+};
+
 function shortTxHash(value: string) {
   if (value.length <= 18) return value;
   return `${value.slice(0, 10)}…${value.slice(-6)}`;
+}
+
+function isOnchainViewerWager(
+  wager: BetBoardMarket["viewerWager"]
+): wager is NonNullable<BetBoardMarket["viewerWager"]> {
+  return Boolean(wager && wager.executionMode === "onchain_escrow");
 }
 
 function formatCompact(value: number) {
@@ -208,6 +222,7 @@ export default function BetsPage() {
   const [selection, setSelection] = useState<SelectionState | null>(null);
   const [loadingBoard, setLoadingBoard] = useState(true);
   const [workingKey, setWorkingKey] = useState<string | null>(null);
+  const [lockWorkflow, setLockWorkflow] = useState<LockWorkflow | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -294,7 +309,12 @@ export default function BetsPage() {
 
   function handleSelect(market: BetBoardMarket, side: BetSide) {
     if (!requireSignIn()) return;
-    const existingStake = market.viewerWager?.amountWolo || 25;
+    const viewerWager = market.viewerWager;
+    if (viewerWager?.executionMode === "onchain_escrow") {
+      toast.message("This slip is already live in WOLO escrow.");
+      return;
+    }
+    const existingStake = viewerWager?.amountWolo || 25;
     setSelection({
       marketId: market.id,
       side,
@@ -325,6 +345,12 @@ export default function BetsPage() {
       };
     }
 
+    setLockWorkflow({
+      marketId: market.id,
+      phase: "awaiting_wallet",
+      stakeTxHash: null,
+    });
+
     const walletAddress = await ensureWalletAddress();
     if (!walletAddress) {
       throw new Error("Connect Keplr before locking a real WOLO stake.");
@@ -340,12 +366,23 @@ export default function BetsPage() {
     const signer = (keplrWindow.keplr?.getOfflineSignerAuto
       ? await keplrWindow.keplr.getOfflineSignerAuto(WOLO_CHAIN_ID)
       : keplrWindow.getOfflineSigner?.(WOLO_CHAIN_ID)) as unknown as
-      | StargateOfflineSigner
+      | OfflineSigner
       | undefined;
 
     if (!signer) {
       throw new Error("Keplr offline signer was not found in this browser.");
     }
+
+    setLockWorkflow({
+      marketId: market.id,
+      phase: "confirming_chain",
+      stakeTxHash: null,
+    });
+
+    const [{ GasPrice, SigningStargateClient }] = await Promise.all([
+      import("@cosmjs/stargate"),
+    ]);
+
     const client = await SigningStargateClient.connectWithSigner(WOLO_RPC_URL, signer, {
       gasPrice: GasPrice.fromString(WOLO_DEFAULT_GAS_PRICE),
     });
@@ -368,10 +405,19 @@ export default function BetsPage() {
   async function handleLock(market: BetBoardMarket) {
     if (!selection || selection.marketId !== market.id) return;
     if (!requireSignIn()) return;
+    if (isOnchainViewerWager(market.viewerWager)) {
+      toast.message("This slip is already live in WOLO escrow.");
+      return;
+    }
 
     setWorkingKey(`lock-${market.id}`);
     try {
       const stakeExecution = await lockStakeOnChain(market, selection.stake);
+      setLockWorkflow({
+        marketId: market.id,
+        phase: "recording_wager",
+        stakeTxHash: stakeExecution.stakeTxHash,
+      });
       const response = await fetch("/api/bets/wager", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -395,7 +441,7 @@ export default function BetsPage() {
       await refreshBoard(payload);
       setSelection(null);
       if (stakeExecution.executionMode === "onchain_escrow" && stakeExecution.stakeTxHash) {
-        toast.success(`Locked ${selection.stake} WOLO on-chain on ${selection.side === "left" ? market.left.name : market.right.name}. ${shortTxHash(stakeExecution.stakeTxHash)}`);
+        toast.success(`Escrow confirmed for ${selection.stake} WOLO on ${selection.side === "left" ? market.left.name : market.right.name}. ${shortTxHash(stakeExecution.stakeTxHash)}`);
       } else {
         toast.success(`Locked ${selection.stake} WOLO on ${selection.side === "left" ? market.left.name : market.right.name}.`);
       }
@@ -404,11 +450,18 @@ export default function BetsPage() {
       toast.error(error instanceof Error ? error.message : "Could not lock the wager.");
     } finally {
       setWorkingKey(null);
+      setLockWorkflow(null);
     }
   }
 
   async function handleClear(marketId: number) {
     if (!requireSignIn()) return;
+
+    const market = board?.openMarkets.find((entry) => entry.id === marketId) || null;
+    if (market && isOnchainViewerWager(market.viewerWager)) {
+      toast.error("Escrowed WOLO slips cannot be cleared from the app.");
+      return;
+    }
 
     setWorkingKey(`clear-${marketId}`);
     try {
@@ -505,6 +558,7 @@ export default function BetsPage() {
               market={featuredMarket}
               selection={selection}
               workingKey={workingKey}
+              lockWorkflow={lockWorkflow}
               isAuthenticated={isAuthenticated}
               loadingAuth={loading}
               onSelect={handleSelect}
@@ -547,6 +601,7 @@ export default function BetsPage() {
                   market={market}
                   selection={selection}
                   workingKey={workingKey}
+                  lockWorkflow={lockWorkflow}
                   onSelect={handleSelect}
                   onStakeChange={(stake) =>
                     setSelection((current) =>
@@ -742,6 +797,7 @@ function MarketFeature({
   market,
   selection,
   workingKey,
+  lockWorkflow,
   isAuthenticated,
   loadingAuth,
   onSelect,
@@ -752,6 +808,7 @@ function MarketFeature({
   market: BetBoardMarket;
   selection: SelectionState | null;
   workingKey: string | null;
+  lockWorkflow: LockWorkflow | null;
   isAuthenticated: boolean;
   loadingAuth: boolean;
   onSelect: (market: BetBoardMarket, side: BetSide) => void;
@@ -769,6 +826,10 @@ function MarketFeature({
             stake: market.viewerWager.amountWolo,
           }
         : null;
+  const marketWorkflow = lockWorkflow?.marketId === market.id ? lockWorkflow : null;
+  const onchainViewerWager = isOnchainViewerWager(market.viewerWager) ? market.viewerWager : null;
+  const onchainLocked = Boolean(onchainViewerWager);
+  const canEditSlip = !onchainLocked && !marketWorkflow;
 
   const selectedPool = activeSelection
     ? activeSelection.side === "left"
@@ -783,6 +844,34 @@ function MarketFeature({
   const projectedReturn = activeSelection
     ? projectReturn(activeSelection.stake, Math.max(0, selectedPool), oppositePool)
     : 0;
+  const statusCopy = marketWorkflow
+    ? marketWorkflow.phase === "awaiting_wallet"
+      ? "Open Keplr to approve the WOLO stake."
+    : marketWorkflow.phase === "confirming_chain"
+        ? "Stake submitted. Waiting for chain confirmation."
+        : `Escrow confirmed${marketWorkflow.stakeTxHash ? ` · ${shortTxHash(marketWorkflow.stakeTxHash)}` : ""}. Recording slip...`
+    : onchainLocked
+      ? `Escrow confirmed${onchainViewerWager?.stakeTxHash ? ` · ${shortTxHash(onchainViewerWager.stakeTxHash)}` : ""}`
+      : market.viewerWager
+        ? `Locked on ${market.viewerWager.side === "left" ? market.left.name : market.right.name}`
+        : activeSelection
+          ? `Selected ${activeSelection.stake} WOLO on ${activeSelection.side === "left" ? market.left.name : market.right.name}`
+          : isAuthenticated
+            ? "Pick a side"
+            : loadingAuth
+              ? "Loading"
+              : "Steam sign-in required";
+  const lockLabel = marketWorkflow
+    ? marketWorkflow.phase === "awaiting_wallet"
+      ? "Open Wallet..."
+      : marketWorkflow.phase === "confirming_chain"
+        ? "Confirming Chain..."
+        : "Recording Slip..."
+    : onchainLocked
+      ? "Escrow Confirmed"
+      : activeSelection
+        ? `Lock ${activeSelection.stake}`
+        : "Lock";
 
   return (
     <div className="relative">
@@ -804,6 +893,7 @@ function MarketFeature({
           side={market.left}
           selected={activeSelection?.side === "left"}
           emphasis="warm"
+          disabled={!canEditSlip}
           onSelect={() => onSelect(market, "left")}
         />
 
@@ -822,6 +912,7 @@ function MarketFeature({
           side={market.right}
           selected={activeSelection?.side === "right"}
           emphasis="cool"
+          disabled={!canEditSlip}
           onSelect={() => onSelect(market, "right")}
         />
       </div>
@@ -834,10 +925,10 @@ function MarketFeature({
                 key={stake}
                 type="button"
                 onClick={() => activeSelection && onStakeChange(stake)}
-                disabled={!activeSelection}
+                disabled={!activeSelection || !canEditSlip}
                 className={`inline-flex items-center rounded-full px-3 py-1.5 text-sm transition ${
                   activeSelection?.stake === stake ? edgeButton("gold") : edgeButton("glass")
-                } ${!activeSelection ? "cursor-not-allowed opacity-50" : ""}`}
+                } ${!activeSelection || !canEditSlip ? "cursor-not-allowed opacity-50" : ""}`}
               >
                 {stake}
               </button>
@@ -855,18 +946,10 @@ function MarketFeature({
         </div>
 
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-          <div className="text-sm text-slate-400">
-            {market.viewerWager
-              ? `Locked on ${market.viewerWager.side === "left" ? market.left.name : market.right.name}`
-              : isAuthenticated
-                ? "Ready"
-                : loadingAuth
-                  ? "Loading"
-                  : "Steam sign-in required"}
-          </div>
+          <div className="text-sm text-slate-400">{statusCopy}</div>
 
           <div className="flex flex-wrap gap-2">
-            {market.viewerWager ? (
+            {market.viewerWager && !onchainLocked ? (
               <button
                 type="button"
                 onClick={onClear}
@@ -881,16 +964,12 @@ function MarketFeature({
             <button
               type="button"
               onClick={onLock}
-              disabled={!activeSelection || workingKey === `lock-${market.id}`}
+              disabled={!activeSelection || !canEditSlip || workingKey === `lock-${market.id}`}
               className={`inline-flex items-center rounded-full px-4 py-2.5 text-sm font-semibold transition ${edgeButton("gold")} ${
-                !activeSelection || workingKey === `lock-${market.id}` ? "opacity-60" : ""
+                !activeSelection || !canEditSlip || workingKey === `lock-${market.id}` ? "opacity-60" : ""
               }`}
             >
-              {workingKey === `lock-${market.id}`
-                ? "Locking..."
-                : activeSelection
-                  ? `Lock ${activeSelection.stake}`
-                  : "Lock"}
+              {lockLabel}
             </button>
           </div>
         </div>
@@ -903,6 +982,7 @@ function MarketCard({
   market,
   selection,
   workingKey,
+  lockWorkflow,
   onSelect,
   onStakeChange,
   onLock,
@@ -912,6 +992,7 @@ function MarketCard({
   market: BetBoardMarket;
   selection: SelectionState | null;
   workingKey: string | null;
+  lockWorkflow: LockWorkflow | null;
   onSelect: (market: BetBoardMarket, side: BetSide) => void;
   onStakeChange: (stake: number) => void;
   onLock: () => void;
@@ -928,6 +1009,10 @@ function MarketCard({
             stake: market.viewerWager.amountWolo,
           }
         : null;
+  const marketWorkflow = lockWorkflow?.marketId === market.id ? lockWorkflow : null;
+  const onchainViewerWager = isOnchainViewerWager(market.viewerWager) ? market.viewerWager : null;
+  const onchainLocked = Boolean(onchainViewerWager);
+  const canEditSlip = !onchainLocked && !marketWorkflow;
 
   const selectedPool = activeSelection
     ? activeSelection.side === "left"
@@ -942,6 +1027,17 @@ function MarketCard({
   const projectedReturn = activeSelection
     ? projectReturn(activeSelection.stake, Math.max(0, selectedPool), oppositePool)
     : 0;
+  const lockLabel = marketWorkflow
+    ? marketWorkflow.phase === "awaiting_wallet"
+      ? "Wallet..."
+      : marketWorkflow.phase === "confirming_chain"
+        ? "Chain..."
+        : "Saving..."
+    : onchainLocked
+      ? "Escrow Live"
+      : activeSelection
+        ? `Lock ${activeSelection.stake}`
+        : "Lock";
 
   return (
     <article className={`${cardClass()} overflow-hidden p-4`}>
@@ -980,12 +1076,14 @@ function MarketCard({
           side={market.left}
           selected={activeSelection?.side === "left"}
           emphasis={accent === "warm" ? "warm" : "cool"}
+          disabled={!canEditSlip}
           onSelect={() => onSelect(market, "left")}
         />
         <SideMiniChoice
           side={market.right}
           selected={activeSelection?.side === "right"}
           emphasis={accent === "warm" ? "cool" : "warm"}
+          disabled={!canEditSlip}
           onSelect={() => onSelect(market, "right")}
         />
       </div>
@@ -994,16 +1092,16 @@ function MarketCard({
         <div className="flex flex-wrap gap-2">
           {STAKE_OPTIONS.map((stake) => (
             <button
-              key={stake}
-              type="button"
-              onClick={() => activeSelection && onStakeChange(stake)}
-              disabled={!activeSelection}
-              className={`rounded-full px-3 py-1.5 text-xs transition ${
-                activeSelection?.stake === stake ? edgeButton("gold") : edgeButton("glass")
-              } ${!activeSelection ? "cursor-not-allowed opacity-50" : ""}`}
-            >
-              {stake}
-            </button>
+            key={stake}
+            type="button"
+            onClick={() => activeSelection && onStakeChange(stake)}
+            disabled={!activeSelection || !canEditSlip}
+            className={`rounded-full px-3 py-1.5 text-xs transition ${
+              activeSelection?.stake === stake ? edgeButton("gold") : edgeButton("glass")
+            } ${!activeSelection || !canEditSlip ? "cursor-not-allowed opacity-50" : ""}`}
+          >
+            {stake}
+          </button>
           ))}
         </div>
 
@@ -1016,7 +1114,7 @@ function MarketCard({
           </div>
 
           <div className="flex gap-2">
-            {market.viewerWager ? (
+            {market.viewerWager && !onchainLocked ? (
               <button
                 type="button"
                 onClick={onClear}
@@ -1031,16 +1129,12 @@ function MarketCard({
             <button
               type="button"
               onClick={onLock}
-              disabled={!activeSelection || workingKey === `lock-${market.id}`}
+              disabled={!activeSelection || !canEditSlip || workingKey === `lock-${market.id}`}
               className={`rounded-full px-3 py-2 text-xs font-semibold transition ${edgeButton(
                 accent === "warm" ? "gold" : "blue"
-              )} ${!activeSelection || workingKey === `lock-${market.id}` ? "opacity-60" : ""}`}
+              )} ${!activeSelection || !canEditSlip || workingKey === `lock-${market.id}` ? "opacity-60" : ""}`}
             >
-              {workingKey === `lock-${market.id}`
-                ? "Locking..."
-                : activeSelection
-                  ? `Lock ${activeSelection.stake}`
-                  : "Lock"}
+              {lockLabel}
             </button>
           </div>
         </div>
@@ -1053,21 +1147,24 @@ function SideChoice({
   side,
   selected,
   emphasis,
+  disabled = false,
   onSelect,
 }: {
   side: BetBoardSide;
   selected: boolean;
   emphasis: "warm" | "cool";
+  disabled?: boolean;
   onSelect: () => void;
 }) {
   return (
     <button
       type="button"
       onClick={onSelect}
+      disabled={disabled}
       className={`rounded-[1.45rem] border px-4 py-4 text-left transition ${sideSurface(
         selected,
         emphasis
-      )}`}
+      )} ${disabled ? "cursor-not-allowed opacity-60" : ""}`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -1094,21 +1191,24 @@ function SideMiniChoice({
   side,
   selected,
   emphasis,
+  disabled = false,
   onSelect,
 }: {
   side: BetBoardSide;
   selected: boolean;
   emphasis: "warm" | "cool";
+  disabled?: boolean;
   onSelect: () => void;
 }) {
   return (
     <button
       type="button"
       onClick={onSelect}
+      disabled={disabled}
       className={`rounded-[1.15rem] border px-3 py-3 text-left transition ${sideSurface(
         selected,
         emphasis
-      )}`}
+      )} ${disabled ? "cursor-not-allowed opacity-60" : ""}`}
     >
       <div className="min-h-[2.5rem] text-sm font-semibold leading-snug text-white break-words">
         {side.name}
