@@ -76,8 +76,8 @@ export function TopWoloEarnersTile({
   const reserve = formatCompactWolo(wolo?.accounts.ecosystembounties?.wolo ?? null);
   const entries = board?.entries ?? [];
   const statusLabel = entries.length > 0 ? (board?.backfilled ? "Weekly + regulars" : "Weekly") : "Standby";
-  const headlineValue =
-    entries.length > 0 ? `${entries.length} tracked` : reserve ? `${reserve} WOLO` : "3 slots";
+  const headlineMeta =
+    entries.length > 0 ? `${entries.length} names` : reserve ? `${reserve} reserve` : "3 slots";
   const placeholderCount = Math.max(0, VISIBLE_ROWS - entries.length);
   const destinationHref = "/war-chest";
 
@@ -121,7 +121,7 @@ export function TopWoloEarnersTile({
 
   return (
     <section
-      className={`flex h-full min-h-0 max-h-full cursor-pointer flex-col overflow-hidden rounded-[1.7rem] border p-5 transition ${tone.panelShell} ${tone.cardHover} ${className ?? ""}`}
+      className={`flex h-full min-h-0 max-h-full cursor-pointer flex-col overflow-hidden rounded-[1.7rem] border p-5 pt-6 transition ${tone.panelShell} ${tone.cardHover} ${className ?? ""}`}
       role="link"
       tabIndex={0}
       aria-label="Open War Chest analytics"
@@ -133,7 +133,7 @@ export function TopWoloEarnersTile({
           <div className={`text-xs uppercase tracking-[0.35em] ${tone.accentText}`}>
             Top $WOLO Earners
           </div>
-          <div className="mt-2 flex items-center gap-2.5">
+          <div className="mt-4 flex items-center gap-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-full border border-amber-300/18 bg-[radial-gradient(circle_at_30%_30%,rgba(251,191,36,0.24),rgba(15,23,42,0.18)_68%,transparent_100%)] shadow-[0_12px_30px_rgba(245,158,11,0.12)]">
               <Image
                 src={WOLO_LOGO_SRC}
@@ -147,15 +147,15 @@ export function TopWoloEarnersTile({
           </div>
         </div>
 
-        <div className="text-right">
+        <div className="flex flex-col items-end gap-2 text-right">
           <div className={`inline-flex rounded-full border px-3 py-1 text-xs ${tone.neutralPill}`}>
             {statusLabel}
           </div>
-          <div className="mt-2 text-lg font-semibold text-white">{headlineValue}</div>
+          <div className="text-[10px] uppercase tracking-[0.28em] text-slate-400">{headlineMeta}</div>
         </div>
       </div>
 
-      <div className="mt-4 flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="mt-5 flex min-h-0 flex-1 flex-col overflow-hidden">
         {entries.length === 0 ? (
           <div className="grid gap-2.5">
             {PLACEHOLDER_LANES.map((lane) => (

@@ -92,7 +92,7 @@ export function TournamentPanel({
         </div>
       </div>
 
-      <div className="mt-3.5 flex flex-1 flex-col space-y-2.5">
+      <div className="mt-4 flex flex-1 flex-col space-y-2.5">
         <h3 className="text-[1.7rem] font-semibold text-white">{tournament.title}</h3>
         <p className="text-sm text-slate-300">
           <span className="font-semibold text-white">{tournament.format}</span>
