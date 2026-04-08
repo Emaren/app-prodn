@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 
 import {
@@ -8,6 +9,8 @@ import {
   type LobbyViewMode,
 } from "@/components/lobby/lobbyPresentation";
 import type { LobbySnapshot } from "@/lib/lobby";
+
+const WOLO_LOGO_SRC = "/legacy/wolo-logo-transparent.png";
 
 type TopWoloEarnersTileProps = {
   wolo: LobbySnapshot["wolo"];
@@ -67,7 +70,7 @@ function MiniTag({
   toneClassName: string;
 }) {
   return (
-    <span className={`rounded-full border px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.16em] ${toneClassName}`}>
+    <span className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${toneClassName}`}>
       {children}
     </span>
   );
@@ -92,14 +95,25 @@ export function TopWoloEarnersTile({
 
   return (
     <section
-      className={`flex h-full min-h-0 flex-col rounded-[1.7rem] border p-5 ${tone.panelShell} ${className ?? ""}`}
+      className={`flex h-full min-h-0 flex-col overflow-hidden rounded-[1.7rem] border p-5 ${tone.panelShell} ${className ?? ""}`}
     >
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <div className={`text-xs uppercase tracking-[0.35em] ${tone.accentText}`}>
             Top $WOLO Earners
           </div>
-          <h3 className="mt-2 text-[1.65rem] font-semibold text-white">WAR CHEST</h3>
+          <div className="mt-2 flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full border border-amber-300/18 bg-[radial-gradient(circle_at_30%_30%,rgba(251,191,36,0.24),rgba(15,23,42,0.18)_68%,transparent_100%)] shadow-[0_12px_30px_rgba(245,158,11,0.12)]">
+              <Image
+                src={WOLO_LOGO_SRC}
+                alt=""
+                width={22}
+                height={22}
+                className="h-[22px] w-[22px] object-contain drop-shadow-[0_6px_14px_rgba(245,158,11,0.22)]"
+              />
+            </div>
+            <h3 className="text-[1.65rem] font-semibold text-white">WAR CHEST</h3>
+          </div>
           <p className="mt-1 text-sm text-slate-300">
             Weekly earners lead. Active WOLO bettors break the ties.
           </p>
@@ -175,17 +189,13 @@ export function TopWoloEarnersTile({
 
                           {entry.unclaimedWolo > 0 ? (
                             <MiniTag toneClassName="border-amber-300/30 bg-amber-400/10 text-amber-100">
-                              Unclaimed
+                              Unclaimed $WOLO
                             </MiniTag>
                           ) : null}
-
-                          <MiniTag toneClassName={entry.sourceWindow === "weekly" ? tone.activeBadge : tone.neutralPill}>
-                            {entry.sourceWindow === "weekly" ? "This week" : "Regular"}
-                          </MiniTag>
                         </div>
 
                         <div className="mt-2 text-xs text-slate-300">
-                          Earned {formatWolo(entry.earnedWolo)} · Wagered {formatWolo(entry.wageredWolo)} WOLO
+                          <span className="font-medium text-slate-200">Earned</span> {formatWolo(entry.earnedWolo)} · <span className="font-medium text-slate-200">Wagered</span> {formatWolo(entry.wageredWolo)} WOLO
                         </div>
                       </div>
 
@@ -195,9 +205,6 @@ export function TopWoloEarnersTile({
                         </div>
                         <div className={`mt-1 text-lg font-semibold ${tone.rating}`}>
                           {formatWolo(primaryMetric)}
-                        </div>
-                        <div className="text-[10px] uppercase tracking-[0.22em] text-slate-400">
-                          WOLO
                         </div>
                       </div>
                     </div>
@@ -255,9 +262,6 @@ export function TopWoloEarnersTile({
                           <div className="text-right">
                             <div className={`text-sm font-semibold ${tone.rating}`}>
                               {formatWolo(primaryMetric)}
-                            </div>
-                            <div className="text-[10px] uppercase tracking-[0.22em] text-slate-400">
-                              WOLO
                             </div>
                           </div>
                         </Link>
