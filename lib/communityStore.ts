@@ -1,4 +1,4 @@
-import { PrismaClient } from "@/lib/generated/prisma";
+import { Prisma, PrismaClient } from "@/lib/generated/prisma";
 import { isAiConciergeUid } from "@/lib/aiConciergeConfig";
 import {
   getFallbackTournament,
@@ -9,6 +9,76 @@ import {
 } from "@/lib/lobby";
 import { LOBBY_MESSAGE_REACTIONS } from "@/lib/lobbyReactionConfig";
 import { toLobbyEntrant, toLobbyTournamentMatch } from "@/lib/tournamentMatchView";
+
+const TOURNAMENT_INCLUDE = {
+  entries: {
+    orderBy: { joinedAt: "asc" },
+    include: {
+      user: {
+        select: {
+          uid: true,
+          inGameName: true,
+          steamPersonaName: true,
+          verificationLevel: true,
+          verified: true,
+        },
+      },
+    },
+  },
+  _count: {
+    select: { entries: true },
+  },
+  chatRoom: {
+    select: { slug: true },
+  },
+  matches: {
+    orderBy: [{ round: "asc" }, { position: "asc" }],
+    include: {
+      sourceGameStats: {
+        select: {
+          id: true,
+          replayHash: true,
+          winner: true,
+          players: true,
+          played_on: true,
+          timestamp: true,
+          map: true,
+          original_filename: true,
+        },
+      },
+      playerOne: {
+        include: {
+          user: {
+            select: {
+              uid: true,
+              inGameName: true,
+              steamPersonaName: true,
+              verificationLevel: true,
+              verified: true,
+            },
+          },
+        },
+      },
+      playerTwo: {
+        include: {
+          user: {
+            select: {
+              uid: true,
+              inGameName: true,
+              steamPersonaName: true,
+              verificationLevel: true,
+              verified: true,
+            },
+          },
+        },
+      },
+    },
+  },
+} satisfies Prisma.TournamentInclude;
+
+type TournamentRecord = Prisma.TournamentGetPayload<{
+  include: typeof TOURNAMENT_INCLUDE;
+}>;
 
 function displayNameForUser(user: {
   uid: string;
@@ -121,100 +191,32 @@ export async function ensureTournamentRoom(prisma: PrismaClient, slug: string, t
   });
 }
 
-export async function getFeaturedTournament(
+async function viewerHasJoinedTournament(
   prisma: PrismaClient,
+  tournamentId: number,
   viewerUid?: string | null
-): Promise<LobbyTournament> {
-  const tournament = await prisma.tournament.findFirst({
-    where: {
-      OR: [
-        { featured: true },
-        { status: { in: ["planning", "open", "active"] } },
-      ],
-    },
-    orderBy: [{ featured: "desc" }, { startsAt: "asc" }, { createdAt: "desc" }],
-    include: {
-      entries: {
-        orderBy: { joinedAt: "asc" },
-        include: {
-          user: {
-            select: {
-              uid: true,
-              inGameName: true,
-              steamPersonaName: true,
-              verificationLevel: true,
-              verified: true,
-            },
-          },
-        },
-      },
-      _count: {
-        select: { entries: true },
-      },
-      chatRoom: {
-        select: { slug: true },
-      },
-      matches: {
-        orderBy: [{ round: "asc" }, { position: "asc" }],
-        include: {
-          sourceGameStats: {
-            select: {
-              id: true,
-              replayHash: true,
-              winner: true,
-              players: true,
-              played_on: true,
-              timestamp: true,
-              map: true,
-              original_filename: true,
-            },
-          },
-          playerOne: {
-            include: {
-              user: {
-                select: {
-                  uid: true,
-                  inGameName: true,
-                  steamPersonaName: true,
-                  verificationLevel: true,
-                  verified: true,
-                },
-              },
-            },
-          },
-          playerTwo: {
-            include: {
-              user: {
-                select: {
-                  uid: true,
-                  inGameName: true,
-                  steamPersonaName: true,
-                  verificationLevel: true,
-                  verified: true,
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-  });
-
-  if (!tournament) {
-    return getFallbackTournament(false);
+) {
+  if (!viewerUid) {
+    return false;
   }
 
-  const viewerJoined = viewerUid
-    ? Boolean(
-        await prisma.tournamentEntry.findFirst({
-          where: {
-            tournamentId: tournament.id,
-            user: { uid: viewerUid },
-          },
-          select: { id: true },
-        })
-      )
-    : false;
+  return Boolean(
+    await prisma.tournamentEntry.findFirst({
+      where: {
+        tournamentId,
+        user: { uid: viewerUid },
+      },
+      select: { id: true },
+    })
+  );
+}
+
+async function buildLobbyTournament(
+  prisma: PrismaClient,
+  tournament: TournamentRecord,
+  viewerUid?: string | null
+): Promise<LobbyTournament> {
+  const viewerJoined = await viewerHasJoinedTournament(prisma, tournament.id, viewerUid);
 
   return {
     id: tournament.id,
@@ -234,6 +236,45 @@ export async function getFeaturedTournament(
     isFallback: false,
     matches: tournament.matches.map(toLobbyTournamentMatch),
   };
+}
+
+export async function getFeaturedTournament(
+  prisma: PrismaClient,
+  viewerUid?: string | null
+): Promise<LobbyTournament> {
+  const tournament = await prisma.tournament.findFirst({
+    where: {
+      OR: [
+        { featured: true },
+        { status: { in: ["planning", "open", "active"] } },
+      ],
+    },
+    orderBy: [{ featured: "desc" }, { startsAt: "asc" }, { createdAt: "desc" }],
+    include: TOURNAMENT_INCLUDE,
+  });
+
+  if (!tournament) {
+    return getFallbackTournament(false);
+  }
+
+  return buildLobbyTournament(prisma, tournament, viewerUid);
+}
+
+export async function getTournamentBySlug(
+  prisma: PrismaClient,
+  slug: string,
+  viewerUid?: string | null
+): Promise<LobbyTournament | null> {
+  const tournament = await prisma.tournament.findUnique({
+    where: { slug },
+    include: TOURNAMENT_INCLUDE,
+  });
+
+  if (!tournament) {
+    return null;
+  }
+
+  return buildLobbyTournament(prisma, tournament, viewerUid);
 }
 
 export async function getLobbyMessages(

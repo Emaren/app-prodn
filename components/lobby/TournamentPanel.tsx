@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import type { KeyboardEvent, MouseEvent } from "react";
 import {
   getLobbyPresentationTone,
   type LobbyThemeKey,
@@ -32,10 +34,46 @@ export function TournamentPanel({
   onJoinTournament,
   onLogin,
 }: TournamentPanelProps) {
+  const router = useRouter();
   const tone = getLobbyPresentationTone(themeKey, viewMode);
+  const destinationHref = `/tournaments/${encodeURIComponent(tournament.slug || "next-community-tournament")}`;
+
+  function shouldIgnoreTileClick(target: EventTarget | null) {
+    return target instanceof Element
+      ? Boolean(target.closest("a,button,input,textarea,select,[role='button'],[role='link']"))
+      : false;
+  }
+
+  function handleTileClick(event: MouseEvent<HTMLElement>) {
+    if (shouldIgnoreTileClick(event.target)) {
+      return;
+    }
+
+    router.push(destinationHref);
+  }
+
+  function handleTileKeyDown(event: KeyboardEvent<HTMLElement>) {
+    if (event.key !== "Enter" && event.key !== " ") {
+      return;
+    }
+
+    if (shouldIgnoreTileClick(event.target)) {
+      return;
+    }
+
+    event.preventDefault();
+    router.push(destinationHref);
+  }
 
   return (
-    <div className={`flex flex-col rounded-[1.75rem] border p-6 pt-7 ${tone.panelShell}`}>
+    <div
+      className={`flex cursor-pointer flex-col rounded-[1.75rem] border p-5 pt-6 transition ${tone.panelShell} ${tone.cardHover}`}
+      role="link"
+      tabIndex={0}
+      aria-label={`Open tournament page for ${tournament.title}`}
+      onClick={handleTileClick}
+      onKeyDown={handleTileKeyDown}
+    >
       <div className="flex items-start justify-between gap-4">
         <div className={`text-xs uppercase tracking-[0.35em] ${tone.accentText}`}>
           Next Tournament
@@ -45,8 +83,8 @@ export function TournamentPanel({
         </div>
       </div>
 
-      <div className="mt-4 flex flex-1 flex-col space-y-3">
-        <h3 className="text-2xl font-semibold text-white">{tournament.title}</h3>
+      <div className="mt-3.5 flex flex-1 flex-col space-y-2.5">
+        <h3 className="text-[1.7rem] font-semibold text-white">{tournament.title}</h3>
         <p className="text-sm text-slate-300">
           <span className="font-semibold text-white">{tournament.format}</span>
           {" · "}
@@ -54,7 +92,7 @@ export function TournamentPanel({
         </p>
         <p className="text-sm leading-6 text-slate-300">{tournament.description}</p>
 
-        <div className={`rounded-2xl border p-4 ${tone.insetPanel}`}>
+        <div className={`rounded-2xl border p-3.5 ${tone.insetPanel}`}>
           <div className="flex items-center justify-between gap-4">
             <div>
               <div className="text-xs uppercase tracking-[0.25em] text-slate-400">Join Queue</div>
@@ -72,7 +110,7 @@ export function TournamentPanel({
             )}
           </div>
 
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="mt-3 flex flex-wrap gap-2">
             {tournament.entrants.length === 0 ? (
               <div className="text-sm text-slate-400">
                 No one has joined yet. The first few players set the tone.
@@ -81,7 +119,7 @@ export function TournamentPanel({
               tournament.entrants.slice(0, 12).map((entrant) => (
                 <div
                   key={`${entrant.entryId ?? entrant.uid}-${entrant.joinedAt}`}
-                  className={`rounded-full border px-3 py-2 text-xs text-white ${tone.neutralPill}`}
+                    className={`rounded-full border px-3 py-1.5 text-xs text-white ${tone.neutralPill}`}
                 >
                   {displayName(entrant.inGameName, entrant.steamPersonaName)}
                 </div>
@@ -90,7 +128,7 @@ export function TournamentPanel({
           </div>
         </div>
 
-        <div className={`rounded-2xl border p-4 ${tone.insetPanel}`}>
+        <div className={`rounded-2xl border p-3.5 ${tone.insetPanel}`}>
           <div className="flex items-center justify-between gap-4">
             <div>
               <div className="text-xs uppercase tracking-[0.25em] text-slate-400">Bracket Preview</div>
@@ -100,7 +138,7 @@ export function TournamentPanel({
             </div>
           </div>
 
-          <div className="mt-4 space-y-3">
+          <div className="mt-3 space-y-2.5">
             {tournament.matches.length === 0 ? (
               <div className="text-sm text-slate-400">
                 No bracket matches posted yet. Once the first pairings are set, they will appear here
@@ -108,7 +146,7 @@ export function TournamentPanel({
               </div>
             ) : (
               tournament.matches.slice(0, 3).map((match) => (
-                <div key={match.id} className={`rounded-2xl border px-4 py-4 ${tone.card}`}>
+                <div key={match.id} className={`rounded-2xl border px-4 py-3.5 ${tone.card}`}>
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <div className="text-sm font-medium text-white">
@@ -131,13 +169,13 @@ export function TournamentPanel({
                   </div>
 
                   {match.scheduledAt && (
-                    <div className="mt-3 text-xs text-slate-400">
+                    <div className="mt-2.5 text-xs text-slate-400">
                       {new Date(match.scheduledAt).toLocaleString()}
                     </div>
                   )}
 
                   {match.proof && (
-                    <div className="mt-3 text-xs text-emerald-100/90">
+                    <div className="mt-2.5 text-xs text-emerald-100/90">
                       {match.proof.mapName || "Unknown map"}
                       {match.proof.playedOn
                         ? ` · ${new Date(match.proof.playedOn).toLocaleString()}`
@@ -157,12 +195,12 @@ export function TournamentPanel({
           </div>
         )}
 
-        <div className="mt-auto flex flex-wrap gap-3 pt-1">
+        <div className="mt-auto flex flex-wrap gap-3 pt-1.5">
           <button
             type="button"
             onClick={onJoinTournament}
             disabled={joinPending || tournament.isFallback || tournament.status === "completed"}
-            className={`rounded-full px-5 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${tone.primaryButton}`}
+            className={`rounded-full px-5 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${tone.primaryButton}`}
           >
             {tournament.viewerJoined
               ? joinPending
@@ -179,7 +217,7 @@ export function TournamentPanel({
             <button
               type="button"
               onClick={onLogin}
-              className={`rounded-full border px-5 py-3 text-sm transition ${tone.secondaryButton}`}
+              className={`rounded-full border px-5 py-2.5 text-sm transition ${tone.secondaryButton}`}
             >
               Sign In To Join
             </button>

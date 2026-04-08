@@ -464,7 +464,7 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
         className={`overflow-hidden rounded-[1.75rem] border p-4 transition-all duration-500 sm:rounded-[2rem] sm:p-6 lg:p-8 ${heroShellClassName}`}
         style={heroStyle}
       >
-        <div className="grid gap-5 lg:grid-cols-[1.2fr_0.95fr] lg:gap-8">
+        <div className="grid gap-5 lg:grid-cols-[1.2fr_0.95fr] lg:gap-7">
           <LobbyHero
             liveConnected={liveConnected}
             authError={authError}
@@ -480,7 +480,7 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
           />
 
           <div
-            className="grid min-w-0 gap-4 lg:grid-rows-[auto_minmax(0,1fr)] lg:self-start lg:pt-5"
+            className="grid min-w-0 gap-3.5 lg:grid-rows-[auto_minmax(0,1fr)] lg:self-start lg:pt-4"
             style={heroRailStyle}
           >
             <TournamentPanel

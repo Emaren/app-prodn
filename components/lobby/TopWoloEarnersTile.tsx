@@ -2,6 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import type { KeyboardEvent, MouseEvent, ReactNode } from "react";
 
 import {
   getLobbyPresentationTone,
@@ -54,7 +56,7 @@ function MiniTag({
   children,
   toneClassName,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   toneClassName: string;
 }) {
   return (
@@ -71,6 +73,7 @@ export function TopWoloEarnersTile({
   viewMode,
   className,
 }: TopWoloEarnersTileProps) {
+  const router = useRouter();
   const tone = getLobbyPresentationTone(themeKey, viewMode);
   const reserve = formatCompactWolo(wolo?.accounts.ecosystembounties?.wolo ?? null);
   const entries = board?.entries ?? [];
@@ -78,10 +81,43 @@ export function TopWoloEarnersTile({
   const headlineValue =
     entries.length > 0 ? `${entries.length} tracked` : reserve ? `${reserve} WOLO` : "3 slots";
   const placeholderCount = Math.max(0, VISIBLE_ROWS - entries.length);
+  const destinationHref = "/war-chest";
+
+  function shouldIgnoreTileClick(target: EventTarget | null) {
+    return target instanceof Element
+      ? Boolean(target.closest("a,button,input,textarea,select,[role='button'],[role='link']"))
+      : false;
+  }
+
+  function handleTileClick(event: MouseEvent<HTMLElement>) {
+    if (shouldIgnoreTileClick(event.target)) {
+      return;
+    }
+
+    router.push(destinationHref);
+  }
+
+  function handleTileKeyDown(event: KeyboardEvent<HTMLElement>) {
+    if (event.key !== "Enter" && event.key !== " ") {
+      return;
+    }
+
+    if (shouldIgnoreTileClick(event.target)) {
+      return;
+    }
+
+    event.preventDefault();
+    router.push(destinationHref);
+  }
 
   return (
     <section
-      className={`flex h-full min-h-0 flex-col overflow-hidden rounded-[1.7rem] border p-5 lg:h-[35rem] ${tone.panelShell} ${className ?? ""}`}
+      className={`flex h-full min-h-0 cursor-pointer flex-col overflow-hidden rounded-[1.7rem] border p-5 transition ${tone.panelShell} ${tone.cardHover} lg:h-[35rem] ${className ?? ""}`}
+      role="link"
+      tabIndex={0}
+      aria-label="Open War Chest analytics"
+      onClick={handleTileClick}
+      onKeyDown={handleTileKeyDown}
     >
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
@@ -103,9 +139,7 @@ export function TopWoloEarnersTile({
         </div>
 
         <div className="text-right">
-          <div
-            className={`inline-flex rounded-full border px-3 py-1 text-xs ${tone.neutralPill}`}
-          >
+          <div className={`inline-flex rounded-full border px-3 py-1 text-xs ${tone.neutralPill}`}>
             {statusLabel}
           </div>
           <div className="mt-2 text-lg font-semibold text-white">{headlineValue}</div>
@@ -133,7 +167,7 @@ export function TopWoloEarnersTile({
             ))}
           </div>
         ) : (
-          <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
             <div className="grid gap-2.5">
               {entries.map((entry) => {
                 const primaryMetric = entry.earnedWolo > 0 ? entry.earnedWolo : entry.wageredWolo;
