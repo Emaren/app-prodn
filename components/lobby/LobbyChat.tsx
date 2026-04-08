@@ -178,7 +178,6 @@ export function LobbyChat(props: LobbyChatProps) {
                       checked={aiScribeEnabled}
                       disabled={!aiEnabled}
                       onToggle={() => onAiScribeEnabledChange(!aiScribeEnabled)}
-                      align="right"
                     />
                   </div>
 
@@ -216,7 +215,6 @@ export function LobbyChat(props: LobbyChatProps) {
                       checked={aiGrimerEnabled}
                       disabled={!aiEnabled}
                       onToggle={() => onAiGrimerEnabledChange(!aiGrimerEnabled)}
-                      align="left"
                     />
                   </div>
                 </div>
@@ -282,13 +280,11 @@ function AiVoicePill({
   checked,
   disabled,
   onToggle,
-  align,
 }: {
   label: string;
   checked: boolean;
   disabled: boolean;
   onToggle: () => void;
-  align: "left" | "right";
 }) {
   return (
     <button
@@ -296,12 +292,10 @@ function AiVoicePill({
       onClick={onToggle}
       disabled={disabled}
       aria-pressed={checked}
-      className={`inline-flex h-10 max-w-full items-center rounded-full px-4 text-[11px] font-medium uppercase tracking-[0.16em] transition ${
+      className={`inline-flex h-10 w-[9.75rem] max-w-full items-center justify-center rounded-full px-4 text-center text-[11px] font-medium uppercase tracking-[0.16em] transition ${
         checked
           ? "bg-[#132338] text-cyan-50 shadow-[inset_0_0_0_1px_rgba(34,211,238,0.14)]"
           : "bg-[#0d1524]/90 text-slate-300 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05)] hover:bg-[#10192a] hover:text-white"
-      } ${
-        align === "right" ? "justify-end text-right" : "justify-start text-left"
       } disabled:cursor-not-allowed disabled:opacity-50`}
     >
       <span className="truncate">{label}</span>
