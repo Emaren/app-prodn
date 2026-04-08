@@ -701,6 +701,7 @@ function DateDivider({ label }: { label: string }) {
 function TextMessageBubble({
   message,
   viewerUid,
+  viewerIsAdmin,
   mode,
   showMeta,
   onInboxAction,
@@ -709,6 +710,7 @@ function TextMessageBubble({
 }: {
   message: Extract<ContactInboxMessage, { kind: "text" }>;
   viewerUid: string;
+  viewerIsAdmin: boolean;
   mode: "popover" | "page";
   showMeta: boolean;
   onInboxAction: (action: Record<string, unknown>) => void;
@@ -716,6 +718,7 @@ function TextMessageBubble({
   reactingMessageId?: number | null;
 }) {
   const isViewer = message.sender.uid === viewerUid;
+  const canManageMessage = viewerIsAdmin || isViewer;
   const maxBubbleWidthClass =
     mode === "page" ? "max-w-[min(96%,56rem)]" : "max-w-[94%] sm:max-w-[82%]";
   const messageBodyViewportClass =
@@ -836,8 +839,33 @@ function TextMessageBubble({
     setTrayPinnedOpen(false);
   }
 
+  function handleEditMessage() {
+    const nextBody = window.prompt("Edit private message", message.body);
+    if (nextBody === null) {
+      return;
+    }
+    onInboxAction({
+      action: "edit_message",
+      messageId: message.messageId,
+      body: nextBody,
+    });
+    setTrayPinnedOpen(false);
+  }
+
+  function handleDeleteMessage() {
+    const confirmed = window.confirm("Delete this private message?");
+    if (!confirmed) {
+      return;
+    }
+    onInboxAction({
+      action: "delete_message",
+      messageId: message.messageId,
+    });
+    setTrayPinnedOpen(false);
+  }
+
   const trayVisible = trayPinnedOpen || trayHovered;
-  const hasTray = Boolean(onToggleReaction || canToggleLobbyShare);
+  const hasTray = Boolean(onToggleReaction || canToggleLobbyShare || canManageMessage);
 
   return (
     <div className={`flex ${isViewer ? "justify-end" : "justify-start"}`}>
@@ -958,6 +986,26 @@ function TextMessageBubble({
                     </button>
                   );
                 })}
+
+                {canManageMessage ? (
+                  <button
+                    type="button"
+                    onClick={handleEditMessage}
+                    className="inline-flex h-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.045] px-3 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-200 transition hover:border-white/18 hover:bg-white/[0.1] hover:text-white"
+                  >
+                    Edit
+                  </button>
+                ) : null}
+
+                {canManageMessage ? (
+                  <button
+                    type="button"
+                    onClick={handleDeleteMessage}
+                    className="inline-flex h-10 items-center justify-center rounded-full border border-rose-300/22 bg-rose-500/10 px-3 text-[11px] font-medium uppercase tracking-[0.16em] text-rose-50 transition hover:border-rose-200/30 hover:bg-rose-500/16"
+                  >
+                    Delete
+                  </button>
+                ) : null}
               </div>
             </div>
           ) : null}
@@ -1303,6 +1351,7 @@ export default function ContactInboxPanel({
                       key={row.key}
                       message={row.message}
                       viewerUid={data?.viewer.uid || ""}
+                      viewerIsAdmin={Boolean(data?.viewer.isAdmin)}
                       mode={mode}
                       showMeta={row.showMeta}
                       onInboxAction={onInboxAction}

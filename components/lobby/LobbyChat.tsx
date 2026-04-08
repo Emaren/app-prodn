@@ -36,9 +36,12 @@ type LobbyChatProps = {
   playerName: string | null;
   currentUserInGameName: string | null;
   currentUserSteamPersonaName: string | null;
+  currentUserUid: string | null;
+  currentUserIsAdmin: boolean;
   messageBody: string;
   chatPending: boolean;
   reactingMessageId: number | null;
+  moderatingMessageId: number | null;
   aiEnabled: boolean;
   aiVisibility: AiVisibilityOption;
   aiScribeEnabled: boolean;
@@ -50,6 +53,8 @@ type LobbyChatProps = {
   onAiScribeEnabledChange: (value: boolean) => void;
   onAiGrimerEnabledChange: (value: boolean) => void;
   onToggleReaction: (messageId: number, emoji: string) => void;
+  onEditMessage: (messageId: number, body: string) => void;
+  onDeleteMessage: (messageId: number) => void;
   onLogin: () => void;
 };
 
@@ -68,9 +73,12 @@ export function LobbyChat(props: LobbyChatProps) {
     playerName,
     currentUserInGameName,
     currentUserSteamPersonaName,
+    currentUserUid,
+    currentUserIsAdmin,
     messageBody,
     chatPending,
     reactingMessageId,
+    moderatingMessageId,
     aiEnabled,
     aiScribeEnabled,
     aiGrimerEnabled,
@@ -80,6 +88,8 @@ export function LobbyChat(props: LobbyChatProps) {
     onAiScribeEnabledChange,
     onAiGrimerEnabledChange,
     onToggleReaction,
+    onEditMessage,
+    onDeleteMessage,
     onLogin,
   } = props;
 
@@ -122,8 +132,13 @@ export function LobbyChat(props: LobbyChatProps) {
                     item={item}
                     tone={tone}
                     isAuthenticated={isAuthenticated}
+                    currentUserUid={currentUserUid}
+                    currentUserIsAdmin={currentUserIsAdmin}
                     reactingMessageId={reactingMessageId}
+                    moderatingMessageId={moderatingMessageId}
                     onToggleReaction={onToggleReaction}
+                    onEditMessage={onEditMessage}
+                    onDeleteMessage={onDeleteMessage}
                   />
                 )
               )
@@ -298,14 +313,24 @@ function LobbyMessageCard({
   item,
   tone,
   isAuthenticated,
+  currentUserUid,
+  currentUserIsAdmin,
   reactingMessageId,
+  moderatingMessageId,
   onToggleReaction,
+  onEditMessage,
+  onDeleteMessage,
 }: {
   item: Extract<ChatRenderItem, { type: "message" }>;
   tone: ReturnType<typeof getLobbyPresentationTone>;
   isAuthenticated: boolean;
+  currentUserUid: string | null;
+  currentUserIsAdmin: boolean;
   reactingMessageId: number | null;
+  moderatingMessageId: number | null;
   onToggleReaction: (messageId: number, emoji: string) => void;
+  onEditMessage: (messageId: number, body: string) => void;
+  onDeleteMessage: (messageId: number) => void;
 }) {
   const [pickerPinnedOpen, setPickerPinnedOpen] = useState(false);
   const [pickerHovered, setPickerHovered] = useState(false);
@@ -314,6 +339,8 @@ function LobbyMessageCard({
   const longPressTriggeredRef = useRef(false);
   const cardRef = useRef<HTMLDivElement | null>(null);
   const isAi = item.message.user.isAi;
+  const canManageMessage =
+    currentUserIsAdmin || (currentUserUid !== null && item.message.user.uid === currentUserUid);
   const aiLabel =
     displayName(item.message.user.inGameName, item.message.user.steamPersonaName) || "The AI Scribe";
 
@@ -407,6 +434,26 @@ function LobbyMessageCard({
     event.stopPropagation();
     clearHoverCloseTimer();
     setPickerPinnedOpen((current) => !current);
+  }
+
+  function handleEditClick(event: MouseEvent<HTMLButtonElement>) {
+    event.stopPropagation();
+    const nextBody = window.prompt("Edit lobby message", item.message.body);
+    if (nextBody === null) {
+      return;
+    }
+    onEditMessage(item.message.id, nextBody);
+    setPickerPinnedOpen(false);
+  }
+
+  function handleDeleteClick(event: MouseEvent<HTMLButtonElement>) {
+    event.stopPropagation();
+    const confirmed = window.confirm("Delete this lobby message?");
+    if (!confirmed) {
+      return;
+    }
+    onDeleteMessage(item.message.id);
+    setPickerPinnedOpen(false);
   }
 
   const pickerVisible = pickerPinnedOpen || pickerHovered;
@@ -522,6 +569,28 @@ function LobbyMessageCard({
               </button>
             );
           })}
+
+          {canManageMessage ? (
+            <button
+              type="button"
+              onClick={handleEditClick}
+              disabled={moderatingMessageId === item.message.id}
+              className="inline-flex h-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.045] px-3 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-200 transition hover:border-white/18 hover:bg-white/[0.1] hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Edit
+            </button>
+          ) : null}
+
+          {canManageMessage ? (
+            <button
+              type="button"
+              onClick={handleDeleteClick}
+              disabled={moderatingMessageId === item.message.id}
+              className="inline-flex h-9 items-center justify-center rounded-full border border-rose-300/22 bg-rose-500/10 px-3 text-[11px] font-medium uppercase tracking-[0.16em] text-rose-50 transition hover:border-rose-200/30 hover:bg-rose-500/16 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Delete
+            </button>
+          ) : null}
         </div>
       </div>
     </div>

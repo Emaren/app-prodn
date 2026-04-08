@@ -30,6 +30,13 @@ type PreparedPersonaThread = {
   history: ConversationHistoryTurn[];
 };
 
+type LobbyMutationPayload = Record<string, unknown> & {
+  action?: string;
+  roomSlug?: string;
+  messageId?: number;
+  body?: string;
+};
+
 function parseSelectedPersonaIds(
   body: Record<string, unknown>,
   aiEnabled: boolean
@@ -49,6 +56,31 @@ function parseSelectedPersonaIds(
   }
 
   return personaIds;
+}
+
+function readRoomSlug(body: Record<string, unknown>) {
+  return typeof body.roomSlug === "string" && body.roomSlug.trim().length > 0
+    ? body.roomSlug.trim()
+    : LOBBY_ROOM_SLUG;
+}
+
+async function resolveChatRoom(
+  prisma: ReturnType<typeof getPrisma>,
+  roomSlug: string
+) {
+  return roomSlug === LOBBY_ROOM_SLUG
+    ? await ensureLobbyRoom(prisma)
+    : await prisma.chatRoom.findUnique({
+        where: { slug: roomSlug },
+        select: { id: true, slug: true },
+      });
+}
+
+function canManageLobbyMessage(
+  viewer: { id: number; isAdmin: boolean },
+  ownerUserId: number
+) {
+  return viewer.isAdmin || viewer.id === ownerUserId;
 }
 
 async function preparePersonaThread(args: {
@@ -127,18 +159,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ detail: "User not found." }, { status: 404 });
   }
 
-  const requestedRoomSlug =
-    typeof body.roomSlug === "string" && body.roomSlug.trim().length > 0
-      ? body.roomSlug.trim()
-      : LOBBY_ROOM_SLUG;
-
-  const room =
-    requestedRoomSlug === LOBBY_ROOM_SLUG
-      ? await ensureLobbyRoom(prisma)
-      : await prisma.chatRoom.findUnique({
-          where: { slug: requestedRoomSlug },
-          select: { id: true, slug: true },
-        });
+  const requestedRoomSlug = readRoomSlug(body);
+  const room = await resolveChatRoom(prisma, requestedRoomSlug);
 
   if (!room) {
     return NextResponse.json({ detail: "Chat room not found." }, { status: 404 });
@@ -262,5 +284,109 @@ export async function POST(request: NextRequest) {
     ok: true,
     messages,
     aiWarning: warnings.join(" ").trim() || null,
+  });
+}
+
+export async function PATCH(request: NextRequest) {
+  const body = (await request.json().catch(() => ({}))) as LobbyMutationPayload;
+  const uid = await resolveRequestUid(request, body);
+
+  if (!uid) {
+    return NextResponse.json({ detail: "Sign in with Steam to manage messages." }, { status: 401 });
+  }
+
+  const prisma = getPrisma();
+  const viewer = await prisma.user.findUnique({
+    where: { uid },
+    select: {
+      id: true,
+      uid: true,
+      isAdmin: true,
+    },
+  });
+
+  if (!viewer) {
+    return NextResponse.json({ detail: "User not found." }, { status: 404 });
+  }
+
+  const roomSlug = readRoomSlug(body);
+  const room = await resolveChatRoom(prisma, roomSlug);
+
+  if (!room) {
+    return NextResponse.json({ detail: "Chat room not found." }, { status: 404 });
+  }
+
+  if (typeof body.messageId !== "number") {
+    return NextResponse.json({ detail: "Message id is required." }, { status: 400 });
+  }
+
+  const existingMessage = await prisma.chatMessage.findFirst({
+    where: {
+      id: body.messageId,
+      roomId: room.id,
+    },
+    select: {
+      id: true,
+      userId: true,
+      sharedFromDirectMessage: {
+        select: { id: true },
+      },
+    },
+  });
+
+  if (!existingMessage) {
+    return NextResponse.json({ detail: "Message not found." }, { status: 404 });
+  }
+
+  if (!canManageLobbyMessage(viewer, existingMessage.userId)) {
+    return NextResponse.json({ detail: "Forbidden." }, { status: 403 });
+  }
+
+  switch (body.action) {
+    case "edit_message": {
+      const nextBody = normalizeChatBody(body.body);
+      if (!nextBody) {
+        return NextResponse.json({ detail: "Message cannot be empty." }, { status: 400 });
+      }
+
+      if (existingMessage.sharedFromDirectMessage?.id) {
+        await prisma.$transaction([
+          prisma.chatMessage.update({
+            where: { id: existingMessage.id },
+            data: { body: nextBody },
+          }),
+          prisma.directMessage.update({
+            where: { id: existingMessage.sharedFromDirectMessage.id },
+            data: { body: nextBody },
+          }),
+        ]);
+      } else {
+        await prisma.chatMessage.update({
+          where: { id: existingMessage.id },
+          data: { body: nextBody },
+        });
+      }
+      break;
+    }
+
+    case "delete_message": {
+      await prisma.chatMessage.delete({
+        where: { id: existingMessage.id },
+      });
+      break;
+    }
+
+    default:
+      return NextResponse.json({ detail: "Unknown chat action." }, { status: 400 });
+  }
+
+  const messages = await getLobbyMessages(prisma, room.slug, 30, {
+    uid,
+    guestSessionId: readGuestReactionSessionIdFromRequest(request),
+  });
+
+  return NextResponse.json({
+    ok: true,
+    messages,
   });
 }

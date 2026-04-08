@@ -36,6 +36,13 @@ const VIEWER_SELECT = {
   steamPersonaName: true,
 } as const;
 
+function canManageDirectMessage(
+  viewer: { id: number; isAdmin: boolean },
+  senderUserId: number
+) {
+  return viewer.isAdmin || viewer.id === senderUserId;
+}
+
 type InboxAttachmentInput = {
   kind: "image" | "audio";
   name: string | null;
@@ -398,6 +405,7 @@ export async function PATCH(request: NextRequest) {
       targetUid?: string;
       displayOnProfile?: boolean;
       messageId?: number;
+      body?: string;
       emoji?: string;
       isTyping?: boolean;
     };
@@ -754,6 +762,130 @@ export async function PATCH(request: NextRequest) {
             },
           });
         }
+        break;
+      }
+
+      case "edit_message": {
+        if (typeof payload.messageId !== "number") {
+          return NextResponse.json({ detail: "Message id is required" }, { status: 400 });
+        }
+
+        const conversation = await prisma.directConversation.findUnique({
+          where: { pairKey: [viewer.id, targetUser.id].sort((a, b) => a - b).join(":") },
+          select: { id: true },
+        });
+
+        if (!conversation) {
+          return NextResponse.json({ detail: "Conversation not found" }, { status: 404 });
+        }
+
+        const message = await prisma.directMessage.findFirst({
+          where: {
+            id: payload.messageId,
+            conversationId: conversation.id,
+          },
+          select: {
+            id: true,
+            senderUserId: true,
+            attachmentKind: true,
+            sharedLobbyMessageId: true,
+          },
+        });
+
+        if (!message) {
+          return NextResponse.json({ detail: "Message not found" }, { status: 404 });
+        }
+
+        if (!canManageDirectMessage(viewer, message.senderUserId)) {
+          return NextResponse.json({ detail: "Forbidden." }, { status: 403 });
+        }
+
+        const nextBody = normalizeInboxMessageBody(payload.body || "");
+        if (!nextBody && !message.attachmentKind) {
+          return NextResponse.json({ detail: "Message cannot be empty." }, { status: 400 });
+        }
+
+        if (message.sharedLobbyMessageId) {
+          const nextLobbyBody = normalizeChatBody(nextBody);
+          if (!nextLobbyBody) {
+            return NextResponse.json(
+              { detail: "Public lobby copies must keep text. Make it private first." },
+              { status: 400 }
+            );
+          }
+
+          await prisma.$transaction([
+            prisma.directMessage.update({
+              where: { id: message.id },
+              data: {
+                body: nextBody || null,
+              },
+            }),
+            prisma.chatMessage.update({
+              where: { id: message.sharedLobbyMessageId },
+              data: {
+                body: nextLobbyBody,
+              },
+            }),
+          ]);
+        } else {
+          await prisma.directMessage.update({
+            where: { id: message.id },
+            data: {
+              body: nextBody || null,
+            },
+          });
+        }
+        break;
+      }
+
+      case "delete_message": {
+        if (typeof payload.messageId !== "number") {
+          return NextResponse.json({ detail: "Message id is required" }, { status: 400 });
+        }
+
+        const conversation = await prisma.directConversation.findUnique({
+          where: { pairKey: [viewer.id, targetUser.id].sort((a, b) => a - b).join(":") },
+          select: { id: true },
+        });
+
+        if (!conversation) {
+          return NextResponse.json({ detail: "Conversation not found" }, { status: 404 });
+        }
+
+        const message = await prisma.directMessage.findFirst({
+          where: {
+            id: payload.messageId,
+            conversationId: conversation.id,
+          },
+          select: {
+            id: true,
+            senderUserId: true,
+            attachmentDataUrl: true,
+            sharedLobbyMessageId: true,
+          },
+        });
+
+        if (!message) {
+          return NextResponse.json({ detail: "Message not found" }, { status: 404 });
+        }
+
+        if (!canManageDirectMessage(viewer, message.senderUserId)) {
+          return NextResponse.json({ detail: "Forbidden." }, { status: 403 });
+        }
+
+        await prisma.$transaction([
+          prisma.chatMessage.deleteMany({
+            where: {
+              id: message.sharedLobbyMessageId ?? -1,
+            },
+          }),
+          prisma.directMessage.delete({
+            where: { id: message.id },
+          }),
+        ]);
+
+        await removePersistedDirectMessageAttachment(message.attachmentDataUrl);
         break;
       }
 

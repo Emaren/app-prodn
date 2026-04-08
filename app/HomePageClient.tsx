@@ -26,7 +26,7 @@ type HomePageClientProps = {
 };
 
 export default function HomePageClient({ initialLobby }: HomePageClientProps) {
-  const { isAdmin, isAuthenticated, loading, loginWithSteam, playerName, user } = useUserAuth();
+  const { uid, isAdmin, isAuthenticated, loading, loginWithSteam, playerName, user } = useUserAuth();
   const { themeKey, tileThemeKey, viewMode, setViewMode } = useLobbyAppearance();
 
   const [lobby, setLobby] = useState<LobbySnapshot | null>(initialLobby);
@@ -43,6 +43,7 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
   const [chatCardHeight, setChatCardHeight] = useState<number | null>(null);
   const [heroRailHeight, setHeroRailHeight] = useState<number | null>(null);
   const [reactingMessageId, setReactingMessageId] = useState<number | null>(null);
+  const [moderatingMessageId, setModeratingMessageId] = useState<number | null>(null);
   const [aiEnabled, setAiEnabled] = useState(true);
   const [aiVisibility, setAiVisibility] = useState<AiVisibilityOption>("public");
   const [aiScribeEnabled, setAiScribeEnabled] = useState(true);
@@ -395,6 +396,49 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
     }
   }
 
+  async function handleModerateMessage(
+    action: "edit_message" | "delete_message",
+    messageId: number,
+    body?: string
+  ) {
+    try {
+      setModeratingMessageId(messageId);
+      setChatError(null);
+
+      const response = await fetch("/api/lobby/chat", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          action,
+          messageId,
+          body,
+          roomSlug: tournament.roomSlug,
+        }),
+      });
+
+      const payload = (await response.json().catch(() => ({}))) as
+        | { detail?: string; messages?: LobbyMessage[] }
+        | Record<string, unknown>;
+
+      if (!response.ok) {
+        throw new Error(typeof payload.detail === "string" ? payload.detail : "Message update failed.");
+      }
+
+      setLobby((current) =>
+        current
+          ? {
+              ...current,
+              messages: Array.isArray(payload.messages) ? payload.messages : current.messages,
+            }
+          : current
+      );
+    } catch (error) {
+      setChatError(error instanceof Error ? error.message : "Message update failed.");
+    } finally {
+      setModeratingMessageId(null);
+    }
+  }
+
   const chatCardStyle: CSSProperties | undefined =
     chatCardHeight && typeof window !== "undefined" && window.innerWidth >= 1024
       ? { height: `${chatCardHeight}px` }
@@ -479,9 +523,12 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
           playerName={playerName}
           currentUserInGameName={user?.inGameName ?? null}
           currentUserSteamPersonaName={user?.steamPersonaName ?? null}
+          currentUserUid={uid ?? null}
+          currentUserIsAdmin={isAdmin}
           messageBody={messageBody}
           chatPending={chatPending}
           reactingMessageId={reactingMessageId}
+          moderatingMessageId={moderatingMessageId}
           aiEnabled={aiEnabled}
           aiVisibility={aiVisibility}
           aiScribeEnabled={aiScribeEnabled}
@@ -496,6 +543,12 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
           onAiGrimerEnabledChange={setAiGrimerEnabled}
           onToggleReaction={(messageId, emoji) => {
             void handleToggleReaction(messageId, emoji);
+          }}
+          onEditMessage={(messageId, nextBody) => {
+            void handleModerateMessage("edit_message", messageId, nextBody);
+          }}
+          onDeleteMessage={(messageId) => {
+            void handleModerateMessage("delete_message", messageId);
           }}
           onLogin={() => loginWithSteam("/")}
         />
