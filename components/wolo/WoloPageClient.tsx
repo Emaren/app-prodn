@@ -223,7 +223,7 @@ export default function WoloPage() {
                   {walletConnectLabel}
                 </button>
                 <Link href="/wolochain" className={WOLO_PROD_SECONDARY_ACTION_CLASSNAME} data-no-toggle="true">
-                  WoloChain Brief
+                  WoloChain
                 </Link>
                 <Link href="/download" className={WOLO_PROD_SECONDARY_ACTION_CLASSNAME} data-no-toggle="true">
                   Download Watcher
@@ -246,27 +246,6 @@ export default function WoloPage() {
                 >
                   Open Ping.pub
                 </a>
-              </div>
-
-              <div className="rounded-[1.45rem] border border-cyan-300/14 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),rgba(10,16,29,0.96)_54%,rgba(6,28,39,0.76))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className="text-[10px] uppercase tracking-[0.28em] text-cyan-200/68">
-                      New
-                    </div>
-                    <div className="mt-2 text-lg font-semibold text-white">Read the WoloChain brief</div>
-                    <div className="mt-2 max-w-xl text-sm leading-6 text-slate-300">
-                      Fixed supply. Supply split. Validator lane. Fee flow. Everything important, fast.
-                    </div>
-                  </div>
-                  <Link
-                    href="/wolochain"
-                    data-no-toggle="true"
-                    className="inline-flex shrink-0 items-center justify-center rounded-full border border-cyan-300/18 bg-cyan-400/10 px-4 py-2 text-xs font-medium uppercase tracking-[0.24em] text-cyan-100 transition hover:bg-cyan-400/16"
-                  >
-                    Open
-                  </Link>
-                </div>
               </div>
 
               {walletError ? (
@@ -422,28 +401,6 @@ export default function WoloPage() {
               showPingPub
             />
 
-            <div className="max-w-[46rem] rounded-[1.4rem] border border-cyan-300/16 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),rgba(10,16,29,0.96)_52%,rgba(7,31,42,0.76))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div>
-                  <div className="text-[10px] uppercase tracking-[0.28em] text-cyan-200/68">
-                    Chain brief
-                  </div>
-                  <div className="mt-2 text-lg font-semibold text-white">
-                    See the full WoloChain explainer
-                  </div>
-                  <div className="mt-2 text-sm leading-6 text-slate-300">
-                    Validator path. Supply split. Betting-fee route. Tx-fee route. One clean read.
-                  </div>
-                </div>
-                <Link
-                  href="/wolochain"
-                  data-no-toggle="true"
-                  className="inline-flex shrink-0 items-center justify-center rounded-full border border-cyan-300/18 bg-cyan-400/10 px-4 py-2 text-xs font-medium uppercase tracking-[0.24em] text-cyan-100 transition hover:bg-cyan-400/16"
-                >
-                  Open Brief
-                </Link>
-              </div>
-            </div>
           </div>
 
           <div className="space-y-3.5">
@@ -754,7 +711,7 @@ function WoloHeroActionDock({
 
       <div className={`grid gap-2 ${showPingPub ? "sm:grid-cols-4" : "sm:grid-cols-3"}`}>
         <Link href="/wolochain" className={WOLO_PREMIUM_SECONDARY_ACTION_CLASSNAME}>
-          WoloChain Brief
+          WoloChain
         </Link>
         <Link href="/download" className={WOLO_PREMIUM_SECONDARY_ACTION_CLASSNAME}>
           Download Watcher

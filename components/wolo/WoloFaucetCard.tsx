@@ -232,14 +232,11 @@ export default function WoloFaucetCard({
 
   if (isCompact) {
     return (
-      <div className="rounded-[1.35rem] border border-white/10 bg-[linear-gradient(180deg,rgba(8,14,24,0.96),rgba(6,10,18,0.96))] px-4 py-3">
+      <div className="rounded-[1.15rem] border border-white/10 bg-[linear-gradient(180deg,rgba(8,14,24,0.96),rgba(6,10,18,0.96))] px-4 py-3">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="text-[10px] uppercase tracking-[0.28em] text-cyan-100/55">
               Starter Faucet
-            </div>
-            <div className="mt-1 text-sm font-medium text-white">
-              {FAUCET_AMOUNT_WOLO} WOLO testnet drip
             </div>
           </div>
 
@@ -253,31 +250,13 @@ export default function WoloFaucetCard({
             className={actionClassName}
             title={statusLabel}
           >
-            {primaryLabel}
+            {isClaiming
+              ? "Sending..."
+              : isCoolingDown
+                ? formatCooldown(msRemaining)
+                : `Claim ${FAUCET_AMOUNT_WOLO} WOLO`}
           </button>
         </div>
-
-        <div className={`mt-3 rounded-2xl border px-3 py-2 text-xs ${statusTone}`}>
-          {statusLabel}
-        </div>
-
-        {txhash ? (
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-300">
-            <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1">
-              tx {formatTxhash(txhash)}
-            </span>
-            {txUrl ? (
-              <a
-                href={txUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="rounded-full border border-cyan-300/20 bg-cyan-400/10 px-2.5 py-1 text-cyan-100 transition hover:bg-cyan-400/15"
-              >
-                View
-              </a>
-            ) : null}
-          </div>
-        ) : null}
 
         {claimError ? (
           <div className="mt-2 text-[11px] text-red-200/85">{claimError}</div>
