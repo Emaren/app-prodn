@@ -27,11 +27,14 @@ Current notable product routes include:
 
 - `/`
 - `/lobby`
+- `/bets`
 - `/live-games`
 - `/players`
 - `/rivalries`
 - `/requests`
 - `/contact-emaren`
+- `/war-chest`
+- `/tournaments/[slug]`
 - `/wolo`
 - `/replay-parser`
 - admin/profile/inbox-related routes
@@ -72,6 +75,16 @@ Common:
 - `INTERNAL_API_KEY` (optional; forwarded on replay upload when backend enforces API keys)
 - `ALLOW_GUEST_SESSIONS=false` (recommended; keep guest sessions off so replay evidence ties to signed identities)
 - `DIRECT_MESSAGE_ATTACHMENT_DIR` (optional; default `storage/direct-message-attachments/`; new inbox uploads store file refs there instead of base64 rows)
+
+WOLO betting / settlement:
+
+- `NEXT_PUBLIC_WOLO_RPC_URL`
+- `NEXT_PUBLIC_WOLO_REST_URL`
+- `NEXT_PUBLIC_WOLO_BET_ESCROW_ADDRESS`
+- `WOLO_BET_ESCROW_ADDRESS`
+- `WOLO_SETTLEMENT_URL`
+- `WOLO_SETTLEMENT_AUTH_TOKEN` (optional if the settlement service is protected)
+- `WOLO_BET_PAYOUT_MNEMONIC` / `WOLO_BET_PAYOUT_ADDRESS` only when using the local fallback signer instead of the settlement service
 
 Optional migration compatibility:
 
@@ -146,8 +159,11 @@ python /var/www/AoE2HDBets/api-prodn/scripts/set_admin.py --email you@example.co
 ## Current notes
 
 - `/lobby` is now a real product destination with leaderboard + tournament surface
+- `/bets` now supports real Keplr-signed WOLO stake locks when escrow env is configured, and the wager is only recorded after the stake tx verifies against WoloChain REST
+- trusted wallet-linked winners can now auto-settle on-chain, while unmatched or failed payouts still fall back to the pending-claim/admin rail
+- accepted scheduled matches now seed pre-live runway books so betting does not have to wait for watcher-live detection
 - player pages still need another premium pass
-- the app presents `$WOLO` as a product rail before full settlement infrastructure is complete
+- the app now presents `$WOLO` as both a product rail and a partially real money-movement rail, but stake recovery and Ledger/browser failure handling still need another hardening pass
 - `/wolo` now includes an app-side starter faucet claim path, a clean Wallet Snapshot connect surface, a tight `WOLO Market` tile, and a slim faucet claim row underneath
 - the top-nav Roadmap link intentionally renders without the old blue count badge
 - exact replay/postgame authority still belongs to `api-prodn`

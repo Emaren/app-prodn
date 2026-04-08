@@ -54,6 +54,18 @@ systemctl is-active aoe2hdbets-web.service
 journalctl -u aoe2hdbets-web.service -n 40 --no-pager
 ```
 
+## WOLO betting env that must stay aligned
+
+When `/bets` is expected to open real Keplr stake locks, these envs must agree in the live web env:
+
+- `NEXT_PUBLIC_WOLO_RPC_URL`
+- `NEXT_PUBLIC_WOLO_REST_URL`
+- `NEXT_PUBLIC_WOLO_BET_ESCROW_ADDRESS`
+- `WOLO_BET_ESCROW_ADDRESS`
+- `WOLO_SETTLEMENT_URL`
+
+If `NEXT_PUBLIC_WOLO_BET_ESCROW_ADDRESS` or `WOLO_BET_ESCROW_ADDRESS` are missing, `/bets` silently falls back toward app-only behavior and no real stake window will open.
+
 ## Verification
 
 Minimum deploy checks:
@@ -66,6 +78,33 @@ curl -I https://aoe2hdbets.com/challenge
 curl -I https://aoe2hdbets.com/players
 curl -I https://aoe2hdbets.com/contact-emaren
 curl -s https://aoe2hdbets.com/api/lobby | jq '.leaderboard.trackedPlayers, (.leaderboard.entries | length)'
+curl -s https://aoe2hdbets.com/api/bets | jq '.wolo | { onchainEscrowEnabled, betEscrowAddress }'
+journalctl -u aoe2hdbets-web.service -n 20 --no-pager
+```
+
+For WOLO betting deploys, also do this manual smoke pass:
+
+```bash
+# 1. Confirm the public payload still exposes live escrow truth.
+curl -s https://aoe2hdbets.com/api/bets | jq '.wolo | { onchainEscrowEnabled, betEscrowAddress }'
+
+# 2. Verify the service is healthy, then open /bets in a real browser session.
+journalctl -u aoe2hdbets-web.service -n 20 --no-pager
+```
+
+Expected result for the browser pass:
+- `/bets` loads with a real open market
+- clicking `Lock 100` opens Keplr
+- after approval, the UI reaches `Escrow confirmed`
+- only then does `/api/bets/wager` record the slip
+
+If browser wallets report `Failed to fetch balance`, `network error`, or a dead Keplr handoff, check these before blaming app code:
+
+```bash
+curl -sSI -H 'Origin: https://aoe2hdbets.com' https://rpc.aoe2hdbets.com/status | rg 'Access-Control-Allow-Origin|HTTP/'
+curl -sSI -H 'Origin: https://www.aoe2hdbets.com' https://rpc.aoe2hdbets.com/status | rg 'Access-Control-Allow-Origin|HTTP/'
+curl -sSI -H 'Origin: https://aoe2hdbets.com' https://rest.aoe2hdbets.com/cosmos/base/tendermint/v1beta1/blocks/latest | rg 'Access-Control-Allow-Origin|HTTP/'
+curl -sSI -H 'Origin: https://www.aoe2hdbets.com' https://rest.aoe2hdbets.com/cosmos/base/tendermint/v1beta1/blocks/latest | rg 'Access-Control-Allow-Origin|HTTP/'
 journalctl -u aoe2hdbets-web.service -n 20 --no-pager
 ```
 
@@ -88,9 +127,10 @@ The most important public product smoke tests are now:
 
 1. `/lobby` loads cleanly
 2. leaderboard renders and count matches entry length
-3. tournament panel loads cleanly
-4. `/live-games` responds
-5. same-origin `/api/lobby` returns a believable snapshot shape
+3. `/bets` reports live escrow truth and can still open a real lock flow in-browser
+4. tournament panel loads cleanly
+5. `/live-games` responds
+6. same-origin `/api/lobby` returns a believable snapshot shape
 
 This matters more now than older homepage-only checks because the lobby/community shell is the real public spine.
 
@@ -179,4 +219,5 @@ Do not restart blindly before the schema is in place.
 - backend upstream should remain `http://127.0.0.1:3330`
 - browser should stay same-origin for `/api/*`
 - watcher uploads should continue to target `api-prodn.aoe2hdbets.com`, not the public web host
+- browser wallet reads and stake verification depend on `rpc.aoe2hdbets.com` and `rest.aoe2hdbets.com` staying CORS-clean for both `aoe2hdbets.com` and `www.aoe2hdbets.com`
 - dedicated nginx request-log runbook for AoE2 Phase 1 lives at [deploy/aoe2-access-logging-phase1.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/deploy/aoe2-access-logging-phase1.md)

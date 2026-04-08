@@ -10,6 +10,7 @@ The app is no longer just a replay/stat shell. It now has a real public product 
 - leaderboard is shipped and visible
 - next tournament panel is shipped and usable
 - players, rivalries, requests, `$WOLO`, and live-game surfaces are all real navigation destinations
+- `/bets`, `/war-chest`, and tournament detail pages are now real public destinations too
 - live replay ingestion can feed visible match outcomes back into the product without the old obviously-broken feel
 
 ## Strongest shipped modules
@@ -131,7 +132,10 @@ Current state:
 - `/wolo` now has a real app-side starter faucet claim route that sends `2 WOLO`, enforces a 24-hour cooldown, and updates the wallet snapshot from the returned balance
 - default `/wolo` hero keeps the simpler legacy action row, while premium mode uses the two-lane action dock with borderless utility pills so `Open Ping.pub` stays grouped without a harsh white outline treatment
 - default WOLO runtime/daemon consoles stay in the raw matrix style without per-line separators, but the stat-card labels/values use the normal slate/white treatment again; premium runtime/daemon consoles keep the darker structured shell
-- not yet true on-chain debit/credit settlement for challenge markets or player wagering
+- Keplr wallet state now persists across route changes instead of acting page-local
+- `/bets` now opens a real signed WOLO stake path when escrow env is configured, and the wager is only accepted after the stake tx verifies against WoloChain REST
+- winning payouts can now auto-settle on-chain for trusted wallet-linked winners, with tx hashes visible in the admin settlement rail
+- unmatched or failed payouts still fall back into the pending-claim/admin rescue rail instead of vanishing
 
 ### Replay trust / postgame depth
 
@@ -171,12 +175,16 @@ Still needed:
 
 Current state:
 - Challenge scheduling and bet-market seeding are now connected at the app snapshot layer
+- accepted scheduled matches now seed runway books before watcher-live detection, so betting can open before a fast match is already over
 - stale challenge-derived bet books are retired when the matching runway tile disappears
 - final/forfeit challenge outcomes are persisted onto the source scheduled match row
-- settled challenge-market wagers persist `payout_wolo` and slip outcome state in Postgres
+- settled challenge-market wagers persist `execution_mode`, stake tx proof, payout tx proof, `payout_wolo`, and slip outcome state in Postgres
+- one-sided winner bounties and two-sided pot payouts are now being pushed through the chain-backed settlement rail on the happy path
 
 Still wanted:
-- settle user wagers into real WOLO balance effects instead of UI-only pool totals
+- signed-but-unrecorded stake recovery/reconciliation if a user finishes the wallet tx but the app misses the wager write
+- tighter Ledger/browser guidance and clearer surfaced errors before the broadcast stage dies
+- one consistent market lifecycle so scheduled, live, and just-finished versions of the same match never feel like different books
 - remove or further de-emphasize fallback synthetic books when the challenge slate is rich enough
 
 ## Current known product rough edges
@@ -185,8 +193,8 @@ Still wanted:
 - tournament presentation is good, but not yet “must-watch”
 - leaderboard is now real, but deeper ranking semantics still need tightening
 - some surfaces still carry more explanatory copy than ideal
-- token rail is visually present faster than it is infrastructurally complete
-- challenge-derived bet markets are better than before, but final settlement still stops at app-side payout bookkeeping rather than chain-backed wallet transfer truth
+- token rail is now partially real, but stake recovery and pre-submit signer telemetry are still behind the rest of the UX
+- challenge-derived bet markets are much healthier than before, but fast-finish lifecycle edge cases and duplicate-looking settled rows still need cleanup
 - exact postgame achievement extraction is still the big missing depth layer
 - watcher behavior works better than before, but still feels somewhat noisy under the hood
 
@@ -208,10 +216,10 @@ Still wanted:
 
 ## Best next moves
 
-1. Premium pass on individual player pages
-2. Tighten leaderboard/rankings semantics and full rankings depth
-3. Improve tournament gravity, bracket storytelling, and event visibility
-4. Tune watcher/runtime behavior now that final parse behavior looks healthier
-5. Clean API testing workflow and restore a trustworthy baseline
-6. Decide whether exact postgame achievement extraction is worth OCR/deeper parser work
-7. Keep docs aligned with the shipped lobby/leaderboard reality
+1. Stake recovery / escrow reconciliation for signed txs that do not finish recording cleanly
+2. Capture and surface exact Keplr/Ledger failure breadcrumbs before the wager API is even hit
+3. Tighten scheduled/live/settled market lifecycle so the book never disappears prematurely
+4. Premium pass on individual player pages
+5. Improve tournament gravity, bracket storytelling, and event visibility
+6. Tune watcher/runtime behavior now that final parse behavior looks healthier
+7. Clean API testing workflow and keep docs aligned with the now-real WOLO betting rails

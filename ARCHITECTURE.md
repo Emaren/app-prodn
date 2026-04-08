@@ -38,6 +38,7 @@ Primary pages live under `app/`.
 Important public surfaces include:
 - `app/page.tsx`
 - `app/lobby/page.tsx`
+- `app/bets/page.tsx`
 - `app/live-games/page.tsx`
 - `app/game-stats/live/[sessionKey]/page.tsx`
 - `app/players/page.tsx`
@@ -46,6 +47,8 @@ Important public surfaces include:
 - `app/rivalries/page.tsx`
 - `app/contact-emaren/page.tsx`
 - `app/requests/page.tsx`
+- `app/war-chest/page.tsx`
+- `app/tournaments/[slug]/page.tsx`
 - `app/admin/user-list/page.tsx`
 - `app/wolo/page.tsx`
 
@@ -58,6 +61,8 @@ Live replay detail presentation is currently owned by `components/game-stats/Liv
 Key browser-facing routes include:
 - `app/api/lobby/route.ts`
 - `app/api/lobby/stream/route.ts`
+- `app/api/bets/route.ts`
+- `app/api/bets/wager/route.ts`
 - `app/api/contact-emaren/route.ts`
 - `app/api/contact-emaren/attachments/[messageId]/route.ts`
 - `app/api/admin/users/route.ts`
@@ -79,17 +84,23 @@ Important ownership files include:
 - `lib/communityHonors.ts`
 - `lib/userExperience.ts`
 - `lib/bets.ts`
+- `lib/woloBetSettlement.ts`
+- `lib/woloChain.ts`
+- `lib/adminWoloClaims.ts`
 
 These files form the app-level product contract for the lobby, leaderboard, player directory, inbox/honors flow, and related user-facing aggregation.
 
-`lib/bets.ts` is now also a bridge layer between scheduled Challenge runway matches and the public `/bets` book. Challenge-derived markets use `challenge-runway-{scheduledMatchId}` slugs, can become featured books ahead of fallback seeded markets, and are retired once their runway source no longer appears. Fallback leaderboard/tournament books still exist as synthetic fill when no Challenge slate is active.
+`lib/bets.ts` is now a bridge layer between scheduled Challenge runway matches, watcher-live sessions, and the public `/bets` book. Challenge-derived markets use `challenge-runway-{scheduledMatchId}` slugs, can become featured books before a watcher session appears, and are then settled/retired as replay proof lands. Fallback leaderboard/tournament books still exist as synthetic fill when no Challenge slate is active.
 
-Challenge and bet settlement are now persisted app-side:
+Challenge and bet settlement now have a real happy path:
 - `scheduled_matches` stores `result_at`, `linked_session_key`, `linked_map_name`, `linked_winner`, and `linked_duration_seconds`
 - `bet_markets.scheduled_match_id` links challenge-derived books to their source match row
-- `bet_wagers.payout_wolo` stores the settled app-side payout value when a slip moves to `won`, `lost`, or `void`
+- `bet_wagers` now persists `execution_mode`, `stake_tx_hash`, `stake_wallet_address`, `stake_escrowed_at`, `payout_wolo`, and settled status
+- `pending_wolo_claims` now carries `payout_tx_hash`, `payout_attempted_at`, and `error_state` for operator truth
+- `/bets` records an `onchain_escrow` wager only after the signed stake tx verifies against WOLO REST
+- winning payouts can execute through `WOLO_SETTLEMENT_URL` or the configured fallback signer when the winner has a trusted identity and linked wallet
 
-This is still not chain execution. Do not present these fields as canonical on-chain settlement until a WoloChain-side transfer executor exists.
+This repo still does not own chain truth. AoE2HDBets owns market seeding, user-facing lock/settle UX, and claim fallback rails. WoloChain still owns transfer semantics, chain identity, and final settlement execution truth.
 
 ### Presentation system
 
@@ -188,6 +199,8 @@ This is product state, not just decoration, because the current lobby identity d
 - `api-prodn` through `AOE2_BACKEND_UPSTREAM`
 - nginx for public routing
 - `aoe2hdbets-web.service` for runtime
+- `rpc.aoe2hdbets.com` / `rest.aoe2hdbets.com` for browser wallet reads and stake verification
+- WoloChain settlement execution through `WOLO_SETTLEMENT_URL`
 
 Canonical VPS truth:
 - web env file: `/etc/aoe2hdbets/aoe2hdbets-web.env`
@@ -229,5 +242,7 @@ Do not assume every visible issue is a page bug.
 - tournament depth is improving, but still not the full “event gravity” version
 - exact postgame achievement-table capture is still not part of the replay pipeline
 - `$WOLO` is still an app-level product rail, not full settlement infrastructure
-- Challenge -> Bets is connected for market seeding and app-side payout persistence, but wager settlement still does not move real on-chain WOLO balances
+- signed-bet happy path is real now, but signed-but-unrecorded stake recovery is not yet reconciled automatically
+- Ledger and older-browser signer behavior is improved but still needs tighter client telemetry and user guidance
+- Challenge -> Bets scheduled/live bridging is healthier now, but very fast finishes and duplicate-looking settled history still deserve another pass
 - watcher behavior now looks healthier end-to-end, but the app should still document the live/final replay contract truthfully as it evolves
