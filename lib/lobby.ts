@@ -185,6 +185,33 @@ export type LobbyWoloSnapshot = {
   accounts: Record<string, LobbyWoloAccount>;
 };
 
+export type LobbyWoloEarnersEntry = {
+  rank: number;
+  key: string;
+  name: string;
+  href: string;
+  claimed: boolean;
+  verified: boolean;
+  verificationLevel: number;
+  earnedWolo: number;
+  wageredWolo: number;
+  claimCount: number;
+  wagerCount: number;
+  unclaimedWolo: number;
+  lastActiveAt: string | null;
+  sourceWindow: "weekly" | "backfill";
+};
+
+export type LobbyWoloEarnersBoard = {
+  timeframeDays: number;
+  visibleSlots: number;
+  totalParticipants: number;
+  backfilled: boolean;
+  weekStartsAt: string;
+  generatedAt: string;
+  entries: LobbyWoloEarnersEntry[];
+};
+
 export type LobbySnapshot = {
   tournament: LobbyTournament;
   onlineUsers: LobbyOnlineUser[];
@@ -192,6 +219,7 @@ export type LobbySnapshot = {
   messages: LobbyMessage[];
   leaderboard: LobbyLeaderboardSummary;
   wolo: LobbyWoloSnapshot | null;
+  woloEarners: LobbyWoloEarnersBoard;
 };
 
 export function slugifyTournamentTitle(value: string) {
@@ -245,6 +273,19 @@ export function getFallbackLeaderboard(): LobbyLeaderboardSummary {
     trackedPlayers: 0,
     rankedPlayers: 0,
     minimumMatches: LOBBY_LEADERBOARD_MIN_MATCHES,
+  };
+}
+
+export function getFallbackWoloEarnersBoard(): LobbyWoloEarnersBoard {
+  const generatedAt = new Date().toISOString();
+  return {
+    timeframeDays: 7,
+    visibleSlots: 3,
+    totalParticipants: 0,
+    backfilled: false,
+    weekStartsAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+    generatedAt,
+    entries: [],
   };
 }
 

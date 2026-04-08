@@ -2,10 +2,12 @@ import { PrismaClient } from "@/lib/generated/prisma";
 import { getBackendUpstreamBase } from "@/lib/backendUpstream";
 import { getFeaturedTournament, getLobbyMessages } from "@/lib/communityStore";
 import { loadLobbyLeaderboard } from "@/lib/lobbyLeaderboard";
+import { loadLobbyWoloEarnersBoard } from "@/lib/lobbyWoloEarners";
 import {
   LOBBY_ROOM_SLUG,
   getFallbackLeaderboard,
   getFallbackTournament,
+  getFallbackWoloEarnersBoard,
   type LobbyMatchRow,
   type LobbyOnlineUser,
   type LobbySnapshot,
@@ -78,7 +80,7 @@ export async function loadLobbySnapshot(
     await reconcileTournamentMatchProofs(prisma);
     const tournament = await getFeaturedTournament(prisma, viewerUid);
 
-    const [tournamentMessages, onlineUsers, recentMatches, leaderboard] = await Promise.all([
+    const [tournamentMessages, onlineUsers, recentMatches, leaderboard, woloEarners] = await Promise.all([
       getLobbyMessages(prisma, tournament.roomSlug, 60, {
         uid: viewerUid,
         guestSessionId: guestReactionSessionId,
@@ -86,6 +88,7 @@ export async function loadLobbySnapshot(
       loadOnlineUsers(prisma),
       loadRecentMatches(),
       loadLobbyLeaderboard(prisma),
+      loadLobbyWoloEarnersBoard(prisma),
     ]);
 
     const messages =
@@ -103,6 +106,7 @@ export async function loadLobbySnapshot(
       recentMatches,
       leaderboard,
       wolo,
+      woloEarners,
     };
   } catch (error) {
     console.warn("Falling back to lobby snapshot defaults:", error);
@@ -114,6 +118,7 @@ export async function loadLobbySnapshot(
       recentMatches: await loadRecentMatches(),
       leaderboard: getFallbackLeaderboard(),
       wolo,
+      woloEarners: getFallbackWoloEarnersBoard(),
     };
   }
 }

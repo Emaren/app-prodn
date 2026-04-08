@@ -135,6 +135,7 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
   const recentMatches = lobby?.recentMatches ?? [];
   const messages = lobby?.messages ?? EMPTY_MESSAGES;
   const wolo = lobby?.wolo ?? null;
+  const woloEarners = lobby?.woloEarners ?? null;
 
   const chatItems = buildChatItems(messages);
   const latestChatMessageKey = useMemo(
@@ -499,6 +500,7 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
             <div className="min-h-0">
               <TopWoloEarnersTile
                 wolo={wolo}
+                board={woloEarners}
                 themeKey={tileThemeKey}
                 viewMode={viewMode}
                 className="h-full"
