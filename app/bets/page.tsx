@@ -120,6 +120,29 @@ type LockWorkflow = {
   stakeTxHash: string | null;
 };
 
+type KeplrKey = {
+  bech32Address?: string;
+  isNanoLedger?: boolean;
+};
+
+type BetBrowserWindow = Window & {
+  keplr?: {
+    enable?: (chainId: string) => Promise<void>;
+    experimentalSuggestChain?: (config: typeof woloChainConfig) => Promise<void>;
+    getOfflineSignerAuto?: (chainId: string) => Promise<unknown>;
+    getOfflineSignerOnlyAmino?: (chainId: string) => unknown;
+    getKey?: (chainId: string) => Promise<{ bech32Address: string }>;
+  };
+  getOfflineSigner?: (chainId: string) => unknown;
+  getOfflineSignerOnlyAmino?: (chainId: string) => unknown;
+};
+
+type BetSignerResolution = {
+  signer: OfflineSigner;
+  signerAddress: string;
+  isLedger: boolean;
+};
+
 function shortTxHash(value: string) {
   if (value.length <= 18) return value;
   return `${value.slice(0, 10)}…${value.slice(-6)}`;
@@ -158,6 +181,116 @@ function projectReturn(stakeWolo: number, selectedPoolWolo: number, oppositePool
     stakeWolo,
     Math.round(stakeWolo + oppositePoolWolo * (stakeWolo / nextSelectedPool))
   );
+}
+
+function describeStakeLockError(error: unknown, options?: { isLedger?: boolean }) {
+  const message =
+    error instanceof Error ? error.message.trim() : typeof error === "string" ? error.trim() : "";
+  const fallback = "Could not lock the wager.";
+  const normalized = (message || fallback).toLowerCase();
+
+  if (
+    normalized.includes("rejected") ||
+    normalized.includes("denied") ||
+    normalized.includes("cancelled") ||
+    normalized.includes("canceled")
+  ) {
+    return options?.isLedger
+      ? "Ledger approval was cancelled before the WOLO stake broadcast finished."
+      : "Keplr approval was cancelled before the WOLO stake broadcast finished.";
+  }
+
+  if (
+    normalized.includes("failed to fetch") ||
+    normalized.includes("fetch balance") ||
+    normalized.includes("network error")
+  ) {
+    return options?.isLedger
+      ? "Keplr lost the Ledger handoff before the WOLO stake broadcast finished. Keep the Ledger unlocked in the Cosmos app, approve on-device, then retry once."
+      : "Keplr lost the chain handshake before the WOLO stake broadcast finished. Refresh and retry once.";
+  }
+
+  if (
+    normalized.includes("ledger") ||
+    normalized.includes("transportstatuserror") ||
+    normalized.includes("device") ||
+    normalized.includes("usb")
+  ) {
+    return "Ledger did not finish signing the WOLO stake. Unlock the device, open the Cosmos app, then approve the transaction in both Keplr and on the Ledger.";
+  }
+
+  return message || fallback;
+}
+
+async function resolveBetSigner(
+  keplrWindow: BetBrowserWindow,
+  fallbackAddress: string
+): Promise<BetSignerResolution> {
+  const key = keplrWindow.keplr?.getKey
+    ? ((await keplrWindow.keplr.getKey(WOLO_CHAIN_ID).catch(() => null)) as KeplrKey | null)
+    : null;
+  const keyAddress = key?.bech32Address?.trim() || "";
+  const isLedger = Boolean(key?.isNanoLedger);
+
+  if (isLedger) {
+    const aminoSigner =
+      ((keplrWindow.keplr?.getOfflineSignerOnlyAmino?.(WOLO_CHAIN_ID) ||
+        keplrWindow.getOfflineSignerOnlyAmino?.(WOLO_CHAIN_ID)) as OfflineSigner | undefined);
+
+    if (!aminoSigner) {
+      throw new Error("Ledger account detected, but Keplr Amino signer is unavailable in this browser.");
+    }
+
+    const accounts = await aminoSigner.getAccounts();
+    const signerAddress = accounts[0]?.address?.trim() || keyAddress || fallbackAddress;
+
+    if (!signerAddress) {
+      throw new Error("Connected Ledger returned no WOLO address for this bet.");
+    }
+
+    return {
+      signer: aminoSigner,
+      signerAddress,
+      isLedger: true,
+    };
+  }
+
+  if (keplrWindow.keplr?.getOfflineSignerAuto) {
+    const signer = (await keplrWindow.keplr.getOfflineSignerAuto(WOLO_CHAIN_ID)) as OfflineSigner;
+    const accounts = await signer.getAccounts();
+    const signerAddress = accounts[0]?.address?.trim() || keyAddress || fallbackAddress;
+
+    if (!signerAddress) {
+      throw new Error("Connected wallet returned no WOLO address for this bet.");
+    }
+
+    return {
+      signer,
+      signerAddress,
+      isLedger: false,
+    };
+  }
+
+  const signer =
+    ((keplrWindow.getOfflineSignerOnlyAmino?.(WOLO_CHAIN_ID) ||
+      keplrWindow.getOfflineSigner?.(WOLO_CHAIN_ID)) as OfflineSigner | undefined);
+
+  if (!signer) {
+    throw new Error("Keplr offline signer was not found in this browser.");
+  }
+
+  const accounts = await signer.getAccounts();
+  const signerAddress = accounts[0]?.address?.trim() || keyAddress || fallbackAddress;
+
+  if (!signerAddress) {
+    throw new Error("Connected wallet returned no WOLO address for this bet.");
+  }
+
+  return {
+    signer,
+    signerAddress,
+    isLedger: false,
+  };
 }
 
 function statusPill(status: BetStatus) {
@@ -360,14 +493,7 @@ export default function BetsPage() {
       throw new Error("Connect Keplr before locking a real WOLO stake.");
     }
 
-    const keplrWindow = window as Window & {
-      getOfflineSigner?: (chainId: string) => unknown;
-      keplr?: {
-        enable?: (chainId: string) => Promise<void>;
-        experimentalSuggestChain?: (config: typeof woloChainConfig) => Promise<void>;
-        getOfflineSignerAuto?: (chainId: string) => Promise<unknown>;
-      };
-    };
+    const keplrWindow = window as BetBrowserWindow;
 
     if (keplrWindow.keplr?.experimentalSuggestChain) {
       try {
@@ -381,21 +507,7 @@ export default function BetsPage() {
       await keplrWindow.keplr.enable(WOLO_CHAIN_ID);
     }
 
-    const signer = (keplrWindow.keplr?.getOfflineSignerAuto
-      ? await keplrWindow.keplr.getOfflineSignerAuto(WOLO_CHAIN_ID)
-      : keplrWindow.getOfflineSigner?.(WOLO_CHAIN_ID)) as unknown as
-      | OfflineSigner
-      | undefined;
-
-    if (!signer) {
-      throw new Error("Keplr offline signer was not found in this browser.");
-    }
-
-    const accounts = await signer.getAccounts();
-    const signerAddress = accounts[0]?.address?.trim() || walletAddress;
-    if (!signerAddress) {
-      throw new Error("Connected wallet returned no WOLO address for this bet.");
-    }
+    const signerResolution = await resolveBetSigner(keplrWindow, walletAddress);
 
     setLockWorkflow({
       marketId: market.id,
@@ -407,23 +519,37 @@ export default function BetsPage() {
       import("@cosmjs/stargate"),
     ]);
 
-    const client = await SigningStargateClient.connectWithSigner(WOLO_RPC_URL, signer, {
-      gasPrice: GasPrice.fromString(WOLO_DEFAULT_GAS_PRICE),
-    });
+    let client:
+      | Awaited<ReturnType<typeof SigningStargateClient.connectWithSigner>>
+      | null = null;
 
-    const result = await client.sendTokens(
-      signerAddress,
-      runtimeBetEscrowAddress,
-      [{ amount: toUwoLoAmount(amountWolo), denom: WOLO_BASE_DENOM }],
-      "auto",
-      `AoE2HDBets bet stake · market ${market.id}`
-    );
+    try {
+      client = await SigningStargateClient.connectWithSigner(
+        WOLO_RPC_URL,
+        signerResolution.signer,
+        {
+          gasPrice: GasPrice.fromString(WOLO_DEFAULT_GAS_PRICE),
+        }
+      );
 
-    return {
-      walletAddress: signerAddress,
-      stakeTxHash: result.transactionHash,
-      executionMode: "onchain_escrow" as const,
-    };
+      const result = await client.sendTokens(
+        signerResolution.signerAddress,
+        runtimeBetEscrowAddress,
+        [{ amount: toUwoLoAmount(amountWolo), denom: WOLO_BASE_DENOM }],
+        "auto",
+        `AoE2HDBets bet stake · market ${market.id}`
+      );
+
+      return {
+        walletAddress: signerResolution.signerAddress,
+        stakeTxHash: result.transactionHash,
+        executionMode: "onchain_escrow" as const,
+      };
+    } catch (error) {
+      throw new Error(describeStakeLockError(error, { isLedger: signerResolution.isLedger }));
+    } finally {
+      client?.disconnect();
+    }
   }
 
   async function handleLock(market: BetBoardMarket) {
