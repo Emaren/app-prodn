@@ -80,7 +80,10 @@ function formatStatusLine(match: ScheduledMatchTile, nowMs: number) {
     case "accepted":
       return {
         status: "Ready",
-        time: `Game starting in ${formatRelativeDuration(untilStart)}`,
+        time:
+          untilStart >= 0
+            ? `Game starting in ${formatRelativeDuration(untilStart)}`
+            : `Start window open for ${formatRelativeDuration(startedAgo)}`,
       };
     case "live":
       return {

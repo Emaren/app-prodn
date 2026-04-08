@@ -1,4 +1,8 @@
 import type { PrismaClient } from "@/lib/generated/prisma";
+import {
+  loadScheduledMatchTilesForLiveBoard,
+  type ScheduledMatchTile,
+} from "@/lib/challenges";
 import { parsePlayers, readMapName } from "@/lib/gameStatsView";
 import {
   loadLiveSessionSnapshot,
@@ -105,6 +109,7 @@ export type BetBoardSnapshot = {
 
 
 const OPEN_STATUSES: BetStatus[] = ["open", "closing", "live"];
+const CHALLENGE_MARKET_SLUG_PREFIX = "challenge-runway-";
 const WATCHER_MARKET_SLUG_PREFIX = "watcher-live-";
 
 function normalizeName(value: string | null | undefined) {
@@ -118,6 +123,22 @@ function slugify(value: string) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 100);
+}
+
+function uniqueNames(values: Array<string | null | undefined>) {
+  const seen = new Set<string>();
+  const result: string[] = [];
+
+  for (const value of values) {
+    const normalized = normalizeName(value);
+    if (!normalized) continue;
+    const key = normalized.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(normalized);
+  }
+
+  return result;
 }
 
 
@@ -247,7 +268,7 @@ type MarketSeed = {
   status: BetStatus;
   featured: boolean;
   sortOrder: number;
-  source: "session";
+  source: "challenge" | "session";
   leftLabel: string;
   rightLabel: string;
   leftHref: string | null;
@@ -339,6 +360,74 @@ function buildSessionMarketSeed(
     settledAt: session.state === "completed" ? new Date(settledAtRaw) : null,
     winnerSide: session.state === "completed" ? inferWinnerSideFromSession(session) : null,
   } satisfies MarketSeed;
+}
+
+function marketStatusFromScheduledMatch(displayState: ScheduledMatchTile["displayState"]): BetStatus {
+  if (displayState === "live") return "live";
+  if (displayState === "accepted") return "closing";
+  return "settled";
+}
+
+function inferWinnerSideFromChallenge(match: ScheduledMatchTile): BetSide | null {
+  const winnerKey = normalizeName(match.linkedWinner).toLowerCase();
+  if (!winnerKey) return null;
+
+  const challengerNames = uniqueNames([
+    match.challenger.name,
+    match.challenger.inGameName,
+    match.challenger.steamPersonaName,
+    match.challenger.uid,
+  ]).map((value) => value.toLowerCase());
+  const challengedNames = uniqueNames([
+    match.challenged.name,
+    match.challenged.inGameName,
+    match.challenged.steamPersonaName,
+    match.challenged.uid,
+  ]).map((value) => value.toLowerCase());
+
+  if (challengerNames.includes(winnerKey)) return "left";
+  if (challengedNames.includes(winnerKey)) return "right";
+  return null;
+}
+
+function buildChallengeMarketSeeds(scheduledMatches: ScheduledMatchTile[]) {
+  const challengeMatches = scheduledMatches.filter((match) =>
+    ["accepted", "live", "completed", "forfeited", "declined", "cancelled"].includes(
+      match.displayState
+    )
+  );
+  const featuredChallengeIndex = challengeMatches.findIndex((match) =>
+    ["accepted", "live"].includes(match.displayState)
+  );
+
+  return challengeMatches.map((match, index) => ({
+    scheduledMatchId: match.id,
+    slug: `${CHALLENGE_MARKET_SLUG_PREFIX}${match.id}`,
+    title: `${match.challenger.name} vs ${match.challenged.name}`,
+    eventLabel: match.linkedMapName ? `Scheduled Match • ${match.linkedMapName}` : "Scheduled Match",
+    status: marketStatusFromScheduledMatch(match.displayState),
+    featured:
+      featuredChallengeIndex >= 0
+        ? index === featuredChallengeIndex
+        : false,
+    sortOrder: -100 + index,
+    source: "challenge" as const,
+    leftLabel: match.challenger.name,
+    rightLabel: match.challenged.name,
+    leftHref: match.challenger.href,
+    rightHref: match.challenged.href,
+    seedLeftWolo: 0,
+    seedRightWolo: 0,
+    closeAt: new Date(match.scheduledAt),
+    settledAt:
+      match.displayState === "completed" ||
+      match.displayState === "forfeited" ||
+      match.displayState === "declined" ||
+      match.displayState === "cancelled"
+        ? new Date(match.activityAt)
+        : null,
+    winnerSide: match.displayState === "completed" ? inferWinnerSideFromChallenge(match) : null,
+  }) satisfies MarketSeed);
 }
 
 
@@ -758,18 +847,37 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
 
 async function buildOpenMarketSeeds(prisma: PrismaClient) {
   const sessionSnapshot = await loadLiveSessionSnapshot(prisma);
+  const {
+    tiles: scheduledMatchTiles,
+    matchedActiveSessionKeys,
+    matchedCompletedSessionKeys,
+  } = await loadScheduledMatchTilesForLiveBoard(
+    prisma,
+    sessionSnapshot.activeSessions,
+    sessionSnapshot.recentlyCompletedSessions
+  );
 
   const seeds: MarketSeed[] = [];
   const seenSlugs = new Set<string>();
+  const challengeSeeds = buildChallengeMarketSeeds(scheduledMatchTiles);
+  const hasFeaturedChallenge = challengeSeeds.some((seed) => seed.featured);
+
+  challengeSeeds.forEach((seed) => {
+    if (seenSlugs.has(seed.slug)) return;
+    seenSlugs.add(seed.slug);
+    seeds.push(seed);
+  });
 
   sessionSnapshot.activeSessions.forEach((session, index) => {
-    const seed = buildSessionMarketSeed(session, index, seeds.length === 0);
+    if (matchedActiveSessionKeys.has(session.sessionKey)) return;
+    const seed = buildSessionMarketSeed(session, index, !hasFeaturedChallenge && seeds.length === 0);
     if (!seed || seenSlugs.has(seed.slug)) return;
     seenSlugs.add(seed.slug);
     seeds.push(seed);
   });
 
   sessionSnapshot.recentlyCompletedSessions.forEach((session, index) => {
+    if (matchedCompletedSessionKeys.has(session.sessionKey)) return;
     const seed = buildSessionMarketSeed(session, 100 + index, false);
     if (!seed || seenSlugs.has(seed.slug)) return;
     seenSlugs.add(seed.slug);

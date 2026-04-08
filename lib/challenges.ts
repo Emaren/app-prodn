@@ -901,11 +901,6 @@ export function deriveScheduledMatchTiles(
         continue;
       }
 
-      if (now.getTime() >= scheduledAt) {
-        tiles.push(buildScheduledMatchTile(row, "live", new Date(scheduledAt), null));
-        continue;
-      }
-
       tiles.push(buildScheduledMatchTile(row, "accepted", row.scheduledAt, null));
       continue;
     }
