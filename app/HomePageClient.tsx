@@ -446,7 +446,7 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
       : undefined;
   const heroRailStyle: CSSProperties | undefined =
     heroRailHeight && typeof window !== "undefined" && window.innerWidth >= 1024
-      ? { minHeight: `${heroRailHeight}px` }
+      ? { height: `${heroRailHeight}px` }
       : undefined;
 
   const heroStyle: CSSProperties = {
@@ -480,7 +480,7 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
           />
 
           <div
-            className="grid min-w-0 gap-3.5 lg:grid-rows-[auto_minmax(0,1fr)] lg:self-stretch lg:pt-4"
+            className="grid min-w-0 gap-3.5 lg:grid-rows-[auto_minmax(0,1fr)] lg:self-start lg:pt-4"
             style={heroRailStyle}
           >
             <TournamentPanel
