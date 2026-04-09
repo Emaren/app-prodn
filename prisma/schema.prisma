@@ -49,6 +49,8 @@ model User {
   appearancePreference           UserAppearancePreference?
   activityEvents                 UserActivityEvent[]
   betWagers                      BetWager[]
+  betStakeIntents                BetStakeIntent[]
+  betMarketWallets               BetMarketWallet[]
   scheduledChallengesCreated     ScheduledMatch[]                @relation("ScheduledMatchChallenger")
   scheduledChallengesReceived    ScheduledMatch[]                @relation("ScheduledMatchChallenged")
   scheduledMatchActivities       ScheduledMatchActivity[]        @relation("ScheduledMatchActivityActor")
@@ -518,29 +520,37 @@ model UserActivityEvent {
 }
 
 model BetMarket {
-  id               Int       @id @default(autoincrement())
-  scheduledMatchId Int?      @unique(map: "uq_bet_markets_scheduled_match_id") @map("scheduled_match_id")
-  slug             String    @unique @db.VarChar(120)
-  title            String    @db.VarChar(160)
-  eventLabel       String    @map("event_label") @db.VarChar(120)
-  marketType       String    @default("winner") @map("market_type") @db.VarChar(32)
-  status           String    @default("open") @db.VarChar(20)
-  featured         Boolean   @default(false)
-  sortOrder        Int       @default(0) @map("sort_order")
-  leftLabel        String    @map("left_label") @db.VarChar(80)
-  rightLabel       String    @map("right_label") @db.VarChar(80)
-  leftHref         String?   @map("left_href") @db.VarChar(160)
-  rightHref        String?   @map("right_href") @db.VarChar(160)
-  seedLeftWolo     Int       @default(0) @map("seed_left_wolo")
-  seedRightWolo    Int       @default(0) @map("seed_right_wolo")
-  closeAt          DateTime? @map("close_at") @db.Timestamp(6)
-  settledAt        DateTime? @map("settled_at") @db.Timestamp(6)
-  winnerSide       String?   @map("winner_side") @db.VarChar(20)
-  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+  id                    Int       @id @default(autoincrement())
+  scheduledMatchId      Int?      @unique(map: "uq_bet_markets_scheduled_match_id") @map("scheduled_match_id")
+  slug                  String    @unique @db.VarChar(120)
+  title                 String    @db.VarChar(160)
+  eventLabel            String    @map("event_label") @db.VarChar(120)
+  marketType            String    @default("winner") @map("market_type") @db.VarChar(32)
+  status                String    @default("open") @db.VarChar(20)
+  featured              Boolean   @default(false)
+  sortOrder             Int       @default(0) @map("sort_order")
+  leftLabel             String    @map("left_label") @db.VarChar(80)
+  rightLabel            String    @map("right_label") @db.VarChar(80)
+  leftHref              String?   @map("left_href") @db.VarChar(160)
+  rightHref             String?   @map("right_href") @db.VarChar(160)
+  seedLeftWolo          Int       @default(0) @map("seed_left_wolo")
+  seedRightWolo         Int       @default(0) @map("seed_right_wolo")
+  closeAt               DateTime? @map("close_at") @db.Timestamp(6)
+  settledAt             DateTime? @map("settled_at") @db.Timestamp(6)
+  winnerSide            String?   @map("winner_side") @db.VarChar(20)
+  settlementRunId       String?   @map("settlement_run_id") @db.VarChar(128)
+  settlementStatus      String?   @map("settlement_status") @db.VarChar(32)
+  settlementFailureCode String?   @map("settlement_failure_code") @db.VarChar(80)
+  settlementDetail      String?   @map("settlement_detail") @db.VarChar(255)
+  settlementAttemptedAt DateTime? @map("settlement_attempted_at") @db.Timestamp(6)
+  settlementExecutedAt  DateTime? @map("settlement_executed_at") @db.Timestamp(6)
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
 
   scheduledMatch ScheduledMatch? @relation(fields: [scheduledMatchId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   wagers         BetWager[]
+  stakeIntents   BetStakeIntent[]
+  walletLocks    BetMarketWallet[]
 
   @@index([status, featured, sortOrder], map: "ix_bet_markets_status_featured_sort_order")
   @@index([closeAt], map: "ix_bet_markets_close_at")
@@ -548,28 +558,50 @@ model BetMarket {
 }
 
 model BetWager {
-  id                 Int       @id @default(autoincrement())
-  marketId           Int       @map("market_id")
-  userId             Int       @map("user_id")
-  side               String    @db.VarChar(20)
-  amountWolo         Int       @map("amount_wolo")
-  payoutWolo         Int?      @map("payout_wolo")
-  status             String    @default("active") @db.VarChar(20)
-  executionMode      String    @default("app_only") @map("execution_mode") @db.VarChar(20)
-  stakeTxHash        String?   @unique(map: "uq_bet_wagers_stake_tx_hash") @map("stake_tx_hash") @db.VarChar(128)
-  stakeWalletAddress String?   @map("stake_wallet_address") @db.VarChar(100)
-  stakeLockedAt      DateTime? @map("stake_locked_at") @db.Timestamp(6)
-  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
-  settledAt          DateTime? @map("settled_at") @db.Timestamp(6)
+  id                 Int           @id @default(autoincrement())
+  marketId           Int           @map("market_id")
+  userId             Int           @map("user_id")
+  stakeIntentId      Int?          @unique(map: "uq_bet_wagers_stake_intent_id") @map("stake_intent_id")
+  side               String        @db.VarChar(20)
+  amountWolo         Int           @map("amount_wolo")
+  payoutWolo         Int?          @map("payout_wolo")
+  status             String        @default("active") @db.VarChar(20)
+  executionMode      String        @default("app_only") @map("execution_mode") @db.VarChar(20)
+  stakeTxHash        String?       @unique(map: "uq_bet_wagers_stake_tx_hash") @map("stake_tx_hash") @db.VarChar(128)
+  stakeWalletAddress String?       @map("stake_wallet_address") @db.VarChar(100)
+  stakeLockedAt      DateTime?     @map("stake_locked_at") @db.Timestamp(6)
+  payoutTxHash       String?       @map("payout_tx_hash") @db.VarChar(128)
+  payoutProofUrl     String?       @map("payout_proof_url") @db.VarChar(500)
+  createdAt          DateTime      @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt          DateTime      @updatedAt @map("updated_at") @db.Timestamp(6)
+  settledAt          DateTime?     @map("settled_at") @db.Timestamp(6)
 
-  market BetMarket @relation(fields: [marketId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  user   User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  market      BetMarket       @relation(fields: [marketId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  stakeIntent BetStakeIntent? @relation(fields: [stakeIntentId], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
-  @@unique([marketId, userId], map: "uq_bet_wagers_market_user")
   @@index([userId, status, updatedAt], map: "ix_bet_wagers_user_status_updated_at")
   @@index([marketId, status, updatedAt], map: "ix_bet_wagers_market_status_updated_at")
+  @@index([marketId, userId, side, status], map: "ix_bet_wagers_market_user_side_status")
   @@map("bet_wagers")
+}
+
+model BetMarketWallet {
+  id            Int      @id @default(autoincrement())
+  marketId      Int      @map("market_id")
+  userId        Int?     @map("user_id")
+  walletAddress String   @map("wallet_address") @db.VarChar(100)
+  side          String   @db.VarChar(20)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  market BetMarket @relation(fields: [marketId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user   User?     @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@unique([marketId, walletAddress], map: "uq_bet_market_wallets_market_wallet")
+  @@index([marketId, side], map: "ix_bet_market_wallets_market_side")
+  @@index([userId], map: "ix_bet_market_wallets_user_id")
+  @@map("bet_market_wallets")
 }
 
 model PendingWoloClaim {
@@ -583,6 +615,7 @@ model PendingWoloClaim {
   claimedByUserId      Int?      @map("claimed_by_user_id")
   rescindedByUserId    Int?      @map("rescinded_by_user_id")
   payoutTxHash         String?   @map("payout_tx_hash") @db.VarChar(128)
+  payoutProofUrl       String?   @map("payout_proof_url") @db.VarChar(500)
   errorState           String?   @map("error_state") @db.VarChar(255)
   payoutAttemptedAt    DateTime? @map("payout_attempted_at") @db.Timestamp(6)
   note                 String?   @db.VarChar(160)
@@ -597,6 +630,35 @@ model PendingWoloClaim {
   @@index([sourceMarketId], map: "ix_pending_wolo_claims_source_market_id")
   @@index([sourceGameStatsId], map: "ix_pending_wolo_claims_source_game_stats_id")
   @@map("pending_wolo_claims")
+}
+
+model BetStakeIntent {
+  id             Int       @id @default(autoincrement())
+  marketId       Int       @map("market_id")
+  userId         Int       @map("user_id")
+  side           String    @db.VarChar(20)
+  amountWolo     Int       @map("amount_wolo")
+  walletAddress  String?   @map("wallet_address") @db.VarChar(100)
+  walletProvider String?   @map("wallet_provider") @db.VarChar(32)
+  walletType     String?   @map("wallet_type") @db.VarChar(32)
+  browserInfo    String?   @map("browser_info") @db.VarChar(255)
+  routePath      String?   @map("route_path") @db.VarChar(160)
+  status         String    @default("awaiting_signature") @db.VarChar(32)
+  stakeTxHash    String?   @unique(map: "uq_bet_stake_intents_stake_tx_hash") @map("stake_tx_hash") @db.VarChar(128)
+  errorDetail    String?   @map("error_detail") @db.VarChar(255)
+  verifiedAt     DateTime? @map("verified_at") @db.Timestamp(6)
+  recordedAt     DateTime? @map("recorded_at") @db.Timestamp(6)
+  orphanedAt     DateTime? @map("orphaned_at") @db.Timestamp(6)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  market BetMarket  @relation(fields: [marketId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user   User       @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  wager  BetWager?
+
+  @@index([userId, status, updatedAt], map: "ix_bet_stake_intents_user_status_updated_at")
+  @@index([marketId, status, updatedAt], map: "ix_bet_stake_intents_market_status_updated_at")
+  @@map("bet_stake_intents")
 }
 
 model alembic_version {

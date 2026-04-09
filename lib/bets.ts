@@ -13,11 +13,23 @@ import {
   normalizePendingWoloClaimName,
 } from "@/lib/pendingWoloClaims";
 import {
-  executeWoloPayout,
+  executeWoloSettlementRun,
+  getWoloSettlementSurfaceStatus,
   hasWoloPayoutExecutionConfigured,
+  type SettlementRunResult,
+  validateWoloSettlementRun,
 } from "@/lib/woloBetSettlement";
 import { recordUserActivity } from "@/lib/userExperience";
-import { WOLO_BET_ESCROW_ADDRESS } from "@/lib/woloChain";
+import {
+  WOLO_BET_TEST_MODE,
+  buildWoloRestTxLookupUrl,
+  getWoloBetEscrowRuntime,
+} from "@/lib/woloChain";
+import {
+  BET_STAKE_INTENT_RECOVERABLE_STATUSES,
+  isBetStakeIntentCountableStatus,
+  loadViewerBetStakeIntents,
+} from "@/lib/betStakeIntents";
 
 export type BetSide = "left" | "right";
 export type BetStatus = "open" | "closing" | "live" | "settled";
@@ -46,6 +58,7 @@ export type BetBoardMarket = {
   viewerWager: {
     side: BetSide;
     amountWolo: number;
+    slipCount: number;
     executionMode: "app_only" | "onchain_escrow";
     stakeTxHash: string | null;
     stakeWalletAddress: string | null;
@@ -62,9 +75,13 @@ export type BetBookEntry = {
   side: BetSide;
   pickedLabel: string;
   amountWolo: number;
+  slipCount: number;
   projectedReturnWolo: number;
   closeLabel: string;
   status: BetStatus;
+  executionMode: "app_only" | "onchain_escrow";
+  stakeTxHash: string | null;
+  stakeProofUrl: string | null;
 };
 
 export type BetSettledResult = {
@@ -82,8 +99,41 @@ export type BetBoardSnapshot = {
   generatedAt: string;
   viewerName: string | null;
   wolo: {
+    betEscrowMode: "disabled" | "optional" | "required";
     betEscrowAddress: string | null;
     onchainEscrowEnabled: boolean;
+    onchainEscrowRequired: boolean;
+    escrowConfigError: string | null;
+    betTestMode: boolean;
+    settlementServiceConfigured: boolean;
+    settlementAuthConfigured: boolean;
+    settlementExecutionMode: "settlement_service" | "local_signer_fallback" | "unconfigured";
+    groupedRunCapability:
+      | "supported"
+      | "fallback_to_singles"
+      | "not_configured"
+      | "auth_required"
+      | "auth_failed"
+      | "unknown";
+    escrowVerifyCapability: "supported" | "not_configured" | "unavailable" | "unknown";
+    escrowRecentCapability: "supported" | "not_configured" | "unavailable" | "unknown";
+    settlementSurfaceWarnings: string[];
+    settlementSurfaceDetail: string | null;
+  };
+  recovery: {
+    unresolvedStakeIntents: Array<{
+      id: number;
+      marketId: number;
+      title: string;
+      eventLabel: string;
+      side: BetSide;
+      amountWolo: number;
+      status: string;
+      stakeTxHash: string | null;
+      walletAddress: string | null;
+      errorDetail: string | null;
+      updatedAt: string;
+    }>;
   };
   featuredMarket: BetBoardMarket | null;
   openMarkets: BetBoardMarket[];
@@ -167,6 +217,9 @@ function computeSharePercent(sidePoolWolo: number, totalPotWolo: number) {
 
 function formatCloseLabel(status: BetStatus, closeAt: Date | null) {
   if (status === "settled") return "Settled";
+  if (WOLO_BET_TEST_MODE) {
+    return status === "live" ? "Testing mode · live until final" : "Testing mode · open until final";
+  }
   if (status === "live") return "Live";
   if (!closeAt) return status === "closing" ? "Closing soon" : "Open";
 
@@ -298,6 +351,42 @@ function marketSeedCreateData(seed: MarketSeed) {
     closeAt: seed.closeAt,
     settledAt: seed.settledAt,
     winnerSide: seed.winnerSide,
+  };
+}
+
+function marketSeedUpdateData(
+  seed: MarketSeed,
+  existing?: {
+    status: string;
+    settledAt: Date | null;
+    winnerSide: string | null;
+  } | null
+) {
+  const existingWinnerSide =
+    existing?.winnerSide === "left" || existing?.winnerSide === "right"
+      ? (existing.winnerSide as BetSide)
+      : null;
+  const existingFinalized =
+    existing?.status === "settled" && Boolean(existing?.settledAt) && Boolean(existingWinnerSide);
+  const keepSettledWinnerLatch =
+    existingFinalized && (seed.status !== "settled" || seed.winnerSide !== existingWinnerSide);
+
+  return {
+    scheduledMatchId: seed.scheduledMatchId,
+    title: seed.title,
+    eventLabel: seed.eventLabel,
+    status: keepSettledWinnerLatch ? "settled" : seed.status,
+    featured: keepSettledWinnerLatch ? false : seed.featured,
+    sortOrder: seed.sortOrder,
+    leftLabel: seed.leftLabel,
+    rightLabel: seed.rightLabel,
+    leftHref: seed.leftHref,
+    rightHref: seed.rightHref,
+    seedLeftWolo: seed.seedLeftWolo,
+    seedRightWolo: seed.seedRightWolo,
+    closeAt: keepSettledWinnerLatch ? null : seed.closeAt,
+    settledAt: keepSettledWinnerLatch ? existing?.settledAt ?? seed.settledAt : seed.settledAt,
+    winnerSide: keepSettledWinnerLatch ? existingWinnerSide : seed.winnerSide,
   };
 }
 
@@ -524,115 +613,183 @@ function getLosingPlayerName(market: { leftLabel: string; rightLabel: string }, 
 function buildOnchainSettlementNote(
   market: { title: string; eventLabel: string },
   payoutWolo: number,
-  txHash: string
+  txHash: string,
+  settlementRunId?: string | null
 ) {
-  return `Auto-settled on-chain · ${market.title} · ${market.eventLabel} · ${payoutWolo} WOLO · tx ${txHash}`;
+  const runLabel = settlementRunId ? ` · run ${settlementRunId}` : "";
+  return `Auto-settled on-chain · ${market.title} · ${market.eventLabel} · ${payoutWolo} WOLO · tx ${txHash}${runLabel}`;
 }
 
-function summarizeSettlementError(error: unknown) {
-  const message = error instanceof Error ? error.message : String(error || "Unknown settlement error");
-  return message.trim().replace(/\s+/g, " ").slice(0, 255);
+type MarketSettlementClaimPlan = {
+  requestId: string;
+  claimPlayerName: string;
+  displayPlayerName: string;
+  amountWolo: number;
+  claimReason: "bet_refund" | "bet_payout" | "winner_bounty";
+  outcomeKind: "won" | "void" | "winner_bounty";
+  winnerName: string | null;
+  losingName: string | null;
+  walletAddress: string | null;
+  claimedByUserId: number | null;
+  wagerIds: number[];
+  activityUserIds: number[];
+};
+
+function buildMarketSettlementRunId(marketId: number) {
+  return `aoe2-bet-market-${marketId}`;
 }
 
-async function settleClaimRail(
-  tx: Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends">,
+function buildMarketSettlementRequestId(
+  marketId: number,
+  claimReason: MarketSettlementClaimPlan["claimReason"],
+  key: string
+) {
+  return `aoe2-bet-${marketId}-${claimReason}-${hashValue(key)}`;
+}
+
+function upsertSettlementClaimPlan(
+  plans: Map<string, MarketSettlementClaimPlan>,
   input: {
     marketId: number;
-    playerName: string;
-    displayPlayerName?: string | null;
+    planKey: string;
+    claimPlayerName: string;
+    displayPlayerName: string;
     amountWolo: number;
-    note: string;
-    walletAddress?: string | null;
-    claimedByUserId?: number | null;
-    settledAt: Date;
-    claimReason: string;
-    market: { title: string; eventLabel: string };
+    claimReason: MarketSettlementClaimPlan["claimReason"];
+    outcomeKind: MarketSettlementClaimPlan["outcomeKind"];
+    winnerName?: string | null;
+    losingName?: string | null;
+    walletAddress: string | null;
+    claimedByUserId: number | null;
+    wagerId?: number | null;
+    activityUserId?: number | null;
   }
 ) {
-  const normalizedPlayerName = normalizePendingWoloClaimName(input.playerName);
-  if (!normalizedPlayerName || input.amountWolo < 1) {
-    return { claimStatus: "ignored" as const, txHash: null as string | null };
-  }
-
-  const existingClaim = await tx.pendingWoloClaim.findUnique({
-    where: {
-      sourceMarketId_normalizedPlayerName: {
-        sourceMarketId: input.marketId,
-        normalizedPlayerName,
-      },
-    },
-    select: {
-      id: true,
-      status: true,
-      note: true,
-    },
-  });
-
-  if (existingClaim?.status === "claimed") {
-    return { claimStatus: "claimed" as const, txHash: null as string | null };
-  }
-
-  const canAutoSettle = Boolean(
-    input.walletAddress && input.claimedByUserId && hasWoloPayoutExecutionConfigured()
-  );
-
-  if (canAutoSettle) {
-    try {
-      const payout = await executeWoloPayout({
-        toAddress: input.walletAddress as string,
-        amountWolo: input.amountWolo,
-        memo: `${input.market.title} · ${input.claimReason}`,
-      });
-
-      if (payout?.txHash) {
-        await createPendingWoloClaim(tx as PrismaClient, {
-          playerName: input.playerName,
-          displayPlayerName: input.displayPlayerName || input.playerName,
-          amountWolo: input.amountWolo,
-          sourceMarketId: input.marketId,
-          payoutTxHash: payout.txHash,
-          errorState: null,
-          payoutAttemptedAt: input.settledAt,
-          note: buildOnchainSettlementNote(input.market, input.amountWolo, payout.txHash),
-          status: "claimed",
-          claimedByUserId: input.claimedByUserId,
-          claimedAt: input.settledAt,
-        });
-
-        return { claimStatus: "claimed" as const, txHash: payout.txHash };
-      }
-    } catch (error) {
-      console.error("Failed to auto-settle WOLO payout on-chain:", error);
-
-      await createPendingWoloClaim(tx as PrismaClient, {
-        playerName: input.playerName,
-        displayPlayerName: input.displayPlayerName || input.playerName,
-        amountWolo: input.amountWolo,
-        sourceMarketId: input.marketId,
-        payoutTxHash: null,
-        errorState: summarizeSettlementError(error),
-        payoutAttemptedAt: input.settledAt,
-        note: input.note,
-        status: "pending",
-      });
-
-      return { claimStatus: "pending" as const, txHash: null as string | null };
+  if (input.amountWolo < 1) return;
+  const existing = plans.get(input.planKey);
+  if (existing) {
+    existing.amountWolo += input.amountWolo;
+    if (typeof input.wagerId === "number") {
+      existing.wagerIds.push(input.wagerId);
     }
+    if (typeof input.activityUserId === "number" && !existing.activityUserIds.includes(input.activityUserId)) {
+      existing.activityUserIds.push(input.activityUserId);
+    }
+    return;
   }
 
-  await createPendingWoloClaim(tx as PrismaClient, {
-    playerName: input.playerName,
-    displayPlayerName: input.displayPlayerName || input.playerName,
+  plans.set(input.planKey, {
+    requestId: buildMarketSettlementRequestId(input.marketId, input.claimReason, input.planKey),
+    claimPlayerName: input.claimPlayerName,
+    displayPlayerName: input.displayPlayerName,
     amountWolo: input.amountWolo,
-    sourceMarketId: input.marketId,
-    payoutTxHash: null,
-    errorState: null,
-    payoutAttemptedAt: null,
-    note: input.note,
-    status: "pending",
+    claimReason: input.claimReason,
+    outcomeKind: input.outcomeKind,
+    winnerName: input.winnerName ?? null,
+    losingName: input.losingName ?? null,
+    walletAddress: input.walletAddress,
+    claimedByUserId: input.claimedByUserId,
+    wagerIds: typeof input.wagerId === "number" ? [input.wagerId] : [],
+    activityUserIds: typeof input.activityUserId === "number" ? [input.activityUserId] : [],
   });
+}
 
-  return { claimStatus: "pending" as const, txHash: null as string | null };
+function canExecuteValidatedSettlementRun(result: SettlementRunResult) {
+  return result.ok && !["failed", "invalid", "refused"].includes(result.status);
+}
+
+function resolveMarketSettlementStatus(
+  execution: SettlementRunResult | null,
+  validation: SettlementRunResult | null,
+  claimPlanCount: number
+) {
+  if (execution) {
+    if (execution.status === "partial") return "partial";
+    if (execution.ok && execution.executedPayoutCount > 0) return "executed";
+    return "failed";
+  }
+
+  if (validation && !canExecuteValidatedSettlementRun(validation)) {
+    return "dry_run";
+  }
+
+  if (claimPlanCount > 0) {
+    return "pending";
+  }
+
+  return null;
+}
+
+function resolveSettlementPlanError(
+  validation: SettlementRunResult | null,
+  payoutResult?: SettlementRunResult["payouts"][number]
+) {
+  return (
+    payoutResult?.detail ||
+    payoutResult?.failureCode ||
+    validation?.detail ||
+    validation?.failureCode ||
+    null
+  );
+}
+
+function isCountableOnchainWagerStakeIntent(
+  stakeIntent: { status: string | null } | null | undefined
+) {
+  return Boolean(stakeIntent && isBetStakeIntentCountableStatus(stakeIntent.status));
+}
+
+function isCountableBetWager(
+  wager: {
+    executionMode: string;
+    stakeIntent?: { status: string | null } | null;
+  }
+) {
+  return (
+    wager.executionMode !== "onchain_escrow" || isCountableOnchainWagerStakeIntent(wager.stakeIntent)
+  );
+}
+
+function buildCountableActiveWagerWhere() {
+  return {
+    status: "active",
+    OR: [
+      {
+        executionMode: "app_only",
+      },
+      {
+        executionMode: "onchain_escrow",
+        stakeIntent: {
+          is: {
+            status: "recorded",
+          },
+        },
+      },
+    ],
+  };
+}
+
+function combineSettlementDetail(
+  detail: string | null,
+  warnings: string[] = []
+) {
+  const normalizedWarnings = warnings
+    .map((warning) => warning.trim())
+    .filter(Boolean);
+
+  if (!detail && normalizedWarnings.length === 0) {
+    return null;
+  }
+
+  if (!detail) {
+    return normalizedWarnings.join(" ");
+  }
+
+  if (normalizedWarnings.length === 0) {
+    return detail;
+  }
+
+  return `${detail} Warnings: ${normalizedWarnings.join(" ")}`;
 }
 
 async function settleResolvedMarketWagers(prisma: PrismaClient) {
@@ -640,9 +797,7 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
     where: {
       status: "settled",
       wagers: {
-        some: {
-          status: "active",
-        },
+        some: buildCountableActiveWagerWhere(),
       },
     },
     select: {
@@ -656,12 +811,20 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
       seedRightWolo: true,
       settledAt: true,
       wagers: {
-        where: { status: "active" },
+        where: buildCountableActiveWagerWhere(),
         select: {
           id: true,
           userId: true,
           side: true,
           amountWolo: true,
+          payoutTxHash: true,
+          payoutProofUrl: true,
+          executionMode: true,
+          stakeIntent: {
+            select: {
+              status: true,
+            },
+          },
           user: {
             select: {
               id: true,
@@ -697,11 +860,13 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
             .filter((wager) => wager.side === "right")
             .reduce((sum, wager) => sum + wager.amountWolo, 0)
         : winningSide === "right"
-          ? market.seedLeftWolo +
-            market.wagers
-              .filter((wager) => wager.side === "left")
-              .reduce((sum, wager) => sum + wager.amountWolo, 0)
-          : 0;
+        ? market.seedLeftWolo +
+          market.wagers
+            .filter((wager) => wager.side === "left")
+            .reduce((sum, wager) => sum + wager.amountWolo, 0)
+        : 0;
+
+    const claimPlans = new Map<string, MarketSettlementClaimPlan>();
 
     await prisma.$transaction(async (tx) => {
       for (const wager of market.wagers) {
@@ -733,6 +898,8 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
           data: {
             status: nextStatus,
             payoutWolo,
+            payoutTxHash: null,
+            payoutProofUrl: null,
             settledAt,
           },
         });
@@ -766,78 +933,222 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
         }
 
         const claimPlayerName = claimPlayerNameForUser(wager.user);
-        const settlement = await settleClaimRail(tx, {
+        const claimReason = nextStatus === "void" ? "bet_refund" : "bet_payout";
+        const planKey = wager.user.id
+          ? `user:${wager.user.id}:${claimReason}`
+          : `name:${normalizePendingWoloClaimName(claimPlayerName)}:${claimReason}`;
+
+        upsertSettlementClaimPlan(claimPlans, {
           marketId: market.id,
-          playerName: claimPlayerName,
+          planKey,
+          claimPlayerName,
           displayPlayerName: claimPlayerName,
           amountWolo: payoutWolo,
-          note: buildPendingClaimNote(market, nextStatus, payoutWolo),
-          walletAddress: canAutoClaimForKnownUser(wager.user) ? wager.user.walletAddress ?? null : null,
+          claimReason,
+          outcomeKind: nextStatus,
+          walletAddress: canAutoClaimForKnownUser(wager.user)
+            ? wager.user.walletAddress ?? null
+            : null,
           claimedByUserId: canAutoClaimForKnownUser(wager.user) ? wager.user.id : null,
-          settledAt,
-          claimReason: nextStatus === "void" ? "bet_refund" : "bet_payout",
-          market,
-        });
-
-        await recordUserActivity(tx, {
-          userId: wager.userId,
-          type: settlement.claimStatus === "claimed" ? "wolo_claim_auto_settled" : "pending_wolo_claim_created",
-          path: "/bets",
-          label: market.title,
-          metadata: {
-            marketId: market.id,
-            wagerId: wager.id,
-            eventLabel: market.eventLabel,
-            amountWolo: payoutWolo,
-            claimReason: nextStatus === "void" ? "bet_refund" : "bet_payout",
-            claimStatus: settlement.claimStatus,
-            payoutTxHash: settlement.txHash,
-            settledAt: settledAt.toISOString(),
-          },
-          dedupeWithinSeconds: 5,
+          wagerId: wager.id,
+          activityUserId: wager.userId,
         });
       }
+    });
 
-      if (winningSide) {
-        const winningWagers = market.wagers.filter((wager) => wager.side === winningSide);
-        const losingWagers = market.wagers.filter((wager) => wager.side !== winningSide);
-        const winnerBountyWolo = losingWagers.reduce((sum, wager) => sum + wager.amountWolo, 0);
+    if (winningSide) {
+      const winningWagers = market.wagers.filter((wager) => wager.side === winningSide);
+      const losingWagers = market.wagers.filter((wager) => wager.side !== winningSide);
+      const winnerBountyWolo = losingWagers.reduce((sum, wager) => sum + wager.amountWolo, 0);
 
-        if (winningWagers.length === 0 && winnerBountyWolo > 0) {
-          const winnerName = getWinningPlayerName(market, winningSide);
-          const losingName = getLosingPlayerName(market, winningSide);
-          const autoClaimUser = await findAutoClaimUserForPlayerName(tx as PrismaClient, winnerName);
-          const bountySettlement = await settleClaimRail(tx, {
-            marketId: market.id,
-            playerName: winnerName,
-            displayPlayerName: winnerName,
-            amountWolo: winnerBountyWolo,
-            note: buildWinnerBountyNote(market, winnerName, losingName, winnerBountyWolo),
-            walletAddress: autoClaimUser?.walletAddress ?? null,
-            claimedByUserId: autoClaimUser?.id ?? null,
-            settledAt,
-            claimReason: "winner_bounty",
-            market,
+      if (winningWagers.length === 0 && winnerBountyWolo > 0) {
+        const winnerName = getWinningPlayerName(market, winningSide);
+        const losingName = getLosingPlayerName(market, winningSide);
+        const autoClaimUser = await findAutoClaimUserForPlayerName(prisma, winnerName);
+        upsertSettlementClaimPlan(claimPlans, {
+          marketId: market.id,
+          planKey: autoClaimUser?.id
+            ? `user:${autoClaimUser.id}:winner_bounty`
+            : `name:${normalizePendingWoloClaimName(winnerName)}:winner_bounty`,
+          claimPlayerName: winnerName,
+          displayPlayerName: winnerName,
+          amountWolo: winnerBountyWolo,
+          claimReason: "winner_bounty",
+          outcomeKind: "winner_bounty",
+          winnerName,
+          losingName,
+          walletAddress: autoClaimUser?.walletAddress ?? null,
+          claimedByUserId: autoClaimUser?.id ?? null,
+          activityUserId: autoClaimUser?.id ?? null,
+        });
+      }
+    }
+
+    const claimPlanList = [...claimPlans.values()];
+    const autoClaimPlans = claimPlanList.filter(
+      (plan) =>
+        Boolean(plan.walletAddress && plan.claimedByUserId) &&
+        hasWoloPayoutExecutionConfigured()
+    );
+
+    let validationResult: SettlementRunResult | null = null;
+    let executionResult: SettlementRunResult | null = null;
+    let settlementRunId: string | null = null;
+    let settlementAttemptedAt: Date | null = null;
+    let settlementExecutedAt: Date | null = null;
+
+    if (autoClaimPlans.length > 0) {
+      settlementRunId = buildMarketSettlementRunId(market.id);
+      settlementAttemptedAt = new Date();
+      validationResult = await validateWoloSettlementRun({
+        settlementRunId,
+        sourceApp: "aoe2hdbets",
+        sourceEventId: `bet-market-${market.id}`,
+        note: `Bet settlement · ${market.title}`,
+        memo: `AoE2 bet settlement · market ${market.id}`,
+        payouts: autoClaimPlans.map((plan) => ({
+          requestId: plan.requestId,
+          toAddress: plan.walletAddress as string,
+          amountWolo: plan.amountWolo,
+          memo: `${market.title} · ${plan.claimReason}`,
+        })),
+      });
+
+      if (!validationResult || canExecuteValidatedSettlementRun(validationResult)) {
+        executionResult = await executeWoloSettlementRun({
+          settlementRunId,
+          sourceApp: "aoe2hdbets",
+          sourceEventId: `bet-market-${market.id}`,
+          note: `Bet settlement · ${market.title}`,
+          memo: `AoE2 bet settlement · market ${market.id}`,
+          payouts: autoClaimPlans.map((plan) => ({
+            requestId: plan.requestId,
+            toAddress: plan.walletAddress as string,
+            amountWolo: plan.amountWolo,
+            memo: `${market.title} · ${plan.claimReason}`,
+          })),
+        });
+        settlementExecutedAt = new Date();
+      }
+    }
+
+    const payoutByRequestId = new Map(
+      (executionResult?.payouts || []).map((payout) => [payout.requestId, payout] as const)
+    );
+    const settlementStatus = resolveMarketSettlementStatus(
+      executionResult,
+      validationResult,
+      claimPlanList.length
+    );
+    const settlementFailureCode =
+      executionResult?.failureCode || validationResult?.failureCode || null;
+    const settlementDetail = combineSettlementDetail(
+      executionResult?.detail ||
+      validationResult?.detail ||
+      (claimPlanList.length > 0 && autoClaimPlans.length === 0
+        ? hasWoloPayoutExecutionConfigured()
+          ? "Claim rail pending manual or unmatched payouts."
+          : "Settlement execution is not configured in this environment."
+        : null),
+      [...(validationResult?.warnings || []), ...(executionResult?.warnings || [])]
+    );
+
+    await prisma.$transaction(async (tx) => {
+      await tx.betMarket.update({
+        where: { id: market.id },
+        data: {
+          settlementRunId,
+          settlementStatus,
+          settlementFailureCode,
+          settlementDetail,
+          settlementAttemptedAt,
+          settlementExecutedAt,
+        },
+      });
+
+      for (const plan of claimPlanList) {
+        const payout = payoutByRequestId.get(plan.requestId);
+        const payoutSucceeded = Boolean(payout?.ok && payout.txHash);
+        const payoutError = resolveSettlementPlanError(validationResult, payout);
+        const claimNote =
+          plan.outcomeKind === "winner_bounty"
+            ? buildWinnerBountyNote(
+                market,
+                plan.winnerName || plan.displayPlayerName,
+                plan.losingName || "the field",
+                plan.amountWolo
+              )
+            : buildPendingClaimNote(
+                market,
+                plan.outcomeKind === "void" ? "void" : "won",
+                plan.amountWolo
+              );
+
+        if (payoutSucceeded) {
+          await createPendingWoloClaim(tx as PrismaClient, {
+            playerName: plan.claimPlayerName,
+            displayPlayerName: plan.displayPlayerName,
+            amountWolo: plan.amountWolo,
+            sourceMarketId: market.id,
+            payoutTxHash: payout?.txHash ?? null,
+            payoutProofUrl: payout?.proofUrl ?? null,
+            errorState: null,
+            payoutAttemptedAt: settlementExecutedAt ?? settledAt,
+            note: buildOnchainSettlementNote(
+              market,
+              plan.amountWolo,
+              payout?.txHash ?? "",
+              settlementRunId
+            ),
+            status: "claimed",
+            claimedByUserId: plan.claimedByUserId,
+            claimedAt: settledAt,
           });
 
-          if (autoClaimUser?.id) {
-            await recordUserActivity(tx, {
-              userId: autoClaimUser.id,
-              type: bountySettlement.claimStatus === "claimed" ? "wolo_claim_auto_settled" : "pending_wolo_claim_created",
-              path: "/bets",
-              label: market.title,
-              metadata: {
-                marketId: market.id,
-                eventLabel: market.eventLabel,
-                amountWolo: winnerBountyWolo,
-                claimReason: "winner_bounty",
-                claimStatus: bountySettlement.claimStatus,
-                payoutTxHash: bountySettlement.txHash,
-                settledAt: settledAt.toISOString(),
+          if (plan.wagerIds.length > 0) {
+            await tx.betWager.updateMany({
+              where: { id: { in: plan.wagerIds } },
+              data: {
+                payoutTxHash: payout?.txHash ?? null,
+                payoutProofUrl: payout?.proofUrl ?? null,
               },
-              dedupeWithinSeconds: 5,
             });
           }
+        } else {
+          await createPendingWoloClaim(tx as PrismaClient, {
+            playerName: plan.claimPlayerName,
+            displayPlayerName: plan.displayPlayerName,
+            amountWolo: plan.amountWolo,
+            sourceMarketId: market.id,
+            payoutTxHash: payout?.txHash ?? null,
+            payoutProofUrl: payout?.proofUrl ?? null,
+            errorState: payoutError,
+            payoutAttemptedAt: settlementAttemptedAt,
+            note: claimNote,
+            status: "pending",
+          });
+        }
+
+        for (const activityUserId of plan.activityUserIds) {
+          await recordUserActivity(tx, {
+            userId: activityUserId,
+            type: payoutSucceeded ? "wolo_claim_auto_settled" : "pending_wolo_claim_created",
+            path: "/bets",
+            label: market.title,
+            metadata: {
+              marketId: market.id,
+              eventLabel: market.eventLabel,
+              amountWolo: plan.amountWolo,
+              claimReason: plan.claimReason,
+              claimStatus: payoutSucceeded ? "claimed" : "pending",
+              payoutTxHash: payout?.txHash ?? null,
+              payoutProofUrl: payout?.proofUrl ?? null,
+              settlementRunId,
+              settledAt: settledAt.toISOString(),
+              errorState: payoutSucceeded ? null : payoutError,
+            },
+            dedupeWithinSeconds: 5,
+          });
         }
       }
     });
@@ -891,29 +1202,23 @@ export async function ensureBetMarkets(prisma: PrismaClient) {
   const seeds = await buildOpenMarketSeeds(prisma);
   const slugs = [...new Set(seeds.map((seed) => seed.slug))];
   const staleMarketCutoff = new Date(Date.now() - 2 * 60_000);
+  const existingMarkets = await prisma.betMarket.findMany({
+    where: slugs.length > 0 ? { slug: { in: slugs } } : undefined,
+    select: {
+      slug: true,
+      status: true,
+      settledAt: true,
+      winnerSide: true,
+    },
+  });
+  const existingBySlug = new Map(existingMarkets.map((market) => [market.slug, market] as const));
 
   await Promise.all(
     seeds.map(async (seed) => {
       await prisma.betMarket.upsert({
         where: { slug: seed.slug },
         create: marketSeedCreateData(seed),
-        update: {
-          scheduledMatchId: seed.scheduledMatchId,
-          title: seed.title,
-          eventLabel: seed.eventLabel,
-          status: seed.status,
-          featured: seed.featured,
-          sortOrder: seed.sortOrder,
-          leftLabel: seed.leftLabel,
-          rightLabel: seed.rightLabel,
-          leftHref: seed.leftHref,
-          rightHref: seed.rightHref,
-          seedLeftWolo: seed.seedLeftWolo,
-          seedRightWolo: seed.seedRightWolo,
-          closeAt: seed.closeAt,
-          winnerSide: seed.winnerSide,
-          settledAt: seed.settledAt,
-        },
+        update: marketSeedUpdateData(seed, existingBySlug.get(seed.slug)),
       });
     })
   );
@@ -925,10 +1230,34 @@ export async function ensureBetMarkets(prisma: PrismaClient) {
             slug: { notIn: slugs },
             status: { in: OPEN_STATUSES },
             updatedAt: { lt: staleMarketCutoff },
+            wagers: {
+              none: {
+                status: "active",
+              },
+            },
+            stakeIntents: {
+              none: {
+                status: {
+                  in: [...BET_STAKE_INTENT_RECOVERABLE_STATUSES],
+                },
+              },
+            },
           }
         : {
             status: { in: OPEN_STATUSES },
             updatedAt: { lt: staleMarketCutoff },
+            wagers: {
+              none: {
+                status: "active",
+              },
+            },
+            stakeIntents: {
+              none: {
+                status: {
+                  in: [...BET_STAKE_INTENT_RECOVERABLE_STATUSES],
+                },
+              },
+            },
           },
     data: {
       status: "settled",
@@ -946,7 +1275,9 @@ function buildMarketCard(
   market: Awaited<ReturnType<typeof loadOpenMarkets>>[number],
   viewerUserId: number | null
 ): BetBoardMarket {
-  const activeWagers = market.wagers.filter((wager) => wager.status === "active");
+  const activeWagers = market.wagers.filter(
+    (wager) => wager.status === "active" && isCountableBetWager(wager)
+  );
   const leftUserPool = activeWagers
     .filter((wager) => wager.side === "left")
     .reduce((sum, wager) => sum + wager.amountWolo, 0);
@@ -956,8 +1287,13 @@ function buildMarketCard(
   const leftPoolWolo = market.seedLeftWolo + leftUserPool;
   const rightPoolWolo = market.seedRightWolo + rightUserPool;
   const totalPotWolo = leftPoolWolo + rightPoolWolo;
-  const viewerWager =
-    viewerUserId == null ? null : activeWagers.find((wager) => wager.userId === viewerUserId) || null;
+  const viewerWagers =
+    viewerUserId == null ? [] : activeWagers.filter((wager) => wager.userId === viewerUserId);
+  const latestViewerWager = viewerWagers[0] || null;
+  const aggregatedViewerAmount = viewerWagers.reduce(
+    (sum, wager) => sum + wager.amountWolo,
+    0
+  );
 
   return {
     id: market.id,
@@ -986,15 +1322,18 @@ function buildMarketCard(
       slips: activeWagers.filter((wager) => wager.side === "right").length,
       seededWolo: market.seedRightWolo,
     },
-    viewerWager: viewerWager
+    viewerWager: latestViewerWager
       ? {
-          side: viewerWager.side as BetSide,
-          amountWolo: viewerWager.amountWolo,
+          side: latestViewerWager.side as BetSide,
+          amountWolo: aggregatedViewerAmount,
+          slipCount: viewerWagers.length,
           executionMode:
-            viewerWager.executionMode === "onchain_escrow" ? "onchain_escrow" : "app_only",
-          stakeTxHash: viewerWager.stakeTxHash ?? null,
-          stakeWalletAddress: viewerWager.stakeWalletAddress ?? null,
-          stakeLockedAt: viewerWager.stakeLockedAt?.toISOString() ?? null,
+            viewerWagers.some((wager) => wager.executionMode === "onchain_escrow")
+              ? "onchain_escrow"
+              : "app_only",
+          stakeTxHash: latestViewerWager.stakeTxHash ?? null,
+          stakeWalletAddress: latestViewerWager.stakeWalletAddress ?? null,
+          stakeLockedAt: latestViewerWager.stakeLockedAt?.toISOString() ?? null,
         }
       : null,
     winnerSide:
@@ -1012,6 +1351,13 @@ async function loadOpenMarkets(prisma: PrismaClient) {
       wagers: {
         where: { status: "active" },
         orderBy: { updatedAt: "desc" },
+        include: {
+          stakeIntent: {
+            select: {
+              status: true,
+            },
+          },
+        },
       },
     },
   });
@@ -1132,6 +1478,7 @@ export async function loadBetBoardSnapshot(
   viewerUid?: string | null
 ): Promise<BetBoardSnapshot> {
   await ensureBetMarkets(prisma);
+  const escrowRuntime = getWoloBetEscrowRuntime();
 
   const viewer = viewerUid
     ? await prisma.user.findUnique({
@@ -1144,9 +1491,11 @@ export async function loadBetBoardSnapshot(
       })
     : null;
 
-  const [openMarketsRaw, settledResults] = await Promise.all([
+  const [openMarketsRaw, settledResults, unresolvedStakeIntents, settlementSurface] = await Promise.all([
     loadOpenMarkets(prisma),
     loadRecentSettledResults(prisma),
+    viewer?.id ? loadViewerBetStakeIntents(prisma, viewer.id) : Promise.resolve([]),
+    getWoloSettlementSurfaceStatus(),
   ]);
 
   const openMarkets = openMarketsRaw.map((market) => buildMarketCard(market, viewer?.id ?? null));
@@ -1168,6 +1517,7 @@ export async function loadBetBoardSnapshot(
         side,
         pickedLabel: side === "left" ? market.left.name : market.right.name,
         amountWolo,
+        slipCount: market.viewerWager?.slipCount || 0,
         projectedReturnWolo: projectReturnWolo(
           amountWolo,
           Math.max(0, selectedPool - amountWolo),
@@ -1175,6 +1525,11 @@ export async function loadBetBoardSnapshot(
         ),
         closeLabel: market.closeLabel,
         status: market.status,
+        executionMode: market.viewerWager?.executionMode || "app_only",
+        stakeTxHash: market.viewerWager?.stakeTxHash || null,
+        stakeProofUrl: market.viewerWager?.stakeTxHash
+          ? buildWoloRestTxLookupUrl(market.viewerWager.stakeTxHash)
+          : null,
       } satisfies BetBookEntry;
     })
     .sort((left, right) => right.amountWolo - left.amountWolo);
@@ -1215,14 +1570,41 @@ export async function loadBetBoardSnapshot(
     generatedAt: new Date().toISOString(),
     viewerName: viewer?.inGameName || viewer?.steamPersonaName || null,
     wolo: {
-      betEscrowAddress: WOLO_BET_ESCROW_ADDRESS || null,
-      onchainEscrowEnabled: Boolean(WOLO_BET_ESCROW_ADDRESS),
+      betEscrowMode: escrowRuntime.mode,
+      betEscrowAddress: escrowRuntime.escrowAddress,
+      onchainEscrowEnabled: escrowRuntime.onchainAllowed,
+      onchainEscrowRequired: escrowRuntime.onchainRequired,
+      escrowConfigError: escrowRuntime.configError,
+      betTestMode: WOLO_BET_TEST_MODE,
+      settlementServiceConfigured: settlementSurface.settlementServiceConfigured,
+      settlementAuthConfigured: settlementSurface.settlementAuthConfigured,
+      settlementExecutionMode: settlementSurface.payoutExecutionMode,
+      groupedRunCapability: settlementSurface.groupedRunCapability,
+      escrowVerifyCapability: settlementSurface.escrowVerifyCapability,
+      escrowRecentCapability: settlementSurface.escrowRecentCapability,
+      settlementSurfaceWarnings: settlementSurface.warnings,
+      settlementSurfaceDetail: settlementSurface.detail,
+    },
+    recovery: {
+      unresolvedStakeIntents: unresolvedStakeIntents.map((intent) => ({
+        id: intent.id,
+        marketId: intent.marketId,
+        title: intent.market.title,
+        eventLabel: intent.market.eventLabel,
+        side: intent.side === "right" ? "right" : "left",
+        amountWolo: intent.amountWolo,
+        status: intent.status,
+        stakeTxHash: intent.stakeTxHash ?? null,
+        walletAddress: intent.walletAddress ?? null,
+        errorDetail: intent.errorDetail ?? null,
+        updatedAt: intent.updatedAt.toISOString(),
+      })),
     },
     featuredMarket,
     openMarkets,
     settledResults,
     yourBook: {
-      activeCount: openWagers.length,
+      activeCount: openWagers.reduce((sum, wager) => sum + wager.slipCount, 0),
       stakedWolo: openWagers.reduce((sum, wager) => sum + wager.amountWolo, 0),
       projectedReturnWolo: openWagers.reduce(
         (sum, wager) => sum + wager.projectedReturnWolo,

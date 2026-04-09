@@ -156,6 +156,7 @@ export async function createPendingWoloClaim(
     sourceMarketId?: number | null;
     sourceGameStatsId?: number | null;
     payoutTxHash?: string | null;
+    payoutProofUrl?: string | null;
     errorState?: string | null;
     payoutAttemptedAt?: Date | null;
     note?: string | null;
@@ -178,6 +179,7 @@ export async function createPendingWoloClaim(
   const nextClaimedAt = nextStatus === "claimed" ? input.claimedAt ?? new Date() : null;
   const nextClaimedByUserId = nextStatus === "claimed" ? input.claimedByUserId ?? null : null;
   const nextPayoutTxHash = input.payoutTxHash?.trim().slice(0, 128) || null;
+  const nextPayoutProofUrl = input.payoutProofUrl?.trim().slice(0, 500) || null;
   const nextErrorState = input.errorState?.trim().slice(0, 255) || null;
   const nextPayoutAttemptedAt = input.payoutAttemptedAt ?? null;
 
@@ -197,6 +199,7 @@ export async function createPendingWoloClaim(
         claimedByUserId: nextClaimedByUserId,
         rescindedByUserId: null,
         payoutTxHash: nextPayoutTxHash,
+        payoutProofUrl: nextPayoutProofUrl,
         errorState: nextErrorState,
         payoutAttemptedAt: nextPayoutAttemptedAt,
         claimedAt: nextClaimedAt,
@@ -212,6 +215,7 @@ export async function createPendingWoloClaim(
         sourceGameStatsId: input.sourceGameStatsId ?? null,
         claimedByUserId: nextClaimedByUserId,
         payoutTxHash: nextPayoutTxHash,
+        payoutProofUrl: nextPayoutProofUrl,
         errorState: nextErrorState,
         payoutAttemptedAt: nextPayoutAttemptedAt,
         claimedAt: nextClaimedAt,
@@ -230,6 +234,7 @@ export async function createPendingWoloClaim(
       sourceGameStatsId: input.sourceGameStatsId ?? null,
       claimedByUserId: nextClaimedByUserId,
       payoutTxHash: nextPayoutTxHash,
+      payoutProofUrl: nextPayoutProofUrl,
       errorState: nextErrorState,
       payoutAttemptedAt: nextPayoutAttemptedAt,
       claimedAt: nextClaimedAt,

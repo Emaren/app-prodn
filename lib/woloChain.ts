@@ -21,10 +21,61 @@ export const WOLO_BET_ESCROW_ADDRESS =
   process.env.WOLO_BET_ESCROW_ADDRESS?.trim() ||
   "";
 
+export type WoloBetEscrowMode = "disabled" | "optional" | "required";
+
 export const WOLO_DEFAULT_GAS_PRICE =
   process.env.NEXT_PUBLIC_WOLO_GAS_PRICE?.trim() ||
   process.env.WOLO_GAS_PRICE?.trim() ||
   `0.025${WOLO_BASE_DENOM}`;
+
+const explicitBetEscrowMode =
+  process.env.NEXT_PUBLIC_WOLO_BET_ESCROW_MODE?.trim().toLowerCase() ||
+  process.env.WOLO_BET_ESCROW_MODE?.trim().toLowerCase() ||
+  "";
+
+function normalizeBetEscrowMode(value: string): WoloBetEscrowMode | null {
+  if (value === "required" || value === "optional" || value === "disabled") {
+    return value;
+  }
+  return null;
+}
+
+export const WOLO_BET_ESCROW_MODE: WoloBetEscrowMode =
+  normalizeBetEscrowMode(explicitBetEscrowMode) ||
+  (process.env.WOLO_BET_REQUIRE_ONCHAIN === "1" || WOLO_BET_ESCROW_ADDRESS
+    ? "required"
+    : "disabled");
+
+export const WOLO_BET_ESCROW_READY = Boolean(WOLO_BET_ESCROW_ADDRESS);
+export const WOLO_BET_ESCROW_REQUIRED = WOLO_BET_ESCROW_MODE === "required";
+export const WOLO_BET_ESCROW_OPTIONAL = WOLO_BET_ESCROW_MODE === "optional";
+export const WOLO_BET_ESCROW_CONFIG_ERROR =
+  WOLO_BET_ESCROW_REQUIRED && !WOLO_BET_ESCROW_READY
+    ? "WOLO bet escrow is required in this environment, but WOLO_BET_ESCROW_ADDRESS is not configured."
+    : null;
+
+const explicitBetTestMode =
+  process.env.NEXT_PUBLIC_WOLO_BET_TEST_MODE?.trim() ||
+  process.env.WOLO_BET_TEST_MODE?.trim() ||
+  "";
+
+export const WOLO_BET_TEST_MODE =
+  explicitBetTestMode === "1"
+    ? true
+    : explicitBetTestMode === "0"
+      ? false
+      : /testnet/i.test(WOLO_CHAIN_ID);
+
+export function getWoloBetEscrowRuntime() {
+  return {
+    mode: WOLO_BET_ESCROW_MODE,
+    escrowAddress: WOLO_BET_ESCROW_ADDRESS || null,
+    ready: WOLO_BET_ESCROW_READY,
+    onchainAllowed: WOLO_BET_ESCROW_MODE !== "disabled" && WOLO_BET_ESCROW_READY,
+    onchainRequired: WOLO_BET_ESCROW_REQUIRED,
+    configError: WOLO_BET_ESCROW_CONFIG_ERROR,
+  } as const;
+}
 
 export const WOLO_KEPLR_DOWNLOAD_URL = "https://www.keplr.app/get";
 export const WOLO_MONETARY_POLICY_LABEL = "Fixed Supply";
@@ -51,6 +102,12 @@ export function shortenAddress(address?: string, lead = 12, tail = 8) {
 
 export function toUwoLoAmount(amountWolo: number) {
   return String(Math.max(0, Math.round(amountWolo * 10 ** WOLO_COIN_DECIMALS)));
+}
+
+export function buildWoloRestTxLookupUrl(txHash?: string | null) {
+  const normalized = (txHash || "").trim().toUpperCase();
+  if (!normalized) return null;
+  return `${WOLO_REST_URL.replace(/\/+$/, "")}/cosmos/tx/v1beta1/txs/${normalized}`;
 }
 
 function buildBech32Config(prefix: string) {

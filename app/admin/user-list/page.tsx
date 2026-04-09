@@ -15,6 +15,11 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import {
+  WoloMarketRail,
+  type MarketRailRow,
+  type MarketRailSummary,
+} from "@/components/admin/WoloMarketRail";
 import { WoloSettlementRail } from "@/components/admin/WoloSettlementRail";
 import CommunityBadgePill from "@/components/contact/CommunityBadgePill";
 import { DEFAULT_BADGE_LABELS } from "@/lib/communityHonors";
@@ -167,6 +172,7 @@ type SettlementRailRow = {
   claimStatus: "pending" | "claimed" | "rescinded";
   settlementMode: "pending" | "auto_settled" | "claimed_manual" | "rescinded";
   payoutTxHash: string | null;
+  payoutProofUrl: string | null;
   errorState: string | null;
   note: string | null;
   payoutAttemptedAt: string | null;
@@ -196,6 +202,10 @@ type AdminUsersPayload = {
   settlementRail: {
     summary: SettlementRailSummary;
     rows: SettlementRailRow[];
+  };
+  marketRail: {
+    summary: MarketRailSummary;
+    rows: MarketRailRow[];
   };
 };
 
@@ -690,6 +700,15 @@ export default function UsersPage() {
             </div>
           </div>
         </section>
+      ) : null}
+
+      {payload ? (
+        <div className="mt-6">
+          <WoloMarketRail
+            summary={payload.marketRail.summary}
+            rows={payload.marketRail.rows}
+          />
+        </div>
       ) : null}
 
       {payload ? (

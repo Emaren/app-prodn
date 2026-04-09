@@ -10,6 +10,7 @@ export type SettlementRailRow = {
   claimStatus: "pending" | "claimed" | "rescinded";
   settlementMode: "pending" | "auto_settled" | "claimed_manual" | "rescinded";
   payoutTxHash: string | null;
+  payoutProofUrl: string | null;
   errorState: string | null;
   note: string | null;
   payoutAttemptedAt: string | null;
@@ -225,6 +226,16 @@ export function WoloSettlementRail({
                     <div className="font-mono text-xs text-slate-300">
                       {shortenTxHash(row.payoutTxHash)}
                     </div>
+                    {row.payoutProofUrl ? (
+                      <a
+                        href={row.payoutProofUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-2 inline-flex text-xs text-cyan-200 transition hover:text-cyan-100"
+                      >
+                        proof
+                      </a>
+                    ) : null}
                   </td>
 
                   <td className="px-3 py-3 text-xs text-slate-400">

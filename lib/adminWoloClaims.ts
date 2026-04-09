@@ -158,6 +158,7 @@ export async function retryPendingClaimSettlement(
         claimedByUserId: matchedUser.id,
         claimedAt: attemptAt,
         payoutTxHash: payout.txHash,
+        payoutProofUrl: payout.proofUrl ?? null,
         errorState: null,
         payoutAttemptedAt: attemptAt,
         note: compactSettlementNote(

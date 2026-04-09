@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { OfflineSigner } from "@cosmjs/proto-signing";
 import { toast } from "sonner";
 
@@ -13,6 +13,7 @@ import {
   WOLO_CHAIN_ID,
   WOLO_DEFAULT_GAS_PRICE,
   WOLO_RPC_URL,
+  buildWoloRestTxLookupUrl,
   toUwoLoAmount,
   woloChainConfig,
 } from "@/lib/woloChain";
@@ -20,6 +21,7 @@ import {
 const WOLO_LOGO_SRC = "/legacy/wolo-logo-transparent.png";
 const STAKE_OPTIONS = [10, 25, 50, 100] as const;
 const BETS_POLL_INTERVAL_MS = 5_000;
+const STAKE_RECOVERY_STORAGE_KEY = "aoe2hdbets.betStakeRecovery.v1";
 type BetSide = "left" | "right";
 type BetStatus = "open" | "closing" | "live" | "settled";
 
@@ -47,6 +49,7 @@ type BetBoardMarket = {
   viewerWager: {
     side: BetSide;
     amountWolo: number;
+    slipCount: number;
     executionMode: "app_only" | "onchain_escrow";
     stakeTxHash: string | null;
     stakeWalletAddress: string | null;
@@ -63,9 +66,13 @@ type BetBookEntry = {
   side: BetSide;
   pickedLabel: string;
   amountWolo: number;
+  slipCount: number;
   projectedReturnWolo: number;
   closeLabel: string;
   status: BetStatus;
+  executionMode: "app_only" | "onchain_escrow";
+  stakeTxHash: string | null;
+  stakeProofUrl: string | null;
 };
 
 type BetSettledResult = {
@@ -83,8 +90,41 @@ type BetBoardSnapshot = {
   generatedAt: string;
   viewerName: string | null;
   wolo: {
+    betEscrowMode: "disabled" | "optional" | "required";
     betEscrowAddress: string | null;
     onchainEscrowEnabled: boolean;
+    onchainEscrowRequired: boolean;
+    escrowConfigError: string | null;
+    betTestMode: boolean;
+    settlementServiceConfigured: boolean;
+    settlementAuthConfigured: boolean;
+    settlementExecutionMode: "settlement_service" | "local_signer_fallback" | "unconfigured";
+    groupedRunCapability:
+      | "supported"
+      | "fallback_to_singles"
+      | "not_configured"
+      | "auth_required"
+      | "auth_failed"
+      | "unknown";
+    escrowVerifyCapability: "supported" | "not_configured" | "unavailable" | "unknown";
+    escrowRecentCapability: "supported" | "not_configured" | "unavailable" | "unknown";
+    settlementSurfaceWarnings: string[];
+    settlementSurfaceDetail: string | null;
+  };
+  recovery: {
+    unresolvedStakeIntents: Array<{
+      id: number;
+      marketId: number;
+      title: string;
+      eventLabel: string;
+      side: BetSide;
+      amountWolo: number;
+      status: string;
+      stakeTxHash: string | null;
+      walletAddress: string | null;
+      errorDetail: string | null;
+      updatedAt: string;
+    }>;
   };
   featuredMarket: BetBoardMarket | null;
   openMarkets: BetBoardMarket[];
@@ -143,6 +183,36 @@ type BetSignerResolution = {
   isLedger: boolean;
 };
 
+type StakeExecutionResult = {
+  walletAddress: string | null;
+  stakeTxHash: string | null;
+  executionMode: "app_only" | "onchain_escrow";
+  walletProvider: "keplr" | null;
+  walletType: "ledger" | "keplr" | null;
+};
+
+type PreparedStakeWallet = {
+  signer: OfflineSigner;
+  walletAddress: string;
+  walletProvider: "keplr";
+  walletType: "ledger" | "keplr";
+  isLedger: boolean;
+};
+
+type PendingStakeRecovery = {
+  intentId: number;
+  marketId: number;
+  side: BetSide;
+  amountWolo: number;
+  walletAddress: string | null;
+  stakeTxHash: string | null;
+  walletProvider: string | null;
+  walletType: string | null;
+  browserInfo: string | null;
+  routePath: string;
+  updatedAt: string;
+};
+
 function shortTxHash(value: string) {
   if (value.length <= 18) return value;
   return `${value.slice(0, 10)}…${value.slice(-6)}`;
@@ -152,6 +222,64 @@ function isOnchainViewerWager(
   wager: BetBoardMarket["viewerWager"]
 ): wager is NonNullable<BetBoardMarket["viewerWager"]> {
   return Boolean(wager && wager.executionMode === "onchain_escrow");
+}
+
+function normalizePendingStakeRecovery(input: Partial<PendingStakeRecovery>) {
+  if (!Number.isFinite(input.intentId)) return null;
+  if (!Number.isFinite(input.marketId)) return null;
+  if (input.side !== "left" && input.side !== "right") return null;
+  if (!Number.isFinite(input.amountWolo) || (input.amountWolo ?? 0) < 1) return null;
+
+  return {
+    intentId: input.intentId as number,
+    marketId: input.marketId as number,
+    side: input.side,
+    amountWolo: Math.round(input.amountWolo as number),
+    walletAddress: typeof input.walletAddress === "string" ? input.walletAddress.trim() || null : null,
+    stakeTxHash: typeof input.stakeTxHash === "string" ? input.stakeTxHash.trim() || null : null,
+    walletProvider:
+      typeof input.walletProvider === "string" ? input.walletProvider.trim() || null : null,
+    walletType: typeof input.walletType === "string" ? input.walletType.trim() || null : null,
+    browserInfo: typeof input.browserInfo === "string" ? input.browserInfo.trim() || null : null,
+    routePath: typeof input.routePath === "string" ? input.routePath.trim() || "/bets" : "/bets",
+    updatedAt:
+      typeof input.updatedAt === "string" ? input.updatedAt.trim() || new Date().toISOString() : new Date().toISOString(),
+  } satisfies PendingStakeRecovery;
+}
+
+function readPendingStakeRecoveries() {
+  if (typeof window === "undefined") return [] as PendingStakeRecovery[];
+
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(STAKE_RECOVERY_STORAGE_KEY) || "[]");
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map((entry) =>
+        normalizePendingStakeRecovery(
+          entry && typeof entry === "object" ? (entry as Partial<PendingStakeRecovery>) : {}
+        )
+      )
+      .filter((entry): entry is PendingStakeRecovery => Boolean(entry));
+  } catch {
+    return [];
+  }
+}
+
+function writePendingStakeRecoveries(items: PendingStakeRecovery[]) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(STAKE_RECOVERY_STORAGE_KEY, JSON.stringify(items));
+}
+
+function upsertPendingStakeRecovery(item: PendingStakeRecovery) {
+  const current = readPendingStakeRecoveries().filter((entry) => entry.intentId !== item.intentId);
+  current.unshift(item);
+  writePendingStakeRecoveries(current.slice(0, 20));
+}
+
+function removePendingStakeRecovery(intentId: number) {
+  writePendingStakeRecoveries(
+    readPendingStakeRecoveries().filter((entry) => entry.intentId !== intentId)
+  );
 }
 
 function formatCompact(value: number) {
@@ -306,6 +434,55 @@ function statusPill(status: BetStatus) {
   return "border-sky-300/16 bg-[linear-gradient(135deg,rgba(30,64,175,0.34),rgba(59,130,246,0.12))] text-sky-100";
 }
 
+function groupedSettlementLabel(
+  capability:
+    | "supported"
+    | "fallback_to_singles"
+    | "not_configured"
+    | "auth_required"
+    | "auth_failed"
+    | "unknown"
+) {
+  switch (capability) {
+    case "supported":
+      return "grouped payouts ready";
+    case "fallback_to_singles":
+      return "single-payout fallback";
+    case "auth_required":
+      return "settlement auth missing";
+    case "auth_failed":
+      return "settlement auth failed";
+    case "not_configured":
+      return "settlement service off";
+    default:
+      return "settlement support unconfirmed";
+  }
+}
+
+function groupedSettlementTone(
+  capability:
+    | "supported"
+    | "fallback_to_singles"
+    | "not_configured"
+    | "auth_required"
+    | "auth_failed"
+    | "unknown"
+) {
+  switch (capability) {
+    case "supported":
+      return "border-emerald-300/20 bg-emerald-400/10 text-emerald-100";
+    case "fallback_to_singles":
+      return "border-amber-300/20 bg-amber-400/10 text-amber-100";
+    case "auth_required":
+    case "auth_failed":
+      return "border-rose-300/20 bg-rose-400/10 text-rose-100";
+    case "not_configured":
+      return "border-white/[0.08] bg-white/[0.04] text-slate-300";
+    default:
+      return "border-indigo-300/20 bg-indigo-400/10 text-indigo-100";
+  }
+}
+
 function sideSurface(selected: boolean, emphasis: "warm" | "cool") {
   if (selected && emphasis === "warm") {
     return "border-amber-200/18 bg-[linear-gradient(155deg,rgba(251,191,36,0.32),rgba(180,83,9,0.18)_58%,rgba(15,23,42,0.72))] text-white shadow-[0_16px_38px_rgba(245,158,11,0.18)]";
@@ -358,43 +535,53 @@ export default function BetsPage() {
   const [loadingBoard, setLoadingBoard] = useState(true);
   const [workingKey, setWorkingKey] = useState<string | null>(null);
   const [lockWorkflow, setLockWorkflow] = useState<LockWorkflow | null>(null);
+  const [recoveringIntentId, setRecoveringIntentId] = useState<number | null>(null);
+  const [attemptedAutoRecoverIds, setAttemptedAutoRecoverIds] = useState<number[]>([]);
+
+  const loadBoard = useCallback(async (quiet = false) => {
+    try {
+      const response = await fetch("/api/bets", { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error("Bet board failed to load.");
+      }
+      return (await response.json()) as BetBoardSnapshot;
+    } catch (error) {
+      console.error("Failed to load bet board:", error);
+      if (!quiet) {
+        toast.error("The book is quiet right now.");
+      }
+      return null;
+    } finally {
+      setLoadingBoard(false);
+    }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function loadBoard(quiet = false) {
-      try {
-        const response = await fetch("/api/bets", { cache: "no-store" });
-        if (!response.ok) {
-          throw new Error("Bet board failed to load.");
-        }
-        const payload = (await response.json()) as BetBoardSnapshot;
-        if (!cancelled) {
-          setBoard(payload);
-        }
-      } catch (error) {
-        console.error("Failed to load bet board:", error);
-        if (!cancelled && !quiet) {
-          toast.error("The book is quiet right now.");
-        }
-      } finally {
-        if (!cancelled) {
-          setLoadingBoard(false);
-        }
-      }
-    }
-
     function handleForegroundRefresh() {
       if (document.visibilityState === "visible") {
-        void loadBoard(true);
+        void loadBoard(true).then((payload) => {
+          if (!cancelled && payload) {
+            setBoard(payload);
+          }
+        });
       }
     }
 
-    void loadBoard();
+    void loadBoard().then((payload) => {
+      if (!cancelled && payload) {
+        setBoard(payload);
+      }
+    });
 
     const interval = window.setInterval(() => {
       if (document.visibilityState === "visible") {
-        void loadBoard(true);
+        void loadBoard(true).then((payload) => {
+          if (!cancelled && payload) {
+            setBoard(payload);
+          }
+        });
       }
     }, BETS_POLL_INTERVAL_MS);
 
@@ -407,7 +594,7 @@ export default function BetsPage() {
       window.removeEventListener("focus", handleForegroundRefresh);
       document.removeEventListener("visibilitychange", handleForegroundRefresh);
     };
-  }, []);
+  }, [loadBoard]);
 
   const featuredMarket = board?.featuredMarket ?? null;
   const openMarkets = useMemo(
@@ -421,22 +608,30 @@ export default function BetsPage() {
   );
   const liveCount = board?.heat.liveCount || 0;
   const openCount = board?.openMarkets.length || 0;
+  const runtimeBetEscrowMode = board?.wolo.betEscrowMode || "disabled";
   const runtimeBetEscrowAddress = board?.wolo.betEscrowAddress?.trim() || "";
   const onchainBetEscrowEnabled = board?.wolo.onchainEscrowEnabled ?? false;
+  const onchainBetEscrowRequired = board?.wolo.onchainEscrowRequired ?? false;
+  const runtimeBetEscrowConfigError = board?.wolo.escrowConfigError ?? null;
+  const runtimeBetTestMode = board?.wolo.betTestMode ?? false;
+  const settlementExecutionMode = board?.wolo.settlementExecutionMode || "unconfigured";
+  const groupedRunCapability = board?.wolo.groupedRunCapability || "not_configured";
+  const settlementSurfaceWarnings = board?.wolo.settlementSurfaceWarnings || [];
+  const settlementSurfaceDetail = board?.wolo.settlementSurfaceDetail ?? null;
+  const unresolvedStakeIntents = board?.recovery.unresolvedStakeIntents || [];
 
-  async function refreshBoard(nextPayload?: BetBoardSnapshot) {
+  const refreshBoard = useCallback(async (nextPayload?: BetBoardSnapshot) => {
     if (nextPayload) {
       setBoard(nextPayload);
       return;
     }
 
-    const response = await fetch("/api/bets", { cache: "no-store" });
-    if (!response.ok) {
+    const payload = await loadBoard(true);
+    if (!payload) {
       throw new Error("Book refresh failed.");
     }
-    const payload = (await response.json()) as BetBoardSnapshot;
     setBoard(payload);
-  }
+  }, [loadBoard]);
 
   function requireSignIn() {
     if (isAuthenticated) return true;
@@ -444,20 +639,185 @@ export default function BetsPage() {
     return false;
   }
 
+  async function createStakeIntent(input: {
+    marketId: number;
+    side: BetSide;
+    amountWolo: number;
+    walletAddress?: string | null;
+    walletProvider?: string | null;
+    walletType?: string | null;
+  }) {
+    const response = await fetch("/api/bets/stake-intents", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        marketId: input.marketId,
+        side: input.side,
+        amountWolo: input.amountWolo,
+        walletAddress: input.walletAddress || undefined,
+        walletProvider: input.walletProvider || undefined,
+        walletType: input.walletType || undefined,
+        browserInfo:
+          typeof navigator !== "undefined" ? navigator.userAgent.slice(0, 500) : undefined,
+        routePath: "/bets",
+      }),
+    });
+
+    const payload = (await response.json().catch(() => ({}))) as {
+      id?: number;
+      detail?: string;
+    };
+
+    if (!response.ok || !Number.isFinite(payload.id)) {
+      throw new Error(payload.detail || "Could not prepare stake recovery.");
+    }
+
+    return payload.id as number;
+  }
+
+  async function recordStakeIntentBroadcast(
+    intentId: number,
+    recovery: PendingStakeRecovery
+  ) {
+    const response = await fetch(`/api/bets/stake-intents/${intentId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "record_broadcast",
+        walletAddress: recovery.walletAddress,
+        walletProvider: recovery.walletProvider,
+        walletType: recovery.walletType,
+        browserInfo: recovery.browserInfo,
+        routePath: recovery.routePath,
+        stakeTxHash: recovery.stakeTxHash,
+      }),
+    });
+
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => ({}))) as { detail?: string };
+      throw new Error(payload.detail || "Could not record the signed stake.");
+    }
+  }
+
+  async function recordStakeIntentFailure(input: {
+    intentId: number;
+    walletAddress?: string | null;
+    walletProvider?: string | null;
+    walletType?: string | null;
+    step: string;
+    rawError: string;
+    status?: "failed" | "suspect" | "orphaned";
+  }) {
+    await fetch(`/api/bets/stake-intents/${input.intentId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "record_failure",
+        walletAddress: input.walletAddress,
+        walletProvider: input.walletProvider,
+        walletType: input.walletType,
+        browserInfo: typeof navigator !== "undefined" ? navigator.userAgent.slice(0, 500) : null,
+        routePath: "/bets",
+        step: input.step,
+        rawError: input.rawError,
+        status: input.status ?? "failed",
+      }),
+    }).catch(() => null);
+  }
+
+  const recoverStakeIntent = useCallback(
+    async (intentId: number, options?: { automatic?: boolean }) => {
+      const recovery = readPendingStakeRecoveries().find((entry) => entry.intentId === intentId) || null;
+      setRecoveringIntentId(intentId);
+
+      try {
+        if (recovery?.stakeTxHash) {
+          await recordStakeIntentBroadcast(intentId, recovery);
+        }
+
+        const response = await fetch(`/api/bets/stake-intents/${intentId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "recover",
+            walletAddress: recovery?.walletAddress || connectedWalletAddress || null,
+            stakeTxHash: recovery?.stakeTxHash || null,
+          }),
+        });
+
+        const payload = (await response.json().catch(() => ({}))) as BetBoardSnapshot & {
+          detail?: string;
+        };
+
+        if (!response.ok) {
+          throw new Error(payload.detail || "Could not recover this signed stake.");
+        }
+
+        removePendingStakeRecovery(intentId);
+        await refreshBoard(payload);
+        if (!options?.automatic) {
+          toast.success("Recovered the signed WOLO stake into the book.");
+        }
+      } catch (error) {
+        if (!options?.automatic) {
+          toast.error(
+            error instanceof Error ? error.message : "Could not recover this signed stake."
+          );
+        }
+      } finally {
+        setRecoveringIntentId((current) => (current === intentId ? null : current));
+      }
+    },
+    [connectedWalletAddress, refreshBoard]
+  );
+
+  useEffect(() => {
+    if (!isAuthenticated || !board || recoveringIntentId || workingKey || lockWorkflow) {
+      return;
+    }
+
+    const unresolved = board.recovery.unresolvedStakeIntents.find((intent) => {
+      if (attemptedAutoRecoverIds.includes(intent.id)) return false;
+      const pending = readPendingStakeRecoveries().find((entry) => entry.intentId === intent.id);
+      if (pending?.stakeTxHash) return true;
+      return (
+        Boolean(intent.stakeTxHash) &&
+        ["broadcast_submitted", "verified_unrecorded", "suspect", "orphaned"].includes(intent.status)
+      );
+    });
+
+    if (!unresolved) {
+      return;
+    }
+
+    setAttemptedAutoRecoverIds((current) =>
+      current.includes(unresolved.id) ? current : [...current, unresolved.id]
+    );
+    void recoverStakeIntent(unresolved.id, { automatic: true });
+  }, [
+    attemptedAutoRecoverIds,
+    board,
+    isAuthenticated,
+    lockWorkflow,
+    recoverStakeIntent,
+    recoveringIntentId,
+    workingKey,
+  ]);
+
   function handleSelect(market: BetBoardMarket, side: BetSide) {
     if (!requireSignIn()) return;
     const viewerWager = market.viewerWager;
-    if (viewerWager?.executionMode === "onchain_escrow") {
-      toast.message("This slip is already live in WOLO escrow.");
+    if (viewerWager && viewerWager.side !== side) {
+      toast.message("This book is locked to your first side for now. Add more to that same side only.");
       return;
     }
-    const existingStake = viewerWager?.amountWolo || 25;
     setSelection({
       marketId: market.id,
-      side,
-      stake: STAKE_OPTIONS.includes(existingStake as (typeof STAKE_OPTIONS)[number])
-        ? existingStake
-        : 25,
+      side: viewerWager?.side || side,
+      stake:
+        selection && selection.marketId === market.id && selection.side === (viewerWager?.side || side)
+          ? selection.stake
+          : 25,
     });
   }
 
@@ -473,13 +833,12 @@ export default function BetsPage() {
     return connectKeplr();
   }
 
-  async function lockStakeOnChain(market: BetBoardMarket, amountWolo: number) {
+  async function prepareStakeWallet(market: BetBoardMarket): Promise<PreparedStakeWallet> {
     if (!onchainBetEscrowEnabled || !runtimeBetEscrowAddress) {
-      return {
-        walletAddress: null as string | null,
-        stakeTxHash: null as string | null,
-        executionMode: "app_only" as const,
-      };
+      throw new Error(
+        runtimeBetEscrowConfigError ||
+          "WOLO escrow is not available for this market in the current environment."
+      );
     }
 
     setLockWorkflow({
@@ -490,7 +849,7 @@ export default function BetsPage() {
 
     const walletAddress = await ensureWalletAddress();
     if (!walletAddress) {
-      throw new Error("Connect Keplr before locking a real WOLO stake.");
+      throw new Error("Connect Keplr before locking a verified WOLO stake.");
     }
 
     const keplrWindow = window as BetBrowserWindow;
@@ -508,6 +867,38 @@ export default function BetsPage() {
     }
 
     const signerResolution = await resolveBetSigner(keplrWindow, walletAddress);
+    return {
+      signer: signerResolution.signer,
+      walletAddress: signerResolution.signerAddress,
+      walletProvider: "keplr",
+      walletType: signerResolution.isLedger ? "ledger" : "keplr",
+      isLedger: signerResolution.isLedger,
+    };
+  }
+
+  async function lockStakeOnChain(
+    market: BetBoardMarket,
+    amountWolo: number,
+    preparedWallet?: PreparedStakeWallet | null
+  ): Promise<StakeExecutionResult> {
+    if (!onchainBetEscrowEnabled || !runtimeBetEscrowAddress) {
+      if (onchainBetEscrowRequired) {
+        throw new Error(
+          runtimeBetEscrowConfigError ||
+            "Verified WOLO escrow is required here, but the WOLO escrow rail is not ready."
+        );
+      }
+
+      return {
+        walletAddress: null as string | null,
+        stakeTxHash: null as string | null,
+        executionMode: "app_only" as const,
+        walletProvider: null,
+        walletType: null,
+      };
+    }
+
+    const signerResolution = preparedWallet || (await prepareStakeWallet(market));
 
     setLockWorkflow({
       marketId: market.id,
@@ -533,7 +924,7 @@ export default function BetsPage() {
       );
 
       const result = await client.sendTokens(
-        signerResolution.signerAddress,
+        signerResolution.walletAddress,
         runtimeBetEscrowAddress,
         [{ amount: toUwoLoAmount(amountWolo), denom: WOLO_BASE_DENOM }],
         "auto",
@@ -541,9 +932,11 @@ export default function BetsPage() {
       );
 
       return {
-        walletAddress: signerResolution.signerAddress,
+        walletAddress: signerResolution.walletAddress,
         stakeTxHash: result.transactionHash,
         executionMode: "onchain_escrow" as const,
+        walletProvider: signerResolution.walletProvider,
+        walletType: signerResolution.walletType,
       };
     } catch (error) {
       throw new Error(describeStakeLockError(error, { isLedger: signerResolution.isLedger }));
@@ -555,19 +948,75 @@ export default function BetsPage() {
   async function handleLock(market: BetBoardMarket) {
     if (!selection || selection.marketId !== market.id) return;
     if (!requireSignIn()) return;
-    if (isOnchainViewerWager(market.viewerWager)) {
-      toast.message("This slip is already live in WOLO escrow.");
+    if (market.viewerWager && market.viewerWager.side !== selection.side) {
+      toast.error("This book is locked to your first side for now.");
+      return;
+    }
+    if (onchainBetEscrowRequired && (!onchainBetEscrowEnabled || !runtimeBetEscrowAddress)) {
+      toast.error(
+        runtimeBetEscrowConfigError ||
+          "Verified WOLO escrow is required here, but the WOLO escrow rail is not ready."
+      );
       return;
     }
 
     setWorkingKey(`lock-${market.id}`);
+    let intentId: number | null = null;
+    let pendingRecovery: PendingStakeRecovery | null = null;
+    let preparedWallet: PreparedStakeWallet | null = null;
+
     try {
-      const stakeExecution = await lockStakeOnChain(market, selection.stake);
+      if (onchainBetEscrowEnabled && runtimeBetEscrowAddress) {
+        preparedWallet = await prepareStakeWallet(market);
+        intentId = await createStakeIntent({
+          marketId: market.id,
+          side: selection.side,
+          amountWolo: selection.stake,
+          walletAddress: preparedWallet.walletAddress,
+          walletProvider: preparedWallet.walletProvider,
+          walletType: preparedWallet.walletType,
+        });
+
+        pendingRecovery = {
+          intentId,
+          marketId: market.id,
+          side: selection.side,
+          amountWolo: selection.stake,
+          walletAddress: preparedWallet.walletAddress,
+          stakeTxHash: null,
+          walletProvider: preparedWallet.walletProvider,
+          walletType: preparedWallet.walletType,
+          browserInfo:
+            typeof navigator !== "undefined" ? navigator.userAgent.slice(0, 500) : null,
+          routePath: "/bets",
+          updatedAt: new Date().toISOString(),
+        };
+        upsertPendingStakeRecovery(pendingRecovery);
+      }
+
+      const stakeExecution = await lockStakeOnChain(market, selection.stake, preparedWallet);
+      if (pendingRecovery) {
+        pendingRecovery = {
+          ...pendingRecovery,
+          walletAddress: stakeExecution.walletAddress,
+          stakeTxHash: stakeExecution.stakeTxHash,
+          walletProvider: stakeExecution.walletProvider,
+          walletType: stakeExecution.walletType,
+          updatedAt: new Date().toISOString(),
+        };
+        upsertPendingStakeRecovery(pendingRecovery);
+      }
+
       setLockWorkflow({
         marketId: market.id,
         phase: "recording_wager",
         stakeTxHash: stakeExecution.stakeTxHash,
       });
+
+      if (intentId && pendingRecovery?.stakeTxHash) {
+        await recordStakeIntentBroadcast(intentId, pendingRecovery);
+      }
+
       const response = await fetch("/api/bets/wager", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -577,6 +1026,7 @@ export default function BetsPage() {
           amountWolo: selection.stake,
           walletAddress: stakeExecution.walletAddress,
           stakeTxHash: stakeExecution.stakeTxHash,
+          intentId,
         }),
       });
 
@@ -588,15 +1038,32 @@ export default function BetsPage() {
         throw new Error(payload.detail || "Could not lock the wager.");
       }
 
+      if (intentId) {
+        removePendingStakeRecovery(intentId);
+      }
       await refreshBoard(payload);
       setSelection(null);
       if (stakeExecution.executionMode === "onchain_escrow" && stakeExecution.stakeTxHash) {
         toast.success(`Escrow confirmed for ${selection.stake} WOLO on ${selection.side === "left" ? market.left.name : market.right.name}. ${shortTxHash(stakeExecution.stakeTxHash)}`);
       } else {
-        toast.success(`Locked ${selection.stake} WOLO on ${selection.side === "left" ? market.left.name : market.right.name}.`);
+        toast.success(`Added ${selection.stake} WOLO to ${selection.side === "left" ? market.left.name : market.right.name}.`);
       }
     } catch (error) {
       console.error("Failed to lock wager:", error);
+      if (intentId) {
+        await recordStakeIntentFailure({
+          intentId,
+          walletAddress: pendingRecovery?.walletAddress || connectedWalletAddress || null,
+          walletProvider: pendingRecovery?.walletProvider || "keplr",
+          walletType: pendingRecovery?.walletType || null,
+          step: lockWorkflow?.phase || "lock_wager",
+          rawError: error instanceof Error ? error.message : "Could not lock the wager.",
+          status: pendingRecovery?.stakeTxHash ? "suspect" : "failed",
+        });
+        if (!pendingRecovery?.stakeTxHash) {
+          removePendingStakeRecovery(intentId);
+        }
+      }
       toast.error(error instanceof Error ? error.message : "Could not lock the wager.");
     } finally {
       setWorkingKey(null);
@@ -638,6 +1105,7 @@ export default function BetsPage() {
   }
 
   const viewerName = board?.viewerName || user?.inGameName || user?.steamPersonaName || "Your book";
+  const pendingStakeRecoveries = readPendingStakeRecoveries();
 
   return (
     <main className="space-y-5 overflow-x-hidden py-4 text-white sm:space-y-6 sm:py-5">
@@ -653,6 +1121,42 @@ export default function BetsPage() {
             <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-slate-300">
               {liveCount} live
             </span>
+            <span
+              className={`rounded-full px-3 py-1 text-xs uppercase tracking-[0.18em] ${
+                onchainBetEscrowRequired && onchainBetEscrowEnabled
+                  ? "border border-cyan-300/20 bg-cyan-400/10 text-cyan-100"
+                  : onchainBetEscrowRequired
+                    ? "border border-rose-300/20 bg-rose-400/10 text-rose-100"
+                    : onchainBetEscrowEnabled
+                      ? "border border-amber-300/20 bg-amber-400/10 text-amber-100"
+                      : "border border-white/[0.08] bg-white/[0.04] text-slate-300"
+              }`}
+            >
+              {onchainBetEscrowRequired && onchainBetEscrowEnabled
+                ? "verified escrow required"
+                : onchainBetEscrowRequired
+                  ? "escrow required"
+                  : runtimeBetEscrowMode === "optional" && onchainBetEscrowEnabled
+                    ? "escrow optional"
+                    : "app-side fallback"}
+            </span>
+            <span
+              className={`rounded-full border px-3 py-1 text-xs uppercase tracking-[0.18em] ${groupedSettlementTone(groupedRunCapability)}`}
+            >
+              {groupedSettlementLabel(groupedRunCapability)}
+            </span>
+            <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs uppercase tracking-[0.18em] text-slate-300">
+              {settlementExecutionMode === "settlement_service"
+                ? "chain rail active"
+                : settlementExecutionMode === "local_signer_fallback"
+                  ? "local signer fallback"
+                  : "chain rail pending"}
+            </span>
+            {runtimeBetTestMode ? (
+              <span className="rounded-full border border-amber-300/20 bg-amber-400/10 px-3 py-1 text-xs uppercase tracking-[0.18em] text-amber-100">
+                testing mode
+              </span>
+            ) : null}
           </div>
 
           <div className="mt-5">
@@ -688,6 +1192,35 @@ export default function BetsPage() {
               </div>
             </div>
           </div>
+
+          {runtimeBetTestMode ? (
+            <div className={`mt-4 ${insetClass()} px-4 py-4 text-sm text-slate-300`}>
+              Testing mode keeps the book open until official result or finalization. Same wallet, same side only for now.
+            </div>
+          ) : null}
+
+          {runtimeBetEscrowConfigError ? (
+            <div className={`mt-4 ${insetClass()} border-rose-300/15 bg-rose-500/[0.08] px-4 py-4 text-sm text-rose-100`}>
+              {runtimeBetEscrowConfigError}
+            </div>
+          ) : null}
+          {settlementSurfaceDetail ? (
+            <div className={`mt-4 ${insetClass()} px-4 py-4 text-sm text-slate-300`}>
+              {settlementSurfaceDetail}
+            </div>
+          ) : null}
+          {settlementSurfaceWarnings.length ? (
+            <div className="mt-4 space-y-2">
+              {settlementSurfaceWarnings.map((warning, index) => (
+                <div
+                  key={`${warning}-${index}`}
+                  className={`${insetClass()} border-amber-300/15 bg-amber-500/[0.08] px-4 py-4 text-sm text-amber-100`}
+                >
+                  {warning}
+                </div>
+              ))}
+            </div>
+          ) : null}
         </div>
 
         <section className={`${shellClass()} relative overflow-hidden p-5 sm:p-6`}>
@@ -797,6 +1330,73 @@ export default function BetsPage() {
                   />
                 </div>
 
+                {unresolvedStakeIntents.length ? (
+                  <div className="mt-5 space-y-2">
+                    {unresolvedStakeIntents.map((intent) => {
+                      const pendingRecovery =
+                        pendingStakeRecoveries.find((entry) => entry.intentId === intent.id) || null;
+                      const stakeProofUrl = intent.stakeTxHash
+                        ? buildWoloRestTxLookupUrl(intent.stakeTxHash)
+                        : pendingRecovery?.stakeTxHash
+                          ? buildWoloRestTxLookupUrl(pendingRecovery.stakeTxHash)
+                          : null;
+                      const canRecover = Boolean(intent.stakeTxHash || pendingRecovery?.stakeTxHash);
+
+                      return (
+                        <div
+                          key={intent.id}
+                          className={`${cardClass()} border-amber-300/15 bg-amber-500/[0.06] px-4 py-4`}
+                        >
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="text-sm font-semibold text-white">
+                                Signed stake recovery · {intent.title}
+                              </div>
+                              <div className="mt-1 text-sm text-slate-300">
+                                {intent.side === "left" ? "Left side" : "Right side"} · {formatCompact(intent.amountWolo)} WOLO · {intent.status}
+                              </div>
+                              <div className="mt-1 text-xs text-slate-400">
+                                Pools and settlement exclude this stake until it is safely recorded.
+                              </div>
+                              <div className="mt-1 text-xs text-slate-400">
+                                {formatSettledTime(intent.updatedAt)}
+                              </div>
+                              {intent.errorDetail ? (
+                                <div className="mt-2 text-xs text-amber-100">{intent.errorDetail}</div>
+                              ) : null}
+                            </div>
+
+                            <div className="flex flex-wrap gap-2">
+                              {stakeProofUrl ? (
+                                <a
+                                  href={stakeProofUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className={`inline-flex items-center rounded-full px-3 py-2 text-xs transition ${edgeButton("glass")}`}
+                                >
+                                  Stake Proof
+                                </a>
+                              ) : null}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  void recoverStakeIntent(intent.id);
+                                }}
+                                disabled={!canRecover || recoveringIntentId === intent.id}
+                                className={`inline-flex items-center rounded-full px-3 py-2 text-xs font-semibold transition ${edgeButton("gold")} ${
+                                  !canRecover || recoveringIntentId === intent.id ? "opacity-60" : ""
+                                }`}
+                              >
+                                {recoveringIntentId === intent.id ? "Recovering..." : "Recover"}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : null}
+
                 <div className="mt-5 space-y-3">
                   {board?.yourBook.openWagers.length ? (
                     board.yourBook.openWagers.map((wager) => (
@@ -808,10 +1408,33 @@ export default function BetsPage() {
                         <div className="text-sm uppercase tracking-[0.28em] text-slate-500 break-words">
                           {wager.eventLabel}
                         </div>
-                        <div className="mt-2 text-lg font-semibold leading-tight text-white break-words">
+                          <div className="mt-2 text-lg font-semibold leading-tight text-white break-words">
                           {wager.pickedLabel}
                         </div>
                           <div className="mt-1 text-sm text-slate-400">{wager.closeLabel}</div>
+                          <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-slate-500">
+                            <span>{wager.slipCount} slip{wager.slipCount === 1 ? "" : "s"}</span>
+                            <span>
+                              {wager.executionMode === "onchain_escrow"
+                                ? "verified escrow"
+                                : "app-side fallback"}
+                            </span>
+                            {wager.stakeTxHash ? (
+                              <span className="font-mono text-slate-400">
+                                {shortTxHash(wager.stakeTxHash)}
+                              </span>
+                            ) : null}
+                            {wager.stakeProofUrl ? (
+                              <a
+                                href={wager.stakeProofUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-cyan-200 transition hover:text-cyan-100"
+                              >
+                                proof
+                              </a>
+                            ) : null}
+                          </div>
                         </div>
 
                         <div className="text-right">
@@ -966,61 +1589,57 @@ function MarketFeature({
   onLock: () => void;
   onClear: () => void;
 }) {
-  const activeSelection =
-    selection && selection.marketId === market.id
-      ? selection
-      : market.viewerWager
-        ? {
-            marketId: market.id,
-            side: market.viewerWager.side,
-            stake: market.viewerWager.amountWolo,
-          }
-        : null;
+  const activeSelection = selection && selection.marketId === market.id ? selection : null;
   const marketWorkflow = lockWorkflow?.marketId === market.id ? lockWorkflow : null;
   const onchainViewerWager = isOnchainViewerWager(market.viewerWager) ? market.viewerWager : null;
   const onchainLocked = Boolean(onchainViewerWager);
-  const canEditSlip = !onchainLocked && !marketWorkflow;
-
-  const selectedPool = activeSelection
-    ? activeSelection.side === "left"
-      ? market.left.poolWolo - (market.viewerWager?.side === "left" ? market.viewerWager.amountWolo : 0)
-      : market.right.poolWolo - (market.viewerWager?.side === "right" ? market.viewerWager.amountWolo : 0)
+  const canEditSlip = !marketWorkflow;
+  const lockedSide = market.viewerWager?.side ?? null;
+  const displaySide = activeSelection?.side ?? lockedSide;
+  const displaySelectedPool = displaySide
+    ? displaySide === "left"
+      ? market.left.poolWolo
+      : market.right.poolWolo
     : 0;
-  const oppositePool = activeSelection
-    ? activeSelection.side === "left"
+  const displayOppositePool = displaySide
+    ? displaySide === "left"
       ? market.right.poolWolo
       : market.left.poolWolo
     : 0;
   const projectedReturn = activeSelection
-    ? projectReturn(activeSelection.stake, Math.max(0, selectedPool), oppositePool)
-    : 0;
+    ? projectReturn(activeSelection.stake, displaySelectedPool, displayOppositePool)
+    : market.viewerWager && displaySide
+      ? projectReturn(
+          market.viewerWager.amountWolo,
+          Math.max(0, displaySelectedPool - market.viewerWager.amountWolo),
+          displayOppositePool
+        )
+      : 0;
   const statusCopy = marketWorkflow
     ? marketWorkflow.phase === "awaiting_wallet"
       ? "Open Keplr to approve the WOLO stake."
     : marketWorkflow.phase === "confirming_chain"
         ? "Stake submitted. Waiting for chain confirmation."
         : `Escrow confirmed${marketWorkflow.stakeTxHash ? ` · ${shortTxHash(marketWorkflow.stakeTxHash)}` : ""}. Recording slip...`
-    : onchainLocked
-      ? `Escrow confirmed${onchainViewerWager?.stakeTxHash ? ` · ${shortTxHash(onchainViewerWager.stakeTxHash)}` : ""}`
+    : activeSelection
+      ? `Adding ${activeSelection.stake} WOLO to ${activeSelection.side === "left" ? market.left.name : market.right.name}`
       : market.viewerWager
-        ? `Locked on ${market.viewerWager.side === "left" ? market.left.name : market.right.name}`
-        : activeSelection
-          ? `Selected ${activeSelection.stake} WOLO on ${activeSelection.side === "left" ? market.left.name : market.right.name}`
-          : isAuthenticated
-            ? "Pick a side"
-            : loadingAuth
-              ? "Loading"
-              : "Steam sign-in required";
+        ? `On ${market.viewerWager.side === "left" ? market.left.name : market.right.name} for ${market.viewerWager.amountWolo} WOLO across ${market.viewerWager.slipCount} slips${onchainViewerWager?.stakeTxHash ? ` · ${shortTxHash(onchainViewerWager.stakeTxHash)}` : ""}`
+        : isAuthenticated
+          ? "Pick a side"
+          : loadingAuth
+            ? "Loading"
+            : "Steam sign-in required";
   const lockLabel = marketWorkflow
     ? marketWorkflow.phase === "awaiting_wallet"
       ? "Open Wallet..."
       : marketWorkflow.phase === "confirming_chain"
         ? "Confirming Chain..."
         : "Recording Slip..."
-    : onchainLocked
-      ? "Escrow Confirmed"
-      : activeSelection
-        ? `Lock ${activeSelection.stake}`
+    : activeSelection
+      ? `Add ${activeSelection.stake}`
+      : market.viewerWager
+        ? "Add More"
         : "Lock";
 
   return (
@@ -1041,9 +1660,9 @@ function MarketFeature({
       <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_auto_1fr] lg:items-center">
         <SideChoice
           side={market.left}
-          selected={activeSelection?.side === "left"}
+          selected={displaySide === "left"}
           emphasis="warm"
-          disabled={!canEditSlip}
+          disabled={!canEditSlip || Boolean(lockedSide && lockedSide !== "left")}
           onSelect={() => onSelect(market, "left")}
         />
 
@@ -1060,9 +1679,9 @@ function MarketFeature({
 
         <SideChoice
           side={market.right}
-          selected={activeSelection?.side === "right"}
+          selected={displaySide === "right"}
           emphasis="cool"
-          disabled={!canEditSlip}
+          disabled={!canEditSlip || Boolean(lockedSide && lockedSide !== "right")}
           onSelect={() => onSelect(market, "right")}
         />
       </div>
@@ -1149,44 +1768,42 @@ function MarketCard({
   onClear: () => void;
   accent: "warm" | "cool";
 }) {
-  const activeSelection =
-    selection && selection.marketId === market.id
-      ? selection
-      : market.viewerWager
-        ? {
-            marketId: market.id,
-            side: market.viewerWager.side,
-            stake: market.viewerWager.amountWolo,
-          }
-        : null;
+  const activeSelection = selection && selection.marketId === market.id ? selection : null;
   const marketWorkflow = lockWorkflow?.marketId === market.id ? lockWorkflow : null;
   const onchainViewerWager = isOnchainViewerWager(market.viewerWager) ? market.viewerWager : null;
   const onchainLocked = Boolean(onchainViewerWager);
-  const canEditSlip = !onchainLocked && !marketWorkflow;
-
-  const selectedPool = activeSelection
-    ? activeSelection.side === "left"
-      ? market.left.poolWolo - (market.viewerWager?.side === "left" ? market.viewerWager.amountWolo : 0)
-      : market.right.poolWolo - (market.viewerWager?.side === "right" ? market.viewerWager.amountWolo : 0)
+  const canEditSlip = !marketWorkflow;
+  const lockedSide = market.viewerWager?.side ?? null;
+  const displaySide = activeSelection?.side ?? lockedSide;
+  const displaySelectedPool = displaySide
+    ? displaySide === "left"
+      ? market.left.poolWolo
+      : market.right.poolWolo
     : 0;
-  const oppositePool = activeSelection
-    ? activeSelection.side === "left"
+  const displayOppositePool = displaySide
+    ? displaySide === "left"
       ? market.right.poolWolo
       : market.left.poolWolo
     : 0;
   const projectedReturn = activeSelection
-    ? projectReturn(activeSelection.stake, Math.max(0, selectedPool), oppositePool)
-    : 0;
+    ? projectReturn(activeSelection.stake, displaySelectedPool, displayOppositePool)
+    : market.viewerWager && displaySide
+      ? projectReturn(
+          market.viewerWager.amountWolo,
+          Math.max(0, displaySelectedPool - market.viewerWager.amountWolo),
+          displayOppositePool
+        )
+      : 0;
   const lockLabel = marketWorkflow
     ? marketWorkflow.phase === "awaiting_wallet"
       ? "Wallet..."
       : marketWorkflow.phase === "confirming_chain"
         ? "Chain..."
         : "Saving..."
-    : onchainLocked
-      ? "Escrow Live"
-      : activeSelection
-        ? `Lock ${activeSelection.stake}`
+    : activeSelection
+      ? `Add ${activeSelection.stake}`
+      : market.viewerWager
+        ? "Add"
         : "Lock";
 
   return (
@@ -1224,16 +1841,16 @@ function MarketCard({
       <div className="mt-4 grid grid-cols-2 gap-2">
         <SideMiniChoice
           side={market.left}
-          selected={activeSelection?.side === "left"}
+          selected={displaySide === "left"}
           emphasis={accent === "warm" ? "warm" : "cool"}
-          disabled={!canEditSlip}
+          disabled={!canEditSlip || Boolean(lockedSide && lockedSide !== "left")}
           onSelect={() => onSelect(market, "left")}
         />
         <SideMiniChoice
           side={market.right}
-          selected={activeSelection?.side === "right"}
+          selected={displaySide === "right"}
           emphasis={accent === "warm" ? "cool" : "warm"}
-          disabled={!canEditSlip}
+          disabled={!canEditSlip || Boolean(lockedSide && lockedSide !== "right")}
           onSelect={() => onSelect(market, "right")}
         />
       </div>
