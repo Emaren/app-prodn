@@ -28,13 +28,9 @@ export const WATCHER_RELEASE = {
   releasedOn: "Apr 9, 2026",
   signingStatus: "Unsigned builds for now",
   featureChips: [
-    "AoE2HDBets Watcher 1.1.0",
-    "Apr 9, 2026",
-    "Windows installer",
-    "Windows portable fallback",
-    "macOS DMG + ZIP",
-    "Linux AppImage",
-    "Historical replay import"
+    "Windows, macOS, Linux",
+    "Historical replay import",
+    "Live replay watch",
   ],
 } as const;
 
@@ -47,8 +43,7 @@ export const WATCHER_DOWNLOAD_ARTIFACTS: readonly WatcherDownloadArtifact[] = [
     badge: "Recommended",
     filename: "AoE2HDBets Watcher Setup 1.1.0.exe",
     format: "NSIS",
-    description:
-      "Smoothest Windows path. Installs cleanly, creates shortcuts, and keeps the first run obvious.",
+    description: "Clean Windows install with shortcuts and the clearest first run.",
     downloadPath: "/downloads/AoE2HDBets%20Watcher%20Setup%201.1.0.exe",
     trackedHref: "/download/watcher/windows-installer",
     primary: true,
@@ -62,8 +57,7 @@ export const WATCHER_DOWNLOAD_ARTIFACTS: readonly WatcherDownloadArtifact[] = [
     badge: "Fallback",
     filename: "AoE2HDBets Watcher 1.1.0.exe",
     format: "portable",
-    description:
-      "Same watcher core in a no-installer package if SmartScreen or installer policy gets in the way.",
+    description: "No-installer Windows fallback if SmartScreen or installer policy gets in the way.",
     downloadPath: "/downloads/AoE2HDBets%20Watcher%201.1.0.exe",
     trackedHref: "/download/watcher/windows-portable",
     primary: false,
@@ -77,8 +71,7 @@ export const WATCHER_DOWNLOAD_ARTIFACTS: readonly WatcherDownloadArtifact[] = [
     badge: "Mac first",
     filename: "AoE2HDBets Watcher-1.1.0-arm64.dmg",
     format: "DMG",
-    description:
-      "Best Mac install path. Drag in, pair once, and keep it open while AoE2HD runs under macOS or CrossOver.",
+    description: "Best Mac install path.",
     downloadPath: "/downloads/AoE2HDBets%20Watcher-1.1.0-arm64.dmg",
     trackedHref: "/download/watcher/mac-dmg",
     primary: false,
@@ -92,8 +85,7 @@ export const WATCHER_DOWNLOAD_ARTIFACTS: readonly WatcherDownloadArtifact[] = [
     badge: "Fallback",
     filename: "aoe2hdbets-watcher-direct.zip",
     format: "ZIP",
-    description:
-      "Same Mac app bundle, packaged as a direct ZIP for users who hit DMG or Gatekeeper friction.",
+    description: "Direct ZIP fallback for Mac users who hit DMG or Gatekeeper friction.",
     downloadPath: "/downloads/aoe2hdbets-watcher-direct.zip",
     trackedHref: "/download/watcher/mac-zip",
     primary: false,
@@ -107,8 +99,7 @@ export const WATCHER_DOWNLOAD_ARTIFACTS: readonly WatcherDownloadArtifact[] = [
     badge: "Linux",
     filename: "AoE2HDBets Watcher-1.1.0.AppImage",
     format: "AppImage",
-    description:
-      "Portable Linux watcher for Proton or Wine-heavy setups where manual replay-folder selection matters most.",
+    description: "Portable Linux build for Proton or Wine-heavy setups.",
     downloadPath: "/downloads/AoE2HDBets%20Watcher-1.1.0.AppImage",
     trackedHref: "/download/watcher/linux-appimage",
     primary: false,
