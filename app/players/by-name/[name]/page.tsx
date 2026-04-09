@@ -23,6 +23,7 @@ import {
   applyPendingWoloClaimSummary,
   buildReplayPublicPlayerRef,
   normalizePublicPlayerName,
+  publicPlayerMatchesName,
 } from "@/lib/publicPlayers";
 import { loadPendingWoloClaimSummariesByName } from "@/lib/pendingWoloClaims";
 
@@ -54,13 +55,13 @@ export default async function ReplayOnlyPlayerPage({
     redirect(`/players/${claimedUser.uid}`);
   }
 
-  const normalizedPlayerName = normalizePublicPlayerName(playerName);
-  const candidateMatches = await loadRecentFinalMatchupRows(prisma, 600);
+  const replayPlayer = buildReplayPublicPlayerRef(playerName);
+  const candidateMatches = await loadRecentFinalMatchupRows(prisma, 2400);
 
   const matchedGames = candidateMatches
     .filter((match) =>
       parsePlayers(match.players).some(
-        (player) => normalizePublicPlayerName(displayPlayerName(player)) === normalizedPlayerName
+        (player) => publicPlayerMatchesName(replayPlayer, displayPlayerName(player))
       )
     );
 
@@ -68,8 +69,10 @@ export default async function ReplayOnlyPlayerPage({
     notFound();
   }
 
-  const wins = matchedGames.filter((match) => match.winner === playerName).length;
-  const losses = matchedGames.filter((match) => match.winner && match.winner !== playerName).length;
+  const wins = matchedGames.filter((match) => publicPlayerMatchesName(replayPlayer, match.winner || "")).length;
+  const losses = matchedGames.filter(
+    (match) => match.winner && !publicPlayerMatchesName(replayPlayer, match.winner)
+  ).length;
   const unknowns = matchedGames.length - wins - losses;
   const claimHref = `/profile?claim_name=${encodeURIComponent(playerName)}`;
   const pendingClaimSummaries = await loadPendingWoloClaimSummariesByName(prisma, [playerName]);

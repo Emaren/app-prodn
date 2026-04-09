@@ -48,6 +48,7 @@ model User {
   grantedGifts                   UserGift[]                      @relation("UserGiftCreator")
   appearancePreference           UserAppearancePreference?
   activityEvents                 UserActivityEvent[]
+  watcherDownloadEvents          WatcherDownloadEvent[]
   betWagers                      BetWager[]
   betStakeIntents                BetStakeIntent[]
   betMarketWallets               BetMarketWallet[]
@@ -517,6 +518,26 @@ model UserActivityEvent {
   @@index([userId, createdAt], map: "ix_user_activity_events_user_created_at")
   @@index([type, createdAt], map: "ix_user_activity_events_type_created_at")
   @@map("user_activity_events")
+}
+
+model WatcherDownloadEvent {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  userId    Int?     @map("user_id")
+  platform  String   @db.VarChar(24)
+  artifact  String   @db.VarChar(40)
+  version   String   @db.VarChar(32)
+  filename  String   @db.VarChar(180)
+  ipAddress String?  @map("ip_address") @db.VarChar(80)
+  userAgent String?  @map("user_agent") @db.VarChar(512)
+  referer   String?  @db.VarChar(255)
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([createdAt], map: "ix_watcher_download_events_created_at")
+  @@index([platform, artifact, createdAt], map: "ix_watcher_download_events_platform_artifact_created_at")
+  @@index([userId, createdAt], map: "ix_watcher_download_events_user_id_created_at")
+  @@map("watcher_download_events")
 }
 
 model BetMarket {

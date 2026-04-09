@@ -5,15 +5,11 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
   ArrowRight,
-  ExternalLink,
-  KeyRound,
   LogOut,
   Palette,
   ShieldCheck,
-  Sparkles,
   Trophy,
   Upload,
-  Wallet,
 } from "lucide-react";
 
 import {

@@ -21,6 +21,7 @@ import {
   type MarketRailSummary,
 } from "@/components/admin/WoloMarketRail";
 import { WoloSettlementRail } from "@/components/admin/WoloSettlementRail";
+import { WatcherDownloadRail } from "@/components/admin/WatcherDownloadRail";
 import CommunityBadgePill from "@/components/contact/CommunityBadgePill";
 import { DEFAULT_BADGE_LABELS } from "@/lib/communityHonors";
 
@@ -206,6 +207,38 @@ type AdminUsersPayload = {
   marketRail: {
     summary: MarketRailSummary;
     rows: MarketRailRow[];
+  };
+  watcherDownloads: {
+    summary: {
+      totalCount: number;
+      last24Hours: number;
+      last7Days: number;
+      rows: Array<{
+        key: string;
+        platform: "windows" | "macos" | "linux";
+        title: string;
+        shortLabel: string;
+        format: string;
+        totalCount: number;
+        last24Hours: number;
+        last7Days: number;
+      }>;
+    };
+    recent: Array<{
+      id: number;
+      createdAt: string;
+      platform: "windows" | "macos" | "linux";
+      artifact: string;
+      title: string;
+      format: string;
+      version: string;
+      filename: string;
+      ipAddress: string | null;
+      userAgent: string | null;
+      referer: string | null;
+      userUid: string | null;
+      userDisplayName: string | null;
+    }>;
   };
 };
 
@@ -722,6 +755,15 @@ export default function UsersPage() {
             onRescind={rescindSettlementClaim}
             onRetry={retrySettlementClaim}
             onReconcilePending={reconcilePendingClaims}
+          />
+        </div>
+      ) : null}
+
+      {payload ? (
+        <div className="mt-6">
+          <WatcherDownloadRail
+            summary={payload.watcherDownloads.summary}
+            recent={payload.watcherDownloads.recent}
           />
         </div>
       ) : null}

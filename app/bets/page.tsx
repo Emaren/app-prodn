@@ -22,8 +22,10 @@ const WOLO_LOGO_SRC = "/legacy/wolo-logo-transparent.png";
 const STAKE_OPTIONS = [10, 25, 50, 100] as const;
 const BETS_POLL_INTERVAL_MS = 5_000;
 const STAKE_RECOVERY_STORAGE_KEY = "aoe2hdbets.betStakeRecovery.v1";
+const BETS_VIEW_STORAGE_KEY = "aoe2hdbets.betsView.v1";
 type BetSide = "left" | "right";
 type BetStatus = "open" | "closing" | "live" | "settled";
+type BetsViewMode = "basic" | "advanced";
 
 type BetBoardSide = {
   key: BetSide;
@@ -531,6 +533,7 @@ export default function BetsPage() {
   const { isAuthenticated, loading, loginWithSteam, user } = useUserAuth();
   const { address: connectedWalletAddress, connect: connectKeplr } = useKeplr();
   const [board, setBoard] = useState<BetBoardSnapshot | null>(null);
+  const [betsView, setBetsView] = useState<BetsViewMode>("basic");
   const [selection, setSelection] = useState<SelectionState | null>(null);
   const [loadingBoard, setLoadingBoard] = useState(true);
   const [workingKey, setWorkingKey] = useState<string | null>(null);
@@ -555,6 +558,25 @@ export default function BetsPage() {
       setLoadingBoard(false);
     }
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const storedView = window.localStorage.getItem(BETS_VIEW_STORAGE_KEY);
+    if (storedView === "basic" || storedView === "advanced") {
+      setBetsView(storedView);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.localStorage.setItem(BETS_VIEW_STORAGE_KEY, betsView);
+  }, [betsView]);
 
   useEffect(() => {
     let cancelled = false;
@@ -597,10 +619,14 @@ export default function BetsPage() {
   }, [loadBoard]);
 
   const featuredMarket = board?.featuredMarket ?? null;
+  const spotlightMarket = useMemo(
+    () => featuredMarket ?? board?.openMarkets?.[0] ?? null,
+    [board?.openMarkets, featuredMarket]
+  );
   const openMarkets = useMemo(
     () =>
-      (board?.openMarkets || []).filter((market) => !featuredMarket || market.id !== featuredMarket.id),
-    [board?.openMarkets, featuredMarket]
+      (board?.openMarkets || []).filter((market) => !spotlightMarket || market.id !== spotlightMarket.id),
+    [board?.openMarkets, spotlightMarket]
   );
   const totalBookPot = useMemo(
     () => (board?.openMarkets || []).reduce((sum, market) => sum + market.totalPotWolo, 0),
@@ -608,6 +634,7 @@ export default function BetsPage() {
   );
   const liveCount = board?.heat.liveCount || 0;
   const openCount = board?.openMarkets.length || 0;
+  const recentResults = board?.settledResults || [];
   const runtimeBetEscrowMode = board?.wolo.betEscrowMode || "disabled";
   const runtimeBetEscrowAddress = board?.wolo.betEscrowAddress?.trim() || "";
   const onchainBetEscrowEnabled = board?.wolo.onchainEscrowEnabled ?? false;
@@ -1109,465 +1136,901 @@ export default function BetsPage() {
 
   return (
     <main className="space-y-5 overflow-x-hidden py-4 text-white sm:space-y-6 sm:py-5">
-      <section className="grid gap-5 xl:grid-cols-[0.78fr_1.22fr]">
-        <div className={`${shellClass()} p-5 sm:p-6`}>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full border border-amber-200/12 bg-amber-400/10 px-3 py-1 text-[11px] uppercase tracking-[0.35em] text-amber-100">
-              Bets
-            </span>
-            <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-slate-300">
-              {openCount} books
-            </span>
-            <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-slate-300">
-              {liveCount} live
-            </span>
-            <span
-              className={`rounded-full px-3 py-1 text-xs uppercase tracking-[0.18em] ${
-                onchainBetEscrowRequired && onchainBetEscrowEnabled
-                  ? "border border-cyan-300/20 bg-cyan-400/10 text-cyan-100"
-                  : onchainBetEscrowRequired
-                    ? "border border-rose-300/20 bg-rose-400/10 text-rose-100"
-                    : onchainBetEscrowEnabled
-                      ? "border border-amber-300/20 bg-amber-400/10 text-amber-100"
-                      : "border border-white/[0.08] bg-white/[0.04] text-slate-300"
-              }`}
-            >
-              {onchainBetEscrowRequired && onchainBetEscrowEnabled
-                ? "verified escrow required"
-                : onchainBetEscrowRequired
-                  ? "escrow required"
-                  : runtimeBetEscrowMode === "optional" && onchainBetEscrowEnabled
-                    ? "escrow optional"
-                    : "app-side fallback"}
-            </span>
-            <span
-              className={`rounded-full border px-3 py-1 text-xs uppercase tracking-[0.18em] ${groupedSettlementTone(groupedRunCapability)}`}
-            >
-              {groupedSettlementLabel(groupedRunCapability)}
-            </span>
-            <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs uppercase tracking-[0.18em] text-slate-300">
-              {settlementExecutionMode === "settlement_service"
-                ? "chain rail active"
-                : settlementExecutionMode === "local_signer_fallback"
-                  ? "local signer fallback"
-                  : "chain rail pending"}
-            </span>
-            {runtimeBetTestMode ? (
-              <span className="rounded-full border border-amber-300/20 bg-amber-400/10 px-3 py-1 text-xs uppercase tracking-[0.18em] text-amber-100">
-                testing mode
-              </span>
-            ) : null}
-          </div>
-
-          <div className="mt-5">
-            <div className="text-[11px] uppercase tracking-[0.38em] text-slate-400">The War Book</div>
-            <h1 className="mt-3 text-4xl font-semibold tracking-[-0.05em] text-white sm:text-5xl">
-              Bets
-            </h1>
-          </div>
-
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">
-            <MiniMetric label="Open" value={String(openCount)} />
-            <MiniMetric label="In Play" value={String(liveCount)} />
-            <MiniMetric label="Book Pot" value={`${formatCompact(totalBookPot || 0)} WOLO`} />
-            <MiniMetric
-              label="Your Slips"
-              value={isAuthenticated ? String(board?.yourBook.activeCount || 0) : "Sign in"}
-            />
-          </div>
-
-          <div className={`mt-5 ${insetClass()} px-4 py-4`}>
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <div className="text-[11px] uppercase tracking-[0.32em] text-slate-500">Your Book</div>
-                <div className="mt-2 text-lg font-semibold text-white">{viewerName}</div>
-              </div>
-              <div className="text-right">
-                <div className="text-[11px] uppercase tracking-[0.28em] text-slate-500">If Right</div>
-                <div className="mt-2 text-lg font-semibold text-white">
-                  {isAuthenticated
-                    ? `${formatCompact(board?.yourBook.projectedReturnWolo || 0)} WOLO`
-                    : "Open"}
+      {betsView === "basic" ? (
+        <>
+          <section className="grid gap-5 xl:grid-cols-[0.84fr_1.16fr]">
+            <div className={`${shellClass()} p-5 sm:p-6`}>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="text-[11px] uppercase tracking-[0.38em] text-slate-400">
+                    The War Book
+                  </div>
+                  <h1 className="mt-3 text-4xl font-semibold tracking-[-0.05em] text-white sm:text-5xl">
+                    Bets
+                  </h1>
+                  <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300">
+                    Basic keeps the board cleaner: spotlight the live book when one exists, keep your
+                    slips visible, and let recent settled books carry the page when traffic is thin.
+                  </p>
                 </div>
+
+                <BetsViewToggle value={betsView} onChange={setBetsView} />
               </div>
-            </div>
-          </div>
 
-          {runtimeBetTestMode ? (
-            <div className={`mt-4 ${insetClass()} px-4 py-4 text-sm text-slate-300`}>
-              Testing mode keeps the book open until official result or finalization. Same wallet, same side only for now.
-            </div>
-          ) : null}
-
-          {runtimeBetEscrowConfigError ? (
-            <div className={`mt-4 ${insetClass()} border-rose-300/15 bg-rose-500/[0.08] px-4 py-4 text-sm text-rose-100`}>
-              {runtimeBetEscrowConfigError}
-            </div>
-          ) : null}
-          {settlementSurfaceDetail ? (
-            <div className={`mt-4 ${insetClass()} px-4 py-4 text-sm text-slate-300`}>
-              {settlementSurfaceDetail}
-            </div>
-          ) : null}
-          {settlementSurfaceWarnings.length ? (
-            <div className="mt-4 space-y-2">
-              {settlementSurfaceWarnings.map((warning, index) => (
-                <div
-                  key={`${warning}-${index}`}
-                  className={`${insetClass()} border-amber-300/15 bg-amber-500/[0.08] px-4 py-4 text-sm text-amber-100`}
+              <div className="mt-5 flex flex-wrap gap-2">
+                <span className="rounded-full border border-amber-200/12 bg-amber-400/10 px-3 py-1 text-[11px] uppercase tracking-[0.35em] text-amber-100">
+                  Basic view
+                </span>
+                <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-slate-300">
+                  {openCount} books
+                </span>
+                <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-slate-300">
+                  {liveCount} live
+                </span>
+                <span
+                  className={`rounded-full px-3 py-1 text-xs uppercase tracking-[0.18em] ${
+                    onchainBetEscrowRequired && onchainBetEscrowEnabled
+                      ? "border border-cyan-300/20 bg-cyan-400/10 text-cyan-100"
+                      : onchainBetEscrowRequired
+                        ? "border border-rose-300/20 bg-rose-400/10 text-rose-100"
+                        : onchainBetEscrowEnabled
+                          ? "border border-amber-300/20 bg-amber-400/10 text-amber-100"
+                          : "border border-white/[0.08] bg-white/[0.04] text-slate-300"
+                  }`}
                 >
-                  {warning}
-                </div>
-              ))}
-            </div>
-          ) : null}
-        </div>
-
-        <section className={`${shellClass()} relative overflow-hidden p-5 sm:p-6`}>
-          <div className="pointer-events-none absolute right-[-1.25rem] top-[-1.25rem] opacity-[0.08]">
-            <Image
-              src={WOLO_LOGO_SRC}
-              alt=""
-              width={260}
-              height={265}
-              className="h-[12rem] w-[12rem] object-contain sm:h-[14rem] sm:w-[14rem]"
-            />
-          </div>
-
-          {loadingBoard ? (
-            <LoadingMarket />
-          ) : featuredMarket ? (
-            <MarketFeature
-              market={featuredMarket}
-              selection={selection}
-              workingKey={workingKey}
-              lockWorkflow={lockWorkflow}
-              isAuthenticated={isAuthenticated}
-              loadingAuth={loading}
-              onSelect={handleSelect}
-              onStakeChange={(stake) =>
-                setSelection((current) =>
-                  current && current.marketId === featuredMarket.id ? { ...current, stake } : current
-                )
-              }
-              onLock={() => handleLock(featuredMarket)}
-              onClear={() => handleClear(featuredMarket.id)}
-            />
-          ) : (
-            <EmptyShell label="No books armed yet." />
-          )}
-        </section>
-      </section>
-
-      <section className="grid gap-5 xl:grid-cols-[1.08fr_0.92fr]">
-        <section className={`${shellClass()} p-5 sm:p-6`}>
-          <div className="flex items-end justify-between gap-3">
-            <div>
-              <div className="text-[11px] uppercase tracking-[0.35em] text-slate-500">Open Books</div>
-              <h2 className="mt-2 text-2xl font-semibold text-white">Pick a side.</h2>
-            </div>
-            <div className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-slate-300">
-              {openMarkets.length} more
-            </div>
-          </div>
-
-          <div className="mt-5 grid gap-4 md:grid-cols-2">
-            {loadingBoard ? (
-              <>
-                <LoadingCard />
-                <LoadingCard />
-              </>
-            ) : openMarkets.length > 0 ? (
-              openMarkets.map((market, index) => (
-                <MarketCard
-                  key={market.id}
-                  market={market}
-                  selection={selection}
-                  workingKey={workingKey}
-                  lockWorkflow={lockWorkflow}
-                  onSelect={handleSelect}
-                  onStakeChange={(stake) =>
-                    setSelection((current) =>
-                      current && current.marketId === market.id ? { ...current, stake } : current
-                    )
-                  }
-                  onLock={() => handleLock(market)}
-                  onClear={() => handleClear(market.id)}
-                  accent={index % 2 === 0 ? "warm" : "cool"}
-                />
-              ))
-            ) : (
-              <EmptyShell label="No open books right now." />
-            )}
-          </div>
-        </section>
-
-        <div className="space-y-5">
-          <section id="your-book" className={`${shellClass()} p-5 sm:p-6`}>
-            <div className="flex items-end justify-between gap-3">
-              <div>
-                <div className="text-[11px] uppercase tracking-[0.35em] text-slate-500">Your Book</div>
-                <h2 className="mt-2 text-2xl font-semibold text-white">Slips</h2>
+                  {onchainBetEscrowRequired && onchainBetEscrowEnabled
+                    ? "verified escrow required"
+                    : onchainBetEscrowRequired
+                      ? "escrow required"
+                      : runtimeBetEscrowMode === "optional" && onchainBetEscrowEnabled
+                        ? "escrow optional"
+                        : "app-side fallback"}
+                </span>
               </div>
-              {isAuthenticated ? (
-                <div className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-slate-300">
-                  {board?.yourBook.activeCount || 0}
+
+              <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                <MiniMetric label="Open" value={String(openCount)} />
+                <MiniMetric label="Recent Books" value={String(recentResults.length)} />
+                <MiniMetric label="Book Pot" value={`${formatCompact(totalBookPot || 0)} WOLO`} />
+                <MiniMetric
+                  label="Your Slips"
+                  value={isAuthenticated ? String(board?.yourBook.activeCount || 0) : "Sign in"}
+                />
+              </div>
+
+              <div className={`mt-5 ${insetClass()} px-4 py-4`}>
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="text-[11px] uppercase tracking-[0.32em] text-slate-500">
+                      Board Read
+                    </div>
+                    <div className="mt-2 text-lg font-semibold text-white">
+                      {spotlightMarket
+                        ? `${spotlightMarket.title} is carrying the page right now.`
+                        : recentResults[0]
+                          ? `${recentResults[0].winner} closed the latest book.`
+                          : "No live book yet, but the rail is ready."}
+                    </div>
+                    <div className="mt-2 text-sm text-slate-400">
+                      {spotlightMarket
+                        ? `${spotlightMarket.left.name} vs ${spotlightMarket.right.name} · ${spotlightMarket.closeLabel}`
+                        : recentResults[0]
+                          ? `${recentResults[0].title} · ${formatSettledTime(recentResults[0].settledAt)}`
+                          : "The first live or recently settled book will land here automatically."}
+                    </div>
+                  </div>
+
+                  <div className="text-right">
+                    <div className="text-[11px] uppercase tracking-[0.28em] text-slate-500">
+                      Your Book
+                    </div>
+                    <div className="mt-2 text-lg font-semibold text-white">{viewerName}</div>
+                    <div className="mt-1 text-xs text-slate-400">
+                      {isAuthenticated
+                        ? `${formatCompact(board?.yourBook.projectedReturnWolo || 0)} WOLO if right`
+                        : "Sign in to open slips"}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {runtimeBetTestMode ? (
+                <div className={`mt-4 ${insetClass()} px-4 py-4 text-sm text-slate-300`}>
+                  Testing mode keeps the book open until official result or finalization. Same wallet,
+                  same side only for now.
+                </div>
+              ) : null}
+
+              {runtimeBetEscrowConfigError ? (
+                <div className={`mt-4 ${insetClass()} border-rose-300/15 bg-rose-500/[0.08] px-4 py-4 text-sm text-rose-100`}>
+                  {runtimeBetEscrowConfigError}
                 </div>
               ) : null}
             </div>
 
-            {isAuthenticated ? (
-              <>
-                <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                  <MiniMetric label="Active" value={String(board?.yourBook.activeCount || 0)} />
-                  <MiniMetric
-                    label="Staked"
-                    value={`${formatCompact(board?.yourBook.stakedWolo || 0)} WOLO`}
-                  />
-                  <MiniMetric
-                    label="If Right"
-                    value={`${formatCompact(board?.yourBook.projectedReturnWolo || 0)} WOLO`}
-                  />
+            <section className={`${shellClass()} relative overflow-hidden p-5 sm:p-6`}>
+              <div className="pointer-events-none absolute right-[-1.25rem] top-[-1.25rem] opacity-[0.08]">
+                <Image
+                  src={WOLO_LOGO_SRC}
+                  alt=""
+                  width={260}
+                  height={265}
+                  className="h-[12rem] w-[12rem] object-contain sm:h-[14rem] sm:w-[14rem]"
+                />
+              </div>
+
+              {loadingBoard ? (
+                <LoadingMarket />
+              ) : spotlightMarket ? (
+                <MarketFeature
+                  market={spotlightMarket}
+                  eyebrowLabel={spotlightMarket.featured ? "Featured Market" : "Current Book"}
+                  selection={selection}
+                  workingKey={workingKey}
+                  lockWorkflow={lockWorkflow}
+                  isAuthenticated={isAuthenticated}
+                  loadingAuth={loading}
+                  onSelect={handleSelect}
+                  onStakeChange={(stake) =>
+                    setSelection((current) =>
+                      current && current.marketId === spotlightMarket.id ? { ...current, stake } : current
+                    )
+                  }
+                  onLock={() => handleLock(spotlightMarket)}
+                  onClear={() => handleClear(spotlightMarket.id)}
+                />
+              ) : recentResults.length ? (
+                <RecentResultFeature result={recentResults[0]} />
+              ) : (
+                <EmptyShell label="No books armed yet. The first live or settled book will land here." />
+              )}
+            </section>
+          </section>
+
+          <section className="grid gap-5 xl:grid-cols-[1.04fr_0.96fr]">
+            <RecentBetsSection results={recentResults} />
+
+            <YourBookSection
+              board={board}
+              isAuthenticated={isAuthenticated}
+              loadingAuth={loading}
+              loginWithSteam={loginWithSteam}
+              unresolvedStakeIntents={unresolvedStakeIntents}
+              pendingStakeRecoveries={pendingStakeRecoveries}
+              recoveringIntentId={recoveringIntentId}
+              onRecover={recoverStakeIntent}
+            />
+          </section>
+
+          <section className="grid gap-5 xl:grid-cols-[0.98fr_1.02fr]">
+            <OpenBooksSection
+              eyebrow={spotlightMarket ? "More Open Books" : "Open Books"}
+              title={spotlightMarket ? "Keep the page alive without crowding it." : "Pick a side."}
+              markets={openMarkets}
+              selection={selection}
+              workingKey={workingKey}
+              lockWorkflow={lockWorkflow}
+              onSelect={handleSelect}
+              onStakeChange={(marketId, stake) =>
+                setSelection((current) =>
+                  current && current.marketId === marketId ? { ...current, stake } : current
+                )
+              }
+              onLock={handleLock}
+              onClear={handleClear}
+              loadingBoard={loadingBoard}
+              limit={2}
+              emptyLabel={
+                recentResults.length
+                  ? "No extra open books right now. Recent settled books are carrying the page until the next one arms."
+                  : "No open books right now. The first live book will show up here."
+              }
+              footerNote={
+                openMarkets.length > 2
+                  ? `${openMarkets.length - 2} more book${openMarkets.length - 2 === 1 ? "" : "s"} waiting in Advanced view.`
+                  : null
+              }
+            />
+
+            <BoardPulseSection
+              openCount={openCount}
+              liveCount={liveCount}
+              bestReturnMultiplier={board?.heat.bestReturn?.returnMultiplier ?? null}
+              biggestPotLabel={board?.heat.biggestPot?.label || "Market arming"}
+              biggestPotWolo={board?.heat.biggestPot?.potWolo ?? null}
+              latestResult={recentResults[0] ?? null}
+            />
+          </section>
+        </>
+      ) : (
+        <>
+          <section className="grid gap-5 xl:grid-cols-[0.78fr_1.22fr]">
+            <div className={`${shellClass()} p-5 sm:p-6`}>
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-full border border-amber-200/12 bg-amber-400/10 px-3 py-1 text-[11px] uppercase tracking-[0.35em] text-amber-100">
+                    Bets
+                  </span>
+                  <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-slate-300">
+                    {openCount} books
+                  </span>
+                  <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-slate-300">
+                    {liveCount} live
+                  </span>
+                  <span
+                    className={`rounded-full px-3 py-1 text-xs uppercase tracking-[0.18em] ${
+                      onchainBetEscrowRequired && onchainBetEscrowEnabled
+                        ? "border border-cyan-300/20 bg-cyan-400/10 text-cyan-100"
+                        : onchainBetEscrowRequired
+                          ? "border border-rose-300/20 bg-rose-400/10 text-rose-100"
+                          : onchainBetEscrowEnabled
+                            ? "border border-amber-300/20 bg-amber-400/10 text-amber-100"
+                            : "border border-white/[0.08] bg-white/[0.04] text-slate-300"
+                    }`}
+                  >
+                    {onchainBetEscrowRequired && onchainBetEscrowEnabled
+                      ? "verified escrow required"
+                      : onchainBetEscrowRequired
+                        ? "escrow required"
+                        : runtimeBetEscrowMode === "optional" && onchainBetEscrowEnabled
+                          ? "escrow optional"
+                          : "app-side fallback"}
+                  </span>
+                  <span
+                    className={`rounded-full border px-3 py-1 text-xs uppercase tracking-[0.18em] ${groupedSettlementTone(groupedRunCapability)}`}
+                  >
+                    {groupedSettlementLabel(groupedRunCapability)}
+                  </span>
+                  <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs uppercase tracking-[0.18em] text-slate-300">
+                    {settlementExecutionMode === "settlement_service"
+                      ? "chain rail active"
+                      : settlementExecutionMode === "local_signer_fallback"
+                        ? "local signer fallback"
+                        : "chain rail pending"}
+                  </span>
+                  {runtimeBetTestMode ? (
+                    <span className="rounded-full border border-amber-300/20 bg-amber-400/10 px-3 py-1 text-xs uppercase tracking-[0.18em] text-amber-100">
+                      testing mode
+                    </span>
+                  ) : null}
                 </div>
 
-                {unresolvedStakeIntents.length ? (
-                  <div className="mt-5 space-y-2">
-                    {unresolvedStakeIntents.map((intent) => {
-                      const pendingRecovery =
-                        pendingStakeRecoveries.find((entry) => entry.intentId === intent.id) || null;
-                      const stakeProofUrl = intent.stakeTxHash
-                        ? buildWoloRestTxLookupUrl(intent.stakeTxHash)
-                        : pendingRecovery?.stakeTxHash
-                          ? buildWoloRestTxLookupUrl(pendingRecovery.stakeTxHash)
-                          : null;
-                      const canRecover = Boolean(intent.stakeTxHash || pendingRecovery?.stakeTxHash);
+                <BetsViewToggle value={betsView} onChange={setBetsView} />
+              </div>
 
-                      return (
-                        <div
-                          key={intent.id}
-                          className={`${cardClass()} border-amber-300/15 bg-amber-500/[0.06] px-4 py-4`}
-                        >
-                          <div className="flex flex-wrap items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <div className="text-sm font-semibold text-white">
-                                Signed stake recovery · {intent.title}
-                              </div>
-                              <div className="mt-1 text-sm text-slate-300">
-                                {intent.side === "left" ? "Left side" : "Right side"} · {formatCompact(intent.amountWolo)} WOLO · {intent.status}
-                              </div>
-                              <div className="mt-1 text-xs text-slate-400">
-                                Pools and settlement exclude this stake until it is safely recorded.
-                              </div>
-                              <div className="mt-1 text-xs text-slate-400">
-                                {formatSettledTime(intent.updatedAt)}
-                              </div>
-                              {intent.errorDetail ? (
-                                <div className="mt-2 text-xs text-amber-100">{intent.errorDetail}</div>
-                              ) : null}
-                            </div>
+              <div className="mt-5">
+                <div className="text-[11px] uppercase tracking-[0.38em] text-slate-400">The War Book</div>
+                <h1 className="mt-3 text-4xl font-semibold tracking-[-0.05em] text-white sm:text-5xl">
+                  Bets
+                </h1>
+              </div>
 
-                            <div className="flex flex-wrap gap-2">
-                              {stakeProofUrl ? (
-                                <a
-                                  href={stakeProofUrl}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className={`inline-flex items-center rounded-full px-3 py-2 text-xs transition ${edgeButton("glass")}`}
-                                >
-                                  Stake Proof
-                                </a>
-                              ) : null}
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  void recoverStakeIntent(intent.id);
-                                }}
-                                disabled={!canRecover || recoveringIntentId === intent.id}
-                                className={`inline-flex items-center rounded-full px-3 py-2 text-xs font-semibold transition ${edgeButton("gold")} ${
-                                  !canRecover || recoveringIntentId === intent.id ? "opacity-60" : ""
-                                }`}
-                              >
-                                {recoveringIntentId === intent.id ? "Recovering..." : "Recover"}
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
+              <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                <MiniMetric label="Open" value={String(openCount)} />
+                <MiniMetric label="In Play" value={String(liveCount)} />
+                <MiniMetric label="Book Pot" value={`${formatCompact(totalBookPot || 0)} WOLO`} />
+                <MiniMetric
+                  label="Your Slips"
+                  value={isAuthenticated ? String(board?.yourBook.activeCount || 0) : "Sign in"}
+                />
+              </div>
+
+              <div className={`mt-5 ${insetClass()} px-4 py-4`}>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-[11px] uppercase tracking-[0.32em] text-slate-500">Your Book</div>
+                    <div className="mt-2 text-lg font-semibold text-white">{viewerName}</div>
                   </div>
-                ) : null}
-
-                <div className="mt-5 space-y-3">
-                  {board?.yourBook.openWagers.length ? (
-                    board.yourBook.openWagers.map((wager) => (
-                      <article
-                        key={wager.marketId}
-                        className={`${cardClass()} flex items-center justify-between gap-4 px-4 py-4`}
-                      >
-                        <div className="min-w-0">
-                        <div className="text-sm uppercase tracking-[0.28em] text-slate-500 break-words">
-                          {wager.eventLabel}
-                        </div>
-                          <div className="mt-2 text-lg font-semibold leading-tight text-white break-words">
-                          {wager.pickedLabel}
-                        </div>
-                          <div className="mt-1 text-sm text-slate-400">{wager.closeLabel}</div>
-                          <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-slate-500">
-                            <span>{wager.slipCount} slip{wager.slipCount === 1 ? "" : "s"}</span>
-                            <span>
-                              {wager.executionMode === "onchain_escrow"
-                                ? "verified escrow"
-                                : "app-side fallback"}
-                            </span>
-                            {wager.stakeTxHash ? (
-                              <span className="font-mono text-slate-400">
-                                {shortTxHash(wager.stakeTxHash)}
-                              </span>
-                            ) : null}
-                            {wager.stakeProofUrl ? (
-                              <a
-                                href={wager.stakeProofUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-cyan-200 transition hover:text-cyan-100"
-                              >
-                                proof
-                              </a>
-                            ) : null}
-                          </div>
-                        </div>
-
-                        <div className="text-right">
-                          <div className="flex items-center justify-end gap-2 text-sm font-semibold text-white">
-                            <CoinMark small />
-                            <span>{formatCompact(wager.amountWolo)}</span>
-                          </div>
-                          <div className="mt-1 text-xs text-slate-400">
-                            {formatCompact(wager.projectedReturnWolo)} back
-                          </div>
-                        </div>
-                      </article>
-                    ))
-                  ) : (
-                    <div className={`${insetClass()} px-4 py-5`}>
-                      <div className="text-base font-semibold text-white">No slips yet.</div>
+                  <div className="text-right">
+                    <div className="text-[11px] uppercase tracking-[0.28em] text-slate-500">If Right</div>
+                    <div className="mt-2 text-lg font-semibold text-white">
+                      {isAuthenticated
+                        ? `${formatCompact(board?.yourBook.projectedReturnWolo || 0)} WOLO`
+                        : "Open"}
                     </div>
-                  )}
+                  </div>
                 </div>
-              </>
-            ) : (
-              <div className={`${insetClass()} mt-5 px-4 py-5`}>
-                <div className="text-base font-semibold text-white">Sign in to lock slips.</div>
-                <button
-                  type="button"
-                  onClick={() => loginWithSteam("/bets")}
-                  className={`mt-4 inline-flex items-center rounded-full px-4 py-2.5 text-sm font-semibold transition ${edgeButton("blue")}`}
+              </div>
+
+              {runtimeBetTestMode ? (
+                <div className={`mt-4 ${insetClass()} px-4 py-4 text-sm text-slate-300`}>
+                  Testing mode keeps the book open until official result or finalization. Same wallet,
+                  same side only for now.
+                </div>
+              ) : null}
+
+              {runtimeBetEscrowConfigError ? (
+                <div className={`mt-4 ${insetClass()} border-rose-300/15 bg-rose-500/[0.08] px-4 py-4 text-sm text-rose-100`}>
+                  {runtimeBetEscrowConfigError}
+                </div>
+              ) : null}
+              {settlementSurfaceDetail ? (
+                <div className={`mt-4 ${insetClass()} px-4 py-4 text-sm text-slate-300`}>
+                  {settlementSurfaceDetail}
+                </div>
+              ) : null}
+              {settlementSurfaceWarnings.length ? (
+                <div className="mt-4 space-y-2">
+                  {settlementSurfaceWarnings.map((warning, index) => (
+                    <div
+                      key={`${warning}-${index}`}
+                      className={`${insetClass()} border-amber-300/15 bg-amber-500/[0.08] px-4 py-4 text-sm text-amber-100`}
+                    >
+                      {warning}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+
+            <section className={`${shellClass()} relative overflow-hidden p-5 sm:p-6`}>
+              <div className="pointer-events-none absolute right-[-1.25rem] top-[-1.25rem] opacity-[0.08]">
+                <Image
+                  src={WOLO_LOGO_SRC}
+                  alt=""
+                  width={260}
+                  height={265}
+                  className="h-[12rem] w-[12rem] object-contain sm:h-[14rem] sm:w-[14rem]"
+                />
+              </div>
+
+              {loadingBoard ? (
+                <LoadingMarket />
+              ) : spotlightMarket ? (
+                <MarketFeature
+                  market={spotlightMarket}
+                  eyebrowLabel={spotlightMarket.featured ? "Featured Market" : "Current Book"}
+                  selection={selection}
+                  workingKey={workingKey}
+                  lockWorkflow={lockWorkflow}
+                  isAuthenticated={isAuthenticated}
+                  loadingAuth={loading}
+                  onSelect={handleSelect}
+                  onStakeChange={(stake) =>
+                    setSelection((current) =>
+                      current && current.marketId === spotlightMarket.id ? { ...current, stake } : current
+                    )
+                  }
+                  onLock={() => handleLock(spotlightMarket)}
+                  onClear={() => handleClear(spotlightMarket.id)}
+                />
+              ) : (
+                <EmptyShell label="No books armed yet." />
+              )}
+            </section>
+          </section>
+
+          <section className="grid gap-5 xl:grid-cols-[1.08fr_0.92fr]">
+            <OpenBooksSection
+              eyebrow="Open Books"
+              title="Pick a side."
+              markets={openMarkets}
+              selection={selection}
+              workingKey={workingKey}
+              lockWorkflow={lockWorkflow}
+              onSelect={handleSelect}
+              onStakeChange={(marketId, stake) =>
+                setSelection((current) =>
+                  current && current.marketId === marketId ? { ...current, stake } : current
+                )
+              }
+              onLock={handleLock}
+              onClear={handleClear}
+              loadingBoard={loadingBoard}
+              limit={null}
+              emptyLabel="No open books right now."
+            />
+
+            <div className="space-y-5">
+              <YourBookSection
+                board={board}
+                isAuthenticated={isAuthenticated}
+                loadingAuth={loading}
+                loginWithSteam={loginWithSteam}
+                unresolvedStakeIntents={unresolvedStakeIntents}
+                pendingStakeRecoveries={pendingStakeRecoveries}
+                recoveringIntentId={recoveringIntentId}
+                onRecover={recoverStakeIntent}
+              />
+
+              <SettledSection results={recentResults} />
+              <HeatSection board={board} />
+            </div>
+          </section>
+        </>
+      )}
+    </main>
+  );
+}
+
+function BetsViewToggle({
+  value,
+  onChange,
+}: {
+  value: BetsViewMode;
+  onChange: (next: BetsViewMode) => void;
+}) {
+  return (
+    <div className={`${insetClass()} flex items-center gap-1 p-1`}>
+      {(["basic", "advanced"] as BetsViewMode[]).map((mode) => (
+        <button
+          key={mode}
+          type="button"
+          onClick={() => onChange(mode)}
+          className={`rounded-full px-3 py-2 text-xs font-medium uppercase tracking-[0.22em] transition ${
+            value === mode ? edgeButton(mode === "basic" ? "gold" : "glass") : "text-slate-400 hover:text-white"
+          }`}
+        >
+          {mode}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function OpenBooksSection({
+  eyebrow,
+  title,
+  markets,
+  selection,
+  workingKey,
+  lockWorkflow,
+  onSelect,
+  onStakeChange,
+  onLock,
+  onClear,
+  loadingBoard,
+  limit,
+  emptyLabel,
+  footerNote,
+}: {
+  eyebrow: string;
+  title: string;
+  markets: BetBoardMarket[];
+  selection: SelectionState | null;
+  workingKey: string | null;
+  lockWorkflow: LockWorkflow | null;
+  onSelect: (market: BetBoardMarket, side: BetSide) => void;
+  onStakeChange: (marketId: number, stake: number) => void;
+  onLock: (market: BetBoardMarket) => void;
+  onClear: (marketId: number) => void;
+  loadingBoard: boolean;
+  limit: number | null;
+  emptyLabel: string;
+  footerNote?: string | null;
+}) {
+  const visibleMarkets = limit ? markets.slice(0, limit) : markets;
+
+  return (
+    <section className={`${shellClass()} p-5 sm:p-6`}>
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <div className="text-[11px] uppercase tracking-[0.35em] text-slate-500">{eyebrow}</div>
+          <h2 className="mt-2 text-2xl font-semibold text-white">{title}</h2>
+        </div>
+        <div className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-slate-300">
+          {markets.length}
+        </div>
+      </div>
+
+      <div className="mt-5 grid gap-4 md:grid-cols-2">
+        {loadingBoard ? (
+          <>
+            <LoadingCard />
+            <LoadingCard />
+          </>
+        ) : visibleMarkets.length > 0 ? (
+          visibleMarkets.map((market, index) => (
+            <MarketCard
+              key={market.id}
+              market={market}
+              selection={selection}
+              workingKey={workingKey}
+              lockWorkflow={lockWorkflow}
+              onSelect={onSelect}
+              onStakeChange={(stake) => onStakeChange(market.id, stake)}
+              onLock={() => onLock(market)}
+              onClear={() => onClear(market.id)}
+              accent={index % 2 === 0 ? "warm" : "cool"}
+            />
+          ))
+        ) : (
+          <EmptyShell label={emptyLabel} />
+        )}
+      </div>
+
+      {footerNote ? (
+        <div className="mt-4 text-sm text-slate-400">{footerNote}</div>
+      ) : null}
+    </section>
+  );
+}
+
+function YourBookSection({
+  board,
+  isAuthenticated,
+  loadingAuth,
+  loginWithSteam,
+  unresolvedStakeIntents,
+  pendingStakeRecoveries,
+  recoveringIntentId,
+  onRecover,
+}: {
+  board: BetBoardSnapshot | null;
+  isAuthenticated: boolean;
+  loadingAuth: boolean;
+  loginWithSteam: (returnTo?: string) => void;
+  unresolvedStakeIntents: BetBoardSnapshot["recovery"]["unresolvedStakeIntents"];
+  pendingStakeRecoveries: PendingStakeRecovery[];
+  recoveringIntentId: number | null;
+  onRecover: (intentId: number) => Promise<void>;
+}) {
+  return (
+    <section id="your-book" className={`${shellClass()} p-5 sm:p-6`}>
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <div className="text-[11px] uppercase tracking-[0.35em] text-slate-500">Your Book</div>
+          <h2 className="mt-2 text-2xl font-semibold text-white">Slips</h2>
+        </div>
+        {isAuthenticated ? (
+          <div className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-slate-300">
+            {board?.yourBook.activeCount || 0}
+          </div>
+        ) : null}
+      </div>
+
+      {isAuthenticated ? (
+        <>
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            <MiniMetric label="Active" value={String(board?.yourBook.activeCount || 0)} />
+            <MiniMetric
+              label="Staked"
+              value={`${formatCompact(board?.yourBook.stakedWolo || 0)} WOLO`}
+            />
+            <MiniMetric
+              label="If Right"
+              value={`${formatCompact(board?.yourBook.projectedReturnWolo || 0)} WOLO`}
+            />
+          </div>
+
+          {unresolvedStakeIntents.length ? (
+            <div className="mt-5 space-y-2">
+              {unresolvedStakeIntents.map((intent) => {
+                const pendingRecovery =
+                  pendingStakeRecoveries.find((entry) => entry.intentId === intent.id) || null;
+                const stakeProofUrl = intent.stakeTxHash
+                  ? buildWoloRestTxLookupUrl(intent.stakeTxHash)
+                  : pendingRecovery?.stakeTxHash
+                    ? buildWoloRestTxLookupUrl(pendingRecovery.stakeTxHash)
+                    : null;
+                const canRecover = Boolean(intent.stakeTxHash || pendingRecovery?.stakeTxHash);
+
+                return (
+                  <div
+                    key={intent.id}
+                    className={`${cardClass()} border-amber-300/15 bg-amber-500/[0.06] px-4 py-4`}
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold text-white">
+                          Signed stake recovery · {intent.title}
+                        </div>
+                        <div className="mt-1 text-sm text-slate-300">
+                          {intent.side === "left" ? "Left side" : "Right side"} · {formatCompact(intent.amountWolo)} WOLO · {intent.status}
+                        </div>
+                        <div className="mt-1 text-xs text-slate-400">
+                          Pools and settlement exclude this stake until it is safely recorded.
+                        </div>
+                        <div className="mt-1 text-xs text-slate-400">
+                          {formatSettledTime(intent.updatedAt)}
+                        </div>
+                        {intent.errorDetail ? (
+                          <div className="mt-2 text-xs text-amber-100">{intent.errorDetail}</div>
+                        ) : null}
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        {stakeProofUrl ? (
+                          <a
+                            href={stakeProofUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className={`inline-flex items-center rounded-full px-3 py-2 text-xs transition ${edgeButton("glass")}`}
+                          >
+                            Stake Proof
+                          </a>
+                        ) : null}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            void onRecover(intent.id);
+                          }}
+                          disabled={!canRecover || recoveringIntentId === intent.id}
+                          className={`inline-flex items-center rounded-full px-3 py-2 text-xs font-semibold transition ${edgeButton("gold")} ${
+                            !canRecover || recoveringIntentId === intent.id ? "opacity-60" : ""
+                          }`}
+                        >
+                          {recoveringIntentId === intent.id ? "Recovering..." : "Recover"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : null}
+
+          <div className="mt-5 space-y-3">
+            {board?.yourBook.openWagers.length ? (
+              board.yourBook.openWagers.map((wager) => (
+                <article
+                  key={wager.marketId}
+                  className={`${cardClass()} flex items-center justify-between gap-4 px-4 py-4`}
                 >
-                  {loading ? "Loading..." : "Steam Sign In"}
-                </button>
+                  <div className="min-w-0">
+                    <div className="break-words text-sm uppercase tracking-[0.28em] text-slate-500">
+                      {wager.eventLabel}
+                    </div>
+                    <div className="mt-2 break-words text-lg font-semibold leading-tight text-white">
+                      {wager.pickedLabel}
+                    </div>
+                    <div className="mt-1 text-sm text-slate-400">{wager.closeLabel}</div>
+                    <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-slate-500">
+                      <span>{wager.slipCount} slip{wager.slipCount === 1 ? "" : "s"}</span>
+                      <span>
+                        {wager.executionMode === "onchain_escrow"
+                          ? "verified escrow"
+                          : "app-side fallback"}
+                      </span>
+                      {wager.stakeTxHash ? (
+                        <span className="font-mono text-slate-400">{shortTxHash(wager.stakeTxHash)}</span>
+                      ) : null}
+                      {wager.stakeProofUrl ? (
+                        <a
+                          href={wager.stakeProofUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-cyan-200 transition hover:text-cyan-100"
+                        >
+                          proof
+                        </a>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div className="text-right">
+                    <div className="flex items-center justify-end gap-2 text-sm font-semibold text-white">
+                      <CoinMark small />
+                      <span>{formatCompact(wager.amountWolo)}</span>
+                    </div>
+                    <div className="mt-1 text-xs text-slate-400">
+                      {formatCompact(wager.projectedReturnWolo)} back
+                    </div>
+                  </div>
+                </article>
+              ))
+            ) : (
+              <div className={`${insetClass()} px-4 py-5`}>
+                <div className="text-base font-semibold text-white">No slips yet.</div>
               </div>
             )}
-          </section>
-
-          <section className={`${shellClass()} p-5 sm:p-6`}>
-            <div className="flex items-end justify-between gap-3">
-              <div>
-                <div className="text-[11px] uppercase tracking-[0.35em] text-slate-500">
-                  Payout Proof
-                </div>
-                <h2 className="mt-2 text-2xl font-semibold text-white">Settled</h2>
-              </div>
-              <div className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-slate-300">
-                {board?.settledResults.length || 0}
-              </div>
-            </div>
-
-            <div className="mt-5 space-y-3">
-              {board?.settledResults.length ? (
-                board.settledResults.map((result) => {
-                  const content = (
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="text-sm uppercase tracking-[0.28em] text-slate-500 break-words">
-                          {result.mapName}
-                        </div>
-                        <div className="mt-2 text-lg font-semibold leading-tight text-white break-words">
-                          {result.title}
-                        </div>
-                        <div className="mt-1 text-sm text-slate-400">{result.winner} took it</div>
-                        <div className="mt-2 text-xs uppercase tracking-[0.24em] text-slate-500">
-                          {formatSettledTime(result.settledAt)}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 rounded-full border border-emerald-300/16 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-100">
-                        <CoinMark small />
-                        <span>{formatCompact(result.payoutWolo)}</span>
-                      </div>
-                    </div>
-                  );
-
-                  return result.href ? (
-                    <Link
-                      key={result.id}
-                      href={result.href}
-                      className={`${cardClass()} block px-4 py-4 transition hover:border-white/14 hover:bg-white/[0.05]`}
-                    >
-                      {content}
-                    </Link>
-                  ) : (
-                    <article key={result.id} className={`${cardClass()} px-4 py-4`}>
-                      {content}
-                    </article>
-                  );
-                })
-              ) : (
-                <EmptyShell label="No proof landed yet." />
-              )}
-            </div>
-          </section>
-
-          <section className={`${shellClass()} p-5 sm:p-6`}>
-            <div className="text-[11px] uppercase tracking-[0.35em] text-slate-500">Heat</div>
-            <h2 className="mt-2 text-2xl font-semibold text-white">What’s moving.</h2>
-
-            <div className="mt-5 space-y-3">
-              <HeatRow
-                label="Biggest pot"
-                value={board?.heat.biggestPot?.label || "Market arming"}
-                detail={
-                  board?.heat.biggestPot
-                    ? `${formatCompact(board.heat.biggestPot.potWolo)} WOLO`
-                    : "Quiet"
-                }
-              />
-              <HeatRow
-                label="Best return"
-                value={board?.heat.bestReturn?.label || "Reading the board"}
-                detail={
-                  board?.heat.bestReturn
-                    ? `${board.heat.bestReturn.returnMultiplier.toFixed(2)}x`
-                    : "Waiting"
-                }
-              />
-              <HeatRow
-                label="Latest proof"
-                value={board?.settledResults[0]?.title || "No result yet"}
-                detail={
-                  board?.settledResults[0]
-                    ? `${board.settledResults[0].winner} · ${formatSettledTime(board.settledResults[0].settledAt)}`
-                    : "Pending"
-                }
-              />
-            </div>
-          </section>
+          </div>
+        </>
+      ) : (
+        <div className={`${insetClass()} mt-5 px-4 py-5`}>
+          <div className="text-base font-semibold text-white">Sign in to lock slips.</div>
+          <button
+            type="button"
+            onClick={() => loginWithSteam("/bets")}
+            className={`mt-4 inline-flex items-center rounded-full px-4 py-2.5 text-sm font-semibold transition ${edgeButton("blue")}`}
+          >
+            {loadingAuth ? "Loading..." : "Steam Sign In"}
+          </button>
         </div>
-      </section>
-    </main>
+      )}
+    </section>
+  );
+}
+
+function ResultCard({
+  result,
+  compact = false,
+}: {
+  result: BetSettledResult;
+  compact?: boolean;
+}) {
+  const content = (
+    <div className="flex items-start justify-between gap-3">
+      <div className="min-w-0">
+        <div className="break-words text-sm uppercase tracking-[0.28em] text-slate-500">
+          {result.mapName}
+        </div>
+        <div className="mt-2 break-words text-lg font-semibold leading-tight text-white">
+          {result.title}
+        </div>
+        <div className="mt-1 text-sm text-slate-400">{result.winner} took it</div>
+        <div className="mt-2 text-xs uppercase tracking-[0.24em] text-slate-500">
+          {formatSettledTime(result.settledAt)}
+        </div>
+      </div>
+      <div
+        className={`flex items-center gap-2 rounded-full border border-emerald-300/16 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-100 ${
+          compact ? "shrink-0" : ""
+        }`}
+      >
+        <CoinMark small />
+        <span>{formatCompact(result.payoutWolo)}</span>
+      </div>
+    </div>
+  );
+
+  if (result.href) {
+    return (
+      <Link
+        href={result.href}
+        className={`${cardClass()} block px-4 py-4 transition hover:border-white/14 hover:bg-white/[0.05]`}
+      >
+        {content}
+      </Link>
+    );
+  }
+
+  return <article className={`${cardClass()} px-4 py-4`}>{content}</article>;
+}
+
+function RecentBetsSection({ results }: { results: BetSettledResult[] }) {
+  return (
+    <section className={`${shellClass()} p-5 sm:p-6`}>
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <div className="text-[11px] uppercase tracking-[0.35em] text-slate-500">Recent Bets</div>
+          <h2 className="mt-2 text-2xl font-semibold text-white">Closed books still carry momentum.</h2>
+        </div>
+        <div className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-slate-300">
+          {results.length}
+        </div>
+      </div>
+
+      <div className="mt-5 grid gap-3 md:grid-cols-2">
+        {results.length ? (
+          results.slice(0, 6).map((result) => <ResultCard key={result.id} result={result} compact />)
+        ) : (
+          <EmptyShell label="No books have settled yet. The first closed result will show up here instead of leaving Basic empty." />
+        )}
+      </div>
+    </section>
+  );
+}
+
+function SettledSection({ results }: { results: BetSettledResult[] }) {
+  return (
+    <section className={`${shellClass()} p-5 sm:p-6`}>
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <div className="text-[11px] uppercase tracking-[0.35em] text-slate-500">Payout Proof</div>
+          <h2 className="mt-2 text-2xl font-semibold text-white">Settled</h2>
+        </div>
+        <div className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-slate-300">
+          {results.length}
+        </div>
+      </div>
+
+      <div className="mt-5 space-y-3">
+        {results.length ? (
+          results.map((result) => <ResultCard key={result.id} result={result} />)
+        ) : (
+          <EmptyShell label="No proof landed yet." />
+        )}
+      </div>
+    </section>
+  );
+}
+
+function BoardPulseSection({
+  openCount,
+  liveCount,
+  biggestPotLabel,
+  biggestPotWolo,
+  bestReturnMultiplier,
+  latestResult,
+}: {
+  openCount: number;
+  liveCount: number;
+  biggestPotLabel: string;
+  biggestPotWolo: number | null;
+  bestReturnMultiplier: number | null;
+  latestResult: BetSettledResult | null;
+}) {
+  return (
+    <section className={`${shellClass()} p-5 sm:p-6`}>
+      <div className="text-[11px] uppercase tracking-[0.35em] text-slate-500">Board Pulse</div>
+      <h2 className="mt-2 text-2xl font-semibold text-white">Enough telemetry to feel alive.</h2>
+
+      <div className="mt-5 space-y-3">
+        <HeatRow
+          label="Open books"
+          value={openCount > 0 ? `${openCount} book${openCount === 1 ? "" : "s"} armed` : "Quiet for now"}
+          detail={liveCount > 0 ? `${liveCount} currently live` : "No live book at this second"}
+        />
+        <HeatRow
+          label="Biggest pot"
+          value={biggestPotLabel}
+          detail={biggestPotWolo ? `${formatCompact(biggestPotWolo)} WOLO` : "Waiting for the next crowd surge"}
+        />
+        <HeatRow
+          label="Best return"
+          value={bestReturnMultiplier ? `${bestReturnMultiplier.toFixed(2)}x right now` : "Reading the board"}
+          detail={
+            latestResult
+              ? `${latestResult.winner} closed the latest book · ${formatSettledTime(latestResult.settledAt)}`
+              : "No closed proof yet"
+          }
+        />
+      </div>
+    </section>
+  );
+}
+
+function HeatSection({ board }: { board: BetBoardSnapshot | null }) {
+  return (
+    <section className={`${shellClass()} p-5 sm:p-6`}>
+      <div className="text-[11px] uppercase tracking-[0.35em] text-slate-500">Heat</div>
+      <h2 className="mt-2 text-2xl font-semibold text-white">What’s moving.</h2>
+
+      <div className="mt-5 space-y-3">
+        <HeatRow
+          label="Biggest pot"
+          value={board?.heat.biggestPot?.label || "Market arming"}
+          detail={
+            board?.heat.biggestPot
+              ? `${formatCompact(board.heat.biggestPot.potWolo)} WOLO`
+              : "Quiet"
+          }
+        />
+        <HeatRow
+          label="Best return"
+          value={board?.heat.bestReturn?.label || "Reading the board"}
+          detail={
+            board?.heat.bestReturn
+              ? `${board.heat.bestReturn.returnMultiplier.toFixed(2)}x`
+              : "Waiting"
+          }
+        />
+        <HeatRow
+          label="Latest proof"
+          value={board?.settledResults[0]?.title || "No result yet"}
+          detail={
+            board?.settledResults[0]
+              ? `${board.settledResults[0].winner} · ${formatSettledTime(board.settledResults[0].settledAt)}`
+              : "Pending"
+          }
+        />
+      </div>
+    </section>
+  );
+}
+
+function RecentResultFeature({ result }: { result: BetSettledResult }) {
+  return (
+    <div>
+      <div className="text-[11px] uppercase tracking-[0.35em] text-slate-500">Latest Closed Book</div>
+      <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl">
+        {result.title}
+      </h2>
+      <div className="mt-2 text-sm text-slate-400">
+        {result.winner} took {result.mapName} · {formatSettledTime(result.settledAt)}
+      </div>
+
+      <div className="mt-5">
+        <ResultCard result={result} />
+      </div>
+    </div>
   );
 }
 
 function MarketFeature({
   market,
+  eyebrowLabel = "Featured Market",
   selection,
   workingKey,
   lockWorkflow,
@@ -1579,6 +2042,7 @@ function MarketFeature({
   onClear,
 }: {
   market: BetBoardMarket;
+  eyebrowLabel?: string;
   selection: SelectionState | null;
   workingKey: string | null;
   lockWorkflow: LockWorkflow | null;
@@ -1646,7 +2110,7 @@ function MarketFeature({
     <div className="relative">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <div className="text-[11px] uppercase tracking-[0.35em] text-slate-500">Featured Market</div>
+          <div className="text-[11px] uppercase tracking-[0.35em] text-slate-500">{eyebrowLabel}</div>
           <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl">
             {market.title}
           </h2>

@@ -13,6 +13,7 @@ import {
   isBetStakeIntentCountableStatus,
   refreshRecoverableBetStakeIntents,
 } from "@/lib/betStakeIntents";
+import { loadWatcherDownloadAnalytics } from "@/lib/watcherDownloads";
 import { getWoloSettlementSurfaceStatus } from "@/lib/woloBetSettlement";
 import { buildWoloRestTxLookupUrl, getWoloBetEscrowRuntime } from "@/lib/woloChain";
 
@@ -213,7 +214,7 @@ export async function GET(request: NextRequest) {
 
     await refreshRecoverableBetStakeIntents(prisma);
 
-    const [communityMap, inbox, appearanceMap, activityMap, adminMemberships, activityStats, allClaims, scheduledRows, wagerRows, marketRows, settlementSurface] = await Promise.all([
+    const [communityMap, inbox, appearanceMap, activityMap, adminMemberships, activityStats, allClaims, scheduledRows, wagerRows, marketRows, settlementSurface, watcherDownloads] = await Promise.all([
       loadUserCommunitySummaries(prisma, userIds, { includePending: true }),
       loadInboxPayload(prisma, admin.uid, { summaryOnly: true }),
       loadAppearancePreferenceMap(prisma, userIds),
@@ -393,6 +394,7 @@ export async function GET(request: NextRequest) {
           },
         }),
       getWoloSettlementSurfaceStatus(),
+      loadWatcherDownloadAnalytics(prisma),
     ]);
 
     const unreadMap = new Map(
@@ -1016,6 +1018,7 @@ export async function GET(request: NextRequest) {
       overview,
       settlementRail,
       marketRail,
+      watcherDownloads,
     });
   } catch (err) {
     console.error("Failed to load admin users:", err);
