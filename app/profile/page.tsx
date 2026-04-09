@@ -1,18 +1,30 @@
-
 "use client";
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
+  ArrowRight,
+  ExternalLink,
+  KeyRound,
+  LogOut,
+  Palette,
+  ShieldCheck,
+  Sparkles,
+  Trophy,
+  Upload,
+  Wallet,
+} from "lucide-react";
+
+import {
   LobbyTextColorPicker,
   LobbyThemePicker,
   LobbyViewToggle,
 } from "@/components/lobby/LobbyAppearanceControls";
-import { getLobbyHeroBackground } from "@/components/lobby/lobbyPresentation";
 import { useLobbyAppearance } from "@/components/lobby/LobbyAppearanceContext";
-import { useUserAuth } from "@/hooks/useUserAuth";
+import { getLobbyHeroBackground } from "@/components/lobby/lobbyPresentation";
 import SteamLoginButton from "@/components/SteamLoginButton";
+import { useUserAuth } from "@/hooks/useUserAuth";
 import type { ChallengeHubSnapshot } from "@/lib/challenges";
 
 type ProfileResponse = {
@@ -44,6 +56,12 @@ function formatDateTime(value: string | null | undefined) {
   if (!value) return "—";
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString();
+}
+
+function truncateUid(value: string | null | undefined) {
+  if (!value) return "—";
+  if (value.length <= 18) return value;
+  return `${value.slice(0, 8)}…${value.slice(-8)}`;
 }
 
 export default function ProfilePage() {
@@ -81,12 +99,8 @@ function ProfilePageContent() {
   const watcherPairIntent = searchParams?.get("watcher_pair") === "1";
 
   const returnToParams = new URLSearchParams();
-  if (claimName) {
-    returnToParams.set("claim_name", claimName);
-  }
-  if (watcherPairIntent) {
-    returnToParams.set("watcher_pair", "1");
-  }
+  if (claimName) returnToParams.set("claim_name", claimName);
+  if (watcherPairIntent) returnToParams.set("watcher_pair", "1");
 
   const profileReturnTo = returnToParams.toString()
     ? `/profile?${returnToParams.toString()}`
@@ -99,22 +113,29 @@ function ProfilePageContent() {
   const hasPendingClaim = (profile?.pendingClaimAmountWolo ?? 0) > 0;
 
   const claimStatusMessage = useMemo(() => {
-    if (!profile) return "";
-    if (!hasPendingClaim) return "";
-
+    if (!profile || !hasPendingClaim) return "";
     const amount = profile.pendingClaimAmountWolo;
-    const claimCount = profile.pendingClaimCount;
+    const count = profile.pendingClaimCount;
     const latest = formatDateTime(profile.pendingClaimLatestCreatedAt);
-
-    if (claimCount > 1) {
-      return `${amount} WOLO is waiting across ${claimCount} unclaimed purses. Latest credit: ${latest}.`;
-    }
-
-    return `${amount} WOLO is waiting to be claimed. Latest credit: ${latest}.`;
+    return count > 1
+      ? `${amount} WOLO waiting across ${count} claims · latest ${latest}`
+      : `${amount} WOLO waiting · latest ${latest}`;
   }, [hasPendingClaim, profile]);
 
   const recentChallengeHistory = useMemo(
     () => challengeSnapshot?.historyMatches.slice(0, 4) ?? [],
+    [challengeSnapshot]
+  );
+
+  const challengeStats = useMemo(
+    () => [
+      { label: "Wins", value: challengeSnapshot?.record.wins ?? 0 },
+      { label: "Losses", value: challengeSnapshot?.record.losses ?? 0 },
+      { label: "Completed", value: challengeSnapshot?.record.completed ?? 0 },
+      { label: "Forfeited", value: challengeSnapshot?.record.forfeited ?? 0 },
+      { label: "Pending", value: challengeSnapshot?.record.pending ?? 0 },
+      { label: "Cancelled", value: challengeSnapshot?.record.cancelled ?? 0 },
+    ],
     [challengeSnapshot]
   );
 
@@ -154,16 +175,12 @@ function ProfilePageContent() {
   }, [isAuthenticated, loadProfile]);
 
   useEffect(() => {
-    if (!claimName || claimSeedApplied || profile?.inGameName) {
-      return;
-    }
-
+    if (!claimName || claimSeedApplied || profile?.inGameName) return;
     setStatus(
-      `Steam identity linked. Replay-backed games will confirm the AoE2HD identity for ${claimName}; manual name edits are now disabled.`
+      `Steam linked. Replay proof will lock in ${claimName} after your first confirmed upload.`
     );
     setClaimSeedApplied(true);
   }, [claimName, claimSeedApplied, profile?.inGameName]);
-
 
   const createWatcherKey = useCallback(
     async ({ pairToWatcher = false } = {}) => {
@@ -190,11 +207,9 @@ function ProfilePageContent() {
 
         if (pairToWatcher) {
           launchWatcherPairing(payload.apiKey);
-          setStatus(
-            "Watcher key minted and sent to the desktop app. If macOS did not switch windows, paste the fallback key below."
-          );
+          setStatus("Watcher key minted and sent to the app. Paste the fallback key below if the deep link stalls.");
         } else {
-          setStatus("Watcher key minted. Pair from the desktop app, or copy the fallback key below.");
+          setStatus("Watcher key minted. Paste it into the app if needed.");
         }
       } catch (error) {
         console.error("Failed to create watcher key:", error);
@@ -207,10 +222,7 @@ function ProfilePageContent() {
   );
 
   useEffect(() => {
-    if (!isAuthenticated || !watcherPairIntent || watcherPairRequestStarted) {
-      return;
-    }
-
+    if (!isAuthenticated || !watcherPairIntent || watcherPairRequestStarted) return;
     setWatcherPairRequestStarted(true);
     void createWatcherKey({ pairToWatcher: true });
   }, [createWatcherKey, isAuthenticated, watcherPairIntent, watcherPairRequestStarted]);
@@ -221,20 +233,11 @@ function ProfilePageContent() {
         <div className="rounded-[2rem] border border-white/10 bg-slate-950/70 p-8 text-white">
           <div className="text-xs uppercase tracking-[0.35em] text-white/45">Profile</div>
           <h2 className="mt-3 text-3xl font-semibold">
-            {claimName
-              ? `Sign in before you claim ${claimName}.`
-              : "Sign in before you claim a competitive identity."}
+            {claimName ? `Sign in before you claim ${claimName}.` : "Sign in to open your command deck."}
           </h2>
           <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-300">
-            Steam is the first account path. That gives you a stable identity now, while replay
-            verification continues to handle trust for betting and result settlement.
+            Steam gets you in. Replay proof sharpens the competitive identity after that.
           </p>
-          {claimName ? (
-            <div className="mt-4 rounded-2xl border border-amber-300/20 bg-amber-400/10 px-4 py-4 text-sm text-amber-100">
-              This public warrior page exists already. Sign in, then upload one replay with your
-              watcher key to confirm that identity properly.
-            </div>
-          ) : null}
           <div className="mt-6 flex flex-wrap gap-3">
             <SteamLoginButton
               returnTo={profileReturnTo}
@@ -252,139 +255,189 @@ function ProfilePageContent() {
     );
   }
 
+  const displayName = profile?.steamPersonaName || playerName || "Profile";
+  const confirmedName = profile?.inGameName || "Awaiting replay proof";
+  const latestWatcherKey = watcherKeys[0] ?? null;
+
   return (
-    <div className="mx-auto max-w-4xl space-y-7 py-8 text-white">
-      <section className="rounded-[2rem] border border-white/10 bg-slate-950/70 p-8">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
+    <div className="mx-auto max-w-5xl space-y-6 py-8 text-white">
+      <section className="rounded-[2rem] border border-white/10 bg-slate-950/70 p-6 sm:p-8">
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)] xl:items-start">
+          <div className="min-w-0">
             <div className="text-xs uppercase tracking-[0.35em] text-white/45">Identity</div>
-            <h1 className="mt-2 text-3xl font-semibold">
-              {profile?.steamPersonaName || playerName || "Profile"}
-            </h1>
-            <p className="mt-3 text-sm text-slate-300">
-              UID: <span className="font-mono text-white/85">{uid}</span>
-            </p>
+            <div className="mt-3 flex flex-wrap items-start justify-between gap-4">
+              <div className="min-w-0">
+                <h1 className="truncate text-3xl font-semibold sm:text-4xl">{displayName}</h1>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-200">
+                    UID {truncateUid(uid)}
+                  </span>
+                  <span className="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-100">
+                    Verification level {profile?.verificationLevel ?? 0}
+                  </span>
+                  {profile?.verificationMethod ? (
+                    <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-200">
+                      {profile.verificationMethod}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 grid gap-4 md:grid-cols-2">
+              <IdentityCard
+                title="Competitive name"
+                value={confirmedName}
+                meta={profile?.inGameName ? "Replay-backed" : "Waiting for first confirmed replay"}
+              />
+              <IdentityCard
+                title="Steam"
+                value={profile?.steamPersonaName || "Unknown"}
+                meta={profile?.steamId ? `Steam ID ${profile.steamId}` : "Not connected"}
+              />
+            </div>
+
+            {status ? (
+              <div className="mt-4 rounded-2xl border border-sky-300/20 bg-sky-400/10 px-4 py-3 text-sm text-sky-100">
+                {status}
+              </div>
+            ) : null}
+
+            {hasPendingClaim ? (
+              <div className="mt-4 rounded-2xl border border-emerald-300/20 bg-emerald-400/10 px-4 py-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <div className="text-xs uppercase tracking-[0.28em] text-emerald-200/80">
+                      Claimable WOLO
+                    </div>
+                    <div className="mt-2 text-3xl font-semibold text-white">
+                      {profile?.pendingClaimAmountWolo ?? 0} WOLO
+                    </div>
+                    <div className="mt-2 text-sm text-emerald-100/90">{claimStatusMessage}</div>
+                  </div>
+                  <div className="rounded-full border border-emerald-300/30 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-100">
+                    {profile?.pendingClaimCount ?? 0} pending
+                  </div>
+                </div>
+              </div>
+            ) : null}
           </div>
-          <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
-            Verification level {profile?.verificationLevel ?? 0}
+
+          <div className="min-w-0 rounded-[1.6rem] border border-white/10 bg-white/[0.04] p-5">
+            <div className="flex items-center gap-2 text-xs uppercase tracking-[0.32em] text-amber-100/70">
+              <ShieldCheck className="h-4 w-4" />
+              Watcher
+            </div>
+            <h2 className="mt-3 text-2xl font-semibold">Pair fast. Play clean.</h2>
+            <p className="mt-3 text-sm leading-6 text-slate-300">
+              Mint a fresh key, hand it to the desktop app, and keep replay proof flowing.
+            </p>
+
+            <div className="mt-5 flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => void createWatcherKey({ pairToWatcher: true })}
+                disabled={mintingWatcherKey}
+                className="rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {mintingWatcherKey ? "Pairing..." : "Pair Watcher"}
+              </button>
+              <button
+                type="button"
+                onClick={() => void createWatcherKey()}
+                disabled={mintingWatcherKey}
+                className="rounded-full border border-white/15 px-5 py-3 text-sm text-white/85 transition hover:border-white/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                Mint Key
+              </button>
+            </div>
+
+            {watcherPairIntent ? (
+              <div className="mt-4 rounded-2xl border border-emerald-300/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100">
+                Pairing request received. If the deep link stalls, use the fallback key below.
+              </div>
+            ) : null}
+
+            {newWatcherKey ? (
+              <div className="mt-4 rounded-2xl border border-amber-300/20 bg-amber-400/10 p-4">
+                <div className="text-xs uppercase tracking-[0.24em] text-amber-100/80">
+                  Fresh fallback key
+                </div>
+                <div className="mt-2 break-all rounded-xl bg-black/20 px-3 py-3 font-mono text-sm text-white">
+                  {newWatcherKey}
+                </div>
+              </div>
+            ) : latestWatcherKey ? (
+              <div className="mt-4 rounded-2xl border border-white/10 bg-slate-950/40 p-4">
+                <div className="text-xs uppercase tracking-[0.24em] text-slate-400">
+                  Latest key
+                </div>
+                <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+                  <div className="font-mono text-sm text-white">{latestWatcherKey.prefix}</div>
+                  <div className="text-xs text-slate-400">
+                    Created {formatDateTime(latestWatcherKey.createdAt)}
+                    {latestWatcherKey.lastUsedAt
+                      ? ` · Last used ${formatDateTime(latestWatcherKey.lastUsedAt)}`
+                      : ""}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-4 rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-3 text-sm text-slate-300">
+                No watcher keys minted yet.
+              </div>
+            )}
+
+            <div className="mt-5 flex flex-wrap gap-3">
+              <Link
+                href="/download"
+                className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
+              >
+                Download Watcher
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link
+                href="/upload"
+                className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
+              >
+                Upload Replay
+                <Upload className="h-4 w-4" />
+              </Link>
+            </div>
           </div>
         </div>
-
-        {claimName && !profile?.inGameName ? (
-          <div className="mt-6 rounded-2xl border border-amber-300/20 bg-amber-400/10 px-4 py-4 text-sm text-amber-100">
-            You came here from the public warrior page for{" "}
-            <span className="font-semibold">{claimName}</span>. Steam confirms the account. Your
-            first parsed replay confirms the competitive AoE2HD name.
-          </div>
-        ) : null}
-
-        {hasPendingClaim ? (
-          <div className="mt-6 rounded-2xl border border-emerald-300/20 bg-emerald-400/10 px-5 py-5">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <div className="text-xs uppercase tracking-[0.3em] text-emerald-200/80">
-                  Claimable WOLO
-                </div>
-                <div className="mt-2 text-3xl font-semibold text-white">
-                  {profile?.pendingClaimAmountWolo ?? 0} WOLO
-                </div>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-emerald-100/90">
-                  {claimStatusMessage}
-                </p>
-              </div>
-              <div className="rounded-full border border-emerald-300/30 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-100">
-                {profile?.pendingClaimCount ?? 0} pending
-              </div>
-            </div>
-            <div className="mt-4 text-xs text-emerald-100/80">
-              Right now this is a claim ledger signal. The visible bait is live. The final wallet
-              payout rail can be tightened next.
-            </div>
-          </div>
-        ) : null}
-
-        <div className="mt-8 grid gap-6 md:grid-cols-2">
-          <div className="rounded-2xl border border-white/8 bg-white/5 p-6">
-            <div className="text-sm font-medium text-white">Steam</div>
-            <div className="mt-3 space-y-2 text-sm text-slate-300">
-              <div>Persona: {profile?.steamPersonaName || "Unknown"}</div>
-              <div>Steam ID: {profile?.steamId || "Not connected"}</div>
-              <div>Verification method: {profile?.verificationMethod || "none"}</div>
-            </div>
-            <p className="mt-4 text-xs leading-5 text-slate-400">
-              Steam supplies the account identity. It is the front-door credential, not the final
-              proof of your AoE2HD competitive name.
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-white/8 bg-white/5 p-6">
-            <div className="text-sm font-medium text-white">Competitive Identity</div>
-            <div className="mt-3 space-y-2 text-sm text-slate-300">
-              <div>
-                Confirmed AoE2HD Name:{" "}
-                <span className="text-white">
-                  {profile?.inGameName || "Awaiting replay confirmation"}
-                </span>
-              </div>
-              <div>Manual editing: disabled</div>
-              <div>
-                Proof path: parsed replays + watcher-backed uploads
-              </div>
-            </div>
-            <p className="mt-4 text-xs leading-5 text-slate-400">
-              Users no longer free-type their in-game name here. Your replay-backed identity is the
-              source of truth now.
-            </p>
-          </div>
-        </div>
-
-        {status ? <p className="mt-5 text-sm text-slate-300">{status}</p> : null}
       </section>
 
-      <section className="rounded-[2rem] border border-white/10 bg-slate-950/70 p-8">
+      <section className="rounded-[2rem] border border-white/10 bg-slate-950/70 p-6 sm:p-8">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <div className="text-xs uppercase tracking-[0.35em] text-white/45">Challenge Record</div>
+            <div className="text-xs uppercase tracking-[0.35em] text-white/45">Challenge record</div>
             <h2 className="mt-2 text-2xl font-semibold text-white">What the ledger says</h2>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
-              This is where older challenge attempts belong: accepted, declined, cancelled,
-              forfeited, completed, and the record they imply.
-            </p>
           </div>
-          <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200">
-            {challengeSnapshot?.record.total ?? 0} total tracked
-          </div>
+          <Link
+            href="/challenge"
+            className="rounded-full border border-white/15 px-4 py-2 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
+          >
+            Open Challenge Hub
+          </Link>
         </div>
 
-        <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <ProfileMetricCard label="Wins" value={String(challengeSnapshot?.record.wins ?? 0)} />
-          <ProfileMetricCard label="Losses" value={String(challengeSnapshot?.record.losses ?? 0)} />
-          <ProfileMetricCard label="Completed" value={String(challengeSnapshot?.record.completed ?? 0)} />
-          <ProfileMetricCard label="Forfeited" value={String(challengeSnapshot?.record.forfeited ?? 0)} />
-          <ProfileMetricCard label="Pending" value={String(challengeSnapshot?.record.pending ?? 0)} />
-          <ProfileMetricCard label="Accepted" value={String(challengeSnapshot?.record.accepted ?? 0)} />
-          <ProfileMetricCard label="Declined" value={String(challengeSnapshot?.record.declined ?? 0)} />
-          <ProfileMetricCard label="Cancelled" value={String(challengeSnapshot?.record.cancelled ?? 0)} />
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
+          {challengeStats.map((item) => (
+            <ProfileMetricCard key={item.label} label={item.label} value={String(item.value)} />
+          ))}
         </div>
 
-        <div className="mt-8 rounded-[1.75rem] border border-white/10 bg-white/[0.04] p-5">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <div className="text-xs uppercase tracking-[0.3em] text-slate-500">Recent Challenge History</div>
-              <h3 className="mt-2 text-xl font-semibold text-white">Last tracked attempts</h3>
-            </div>
-            <Link
-              href="/challenge"
-              className="rounded-full border border-white/15 px-4 py-2 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
-            >
-              Open Challenge Hub
-            </Link>
+        <div className="mt-6 rounded-[1.6rem] border border-white/10 bg-white/[0.04] p-4 sm:p-5">
+          <div className="flex items-center gap-2 text-xs uppercase tracking-[0.3em] text-slate-500">
+            <Trophy className="h-4 w-4" />
+            Recent attempts
           </div>
 
-          <div className="mt-5 space-y-3">
+          <div className="mt-4 space-y-3">
             {recentChallengeHistory.length === 0 ? (
               <div className="rounded-2xl border border-white/10 bg-slate-950/45 px-4 py-4 text-sm text-slate-300">
-                No recent challenge ledger entries yet.
+                No recent challenge entries yet.
               </div>
             ) : (
               recentChallengeHistory.map((match) => (
@@ -393,8 +446,8 @@ function ProfilePageContent() {
                   className="rounded-2xl border border-white/10 bg-slate-950/45 px-4 py-4"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <div className="text-sm font-semibold text-white">
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-semibold text-white">
                         {match.challenger.name} vs {match.challenged.name}
                       </div>
                       <div className="mt-1 text-[11px] uppercase tracking-[0.22em] text-slate-500">
@@ -415,234 +468,148 @@ function ProfilePageContent() {
         </div>
       </section>
 
-      <section className={`rounded-[2rem] border p-9 ${appearanceTone.panelShell}`}>
+      <section className={`rounded-[2rem] border p-6 sm:p-7 ${appearanceTone.panelShell}`}>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className={`text-xs uppercase tracking-[0.35em] ${appearanceTone.eyebrow}`}>
               Appearance
             </div>
-            <h2 className="mt-2 text-2xl font-semibold text-white">Tune your command room</h2>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
-              Theme now drives the page background and navbar. Tile Style drives the panels. Skin
-              controls the steel-versus-field treatment, and Text Color lets you push the copy
-              brighter, softer, or darker.
-            </p>
+            <h2 className="mt-2 text-2xl font-semibold text-white">Tune the room</h2>
           </div>
-          <div className={`rounded-2xl border px-4 py-3 text-sm ${appearanceTone.neutralPill}`}>
-            Stored to your account + this device
+          <div className={`rounded-full border px-4 py-2 text-sm ${appearanceTone.neutralPill}`}>
+            Stored to account + device
           </div>
         </div>
 
-        <div className="mt-8 grid gap-7 md:grid-cols-2 xl:grid-cols-4">
-          <div className={`rounded-2xl border p-6 ${appearanceTone.insetPanel}`}>
-            <div className="text-sm font-medium text-white">Theme</div>
-            <p className="mt-2 text-sm leading-6 text-slate-300">
-              Controls the room backdrop and the navbar shell.
-            </p>
+        <div className="mt-6 grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
+          <CompactAppearanceCard title="Theme" tone={appearanceTone}>
             <LobbyThemePicker
               themeKey={themeKey}
               onThemeChange={setThemeKey}
               tone={appearanceTone}
               size="sm"
-              className="mt-4"
+              className="mt-3"
             />
-          </div>
+          </CompactAppearanceCard>
 
-          <div className={`rounded-2xl border p-6 ${appearanceTone.insetPanel}`}>
-            <div className="text-sm font-medium text-white">Tile Style (Color)</div>
-            <p className="mt-2 text-sm leading-6 text-slate-300">
-              Recolors cards, panels, and board surfaces without touching the wallpaper.
-            </p>
+          <CompactAppearanceCard title="Tile color" tone={appearanceTone}>
             <LobbyThemePicker
               themeKey={tileThemeKey}
               onThemeChange={setTileThemeKey}
               tone={appearanceTone}
               size="sm"
-              className="mt-4"
+              className="mt-3"
             />
-          </div>
+          </CompactAppearanceCard>
 
-          <div className={`rounded-2xl border p-6 ${appearanceTone.insetPanel}`}>
-            <div className="text-sm font-medium text-white">Tile Skin</div>
-            <p className="mt-2 text-sm leading-6 text-slate-300">
-              Steel stays armored and neutral. Field leans greener and more war-room.
-            </p>
+          <CompactAppearanceCard title="Tile skin" tone={appearanceTone}>
             <LobbyViewToggle
               viewMode={viewMode}
               onViewModeChange={setViewMode}
               tone={appearanceTone}
-              className="mt-4"
+              className="mt-3"
             />
-          </div>
+          </CompactAppearanceCard>
 
-          <div className={`rounded-2xl border p-6 ${appearanceTone.insetPanel}`}>
-            <div className="text-sm font-medium text-white">Text Color</div>
-            <p className="mt-2 text-sm leading-6 text-slate-300">
-              White stays sharp, Grey softens the room, and Black pushes the body copy inkier
-              without flattening the headers.
-            </p>
+          <CompactAppearanceCard title="Text" tone={appearanceTone}>
             <LobbyTextColorPicker
               textColor={textColor}
               onTextColorChange={setTextColor}
               tone={appearanceTone}
-              className="mt-4"
+              className="mt-3"
             />
-          </div>
+          </CompactAppearanceCard>
         </div>
 
         <div
-          className="mt-8 rounded-[1.75rem] border border-white/10 p-5"
+          className="mt-6 rounded-[1.6rem] border border-white/10 p-4"
           style={{ backgroundImage: getLobbyHeroBackground(themeKey, viewMode) }}
         >
-          <div className="grid gap-5 md:grid-cols-[1.1fr_0.9fr]">
+          <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-center">
             <div className={`rounded-2xl border p-5 ${appearanceTone.card}`}>
-              <div className={`text-[11px] uppercase tracking-[0.32em] ${appearanceTone.eyebrow}`}>
-                Preview
+              <div className={`text-[11px] uppercase tracking-[0.28em] ${appearanceTone.eyebrow}`}>
+                Current skin
               </div>
-              <div className="mt-3 text-4xl font-semibold tracking-tight text-white">61</div>
-              <div
-                className={`mt-2 text-[11px] uppercase tracking-[0.28em] ${appearanceTone.countLabel}`}
-              >
-                Players On Board
-              </div>
-            </div>
-
-            <div className={`rounded-2xl border p-5 ${appearanceTone.insetPanel}`}>
-              <div className="flex items-center justify-between gap-3">
-                <div className={`text-[11px] uppercase tracking-[0.32em] ${appearanceTone.accentText}`}>
-                  Current Skin
-                </div>
-                <div
-                  className={`rounded-full border px-3 py-1 text-xs font-medium ${appearanceTone.statusBadge}`}
-                >
-                  {viewMode === "field" ? "Field" : "Steel"}
-                </div>
-              </div>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <span
-                  className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${appearanceTone.neutralPill}`}
-                >
+              <div className="mt-3 flex flex-wrap gap-2">
+                <span className={`rounded-full border px-2.5 py-1 text-[11px] ${appearanceTone.neutralPill}`}>
                   bg {themeKey}
                 </span>
-                <span
-                  className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${appearanceTone.rankBadge}`}
-                >
+                <span className={`rounded-full border px-2.5 py-1 text-[11px] ${appearanceTone.rankBadge}`}>
                   tiles {tileThemeKey}
                 </span>
-                <span
-                  className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${appearanceTone.neutralPill}`}
-                >
+                <span className={`rounded-full border px-2.5 py-1 text-[11px] ${appearanceTone.neutralPill}`}>
                   {viewMode}
                 </span>
-                <span
-                  className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${appearanceTone.neutralPill}`}
-                >
+                <span className={`rounded-full border px-2.5 py-1 text-[11px] ${appearanceTone.neutralPill}`}>
                   {textColor} text
                 </span>
               </div>
             </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="rounded-[2rem] border border-white/10 bg-slate-950/70 p-8">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <div className="text-xs uppercase tracking-[0.35em] text-white/45">Watcher</div>
-            <h2 className="mt-2 text-2xl font-semibold">Pair Watcher in one click</h2>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
-              Click Pair Watcher App to mint a fresh key and hand it straight to the desktop client.
-              If the browser deep link is blocked, the fallback key still appears below for manual
-              paste.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={() => void createWatcherKey({ pairToWatcher: true })}
-              disabled={mintingWatcherKey}
-              className="rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-70"
-            >
-              {mintingWatcherKey ? "Pairing..." : "Pair Watcher App"}
-            </button>
-            <button
-              type="button"
-              onClick={() => void createWatcherKey()}
-              disabled={mintingWatcherKey}
-              className="rounded-full border border-white/15 px-5 py-3 text-sm text-white/85 transition hover:border-white/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-70"
-            >
-              Mint Key Only
-            </button>
-          </div>
-        </div>
-
-        {watcherPairIntent ? (
-          <div className="mt-6 rounded-2xl border border-emerald-300/20 bg-emerald-400/10 px-4 py-4 text-sm text-emerald-100">
-            Pairing request received from the Watcher app. If macOS prompts you, choose Open
-            AoE2HD Watcher to finish the handoff.
-          </div>
-        ) : null}
-
-        {newWatcherKey ? (
-          <div className="mt-6 rounded-2xl border border-amber-300/20 bg-amber-400/10 p-5">
-            <div className="text-sm font-medium text-amber-100">
-              Fallback key if one-click pairing is blocked
-            </div>
-            <div className="mt-3 break-all font-mono text-sm text-white">{newWatcherKey}</div>
-          </div>
-        ) : null}
-
-        <div className="mt-6 space-y-3">
-          {watcherKeys.length === 0 ? (
-            <p className="rounded-2xl border border-white/8 bg-white/5 px-4 py-4 text-sm text-slate-300">
-              No watcher keys minted yet.
-            </p>
-          ) : (
-            watcherKeys.map((key) => (
-              <div
-                key={key.prefix}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/8 bg-white/5 px-4 py-4 text-sm"
+            <div className="flex flex-wrap gap-3">
+              <Link
+                href="/"
+                className="rounded-full border border-white/15 px-5 py-3 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
               >
-                <div className="font-mono text-white">{key.prefix}</div>
-                <div className="text-slate-300">
-                  Created {new Date(key.createdAt).toLocaleString()}
-                  {key.lastUsedAt ? ` · Last used ${new Date(key.lastUsedAt).toLocaleString()}` : ""}
-                </div>
-              </div>
-            ))
-          )}
+                Back To Lobby
+              </Link>
+              <button
+                type="button"
+                onClick={logout}
+                className="inline-flex items-center gap-2 rounded-full border border-red-400/20 px-5 py-3 text-sm text-red-200 transition hover:border-red-300/40 hover:bg-red-500/10"
+              >
+                <LogOut className="h-4 w-4" />
+                Log Out
+              </button>
+            </div>
+          </div>
         </div>
       </section>
+    </div>
+  );
+}
 
-      <section className="flex flex-wrap gap-3">
-        <Link
-          href="/"
-          className="rounded-full border border-white/15 px-5 py-3 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
-        >
-          Back To Lobby
-        </Link>
-        <Link
-          href="/upload"
-          className="rounded-full border border-white/15 px-5 py-3 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
-        >
-          Upload Replay
-        </Link>
-        <button
-          type="button"
-          onClick={logout}
-          className="rounded-full border border-red-400/20 px-5 py-3 text-sm text-red-200 transition hover:border-red-300/40 hover:bg-red-500/10"
-        >
-          Log Out
-        </button>
-      </section>
+function IdentityCard({
+  title,
+  value,
+  meta,
+}: {
+  title: string;
+  value: string;
+  meta: string;
+}) {
+  return (
+    <div className="rounded-[1.35rem] border border-white/10 bg-white/[0.04] p-5">
+      <div className="text-xs uppercase tracking-[0.24em] text-slate-500">{title}</div>
+      <div className="mt-3 text-xl font-semibold text-white break-words">{value}</div>
+      <div className="mt-2 text-sm text-slate-300">{meta}</div>
+    </div>
+  );
+}
+
+function CompactAppearanceCard({
+  title,
+  tone,
+  children,
+}: {
+  title: string;
+  tone: ReturnType<typeof useLobbyAppearance>["presentationTone"];
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={`rounded-2xl border p-5 ${tone.insetPanel}`}>
+      <div className="flex items-center gap-2 text-sm font-medium text-white">
+        <Palette className="h-4 w-4" />
+        {title}
+      </div>
+      {children}
     </div>
   );
 }
 
 function ProfileMetricCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-4">
-      <div className="text-xs uppercase tracking-[0.24em] text-slate-500">{label}</div>
+    <div className="rounded-[1.25rem] border border-white/10 bg-white/[0.04] px-4 py-4">
+      <div className="text-xs uppercase tracking-[0.22em] text-slate-500">{label}</div>
       <div className="mt-2 text-2xl font-semibold text-white">{value}</div>
     </div>
   );
@@ -650,13 +617,10 @@ function ProfileMetricCard({ label, value }: { label: string; value: string }) {
 
 function ProfilePageFallback() {
   return (
-    <div className="mx-auto max-w-4xl py-8 text-white">
+    <div className="mx-auto max-w-5xl py-8 text-white">
       <div className="rounded-[2rem] border border-white/10 bg-slate-950/70 p-8">
         <div className="text-xs uppercase tracking-[0.35em] text-white/45">Profile</div>
-        <h1 className="mt-2 text-3xl font-semibold">Loading profile...</h1>
-        <p className="mt-3 text-sm text-slate-300">
-          Preparing your account, watcher keys, and claim flow.
-        </p>
+        <h1 className="mt-2 text-3xl font-semibold">Loading command deck…</h1>
       </div>
     </div>
   );
