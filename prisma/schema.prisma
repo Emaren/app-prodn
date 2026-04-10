@@ -52,6 +52,7 @@ model User {
   betWagers                      BetWager[]
   betStakeIntents                BetStakeIntent[]
   betMarketWallets               BetMarketWallet[]
+  createdBetFounderBonuses       BetMarketFounderBonus[]        @relation("BetMarketFounderBonusCreator")
   scheduledChallengesCreated     ScheduledMatch[]                @relation("ScheduledMatchChallenger")
   scheduledChallengesReceived    ScheduledMatch[]                @relation("ScheduledMatchChallenged")
   scheduledMatchActivities       ScheduledMatchActivity[]        @relation("ScheduledMatchActivityActor")
@@ -101,6 +102,7 @@ model GameStats {
   original_filename   String?   @db.VarChar(255)
 
   user                 User?                @relation(fields: [userUid], references: [uid], onDelete: NoAction, onUpdate: NoAction)
+  linkedBetMarkets     BetMarket[]          @relation("BetMarketLinkedGameStats")
   tournamentMatchProof TournamentMatch?     @relation("TournamentMatchProof")
   replayParseAttempts  ReplayParseAttempt[] @relation("GameStatsParseAttempts")
 
@@ -543,6 +545,8 @@ model WatcherDownloadEvent {
 model BetMarket {
   id                    Int       @id @default(autoincrement())
   scheduledMatchId      Int?      @unique(map: "uq_bet_markets_scheduled_match_id") @map("scheduled_match_id")
+  linkedSessionKey      String?   @map("linked_session_key") @db.VarChar(255)
+  linkedGameStatsId     Int?      @map("linked_game_stats_id")
   slug                  String    @unique @db.VarChar(120)
   title                 String    @db.VarChar(160)
   eventLabel            String    @map("event_label") @db.VarChar(120)
@@ -569,12 +573,16 @@ model BetMarket {
   updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
 
   scheduledMatch ScheduledMatch? @relation(fields: [scheduledMatchId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  linkedGameStats GameStats?     @relation("BetMarketLinkedGameStats", fields: [linkedGameStatsId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   wagers         BetWager[]
   stakeIntents   BetStakeIntent[]
   walletLocks    BetMarketWallet[]
+  founderBonuses BetMarketFounderBonus[]
 
   @@index([status, featured, sortOrder], map: "ix_bet_markets_status_featured_sort_order")
   @@index([closeAt], map: "ix_bet_markets_close_at")
+  @@index([linkedSessionKey], map: "ix_bet_markets_linked_session_key")
+  @@index([linkedGameStatsId], map: "ix_bet_markets_linked_game_stats_id")
   @@map("bet_markets")
 }
 
@@ -630,9 +638,13 @@ model PendingWoloClaim {
   normalizedPlayerName String    @map("normalized_player_name") @db.VarChar(64)
   displayPlayerName    String    @map("display_player_name") @db.VarChar(100)
   amountWolo           Int       @map("amount_wolo")
+  claimKind            String    @default("bet_payout") @map("claim_kind") @db.VarChar(40)
+  claimGroupKey        String    @default("market") @map("claim_group_key") @db.VarChar(80)
+  targetScope          String?   @map("target_scope") @db.VarChar(32)
   status               String    @default("pending") @db.VarChar(20)
   sourceMarketId       Int?      @map("source_market_id")
   sourceGameStatsId    Int?      @map("source_game_stats_id")
+  sourceFounderBonusId Int?      @map("source_founder_bonus_id")
   claimedByUserId      Int?      @map("claimed_by_user_id")
   rescindedByUserId    Int?      @map("rescinded_by_user_id")
   payoutTxHash         String?   @map("payout_tx_hash") @db.VarChar(128)
@@ -645,12 +657,38 @@ model PendingWoloClaim {
   claimedAt            DateTime? @map("claimed_at") @db.Timestamp(6)
   rescindedAt          DateTime? @map("rescinded_at") @db.Timestamp(6)
 
-  @@unique([sourceMarketId, normalizedPlayerName], map: "uq_pending_wolo_claims_market_player")
+  sourceFounderBonus BetMarketFounderBonus? @relation(fields: [sourceFounderBonusId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@unique([sourceMarketId, normalizedPlayerName, claimKind, claimGroupKey], map: "uq_pending_wolo_claims_market_player_kind_group")
   @@index([normalizedPlayerName, status], map: "ix_pending_wolo_claims_name_status")
   @@index([claimedByUserId, status], map: "ix_pending_wolo_claims_claimed_by_status")
   @@index([sourceMarketId], map: "ix_pending_wolo_claims_source_market_id")
   @@index([sourceGameStatsId], map: "ix_pending_wolo_claims_source_game_stats_id")
+  @@index([sourceFounderBonusId], map: "ix_pending_wolo_claims_source_founder_bonus_id")
   @@map("pending_wolo_claims")
+}
+
+model BetMarketFounderBonus {
+  id              Int       @id @default(autoincrement())
+  marketId        Int       @map("market_id")
+  bonusType       String    @map("bonus_type") @db.VarChar(24)
+  totalAmountWolo Int       @map("total_amount_wolo")
+  note            String?   @db.VarChar(160)
+  status          String    @default("armed") @db.VarChar(24)
+  createdByUserId Int?      @map("created_by_user_id")
+  failureReason   String?   @map("failure_reason") @db.VarChar(255)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+  settledAt       DateTime? @map("settled_at") @db.Timestamp(6)
+  rescindedAt     DateTime? @map("rescinded_at") @db.Timestamp(6)
+
+  market     BetMarket          @relation(fields: [marketId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  createdBy  User?              @relation("BetMarketFounderBonusCreator", fields: [createdByUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  claims     PendingWoloClaim[]
+
+  @@index([marketId, createdAt], map: "ix_bet_market_founder_bonuses_market_created_at")
+  @@index([status, createdAt], map: "ix_bet_market_founder_bonuses_status_created_at")
+  @@map("bet_market_founder_bonuses")
 }
 
 model BetStakeIntent {

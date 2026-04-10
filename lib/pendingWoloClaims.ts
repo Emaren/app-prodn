@@ -153,8 +153,12 @@ export async function createPendingWoloClaim(
     playerName: string;
     displayPlayerName?: string | null;
     amountWolo: number;
+    claimKind?: string | null;
+    claimGroupKey?: string | null;
+    targetScope?: string | null;
     sourceMarketId?: number | null;
     sourceGameStatsId?: number | null;
+    sourceFounderBonusId?: number | null;
     payoutTxHash?: string | null;
     payoutProofUrl?: string | null;
     errorState?: string | null;
@@ -170,6 +174,9 @@ export async function createPendingWoloClaim(
     normalizePendingWoloDisplayName(input.displayPlayerName || input.playerName) ||
     "Unknown player";
   const amountWolo = Math.max(0, Math.round(input.amountWolo || 0));
+  const claimKind = (input.claimKind || "bet_payout").trim().slice(0, 40) || "bet_payout";
+  const claimGroupKey = (input.claimGroupKey || "market").trim().slice(0, 80) || "market";
+  const targetScope = input.targetScope?.trim().slice(0, 32) || null;
 
   if (!normalizedPlayerName || amountWolo < 1) {
     return null;
@@ -186,16 +193,22 @@ export async function createPendingWoloClaim(
   if (typeof input.sourceMarketId === "number" && Number.isFinite(input.sourceMarketId)) {
     return prisma.pendingWoloClaim.upsert({
       where: {
-        sourceMarketId_normalizedPlayerName: {
+        sourceMarketId_normalizedPlayerName_claimKind_claimGroupKey: {
           sourceMarketId: input.sourceMarketId,
           normalizedPlayerName,
+          claimKind,
+          claimGroupKey,
         },
       },
       update: {
         displayPlayerName,
         amountWolo,
+        claimKind,
+        claimGroupKey,
+        targetScope,
         status: nextStatus,
         sourceGameStatsId: input.sourceGameStatsId ?? null,
+        sourceFounderBonusId: input.sourceFounderBonusId ?? null,
         claimedByUserId: nextClaimedByUserId,
         rescindedByUserId: null,
         payoutTxHash: nextPayoutTxHash,
@@ -210,9 +223,13 @@ export async function createPendingWoloClaim(
         normalizedPlayerName,
         displayPlayerName,
         amountWolo,
+        claimKind,
+        claimGroupKey,
+        targetScope,
         status: nextStatus,
         sourceMarketId: input.sourceMarketId,
         sourceGameStatsId: input.sourceGameStatsId ?? null,
+        sourceFounderBonusId: input.sourceFounderBonusId ?? null,
         claimedByUserId: nextClaimedByUserId,
         payoutTxHash: nextPayoutTxHash,
         payoutProofUrl: nextPayoutProofUrl,
@@ -229,9 +246,13 @@ export async function createPendingWoloClaim(
       normalizedPlayerName,
       displayPlayerName,
       amountWolo,
+      claimKind,
+      claimGroupKey,
+      targetScope,
       status: nextStatus,
       sourceMarketId: input.sourceMarketId ?? null,
       sourceGameStatsId: input.sourceGameStatsId ?? null,
+      sourceFounderBonusId: input.sourceFounderBonusId ?? null,
       claimedByUserId: nextClaimedByUserId,
       payoutTxHash: nextPayoutTxHash,
       payoutProofUrl: nextPayoutProofUrl,

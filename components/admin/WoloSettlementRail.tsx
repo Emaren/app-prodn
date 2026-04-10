@@ -1,12 +1,18 @@
 "use client";
 
+type FounderBonusType = "participants" | "winner";
+
 export type SettlementRailRow = {
   id: number;
   marketId: number | null;
   marketTitle: string | null;
   eventLabel: string | null;
+  winnerName: string | null;
   displayPlayerName: string;
   amountWolo: number;
+  claimKind: string;
+  targetScope: string | null;
+  sourceFounderBonusId: number | null;
   claimStatus: "pending" | "claimed" | "rescinded";
   settlementMode: "pending" | "auto_settled" | "claimed_manual" | "rescinded";
   payoutTxHash: string | null;
@@ -43,6 +49,7 @@ type Props = {
   onRescind: (claimId: number) => void | Promise<void>;
   onRetry: (claimId: number) => void | Promise<void>;
   onReconcilePending: () => void | Promise<void>;
+  onAddFounderBonus: (row: SettlementRailRow, bonusType: FounderBonusType) => void | Promise<void>;
 };
 
 function formatWolo(value: number) {
@@ -87,6 +94,43 @@ function statusLabel(mode: SettlementRailRow["settlementMode"]) {
   }
 }
 
+function claimKindLabel(row: SettlementRailRow) {
+  switch (row.claimKind) {
+    case "founders_bonus":
+      return "Founders Bonus";
+    case "founders_win":
+      return "Founders Win";
+    case "winner_bounty":
+      return "Winner bounty";
+    case "bet_refund":
+      return "Refund";
+    default:
+      return "Winner payout";
+  }
+}
+
+function targetScopeLabel(value: string | null) {
+  if (value === "both_participants") return "both participants";
+  if (value === "winner_only") return "winner only";
+  return "matched target";
+}
+
+function claimKindTone(row: SettlementRailRow) {
+  if (row.claimKind === "founders_bonus") {
+    return "border-amber-300/20 bg-amber-400/10 text-amber-100";
+  }
+  if (row.claimKind === "founders_win") {
+    return "border-sky-300/20 bg-sky-400/10 text-sky-100";
+  }
+  if (row.claimKind === "bet_refund") {
+    return "border-indigo-300/20 bg-indigo-400/10 text-indigo-100";
+  }
+  if (row.claimKind === "winner_bounty") {
+    return "border-fuchsia-300/20 bg-fuchsia-400/10 text-fuchsia-100";
+  }
+  return "border-white/10 bg-white/5 text-slate-200";
+}
+
 function shortenTxHash(value: string | null) {
   if (!value) return "—";
   if (value.length <= 18) return value;
@@ -102,6 +146,7 @@ export function WoloSettlementRail({
   onRescind,
   onRetry,
   onReconcilePending,
+  onAddFounderBonus,
 }: Props) {
   return (
     <section className="rounded-3xl border border-white/10 bg-black/30 p-5 shadow-[0_20px_60px_rgba(0,0,0,0.35)] backdrop-blur">
@@ -197,14 +242,27 @@ export function WoloSettlementRail({
                     <div className="mt-1 text-xs text-slate-400">
                       {row.eventLabel || row.note || "Settlement rail entry"}
                     </div>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <span
+                        className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] uppercase tracking-[0.16em] ${claimKindTone(row)}`}
+                      >
+                        {claimKindLabel(row)}
+                      </span>
+                      {(row.claimKind === "founders_bonus" || row.claimKind === "founders_win") && row.targetScope ? (
+                        <span className="inline-flex rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] uppercase tracking-[0.16em] text-slate-300">
+                          {targetScopeLabel(row.targetScope)}
+                        </span>
+                      ) : null}
+                    </div>
                     {row.errorState ? (
                       <div className="mt-2 text-xs text-rose-300">{row.errorState}</div>
                     ) : null}
                   </td>
 
                   <td className="px-3 py-3">
-                    <div className="font-medium text-white">{row.displayPlayerName}</div>
-                    <div className="mt-1 text-xs text-slate-400">claim #{row.id}</div>
+                    <div className="font-medium text-white">{row.winnerName || "—"}</div>
+                    <div className="mt-1 text-xs text-slate-400">target {row.displayPlayerName}</div>
+                    <div className="mt-1 text-xs text-slate-500">claim #{row.id}</div>
                   </td>
 
                   <td className="px-3 py-3">
@@ -264,6 +322,24 @@ export function WoloSettlementRail({
                             {retryingClaimId === row.id ? "Retrying..." : "Retry payout"}
                           </button>
                         ) : null}
+                        {row.marketId ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => onAddFounderBonus(row, "participants")}
+                              className="rounded-full border border-amber-300/30 bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-100 transition hover:bg-amber-500/20"
+                            >
+                              Add Founders Bonus
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => onAddFounderBonus(row, "winner")}
+                              className="rounded-full border border-sky-300/30 bg-sky-500/10 px-3 py-1.5 text-xs font-medium text-sky-100 transition hover:bg-sky-500/20"
+                            >
+                              Add Founders Win
+                            </button>
+                          </>
+                        ) : null}
                         <button
                           type="button"
                           onClick={() => onRescind(row.id)}
@@ -271,6 +347,23 @@ export function WoloSettlementRail({
                           className="rounded-full border border-rose-400/30 bg-rose-500/10 px-3 py-1.5 text-xs font-medium text-rose-200 transition hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           {rescindingClaimId === row.id ? "Rescinding..." : "Rescind"}
+                        </button>
+                      </div>
+                    ) : row.marketId ? (
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => onAddFounderBonus(row, "participants")}
+                          className="rounded-full border border-amber-300/30 bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-100 transition hover:bg-amber-500/20"
+                        >
+                          Add Founders Bonus
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onAddFounderBonus(row, "winner")}
+                          className="rounded-full border border-sky-300/30 bg-sky-500/10 px-3 py-1.5 text-xs font-medium text-sky-100 transition hover:bg-sky-500/20"
+                        >
+                          Add Founders Win
                         </button>
                       </div>
                     ) : (

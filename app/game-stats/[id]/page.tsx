@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
+import FounderBonusChips from "@/components/bets/FounderBonusChips";
 import SteamLinkedBadge from "@/components/SteamLinkedBadge";
 import {
   displayParseReason,
@@ -100,6 +101,40 @@ export default async function GameStatsDetailPage({
   const battleTapeHref = battleTapeSessionKey
     ? `/game-stats/live/${encodeURIComponent(battleTapeSessionKey)}`
     : null;
+  const linkedBetMarket = await prisma.betMarket.findFirst({
+    where: {
+      OR: [
+        { linkedGameStatsId: game.id },
+        ...(battleTapeSessionKey ? [{ linkedSessionKey: battleTapeSessionKey }] : []),
+      ],
+    },
+    select: {
+      founderBonuses: {
+        where: {
+          rescindedAt: null,
+        },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        select: {
+          id: true,
+          bonusType: true,
+          totalAmountWolo: true,
+          note: true,
+          status: true,
+          createdAt: true,
+        },
+      },
+    },
+  });
+  const founderBonuses = (linkedBetMarket?.founderBonuses || []).map((bonus) => ({
+    id: bonus.id,
+    bonusType: (bonus.bonusType === "winner" ? "winner" : "participants") as
+      | "winner"
+      | "participants",
+    totalAmountWolo: bonus.totalAmountWolo,
+    note: bonus.note ?? null,
+    status: bonus.status,
+    createdAt: bonus.createdAt.toISOString(),
+  }));
   const claimedPlayers = await findClaimedUsersForReplayNames(
     prisma,
     players.map((player) => displayPlayerName(player))
@@ -189,6 +224,7 @@ export default async function GameStatsDetailPage({
               {game.is_final ? <Tag>final replay</Tag> : <Tag>non-final replay</Tag>}
               {outcomeLabel ? <Tag>{outcomeLabel}</Tag> : null}
             </div>
+            <FounderBonusChips bonuses={founderBonuses} />
           </div>
 
           <div className="flex flex-wrap gap-3">

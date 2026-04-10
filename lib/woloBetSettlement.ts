@@ -1229,7 +1229,7 @@ export async function executeWoloSettlementRun(input: {
       cache: "no-store",
     });
 
-    if (!shouldFallbackGroupedRun(response.status)) {
+    if (!shouldFallbackGroupedRun(response.status) && ![401, 403].includes(response.status)) {
       const payload = (await response.json().catch(() => ({}))) as SettlementRunPayload;
       return toSettlementRunResult(payload, {
         dryRun: false,

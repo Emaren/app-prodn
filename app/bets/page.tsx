@@ -6,8 +6,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { OfflineSigner } from "@cosmjs/proto-signing";
 import { toast } from "sonner";
 
+import FounderBonusChips from "@/components/bets/FounderBonusChips";
+import FounderBonusModal from "@/components/bets/FounderBonusModal";
+import WarTape from "@/components/bets/WarTape";
 import { useUserAuth } from "@/context/UserAuthContext";
 import { useKeplr } from "@/hooks/use-keplr";
+import { useWoloBalance } from "@/hooks/useWoloBalance";
 import {
   WOLO_BASE_DENOM,
   WOLO_CHAIN_ID,
@@ -26,6 +30,7 @@ const BETS_VIEW_STORAGE_KEY = "aoe2hdbets.betsView.v1";
 type BetSide = "left" | "right";
 type BetStatus = "open" | "closing" | "live" | "settled";
 type BetsViewMode = "basic" | "advanced";
+type FounderBonusType = "participants" | "winner";
 
 type BetBoardSide = {
   key: BetSide;
@@ -42,12 +47,17 @@ type BetBoardMarket = {
   slug: string;
   title: string;
   eventLabel: string;
+  href: string | null;
+  linkedSessionKey: string | null;
+  linkedGameStatsId: number | null;
   status: BetStatus;
   featured: boolean;
   closeLabel: string;
   totalPotWolo: number;
   left: BetBoardSide;
   right: BetBoardSide;
+  founderBonuses: BetFounderChip[];
+  warTape: BetWarTapeRow[];
   viewerWager: {
     side: BetSide;
     amountWolo: number;
@@ -58,6 +68,28 @@ type BetBoardMarket = {
     stakeLockedAt: string | null;
   } | null;
   winnerSide: BetSide | null;
+};
+
+type BetFounderChip = {
+  id: number;
+  bonusType: FounderBonusType;
+  totalAmountWolo: number;
+  note: string | null;
+  status: string;
+  createdAt: string;
+};
+
+type BetWarTapeRow = {
+  id: string;
+  kind: "tx" | "event";
+  label: string;
+  actor: string | null;
+  amountWolo: number | null;
+  side: BetSide | null;
+  note: string | null;
+  txHash: string | null;
+  txUrl: string | null;
+  createdAt: string;
 };
 
 type BetBookEntry = {
@@ -86,6 +118,7 @@ type BetSettledResult = {
   payoutWolo: number;
   settledAt: string | null;
   href: string | null;
+  founderBonuses: BetFounderChip[];
 };
 
 type BetBoardSnapshot = {
@@ -160,6 +193,14 @@ type LockWorkflow = {
   marketId: number;
   phase: "awaiting_wallet" | "confirming_chain" | "recording_wager";
   stakeTxHash: string | null;
+};
+
+type FounderComposerState = {
+  marketId: number;
+  marketTitle: string;
+  bonusType: FounderBonusType;
+  amountValue: string;
+  noteValue: string;
 };
 
 type KeplrKey = {
@@ -289,6 +330,32 @@ function formatCompact(value: number) {
     maximumFractionDigits: 0,
     notation: value >= 1000 ? "compact" : "standard",
   }).format(value);
+}
+
+function fromUWoloAmount(raw?: string | null) {
+  const numeric = Number.parseFloat(raw || "0");
+  if (!Number.isFinite(numeric) || numeric <= 0) {
+    return 0;
+  }
+  return Math.floor(numeric / 10 ** 6);
+}
+
+function resolveStakeMax(balanceRaw?: string | null) {
+  const walletCap = fromUWoloAmount(balanceRaw);
+  return walletCap > 0 ? Math.min(walletCap, 50_000) : 50_000;
+}
+
+function validateStakeAmount(stake: number, maxStake: number) {
+  if (!Number.isFinite(stake) || !Number.isInteger(stake)) {
+    return "Whole numbers only.";
+  }
+  if (stake < 1) {
+    return "Enter at least 1 WOLO.";
+  }
+  if (stake > maxStake) {
+    return `Max ${maxStake.toLocaleString()} WOLO with the current wallet/app limit.`;
+  }
+  return null;
 }
 
 function formatSettledTime(value: string | null) {
@@ -530,8 +597,9 @@ function CoinMark({ small = false }: { small?: boolean }) {
 }
 
 export default function BetsPage() {
-  const { isAuthenticated, loading, loginWithSteam, user } = useUserAuth();
+  const { isAdmin, isAuthenticated, loading, loginWithSteam, user } = useUserAuth();
   const { address: connectedWalletAddress, connect: connectKeplr } = useKeplr();
+  const { data: rawWalletBalance } = useWoloBalance(connectedWalletAddress || undefined);
   const [board, setBoard] = useState<BetBoardSnapshot | null>(null);
   const [betsView, setBetsView] = useState<BetsViewMode>("basic");
   const [selection, setSelection] = useState<SelectionState | null>(null);
@@ -540,6 +608,9 @@ export default function BetsPage() {
   const [lockWorkflow, setLockWorkflow] = useState<LockWorkflow | null>(null);
   const [recoveringIntentId, setRecoveringIntentId] = useState<number | null>(null);
   const [attemptedAutoRecoverIds, setAttemptedAutoRecoverIds] = useState<number[]>([]);
+  const [founderComposer, setFounderComposer] = useState<FounderComposerState | null>(null);
+  const [savingFounderBonus, setSavingFounderBonus] = useState(false);
+  const [founderBonusError, setFounderBonusError] = useState<string | null>(null);
 
   const loadBoard = useCallback(async (quiet = false) => {
     try {
@@ -646,6 +717,7 @@ export default function BetsPage() {
   const settlementSurfaceWarnings = board?.wolo.settlementSurfaceWarnings || [];
   const settlementSurfaceDetail = board?.wolo.settlementSurfaceDetail ?? null;
   const unresolvedStakeIntents = board?.recovery.unresolvedStakeIntents || [];
+  const maxStakeWolo = useMemo(() => resolveStakeMax(rawWalletBalance), [rawWalletBalance]);
 
   const refreshBoard = useCallback(async (nextPayload?: BetBoardSnapshot) => {
     if (nextPayload) {
@@ -659,6 +731,63 @@ export default function BetsPage() {
     }
     setBoard(payload);
   }, [loadBoard]);
+
+  function openFounderComposer(market: BetBoardMarket, bonusType: FounderBonusType) {
+    setFounderBonusError(null);
+    setFounderComposer({
+      marketId: market.id,
+      marketTitle: market.title,
+      bonusType,
+      amountValue: bonusType === "participants" ? "200" : "300",
+      noteValue: "",
+    });
+  }
+
+  async function submitFounderBonus() {
+    if (!founderComposer) {
+      return;
+    }
+
+    setSavingFounderBonus(true);
+    setFounderBonusError(null);
+
+    try {
+      const response = await fetch(
+        `/api/admin/bets/markets/${founderComposer.marketId}/founders`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            bonusType: founderComposer.bonusType,
+            amountWolo: founderComposer.amountValue,
+            note: founderComposer.noteValue || undefined,
+          }),
+        }
+      );
+
+      const payload = (await response.json().catch(() => ({}))) as {
+        detail?: string;
+      };
+
+      if (!response.ok) {
+        throw new Error(payload.detail || "Founder bonus could not be saved.");
+      }
+
+      await refreshBoard();
+      toast.success(
+        founderComposer.bonusType === "winner"
+          ? "Founders Win attached."
+          : "Founders Bonus attached."
+      );
+      setFounderComposer(null);
+    } catch (error) {
+      const detail =
+        error instanceof Error ? error.message : "Founder bonus could not be saved.";
+      setFounderBonusError(detail);
+    } finally {
+      setSavingFounderBonus(false);
+    }
+  }
 
   function requireSignIn() {
     if (isAuthenticated) return true;
@@ -844,7 +973,7 @@ export default function BetsPage() {
       stake:
         selection && selection.marketId === market.id && selection.side === (viewerWager?.side || side)
           ? selection.stake
-          : 25,
+          : Math.max(1, Math.min(25, maxStakeWolo)),
     });
   }
 
@@ -975,6 +1104,11 @@ export default function BetsPage() {
   async function handleLock(market: BetBoardMarket) {
     if (!selection || selection.marketId !== market.id) return;
     if (!requireSignIn()) return;
+    const stakeValidation = validateStakeAmount(selection.stake, maxStakeWolo);
+    if (stakeValidation) {
+      toast.error(stakeValidation);
+      return;
+    }
     if (market.viewerWager && market.viewerWager.side !== selection.side) {
       toast.error("This book is locked to your first side for now.");
       return;
@@ -1234,13 +1368,6 @@ export default function BetsPage() {
                 </div>
               </div>
 
-              {runtimeBetTestMode ? (
-                <div className={`mt-4 ${insetClass()} px-4 py-4 text-sm text-slate-300`}>
-                  Testing mode keeps the book open until official result or finalization. Same wallet,
-                  same side only for now.
-                </div>
-              ) : null}
-
               {runtimeBetEscrowConfigError ? (
                 <div className={`mt-4 ${insetClass()} border-rose-300/15 bg-rose-500/[0.08] px-4 py-4 text-sm text-rose-100`}>
                   {runtimeBetEscrowConfigError}
@@ -1269,7 +1396,9 @@ export default function BetsPage() {
                   workingKey={workingKey}
                   lockWorkflow={lockWorkflow}
                   isAuthenticated={isAuthenticated}
+                  isAdmin={isAdmin}
                   loadingAuth={loading}
+                  maxStakeWolo={maxStakeWolo}
                   onSelect={handleSelect}
                   onStakeChange={(stake) =>
                     setSelection((current) =>
@@ -1278,6 +1407,7 @@ export default function BetsPage() {
                   }
                   onLock={() => handleLock(spotlightMarket)}
                   onClear={() => handleClear(spotlightMarket.id)}
+                  onOpenFounderBonus={openFounderComposer}
                 />
               ) : recentResults.length ? (
                 <RecentResultFeature result={recentResults[0]} />
@@ -1310,6 +1440,8 @@ export default function BetsPage() {
               selection={selection}
               workingKey={workingKey}
               lockWorkflow={lockWorkflow}
+              isAdmin={isAdmin}
+              maxStakeWolo={maxStakeWolo}
               onSelect={handleSelect}
               onStakeChange={(marketId, stake) =>
                 setSelection((current) =>
@@ -1318,6 +1450,7 @@ export default function BetsPage() {
               }
               onLock={handleLock}
               onClear={handleClear}
+              onOpenFounderBonus={openFounderComposer}
               loadingBoard={loadingBoard}
               limit={2}
               emptyLabel={
@@ -1484,7 +1617,9 @@ export default function BetsPage() {
                   workingKey={workingKey}
                   lockWorkflow={lockWorkflow}
                   isAuthenticated={isAuthenticated}
+                  isAdmin={isAdmin}
                   loadingAuth={loading}
+                  maxStakeWolo={maxStakeWolo}
                   onSelect={handleSelect}
                   onStakeChange={(stake) =>
                     setSelection((current) =>
@@ -1493,6 +1628,7 @@ export default function BetsPage() {
                   }
                   onLock={() => handleLock(spotlightMarket)}
                   onClear={() => handleClear(spotlightMarket.id)}
+                  onOpenFounderBonus={openFounderComposer}
                 />
               ) : (
                 <EmptyShell label="No books armed yet." />
@@ -1508,6 +1644,8 @@ export default function BetsPage() {
               selection={selection}
               workingKey={workingKey}
               lockWorkflow={lockWorkflow}
+              isAdmin={isAdmin}
+              maxStakeWolo={maxStakeWolo}
               onSelect={handleSelect}
               onStakeChange={(marketId, stake) =>
                 setSelection((current) =>
@@ -1516,6 +1654,7 @@ export default function BetsPage() {
               }
               onLock={handleLock}
               onClear={handleClear}
+              onOpenFounderBonus={openFounderComposer}
               loadingBoard={loadingBoard}
               limit={null}
               emptyLabel="No open books right now."
@@ -1539,6 +1678,57 @@ export default function BetsPage() {
           </section>
         </>
       )}
+
+      <FounderBonusModal
+        open={Boolean(founderComposer)}
+        marketTitle={founderComposer?.marketTitle || "Market"}
+        bonusType={founderComposer?.bonusType || "participants"}
+        amountValue={founderComposer?.amountValue || ""}
+        noteValue={founderComposer?.noteValue || ""}
+        saving={savingFounderBonus}
+        error={founderBonusError}
+        onClose={() => {
+          if (savingFounderBonus) {
+            return;
+          }
+          setFounderComposer(null);
+          setFounderBonusError(null);
+        }}
+        onBonusTypeChange={(value) =>
+          setFounderComposer((current) =>
+            current
+              ? {
+                  ...current,
+                  bonusType: value,
+                  amountValue: value === "participants" ? "200" : current.amountValue || "300",
+                }
+              : current
+          )
+        }
+        onAmountChange={(value) =>
+          setFounderComposer((current) =>
+            current
+              ? {
+                  ...current,
+                  amountValue: value,
+                }
+              : current
+          )
+        }
+        onNoteChange={(value) =>
+          setFounderComposer((current) =>
+            current
+              ? {
+                  ...current,
+                  noteValue: value,
+                }
+              : current
+          )
+        }
+        onSubmit={() => {
+          void submitFounderBonus();
+        }}
+      />
     </main>
   );
 }
@@ -1575,10 +1765,13 @@ function OpenBooksSection({
   selection,
   workingKey,
   lockWorkflow,
+  isAdmin,
+  maxStakeWolo,
   onSelect,
   onStakeChange,
   onLock,
   onClear,
+  onOpenFounderBonus,
   loadingBoard,
   limit,
   emptyLabel,
@@ -1590,10 +1783,13 @@ function OpenBooksSection({
   selection: SelectionState | null;
   workingKey: string | null;
   lockWorkflow: LockWorkflow | null;
+  isAdmin: boolean;
+  maxStakeWolo: number;
   onSelect: (market: BetBoardMarket, side: BetSide) => void;
   onStakeChange: (marketId: number, stake: number) => void;
   onLock: (market: BetBoardMarket) => void;
   onClear: (marketId: number) => void;
+  onOpenFounderBonus: (market: BetBoardMarket, bonusType: FounderBonusType) => void;
   loadingBoard: boolean;
   limit: number | null;
   emptyLabel: string;
@@ -1627,10 +1823,13 @@ function OpenBooksSection({
               selection={selection}
               workingKey={workingKey}
               lockWorkflow={lockWorkflow}
+              isAdmin={isAdmin}
+              maxStakeWolo={maxStakeWolo}
               onSelect={onSelect}
               onStakeChange={(stake) => onStakeChange(market.id, stake)}
               onLock={() => onLock(market)}
               onClear={() => onClear(market.id)}
+              onOpenFounderBonus={onOpenFounderBonus}
               accent={index % 2 === 0 ? "warm" : "cool"}
             />
           ))
@@ -1840,27 +2039,32 @@ function ResultCard({
   compact?: boolean;
 }) {
   const content = (
-    <div className="flex items-start justify-between gap-3">
-      <div className="min-w-0">
-        <div className="break-words text-sm uppercase tracking-[0.28em] text-slate-500">
-          {result.mapName}
+    <div>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="break-words text-sm uppercase tracking-[0.28em] text-slate-500">
+            {result.mapName}
+          </div>
+          <div className="mt-2 break-words text-lg font-semibold leading-tight text-white">
+            {result.title}
+          </div>
+          <div className="mt-1 text-sm text-slate-400">{result.winner} took it</div>
+          <div className="mt-2 text-xs uppercase tracking-[0.24em] text-slate-500">
+            {formatSettledTime(result.settledAt)}
+          </div>
         </div>
-        <div className="mt-2 break-words text-lg font-semibold leading-tight text-white">
-          {result.title}
-        </div>
-        <div className="mt-1 text-sm text-slate-400">{result.winner} took it</div>
-        <div className="mt-2 text-xs uppercase tracking-[0.24em] text-slate-500">
-          {formatSettledTime(result.settledAt)}
+
+        <div
+          className={`flex items-center gap-2 rounded-full border border-emerald-300/16 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-100 ${
+            compact ? "shrink-0" : ""
+          }`}
+        >
+          <CoinMark small />
+          <span>{formatCompact(result.payoutWolo)}</span>
         </div>
       </div>
-      <div
-        className={`flex items-center gap-2 rounded-full border border-emerald-300/16 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-100 ${
-          compact ? "shrink-0" : ""
-        }`}
-      >
-        <CoinMark small />
-        <span>{formatCompact(result.payoutWolo)}</span>
-      </div>
+
+      <FounderBonusChips bonuses={result.founderBonuses} compact />
     </div>
   );
 
@@ -2028,6 +2232,67 @@ function RecentResultFeature({ result }: { result: BetSettledResult }) {
   );
 }
 
+function StakeAmountRail({
+  activeSelection,
+  canEdit,
+  maxStakeWolo,
+  onStakeChange,
+}: {
+  activeSelection: SelectionState | null;
+  canEdit: boolean;
+  maxStakeWolo: number;
+  onStakeChange: (stake: number) => void;
+}) {
+  const stakeError =
+    activeSelection ? validateStakeAmount(activeSelection.stake, maxStakeWolo) : null;
+
+  return (
+    <>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-2">
+          {STAKE_OPTIONS.map((stake) => (
+            <button
+              key={stake}
+              type="button"
+              onClick={() => activeSelection && onStakeChange(stake)}
+              disabled={!activeSelection || !canEdit}
+              className={`inline-flex items-center rounded-full px-3 py-1.5 text-sm transition ${
+                activeSelection?.stake === stake ? edgeButton("gold") : edgeButton("glass")
+              } ${!activeSelection || !canEdit ? "cursor-not-allowed opacity-50" : ""}`}
+            >
+              {stake}
+            </button>
+          ))}
+        </div>
+
+        <label className="flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-2">
+          <span className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Custom</span>
+          <input
+            inputMode="numeric"
+            pattern="[0-9]*"
+            value={activeSelection ? String(Math.max(0, activeSelection.stake)) : ""}
+            onChange={(event) => {
+              if (!activeSelection) return;
+              const digits = event.target.value.replace(/[^0-9]/g, "").slice(0, 6);
+              onStakeChange(digits ? Number.parseInt(digits, 10) : 0);
+            }}
+            disabled={!activeSelection || !canEdit}
+            className="w-20 bg-transparent text-right text-sm text-white outline-none placeholder:text-slate-500 disabled:cursor-not-allowed"
+            placeholder="0"
+          />
+          <span className="text-[11px] uppercase tracking-[0.2em] text-slate-500">WOLO</span>
+        </label>
+      </div>
+
+      {activeSelection ? (
+        <div className={`mt-3 text-xs ${stakeError ? "text-rose-200" : "text-slate-400"}`}>
+          {stakeError || `Up to ${maxStakeWolo.toLocaleString()} WOLO with the current wallet/app limit.`}
+        </div>
+      ) : null}
+    </>
+  );
+}
+
 function MarketFeature({
   market,
   eyebrowLabel = "Featured Market",
@@ -2035,11 +2300,14 @@ function MarketFeature({
   workingKey,
   lockWorkflow,
   isAuthenticated,
+  isAdmin,
   loadingAuth,
+  maxStakeWolo,
   onSelect,
   onStakeChange,
   onLock,
   onClear,
+  onOpenFounderBonus,
 }: {
   market: BetBoardMarket;
   eyebrowLabel?: string;
@@ -2047,11 +2315,14 @@ function MarketFeature({
   workingKey: string | null;
   lockWorkflow: LockWorkflow | null;
   isAuthenticated: boolean;
+  isAdmin: boolean;
   loadingAuth: boolean;
+  maxStakeWolo: number;
   onSelect: (market: BetBoardMarket, side: BetSide) => void;
   onStakeChange: (stake: number) => void;
   onLock: () => void;
   onClear: () => void;
+  onOpenFounderBonus: (market: BetBoardMarket, bonusType: FounderBonusType) => void;
 }) {
   const activeSelection = selection && selection.marketId === market.id ? selection : null;
   const marketWorkflow = lockWorkflow?.marketId === market.id ? lockWorkflow : null;
@@ -2094,6 +2365,7 @@ function MarketFeature({
           : loadingAuth
             ? "Loading"
             : "Steam sign-in required";
+  const stakeError = activeSelection ? validateStakeAmount(activeSelection.stake, maxStakeWolo) : null;
   const lockLabel = marketWorkflow
     ? marketWorkflow.phase === "awaiting_wallet"
       ? "Open Wallet..."
@@ -2111,14 +2383,52 @@ function MarketFeature({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="text-[11px] uppercase tracking-[0.35em] text-slate-500">{eyebrowLabel}</div>
-          <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl">
-            {market.title}
-          </h2>
+          {market.href ? (
+            <Link
+              href={market.href}
+              className="mt-2 inline-flex text-3xl font-semibold tracking-[-0.04em] text-white transition hover:text-amber-100 sm:text-4xl"
+            >
+              {market.title}
+            </Link>
+          ) : (
+            <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl">
+              {market.title}
+            </h2>
+          )}
           <div className="mt-2 text-sm text-slate-400">{market.eventLabel}</div>
+          <FounderBonusChips bonuses={market.founderBonuses} />
         </div>
-        <span className={`rounded-full border px-3 py-1 text-xs ${statusPill(market.status)}`}>
-          {market.closeLabel}
-        </span>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {market.href ? (
+            <Link
+              href={market.href}
+              className={`inline-flex items-center rounded-full px-3 py-1 text-xs transition ${edgeButton("glass")}`}
+            >
+              View Match
+            </Link>
+          ) : null}
+          {isAdmin ? (
+            <>
+              <button
+                type="button"
+                onClick={() => onOpenFounderBonus(market, "participants")}
+                className="rounded-full border border-amber-300/20 bg-amber-400/10 px-3 py-1 text-xs text-amber-100 transition hover:bg-amber-400/18"
+              >
+                +FB
+              </button>
+              <button
+                type="button"
+                onClick={() => onOpenFounderBonus(market, "winner")}
+                className="rounded-full border border-sky-300/20 bg-sky-400/10 px-3 py-1 text-xs text-sky-100 transition hover:bg-sky-400/18"
+              >
+                +FW
+              </button>
+            </>
+          ) : null}
+          <span className={`rounded-full border px-3 py-1 text-xs ${statusPill(market.status)}`}>
+            {market.closeLabel}
+          </span>
+        </div>
       </div>
 
       <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_auto_1fr] lg:items-center">
@@ -2151,23 +2461,15 @@ function MarketFeature({
       </div>
 
       <div className={`${insetClass()} mt-5 px-4 py-4`}>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap gap-2">
-            {STAKE_OPTIONS.map((stake) => (
-              <button
-                key={stake}
-                type="button"
-                onClick={() => activeSelection && onStakeChange(stake)}
-                disabled={!activeSelection || !canEditSlip}
-                className={`inline-flex items-center rounded-full px-3 py-1.5 text-sm transition ${
-                  activeSelection?.stake === stake ? edgeButton("gold") : edgeButton("glass")
-                } ${!activeSelection || !canEditSlip ? "cursor-not-allowed opacity-50" : ""}`}
-              >
-                {stake}
-              </button>
-            ))}
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex-1">
+            <StakeAmountRail
+              activeSelection={activeSelection}
+              canEdit={canEditSlip}
+              maxStakeWolo={maxStakeWolo}
+              onStakeChange={onStakeChange}
+            />
           </div>
-
           <div className="text-right">
             <div className="text-[11px] uppercase tracking-[0.28em] text-slate-500" title="Projected book return if this side wins right now.">
               If Right
@@ -2179,7 +2481,9 @@ function MarketFeature({
         </div>
 
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-          <div className="text-sm text-slate-400">{statusCopy}</div>
+          <div className={`text-sm ${stakeError ? "text-rose-200" : "text-slate-400"}`}>
+            {stakeError || statusCopy}
+          </div>
 
           <div className="flex flex-wrap gap-2">
             {market.viewerWager && !onchainLocked ? (
@@ -2197,9 +2501,9 @@ function MarketFeature({
             <button
               type="button"
               onClick={onLock}
-              disabled={!activeSelection || !canEditSlip || workingKey === `lock-${market.id}`}
+              disabled={!activeSelection || Boolean(stakeError) || !canEditSlip || workingKey === `lock-${market.id}`}
               className={`inline-flex items-center rounded-full px-4 py-2.5 text-sm font-semibold transition ${edgeButton("gold")} ${
-                !activeSelection || !canEditSlip || workingKey === `lock-${market.id}` ? "opacity-60" : ""
+                !activeSelection || Boolean(stakeError) || !canEditSlip || workingKey === `lock-${market.id}` ? "opacity-60" : ""
               }`}
             >
               {lockLabel}
@@ -2207,6 +2511,8 @@ function MarketFeature({
           </div>
         </div>
       </div>
+
+      <WarTape rows={market.warTape} />
     </div>
   );
 }
@@ -2216,20 +2522,26 @@ function MarketCard({
   selection,
   workingKey,
   lockWorkflow,
+  isAdmin,
+  maxStakeWolo,
   onSelect,
   onStakeChange,
   onLock,
   onClear,
+  onOpenFounderBonus,
   accent,
 }: {
   market: BetBoardMarket;
   selection: SelectionState | null;
   workingKey: string | null;
   lockWorkflow: LockWorkflow | null;
+  isAdmin: boolean;
+  maxStakeWolo: number;
   onSelect: (market: BetBoardMarket, side: BetSide) => void;
   onStakeChange: (stake: number) => void;
   onLock: () => void;
   onClear: () => void;
+  onOpenFounderBonus: (market: BetBoardMarket, bonusType: FounderBonusType) => void;
   accent: "warm" | "cool";
 }) {
   const activeSelection = selection && selection.marketId === market.id ? selection : null;
@@ -2258,6 +2570,7 @@ function MarketCard({
           displayOppositePool
         )
       : 0;
+  const stakeError = activeSelection ? validateStakeAmount(activeSelection.stake, maxStakeWolo) : null;
   const lockLabel = marketWorkflow
     ? marketWorkflow.phase === "awaiting_wallet"
       ? "Wallet..."
@@ -2277,13 +2590,33 @@ function MarketCard({
           <div className="text-[11px] uppercase tracking-[0.32em] text-slate-500 break-words">
             {market.eventLabel}
           </div>
-          <div className="mt-2 text-[1.65rem] font-semibold leading-[1.05] text-white break-words">
-            {market.title}
-          </div>
+          {market.href ? (
+            <Link
+              href={market.href}
+              className="mt-2 inline-flex text-[1.65rem] font-semibold leading-[1.05] text-white transition hover:text-amber-100"
+            >
+              {market.title}
+            </Link>
+          ) : (
+            <div className="mt-2 text-[1.65rem] font-semibold leading-[1.05] text-white break-words">
+              {market.title}
+            </div>
+          )}
+          <FounderBonusChips bonuses={market.founderBonuses} compact />
         </div>
-        <span className={`rounded-full border px-3 py-1 text-xs ${statusPill(market.status)}`}>
-          {market.closeLabel}
-        </span>
+        <div className="flex flex-col items-end gap-2">
+          <span className={`rounded-full border px-3 py-1 text-xs ${statusPill(market.status)}`}>
+            {market.closeLabel}
+          </span>
+          {market.href ? (
+            <Link
+              href={market.href}
+              className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] transition ${edgeButton("glass")}`}
+            >
+              View Match
+            </Link>
+          ) : null}
+        </div>
       </div>
 
       <div className={`${insetClass()} mt-4 px-4 py-3`}>
@@ -2320,21 +2653,12 @@ function MarketCard({
       </div>
 
       <div className={`${insetClass()} mt-4 px-4 py-4`}>
-        <div className="flex flex-wrap gap-2">
-          {STAKE_OPTIONS.map((stake) => (
-            <button
-            key={stake}
-            type="button"
-            onClick={() => activeSelection && onStakeChange(stake)}
-            disabled={!activeSelection || !canEditSlip}
-            className={`rounded-full px-3 py-1.5 text-xs transition ${
-              activeSelection?.stake === stake ? edgeButton("gold") : edgeButton("glass")
-            } ${!activeSelection || !canEditSlip ? "cursor-not-allowed opacity-50" : ""}`}
-          >
-            {stake}
-          </button>
-          ))}
-        </div>
+        <StakeAmountRail
+          activeSelection={activeSelection}
+          canEdit={canEditSlip}
+          maxStakeWolo={maxStakeWolo}
+          onStakeChange={onStakeChange}
+        />
 
         <div className="mt-4 flex items-center justify-between gap-3">
           <div>
@@ -2344,7 +2668,25 @@ function MarketCard({
             </div>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2 justify-end">
+            {isAdmin ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => onOpenFounderBonus(market, "participants")}
+                  className="rounded-full border border-amber-300/20 bg-amber-400/10 px-3 py-2 text-[11px] text-amber-100 transition hover:bg-amber-400/18"
+                >
+                  +FB
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onOpenFounderBonus(market, "winner")}
+                  className="rounded-full border border-sky-300/20 bg-sky-400/10 px-3 py-2 text-[11px] text-sky-100 transition hover:bg-sky-400/18"
+                >
+                  +FW
+                </button>
+              </>
+            ) : null}
             {market.viewerWager && !onchainLocked ? (
               <button
                 type="button"
@@ -2360,16 +2702,18 @@ function MarketCard({
             <button
               type="button"
               onClick={onLock}
-              disabled={!activeSelection || !canEditSlip || workingKey === `lock-${market.id}`}
+              disabled={!activeSelection || Boolean(stakeError) || !canEditSlip || workingKey === `lock-${market.id}`}
               className={`rounded-full px-3 py-2 text-xs font-semibold transition ${edgeButton(
                 accent === "warm" ? "gold" : "blue"
-              )} ${!activeSelection || !canEditSlip || workingKey === `lock-${market.id}` ? "opacity-60" : ""}`}
+              )} ${!activeSelection || Boolean(stakeError) || !canEditSlip || workingKey === `lock-${market.id}` ? "opacity-60" : ""}`}
             >
               {lockLabel}
             </button>
           </div>
         </div>
       </div>
+
+      <WarTape rows={market.warTape} emptyLabel="No tape rows yet." />
     </article>
   );
 }

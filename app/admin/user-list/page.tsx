@@ -21,9 +21,12 @@ import {
   type MarketRailSummary,
 } from "@/components/admin/WoloMarketRail";
 import { WoloSettlementRail } from "@/components/admin/WoloSettlementRail";
+import FounderBonusModal from "@/components/bets/FounderBonusModal";
 import { WatcherDownloadRail } from "@/components/admin/WatcherDownloadRail";
 import CommunityBadgePill from "@/components/contact/CommunityBadgePill";
 import { DEFAULT_BADGE_LABELS } from "@/lib/communityHonors";
+
+type FounderBonusType = "participants" | "winner";
 
 type Badge = {
   id: number;
@@ -168,8 +171,12 @@ type SettlementRailRow = {
   marketId: number | null;
   marketTitle: string | null;
   eventLabel: string | null;
+  winnerName: string | null;
   displayPlayerName: string;
   amountWolo: number;
+  claimKind: string;
+  targetScope: string | null;
+  sourceFounderBonusId: number | null;
   claimStatus: "pending" | "claimed" | "rescinded";
   settlementMode: "pending" | "auto_settled" | "claimed_manual" | "rescinded";
   payoutTxHash: string | null;
@@ -271,6 +278,14 @@ type DraftState = {
   giftAmount: string;
   giftNote: string;
   rescindNote: string;
+};
+
+type FounderComposerState = {
+  marketId: number;
+  marketTitle: string;
+  bonusType: FounderBonusType;
+  amountValue: string;
+  noteValue: string;
 };
 
 const EMPTY_DRAFT: DraftState = {
@@ -391,6 +406,9 @@ export default function UsersPage() {
   const [rescindingSettlementClaimId, setRescindingSettlementClaimId] = useState<number | null>(null);
   const [retryingSettlementClaimId, setRetryingSettlementClaimId] = useState<number | null>(null);
   const [reconcilingPendingClaims, setReconcilingPendingClaims] = useState(false);
+  const [founderComposer, setFounderComposer] = useState<FounderComposerState | null>(null);
+  const [savingFounderBonus, setSavingFounderBonus] = useState(false);
+  const [founderBonusError, setFounderBonusError] = useState<string | null>(null);
 
   const getDraft = useCallback(
     (uid: string) => drafts[uid] ?? EMPTY_DRAFT,
@@ -545,6 +563,65 @@ export default function UsersPage() {
       setReconcilingPendingClaims(false);
     }
   }, [fetchUsers]);
+
+  const openFounderComposer = useCallback(
+    (row: SettlementRailRow, bonusType: FounderBonusType) => {
+      if (!row.marketId) {
+        return;
+      }
+
+      setFounderBonusError(null);
+      setFounderComposer({
+        marketId: row.marketId,
+        marketTitle: row.marketTitle || row.eventLabel || `Market #${row.marketId}`,
+        bonusType,
+        amountValue: bonusType === "participants" ? "200" : "300",
+        noteValue: "",
+      });
+    },
+    []
+  );
+
+  const submitFounderBonus = useCallback(async () => {
+    if (!founderComposer) {
+      return;
+    }
+
+    setSavingFounderBonus(true);
+    setFounderBonusError(null);
+
+    try {
+      const response = await fetch(
+        `/api/admin/bets/markets/${founderComposer.marketId}/founders`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            bonusType: founderComposer.bonusType,
+            amountWolo: founderComposer.amountValue,
+            note: founderComposer.noteValue || undefined,
+          }),
+        }
+      );
+
+      const payload = (await response.json().catch(() => ({}))) as {
+        detail?: string;
+      };
+
+      if (!response.ok) {
+        throw new Error(payload.detail || "Founder bonus could not be saved.");
+      }
+
+      await fetchUsers();
+      setFounderComposer(null);
+    } catch (error) {
+      setFounderBonusError(
+        error instanceof Error ? error.message : "Founder bonus could not be saved."
+      );
+    } finally {
+      setSavingFounderBonus(false);
+    }
+  }, [fetchUsers, founderComposer]);
 
   useEffect(() => {
     void fetchUsers();
@@ -760,6 +837,7 @@ export default function UsersPage() {
             onRescind={rescindSettlementClaim}
             onRetry={retrySettlementClaim}
             onReconcilePending={reconcilePendingClaims}
+            onAddFounderBonus={openFounderComposer}
           />
         </div>
       ) : null}
@@ -1396,6 +1474,57 @@ export default function UsersPage() {
           );
         })}
       </section>
+
+      <FounderBonusModal
+        open={Boolean(founderComposer)}
+        marketTitle={founderComposer?.marketTitle || "Market"}
+        bonusType={founderComposer?.bonusType || "participants"}
+        amountValue={founderComposer?.amountValue || ""}
+        noteValue={founderComposer?.noteValue || ""}
+        saving={savingFounderBonus}
+        error={founderBonusError}
+        onClose={() => {
+          if (savingFounderBonus) {
+            return;
+          }
+          setFounderComposer(null);
+          setFounderBonusError(null);
+        }}
+        onBonusTypeChange={(value) =>
+          setFounderComposer((current) =>
+            current
+              ? {
+                  ...current,
+                  bonusType: value,
+                  amountValue: value === "participants" ? "200" : current.amountValue || "300",
+                }
+              : current
+          )
+        }
+        onAmountChange={(value) =>
+          setFounderComposer((current) =>
+            current
+              ? {
+                  ...current,
+                  amountValue: value,
+                }
+              : current
+          )
+        }
+        onNoteChange={(value) =>
+          setFounderComposer((current) =>
+            current
+              ? {
+                  ...current,
+                  noteValue: value,
+                }
+              : current
+          )
+        }
+        onSubmit={() => {
+          void submitFounderBonus();
+        }}
+      />
     </main>
   );
 }

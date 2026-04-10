@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireAdmin } from "@/lib/adminSession";
+import { syncFounderBonusStatus } from "@/lib/betFounderBonuses";
 import {
   findMatchedClaimUser,
   retryPendingClaimSettlement,
@@ -32,6 +33,7 @@ async function rescindClaim(
       displayPlayerName: true,
       normalizedPlayerName: true,
       amountWolo: true,
+      sourceFounderBonusId: true,
     },
   });
 
@@ -44,6 +46,10 @@ async function rescindClaim(
     adminUserId: admin.id,
     note: payloadNote,
   });
+
+  if (existingClaim.sourceFounderBonusId) {
+    await syncFounderBonusStatus(prisma, [existingClaim.sourceFounderBonusId]);
+  }
 
   const matchedUser = await findMatchedClaimUser(prisma, existingClaim);
 

@@ -310,6 +310,29 @@ function serializeGame(row: ReplayRow) {
   };
 }
 
+export async function resolveFinalGameStatsIdForSessionKey(
+  prisma: PrismaClient,
+  rawSessionKey: string
+) {
+  const sessionCandidates = normalizeSessionCandidates(rawSessionKey);
+  if (sessionCandidates.length === 0) {
+    return null;
+  }
+
+  const latestFinal = await prisma.gameStats.findFirst({
+    where: {
+      ...buildSessionWhere(sessionCandidates),
+      is_final: true,
+    },
+    orderBy: [{ timestamp: "desc" }, { createdAt: "desc" }, { id: "desc" }],
+    select: {
+      id: true,
+    },
+  });
+
+  return latestFinal?.id ?? null;
+}
+
 export async function loadLiveReplayDetailSnapshot(
   prisma: PrismaClient,
   rawSessionKey: string

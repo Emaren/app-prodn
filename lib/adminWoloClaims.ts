@@ -1,5 +1,6 @@
 import type { PrismaClient } from "@/lib/generated/prisma";
 
+import { syncFounderBonusStatus } from "@/lib/betFounderBonuses";
 import { normalizePublicPlayerName } from "@/lib/publicPlayers";
 import { recordUserActivity } from "@/lib/userExperience";
 import { executeWoloPayout } from "@/lib/woloBetSettlement";
@@ -105,6 +106,7 @@ export async function retryPendingClaimSettlement(
       amountWolo: true,
       status: true,
       sourceMarketId: true,
+      sourceFounderBonusId: true,
       payoutTxHash: true,
     },
   });
@@ -169,6 +171,10 @@ export async function retryPendingClaimSettlement(
       },
     });
 
+    if (claim.sourceFounderBonusId) {
+      await syncFounderBonusStatus(prisma, [claim.sourceFounderBonusId]);
+    }
+
     await recordUserActivity(prisma, {
       userId: matchedUser.id,
       type: "wolo_claim_auto_settled",
@@ -200,6 +206,10 @@ export async function retryPendingClaimSettlement(
         payoutAttemptedAt: attemptAt,
       },
     });
+
+    if (claim.sourceFounderBonusId) {
+      await syncFounderBonusStatus(prisma, [claim.sourceFounderBonusId]);
+    }
 
     return {
       outcome: "failed",

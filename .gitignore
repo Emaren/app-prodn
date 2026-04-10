@@ -60,3 +60,6 @@ storage/direct-message-attachments/
 
 # Local faucet cooldown ledger
 storage/wolo-faucet/
+
+# local watcher release artifacts
+public/downloads/

@@ -705,6 +705,9 @@ export async function GET(request: NextRequest) {
             id: true,
             title: true,
             eventLabel: true,
+            leftLabel: true,
+            rightLabel: true,
+            winnerSide: true,
           },
         })
       : [];
@@ -717,6 +720,12 @@ export async function GET(request: NextRequest) {
       const market = typeof claim.sourceMarketId === "number"
         ? settlementMarketById.get(claim.sourceMarketId)
         : null;
+      const winnerName =
+        market?.winnerSide === "left"
+          ? market.leftLabel
+          : market?.winnerSide === "right"
+            ? market.rightLabel
+            : null;
 
       const payoutTxHash = resolveSettlementTxHash(claim);
       const errorState = resolveSettlementError(claim);
@@ -730,8 +739,12 @@ export async function GET(request: NextRequest) {
         marketId: claim.sourceMarketId ?? null,
         marketTitle: market?.title ?? null,
         eventLabel: market?.eventLabel ?? null,
+        winnerName,
         displayPlayerName: claim.displayPlayerName,
         amountWolo: claim.amountWolo,
+        claimKind: claim.claimKind ?? "bet_payout",
+        targetScope: claim.targetScope ?? null,
+        sourceFounderBonusId: claim.sourceFounderBonusId ?? null,
         claimStatus: claim.status,
         settlementMode,
         payoutTxHash,

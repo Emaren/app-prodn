@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from "react";
 
+import FounderBonusChips from "@/components/bets/FounderBonusChips";
 import SteamLinkedBadge from "@/components/SteamLinkedBadge";
 import {
   displayGameType,
@@ -101,8 +102,17 @@ function displayBattleReasonTag(
 
 export default function LiveReplayDetail({
   initialSnapshot,
+  founderBonuses = [],
 }: {
   initialSnapshot: LiveReplayDetailSnapshot;
+  founderBonuses?: Array<{
+    id: number;
+    bonusType: "participants" | "winner";
+    totalAmountWolo: number;
+    note: string | null;
+    status: string;
+    createdAt: string;
+  }>;
 }) {
   const [snapshot, setSnapshot] = useState(initialSnapshot);
   const [battleMatrixFullWidth, setBattleMatrixFullWidth] = useState(false);
@@ -236,6 +246,7 @@ export default function LiveReplayDetail({
               {finalStatsReady ? <Tag>final stats ready</Tag> : null}
               <Tag>Updated {formatDateTime(snapshot.updatedAt)}</Tag>
             </div>
+            <FounderBonusChips bonuses={founderBonuses} />
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
