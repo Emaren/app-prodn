@@ -1,6 +1,13 @@
 "use client";
 
-import { ArrowDownToLine, Boxes, Clock3, Download, MonitorDown } from "lucide-react";
+import {
+  ArrowDownToLine,
+  Clock3,
+  Download,
+  MonitorDown,
+  ShieldCheck,
+  Sparkles,
+} from "lucide-react";
 
 type WatcherDownloadSummaryRow = {
   key: string;
@@ -9,6 +16,8 @@ type WatcherDownloadSummaryRow = {
   shortLabel: string;
   format: string;
   totalCount: number;
+  likelyExternalCount: number;
+  likelyInternalTestCount: number;
   last24Hours: number;
   last7Days: number;
 };
@@ -25,6 +34,7 @@ type WatcherDownloadRecentRow = {
   ipAddress: string | null;
   userAgent: string | null;
   referer: string | null;
+  trafficClass: "external" | "internal_test";
   userUid: string | null;
   userDisplayName: string | null;
 };
@@ -32,6 +42,8 @@ type WatcherDownloadRecentRow = {
 type WatcherDownloadRailProps = {
   summary: {
     totalCount: number;
+    likelyExternalCount: number;
+    likelyInternalTestCount: number;
     last24Hours: number;
     last7Days: number;
     rows: WatcherDownloadSummaryRow[];
@@ -46,6 +58,14 @@ function platformTone(platform: WatcherDownloadSummaryRow["platform"]) {
   if (platform === "macos") {
     return "border-amber-300/20 bg-amber-400/10 text-amber-100";
   }
+  return "border-emerald-300/20 bg-emerald-400/10 text-emerald-100";
+}
+
+function trafficTone(trafficClass: WatcherDownloadRecentRow["trafficClass"]) {
+  if (trafficClass === "internal_test") {
+    return "border-fuchsia-300/20 bg-fuchsia-400/10 text-fuchsia-100";
+  }
+
   return "border-emerald-300/20 bg-emerald-400/10 text-emerald-100";
 }
 
@@ -119,11 +139,12 @@ export function WatcherDownloadRail({ summary, recent }: WatcherDownloadRailProp
             Watcher Downloads
           </div>
           <h2 className="mt-3 text-2xl font-semibold text-white">
-            Real package pulls, split by platform and package type
+            Tracked package pulls with the noisy edges shaved off
           </h2>
           <p className="mt-2 text-sm leading-6 text-slate-300">
-            Server-side redirects log the package, version, filename, request fingerprint, and
-            signed-in user when present before the static file is served.
+            Direct tracked redirects still log the package, version, filename, request fingerprint,
+            and signed-in user when present. Prefetch-style route warming is ignored, and the rail
+            now calls out known internal or test traffic separately.
           </p>
         </div>
 
@@ -132,24 +153,30 @@ export function WatcherDownloadRail({ summary, recent }: WatcherDownloadRailProp
         </div>
       </div>
 
-      <div className="mt-5 grid gap-3 md:grid-cols-3">
+      <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <StatTile
-          label="Total"
+          label="Recorded"
           value={String(summary.totalCount)}
-          sublabel="All recorded watcher downloads"
+          sublabel={`Raw rows after prefetch filtering · 7d ${summary.last7Days}`}
           icon={Download}
+        />
+        <StatTile
+          label="Likely External"
+          value={String(summary.likelyExternalCount)}
+          sublabel="Best current read on real user pulls"
+          icon={Sparkles}
+        />
+        <StatTile
+          label="Internal/Test"
+          value={String(summary.likelyInternalTestCount)}
+          sublabel="Known local, scripted, or operator traffic"
+          icon={ShieldCheck}
         />
         <StatTile
           label="Last 24h"
           value={String(summary.last24Hours)}
-          sublabel="Fresh pull volume"
+          sublabel="Fresh pull volume after route filtering"
           icon={Clock3}
-        />
-        <StatTile
-          label="Last 7d"
-          value={String(summary.last7Days)}
-          sublabel="Weekly packaging pulse"
-          icon={Boxes}
         />
       </div>
 
@@ -167,7 +194,17 @@ export function WatcherDownloadRail({ summary, recent }: WatcherDownloadRailProp
             <div className="mt-4 text-sm font-semibold text-white">{row.title}</div>
             <div className="mt-1 text-xs text-slate-400">{row.shortLabel}</div>
             <div className="mt-4 text-3xl font-semibold text-white">{row.totalCount}</div>
-            <div className="mt-2 flex items-center justify-between text-xs text-slate-400">
+            <div className="mt-3 grid gap-2 text-xs text-slate-300">
+              <div className="flex items-center justify-between gap-3">
+                <span>Likely external</span>
+                <span className="font-semibold text-white">{row.likelyExternalCount}</span>
+              </div>
+              <div className="flex items-center justify-between gap-3 text-slate-400">
+                <span>Internal/test</span>
+                <span>{row.likelyInternalTestCount}</span>
+              </div>
+            </div>
+            <div className="mt-3 flex items-center justify-between text-xs text-slate-400">
               <span>24h {row.last24Hours}</span>
               <span>7d {row.last7Days}</span>
             </div>
@@ -201,6 +238,16 @@ export function WatcherDownloadRail({ summary, recent }: WatcherDownloadRailProp
                     )}`}
                   >
                     {event.platform}
+                  </span>
+                </div>
+
+                <div className="mt-3">
+                  <span
+                    className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] ${trafficTone(
+                      event.trafficClass
+                    )}`}
+                  >
+                    {event.trafficClass === "internal_test" ? "internal/test" : "likely external"}
                   </span>
                 </div>
 

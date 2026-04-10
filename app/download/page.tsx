@@ -104,13 +104,14 @@ export default function DownloadPage() {
             </div>
 
             <div className="mt-7 flex flex-wrap gap-3">
-              <Link
+              <a
                 href={primaryArtifact.trackedHref}
+                rel="nofollow"
                 className={`inline-flex items-center gap-3 rounded-full px-5 py-3 text-sm font-semibold transition ${tone.primaryButton}`}
               >
                 <ArrowDownToLine className="h-4 w-4" />
                 Download {primaryArtifact.title}
-              </Link>
+              </a>
 
               <Link
                 href="/profile?watcher_pair=1"
@@ -206,9 +207,10 @@ export default function DownloadPage() {
 
               <div className="mt-5 space-y-3">
                 {artifacts.map((artifact) => (
-                  <Link
+                  <a
                     key={artifact.key}
                     href={artifact.trackedHref}
+                    rel="nofollow"
                     className={`group block rounded-[1.4rem] border p-4 transition ${tone.insetPanel} hover:border-white/20 hover:bg-white/[0.06]`}
                   >
                     <div className="flex items-center justify-between gap-3">
@@ -229,7 +231,7 @@ export default function DownloadPage() {
                       <ArrowDownToLine className="h-4 w-4" />
                       Download
                     </div>
-                  </Link>
+                  </a>
                 ))}
               </div>
             </div>

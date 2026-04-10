@@ -6,6 +6,7 @@ import {
   readWatcherDownloadIpAddress,
   readWatcherDownloadReferer,
   readWatcherDownloadUserAgent,
+  shouldSkipWatcherDownloadLogging,
 } from "@/lib/watcherDownloads";
 import { getWatcherDownloadArtifact, WATCHER_RELEASE } from "@/lib/watcherRelease";
 
@@ -27,6 +28,15 @@ async function resolveViewerId(request: NextRequest) {
   return viewer?.id ?? null;
 }
 
+function buildDownloadRedirectResponse(request: NextRequest, downloadPath: string) {
+  const response = NextResponse.redirect(new URL(downloadPath, request.url), {
+    status: 307,
+  });
+  response.headers.set("Cache-Control", "no-store, no-cache, max-age=0, must-revalidate");
+  response.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
+  return response;
+}
+
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ artifact: string }> }
@@ -38,27 +48,41 @@ export async function GET(
     return NextResponse.json({ detail: "Watcher artifact not found." }, { status: 404 });
   }
 
-  try {
-    const prisma = getPrisma();
-    const userId = await resolveViewerId(request);
+  if (!shouldSkipWatcherDownloadLogging(request)) {
+    try {
+      const prisma = getPrisma();
+      const userId = await resolveViewerId(request);
 
-    await prisma.watcherDownloadEvent.create({
-      data: {
-        userId,
-        platform: artifact.platform,
-        artifact: artifact.key,
-        version: WATCHER_RELEASE.version,
-        filename: artifact.filename,
-        ipAddress: readWatcherDownloadIpAddress(request),
-        userAgent: readWatcherDownloadUserAgent(request),
-        referer: readWatcherDownloadReferer(request),
-      },
-    });
-  } catch (error) {
-    console.error(`Failed to record watcher download for ${artifact.key}:`, error);
+      await prisma.watcherDownloadEvent.create({
+        data: {
+          userId,
+          platform: artifact.platform,
+          artifact: artifact.key,
+          version: WATCHER_RELEASE.version,
+          filename: artifact.filename,
+          ipAddress: readWatcherDownloadIpAddress(request),
+          userAgent: readWatcherDownloadUserAgent(request),
+          referer: readWatcherDownloadReferer(request),
+        },
+      });
+    } catch (error) {
+      console.error(`Failed to record watcher download for ${artifact.key}:`, error);
+    }
   }
 
-  return NextResponse.redirect(new URL(artifact.downloadPath, request.url), {
-    status: 307,
-  });
+  return buildDownloadRedirectResponse(request, artifact.downloadPath);
+}
+
+export async function HEAD(
+  request: NextRequest,
+  context: { params: Promise<{ artifact: string }> }
+) {
+  const { artifact: artifactKey } = await context.params;
+  const artifact = getWatcherDownloadArtifact(artifactKey);
+
+  if (!artifact) {
+    return new NextResponse(null, { status: 404 });
+  }
+
+  return buildDownloadRedirectResponse(request, artifact.downloadPath);
 }

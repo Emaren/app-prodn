@@ -8,6 +8,8 @@
     "dev": "npm run kill-ports && npm run cert && node server.js",
     "prebuild": "prisma generate",
     "build": "next build",
+    "postbuild": "node scripts/prepare-runtime-cache.mjs",
+    "prestart": "node scripts/prepare-runtime-cache.mjs",
     "start": "next start --hostname 127.0.0.1 --port 3030",
     "lint": "next lint",
     "watcher:sync": "node scripts/sync-watcher-release.mjs",

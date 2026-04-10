@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import type { PrismaClient } from "@/lib/generated/prisma";
+import { Prisma, type PrismaClient } from "@/lib/generated/prisma";
 
 import {
   WATCHER_DOWNLOAD_ARTIFACTS,
@@ -15,6 +15,64 @@ type WatcherDownloadGroupRow = {
   };
 };
 
+type WatcherDownloadSignalFields = {
+  ipAddress?: string | null;
+  userAgent?: string | null;
+  referer?: string | null;
+};
+
+const PREFETCH_HEADER_NAMES = [
+  "next-router-prefetch",
+  "x-middleware-prefetch",
+  "purpose",
+  "sec-purpose",
+  "x-purpose",
+] as const;
+
+const INTERNAL_TEST_USER_AGENT_MARKERS = [
+  "axios/",
+  "curl/",
+  "go-http-client",
+  "headlesschrome",
+  "httpie",
+  "insomnia",
+  "node",
+  "playwright",
+  "postmanruntime",
+  "puppeteer",
+  "python-requests",
+  "undici",
+  "wget/",
+] as const;
+
+const INTERNAL_TEST_REFERER_MARKERS = [
+  "127.0.0.1",
+  "0.0.0.0",
+  "localhost",
+] as const;
+
+const INTERNAL_TEST_IP_PREFIXES = [
+  "10.",
+  "127.",
+  "192.168.",
+  "::1",
+  "::ffff:10.",
+  "::ffff:127.",
+  "::ffff:192.168.",
+] as const;
+
+const INTERNAL_TEST_172_PREFIXES = Array.from(
+  { length: 16 },
+  (_, index) => `172.${16 + index}.`
+) as readonly string[];
+
+const INTERNAL_TEST_172_MAPPED_PREFIXES = Array.from(
+  { length: 16 },
+  (_, index) => `::ffff:172.${16 + index}.`
+) as readonly string[];
+
+export type WatcherDownloadTrafficClass = "external" | "internal_test";
+
 export type WatcherDownloadSummaryRow = {
   key: WatcherArtifactKey;
   platform: WatcherArtifactPlatform;
@@ -22,6 +80,8 @@ export type WatcherDownloadSummaryRow = {
   shortLabel: string;
   format: string;
   totalCount: number;
+  likelyExternalCount: number;
+  likelyInternalTestCount: number;
   last24Hours: number;
   last7Days: number;
 };
@@ -38,6 +98,7 @@ export type WatcherDownloadRecentRow = {
   ipAddress: string | null;
   userAgent: string | null;
   referer: string | null;
+  trafficClass: WatcherDownloadTrafficClass;
   userUid: string | null;
   userDisplayName: string | null;
 };
@@ -45,6 +106,8 @@ export type WatcherDownloadRecentRow = {
 export type WatcherDownloadAnalytics = {
   summary: {
     totalCount: number;
+    likelyExternalCount: number;
+    likelyInternalTestCount: number;
     last24Hours: number;
     last7Days: number;
     rows: WatcherDownloadSummaryRow[];
@@ -71,6 +134,81 @@ function buildCountMap(rows: WatcherDownloadGroupRow[]) {
   );
 }
 
+function headerValueIncludes(request: NextRequest, headerName: string, needle: string) {
+  const value = request.headers.get(headerName);
+  if (!value) {
+    return false;
+  }
+
+  return value.toLowerCase().includes(needle.toLowerCase());
+}
+
+function buildInternalTestWhere(
+  extraWhere: Prisma.WatcherDownloadEventWhereInput = {}
+): Prisma.WatcherDownloadEventWhereInput {
+  return {
+    ...extraWhere,
+    OR: [
+      ...INTERNAL_TEST_USER_AGENT_MARKERS.map((marker) => ({
+        userAgent: {
+          contains: marker,
+          mode: "insensitive" as const,
+        },
+      })),
+      ...INTERNAL_TEST_REFERER_MARKERS.map((marker) => ({
+        referer: {
+          contains: marker,
+          mode: "insensitive" as const,
+        },
+      })),
+      ...INTERNAL_TEST_IP_PREFIXES.map((prefix) => ({
+        ipAddress: {
+          startsWith: prefix,
+        },
+      })),
+      ...INTERNAL_TEST_172_PREFIXES.map((prefix) => ({
+        ipAddress: {
+          startsWith: prefix,
+        },
+      })),
+      ...INTERNAL_TEST_172_MAPPED_PREFIXES.map((prefix) => ({
+        ipAddress: {
+          startsWith: prefix,
+        },
+      })),
+    ],
+  };
+}
+
+export function shouldSkipWatcherDownloadLogging(request: NextRequest) {
+  if (
+    PREFETCH_HEADER_NAMES.some((headerName) => headerValueIncludes(request, headerName, "prefetch"))
+  ) {
+    return true;
+  }
+
+  if (request.headers.has("next-router-prefetch") || request.headers.has("x-middleware-prefetch")) {
+    return true;
+  }
+
+  if (headerValueIncludes(request, "accept", "text/x-component") || request.headers.has("rsc")) {
+    return true;
+  }
+
+  const secFetchDest = request.headers.get("sec-fetch-dest")?.toLowerCase() ?? "";
+  const secFetchMode = request.headers.get("sec-fetch-mode")?.toLowerCase() ?? "";
+
+  if (secFetchDest === "empty") {
+    return true;
+  }
+
+  if (secFetchMode === "cors" || secFetchMode === "same-origin") {
+    return true;
+  }
+
+  return false;
+}
+
 export function readWatcherDownloadIpAddress(request: NextRequest) {
   const forwarded = request.headers.get("x-forwarded-for");
   if (forwarded) {
@@ -91,6 +229,26 @@ export function readWatcherDownloadUserAgent(request: NextRequest) {
   return normalizeHeaderValue(request.headers.get("user-agent"), 512);
 }
 
+export function classifyWatcherDownloadTraffic(
+  fields: WatcherDownloadSignalFields
+): WatcherDownloadTrafficClass {
+  const userAgent = fields.userAgent?.toLowerCase() ?? "";
+  const referer = fields.referer?.toLowerCase() ?? "";
+  const ipAddress = fields.ipAddress?.toLowerCase() ?? "";
+
+  if (
+    INTERNAL_TEST_USER_AGENT_MARKERS.some((marker) => userAgent.includes(marker)) ||
+    INTERNAL_TEST_REFERER_MARKERS.some((marker) => referer.includes(marker)) ||
+    INTERNAL_TEST_IP_PREFIXES.some((prefix) => ipAddress.startsWith(prefix)) ||
+    INTERNAL_TEST_172_PREFIXES.some((prefix) => ipAddress.startsWith(prefix)) ||
+    INTERNAL_TEST_172_MAPPED_PREFIXES.some((prefix) => ipAddress.startsWith(prefix))
+  ) {
+    return "internal_test";
+  }
+
+  return "external";
+}
+
 export async function loadWatcherDownloadAnalytics(
   prisma: PrismaClient
 ): Promise<WatcherDownloadAnalytics> {
@@ -98,10 +256,22 @@ export async function loadWatcherDownloadAnalytics(
   const last24HoursCutoff = new Date(now - 24 * 60 * 60 * 1000);
   const last7DaysCutoff = new Date(now - 7 * 24 * 60 * 60 * 1000);
 
-  const [totalCount, last24Hours, last7Days, groupedAll, grouped24Hours, grouped7Days, recentRows] =
-    await Promise.all([
+  const [
+    totalCount,
+    likelyInternalTestCount,
+    last24Hours,
+    last7Days,
+    groupedAll,
+    grouped24Hours,
+    grouped7Days,
+    groupedInternalAll,
+    recentRows,
+  ] = await Promise.all([
       prisma.watcherDownloadEvent.count(),
       prisma.watcherDownloadEvent.count({
+        where: buildInternalTestWhere(),
+      }),
+      prisma.watcherDownloadEvent.count({
         where: {
           createdAt: {
             gte: last24HoursCutoff,
@@ -139,6 +309,13 @@ export async function loadWatcherDownloadAnalytics(
             gte: last7DaysCutoff,
           },
         },
+        _count: {
+          _all: true,
+        },
+      }),
+      prisma.watcherDownloadEvent.groupBy({
+        by: ["platform", "artifact"],
+        where: buildInternalTestWhere(),
         _count: {
           _all: true,
         },
@@ -170,9 +347,12 @@ export async function loadWatcherDownloadAnalytics(
   const totalMap = buildCountMap(groupedAll);
   const last24Map = buildCountMap(grouped24Hours);
   const last7Map = buildCountMap(grouped7Days);
+  const internalMap = buildCountMap(groupedInternalAll);
 
   const rows = WATCHER_DOWNLOAD_ARTIFACTS.map((artifact) => {
     const countKey = `${artifact.platform}:${artifact.key}`;
+    const totalForArtifact = totalMap.get(countKey) ?? 0;
+    const internalForArtifact = internalMap.get(countKey) ?? 0;
 
     return {
       key: artifact.key,
@@ -180,7 +360,9 @@ export async function loadWatcherDownloadAnalytics(
       title: artifact.title,
       shortLabel: artifact.shortLabel,
       format: artifact.format,
-      totalCount: totalMap.get(countKey) ?? 0,
+      totalCount: totalForArtifact,
+      likelyExternalCount: Math.max(0, totalForArtifact - internalForArtifact),
+      likelyInternalTestCount: internalForArtifact,
       last24Hours: last24Map.get(countKey) ?? 0,
       last7Days: last7Map.get(countKey) ?? 0,
     };
@@ -189,6 +371,8 @@ export async function loadWatcherDownloadAnalytics(
   return {
     summary: {
       totalCount,
+      likelyExternalCount: Math.max(0, totalCount - likelyInternalTestCount),
+      likelyInternalTestCount,
       last24Hours,
       last7Days,
       rows,
@@ -211,6 +395,11 @@ export async function loadWatcherDownloadAnalytics(
         ipAddress: row.ipAddress ?? null,
         userAgent: row.userAgent ?? null,
         referer: row.referer ?? null,
+        trafficClass: classifyWatcherDownloadTraffic({
+          ipAddress: row.ipAddress ?? null,
+          userAgent: row.userAgent ?? null,
+          referer: row.referer ?? null,
+        }),
         userUid: row.user?.uid ?? null,
         userDisplayName:
           row.user?.inGameName || row.user?.steamPersonaName || row.user?.uid || null,

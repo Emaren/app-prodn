@@ -211,6 +211,8 @@ type AdminUsersPayload = {
   watcherDownloads: {
     summary: {
       totalCount: number;
+      likelyExternalCount: number;
+      likelyInternalTestCount: number;
       last24Hours: number;
       last7Days: number;
       rows: Array<{
@@ -220,6 +222,8 @@ type AdminUsersPayload = {
         shortLabel: string;
         format: string;
         totalCount: number;
+        likelyExternalCount: number;
+        likelyInternalTestCount: number;
         last24Hours: number;
         last7Days: number;
       }>;
@@ -236,6 +240,7 @@ type AdminUsersPayload = {
       ipAddress: string | null;
       userAgent: string | null;
       referer: string | null;
+      trafficClass: "external" | "internal_test";
       userUid: string | null;
       userDisplayName: string | null;
     }>;

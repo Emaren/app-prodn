@@ -144,6 +144,7 @@ Common symptoms:
 - `error: unable to unlink old ... Permission denied`
 - `EACCES` writing `.next/cache/images`
 - one or more files under the app tree owned by `root`
+- `npm run build` or `npm run start` now failing early from `scripts/prepare-runtime-cache.mjs`
 
 Fast check:
 
@@ -160,6 +161,29 @@ Typical fix:
 ```bash
 sudo chown -R tony:tony /var/www/AoE2HDBets/app-prodn
 ```
+
+Why this is cleaner now:
+- the app prepares `.next/cache/images` during build and again before start
+- ownership drift is surfaced before the service begins handling requests
+- the failure path now prints the exact `chown` command instead of leaving Next to throw a murky runtime mkdir error
+
+### Watcher download analytics truth
+
+Watcher package buttons should keep using the tracked `/download/watcher/[artifact]` routes, but those routes are no longer allowed to count obvious prefetch or route-warmup requests.
+
+Current guardrails:
+- skip requests with headers like `next-router-prefetch`, `x-middleware-prefetch`, `purpose: prefetch`, or `sec-purpose: prefetch`
+- skip likely RSC or component-prefetch requests
+- keep real user-intent redirects working
+- `/admin/user-list` now shows raw recorded totals alongside likely external vs internal/test splits
+
+If watcher download totals look suspicious after a deploy:
+
+```bash
+journalctl -u aoe2hdbets-web.service -n 80 --no-pager
+```
+
+Then verify the public page is still using plain download anchors, not Next-prefetchable internal navigation.
 
 ### Interrupted pulls
 
