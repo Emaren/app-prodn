@@ -1,7 +1,7 @@
 import type { PrismaClient } from "@/lib/generated/prisma";
 
-import { findMatchedClaimUser } from "@/lib/adminWoloClaims";
 import { createPendingWoloClaim } from "@/lib/pendingWoloClaims";
+import { normalizePublicPlayerName } from "@/lib/publicPlayers";
 import { recordUserActivity } from "@/lib/userExperience";
 import {
   executeWoloPayout,
@@ -18,6 +18,42 @@ export class FounderBonusError extends Error {
     this.status = status;
   }
 }
+
+type WalletLinkedFounderUser = {
+  id: number;
+  uid: string;
+  inGameName: string | null;
+  steamPersonaName: string | null;
+  walletAddress: string | null;
+  verified: boolean;
+  verificationLevel: number;
+  steamId: string | null;
+};
+
+type FounderResolutionResult = {
+  matchedUser: Pick<
+    WalletLinkedFounderUser,
+    "id" | "inGameName" | "steamPersonaName" | "walletAddress"
+  > | null;
+  matchedBy: string | null;
+  detail: string | null;
+};
+
+type FounderResolutionMarket = {
+  id: number;
+  title: string;
+  leftLabel: string;
+  rightLabel: string;
+  winnerSide: string | null;
+  scheduledMatch: {
+    challenger: WalletLinkedFounderUser;
+    challenged: WalletLinkedFounderUser;
+    linkedWinner: string | null;
+  } | null;
+  linkedGameStats: {
+    winner: string | null;
+  } | null;
+};
 
 function normalizeFounderBonusType(value: unknown): FounderBonusType | null {
   return value === "winner" ? "winner" : value === "participants" ? "participants" : null;
@@ -46,6 +82,364 @@ function founderClaimKind(bonusType: FounderBonusType) {
 
 function founderGroupKey(bonusId: number, targetKey: string) {
   return `founder:${bonusId}:${targetKey}`.slice(0, 80);
+}
+
+function normalizeFounderNameKey(value: string | null | undefined) {
+  return normalizePublicPlayerName(value).toLowerCase();
+}
+
+function isTrustedWalletLinkedUser(
+  user: WalletLinkedFounderUser | null | undefined
+): user is WalletLinkedFounderUser & { walletAddress: string } {
+  return Boolean(
+    user?.walletAddress &&
+      (user.verified ||
+        (typeof user.verificationLevel === "number" && user.verificationLevel > 0) ||
+        user.steamId)
+  );
+}
+
+function uniqueFounderNames(values: Array<string | null | undefined>) {
+  const seen = new Set<string>();
+  const result: string[] = [];
+
+  for (const value of values) {
+    const normalized = normalizePublicPlayerName(value);
+    const key = normalizeFounderNameKey(normalized);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    result.push(normalized);
+  }
+
+  return result;
+}
+
+function pickExactFounderUserMatch(
+  userPool: WalletLinkedFounderUser[],
+  field: "inGameName" | "steamPersonaName",
+  value: string | null | undefined
+) {
+  const targetKey = normalizeFounderNameKey(value);
+  if (!targetKey) return null;
+
+  return (
+    userPool.find((user) => normalizeFounderNameKey(user[field]) === targetKey) ?? null
+  );
+}
+
+function pickNormalizedFounderUserMatch(
+  userPool: WalletLinkedFounderUser[],
+  value: string | null | undefined
+) {
+  const targetKey = normalizeFounderNameKey(value);
+  if (!targetKey) return null;
+
+  return (
+    userPool.find((user) => {
+      const keys = [user.inGameName, user.steamPersonaName].map(normalizeFounderNameKey).filter(Boolean);
+      return keys.includes(targetKey);
+    }) ?? null
+  );
+}
+
+function matchFounderTargetByName(
+  userPool: WalletLinkedFounderUser[],
+  value: string | null | undefined
+): FounderResolutionResult | null {
+  const exactInGame = pickExactFounderUserMatch(userPool, "inGameName", value);
+  if (exactInGame) {
+    return {
+      matchedUser: exactInGame,
+      matchedBy: "exact_in_game_name",
+      detail: null,
+    };
+  }
+
+  const exactSteam = pickExactFounderUserMatch(userPool, "steamPersonaName", value);
+  if (exactSteam) {
+    return {
+      matchedUser: exactSteam,
+      matchedBy: "exact_steam_persona_name",
+      detail: null,
+    };
+  }
+
+  const normalized = pickNormalizedFounderUserMatch(userPool, value);
+  if (normalized) {
+    return {
+      matchedUser: normalized,
+      matchedBy: "normalized_player_name",
+      detail: null,
+    };
+  }
+
+  return null;
+}
+
+function founderTargetLabel(
+  bonusType: FounderBonusType,
+  targetKey: string,
+  playerName: string
+) {
+  if (bonusType === "winner" || targetKey === "winner") {
+    return `winner target "${playerName}"`;
+  }
+  if (targetKey === "left") {
+    return `left-side target "${playerName}"`;
+  }
+  if (targetKey === "right") {
+    return `right-side target "${playerName}"`;
+  }
+  return `target "${playerName}"`;
+}
+
+function unresolvedFounderTargetDetail(
+  bonusType: FounderBonusType,
+  targetKey: string,
+  playerName: string
+) {
+  return `${
+    bonusType === "winner" ? "Founders Win" : "Founders Bonus"
+  } target unresolved for ${founderTargetLabel(
+    bonusType,
+    targetKey,
+    playerName
+  )}: no verified wallet-linked user matched the current AoE2HDBets identities yet.`;
+}
+
+function resolveScheduledMatchSideUser(
+  market: FounderResolutionMarket,
+  targetKey: string
+) {
+  if (!market.scheduledMatch) return null;
+  if (targetKey === "left") {
+    return market.scheduledMatch.challenger;
+  }
+  if (targetKey === "right") {
+    return market.scheduledMatch.challenged;
+  }
+  return null;
+}
+
+function resolveWinnerSideUser(market: FounderResolutionMarket) {
+  if (!market.scheduledMatch) return null;
+  if (market.winnerSide === "left") {
+    return market.scheduledMatch.challenger;
+  }
+  if (market.winnerSide === "right") {
+    return market.scheduledMatch.challenged;
+  }
+  return null;
+}
+
+function buildMarketSideIdentityNames(
+  market: FounderResolutionMarket,
+  targetKey: string
+) {
+  const sideUser = resolveScheduledMatchSideUser(market, targetKey);
+  const sideLabel =
+    targetKey === "right" ? market.rightLabel : targetKey === "left" ? market.leftLabel : null;
+
+  return uniqueFounderNames([
+    sideLabel,
+    sideUser?.inGameName,
+    sideUser?.steamPersonaName,
+    sideUser?.uid,
+  ]);
+}
+
+function buildWinnerIdentityNames(market: FounderResolutionMarket) {
+  const winnerUser = resolveWinnerSideUser(market);
+  const winnerSideLabel =
+    market.winnerSide === "left"
+      ? market.leftLabel
+      : market.winnerSide === "right"
+        ? market.rightLabel
+        : null;
+
+  return uniqueFounderNames([
+    market.linkedGameStats?.winner,
+    market.scheduledMatch?.linkedWinner,
+    winnerSideLabel,
+    winnerUser?.inGameName,
+    winnerUser?.steamPersonaName,
+    winnerUser?.uid,
+  ]);
+}
+
+function resolveFounderTargetUser(
+  userPool: WalletLinkedFounderUser[],
+  input: {
+    bonusType: FounderBonusType;
+    targetKey: string;
+    playerName: string;
+    market: FounderResolutionMarket;
+  }
+): FounderResolutionResult {
+  const directMatch = matchFounderTargetByName(userPool, input.playerName);
+  if (directMatch) {
+    return directMatch;
+  }
+
+  if (input.targetKey === "left" || input.targetKey === "right") {
+    const sideUser = resolveScheduledMatchSideUser(input.market, input.targetKey);
+    if (isTrustedWalletLinkedUser(sideUser)) {
+      return {
+        matchedUser: sideUser,
+        matchedBy: `market_side_${input.targetKey}_identity`,
+        detail: null,
+      };
+    }
+
+    for (const candidateName of buildMarketSideIdentityNames(input.market, input.targetKey)) {
+      const sideMatch = matchFounderTargetByName(userPool, candidateName);
+      if (sideMatch) {
+        return {
+          ...sideMatch,
+          matchedBy: `market_side_${input.targetKey}_${sideMatch.matchedBy}`,
+        };
+      }
+    }
+  }
+
+  if (input.targetKey === "winner" || input.bonusType === "winner") {
+    const winnerUser = resolveWinnerSideUser(input.market);
+    if (isTrustedWalletLinkedUser(winnerUser)) {
+      return {
+        matchedUser: winnerUser,
+        matchedBy: "winner_side_identity",
+        detail: null,
+      };
+    }
+
+    for (const candidateName of buildWinnerIdentityNames(input.market)) {
+      const winnerMatch = matchFounderTargetByName(userPool, candidateName);
+      if (winnerMatch) {
+        return {
+          ...winnerMatch,
+          matchedBy: `winner_side_${winnerMatch.matchedBy}`,
+        };
+      }
+    }
+  }
+
+  return {
+    matchedUser: null,
+    matchedBy: null,
+    detail: unresolvedFounderTargetDetail(
+      input.bonusType,
+      input.targetKey,
+      input.playerName
+    ),
+  };
+}
+
+export async function resolveFounderClaimTargetUser(
+  prisma: PrismaClient,
+  input: {
+    sourceFounderBonusId: number;
+    displayPlayerName: string;
+    claimGroupKey?: string | null;
+    targetScope?: string | null;
+  }
+): Promise<FounderResolutionResult> {
+  const founderBonus = await prisma.betMarketFounderBonus.findUnique({
+    where: { id: input.sourceFounderBonusId },
+    select: {
+      id: true,
+      bonusType: true,
+      market: {
+        select: {
+          id: true,
+          title: true,
+          leftLabel: true,
+          rightLabel: true,
+          winnerSide: true,
+          scheduledMatch: {
+            select: {
+              linkedWinner: true,
+              challenger: {
+                select: {
+                  id: true,
+                  uid: true,
+                  inGameName: true,
+                  steamPersonaName: true,
+                  walletAddress: true,
+                  verified: true,
+                  verificationLevel: true,
+                  steamId: true,
+                },
+              },
+              challenged: {
+                select: {
+                  id: true,
+                  uid: true,
+                  inGameName: true,
+                  steamPersonaName: true,
+                  walletAddress: true,
+                  verified: true,
+                  verificationLevel: true,
+                  steamId: true,
+                },
+              },
+            },
+          },
+          linkedGameStats: {
+            select: {
+              winner: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  const bonusType = normalizeFounderBonusType(founderBonus?.bonusType);
+  if (!founderBonus || !bonusType) {
+    return {
+      matchedUser: null,
+      matchedBy: null,
+      detail: "Founder payout context is missing from AoE2HDBets for this claim.",
+    };
+  }
+
+  const targetKey =
+    input.claimGroupKey?.startsWith(`founder:${input.sourceFounderBonusId}:`)
+      ? input.claimGroupKey.slice(`founder:${input.sourceFounderBonusId}:`.length)
+      : bonusType === "winner"
+        ? "winner"
+        : input.targetScope === "both_participants"
+          ? normalizeFounderNameKey(input.displayPlayerName) === normalizeFounderNameKey(founderBonus.market.rightLabel)
+            ? "right"
+            : "left"
+          : "winner";
+
+  const userPool = await prisma.user.findMany({
+    where: {
+      walletAddress: { not: null },
+      AND: [
+        { OR: [{ verified: true }, { verificationLevel: { gt: 0 } }, { steamId: { not: null } }] },
+        { OR: [{ inGameName: { not: null } }, { steamPersonaName: { not: null } }] },
+      ],
+    },
+    select: {
+      id: true,
+      uid: true,
+      inGameName: true,
+      steamPersonaName: true,
+      walletAddress: true,
+      verified: true,
+      verificationLevel: true,
+      steamId: true,
+    },
+  });
+
+  return resolveFounderTargetUser(userPool, {
+    bonusType,
+    targetKey,
+    playerName: input.displayPlayerName,
+    market: founderBonus.market,
+  });
 }
 
 function displayUserName(user: {
@@ -220,6 +614,40 @@ export async function settleFounderBonuses(
           winnerSide: true,
           status: true,
           linkedGameStatsId: true,
+          scheduledMatch: {
+            select: {
+              linkedWinner: true,
+              challenger: {
+                select: {
+                  id: true,
+                  uid: true,
+                  inGameName: true,
+                  steamPersonaName: true,
+                  walletAddress: true,
+                  verified: true,
+                  verificationLevel: true,
+                  steamId: true,
+                },
+              },
+              challenged: {
+                select: {
+                  id: true,
+                  uid: true,
+                  inGameName: true,
+                  steamPersonaName: true,
+                  walletAddress: true,
+                  verified: true,
+                  verificationLevel: true,
+                  steamId: true,
+                },
+              },
+            },
+          },
+          linkedGameStats: {
+            select: {
+              winner: true,
+            },
+          },
         },
       },
       createdBy: {
@@ -244,6 +672,27 @@ export async function settleFounderBonuses(
   });
 
   const touchedFounderBonusIds = new Set<number>();
+  const founderUserPool = bonuses.length
+    ? await prisma.user.findMany({
+        where: {
+          walletAddress: { not: null },
+          AND: [
+            { OR: [{ verified: true }, { verificationLevel: { gt: 0 } }, { steamId: { not: null } }] },
+            { OR: [{ inGameName: { not: null } }, { steamPersonaName: { not: null } }] },
+          ],
+        },
+        select: {
+          id: true,
+          uid: true,
+          inGameName: true,
+          steamPersonaName: true,
+          walletAddress: true,
+          verified: true,
+          verificationLevel: true,
+          steamId: true,
+        },
+      })
+    : [];
 
   for (const bonus of bonuses) {
     const bonusType = normalizeFounderBonusType(bonus.bonusType);
@@ -299,9 +748,11 @@ export async function settleFounderBonuses(
         continue;
       }
 
-      const matchedUser = await findMatchedClaimUser(prisma, {
-        displayPlayerName: target.playerName,
-        normalizedPlayerName: target.playerName.trim().toLowerCase(),
+      const resolution = resolveFounderTargetUser(founderUserPool, {
+        bonusType,
+        targetKey: target.targetKey,
+        playerName: target.playerName,
+        market: bonus.market,
       });
       const attemptAt = new Date();
       const claimKind = founderClaimKind(bonusType);
@@ -312,12 +763,15 @@ export async function settleFounderBonuses(
         if (!hasWoloPayoutExecutionConfigured()) {
           throw new Error("Settlement execution is not configured in this environment.");
         }
-        if (!matchedUser?.walletAddress) {
-          throw new Error("No verified wallet-linked user matches this founder payout target yet.");
+        if (!resolution.matchedUser?.walletAddress) {
+          throw new Error(
+            resolution.detail ||
+              "Founders payout target is unresolved in AoE2HDBets."
+          );
         }
 
         const payout = await executeWoloPayout({
-          toAddress: matchedUser.walletAddress,
+          toAddress: resolution.matchedUser.walletAddress,
           amountWolo: target.amountWolo,
           memo: `${bonus.market.title} · ${claimKind}`,
         });
@@ -345,7 +799,7 @@ export async function settleFounderBonuses(
               ? `Founders Win · ${creatorName} added ${bonus.totalAmountWolo} WOLO`
               : `Founders Bonus · ${creatorName} added ${bonus.totalAmountWolo} WOLO`,
           status: "claimed",
-          claimedByUserId: matchedUser.id,
+          claimedByUserId: resolution.matchedUser.id,
           claimedAt: attemptAt,
         });
       } catch (error) {

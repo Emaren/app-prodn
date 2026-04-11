@@ -1392,6 +1392,7 @@ export default function BetsPage() {
                 <MarketFeature
                   market={spotlightMarket}
                   eyebrowLabel={spotlightMarket.featured ? "Featured Market" : "Current Book"}
+                  detailMode="basic"
                   selection={selection}
                   workingKey={workingKey}
                   lockWorkflow={lockWorkflow}
@@ -1436,6 +1437,7 @@ export default function BetsPage() {
             <OpenBooksSection
               eyebrow={spotlightMarket ? "More Open Books" : "Open Books"}
               title={spotlightMarket ? "Keep the page alive without crowding it." : "Pick a side."}
+              detailMode="basic"
               markets={openMarkets}
               selection={selection}
               workingKey={workingKey}
@@ -1613,6 +1615,7 @@ export default function BetsPage() {
                 <MarketFeature
                   market={spotlightMarket}
                   eyebrowLabel={spotlightMarket.featured ? "Featured Market" : "Current Book"}
+                  detailMode="advanced"
                   selection={selection}
                   workingKey={workingKey}
                   lockWorkflow={lockWorkflow}
@@ -1640,6 +1643,7 @@ export default function BetsPage() {
             <OpenBooksSection
               eyebrow="Open Books"
               title="Pick a side."
+              detailMode="advanced"
               markets={openMarkets}
               selection={selection}
               workingKey={workingKey}
@@ -1761,6 +1765,7 @@ function BetsViewToggle({
 function OpenBooksSection({
   eyebrow,
   title,
+  detailMode = "advanced",
   markets,
   selection,
   workingKey,
@@ -1779,6 +1784,7 @@ function OpenBooksSection({
 }: {
   eyebrow: string;
   title: string;
+  detailMode?: "basic" | "advanced";
   markets: BetBoardMarket[];
   selection: SelectionState | null;
   workingKey: string | null;
@@ -1820,6 +1826,7 @@ function OpenBooksSection({
             <MarketCard
               key={market.id}
               market={market}
+              detailMode={detailMode}
               selection={selection}
               workingKey={workingKey}
               lockWorkflow={lockWorkflow}
@@ -2034,9 +2041,11 @@ function YourBookSection({
 function ResultCard({
   result,
   compact = false,
+  founderChipVariant = "full",
 }: {
   result: BetSettledResult;
   compact?: boolean;
+  founderChipVariant?: "full" | "micro";
 }) {
   const content = (
     <div>
@@ -2064,7 +2073,7 @@ function ResultCard({
         </div>
       </div>
 
-      <FounderBonusChips bonuses={result.founderBonuses} compact />
+      <FounderBonusChips bonuses={result.founderBonuses} compact variant={founderChipVariant} />
     </div>
   );
 
@@ -2097,7 +2106,16 @@ function RecentBetsSection({ results }: { results: BetSettledResult[] }) {
 
       <div className="mt-5 grid gap-3 md:grid-cols-2">
         {results.length ? (
-          results.slice(0, 6).map((result) => <ResultCard key={result.id} result={result} compact />)
+          results
+            .slice(0, 6)
+            .map((result) => (
+              <ResultCard
+                key={result.id}
+                result={result}
+                compact
+                founderChipVariant="micro"
+              />
+            ))
         ) : (
           <EmptyShell label="No books have settled yet. The first closed result will show up here instead of leaving Basic empty." />
         )}
@@ -2226,7 +2244,7 @@ function RecentResultFeature({ result }: { result: BetSettledResult }) {
       </div>
 
       <div className="mt-5">
-        <ResultCard result={result} />
+        <ResultCard result={result} founderChipVariant="micro" />
       </div>
     </div>
   );
@@ -2296,6 +2314,7 @@ function StakeAmountRail({
 function MarketFeature({
   market,
   eyebrowLabel = "Featured Market",
+  detailMode = "advanced",
   selection,
   workingKey,
   lockWorkflow,
@@ -2311,6 +2330,7 @@ function MarketFeature({
 }: {
   market: BetBoardMarket;
   eyebrowLabel?: string;
+  detailMode?: "basic" | "advanced";
   selection: SelectionState | null;
   workingKey: string | null;
   lockWorkflow: LockWorkflow | null;
@@ -2396,7 +2416,10 @@ function MarketFeature({
             </h2>
           )}
           <div className="mt-2 text-sm text-slate-400">{market.eventLabel}</div>
-          <FounderBonusChips bonuses={market.founderBonuses} />
+          <FounderBonusChips
+            bonuses={market.founderBonuses}
+            variant={detailMode === "basic" ? "micro" : "full"}
+          />
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
           {market.href ? (
@@ -2512,13 +2535,14 @@ function MarketFeature({
         </div>
       </div>
 
-      <WarTape rows={market.warTape} />
+      {detailMode === "advanced" ? <WarTape rows={market.warTape} /> : null}
     </div>
   );
 }
 
 function MarketCard({
   market,
+  detailMode = "advanced",
   selection,
   workingKey,
   lockWorkflow,
@@ -2532,6 +2556,7 @@ function MarketCard({
   accent,
 }: {
   market: BetBoardMarket;
+  detailMode?: "basic" | "advanced";
   selection: SelectionState | null;
   workingKey: string | null;
   lockWorkflow: LockWorkflow | null;
@@ -2602,7 +2627,11 @@ function MarketCard({
               {market.title}
             </div>
           )}
-          <FounderBonusChips bonuses={market.founderBonuses} compact />
+          <FounderBonusChips
+            bonuses={market.founderBonuses}
+            compact
+            variant={detailMode === "basic" ? "micro" : "full"}
+          />
         </div>
         <div className="flex flex-col items-end gap-2">
           <span className={`rounded-full border px-3 py-1 text-xs ${statusPill(market.status)}`}>
@@ -2713,7 +2742,9 @@ function MarketCard({
         </div>
       </div>
 
-      <WarTape rows={market.warTape} emptyLabel="No tape rows yet." />
+      {detailMode === "advanced" ? (
+        <WarTape rows={market.warTape} emptyLabel="No tape rows yet." />
+      ) : null}
     </article>
   );
 }

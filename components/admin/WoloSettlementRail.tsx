@@ -68,7 +68,20 @@ function formatShortDate(value: string | null) {
   });
 }
 
-function statusTone(mode: SettlementRailRow["settlementMode"]) {
+function isFounderClaim(row: SettlementRailRow) {
+  return row.claimKind === "founders_bonus" || row.claimKind === "founders_win";
+}
+
+function isFounderTargetUnresolved(row: SettlementRailRow) {
+  return (
+    isFounderClaim(row) &&
+    row.claimStatus === "pending" &&
+    Boolean(row.errorState) &&
+    /target unresolved|no verified wallet-linked user matches/i.test(row.errorState || "")
+  );
+}
+
+function statusTone(mode: SettlementRailRow["settlementMode"] | "partial_founder" | "target_unresolved") {
   switch (mode) {
     case "auto_settled":
       return "border-emerald-500/30 bg-emerald-500/10 text-emerald-200";
@@ -76,12 +89,16 @@ function statusTone(mode: SettlementRailRow["settlementMode"]) {
       return "border-cyan-500/30 bg-cyan-500/10 text-cyan-200";
     case "rescinded":
       return "border-rose-500/30 bg-rose-500/10 text-rose-200";
+    case "partial_founder":
+      return "border-fuchsia-400/30 bg-fuchsia-500/10 text-fuchsia-100";
+    case "target_unresolved":
+      return "border-rose-400/30 bg-rose-500/10 text-rose-100";
     default:
       return "border-amber-500/30 bg-amber-500/10 text-amber-200";
   }
 }
 
-function statusLabel(mode: SettlementRailRow["settlementMode"]) {
+function statusLabel(mode: SettlementRailRow["settlementMode"] | "partial_founder" | "target_unresolved") {
   switch (mode) {
     case "auto_settled":
       return "Auto-settled";
@@ -89,6 +106,10 @@ function statusLabel(mode: SettlementRailRow["settlementMode"]) {
       return "Claimed";
     case "rescinded":
       return "Rescinded";
+    case "partial_founder":
+      return "Partial";
+    case "target_unresolved":
+      return "Target unresolved";
     default:
       return "Pending";
   }
@@ -148,6 +169,44 @@ export function WoloSettlementRail({
   onReconcilePending,
   onAddFounderBonus,
 }: Props) {
+  const founderRowsByBonusId = new Map<number, SettlementRailRow[]>();
+
+  for (const row of rows) {
+    if (!row.sourceFounderBonusId || !isFounderClaim(row)) {
+      continue;
+    }
+    const bucket = founderRowsByBonusId.get(row.sourceFounderBonusId) ?? [];
+    bucket.push(row);
+    founderRowsByBonusId.set(row.sourceFounderBonusId, bucket);
+  }
+
+  const founderGroupState = new Map<number, "partial" | "settled" | "pending" | "rescinded">();
+
+  for (const [bonusId, founderRows] of founderRowsByBonusId.entries()) {
+    const claimedCount = founderRows.filter((row) => row.claimStatus === "claimed").length;
+    const pendingCount = founderRows.filter((row) => row.claimStatus === "pending").length;
+    const rescindedCount = founderRows.filter((row) => row.claimStatus === "rescinded").length;
+
+    if (claimedCount > 0 && claimedCount < founderRows.length) {
+      founderGroupState.set(bonusId, "partial");
+      continue;
+    }
+
+    if (claimedCount === founderRows.length) {
+      founderGroupState.set(bonusId, "settled");
+      continue;
+    }
+
+    if (rescindedCount === founderRows.length) {
+      founderGroupState.set(bonusId, "rescinded");
+      continue;
+    }
+
+    if (pendingCount > 0) {
+      founderGroupState.set(bonusId, "pending");
+    }
+  }
+
   return (
     <section className="rounded-3xl border border-white/10 bg-black/30 p-5 shadow-[0_20px_60px_rgba(0,0,0,0.35)] backdrop-blur">
       <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
@@ -233,8 +292,19 @@ export function WoloSettlementRail({
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
-              {rows.map((row) => (
-                <tr key={row.id} className="align-top">
+              {rows.map((row) => {
+                const founderState =
+                  row.sourceFounderBonusId != null
+                    ? founderGroupState.get(row.sourceFounderBonusId) ?? null
+                    : null;
+                const compositeState = isFounderTargetUnresolved(row)
+                  ? "target_unresolved"
+                  : founderState === "partial" && row.claimStatus === "pending"
+                    ? "partial_founder"
+                    : row.settlementMode;
+
+                return (
+                  <tr key={row.id} className="align-top">
                   <td className="px-3 py-3">
                     <div className="font-medium text-white">
                       {row.marketTitle || row.note || `Market #${row.marketId ?? row.id}`}
@@ -251,6 +321,21 @@ export function WoloSettlementRail({
                       {(row.claimKind === "founders_bonus" || row.claimKind === "founders_win") && row.targetScope ? (
                         <span className="inline-flex rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] uppercase tracking-[0.16em] text-slate-300">
                           {targetScopeLabel(row.targetScope)}
+                        </span>
+                      ) : null}
+                      {founderState === "partial" ? (
+                        <span className="inline-flex rounded-full border border-fuchsia-300/20 bg-fuchsia-400/10 px-2.5 py-1 text-[11px] uppercase tracking-[0.16em] text-fuchsia-100">
+                          Partial founder bonus
+                        </span>
+                      ) : null}
+                      {founderState === "partial" && row.claimStatus === "claimed" ? (
+                        <span className="inline-flex rounded-full border border-emerald-300/20 bg-emerald-400/10 px-2.5 py-1 text-[11px] uppercase tracking-[0.16em] text-emerald-100">
+                          Paid side
+                        </span>
+                      ) : null}
+                      {isFounderTargetUnresolved(row) ? (
+                        <span className="inline-flex rounded-full border border-rose-300/20 bg-rose-400/10 px-2.5 py-1 text-[11px] uppercase tracking-[0.16em] text-rose-100">
+                          Target unresolved
                         </span>
                       ) : null}
                     </div>
@@ -273,9 +358,9 @@ export function WoloSettlementRail({
 
                   <td className="px-3 py-3">
                     <span
-                      className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${statusTone(row.settlementMode)}`}
+                      className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${statusTone(compositeState)}`}
                     >
-                      {statusLabel(row.settlementMode)}
+                      {statusLabel(compositeState)}
                     </span>
                     <div className="mt-2 text-xs text-slate-400">raw: {row.claimStatus}</div>
                   </td>
@@ -371,7 +456,8 @@ export function WoloSettlementRail({
                     )}
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

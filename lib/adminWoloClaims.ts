@@ -1,6 +1,9 @@
 import type { PrismaClient } from "@/lib/generated/prisma";
 
-import { syncFounderBonusStatus } from "@/lib/betFounderBonuses";
+import {
+  resolveFounderClaimTargetUser,
+  syncFounderBonusStatus,
+} from "@/lib/betFounderBonuses";
 import { normalizePublicPlayerName } from "@/lib/publicPlayers";
 import { recordUserActivity } from "@/lib/userExperience";
 import { executeWoloPayout } from "@/lib/woloBetSettlement";
@@ -34,6 +37,7 @@ export type RetryClaimSettlementResult =
       outcome: "skipped";
       claimId: number;
       reason: "not_found" | "not_pending" | "unmatched_user" | "already_has_payout_tx";
+      detail?: string;
     }
   | {
       outcome: "failed";
@@ -104,6 +108,9 @@ export async function retryPendingClaimSettlement(
       displayPlayerName: true,
       normalizedPlayerName: true,
       amountWolo: true,
+      claimKind: true,
+      claimGroupKey: true,
+      targetScope: true,
       status: true,
       sourceMarketId: true,
       sourceFounderBonusId: true,
@@ -123,9 +130,25 @@ export async function retryPendingClaimSettlement(
     return { outcome: "skipped", claimId: claim.id, reason: "already_has_payout_tx" };
   }
 
-  const matchedUser = await findMatchedClaimUser(prisma, claim);
+  const founderResolution = claim.sourceFounderBonusId
+    ? await resolveFounderClaimTargetUser(prisma, {
+        sourceFounderBonusId: claim.sourceFounderBonusId,
+        displayPlayerName: claim.displayPlayerName,
+        claimGroupKey: claim.claimGroupKey,
+        targetScope: claim.targetScope,
+      })
+    : null;
+  const matchedUser =
+    founderResolution?.matchedUser ?? (await findMatchedClaimUser(prisma, claim));
   if (!matchedUser?.walletAddress) {
-    return { outcome: "skipped", claimId: claim.id, reason: "unmatched_user" };
+    return {
+      outcome: "skipped",
+      claimId: claim.id,
+      reason: "unmatched_user",
+      detail:
+        founderResolution?.detail ||
+        "No verified wallet-linked user matches this claim yet.",
+    };
   }
 
   const market =

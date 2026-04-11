@@ -116,7 +116,7 @@ async function retrySettlementClaim(
       );
     case "unmatched_user":
       return NextResponse.json(
-        { detail: "No verified wallet-linked user matches this claim yet." },
+        { detail: result.detail || "No verified wallet-linked user matches this claim yet." },
         { status: 409 }
       );
     default:
