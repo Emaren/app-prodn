@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getBackendUpstreamBase } from "@/lib/backendUpstream";
+import { ensureBetMarkets } from "@/lib/bets";
 import { getSessionUid } from "@/lib/session";
 import { getPrisma } from "@/lib/prisma";
 import { reconcileTournamentMatchProofs } from "@/lib/tournamentProofReconciler";
@@ -18,10 +19,28 @@ function readHeader(request: NextRequest, name: string) {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+function readBooleanHeader(request: NextRequest, name: string, fallback = false) {
+  const value = readHeader(request, name);
+  if (!value) {
+    return fallback;
+  }
+
+  const normalized = value.toLowerCase();
+  if (["1", "true", "yes", "y", "on", "final"].includes(normalized)) {
+    return true;
+  }
+  if (["0", "false", "no", "n", "off", "live"].includes(normalized)) {
+    return false;
+  }
+
+  return fallback;
+}
+
 export async function POST(request: NextRequest) {
   const watcherApiKey = readHeader(request, "x-api-key");
   const watcherUid = readHeader(request, "x-user-uid");
   const isWatcherProxyUpload = Boolean(watcherApiKey && watcherUid);
+  const isFinalUpload = readBooleanHeader(request, "x-is-final", false);
 
   const sessionUid = isWatcherProxyUpload ? null : await getSessionUid(request);
   const uid = watcherUid || sessionUid;
@@ -100,6 +119,14 @@ export async function POST(request: NextRequest) {
       await reconcileTournamentMatchProofs(prisma, { force: true });
     } catch (error) {
       console.warn("Replay upload succeeded but tournament proof reconciliation failed:", error);
+    }
+
+    if (isFinalUpload) {
+      try {
+        await ensureBetMarkets(prisma);
+      } catch (error) {
+        console.warn("Replay upload succeeded but bet market reconciliation failed:", error);
+      }
     }
 
     const activityUser =
