@@ -78,14 +78,14 @@ function sortMetrics(a: ActorMetrics, b: ActorMetrics) {
   if (b.weeklyTakeWolo !== a.weeklyTakeWolo) {
     return b.weeklyTakeWolo - a.weeklyTakeWolo;
   }
-  if (b.claimableWolo !== a.claimableWolo) {
-    return b.claimableWolo - a.claimableWolo;
-  }
   if (b.settledWolo !== a.settledWolo) {
     return b.settledWolo - a.settledWolo;
   }
   if (b.wageredWolo !== a.wageredWolo) {
     return b.wageredWolo - a.wageredWolo;
+  }
+  if (b.claimableWolo !== a.claimableWolo) {
+    return b.claimableWolo - a.claimableWolo;
   }
   if (b.wagerCount !== a.wagerCount) {
     return b.wagerCount - a.wagerCount;
@@ -370,7 +370,11 @@ async function loadBoardMetrics(prisma: PrismaClient, weekStartsAt: Date) {
 
   return Array.from(metrics.values())
     .filter(
-      (entry) => entry.weeklyTakeWolo > 0 || entry.settledWolo > 0 || entry.claimableWolo > 0
+      (entry) =>
+        entry.weeklyTakeWolo > 0 ||
+        entry.settledWolo > 0 ||
+        entry.wageredWolo > 0 ||
+        entry.claimableWolo > 0
     )
     .sort(sortMetrics);
 }
@@ -381,30 +385,16 @@ export async function loadLobbyWoloEarnersBoard(
   const generatedAt = new Date();
   const weekStartsAt = new Date(generatedAt.getTime() - WEEKLY_TIMEFRAME_MS);
   const allMetrics = await loadBoardMetrics(prisma, weekStartsAt);
-  const weeklyMetrics = allMetrics.filter((entry) => entry.weeklyTakeWolo > 0);
 
-  let combinedMetrics = weeklyMetrics;
-  let backfilled = false;
-
-  if (weeklyMetrics.length < MIN_VISIBLE_SLOTS) {
-    const weeklyKeys = new Set(weeklyMetrics.map((entry) => entry.actorKey));
-    const backfillMetrics = allMetrics.filter((entry) => !weeklyKeys.has(entry.actorKey));
-
-    if (backfillMetrics.length > 0) {
-      combinedMetrics = [...weeklyMetrics, ...backfillMetrics];
-      backfilled = true;
-    }
-  }
-
-  const entries = combinedMetrics.map((entry, index) =>
-    buildEntry(entry, index + 1, index < weeklyMetrics.length ? "weekly" : "backfill")
+  const entries = allMetrics.map((entry, index) =>
+    buildEntry(entry, index + 1, entry.weeklyTakeWolo > 0 ? "weekly" : "backfill")
   );
 
   return {
     timeframeDays: WEEKLY_TIMEFRAME_DAYS,
     visibleSlots: MIN_VISIBLE_SLOTS,
     totalParticipants: entries.length,
-    backfilled,
+    backfilled: entries.some((entry) => entry.sourceWindow === "backfill"),
     weekStartsAt: weekStartsAt.toISOString(),
     generatedAt: generatedAt.toISOString(),
     entries,

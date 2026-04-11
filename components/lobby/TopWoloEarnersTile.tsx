@@ -89,9 +89,9 @@ export function TopWoloEarnersTile({
   const tone = getLobbyPresentationTone(themeKey, viewMode);
   const reserve = formatCompactWolo(wolo?.accounts.ecosystembounties?.wolo ?? null);
   const entries = board?.entries ?? [];
-  const statusLabel = entries.length > 0 ? (board?.backfilled ? "Weekly take + regulars" : "Weekly take") : "Standby";
+  const statusLabel = entries.length > 0 ? "Weekly take • all-time roster" : "Standby";
   const headlineMeta =
-    entries.length > 0 ? `${entries.length} names` : reserve ? `${reserve} reserve` : "3 slots";
+    entries.length > 0 ? `${entries.length} players all-time` : reserve ? `${reserve} reserve` : "4 slots";
   const placeholderCount = Math.max(0, VISIBLE_ROWS - entries.length);
   const destinationHref = "/war-chest";
 
@@ -185,13 +185,8 @@ export function TopWoloEarnersTile({
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
             <div className="grid gap-2.5">
               {entries.map((entry) => {
-                const primaryMetric = entry.weeklyTakeWolo > 0 ? entry.weeklyTakeWolo : entry.settledWolo;
-                const primaryLabel =
-                  entry.weeklyTakeWolo > 0
-                    ? "Weekly take"
-                    : entry.sourceWindow === "backfill"
-                      ? "Settled total"
-                      : "Weekly take";
+                const primaryMetric = entry.weeklyTakeWolo;
+                const primaryLabel = "Weekly take";
 
                 return (
                   <Link

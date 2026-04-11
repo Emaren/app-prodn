@@ -89,8 +89,9 @@ export default async function WarChestPage() {
                 </h1>
               </div>
               <p className="max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
-                Weekly take leads, all-time settled and wagered stay visible, and claimable WOLO
-                stays as a live chip instead of muddying the score lines.
+                Weekly Take is the only rolling number on this board. Settled, Wagered, and the
+                full player roster stay all-time so every bettor and claimable player can see
+                themselves here and know the site is tracking the full history honestly.
               </p>
             </div>
 
@@ -151,7 +152,7 @@ export default async function WarChestPage() {
                   </h2>
                 </div>
                 <div className="rounded-full border border-amber-300/18 bg-amber-400/10 px-3 py-1 text-xs text-amber-100">
-                  {leader ? formatCompact(leader.weeklyTakeWolo || leader.settledWolo) : "Standby"}
+                  {leader ? `${formatCompact(leader.weeklyTakeWolo)} WOLO` : "Standby"}
                 </div>
               </div>
 
@@ -213,7 +214,7 @@ export default async function WarChestPage() {
           eyebrow="Recognition board"
           title="Full earner table"
           count={trackedEntries.length}
-          helper={`Window started ${formatMoment(snapshot.earners.weekStartsAt)}`}
+          helper={`Weekly window started ${formatMoment(snapshot.earners.weekStartsAt)}`}
         >
           <div className="grid gap-3">
             {trackedEntries.length === 0 ? (
@@ -251,8 +252,8 @@ export default async function WarChestPage() {
 
                     <div className="grid gap-2 text-left md:min-w-[10rem] md:text-right">
                       <ScoreLine
-                        label={entry.weeklyTakeWolo > 0 ? "Weekly Take" : "Settled total"}
-                        value={`${formatNumber(entry.weeklyTakeWolo > 0 ? entry.weeklyTakeWolo : entry.settledWolo)} WOLO`}
+                        label="Weekly Take"
+                        value={`${formatNumber(entry.weeklyTakeWolo)} WOLO`}
                       />
                       <ScoreLine label="Settled" value={`${formatNumber(entry.settledWolo)} WOLO`} />
                       <ScoreLine label="Wagered" value={`${formatNumber(entry.wageredWolo)} WOLO`} />
