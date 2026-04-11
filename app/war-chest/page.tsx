@@ -152,7 +152,13 @@ export default async function WarChestPage() {
                   </h2>
                 </div>
                 <div className="rounded-full border border-amber-300/18 bg-amber-400/10 px-3 py-1 text-xs text-amber-100">
-                  {leader ? `${formatCompact(leader.weeklyTakeWolo)} WOLO` : "Standby"}
+                  {leader
+                    ? leader.weeklyTakeWolo > 0
+                      ? `${formatCompact(leader.weeklyTakeWolo)} WOLO`
+                      : leader.claimableWolo > 0
+                        ? `${formatCompact(leader.claimableWolo)} WOLO`
+                        : `${formatCompact(leader.settledWolo)} WOLO`
+                    : "Standby"}
                 </div>
               </div>
 
@@ -252,8 +258,20 @@ export default async function WarChestPage() {
 
                     <div className="grid gap-2 text-left md:min-w-[10rem] md:text-right">
                       <ScoreLine
-                        label="Weekly Take"
-                        value={`${formatNumber(entry.weeklyTakeWolo)} WOLO`}
+                        label={
+                          entry.weeklyTakeWolo > 0
+                            ? "Weekly Take"
+                            : entry.claimableWolo > 0
+                              ? "Claimable now"
+                              : "Settled total"
+                        }
+                        value={`${formatNumber(
+                          entry.weeklyTakeWolo > 0
+                            ? entry.weeklyTakeWolo
+                            : entry.claimableWolo > 0
+                              ? entry.claimableWolo
+                              : entry.settledWolo
+                        )} WOLO`}
                       />
                       <ScoreLine label="Settled" value={`${formatNumber(entry.settledWolo)} WOLO`} />
                       <ScoreLine label="Wagered" value={`${formatNumber(entry.wageredWolo)} WOLO`} />

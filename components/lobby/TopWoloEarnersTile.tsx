@@ -185,8 +185,19 @@ export function TopWoloEarnersTile({
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
             <div className="grid gap-2.5">
               {entries.map((entry) => {
-                const primaryMetric = entry.weeklyTakeWolo;
-                const primaryLabel = "Weekly take";
+                const primaryMetric =
+                  entry.weeklyTakeWolo > 0
+                    ? entry.weeklyTakeWolo
+                    : entry.claimableWolo > 0
+                      ? entry.claimableWolo
+                      : entry.settledWolo;
+
+                const primaryLabel =
+                  entry.weeklyTakeWolo > 0
+                    ? "Weekly take"
+                    : entry.claimableWolo > 0
+                      ? "Claimable now"
+                      : "Settled total";
 
                 return (
                   <Link
