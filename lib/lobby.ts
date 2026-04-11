@@ -193,13 +193,12 @@ export type LobbyWoloEarnersEntry = {
   claimed: boolean;
   verified: boolean;
   verificationLevel: number;
-  earnedWolo: number;
-  settledTakeWolo: number;
-  rewardWolo: number;
+  weeklyTakeWolo: number;
+  settledWolo: number;
   wageredWolo: number;
   claimCount: number;
   wagerCount: number;
-  unclaimedWolo: number;
+  claimableWolo: number;
   lastActiveAt: string | null;
   sourceWindow: "weekly" | "backfill";
 };

@@ -65,6 +65,20 @@ function MiniTag({
   );
 }
 
+function WoloMarkBadge() {
+  return (
+    <div className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+      <Image
+        src={WOLO_LOGO_SRC}
+        alt=""
+        width={22}
+        height={22}
+        className="h-[22px] w-[22px] object-contain"
+      />
+    </div>
+  );
+}
+
 export function TopWoloEarnersTile({
   wolo,
   board,
@@ -134,15 +148,7 @@ export function TopWoloEarnersTile({
             Top $WOLO Earners
           </div>
           <div className="mt-4 flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full border border-amber-300/18 bg-[radial-gradient(circle_at_30%_30%,rgba(251,191,36,0.24),rgba(15,23,42,0.18)_68%,transparent_100%)] shadow-[0_12px_30px_rgba(245,158,11,0.12)]">
-              <Image
-                src={WOLO_LOGO_SRC}
-                alt=""
-                width={22}
-                height={22}
-                className="h-[22px] w-[22px] object-contain drop-shadow-[0_6px_14px_rgba(245,158,11,0.22)]"
-              />
-            </div>
+            <WoloMarkBadge />
             <h3 className="text-[1.65rem] font-semibold text-white">WAR CHEST</h3>
           </div>
         </div>
@@ -179,15 +185,13 @@ export function TopWoloEarnersTile({
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
             <div className="grid gap-2.5">
               {entries.map((entry) => {
-                const primaryMetric = entry.earnedWolo > 0 ? entry.earnedWolo : entry.wageredWolo;
+                const primaryMetric = entry.weeklyTakeWolo > 0 ? entry.weeklyTakeWolo : entry.settledWolo;
                 const primaryLabel =
-                  entry.earnedWolo > 0
-                    ? entry.sourceWindow === "weekly"
-                      ? "Weekly take"
-                      : "Career take"
-                    : entry.sourceWindow === "weekly"
-                      ? "Wagered this week"
-                      : "Career wagered";
+                  entry.weeklyTakeWolo > 0
+                    ? "Weekly take"
+                    : entry.sourceWindow === "backfill"
+                      ? "Settled total"
+                      : "Weekly take";
 
                 return (
                   <Link
@@ -210,7 +214,7 @@ export function TopWoloEarnersTile({
                             {entry.verified ? "Steam linked" : entry.claimed ? "Profile claimed" : "Replay profile"}
                           </MiniTag>
 
-                          {entry.unclaimedWolo > 0 ? (
+                          {entry.claimableWolo > 0 ? (
                             <MiniTag toneClassName="border-amber-300/30 bg-amber-400/10 text-amber-100">
                               Claimable now
                             </MiniTag>
@@ -229,30 +233,10 @@ export function TopWoloEarnersTile({
 
                       <div className="sm:col-span-2 sm:col-start-2">
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-300">
-                          {entry.settledTakeWolo > 0 ? (
-                            <span className="whitespace-nowrap">
-                              <span className="font-medium text-slate-200">Settled</span> {formatWolo(entry.settledTakeWolo)} WOLO
-                            </span>
-                          ) : null}
-                          {entry.settledTakeWolo > 0 && entry.rewardWolo > 0 ? (
-                            <span className="hidden h-1 w-1 rounded-full bg-white/15 sm:inline-block" />
-                          ) : null}
-                          {entry.rewardWolo > 0 ? (
-                            <span className="whitespace-nowrap">
-                              <span className="font-medium text-slate-200">Rewards</span> {formatWolo(entry.rewardWolo)} WOLO
-                            </span>
-                          ) : null}
-                          {(entry.settledTakeWolo > 0 || entry.rewardWolo > 0) ? (
-                            <span className="hidden h-1 w-1 rounded-full bg-white/15 sm:inline-block" />
-                          ) : null}
-                          {entry.unclaimedWolo > 0 ? (
-                            <span className="whitespace-nowrap">
-                              <span className="font-medium text-slate-200">Claimable</span> {formatWolo(entry.unclaimedWolo)} WOLO
-                            </span>
-                          ) : null}
-                          {entry.unclaimedWolo > 0 ? (
-                            <span className="hidden h-1 w-1 rounded-full bg-white/15 sm:inline-block" />
-                          ) : null}
+                          <span className="whitespace-nowrap">
+                            <span className="font-medium text-slate-200">Settled</span> {formatWolo(entry.settledWolo)} WOLO
+                          </span>
+                          <span className="hidden h-1 w-1 rounded-full bg-white/15 sm:inline-block" />
                           <span className="whitespace-nowrap">
                             <span className="font-medium text-slate-200">Wagered</span> {formatWolo(entry.wageredWolo)} WOLO
                           </span>

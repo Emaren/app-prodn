@@ -41,6 +41,20 @@ function shortTxHash(value: string | null) {
   return `${value.slice(0, 10)}…${value.slice(-6)}`;
 }
 
+function WoloMarkBadge() {
+  return (
+    <div className="flex h-14 w-14 items-center justify-center rounded-full border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+      <Image
+        src={WOLO_LOGO_SRC}
+        alt=""
+        width={30}
+        height={30}
+        className="h-[30px] w-[30px] object-contain"
+      />
+    </div>
+  );
+}
+
 export default async function WarChestPage() {
   const cookieStore = await cookies();
   const claims = await verifySession(cookieStore.get(SESSION_COOKIE_NAME)?.value);
@@ -69,22 +83,14 @@ export default async function WarChestPage() {
                 Betting analytics command center
               </div>
               <div className="flex items-center gap-3">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full border border-amber-300/18 bg-[radial-gradient(circle_at_30%_30%,rgba(251,191,36,0.24),rgba(15,23,42,0.18)_68%,transparent_100%)] shadow-[0_12px_30px_rgba(245,158,11,0.14)]">
-                  <Image
-                    src={WOLO_LOGO_SRC}
-                    alt=""
-                    width={30}
-                    height={30}
-                    className="h-[30px] w-[30px] object-contain drop-shadow-[0_6px_14px_rgba(245,158,11,0.22)]"
-                  />
-                </div>
+                <WoloMarkBadge />
                 <h1 className="text-4xl font-semibold leading-[0.95] tracking-[-0.045em] text-white sm:text-5xl lg:text-7xl">
                   WAR CHEST
                 </h1>
               </div>
               <p className="max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
-                Weekly take leads, settled payouts stay visible, claimable WOLO stays separate,
-                and every live market plus recent betting move lands here in one clean rail.
+                Weekly take leads, all-time settled and wagered stay visible, and claimable WOLO
+                stays as a live chip instead of muddying the score lines.
               </p>
             </div>
 
@@ -145,32 +151,34 @@ export default async function WarChestPage() {
                   </h2>
                 </div>
                 <div className="rounded-full border border-amber-300/18 bg-amber-400/10 px-3 py-1 text-xs text-amber-100">
-                  {leader ? formatCompact(leader.earnedWolo || leader.wageredWolo) : "Standby"}
+                  {leader ? formatCompact(leader.weeklyTakeWolo || leader.settledWolo) : "Standby"}
                 </div>
               </div>
 
-              <div className="mt-5 grid gap-3 sm:grid-cols-4">
+              <div className="mt-5 grid gap-3 sm:grid-cols-3">
                 <MetricTile
                   label="Weekly Take"
-                  value={leader ? `${formatNumber(leader.earnedWolo)} WOLO` : "0 WOLO"}
+                  value={leader ? `${formatNumber(leader.weeklyTakeWolo)} WOLO` : "0 WOLO"}
                 />
                 <MetricTile
                   label="Settled"
-                  value={leader ? `${formatNumber(leader.settledTakeWolo)} WOLO` : "0 WOLO"}
+                  value={leader ? `${formatNumber(leader.settledWolo)} WOLO` : "0 WOLO"}
                 />
                 <MetricTile
-                  label="Rewards"
-                  value={leader ? `${formatNumber(leader.rewardWolo)} WOLO` : "0 WOLO"}
-                />
-                <MetricTile
-                  label="Claimable"
-                  value={leader ? `${formatNumber(leader.unclaimedWolo)} WOLO` : "0 WOLO"}
+                  label="Wagered"
+                  value={leader ? `${formatNumber(leader.wageredWolo)} WOLO` : "0 WOLO"}
                 />
               </div>
 
+              {leader?.claimableWolo ? (
+                <div className="mt-4">
+                  <Tag tone="amber">Claimable now</Tag>
+                </div>
+              ) : null}
+
               <div className="mt-5 rounded-[1.4rem] border border-white/8 bg-white/5 p-4 text-sm leading-6 text-slate-300">
                 {leader
-                  ? `${leader.name} is setting the tone right now. Weekly take combines settled wager payouts with claim-only rewards, while claimable WOLO stays called out separately.`
+                  ? `${leader.name} is setting the tone right now. Weekly take reflects this week, while settled and wagered stay all-time so the board remains readable and honest.`
                   : "Once the first payouts and slips land, this page turns into the betting pulse of the site."}
               </div>
             </section>
@@ -232,7 +240,7 @@ export default async function WarChestPage() {
                         ) : (
                           <Tag tone="slate">Replay profile</Tag>
                         )}
-                        {entry.unclaimedWolo > 0 ? (
+                        {entry.claimableWolo > 0 ? (
                           <Tag tone="amber">Claimable now</Tag>
                         ) : null}
                         {entry.wagerCount > 0 ? (
@@ -242,10 +250,11 @@ export default async function WarChestPage() {
                     </div>
 
                     <div className="grid gap-2 text-left md:min-w-[10rem] md:text-right">
-                      <ScoreLine label="Take" value={`${formatNumber(entry.earnedWolo)} WOLO`} />
-                      <ScoreLine label="Settled" value={`${formatNumber(entry.settledTakeWolo)} WOLO`} />
-                      <ScoreLine label="Rewards" value={`${formatNumber(entry.rewardWolo)} WOLO`} />
-                      <ScoreLine label="Claimable" value={`${formatNumber(entry.unclaimedWolo)} WOLO`} />
+                      <ScoreLine
+                        label={entry.weeklyTakeWolo > 0 ? "Weekly Take" : "Settled total"}
+                        value={`${formatNumber(entry.weeklyTakeWolo > 0 ? entry.weeklyTakeWolo : entry.settledWolo)} WOLO`}
+                      />
+                      <ScoreLine label="Settled" value={`${formatNumber(entry.settledWolo)} WOLO`} />
                       <ScoreLine label="Wagered" value={`${formatNumber(entry.wageredWolo)} WOLO`} />
                     </div>
                   </div>

@@ -46,13 +46,12 @@ type ActorMetrics = {
   actorKey: string;
   user: UserIdentity | null;
   replayName: string | null;
-  earnedWolo: number;
-  settledTakeWolo: number;
-  rewardWolo: number;
+  weeklyTakeWolo: number;
+  settledWolo: number;
   wageredWolo: number;
   claimCount: number;
   wagerCount: number;
-  unclaimedWolo: number;
+  claimableWolo: number;
   lastActiveAt: Date | null;
 };
 
@@ -76,8 +75,14 @@ function setLatestActivity(current: Date | null, candidate: Date) {
 }
 
 function sortMetrics(a: ActorMetrics, b: ActorMetrics) {
-  if (b.earnedWolo !== a.earnedWolo) {
-    return b.earnedWolo - a.earnedWolo;
+  if (b.weeklyTakeWolo !== a.weeklyTakeWolo) {
+    return b.weeklyTakeWolo - a.weeklyTakeWolo;
+  }
+  if (b.claimableWolo !== a.claimableWolo) {
+    return b.claimableWolo - a.claimableWolo;
+  }
+  if (b.settledWolo !== a.settledWolo) {
+    return b.settledWolo - a.settledWolo;
   }
   if (b.wageredWolo !== a.wageredWolo) {
     return b.wageredWolo - a.wageredWolo;
@@ -115,13 +120,12 @@ function buildEntry(
       claimed: true,
       verified: metrics.user.verified,
       verificationLevel: metrics.user.verificationLevel,
-      earnedWolo: metrics.earnedWolo,
-      settledTakeWolo: metrics.settledTakeWolo,
-      rewardWolo: metrics.rewardWolo,
+      weeklyTakeWolo: metrics.weeklyTakeWolo,
+      settledWolo: metrics.settledWolo,
       wageredWolo: metrics.wageredWolo,
       claimCount: metrics.claimCount,
       wagerCount: metrics.wagerCount,
-      unclaimedWolo: metrics.unclaimedWolo,
+      claimableWolo: metrics.claimableWolo,
       lastActiveAt: metrics.lastActiveAt?.toISOString() ?? null,
       sourceWindow,
     };
@@ -136,13 +140,12 @@ function buildEntry(
     claimed: false,
     verified: false,
     verificationLevel: 0,
-    earnedWolo: metrics.earnedWolo,
-    settledTakeWolo: metrics.settledTakeWolo,
-    rewardWolo: metrics.rewardWolo,
+    weeklyTakeWolo: metrics.weeklyTakeWolo,
+    settledWolo: metrics.settledWolo,
     wageredWolo: metrics.wageredWolo,
     claimCount: metrics.claimCount,
     wagerCount: metrics.wagerCount,
-    unclaimedWolo: metrics.unclaimedWolo,
+    claimableWolo: metrics.claimableWolo,
     lastActiveAt: metrics.lastActiveAt?.toISOString() ?? null,
     sourceWindow,
   };
@@ -238,13 +241,12 @@ function getOrCreateActor(
     actorKey: input.actorKey,
     user: input.user,
     replayName: input.replayName,
-    earnedWolo: 0,
-    settledTakeWolo: 0,
-    rewardWolo: 0,
+    weeklyTakeWolo: 0,
+    settledWolo: 0,
     wageredWolo: 0,
     claimCount: 0,
     wagerCount: 0,
-    unclaimedWolo: 0,
+    claimableWolo: 0,
     lastActiveAt: null,
   };
 
@@ -252,11 +254,10 @@ function getOrCreateActor(
   return created;
 }
 
-async function loadClaims(prisma: PrismaClient, since: Date | null) {
+async function loadClaims(prisma: PrismaClient) {
   return prisma.pendingWoloClaim.findMany({
     where: {
       rescindedAt: null,
-      ...(since ? { createdAt: { gte: since } } : {}),
     },
     select: {
       claimedByUserId: true,
@@ -272,36 +273,8 @@ async function loadClaims(prisma: PrismaClient, since: Date | null) {
   }) as Promise<ClaimSample[]>;
 }
 
-async function loadOutstandingClaims(prisma: PrismaClient) {
-  return prisma.pendingWoloClaim.findMany({
-    where: {
-      rescindedAt: null,
-      status: "pending",
-    },
-    select: {
-      claimedByUserId: true,
-      normalizedPlayerName: true,
-      displayPlayerName: true,
-      amountWolo: true,
-      claimKind: true,
-      status: true,
-      createdAt: true,
-      rescindedAt: true,
-    },
-    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-  }) as Promise<ClaimSample[]>;
-}
-
-async function loadWagers(prisma: PrismaClient, since: Date | null) {
+async function loadWagers(prisma: PrismaClient) {
   return prisma.betWager.findMany({
-    where: since
-      ? {
-          OR: [
-            { createdAt: { gte: since } },
-            { settledAt: { gte: since } },
-          ],
-        }
-      : undefined,
     select: {
       userId: true,
       amountWolo: true,
@@ -314,38 +287,32 @@ async function loadWagers(prisma: PrismaClient, since: Date | null) {
   }) as Promise<WagerSample[]>;
 }
 
-function claimCountsAsTake(claim: Pick<ClaimSample, "claimKind">) {
+function claimCountsAsWeeklyTake(claim: Pick<ClaimSample, "claimKind">) {
   return claim.claimKind !== "bet_payout" && claim.claimKind !== "bet_refund";
 }
 
-function wagerCountsAsTake(wager: Pick<WagerSample, "status" | "payoutWolo">) {
+function claimCountsAsSettled(claim: Pick<ClaimSample, "claimKind" | "status">) {
+  return claim.status === "claimed" && claimCountsAsWeeklyTake(claim);
+}
+
+function wagerCountsAsSettled(wager: Pick<WagerSample, "status" | "payoutWolo">) {
   return (wager.status === "won" || wager.status === "void") && (wager.payoutWolo ?? 0) > 0;
 }
 
-async function loadMetricsForPeriod(prisma: PrismaClient, since: Date | null) {
-  const [claims, wagers, outstandingClaims] = await Promise.all([
-    loadClaims(prisma, since),
-    loadWagers(prisma, since),
-    loadOutstandingClaims(prisma),
-  ]);
+async function loadBoardMetrics(prisma: PrismaClient, weekStartsAt: Date) {
+  const [claims, wagers] = await Promise.all([loadClaims(prisma), loadWagers(prisma)]);
 
   const claimedUserIds = claims
-    .map((claim) => claim.claimedByUserId)
-    .filter((value): value is number => Number.isInteger(value));
-  const outstandingClaimUserIds = outstandingClaims
     .map((claim) => claim.claimedByUserId)
     .filter((value): value is number => Number.isInteger(value));
   const wagerUserIds = wagers.map((wager) => wager.userId);
   const orphanClaimNames = claims
     .filter((claim) => !claim.claimedByUserId)
     .map((claim) => claim.displayPlayerName || claim.normalizedPlayerName);
-  const outstandingClaimNames = outstandingClaims
-    .filter((claim) => !claim.claimedByUserId)
-    .map((claim) => claim.displayPlayerName || claim.normalizedPlayerName);
 
   const [usersById, usersByName] = await Promise.all([
-    loadUsersByIds(prisma, [...claimedUserIds, ...outstandingClaimUserIds, ...wagerUserIds]),
-    loadUsersByNames(prisma, [...orphanClaimNames, ...outstandingClaimNames]),
+    loadUsersByIds(prisma, [...claimedUserIds, ...wagerUserIds]),
+    loadUsersByNames(prisma, orphanClaimNames),
   ]);
 
   const metrics = new Map<string, ActorMetrics>();
@@ -364,9 +331,14 @@ async function loadMetricsForPeriod(prisma: PrismaClient, since: Date | null) {
       replayName: matchedUser ? null : claim.displayPlayerName || claim.normalizedPlayerName,
     });
 
-    if (claimCountsAsTake(claim)) {
-      actor.rewardWolo += claim.amountWolo;
-      actor.earnedWolo += claim.amountWolo;
+    if (claimCountsAsWeeklyTake(claim) && claim.createdAt.getTime() >= weekStartsAt.getTime()) {
+      actor.weeklyTakeWolo += claim.amountWolo;
+    }
+    if (claimCountsAsSettled(claim)) {
+      actor.settledWolo += claim.amountWolo;
+    }
+    if (claim.status === "pending") {
+      actor.claimableWolo += claim.amountWolo;
     }
     actor.claimCount += 1;
     actor.lastActiveAt = setLatestActivity(actor.lastActiveAt, claim.createdAt);
@@ -382,42 +354,24 @@ async function loadMetricsForPeriod(prisma: PrismaClient, since: Date | null) {
       replayName: null,
     });
 
-    if (!since || wager.createdAt.getTime() >= since.getTime()) {
-      actor.wageredWolo += wager.amountWolo;
-      actor.wagerCount += 1;
-      actor.lastActiveAt = setLatestActivity(actor.lastActiveAt, wager.createdAt);
-    }
+    actor.wageredWolo += wager.amountWolo;
+    actor.wagerCount += 1;
+    actor.lastActiveAt = setLatestActivity(actor.lastActiveAt, wager.createdAt);
 
     const takeSettledAt = wager.settledAt ?? wager.createdAt;
-    if (
-      wagerCountsAsTake(wager) &&
-      (!since || takeSettledAt.getTime() >= since.getTime())
-    ) {
-      actor.settledTakeWolo += wager.payoutWolo ?? 0;
-      actor.earnedWolo += wager.payoutWolo ?? 0;
+    if (wagerCountsAsSettled(wager)) {
+      actor.settledWolo += wager.payoutWolo ?? 0;
+      if (takeSettledAt.getTime() >= weekStartsAt.getTime()) {
+        actor.weeklyTakeWolo += wager.payoutWolo ?? 0;
+      }
       actor.lastActiveAt = setLatestActivity(actor.lastActiveAt, takeSettledAt);
     }
   }
 
-  for (const claim of outstandingClaims) {
-    const directUser = claim.claimedByUserId ? usersById.get(claim.claimedByUserId) ?? null : null;
-    const matchedUser =
-      directUser ??
-      usersByName.get(claim.normalizedPlayerName) ??
-      usersByName.get(normalizeNameKey(claim.displayPlayerName)) ??
-      null;
-    const actorKey = matchedUser ? `u:${matchedUser.id}` : `n:${claim.normalizedPlayerName}`;
-    const actor = getOrCreateActor(metrics, {
-      actorKey,
-      user: matchedUser,
-      replayName: matchedUser ? null : claim.displayPlayerName || claim.normalizedPlayerName,
-    });
-
-    actor.unclaimedWolo += claim.amountWolo;
-  }
-
   return Array.from(metrics.values())
-    .filter((entry) => entry.earnedWolo > 0 || entry.wageredWolo > 0)
+    .filter(
+      (entry) => entry.weeklyTakeWolo > 0 || entry.settledWolo > 0 || entry.claimableWolo > 0
+    )
     .sort(sortMetrics);
 }
 
@@ -426,15 +380,15 @@ export async function loadLobbyWoloEarnersBoard(
 ): Promise<LobbyWoloEarnersBoard> {
   const generatedAt = new Date();
   const weekStartsAt = new Date(generatedAt.getTime() - WEEKLY_TIMEFRAME_MS);
-  const weeklyMetrics = await loadMetricsForPeriod(prisma, weekStartsAt);
+  const allMetrics = await loadBoardMetrics(prisma, weekStartsAt);
+  const weeklyMetrics = allMetrics.filter((entry) => entry.weeklyTakeWolo > 0);
 
   let combinedMetrics = weeklyMetrics;
   let backfilled = false;
 
   if (weeklyMetrics.length < MIN_VISIBLE_SLOTS) {
-    const historicalMetrics = await loadMetricsForPeriod(prisma, null);
     const weeklyKeys = new Set(weeklyMetrics.map((entry) => entry.actorKey));
-    const backfillMetrics = historicalMetrics.filter((entry) => !weeklyKeys.has(entry.actorKey));
+    const backfillMetrics = allMetrics.filter((entry) => !weeklyKeys.has(entry.actorKey));
 
     if (backfillMetrics.length > 0) {
       combinedMetrics = [...weeklyMetrics, ...backfillMetrics];
