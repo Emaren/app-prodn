@@ -49,6 +49,12 @@ function normalizeClaimKey(value: string | null | undefined) {
   return normalizePublicPlayerName(value).toLowerCase();
 }
 
+function isAwaitingVerifiedWalletLinkDetail(value: string | null | undefined) {
+  return /awaiting verified wallet-linked account|target unresolved|no verified wallet-linked user matches/i.test(
+    value || ""
+  );
+}
+
 function compactSettlementNote(label: string, amountWolo: number, txHash: string) {
   return `Auto-settled on-chain · ${label} · ${amountWolo} WOLO · tx ${txHash}`.slice(0, 160);
 }
@@ -112,6 +118,8 @@ export async function retryPendingClaimSettlement(
       claimGroupKey: true,
       targetScope: true,
       status: true,
+      errorState: true,
+      payoutAttemptedAt: true,
       sourceMarketId: true,
       sourceFounderBonusId: true,
       payoutTxHash: true,
@@ -141,13 +149,26 @@ export async function retryPendingClaimSettlement(
   const matchedUser =
     founderResolution?.matchedUser ?? (await findMatchedClaimUser(prisma, claim));
   if (!matchedUser?.walletAddress) {
+    const detail =
+      founderResolution?.detail ||
+      "Awaiting verified wallet-linked account for this player. This payout stays pending until the player links a verified wallet.";
+
+    if (claim.sourceFounderBonusId && isAwaitingVerifiedWalletLinkDetail(detail)) {
+      await prisma.pendingWoloClaim.update({
+        where: { id: claim.id },
+        data: {
+          errorState: detail.trim().replace(/\s+/g, " ").slice(0, 255),
+          payoutAttemptedAt: null,
+        },
+      });
+      await syncFounderBonusStatus(prisma, [claim.sourceFounderBonusId]);
+    }
+
     return {
       outcome: "skipped",
       claimId: claim.id,
       reason: "unmatched_user",
-      detail:
-        founderResolution?.detail ||
-        "No verified wallet-linked user matches this claim yet.",
+      detail,
     };
   }
 

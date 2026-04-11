@@ -77,39 +77,60 @@ function isFounderTargetUnresolved(row: SettlementRailRow) {
     isFounderClaim(row) &&
     row.claimStatus === "pending" &&
     Boolean(row.errorState) &&
-    /target unresolved|no verified wallet-linked user matches/i.test(row.errorState || "")
+    /awaiting verified wallet-linked account|target unresolved|no verified wallet-linked user matches/i.test(
+      row.errorState || ""
+    )
   );
 }
 
-function statusTone(mode: SettlementRailRow["settlementMode"] | "partial_founder" | "target_unresolved") {
+function isRetryableSettlementFailure(row: SettlementRailRow) {
+  return row.claimStatus === "pending" && Boolean(row.errorState) && !isFounderTargetUnresolved(row);
+}
+
+function founderPendingDetail(row: SettlementRailRow) {
+  if (isFounderTargetUnresolved(row)) {
+    return "Awaiting verified wallet-linked account for this player. Retry once the player signs in and links a verified wallet.";
+  }
+  return row.errorState;
+}
+
+function statusTone(
+  mode:
+    | SettlementRailRow["settlementMode"]
+    | "paid"
+    | "retryable_failure"
+    | "awaiting_wallet_link"
+) {
   switch (mode) {
-    case "auto_settled":
-      return "border-emerald-500/30 bg-emerald-500/10 text-emerald-200";
-    case "claimed_manual":
-      return "border-cyan-500/30 bg-cyan-500/10 text-cyan-200";
+    case "paid":
+      return "border-emerald-500/30 bg-emerald-500/10 text-emerald-100";
+    case "awaiting_wallet_link":
+      return "border-amber-400/30 bg-amber-500/10 text-amber-100";
+    case "retryable_failure":
+      return "border-rose-400/30 bg-rose-500/10 text-rose-100";
     case "rescinded":
       return "border-rose-500/30 bg-rose-500/10 text-rose-200";
-    case "partial_founder":
-      return "border-fuchsia-400/30 bg-fuchsia-500/10 text-fuchsia-100";
-    case "target_unresolved":
-      return "border-rose-400/30 bg-rose-500/10 text-rose-100";
     default:
       return "border-amber-500/30 bg-amber-500/10 text-amber-200";
   }
 }
 
-function statusLabel(mode: SettlementRailRow["settlementMode"] | "partial_founder" | "target_unresolved") {
+function statusLabel(
+  mode:
+    | SettlementRailRow["settlementMode"]
+    | "paid"
+    | "retryable_failure"
+    | "awaiting_wallet_link"
+) {
   switch (mode) {
-    case "auto_settled":
-      return "Auto-settled";
-    case "claimed_manual":
-      return "Claimed";
+    case "paid":
+      return "Paid";
+    case "awaiting_wallet_link":
+      return "Awaiting verified wallet-linked account";
+    case "retryable_failure":
+      return "Retryable settlement failure";
     case "rescinded":
       return "Rescinded";
-    case "partial_founder":
-      return "Partial";
-    case "target_unresolved":
-      return "Target unresolved";
     default:
       return "Pending";
   }
@@ -297,11 +318,16 @@ export function WoloSettlementRail({
                   row.sourceFounderBonusId != null
                     ? founderGroupState.get(row.sourceFounderBonusId) ?? null
                     : null;
-                const compositeState = isFounderTargetUnresolved(row)
-                  ? "target_unresolved"
-                  : founderState === "partial" && row.claimStatus === "pending"
-                    ? "partial_founder"
-                    : row.settlementMode;
+                const compositeState =
+                  row.claimStatus === "claimed"
+                    ? "paid"
+                    : row.claimStatus === "rescinded"
+                      ? "rescinded"
+                      : isFounderTargetUnresolved(row)
+                        ? "awaiting_wallet_link"
+                        : isRetryableSettlementFailure(row)
+                          ? "retryable_failure"
+                          : row.settlementMode;
 
                 return (
                   <tr key={row.id} className="align-top">
@@ -334,13 +360,20 @@ export function WoloSettlementRail({
                         </span>
                       ) : null}
                       {isFounderTargetUnresolved(row) ? (
+                        <span className="inline-flex rounded-full border border-amber-300/20 bg-amber-400/10 px-2.5 py-1 text-[11px] uppercase tracking-[0.16em] text-amber-100">
+                          Awaiting verified wallet-linked account
+                        </span>
+                      ) : null}
+                      {isRetryableSettlementFailure(row) ? (
                         <span className="inline-flex rounded-full border border-rose-300/20 bg-rose-400/10 px-2.5 py-1 text-[11px] uppercase tracking-[0.16em] text-rose-100">
-                          Target unresolved
+                          Retryable settlement failure
                         </span>
                       ) : null}
                     </div>
-                    {row.errorState ? (
-                      <div className="mt-2 text-xs text-rose-300">{row.errorState}</div>
+                    {founderPendingDetail(row) ? (
+                      <div className={`mt-2 text-xs ${isFounderTargetUnresolved(row) ? "text-amber-200" : "text-rose-300"}`}>
+                        {founderPendingDetail(row)}
+                      </div>
                     ) : null}
                   </td>
 
@@ -384,7 +417,10 @@ export function WoloSettlementRail({
                   <td className="px-3 py-3 text-xs text-slate-400">
                     <div>created {formatShortDate(row.createdAt)}</div>
                     {row.payoutAttemptedAt ? (
-                      <div className="mt-1">attempted {formatShortDate(row.payoutAttemptedAt)}</div>
+                      <div className="mt-1">
+                        {isFounderTargetUnresolved(row) ? "checked" : "attempted"}{" "}
+                        {formatShortDate(row.payoutAttemptedAt)}
+                      </div>
                     ) : null}
                     {row.claimedAt ? (
                       <div className="mt-1">claimed {formatShortDate(row.claimedAt)}</div>
@@ -404,7 +440,11 @@ export function WoloSettlementRail({
                             disabled={retryingClaimId === row.id}
                             className="rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1.5 text-xs font-medium text-sky-100 transition hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-60"
                           >
-                            {retryingClaimId === row.id ? "Retrying..." : "Retry payout"}
+                            {retryingClaimId === row.id
+                              ? "Retrying..."
+                              : isFounderTargetUnresolved(row)
+                                ? "Retry after link"
+                                : "Retry payout"}
                           </button>
                         ) : null}
                         {row.marketId ? (

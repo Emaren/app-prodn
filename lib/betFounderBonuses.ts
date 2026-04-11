@@ -84,6 +84,12 @@ function founderGroupKey(bonusId: number, targetKey: string) {
   return `founder:${bonusId}:${targetKey}`.slice(0, 80);
 }
 
+function isAwaitingVerifiedWalletLinkDetail(value: string | null | undefined) {
+  return /awaiting verified wallet-linked account|target unresolved|no verified wallet-linked user matches/i.test(
+    value || ""
+  );
+}
+
 function normalizeFounderNameKey(value: string | null | undefined) {
   return normalizePublicPlayerName(value).toLowerCase();
 }
@@ -198,13 +204,11 @@ function unresolvedFounderTargetDetail(
   targetKey: string,
   playerName: string
 ) {
-  return `${
-    bonusType === "winner" ? "Founders Win" : "Founders Bonus"
-  } target unresolved for ${founderTargetLabel(
+  return `Awaiting verified wallet-linked account for ${founderTargetLabel(
     bonusType,
     targetKey,
     playerName
-  )}: no verified wallet-linked user matched the current AoE2HDBets identities yet.`;
+  )}. This payout stays pending until the player links a verified wallet.`;
 }
 
 function resolveScheduledMatchSideUser(
@@ -468,7 +472,13 @@ function summarizeFounderStatus(claims: Array<{
   const claimedCount = claims.filter((claim) => claim.status === "claimed").length;
   const pendingCount = claims.filter((claim) => claim.status === "pending").length;
   const rescindedCount = claims.filter((claim) => claim.status === "rescinded").length;
-  const failureReason = claims.find((claim) => claim.errorState)?.errorState ?? null;
+  const unresolvedReason =
+    claims.find((claim) => isAwaitingVerifiedWalletLinkDetail(claim.errorState))?.errorState ??
+    null;
+  const failureReason =
+    claims.find(
+      (claim) => claim.errorState && !isAwaitingVerifiedWalletLinkDetail(claim.errorState)
+    )?.errorState ?? null;
   const latestClaimedAt = claims
     .map((claim) => claim.claimedAt)
     .filter((value): value is Date => value instanceof Date)
@@ -501,7 +511,7 @@ function summarizeFounderStatus(claims: Array<{
       status: "partial",
       settledAt: latestClaimedAt,
       rescindedAt: null,
-      failureReason,
+      failureReason: failureReason ?? unresolvedReason,
     };
   }
 
@@ -519,7 +529,7 @@ function summarizeFounderStatus(claims: Array<{
       status: "pending",
       settledAt: latestClaimedAt,
       rescindedAt: null,
-      failureReason: null,
+      failureReason: unresolvedReason,
     };
   }
 
@@ -754,20 +764,46 @@ export async function settleFounderBonuses(
         playerName: target.playerName,
         market: bonus.market,
       });
-      const attemptAt = new Date();
       const claimKind = founderClaimKind(bonusType);
       const targetScope = founderTargetScope(bonusType);
       const creatorName = displayUserName(bonus.createdBy);
 
+      if (!resolution.matchedUser?.walletAddress) {
+        await createPendingWoloClaim(prisma, {
+          playerName: target.playerName,
+          displayPlayerName: target.playerName,
+          amountWolo: target.amountWolo,
+          claimKind,
+          claimGroupKey: groupKey,
+          targetScope,
+          sourceMarketId: bonus.marketId,
+          sourceGameStatsId: bonus.market.linkedGameStatsId ?? null,
+          sourceFounderBonusId: bonus.id,
+          errorState: (resolution.detail || unresolvedFounderTargetDetail(
+            bonusType,
+            target.targetKey,
+            target.playerName
+          ))
+            .trim()
+            .replace(/\s+/g, " ")
+            .slice(0, 255),
+          payoutAttemptedAt: null,
+          note:
+            bonusType === "winner"
+              ? `Founders Win · ${creatorName} added ${bonus.totalAmountWolo} WOLO`
+              : `Founders Bonus · ${creatorName} added ${bonus.totalAmountWolo} WOLO`,
+          status: "pending",
+        });
+
+        touchedFounderBonusIds.add(bonus.id);
+        continue;
+      }
+
+      const attemptAt = new Date();
+
       try {
         if (!hasWoloPayoutExecutionConfigured()) {
           throw new Error("Settlement execution is not configured in this environment.");
-        }
-        if (!resolution.matchedUser?.walletAddress) {
-          throw new Error(
-            resolution.detail ||
-              "Founders payout target is unresolved in AoE2HDBets."
-          );
         }
 
         const payout = await executeWoloPayout({

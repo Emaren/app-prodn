@@ -108,6 +108,12 @@ function resolveSettlementError(claim: {
   return claim.errorState?.trim() || extractAutoSettleError(claim.note);
 }
 
+function isAwaitingVerifiedWalletLinkDetail(value: string | null | undefined) {
+  return /awaiting verified wallet-linked account|target unresolved|no verified wallet-linked user matches/i.test(
+    value || ""
+  );
+}
+
 function displayUserName(entry: {
   uid?: string | null;
   inGameName?: string | null;
@@ -778,9 +784,14 @@ export async function GET(request: NextRequest) {
         autoSettledAmountWolo: settlementRows
           .filter((row) => row.settlementMode === "auto_settled")
           .reduce((sum, row) => sum + row.amountWolo, 0),
-        failedCount: settlementRows.filter((row) => Boolean(row.errorState)).length,
+        failedCount: settlementRows.filter(
+          (row) => Boolean(row.errorState) && !isAwaitingVerifiedWalletLinkDetail(row.errorState)
+        ).length,
         failedAmountWolo: settlementRows
-          .filter((row) => Boolean(row.errorState))
+          .filter(
+            (row) =>
+              Boolean(row.errorState) && !isAwaitingVerifiedWalletLinkDetail(row.errorState)
+          )
           .reduce((sum, row) => sum + row.amountWolo, 0),
       },
       rows: settlementRows,

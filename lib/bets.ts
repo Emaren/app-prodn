@@ -700,8 +700,19 @@ function buildFounderChipSurface(
   }));
 }
 
-function claimKindTapeLabel(claimKind: string, status: string, hasError: boolean) {
-  if (hasError) return "Failure";
+function isAwaitingVerifiedWalletLinkDetail(value: string | null | undefined) {
+  return /awaiting verified wallet-linked account|target unresolved|no verified wallet-linked user matches/i.test(
+    value || ""
+  );
+}
+
+function claimKindTapeLabel(
+  claimKind: string,
+  status: string,
+  errorState: string | null | undefined
+) {
+  if (isAwaitingVerifiedWalletLinkDetail(errorState)) return "Awaiting Wallet Link";
+  if (errorState) return "Retryable Failure";
   if (status === "rescinded") return "Rescinded";
   if (claimKind === "bet_refund") return "Refund";
   if (claimKind === "founders_bonus") return "Founders Bonus Payout";
@@ -834,7 +845,7 @@ function buildMarketWarTapeRows(
     return {
       id: `claim-${claim.id}`,
       kind: txHash ? ("tx" as const) : ("event" as const),
-      label: claimKindTapeLabel(claim.claimKind, claim.status, Boolean(claim.errorState)),
+      label: claimKindTapeLabel(claim.claimKind, claim.status, claim.errorState),
       actor: claim.displayPlayerName,
       amountWolo: claim.amountWolo,
       side: null,
