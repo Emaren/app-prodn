@@ -28,10 +28,9 @@ async function resolveViewerId(request: NextRequest) {
   return viewer?.id ?? null;
 }
 
-function buildDownloadRedirectResponse(request: NextRequest, downloadPath: string) {
-  const response = NextResponse.redirect(new URL(downloadPath, request.url), {
-    status: 307,
-  });
+function buildDownloadRedirectResponse(downloadPath: string) {
+  const response = new NextResponse(null, { status: 307 });
+  response.headers.set("Location", downloadPath);
   response.headers.set("Cache-Control", "no-store, no-cache, max-age=0, must-revalidate");
   response.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
   return response;
@@ -70,11 +69,11 @@ export async function GET(
     }
   }
 
-  return buildDownloadRedirectResponse(request, artifact.downloadPath);
+  return buildDownloadRedirectResponse(artifact.downloadPath);
 }
 
 export async function HEAD(
-  request: NextRequest,
+  _request: NextRequest,
   context: { params: Promise<{ artifact: string }> }
 ) {
   const { artifact: artifactKey } = await context.params;
@@ -84,5 +83,5 @@ export async function HEAD(
     return new NextResponse(null, { status: 404 });
   }
 
-  return buildDownloadRedirectResponse(request, artifact.downloadPath);
+  return buildDownloadRedirectResponse(artifact.downloadPath);
 }
