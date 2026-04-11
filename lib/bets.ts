@@ -449,8 +449,12 @@ function buildSessionMarketSlug(session: LiveGameSession, leftLabel: string, rig
 }
 
 function buildSessionEventLabel(session: LiveGameSession) {
-  const rail = session.state === "live" ? "Watcher Live" : "Watcher Final";
-  return session.mapName ? `${rail} • ${session.mapName}` : rail;
+  return buildWatcherEventLabel(session.state === "live" ? "Live" : "Final", session.mapName);
+}
+
+function buildWatcherEventLabel(mode: "Live" | "Final", mapName: string | null | undefined) {
+  const normalizedMapName = normalizeName(mapName);
+  return normalizedMapName ? `Watcher ${mode} • ${normalizedMapName}` : `Watcher ${mode}`;
 }
 
 function buildSessionMarketTitle(session: LiveGameSession) {
@@ -466,6 +470,48 @@ function buildSessionMarketTitle(session: LiveGameSession) {
 
 function normalizeSettledMatchKey(title: string, mapName: string | null | undefined) {
   return `${normalizeName(title).toLowerCase()}::${normalizeName(mapName).toLowerCase()}`;
+}
+
+function splitSideNames(label: string) {
+  return normalizeName(label)
+    .split(/\s*\/\s*/)
+    .map((value) => normalizeName(value))
+    .filter(Boolean)
+    .map((value) => value.toLowerCase());
+}
+
+function inferWinnerSideFromGameStats(
+  market: {
+    leftLabel: string;
+    rightLabel: string;
+  },
+  game: {
+    winner: string | null;
+    players: unknown;
+  }
+): BetSide | null {
+  const leftNames = splitSideNames(market.leftLabel);
+  const rightNames = splitSideNames(market.rightLabel);
+  const normalizedWinner = normalizeName(game.winner).toLowerCase();
+
+  if (normalizedWinner) {
+    if (leftNames.includes(normalizedWinner)) return "left";
+    if (rightNames.includes(normalizedWinner)) return "right";
+  }
+
+  const players = parsePlayers(game.players);
+  const leftWinner = players.some((player) => {
+    const playerName = typeof player.name === "string" ? normalizeName(player.name).toLowerCase() : "";
+    return Boolean(playerName && player.winner === true && leftNames.includes(playerName));
+  });
+  const rightWinner = players.some((player) => {
+    const playerName = typeof player.name === "string" ? normalizeName(player.name).toLowerCase() : "";
+    return Boolean(playerName && player.winner === true && rightNames.includes(playerName));
+  });
+
+  if (leftWinner && !rightWinner) return "left";
+  if (rightWinner && !leftWinner) return "right";
+  return null;
 }
 
 function buildSessionMarketSeed(
@@ -1430,6 +1476,11 @@ async function buildOpenMarketSeeds(prisma: PrismaClient) {
     sessionSnapshot.activeSessions,
     sessionSnapshot.recentlyCompletedSessions
   );
+  const visibleSessionKeys = new Set(
+    [...sessionSnapshot.activeSessions, ...sessionSnapshot.recentlyCompletedSessions]
+      .map((session) => normalizeName(session.sessionKey))
+      .filter(Boolean)
+  );
 
   const seeds: MarketSeed[] = [];
   const seenSlugs = new Set<string>();
@@ -1458,7 +1509,10 @@ async function buildOpenMarketSeeds(prisma: PrismaClient) {
     seeds.push(seed);
   });
 
-  return seeds;
+  return {
+    seeds,
+    visibleSessionKeys,
+  };
 }
 
 async function reconcileBetMarketStatsLinks(prisma: PrismaClient) {
@@ -1509,8 +1563,125 @@ async function reconcileBetMarketStatsLinks(prisma: PrismaClient) {
   );
 }
 
+async function reconcileDetachedWatcherMarkets(
+  prisma: PrismaClient,
+  visibleSessionKeys: Set<string>
+) {
+  const markets = await prisma.betMarket.findMany({
+    where: {
+      status: { in: OPEN_STATUSES },
+      scheduledMatchId: null,
+      linkedSessionKey: { not: null },
+      ...(visibleSessionKeys.size > 0
+        ? {
+            NOT: {
+              linkedSessionKey: {
+                in: [...visibleSessionKeys],
+              },
+            },
+          }
+        : {}),
+    },
+    select: {
+      id: true,
+      linkedSessionKey: true,
+      linkedGameStatsId: true,
+      leftLabel: true,
+      rightLabel: true,
+      eventLabel: true,
+      updatedAt: true,
+    },
+  });
+
+  if (markets.length === 0) {
+    return;
+  }
+
+  const finalGameIdBySessionKey = new Map<string, number | null>();
+  const finalGameById = new Map<
+    number,
+    {
+      id: number;
+      winner: string | null;
+      players: unknown;
+      map: unknown;
+      timestamp: Date | null;
+      createdAt: Date;
+    } | null
+  >();
+
+  for (const market of markets) {
+    const sessionKey = normalizeName(market.linkedSessionKey);
+    if (!sessionKey || visibleSessionKeys.has(sessionKey)) {
+      continue;
+    }
+
+    if (!finalGameIdBySessionKey.has(sessionKey)) {
+      finalGameIdBySessionKey.set(
+        sessionKey,
+        await resolveFinalGameStatsIdForSessionKey(prisma, sessionKey)
+      );
+    }
+
+    const finalGameId = finalGameIdBySessionKey.get(sessionKey) ?? null;
+    if (finalGameId && !finalGameById.has(finalGameId)) {
+      finalGameById.set(
+        finalGameId,
+        await prisma.gameStats.findUnique({
+          where: { id: finalGameId },
+          select: {
+            id: true,
+            winner: true,
+            players: true,
+            map: true,
+            timestamp: true,
+            createdAt: true,
+          },
+        })
+      );
+    }
+  }
+
+  await Promise.all(
+    markets.map(async (market) => {
+      const sessionKey = normalizeName(market.linkedSessionKey);
+      if (!sessionKey || visibleSessionKeys.has(sessionKey)) {
+        return;
+      }
+
+      const finalGameId = finalGameIdBySessionKey.get(sessionKey) ?? null;
+      const finalGame = finalGameId ? finalGameById.get(finalGameId) ?? null : null;
+      const winnerSide = finalGame
+        ? inferWinnerSideFromGameStats(market, finalGame)
+        : null;
+      const settledAt = finalGame?.timestamp ?? finalGame?.createdAt ?? market.updatedAt ?? new Date();
+      const mapName = finalGame ? readMapName(finalGame.map) : null;
+
+      await prisma.betMarket.update({
+        where: { id: market.id },
+        data: {
+          status: "settled",
+          featured: false,
+          closeAt: null,
+          settledAt,
+          winnerSide,
+          linkedGameStatsId: finalGame?.id ?? market.linkedGameStatsId ?? null,
+          eventLabel: buildWatcherEventLabel(
+            "Final",
+            mapName && mapName !== "Unknown Map"
+              ? mapName
+              : market.eventLabel.includes("•")
+                ? market.eventLabel.split("•").slice(1).join("•").trim() || null
+                : null
+          ),
+        },
+      });
+    })
+  );
+}
+
 export async function ensureBetMarkets(prisma: PrismaClient) {
-  const seeds = await buildOpenMarketSeeds(prisma);
+  const { seeds, visibleSessionKeys } = await buildOpenMarketSeeds(prisma);
   const slugs = [...new Set(seeds.map((seed) => seed.slug))];
   const staleMarketCutoff = new Date(Date.now() - 2 * 60_000);
   const existingMarkets = await prisma.betMarket.findMany({
@@ -1533,6 +1704,8 @@ export async function ensureBetMarkets(prisma: PrismaClient) {
       });
     })
   );
+
+  await reconcileDetachedWatcherMarkets(prisma, visibleSessionKeys);
 
   await prisma.betMarket.updateMany({
     where:
