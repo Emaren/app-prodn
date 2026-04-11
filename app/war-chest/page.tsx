@@ -258,20 +258,16 @@ export default async function WarChestPage() {
 
                     <div className="grid gap-2 text-left md:min-w-[10rem] md:text-right">
                       <ScoreLine
-                        label={
-                          entry.weeklyTakeWolo > 0
-                            ? "Weekly Take"
-                            : entry.claimableWolo > 0
-                              ? "Claimable now"
-                              : "Settled total"
-                        }
-                        value={`${formatNumber(
-                          entry.weeklyTakeWolo > 0
-                            ? entry.weeklyTakeWolo
-                            : entry.claimableWolo > 0
-                              ? entry.claimableWolo
-                              : entry.settledWolo
-                        )} WOLO`}
+                        label="Weekly Take"
+                        value={`${
+                          formatNumber(
+                            entry.weeklyTakeWolo > 0
+                              ? entry.weeklyTakeWolo
+                              : entry.claimableWolo > 0
+                                ? entry.claimableWolo
+                                : entry.settledWolo
+                          )
+                        } WOLO`}
                       />
                       <ScoreLine label="Settled" value={`${formatNumber(entry.settledWolo)} WOLO`} />
                       <ScoreLine label="Wagered" value={`${formatNumber(entry.wageredWolo)} WOLO`} />
