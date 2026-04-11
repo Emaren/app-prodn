@@ -153,7 +153,7 @@ export async function retryPendingClaimSettlement(
       founderResolution?.detail ||
       "Awaiting verified wallet-linked account for this player. This payout stays pending until the player links a verified wallet.";
 
-    if (claim.sourceFounderBonusId && isAwaitingVerifiedWalletLinkDetail(detail)) {
+    if (isAwaitingVerifiedWalletLinkDetail(detail)) {
       await prisma.pendingWoloClaim.update({
         where: { id: claim.id },
         data: {
@@ -161,6 +161,9 @@ export async function retryPendingClaimSettlement(
           payoutAttemptedAt: null,
         },
       });
+    }
+
+    if (claim.sourceFounderBonusId && isAwaitingVerifiedWalletLinkDetail(detail)) {
       await syncFounderBonusStatus(prisma, [claim.sourceFounderBonusId]);
     }
 

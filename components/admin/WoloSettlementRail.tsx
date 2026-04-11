@@ -72,9 +72,8 @@ function isFounderClaim(row: SettlementRailRow) {
   return row.claimKind === "founders_bonus" || row.claimKind === "founders_win";
 }
 
-function isFounderTargetUnresolved(row: SettlementRailRow) {
+function isAwaitingWalletLink(row: SettlementRailRow) {
   return (
-    isFounderClaim(row) &&
     row.claimStatus === "pending" &&
     Boolean(row.errorState) &&
     /awaiting verified wallet-linked account|target unresolved|no verified wallet-linked user matches/i.test(
@@ -84,11 +83,11 @@ function isFounderTargetUnresolved(row: SettlementRailRow) {
 }
 
 function isRetryableSettlementFailure(row: SettlementRailRow) {
-  return row.claimStatus === "pending" && Boolean(row.errorState) && !isFounderTargetUnresolved(row);
+  return row.claimStatus === "pending" && Boolean(row.errorState) && !isAwaitingWalletLink(row);
 }
 
-function founderPendingDetail(row: SettlementRailRow) {
-  if (isFounderTargetUnresolved(row)) {
+function pendingDetail(row: SettlementRailRow) {
+  if (isAwaitingWalletLink(row)) {
     return "Awaiting verified wallet-linked account for this player. Retry once the player signs in and links a verified wallet.";
   }
   return row.errorState;
@@ -323,7 +322,7 @@ export function WoloSettlementRail({
                     ? "paid"
                     : row.claimStatus === "rescinded"
                       ? "rescinded"
-                      : isFounderTargetUnresolved(row)
+                      : isAwaitingWalletLink(row)
                         ? "awaiting_wallet_link"
                         : isRetryableSettlementFailure(row)
                           ? "retryable_failure"
@@ -359,7 +358,7 @@ export function WoloSettlementRail({
                           Paid side
                         </span>
                       ) : null}
-                      {isFounderTargetUnresolved(row) ? (
+                      {isAwaitingWalletLink(row) ? (
                         <span className="inline-flex rounded-full border border-amber-300/20 bg-amber-400/10 px-2.5 py-1 text-[11px] uppercase tracking-[0.16em] text-amber-100">
                           Awaiting verified wallet-linked account
                         </span>
@@ -370,9 +369,9 @@ export function WoloSettlementRail({
                         </span>
                       ) : null}
                     </div>
-                    {founderPendingDetail(row) ? (
-                      <div className={`mt-2 text-xs ${isFounderTargetUnresolved(row) ? "text-amber-200" : "text-rose-300"}`}>
-                        {founderPendingDetail(row)}
+                    {pendingDetail(row) ? (
+                      <div className={`mt-2 text-xs ${isAwaitingWalletLink(row) ? "text-amber-200" : "text-rose-300"}`}>
+                        {pendingDetail(row)}
                       </div>
                     ) : null}
                   </td>
@@ -418,7 +417,7 @@ export function WoloSettlementRail({
                     <div>created {formatShortDate(row.createdAt)}</div>
                     {row.payoutAttemptedAt ? (
                       <div className="mt-1">
-                        {isFounderTargetUnresolved(row) ? "checked" : "attempted"}{" "}
+                        {isAwaitingWalletLink(row) ? "checked" : "attempted"}{" "}
                         {formatShortDate(row.payoutAttemptedAt)}
                       </div>
                     ) : null}
@@ -442,7 +441,7 @@ export function WoloSettlementRail({
                           >
                             {retryingClaimId === row.id
                               ? "Retrying..."
-                              : isFounderTargetUnresolved(row)
+                              : isAwaitingWalletLink(row)
                                 ? "Retry after link"
                                 : "Retry payout"}
                           </button>

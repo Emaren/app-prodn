@@ -653,6 +653,11 @@ function buildWinnerBountyNote(
   return `Winner bounty · ${market.title} · ${winnerName} beat ${losingName} · ${payoutWolo} WOLO`;
 }
 
+function buildAwaitingWalletLinkClaimDetail(playerName: string) {
+  const resolvedName = normalizeName(playerName) || "this player";
+  return `Awaiting verified wallet-linked account for ${resolvedName}. This payout stays pending until the player links a verified wallet.`;
+}
+
 function getWinningPlayerName(market: { leftLabel: string; rightLabel: string }, winningSide: BetSide) {
   return winningSide === "left" ? market.leftLabel : market.rightLabel;
 }
@@ -1313,7 +1318,12 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
       for (const plan of claimPlanList) {
         const payout = payoutByRequestId.get(plan.requestId);
         const payoutSucceeded = Boolean(payout?.ok && payout.txHash);
+        const awaitingWalletLink = !plan.walletAddress || !plan.claimedByUserId;
         const payoutError = resolveSettlementPlanError(validationResult, payout);
+        const pendingError =
+          !payoutSucceeded && awaitingWalletLink
+            ? buildAwaitingWalletLinkClaimDetail(plan.displayPlayerName)
+            : payoutError;
         const claimNote =
           plan.outcomeKind === "winner_bounty"
             ? buildWinnerBountyNote(
@@ -1374,8 +1384,8 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
             sourceGameStatsId: market.linkedGameStatsId ?? null,
             payoutTxHash: payout?.txHash ?? null,
             payoutProofUrl: payout?.proofUrl ?? null,
-            errorState: payoutError,
-            payoutAttemptedAt: settlementAttemptedAt,
+            errorState: pendingError,
+            payoutAttemptedAt: awaitingWalletLink ? null : settlementAttemptedAt,
             note: claimNote,
             status: "pending",
           });
@@ -1397,7 +1407,7 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
               payoutProofUrl: payout?.proofUrl ?? null,
               settlementRunId,
               settledAt: settledAt.toISOString(),
-              errorState: payoutSucceeded ? null : payoutError,
+              errorState: payoutSucceeded ? null : pendingError,
             },
             dedupeWithinSeconds: 5,
           });
