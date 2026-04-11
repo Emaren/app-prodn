@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 
+import TimeDisplayText from "@/components/time/TimeDisplayText";
 import AutoGrowTextarea from "@/components/ui/AutoGrowTextarea";
 import { CHALLENGE_NOTE_MAX_CHARS } from "@/lib/challengeConfig";
 import type { ScheduledMatchTile } from "@/lib/challenges";
@@ -265,11 +266,13 @@ export default function ScheduledMatchCard({
           <div className={`text-xs uppercase tracking-[0.3em] ${accent.eyebrow}`}>
             Scheduled match
           </div>
-          <div className="mt-2 text-xl font-semibold text-white">
+          <div className="mt-2 break-words text-xl font-semibold text-white">
             {match.challenger.name} vs {match.challenged.name}
           </div>
           {match.challengeNote ? (
-            <div className="mt-3 max-w-2xl text-sm text-slate-300">{match.challengeNote}</div>
+            <div className="mt-3 max-w-2xl break-words text-sm text-slate-300">
+              {match.challengeNote}
+            </div>
           ) : null}
           <div className="mt-4 flex flex-wrap gap-2">
             {match.linkedMapName ? (
@@ -278,12 +281,11 @@ export default function ScheduledMatchCard({
               </span>
             ) : null}
             <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-              {new Date(match.scheduledAt).toLocaleString([], {
-                month: "short",
-                day: "numeric",
-                hour: "numeric",
-                minute: "2-digit",
-              })}
+              <TimeDisplayText
+                value={match.scheduledAt}
+                className="text-slate-300"
+                bubbleClassName="max-w-[16rem] text-center"
+              />
             </span>
             {match.linkedWinner ? (
               <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">

@@ -24,7 +24,7 @@ export default function FounderBonusChips({
   }
 
   return (
-    <div className={`flex flex-wrap gap-2 ${compact ? "" : "mt-4"}`}>
+    <div className={`flex max-w-full flex-wrap gap-1.5 ${compact ? "" : "mt-3"}`}>
       {bonuses.map((bonus) => {
         const micro = variant === "micro";
         const tone =
@@ -37,8 +37,8 @@ export default function FounderBonusChips({
             key={bonus.id}
             className={`inline-flex items-center rounded-full border ${tone} ${
               micro
-                ? "px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]"
-                : "px-3 py-1 text-xs"
+                ? "px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.16em]"
+                : "px-2.5 py-0.5 text-[11px]"
             }`}
             title={`${founderLabel(bonus)} · ${bonus.totalAmountWolo.toLocaleString()} WOLO${
               bonus.note ? ` · ${bonus.note}` : ""

@@ -121,7 +121,7 @@ export function TopWoloEarnersTile({
 
   return (
     <section
-      className={`flex h-full min-h-0 max-h-full cursor-pointer flex-col overflow-hidden rounded-[1.7rem] border p-5 pt-6 transition ${tone.panelShell} ${tone.cardHover} ${className ?? ""}`}
+      className={`flex h-full min-h-0 max-h-full cursor-pointer flex-col overflow-hidden rounded-[1.7rem] border p-5 pt-7 transition ${tone.panelShell} ${tone.cardHover} ${className ?? ""}`}
       role="link"
       tabIndex={0}
       aria-label="Open War Chest analytics"

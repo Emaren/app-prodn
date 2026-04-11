@@ -120,6 +120,7 @@ export type BetSettledResult = {
   eventLabel: string;
   winner: string;
   mapName: string;
+  totalPotWolo: number;
   payoutWolo: number;
   settledAt: string | null;
   href: string | null;
@@ -1759,6 +1760,12 @@ async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettle
             amountWolo: true,
             payoutWolo: true,
             status: true,
+            executionMode: true,
+            stakeIntent: {
+              select: {
+                status: true,
+              },
+            },
           },
         },
       },
@@ -1779,15 +1786,20 @@ async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettle
   if (settledMarkets.length > 0) {
     return settledMarkets.map((market) => {
       const winner = market.winnerSide === "right" ? market.rightLabel : market.leftLabel;
+      const countableWagers = market.wagers.filter(
+        (wager) => wager.status !== "void" && isCountableBetWager(wager)
+      );
+      const totalPotWolo =
+        market.seedLeftWolo +
+        market.seedRightWolo +
+        countableWagers.reduce((sum, wager) => sum + wager.amountWolo, 0);
       const settledPayoutTotal = market.wagers
         .filter((wager) => wager.status === "won")
         .reduce((sum, wager) => sum + (wager.payoutWolo ?? 0), 0);
       const payoutWolo =
         settledPayoutTotal > 0
           ? settledPayoutTotal
-          : market.seedLeftWolo +
-            market.seedRightWolo +
-            market.wagers.reduce((sum, wager) => sum + wager.amountWolo, 0);
+          : totalPotWolo;
       const mapName = market.eventLabel.includes("•")
         ? market.eventLabel.split("•").slice(1).join("•").trim() || market.eventLabel
         : market.eventLabel;
@@ -1810,6 +1822,7 @@ async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettle
         eventLabel: market.eventLabel,
         winner,
         mapName,
+        totalPotWolo,
         payoutWolo,
         settledAt: matchedSession?.settledAt || market.settledAt?.toISOString() || null,
         href,
@@ -1862,6 +1875,7 @@ async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettle
       eventLabel: row.parse_reason ? row.parse_reason.replace(/_/g, " ") : "Replay proof",
       winner: row.winner || "Unknown",
       mapName,
+      totalPotWolo: 110 + (hashValue(`${row.id}:${row.winner}:pot`) % 240),
       payoutWolo: 110 + (hashValue(`${row.id}:${row.winner}`) % 240),
       settledAt: row.played_on?.toISOString() || row.timestamp?.toISOString() || null,
       href: null,
@@ -1989,11 +2003,17 @@ export async function loadBetBoardSnapshot(
     return current;
   }, null);
 
-  const biggestPot = openMarkets.reduce<{
+  const biggestPot = [...openMarkets.map((market) => ({
+    label: market.title,
+    potWolo: market.totalPotWolo,
+  })), ...settledResults.map((result) => ({
+    label: result.title,
+    potWolo: result.totalPotWolo,
+  }))].reduce<{
     label: string;
     potWolo: number;
   } | null>((current, market) => {
-    const candidate = { label: market.title, potWolo: market.totalPotWolo };
+    const candidate = { label: market.label, potWolo: market.potWolo };
     if (!current || candidate.potWolo > current.potWolo) {
       return candidate;
     }

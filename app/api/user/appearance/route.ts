@@ -49,6 +49,8 @@ export async function POST(request: NextRequest) {
       tileThemeKey?: string | null;
       viewMode?: string | null;
       textColor?: string | null;
+      timeDisplayMode?: string | null;
+      timezoneOverride?: string | null;
     };
 
     const prisma = getPrisma();
@@ -61,14 +63,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ detail: "User not found" }, { status: 404 });
     }
 
-    const normalized = normalizeAppearancePreference(payload);
+    const current = await loadAppearancePreferenceForUser(prisma, user.id);
+    const normalized = normalizeAppearancePreference({
+      ...current,
+      ...payload,
+    });
     const saved = await upsertAppearancePreference(prisma, user.id, normalized);
 
     await recordUserActivity(prisma, {
       userId: user.id,
       type: "appearance_changed",
       path: request.nextUrl.pathname,
-      label: `${normalized.themeKey}/${normalized.tileThemeKey}/${normalized.viewMode}/${normalized.textColor}`,
+      label:
+        `${normalized.themeKey}/${normalized.tileThemeKey}/${normalized.viewMode}/${normalized.textColor}` +
+        `/${normalized.timeDisplayMode}`,
       metadata: normalized,
       dedupeWithinSeconds: 90,
     });
@@ -78,6 +86,8 @@ export async function POST(request: NextRequest) {
       tileThemeKey: saved.tileThemeKey,
       viewMode: saved.viewMode,
       textColor: saved.textColor,
+      timeDisplayMode: saved.timeDisplayMode,
+      timezoneOverride: saved.timezoneOverride,
       updatedAt: saved.updatedAt.toISOString(),
     });
   } catch (error) {

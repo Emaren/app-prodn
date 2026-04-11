@@ -9,6 +9,8 @@ import {
   Sparkles,
 } from "lucide-react";
 
+import TimeDisplayText from "@/components/time/TimeDisplayText";
+
 type WatcherDownloadSummaryRow = {
   key: string;
   platform: "windows" | "macos" | "linux";
@@ -67,20 +69,6 @@ function trafficTone(trafficClass: WatcherDownloadRecentRow["trafficClass"]) {
   }
 
   return "border-emerald-300/20 bg-emerald-400/10 text-emerald-100";
-}
-
-function formatShortDate(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return "Unknown";
-  }
-
-  return date.toLocaleString([], {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
 }
 
 function compactHost(input: string | null) {
@@ -252,7 +240,12 @@ export function WatcherDownloadRail({ summary, recent }: WatcherDownloadRailProp
                 </div>
 
                 <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-slate-400">
-                  <span>{formatShortDate(event.createdAt)}</span>
+                  <TimeDisplayText
+                    value={event.createdAt}
+                    className="text-slate-300"
+                    bubbleClassName="max-w-[16rem] text-center"
+                    emptyValue="Unknown"
+                  />
                   <span>{event.userDisplayName || event.userUid || "Guest"}</span>
                   <span>{compactHost(event.referer)}</span>
                   <span>{compactUserAgent(event.userAgent)}</span>

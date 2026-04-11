@@ -83,7 +83,6 @@ export default function HeaderMenu({
       },
       { href: "/rivalries", label: "Rivalries", icon: Swords },
       { href: "/upload", label: "Upload Replay", icon: Upload },
-      { href: "/replay-parser", label: "Replay Watcher", icon: Radio },
       { href: "/game-stats", label: "Game Stats", icon: BarChart3 },
       { href: "/download", label: "Download Watcher", icon: Download },
       { href: "/wolo", label: "$WOLO", icon: Coins },

@@ -1,4 +1,6 @@
 export const DEFAULT_TIME_DISPLAY_MODE = "utc" as const;
+export const TIME_DISPLAY_STORAGE_KEY = "aoe2hdbets:time-display-mode";
+export const TIME_ZONE_STORAGE_KEY = "aoe2hdbets:browser-time-zone";
 
 export const TIME_DISPLAY_MODES = [
   { id: "utc", label: "UTC" },
@@ -77,6 +79,45 @@ export function detectBrowserTimeZone() {
   } catch {
     return null;
   }
+}
+
+export function readStoredTimeDisplayMode() {
+  if (typeof window === "undefined") {
+    return DEFAULT_TIME_DISPLAY_MODE;
+  }
+
+  const value = window.localStorage.getItem(TIME_DISPLAY_STORAGE_KEY);
+  return isTimeDisplayMode(value) ? value : DEFAULT_TIME_DISPLAY_MODE;
+}
+
+export function writeStoredTimeDisplayMode(value: TimeDisplayMode) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(TIME_DISPLAY_STORAGE_KEY, value);
+}
+
+export function readStoredBrowserTimeZone() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  return normalizeTimezoneOverride(window.localStorage.getItem(TIME_ZONE_STORAGE_KEY));
+}
+
+export function writeStoredBrowserTimeZone(value: string | null | undefined) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const normalized = normalizeTimezoneOverride(value);
+  if (!normalized) {
+    window.localStorage.removeItem(TIME_ZONE_STORAGE_KEY);
+    return;
+  }
+
+  window.localStorage.setItem(TIME_ZONE_STORAGE_KEY, normalized);
 }
 
 export function resolveTimeZone(

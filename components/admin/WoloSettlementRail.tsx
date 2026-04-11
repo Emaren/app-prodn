@@ -1,5 +1,7 @@
 "use client";
 
+import TimeDisplayText from "@/components/time/TimeDisplayText";
+
 type FounderBonusType = "participants" | "winner";
 
 export type SettlementRailRow = {
@@ -54,18 +56,6 @@ type Props = {
 
 function formatWolo(value: number) {
   return value.toLocaleString();
-}
-
-function formatShortDate(value: string | null) {
-  if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
 }
 
 function isFounderClaim(row: SettlementRailRow) {
@@ -414,18 +404,43 @@ export function WoloSettlementRail({
                   </td>
 
                   <td className="px-3 py-3 text-xs text-slate-400">
-                    <div>created {formatShortDate(row.createdAt)}</div>
+                    <div>
+                      created{" "}
+                      <TimeDisplayText
+                        value={row.createdAt}
+                        className="text-slate-300"
+                        bubbleClassName="max-w-[16rem] text-center"
+                      />
+                    </div>
                     {row.payoutAttemptedAt ? (
                       <div className="mt-1">
                         {isAwaitingWalletLink(row) ? "checked" : "attempted"}{" "}
-                        {formatShortDate(row.payoutAttemptedAt)}
+                        <TimeDisplayText
+                          value={row.payoutAttemptedAt}
+                          className="text-slate-300"
+                          bubbleClassName="max-w-[16rem] text-center"
+                        />
                       </div>
                     ) : null}
                     {row.claimedAt ? (
-                      <div className="mt-1">claimed {formatShortDate(row.claimedAt)}</div>
+                      <div className="mt-1">
+                        claimed{" "}
+                        <TimeDisplayText
+                          value={row.claimedAt}
+                          className="text-slate-300"
+                          bubbleClassName="max-w-[16rem] text-center"
+                        />
+                      </div>
                     ) : null}
                     {row.rescindedAt ? (
-                      <div className="mt-1">rescinded {formatShortDate(row.rescindedAt)}</div>
+                      <div className="mt-1">
+                        rescinded{" "}
+                        <TimeDisplayText
+                          value={row.rescindedAt}
+                          className="text-slate-300"
+                          bubbleClassName="max-w-[16rem] text-center"
+                        />
+                      </div>
                     ) : null}
                   </td>
 

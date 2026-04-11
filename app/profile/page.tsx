@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
   ArrowRight,
+  Clock3,
+  Coins,
   LogOut,
   Palette,
   ShieldCheck,
@@ -18,10 +20,13 @@ import {
   LobbyViewToggle,
 } from "@/components/lobby/LobbyAppearanceControls";
 import { useLobbyAppearance } from "@/components/lobby/LobbyAppearanceContext";
+import TimeDisplayModeToggle from "@/components/time/TimeDisplayModeToggle";
+import TimeDisplayText from "@/components/time/TimeDisplayText";
 import { getLobbyHeroBackground } from "@/components/lobby/lobbyPresentation";
 import SteamLoginButton from "@/components/SteamLoginButton";
 import { useUserAuth } from "@/hooks/useUserAuth";
 import type { ChallengeHubSnapshot } from "@/lib/challenges";
+import { formatDateTime as formatSiteDateTime } from "@/lib/timeDisplay";
 
 type ProfileResponse = {
   uid: string;
@@ -44,14 +49,17 @@ type WatcherKeyRow = {
   lastUsedAt: string | null;
 };
 
+type ClaimWoloResponse = {
+  claimedCount: number;
+  claimedAmountWolo: number;
+  pendingClaimAmountWolo: number;
+  pendingClaimCount: number;
+  pendingClaimLatestCreatedAt: string | null;
+  detail?: string;
+};
+
 function buildWatcherPairUrl(apiKey: string) {
   return `aoe2hd-watcher://pair?apiKey=${encodeURIComponent(apiKey)}`;
-}
-
-function formatDateTime(value: string | null | undefined) {
-  if (!value) return "—";
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString();
 }
 
 function truncateUid(value: string | null | undefined) {
@@ -77,6 +85,7 @@ function ProfilePageContent() {
   const [newWatcherKey, setNewWatcherKey] = useState<string | null>(null);
   const [mintingWatcherKey, setMintingWatcherKey] = useState(false);
   const [watcherPairRequestStarted, setWatcherPairRequestStarted] = useState(false);
+  const [claimingWolo, setClaimingWolo] = useState(false);
   const [status, setStatus] = useState("");
   const [claimSeedApplied, setClaimSeedApplied] = useState(false);
   const {
@@ -88,6 +97,9 @@ function ProfilePageContent() {
     setViewMode,
     textColor,
     setTextColor,
+    timeDisplayMode,
+    setTimeDisplayMode,
+    browserTimeZone,
     presentationTone: appearanceTone,
   } = useLobbyAppearance();
 
@@ -112,11 +124,20 @@ function ProfilePageContent() {
     if (!profile || !hasPendingClaim) return "";
     const amount = profile.pendingClaimAmountWolo;
     const count = profile.pendingClaimCount;
-    const latest = formatDateTime(profile.pendingClaimLatestCreatedAt);
+    const latest = formatSiteDateTime(
+      profile.pendingClaimLatestCreatedAt,
+      {
+        timeDisplayMode,
+        timezoneOverride: browserTimeZone,
+      },
+      {
+        browserTimeZone,
+      }
+    );
     return count > 1
       ? `${amount} WOLO waiting across ${count} claims · latest ${latest}`
       : `${amount} WOLO waiting · latest ${latest}`;
-  }, [hasPendingClaim, profile]);
+  }, [browserTimeZone, hasPendingClaim, profile, timeDisplayMode]);
 
   const recentChallengeHistory = useMemo(
     () => challengeSnapshot?.historyMatches.slice(0, 4) ?? [],
@@ -177,6 +198,46 @@ function ProfilePageContent() {
     );
     setClaimSeedApplied(true);
   }, [claimName, claimSeedApplied, profile?.inGameName]);
+
+  const claimPendingWolo = useCallback(async () => {
+    setClaimingWolo(true);
+    setStatus("");
+
+    try {
+      const response = await fetch("/api/user/wolo-claims/claim", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      const payload = (await response.json().catch(() => null)) as ClaimWoloResponse | null;
+      if (!response.ok || !payload) {
+        throw new Error(payload?.detail || "WOLO claim failed.");
+      }
+
+      setProfile((current) =>
+        current
+          ? {
+              ...current,
+              pendingClaimAmountWolo: payload.pendingClaimAmountWolo,
+              pendingClaimCount: payload.pendingClaimCount,
+              pendingClaimLatestCreatedAt: payload.pendingClaimLatestCreatedAt,
+            }
+          : current
+      );
+      setStatus(
+        payload.claimedCount > 0
+          ? `Claimed ${payload.claimedAmountWolo} WOLO across ${payload.claimedCount} row${payload.claimedCount === 1 ? "" : "s"}.`
+          : "No pending WOLO was waiting on this profile."
+      );
+    } catch (error) {
+      console.error("Failed to claim WOLO:", error);
+      setStatus(error instanceof Error ? error.message : "WOLO claim failed.");
+    } finally {
+      setClaimingWolo(false);
+    }
+  }, []);
 
   const createWatcherKey = useCallback(
     async ({ pairToWatcher = false } = {}) => {
@@ -299,24 +360,48 @@ function ProfilePageContent() {
               </div>
             ) : null}
 
-            {hasPendingClaim ? (
-              <div className="mt-4 rounded-2xl border border-emerald-300/20 bg-emerald-400/10 px-4 py-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <div className="text-xs uppercase tracking-[0.28em] text-emerald-200/80">
-                      Claimable WOLO
-                    </div>
-                    <div className="mt-2 text-3xl font-semibold text-white">
-                      {profile?.pendingClaimAmountWolo ?? 0} WOLO
-                    </div>
-                    <div className="mt-2 text-sm text-emerald-100/90">{claimStatusMessage}</div>
+            <div className="mt-4 overflow-hidden rounded-[1.7rem] border border-emerald-300/18 bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.20),_transparent_28%),radial-gradient(circle_at_82%_18%,_rgba(251,191,36,0.14),_transparent_22%),linear-gradient(135deg,_rgba(8,25,20,0.98),_rgba(5,18,24,0.98))] px-5 py-5 shadow-[0_28px_80px_rgba(0,0,0,0.28)]">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 text-xs uppercase tracking-[0.3em] text-emerald-100/80">
+                    <Coins className="h-4 w-4" />
+                    Claim $WOLO
                   </div>
-                  <div className="rounded-full border border-emerald-300/30 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-100">
+                  <div className="mt-3 text-4xl font-semibold tracking-[-0.04em] text-white">
+                    {profile?.pendingClaimAmountWolo ?? 0} WOLO
+                  </div>
+                  <div className="mt-2 max-w-2xl text-sm leading-6 text-emerald-50/88">
+                    {hasPendingClaim
+                      ? claimStatusMessage
+                      : "No claimable WOLO is waiting on this profile right now. When app-side rewards or payouts land, this tile becomes the front-door claim rail."}
+                  </div>
+                  {profile?.pendingClaimLatestCreatedAt ? (
+                    <div className="mt-3 text-xs uppercase tracking-[0.22em] text-emerald-100/70">
+                      Latest row{" "}
+                      <TimeDisplayText
+                        value={profile.pendingClaimLatestCreatedAt}
+                        className="font-medium text-emerald-50"
+                        bubbleClassName="w-max max-w-[18rem] text-center"
+                      />
+                    </div>
+                  ) : null}
+                </div>
+
+                <div className="flex shrink-0 flex-col items-end gap-3">
+                  <div className="rounded-full border border-emerald-300/24 bg-emerald-500/12 px-3 py-1 text-xs text-emerald-100">
                     {profile?.pendingClaimCount ?? 0} pending
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => void claimPendingWolo()}
+                    disabled={claimingWolo || !hasPendingClaim}
+                    className="rounded-full border border-amber-200/16 bg-[linear-gradient(135deg,#fde68a_0%,#f5c95f_28%,#d7a73e_72%,#8c5e10_100%)] px-5 py-3 text-sm font-semibold text-slate-950 transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-55"
+                  >
+                    {claimingWolo ? "Claiming..." : hasPendingClaim ? "Claim $WOLO" : "Nothing To Claim"}
+                  </button>
                 </div>
               </div>
-            ) : null}
+            </div>
           </div>
 
           <div className="min-w-0 rounded-[1.6rem] border border-white/10 bg-white/[0.04] p-5">
@@ -371,10 +456,12 @@ function ProfilePageContent() {
                 <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
                   <div className="font-mono text-sm text-white">{latestWatcherKey.prefix}</div>
                   <div className="text-xs text-slate-400">
-                    Created {formatDateTime(latestWatcherKey.createdAt)}
-                    {latestWatcherKey.lastUsedAt
-                      ? ` · Last used ${formatDateTime(latestWatcherKey.lastUsedAt)}`
-                      : ""}
+                    Created{" "}
+                    <TimeDisplayText value={latestWatcherKey.createdAt} className="text-slate-300" />
+                    {latestWatcherKey.lastUsedAt ? " · Last used " : ""}
+                    {latestWatcherKey.lastUsedAt ? (
+                      <TimeDisplayText value={latestWatcherKey.lastUsedAt} className="text-slate-300" />
+                    ) : null}
                   </div>
                 </div>
               </div>
@@ -443,11 +530,11 @@ function ProfilePageContent() {
                 >
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <div className="truncate text-sm font-semibold text-white">
+                      <div className="break-words text-sm font-semibold text-white">
                         {match.challenger.name} vs {match.challenged.name}
                       </div>
                       <div className="mt-1 text-[11px] uppercase tracking-[0.22em] text-slate-500">
-                        {new Date(match.activityAt).toLocaleString()}
+                        <TimeDisplayText value={match.activityAt} className="text-slate-400" />
                       </div>
                     </div>
                     <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-slate-300">
@@ -455,7 +542,7 @@ function ProfilePageContent() {
                     </div>
                   </div>
                   {match.challengeNote ? (
-                    <div className="mt-3 text-sm leading-6 text-slate-300">{match.challengeNote}</div>
+                    <div className="mt-3 break-words text-sm leading-6 text-slate-300">{match.challengeNote}</div>
                   ) : null}
                 </div>
               ))
@@ -477,7 +564,7 @@ function ProfilePageContent() {
           </div>
         </div>
 
-        <div className="mt-6 grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-6 grid gap-4 lg:grid-cols-2 xl:grid-cols-5">
           <CompactAppearanceCard title="Theme" tone={appearanceTone}>
             <LobbyThemePicker
               themeKey={themeKey}
@@ -515,6 +602,19 @@ function ProfilePageContent() {
               className="mt-3"
             />
           </CompactAppearanceCard>
+
+          <CompactAppearanceCard title="Time" tone={appearanceTone}>
+            <div className="mt-3 flex flex-col gap-3">
+              <TimeDisplayModeToggle value={timeDisplayMode} onChange={setTimeDisplayMode} />
+              <div className="flex items-center gap-2 text-xs leading-5 text-slate-300">
+                <Clock3 className="h-4 w-4" />
+                Local uses the browser time zone{browserTimeZone ? ` (${browserTimeZone})` : ""}.
+              </div>
+              <div className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-3 text-sm text-slate-200">
+                Preview: <TimeDisplayText value={new Date()} className="font-medium text-white" />
+              </div>
+            </div>
+          </CompactAppearanceCard>
         </div>
 
         <div
@@ -538,6 +638,9 @@ function ProfilePageContent() {
                 </span>
                 <span className={`rounded-full border px-2.5 py-1 text-[11px] ${appearanceTone.neutralPill}`}>
                   {textColor} text
+                </span>
+                <span className={`rounded-full border px-2.5 py-1 text-[11px] ${appearanceTone.neutralPill}`}>
+                  {timeDisplayMode}
                 </span>
               </div>
             </div>

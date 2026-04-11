@@ -4,6 +4,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getPrisma } from "@/lib/prisma";
 import { hydrateSteamIdentity } from "@/lib/steamIdentity";
 import { fetchUserVerification, toUserApi } from "@/lib/userDto";
+import { loadPendingWoloClaimSummaryForUser } from "@/lib/pendingWoloClaims";
 import { resolveRequestUid, resolveRequestEmail } from "@/lib/requestIdentity";
 import { validateWoloAddress } from "@/lib/woloBetSettlement";
 
@@ -87,12 +88,33 @@ export async function GET(request: NextRequest) {
       });
 
       if (refreshedUser) {
-        return NextResponse.json(toUserApi(refreshedUser, verification));
+        const claimSummary = await loadPendingWoloClaimSummaryForUser(prisma, {
+          id: refreshedUser.id,
+          inGameName: refreshedUser.inGameName,
+          steamPersonaName: verification.steamPersonaName ?? null,
+        });
+        return NextResponse.json({
+          ...toUserApi(refreshedUser, verification),
+          pendingClaimAmountWolo: claimSummary.pendingAmountWolo,
+          pendingClaimCount: claimSummary.pendingCount,
+          pendingClaimLatestCreatedAt: claimSummary.latestCreatedAt,
+        });
       }
     }
   }
 
-  return NextResponse.json(toUserApi(user, verification));
+  const claimSummary = await loadPendingWoloClaimSummaryForUser(prisma, {
+    id: user.id,
+    inGameName: user.inGameName,
+    steamPersonaName: verification.steamPersonaName ?? null,
+  });
+
+  return NextResponse.json({
+    ...toUserApi(user, verification),
+    pendingClaimAmountWolo: claimSummary.pendingAmountWolo,
+    pendingClaimCount: claimSummary.pendingCount,
+    pendingClaimLatestCreatedAt: claimSummary.latestCreatedAt,
+  });
 }
 
 export async function POST(request: NextRequest) {

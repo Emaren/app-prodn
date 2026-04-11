@@ -9,6 +9,8 @@ import ScheduledMatchCard, {
   type ScheduledMatchCardActionKind,
   type ScheduledMatchCardActionState,
 } from "@/components/challenge/ScheduledMatchCard";
+import { useLobbyAppearance } from "@/components/lobby/LobbyAppearanceContext";
+import TimeDisplayText from "@/components/time/TimeDisplayText";
 import SteamLoginButton from "@/components/SteamLoginButton";
 import AutoGrowTextarea from "@/components/ui/AutoGrowTextarea";
 import { useUserAuth } from "@/context/UserAuthContext";
@@ -73,17 +75,9 @@ function formatActivityTitle(activity: ChallengeActivityItem) {
   }
 }
 
-function formatActivityTime(value: string) {
-  return new Date(value).toLocaleString([], {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
 export default function ChallengeWorkspace() {
   const { loading: authLoading, isAuthenticated, uid } = useUserAuth();
+  const { timeDisplayMode, setTimeDisplayMode, browserTimeZone } = useLobbyAppearance();
   const [snapshot, setSnapshot] = useState<ChallengeHubSnapshot>(EMPTY_SNAPSHOT);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -180,6 +174,11 @@ export default function ChallengeWorkspace() {
   const recentActivities = useMemo(
     () => snapshot.activities.slice(0, 8),
     [snapshot.activities]
+  );
+
+  const scheduledPreview = useMemo(
+    () => parseUtcDateTimeInputValue(scheduledAt),
+    [scheduledAt]
   );
 
   async function updateMatch(
@@ -365,19 +364,60 @@ export default function ChallengeWorkspace() {
                   </select>
                 </label>
 
-                <label className="block space-y-2">
-                  <span className="text-sm text-slate-300">Start Time (UTC)</span>
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setTimeDisplayMode(timeDisplayMode === "utc" ? "local" : "utc")
+                      }
+                      className="text-left text-sm text-slate-300 transition hover:text-white"
+                    >
+                      Start Time (UTC)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setTimeDisplayMode(timeDisplayMode === "utc" ? "local" : "utc")
+                      }
+                      className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-slate-300 transition hover:border-white/25 hover:text-white"
+                    >
+                      Show {timeDisplayMode === "utc" ? "Local" : "UTC"} By Default
+                    </button>
+                  </div>
                   <input
                     type="datetime-local"
                     value={scheduledAt}
                     onChange={(event) => setScheduledAt(event.target.value)}
                     className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-amber-300/50"
                   />
-                  <div className="mt-2 text-xs text-slate-500">
-                    All scheduled match times are anchored to UTC so both players share one
-                    universal clock.
+                  <div className="mt-2 space-y-2 text-xs text-slate-500">
+                    <div>
+                      Scheduled matches are stored in UTC so both players share one universal clock.
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-3 text-slate-300">
+                      <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500">
+                        Your site default
+                      </div>
+                      <div className="mt-2">
+                        {scheduledPreview ? (
+                          <TimeDisplayText
+                            value={scheduledPreview}
+                            className="font-medium text-white"
+                            bubbleClassName="max-w-[16rem] text-center"
+                          />
+                        ) : (
+                          "Pick a valid start time to preview it."
+                        )}
+                      </div>
+                      <div className="mt-2 text-[11px] text-slate-400">
+                        {timeDisplayMode === "local"
+                          ? `Local display${browserTimeZone ? ` (${browserTimeZone})` : ""} with UTC on hover or tap.`
+                          : "UTC display with your browser-local time on hover or tap."}
+                      </div>
+                    </div>
                   </div>
-                </label>
+                </div>
 
                 <label className="block space-y-2">
                   <span className="text-sm text-slate-300">Message</span>
@@ -511,7 +551,8 @@ export default function ChallengeWorkspace() {
                           {formatActivityTitle(activity)}
                         </div>
                         <div className="mt-1 text-[11px] uppercase tracking-[0.22em] text-slate-500">
-                          {activity.actorName ? `${activity.actorName} · ` : ""}{formatActivityTime(activity.createdAt)}
+                          {activity.actorName ? `${activity.actorName} · ` : ""}
+                          <TimeDisplayText value={activity.createdAt} className="text-slate-400" />
                         </div>
                       </div>
                       <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-slate-300">

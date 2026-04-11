@@ -50,14 +50,18 @@ export function LobbyThemePicker({
   const circleSizeClassName = size === "md" ? "h-5 w-5" : "h-4 w-4";
 
   return (
-    <div className={["flex max-w-full items-center gap-2", className].filter(Boolean).join(" ")}>
+    <div className={["flex max-w-full flex-wrap items-center gap-2", className].filter(Boolean).join(" ")}>
       {label ? (
         <div className="text-[10px] font-medium uppercase tracking-[0.28em] text-slate-400">
           {label}
         </div>
       ) : null}
 
-      <div className={["flex items-center gap-2", trackClassName].filter(Boolean).join(" ")}>
+      <div
+        className={["flex max-w-full flex-wrap items-center gap-2", trackClassName]
+          .filter(Boolean)
+          .join(" ")}
+      >
         {LOBBY_THEME_OPTIONS.map((option) => {
           const isActive = option.key === themeKey;
 
@@ -106,7 +110,7 @@ export function LobbyViewToggle({
       : "whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold transition";
 
   return (
-    <div className={["flex items-center gap-2", className].filter(Boolean).join(" ")}>
+    <div className={["flex max-w-full flex-wrap items-center gap-2", className].filter(Boolean).join(" ")}>
       {label ? (
         <div className="text-[10px] font-medium uppercase tracking-[0.28em] text-slate-400">
           {label}
@@ -148,7 +152,7 @@ export function LobbyTextColorPicker({
           {label}
         </div>
       ) : null}
-      <div className={`inline-flex rounded-full border p-1 ${tone.viewToggle}`}>
+      <div className={`inline-flex max-w-full flex-wrap rounded-full border p-1 ${tone.viewToggle}`}>
         {LOBBY_TEXT_COLOR_OPTIONS.map((option) => {
           const isActive = option.key === textColor;
           return (

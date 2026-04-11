@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 
+import TimeDisplayText from "@/components/time/TimeDisplayText";
+
 export type MarketRailBettor = {
   userId: number;
   userUid: string;
@@ -92,18 +94,6 @@ type Props = {
 
 function formatWolo(value: number) {
   return value.toLocaleString();
-}
-
-function formatShortDate(value: string | null) {
-  if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
 }
 
 function shortenHash(value: string | null) {
@@ -448,11 +438,23 @@ export function WoloMarketRail({ summary, rows }: Props) {
                 </div>
                 <div className="rounded-2xl border border-white/8 bg-white/5 px-3 py-3">
                   <div className="text-[11px] uppercase tracking-[0.22em] text-slate-500">Settlement Attempt</div>
-                  <div className="mt-2 font-medium text-white">{formatShortDate(market.settlementAttemptedAt)}</div>
+                  <div className="mt-2 font-medium text-white">
+                    <TimeDisplayText
+                      value={market.settlementAttemptedAt}
+                      className="text-white"
+                      bubbleClassName="max-w-[16rem] text-center"
+                    />
+                  </div>
                 </div>
                 <div className="rounded-2xl border border-white/8 bg-white/5 px-3 py-3">
                   <div className="text-[11px] uppercase tracking-[0.22em] text-slate-500">Settlement Execute</div>
-                  <div className="mt-2 font-medium text-white">{formatShortDate(market.settlementExecutedAt)}</div>
+                  <div className="mt-2 font-medium text-white">
+                    <TimeDisplayText
+                      value={market.settlementExecutedAt}
+                      className="text-white"
+                      bubbleClassName="max-w-[16rem] text-center"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -499,7 +501,12 @@ export function WoloMarketRail({ summary, rows }: Props) {
                               {intent.displayName} · {intent.side} · {formatWolo(intent.amountWolo)} WOLO
                             </div>
                             <div className="mt-1 text-xs text-slate-400">
-                              {intent.status} · {formatShortDate(intent.updatedAt)}
+                              {intent.status} ·{" "}
+                              <TimeDisplayText
+                                value={intent.updatedAt}
+                                className="text-slate-300"
+                                bubbleClassName="max-w-[16rem] text-center"
+                              />
                             </div>
                             {intent.errorDetail ? (
                               <div className="mt-1 text-xs text-rose-300">{intent.errorDetail}</div>

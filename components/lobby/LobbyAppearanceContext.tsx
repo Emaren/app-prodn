@@ -34,6 +34,14 @@ import {
   fetchUserAppearancePreference,
   saveUserAppearancePreference,
 } from "@/lib/userAppearanceClient";
+import {
+  detectBrowserTimeZone,
+  readStoredBrowserTimeZone,
+  readStoredTimeDisplayMode,
+  writeStoredBrowserTimeZone,
+  writeStoredTimeDisplayMode,
+  type TimeDisplayMode,
+} from "@/lib/timeDisplay";
 
 type LobbyAppearanceContextValue = {
   themeKey: LobbyThemeKey;
@@ -44,6 +52,9 @@ type LobbyAppearanceContextValue = {
   setViewMode: (viewMode: LobbyViewMode) => void;
   textColor: LobbyTextColor;
   setTextColor: (textColor: LobbyTextColor) => void;
+  timeDisplayMode: TimeDisplayMode;
+  setTimeDisplayMode: (timeDisplayMode: TimeDisplayMode) => void;
+  browserTimeZone: string | null;
   appearanceLoaded: boolean;
   presentationTone: ReturnType<typeof getLobbyPresentationTone>;
   pageStyle: CSSProperties;
@@ -57,6 +68,8 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
   const [tileThemeKey, setTileThemeKey] = useState<LobbyThemeKey>(DEFAULT_LOBBY_TILE_THEME);
   const [viewMode, setViewMode] = useState<LobbyViewMode>(DEFAULT_LOBBY_VIEW);
   const [textColor, setTextColor] = useState<LobbyTextColor>(DEFAULT_LOBBY_TEXT_COLOR);
+  const [timeDisplayMode, setTimeDisplayMode] = useState<TimeDisplayMode>("utc");
+  const [browserTimeZone, setBrowserTimeZone] = useState<string | null>(null);
   const [appearanceLoaded, setAppearanceLoaded] = useState(false);
 
   useEffect(() => {
@@ -67,6 +80,10 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
     const storedTileTheme = readStoredLobbyTileTheme();
     const storedView = readStoredLobbyViewMode();
     const storedTextColor = readStoredLobbyTextColor();
+    const storedTimeDisplayMode = readStoredTimeDisplayMode();
+    const detectedBrowserTimeZone =
+      detectBrowserTimeZone() || readStoredBrowserTimeZone();
+    setBrowserTimeZone(detectedBrowserTimeZone);
     setAppearanceLoaded(false);
 
     const hydrateAppearance = async () => {
@@ -76,6 +93,7 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
           setTileThemeKey(storedTileTheme);
           setViewMode(storedView);
           setTextColor(storedTextColor);
+          setTimeDisplayMode(storedTimeDisplayMode);
           setAppearanceLoaded(true);
         }
         return;
@@ -88,6 +106,8 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
         setTileThemeKey(preference.tileThemeKey);
         setViewMode(preference.viewMode);
         setTextColor(preference.textColor);
+        setTimeDisplayMode(preference.timeDisplayMode);
+        setBrowserTimeZone(preference.timezoneOverride || detectedBrowserTimeZone);
       } catch (error) {
         console.warn("Failed to hydrate appearance from account:", error);
         if (cancelled) return;
@@ -95,6 +115,7 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
         setTileThemeKey(storedTileTheme);
         setViewMode(storedView);
         setTextColor(storedTextColor);
+        setTimeDisplayMode(storedTimeDisplayMode);
       } finally {
         if (!cancelled) {
           setAppearanceLoaded(true);
@@ -126,14 +147,36 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
   }, [textColor]);
 
   useEffect(() => {
+    writeStoredTimeDisplayMode(timeDisplayMode);
+  }, [timeDisplayMode]);
+
+  useEffect(() => {
+    writeStoredBrowserTimeZone(browserTimeZone);
+  }, [browserTimeZone]);
+
+  useEffect(() => {
     if (!appearanceLoaded || !user?.uid) return;
 
-    void saveUserAppearancePreference({ themeKey, tileThemeKey, viewMode, textColor }).catch(
-      (error) => {
-        console.warn("Failed to save appearance preference:", error);
-      }
-    );
-  }, [appearanceLoaded, textColor, themeKey, tileThemeKey, user?.uid, viewMode]);
+    void saveUserAppearancePreference({
+      themeKey,
+      tileThemeKey,
+      viewMode,
+      textColor,
+      timeDisplayMode,
+      timezoneOverride: browserTimeZone,
+    }).catch((error) => {
+      console.warn("Failed to save appearance preference:", error);
+    });
+  }, [
+    appearanceLoaded,
+    browserTimeZone,
+    textColor,
+    themeKey,
+    tileThemeKey,
+    timeDisplayMode,
+    user?.uid,
+    viewMode,
+  ]);
 
   const presentationTone = useMemo(
     () => getLobbyPresentationTone(tileThemeKey, viewMode),
@@ -213,6 +256,9 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
         setViewMode,
         textColor,
         setTextColor,
+        timeDisplayMode,
+        setTimeDisplayMode,
+        browserTimeZone,
         appearanceLoaded,
         presentationTone,
         pageStyle,

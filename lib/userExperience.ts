@@ -11,12 +11,20 @@ import {
   type LobbyThemeKey,
   type LobbyViewMode,
 } from "@/components/lobby/lobbyPresentation";
+import {
+  DEFAULT_TIME_DISPLAY_MODE,
+  isTimeDisplayMode,
+  normalizeTimezoneOverride,
+  type TimeDisplayMode,
+} from "@/lib/timeDisplay";
 
 export type StoredAppearancePreference = {
   themeKey: LobbyThemeKey;
   tileThemeKey: LobbyThemeKey;
   viewMode: LobbyViewMode;
   textColor: LobbyTextColor;
+  timeDisplayMode: TimeDisplayMode;
+  timezoneOverride: string | null;
   updatedAt: string | null;
 };
 
@@ -50,11 +58,15 @@ export function normalizeAppearancePreference(input: {
   tileThemeKey?: string | null;
   viewMode?: string | null;
   textColor?: string | null;
+  timeDisplayMode?: string | null;
+  timezoneOverride?: string | null;
 }) {
   const rawThemeKey = input.themeKey ?? null;
   const rawTileThemeKey = input.tileThemeKey ?? null;
   const rawViewMode = input.viewMode ?? null;
   const rawTextColor = input.textColor ?? null;
+  const rawTimeDisplayMode = input.timeDisplayMode ?? null;
+  const rawTimezoneOverride = input.timezoneOverride ?? null;
   const themeKey: LobbyThemeKey = isLobbyThemeKey(rawThemeKey)
     ? rawThemeKey
     : DEFAULT_LOBBY_THEME;
@@ -67,17 +79,25 @@ export function normalizeAppearancePreference(input: {
   const textColor: LobbyTextColor = isLobbyTextColor(rawTextColor)
     ? rawTextColor
     : DEFAULT_LOBBY_TEXT_COLOR;
+  const timeDisplayMode: TimeDisplayMode = isTimeDisplayMode(rawTimeDisplayMode)
+    ? rawTimeDisplayMode
+    : DEFAULT_TIME_DISPLAY_MODE;
+  const timezoneOverride = normalizeTimezoneOverride(rawTimezoneOverride);
 
   return {
     themeKey,
     tileThemeKey,
     viewMode,
     textColor,
+    timeDisplayMode,
+    timezoneOverride,
   } satisfies {
     themeKey: LobbyThemeKey;
     tileThemeKey: LobbyThemeKey;
     viewMode: LobbyViewMode;
     textColor: LobbyTextColor;
+    timeDisplayMode: TimeDisplayMode;
+    timezoneOverride: string | null;
   };
 }
 
@@ -92,6 +112,8 @@ export async function loadAppearancePreferenceForUser(
       tileThemeKey: true,
       viewMode: true,
       textColor: true,
+      timeDisplayMode: true,
+      timezoneOverride: true,
       updatedAt: true,
     },
   });
@@ -101,6 +123,8 @@ export async function loadAppearancePreferenceForUser(
     tileThemeKey: preference?.tileThemeKey ?? null,
     viewMode: preference?.viewMode ?? null,
     textColor: preference?.textColor ?? null,
+    timeDisplayMode: preference?.timeDisplayMode ?? null,
+    timezoneOverride: preference?.timezoneOverride ?? null,
   });
 
   return {
@@ -128,6 +152,8 @@ export async function loadAppearancePreferenceMap(
       tileThemeKey: true,
       viewMode: true,
       textColor: true,
+      timeDisplayMode: true,
+      timezoneOverride: true,
       updatedAt: true,
     },
   });
@@ -138,6 +164,8 @@ export async function loadAppearancePreferenceMap(
       tileThemeKey: DEFAULT_LOBBY_TILE_THEME,
       viewMode: DEFAULT_LOBBY_VIEW,
       textColor: DEFAULT_LOBBY_TEXT_COLOR,
+      timeDisplayMode: DEFAULT_TIME_DISPLAY_MODE,
+      timezoneOverride: null,
       updatedAt: null,
     });
   }
@@ -161,6 +189,8 @@ export async function upsertAppearancePreference(
     tileThemeKey?: string | null;
     viewMode?: string | null;
     textColor?: string | null;
+    timeDisplayMode?: string | null;
+    timezoneOverride?: string | null;
   }
 ) {
   const normalized = normalizeAppearancePreference(input);

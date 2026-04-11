@@ -1,11 +1,12 @@
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { NextRequest, NextResponse } from "next/server";
 import { getPrisma } from "@/lib/prisma";
-import { getSessionUid } from "@/lib/session";
+import { getSessionUid, SESSION_COOKIE_NAME, verifySession } from "@/lib/session";
 
-export async function requireAdmin(request: NextRequest) {
-  const uid = await getSessionUid(request);
+async function loadAdminUserByUid(uid: string | null) {
   if (!uid) {
-    return { error: NextResponse.json({ detail: "Unauthorized" }, { status: 401 }) };
+    return null;
   }
 
   const prisma = getPrisma();
@@ -15,8 +16,33 @@ export async function requireAdmin(request: NextRequest) {
   });
 
   if (!user?.isAdmin) {
-    return { error: NextResponse.json({ detail: "Forbidden" }, { status: 403 }) };
+    return null;
   }
 
   return { prisma, user };
+}
+
+export async function requireAdmin(request: NextRequest) {
+  const uid = await getSessionUid(request);
+  const gate = await loadAdminUserByUid(uid);
+  if (!gate) {
+    if (!uid) {
+      return { error: NextResponse.json({ detail: "Unauthorized" }, { status: 401 }) };
+    }
+    return { error: NextResponse.json({ detail: "Forbidden" }, { status: 403 }) };
+  }
+
+  return gate;
+}
+
+export async function requireServerAdmin() {
+  const cookieStore = await cookies();
+  const claims = await verifySession(cookieStore.get(SESSION_COOKIE_NAME)?.value);
+  const gate = await loadAdminUserByUid(claims?.uid ?? null);
+
+  if (!gate) {
+    redirect("/");
+  }
+
+  return gate;
 }

@@ -5,12 +5,15 @@ import type {
   LobbyThemeKey,
   LobbyViewMode,
 } from "@/components/lobby/lobbyPresentation";
+import type { TimeDisplayMode } from "@/lib/timeDisplay";
 
 export type AppearancePayload = {
   themeKey: LobbyThemeKey;
   tileThemeKey: LobbyThemeKey;
   viewMode: LobbyViewMode;
   textColor: LobbyTextColor;
+  timeDisplayMode: TimeDisplayMode;
+  timezoneOverride: string | null;
   updatedAt: string | null;
 };
 
@@ -28,6 +31,8 @@ export async function saveUserAppearancePreference(input: {
   tileThemeKey: LobbyThemeKey;
   viewMode: LobbyViewMode;
   textColor: LobbyTextColor;
+  timeDisplayMode: TimeDisplayMode;
+  timezoneOverride: string | null;
 }) {
   const response = await fetch("/api/user/appearance", {
     method: "POST",

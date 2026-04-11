@@ -115,6 +115,7 @@ type BetSettledResult = {
   eventLabel: string;
   winner: string;
   mapName: string;
+  totalPotWolo: number;
   payoutWolo: number;
   settledAt: string | null;
   href: string | null;
@@ -329,6 +330,12 @@ function formatCompact(value: number) {
   return new Intl.NumberFormat("en-US", {
     maximumFractionDigits: 0,
     notation: value >= 1000 ? "compact" : "standard",
+  }).format(value);
+}
+
+function formatExactWolo(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    maximumFractionDigits: 0,
   }).format(value);
 }
 
@@ -700,8 +707,15 @@ export default function BetsPage() {
     [board?.openMarkets, spotlightMarket]
   );
   const totalBookPot = useMemo(
-    () => (board?.openMarkets || []).reduce((sum, market) => sum + market.totalPotWolo, 0),
-    [board?.openMarkets]
+    () => {
+      const openPot = (board?.openMarkets || []).reduce((sum, market) => sum + market.totalPotWolo, 0);
+      if (openPot > 0) {
+        return openPot;
+      }
+
+      return board?.settledResults?.[0]?.totalPotWolo || 0;
+    },
+    [board?.openMarkets, board?.settledResults]
   );
   const liveCount = board?.heat.liveCount || 0;
   const openCount = board?.openMarkets.length || 0;
@@ -1291,18 +1305,18 @@ export default function BetsPage() {
                 <BetsViewToggle value={betsView} onChange={setBetsView} />
               </div>
 
-              <div className="mt-5 flex flex-wrap gap-2">
-                <span className="rounded-full border border-amber-200/12 bg-amber-400/10 px-3 py-1 text-[11px] uppercase tracking-[0.35em] text-amber-100">
+              <div className="mt-5 flex flex-wrap gap-1.5">
+                <span className="rounded-full border border-amber-200/12 bg-amber-400/10 px-2.5 py-0.5 text-[10px] uppercase tracking-[0.28em] text-amber-100">
                   Basic view
                 </span>
-                <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-slate-300">
+                <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-0.5 text-[11px] text-slate-300">
                   {openCount} books
                 </span>
-                <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-slate-300">
+                <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-0.5 text-[11px] text-slate-300">
                   {liveCount} live
                 </span>
                 <span
-                  className={`rounded-full px-3 py-1 text-xs uppercase tracking-[0.18em] ${
+                  className={`rounded-full px-2.5 py-0.5 text-[10px] uppercase tracking-[0.16em] ${
                     onchainBetEscrowRequired && onchainBetEscrowEnabled
                       ? "border border-cyan-300/20 bg-cyan-400/10 text-cyan-100"
                       : onchainBetEscrowRequired
@@ -1325,7 +1339,7 @@ export default function BetsPage() {
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
                 <MiniMetric label="Open" value={String(openCount)} />
                 <MiniMetric label="Recent Books" value={String(recentResults.length)} />
-                <MiniMetric label="Book Pot" value={`${formatCompact(totalBookPot || 0)} WOLO`} />
+                <MiniMetric label="Book Pot" value={`${formatExactWolo(totalBookPot || 0)} WOLO`} />
                 <MiniMetric
                   label="Your Slips"
                   value={isAuthenticated ? String(board?.yourBook.activeCount || 0) : "Sign in"}
@@ -1349,7 +1363,7 @@ export default function BetsPage() {
                       {spotlightMarket
                         ? `${spotlightMarket.left.name} vs ${spotlightMarket.right.name} · ${spotlightMarket.closeLabel}`
                         : recentResults[0]
-                          ? `${recentResults[0].title} · ${formatSettledTime(recentResults[0].settledAt)}`
+                          ? `${recentResults[0].title} · pot ${formatExactWolo(recentResults[0].totalPotWolo)} WOLO · ${formatSettledTime(recentResults[0].settledAt)}`
                           : "The first live or recently settled book will land here automatically."}
                     </div>
                   </div>
@@ -1482,18 +1496,18 @@ export default function BetsPage() {
           <section className="grid gap-5 xl:grid-cols-[0.78fr_1.22fr]">
             <div className={`${shellClass()} p-5 sm:p-6`}>
               <div className="flex items-start justify-between gap-4">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-full border border-amber-200/12 bg-amber-400/10 px-3 py-1 text-[11px] uppercase tracking-[0.35em] text-amber-100">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="rounded-full border border-amber-200/12 bg-amber-400/10 px-2.5 py-0.5 text-[10px] uppercase tracking-[0.28em] text-amber-100">
                     Bets
                   </span>
-                  <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-slate-300">
+                  <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-0.5 text-[11px] text-slate-300">
                     {openCount} books
                   </span>
-                  <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-slate-300">
+                  <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-0.5 text-[11px] text-slate-300">
                     {liveCount} live
                   </span>
                   <span
-                    className={`rounded-full px-3 py-1 text-xs uppercase tracking-[0.18em] ${
+                    className={`rounded-full px-2.5 py-0.5 text-[10px] uppercase tracking-[0.16em] ${
                       onchainBetEscrowRequired && onchainBetEscrowEnabled
                         ? "border border-cyan-300/20 bg-cyan-400/10 text-cyan-100"
                         : onchainBetEscrowRequired
@@ -1512,11 +1526,11 @@ export default function BetsPage() {
                           : "app-side fallback"}
                   </span>
                   <span
-                    className={`rounded-full border px-3 py-1 text-xs uppercase tracking-[0.18em] ${groupedSettlementTone(groupedRunCapability)}`}
+                    className={`rounded-full border px-2.5 py-0.5 text-[10px] uppercase tracking-[0.16em] ${groupedSettlementTone(groupedRunCapability)}`}
                   >
                     {groupedSettlementLabel(groupedRunCapability)}
                   </span>
-                  <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs uppercase tracking-[0.18em] text-slate-300">
+                  <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-0.5 text-[10px] uppercase tracking-[0.16em] text-slate-300">
                     {settlementExecutionMode === "settlement_service"
                       ? "chain rail active"
                       : settlementExecutionMode === "local_signer_fallback"
@@ -1524,7 +1538,7 @@ export default function BetsPage() {
                         : "chain rail pending"}
                   </span>
                   {runtimeBetTestMode ? (
-                    <span className="rounded-full border border-amber-300/20 bg-amber-400/10 px-3 py-1 text-xs uppercase tracking-[0.18em] text-amber-100">
+                    <span className="rounded-full border border-amber-300/20 bg-amber-400/10 px-2.5 py-0.5 text-[10px] uppercase tracking-[0.16em] text-amber-100">
                       testing mode
                     </span>
                   ) : null}
@@ -1543,7 +1557,7 @@ export default function BetsPage() {
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
                 <MiniMetric label="Open" value={String(openCount)} />
                 <MiniMetric label="In Play" value={String(liveCount)} />
-                <MiniMetric label="Book Pot" value={`${formatCompact(totalBookPot || 0)} WOLO`} />
+                <MiniMetric label="Book Pot" value={`${formatExactWolo(totalBookPot || 0)} WOLO`} />
                 <MiniMetric
                   label="Your Slips"
                   value={isAuthenticated ? String(board?.yourBook.activeCount || 0) : "Sign in"}
@@ -2047,6 +2061,8 @@ function ResultCard({
   compact?: boolean;
   founderChipVariant?: "full" | "micro";
 }) {
+  const resultPotWolo = result.totalPotWolo || result.payoutWolo;
+
   const content = (
     <div>
       <div className="flex items-start justify-between gap-3">
@@ -2064,12 +2080,12 @@ function ResultCard({
         </div>
 
         <div
-          className={`flex items-center gap-2 rounded-full border border-emerald-300/16 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-100 ${
+          className={`flex items-center gap-2 rounded-full border border-emerald-300/16 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-100 ${
             compact ? "shrink-0" : ""
           }`}
         >
           <CoinMark small />
-          <span>{formatCompact(result.payoutWolo)}</span>
+          <span>{formatExactWolo(resultPotWolo)} WOLO</span>
         </div>
       </div>
 
@@ -2177,7 +2193,7 @@ function BoardPulseSection({
         <HeatRow
           label="Biggest pot"
           value={biggestPotLabel}
-          detail={biggestPotWolo ? `${formatCompact(biggestPotWolo)} WOLO` : "Waiting for the next crowd surge"}
+          detail={biggestPotWolo ? `${formatExactWolo(biggestPotWolo)} WOLO` : "Waiting for the next crowd surge"}
         />
         <HeatRow
           label="Best return"
@@ -2205,7 +2221,7 @@ function HeatSection({ board }: { board: BetBoardSnapshot | null }) {
           value={board?.heat.biggestPot?.label || "Market arming"}
           detail={
             board?.heat.biggestPot
-              ? `${formatCompact(board.heat.biggestPot.potWolo)} WOLO`
+              ? `${formatExactWolo(board.heat.biggestPot.potWolo)} WOLO`
               : "Quiet"
           }
         />
@@ -2469,7 +2485,7 @@ function MarketFeature({
           </div>
           <div className="mt-3 flex items-center justify-center gap-2 text-3xl font-semibold text-white">
             <CoinMark />
-            <span>{formatCompact(market.totalPotWolo)}</span>
+            <span>{formatExactWolo(market.totalPotWolo)}</span>
           </div>
           <div className="mt-2 text-xs text-slate-400">{market.left.crowdPercent}% / {market.right.crowdPercent}%</div>
         </div>
@@ -2654,7 +2670,7 @@ function MarketCard({
             <div className="text-[11px] uppercase tracking-[0.26em] text-slate-500">Pot</div>
             <div className="mt-2 flex items-center gap-2 text-base font-semibold text-white">
               <CoinMark small />
-              <span>{formatCompact(market.totalPotWolo)} WOLO</span>
+              <span>{formatExactWolo(market.totalPotWolo)} WOLO</span>
             </div>
           </div>
           <div className="text-right text-xs text-slate-400">
