@@ -27,6 +27,7 @@ type ClaimSample = {
   normalizedPlayerName: string;
   displayPlayerName: string;
   amountWolo: number;
+  claimKind: string;
   status: string;
   createdAt: Date;
   rescindedAt: Date | null;
@@ -35,7 +36,10 @@ type ClaimSample = {
 type WagerSample = {
   userId: number;
   amountWolo: number;
+  payoutWolo: number | null;
+  status: string;
   createdAt: Date;
+  settledAt: Date | null;
 };
 
 type ActorMetrics = {
@@ -43,6 +47,8 @@ type ActorMetrics = {
   user: UserIdentity | null;
   replayName: string | null;
   earnedWolo: number;
+  settledTakeWolo: number;
+  rewardWolo: number;
   wageredWolo: number;
   claimCount: number;
   wagerCount: number;
@@ -110,6 +116,8 @@ function buildEntry(
       verified: metrics.user.verified,
       verificationLevel: metrics.user.verificationLevel,
       earnedWolo: metrics.earnedWolo,
+      settledTakeWolo: metrics.settledTakeWolo,
+      rewardWolo: metrics.rewardWolo,
       wageredWolo: metrics.wageredWolo,
       claimCount: metrics.claimCount,
       wagerCount: metrics.wagerCount,
@@ -129,6 +137,8 @@ function buildEntry(
     verified: false,
     verificationLevel: 0,
     earnedWolo: metrics.earnedWolo,
+    settledTakeWolo: metrics.settledTakeWolo,
+    rewardWolo: metrics.rewardWolo,
     wageredWolo: metrics.wageredWolo,
     claimCount: metrics.claimCount,
     wagerCount: metrics.wagerCount,
@@ -229,6 +239,8 @@ function getOrCreateActor(
     user: input.user,
     replayName: input.replayName,
     earnedWolo: 0,
+    settledTakeWolo: 0,
+    rewardWolo: 0,
     wageredWolo: 0,
     claimCount: 0,
     wagerCount: 0,
@@ -251,6 +263,27 @@ async function loadClaims(prisma: PrismaClient, since: Date | null) {
       normalizedPlayerName: true,
       displayPlayerName: true,
       amountWolo: true,
+      claimKind: true,
+      status: true,
+      createdAt: true,
+      rescindedAt: true,
+    },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+  }) as Promise<ClaimSample[]>;
+}
+
+async function loadOutstandingClaims(prisma: PrismaClient) {
+  return prisma.pendingWoloClaim.findMany({
+    where: {
+      rescindedAt: null,
+      status: "pending",
+    },
+    select: {
+      claimedByUserId: true,
+      normalizedPlayerName: true,
+      displayPlayerName: true,
+      amountWolo: true,
+      claimKind: true,
       status: true,
       createdAt: true,
       rescindedAt: true,
@@ -261,30 +294,58 @@ async function loadClaims(prisma: PrismaClient, since: Date | null) {
 
 async function loadWagers(prisma: PrismaClient, since: Date | null) {
   return prisma.betWager.findMany({
-    where: since ? { createdAt: { gte: since } } : undefined,
+    where: since
+      ? {
+          OR: [
+            { createdAt: { gte: since } },
+            { settledAt: { gte: since } },
+          ],
+        }
+      : undefined,
     select: {
       userId: true,
       amountWolo: true,
+      payoutWolo: true,
+      status: true,
       createdAt: true,
+      settledAt: true,
     },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
   }) as Promise<WagerSample[]>;
 }
 
+function claimCountsAsTake(claim: Pick<ClaimSample, "claimKind">) {
+  return claim.claimKind !== "bet_payout" && claim.claimKind !== "bet_refund";
+}
+
+function wagerCountsAsTake(wager: Pick<WagerSample, "status" | "payoutWolo">) {
+  return (wager.status === "won" || wager.status === "void") && (wager.payoutWolo ?? 0) > 0;
+}
+
 async function loadMetricsForPeriod(prisma: PrismaClient, since: Date | null) {
-  const [claims, wagers] = await Promise.all([loadClaims(prisma, since), loadWagers(prisma, since)]);
+  const [claims, wagers, outstandingClaims] = await Promise.all([
+    loadClaims(prisma, since),
+    loadWagers(prisma, since),
+    loadOutstandingClaims(prisma),
+  ]);
 
   const claimedUserIds = claims
+    .map((claim) => claim.claimedByUserId)
+    .filter((value): value is number => Number.isInteger(value));
+  const outstandingClaimUserIds = outstandingClaims
     .map((claim) => claim.claimedByUserId)
     .filter((value): value is number => Number.isInteger(value));
   const wagerUserIds = wagers.map((wager) => wager.userId);
   const orphanClaimNames = claims
     .filter((claim) => !claim.claimedByUserId)
     .map((claim) => claim.displayPlayerName || claim.normalizedPlayerName);
+  const outstandingClaimNames = outstandingClaims
+    .filter((claim) => !claim.claimedByUserId)
+    .map((claim) => claim.displayPlayerName || claim.normalizedPlayerName);
 
   const [usersById, usersByName] = await Promise.all([
-    loadUsersByIds(prisma, [...claimedUserIds, ...wagerUserIds]),
-    loadUsersByNames(prisma, orphanClaimNames),
+    loadUsersByIds(prisma, [...claimedUserIds, ...outstandingClaimUserIds, ...wagerUserIds]),
+    loadUsersByNames(prisma, [...orphanClaimNames, ...outstandingClaimNames]),
   ]);
 
   const metrics = new Map<string, ActorMetrics>();
@@ -303,13 +364,12 @@ async function loadMetricsForPeriod(prisma: PrismaClient, since: Date | null) {
       replayName: matchedUser ? null : claim.displayPlayerName || claim.normalizedPlayerName,
     });
 
-    actor.earnedWolo += claim.amountWolo;
+    if (claimCountsAsTake(claim)) {
+      actor.rewardWolo += claim.amountWolo;
+      actor.earnedWolo += claim.amountWolo;
+    }
     actor.claimCount += 1;
     actor.lastActiveAt = setLatestActivity(actor.lastActiveAt, claim.createdAt);
-
-    if (claim.status === "pending") {
-      actor.unclaimedWolo += claim.amountWolo;
-    }
   }
 
   for (const wager of wagers) {
@@ -322,9 +382,38 @@ async function loadMetricsForPeriod(prisma: PrismaClient, since: Date | null) {
       replayName: null,
     });
 
-    actor.wageredWolo += wager.amountWolo;
-    actor.wagerCount += 1;
-    actor.lastActiveAt = setLatestActivity(actor.lastActiveAt, wager.createdAt);
+    if (!since || wager.createdAt.getTime() >= since.getTime()) {
+      actor.wageredWolo += wager.amountWolo;
+      actor.wagerCount += 1;
+      actor.lastActiveAt = setLatestActivity(actor.lastActiveAt, wager.createdAt);
+    }
+
+    const takeSettledAt = wager.settledAt ?? wager.createdAt;
+    if (
+      wagerCountsAsTake(wager) &&
+      (!since || takeSettledAt.getTime() >= since.getTime())
+    ) {
+      actor.settledTakeWolo += wager.payoutWolo ?? 0;
+      actor.earnedWolo += wager.payoutWolo ?? 0;
+      actor.lastActiveAt = setLatestActivity(actor.lastActiveAt, takeSettledAt);
+    }
+  }
+
+  for (const claim of outstandingClaims) {
+    const directUser = claim.claimedByUserId ? usersById.get(claim.claimedByUserId) ?? null : null;
+    const matchedUser =
+      directUser ??
+      usersByName.get(claim.normalizedPlayerName) ??
+      usersByName.get(normalizeNameKey(claim.displayPlayerName)) ??
+      null;
+    const actorKey = matchedUser ? `u:${matchedUser.id}` : `n:${claim.normalizedPlayerName}`;
+    const actor = getOrCreateActor(metrics, {
+      actorKey,
+      user: matchedUser,
+      replayName: matchedUser ? null : claim.displayPlayerName || claim.normalizedPlayerName,
+    });
+
+    actor.unclaimedWolo += claim.amountWolo;
   }
 
   return Array.from(metrics.values())

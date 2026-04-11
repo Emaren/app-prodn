@@ -83,8 +83,8 @@ export default async function WarChestPage() {
                 </h1>
               </div>
               <p className="max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
-                Weekly earners lead, active bettors stay visible, and every live market, pending
-                payout, and recent betting move lands here in one clean rail.
+                Weekly take leads, settled payouts stay visible, claimable WOLO stays separate,
+                and every live market plus recent betting move lands here in one clean rail.
               </p>
             </div>
 
@@ -149,24 +149,28 @@ export default async function WarChestPage() {
                 </div>
               </div>
 
-              <div className="mt-5 grid gap-3 sm:grid-cols-3">
+              <div className="mt-5 grid gap-3 sm:grid-cols-4">
                 <MetricTile
-                  label="Earned"
+                  label="Weekly Take"
                   value={leader ? `${formatNumber(leader.earnedWolo)} WOLO` : "0 WOLO"}
                 />
                 <MetricTile
-                  label="Wagered"
-                  value={leader ? `${formatNumber(leader.wageredWolo)} WOLO` : "0 WOLO"}
+                  label="Settled"
+                  value={leader ? `${formatNumber(leader.settledTakeWolo)} WOLO` : "0 WOLO"}
                 />
                 <MetricTile
-                  label="Unclaimed"
+                  label="Rewards"
+                  value={leader ? `${formatNumber(leader.rewardWolo)} WOLO` : "0 WOLO"}
+                />
+                <MetricTile
+                  label="Claimable"
                   value={leader ? `${formatNumber(leader.unclaimedWolo)} WOLO` : "0 WOLO"}
                 />
               </div>
 
               <div className="mt-5 rounded-[1.4rem] border border-white/8 bg-white/5 p-4 text-sm leading-6 text-slate-300">
                 {leader
-                  ? `${leader.name} is setting the tone right now. This rail rewards bettors who actually move WOLO, win it, and keep the board alive.`
+                  ? `${leader.name} is setting the tone right now. Weekly take combines settled wager payouts with claim-only rewards, while claimable WOLO stays called out separately.`
                   : "Once the first payouts and slips land, this page turns into the betting pulse of the site."}
               </div>
             </section>
@@ -224,12 +228,12 @@ export default async function WarChestPage() {
                         {entry.verified ? (
                           <Tag tone="emerald">Steam linked</Tag>
                         ) : entry.claimed ? (
-                          <Tag tone="slate">Claimed</Tag>
+                          <Tag tone="slate">Profile claimed</Tag>
                         ) : (
-                          <Tag tone="slate">Claimable</Tag>
+                          <Tag tone="slate">Replay profile</Tag>
                         )}
                         {entry.unclaimedWolo > 0 ? (
-                          <Tag tone="amber">Unclaimed $WOLO</Tag>
+                          <Tag tone="amber">Claimable now</Tag>
                         ) : null}
                         {entry.wagerCount > 0 ? (
                           <Tag tone="sky">{entry.wagerCount} slips</Tag>
@@ -238,7 +242,10 @@ export default async function WarChestPage() {
                     </div>
 
                     <div className="grid gap-2 text-left md:min-w-[10rem] md:text-right">
-                      <ScoreLine label="Earned" value={`${formatNumber(entry.earnedWolo)} WOLO`} />
+                      <ScoreLine label="Take" value={`${formatNumber(entry.earnedWolo)} WOLO`} />
+                      <ScoreLine label="Settled" value={`${formatNumber(entry.settledTakeWolo)} WOLO`} />
+                      <ScoreLine label="Rewards" value={`${formatNumber(entry.rewardWolo)} WOLO`} />
+                      <ScoreLine label="Claimable" value={`${formatNumber(entry.unclaimedWolo)} WOLO`} />
                       <ScoreLine label="Wagered" value={`${formatNumber(entry.wageredWolo)} WOLO`} />
                     </div>
                   </div>

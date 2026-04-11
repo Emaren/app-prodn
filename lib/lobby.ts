@@ -194,6 +194,8 @@ export type LobbyWoloEarnersEntry = {
   verified: boolean;
   verificationLevel: number;
   earnedWolo: number;
+  settledTakeWolo: number;
+  rewardWolo: number;
   wageredWolo: number;
   claimCount: number;
   wagerCount: number;
