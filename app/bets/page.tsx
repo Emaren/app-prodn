@@ -2019,17 +2019,14 @@ function ResultCard({
   const content = (
     <div>
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="break-words text-sm uppercase tracking-[0.28em] text-slate-500">
-            {result.mapName}
+        <div className="min-w-0 flex-1">
+          <div className="inline-flex max-w-full items-center rounded-full border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-slate-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+            <span className="truncate">{result.mapName}</span>
           </div>
           <div className="mt-2 break-words text-lg font-semibold leading-tight text-white">
             {result.title}
           </div>
           <div className="mt-1 text-sm text-slate-400">{result.winner} took it</div>
-          <div className="mt-2 text-xs uppercase tracking-[0.24em] text-slate-500">
-            {formatSettledTime(result.settledAt)}
-          </div>
         </div>
 
         <div
@@ -2042,7 +2039,17 @@ function ResultCard({
         </div>
       </div>
 
-      <FounderBonusChips bonuses={result.founderBonuses} compact variant={founderChipVariant} />
+      <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+        <div className="text-[11px] uppercase tracking-[0.24em] text-slate-500">
+          {formatSettledTime(result.settledAt)}
+        </div>
+        <FounderBonusChips
+          bonuses={result.founderBonuses}
+          compact
+          variant={founderChipVariant}
+          className="gap-2"
+        />
+      </div>
     </div>
   );
 

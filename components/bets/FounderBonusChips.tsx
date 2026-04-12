@@ -14,17 +14,19 @@ export default function FounderBonusChips({
   bonuses,
   compact = false,
   variant = "full",
+  className = "",
 }: {
   bonuses: BetFounderChip[];
   compact?: boolean;
   variant?: "full" | "micro";
+  className?: string;
 }) {
   if (!bonuses.length) {
     return null;
   }
 
   return (
-    <div className={`flex max-w-full flex-wrap gap-1.5 ${compact ? "" : "mt-3"}`}>
+    <div className={`flex max-w-full flex-wrap gap-1.5 ${compact ? "" : "mt-3"} ${className}`.trim()}>
       {bonuses.map((bonus) => {
         const micro = variant === "micro";
         const tone =
