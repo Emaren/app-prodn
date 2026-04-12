@@ -57,17 +57,8 @@ export function LobbyHero({
 
   const primaryActionClassName =
     viewMode === "field"
-      ? "inline-flex min-h-[3.25rem] items-center justify-center rounded-full bg-emerald-300 px-4 py-3 text-center text-sm font-semibold whitespace-nowrap text-slate-950 transition hover:bg-emerald-200"
-      : "inline-flex min-h-[3.25rem] items-center justify-center rounded-full bg-amber-300 px-4 py-3 text-center text-sm font-semibold whitespace-nowrap text-slate-950 transition hover:bg-amber-200";
-
-  const secondaryActionClassName =
-    "inline-flex min-h-[3.25rem] items-center justify-center rounded-full border border-white/15 px-4 py-3 text-center text-sm whitespace-nowrap text-white/85 transition hover:border-white/30 hover:text-white";
-
-  const actionGridClassName = isAuthenticated
-    ? "grid gap-3 sm:grid-cols-2 xl:grid-cols-3"
-    : "grid gap-3 sm:grid-cols-2 xl:grid-cols-4";
-
-  const primaryActionSpanClassName = isAuthenticated ? "" : "sm:col-span-2 xl:col-span-2";
+      ? "inline-flex min-h-14 items-center justify-center rounded-full bg-emerald-300 px-6 text-center text-[13px] font-semibold leading-tight text-slate-950 transition hover:bg-emerald-200"
+      : "inline-flex min-h-14 items-center justify-center rounded-full bg-amber-300 px-6 text-center text-[13px] font-semibold leading-tight text-slate-950 transition hover:bg-amber-200";
 
   const woloShellClassName =
     viewMode === "field"
@@ -187,24 +178,36 @@ export function LobbyHero({
         </div>
       )}
 
-      <div className={actionGridClassName}>
+      <div
+        className={
+          isAuthenticated
+            ? "grid gap-3 sm:grid-cols-2 xl:grid-cols-3"
+            : "grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_minmax(0,1fr)]"
+        }
+      >
         {isAuthenticated ? (
           <Link href="/profile" className={primaryActionClassName}>
             Open Profile
           </Link>
         ) : (
           <SteamLoginButton
-            className={`${primaryActionClassName} w-full ${primaryActionSpanClassName}`}
+            className={`${primaryActionClassName} w-full whitespace-nowrap`}
             label={loading ? "Loading..." : "Claim Your Steam Identity"}
             disabled={loading}
           />
         )}
 
-        <Link href={isAuthenticated ? "/upload" : "/download"} className={secondaryActionClassName}>
+        <Link
+          href={isAuthenticated ? "/upload" : "/download"}
+          className="inline-flex min-h-14 items-center justify-center rounded-full border border-white/15 px-5 text-center text-[13px] font-medium leading-tight text-white/85 transition hover:border-white/30 hover:text-white"
+        >
           {isAuthenticated ? "Upload Replay" : "Download Watcher"}
         </Link>
 
-        <Link href="/rivalries" className={secondaryActionClassName}>
+        <Link
+          href="/rivalries"
+          className="inline-flex min-h-14 items-center justify-center rounded-full border border-white/15 px-5 text-center text-[13px] font-medium leading-tight text-white/85 transition hover:border-white/30 hover:text-white"
+        >
           View Rivalries
         </Link>
       </div>
