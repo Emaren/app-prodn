@@ -57,8 +57,17 @@ export function LobbyHero({
 
   const primaryActionClassName =
     viewMode === "field"
-      ? "rounded-full bg-emerald-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-200"
-      : "rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200";
+      ? "inline-flex min-h-[3.25rem] items-center justify-center rounded-full bg-emerald-300 px-4 py-3 text-center text-sm font-semibold whitespace-nowrap text-slate-950 transition hover:bg-emerald-200"
+      : "inline-flex min-h-[3.25rem] items-center justify-center rounded-full bg-amber-300 px-4 py-3 text-center text-sm font-semibold whitespace-nowrap text-slate-950 transition hover:bg-amber-200";
+
+  const secondaryActionClassName =
+    "inline-flex min-h-[3.25rem] items-center justify-center rounded-full border border-white/15 px-4 py-3 text-center text-sm whitespace-nowrap text-white/85 transition hover:border-white/30 hover:text-white";
+
+  const actionGridClassName = isAuthenticated
+    ? "grid gap-3 sm:grid-cols-2 xl:grid-cols-3"
+    : "grid gap-3 sm:grid-cols-2 xl:grid-cols-4";
+
+  const primaryActionSpanClassName = isAuthenticated ? "" : "sm:col-span-2 xl:col-span-2";
 
   const woloShellClassName =
     viewMode === "field"
@@ -178,30 +187,24 @@ export function LobbyHero({
         </div>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      <div className={actionGridClassName}>
         {isAuthenticated ? (
-          <Link href="/profile" className={`${primaryActionClassName} block text-center`}>
+          <Link href="/profile" className={primaryActionClassName}>
             Open Profile
           </Link>
         ) : (
           <SteamLoginButton
-            className={`${primaryActionClassName} block w-full text-center`}
+            className={`${primaryActionClassName} w-full ${primaryActionSpanClassName}`}
             label={loading ? "Loading..." : "Claim Your Steam Identity"}
             disabled={loading}
           />
         )}
 
-        <Link
-          href={isAuthenticated ? "/upload" : "/download"}
-          className="block rounded-full border border-white/15 px-5 py-3 text-center text-sm text-white/85 transition hover:border-white/30 hover:text-white"
-        >
+        <Link href={isAuthenticated ? "/upload" : "/download"} className={secondaryActionClassName}>
           {isAuthenticated ? "Upload Replay" : "Download Watcher"}
         </Link>
 
-        <Link
-          href="/rivalries"
-          className="block rounded-full border border-white/15 px-5 py-3 text-center text-sm text-white/85 transition hover:border-white/30 hover:text-white"
-        >
+        <Link href="/rivalries" className={secondaryActionClassName}>
           View Rivalries
         </Link>
       </div>
