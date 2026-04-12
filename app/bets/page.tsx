@@ -1289,56 +1289,31 @@ export default function BetsPage() {
           <section className="grid gap-5 xl:grid-cols-[0.84fr_1.16fr]">
             <div className={`${shellClass()} p-5 sm:p-6`}>
               <div className="flex items-start justify-between gap-4">
-                <div>
-                  <div className="text-[11px] uppercase tracking-[0.38em] text-slate-400">
-                    The War Book
-                  </div>
-                  <h1 className="mt-3 text-4xl font-semibold tracking-[-0.05em] text-white sm:text-5xl">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="rounded-full border border-amber-200/12 bg-amber-400/10 px-2.5 py-0.5 text-[10px] uppercase tracking-[0.28em] text-amber-100">
                     Bets
-                  </h1>
-                  <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300">
-                    Basic keeps the board cleaner: spotlight the live book when one exists, keep your
-                    slips visible, and let recent settled books carry the page when traffic is thin.
-                  </p>
+                  </span>
+                  <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-0.5 text-[11px] text-slate-300">
+                    {openCount} books
+                  </span>
+                  <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-0.5 text-[11px] text-slate-300">
+                    {liveCount} live
+                  </span>
                 </div>
 
                 <BetsViewToggle value={betsView} onChange={setBetsView} />
               </div>
 
-              <div className="mt-5 flex flex-wrap gap-1.5">
-                <span className="rounded-full border border-amber-200/12 bg-amber-400/10 px-2.5 py-0.5 text-[10px] uppercase tracking-[0.28em] text-amber-100">
-                  Basic view
-                </span>
-                <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-0.5 text-[11px] text-slate-300">
-                  {openCount} books
-                </span>
-                <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-0.5 text-[11px] text-slate-300">
-                  {liveCount} live
-                </span>
-                <span
-                  className={`rounded-full px-2.5 py-0.5 text-[10px] uppercase tracking-[0.16em] ${
-                    onchainBetEscrowRequired && onchainBetEscrowEnabled
-                      ? "border border-cyan-300/20 bg-cyan-400/10 text-cyan-100"
-                      : onchainBetEscrowRequired
-                        ? "border border-rose-300/20 bg-rose-400/10 text-rose-100"
-                        : onchainBetEscrowEnabled
-                          ? "border border-amber-300/20 bg-amber-400/10 text-amber-100"
-                          : "border border-white/[0.08] bg-white/[0.04] text-slate-300"
-                  }`}
-                >
-                  {onchainBetEscrowRequired && onchainBetEscrowEnabled
-                    ? "verified escrow required"
-                    : onchainBetEscrowRequired
-                      ? "escrow required"
-                      : runtimeBetEscrowMode === "optional" && onchainBetEscrowEnabled
-                        ? "escrow optional"
-                        : "app-side fallback"}
-                </span>
+              <div className="mt-5">
+                <div className="text-[11px] uppercase tracking-[0.38em] text-slate-400">The War Book</div>
+                <h1 className="mt-3 text-4xl font-semibold tracking-[-0.05em] text-white sm:text-5xl">
+                  Bets
+                </h1>
               </div>
 
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
                 <MiniMetric label="Open" value={String(openCount)} />
-                <MiniMetric label="Recent Books" value={String(recentResults.length)} />
+                <MiniMetric label="In Play" value={String(liveCount)} />
                 <MiniMetric label="Book Pot" value={`${formatExactWolo(totalBookPot || 0)} WOLO`} />
                 <MiniMetric
                   label="Your Slips"
@@ -1347,43 +1322,26 @@ export default function BetsPage() {
               </div>
 
               <div className={`mt-5 ${insetClass()} px-4 py-4`}>
-                <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center justify-between gap-3">
                   <div>
-                    <div className="text-[11px] uppercase tracking-[0.32em] text-slate-500">
-                      Board Read
-                    </div>
-                    <div className="mt-2 text-lg font-semibold text-white">
-                      {spotlightMarket
-                        ? `${spotlightMarket.title} is carrying the page right now.`
-                        : recentResults[0]
-                          ? `${recentResults[0].winner} closed the latest book.`
-                          : "No live book yet, but the rail is ready."}
-                    </div>
-                    <div className="mt-2 text-sm text-slate-400">
-                      {spotlightMarket
-                        ? `${spotlightMarket.left.name} vs ${spotlightMarket.right.name} · ${spotlightMarket.closeLabel}`
-                        : recentResults[0]
-                          ? `${recentResults[0].title} · pot ${formatExactWolo(recentResults[0].totalPotWolo)} WOLO · ${formatSettledTime(recentResults[0].settledAt)}`
-                          : "The first live or recently settled book will land here automatically."}
-                    </div>
-                  </div>
-
-                  <div className="text-right">
-                    <div className="text-[11px] uppercase tracking-[0.28em] text-slate-500">
-                      Your Book
-                    </div>
+                    <div className="text-[11px] uppercase tracking-[0.32em] text-slate-500">Your Book</div>
                     <div className="mt-2 text-lg font-semibold text-white">{viewerName}</div>
-                    <div className="mt-1 text-xs text-slate-400">
+                  </div>
+                  <div className="text-right">
+                    <div className="text-[11px] uppercase tracking-[0.28em] text-slate-500">If Right</div>
+                    <div className="mt-2 text-lg font-semibold text-white">
                       {isAuthenticated
-                        ? `${formatCompact(board?.yourBook.projectedReturnWolo || 0)} WOLO if right`
-                        : "Sign in to open slips"}
+                        ? `${formatCompact(board?.yourBook.projectedReturnWolo || 0)} WOLO`
+                        : "Open"}
                     </div>
                   </div>
                 </div>
               </div>
 
               {runtimeBetEscrowConfigError ? (
-                <div className={`mt-4 ${insetClass()} border-rose-300/15 bg-rose-500/[0.08] px-4 py-4 text-sm text-rose-100`}>
+                <div
+                  className={`mt-4 ${insetClass()} border-rose-300/15 bg-rose-500/[0.08] px-4 py-4 text-sm text-rose-100`}
+                >
                   {runtimeBetEscrowConfigError}
                 </div>
               ) : null}
@@ -1537,11 +1495,6 @@ export default function BetsPage() {
                         ? "local signer fallback"
                         : "chain rail pending"}
                   </span>
-                  {runtimeBetTestMode ? (
-                    <span className="rounded-full border border-amber-300/20 bg-amber-400/10 px-2.5 py-0.5 text-[10px] uppercase tracking-[0.16em] text-amber-100">
-                      testing mode
-                    </span>
-                  ) : null}
                 </div>
 
                 <BetsViewToggle value={betsView} onChange={setBetsView} />
