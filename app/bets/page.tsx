@@ -2009,10 +2009,12 @@ function ResultCard({
   result,
   compact = false,
   founderChipVariant = "full",
+  basicLook = false,
 }: {
   result: BetSettledResult;
   compact?: boolean;
   founderChipVariant?: "full" | "micro";
+  basicLook?: boolean;
 }) {
   const resultPotWolo = result.totalPotWolo || result.payoutWolo;
 
@@ -2020,35 +2022,39 @@ function ResultCard({
     <div>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <div className="inline-flex max-w-full items-center rounded-full border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-slate-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-            <span className="truncate">{result.mapName}</span>
-          </div>
+          {basicLook ? (
+            <div className="truncate whitespace-nowrap text-[10px] uppercase tracking-[0.32em] text-slate-500 sm:text-[11px]">
+              {result.mapName}
+            </div>
+          ) : (
+            <div className="inline-flex max-w-full items-center rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.22em] text-slate-300">
+              <span className="truncate whitespace-nowrap">{result.mapName}</span>
+            </div>
+          )}
+
           <div className="mt-2 break-words text-lg font-semibold leading-tight text-white">
             {result.title}
           </div>
           <div className="mt-1 text-sm text-slate-400">{result.winner} took it</div>
+          <div className="mt-2 text-xs uppercase tracking-[0.24em] text-slate-500">
+            {formatSettledTime(result.settledAt)}
+          </div>
+          <FounderBonusChips
+            bonuses={result.founderBonuses}
+            compact
+            variant={founderChipVariant}
+            className="mt-2"
+          />
         </div>
 
         <div
-          className={`flex items-center gap-2 rounded-full border border-emerald-300/16 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-100 ${
-            compact ? "shrink-0" : ""
+          className={`flex shrink-0 items-center gap-2 rounded-full border border-emerald-300/16 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-100 ${
+            compact ? "" : ""
           }`}
         >
           <CoinMark small />
           <span>{formatExactWolo(resultPotWolo)} WOLO</span>
         </div>
-      </div>
-
-      <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
-        <div className="text-[11px] uppercase tracking-[0.24em] text-slate-500">
-          {formatSettledTime(result.settledAt)}
-        </div>
-        <FounderBonusChips
-          bonuses={result.founderBonuses}
-          compact
-          variant={founderChipVariant}
-          className="gap-2"
-        />
       </div>
     </div>
   );
@@ -2089,6 +2095,7 @@ function RecentBetsSection({ results }: { results: BetSettledResult[] }) {
                 key={result.id}
                 result={result}
                 compact
+                basicLook
                 founderChipVariant="micro"
               />
             ))
@@ -2220,7 +2227,7 @@ function RecentResultFeature({ result }: { result: BetSettledResult }) {
       </div>
 
       <div className="mt-5">
-        <ResultCard result={result} founderChipVariant="micro" />
+        <ResultCard result={result} basicLook founderChipVariant="micro" />
       </div>
     </div>
   );
