@@ -1990,11 +1990,11 @@ function YourBookSection({
           </div>
         </>
       ) : (
-        <div className={`${insetClass()} mt-5 flex min-h-[320px] flex-col justify-between px-4 py-5`}>
+        <div className={`${insetClass()} mt-5 flex min-h-[320px] flex-col px-4 py-5`}>
           <div>
             <div className="text-base font-semibold text-white">Sign in to lock slips.</div>
-            <div className="mt-2 max-w-md text-sm leading-6 text-slate-400">
-              Keep your active picks, stake recovery proofs, and projected return in one calmer control rail.
+            <div className="mt-2 max-w-lg text-sm leading-6 text-slate-400">
+              Keep active picks, stake recovery proofs, and projected return on one calmer rail the moment you sign in.
             </div>
             <button
               type="button"
@@ -2005,29 +2005,33 @@ function YourBookSection({
             </button>
           </div>
 
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">
-            <div className={`${cardClass()} border-white/[0.08] bg-white/[0.03] px-4 py-4`}>
-              <div className="text-[11px] uppercase tracking-[0.28em] text-slate-500">Locked rail</div>
-              <div className="mt-2 text-sm font-semibold text-white">Your slips stay gathered here.</div>
-              <div className="mt-2 space-y-2 text-sm text-slate-400">
-                <div>Track every side you backed without losing the board.</div>
-                <div>Keep stake proofs and recovery paths within reach.</div>
-              </div>
-            </div>
-            <div className={`${cardClass()} border-cyan-300/12 bg-cyan-400/[0.04] px-4 py-4`}>
-              <div className="text-[11px] uppercase tracking-[0.28em] text-slate-500">What unlocks</div>
-              <div className="mt-2 grid gap-2 text-sm text-slate-300">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-slate-400">Active slips</span>
-                  <span className="font-semibold text-white">Live</span>
+          <div className="mt-auto pt-6">
+            <div className={`${cardClass()} overflow-hidden border-white/[0.08] bg-white/[0.03]`}>
+              <div className="grid gap-0 sm:grid-cols-[1.2fr_0.9fr]">
+                <div className="px-4 py-4 sm:px-5">
+                  <div className="text-[11px] uppercase tracking-[0.28em] text-slate-500">Locked rail</div>
+                  <div className="mt-2 text-base font-semibold text-white">Your slips stay gathered here.</div>
+                  <div className="mt-2 max-w-md text-sm leading-6 text-slate-400">
+                    Track every side you backed, keep recovery proofs close, and stop losing the board when the action shifts.
+                  </div>
                 </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-slate-400">Projected return</span>
-                  <span className="font-semibold text-white">Instant</span>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-slate-400">Recovery rail</span>
-                  <span className="font-semibold text-white">Ready</span>
+
+                <div className="border-t border-white/[0.06] bg-white/[0.02] px-4 py-4 sm:border-l sm:border-t-0 sm:px-5">
+                  <div className="text-[11px] uppercase tracking-[0.28em] text-slate-500">What unlocks</div>
+                  <div className="mt-3 space-y-2.5 text-sm">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-slate-400">Active slips</span>
+                      <span className="font-semibold text-white">Live</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-slate-400">Projected return</span>
+                      <span className="font-semibold text-white">Instant</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-slate-400">Recovery rail</span>
+                      <span className="font-semibold text-white">Ready</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -2052,7 +2056,7 @@ function ResultCard({
   const resultPotWolo = result.totalPotWolo || result.payoutWolo;
 
   const content = (
-    <div>
+    <div className={`flex min-h-full flex-col ${compact ? "" : ""}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           {basicLook ? (
@@ -2064,30 +2068,31 @@ function ResultCard({
               <span className="truncate whitespace-nowrap">{result.mapName}</span>
             </div>
           )}
-
-          <div className="mt-2 break-words text-lg font-semibold leading-tight text-white">
-            {result.title}
-          </div>
-          <div className="mt-1 text-sm text-slate-400">{result.winner} took it</div>
-          <div className="mt-2 truncate whitespace-nowrap text-xs uppercase tracking-[0.24em] text-slate-500">
-            {formatSettledTime(result.settledAt)}
-          </div>
-          <FounderBonusChips
-            bonuses={result.founderBonuses}
-            compact
-            variant={founderChipVariant}
-            className="mt-2 max-w-full"
-          />
         </div>
 
-        <div
-          className={`flex shrink-0 items-center gap-2 rounded-full border border-emerald-300/16 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-100 ${
-            compact ? "" : ""
-          }`}
-        >
+        <div className="flex shrink-0 items-center gap-2 rounded-full border border-emerald-300/16 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-100">
           <CoinMark small />
           <span>{formatExactWolo(resultPotWolo)} WOLO</span>
         </div>
+      </div>
+
+      <div className="mt-3 min-w-0">
+        <div className="break-words text-lg font-semibold leading-tight text-white">
+          {result.title}
+        </div>
+        <div className="mt-1 text-sm leading-6 text-slate-400">{result.winner} took it</div>
+      </div>
+
+      <div className={`mt-auto border-t border-white/[0.06] ${compact ? "pt-3" : "pt-4"}`}>
+        <div className="truncate whitespace-nowrap text-xs uppercase tracking-[0.24em] text-slate-500">
+          {formatSettledTime(result.settledAt)}
+        </div>
+        <FounderBonusChips
+          bonuses={result.founderBonuses}
+          compact
+          variant={founderChipVariant}
+          className="mt-2 max-w-full"
+        />
       </div>
     </div>
   );
@@ -2096,14 +2101,14 @@ function ResultCard({
     return (
       <Link
         href={result.href}
-        className={`${cardClass()} block px-4 py-4 transition hover:border-white/14 hover:bg-white/[0.05]`}
+        className={`${cardClass()} block min-h-[198px] px-4 py-4 transition hover:border-white/14 hover:bg-white/[0.05]`}
       >
         {content}
       </Link>
     );
   }
 
-  return <article className={`${cardClass()} px-4 py-4`}>{content}</article>;
+  return <article className={`${cardClass()} min-h-[198px] px-4 py-4`}>{content}</article>;
 }
 
 function RecentBetsSection({ results }: { results: BetSettledResult[] }) {
