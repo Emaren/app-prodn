@@ -9,8 +9,12 @@ type WoloStatusSnapshot = {
   nodeVersion: string;
   latestBlockHeight: string;
   latestBlockTime: string | null;
+  lastBlockAgeSeconds: number | null;
+  staleAfterSeconds: number;
   peers: number;
   catchingUp: boolean;
+  consensusStatus: "advancing" | "stalled" | "catching_up" | "standby";
+  statusLabel: string;
   validatorAddress: string | null;
   latestBlockHash: string | null;
   latestAppHash: string | null;
@@ -42,6 +46,38 @@ function formatTime(value: string | null) {
   });
 }
 
+function formatAge(value: number | null) {
+  if (value === null) return "unknown";
+  if (value < 60) return `${value}s`;
+  if (value < 3600) return `${Math.floor(value / 60)}m ${value % 60}s`;
+  const hours = Math.floor(value / 3600);
+  const minutes = Math.floor((value % 3600) / 60);
+  return `${hours}h ${minutes}m`;
+}
+
+function consensusChipClasses(
+  status: WoloStatusSnapshot["consensusStatus"] | undefined,
+  premium = false
+) {
+  if (status === "advancing") {
+    return premium
+      ? "border-emerald-400/25 bg-emerald-500/10 text-emerald-100"
+      : "border border-emerald-400/25 bg-emerald-500/10 text-emerald-100";
+  }
+  if (status === "catching_up") {
+    return premium
+      ? "border-cyan-400/25 bg-cyan-500/10 text-cyan-100"
+      : "border border-cyan-400/25 bg-cyan-500/10 text-cyan-100";
+  }
+  if (status === "stalled") {
+    return premium
+      ? "border-amber-300/25 bg-amber-400/10 text-amber-100"
+      : "border border-amber-300/25 bg-amber-400/10 text-amber-100";
+  }
+  return premium
+    ? "border-white/10 bg-white/5 text-slate-200"
+    : "border border-white/10 bg-white/5 text-slate-200";
+}
 function prettySource(value: string | undefined) {
   return (value || "https://rpc.aoe2hdbets.com").replace(/^https?:\/\//, "");
 }
@@ -263,6 +299,9 @@ export default function WoloChainTerminalTile() {
     setPremiumDaemonView((current) => !current);
   }
 
+    const consensusLabel = snapshot?.statusLabel || "Standby";
+  const ageLabel = `age ${formatAge(snapshot?.lastBlockAgeSeconds ?? null)}`;
+
   const runtimeLines =
     snapshot?.terminalLines?.length && snapshot.terminalLines.length > 0
       ? snapshot.terminalLines
@@ -306,7 +345,11 @@ export default function WoloChainTerminalTile() {
               <div className="flex flex-wrap gap-2">
                 <PremiumRuntimeChip label={`height ${snapshot?.latestBlockHeight || "0"}`} />
                 <PremiumRuntimeChip label={`peers ${snapshot?.peers ?? 0}`} />
-                <PremiumRuntimeChip label={snapshot?.catchingUp ? "catching up" : "in sync"} />
+                <PremiumRuntimeChip
+                  label={consensusLabel}
+                  className={consensusChipClasses(snapshot?.consensusStatus, true)}
+                />
+                <PremiumRuntimeChip label={ageLabel} />
               </div>
             </div>
 
@@ -358,7 +401,11 @@ export default function WoloChainTerminalTile() {
               <div className="flex flex-wrap items-center gap-2">
                 <RuntimeChip label={`height ${snapshot?.latestBlockHeight || "0"}`} />
                 <RuntimeChip label={`peers ${snapshot?.peers ?? 0}`} />
-                <RuntimeChip label={snapshot?.catchingUp ? "catching up" : "in sync"} />
+                <RuntimeChip
+                  label={consensusLabel}
+                  className={consensusChipClasses(snapshot?.consensusStatus)}
+                />
+                <RuntimeChip label={ageLabel} />
               </div>
             </div>
             <div
@@ -575,9 +622,20 @@ function DaemonConsolePanel({
   );
 }
 
-function RuntimeChip({ label }: { label: string }) {
+function RuntimeChip({
+  label,
+  className,
+}: {
+  label: string;
+  className?: string;
+}) {
   return (
-    <div className="rounded-full border border-emerald-400/15 bg-emerald-500/5 px-3 py-1 text-xs text-emerald-100">
+    <div
+      className={cx(
+        "rounded-full border border-emerald-400/15 bg-emerald-500/5 px-3 py-1 text-xs text-emerald-100",
+        className
+      )}
+    >
       {label}
     </div>
   );
@@ -608,9 +666,20 @@ function TerminalStat({
   );
 }
 
-function PremiumRuntimeChip({ label }: { label: string }) {
+function PremiumRuntimeChip({
+  label,
+  className,
+}: {
+  label: string;
+  className?: string;
+}) {
   return (
-    <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-slate-200">
+    <div
+      className={cx(
+        "rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-slate-200",
+        className
+      )}
+    >
       {label}
     </div>
   );

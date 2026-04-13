@@ -21,6 +21,15 @@ const insecureHttpsAgent = new https.Agent({
 });
 const execFileAsync = promisify(execFile);
 
+const parsedStaleAfterSeconds = Number.parseInt(
+  process.env.WOLO_STATUS_STALE_AFTER_SECONDS || "20",
+  10
+);
+const WOLO_STALE_AFTER_SECONDS =
+  Number.isFinite(parsedStaleAfterSeconds) && parsedStaleAfterSeconds > 0
+    ? parsedStaleAfterSeconds
+    : 20;
+
 type TendermintStatusPayload = {
   result?: {
     node_info?: {
@@ -54,6 +63,8 @@ type BankBalancesPayload = {
   }>;
 };
 
+export type WoloConsensusStatus = "advancing" | "stalled" | "catching_up" | "standby";
+
 export type WoloStatusSnapshot = {
   healthy: boolean;
   chainId: string;
@@ -67,8 +78,12 @@ export type WoloStatusSnapshot = {
   nodeVersion: string;
   latestBlockHeight: string;
   latestBlockTime: string | null;
+  lastBlockAgeSeconds: number | null;
+  staleAfterSeconds: number;
   peers: number;
   catchingUp: boolean;
+  consensusStatus: WoloConsensusStatus;
+  statusLabel: string;
   validatorAddress: string | null;
   latestBlockHash: string | null;
   latestAppHash: string | null;
@@ -199,6 +214,53 @@ async function fetchWoloBalanceAmountFromCli(address: string) {
   return payload.balances?.find((coin) => coin.denom === WOLO_BASE_DENOM)?.amount || "0";
 }
 
+function getLastBlockAgeSeconds(value: string | null) {
+  if (!value) return null;
+  const timestamp = new Date(value).getTime();
+  if (Number.isNaN(timestamp)) return null;
+  return Math.max(0, Math.floor((Date.now() - timestamp) / 1000));
+}
+
+function formatAgeShort(value: number | null) {
+  if (value === null) return "unknown";
+  if (value < 60) return `${value}s`;
+  if (value < 3600) return `${Math.floor(value / 60)}m ${value % 60}s`;
+  const hours = Math.floor(value / 3600);
+  const minutes = Math.floor((value % 3600) / 60);
+  return `${hours}h ${minutes}m`;
+}
+
+function deriveConsensusStatus({
+  healthy,
+  catchingUp,
+  lastBlockAgeSeconds,
+  staleAfterSeconds,
+}: {
+  healthy: boolean;
+  catchingUp: boolean;
+  lastBlockAgeSeconds: number | null;
+  staleAfterSeconds: number;
+}): WoloConsensusStatus {
+  if (!healthy) return "standby";
+  if (catchingUp) return "catching_up";
+  if (lastBlockAgeSeconds === null) return "stalled";
+  if (lastBlockAgeSeconds > staleAfterSeconds) return "stalled";
+  return "advancing";
+}
+
+function getConsensusStatusLabel(status: WoloConsensusStatus) {
+  switch (status) {
+    case "advancing":
+      return "Advancing";
+    case "stalled":
+      return "Stalled";
+    case "catching_up":
+      return "Catching up";
+    default:
+      return "Standby";
+  }
+}
+
 function buildTerminalLines(snapshot: Omit<WoloStatusSnapshot, "terminalLines">) {
   const stamp = new Date().toLocaleTimeString([], {
     hour: "2-digit",
@@ -211,12 +273,12 @@ function buildTerminalLines(snapshot: Omit<WoloStatusSnapshot, "terminalLines">)
     `[${stamp}] handshake chain ${snapshot.chainId} moniker ${snapshot.moniker}`,
     `[${stamp}] prefix ${snapshot.addressPrefix}1... denom ${snapshot.baseDenom} display ${snapshot.displayDenom}`,
     `[${stamp}] policy ${snapshot.monetaryPolicy}`,
-    `[${stamp}] height ${snapshot.latestBlockHeight} peers ${snapshot.peers} sync ${snapshot.catchingUp ? "catching_up" : "ready"}`,
+    `[${stamp}] height ${snapshot.latestBlockHeight} peers ${snapshot.peers} consensus ${snapshot.consensusStatus}`,
+    `[${stamp}] block_age ${formatAgeShort(snapshot.lastBlockAgeSeconds)} stale_after ${snapshot.staleAfterSeconds}s`,
     `[${stamp}] block_hash ${trimHash(snapshot.latestBlockHash)}`,
     `[${stamp}] app_hash ${trimHash(snapshot.latestAppHash)}`,
     `[${stamp}] validator ${trimHash(snapshot.validatorAddress)}`,
     `[${stamp}] last_block ${snapshot.latestBlockTime || "unknown"}`,
-    `[${stamp}] rail armed for next state transition`,
   ];
 }
 
@@ -232,6 +294,16 @@ export async function fetchWoloStatusSnapshot(): Promise<WoloStatusSnapshot> {
       ),
     ]);
 
+    const latestBlockTime = payload.result?.sync_info?.latest_block_time || null;
+    const catchingUp = Boolean(payload.result?.sync_info?.catching_up);
+    const lastBlockAgeSeconds = getLastBlockAgeSeconds(latestBlockTime);
+    const consensusStatus = deriveConsensusStatus({
+      healthy: true,
+      catchingUp,
+      lastBlockAgeSeconds,
+      staleAfterSeconds: WOLO_STALE_AFTER_SECONDS,
+    });
+
     const snapshotWithoutLines: Omit<WoloStatusSnapshot, "terminalLines"> = {
       healthy: true,
       chainId: payload.result?.node_info?.network || WOLO_CHAIN_ID,
@@ -244,9 +316,13 @@ export async function fetchWoloStatusSnapshot(): Promise<WoloStatusSnapshot> {
       moniker: payload.result?.node_info?.moniker || WOLO_CHAIN_NAME,
       nodeVersion: payload.result?.node_info?.version || "unknown",
       latestBlockHeight: payload.result?.sync_info?.latest_block_height || "0",
-      latestBlockTime: payload.result?.sync_info?.latest_block_time || null,
+      latestBlockTime,
+      lastBlockAgeSeconds,
+      staleAfterSeconds: WOLO_STALE_AFTER_SECONDS,
       peers: Number.parseInt(String(netInfo?.result?.n_peers ?? "0"), 10) || 0,
-      catchingUp: Boolean(payload.result?.sync_info?.catching_up),
+      catchingUp,
+      consensusStatus,
+      statusLabel: getConsensusStatusLabel(consensusStatus),
       validatorAddress: payload.result?.validator_info?.address || null,
       latestBlockHash: payload.result?.sync_info?.latest_block_hash || null,
       latestAppHash: payload.result?.sync_info?.latest_app_hash || null,
@@ -274,8 +350,12 @@ export async function fetchWoloStatusSnapshot(): Promise<WoloStatusSnapshot> {
       nodeVersion: "unknown",
       latestBlockHeight: "0",
       latestBlockTime: null,
+      lastBlockAgeSeconds: null,
+      staleAfterSeconds: WOLO_STALE_AFTER_SECONDS,
       peers: 0,
       catchingUp: false,
+      consensusStatus: "standby",
+      statusLabel: "Standby",
       validatorAddress: null,
       latestBlockHash: null,
       latestAppHash: null,
@@ -288,8 +368,8 @@ export async function fetchWoloStatusSnapshot(): Promise<WoloStatusSnapshot> {
       terminalLines: [
         `[offline] dial rpc ${sourceLabel}`,
         `[offline] ${detail}`,
+        `[offline] consensus standby age unknown stale_after ${WOLO_STALE_AFTER_SECONDS}s`,
         `[offline] chain truth still mounted: ${WOLO_CHAIN_ID} / ${WOLO_BASE_DENOM} / ${WOLO_ADDRESS_PREFIX}1...`,
-        `[offline] waiting for next successful node handshake`,
       ],
     };
   }
