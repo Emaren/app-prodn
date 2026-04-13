@@ -1956,7 +1956,7 @@ function RecentResultFeature({ result }: { result: BetSettledResult }) {
   );
 }
 
-function function StakeAmountRail({
+function StakeAmountRail({
   activeSelection,
   canEdit,
   maxStakeWolo,
