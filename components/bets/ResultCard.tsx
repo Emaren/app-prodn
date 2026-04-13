@@ -24,8 +24,11 @@ export default function ResultCard({
 }) {
   const resultPotWolo = result.totalPotWolo || result.payoutWolo;
 
+  const cardPadding = compact ? "px-4 py-4" : "px-4 py-4";
+  const cardMinHeight = compact ? "min-h-[168px]" : "min-h-[198px]";
+
   const content = (
-    <div className={`flex min-h-full flex-col ${compact ? "" : ""}`}>
+    <div className="flex h-full flex-col">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           {basicLook ? (
@@ -45,14 +48,22 @@ export default function ResultCard({
         </div>
       </div>
 
-      <div className="mt-3 min-w-0">
-        <div className="break-words text-lg font-semibold leading-tight text-white">
+      <div className={compact ? "mt-3 min-w-0" : "mt-3 min-w-0"}>
+        <div
+          className={
+            compact
+              ? "break-words text-[1.05rem] font-semibold leading-[1.15] text-white"
+              : "break-words text-lg font-semibold leading-tight text-white"
+          }
+        >
           {result.title}
         </div>
-        <div className="mt-1 text-sm leading-6 text-slate-400">{result.winner} took it</div>
+        <div className={compact ? "mt-1 text-sm leading-5 text-slate-400" : "mt-1 text-sm leading-6 text-slate-400"}>
+          {result.winner} took it
+        </div>
       </div>
 
-      <div className={`mt-auto ${compact ? "pt-3" : "pt-4"}`}>
+      <div className={compact ? "mt-4" : "mt-auto pt-4"}>
         <div className="truncate whitespace-nowrap text-xs uppercase tracking-[0.24em] text-slate-500">
           {formatSettledTime(result.settledAt)}
         </div>
@@ -70,12 +81,12 @@ export default function ResultCard({
     return (
       <Link
         href={result.href}
-        className={`${cardClass()} block min-h-[198px] px-4 py-4 transition hover:border-white/14 hover:bg-white/[0.05]`}
+        className={`${cardClass()} block ${cardMinHeight} ${cardPadding} transition hover:border-white/14 hover:bg-white/[0.05]`}
       >
         {content}
       </Link>
     );
   }
 
-  return <article className={`${cardClass()} min-h-[198px] px-4 py-4`}>{content}</article>;
+  return <article className={`${cardClass()} ${cardMinHeight} ${cardPadding}`}>{content}</article>;
 }
