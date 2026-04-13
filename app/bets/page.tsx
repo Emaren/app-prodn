@@ -1956,7 +1956,7 @@ function RecentResultFeature({ result }: { result: BetSettledResult }) {
   );
 }
 
-function StakeAmountRail({
+function function StakeAmountRail({
   activeSelection,
   canEdit,
   maxStakeWolo,
@@ -1967,8 +1967,21 @@ function StakeAmountRail({
   maxStakeWolo: number;
   onStakeChange: (stake: number) => void;
 }) {
+  const [customDraft, setCustomDraft] = useState("");
   const stakeError =
     activeSelection ? validateStakeAmount(activeSelection.stake, maxStakeWolo) : null;
+
+  useEffect(() => {
+    if (!activeSelection) {
+      setCustomDraft("");
+      return;
+    }
+
+    // New side / new market selection should feel clean.
+    // Keep the suggested stake highlighted via the pills,
+    // but do not jam it into the custom input automatically.
+    setCustomDraft("");
+  }, [activeSelection?.marketId, activeSelection?.side]);
 
   return (
     <>
@@ -1978,7 +1991,11 @@ function StakeAmountRail({
             <button
               key={stake}
               type="button"
-              onClick={() => activeSelection && onStakeChange(stake)}
+              onClick={() => {
+                if (!activeSelection) return;
+                setCustomDraft(String(stake));
+                onStakeChange(stake);
+              }}
               disabled={!activeSelection || !canEdit}
               className={`inline-flex items-center rounded-full px-3 py-1.5 text-sm transition ${
                 activeSelection?.stake === stake ? edgeButton("gold") : edgeButton("glass")
@@ -1994,15 +2011,16 @@ function StakeAmountRail({
           <input
             inputMode="numeric"
             pattern="[0-9]*"
-            value={activeSelection ? String(Math.max(0, activeSelection.stake)) : ""}
+            value={activeSelection ? customDraft : ""}
             onChange={(event) => {
               if (!activeSelection) return;
               const digits = event.target.value.replace(/[^0-9]/g, "").slice(0, 6);
+              setCustomDraft(digits);
               onStakeChange(digits ? Number.parseInt(digits, 10) : 0);
             }}
             disabled={!activeSelection || !canEdit}
             className="w-20 bg-transparent text-right text-sm text-white outline-none placeholder:text-slate-500 disabled:cursor-not-allowed"
-            placeholder="0"
+            placeholder="Enter"
           />
           <span className="text-[11px] uppercase tracking-[0.2em] text-slate-500">WOLO</span>
         </label>
