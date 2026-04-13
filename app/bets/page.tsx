@@ -1971,17 +1971,19 @@ function StakeAmountRail({
   const stakeError =
     activeSelection ? validateStakeAmount(activeSelection.stake, maxStakeWolo) : null;
 
-  useEffect(() => {
-    if (!activeSelection) {
-      setCustomDraft("");
-      return;
-    }
+const hasActiveSelection = Boolean(activeSelection);
 
-    // New side / new market selection should feel clean.
-    // Keep the suggested stake highlighted via the pills,
-    // but do not jam it into the custom input automatically.
+useEffect(() => {
+  if (!hasActiveSelection) {
     setCustomDraft("");
-  }, [activeSelection?.marketId, activeSelection?.side]);
+    return;
+  }
+
+  // New side / new market selection should feel clean.
+  // Keep the suggested stake highlighted via the pills,
+  // but do not jam it into the custom input automatically.
+  setCustomDraft("");
+}, [hasActiveSelection, activeSelection?.marketId, activeSelection?.side]);
 
   return (
     <>
