@@ -105,13 +105,6 @@ function getRowActivityTime(row: Pick<SessionRow, "timestamp" | "createdAt">) {
   return row.timestamp ?? row.createdAt;
 }
 
-function readCompletedSignal(value: unknown) {
-  if (!value || typeof value !== "object") {
-    return false;
-  }
-  return (value as Record<string, unknown>).completed === true;
-}
-
 function buildSessionFromRow(
   row: SessionRow,
   sessionKey: string,
