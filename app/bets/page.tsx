@@ -1990,15 +1990,48 @@ function YourBookSection({
           </div>
         </>
       ) : (
-        <div className={`${insetClass()} mt-5 px-4 py-5`}>
-          <div className="text-base font-semibold text-white">Sign in to lock slips.</div>
-          <button
-            type="button"
-            onClick={() => loginWithSteam("/bets")}
-            className={`mt-4 inline-flex items-center rounded-full px-4 py-2.5 text-sm font-semibold transition ${edgeButton("blue")}`}
-          >
-            {loadingAuth ? "Loading..." : "Steam Sign In"}
-          </button>
+        <div className={`${insetClass()} mt-5 flex min-h-[320px] flex-col justify-between px-4 py-5`}>
+          <div>
+            <div className="text-base font-semibold text-white">Sign in to lock slips.</div>
+            <div className="mt-2 max-w-md text-sm leading-6 text-slate-400">
+              Keep your active picks, stake recovery proofs, and projected return in one calmer control rail.
+            </div>
+            <button
+              type="button"
+              onClick={() => loginWithSteam("/bets")}
+              className={`mt-4 inline-flex items-center rounded-full px-4 py-2.5 text-sm font-semibold transition ${edgeButton("blue")}`}
+            >
+              {loadingAuth ? "Loading..." : "Steam Sign In"}
+            </button>
+          </div>
+
+          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            <div className={`${cardClass()} border-white/[0.08] bg-white/[0.03] px-4 py-4`}>
+              <div className="text-[11px] uppercase tracking-[0.28em] text-slate-500">Locked rail</div>
+              <div className="mt-2 text-sm font-semibold text-white">Your slips stay gathered here.</div>
+              <div className="mt-2 space-y-2 text-sm text-slate-400">
+                <div>Track every side you backed without losing the board.</div>
+                <div>Keep stake proofs and recovery paths within reach.</div>
+              </div>
+            </div>
+            <div className={`${cardClass()} border-cyan-300/12 bg-cyan-400/[0.04] px-4 py-4`}>
+              <div className="text-[11px] uppercase tracking-[0.28em] text-slate-500">What unlocks</div>
+              <div className="mt-2 grid gap-2 text-sm text-slate-300">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-slate-400">Active slips</span>
+                  <span className="font-semibold text-white">Live</span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-slate-400">Projected return</span>
+                  <span className="font-semibold text-white">Instant</span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-slate-400">Recovery rail</span>
+                  <span className="font-semibold text-white">Ready</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </section>
@@ -2036,14 +2069,14 @@ function ResultCard({
             {result.title}
           </div>
           <div className="mt-1 text-sm text-slate-400">{result.winner} took it</div>
-          <div className="mt-2 text-xs uppercase tracking-[0.24em] text-slate-500">
+          <div className="mt-2 truncate whitespace-nowrap text-xs uppercase tracking-[0.24em] text-slate-500">
             {formatSettledTime(result.settledAt)}
           </div>
           <FounderBonusChips
             bonuses={result.founderBonuses}
             compact
             variant={founderChipVariant}
-            className="mt-2"
+            className="mt-2 max-w-full"
           />
         </div>
 
