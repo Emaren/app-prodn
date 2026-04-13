@@ -289,7 +289,6 @@ export async function loadLiveSessionSnapshot(prisma: PrismaClient): Promise<{
   for (const [sessionKey, row] of latestLiveBySession.entries()) {
     const finalRow = latestFinalBySession.get(sessionKey);
     const liveActivityAt = getRowActivityTime(row).getTime();
-    const liveCompleted = readCompletedSignal(row.key_events);
 
     if (finalRow) {
       const finalActivityAt = getRowActivityTime(finalRow).getTime();
@@ -299,13 +298,6 @@ export async function loadLiveSessionSnapshot(prisma: PrismaClient): Promise<{
         }
         continue;
       }
-    }
-
-    if (liveCompleted) {
-      if (liveActivityAt >= lingerCutoff) {
-        recentlyCompletedSessions.push(buildSessionFromRow(row, sessionKey, "completed"));
-      }
-      continue;
     }
 
     activeSessions.push(buildSessionFromRow(row, sessionKey, "live"));
