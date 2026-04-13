@@ -52,7 +52,7 @@ export default function ResultCard({
         <div className="mt-1 text-sm leading-6 text-slate-400">{result.winner} took it</div>
       </div>
 
-      <div className={`mt-auto border-t border-white/[0.06] ${compact ? "pt-3" : "pt-4"}`}>
+      <div className={`mt-auto ${compact ? "pt-3" : "pt-4"}`}>
         <div className="truncate whitespace-nowrap text-xs uppercase tracking-[0.24em] text-slate-500">
           {formatSettledTime(result.settledAt)}
         </div>
