@@ -106,10 +106,9 @@ function getRowActivityTime(row: Pick<SessionRow, "timestamp" | "createdAt">) {
 }
 
 function readCompletedSignal(value: unknown) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || typeof value !== "object") {
     return false;
   }
-
   return (value as Record<string, unknown>).completed === true;
 }
 
