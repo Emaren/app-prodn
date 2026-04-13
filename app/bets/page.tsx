@@ -1803,7 +1803,6 @@ function RecentBetsSection({ results }: { results: BetSettledResult[] }) {
       <div className="flex items-end justify-between gap-3">
         <div>
           <div className="text-[11px] uppercase tracking-[0.35em] text-slate-500">Recent Bets</div>
-          <h2 className="mt-2 text-2xl font-semibold text-white">Closed books still carry momentum.</h2>
         </div>
         <div className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-slate-300">
           {results.length}

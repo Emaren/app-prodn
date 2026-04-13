@@ -192,7 +192,7 @@ export function LobbyHero({
         ) : (
           <SteamLoginButton
             className={`${primaryActionClassName} w-full whitespace-nowrap`}
-            label={loading ? "Loading..." : "Claim Your Steam Identity"}
+            label={loading ? "Loading..." : "Login with Steam"}
             disabled={loading}
           />
         )}
