@@ -159,19 +159,26 @@ export function isResignationOutcome(parseReason: string | null | undefined) {
   );
 }
 
+function isFallbackWinnerInference(parseReason?: string | null | undefined) {
+  return (
+    parseReason === "watcher_inferred_opponent_win_on_incomplete_1v1" ||
+    parseReason === "watcher_inferred_opponent_win_on_incomplete"
+  );
+}
+
 function isProvisionalWinnerInference(parseReason?: string | null | undefined) {
-  return parseReason === "watcher_inferred_opponent_win_on_incomplete_1v1";
+  return parseReason === "watcher_inferred_backfill";
 }
 
 export function winnerLabel(winner: string | null | undefined, parseReason?: string | null | undefined) {
   if (isEarlyExitNoResult(parseReason)) {
     return "No rated result";
   }
-  if (isProvisionalWinnerInference(parseReason)) {
-    return "Winner not confirmed";
-  }
   if (winner && winner !== "Unknown") {
     return winner;
+  }
+  if (isProvisionalWinnerInference(parseReason)) {
+    return "Winner not confirmed";
   }
   return "Unknown";
 }
@@ -182,6 +189,7 @@ export function outcomeBadgeLabel(
 ) {
   if (isEarlyExitNoResult(parseReason)) return "Under 60s drop";
   if (!winner || winner === "Unknown") return null;
+  if (isFallbackWinnerInference(parseReason)) return "Fallback inference";
   if (isProvisionalWinnerInference(parseReason)) return "Provisional inference";
   return isResignationOutcome(parseReason) ? "Win by resignation" : null;
 }
