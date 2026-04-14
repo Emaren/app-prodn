@@ -159,9 +159,16 @@ export function isResignationOutcome(parseReason: string | null | undefined) {
   );
 }
 
+function isProvisionalWinnerInference(parseReason?: string | null | undefined) {
+  return parseReason === "watcher_inferred_opponent_win_on_incomplete_1v1";
+}
+
 export function winnerLabel(winner: string | null | undefined, parseReason?: string | null | undefined) {
   if (isEarlyExitNoResult(parseReason)) {
     return "No rated result";
+  }
+  if (isProvisionalWinnerInference(parseReason)) {
+    return "Winner not confirmed";
   }
   if (winner && winner !== "Unknown") {
     return winner;
@@ -175,6 +182,7 @@ export function outcomeBadgeLabel(
 ) {
   if (isEarlyExitNoResult(parseReason)) return "Under 60s drop";
   if (!winner || winner === "Unknown") return null;
+  if (isProvisionalWinnerInference(parseReason)) return "Provisional inference";
   return isResignationOutcome(parseReason) ? "Win by resignation" : null;
 }
 

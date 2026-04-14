@@ -1,4 +1,4 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 
 import LiveReplayDetail from "@/components/game-stats/LiveReplayDetail";
 import { loadLiveReplayDetailSnapshot } from "@/lib/liveReplayDetail";
@@ -18,10 +18,6 @@ export default async function LiveReplayDetailPage({
   const snapshot = await loadLiveReplayDetailSnapshot(prisma, decodedSessionKey);
   if (!snapshot) {
     notFound();
-  }
-
-  if (snapshot.mode === "final" && snapshot.finalGameId) {
-    redirect(`/game-stats/${snapshot.finalGameId}`);
   }
 
   const linkedBetMarket = await prisma.betMarket.findFirst({
