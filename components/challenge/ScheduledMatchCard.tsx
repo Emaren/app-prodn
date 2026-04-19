@@ -50,6 +50,7 @@ type ScheduledMatchCardProps = {
   onCheckIn?: (challengeId: number) => void | Promise<void>;
   actionState?: ScheduledMatchCardActionState | null;
   compact?: boolean;
+  stacked?: boolean;
   localTimePrimary?: boolean;
   serverNow?: string | null;
 };
@@ -254,6 +255,7 @@ export default function ScheduledMatchCard({
   onCheckIn,
   actionState = null,
   compact = false,
+  stacked = false,
   localTimePrimary = false,
   serverNow = null,
 }: ScheduledMatchCardProps) {
@@ -412,7 +414,11 @@ export default function ScheduledMatchCard({
 
   return (
     <div className={`min-w-0 rounded-[1.55rem] border p-4 sm:p-5 ${accent.shell}`}>
-      <div className={`grid gap-4 ${compact ? "" : "xl:grid-cols-[minmax(0,1.2fr)_minmax(14rem,0.8fr)]"}`}>
+      <div
+        className={`grid gap-4 ${
+          compact || stacked ? "" : "xl:grid-cols-[minmax(0,1.2fr)_minmax(14rem,0.8fr)]"
+        }`}
+      >
         <div className="min-w-0">
           <div className={`text-[11px] uppercase tracking-[0.28em] ${accent.eyebrow}`}>
             Scheduled match

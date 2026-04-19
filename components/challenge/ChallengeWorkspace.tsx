@@ -913,6 +913,7 @@ export default function ChallengeWorkspace() {
                     key={match.id}
                     match={match}
                     viewerUid={uid}
+                    stacked
                     localTimePrimary
                     serverNow={snapshot.serverNow}
                     onAccept={(challengeId) => updateMatch(challengeId, "accept")}
