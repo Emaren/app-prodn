@@ -566,7 +566,21 @@ function buildSessionMarketSeed(
 
 function marketStatusFromScheduledMatch(displayState: ScheduledMatchTile["displayState"]): BetStatus {
   if (displayState === "live") return "live";
-  if (displayState === "accepted") return "closing";
+  if (
+    [
+      "accepted",
+      "terms_accepted",
+      "creator_funded",
+      "opponent_funded",
+      "funded",
+      "checkin_open",
+      "left_checked_in",
+      "right_checked_in",
+      "ready",
+    ].includes(displayState)
+  ) {
+    return "closing";
+  }
   return "settled";
 }
 
@@ -594,12 +608,45 @@ function inferWinnerSideFromChallenge(match: ScheduledMatchTile): BetSide | null
 
 function buildChallengeMarketSeeds(scheduledMatches: ScheduledMatchTile[]) {
   const challengeMatches = scheduledMatches.filter((match) =>
-    ["accepted", "live", "completed", "forfeited", "declined", "cancelled"].includes(
+    [
+      "proposed",
+      "pending",
+      "accepted",
+      "terms_accepted",
+      "creator_funded",
+      "opponent_funded",
+      "funded",
+      "checkin_open",
+      "left_checked_in",
+      "right_checked_in",
+      "ready",
+      "live",
+      "completed",
+      "forfeited",
+      "declined",
+      "cancelled",
+      "canceled",
+      "no_show_left",
+      "no_show_right",
+      "double_no_show",
+      "refunded",
+    ].includes(
       match.displayState
     )
   );
   const featuredChallengeIndex = challengeMatches.findIndex((match) =>
-    ["accepted", "live"].includes(match.displayState)
+    [
+      "accepted",
+      "terms_accepted",
+      "creator_funded",
+      "opponent_funded",
+      "funded",
+      "checkin_open",
+      "left_checked_in",
+      "right_checked_in",
+      "ready",
+      "live",
+    ].includes(match.displayState)
   );
 
   return challengeMatches.map((match, index) => ({
@@ -626,7 +673,12 @@ function buildChallengeMarketSeeds(scheduledMatches: ScheduledMatchTile[]) {
       match.displayState === "completed" ||
       match.displayState === "forfeited" ||
       match.displayState === "declined" ||
-      match.displayState === "cancelled"
+      match.displayState === "cancelled" ||
+      match.displayState === "canceled" ||
+      match.displayState === "no_show_left" ||
+      match.displayState === "no_show_right" ||
+      match.displayState === "double_no_show" ||
+      match.displayState === "refunded"
         ? new Date(match.activityAt)
         : null,
     winnerSide: match.displayState === "completed" ? inferWinnerSideFromChallenge(match) : null,

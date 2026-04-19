@@ -4,7 +4,9 @@ export type ContactChallengeActionKind =
   | "accept"
   | "decline"
   | "cancel"
-  | "reschedule";
+  | "reschedule"
+  | "fund"
+  | "check_in";
 
 export type ContactChallengeActionState = {
   challengeId: number | null;

@@ -15,7 +15,11 @@ import TimeDisplayText from "@/components/time/TimeDisplayText";
 import SteamLoginButton from "@/components/SteamLoginButton";
 import AutoGrowTextarea from "@/components/ui/AutoGrowTextarea";
 import { useUserAuth } from "@/context/UserAuthContext";
-import { CHALLENGE_NOTE_MAX_CHARS } from "@/lib/challengeConfig";
+import {
+  CHALLENGE_DEFAULT_GUARANTEE_WOLO,
+  CHALLENGE_DEFAULT_WAGER_WOLO,
+  CHALLENGE_NOTE_MAX_CHARS,
+} from "@/lib/challengeConfig";
 import type { ChallengeActivityItem, ChallengeHubSnapshot } from "@/lib/challenges";
 import {
   formatDateTime,
@@ -32,14 +36,33 @@ const EMPTY_SNAPSHOT: ChallengeHubSnapshot = {
     losses: 0,
     pending: 0,
     accepted: 0,
+    funded: 0,
+    ready: 0,
     declined: 0,
     cancelled: 0,
     completed: 0,
     forfeited: 0,
+    noShows: 0,
     total: 0,
   },
+  serverNow: new Date(0).toISOString(),
   updatedAt: new Date(0).toISOString(),
 };
+
+const ACTIVE_RUNWAY_STATES: string[] = [
+  "proposed",
+  "pending",
+  "terms_accepted",
+  "accepted",
+  "creator_funded",
+  "opponent_funded",
+  "funded",
+  "checkin_open",
+  "left_checked_in",
+  "right_checked_in",
+  "ready",
+  "live",
+] as const;
 
 function defaultScheduledAtValue() {
   const next = new Date(Date.now() + 60 * 60 * 1000);
@@ -82,10 +105,28 @@ function formatActivityTitle(activity: ChallengeActivityItem) {
       return "Challenge scheduled";
     case "accepted":
       return "Challenge accepted";
+    case "terms_accepted":
+      return "Terms accepted";
+    case "creator_funded":
+      return "Creator funded";
+    case "opponent_funded":
+      return "Opponent funded";
+    case "left_checked_in":
+    case "right_checked_in":
+      return "Check-in recorded";
+    case "live_confirmed":
+      return "Live confirmed";
+    case "no_show_left":
+    case "no_show_right":
+    case "double_no_show":
+      return "No-show resolved";
     case "declined":
       return "Challenge declined";
     case "cancelled":
+    case "canceled":
       return "Challenge cancelled";
+    case "rescheduled":
+      return "Challenge rescheduled";
     case "completed":
       return "Match completed";
     case "forfeited":
@@ -111,6 +152,10 @@ export default function ChallengeWorkspace() {
   const [challengedUid, setChallengedUid] = useState("");
   const [scheduledAt, setScheduledAt] = useState(() => defaultScheduledAtValue());
   const [challengeNote, setChallengeNote] = useState("");
+  const [wagerAmountWolo, setWagerAmountWolo] = useState(String(CHALLENGE_DEFAULT_WAGER_WOLO));
+  const [guaranteeAmountWolo, setGuaranteeAmountWolo] = useState(
+    String(CHALLENGE_DEFAULT_GUARANTEE_WOLO)
+  );
   const [focusedMatchId, setFocusedMatchId] = useState<number | null>(null);
 
   useEffect(() => {
@@ -162,29 +207,36 @@ export default function ChallengeWorkspace() {
   const pendingIncomingCount = useMemo(
     () =>
       snapshot.scheduledMatches.filter(
-        (match) => match.displayState === "pending" && match.challenged.uid === uid
+        (match) => ["proposed", "pending"].includes(match.displayState) && match.challenged.uid === uid
       ).length,
     [snapshot.scheduledMatches, uid]
   );
 
   const activeRunwayCount = useMemo(
     () =>
+      snapshot.scheduledMatches.filter((match) => ACTIVE_RUNWAY_STATES.includes(match.displayState))
+        .length,
+    [snapshot.scheduledMatches]
+  );
+
+  const fundedCount = useMemo(
+    () =>
       snapshot.scheduledMatches.filter((match) =>
-        ["pending", "accepted", "live"].includes(match.displayState)
+        ["creator_funded", "opponent_funded", "funded", "checkin_open"].includes(match.displayState)
       ).length,
     [snapshot.scheduledMatches]
   );
 
   const readyCount = useMemo(
-    () => snapshot.scheduledMatches.filter((match) => match.displayState === "accepted").length,
+    () =>
+      snapshot.scheduledMatches.filter((match) =>
+        ["ready", "left_checked_in", "right_checked_in", "live"].includes(match.displayState)
+      ).length,
     [snapshot.scheduledMatches]
   );
 
   const activeRunwayMatches = useMemo(
-    () =>
-      snapshot.scheduledMatches.filter((match) =>
-        ["pending", "accepted", "live"].includes(match.displayState)
-      ),
+    () => snapshot.scheduledMatches.filter((match) => ACTIVE_RUNWAY_STATES.includes(match.displayState)),
     [snapshot.scheduledMatches]
   );
 
@@ -245,6 +297,11 @@ export default function ChallengeWorkspace() {
       ),
     [scheduledPreview]
   );
+  const totalFundingPreview = useMemo(
+    () =>
+      (Number.parseInt(wagerAmountWolo, 10) || 0) + (Number.parseInt(guaranteeAmountWolo, 10) || 0),
+    [guaranteeAmountWolo, wagerAmountWolo]
+  );
   const focusedMatch = useMemo(
     () => activeRunwayMatches.find((match) => match.id === focusedMatchId) || activeRunwayMatches[0] || null,
     [activeRunwayMatches, focusedMatchId]
@@ -291,6 +348,10 @@ export default function ChallengeWorkspace() {
     extra?: {
       scheduledAt?: string;
       challengeNote?: string;
+      wagerAmountWolo?: number;
+      guaranteeAmountWolo?: number;
+      fundingTxHash?: string;
+      fundingWalletAddress?: string;
     }
   ) {
     setActionState({
@@ -323,12 +384,16 @@ export default function ChallengeWorkspace() {
       setSnapshot(payload);
       setNotice(
         action === "accept"
-          ? "Challenge accepted. Ready on board."
+          ? "Terms accepted. Creator funding is next."
           : action === "decline"
             ? "Challenge declined."
             : action === "cancel"
               ? "Challenge cancelled."
-              : "New start time sent. Waiting on acceptance again."
+              : action === "fund"
+                ? "Funding recorded on the rail."
+                : action === "check_in"
+                  ? "Check-in locked before start."
+                  : "New timing and terms sent."
       );
     } catch (updateError) {
       setError(updateError instanceof Error ? updateError.message : "Challenge update failed.");
@@ -354,6 +419,8 @@ export default function ChallengeWorkspace() {
     }
 
     try {
+      const parsedWagerAmountWolo = Number.parseInt(wagerAmountWolo, 10);
+      const parsedGuaranteeAmountWolo = Number.parseInt(guaranteeAmountWolo, 10);
       const response = await fetch("/api/challenges", {
         method: "POST",
         headers: {
@@ -363,6 +430,8 @@ export default function ChallengeWorkspace() {
           challengedUid,
           scheduledAt: parsedScheduledAt.toISOString(),
           challengeNote,
+          wagerAmountWolo: parsedWagerAmountWolo,
+          guaranteeAmountWolo: parsedGuaranteeAmountWolo,
         }),
       });
 
@@ -375,10 +444,12 @@ export default function ChallengeWorkspace() {
       }
 
       setSnapshot(payload);
-      setNotice("Challenge sent to inbox and board.");
+      setNotice("Challenge sent with terms on the rail.");
       setChallengedUid("");
       setChallengeNote("");
       setScheduledAt(defaultScheduledAtValue());
+      setWagerAmountWolo(String(CHALLENGE_DEFAULT_WAGER_WOLO));
+      setGuaranteeAmountWolo(String(CHALLENGE_DEFAULT_GUARANTEE_WOLO));
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Unable to schedule the game.");
     } finally {
@@ -399,7 +470,7 @@ export default function ChallengeWorkspace() {
             <div className="flex flex-wrap gap-2">
               <HeroPill>{snapshot.candidates.length} players available</HeroPill>
               <HeroPill>{pendingIncomingCount} awaiting you</HeroPill>
-              <HeroPill live>{readyCount} locked in</HeroPill>
+              <HeroPill live>{readyCount} match-ready</HeroPill>
             </div>
 
             <div className="flex flex-wrap gap-3">
@@ -420,7 +491,7 @@ export default function ChallengeWorkspace() {
               </Link>
               <Link
                 href="/live-games"
-                className="rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200"
+                className="inline-flex items-center rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200"
               >
                 Back To Live Games
               </Link>
@@ -436,8 +507,8 @@ export default function ChallengeWorkspace() {
           <div className="grid gap-3 sm:grid-cols-4 lg:grid-cols-2">
             <StatCard label="Your Runway" value={String(activeRunwayCount)} />
             <StatCard label="Incoming" value={String(pendingIncomingCount)} />
-            <StatCard label="Ready" value={String(readyCount)} live helper="Accepted scheduled games" />
-            <StatCard label="Ledger" value={String(snapshot.record.total)} helper="Recent challenge history" />
+            <StatCard label="Funded" value={String(fundedCount)} helper="Money locked on the rail" />
+            <StatCard label="Ready" value={String(readyCount)} live helper="Checked in or live" />
           </div>
         </div>
       </section>
@@ -453,11 +524,11 @@ export default function ChallengeWorkspace() {
                 <div className="text-xs uppercase tracking-[0.35em] text-amber-200/70">New Match</div>
                 <h2 className="mt-2 text-2xl font-semibold text-white">Create The Runway</h2>
                 <div className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
-                  Pick the rival, set the start, send it.
+                  Pick the rival, lock the terms, send it.
                 </div>
               </div>
               <div className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-slate-300">
-                Tight timing rail
+                Match economy rail
               </div>
             </div>
 
@@ -525,6 +596,42 @@ export default function ChallengeWorkspace() {
                   </div>
                 </div>
 
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <label className="block space-y-2">
+                    <span className="text-sm text-slate-300">Wolo Wager</span>
+                    <input
+                      type="number"
+                      min={1}
+                      step={1}
+                      value={wagerAmountWolo}
+                      onChange={(event) => setWagerAmountWolo(event.target.value)}
+                      className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-amber-300/50"
+                    />
+                  </label>
+                  <label className="block space-y-2">
+                    <span className="text-sm text-slate-300">Match Guarantee</span>
+                    <input
+                      type="number"
+                      min={1}
+                      step={1}
+                      value={guaranteeAmountWolo}
+                      onChange={(event) => setGuaranteeAmountWolo(event.target.value)}
+                      className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-amber-300/50"
+                    />
+                  </label>
+                  <div className="rounded-[1.35rem] border border-amber-300/18 bg-amber-400/10 px-4 py-4">
+                    <div className="text-[11px] uppercase tracking-[0.2em] text-amber-100/70">
+                      Funding each
+                    </div>
+                    <div className="mt-2 text-lg font-semibold text-white">
+                      {totalFundingPreview.toLocaleString()} WOLO
+                    </div>
+                    <div className="mt-2 text-xs text-slate-400">
+                      One signed funding action per player.
+                    </div>
+                  </div>
+                </div>
+
                 <label className="block space-y-2">
                   <span className="text-sm text-slate-300">Message</span>
                   <AutoGrowTextarea
@@ -574,7 +681,7 @@ export default function ChallengeWorkspace() {
                 </div>
                 <h2 className="mt-2 text-2xl font-semibold text-white">Scheduling Line</h2>
                 <div className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
-                  Keep the live time, latest note, and thread shortcut in one calm rail.
+                  Keep funding state, check-in pressure, latest note, and the direct thread in one calm rail.
                 </div>
               </div>
               {focusedMatch ? (
@@ -670,9 +777,45 @@ export default function ChallengeWorkspace() {
                         </div>
                       </div>
 
+                      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                        <QuickRailCell
+                          label="Wolo Wager"
+                          value={`${focusedMatch.terms.wagerAmountWolo.toLocaleString()} WOLO`}
+                        />
+                        <QuickRailCell
+                          label="Match Guarantee"
+                          value={`${focusedMatch.terms.guaranteeAmountWolo.toLocaleString()} WOLO`}
+                        />
+                        <QuickRailCell
+                          label="Funding Each"
+                          value={`${focusedMatch.terms.totalFundingWolo.toLocaleString()} WOLO`}
+                        />
+                      </div>
+
+                      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                        <QuickRailCell
+                          label="Funding State"
+                          value={focusedMatch.economy.statusLabel}
+                          detail={focusedMatch.economy.statusDetail}
+                        />
+                        <QuickRailCell
+                          label="Check-In"
+                          value={
+                            focusedMatch.economy.checkInWindowState === "open"
+                              ? "Open now"
+                              : focusedMatch.economy.checkInWindowState === "upcoming"
+                                ? "Opens soon"
+                                : focusedMatch.economy.checkInWindowState === "closed"
+                                  ? "Closed"
+                                  : "Locked after funding"
+                          }
+                          detail="Closes exactly at scheduled start."
+                        />
+                      </div>
+
                       <div className="mt-4 text-sm leading-6 text-slate-300">
                         {focusedMatch.challengeNote ||
-                          "Use the direct line for ready checks, map lock, or a time shift."}
+                          "Use the direct line for ready checks, map lock, or a small time shift."}
                       </div>
 
                       {focusedCounterpart ? (
@@ -692,7 +835,7 @@ export default function ChallengeWorkspace() {
                           Conversation rail
                         </div>
                         <div className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-slate-300">
-                          Lightweight for now
+                          Compact by design
                         </div>
                       </div>
 
@@ -703,7 +846,7 @@ export default function ChallengeWorkspace() {
                           ))
                         ) : (
                           <div className="rounded-[1rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-sm text-slate-300">
-                            Timing updates land here once this match starts moving.
+                            Funding, check-in, and timing updates land here once this match starts moving.
                           </div>
                         )}
                       </div>
@@ -713,7 +856,7 @@ export default function ChallengeWorkspace() {
               </>
             ) : (
               <div className="mt-5 rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-5 text-sm leading-6 text-slate-300">
-                Once a challenge is live, this rail keeps the latest time, note, and thread shortcut together.
+                Once a challenge is live, this rail keeps the latest terms, lock timing, and thread shortcut together.
               </div>
             )}
           </section>
@@ -734,12 +877,15 @@ export default function ChallengeWorkspace() {
             <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <StatCard label="Wins" value={String(snapshot.record.wins)} />
               <StatCard label="Losses" value={String(snapshot.record.losses)} />
-              <StatCard label="Completed" value={String(snapshot.record.completed)} />
-              <StatCard label="Forfeited" value={String(snapshot.record.forfeited)} />
               <StatCard label="Pending" value={String(snapshot.record.pending)} />
               <StatCard label="Accepted" value={String(snapshot.record.accepted)} />
+              <StatCard label="Funded" value={String(snapshot.record.funded)} />
+              <StatCard label="Ready" value={String(snapshot.record.ready)} />
+              <StatCard label="Completed" value={String(snapshot.record.completed)} />
+              <StatCard label="No-show" value={String(snapshot.record.noShows)} />
+              <StatCard label="Forfeited" value={String(snapshot.record.forfeited)} />
               <StatCard label="Declined" value={String(snapshot.record.declined)} />
-              <StatCard label="Cancelled" value={String(snapshot.record.cancelled)} />
+              <StatCard label="Canceled" value={String(snapshot.record.cancelled)} />
             </div>
           </section>
         </section>
@@ -768,12 +914,15 @@ export default function ChallengeWorkspace() {
                     match={match}
                     viewerUid={uid}
                     localTimePrimary
+                    serverNow={snapshot.serverNow}
                     onAccept={(challengeId) => updateMatch(challengeId, "accept")}
                     onDecline={(challengeId) => updateMatch(challengeId, "decline")}
                     onCancel={(challengeId) => updateMatch(challengeId, "cancel")}
                     onReschedule={(challengeId, payload) =>
                       updateMatch(challengeId, "reschedule", payload)
                     }
+                    onFund={(challengeId, payload) => updateMatch(challengeId, "fund", payload)}
+                    onCheckIn={(challengeId) => updateMatch(challengeId, "check_in")}
                     actionState={actionState}
                   />
                 ))
@@ -853,12 +1002,15 @@ export default function ChallengeWorkspace() {
                     match={match}
                     viewerUid={uid}
                     localTimePrimary
+                    serverNow={snapshot.serverNow}
                     onAccept={(challengeId) => updateMatch(challengeId, "accept")}
                     onDecline={(challengeId) => updateMatch(challengeId, "decline")}
                     onCancel={(challengeId) => updateMatch(challengeId, "cancel")}
                     onReschedule={(challengeId, payload) =>
                       updateMatch(challengeId, "reschedule", payload)
                     }
+                    onFund={(challengeId, payload) => updateMatch(challengeId, "fund", payload)}
+                    onCheckIn={(challengeId) => updateMatch(challengeId, "check_in")}
                     actionState={actionState}
                     compact
                   />
@@ -917,6 +1069,24 @@ function StatCard({
       </div>
       <div className="mt-2 break-words text-2xl font-semibold text-white">{value}</div>
       {helper ? <div className="mt-1 text-xs leading-5 text-slate-400">{helper}</div> : null}
+    </div>
+  );
+}
+
+function QuickRailCell({
+  label,
+  value,
+  detail,
+}: {
+  label: string;
+  value: string;
+  detail?: string;
+}) {
+  return (
+    <div className="rounded-[1rem] border border-white/10 bg-white/[0.04] px-3 py-3">
+      <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{label}</div>
+      <div className="mt-2 break-words text-sm font-semibold text-white">{value}</div>
+      {detail ? <div className="mt-1 text-xs leading-5 text-slate-400">{detail}</div> : null}
     </div>
   );
 }

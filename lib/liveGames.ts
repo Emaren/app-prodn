@@ -75,10 +75,33 @@ export async function loadLiveGamesSnapshot(prisma: PrismaClient): Promise<LiveG
 
   const scheduledLiveCount = scheduledMatches.filter((match) => match.displayState === "live").length;
   const scheduledReadyCount = scheduledMatches.filter(
-    (match) => match.displayState === "accepted"
+    (match) =>
+      [
+        "accepted",
+        "terms_accepted",
+        "creator_funded",
+        "opponent_funded",
+        "funded",
+        "checkin_open",
+        "left_checked_in",
+        "right_checked_in",
+        "ready",
+      ].includes(match.displayState)
   ).length;
   const scheduledOnDeckCount = scheduledMatches.filter((match) =>
-    ["pending", "accepted"].includes(match.displayState)
+    [
+      "proposed",
+      "pending",
+      "accepted",
+      "terms_accepted",
+      "creator_funded",
+      "opponent_funded",
+      "funded",
+      "checkin_open",
+      "left_checked_in",
+      "right_checked_in",
+      "ready",
+    ].includes(match.displayState)
   ).length;
 
   return {

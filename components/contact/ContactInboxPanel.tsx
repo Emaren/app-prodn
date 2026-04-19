@@ -40,6 +40,8 @@ type ContactInboxPanelProps = {
     action: ContactChallengeActionKind;
     scheduledAt?: string;
     challengeNote?: string;
+    fundingTxHash?: string;
+    fundingWalletAddress?: string;
   }) => void | Promise<void>;
   challengeActionState?: ContactChallengeActionState | null;
   onToggleReaction?: (messageId: number, emoji: string) => void;
@@ -175,65 +177,49 @@ function formatChallengeDuration(diffMs: number) {
 
 function challengeStatusLine(challenge: NonNullable<ContactInboxPayload["activeChallenge"]>) {
   const nowMs = Date.now();
-  const scheduledMs = new Date(challenge.scheduledAt).getTime();
-  const untilStart = scheduledMs - nowMs;
-
-  switch (challenge.displayState) {
-    case "pending":
-      return {
-        status: "Awaiting acceptance",
-        detail:
-          untilStart >= 0
-            ? `Starts in ${formatChallengeDuration(untilStart)}`
-            : `Window passed ${formatChallengeDuration(untilStart)} ago`,
-      };
-    case "accepted":
-      return {
-        status: "Ready",
-        detail: `Game starting in ${formatChallengeDuration(untilStart)}`,
-      };
-    case "live":
-      return {
-        status: "Now playing",
-        detail: challenge.linkedSessionKey ? "Live session linked." : "Start window is open.",
-      };
-    case "completed":
-      return {
-        status: "Final stored",
-        detail: challenge.linkedWinner ? `Winner ${challenge.linkedWinner}` : "Replay proof linked.",
-      };
-    case "forfeited":
-      return {
-        status: "Forfeit",
-        detail: "Missed start by 1m.",
-      };
-    case "declined":
-      return {
-        status: "Declined",
-        detail: "Send a new time to reopen the duel.",
-      };
-    case "cancelled":
-      return {
-        status: "Cancelled",
-        detail: "Reopen it with a fresh start time.",
-      };
-    default:
-      return {
-        status: "Scheduled",
-        detail: new Date(challenge.scheduledAt).toLocaleString(),
-      };
+  if (challenge.economy.countdownTargetAt) {
+    const targetMs = new Date(challenge.economy.countdownTargetAt).getTime();
+    const diff = targetMs - nowMs;
+    return {
+      status: challenge.economy.statusLabel,
+      detail:
+        challenge.economy.countdownMode === "opens_in"
+          ? `Check-in opens in ${formatChallengeDuration(diff)}`
+          : `Check-in closes in ${formatChallengeDuration(diff)}`,
+    };
   }
+
+  if (challenge.displayState === "completed" && challenge.linkedWinner) {
+    return {
+      status: challenge.economy.statusLabel,
+      detail: `Winner ${challenge.linkedWinner}`,
+    };
+  }
+
+  return {
+    status: challenge.economy.statusLabel,
+    detail: challenge.economy.statusDetail,
+  };
 }
 
 function challengeTone(displayState: NonNullable<ContactInboxPayload["activeChallenge"]>["displayState"]) {
   switch (displayState) {
+    case "proposed":
     case "pending":
       return {
         shell: "border-amber-300/25 bg-amber-400/10",
         badge: "border-amber-300/25 bg-amber-300/12 text-amber-100",
         eyebrow: "text-amber-100/80",
       };
+    case "terms_accepted":
     case "accepted":
+    case "creator_funded":
+    case "opponent_funded":
+    case "funded":
+    case "checkin_open":
+    case "left_checked_in":
+    case "right_checked_in":
+    case "ready":
     case "completed":
       return {
         shell: "border-emerald-300/25 bg-emerald-500/10",
@@ -246,6 +232,9 @@ function challengeTone(displayState: NonNullable<ContactInboxPayload["activeChal
         badge: "border-cyan-300/25 bg-cyan-300/12 text-cyan-50",
         eyebrow: "text-cyan-100/80",
       };
+    case "no_show_left":
+    case "no_show_right":
+    case "double_no_show":
     case "forfeited":
     case "declined":
       return {
@@ -254,6 +243,8 @@ function challengeTone(displayState: NonNullable<ContactInboxPayload["activeChal
         eyebrow: "text-rose-100/80",
       };
     case "cancelled":
+    case "canceled":
+    case "refunded":
     default:
       return {
         shell: "border-white/10 bg-white/[0.04]",
@@ -272,23 +263,30 @@ function challengeNoticeTone(
 
   switch (summary.state) {
     case "accepted":
+    case "terms_accepted":
+    case "ready":
       return {
         summary,
         shell:
           "border-emerald-300/18 bg-emerald-400/10 text-emerald-50 shadow-[inset_0_0_0_1px_rgba(74,222,128,0.08)]",
       };
+    case "funding":
+    case "checkin":
+    case "scheduled":
+    case "rescheduled":
+    case "result_ready":
+      return {
+        summary,
+        shell:
+          "border-amber-300/18 bg-amber-400/10 text-amber-50 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.08)]",
+      };
+    case "no_show":
     case "declined":
     case "cancelled":
       return {
         summary,
         shell:
           "border-rose-300/18 bg-rose-500/10 text-rose-50 shadow-[inset_0_0_0_1px_rgba(251,113,133,0.08)]",
-      };
-    default:
-      return {
-        summary,
-        shell:
-          "border-amber-300/18 bg-amber-400/10 text-amber-50 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.08)]",
       };
   }
 }
@@ -304,7 +302,7 @@ function ChallengeSystemMessageLine({
     <div className="flex justify-center">
       <div
         title={message.body}
-        className={`max-w-full rounded-full border px-3 py-2 text-[11px] font-medium ${compactNotice.shell}`}
+        className={`max-w-full rounded-full border px-3 py-1.5 text-[11px] font-medium ${compactNotice.shell}`}
       >
         <div className="truncate whitespace-nowrap">{compactNotice.summary.compactLine}</div>
       </div>
@@ -329,15 +327,21 @@ function ChallengeThreadStrip({
   const challengeScheduledAt = challenge?.scheduledAt ?? null;
   const challengeNoteValue = challenge?.challengeNote ?? "";
   const [showRescheduleForm, setShowRescheduleForm] = useState(false);
+  const [showFundingForm, setShowFundingForm] = useState(false);
   const [scheduledAt, setScheduledAt] = useState(() =>
     challenge ? toLocalDateTimeValue(challenge.scheduledAt) : ""
   );
   const [challengeNote, setChallengeNote] = useState(challengeNoteValue);
+  const [fundingTxHash, setFundingTxHash] = useState("");
+  const [fundingWalletAddress, setFundingWalletAddress] = useState("");
 
   useEffect(() => {
     setShowRescheduleForm(false);
+    setShowFundingForm(false);
     setScheduledAt(challengeScheduledAt ? toLocalDateTimeValue(challengeScheduledAt) : "");
     setChallengeNote(challengeNoteValue);
+    setFundingTxHash("");
+    setFundingWalletAddress("");
   }, [challengeId, challengeScheduledAt, challengeNoteValue]);
 
   if (!challenge || !counterpart || counterpart.threadKind !== "direct") {
@@ -348,31 +352,76 @@ function ChallengeThreadStrip({
   const status = challengeStatusLine(challenge);
   const viewerIsChallenger = data.viewer.uid === challenge.challenger.uid;
   const viewerIsChallenged = data.viewer.uid === challenge.challenged.uid;
-  const canAccept = viewerIsChallenged && challenge.displayState === "pending";
-  const canDecline = viewerIsChallenged && challenge.displayState === "pending";
+  const viewerAlreadyFunded = viewerIsChallenger
+    ? Boolean(challenge.economy.creatorFundedAt)
+    : viewerIsChallenged
+      ? Boolean(challenge.economy.opponentFundedAt)
+      : false;
+  const viewerAlreadyCheckedIn = viewerIsChallenger
+    ? Boolean(challenge.economy.leftCheckedInAt)
+    : viewerIsChallenged
+      ? Boolean(challenge.economy.rightCheckedInAt)
+      : false;
+  const hasFundingOnFile = Boolean(
+    challenge.economy.creatorFundedAt || challenge.economy.opponentFundedAt
+  );
+  const hasCheckInOnFile = Boolean(
+    challenge.economy.leftCheckedInAt || challenge.economy.rightCheckedInAt
+  );
+  const canAccept =
+    viewerIsChallenged && ["proposed", "pending"].includes(challenge.displayState);
+  const canDecline =
+    viewerIsChallenged && ["proposed", "pending"].includes(challenge.displayState);
   const canCancel =
-    (viewerIsChallenger && challenge.displayState === "pending") ||
-    ((viewerIsChallenger || viewerIsChallenged) && challenge.displayState === "accepted");
+    (viewerIsChallenger && ["proposed", "pending"].includes(challenge.displayState)) ||
+    ((viewerIsChallenger || viewerIsChallenged) &&
+      !hasFundingOnFile &&
+      !hasCheckInOnFile &&
+      ["terms_accepted", "accepted", "declined", "cancelled", "canceled"].includes(
+        challenge.displayState
+      ));
   const canReschedule =
     viewerIsChallenger || viewerIsChallenged
-      ? ["pending", "accepted", "declined", "cancelled"].includes(challenge.displayState)
+      ? !hasFundingOnFile &&
+        !hasCheckInOnFile &&
+        ["proposed", "pending", "terms_accepted", "accepted", "declined", "cancelled", "canceled"].includes(
+          challenge.displayState
+        )
       : false;
+  const canFund =
+    (viewerIsChallenger || viewerIsChallenged) &&
+    challenge.economy.hasTerms &&
+    !viewerAlreadyFunded &&
+    !["completed", "declined", "cancelled", "canceled", "no_show_left", "no_show_right", "double_no_show", "forfeited", "refunded"].includes(
+      challenge.displayState
+    );
+  const canCheckIn =
+    (viewerIsChallenger || viewerIsChallenged) &&
+    viewerAlreadyFunded &&
+    !viewerAlreadyCheckedIn &&
+    challenge.economy.checkInWindowState === "open";
   const currentAction =
     challengeActionState?.challengeId === challenge.id ? challengeActionState.action : null;
   const isBusy = Boolean(currentAction);
   const reopenLabel =
-    challenge.displayState === "declined" || challenge.displayState === "cancelled"
+    challenge.displayState === "declined" ||
+    challenge.displayState === "cancelled" ||
+    challenge.displayState === "canceled"
       ? "Challenge Again"
-      : "Reschedule";
+      : "Edit Terms";
   const compact = mode === "popover";
   const actionSizing = compact ? "px-2.5 py-1.5 text-[11px]" : "px-3 py-2 text-xs";
   const primaryHref =
-    challenge.displayState === "live" && challenge.linkedSessionKey
+    (challenge.displayState === "live" || challenge.displayState === "completed") &&
+    challenge.linkedSessionKey
       ? `/game-stats/live/${encodeURIComponent(challenge.linkedSessionKey)}`
       : "/challenge";
   const primaryLabel =
-    challenge.displayState === "live" && challenge.linkedSessionKey
-      ? "Watch Live Stats"
+    (challenge.displayState === "live" || challenge.displayState === "completed") &&
+    challenge.linkedSessionKey
+      ? challenge.displayState === "completed"
+        ? "Open Final Stats"
+        : "Watch Live Stats"
       : mode === "popover"
         ? "Open Runway"
         : "Open Challenge Hub";
@@ -390,18 +439,16 @@ function ChallengeThreadStrip({
                 {challenge.challenger.name} vs {challenge.challenged.name}
               </span>
               <span className="shrink-0 text-slate-500">·</span>
+              <span className="shrink-0 text-slate-300">
+                {challenge.terms.totalFundingWolo.toLocaleString()} WOLO each
+              </span>
+              <span className="shrink-0 text-slate-500">·</span>
               <TimeDisplayText
                 value={challenge.scheduledAt}
                 includeZone={false}
                 className="shrink-0 text-slate-300"
                 bubbleClassName="max-w-[14rem] text-center"
               />
-              {challenge.challengeNote ? (
-                <>
-                  <span className="shrink-0 text-slate-500">·</span>
-                  <span className="hidden shrink-0 text-slate-400 sm:inline">note attached</span>
-                </>
-              ) : null}
             </div>
           </div>
 
@@ -429,6 +476,21 @@ function ChallengeThreadStrip({
       challengeNote,
     });
     setShowRescheduleForm(false);
+  }
+
+  async function handleFunding(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!onChallengeAction || !fundingTxHash.trim() || challengeId === null) {
+      return;
+    }
+
+    await onChallengeAction({
+      challengeId,
+      action: "fund",
+      fundingTxHash,
+      fundingWalletAddress,
+    });
+    setShowFundingForm(false);
   }
 
   return (
@@ -460,6 +522,9 @@ function ChallengeThreadStrip({
                 hour: "numeric",
                 minute: "2-digit",
               })}
+            </span>
+            <span className="rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-0.5">
+              {challenge.terms.totalFundingWolo.toLocaleString()} WOLO each
             </span>
             {challenge.linkedMapName ? (
               <span className="rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-0.5">
@@ -497,6 +562,26 @@ function ChallengeThreadStrip({
             className={`rounded-full border border-rose-300/30 bg-rose-500/10 font-semibold text-rose-50 transition hover:bg-rose-500/15 disabled:cursor-not-allowed disabled:opacity-60 ${actionSizing}`}
           >
             {currentAction === "decline" ? "Declining..." : "Decline"}
+          </button>
+        ) : null}
+        {canFund ? (
+          <button
+            type="button"
+            disabled={isBusy}
+            onClick={() => setShowFundingForm((current) => !current)}
+            className={`rounded-full border border-amber-300/30 bg-amber-400/10 text-amber-100 transition hover:bg-amber-400/15 disabled:cursor-not-allowed disabled:opacity-60 ${actionSizing}`}
+          >
+            {showFundingForm ? "Close Funding" : "Mark Funded"}
+          </button>
+        ) : null}
+        {canCheckIn ? (
+          <button
+            type="button"
+            disabled={isBusy}
+            onClick={() => void onChallengeAction?.({ challengeId: challenge.id, action: "check_in" })}
+            className={`rounded-full bg-emerald-300 font-semibold text-slate-950 transition hover:bg-emerald-200 disabled:cursor-not-allowed disabled:opacity-60 ${actionSizing}`}
+          >
+            {currentAction === "check_in" ? "Checking..." : "Check In"}
           </button>
         ) : null}
         {canCancel ? (
@@ -571,6 +656,53 @@ function ChallengeThreadStrip({
               type="button"
               disabled={isBusy}
               onClick={() => setShowRescheduleForm(false)}
+              className={`rounded-full border border-white/15 text-white/85 transition hover:border-white/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-60 ${actionSizing}`}
+            >
+              Close
+            </button>
+          </div>
+        </form>
+      ) : null}
+
+      {canFund && showFundingForm ? (
+        <form
+          onSubmit={handleFunding}
+          className={`mt-2.5 space-y-2.5 rounded-[0.95rem] border border-white/10 bg-slate-950/35 ${compact ? "p-2.5" : "p-3"}`}
+        >
+          <label className="block space-y-1.5">
+            <span className="text-[10px] uppercase tracking-[0.2em] text-slate-300">Funding tx hash</span>
+            <input
+              type="text"
+              value={fundingTxHash}
+              onChange={(event) => setFundingTxHash(event.target.value)}
+              disabled={isBusy}
+              className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white outline-none focus:border-amber-300/50 disabled:cursor-not-allowed disabled:opacity-60"
+              placeholder="Signed escrow tx hash"
+            />
+          </label>
+          <label className="block space-y-1.5">
+            <span className="text-[10px] uppercase tracking-[0.2em] text-slate-300">Wallet address</span>
+            <input
+              type="text"
+              value={fundingWalletAddress}
+              onChange={(event) => setFundingWalletAddress(event.target.value)}
+              disabled={isBusy}
+              className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white outline-none focus:border-amber-300/50 disabled:cursor-not-allowed disabled:opacity-60"
+              placeholder="Optional"
+            />
+          </label>
+          <div className="flex flex-wrap gap-1.5">
+            <button
+              type="submit"
+              disabled={isBusy}
+              className={`rounded-full bg-amber-300 font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-60 ${actionSizing}`}
+            >
+              {currentAction === "fund" ? "Recording..." : `Lock ${challenge.terms.totalFundingWolo.toLocaleString()} WOLO`}
+            </button>
+            <button
+              type="button"
+              disabled={isBusy}
+              onClick={() => setShowFundingForm(false)}
               className={`rounded-full border border-white/15 text-white/85 transition hover:border-white/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-60 ${actionSizing}`}
             >
               Close

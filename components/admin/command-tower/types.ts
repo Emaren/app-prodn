@@ -66,11 +66,18 @@ export type Activity = {
 export type ScheduledMatchSummary = {
   id: number;
   status: string;
+  displayState: string;
   role: "challenger" | "challenged";
   opponentName: string;
   opponentUid: string;
   scheduledAt: string;
   activityAt: string;
+  wagerAmountWolo: number;
+  guaranteeAmountWolo: number;
+  totalFundingWolo: number;
+  fundingState: string;
+  checkInState: string;
+  resolutionLabel: string | null;
   linkedMapName: string | null;
   linkedWinner: string | null;
 };

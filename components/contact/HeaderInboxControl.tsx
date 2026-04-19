@@ -166,6 +166,8 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
       action: ContactChallengeActionKind;
       scheduledAt?: string;
       challengeNote?: string;
+      fundingTxHash?: string;
+      fundingWalletAddress?: string;
     }) => {
       setChallengeActionState({
         challengeId: payload.challengeId,
@@ -183,6 +185,8 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
             action: payload.action,
             scheduledAt: payload.scheduledAt,
             challengeNote: payload.challengeNote,
+            fundingTxHash: payload.fundingTxHash,
+            fundingWalletAddress: payload.fundingWalletAddress,
           }),
         });
 

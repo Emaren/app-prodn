@@ -1,6 +1,12 @@
 export type ChallengeInboxNoticeState =
   | "scheduled"
   | "accepted"
+  | "terms_accepted"
+  | "funding"
+  | "checkin"
+  | "ready"
+  | "no_show"
+  | "result_ready"
   | "declined"
   | "cancelled"
   | "rescheduled";
@@ -26,9 +32,33 @@ const CHALLENGE_NOTICE_HEADLINES: Record<
     state: "scheduled",
     compactHeadline: "Scheduled game",
   },
+  "Challenge terms accepted": {
+    state: "terms_accepted",
+    compactHeadline: "Terms accepted",
+  },
   "Challenge accepted": {
     state: "accepted",
     compactHeadline: "Game accepted",
+  },
+  "Challenge funding recorded": {
+    state: "funding",
+    compactHeadline: "Funding recorded",
+  },
+  "Challenge check-in recorded": {
+    state: "checkin",
+    compactHeadline: "Check-in",
+  },
+  "Challenge ready": {
+    state: "ready",
+    compactHeadline: "Match ready",
+  },
+  "Challenge no-show resolved": {
+    state: "no_show",
+    compactHeadline: "No-show resolved",
+  },
+  "Challenge result ready": {
+    state: "result_ready",
+    compactHeadline: "Result ready",
   },
   "Challenge declined": {
     state: "declined",
@@ -80,6 +110,7 @@ export function summarizeChallengeInboxMessage(
       ? lines[1]
       : null;
   const scheduledLabel = readPrefixedLine(lines, ["Start:", "New start:"]);
+  const fundingLabel = readPrefixedLine(lines, ["Funding:"]);
   const statusLabel = readPrefixedLine(lines, ["Status:"]);
   const note = readPrefixedLine(lines, ["Note:"]);
 
@@ -87,6 +118,7 @@ export function summarizeChallengeInboxMessage(
     descriptor.compactHeadline,
     matchup,
     scheduledLabel,
+    fundingLabel,
     statusLabel,
     note ? "note attached" : null,
   ];

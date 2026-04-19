@@ -13,6 +13,7 @@ import {
   isBetStakeIntentCountableStatus,
   refreshRecoverableBetStakeIntents,
 } from "@/lib/betStakeIntents";
+import { buildChallengeEconomySurface } from "@/lib/challengeEconomy";
 import { loadWatcherDownloadAnalytics } from "@/lib/watcherDownloads";
 import { getWoloSettlementSurfaceStatus } from "@/lib/woloBetSettlement";
 import { buildWoloRestTxLookupUrl, getWoloBetEscrowRuntime } from "@/lib/woloChain";
@@ -270,6 +271,20 @@ export async function GET(request: NextRequest) {
           status: true,
           scheduledAt: true,
           updatedAt: true,
+          acceptedAt: true,
+          resultAt: true,
+          settlementReadyAt: true,
+          wagerAmountWolo: true,
+          guaranteeAmountWolo: true,
+          challengerFundedAt: true,
+          challengerFundingTxHash: true,
+          challengerFundingWalletAddress: true,
+          challengedFundedAt: true,
+          challengedFundingTxHash: true,
+          challengedFundingWalletAddress: true,
+          challengerCheckedInAt: true,
+          challengedCheckedInAt: true,
+          liveConfirmedAt: true,
           linkedMapName: true,
           linkedWinner: true,
           challengerUserId: true,
@@ -497,11 +512,18 @@ export async function GET(request: NextRequest) {
     const scheduledByUserId = new Map<number, Array<{
       id: number;
       status: string;
+      displayState: string;
       role: "challenger" | "challenged";
       opponentName: string;
       opponentUid: string;
       scheduledAt: string;
       activityAt: string;
+      wagerAmountWolo: number;
+      guaranteeAmountWolo: number;
+      totalFundingWolo: number;
+      fundingState: string;
+      checkInState: string;
+      resolutionLabel: string | null;
       linkedMapName: string | null;
       linkedWinner: string | null;
     }>>();
@@ -510,17 +532,51 @@ export async function GET(request: NextRequest) {
       const challengerName = row.challenger.inGameName || row.challenger.steamPersonaName || row.challenger.uid;
       const challengedName = row.challenged.inGameName || row.challenged.steamPersonaName || row.challenged.uid;
       const activityAt = row.updatedAt.toISOString();
+      const surface = buildChallengeEconomySurface({
+        status: row.status,
+        scheduledAt: row.scheduledAt,
+        acceptedAt: row.acceptedAt,
+        resultAt: row.resultAt,
+        liveConfirmedAt: row.liveConfirmedAt,
+        settlementReadyAt: row.settlementReadyAt,
+        wagerAmountWolo: row.wagerAmountWolo,
+        guaranteeAmountWolo: row.guaranteeAmountWolo,
+        challengerFundedAt: row.challengerFundedAt,
+        challengerFundingTxHash: row.challengerFundingTxHash,
+        challengerFundingWalletAddress: row.challengerFundingWalletAddress,
+        challengedFundedAt: row.challengedFundedAt,
+        challengedFundingTxHash: row.challengedFundingTxHash,
+        challengedFundingWalletAddress: row.challengedFundingWalletAddress,
+        challengerCheckedInAt: row.challengerCheckedInAt,
+        challengedCheckedInAt: row.challengedCheckedInAt,
+      });
+      const totalFundingWolo = row.wagerAmountWolo + row.guaranteeAmountWolo;
+      const checkInState =
+        surface.economy.checkInWindowState === "open"
+          ? "open"
+          : surface.economy.checkInWindowState === "upcoming"
+            ? "pending"
+            : surface.economy.checkInWindowState === "closed"
+              ? "closed"
+              : "locked after funding";
 
       const challengerList = scheduledByUserId.get(row.challengerUserId) ?? [];
       if (challengerList.length < 8) {
         challengerList.push({
           id: row.id,
           status: row.status,
+          displayState: surface.displayState,
           role: "challenger",
           opponentName: challengedName,
           opponentUid: row.challenged.uid,
           scheduledAt: row.scheduledAt.toISOString(),
           activityAt,
+          wagerAmountWolo: row.wagerAmountWolo,
+          guaranteeAmountWolo: row.guaranteeAmountWolo,
+          totalFundingWolo,
+          fundingState: surface.economy.statusLabel,
+          checkInState,
+          resolutionLabel: surface.economy.resolution.label,
           linkedMapName: row.linkedMapName ?? null,
           linkedWinner: row.linkedWinner ?? null,
         });
@@ -532,11 +588,18 @@ export async function GET(request: NextRequest) {
         challengedList.push({
           id: row.id,
           status: row.status,
+          displayState: surface.displayState,
           role: "challenged",
           opponentName: challengerName,
           opponentUid: row.challenger.uid,
           scheduledAt: row.scheduledAt.toISOString(),
           activityAt,
+          wagerAmountWolo: row.wagerAmountWolo,
+          guaranteeAmountWolo: row.guaranteeAmountWolo,
+          totalFundingWolo,
+          fundingState: surface.economy.statusLabel,
+          checkInState,
+          resolutionLabel: surface.economy.resolution.label,
           linkedMapName: row.linkedMapName ?? null,
           linkedWinner: row.linkedWinner ?? null,
         });

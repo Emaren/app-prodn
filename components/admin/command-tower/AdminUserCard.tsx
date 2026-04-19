@@ -551,7 +551,14 @@ export default function AdminUserCard({
                             {match.role === "challenger" ? "vs" : "from"} {match.opponentName}
                           </div>
                           <div className="mt-1 text-xs text-slate-400">
-                            <AdminTime value={match.activityAt} /> · {match.status}
+                            <AdminTime value={match.activityAt} /> · {match.displayState}
+                          </div>
+                          <div className="mt-1 break-words text-[11px] text-slate-500">
+                            Wager {formatWolo(match.wagerAmountWolo)} · Guarantee {formatWolo(match.guaranteeAmountWolo)} · Funding {formatWolo(match.totalFundingWolo)} each
+                          </div>
+                          <div className="mt-1 break-words text-[11px] text-slate-500">
+                            {match.fundingState} · check-in {match.checkInState}
+                            {match.resolutionLabel ? ` · ${match.resolutionLabel}` : ""}
                           </div>
                           {match.linkedMapName ? (
                             <div className="mt-1 break-words text-[11px] text-slate-500">
@@ -561,7 +568,7 @@ export default function AdminUserCard({
                           ) : null}
                         </div>
                         <span className={`rounded-full border px-2 py-0.5 text-[11px] ${statusTone(match.status)}`}>
-                          {match.status}
+                          {match.displayState}
                         </span>
                       </div>
                     </div>

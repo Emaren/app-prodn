@@ -130,16 +130,39 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
   const recentScheduledMatches = useMemo(
     () =>
       snapshot.scheduledMatches.filter((match) =>
-        ["completed", "forfeited"].includes(match.displayState)
+        [
+          "completed",
+          "forfeited",
+          "no_show_left",
+          "no_show_right",
+          "double_no_show",
+          "refunded",
+        ].includes(match.displayState)
       ),
     [snapshot.scheduledMatches]
   );
   const acceptedScheduledMatches = useMemo(
-    () => snapshot.scheduledMatches.filter((match) => match.displayState === "accepted"),
+    () =>
+      snapshot.scheduledMatches.filter((match) =>
+        [
+          "accepted",
+          "terms_accepted",
+          "creator_funded",
+          "opponent_funded",
+          "funded",
+          "checkin_open",
+          "left_checked_in",
+          "right_checked_in",
+          "ready",
+        ].includes(match.displayState)
+      ),
     [snapshot.scheduledMatches]
   );
   const pendingScheduledMatches = useMemo(
-    () => snapshot.scheduledMatches.filter((match) => match.displayState === "pending"),
+    () =>
+      snapshot.scheduledMatches.filter((match) =>
+        ["proposed", "pending"].includes(match.displayState)
+      ),
     [snapshot.scheduledMatches]
   );
   const liveItemsCount =
