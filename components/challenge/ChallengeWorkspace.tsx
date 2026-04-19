@@ -554,7 +554,7 @@ export default function ChallengeWorkspace() {
                   <select
                     value={challengedUid}
                     onChange={(event) => setChallengedUid(event.target.value)}
-                    className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-amber-300/50"
+                    className="w-full cursor-pointer rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none transition hover:border-white/20 focus:border-amber-300/50"
                   >
                     <option value="">Choose a warrior</option>
                     {snapshot.candidates.map((candidate) => (

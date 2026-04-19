@@ -216,21 +216,29 @@ function MoneyCell({
   label,
   value,
   emphasize = false,
+  compact = false,
+  className = "",
 }: {
   label: string;
   value: string;
   emphasize?: boolean;
+  compact?: boolean;
+  className?: string;
 }) {
   return (
     <div
-      className={`rounded-[1rem] border px-3 py-3 ${
+      className={`min-w-0 rounded-[1rem] border px-3 py-3 ${
         emphasize
           ? "border-amber-300/18 bg-amber-400/10"
           : "border-white/10 bg-white/[0.04]"
-      }`}
+      } ${className}`}
     >
-      <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{label}</div>
-      <div className="mt-2 text-sm font-semibold text-white sm:text-base">{value}</div>
+      <div className={`${compact ? "text-[9px]" : "text-[10px]"} uppercase tracking-[0.18em] text-slate-500`}>
+        {label}
+      </div>
+      <div className={`mt-2 break-words font-semibold text-white ${compact ? "text-xs leading-5" : "text-sm sm:text-base"}`}>
+        {value}
+      </div>
     </div>
   );
 }
@@ -416,25 +424,53 @@ export default function ScheduledMatchCard({
             <div className="mt-2 break-words text-sm leading-6 text-slate-300">{match.challengeNote}</div>
           ) : null}
 
-          <div className="mt-4 grid gap-3 sm:grid-cols-[auto_1fr]">
-            <div className="flex items-start gap-3 rounded-[1.15rem] border border-white/10 bg-slate-950/30 px-3 py-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-amber-300/15 bg-amber-300/10">
-                <Image src={WOLO_LOGO_SRC} alt="WOLO" width={22} height={22} className="h-5 w-5 object-contain" />
+          <div className={`mt-4 grid gap-3 ${compact ? "" : "sm:grid-cols-[auto_1fr]"}`}>
+            <div
+              className={`flex items-start gap-3 rounded-[1.15rem] border border-white/10 bg-slate-950/30 ${
+                compact ? "px-3 py-2.5" : "px-3 py-3"
+              }`}
+            >
+              <div
+                className={`flex shrink-0 items-center justify-center rounded-full border border-amber-300/15 bg-amber-300/10 ${
+                  compact ? "h-10 w-10" : "h-11 w-11"
+                }`}
+              >
+                <Image
+                  src={WOLO_LOGO_SRC}
+                  alt="WOLO"
+                  width={22}
+                  height={22}
+                  className={`${compact ? "h-[18px] w-[18px]" : "h-5 w-5"} object-contain`}
+                />
               </div>
               <div className="min-w-0">
                 <div className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Match economy</div>
-                <div className="mt-1 text-sm font-semibold text-white">Wolo Wager + Match Guarantee</div>
-                <div className="mt-1 text-xs text-slate-400">One signed funding action per player.</div>
+                <div className={`mt-1 font-semibold text-white ${compact ? "text-[13px]" : "text-sm"}`}>
+                  Wolo Wager + Match Guarantee
+                </div>
+                <div className={`mt-1 text-slate-400 ${compact ? "text-[11px] leading-5" : "text-xs"}`}>
+                  One signed funding action per player.
+                </div>
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-3">
-              <MoneyCell label="Wolo Wager" value={`${formatWolo(match.terms.wagerAmountWolo)} WOLO`} />
-              <MoneyCell label="Match Guarantee" value={`${formatWolo(match.terms.guaranteeAmountWolo)} WOLO`} />
+            <div className={`grid gap-2.5 ${compact ? "grid-cols-2" : "sm:grid-cols-3"}`}>
+              <MoneyCell
+                label="Wolo Wager"
+                value={`${formatWolo(match.terms.wagerAmountWolo)} WOLO`}
+                compact={compact}
+              />
+              <MoneyCell
+                label="Match Guarantee"
+                value={`${formatWolo(match.terms.guaranteeAmountWolo)} WOLO`}
+                compact={compact}
+              />
               <MoneyCell
                 label="Funding Each"
                 value={`${formatWolo(match.terms.totalFundingWolo)} WOLO`}
                 emphasize
+                compact={compact}
+                className={compact ? "col-span-2" : ""}
               />
             </div>
           </div>
@@ -742,6 +778,7 @@ export default function ScheduledMatchCard({
               label="Funding Each"
               value={`${formatWolo((Number.parseInt(wagerAmount, 10) || 0) + (Number.parseInt(guaranteeAmount, 10) || 0))} WOLO`}
               emphasize
+              compact={compact}
             />
           </div>
 
