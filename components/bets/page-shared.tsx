@@ -129,6 +129,7 @@ export type BetBoardSnapshot = {
     unresolvedStakeIntents: Array<{
       id: number;
       marketId: number;
+      marketStatus: BetStatus;
       title: string;
       eventLabel: string;
       side: BetSide;
@@ -216,6 +217,10 @@ export function formatSettledTime(value: string | null) {
     hour: "numeric",
     minute: "2-digit",
   });
+}
+
+export function isRecoveryBookOpen(status: BetStatus) {
+  return status === "open" || status === "closing" || status === "live";
 }
 
 export function validateStakeAmount(stake: number, maxStake: number) {

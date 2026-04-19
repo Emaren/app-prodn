@@ -156,6 +156,7 @@ export type BetBoardSnapshot = {
     unresolvedStakeIntents: Array<{
       id: number;
       marketId: number;
+      marketStatus: BetStatus;
       title: string;
       eventLabel: string;
       side: BetSide;
@@ -2232,6 +2233,7 @@ export async function loadBetBoardSnapshot(
       unresolvedStakeIntents: unresolvedStakeIntents.map((intent) => ({
         id: intent.id,
         marketId: intent.marketId,
+        marketStatus: intent.market.status as BetStatus,
         title: intent.market.title,
         eventLabel: intent.market.eventLabel,
         side: intent.side === "right" ? "right" : "left",

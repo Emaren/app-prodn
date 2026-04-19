@@ -7,6 +7,7 @@ import TimeDisplayText from "@/components/time/TimeDisplayText";
 import AutoGrowTextarea from "@/components/ui/AutoGrowTextarea";
 import { CHALLENGE_NOTE_MAX_CHARS } from "@/lib/challengeConfig";
 import type { ScheduledMatchTile } from "@/lib/challenges";
+import { formatDateTime } from "@/lib/timeDisplay";
 
 export type ScheduledMatchCardActionKind =
   | "accept"
@@ -34,6 +35,7 @@ type ScheduledMatchCardProps = {
   ) => void | Promise<void>;
   actionState?: ScheduledMatchCardActionState | null;
   compact?: boolean;
+  localTimePrimary?: boolean;
 };
 
 function toLocalDateTimeValue(value: string) {
@@ -178,6 +180,7 @@ export default function ScheduledMatchCard({
   onReschedule,
   actionState = null,
   compact = false,
+  localTimePrimary = false,
 }: ScheduledMatchCardProps) {
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [showRescheduleForm, setShowRescheduleForm] = useState(false);
@@ -260,8 +263,8 @@ export default function ScheduledMatchCard({
   }
 
   return (
-    <div className={`rounded-[1.5rem] border p-4 sm:p-5 ${accent.shell}`}>
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(12rem,0.65fr)]">
+    <div className={`min-w-0 rounded-[1.5rem] border p-4 sm:p-5 ${accent.shell}`}>
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(12rem,0.65fr)]">
         <div className="min-w-0">
           <div className={`text-xs uppercase tracking-[0.3em] ${accent.eyebrow}`}>
             Scheduled match
@@ -270,7 +273,7 @@ export default function ScheduledMatchCard({
             {match.challenger.name} vs {match.challenged.name}
           </div>
           {match.challengeNote ? (
-            <div className="mt-3 max-w-2xl break-words text-sm text-slate-300">
+            <div className="mt-3 max-w-2xl break-words text-sm leading-6 text-slate-300">
               {match.challengeNote}
             </div>
           ) : null}
@@ -280,13 +283,43 @@ export default function ScheduledMatchCard({
                 {match.linkedMapName}
               </span>
             ) : null}
-            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-              <TimeDisplayText
-                value={match.scheduledAt}
-                className="text-slate-300"
-                bubbleClassName="max-w-[16rem] text-center"
-              />
-            </span>
+            {localTimePrimary ? (
+              <>
+                <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-200">
+                  {formatDateTime(
+                    match.scheduledAt,
+                    {
+                      timeDisplayMode: "local",
+                      timezoneOverride: null,
+                    },
+                    {
+                      includeZone: true,
+                    }
+                  )}
+                </span>
+                <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-slate-400">
+                  UTC{" "}
+                  {formatDateTime(
+                    match.scheduledAt,
+                    {
+                      timeDisplayMode: "utc",
+                      timezoneOverride: null,
+                    },
+                    {
+                      includeZone: false,
+                    }
+                  )}
+                </span>
+              </>
+            ) : (
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+                <TimeDisplayText
+                  value={match.scheduledAt}
+                  className="text-slate-300"
+                  bubbleClassName="max-w-[16rem] text-center"
+                />
+              </span>
+            )}
             {match.linkedWinner ? (
               <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
                 Winner {match.linkedWinner}
@@ -295,12 +328,12 @@ export default function ScheduledMatchCard({
           </div>
         </div>
 
-        <div className="rounded-[1.25rem] border border-white/10 bg-slate-950/25 px-4 py-3 text-left lg:text-right">
+        <div className="min-w-0 rounded-[1.25rem] border border-white/10 bg-slate-950/25 px-4 py-3 text-left xl:text-right">
           <div className={`inline-flex rounded-full border px-3 py-1 text-xs ${accent.badge}`}>
             {statusLine.status}
           </div>
-          <div className="mt-3 text-lg font-semibold text-white/95">{statusLine.status}</div>
-          <div className="mt-1 text-sm text-slate-200">{statusLine.time}</div>
+          <div className="mt-3 break-words text-lg font-semibold text-white/95">{statusLine.status}</div>
+          <div className="mt-1 break-words text-sm text-slate-200">{statusLine.time}</div>
           {match.durationSeconds && match.durationSeconds > 0 ? (
             <div className="mt-3 text-xs uppercase tracking-[0.22em] text-slate-400">
               {Math.max(1, Math.floor(match.durationSeconds / 60))}m

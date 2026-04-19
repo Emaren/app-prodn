@@ -346,6 +346,7 @@ export async function loadViewerBetStakeIntents(
       market: {
         select: {
           id: true,
+          status: true,
           title: true,
           eventLabel: true,
           leftLabel: true,

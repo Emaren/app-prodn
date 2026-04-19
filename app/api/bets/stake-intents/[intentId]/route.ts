@@ -45,6 +45,13 @@ async function requireViewer(request: NextRequest) {
   return { prisma, viewer };
 }
 
+function buildBetWagerErrorPayload(error: BetWagerError) {
+  return {
+    detail: error.message,
+    code: error.message === "This book is closed." ? "book_closed" : "bet_wager_error",
+  };
+}
+
 export async function POST(
   request: NextRequest,
   context: { params: Promise<{ intentId: string }> }
@@ -192,7 +199,7 @@ export async function POST(
           status: error.status >= 500 ? "failed" : "suspect",
           errorDetail: error.message,
         });
-        return NextResponse.json({ detail: error.message }, { status: error.status });
+        return NextResponse.json(buildBetWagerErrorPayload(error), { status: error.status });
       }
       throw error;
     }

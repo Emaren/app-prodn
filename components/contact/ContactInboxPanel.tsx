@@ -7,12 +7,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 
 import CommunityBadgePill from "@/components/contact/CommunityBadgePill";
+import TimeDisplayText from "@/components/time/TimeDisplayText";
 import AutoGrowTextarea from "@/components/ui/AutoGrowTextarea";
 import {
   DIRECT_MESSAGE_MAX_CHARS,
   DIRECT_MESSAGE_REACTIONS,
 } from "@/lib/contactInboxConfig";
 import { AI_CONCIERGE_NAME, AI_CONCIERGE_UID } from "@/lib/aiConciergeConfig";
+import { summarizeChallengeInboxMessage } from "@/lib/challengeInboxMessages";
 import type {
   ContactChallengeActionKind,
   ContactChallengeActionState,
@@ -261,6 +263,55 @@ function challengeTone(displayState: NonNullable<ContactInboxPayload["activeChal
   }
 }
 
+function challengeNoticeTone(
+  summary: ReturnType<typeof summarizeChallengeInboxMessage>
+) {
+  if (!summary) {
+    return null;
+  }
+
+  switch (summary.state) {
+    case "accepted":
+      return {
+        summary,
+        shell:
+          "border-emerald-300/18 bg-emerald-400/10 text-emerald-50 shadow-[inset_0_0_0_1px_rgba(74,222,128,0.08)]",
+      };
+    case "declined":
+    case "cancelled":
+      return {
+        summary,
+        shell:
+          "border-rose-300/18 bg-rose-500/10 text-rose-50 shadow-[inset_0_0_0_1px_rgba(251,113,133,0.08)]",
+      };
+    default:
+      return {
+        summary,
+        shell:
+          "border-amber-300/18 bg-amber-400/10 text-amber-50 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.08)]",
+      };
+  }
+}
+
+function ChallengeSystemMessageLine({
+  message,
+  compactNotice,
+}: {
+  message: Extract<ContactInboxMessage, { kind: "text" }>;
+  compactNotice: NonNullable<ReturnType<typeof challengeNoticeTone>>;
+}) {
+  return (
+    <div className="flex justify-center">
+      <div
+        title={message.body}
+        className={`max-w-full rounded-full border px-3 py-2 text-[11px] font-medium ${compactNotice.shell}`}
+      >
+        <div className="truncate whitespace-nowrap">{compactNotice.summary.compactLine}</div>
+      </div>
+    </div>
+  );
+}
+
 function ChallengeThreadStrip({
   data,
   mode,
@@ -315,6 +366,55 @@ function ChallengeThreadStrip({
       : "Reschedule";
   const compact = mode === "popover";
   const actionSizing = compact ? "px-2.5 py-1.5 text-[11px]" : "px-3 py-2 text-xs";
+  const primaryHref =
+    challenge.displayState === "live" && challenge.linkedSessionKey
+      ? `/game-stats/live/${encodeURIComponent(challenge.linkedSessionKey)}`
+      : "/challenge";
+  const primaryLabel =
+    challenge.displayState === "live" && challenge.linkedSessionKey
+      ? "Watch Live Stats"
+      : mode === "popover"
+        ? "Open Runway"
+        : "Open Challenge Hub";
+
+  if (compact) {
+    return (
+      <div className={`mt-3 rounded-full border px-3 py-2 ${tone.shell}`}>
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0 flex-1 overflow-hidden">
+            <div className="flex items-center gap-2 overflow-hidden whitespace-nowrap text-[11px] text-slate-200">
+              <span className={`inline-flex shrink-0 rounded-full border px-2 py-0.5 ${tone.badge}`}>
+                {status.status}
+              </span>
+              <span className="truncate font-medium text-white">
+                {challenge.challenger.name} vs {challenge.challenged.name}
+              </span>
+              <span className="shrink-0 text-slate-500">·</span>
+              <TimeDisplayText
+                value={challenge.scheduledAt}
+                includeZone={false}
+                className="shrink-0 text-slate-300"
+                bubbleClassName="max-w-[14rem] text-center"
+              />
+              {challenge.challengeNote ? (
+                <>
+                  <span className="shrink-0 text-slate-500">·</span>
+                  <span className="hidden shrink-0 text-slate-400 sm:inline">note attached</span>
+                </>
+              ) : null}
+            </div>
+          </div>
+
+          <Link
+            href={primaryHref}
+            className="shrink-0 rounded-full border border-white/12 bg-white/[0.05] px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-white transition hover:border-white/25 hover:bg-white/[0.08]"
+          >
+            Open
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   async function handleReschedule(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -420,18 +520,10 @@ function ChallengeThreadStrip({
           </button>
         ) : null}
         <Link
-          href={
-            challenge.displayState === "live" && challenge.linkedSessionKey
-              ? `/game-stats/live/${encodeURIComponent(challenge.linkedSessionKey)}`
-              : "/challenge"
-          }
+          href={primaryHref}
           className={`rounded-full border border-white/15 text-white/85 transition hover:border-white/30 hover:text-white ${actionSizing}`}
         >
-          {challenge.displayState === "live" && challenge.linkedSessionKey
-            ? "Watch Live Stats"
-            : mode === "popover"
-              ? "Open Runway"
-              : "Open Challenge Hub"}
+          {primaryLabel}
         </Link>
       </div>
 
@@ -457,7 +549,7 @@ function ChallengeThreadStrip({
               onChange={(event) =>
                 setChallengeNote(event.target.value.slice(0, CHALLENGE_NOTE_MAX_CHARS))
               }
-              maxRows={mode === "popover" ? 3 : 4}
+              maxRows={4}
               maxLength={CHALLENGE_NOTE_MAX_CHARS}
               disabled={isBusy}
               className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white outline-none focus:border-amber-300/50 disabled:cursor-not-allowed disabled:opacity-60"
@@ -725,6 +817,7 @@ function TextMessageBubble({
     mode === "page" ? "max-h-[min(46vh,28rem)] overflow-y-auto pr-1" : "max-h-48 overflow-y-auto pr-1";
   const canToggleLobbyShare =
     message.sender.uid === AI_CONCIERGE_UID && !message.attachment && message.body.trim().length > 0;
+  const compactChallengeNotice = message.body ? challengeNoticeTone(summarizeChallengeInboxMessage(message.body)) : null;
   const [trayPinnedOpen, setTrayPinnedOpen] = useState(false);
   const [trayHovered, setTrayHovered] = useState(false);
   const [attachmentPreviewFailed, setAttachmentPreviewFailed] = useState(false);
@@ -862,6 +955,10 @@ function TextMessageBubble({
       messageId: message.messageId,
     });
     setTrayPinnedOpen(false);
+  }
+
+  if (compactChallengeNotice) {
+    return <ChallengeSystemMessageLine message={message} compactNotice={compactChallengeNotice} />;
   }
 
   const trayVisible = trayPinnedOpen || trayHovered;

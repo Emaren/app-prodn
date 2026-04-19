@@ -3,6 +3,7 @@ import type { PrismaClient } from "@/lib/generated/prisma";
 import { AI_CONCIERGE_UID } from "@/lib/aiConciergeConfig";
 import { ensureAiConciergeUser } from "@/lib/aiConcierge";
 import { getAiThreadKind } from "@/lib/aiPersonaInbox";
+import { summarizeChallengeInboxMessage } from "@/lib/challengeInboxMessages";
 import { loadChallengeThreadTile, type ScheduledMatchTile } from "@/lib/challenges";
 import {
   loadUserCommunitySummaries,
@@ -213,6 +214,11 @@ function buildDirectMessageSnippet(message: {
 }) {
   const trimmedBody = message.body?.trim();
   if (trimmedBody) {
+    const challengeSummary = summarizeChallengeInboxMessage(trimmedBody);
+    if (challengeSummary) {
+      return challengeSummary.compactLine.slice(0, 120);
+    }
+
     return trimmedBody.slice(0, 120);
   }
 

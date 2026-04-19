@@ -13,6 +13,7 @@ import YourBookSection from "@/components/bets/YourBookSection";
 import FounderBonusChips from "@/components/bets/FounderBonusChips";
 import FounderBonusModal from "@/components/bets/FounderBonusModal";
 import WarTape from "@/components/bets/WarTape";
+import { isRecoveryBookOpen } from "@/components/bets/page-shared";
 import { useUserAuth } from "@/context/UserAuthContext";
 import { useKeplr } from "@/hooks/use-keplr";
 import { useWoloBalance } from "@/hooks/useWoloBalance";
@@ -154,6 +155,7 @@ type BetBoardSnapshot = {
     unresolvedStakeIntents: Array<{
       id: number;
       marketId: number;
+      marketStatus: BetStatus;
       title: string;
       eventLabel: string;
       side: BetSide;
@@ -901,6 +903,26 @@ export default function BetsPage() {
   const recoverStakeIntent = useCallback(
     async (intentId: number, options?: { automatic?: boolean }) => {
       const recovery = readPendingStakeRecoveries().find((entry) => entry.intentId === intentId) || null;
+      const unresolvedIntent =
+        board?.recovery.unresolvedStakeIntents.find((entry) => entry.id === intentId) || null;
+      const hasStakeProof = Boolean(unresolvedIntent?.stakeTxHash || recovery?.stakeTxHash);
+      const canRecoverNow = Boolean(
+        unresolvedIntent &&
+          isRecoveryBookOpen(unresolvedIntent.marketStatus) &&
+          hasStakeProof
+      );
+
+      if (!canRecoverNow) {
+        if (!options?.automatic) {
+          toast.message(
+            unresolvedIntent && !isRecoveryBookOpen(unresolvedIntent.marketStatus)
+              ? "This signed stake belongs to a closed book. Keep the stake proof for manual review."
+              : "The recovery rail is still waiting on a usable stake proof."
+          );
+        }
+        return;
+      }
+
       setRecoveringIntentId(intentId);
 
       try {
@@ -941,7 +963,7 @@ export default function BetsPage() {
         setRecoveringIntentId((current) => (current === intentId ? null : current));
       }
     },
-    [connectedWalletAddress, refreshBoard]
+    [board, connectedWalletAddress, refreshBoard]
   );
 
   useEffect(() => {
@@ -952,6 +974,7 @@ export default function BetsPage() {
     const unresolved = board.recovery.unresolvedStakeIntents.find((intent) => {
       if (attemptedAutoRecoverIds.includes(intent.id)) return false;
       const pending = readPendingStakeRecoveries().find((entry) => entry.intentId === intent.id);
+      if (!isRecoveryBookOpen(intent.marketStatus)) return false;
       if (pending?.stakeTxHash) return true;
       return (
         Boolean(intent.stakeTxHash) &&

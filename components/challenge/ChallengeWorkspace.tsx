@@ -4,6 +4,7 @@
 import Link from "next/link";
 import type { FormEvent, ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
+import { ArrowUpRight, Clock3, MessageSquareMore, Plus } from "lucide-react";
 
 import ScheduledMatchCard, {
   type ScheduledMatchCardActionKind,
@@ -17,8 +18,7 @@ import { useUserAuth } from "@/context/UserAuthContext";
 import { CHALLENGE_NOTE_MAX_CHARS } from "@/lib/challengeConfig";
 import type { ChallengeActivityItem, ChallengeHubSnapshot } from "@/lib/challenges";
 import {
-  buildUtcDateTimeInputValue,
-  parseUtcDateTimeInputValue,
+  formatDateTime,
 } from "@/lib/timeDisplay";
 
 const EMPTY_SNAPSHOT: ChallengeHubSnapshot = {
@@ -43,17 +43,37 @@ const EMPTY_SNAPSHOT: ChallengeHubSnapshot = {
 
 function defaultScheduledAtValue() {
   const next = new Date(Date.now() + 60 * 60 * 1000);
-  next.setUTCSeconds(0, 0);
+  next.setSeconds(0, 0);
 
-  const roundedMinutes = Math.ceil(next.getUTCMinutes() / 15) * 15;
+  const roundedMinutes = Math.ceil(next.getMinutes() / 15) * 15;
   if (roundedMinutes >= 60) {
-    next.setUTCHours(next.getUTCHours() + 1);
-    next.setUTCMinutes(0, 0, 0);
+    next.setHours(next.getHours() + 1);
+    next.setMinutes(0, 0, 0);
   } else {
-    next.setUTCMinutes(roundedMinutes, 0, 0);
+    next.setMinutes(roundedMinutes, 0, 0);
   }
 
-  return buildUtcDateTimeInputValue(next);
+  return toLocalDateTimeValue(next);
+}
+
+function toLocalDateTimeValue(value: string | Date) {
+  const parsed = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return "";
+  }
+
+  const local = new Date(parsed.getTime() - parsed.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 16);
+}
+
+function parseLocalDateTimeInputValue(value: string | null | undefined) {
+  const trimmed = value?.trim() ?? "";
+  if (!trimmed) {
+    return null;
+  }
+
+  const parsed = new Date(trimmed);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
 function formatActivityTitle(activity: ChallengeActivityItem) {
@@ -78,6 +98,7 @@ function formatActivityTitle(activity: ChallengeActivityItem) {
 export default function ChallengeWorkspace() {
   const { loading: authLoading, isAuthenticated, uid } = useUserAuth();
   const { timeDisplayMode, setTimeDisplayMode, browserTimeZone } = useLobbyAppearance();
+  const scheduleFormId = "schedule-game";
   const [snapshot, setSnapshot] = useState<ChallengeHubSnapshot>(EMPTY_SNAPSHOT);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -90,6 +111,7 @@ export default function ChallengeWorkspace() {
   const [challengedUid, setChallengedUid] = useState("");
   const [scheduledAt, setScheduledAt] = useState(() => defaultScheduledAtValue());
   const [challengeNote, setChallengeNote] = useState("");
+  const [focusedMatchId, setFocusedMatchId] = useState<number | null>(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -177,9 +199,91 @@ export default function ChallengeWorkspace() {
   );
 
   const scheduledPreview = useMemo(
-    () => parseUtcDateTimeInputValue(scheduledAt),
+    () => parseLocalDateTimeInputValue(scheduledAt),
     [scheduledAt]
   );
+  const schedulePreviewLocal = useMemo(
+    () =>
+      formatDateTime(
+        scheduledPreview,
+        {
+          timeDisplayMode: "local",
+          timezoneOverride: browserTimeZone,
+        },
+        {
+          browserTimeZone,
+          includeZone: true,
+        }
+      ),
+    [browserTimeZone, scheduledPreview]
+  );
+  const schedulePreviewUtc = useMemo(
+    () =>
+      formatDateTime(
+        scheduledPreview,
+        {
+          timeDisplayMode: "utc",
+          timezoneOverride: null,
+        },
+        {
+          includeZone: true,
+        }
+      ),
+    [scheduledPreview]
+  );
+  const schedulePreviewUtcCompact = useMemo(
+    () =>
+      formatDateTime(
+        scheduledPreview,
+        {
+          timeDisplayMode: "utc",
+          timezoneOverride: null,
+        },
+        {
+          includeZone: false,
+        }
+      ),
+    [scheduledPreview]
+  );
+  const focusedMatch = useMemo(
+    () => activeRunwayMatches.find((match) => match.id === focusedMatchId) || activeRunwayMatches[0] || null,
+    [activeRunwayMatches, focusedMatchId]
+  );
+  const focusedMatchActivities = useMemo(
+    () =>
+      focusedMatch
+        ? snapshot.activities
+            .filter((activity) => activity.scheduledMatchId === focusedMatch.id)
+            .slice(0, 4)
+        : [],
+    [focusedMatch, snapshot.activities]
+  );
+  const focusedCounterpart = useMemo(() => {
+    if (!focusedMatch || !uid) {
+      return null;
+    }
+
+    return focusedMatch.challenger.uid === uid
+      ? focusedMatch.challenged
+      : focusedMatch.challenger;
+  }, [focusedMatch, uid]);
+
+  useEffect(() => {
+    if (activeRunwayMatches.length === 0) {
+      setFocusedMatchId(null);
+      return;
+    }
+
+    setFocusedMatchId((current) =>
+      current && activeRunwayMatches.some((match) => match.id === current)
+        ? current
+        : activeRunwayMatches[0].id
+    );
+  }, [activeRunwayMatches]);
+
+  function toggleSiteTimePreference() {
+    setTimeDisplayMode(timeDisplayMode === "local" ? "utc" : "local");
+  }
 
   async function updateMatch(
     challengeId: number,
@@ -242,9 +346,9 @@ export default function ChallengeWorkspace() {
     setError(null);
     setNotice(null);
 
-    const parsedScheduledAt = parseUtcDateTimeInputValue(scheduledAt);
+    const parsedScheduledAt = parseLocalDateTimeInputValue(scheduledAt);
     if (!parsedScheduledAt) {
-      setError("Choose a valid UTC start time.");
+      setError("Choose a valid start time.");
       setSaving(false);
       return;
     }
@@ -300,6 +404,21 @@ export default function ChallengeWorkspace() {
 
             <div className="flex flex-wrap gap-3">
               <Link
+                href={`#${scheduleFormId}`}
+                className="group inline-flex items-center gap-3 rounded-full border border-amber-200/18 bg-[linear-gradient(135deg,rgba(251,191,36,0.18),rgba(245,158,11,0.08))] px-3 py-2 text-white shadow-[0_18px_34px_rgba(245,158,11,0.12)] transition hover:border-amber-200/30 hover:bg-[linear-gradient(135deg,rgba(251,191,36,0.22),rgba(245,158,11,0.12))]"
+              >
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-amber-200/20 bg-amber-300/15 text-amber-50">
+                  <Plus className="h-4 w-4" />
+                </span>
+                <span className="text-left">
+                  <span className="block text-sm font-semibold text-white">+ Game</span>
+                  <span className="block text-[11px] uppercase tracking-[0.2em] text-amber-100/70">
+                    Start a scheduled duel
+                  </span>
+                </span>
+                <ArrowUpRight className="h-4 w-4 text-amber-50/80 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+              </Link>
+              <Link
                 href="/live-games"
                 className="rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200"
               >
@@ -325,9 +444,22 @@ export default function ChallengeWorkspace() {
 
       <section className="grid gap-6 xl:grid-cols-[0.88fr_1.12fr]">
         <section className="space-y-6">
-          <section className="rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-5 sm:p-6">
-            <div className="text-xs uppercase tracking-[0.35em] text-amber-200/70">New Match</div>
-            <h2 className="mt-2 text-2xl font-semibold text-white">Schedule New Game</h2>
+          <section
+            id={scheduleFormId}
+            className="rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-5 sm:p-6"
+          >
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="min-w-0">
+                <div className="text-xs uppercase tracking-[0.35em] text-amber-200/70">New Match</div>
+                <h2 className="mt-2 text-2xl font-semibold text-white">Create The Runway</h2>
+                <div className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
+                  Pick the rival, set the start, send it.
+                </div>
+              </div>
+              <div className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-slate-300">
+                Tight timing rail
+              </div>
+            </div>
 
             {authLoading || loading ? (
               <div className="mt-5 rounded-2xl border border-white/10 bg-white/5 px-4 py-5 text-sm text-slate-300">
@@ -365,24 +497,14 @@ export default function ChallengeWorkspace() {
                 </label>
 
                 <div className="space-y-2">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <span className="block text-sm text-slate-200">Start Time</span>
                     <button
                       type="button"
-                      onClick={() =>
-                        setTimeDisplayMode(timeDisplayMode === "utc" ? "local" : "utc")
-                      }
-                      className="text-left text-sm text-slate-300 transition hover:text-white"
+                      onClick={toggleSiteTimePreference}
+                      className="text-[11px] text-slate-400 transition hover:text-white"
                     >
-                      Start Time (UTC)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setTimeDisplayMode(timeDisplayMode === "utc" ? "local" : "utc")
-                      }
-                      className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-slate-300 transition hover:border-white/25 hover:text-white"
-                    >
-                      Show {timeDisplayMode === "utc" ? "Local" : "UTC"} By Default
+                      {timeDisplayMode === "local" ? "Use UTC sitewide" : "Use Local sitewide"}
                     </button>
                   </div>
                   <input
@@ -391,30 +513,14 @@ export default function ChallengeWorkspace() {
                     onChange={(event) => setScheduledAt(event.target.value)}
                     className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-amber-300/50"
                   />
-                  <div className="mt-2 space-y-2 text-xs text-slate-500">
-                    <div>
-                      Scheduled matches are stored in UTC so both players share one universal clock.
+                  <div className="rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-slate-300">
+                    <div className="text-base font-medium text-white sm:text-lg">
+                      {schedulePreviewLocal === "—" ? "Pick a start time." : schedulePreviewLocal}
                     </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-3 text-slate-300">
-                      <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500">
-                        Your site default
-                      </div>
-                      <div className="mt-2">
-                        {scheduledPreview ? (
-                          <TimeDisplayText
-                            value={scheduledPreview}
-                            className="font-medium text-white"
-                            bubbleClassName="max-w-[16rem] text-center"
-                          />
-                        ) : (
-                          "Pick a valid start time to preview it."
-                        )}
-                      </div>
-                      <div className="mt-2 text-[11px] text-slate-400">
-                        {timeDisplayMode === "local"
-                          ? `Local display${browserTimeZone ? ` (${browserTimeZone})` : ""} with UTC on hover or tap.`
-                          : "UTC display with your browser-local time on hover or tap."}
-                      </div>
+                    <div className="mt-2 text-xs text-slate-400">
+                      {schedulePreviewUtc === "—"
+                        ? "UTC anchor appears here."
+                        : `UTC ${schedulePreviewUtcCompact}`}
                     </div>
                   </div>
                 </div>
@@ -451,9 +557,10 @@ export default function ChallengeWorkspace() {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex items-center gap-2 rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {saving ? "Scheduling..." : "Schedule Match"}
+                  <Plus className="h-4 w-4" />
+                  {saving ? "Scheduling..." : "Add Game To The Runway"}
                 </button>
               </form>
             )}
@@ -461,18 +568,170 @@ export default function ChallengeWorkspace() {
 
           <section className="rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-5 sm:p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
+              <div className="min-w-0">
+                <div className="text-xs uppercase tracking-[0.35em] text-cyan-200/70">
+                  Coordination Rail
+                </div>
+                <h2 className="mt-2 text-2xl font-semibold text-white">Scheduling Line</h2>
+                <div className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
+                  Keep the live time, latest note, and thread shortcut in one calm rail.
+                </div>
+              </div>
+              {focusedMatch ? (
+                <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+                  Match #{focusedMatch.id}
+                </div>
+              ) : null}
+            </div>
+
+            {focusedMatch ? (
+              <>
+                {activeRunwayMatches.length > 1 ? (
+                  <div className="mt-5 flex flex-wrap gap-2">
+                    {activeRunwayMatches.map((match) => {
+                      const counterpart =
+                        uid && match.challenger.uid === uid ? match.challenged : match.challenger;
+                      const active = focusedMatch.id === match.id;
+                      return (
+                        <button
+                          key={`focus-${match.id}`}
+                          type="button"
+                          onClick={() => setFocusedMatchId(match.id)}
+                          className={`rounded-full px-3 py-2 text-left text-xs transition ${
+                            active
+                              ? "border border-amber-300/22 bg-amber-400/10 text-amber-50 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.14)]"
+                              : "border border-white/10 bg-white/[0.04] text-slate-300 hover:border-white/20 hover:text-white"
+                          }`}
+                        >
+                          <span className="block font-semibold">{counterpart.name}</span>
+                          <span className="mt-1 block text-[11px] text-slate-400">
+                            {formatDateTime(
+                              match.scheduledAt,
+                              {
+                                timeDisplayMode: "local",
+                                timezoneOverride: browserTimeZone,
+                              },
+                              {
+                                browserTimeZone,
+                                includeZone: false,
+                              }
+                            )}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : null}
+
+                <div className="mt-5 rounded-[1.45rem] border border-white/10 bg-white/[0.04] p-4">
+                  <div className="grid gap-4 lg:grid-cols-[minmax(0,0.72fr)_minmax(0,1.28fr)]">
+                    <div className="min-w-0 rounded-[1.25rem] border border-white/10 bg-slate-950/35 px-4 py-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">
+                            Match lock
+                          </div>
+                          <div className="mt-2 text-lg font-semibold text-white">
+                            {focusedMatch.challenger.name} vs {focusedMatch.challenged.name}
+                          </div>
+                        </div>
+                        <Clock3 className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
+                      </div>
+
+                      <div className="mt-4 rounded-[1rem] border border-white/10 bg-white/[0.04] px-3 py-3">
+                        <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500">
+                          Locked start
+                        </div>
+                        <div className="mt-2 text-sm font-medium text-white">
+                          {formatDateTime(
+                            focusedMatch.scheduledAt,
+                            {
+                              timeDisplayMode: "local",
+                              timezoneOverride: browserTimeZone,
+                            },
+                            {
+                              browserTimeZone,
+                              includeZone: true,
+                            }
+                          )}
+                        </div>
+                        <div className="mt-2 text-xs leading-5 text-slate-400">
+                          UTC ·{" "}
+                          {formatDateTime(
+                            focusedMatch.scheduledAt,
+                            {
+                              timeDisplayMode: "utc",
+                              timezoneOverride: null,
+                            },
+                            {
+                              includeZone: true,
+                            }
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="mt-4 text-sm leading-6 text-slate-300">
+                        {focusedMatch.challengeNote ||
+                          "Use the direct line for ready checks, map lock, or a time shift."}
+                      </div>
+
+                      {focusedCounterpart ? (
+                        <Link
+                          href={`/contact-emaren?user=${encodeURIComponent(focusedCounterpart.uid)}`}
+                          className="mt-4 inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.05] px-4 py-2 text-sm text-white transition hover:border-white/25 hover:bg-white/[0.08]"
+                        >
+                          <MessageSquareMore className="h-4 w-4" />
+                          Open Direct Thread
+                        </Link>
+                      ) : null}
+                    </div>
+
+                    <div className="min-w-0 rounded-[1.25rem] border border-white/10 bg-slate-950/35 px-4 py-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">
+                          Conversation rail
+                        </div>
+                        <div className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-slate-300">
+                          Lightweight for now
+                        </div>
+                      </div>
+
+                      <div className="mt-4 space-y-3">
+                        {focusedMatchActivities.length > 0 ? (
+                          focusedMatchActivities.map((activity) => (
+                            <CoordinationActivityRow key={`${focusedMatch.id}-${activity.id}`} activity={activity} />
+                          ))
+                        ) : (
+                          <div className="rounded-[1rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-sm text-slate-300">
+                            Timing updates land here once this match starts moving.
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="mt-5 rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-5 text-sm leading-6 text-slate-300">
+                Once a challenge is live, this rail keeps the latest time, note, and thread shortcut together.
+              </div>
+            )}
+          </section>
+
+          <section className="rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-5 sm:p-6">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="min-w-0">
                 <div className="text-xs uppercase tracking-[0.35em] text-slate-300/70">
                   Challenge Record
                 </div>
-                <h2 className="mt-2 text-2xl font-semibold text-white">Your Numbers</h2>
+                <h2 className="mt-2 break-words text-2xl font-semibold text-white">Your Numbers</h2>
               </div>
-              <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+              <div className="shrink-0 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
                 {snapshot.record.total} total
               </div>
             </div>
 
-            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <StatCard label="Wins" value={String(snapshot.record.wins)} />
               <StatCard label="Losses" value={String(snapshot.record.losses)} />
               <StatCard label="Completed" value={String(snapshot.record.completed)} />
@@ -508,6 +767,7 @@ export default function ChallengeWorkspace() {
                     key={match.id}
                     match={match}
                     viewerUid={uid}
+                    localTimePrimary
                     onAccept={(challengeId) => updateMatch(challengeId, "accept")}
                     onDecline={(challengeId) => updateMatch(challengeId, "decline")}
                     onCancel={(challengeId) => updateMatch(challengeId, "cancel")}
@@ -592,6 +852,7 @@ export default function ChallengeWorkspace() {
                     key={`history-${match.id}`}
                     match={match}
                     viewerUid={uid}
+                    localTimePrimary
                     onAccept={(challengeId) => updateMatch(challengeId, "accept")}
                     onDecline={(challengeId) => updateMatch(challengeId, "decline")}
                     onCancel={(challengeId) => updateMatch(challengeId, "cancel")}
@@ -643,17 +904,42 @@ function StatCard({
   helper?: string;
 }) {
   return (
-    <div className="rounded-[1.4rem] border border-white/10 bg-white/5 px-4 py-4">
+    <div className="min-w-0 rounded-[1.4rem] border border-white/10 bg-white/5 px-4 py-4">
       <div className="flex items-center justify-between gap-3">
-        <div className="text-xs uppercase tracking-[0.25em] text-slate-400">{label}</div>
+        <div className="min-w-0 break-words text-xs uppercase tracking-[0.25em] text-slate-400">
+          {label}
+        </div>
         {live ? (
-          <div className="rounded-full border border-emerald-300/25 bg-emerald-400/10 px-2.5 py-1 text-[11px] text-emerald-100">
+          <div className="shrink-0 rounded-full border border-emerald-300/25 bg-emerald-400/10 px-2.5 py-1 text-[11px] text-emerald-100">
             live
           </div>
         ) : null}
       </div>
-      <div className="mt-2 text-2xl font-semibold text-white">{value}</div>
-      {helper ? <div className="mt-1 text-xs text-slate-400">{helper}</div> : null}
+      <div className="mt-2 break-words text-2xl font-semibold text-white">{value}</div>
+      {helper ? <div className="mt-1 text-xs leading-5 text-slate-400">{helper}</div> : null}
+    </div>
+  );
+}
+
+function CoordinationActivityRow({
+  activity,
+}: {
+  activity: ChallengeActivityItem;
+}) {
+  return (
+    <div className="rounded-[1rem] border border-white/10 bg-white/[0.04] px-4 py-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-sm font-semibold text-white">{formatActivityTitle(activity)}</div>
+          <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500">
+            {activity.actorName ? `${activity.actorName} · ` : ""}
+            <TimeDisplayText value={activity.createdAt} className="text-slate-400" includeZone={false} />
+          </div>
+        </div>
+      </div>
+      {activity.detail ? (
+        <div className="mt-2 break-words text-sm leading-6 text-slate-300">{activity.detail}</div>
+      ) : null}
     </div>
   );
 }
