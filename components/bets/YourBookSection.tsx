@@ -46,6 +46,15 @@ export default function YourBookSection({
   recoveringIntentId: number | null;
   onRecover: (intentId: number) => Promise<void>;
 }) {
+  const actionableStakeIntents = unresolvedStakeIntents.filter((intent) => {
+    const pendingRecovery =
+      pendingStakeRecoveries.find((entry) => entry.intentId === intent.id) || null;
+    return Boolean(
+      isRecoveryBookOpen(intent.marketStatus) &&
+        (intent.stakeTxHash || pendingRecovery?.stakeTxHash)
+    );
+  });
+
   return (
     <section id="your-book" className={`${shellClass()} p-5 sm:p-6`}>
       <div className="flex items-end justify-between gap-3">
@@ -74,9 +83,9 @@ export default function YourBookSection({
             />
           </div>
 
-          {unresolvedStakeIntents.length ? (
+          {actionableStakeIntents.length ? (
             <div className="mt-5 space-y-2">
-              {unresolvedStakeIntents.map((intent) => {
+              {actionableStakeIntents.map((intent) => {
                 const pendingRecovery =
                   pendingStakeRecoveries.find((entry) => entry.intentId === intent.id) || null;
                 const stakeProofUrl = intent.stakeTxHash
@@ -84,18 +93,6 @@ export default function YourBookSection({
                   : pendingRecovery?.stakeTxHash
                     ? buildWoloRestTxLookupUrl(pendingRecovery.stakeTxHash)
                     : null;
-                const hasStakeProof = Boolean(intent.stakeTxHash || pendingRecovery?.stakeTxHash);
-                const canRecoverNow = hasStakeProof && isRecoveryBookOpen(intent.marketStatus);
-                const passiveStateLabel = !hasStakeProof
-                  ? "Awaiting proof"
-                  : canRecoverNow
-                    ? null
-                    : "Book closed";
-                const recoveryDetail = !hasStakeProof
-                  ? "The app is still waiting on a usable stake proof before it can attach this slip."
-                  : canRecoverNow
-                    ? "Pools and settlement exclude this stake until it is safely recorded."
-                    : "Closed books stay off the recovery rail. Keep the stake proof handy for manual review.";
 
                 return (
                   <div
@@ -111,7 +108,7 @@ export default function YourBookSection({
                           {intent.side === "left" ? "Left side" : "Right side"} · {formatCompact(intent.amountWolo)} WOLO · {formatRecoveryIntentStatus(intent.status)}
                         </div>
                         <div className="mt-1 text-xs text-slate-400">
-                          {recoveryDetail}
+                          Pools and settlement exclude this stake until it is safely recorded.
                         </div>
                         <div className="mt-1 text-xs text-slate-400">
                           {formatSettledTime(intent.updatedAt)}
@@ -132,25 +129,18 @@ export default function YourBookSection({
                             Stake Proof
                           </a>
                         ) : null}
-                        {canRecoverNow ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              void onRecover(intent.id);
-                            }}
-                            disabled={recoveringIntentId === intent.id}
-                            className={`inline-flex items-center rounded-full px-3 py-2 text-xs font-semibold transition ${edgeButton("gold")} ${
-                              recoveringIntentId === intent.id ? "opacity-60" : ""
-                            }`}
-                          >
-                            {recoveringIntentId === intent.id ? "Recovering..." : "Recover"}
-                          </button>
-                        ) : null}
-                        {passiveStateLabel ? (
-                          <div className="inline-flex items-center rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-xs font-medium text-slate-300">
-                            {passiveStateLabel}
-                          </div>
-                        ) : null}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            void onRecover(intent.id);
+                          }}
+                          disabled={recoveringIntentId === intent.id}
+                          className={`inline-flex items-center rounded-full px-3 py-2 text-xs font-semibold transition ${edgeButton("gold")} ${
+                            recoveringIntentId === intent.id ? "opacity-60" : ""
+                          }`}
+                        >
+                          {recoveringIntentId === intent.id ? "Recovering..." : "Recover"}
+                        </button>
                       </div>
                     </div>
                   </div>

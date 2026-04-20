@@ -294,13 +294,6 @@ export default function ChallengeWorkspace() {
     () => activeRunwayMatches.find((match) => match.id === focusedMatchId) || activeRunwayMatches[0] || null,
     [activeRunwayMatches, focusedMatchId]
   );
-  const focusedMatchActivities = useMemo(
-    () =>
-      focusedMatch
-        ? snapshot.activities.filter((activity) => activity.scheduledMatchId === focusedMatch.id).slice(0, 4)
-        : [],
-    [focusedMatch, snapshot.activities]
-  );
   const focusedCounterpart = useMemo(() => {
     if (!focusedMatch || !uid) {
       return null;
@@ -814,28 +807,6 @@ export default function ChallengeWorkspace() {
                       ) : null}
                     </div>
 
-                    <div className="min-w-0 overflow-hidden rounded-[1.35rem] border border-white/10 bg-slate-950/40 px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="min-w-0 text-[10px] uppercase tracking-[0.22em] text-cyan-100/55">
-                          Conversation rail
-                        </div>
-                        <div className="shrink-0 rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-1 text-[10px] uppercase tracking-[0.14em] text-slate-300">
-                          Compact
-                        </div>
-                      </div>
-
-                      <div className="mt-4 space-y-3">
-                        {focusedMatchActivities.length > 0 ? (
-                          focusedMatchActivities.map((activity) => (
-                            <CoordinationActivityRow key={`${focusedMatch.id}-${activity.id}`} activity={activity} />
-                          ))
-                        ) : (
-                          <div className="rounded-[1rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-sm leading-6 text-slate-300">
-                            Funding, check-in, and timing updates land here once this match starts moving.
-                          </div>
-                        )}
-                      </div>
-                    </div>
                   </div>
                 </div>
               </>
@@ -1106,29 +1077,6 @@ function QuickRailCell({
         {value}
       </div>
       {detail ? <div className="mt-1 text-xs leading-5 text-slate-400">{detail}</div> : null}
-    </div>
-  );
-}
-
-function CoordinationActivityRow({
-  activity,
-}: {
-  activity: ChallengeActivityItem;
-}) {
-  return (
-    <div className="rounded-[1rem] border border-white/10 bg-white/[0.04] px-4 py-3">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="break-words text-sm font-semibold text-white">{formatActivityTitle(activity)}</div>
-          <div className="mt-1 text-[10px] uppercase tracking-[0.16em] text-slate-500">
-            {activity.actorName ? `${activity.actorName} · ` : ""}
-            <TimeDisplayText value={activity.createdAt} className="text-slate-400" includeZone={false} />
-          </div>
-        </div>
-      </div>
-      {activity.detail ? (
-        <div className="mt-2 break-words text-sm leading-6 text-slate-300">{activity.detail}</div>
-      ) : null}
     </div>
   );
 }

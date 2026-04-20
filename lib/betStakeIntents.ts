@@ -21,6 +21,11 @@ export const BET_STAKE_INTENT_VISIBLE_UNRESOLVED_STATUSES = [
   "suspect",
   "orphaned",
 ] as const;
+export const BET_STAKE_INTENT_PUBLIC_RECOVERABLE_MARKET_STATUSES = [
+  "open",
+  "closing",
+  "live",
+] as const;
 
 export type BetStakeIntentStatus =
   | "awaiting_signature"
@@ -338,6 +343,14 @@ export async function loadViewerBetStakeIntents(
       userId,
       status: {
         in: [...BET_STAKE_INTENT_VISIBLE_UNRESOLVED_STATUSES],
+      },
+      stakeTxHash: { not: null },
+      market: {
+        is: {
+          status: {
+            in: [...BET_STAKE_INTENT_PUBLIC_RECOVERABLE_MARKET_STATUSES],
+          },
+        },
       },
     },
     orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
