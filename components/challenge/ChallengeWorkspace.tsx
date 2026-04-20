@@ -714,15 +714,15 @@ export default function ChallengeWorkspace() {
                   </div>
                 ) : null}
 
-                <div className="mt-5 rounded-[1.45rem] border border-white/10 bg-white/[0.04] p-4">
-                  <div className="grid gap-4 xl:grid-cols-[minmax(20rem,0.94fr)_minmax(0,1.06fr)]">
-                    <div className="min-w-0 rounded-[1.25rem] border border-white/10 bg-slate-950/35 px-4 py-4">
+                <div className="mt-5 overflow-hidden rounded-[1.55rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.08),transparent_32%),rgba(255,255,255,0.035)] p-4 sm:p-5">
+                  <div className="space-y-4">
+                    <div className="min-w-0 rounded-[1.35rem] border border-white/10 bg-slate-950/40 px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">
+                          <div className="text-[10px] uppercase tracking-[0.22em] text-cyan-100/55">
                             Match lock
                           </div>
-                          <div className="mt-2 text-lg font-semibold text-white">
+                          <div className="mt-2 break-words text-lg font-semibold text-white">
                             {focusedMatch.challenger.name} vs {focusedMatch.challenged.name}
                           </div>
                         </div>
@@ -761,26 +761,23 @@ export default function ChallengeWorkspace() {
                         </div>
                       </div>
 
-                      <div className="mt-4 grid gap-3 grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3">
-                        <QuickRailCell
+                      <div className="mt-4 rounded-[1.15rem] border border-amber-300/15 bg-[linear-gradient(180deg,rgba(251,191,36,0.09),rgba(15,23,42,0.18))] px-3 py-3">
+                        <RailMoneyRow
                           label="Wolo Wager"
                           value={`${focusedMatch.terms.wagerAmountWolo.toLocaleString()} WOLO`}
-                          valueClassName="tabular-nums whitespace-nowrap"
                         />
-                        <QuickRailCell
+                        <RailMoneyRow
                           label="Match Guarantee"
                           value={`${focusedMatch.terms.guaranteeAmountWolo.toLocaleString()} WOLO`}
-                          valueClassName="tabular-nums whitespace-nowrap"
                         />
-                        <QuickRailCell
+                        <RailMoneyRow
                           label="Funding Each"
                           value={`${focusedMatch.terms.totalFundingWolo.toLocaleString()} WOLO`}
-                          className="sm:col-span-2 2xl:col-span-1"
-                          valueClassName="tabular-nums whitespace-nowrap"
+                          total
                         />
                       </div>
 
-                      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                      <div className="mt-4 grid gap-3">
                         <QuickRailCell
                           label="Funding State"
                           value={focusedMatch.economy.statusLabel}
@@ -801,7 +798,7 @@ export default function ChallengeWorkspace() {
                         />
                       </div>
 
-                      <div className="mt-4 text-sm leading-6 text-slate-300">
+                      <div className="mt-4 rounded-[1rem] border border-white/10 bg-white/[0.035] px-3 py-3 text-sm leading-6 text-slate-300">
                         {focusedMatch.challengeNote ||
                           "Use the direct line for ready checks, map lock, or a small time shift."}
                       </div>
@@ -817,13 +814,13 @@ export default function ChallengeWorkspace() {
                       ) : null}
                     </div>
 
-                    <div className="min-w-0 rounded-[1.25rem] border border-white/10 bg-slate-950/35 px-4 py-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">
+                    <div className="min-w-0 overflow-hidden rounded-[1.35rem] border border-white/10 bg-slate-950/40 px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="min-w-0 text-[10px] uppercase tracking-[0.22em] text-cyan-100/55">
                           Conversation rail
                         </div>
-                        <div className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-slate-300">
-                          Compact by design
+                        <div className="shrink-0 rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-1 text-[10px] uppercase tracking-[0.14em] text-slate-300">
+                          Compact
                         </div>
                       </div>
 
@@ -833,7 +830,7 @@ export default function ChallengeWorkspace() {
                             <CoordinationActivityRow key={`${focusedMatch.id}-${activity.id}`} activity={activity} />
                           ))
                         ) : (
-                          <div className="rounded-[1rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-sm text-slate-300">
+                          <div className="rounded-[1rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-sm leading-6 text-slate-300">
                             Funding, check-in, and timing updates land here once this match starts moving.
                           </div>
                         )}
@@ -862,7 +859,7 @@ export default function ChallengeWorkspace() {
               </div>
             </div>
 
-            <div className="mt-5 grid grid-cols-2 gap-3 xl:grid-cols-3 2xl:grid-cols-4">
+            <div className="mt-5 grid grid-cols-2 gap-2.5 sm:gap-3">
               <StatCard label="Wins" value={String(snapshot.record.wins)} />
               <StatCard label="Losses" value={String(snapshot.record.losses)} />
               <StatCard label="Pending" value={String(snapshot.record.pending)} />
@@ -1041,9 +1038,9 @@ function StatCard({
   helper?: string;
 }) {
   return (
-    <div className="min-w-0 rounded-[1.4rem] border border-white/10 bg-white/5 px-4 py-4">
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0 break-words text-xs uppercase tracking-[0.25em] text-slate-400">
+    <div className="min-w-0 rounded-[1.22rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(255,255,255,0.025))] px-3 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:px-4 sm:py-4">
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0 truncate whitespace-nowrap text-[10px] uppercase tracking-[0.16em] text-slate-400 sm:text-[11px]">
           {label}
         </div>
         {live ? (
@@ -1052,8 +1049,37 @@ function StatCard({
           </div>
         ) : null}
       </div>
-      <div className="mt-2 break-words text-2xl font-semibold text-white">{value}</div>
+      <div className="mt-2 text-2xl font-semibold leading-none text-white">{value}</div>
       {helper ? <div className="mt-1 text-xs leading-5 text-slate-400">{helper}</div> : null}
+    </div>
+  );
+}
+
+function RailMoneyRow({
+  label,
+  value,
+  total = false,
+}: {
+  label: string;
+  value: string;
+  total?: boolean;
+}) {
+  return (
+    <div
+      className={`flex items-center justify-between gap-3 ${
+        total ? "mt-2 border-t border-amber-100/10 pt-2" : "py-1"
+      }`}
+    >
+      <span className="min-w-0 truncate whitespace-nowrap text-[10px] uppercase tracking-[0.16em] text-amber-100/60">
+        {label}
+      </span>
+      <span
+        className={`shrink-0 whitespace-nowrap tabular-nums ${
+          total ? "text-sm font-semibold text-white" : "text-xs font-semibold text-amber-50/90"
+        }`}
+      >
+        {value}
+      </span>
     </div>
   );
 }
@@ -1072,8 +1098,10 @@ function QuickRailCell({
   valueClassName?: string;
 }) {
   return (
-    <div className={`rounded-[1rem] border border-white/10 bg-white/[0.04] px-3 py-3 ${className}`}>
-      <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{label}</div>
+    <div className={`min-w-0 rounded-[1rem] border border-white/10 bg-white/[0.04] px-3 py-3 ${className}`}>
+      <div className="truncate whitespace-nowrap text-[10px] uppercase tracking-[0.16em] text-slate-500">
+        {label}
+      </div>
       <div className={`mt-2 text-sm font-semibold text-white ${valueClassName || "break-words"}`}>
         {value}
       </div>
@@ -1091,8 +1119,8 @@ function CoordinationActivityRow({
     <div className="rounded-[1rem] border border-white/10 bg-white/[0.04] px-4 py-3">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-sm font-semibold text-white">{formatActivityTitle(activity)}</div>
-          <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500">
+          <div className="break-words text-sm font-semibold text-white">{formatActivityTitle(activity)}</div>
+          <div className="mt-1 text-[10px] uppercase tracking-[0.16em] text-slate-500">
             {activity.actorName ? `${activity.actorName} · ` : ""}
             <TimeDisplayText value={activity.createdAt} className="text-slate-400" includeZone={false} />
           </div>
