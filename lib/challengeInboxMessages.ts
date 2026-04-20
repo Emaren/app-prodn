@@ -13,6 +13,7 @@ export type ChallengeInboxNoticeState =
 
 export type ChallengeInboxNotice = {
   state: ChallengeInboxNoticeState;
+  challengeId: number | null;
   compactHeadline: string;
   matchup: string | null;
   scheduledLabel: string | null;
@@ -21,7 +22,7 @@ export type ChallengeInboxNotice = {
   compactLine: string;
 };
 
-const CHALLENGE_NOTICE_HEADLINES: Record<
+export const CHALLENGE_NOTICE_HEADLINES: Record<
   string,
   {
     state: ChallengeInboxNoticeState;
@@ -86,6 +87,15 @@ function readPrefixedLine(lines: string[], prefixes: string[]) {
   return null;
 }
 
+function parseChallengeId(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = Number.parseInt(value.replace(/^#/, "").trim(), 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
 export function summarizeChallengeInboxMessage(
   body: string | null | undefined
 ): ChallengeInboxNotice | null {
@@ -113,6 +123,7 @@ export function summarizeChallengeInboxMessage(
   const fundingLabel = readPrefixedLine(lines, ["Funding:"]);
   const statusLabel = readPrefixedLine(lines, ["Status:"]);
   const note = readPrefixedLine(lines, ["Note:"]);
+  const challengeId = parseChallengeId(readPrefixedLine(lines, ["Challenge ID:", "Match ID:"]));
 
   const compactParts = [
     descriptor.compactHeadline,
@@ -125,6 +136,7 @@ export function summarizeChallengeInboxMessage(
 
   return {
     state: descriptor.state,
+    challengeId,
     compactHeadline: descriptor.compactHeadline,
     matchup,
     scheduledLabel,
@@ -132,4 +144,34 @@ export function summarizeChallengeInboxMessage(
     note,
     compactLine: compactParts.filter(Boolean).join(" · "),
   };
+}
+
+export function isChallengeInboxNoticeBody(body: string | null | undefined) {
+  const summary = summarizeChallengeInboxMessage(body);
+  return Boolean(
+    summary &&
+      (summary.challengeId ||
+        summary.matchup ||
+        summary.scheduledLabel ||
+        summary.statusLabel ||
+        summary.note)
+  );
+}
+
+export function addChallengeIdToInboxNotice(body: string, challengeId: number | null | undefined) {
+  if (!challengeId || !Number.isFinite(challengeId)) {
+    return body;
+  }
+
+  const lines = body.split(/\r?\n/);
+  if (lines.some((line) => line.trim().startsWith("Challenge ID:"))) {
+    return body;
+  }
+
+  const insertAt = lines[1] && !lines[1].includes(":") ? 2 : 1;
+  return [
+    ...lines.slice(0, insertAt),
+    `Challenge ID: #${challengeId}`,
+    ...lines.slice(insertAt),
+  ].join("\n");
 }

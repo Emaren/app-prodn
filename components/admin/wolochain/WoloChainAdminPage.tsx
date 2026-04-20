@@ -9,6 +9,8 @@ import {
   Banknote,
   Blocks,
   CircuitBoard,
+  Check,
+  Copy,
   ExternalLink,
   ShieldCheck,
   WalletCards,
@@ -37,6 +39,51 @@ function shorten(value: string | null | undefined, lead = 10, tail = 8) {
   if (!value) return "—";
   if (value.length <= lead + tail + 1) return value;
   return `${value.slice(0, lead)}…${value.slice(-tail)}`;
+}
+
+function CopyableAddress({
+  address,
+  lead = 14,
+  tail = 10,
+}: {
+  address: string | null | undefined;
+  lead?: number;
+  tail?: number;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  if (!address) {
+    return <span className="font-mono text-xs text-slate-500">Not configured</span>;
+  }
+
+  const fullAddress = address;
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(fullAddress);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1400);
+    } catch {
+      setCopied(false);
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      title={fullAddress}
+      className="group inline-flex max-w-full items-center gap-2 rounded-full border border-white/10 bg-slate-950/60 px-2.5 py-1.5 text-left transition hover:border-cyan-200/35 hover:bg-cyan-300/10"
+    >
+      <span className="truncate font-mono text-xs text-slate-300">
+        {shorten(fullAddress, lead, tail)}
+      </span>
+      <span className="inline-flex shrink-0 items-center gap-1 text-[10px] uppercase tracking-[0.18em] text-slate-500 transition group-hover:text-cyan-100">
+        {copied ? <Check className="h-3 w-3 text-emerald-200" /> : <Copy className="h-3 w-3" />}
+        {copied ? "Copied" : "Copy"}
+      </span>
+    </button>
+  );
 }
 
 function formatAge(value: number | null) {
@@ -128,7 +175,14 @@ function BalanceTile({ balance }: { balance: WoloChainAdminBalance }) {
           {balance.status}
         </span>
       </div>
-      <div className="mt-3 font-mono text-xs text-slate-400">{shorten(balance.address, 14, 10)}</div>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <CopyableAddress address={balance.address} />
+        {balance.configSource ? (
+          <span className="max-w-full truncate rounded-full border border-white/10 bg-white/[0.03] px-2 py-1 text-[10px] uppercase tracking-[0.18em] text-slate-500">
+            {balance.configSource}
+          </span>
+        ) : null}
+      </div>
       {balance.detail ? <div className="mt-2 text-xs leading-5 text-slate-400">{balance.detail}</div> : null}
     </div>
   );
@@ -159,6 +213,10 @@ function ChallengeRunCard({ run }: { run: WoloChainAdminChallengeRun }) {
       : run.displayState === "funded" || run.displayState === "ready"
         ? "warn"
         : "muted";
+  const fundingWallets = [
+    { label: "Creator wallet", address: run.funding.challengerFundingWalletAddress },
+    { label: "Opponent wallet", address: run.funding.challengedFundingWalletAddress },
+  ];
 
   return (
     <div className="rounded-[1.35rem] border border-white/10 bg-white/[0.045] p-4">
@@ -212,6 +270,24 @@ function ChallengeRunCard({ run }: { run: WoloChainAdminChallengeRun }) {
           )}
         </div>
       </div>
+
+      {run.funding.challengerFundingWalletAddress || run.funding.challengedFundingWalletAddress ? (
+        <div className="mt-4 grid gap-2 sm:grid-cols-2">
+          {fundingWallets.map(({ label, address }) =>
+            address ? (
+              <div
+                key={label}
+                className="min-w-0 rounded-2xl border border-white/8 bg-slate-950/55 px-3 py-3"
+              >
+                <div className="mb-2 text-[10px] uppercase tracking-[0.22em] text-slate-500">
+                  {label}
+                </div>
+                <CopyableAddress address={address} lead={12} tail={8} />
+              </div>
+            ) : null
+          )}
+        </div>
+      ) : null}
 
       {run.disposition.label ? (
         <div className="mt-4 rounded-2xl border border-white/8 bg-slate-950/60 p-3 text-sm leading-6 text-slate-300">

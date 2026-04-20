@@ -6,6 +6,7 @@ export type WoloChainAdminBalance = {
   amountWolo: string | null;
   status: "ready" | "missing" | "error";
   detail: string | null;
+  configSource: string | null;
 };
 
 export type WoloChainAdminChallengeRun = {
@@ -31,6 +32,8 @@ export type WoloChainAdminChallengeRun = {
     challengedFundedAt: string | null;
     challengerFundingTxHash: string | null;
     challengedFundingTxHash: string | null;
+    challengerFundingWalletAddress: string | null;
+    challengedFundingWalletAddress: string | null;
   };
   checkIn: {
     challengerCheckedInAt: string | null;

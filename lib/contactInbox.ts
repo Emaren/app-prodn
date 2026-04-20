@@ -3,7 +3,12 @@ import type { PrismaClient } from "@/lib/generated/prisma";
 import { AI_CONCIERGE_UID } from "@/lib/aiConciergeConfig";
 import { ensureAiConciergeUser } from "@/lib/aiConcierge";
 import { getAiThreadKind } from "@/lib/aiPersonaInbox";
-import { summarizeChallengeInboxMessage } from "@/lib/challengeInboxMessages";
+import {
+  CHALLENGE_NOTICE_HEADLINES,
+  addChallengeIdToInboxNotice,
+  isChallengeInboxNoticeBody,
+  summarizeChallengeInboxMessage,
+} from "@/lib/challengeInboxMessages";
 import { loadChallengeThreadTile, type ScheduledMatchTile } from "@/lib/challenges";
 import {
   loadUserCommunitySummaries,
@@ -170,6 +175,13 @@ type DirectInboxWriteClient = Pick<
   PrismaClient,
   "directConversation" | "directConversationParticipant" | "directMessage"
 >;
+
+type ChallengeNoticeMessageRow = {
+  id: number;
+  body: string | null;
+  challengeId: number | null;
+  createdAt: Date;
+};
 
 function displayNameForUser(user: {
   uid: string;
@@ -386,6 +398,136 @@ export function normalizeInboxMessageBody(value: string) {
   return value.replace(/\r\n?/g, "\n").trim().slice(0, DIRECT_MESSAGE_MAX_CHARS);
 }
 
+function challengeNoticeBodyWhere() {
+  return {
+    OR: Object.keys(CHALLENGE_NOTICE_HEADLINES).map((headline) => ({
+      body: {
+        startsWith: headline,
+      },
+    })),
+  };
+}
+
+function pickLatestChallengeNotice(rows: ChallengeNoticeMessageRow[]) {
+  return [...rows].sort((left, right) => {
+    const timeDelta = right.createdAt.getTime() - left.createdAt.getTime();
+    if (timeDelta !== 0) {
+      return timeDelta;
+    }
+
+    return right.id - left.id;
+  })[0] ?? null;
+}
+
+function challengeNoticeGroupKey(row: ChallengeNoticeMessageRow) {
+  return row.challengeId ? `challenge:${row.challengeId}` : "legacy";
+}
+
+async function loadChallengeNoticeMessages(
+  prisma: Pick<PrismaClient, "directMessage">,
+  conversationId: number
+) {
+  const rows = await prisma.directMessage.findMany({
+    where: {
+      conversationId,
+      attachmentKind: null,
+      attachmentName: null,
+      attachmentMimeType: null,
+      attachmentDataUrl: null,
+      sharedLobbyMessageId: null,
+      ...challengeNoticeBodyWhere(),
+    },
+    select: {
+      id: true,
+      body: true,
+      createdAt: true,
+    },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+  });
+
+  return rows
+    .map((row) => {
+      const notice = summarizeChallengeInboxMessage(row.body);
+      if (!notice || !isChallengeInboxNoticeBody(row.body)) {
+        return null;
+      }
+
+      return {
+        ...row,
+        challengeId: notice.challengeId,
+      };
+    })
+    .filter((row): row is ChallengeNoticeMessageRow => row !== null);
+}
+
+async function collapseChallengeNoticeMessagesInConversation(
+  prisma: Pick<PrismaClient, "directMessage">,
+  conversationId: number,
+  keepMessageId?: number | null
+) {
+  const noticeRows = await loadChallengeNoticeMessages(prisma, conversationId);
+  if (noticeRows.length <= 1) {
+    return 0;
+  }
+
+  const keepIds = new Set<number>();
+  const explicitKeep = keepMessageId
+    ? noticeRows.find((row) => row.id === keepMessageId)
+    : null;
+  const rowsByGroup = new Map<string, ChallengeNoticeMessageRow[]>();
+
+  for (const row of noticeRows) {
+    const groupKey = challengeNoticeGroupKey(row);
+    rowsByGroup.set(groupKey, [...(rowsByGroup.get(groupKey) ?? []), row]);
+  }
+
+  for (const rows of rowsByGroup.values()) {
+    const keep =
+      explicitKeep && rows.some((row) => row.id === explicitKeep.id)
+        ? explicitKeep
+        : pickLatestChallengeNotice(rows);
+    if (keep) {
+      keepIds.add(keep.id);
+    }
+  }
+
+  const redundantIds = noticeRows
+    .filter((row) => !keepIds.has(row.id))
+    .map((row) => row.id);
+
+  if (redundantIds.length === 0) {
+    return 0;
+  }
+
+  const result = await prisma.directMessage.deleteMany({
+    where: {
+      id: {
+        in: redundantIds,
+      },
+    },
+  });
+
+  return result.count;
+}
+
+async function collapseChallengeNoticeMessagesForViewer(
+  prisma: PrismaClient,
+  viewerUserId: number
+) {
+  const memberships = await prisma.directConversationParticipant.findMany({
+    where: {
+      userId: viewerUserId,
+    },
+    select: {
+      conversationId: true,
+    },
+  });
+
+  for (const membership of memberships) {
+    await collapseChallengeNoticeMessagesInConversation(prisma, membership.conversationId);
+  }
+}
+
 async function findViewer(prisma: PrismaClient, viewerUid: string) {
   return prisma.user.findUnique({
     where: { uid: viewerUid },
@@ -520,6 +662,106 @@ export async function postDirectInboxMessage(
       body: normalizedBody,
     },
   });
+
+  await prisma.directConversation.update({
+    where: { id: conversation.id },
+    data: {
+      updatedAt: now,
+    },
+  });
+
+  await prisma.directConversationParticipant.updateMany({
+    where: {
+      conversationId: conversation.id,
+      userId: senderUserId,
+    },
+    data: {
+      lastReadAt: now,
+      typingUpdatedAt: null,
+    },
+  });
+
+  return conversation;
+}
+
+export async function postChallengeInboxNotice(
+  prisma: DirectInboxWriteClient,
+  {
+    senderUserId,
+    targetUserId,
+    body,
+    challengeId,
+    now = new Date(),
+  }: {
+    senderUserId: number;
+    targetUserId: number;
+    body: string;
+    challengeId?: number | null;
+    now?: Date;
+  }
+) {
+  const normalizedBody = normalizeInboxMessageBody(
+    addChallengeIdToInboxNotice(body, challengeId)
+  );
+  if (!normalizedBody || !summarizeChallengeInboxMessage(normalizedBody)) {
+    throw new Error("Challenge inbox notice body is not recognized.");
+  }
+
+  const conversation = await getOrCreateConversationByUsers(
+    prisma,
+    senderUserId,
+    targetUserId
+  );
+
+  const existingNotices = await loadChallengeNoticeMessages(prisma, conversation.id);
+  const sameChallengeNotice =
+    typeof challengeId === "number" && Number.isFinite(challengeId)
+      ? pickLatestChallengeNotice(existingNotices.filter((notice) => notice.challengeId === challengeId))
+      : null;
+  const existingNotice =
+    sameChallengeNotice ||
+    pickLatestChallengeNotice(existingNotices.filter((notice) => notice.challengeId === null));
+
+  const message = existingNotice
+    ? await prisma.directMessage.update({
+        where: { id: existingNotice.id },
+        data: {
+          senderUserId,
+          body: normalizedBody,
+          createdAt: now,
+        },
+        select: {
+          id: true,
+        },
+      })
+    : await prisma.directMessage.create({
+        data: {
+          conversationId: conversation.id,
+          senderUserId,
+          body: normalizedBody,
+          createdAt: now,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+  if (sameChallengeNotice === null && existingNotice?.challengeId === null && challengeId) {
+    const legacyIds = existingNotices
+      .filter((notice) => notice.challengeId === null && notice.id !== message.id)
+      .map((notice) => notice.id);
+    if (legacyIds.length) {
+      await prisma.directMessage.deleteMany({
+        where: {
+          id: {
+            in: legacyIds,
+          },
+        },
+      });
+    }
+  }
+
+  await collapseChallengeNoticeMessagesInConversation(prisma, conversation.id, message.id);
 
   await prisma.directConversation.update({
     where: { id: conversation.id },
@@ -1163,6 +1405,8 @@ export async function loadInboxPayload(
       dedupeWithinSeconds: 180,
     });
   }
+
+  await collapseChallengeNoticeMessagesForViewer(prisma, viewer.id);
 
   const summaries = await loadConversationSummaries(prisma, viewer.id);
   const totalUnreadCount = summaries.reduce((sum, summary) => sum + summary.unreadCount, 0);

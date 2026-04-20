@@ -15,7 +15,7 @@ import {
   validateChallengeTermsAmounts,
 } from "@/lib/challengeEconomy";
 import { Prisma } from "@/lib/generated/prisma";
-import { postDirectInboxMessage } from "@/lib/contactInbox";
+import { postChallengeInboxNotice } from "@/lib/contactInbox";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 import { recordUserActivity } from "@/lib/userExperience";
@@ -456,9 +456,10 @@ export async function PATCH(
           createdAt: acceptedAt,
         });
 
-        await postDirectInboxMessage(tx, {
+        await postChallengeInboxNotice(tx, {
           senderUserId: viewer.id,
           targetUserId: scheduledMatch.challengerUserId,
+          challengeId,
           body: buildTermsAcceptedMessage({
             challengerName,
             challengedName,
@@ -531,9 +532,10 @@ export async function PATCH(
           createdAt: declinedAt,
         });
 
-        await postDirectInboxMessage(tx, {
+        await postChallengeInboxNotice(tx, {
           senderUserId: viewer.id,
           targetUserId: scheduledMatch.challengerUserId,
+          challengeId,
           body: buildDeclineMessage({
             challengerName,
             challengedName,
@@ -620,9 +622,10 @@ export async function PATCH(
         });
 
         if (viewerIsChallenger || viewerIsChallenged) {
-          await postDirectInboxMessage(tx, {
+          await postChallengeInboxNotice(tx, {
             senderUserId: viewer.id,
             targetUserId,
+            challengeId,
             body: buildCancellationMessage({
               challengerName,
               challengedName,
@@ -754,9 +757,10 @@ export async function PATCH(
           createdAt: rescheduledAt,
         });
 
-        await postDirectInboxMessage(tx, {
+        await postChallengeInboxNotice(tx, {
           senderUserId: viewer.id,
           targetUserId,
+          challengeId,
           body: buildRescheduleMessage({
             challengerName,
             challengedName,
@@ -878,9 +882,10 @@ export async function PATCH(
           createdAt: fundedAt,
         });
 
-        await postDirectInboxMessage(tx, {
+        await postChallengeInboxNotice(tx, {
           senderUserId: viewer.id,
           targetUserId,
+          challengeId,
           body: buildFundingMessage({
             challengerName,
             challengedName,
@@ -971,9 +976,10 @@ export async function PATCH(
           createdAt: checkedInAt,
         });
 
-        await postDirectInboxMessage(tx, {
+        await postChallengeInboxNotice(tx, {
           senderUserId: viewer.id,
           targetUserId,
+          challengeId,
           body: buildCheckInMessage({
             challengerName,
             challengedName,
@@ -1046,11 +1052,12 @@ export async function PATCH(
         });
 
         if (viewerIsChallenger || viewerIsChallenged) {
-          await postDirectInboxMessage(tx, {
+          await postChallengeInboxNotice(tx, {
             senderUserId: viewer.id,
             targetUserId: viewerIsChallenger
               ? scheduledMatch.challengedUserId
               : scheduledMatch.challengerUserId,
+            challengeId,
             body: buildNoShowMessage({
               challengerName,
               challengedName,

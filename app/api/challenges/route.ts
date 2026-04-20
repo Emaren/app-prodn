@@ -14,7 +14,7 @@ import {
   normalizeChallengeWoloAmount,
   validateChallengeTermsAmounts,
 } from "@/lib/challengeEconomy";
-import { postDirectInboxMessage } from "@/lib/contactInbox";
+import { postChallengeInboxNotice } from "@/lib/contactInbox";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 import { recordUserActivity } from "@/lib/userExperience";
@@ -256,9 +256,10 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      await postDirectInboxMessage(tx, {
+      await postChallengeInboxNotice(tx, {
         senderUserId: viewer.id,
         targetUserId: challenged.id,
+        challengeId: createdMatch.id,
         body: buildChallengeInviteMessage({
           challengerName,
           challengedName,
