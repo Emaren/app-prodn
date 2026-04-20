@@ -53,6 +53,7 @@ export type BetBoardMarket = {
   status: BetStatus;
   featured: boolean;
   closeLabel: string;
+  scheduledStartAt: string | null;
   totalPotWolo: number;
   left: BetBoardSide;
   right: BetBoardSide;
@@ -81,6 +82,7 @@ export type BetBookEntry = {
   slipCount: number;
   projectedReturnWolo: number;
   closeLabel: string;
+  scheduledStartAt: string | null;
   status: BetStatus;
   executionMode: "app_only" | "onchain_escrow";
   stakeTxHash: string | null;

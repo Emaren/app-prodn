@@ -13,8 +13,13 @@ import {
   DIRECT_MESSAGE_MAX_CHARS,
   DIRECT_MESSAGE_REACTIONS,
 } from "@/lib/contactInboxConfig";
+import { useKeplr } from "@/hooks/use-keplr";
 import { AI_CONCIERGE_NAME, AI_CONCIERGE_UID } from "@/lib/aiConciergeConfig";
 import { summarizeChallengeInboxMessage } from "@/lib/challengeInboxMessages";
+import {
+  challengeFundingEscrowAddress,
+  fundChallengeEscrow,
+} from "@/lib/clientChallengeFunding";
 import type {
   ContactChallengeActionKind,
   ContactChallengeActionState,
@@ -23,6 +28,25 @@ import type {
   ContactInboxSummary,
 } from "@/components/contact/types";
 import { CHALLENGE_NOTE_MAX_CHARS } from "@/lib/challengeConfig";
+
+type ChallengeFundingWorkflow = "idle" | "awaiting_wallet" | "confirming_chain" | "recording" | "verified" | "failed";
+
+function challengeFundingButtonLabel(state: ChallengeFundingWorkflow) {
+  switch (state) {
+    case "awaiting_wallet":
+      return "Open wallet...";
+    case "confirming_chain":
+      return "Waiting for funding";
+    case "recording":
+      return "Funding detected";
+    case "verified":
+      return "Funding verified";
+    case "failed":
+      return "Retry funding";
+    default:
+      return "Fund now";
+  }
+}
 
 type ContactInboxPanelProps = {
   data: ContactInboxPayload | null;
@@ -326,8 +350,11 @@ function ChallengeThreadStrip({
   const challengeId = challenge?.id ?? null;
   const challengeScheduledAt = challenge?.scheduledAt ?? null;
   const challengeNoteValue = challenge?.challengeNote ?? "";
+  const { address: connectedWalletAddress, connect: connectKeplr } = useKeplr();
   const [showRescheduleForm, setShowRescheduleForm] = useState(false);
   const [showFundingForm, setShowFundingForm] = useState(false);
+  const [fundingWorkflow, setFundingWorkflow] = useState<ChallengeFundingWorkflow>("idle");
+  const [fundingError, setFundingError] = useState<string | null>(null);
   const [scheduledAt, setScheduledAt] = useState(() =>
     challenge ? toLocalDateTimeValue(challenge.scheduledAt) : ""
   );
@@ -338,6 +365,8 @@ function ChallengeThreadStrip({
   useEffect(() => {
     setShowRescheduleForm(false);
     setShowFundingForm(false);
+    setFundingWorkflow("idle");
+    setFundingError(null);
     setScheduledAt(challengeScheduledAt ? toLocalDateTimeValue(challengeScheduledAt) : "");
     setChallengeNote(challengeNoteValue);
     setFundingTxHash("");
@@ -493,6 +522,46 @@ function ChallengeThreadStrip({
     setShowFundingForm(false);
   }
 
+  async function handleFundingNow() {
+    if (!onChallengeAction || !challenge || challengeId === null) {
+      return;
+    }
+
+    setFundingError(null);
+
+    if (!challengeFundingEscrowAddress()) {
+      setFundingWorkflow("failed");
+      setFundingError("Challenge escrow is not exposed to the browser yet. Use manual rescue for this proof.");
+      setShowFundingForm(true);
+      return;
+    }
+
+    try {
+      setFundingWorkflow("awaiting_wallet");
+      const walletAddress = connectedWalletAddress || (await connectKeplr());
+
+      setFundingWorkflow("confirming_chain");
+      const result = await fundChallengeEscrow({
+        challengeId,
+        amountWolo: challenge.terms.totalFundingWolo,
+        fallbackWalletAddress: walletAddress,
+      });
+
+      setFundingWorkflow("recording");
+      await onChallengeAction({
+        challengeId,
+        action: "fund",
+        fundingTxHash: result.fundingTxHash,
+        fundingWalletAddress: result.walletAddress,
+      });
+      setFundingWorkflow("verified");
+      setShowFundingForm(false);
+    } catch (error) {
+      setFundingWorkflow("failed");
+      setFundingError(error instanceof Error ? error.message : "Challenge funding failed.");
+    }
+  }
+
   return (
     <div
       className={`rounded-[1.1rem] border ${compact ? "mt-2.5 px-3 py-2.5" : "mt-3 px-3.5 py-3"} ${
@@ -565,14 +634,24 @@ function ChallengeThreadStrip({
           </button>
         ) : null}
         {canFund ? (
-          <button
-            type="button"
-            disabled={isBusy}
-            onClick={() => setShowFundingForm((current) => !current)}
-            className={`rounded-full border border-amber-300/30 bg-amber-400/10 text-amber-100 transition hover:bg-amber-400/15 disabled:cursor-not-allowed disabled:opacity-60 ${actionSizing}`}
-          >
-            {showFundingForm ? "Close Funding" : "Mark Funded"}
-          </button>
+          <>
+            <button
+              type="button"
+              disabled={isBusy || fundingWorkflow === "confirming_chain" || fundingWorkflow === "recording"}
+              onClick={() => void handleFundingNow()}
+              className={`rounded-full bg-amber-300 font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-60 ${actionSizing}`}
+            >
+              {currentAction === "fund" ? "Funding verified" : challengeFundingButtonLabel(fundingWorkflow)}
+            </button>
+            <button
+              type="button"
+              disabled={isBusy}
+              onClick={() => setShowFundingForm((current) => !current)}
+              className={`rounded-full border border-white/15 text-white/70 transition hover:border-white/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-60 ${actionSizing}`}
+            >
+              {showFundingForm ? "Close Rescue" : "Manual rescue"}
+            </button>
+          </>
         ) : null}
         {canCheckIn ? (
           <button
@@ -669,6 +748,15 @@ function ChallengeThreadStrip({
           onSubmit={handleFunding}
           className={`mt-2.5 space-y-2.5 rounded-[0.95rem] border border-white/10 bg-slate-950/35 ${compact ? "p-2.5" : "p-3"}`}
         >
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.22em] text-slate-400">Manual rescue</div>
+            <div className="mt-1 text-[11px] leading-5 text-slate-300">
+              Use only if wallet funding broadcast but the rail did not return.
+            </div>
+            {fundingError ? (
+              <div className="mt-1 text-[11px] leading-5 text-amber-100">{fundingError}</div>
+            ) : null}
+          </div>
           <label className="block space-y-1.5">
             <span className="text-[10px] uppercase tracking-[0.2em] text-slate-300">Funding tx hash</span>
             <input
@@ -697,7 +785,7 @@ function ChallengeThreadStrip({
               disabled={isBusy}
               className={`rounded-full bg-amber-300 font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-60 ${actionSizing}`}
             >
-              {currentAction === "fund" ? "Recording..." : `Lock ${challenge.terms.totalFundingWolo.toLocaleString()} WOLO`}
+              {currentAction === "fund" ? "Recording..." : "Record manual proof"}
             </button>
             <button
               type="button"

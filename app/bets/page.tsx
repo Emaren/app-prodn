@@ -57,6 +57,7 @@ type BetBoardMarket = {
   status: BetStatus;
   featured: boolean;
   closeLabel: string;
+  scheduledStartAt: string | null;
   totalPotWolo: number;
   left: BetBoardSide;
   right: BetBoardSide;
@@ -107,6 +108,7 @@ type BetBookEntry = {
   slipCount: number;
   projectedReturnWolo: number;
   closeLabel: string;
+  scheduledStartAt: string | null;
   status: BetStatus;
   executionMode: "app_only" | "onchain_escrow";
   stakeTxHash: string | null;
@@ -382,6 +384,75 @@ function formatSettledTime(value: string | null) {
   });
 }
 
+function formatScheduledStart(value: string | null) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+
+  return date.toLocaleString([], {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function formatStartsIn(diffMs: number) {
+  if (diffMs <= 0) return "Live now";
+
+  const totalMinutes = Math.max(1, Math.floor(diffMs / 60_000));
+  if (totalMinutes >= 24 * 60) {
+    const days = Math.floor(totalMinutes / (24 * 60));
+    const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
+    return `Starts in ${days}d ${hours}h`;
+  }
+
+  if (totalMinutes >= 60) {
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    return `Starts in ${hours}h ${minutes}m`;
+  }
+
+  return `Starts in ${totalMinutes}m`;
+}
+
+function getMarketTiming(market: BetBoardMarket, nowMs: number) {
+  const startLabel = formatScheduledStart(market.scheduledStartAt);
+  if (!startLabel) {
+    return null;
+  }
+
+  const startMs = new Date(market.scheduledStartAt || "").getTime();
+  const countdownLabel =
+    market.status === "live" || startMs <= nowMs ? "Live now" : formatStartsIn(startMs - nowMs);
+
+  return {
+    startLabel,
+    countdownLabel,
+  };
+}
+
+function useNowTicker(intervalMs = 30_000) {
+  const [nowMs, setNowMs] = useState(() => Date.now());
+
+  useEffect(() => {
+    const refresh = () => setNowMs(Date.now());
+    refresh();
+
+    const interval = window.setInterval(refresh, intervalMs);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [intervalMs]);
+
+  return nowMs;
+}
+
 function projectReturn(stakeWolo: number, selectedPoolWolo: number, oppositePoolWolo: number) {
   if (stakeWolo <= 0) return 0;
   const nextSelectedPool = selectedPoolWolo + stakeWolo;
@@ -504,15 +575,15 @@ async function resolveBetSigner(
 
 function statusPill(status: BetStatus) {
   if (status === "live") {
-    return "border-red-300/18 bg-[linear-gradient(135deg,rgba(127,29,29,0.58),rgba(185,28,28,0.20))] text-red-100";
+    return "border-emerald-300/22 bg-[linear-gradient(135deg,rgba(6,95,70,0.58),rgba(16,185,129,0.16))] text-emerald-50";
   }
   if (status === "closing") {
     return "border-amber-300/18 bg-[linear-gradient(135deg,rgba(146,64,14,0.50),rgba(217,119,6,0.16))] text-amber-50";
   }
   if (status === "settled") {
-    return "border-emerald-300/18 bg-[linear-gradient(135deg,rgba(6,95,70,0.50),rgba(16,185,129,0.14))] text-emerald-50";
+    return "border-sky-300/18 bg-[linear-gradient(135deg,rgba(14,116,144,0.42),rgba(14,165,233,0.12))] text-sky-50";
   }
-  return "border-sky-300/16 bg-[linear-gradient(135deg,rgba(30,64,175,0.34),rgba(59,130,246,0.12))] text-sky-100";
+  return "border-emerald-300/18 bg-[linear-gradient(135deg,rgba(6,95,70,0.42),rgba(16,185,129,0.13))] text-emerald-50";
 }
 
 function groupedSettlementLabel(
@@ -608,10 +679,47 @@ function CoinMark({ small = false }: { small?: boolean }) {
   );
 }
 
+function MarketStatusPill({ market }: { market: BetBoardMarket }) {
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs ${statusPill(market.status)}`}>
+      {market.status === "live" ? (
+        <span className="relative flex h-2 w-2">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-35" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-red-400" />
+        </span>
+      ) : null}
+      <span>{market.status === "live" ? "Live" : market.closeLabel}</span>
+    </span>
+  );
+}
+
+function MarketTimingRail({ market, nowMs }: { market: BetBoardMarket; nowMs: number }) {
+  const timing = getMarketTiming(market, nowMs);
+  if (!timing) return null;
+
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-300">
+      <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1">
+        Start {timing.startLabel}
+      </span>
+      <span
+        className={`rounded-full border px-3 py-1 ${
+          timing.countdownLabel === "Live now"
+            ? "border-emerald-300/20 bg-emerald-400/10 text-emerald-100"
+            : "border-white/10 bg-white/[0.04] text-slate-300"
+        }`}
+      >
+        {timing.countdownLabel}
+      </span>
+    </div>
+  );
+}
+
 export default function BetsPage() {
   const { isAdmin, isAuthenticated, loading, loginWithSteam, user } = useUserAuth();
   const { address: connectedWalletAddress, connect: connectKeplr } = useKeplr();
   const { data: rawWalletBalance } = useWoloBalance(connectedWalletAddress || undefined);
+  const nowMs = useNowTicker();
   const [board, setBoard] = useState<BetBoardSnapshot | null>(null);
   const [betsView, setBetsView] = useState<BetsViewMode>("basic");
   const [selection, setSelection] = useState<SelectionState | null>(null);
@@ -1394,6 +1502,7 @@ export default function BetsPage() {
                   selection={selection}
                   workingKey={workingKey}
                   lockWorkflow={lockWorkflow}
+                  nowMs={nowMs}
                   isAuthenticated={isAuthenticated}
                   isAdmin={isAdmin}
                   loadingAuth={loading}
@@ -1440,6 +1549,7 @@ export default function BetsPage() {
               selection={selection}
               workingKey={workingKey}
               lockWorkflow={lockWorkflow}
+              nowMs={nowMs}
               isAdmin={isAdmin}
               maxStakeWolo={maxStakeWolo}
               onSelect={handleSelect}
@@ -1612,6 +1722,7 @@ export default function BetsPage() {
                   selection={selection}
                   workingKey={workingKey}
                   lockWorkflow={lockWorkflow}
+                  nowMs={nowMs}
                   isAuthenticated={isAuthenticated}
                   isAdmin={isAdmin}
                   loadingAuth={loading}
@@ -1641,6 +1752,7 @@ export default function BetsPage() {
               selection={selection}
               workingKey={workingKey}
               lockWorkflow={lockWorkflow}
+              nowMs={nowMs}
               isAdmin={isAdmin}
               maxStakeWolo={maxStakeWolo}
               onSelect={handleSelect}
@@ -1738,6 +1850,7 @@ function OpenBooksSection({
   selection,
   workingKey,
   lockWorkflow,
+  nowMs,
   isAdmin,
   maxStakeWolo,
   onSelect,
@@ -1757,6 +1870,7 @@ function OpenBooksSection({
   selection: SelectionState | null;
   workingKey: string | null;
   lockWorkflow: LockWorkflow | null;
+  nowMs: number;
   isAdmin: boolean;
   maxStakeWolo: number;
   onSelect: (market: BetBoardMarket, side: BetSide) => void;
@@ -1798,6 +1912,7 @@ function OpenBooksSection({
               selection={selection}
               workingKey={workingKey}
               lockWorkflow={lockWorkflow}
+              nowMs={nowMs}
               isAdmin={isAdmin}
               maxStakeWolo={maxStakeWolo}
               onSelect={onSelect}
@@ -1994,24 +2109,24 @@ function StakeAmountRail({
   const stakeError =
     activeSelection ? validateStakeAmount(activeSelection.stake, maxStakeWolo) : null;
 
-const hasActiveSelection = Boolean(activeSelection);
+  const hasActiveSelection = Boolean(activeSelection);
 
-useEffect(() => {
-  if (!hasActiveSelection) {
+  useEffect(() => {
+    if (!hasActiveSelection) {
+      setCustomDraft("");
+      return;
+    }
+
+    // New side / new market selection should feel clean.
+    // Keep the suggested stake highlighted via the pills,
+    // but do not jam it into the custom input automatically.
     setCustomDraft("");
-    return;
-  }
-
-  // New side / new market selection should feel clean.
-  // Keep the suggested stake highlighted via the pills,
-  // but do not jam it into the custom input automatically.
-  setCustomDraft("");
-}, [hasActiveSelection, activeSelection?.marketId, activeSelection?.side]);
+  }, [hasActiveSelection, activeSelection?.marketId, activeSelection?.side]);
 
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {STAKE_OPTIONS.map((stake) => (
             <button
               key={stake}
@@ -2029,10 +2144,12 @@ useEffect(() => {
               {stake}
             </button>
           ))}
+          <span className="inline-flex items-center rounded-full border border-white/[0.08] bg-white/[0.035] px-3 py-1.5 text-[11px] uppercase tracking-[0.22em] text-slate-400">
+            Custom
+          </span>
         </div>
 
-        <label className="flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-2">
-          <span className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Custom</span>
+        <label className="flex min-w-[11rem] items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-2 transition focus-within:border-amber-200/30 focus-within:bg-white/[0.065]">
           <input
             inputMode="numeric"
             pattern="[0-9]*"
@@ -2044,8 +2161,8 @@ useEffect(() => {
               onStakeChange(digits ? Number.parseInt(digits, 10) : 0);
             }}
             disabled={!activeSelection || !canEdit}
-            className="w-20 bg-transparent text-right text-sm text-white outline-none placeholder:text-slate-500 disabled:cursor-not-allowed"
-            placeholder="Enter"
+            className="min-w-0 flex-1 bg-transparent text-right text-sm text-white outline-none placeholder:text-slate-500 disabled:cursor-not-allowed"
+            placeholder="Amount"
           />
           <span className="text-[11px] uppercase tracking-[0.2em] text-slate-500">WOLO</span>
         </label>
@@ -2067,6 +2184,7 @@ function MarketFeature({
   selection,
   workingKey,
   lockWorkflow,
+  nowMs,
   isAuthenticated,
   isAdmin,
   loadingAuth,
@@ -2083,6 +2201,7 @@ function MarketFeature({
   selection: SelectionState | null;
   workingKey: string | null;
   lockWorkflow: LockWorkflow | null;
+  nowMs: number;
   isAuthenticated: boolean;
   isAdmin: boolean;
   loadingAuth: boolean;
@@ -2169,6 +2288,7 @@ function MarketFeature({
             bonuses={market.founderBonuses}
             variant={detailMode === "basic" ? "micro" : "full"}
           />
+          <MarketTimingRail market={market} nowMs={nowMs} />
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
           {market.href ? (
@@ -2197,9 +2317,7 @@ function MarketFeature({
               </button>
             </>
           ) : null}
-          <span className={`rounded-full border px-3 py-1 text-xs ${statusPill(market.status)}`}>
-            {market.closeLabel}
-          </span>
+          <MarketStatusPill market={market} />
         </div>
       </div>
 
@@ -2295,6 +2413,7 @@ function MarketCard({
   selection,
   workingKey,
   lockWorkflow,
+  nowMs,
   isAdmin,
   maxStakeWolo,
   onSelect,
@@ -2309,6 +2428,7 @@ function MarketCard({
   selection: SelectionState | null;
   workingKey: string | null;
   lockWorkflow: LockWorkflow | null;
+  nowMs: number;
   isAdmin: boolean;
   maxStakeWolo: number;
   onSelect: (market: BetBoardMarket, side: BetSide) => void;
@@ -2381,11 +2501,10 @@ function MarketCard({
             compact
             variant={detailMode === "basic" ? "micro" : "full"}
           />
+          <MarketTimingRail market={market} nowMs={nowMs} />
         </div>
         <div className="flex flex-col items-end gap-2">
-          <span className={`rounded-full border px-3 py-1 text-xs ${statusPill(market.status)}`}>
-            {market.closeLabel}
-          </span>
+          <MarketStatusPill market={market} />
           {market.href ? (
             <Link
               href={market.href}

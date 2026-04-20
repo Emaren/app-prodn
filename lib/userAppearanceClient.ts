@@ -6,6 +6,7 @@ import type {
   LobbyViewMode,
 } from "@/components/lobby/lobbyPresentation";
 import type { TimeDisplayMode } from "@/lib/timeDisplay";
+import type { TileViewPreferences } from "@/lib/tileViewPreferences";
 
 export type AppearancePayload = {
   themeKey: LobbyThemeKey;
@@ -14,6 +15,7 @@ export type AppearancePayload = {
   textColor: LobbyTextColor;
   timeDisplayMode: TimeDisplayMode;
   timezoneOverride: string | null;
+  tileViewPreferences: TileViewPreferences;
   updatedAt: string | null;
 };
 
@@ -33,6 +35,7 @@ export async function saveUserAppearancePreference(input: {
   textColor: LobbyTextColor;
   timeDisplayMode: TimeDisplayMode;
   timezoneOverride: string | null;
+  tileViewPreferences: TileViewPreferences;
 }) {
   const response = await fetch("/api/user/appearance", {
     method: "POST",

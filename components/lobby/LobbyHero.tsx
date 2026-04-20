@@ -1,14 +1,18 @@
 "use client";
 
 import Link from "next/link";
+import type { MouseEvent } from "react";
 import SteamLoginButton from "@/components/SteamLoginButton";
 import { LeaderboardPanel } from "@/components/lobby/LeaderboardPanel";
 import {
+  getLobbyPresentationTone,
   type LobbyThemeKey,
   type LobbyViewMode,
 } from "@/components/lobby/lobbyPresentation";
 import { StatCard } from "@/components/lobby/StatCard";
-import type { LobbySnapshot } from "@/lib/lobby";
+import type { Aoe2HdPulseItem, Aoe2HdPulseSnapshot } from "@/lib/aoe2HdPulse";
+import type { LobbyMatchRow, LobbySnapshot } from "@/lib/lobby";
+import type { TileViewMode } from "@/lib/tileViewPreferences";
 
 type LobbyHeroProps = {
   liveConnected: boolean;
@@ -18,10 +22,15 @@ type LobbyHeroProps = {
   isAuthenticated: boolean;
   loading: boolean;
   leaderboard: LobbySnapshot["leaderboard"];
+  recentMatches: LobbyMatchRow[];
   wolo: LobbySnapshot["wolo"];
+  aoe2hdPulse: Aoe2HdPulseSnapshot | null;
   themeKey: LobbyThemeKey;
   viewMode: LobbyViewMode;
   onViewModeChange: (viewMode: LobbyViewMode) => void;
+  tileViewMode: TileViewMode;
+  onTileViewModeChange: (viewMode: TileViewMode) => void;
+  onToggleTileViewMode: () => void;
 };
 
 function formatCompactWolo(value: number | null | undefined) {
@@ -39,6 +48,92 @@ function formatUpdatedAt(value: string | null | undefined) {
   return `Updated ${date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
 }
 
+function isInteractiveToggleTarget(target: EventTarget | null) {
+  return target instanceof HTMLElement
+    ? Boolean(target.closest("a,button,input,textarea,select,label,[data-ignore-tile-toggle='true']"))
+    : false;
+}
+
+function getRecentMatchSummary(match: LobbyMatchRow | null | undefined) {
+  if (!match) {
+    return null;
+  }
+
+  const mapName =
+    typeof match.map === "string"
+      ? match.map
+      : typeof match.map?.name === "string"
+        ? match.map.name
+        : null;
+
+  if (match.winner && mapName) {
+    return `${match.winner} on ${mapName}`.slice(0, 48);
+  }
+
+  if (match.winner) {
+    return match.winner.slice(0, 48);
+  }
+
+  if (mapName) {
+    return mapName.slice(0, 48);
+  }
+
+  return "Replay parsed";
+}
+
+function buildPulseItems({
+  pulse,
+  leaderboard,
+  recentMatches,
+}: {
+  pulse: Aoe2HdPulseSnapshot | null;
+  leaderboard: LobbySnapshot["leaderboard"];
+  recentMatches: LobbyMatchRow[];
+}) {
+  const externalItems = pulse?.items ?? [];
+  if (externalItems.length >= 3) {
+    return externalItems.slice(0, 3);
+  }
+
+  const latestMatch = getRecentMatchSummary(recentMatches[0]);
+  const fallbackItems: Aoe2HdPulseItem[] = [
+    {
+      label: "Online now",
+      value: String(leaderboard.activePlayers),
+      detail: "AoE2HDBets live sessions",
+    },
+    {
+      label: "Matches today",
+      value: String(leaderboard.matchesToday),
+      detail: "Final games parsed today",
+    },
+    latestMatch
+      ? {
+          label: "Latest replay",
+          value: latestMatch,
+          detail: "Most recent HD parse",
+        }
+      : {
+          label: "Tracked players",
+          value: String(leaderboard.trackedPlayers),
+          detail: `${leaderboard.rankedPlayers} ranked on the board`,
+        },
+  ];
+
+  return [...externalItems, ...fallbackItems].slice(0, 3);
+}
+
+function formatSteamHdChip(pulse: Aoe2HdPulseSnapshot | null) {
+  if (pulse?.steamHd) {
+    const { openLobbies, openSeats } = pulse.steamHd;
+    return typeof openSeats === "number"
+      ? `${openLobbies} HD lobbies · ${openSeats} seats`
+      : `Steam HD: ${openLobbies} open lobbies`;
+  }
+
+  return pulse?.sourceStatus === "error" ? "Steam HD: source quiet" : "Steam HD: feed pending";
+}
+
 export function LobbyHero({
   liveConnected,
   authError,
@@ -47,10 +142,15 @@ export function LobbyHero({
   isAuthenticated,
   loading,
   leaderboard,
+  recentMatches,
   wolo,
+  aoe2hdPulse,
   themeKey,
   viewMode,
   onViewModeChange,
+  tileViewMode,
+  onTileViewModeChange,
+  onToggleTileViewMode,
 }: LobbyHeroProps) {
   const accentTextClassName =
     viewMode === "field" ? "text-emerald-200/70" : "text-amber-200/70";
@@ -74,8 +174,191 @@ export function LobbyHero({
   const treasury = wolo?.accounts.communitytreasury?.wolo ?? null;
   const liquidity = wolo?.accounts.dexliquidity?.wolo ?? null;
 
+  const handleTileClick = (event: MouseEvent<HTMLDivElement>) => {
+    if (isInteractiveToggleTarget(event.target)) {
+      return;
+    }
+
+    onToggleTileViewMode();
+  };
+
+  if (tileViewMode === "advanced") {
+    const tone = getLobbyPresentationTone(themeKey, viewMode);
+    const pulseItems = buildPulseItems({
+      pulse: aoe2hdPulse,
+      leaderboard,
+      recentMatches,
+    });
+
+    return (
+      <div
+        className="space-y-5 cursor-pointer"
+        data-lobby-hero-stack="true"
+        onClick={handleTileClick}
+      >
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className={`text-sm uppercase tracking-[0.4em] ${accentTextClassName}`}>
+              Community Lobby
+            </div>
+            <div className={`rounded-full border px-3 py-1 text-xs ${tone.statusBadge}`}>
+              Advanced
+            </div>
+            <div
+              className={`rounded-full px-3 py-1 text-xs ${
+                liveConnected
+                  ? viewMode === "field"
+                    ? "border border-emerald-300/30 bg-emerald-500/12 text-emerald-50"
+                    : "border border-emerald-400/30 bg-emerald-500/10 text-emerald-100"
+                  : "border border-white/10 bg-white/5 text-slate-300"
+              }`}
+            >
+              {liveConnected ? "Live updates connected" : "Polling fallback"}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2" data-ignore-tile-toggle="true">
+            <div className="rounded-full border border-cyan-200/20 bg-cyan-300/10 px-3 py-1 text-xs text-cyan-50">
+              {formatSteamHdChip(aoe2hdPulse)}
+            </div>
+            <div className={`flex rounded-full border p-1 text-xs ${tone.viewToggle}`}>
+              {(["basic", "advanced"] as const).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => onTileViewModeChange(mode)}
+                  className={`rounded-full px-3 py-1 capitalize transition ${
+                    tileViewMode === mode ? tone.viewToggleActive : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  {mode}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {authError && (
+          <div className="max-w-2xl rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+            Steam sign-in failed{authDetail ? `: ${authDetail}` : "."}
+          </div>
+        )}
+
+        {lobbyError && (
+          <div className="max-w-2xl rounded-2xl border border-amber-300/25 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
+            {lobbyError}
+          </div>
+        )}
+
+        <section className={`rounded-[1.85rem] border p-5 sm:p-6 ${tone.panelShell}`}>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div className={`text-xs uppercase tracking-[0.35em] ${tone.eyebrow}`}>
+                AoE2HD Pulse
+              </div>
+              <div className="mt-2 max-w-xl text-sm leading-6 text-slate-300">
+                Compressed lobby signal for who is around, what moved, and where the board is warm.
+              </div>
+            </div>
+            <span className={`rounded-full border px-2.5 py-1 text-[11px] ${tone.neutralPill}`}>
+              {aoe2hdPulse?.sourceLabel || "AoE2HDBets"}
+            </span>
+          </div>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            {pulseItems.map((item) => (
+              <div
+                key={`${item.label}:${item.value}`}
+                className={`min-h-[7.5rem] rounded-2xl border px-4 py-4 ${tone.insetPanel}`}
+              >
+                <div className={`text-[10px] uppercase tracking-[0.28em] ${tone.eyebrow}`}>
+                  {item.label}
+                </div>
+                <div className="mt-3 break-words text-2xl font-semibold leading-tight text-white">
+                  {item.value}
+                </div>
+                <div className="mt-2 text-xs leading-5 text-slate-400">
+                  {item.detail || "\u00a0"}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className={`rounded-2xl border px-4 py-4 ${tone.insetPanel}`}>
+            <div className={`text-[10px] uppercase tracking-[0.26em] ${tone.eyebrow}`}>
+              Board
+            </div>
+            <div className="mt-2 text-2xl font-semibold text-white">
+              {leaderboard.trackedPlayers}
+            </div>
+            <div className="mt-1 text-xs text-slate-400">tracked players</div>
+          </div>
+          <div className={`rounded-2xl border px-4 py-4 ${tone.insetPanel}`}>
+            <div className={`text-[10px] uppercase tracking-[0.26em] ${tone.eyebrow}`}>
+              Ranked
+            </div>
+            <div className="mt-2 text-2xl font-semibold text-white">
+              {leaderboard.rankedPlayers}
+            </div>
+            <div className="mt-1 text-xs text-slate-400">minimum games met</div>
+          </div>
+          <div className={`rounded-2xl border px-4 py-4 ${tone.insetPanel}`}>
+            <div className={`text-[10px] uppercase tracking-[0.26em] ${tone.eyebrow}`}>
+              Status
+            </div>
+            <div className="mt-2 text-xl font-semibold text-white">
+              {leaderboard.statusLabel}
+            </div>
+            <div className="mt-1 text-xs text-slate-400">current rating lane</div>
+          </div>
+        </div>
+
+        <div
+          className={
+            isAuthenticated
+              ? "grid gap-3 sm:grid-cols-2 xl:grid-cols-3"
+              : "grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_minmax(0,1fr)]"
+          }
+          data-ignore-tile-toggle="true"
+        >
+          {isAuthenticated ? (
+            <Link href="/profile" className={primaryActionClassName}>
+              Open Profile
+            </Link>
+          ) : (
+            <SteamLoginButton
+              className={`${primaryActionClassName} w-full whitespace-nowrap`}
+              label={loading ? "Loading..." : "Login with Steam"}
+              disabled={loading}
+            />
+          )}
+
+          <Link
+            href={isAuthenticated ? "/upload" : "/download"}
+            className="inline-flex min-h-14 items-center justify-center rounded-full border border-white/15 px-5 text-center text-[13px] font-medium leading-tight text-white/85 transition hover:border-white/30 hover:text-white"
+          >
+            {isAuthenticated ? "Upload Replay" : "Download Watcher"}
+          </Link>
+
+          <Link
+            href="/rivalries"
+            className="inline-flex min-h-14 items-center justify-center rounded-full border border-white/15 px-5 text-center text-[13px] font-medium leading-tight text-white/85 transition hover:border-white/30 hover:text-white"
+          >
+            View Rivalries
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6" data-lobby-hero-stack="true">
+    <div
+      className="space-y-6 cursor-pointer"
+      data-lobby-hero-stack="true"
+      onClick={handleTileClick}
+    >
       <div className="flex flex-wrap items-center gap-3">
         <div className={`text-sm uppercase tracking-[0.4em] ${accentTextClassName}`}>
           Community Lobby

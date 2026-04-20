@@ -1,3 +1,5 @@
+import type { Aoe2HdPulseSnapshot } from "@/lib/aoe2HdPulse";
+
 export const LOBBY_ROOM_SLUG = "main-lobby";
 export const LOBBY_MESSAGE_MAX_CHARS = 280;
 export const TOURNAMENT_STATUSES = ["planning", "open", "active", "completed"] as const;
@@ -221,6 +223,7 @@ export type LobbySnapshot = {
   leaderboard: LobbyLeaderboardSummary;
   wolo: LobbyWoloSnapshot | null;
   woloEarners: LobbyWoloEarnersBoard;
+  aoe2hdPulse: Aoe2HdPulseSnapshot;
 };
 
 export function slugifyTournamentTitle(value: string) {

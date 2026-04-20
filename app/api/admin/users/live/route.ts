@@ -13,6 +13,11 @@ import {
   loadPendingWoloClaimsForAdmin,
   normalizePendingWoloClaimName,
 } from "@/lib/pendingWoloClaims";
+import {
+  SCHEDULED_MATCH_COLOR_TAGS,
+  normalizeScheduledMatchColorTag,
+} from "@/lib/scheduledMatchPreferences";
+import { getTileViewMode } from "@/lib/tileViewPreferences";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -99,6 +104,7 @@ export async function GET(request: NextRequest) {
       adminMemberships,
       activityStats,
       allClaims,
+      scheduledPreferenceRows,
     ] = await Promise.all([
       loadUserCommunitySummaries(prisma, userIds, { includePending: true }),
       loadInboxPayload(prisma, admin.uid, { summaryOnly: true }),
@@ -136,6 +142,17 @@ export async function GET(request: NextRequest) {
         },
       }),
       loadPendingWoloClaimsForAdmin(prisma, { take: 500 }),
+      prisma.scheduledMatchUserPreference.findMany({
+        where: {
+          userId: { in: userIds },
+        },
+        select: {
+          userId: true,
+          favorite: true,
+          bookmarked: true,
+          colorTag: true,
+        },
+      }),
     ]);
 
     const unreadMap = new Map(
@@ -273,6 +290,30 @@ export async function GET(request: NextRequest) {
       })
     );
 
+    const communityLobbyBasicCount = rows.filter(
+      (user) => getTileViewMode(user.appearance?.tileViewPreferences, "community_lobby") === "basic"
+    ).length;
+    const communityLobbyAdvancedCount = rows.length - communityLobbyBasicCount;
+    const communityLobbyAdvancedPercent =
+      rows.length > 0 ? Math.round((communityLobbyAdvancedCount / rows.length) * 100) : 0;
+    const scheduledPreferenceUsage = {
+      favoriteCount: 0,
+      bookmarkedCount: 0,
+      usersWithPreferences: new Set<number>(),
+      colorTagCounts: Object.fromEntries(SCHEDULED_MATCH_COLOR_TAGS.map((tag) => [tag, 0])) as Record<
+        (typeof SCHEDULED_MATCH_COLOR_TAGS)[number],
+        number
+      >,
+    };
+
+    for (const row of scheduledPreferenceRows) {
+      scheduledPreferenceUsage.usersWithPreferences.add(row.userId);
+      if (row.favorite) scheduledPreferenceUsage.favoriteCount += 1;
+      if (row.bookmarked) scheduledPreferenceUsage.bookmarkedCount += 1;
+      const colorTag = normalizeScheduledMatchColorTag(row.colorTag);
+      if (colorTag) scheduledPreferenceUsage.colorTagCounts[colorTag] += 1;
+    }
+
     const payload: AdminUsersLivePayload = {
       overview: {
         totalUsers: rows.length,
@@ -313,6 +354,24 @@ export async function GET(request: NextRequest) {
           viewMode,
           count: rows.filter((user) => user.appearance?.viewMode === viewMode).length,
         })),
+        tileViewBreakdown: [
+          {
+            tileKey: "community_lobby",
+            label: "Community Lobby",
+            basicCount: communityLobbyBasicCount,
+            advancedCount: communityLobbyAdvancedCount,
+            basicPercent: Math.max(0, 100 - communityLobbyAdvancedPercent),
+            advancedPercent: communityLobbyAdvancedPercent,
+            preferredMode:
+              communityLobbyAdvancedCount > communityLobbyBasicCount ? "advanced" : "basic",
+          },
+        ],
+        scheduledPreferenceUsage: {
+          favoriteCount: scheduledPreferenceUsage.favoriteCount,
+          bookmarkedCount: scheduledPreferenceUsage.bookmarkedCount,
+          usersWithPreferences: scheduledPreferenceUsage.usersWithPreferences.size,
+          colorTagCounts: scheduledPreferenceUsage.colorTagCounts,
+        },
       },
       users: rows.map((row) => ({
         uid: row.uid,

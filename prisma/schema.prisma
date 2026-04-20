@@ -56,6 +56,7 @@ model User {
   scheduledChallengesCreated     ScheduledMatch[]                @relation("ScheduledMatchChallenger")
   scheduledChallengesReceived    ScheduledMatch[]                @relation("ScheduledMatchChallenged")
   scheduledMatchActivities       ScheduledMatchActivity[]        @relation("ScheduledMatchActivityActor")
+  scheduledMatchPreferences       ScheduledMatchUserPreference[]
 
   @@map("users")
 }
@@ -239,6 +240,7 @@ model ScheduledMatch {
   createdAt             DateTime                 @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt             DateTime                 @updatedAt @map("updated_at") @db.Timestamp(6)
   activities            ScheduledMatchActivity[]
+  userPreferences       ScheduledMatchUserPreference[]
 
   challenger User       @relation("ScheduledMatchChallenger", fields: [challengerUserId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   challenged User       @relation("ScheduledMatchChallenged", fields: [challengedUserId], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -251,6 +253,27 @@ model ScheduledMatch {
   @@index([status, resultAt], map: "ix_scheduled_matches_status_result_at")
   @@index([settlementReadyAt], map: "ix_scheduled_matches_settlement_ready_at")
   @@map("scheduled_matches")
+}
+
+model ScheduledMatchUserPreference {
+  id               Int      @id @default(autoincrement())
+  scheduledMatchId Int      @map("scheduled_match_id")
+  userId           Int      @map("user_id")
+  favorite         Boolean  @default(false)
+  bookmarked       Boolean  @default(false)
+  colorTag         String?  @map("color_tag") @db.VarChar(16)
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  scheduledMatch ScheduledMatch @relation(fields: [scheduledMatchId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([scheduledMatchId, userId], map: "uq_scheduled_match_user_preferences_match_user")
+  @@index([userId, updatedAt], map: "ix_scheduled_match_user_preferences_user_updated_at")
+  @@index([favorite], map: "ix_scheduled_match_user_preferences_favorite")
+  @@index([bookmarked], map: "ix_scheduled_match_user_preferences_bookmarked")
+  @@index([colorTag], map: "ix_scheduled_match_user_preferences_color_tag")
+  @@map("scheduled_match_user_preferences")
 }
 
 model ScheduledMatchActivity {
@@ -516,6 +539,7 @@ model UserAppearancePreference {
   user             User    @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   timeDisplayMode  String  @default("utc") @map("time_display_mode") @db.VarChar(20)
   timezoneOverride String? @map("timezone_override") @db.VarChar(80)
+  tileViewPreferences Json? @map("tile_view_preferences")
 
   @@map("user_appearance_preferences")
 }

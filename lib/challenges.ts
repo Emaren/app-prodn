@@ -9,6 +9,11 @@ import {
 import { Prisma, type PrismaClient } from "@/lib/generated/prisma";
 import { loadLiveSessionSnapshot } from "@/lib/liveSessionSnapshot";
 import { buildClaimedPlayerHref } from "@/lib/publicPlayers";
+import {
+  EMPTY_SCHEDULED_MATCH_VIEWER_PREFERENCE,
+  normalizeScheduledMatchViewerPreference,
+  type ScheduledMatchViewerPreference,
+} from "@/lib/scheduledMatchPreferences";
 
 const CHALLENGE_ONLINE_WINDOW_MS = 2 * 60 * 1000;
 const CHALLENGE_LOOKAHEAD_MS = 7 * 24 * 60 * 60 * 1000;
@@ -113,6 +118,7 @@ export type ScheduledMatchTile = {
     guaranteeAmountWolo: number;
     totalFundingWolo: number;
   };
+  viewerPreference: ScheduledMatchViewerPreference;
   economy: ScheduledMatchEconomySurface;
   challenger: ChallengePlayerSurface;
   challenged: ChallengePlayerSurface;
@@ -677,7 +683,8 @@ function buildActivityAt(row: ScheduledMatchRow, displayState: ScheduledMatchDis
 function buildScheduledMatchTile(
   row: ScheduledMatchRow,
   linkedSession: ComparableSession | null,
-  now = new Date()
+  now = new Date(),
+  viewerPreference: ScheduledMatchViewerPreference = EMPTY_SCHEDULED_MATCH_VIEWER_PREFERENCE
 ): ScheduledMatchTile {
   const linkedSessionState =
     linkedSession?.state ??
@@ -722,6 +729,7 @@ function buildScheduledMatchTile(
       guaranteeAmountWolo: row.guaranteeAmountWolo,
       totalFundingWolo: row.wagerAmountWolo + row.guaranteeAmountWolo,
     },
+    viewerPreference,
     economy: {
       ...surface.economy,
       statusLabel:
@@ -1578,6 +1586,36 @@ export async function loadChallengeHubSnapshot(
     sessionSnapshot.recentlyCompletedSessions
   );
 
+  const preferenceRows =
+    reconciledRows.length > 0
+      ? await prisma.scheduledMatchUserPreference.findMany({
+          where: {
+            userId: viewer.id,
+            scheduledMatchId: {
+              in: reconciledRows.map((row) => row.id),
+            },
+          },
+          select: {
+            scheduledMatchId: true,
+            favorite: true,
+            bookmarked: true,
+            colorTag: true,
+            updatedAt: true,
+          },
+        })
+      : [];
+  const preferenceByMatchId = new Map(
+    preferenceRows.map((row) => [
+      row.scheduledMatchId,
+      normalizeScheduledMatchViewerPreference(row),
+    ])
+  );
+  const attachPreference = (tile: ScheduledMatchTile) => ({
+    ...tile,
+    viewerPreference:
+      preferenceByMatchId.get(tile.id) ?? EMPTY_SCHEDULED_MATCH_VIEWER_PREFERENCE,
+  });
+
   const { tiles } = deriveScheduledMatchTiles(
     reconciledRows,
     sessionSnapshot.activeSessions,
@@ -1597,8 +1635,8 @@ export async function loadChallengeHubSnapshot(
   return {
     viewer: buildPlayerSurface(viewer),
     candidates: candidateRows.map((candidate) => buildPlayerSurface(candidate)),
-    scheduledMatches: tiles,
-    historyMatches,
+    scheduledMatches: tiles.map(attachPreference),
+    historyMatches: historyMatches.map(attachPreference),
     activities,
     record,
     serverNow: nowIso,

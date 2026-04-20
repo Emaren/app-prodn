@@ -21,6 +21,11 @@ export const WOLO_BET_ESCROW_ADDRESS =
   process.env.WOLO_BET_ESCROW_ADDRESS?.trim() ||
   "";
 
+export const WOLO_CHALLENGE_ESCROW_ADDRESS =
+  process.env.NEXT_PUBLIC_WOLO_CHALLENGE_ESCROW_ADDRESS?.trim() ||
+  process.env.WOLO_CHALLENGE_ESCROW_ADDRESS?.trim() ||
+  WOLO_BET_ESCROW_ADDRESS;
+
 export type WoloBetEscrowMode = "disabled" | "optional" | "required";
 
 export const WOLO_DEFAULT_GAS_PRICE =

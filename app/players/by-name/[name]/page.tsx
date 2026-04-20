@@ -144,8 +144,8 @@ export default async function ReplayOnlyPlayerPage({
             <h2 className="mt-2 text-2xl font-semibold text-white">Performance Snapshot</h2>
 
             <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              <MetricCard label="Steam Rating" value={formatRatingMetric(performance.steamRating)} />
-              <MetricCard label="RM Ladder" value={formatRatingMetric(performance.ladderRating)} />
+              <MetricCard label="Steam RM" value={formatRatingMetric(performance.steamRating)} />
+              <MetricCard label="Steam DM" value={formatRatingMetric(performance.ladderRating)} />
               <MetricCard
                 label="Win Rate"
                 value={performance.winRate !== null ? `${performance.winRate}%` : "Unknown"}

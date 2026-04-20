@@ -150,8 +150,8 @@ export default async function PublicPlayerPage({
         <div className="space-y-6">
           <Panel title="Performance Snapshot" eyebrow="Stats">
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              <MetricCard label="Steam Rating" value={formatRatingMetric(performance.steamRating)} />
-              <MetricCard label="RM Ladder" value={formatRatingMetric(performance.ladderRating)} />
+              <MetricCard label="Steam RM" value={formatRatingMetric(performance.steamRating)} />
+              <MetricCard label="Steam DM" value={formatRatingMetric(performance.ladderRating)} />
               <MetricCard
                 label="Win Rate"
                 value={performance.winRate !== null ? `${performance.winRate}%` : "Unknown"}

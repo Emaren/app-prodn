@@ -6,6 +6,8 @@ import type {
   SettlementRailRow,
   SettlementRailSummary,
 } from "@/components/admin/WoloSettlementRail";
+import type { ScheduledMatchColorTag } from "@/lib/scheduledMatchPreferences";
+import type { TileViewMode, TileViewPreferences } from "@/lib/tileViewPreferences";
 
 export type FounderBonusType = "participants" | "winner";
 
@@ -51,6 +53,7 @@ export type Appearance = {
   textColor: string;
   timeDisplayMode: string;
   timezoneOverride: string | null;
+  tileViewPreferences: TileViewPreferences;
   updatedAt: string | null;
 };
 
@@ -80,6 +83,16 @@ export type ScheduledMatchSummary = {
   resolutionLabel: string | null;
   linkedMapName: string | null;
   linkedWinner: string | null;
+  personalFavorite: boolean;
+  personalBookmarked: boolean;
+  personalColorTag: ScheduledMatchColorTag | null;
+};
+
+export type ScheduledMatchPreferenceStats = {
+  favoriteCount: number;
+  bookmarkedCount: number;
+  colorTagCounts: Record<ScheduledMatchColorTag, number>;
+  latestUpdatedAt: string | null;
 };
 
 export type BetLedgerRow = {
@@ -141,6 +154,7 @@ export type AdminUserRow = {
   claimedWoloClaimAmount: number;
   rescindedWoloClaims: ClaimRow[];
   scheduledMatches: ScheduledMatchSummary[];
+  scheduledMatchPreferenceStats: ScheduledMatchPreferenceStats;
   betLedger: BetLedgerRow[];
   betStats: BetStats;
 };
@@ -158,6 +172,21 @@ export type AdminOverview = {
   totalActionEvents: number;
   themeBreakdown: Array<{ themeKey: string; count: number }>;
   viewBreakdown: Array<{ viewMode: string; count: number }>;
+  tileViewBreakdown: Array<{
+    tileKey: string;
+    label: string;
+    basicCount: number;
+    advancedCount: number;
+    basicPercent: number;
+    advancedPercent: number;
+    preferredMode: TileViewMode;
+  }>;
+  scheduledPreferenceUsage: {
+    favoriteCount: number;
+    bookmarkedCount: number;
+    usersWithPreferences: number;
+    colorTagCounts: Record<ScheduledMatchColorTag, number>;
+  };
 };
 
 export type WatcherDownloadSummaryRow = {

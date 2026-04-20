@@ -30,6 +30,7 @@ import {
 import CommunityBadgePill from "@/components/contact/CommunityBadgePill";
 import TimeDisplayText from "@/components/time/TimeDisplayText";
 import { DEFAULT_BADGE_LABELS } from "@/lib/communityHonors";
+import { getTileViewMode } from "@/lib/tileViewPreferences";
 
 type AdminUserCardProps = {
   user: AdminUserRow;
@@ -44,6 +45,21 @@ type AdminUserCardProps = {
   onDeleteUser: (uid: string) => Promise<void>;
 };
 
+function colorTagTone(tag: string | null) {
+  switch (tag) {
+    case "gold":
+      return "border-amber-200/25 bg-amber-400/10 text-amber-100";
+    case "green":
+      return "border-emerald-200/25 bg-emerald-400/10 text-emerald-100";
+    case "blue":
+      return "border-sky-200/25 bg-sky-400/10 text-sky-100";
+    case "red":
+      return "border-rose-200/25 bg-rose-400/10 text-rose-100";
+    default:
+      return "border-white/10 bg-white/5 text-slate-300";
+  }
+}
+
 export default function AdminUserCard({
   user,
   draft,
@@ -57,6 +73,19 @@ export default function AdminUserCard({
   onDeleteUser,
 }: AdminUserCardProps) {
   const latestPath = findLatestPageView(renderedActions);
+  const communityLobbyView = getTileViewMode(
+    user.appearance?.tileViewPreferences,
+    "community_lobby"
+  );
+  const personalColorTagCount = Object.values(
+    user.scheduledMatchPreferenceStats.colorTagCounts
+  ).reduce((sum, count) => sum + count, 0);
+  const scheduleOrgLabel =
+    user.scheduledMatchPreferenceStats.favoriteCount ||
+    user.scheduledMatchPreferenceStats.bookmarkedCount ||
+    personalColorTagCount
+      ? `Fav ${user.scheduledMatchPreferenceStats.favoriteCount} / Saved ${user.scheduledMatchPreferenceStats.bookmarkedCount} / Tags ${personalColorTagCount}`
+      : "No personal schedule tags";
 
   return (
     <article className="rounded-[1.5rem] border border-white/10 bg-slate-950/75 p-5">
@@ -171,6 +200,11 @@ export default function AdminUserCard({
                   : "midnight / steel"
               }
             />
+            <IdentityRow
+              label="Community Lobby"
+              value={communityLobbyView === "advanced" ? "Advanced" : "Basic"}
+            />
+            <IdentityRow label="Schedule Org" value={scheduleOrgLabel} />
             <IdentityRow
               label="Theme Updated"
               value={<AdminTime value={user.appearance?.updatedAt ?? null} emptyValue="Never" />}
@@ -560,6 +594,29 @@ export default function AdminUserCard({
                             {match.fundingState} · check-in {match.checkInState}
                             {match.resolutionLabel ? ` · ${match.resolutionLabel}` : ""}
                           </div>
+                          {match.personalFavorite || match.personalBookmarked || match.personalColorTag ? (
+                            <div className="mt-2 flex flex-wrap gap-1.5">
+                              {match.personalFavorite ? (
+                                <span className="rounded-full border border-amber-200/20 bg-amber-400/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-amber-100">
+                                  Favorite
+                                </span>
+                              ) : null}
+                              {match.personalBookmarked ? (
+                                <span className="rounded-full border border-sky-200/20 bg-sky-400/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-sky-100">
+                                  Saved
+                                </span>
+                              ) : null}
+                              {match.personalColorTag ? (
+                                <span
+                                  className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] ${colorTagTone(
+                                    match.personalColorTag
+                                  )}`}
+                                >
+                                  {match.personalColorTag}
+                                </span>
+                              ) : null}
+                            </div>
+                          ) : null}
                           {match.linkedMapName ? (
                             <div className="mt-1 break-words text-[11px] text-slate-500">
                               {match.linkedMapName}

@@ -1,4 +1,5 @@
 import { PrismaClient } from "@/lib/generated/prisma";
+import { getEmptyAoe2HdPulseSnapshot, loadAoe2HdPulseSnapshot } from "@/lib/aoe2HdPulse";
 import { getBackendUpstreamBase } from "@/lib/backendUpstream";
 import { getFeaturedTournament, getLobbyMessages } from "@/lib/communityStore";
 import { loadLobbyLeaderboard } from "@/lib/lobbyLeaderboard";
@@ -80,7 +81,7 @@ export async function loadLobbySnapshot(
     await reconcileTournamentMatchProofs(prisma);
     const tournament = await getFeaturedTournament(prisma, viewerUid);
 
-    const [tournamentMessages, onlineUsers, recentMatches, leaderboard, woloEarners] = await Promise.all([
+    const [tournamentMessages, onlineUsers, recentMatches, leaderboard, woloEarners, aoe2hdPulse] = await Promise.all([
       getLobbyMessages(prisma, tournament.roomSlug, 60, {
         uid: viewerUid,
         guestSessionId: guestReactionSessionId,
@@ -89,6 +90,7 @@ export async function loadLobbySnapshot(
       loadRecentMatches(),
       loadLobbyLeaderboard(prisma),
       loadLobbyWoloEarnersBoard(prisma),
+      loadAoe2HdPulseSnapshot(),
     ]);
 
     const messages =
@@ -107,6 +109,7 @@ export async function loadLobbySnapshot(
       leaderboard,
       wolo,
       woloEarners,
+      aoe2hdPulse,
     };
   } catch (error) {
     console.warn("Falling back to lobby snapshot defaults:", error);
@@ -119,6 +122,7 @@ export async function loadLobbySnapshot(
       leaderboard: getFallbackLeaderboard(),
       wolo,
       woloEarners: getFallbackWoloEarnersBoard(),
+      aoe2hdPulse: getEmptyAoe2HdPulseSnapshot(),
     };
   }
 }

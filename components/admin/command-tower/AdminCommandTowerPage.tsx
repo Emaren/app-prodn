@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { Palette, Sparkles } from "lucide-react";
+import { LayoutGrid, Palette, Sparkles } from "lucide-react";
 
 import AdminUserCard from "@/components/admin/command-tower/AdminUserCard";
 import type { DraftState } from "@/components/admin/command-tower/types";
@@ -209,7 +209,7 @@ export default function AdminCommandTowerPage() {
       ) : null}
 
       {data?.overview ? (
-        <section className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
+        <section className="grid gap-4 xl:grid-cols-[1fr_0.95fr_0.85fr]">
           <div className="rounded-[1.5rem] border border-white/10 bg-slate-950/70 p-5">
             <div className="flex items-center gap-2 text-xs uppercase tracking-[0.28em] text-slate-500">
               <Palette className="h-4 w-4" />
@@ -240,6 +240,75 @@ export default function AdminCommandTowerPage() {
               <div className="rounded-2xl border border-white/8 bg-white/5 px-4 py-4">
                 <div className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Tracked Actions</div>
                 <div className="mt-2 text-3xl font-semibold text-white">{data.overview.totalActionEvents}</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-[1.5rem] border border-white/10 bg-slate-950/70 p-5">
+            <div className="flex items-center gap-2 text-xs uppercase tracking-[0.28em] text-slate-500">
+              <LayoutGrid className="h-4 w-4" />
+              Tile Views
+            </div>
+            <div className="mt-4 space-y-3">
+              {data.overview.tileViewBreakdown.map((entry) => (
+                <div key={entry.tileKey} className="rounded-2xl border border-white/8 bg-white/5 px-4 py-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-[11px] uppercase tracking-[0.24em] text-slate-500">
+                      {entry.label}
+                    </div>
+                    <div className="rounded-full border border-white/10 bg-slate-950/70 px-2.5 py-1 text-[11px] capitalize text-slate-300">
+                      {entry.preferredMode}
+                    </div>
+                  </div>
+                  <div className="mt-3 text-2xl font-semibold text-white">
+                    {entry.basicPercent}% Basic / {entry.advancedPercent}% Advanced
+                  </div>
+                  <div className="mt-2 text-xs text-slate-400">
+                    {entry.basicCount} basic · {entry.advancedCount} advanced
+                  </div>
+                </div>
+              ))}
+              <div className="rounded-2xl border border-white/8 bg-white/5 px-4 py-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-[11px] uppercase tracking-[0.24em] text-slate-500">
+                    Schedule Organization
+                  </div>
+                  <div className="rounded-full border border-white/10 bg-slate-950/70 px-2.5 py-1 text-[11px] text-slate-300">
+                    {data.overview.scheduledPreferenceUsage.usersWithPreferences} users
+                  </div>
+                </div>
+                <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                  <div>
+                    <div className="text-2xl font-semibold text-white">
+                      {data.overview.scheduledPreferenceUsage.favoriteCount}
+                    </div>
+                    <div className="mt-1 text-xs text-slate-400">favorites</div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-semibold text-white">
+                      {data.overview.scheduledPreferenceUsage.bookmarkedCount}
+                    </div>
+                    <div className="mt-1 text-xs text-slate-400">bookmarks</div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-semibold text-white">
+                      {Object.values(data.overview.scheduledPreferenceUsage.colorTagCounts).reduce(
+                        (sum, count) => sum + count,
+                        0
+                      )}
+                    </div>
+                    <div className="mt-1 text-xs text-slate-400">color tags</div>
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-1.5 text-[10px] uppercase tracking-[0.18em] text-slate-400">
+                  {Object.entries(data.overview.scheduledPreferenceUsage.colorTagCounts).map(
+                    ([tag, count]) => (
+                      <span key={tag} className="rounded-full border border-white/10 bg-slate-950/60 px-2 py-1">
+                        {tag} {count}
+                      </span>
+                    )
+                  )}
+                </div>
               </div>
             </div>
           </div>

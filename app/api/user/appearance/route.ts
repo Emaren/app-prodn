@@ -51,6 +51,7 @@ export async function POST(request: NextRequest) {
       textColor?: string | null;
       timeDisplayMode?: string | null;
       timezoneOverride?: string | null;
+      tileViewPreferences?: unknown;
     };
 
     const prisma = getPrisma();
@@ -88,6 +89,7 @@ export async function POST(request: NextRequest) {
       textColor: saved.textColor,
       timeDisplayMode: saved.timeDisplayMode,
       timezoneOverride: saved.timezoneOverride,
+      tileViewPreferences: normalized.tileViewPreferences,
       updatedAt: saved.updatedAt.toISOString(),
     });
   } catch (error) {

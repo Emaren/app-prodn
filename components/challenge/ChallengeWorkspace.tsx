@@ -20,6 +20,10 @@ import {
   CHALLENGE_NOTE_MAX_CHARS,
 } from "@/lib/challengeConfig";
 import type { ChallengeActivityItem, ChallengeHubSnapshot } from "@/lib/challenges";
+import type {
+  ScheduledMatchColorTag,
+  ScheduledMatchViewerPreference,
+} from "@/lib/scheduledMatchPreferences";
 import { formatDateTime } from "@/lib/timeDisplay";
 
 const EMPTY_SNAPSHOT: ChallengeHubSnapshot = {
@@ -144,6 +148,7 @@ export default function ChallengeWorkspace() {
     challengeId: null,
     kind: null,
   });
+  const [preferenceBusyId, setPreferenceBusyId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [challengedUid, setChallengedUid] = useState("");
@@ -379,6 +384,56 @@ export default function ChallengeWorkspace() {
         challengeId: null,
         kind: null,
       });
+    }
+  }
+
+  async function updatePreference(
+    challengeId: number,
+    payload: {
+      favorite: boolean;
+      bookmarked: boolean;
+      colorTag: ScheduledMatchColorTag | null;
+    }
+  ) {
+    setPreferenceBusyId(challengeId);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/challenges/${challengeId}/preference`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const responsePayload = (await response.json().catch(() => ({}))) as {
+        detail?: string;
+        preference?: ScheduledMatchViewerPreference;
+      };
+
+      if (!response.ok || !responsePayload.preference) {
+        throw new Error(responsePayload.detail || "Could not update this private tile preference.");
+      }
+
+      const nextPreference = responsePayload.preference;
+      setSnapshot((current) => ({
+        ...current,
+        scheduledMatches: current.scheduledMatches.map((match) =>
+          match.id === challengeId ? { ...match, viewerPreference: nextPreference } : match
+        ),
+        historyMatches: current.historyMatches.map((match) =>
+          match.id === challengeId ? { ...match, viewerPreference: nextPreference } : match
+        ),
+      }));
+    } catch (updateError) {
+      setError(
+        updateError instanceof Error
+          ? updateError.message
+          : "Could not update this private tile preference."
+      );
+    } finally {
+      setPreferenceBusyId((current) => (current === challengeId ? null : current));
     }
   }
 
@@ -878,6 +933,8 @@ export default function ChallengeWorkspace() {
                     onReschedule={(challengeId, payload) => updateMatch(challengeId, "reschedule", payload)}
                     onFund={(challengeId, payload) => updateMatch(challengeId, "fund", payload)}
                     onCheckIn={(challengeId) => updateMatch(challengeId, "check_in")}
+                    onPreferenceChange={updatePreference}
+                    preferenceBusy={preferenceBusyId === match.id}
                     actionState={actionState}
                   />
                 ))
@@ -964,6 +1021,8 @@ export default function ChallengeWorkspace() {
                     onReschedule={(challengeId, payload) => updateMatch(challengeId, "reschedule", payload)}
                     onFund={(challengeId, payload) => updateMatch(challengeId, "fund", payload)}
                     onCheckIn={(challengeId) => updateMatch(challengeId, "check_in")}
+                    onPreferenceChange={updatePreference}
+                    preferenceBusy={preferenceBusyId === match.id}
                     actionState={actionState}
                     compact
                   />

@@ -9,6 +9,7 @@ import { OnlinePlayersPanel } from "@/components/lobby/OnlinePlayersPanel";
 import { RecentMatchesPanel } from "@/components/lobby/RecentMatchesPanel";
 import { TopWoloEarnersTile } from "@/components/lobby/TopWoloEarnersTile";
 import { TournamentPanel } from "@/components/lobby/TournamentPanel";
+import { useTileViewPreference } from "@/components/tile-view/useTileViewPreference";
 import { buildChatItems } from "@/components/lobby/utils";
 import { useUserAuth } from "@/context/UserAuthContext";
 import { type AiVisibilityOption } from "@/lib/aiConciergeConfig";
@@ -28,6 +29,7 @@ type HomePageClientProps = {
 export default function HomePageClient({ initialLobby }: HomePageClientProps) {
   const { uid, isAdmin, isAuthenticated, loading, loginWithSteam, playerName, user } = useUserAuth();
   const { themeKey, tileThemeKey, viewMode, setViewMode } = useLobbyAppearance();
+  const communityLobbyTile = useTileViewPreference("community_lobby");
 
   const [lobby, setLobby] = useState<LobbySnapshot | null>(initialLobby);
   const [liveConnected, setLiveConnected] = useState(false);
@@ -136,6 +138,7 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
   const messages = lobby?.messages ?? EMPTY_MESSAGES;
   const wolo = lobby?.wolo ?? null;
   const woloEarners = lobby?.woloEarners ?? null;
+  const aoe2hdPulse = lobby?.aoe2hdPulse ?? null;
 
   const chatItems = buildChatItems(messages);
   const latestChatMessageKey = useMemo(
@@ -225,7 +228,13 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
       observer.disconnect();
       window.removeEventListener("resize", handleResize);
     };
-  }, [leaderboard.entries.length, leaderboard.trackedPlayers, viewMode, tileThemeKey]);
+  }, [
+    communityLobbyTile.viewMode,
+    leaderboard.entries.length,
+    leaderboard.trackedPlayers,
+    tileThemeKey,
+    viewMode,
+  ]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -473,10 +482,15 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
             isAuthenticated={isAuthenticated}
             loading={loading}
             leaderboard={leaderboard}
+            recentMatches={recentMatches}
             wolo={wolo}
+            aoe2hdPulse={aoe2hdPulse}
             themeKey={tileThemeKey}
             viewMode={viewMode}
             onViewModeChange={setViewMode}
+            tileViewMode={communityLobbyTile.viewMode}
+            onTileViewModeChange={communityLobbyTile.setViewMode}
+            onToggleTileViewMode={communityLobbyTile.toggleViewMode}
           />
 
           <div

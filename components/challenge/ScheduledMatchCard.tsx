@@ -3,11 +3,21 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
+import { Bookmark, Star } from "lucide-react";
 
 import TimeDisplayText from "@/components/time/TimeDisplayText";
 import AutoGrowTextarea from "@/components/ui/AutoGrowTextarea";
+import { useKeplr } from "@/hooks/use-keplr";
 import { CHALLENGE_NOTE_MAX_CHARS } from "@/lib/challengeConfig";
 import type { ScheduledMatchTile } from "@/lib/challenges";
+import {
+  challengeFundingEscrowAddress,
+  fundChallengeEscrow,
+} from "@/lib/clientChallengeFunding";
+import {
+  SCHEDULED_MATCH_COLOR_TAGS,
+  type ScheduledMatchColorTag,
+} from "@/lib/scheduledMatchPreferences";
 import { formatDateTime } from "@/lib/timeDisplay";
 
 const WOLO_LOGO_SRC = "/legacy/wolo-logo-transparent.png";
@@ -24,6 +34,14 @@ export type ScheduledMatchCardActionState = {
   challengeId: number | null;
   kind: ScheduledMatchCardActionKind | null;
 };
+
+type FundingWorkflowState =
+  | "idle"
+  | "awaiting_wallet"
+  | "confirming_chain"
+  | "recording"
+  | "verified"
+  | "failed";
 
 type ScheduledMatchCardProps = {
   match: ScheduledMatchTile;
@@ -48,7 +66,16 @@ type ScheduledMatchCardProps = {
     }
   ) => void | Promise<void>;
   onCheckIn?: (challengeId: number) => void | Promise<void>;
+  onPreferenceChange?: (
+    challengeId: number,
+    payload: {
+      favorite: boolean;
+      bookmarked: boolean;
+      colorTag: ScheduledMatchColorTag | null;
+    }
+  ) => void | Promise<void>;
   actionState?: ScheduledMatchCardActionState | null;
+  preferenceBusy?: boolean;
   compact?: boolean;
   stacked?: boolean;
   localTimePrimary?: boolean;
@@ -126,6 +153,23 @@ function formatCountdownLabel(match: ScheduledMatchTile, nowMs: number) {
       return `Wrapped ${formatRelativeDuration(nowMs - new Date(match.activityAt).getTime())} ago`;
     default:
       return match.economy.statusDetail;
+  }
+}
+
+function fundingWorkflowLabel(state: FundingWorkflowState) {
+  switch (state) {
+    case "awaiting_wallet":
+      return "Open wallet...";
+    case "confirming_chain":
+      return "Waiting for funding confirmation";
+    case "recording":
+      return "Funding detected";
+    case "verified":
+      return "Funding verified";
+    case "failed":
+      return "Retry funding";
+    default:
+      return "Fund now";
   }
 }
 
@@ -244,6 +288,92 @@ function MoneyCell({
   );
 }
 
+const COLOR_TAG_CLASSES: Record<ScheduledMatchColorTag, string> = {
+  gold: "bg-amber-300",
+  green: "bg-emerald-300",
+  blue: "bg-sky-300",
+  red: "bg-rose-300",
+};
+
+function PreferenceControls({
+  preference,
+  busy,
+  onChange,
+}: {
+  preference: ScheduledMatchTile["viewerPreference"];
+  busy: boolean;
+  onChange?: (payload: {
+    favorite: boolean;
+    bookmarked: boolean;
+    colorTag: ScheduledMatchColorTag | null;
+  }) => void;
+}) {
+  if (!onChange) return null;
+
+  return (
+    <div className="flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-slate-950/35 px-2 py-1">
+      <button
+        type="button"
+        title={preference.favorite ? "Remove favorite" : "Favorite"}
+        disabled={busy}
+        onClick={() =>
+          onChange({
+            favorite: !preference.favorite,
+            bookmarked: preference.bookmarked,
+            colorTag: preference.colorTag,
+          })
+        }
+        className={`rounded-full p-1.5 transition ${
+          preference.favorite ? "text-amber-200" : "text-slate-500 hover:text-amber-100"
+        } disabled:cursor-not-allowed disabled:opacity-50`}
+      >
+        <Star className={`h-3.5 w-3.5 ${preference.favorite ? "fill-current" : ""}`} />
+      </button>
+      <button
+        type="button"
+        title={preference.bookmarked ? "Remove save" : "Save"}
+        disabled={busy}
+        onClick={() =>
+          onChange({
+            favorite: preference.favorite,
+            bookmarked: !preference.bookmarked,
+            colorTag: preference.colorTag,
+          })
+        }
+        className={`rounded-full p-1.5 transition ${
+          preference.bookmarked ? "text-sky-200" : "text-slate-500 hover:text-sky-100"
+        } disabled:cursor-not-allowed disabled:opacity-50`}
+      >
+        <Bookmark className={`h-3.5 w-3.5 ${preference.bookmarked ? "fill-current" : ""}`} />
+      </button>
+      <div className="mx-0.5 h-4 w-px bg-white/10" />
+      {SCHEDULED_MATCH_COLOR_TAGS.map((colorTag) => {
+        const selected = preference.colorTag === colorTag;
+        return (
+          <button
+            key={colorTag}
+            type="button"
+            title={selected ? `Clear ${colorTag} tag` : `Tag ${colorTag}`}
+            disabled={busy}
+            onClick={() =>
+              onChange({
+                favorite: preference.favorite,
+                bookmarked: preference.bookmarked,
+                colorTag: selected ? null : colorTag,
+              })
+            }
+            className={`h-4 w-4 rounded-full border transition ${
+              selected ? "border-white/80 p-[3px]" : "border-white/15 p-[4px] opacity-60 hover:opacity-100"
+            } disabled:cursor-not-allowed disabled:opacity-40`}
+          >
+            <span className={`block h-full w-full rounded-full ${COLOR_TAG_CLASSES[colorTag]}`} />
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function ScheduledMatchCard({
   match,
   viewerUid,
@@ -253,15 +383,20 @@ export default function ScheduledMatchCard({
   onReschedule,
   onFund,
   onCheckIn,
+  onPreferenceChange,
   actionState = null,
+  preferenceBusy = false,
   compact = false,
   stacked = false,
   localTimePrimary = false,
   serverNow = null,
 }: ScheduledMatchCardProps) {
+  const { address: connectedWalletAddress, connect: connectKeplr } = useKeplr();
   const [nowMs, setNowMs] = useState(() => (serverNow ? new Date(serverNow).getTime() : Date.now()));
   const [showRescheduleForm, setShowRescheduleForm] = useState(false);
   const [showFundingForm, setShowFundingForm] = useState(false);
+  const [fundingWorkflow, setFundingWorkflow] = useState<FundingWorkflowState>("idle");
+  const [fundingError, setFundingError] = useState<string | null>(null);
   const [rescheduledAt, setRescheduledAt] = useState(() => toLocalDateTimeValue(match.scheduledAt));
   const [rescheduleNote, setRescheduleNote] = useState(match.challengeNote ?? "");
   const [wagerAmount, setWagerAmount] = useState(String(match.terms.wagerAmountWolo));
@@ -284,6 +419,8 @@ export default function ScheduledMatchCard({
   useEffect(() => {
     setShowRescheduleForm(false);
     setShowFundingForm(false);
+    setFundingWorkflow("idle");
+    setFundingError(null);
     setRescheduledAt(toLocalDateTimeValue(match.scheduledAt));
     setRescheduleNote(match.challengeNote ?? "");
     setWagerAmount(String(match.terms.wagerAmountWolo));
@@ -411,6 +548,45 @@ export default function ScheduledMatchCard({
     setShowFundingForm(false);
   }
 
+  async function handleFundNow() {
+    if (!onFund) {
+      return;
+    }
+
+    setFundingError(null);
+
+    if (!challengeFundingEscrowAddress()) {
+      setFundingWorkflow("failed");
+      setFundingError("Challenge escrow is not exposed to the browser yet. Use manual rescue for this funding proof.");
+      setShowFundingForm(true);
+      return;
+    }
+
+    try {
+      setFundingWorkflow("awaiting_wallet");
+      const walletAddress = connectedWalletAddress || (await connectKeplr());
+
+      setFundingWorkflow("confirming_chain");
+      const result = await fundChallengeEscrow({
+        challengeId: match.id,
+        amountWolo: match.terms.totalFundingWolo,
+        fallbackWalletAddress: walletAddress,
+      });
+
+      setFundingWorkflow("recording");
+      await onFund(match.id, {
+        fundingTxHash: result.fundingTxHash,
+        fundingWalletAddress: result.walletAddress,
+      });
+
+      setFundingWorkflow("verified");
+      setShowFundingForm(false);
+    } catch (error) {
+      setFundingWorkflow("failed");
+      setFundingError(error instanceof Error ? error.message : "Challenge funding failed.");
+    }
+  }
+
   const moneyGridClasses = compact
     ? "grid grid-cols-2 gap-2.5"
     : stacked
@@ -427,7 +603,22 @@ export default function ScheduledMatchCard({
         }`}
       >
         <div className="min-w-0">
-          <div className={`text-[11px] uppercase tracking-[0.28em] ${accent.eyebrow}`}>Scheduled match</div>
+          <div className="flex items-center justify-between gap-3">
+            <div className={`text-[11px] uppercase tracking-[0.28em] ${accent.eyebrow}`}>
+              Scheduled match
+            </div>
+            <PreferenceControls
+              preference={match.viewerPreference}
+              busy={preferenceBusy}
+              onChange={
+                onPreferenceChange
+                  ? (payload) => {
+                      void onPreferenceChange(match.id, payload);
+                    }
+                  : undefined
+              }
+            />
+          </div>
           <div className="mt-2 break-words text-xl font-semibold text-white">
             {match.challenger.name} vs {match.challenged.name}
           </div>
@@ -621,14 +812,26 @@ export default function ScheduledMatchCard({
           </button>
         ) : null}
         {canFund ? (
-          <button
-            type="button"
-            onClick={() => setShowFundingForm((current) => !current)}
-            disabled={cardBusy}
-            className="rounded-full border border-amber-300/28 bg-amber-400/10 px-4 py-2 text-sm text-amber-100 transition hover:bg-amber-400/15 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {showFundingForm ? "Close Funding" : "Mark Funded"}
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => void handleFundNow()}
+              disabled={cardBusy || fundingWorkflow === "confirming_chain" || fundingWorkflow === "recording"}
+              className="rounded-full bg-amber-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {currentActionKind === "fund"
+                ? "Funding verified"
+                : fundingWorkflowLabel(fundingWorkflow)}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowFundingForm((current) => !current)}
+              disabled={cardBusy}
+              className="rounded-full border border-white/15 px-3 py-2 text-xs text-white/70 transition hover:border-white/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {showFundingForm ? "Close Rescue" : "Manual rescue"}
+            </button>
+          </div>
         ) : null}
         {canCheckIn ? (
           <button
@@ -683,6 +886,15 @@ export default function ScheduledMatchCard({
           onSubmit={handleFunding}
           className="mt-4 space-y-3 rounded-[1.2rem] border border-white/10 bg-slate-950/35 p-4"
         >
+          <div>
+            <div className="text-[11px] uppercase tracking-[0.24em] text-slate-400">Manual rescue</div>
+            <div className="mt-1 text-sm leading-6 text-slate-300">
+              Use this only if wallet funding already broadcast and the automatic rail did not return.
+            </div>
+            {fundingError ? (
+              <div className="mt-2 text-xs leading-5 text-amber-100">{fundingError}</div>
+            ) : null}
+          </div>
           <div className="grid gap-3 lg:grid-cols-2">
             <label className="block space-y-2">
               <span className="text-[11px] uppercase tracking-[0.2em] text-slate-300">Funding tx hash</span>
@@ -713,7 +925,7 @@ export default function ScheduledMatchCard({
               disabled={cardBusy}
               className="rounded-full bg-amber-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {currentActionKind === "fund" ? "Recording..." : `Lock ${formatWolo(match.terms.totalFundingWolo)} WOLO`}
+              {currentActionKind === "fund" ? "Recording..." : "Record manual proof"}
             </button>
             <button
               type="button"

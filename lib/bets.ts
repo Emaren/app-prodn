@@ -80,6 +80,7 @@ export type BetBoardMarket = {
   status: BetStatus;
   featured: boolean;
   closeLabel: string;
+  scheduledStartAt: string | null;
   totalPotWolo: number;
   left: BetBoardSide;
   right: BetBoardSide;
@@ -108,6 +109,7 @@ export type BetBookEntry = {
   slipCount: number;
   projectedReturnWolo: number;
   closeLabel: string;
+  scheduledStartAt: string | null;
   status: BetStatus;
   executionMode: "app_only" | "onchain_escrow";
   stakeTxHash: string | null;
@@ -1885,6 +1887,7 @@ function buildMarketCard(
     status: market.status as BetStatus,
     featured: market.featured,
     closeLabel: formatCloseLabel(market.status as BetStatus, market.closeAt),
+    scheduledStartAt: market.closeAt?.toISOString() ?? market.scheduledMatch?.scheduledAt?.toISOString() ?? null,
     totalPotWolo,
     left: {
       key: "left",
@@ -1934,6 +1937,7 @@ async function loadOpenMarkets(prisma: PrismaClient) {
     include: {
       scheduledMatch: {
         select: {
+          scheduledAt: true,
           linkedSessionKey: true,
         },
       },
@@ -2214,6 +2218,7 @@ export async function loadBetBoardSnapshot(
           otherPool
         ),
         closeLabel: market.closeLabel,
+        scheduledStartAt: market.scheduledStartAt,
         status: market.status,
         executionMode: market.viewerWager?.executionMode || "app_only",
         stakeTxHash: market.viewerWager?.stakeTxHash || null,
