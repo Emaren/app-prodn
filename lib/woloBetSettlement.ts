@@ -324,6 +324,15 @@ export function hasWoloPayoutExecutionConfigured() {
   return Boolean(WOLO_SETTLEMENT_URL || hasLocalPayoutSignerFallbackConfigured());
 }
 
+export function getWoloPayoutSignerRuntime() {
+  return {
+    payoutAddress: WOLO_PAYOUT_ADDRESS || null,
+    settlementServiceConfigured: Boolean(WOLO_SETTLEMENT_URL),
+    localSignerFallbackEnabled: WOLO_LOCAL_PAYOUT_SIGNER_FALLBACK_ENABLED,
+    localSignerFallbackConfigured: hasLocalPayoutSignerFallbackConfigured(),
+  } as const;
+}
+
 function buildSettlementServiceUrl(
   path: string,
   search?: Record<string, string | null | undefined>

@@ -45,13 +45,14 @@ export type SettlementRailSummary = {
 type Props = {
   summary: SettlementRailSummary;
   rows: SettlementRailRow[];
-  rescindingClaimId: number | null;
-  retryingClaimId: number | null;
-  reconcilingPending: boolean;
-  onRescind: (claimId: number) => void | Promise<void>;
-  onRetry: (claimId: number) => void | Promise<void>;
-  onReconcilePending: () => void | Promise<void>;
-  onAddFounderBonus: (row: SettlementRailRow, bonusType: FounderBonusType) => void | Promise<void>;
+  readOnly?: boolean;
+  rescindingClaimId?: number | null;
+  retryingClaimId?: number | null;
+  reconcilingPending?: boolean;
+  onRescind?: (claimId: number) => void | Promise<void>;
+  onRetry?: (claimId: number) => void | Promise<void>;
+  onReconcilePending?: () => void | Promise<void>;
+  onAddFounderBonus?: (row: SettlementRailRow, bonusType: FounderBonusType) => void | Promise<void>;
 };
 
 function formatWolo(value: number) {
@@ -171,14 +172,16 @@ function shortenTxHash(value: string | null) {
 export function WoloSettlementRail({
   summary,
   rows,
-  rescindingClaimId,
-  retryingClaimId,
-  reconcilingPending,
+  readOnly = false,
+  rescindingClaimId = null,
+  retryingClaimId = null,
+  reconcilingPending = false,
   onRescind,
   onRetry,
   onReconcilePending,
   onAddFounderBonus,
 }: Props) {
+  const showActions = !readOnly && Boolean(onRescind || onRetry || onAddFounderBonus);
   const founderRowsByBonusId = new Map<number, SettlementRailRow[]>();
 
   for (const row of rows) {
@@ -233,14 +236,16 @@ export function WoloSettlementRail({
         </div>
 
         <div className="flex flex-col gap-3 lg:items-end">
-          <button
-            type="button"
-            onClick={() => onReconcilePending()}
-            disabled={reconcilingPending || summary.pendingCount === 0}
-            className="inline-flex items-center justify-center rounded-full border border-amber-300/30 bg-amber-400/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-amber-100 transition hover:bg-amber-400/20 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {reconcilingPending ? "Sweeping pending..." : "Sweep pending claims"}
-          </button>
+          {!readOnly && onReconcilePending ? (
+            <button
+              type="button"
+              onClick={() => onReconcilePending()}
+              disabled={reconcilingPending || summary.pendingCount === 0}
+              className="inline-flex items-center justify-center rounded-full border border-amber-300/30 bg-amber-400/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-amber-100 transition hover:bg-amber-400/20 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {reconcilingPending ? "Sweeping pending..." : "Sweep pending claims"}
+            </button>
+          ) : null}
 
           <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-3 xl:grid-cols-6">
             <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
@@ -298,7 +303,7 @@ export function WoloSettlementRail({
                 <th className="px-3 py-3 font-medium">State</th>
                 <th className="px-3 py-3 font-medium">Tx</th>
                 <th className="px-3 py-3 font-medium">Time</th>
-                <th className="px-3 py-3 font-medium">Action</th>
+                {showActions ? <th className="px-3 py-3 font-medium">Action</th> : null}
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
@@ -444,71 +449,75 @@ export function WoloSettlementRail({
                     ) : null}
                   </td>
 
-                  <td className="px-3 py-3">
-                    {row.claimStatus === "pending" ? (
-                      <div className="flex flex-wrap gap-2">
-                        {row.errorState ? (
+                  {showActions ? (
+                    <td className="px-3 py-3">
+                      {row.claimStatus === "pending" ? (
+                        <div className="flex flex-wrap gap-2">
+                          {row.errorState && onRetry ? (
+                            <button
+                              type="button"
+                              onClick={() => onRetry(row.id)}
+                              disabled={retryingClaimId === row.id}
+                              className="rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1.5 text-xs font-medium text-sky-100 transition hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              {retryingClaimId === row.id
+                                ? "Retrying..."
+                                : isAwaitingWalletLink(row)
+                                  ? "Retry after link"
+                                  : "Retry payout"}
+                            </button>
+                          ) : null}
+                          {row.marketId && onAddFounderBonus ? (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => onAddFounderBonus(row, "participants")}
+                                className="rounded-full border border-amber-300/30 bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-100 transition hover:bg-amber-500/20"
+                              >
+                                Add Founders Bonus
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => onAddFounderBonus(row, "winner")}
+                                className="rounded-full border border-sky-300/30 bg-sky-500/10 px-3 py-1.5 text-xs font-medium text-sky-100 transition hover:bg-sky-500/20"
+                              >
+                                Add Founders Win
+                              </button>
+                            </>
+                          ) : null}
+                          {onRescind ? (
+                            <button
+                              type="button"
+                              onClick={() => onRescind(row.id)}
+                              disabled={rescindingClaimId === row.id}
+                              className="rounded-full border border-rose-400/30 bg-rose-500/10 px-3 py-1.5 text-xs font-medium text-rose-200 transition hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              {rescindingClaimId === row.id ? "Rescinding..." : "Rescind"}
+                            </button>
+                          ) : null}
+                        </div>
+                      ) : row.marketId && onAddFounderBonus ? (
+                        <div className="flex flex-wrap gap-2">
                           <button
                             type="button"
-                            onClick={() => onRetry(row.id)}
-                            disabled={retryingClaimId === row.id}
-                            className="rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1.5 text-xs font-medium text-sky-100 transition hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                            onClick={() => onAddFounderBonus(row, "participants")}
+                            className="rounded-full border border-amber-300/30 bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-100 transition hover:bg-amber-500/20"
                           >
-                            {retryingClaimId === row.id
-                              ? "Retrying..."
-                              : isAwaitingWalletLink(row)
-                                ? "Retry after link"
-                                : "Retry payout"}
+                            Add Founders Bonus
                           </button>
-                        ) : null}
-                        {row.marketId ? (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => onAddFounderBonus(row, "participants")}
-                              className="rounded-full border border-amber-300/30 bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-100 transition hover:bg-amber-500/20"
-                            >
-                              Add Founders Bonus
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => onAddFounderBonus(row, "winner")}
-                              className="rounded-full border border-sky-300/30 bg-sky-500/10 px-3 py-1.5 text-xs font-medium text-sky-100 transition hover:bg-sky-500/20"
-                            >
-                              Add Founders Win
-                            </button>
-                          </>
-                        ) : null}
-                        <button
-                          type="button"
-                          onClick={() => onRescind(row.id)}
-                          disabled={rescindingClaimId === row.id}
-                          className="rounded-full border border-rose-400/30 bg-rose-500/10 px-3 py-1.5 text-xs font-medium text-rose-200 transition hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          {rescindingClaimId === row.id ? "Rescinding..." : "Rescind"}
-                        </button>
-                      </div>
-                    ) : row.marketId ? (
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={() => onAddFounderBonus(row, "participants")}
-                          className="rounded-full border border-amber-300/30 bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-100 transition hover:bg-amber-500/20"
-                        >
-                          Add Founders Bonus
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => onAddFounderBonus(row, "winner")}
-                          className="rounded-full border border-sky-300/30 bg-sky-500/10 px-3 py-1.5 text-xs font-medium text-sky-100 transition hover:bg-sky-500/20"
-                        >
-                          Add Founders Win
-                        </button>
-                      </div>
-                    ) : (
-                      <span className="text-xs text-slate-500">—</span>
-                    )}
-                  </td>
+                          <button
+                            type="button"
+                            onClick={() => onAddFounderBonus(row, "winner")}
+                            className="rounded-full border border-sky-300/30 bg-sky-500/10 px-3 py-1.5 text-xs font-medium text-sky-100 transition hover:bg-sky-500/20"
+                          >
+                            Add Founders Win
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-slate-500">—</span>
+                      )}
+                    </td>
+                  ) : null}
                 </tr>
                 );
               })}
