@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -21,9 +20,7 @@ import {
   CHALLENGE_NOTE_MAX_CHARS,
 } from "@/lib/challengeConfig";
 import type { ChallengeActivityItem, ChallengeHubSnapshot } from "@/lib/challenges";
-import {
-  formatDateTime,
-} from "@/lib/timeDisplay";
+import { formatDateTime } from "@/lib/timeDisplay";
 
 const EMPTY_SNAPSHOT: ChallengeHubSnapshot = {
   viewer: null,
@@ -240,20 +237,11 @@ export default function ChallengeWorkspace() {
     [snapshot.scheduledMatches]
   );
 
-  const historyMatches = useMemo(
-    () => snapshot.historyMatches.slice(0, 8),
-    [snapshot.historyMatches]
-  );
+  const historyMatches = useMemo(() => snapshot.historyMatches.slice(0, 8), [snapshot.historyMatches]);
 
-  const recentActivities = useMemo(
-    () => snapshot.activities.slice(0, 8),
-    [snapshot.activities]
-  );
+  const recentActivities = useMemo(() => snapshot.activities.slice(0, 8), [snapshot.activities]);
 
-  const scheduledPreview = useMemo(
-    () => parseLocalDateTimeInputValue(scheduledAt),
-    [scheduledAt]
-  );
+  const scheduledPreview = useMemo(() => parseLocalDateTimeInputValue(scheduledAt), [scheduledAt]);
   const schedulePreviewLocal = useMemo(
     () =>
       formatDateTime(
@@ -309,9 +297,7 @@ export default function ChallengeWorkspace() {
   const focusedMatchActivities = useMemo(
     () =>
       focusedMatch
-        ? snapshot.activities
-            .filter((activity) => activity.scheduledMatchId === focusedMatch.id)
-            .slice(0, 4)
+        ? snapshot.activities.filter((activity) => activity.scheduledMatchId === focusedMatch.id).slice(0, 4)
         : [],
     [focusedMatch, snapshot.activities]
   );
@@ -320,9 +306,7 @@ export default function ChallengeWorkspace() {
       return null;
     }
 
-    return focusedMatch.challenger.uid === uid
-      ? focusedMatch.challenged
-      : focusedMatch.challenger;
+    return focusedMatch.challenger.uid === uid ? focusedMatch.challenged : focusedMatch.challenger;
   }, [focusedMatch, uid]);
 
   useEffect(() => {
@@ -491,13 +475,13 @@ export default function ChallengeWorkspace() {
               </Link>
               <Link
                 href="/live-games"
-                className="inline-flex items-center rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200"
+                className="inline-flex min-h-[3rem] items-center justify-center rounded-full bg-amber-300 px-5 py-3 text-center text-sm font-semibold leading-none text-slate-950 transition hover:bg-amber-200"
               >
                 Back To Live Games
               </Link>
               <Link
                 href="/players"
-                className="rounded-full border border-white/15 px-5 py-3 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
+                className="inline-flex min-h-[3rem] items-center justify-center rounded-full border border-white/15 px-5 py-3 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
               >
                 Browse Players
               </Link>
@@ -731,7 +715,7 @@ export default function ChallengeWorkspace() {
                 ) : null}
 
                 <div className="mt-5 rounded-[1.45rem] border border-white/10 bg-white/[0.04] p-4">
-                  <div className="grid gap-4 lg:grid-cols-[minmax(0,0.72fr)_minmax(0,1.28fr)]">
+                  <div className="grid gap-4 xl:grid-cols-[minmax(20rem,0.94fr)_minmax(0,1.06fr)]">
                     <div className="min-w-0 rounded-[1.25rem] border border-white/10 bg-slate-950/35 px-4 py-4">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
@@ -777,18 +761,22 @@ export default function ChallengeWorkspace() {
                         </div>
                       </div>
 
-                      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                      <div className="mt-4 grid gap-3 grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3">
                         <QuickRailCell
                           label="Wolo Wager"
                           value={`${focusedMatch.terms.wagerAmountWolo.toLocaleString()} WOLO`}
+                          valueClassName="tabular-nums whitespace-nowrap"
                         />
                         <QuickRailCell
                           label="Match Guarantee"
                           value={`${focusedMatch.terms.guaranteeAmountWolo.toLocaleString()} WOLO`}
+                          valueClassName="tabular-nums whitespace-nowrap"
                         />
                         <QuickRailCell
                           label="Funding Each"
                           value={`${focusedMatch.terms.totalFundingWolo.toLocaleString()} WOLO`}
+                          className="sm:col-span-2 2xl:col-span-1"
+                          valueClassName="tabular-nums whitespace-nowrap"
                         />
                       </div>
 
@@ -874,7 +862,7 @@ export default function ChallengeWorkspace() {
               </div>
             </div>
 
-            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-5 grid grid-cols-2 gap-3 xl:grid-cols-3 2xl:grid-cols-4">
               <StatCard label="Wins" value={String(snapshot.record.wins)} />
               <StatCard label="Losses" value={String(snapshot.record.losses)} />
               <StatCard label="Pending" value={String(snapshot.record.pending)} />
@@ -919,9 +907,7 @@ export default function ChallengeWorkspace() {
                     onAccept={(challengeId) => updateMatch(challengeId, "accept")}
                     onDecline={(challengeId) => updateMatch(challengeId, "decline")}
                     onCancel={(challengeId) => updateMatch(challengeId, "cancel")}
-                    onReschedule={(challengeId, payload) =>
-                      updateMatch(challengeId, "reschedule", payload)
-                    }
+                    onReschedule={(challengeId, payload) => updateMatch(challengeId, "reschedule", payload)}
                     onFund={(challengeId, payload) => updateMatch(challengeId, "fund", payload)}
                     onCheckIn={(challengeId) => updateMatch(challengeId, "check_in")}
                     actionState={actionState}
@@ -1007,9 +993,7 @@ export default function ChallengeWorkspace() {
                     onAccept={(challengeId) => updateMatch(challengeId, "accept")}
                     onDecline={(challengeId) => updateMatch(challengeId, "decline")}
                     onCancel={(challengeId) => updateMatch(challengeId, "cancel")}
-                    onReschedule={(challengeId, payload) =>
-                      updateMatch(challengeId, "reschedule", payload)
-                    }
+                    onReschedule={(challengeId, payload) => updateMatch(challengeId, "reschedule", payload)}
                     onFund={(challengeId, payload) => updateMatch(challengeId, "fund", payload)}
                     onCheckIn={(challengeId) => updateMatch(challengeId, "check_in")}
                     actionState={actionState}
@@ -1078,15 +1062,21 @@ function QuickRailCell({
   label,
   value,
   detail,
+  className = "",
+  valueClassName = "",
 }: {
   label: string;
   value: string;
   detail?: string;
+  className?: string;
+  valueClassName?: string;
 }) {
   return (
-    <div className="rounded-[1rem] border border-white/10 bg-white/[0.04] px-3 py-3">
+    <div className={`rounded-[1rem] border border-white/10 bg-white/[0.04] px-3 py-3 ${className}`}>
       <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{label}</div>
-      <div className="mt-2 break-words text-sm font-semibold text-white">{value}</div>
+      <div className={`mt-2 text-sm font-semibold text-white ${valueClassName || "break-words"}`}>
+        {value}
+      </div>
       {detail ? <div className="mt-1 text-xs leading-5 text-slate-400">{detail}</div> : null}
     </div>
   );

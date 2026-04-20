@@ -116,9 +116,7 @@ function formatCountdownLabel(match: ScheduledMatchTile, nowMs: number) {
     case "creator_funded":
     case "opponent_funded":
     case "funded":
-      return untilStart >= 0
-        ? `Start in ${formatRelativeDuration(untilStart)}`
-        : "Start lock passed";
+      return untilStart >= 0 ? `Start in ${formatRelativeDuration(untilStart)}` : "Start lock passed";
     case "ready":
     case "live":
       return sinceStart >= 0
@@ -229,15 +227,17 @@ function MoneyCell({
   return (
     <div
       className={`min-w-0 rounded-[1rem] border px-3 py-3 ${
-        emphasize
-          ? "border-amber-300/18 bg-amber-400/10"
-          : "border-white/10 bg-white/[0.04]"
+        emphasize ? "border-amber-300/18 bg-amber-400/10" : "border-white/10 bg-white/[0.04]"
       } ${className}`}
     >
-      <div className={`${compact ? "text-[9px]" : "text-[10px]"} uppercase tracking-[0.18em] text-slate-500`}>
+      <div className={`${compact ? "text-[9px] leading-4" : "text-[10px] leading-4"} uppercase tracking-[0.18em] text-slate-500`}>
         {label}
       </div>
-      <div className={`mt-2 break-words font-semibold text-white ${compact ? "text-xs leading-5" : "text-sm sm:text-base"}`}>
+      <div
+        className={`mt-2 overflow-hidden text-ellipsis whitespace-nowrap tabular-nums font-semibold text-white ${
+          compact ? "text-xs leading-5" : "text-sm sm:text-base"
+        }`}
+      >
         {value}
       </div>
     </div>
@@ -259,9 +259,7 @@ export default function ScheduledMatchCard({
   localTimePrimary = false,
   serverNow = null,
 }: ScheduledMatchCardProps) {
-  const [nowMs, setNowMs] = useState(() =>
-    serverNow ? new Date(serverNow).getTime() : Date.now()
-  );
+  const [nowMs, setNowMs] = useState(() => (serverNow ? new Date(serverNow).getTime() : Date.now()));
   const [showRescheduleForm, setShowRescheduleForm] = useState(false);
   const [showFundingForm, setShowFundingForm] = useState(false);
   const [rescheduledAt, setRescheduledAt] = useState(() => toLocalDateTimeValue(match.scheduledAt));
@@ -292,7 +290,13 @@ export default function ScheduledMatchCard({
     setGuaranteeAmount(String(match.terms.guaranteeAmountWolo));
     setFundingTxHash("");
     setFundingWalletAddress("");
-  }, [match.id, match.scheduledAt, match.challengeNote, match.terms.guaranteeAmountWolo, match.terms.wagerAmountWolo]);
+  }, [
+    match.id,
+    match.scheduledAt,
+    match.challengeNote,
+    match.terms.guaranteeAmountWolo,
+    match.terms.wagerAmountWolo,
+  ]);
 
   const accent = accentClasses(match.displayState);
   const viewerIsChallenger = Boolean(viewerUid && viewerUid === match.challenger.uid);
@@ -314,9 +318,7 @@ export default function ScheduledMatchCard({
   const cardBusy = Boolean(currentActionKind);
   const countdownLabel = formatCountdownLabel(match, nowMs);
 
-  const canAccept = Boolean(
-    onAccept && viewerIsChallenged && ["proposed", "pending"].includes(match.displayState)
-  );
+  const canAccept = Boolean(onAccept && viewerIsChallenged && ["proposed", "pending"].includes(match.displayState));
   const canDecline = Boolean(
     onDecline && viewerIsChallenged && ["proposed", "pending"].includes(match.displayState)
   );
@@ -330,9 +332,7 @@ export default function ScheduledMatchCard({
         match.displayState
       ) &&
       ((viewerIsChallenger && ["proposed", "pending"].includes(match.displayState)) ||
-        ["terms_accepted", "accepted", "declined", "cancelled", "canceled"].includes(
-          match.displayState
-        ))
+        ["terms_accepted", "accepted", "declined", "cancelled", "canceled"].includes(match.displayState))
   );
   const canReschedule = Boolean(
     onReschedule &&
@@ -362,8 +362,7 @@ export default function ScheduledMatchCard({
       match.economy.checkInWindowState === "open"
   );
 
-  const hasManagementAction =
-    canAccept || canDecline || canCancel || canReschedule || canFund || canCheckIn;
+  const hasManagementAction = canAccept || canDecline || canCancel || canReschedule || canFund || canCheckIn;
   const spotlightPlayer = viewerIsChallenged ? match.challenger : match.challenged;
   const primaryHref =
     (match.displayState === "completed" || match.displayState === "live") && match.linkedSessionKey
@@ -412,17 +411,23 @@ export default function ScheduledMatchCard({
     setShowFundingForm(false);
   }
 
+  const moneyGridClasses = compact
+    ? "grid grid-cols-2 gap-2.5"
+    : stacked
+      ? "grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3"
+      : "grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3";
+
+  const fundingEachSpanClass = compact ? "col-span-2" : "sm:col-span-2 xl:col-span-1";
+
   return (
     <div className={`min-w-0 rounded-[1.55rem] border p-4 sm:p-5 ${accent.shell}`}>
       <div
         className={`grid gap-4 ${
-          compact || stacked ? "" : "xl:grid-cols-[minmax(0,1.2fr)_minmax(14rem,0.8fr)]"
+          compact || stacked ? "" : "xl:grid-cols-[minmax(0,1.2fr)_minmax(16rem,0.84fr)]"
         }`}
       >
         <div className="min-w-0">
-          <div className={`text-[11px] uppercase tracking-[0.28em] ${accent.eyebrow}`}>
-            Scheduled match
-          </div>
+          <div className={`text-[11px] uppercase tracking-[0.28em] ${accent.eyebrow}`}>Scheduled match</div>
           <div className="mt-2 break-words text-xl font-semibold text-white">
             {match.challenger.name} vs {match.challenged.name}
           </div>
@@ -430,7 +435,7 @@ export default function ScheduledMatchCard({
             <div className="mt-2 break-words text-sm leading-6 text-slate-300">{match.challengeNote}</div>
           ) : null}
 
-          <div className={`mt-4 grid gap-3 ${compact ? "" : "sm:grid-cols-[auto_1fr]"}`}>
+          <div className={`mt-4 ${compact || stacked ? "space-y-3" : "grid gap-3 sm:grid-cols-[auto_1fr]"}`}>
             <div
               className={`flex items-start gap-3 rounded-[1.15rem] border border-white/10 bg-slate-950/30 ${
                 compact ? "px-3 py-2.5" : "px-3 py-3"
@@ -460,7 +465,7 @@ export default function ScheduledMatchCard({
               </div>
             </div>
 
-            <div className={`grid gap-2.5 ${compact ? "grid-cols-2" : "sm:grid-cols-3"}`}>
+            <div className={moneyGridClasses}>
               <MoneyCell
                 label="Wolo Wager"
                 value={`${formatWolo(match.terms.wagerAmountWolo)} WOLO`}
@@ -476,7 +481,7 @@ export default function ScheduledMatchCard({
                 value={`${formatWolo(match.terms.totalFundingWolo)} WOLO`}
                 emphasize
                 compact={compact}
-                className={compact ? "col-span-2" : ""}
+                className={fundingEachSpanClass}
               />
             </div>
           </div>
