@@ -1,23 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Activity,
   AlertTriangle,
   ArrowLeft,
   Banknote,
-  Blocks,
   CircuitBoard,
   Check,
   Copy,
-  ExternalLink,
-  ShieldCheck,
   WalletCards,
 } from "lucide-react";
 
 import TimeDisplayText from "@/components/time/TimeDisplayText";
 import type { AdminUsersRailsPayload } from "@/components/admin/command-tower/types";
+import WoloMarketRail from "@/components/admin/WoloMarketRail";
+import WoloSettlementRail from "@/components/admin/WoloSettlementRail";
 import type {
   WoloChainAdminBalance,
   WoloChainAdminChallengeRun,
@@ -307,86 +306,150 @@ export default function WoloChainAdminPage() {
     loading: true,
     error: null,
   });
+  const [rescindingClaimId, setRescindingClaimId] = useState<number | null>(null);
+  const [retryingClaimId, setRetryingClaimId] = useState<number | null>(null);
+  const [reconcilingPending, setReconcilingPending] = useState(false);
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    let active = true;
-
-    async function load() {
+  const load = useCallback(async (quiet = false) => {
+    if (!quiet) {
       setState((current) => ({ ...current, loading: true, error: null }));
-
-      try {
-        const [woloResponse, railsResponse] = await Promise.all([
-          fetch("/api/admin/wolochain", { cache: "no-store" }),
-          fetch("/api/admin/users/rails", { cache: "no-store" }),
-        ]);
-
-        const [woloPayload, railsPayload] = await Promise.all([
-          woloResponse.json().catch(() => ({})),
-          railsResponse.json().catch(() => ({})),
-        ]);
-
-        if (!woloResponse.ok) {
-          throw new Error(
-            typeof woloPayload.detail === "string"
-              ? woloPayload.detail
-              : "WoloChain admin data failed to load."
-          );
-        }
-
-        if (!railsResponse.ok) {
-          throw new Error(
-            typeof railsPayload.detail === "string"
-              ? railsPayload.detail
-              : "Settlement rails failed to load."
-          );
-        }
-
-        if (!active) return;
-        setState({
-          wolochain: woloPayload as WoloChainAdminPayload,
-          rails: railsPayload as AdminUsersRailsPayload,
-          loading: false,
-          error: null,
-        });
-      } catch (error) {
-        if (!active) return;
-        setState((current) => ({
-          ...current,
-          loading: false,
-          error: error instanceof Error ? error.message : "WoloChain admin unavailable.",
-        }));
-      }
     }
 
-    void load();
+    try {
+      const [woloResponse, railsResponse] = await Promise.all([
+        fetch("/api/admin/wolochain", { cache: "no-store" }),
+        fetch("/api/admin/users/rails", { cache: "no-store" }),
+      ]);
 
-    return () => {
-      active = false;
-    };
+      const [woloPayload, railsPayload] = await Promise.all([
+        woloResponse.json().catch(() => ({})),
+        railsResponse.json().catch(() => ({})),
+      ]);
+
+      if (!woloResponse.ok) {
+        throw new Error(
+          typeof woloPayload.detail === "string"
+            ? woloPayload.detail
+            : "WoloChain admin data failed to load."
+        );
+      }
+
+      if (!railsResponse.ok) {
+        throw new Error(
+          typeof railsPayload.detail === "string"
+            ? railsPayload.detail
+            : "Settlement rails failed to load."
+        );
+      }
+
+      setState({
+        wolochain: woloPayload as WoloChainAdminPayload,
+        rails: railsPayload as AdminUsersRailsPayload,
+        loading: false,
+        error: null,
+      });
+    } catch (error) {
+      setState((current) => ({
+        ...current,
+        loading: false,
+        error: error instanceof Error ? error.message : "WoloChain admin unavailable.",
+      }));
+    }
   }, []);
 
-  const settlementRuns = useMemo(
-    () =>
-      (state.rails?.marketRail.rows ?? [])
-        .filter(
-          (row) =>
-            row.settlementRunId ||
-            row.settlementStatus ||
-            row.settlementFailureCode ||
-            row.settlementAttemptedAt ||
-            row.settlementExecutedAt
-        )
-        .slice(0, 8),
-    [state.rails?.marketRail.rows]
-  );
+  useEffect(() => {
+    void load();
+  }, [load]);
 
-  const payoutRows = useMemo(
-    () =>
-      (state.rails?.settlementRail.rows ?? [])
-        .filter((row) => row.payoutTxHash || row.payoutProofUrl || row.errorState || row.claimStatus === "pending")
-        .slice(0, 10),
-    [state.rails?.settlementRail.rows]
-  );
+  async function handleRescind(claimId: number) {
+    const confirmed = window.confirm("Rescind this pending WOLO claim from the AoE2HDBets claim rail?");
+    if (!confirmed) return;
+
+    setRescindingClaimId(claimId);
+    setActionMessage(null);
+    try {
+      const response = await fetch(`/api/admin/wolo-claims/${claimId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "rescind",
+          note: "Rescinded from WoloChain admin operator rail.",
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(typeof payload.detail === "string" ? payload.detail : "Rescind failed.");
+      }
+      setActionMessage(`Claim #${claimId} rescinded.`);
+      await load(true);
+    } catch (error) {
+      setActionMessage(error instanceof Error ? error.message : "Rescind failed.");
+    } finally {
+      setRescindingClaimId(null);
+    }
+  }
+
+  async function handleRetry(claimId: number) {
+    setRetryingClaimId(claimId);
+    setActionMessage(null);
+    try {
+      const response = await fetch(`/api/admin/wolo-claims/${claimId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "retry_settlement" }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(typeof payload.detail === "string" ? payload.detail : "Retry failed.");
+      }
+      const txHash = typeof payload.txHash === "string" ? payload.txHash : null;
+      setActionMessage(`Claim #${claimId} retry completed${txHash ? ` · tx ${shorten(txHash)}` : ""}.`);
+      await load(true);
+    } catch (error) {
+      setActionMessage(error instanceof Error ? error.message : "Retry failed.");
+    } finally {
+      setRetryingClaimId(null);
+    }
+  }
+
+  async function handleReconcilePending() {
+    setReconcilingPending(true);
+    setActionMessage(null);
+    try {
+      const response = await fetch("/api/admin/wolo-claims", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "reconcile_pending", take: 25 }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(typeof payload.detail === "string" ? payload.detail : "Pending sweep failed.");
+      }
+      const summary =
+        payload.summary &&
+        typeof payload.summary === "object" &&
+        "scannedCount" in payload.summary &&
+        "claimedCount" in payload.summary &&
+        "failedCount" in payload.summary
+          ? (payload.summary as {
+              scannedCount: number;
+              claimedCount: number;
+              failedCount: number;
+            })
+          : null;
+      setActionMessage(
+        summary
+          ? `Pending sweep scanned ${summary.scannedCount}, claimed ${summary.claimedCount}, failed ${summary.failedCount}.`
+          : "Pending sweep completed."
+      );
+      await load(true);
+    } catch (error) {
+      setActionMessage(error instanceof Error ? error.message : "Pending sweep failed.");
+    } finally {
+      setReconcilingPending(false);
+    }
+  }
 
   const failureNotes = useMemo(() => {
     const marketFailures =
@@ -431,17 +494,17 @@ export default function WoloChainAdminPage() {
               Settlement infrastructure, separated from user ops.
             </h1>
             <p className="mt-4 max-w-3xl text-base leading-7 text-slate-300 sm:text-lg">
-              Read-only chain health, settlement capability, balances, payout proof, and scheduled-match economy disposition in one focused operator surface.
+              Chain health, settlement capability, balances, payout proof, claim controls, and scheduled-match economy disposition in one focused operator surface.
             </p>
           </div>
 
           <div className="rounded-[1.5rem] border border-cyan-200/15 bg-cyan-300/10 p-4 text-sm text-cyan-50">
             <div className="flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-cyan-100/70">
               <CircuitBoard className="h-4 w-4" />
-              Phase 1
+              Operator plane
             </div>
-            <div className="mt-2 font-semibold">Read-only control plane</div>
-            <div className="mt-1 text-cyan-100/75">No WoloChain writes from this page.</div>
+            <div className="mt-2 font-semibold">AoE-side payout controls</div>
+            <div className="mt-1 text-cyan-100/75">Visibility plus claim retry/rescind where the app owns the rail.</div>
           </div>
         </div>
       </section>
@@ -449,6 +512,12 @@ export default function WoloChainAdminPage() {
       {state.error ? (
         <div className="rounded-2xl border border-rose-400/30 bg-rose-500/10 px-4 py-4 text-sm text-rose-100">
           {state.error}
+        </div>
+      ) : null}
+
+      {actionMessage ? (
+        <div className="rounded-2xl border border-cyan-300/25 bg-cyan-400/10 px-4 py-4 text-sm text-cyan-50">
+          {actionMessage}
         </div>
       ) : null}
 
@@ -546,131 +615,24 @@ export default function WoloChainAdminPage() {
         />
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-        <div className="rounded-[1.7rem] border border-white/10 bg-black/30 p-5 shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2 text-xs uppercase tracking-[0.3em] text-slate-500">
-                <Blocks className="h-4 w-4" />
-                Recent Settlement Runs
-              </div>
-              <h2 className="mt-2 text-2xl font-semibold text-white">Market run visibility</h2>
-            </div>
-            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-              {settlementRuns.length} shown
-            </span>
-          </div>
-
-          <div className="mt-5 space-y-3">
-            {settlementRuns.length ? (
-              settlementRuns.map((run) => (
-                <div key={run.id} className="rounded-2xl border border-white/8 bg-white/[0.04] p-4">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <div className="text-sm font-semibold text-white">{run.title}</div>
-                      <div className="mt-1 text-xs text-slate-400">
-                        {run.eventLabel || "Market"} · pot {formatWolo(run.totalPotWolo)} WOLO
-                      </div>
-                    </div>
-                    <span className={`rounded-full border px-2.5 py-1 text-xs ${capabilityTone(run.settlementStatus)}`}>
-                      {compactLabel(run.settlementStatus || "not_started")}
-                    </span>
-                  </div>
-                  <div className="mt-3 grid gap-2 text-xs text-slate-400 sm:grid-cols-2">
-                    <div>Run {shorten(run.settlementRunId, 16, 8)}</div>
-                    <div>
-                      Attempt{" "}
-                      {run.settlementAttemptedAt ? (
-                        <TimeDisplayText
-                          value={run.settlementAttemptedAt}
-                          className="text-slate-300"
-                          bubbleClassName="max-w-[16rem] text-center"
-                        />
-                      ) : (
-                        <span className="text-slate-500">not started</span>
-                      )}
-                    </div>
-                  </div>
-                  {run.settlementDetail || run.settlementFailureCode ? (
-                    <div className="mt-3 text-xs leading-5 text-amber-100">
-                      {run.settlementFailureCode || run.settlementDetail}
-                    </div>
-                  ) : null}
-                </div>
-              ))
-            ) : (
-              <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] px-4 py-5 text-sm text-slate-400">
-                No grouped or market settlement runs recorded yet.
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="rounded-[1.7rem] border border-white/10 bg-black/30 p-5 shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2 text-xs uppercase tracking-[0.3em] text-slate-500">
-                <ShieldCheck className="h-4 w-4" />
-                Proof / Tx Visibility
-              </div>
-              <h2 className="mt-2 text-2xl font-semibold text-white">Payout rail evidence</h2>
-            </div>
-            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-              {payoutRows.length} rows
-            </span>
-          </div>
-
-          <div className="mt-5 space-y-3">
-            {payoutRows.length ? (
-              payoutRows.map((row) => (
-                <div key={row.id} className="rounded-2xl border border-white/8 bg-white/[0.04] p-4">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-semibold text-white">
-                        {row.marketTitle || row.eventLabel || row.note || `Settlement #${row.id}`}
-                      </div>
-                      <div className="mt-1 text-xs text-slate-400">
-                        {row.displayPlayerName} · {formatWolo(row.amountWolo)} WOLO
-                      </div>
-                    </div>
-                    <span className={`rounded-full border px-2.5 py-1 text-xs ${capabilityTone(row.settlementMode)}`}>
-                      {compactLabel(row.settlementMode)}
-                    </span>
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-3 text-xs text-slate-400">
-                    <span className="font-mono text-slate-300">tx {shorten(row.payoutTxHash)}</span>
-                    {row.payoutProofUrl ? (
-                      <a
-                        href={row.payoutProofUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1 text-cyan-200 transition hover:text-cyan-100"
-                      >
-                        proof <ExternalLink className="h-3 w-3" />
-                      </a>
-                    ) : null}
-                    <span>
-                      created{" "}
-                      <TimeDisplayText
-                        value={row.createdAt}
-                        className="text-slate-300"
-                        bubbleClassName="max-w-[16rem] text-center"
-                      />
-                    </span>
-                  </div>
-                  {row.errorState ? (
-                    <div className="mt-3 text-xs leading-5 text-amber-100">{row.errorState}</div>
-                  ) : null}
-                </div>
-              ))
-            ) : (
-              <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] px-4 py-5 text-sm text-slate-400">
-                No payout tx/proof rows need operator attention.
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
+      {state.rails ? (
+        <section className="space-y-6">
+          <WoloSettlementRail
+            summary={state.rails.settlementRail.summary}
+            rows={state.rails.settlementRail.rows}
+            rescindingClaimId={rescindingClaimId}
+            retryingClaimId={retryingClaimId}
+            reconcilingPending={reconcilingPending}
+            onRescind={handleRescind}
+            onRetry={handleRetry}
+            onReconcilePending={handleReconcilePending}
+          />
+          <WoloMarketRail
+            summary={state.rails.marketRail.summary}
+            rows={state.rails.marketRail.rows}
+          />
+        </section>
+      ) : null}
 
       <section className="rounded-[1.7rem] border border-white/10 bg-slate-950/70 p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">

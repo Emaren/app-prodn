@@ -195,6 +195,7 @@ export type LobbyWoloEarnersEntry = {
   claimed: boolean;
   verified: boolean;
   verificationLevel: number;
+  allTimeTakeWolo: number;
   weeklyTakeWolo: number;
   settledWolo: number;
   wageredWolo: number;
@@ -205,7 +206,10 @@ export type LobbyWoloEarnersEntry = {
   sourceWindow: "weekly" | "backfill";
 };
 
+export type LobbyWoloEarnersMode = "all_time" | "weekly";
+
 export type LobbyWoloEarnersBoard = {
+  mode: LobbyWoloEarnersMode;
   timeframeDays: number;
   visibleSlots: number;
   totalParticipants: number;
@@ -283,6 +287,7 @@ export function getFallbackLeaderboard(): LobbyLeaderboardSummary {
 export function getFallbackWoloEarnersBoard(): LobbyWoloEarnersBoard {
   const generatedAt = new Date().toISOString();
   return {
+    mode: "weekly",
     timeframeDays: 7,
     visibleSlots: 3,
     totalParticipants: 0,

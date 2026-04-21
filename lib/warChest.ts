@@ -1,7 +1,11 @@
 import type { PrismaClient } from "@/lib/generated/prisma";
 
 import { loadBetBoardSnapshot, type BetBoardSnapshot } from "@/lib/bets";
-import type { LobbyWoloEarnersBoard, LobbyWoloSnapshot } from "@/lib/lobby";
+import type {
+  LobbyWoloEarnersBoard,
+  LobbyWoloEarnersMode,
+  LobbyWoloSnapshot,
+} from "@/lib/lobby";
 import { loadLobbyWoloEarnersBoard } from "@/lib/lobbyWoloEarners";
 import {
   buildClaimedPlayerHref,
@@ -64,6 +68,12 @@ export type WarChestSnapshot = {
   recentClaims: WarChestRecentClaim[];
 };
 
+export type WarChestMode = LobbyWoloEarnersMode;
+
+export function normalizeWarChestMode(value: string | null | undefined): WarChestMode {
+  return value === "weekly" ? "weekly" : "all_time";
+}
+
 function resolvePlayerHref(input: {
   uid: string | null;
   inGameName: string | null;
@@ -92,11 +102,13 @@ function displayActorName(input: {
 
 export async function loadWarChestSnapshot(
   prisma: PrismaClient,
-  viewerUid?: string | null
+  viewerUid?: string | null,
+  options: { mode?: WarChestMode } = {}
 ): Promise<WarChestSnapshot> {
+  const mode = options.mode ?? "all_time";
   const [wolo, earners, betBoard] = await Promise.all([
     loadWoloDevSnapshot(),
-    loadLobbyWoloEarnersBoard(prisma),
+    loadLobbyWoloEarnersBoard(prisma, { mode }),
     loadBetBoardSnapshot(prisma, viewerUid),
   ]);
 

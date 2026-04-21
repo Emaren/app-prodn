@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
 
     for (const claim of pendingClaims) {
       const result = await retryPendingClaimSettlement(gate.prisma, claim.id, {
-        activityPath: "/admin/user-list",
+        activityPath: "/admin/wolochain",
         memoTag: "admin_reconcile_pending",
       });
 

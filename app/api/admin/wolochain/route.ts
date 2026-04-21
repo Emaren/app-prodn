@@ -146,7 +146,7 @@ async function resolveCommunityTreasuryConfig(): Promise<TreasuryConfig> {
     sourceLabel: null,
     fallbackBalance: null,
     missingDetail:
-      "Configure WOLO_COMMUNITY_TREASURY_ADDRESS or expose accounts.communitytreasury in WOLO_LOCAL_BALANCES_FILE.",
+      "Configure WOLO_COMMUNITY_TREASURY_ADDRESS, or set AOE2_ENABLE_WOLO_DEV_SNAPSHOT=1 with WOLO_LOCAL_BALANCES_FILE exposing accounts.communitytreasury.",
   };
 }
 

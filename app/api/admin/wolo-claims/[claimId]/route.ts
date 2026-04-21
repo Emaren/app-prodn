@@ -57,7 +57,7 @@ async function rescindClaim(
     await recordUserActivity(prisma, {
       userId: matchedUser.id,
       type: "wolo_claim_rescinded",
-      path: "/admin/user-list",
+      path: "/admin/wolochain",
       label: claim.displayPlayerName,
       metadata: {
         claimId: claim.id,
@@ -89,7 +89,7 @@ async function retrySettlementClaim(
 
   const { prisma } = gate;
   const result = await retryPendingClaimSettlement(prisma, claimId, {
-    activityPath: "/admin/user-list",
+    activityPath: "/admin/wolochain",
     memoTag: "admin_retry_settlement",
   });
 

@@ -7,11 +7,18 @@ import {
   normalizePublicPlayerName,
 } from "@/lib/publicPlayers";
 import { normalizePendingWoloClaimName } from "@/lib/pendingWoloClaims";
-import type { LobbyWoloEarnersBoard, LobbyWoloEarnersEntry } from "@/lib/lobby";
+import type {
+  LobbyWoloEarnersBoard,
+  LobbyWoloEarnersEntry,
+  LobbyWoloEarnersMode,
+} from "@/lib/lobby";
 
 const WEEKLY_TIMEFRAME_DAYS = 7;
 const MIN_VISIBLE_SLOTS = 3;
-const WEEKLY_TIMEFRAME_MS = WEEKLY_TIMEFRAME_DAYS * 24 * 60 * 60 * 1000;
+
+type LoadLobbyWoloEarnersBoardOptions = {
+  mode?: LobbyWoloEarnersMode;
+};
 
 type UserIdentity = {
   id: number;
@@ -74,15 +81,16 @@ function setLatestActivity(current: Date | null, candidate: Date) {
   return current;
 }
 
-function sortMetrics(a: ActorMetrics, b: ActorMetrics) {
-  if (b.weeklyTakeWolo !== a.weeklyTakeWolo) {
-    return b.weeklyTakeWolo - a.weeklyTakeWolo;
+function getAllTimeTakeWolo(metrics: Pick<ActorMetrics, "settledWolo" | "claimableWolo">) {
+  return metrics.settledWolo + metrics.claimableWolo;
+}
+
+function compareSharedTieBreakers(a: ActorMetrics, b: ActorMetrics) {
+  if (b.wageredWolo !== a.wageredWolo) {
+    return b.wageredWolo - a.wageredWolo;
   }
   if (b.settledWolo !== a.settledWolo) {
     return b.settledWolo - a.settledWolo;
-  }
-  if (b.wageredWolo !== a.wageredWolo) {
-    return b.wageredWolo - a.wageredWolo;
   }
   if (b.claimableWolo !== a.claimableWolo) {
     return b.claimableWolo - a.claimableWolo;
@@ -105,6 +113,38 @@ function sortMetrics(a: ActorMetrics, b: ActorMetrics) {
   return aName.localeCompare(bName);
 }
 
+function sortMetricsForMode(mode: LobbyWoloEarnersMode) {
+  return (a: ActorMetrics, b: ActorMetrics) => {
+    const aAllTimeTake = getAllTimeTakeWolo(a);
+    const bAllTimeTake = getAllTimeTakeWolo(b);
+
+    if (mode === "all_time") {
+      if (bAllTimeTake !== aAllTimeTake) {
+        return bAllTimeTake - aAllTimeTake;
+      }
+      if (b.weeklyTakeWolo !== a.weeklyTakeWolo) {
+        return b.weeklyTakeWolo - a.weeklyTakeWolo;
+      }
+      return compareSharedTieBreakers(a, b);
+    }
+
+    if (b.weeklyTakeWolo !== a.weeklyTakeWolo) {
+      return b.weeklyTakeWolo - a.weeklyTakeWolo;
+    }
+    if (bAllTimeTake !== aAllTimeTake) {
+      return bAllTimeTake - aAllTimeTake;
+    }
+    return compareSharedTieBreakers(a, b);
+  };
+}
+
+function getCurrentUtcWeekStart(now: Date) {
+  const weekStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const daysSinceMonday = (weekStart.getUTCDay() + 6) % 7;
+  weekStart.setUTCDate(weekStart.getUTCDate() - daysSinceMonday);
+  return weekStart;
+}
+
 function buildEntry(
   metrics: ActorMetrics,
   rank: number,
@@ -120,6 +160,7 @@ function buildEntry(
       claimed: true,
       verified: metrics.user.verified,
       verificationLevel: metrics.user.verificationLevel,
+      allTimeTakeWolo: getAllTimeTakeWolo(metrics),
       weeklyTakeWolo: metrics.weeklyTakeWolo,
       settledWolo: metrics.settledWolo,
       wageredWolo: metrics.wageredWolo,
@@ -140,6 +181,7 @@ function buildEntry(
     claimed: false,
     verified: false,
     verificationLevel: 0,
+    allTimeTakeWolo: getAllTimeTakeWolo(metrics),
     weeklyTakeWolo: metrics.weeklyTakeWolo,
     settledWolo: metrics.settledWolo,
     wageredWolo: metrics.wageredWolo,
@@ -375,22 +417,26 @@ async function loadBoardMetrics(prisma: PrismaClient, weekStartsAt: Date) {
         entry.settledWolo > 0 ||
         entry.wageredWolo > 0 ||
         entry.claimableWolo > 0
-    )
-    .sort(sortMetrics);
+    );
 }
 
 export async function loadLobbyWoloEarnersBoard(
-  prisma: PrismaClient
+  prisma: PrismaClient,
+  options: LoadLobbyWoloEarnersBoardOptions = {}
 ): Promise<LobbyWoloEarnersBoard> {
+  const mode = options.mode ?? "weekly";
   const generatedAt = new Date();
-  const weekStartsAt = new Date(generatedAt.getTime() - WEEKLY_TIMEFRAME_MS);
+  const weekStartsAt = getCurrentUtcWeekStart(generatedAt);
   const allMetrics = await loadBoardMetrics(prisma, weekStartsAt);
 
-  const entries = allMetrics.map((entry, index) =>
-    buildEntry(entry, index + 1, entry.weeklyTakeWolo > 0 ? "weekly" : "backfill")
-  );
+  const entries = allMetrics
+    .sort(sortMetricsForMode(mode))
+    .map((entry, index) =>
+      buildEntry(entry, index + 1, entry.weeklyTakeWolo > 0 ? "weekly" : "backfill")
+    );
 
   return {
+    mode,
     timeframeDays: WEEKLY_TIMEFRAME_DAYS,
     visibleSlots: MIN_VISIBLE_SLOTS,
     totalParticipants: entries.length,

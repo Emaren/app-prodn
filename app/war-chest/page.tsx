@@ -4,7 +4,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { getPrisma } from "@/lib/prisma";
-import { loadWarChestSnapshot } from "@/lib/warChest";
+import { loadWarChestSnapshot, normalizeWarChestMode, type WarChestMode } from "@/lib/warChest";
 import { SESSION_COOKIE_NAME, verifySession } from "@/lib/session";
 
 export const runtime = "nodejs";
@@ -41,6 +41,24 @@ function shortTxHash(value: string | null) {
   return `${value.slice(0, 10)}…${value.slice(-6)}`;
 }
 
+function modeLabel(mode: WarChestMode) {
+  return mode === "weekly" ? "Weekly" : "All Time";
+}
+
+function modeTakeLabel(mode: WarChestMode) {
+  return mode === "weekly" ? "Weekly Take" : "All-Time Take";
+}
+
+function entryModeTake(entry: { allTimeTakeWolo: number; weeklyTakeWolo: number }, mode: WarChestMode) {
+  return mode === "weekly" ? entry.weeklyTakeWolo : entry.allTimeTakeWolo;
+}
+
+type WarChestPageProps = {
+  searchParams?: Promise<{
+    mode?: string | string[];
+  }>;
+};
+
 function WoloMarkBadge() {
   return (
     <div className="flex h-14 w-14 items-center justify-center rounded-full border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
@@ -55,14 +73,26 @@ function WoloMarkBadge() {
   );
 }
 
-export default async function WarChestPage() {
+export default async function WarChestPage({ searchParams }: WarChestPageProps) {
+  const resolvedSearchParams = await searchParams;
+  const rawMode = Array.isArray(resolvedSearchParams?.mode)
+    ? resolvedSearchParams?.mode[0]
+    : resolvedSearchParams?.mode;
+  const mode = normalizeWarChestMode(rawMode);
   const cookieStore = await cookies();
   const claims = await verifySession(cookieStore.get(SESSION_COOKIE_NAME)?.value);
-  const snapshot = await loadWarChestSnapshot(getPrisma(), claims?.uid ?? null);
+  const snapshot = await loadWarChestSnapshot(getPrisma(), claims?.uid ?? null, { mode });
 
   const leader = snapshot.earners.entries[0] ?? null;
   const trackedEntries = snapshot.earners.entries;
   const reserve = snapshot.wolo?.accounts.ecosystembounties?.wolo ?? null;
+  const leaderModeTake = leader ? entryModeTake(leader, mode) : 0;
+  const oppositeModeLabel = mode === "weekly" ? "All Time" : "This Week";
+  const oppositeModeTake = leader
+    ? mode === "weekly"
+      ? leader.allTimeTakeWolo
+      : leader.weeklyTakeWolo
+    : 0;
 
   return (
     <main className="space-y-6 py-3 text-white sm:space-y-7 sm:py-4">
@@ -72,10 +102,15 @@ export default async function WarChestPage() {
         <div className="relative z-10 grid gap-7 xl:grid-cols-[1.08fr_0.92fr] xl:items-start">
           <div className="space-y-6">
             <div className="flex flex-wrap gap-2">
-              <HeroPill tone="amber">Weekly betting power board</HeroPill>
+              <HeroPill tone="amber">{modeLabel(mode)} betting power board</HeroPill>
               <HeroPill tone="emerald">{snapshot.weekly.activeBettors} active bettors</HeroPill>
               <HeroPill tone="sky">{snapshot.lifetime.openMarkets} open markets</HeroPill>
               {claims?.uid ? <HeroPill tone="slate">Signed in as {claims.uid}</HeroPill> : null}
+            </div>
+
+            <div className="inline-flex rounded-full border border-white/10 bg-slate-950/55 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+              <ModeLink mode="all_time" active={mode === "all_time"}>ALL TIME</ModeLink>
+              <ModeLink mode="weekly" active={mode === "weekly"}>WEEKLY</ModeLink>
             </div>
 
             <div className="space-y-4">
@@ -89,9 +124,8 @@ export default async function WarChestPage() {
                 </h1>
               </div>
               <p className="max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
-                Weekly Take is the only rolling number on this board. Settled, Wagered, and the
-                full player roster stay all-time so every bettor and claimable player can see
-                themselves here and know the site is tracking the full history honestly.
+                All Time ranks settled plus claimable WOLO. Weekly ranks only this current UTC week,
+                with no carryover from older payouts.
               </p>
             </div>
 
@@ -153,27 +187,23 @@ export default async function WarChestPage() {
                 </div>
                 <div className="rounded-full border border-amber-300/18 bg-amber-400/10 px-3 py-1 text-xs text-amber-100">
                   {leader
-                    ? leader.weeklyTakeWolo > 0
-                      ? `${formatCompact(leader.weeklyTakeWolo)} WOLO`
-                      : leader.claimableWolo > 0
-                        ? `${formatCompact(leader.claimableWolo)} WOLO`
-                        : `${formatCompact(leader.settledWolo)} WOLO`
+                    ? `${formatCompact(leaderModeTake)} WOLO`
                     : "Standby"}
                 </div>
               </div>
 
               <div className="mt-5 grid gap-3 sm:grid-cols-3">
                 <MetricTile
-                  label="Weekly Take"
-                  value={leader ? `${formatNumber(leader.weeklyTakeWolo)} WOLO` : "0 WOLO"}
+                  label={modeTakeLabel(mode)}
+                  value={`${formatNumber(leaderModeTake)} WOLO`}
+                />
+                <MetricTile
+                  label={oppositeModeLabel}
+                  value={`${formatNumber(oppositeModeTake)} WOLO`}
                 />
                 <MetricTile
                   label="Settled"
                   value={leader ? `${formatNumber(leader.settledWolo)} WOLO` : "0 WOLO"}
-                />
-                <MetricTile
-                  label="Wagered"
-                  value={leader ? `${formatNumber(leader.wageredWolo)} WOLO` : "0 WOLO"}
                 />
               </div>
 
@@ -185,7 +215,7 @@ export default async function WarChestPage() {
 
               <div className="mt-5 rounded-[1.4rem] border border-white/8 bg-white/5 p-4 text-sm leading-6 text-slate-300">
                 {leader
-                  ? `${leader.name} is setting the tone right now. Weekly take reflects this week, while settled and wagered stay all-time so the board remains readable and honest.`
+                  ? `${leader.name} leads the ${modeLabel(mode).toLowerCase()} board. Ties break by the other take window, then wagered WOLO, activity, and name.`
                   : "Once the first payouts and slips land, this page turns into the betting pulse of the site."}
               </div>
             </section>
@@ -220,7 +250,7 @@ export default async function WarChestPage() {
           eyebrow="Recognition board"
           title="Full earner table"
           count={trackedEntries.length}
-          helper={`Weekly window started ${formatMoment(snapshot.earners.weekStartsAt)}`}
+          helper={`${modeLabel(mode)} ranking · weekly window opened ${formatMoment(snapshot.earners.weekStartsAt)}`}
         >
           <div className="grid gap-3">
             {trackedEntries.length === 0 ? (
@@ -258,18 +288,15 @@ export default async function WarChestPage() {
 
                     <div className="grid gap-2 text-left md:min-w-[10rem] md:text-right">
                       <ScoreLine
-                        label="Weekly Take"
+                        label={modeTakeLabel(mode)}
+                        value={`${formatNumber(entryModeTake(entry, mode))} WOLO`}
+                      />
+                      <ScoreLine
+                        label={mode === "weekly" ? "All Time" : "This Week"}
                         value={`${
-                          formatNumber(
-                            entry.weeklyTakeWolo > 0
-                              ? entry.weeklyTakeWolo
-                              : entry.claimableWolo > 0
-                                ? entry.claimableWolo
-                                : entry.settledWolo
-                          )
+                          formatNumber(mode === "weekly" ? entry.allTimeTakeWolo : entry.weeklyTakeWolo)
                         } WOLO`}
                       />
-                      <ScoreLine label="Settled" value={`${formatNumber(entry.settledWolo)} WOLO`} />
                       <ScoreLine label="Wagered" value={`${formatNumber(entry.wageredWolo)} WOLO`} />
                     </div>
                   </div>
@@ -529,6 +556,30 @@ function HeroPill({
           : "border-white/10 bg-white/5 text-slate-300";
 
   return <span className={`rounded-full border px-3 py-1 text-xs ${toneClassName}`}>{children}</span>;
+}
+
+function ModeLink({
+  mode,
+  active,
+  children,
+}: {
+  mode: WarChestMode;
+  active: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <Link
+      href={mode === "all_time" ? "/war-chest" : "/war-chest?mode=weekly"}
+      aria-current={active ? "page" : undefined}
+      className={`rounded-full px-3.5 py-1.5 text-[11px] font-semibold tracking-[0.22em] transition ${
+        active
+          ? "bg-amber-300 text-slate-950 shadow-[0_8px_22px_rgba(251,191,36,0.22)]"
+          : "text-slate-400 hover:bg-white/8 hover:text-white"
+      }`}
+    >
+      {children}
+    </Link>
+  );
 }
 
 function HeroStat({

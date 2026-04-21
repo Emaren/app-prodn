@@ -165,7 +165,7 @@ export async function GET(request: NextRequest) {
           ],
         },
         orderBy: [{ featured: "desc" }, { updatedAt: "desc" }, { id: "desc" }],
-        take: 12,
+        take: 40,
         select: {
           id: true,
           title: true,
