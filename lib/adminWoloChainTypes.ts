@@ -1,5 +1,5 @@
 export type WoloChainAdminBalance = {
-  key: "escrow" | "payoutSigner" | "treasury";
+  key: "escrow" | "payoutSigner" | "treasury" | "dexLiquidity";
   label: string;
   address: string | null;
   amountUWolo: string | null;
@@ -85,6 +85,7 @@ export type WoloChainAdminPayload = {
     escrow: WoloChainAdminBalance;
     payoutSigner: WoloChainAdminBalance;
     treasury: WoloChainAdminBalance;
+    dexLiquidity: WoloChainAdminBalance | null;
   };
   challengeRuns: WoloChainAdminChallengeRun[];
   warnings: string[];

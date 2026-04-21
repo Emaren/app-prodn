@@ -10,10 +10,7 @@ import { buildChallengeEconomySurface } from "@/lib/challengeEconomy";
 import { loadWoloDevSnapshot } from "@/lib/woloDevSnapshot";
 import { fetchWoloBalanceAmount, fetchWoloStatusSnapshot } from "@/lib/woloRuntime";
 import { WOLO_COIN_DECIMALS, formatWoloAmount, getWoloBetEscrowRuntime } from "@/lib/woloChain";
-import {
-  getWoloPayoutSignerRuntime,
-  getWoloSettlementSurfaceStatus,
-} from "@/lib/woloBetSettlement";
+import { getWoloSettlementSurfaceStatus } from "@/lib/woloBetSettlement";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -34,16 +31,41 @@ function getCommunityTreasuryAddressConfig() {
   return resolveAddressFromEnv(TREASURY_ADDRESS_ENV_NAMES);
 }
 
+function getPayoutSignerAddressConfig() {
+  return resolveAddressFromEnv(PAYOUT_SIGNER_ADDRESS_ENV_NAMES);
+}
+
+const PAYOUT_SIGNER_ADDRESS_ENV_NAMES = ["WOLO_BET_PAYOUT_ADDRESS"] as const;
+
 const TREASURY_ADDRESS_ENV_NAMES = [
   "WOLO_COMMUNITY_TREASURY_ADDRESS",
+  "WOLO_COMMUNITY_TREASURY",
   "WOLO_TREASURY_ADDRESS",
+  "WOLO_TREASURY",
   "WOLO_MATCH_GUARANTEE_TREASURY_ADDRESS",
+  "WOLO_MATCH_GUARANTEE_TREASURY",
   "WOLO_TREASURY_WALLET_ADDRESS",
+  "WOLO_TREASURY_WALLET",
   "WOLO_COMMUNITY_TREASURY_WALLET_ADDRESS",
+  "WOLO_COMMUNITY_TREASURY_WALLET",
   "NEXT_PUBLIC_WOLO_COMMUNITY_TREASURY_ADDRESS",
+  "NEXT_PUBLIC_WOLO_COMMUNITY_TREASURY",
   "NEXT_PUBLIC_WOLO_TREASURY_ADDRESS",
+  "NEXT_PUBLIC_WOLO_TREASURY",
   "NEXT_PUBLIC_WOLO_MATCH_GUARANTEE_TREASURY_ADDRESS",
+  "NEXT_PUBLIC_WOLO_MATCH_GUARANTEE_TREASURY",
   "NEXT_PUBLIC_WOLO_TREASURY_WALLET_ADDRESS",
+  "NEXT_PUBLIC_WOLO_TREASURY_WALLET",
+] as const;
+
+const DEX_LIQUIDITY_ADDRESS_ENV_NAMES = [
+  "WOLO_DEX_LIQUIDITY_ADDRESS",
+  "WOLO_DEX_LIQUIDITY_WALLET_ADDRESS",
+  "WOLO_LIQUIDITY_ADDRESS",
+  "WOLO_LIQUIDITY_WALLET_ADDRESS",
+  "NEXT_PUBLIC_WOLO_DEX_LIQUIDITY_ADDRESS",
+  "NEXT_PUBLIC_WOLO_DEX_LIQUIDITY_WALLET_ADDRESS",
+  "NEXT_PUBLIC_WOLO_LIQUIDITY_ADDRESS",
 ] as const;
 
 const TREASURY_SNAPSHOT_ACCOUNT_KEYS = [
@@ -52,6 +74,14 @@ const TREASURY_SNAPSHOT_ACCOUNT_KEYS = [
   "treasury",
   "matchguaranteetreasury",
   "match_guarantee_treasury",
+] as const;
+
+const DEX_LIQUIDITY_SNAPSHOT_ACCOUNT_KEYS = [
+  "dexliquidity",
+  "dex_liquidity",
+  "dexliquiditywallet",
+  "dex_liquidity_wallet",
+  "liquidity",
 ] as const;
 
 type AddressConfig = {
@@ -114,7 +144,32 @@ function formatSnapshotBalance(account: { uwolo: number; wolo: number }): Balanc
 }
 
 async function resolveCommunityTreasuryConfig(): Promise<TreasuryConfig> {
-  const envConfig = getCommunityTreasuryAddressConfig();
+  return resolveConfiguredBalanceAccount({
+    envConfig: getCommunityTreasuryAddressConfig(),
+    snapshotKeys: TREASURY_SNAPSHOT_ACCOUNT_KEYS,
+    missingDetail:
+      "Configure WOLO_COMMUNITY_TREASURY_ADDRESS, or set WOLO_LOCAL_BALANCES_FILE to a snapshot exposing accounts.communitytreasury.",
+  });
+}
+
+async function resolveDexLiquidityConfig(): Promise<TreasuryConfig> {
+  return resolveConfiguredBalanceAccount({
+    envConfig: resolveAddressFromEnv(DEX_LIQUIDITY_ADDRESS_ENV_NAMES),
+    snapshotKeys: DEX_LIQUIDITY_SNAPSHOT_ACCOUNT_KEYS,
+    missingDetail:
+      "Configure WOLO_DEX_LIQUIDITY_ADDRESS, or set WOLO_LOCAL_BALANCES_FILE to a snapshot exposing accounts.dexliquidity.",
+  });
+}
+
+async function resolveConfiguredBalanceAccount({
+  envConfig,
+  snapshotKeys,
+  missingDetail,
+}: {
+  envConfig: AddressConfig;
+  snapshotKeys: readonly string[];
+  missingDetail: string;
+}): Promise<TreasuryConfig> {
   if (envConfig.address) {
     return {
       ...envConfig,
@@ -125,7 +180,7 @@ async function resolveCommunityTreasuryConfig(): Promise<TreasuryConfig> {
 
   const snapshot = await loadWoloDevSnapshot();
   if (snapshot?.accounts) {
-    const wantedKeys = new Set(TREASURY_SNAPSHOT_ACCOUNT_KEYS.map(normalizeSnapshotKey));
+    const wantedKeys = new Set(snapshotKeys.map(normalizeSnapshotKey));
     const entry = Object.entries(snapshot.accounts).find(([key]) =>
       wantedKeys.has(normalizeSnapshotKey(key))
     );
@@ -145,8 +200,7 @@ async function resolveCommunityTreasuryConfig(): Promise<TreasuryConfig> {
     address: null,
     sourceLabel: null,
     fallbackBalance: null,
-    missingDetail:
-      "Configure WOLO_COMMUNITY_TREASURY_ADDRESS, or set WOLO_LOCAL_BALANCES_FILE to a snapshot exposing accounts.communitytreasury.",
+    missingDetail,
   };
 }
 
@@ -306,8 +360,9 @@ export async function GET(request: NextRequest) {
 
     const { prisma } = gate;
     const escrowRuntime = getWoloBetEscrowRuntime();
-    const payoutSignerRuntime = getWoloPayoutSignerRuntime();
+    const payoutSignerConfig = getPayoutSignerAddressConfig();
     const treasuryConfig = await resolveCommunityTreasuryConfig();
+    const dexLiquidityConfig = await resolveDexLiquidityConfig();
 
     const [chain, settlementService, balances, challengeRows] = await Promise.all([
       fetchWoloStatusSnapshot(),
@@ -325,10 +380,10 @@ export async function GET(request: NextRequest) {
         loadBalance(
           "payoutSigner",
           "Payout signer balance",
-          payoutSignerRuntime.payoutAddress,
-          "WOLO_BET_PAYOUT_ADDRESS is not configured.",
+          payoutSignerConfig.address,
+          "WOLO_BET_PAYOUT_ADDRESS is not configured. Admin wallet cards do not infer the payout signer from escrow.",
           {
-            configSource: payoutSignerRuntime.payoutAddress ? "WOLO_BET_PAYOUT_ADDRESS" : null,
+            configSource: payoutSignerConfig.sourceLabel,
           }
         ),
         loadBalance(
@@ -341,6 +396,18 @@ export async function GET(request: NextRequest) {
             fallbackBalance: treasuryConfig.fallbackBalance,
           }
         ),
+        dexLiquidityConfig.address
+          ? loadBalance(
+              "dexLiquidity",
+              "DEX liquidity balance",
+              dexLiquidityConfig.address,
+              dexLiquidityConfig.missingDetail,
+              {
+                configSource: dexLiquidityConfig.sourceLabel,
+                fallbackBalance: dexLiquidityConfig.fallbackBalance,
+              }
+            )
+          : Promise.resolve(null),
       ]),
       prisma.scheduledMatch.findMany({
         where: {
@@ -410,8 +477,9 @@ export async function GET(request: NextRequest) {
       }),
     ]);
 
-    const [escrow, payoutSigner, treasury] = balances;
+    const [escrow, payoutSigner, treasury, dexLiquidity] = balances;
     const balanceWarnings = balances
+      .filter((balance): balance is WoloChainAdminBalance => Boolean(balance))
       .filter((balance) => balance.status !== "ready" && balance.detail)
       .map((balance) => `${balance.label}: ${balance.detail}`);
 
@@ -434,6 +502,7 @@ export async function GET(request: NextRequest) {
         escrow,
         payoutSigner,
         treasury,
+        dexLiquidity,
       },
       challengeRuns: challengeRows.map(toChallengeRun),
       warnings: [...settlementService.warnings, ...balanceWarnings],

@@ -573,7 +573,10 @@ export default function WoloChainAdminPage() {
                 <WalletCards className="h-4 w-4" />
                 Balances
               </div>
-              <h2 className="mt-2 text-2xl font-semibold text-white">Escrow, payout signer, treasury</h2>
+              <h2 className="mt-2 text-2xl font-semibold text-white">
+                Escrow, payout signer, treasury
+                {state.wolochain.balances.dexLiquidity ? ", DEX liquidity" : ""}
+              </h2>
             </div>
             <div className="text-xs text-slate-500">
               Checked{" "}
@@ -584,10 +587,17 @@ export default function WoloChainAdminPage() {
               />
             </div>
           </div>
-          <div className="mt-5 grid gap-3 md:grid-cols-3">
+          <div
+            className={`mt-5 grid gap-3 md:grid-cols-3 ${
+              state.wolochain.balances.dexLiquidity ? "xl:grid-cols-4" : ""
+            }`}
+          >
             <BalanceTile balance={state.wolochain.balances.escrow} />
             <BalanceTile balance={state.wolochain.balances.payoutSigner} />
             <BalanceTile balance={state.wolochain.balances.treasury} />
+            {state.wolochain.balances.dexLiquidity ? (
+              <BalanceTile balance={state.wolochain.balances.dexLiquidity} />
+            ) : null}
           </div>
         </section>
       ) : null}
