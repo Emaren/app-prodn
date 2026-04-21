@@ -89,7 +89,7 @@ export async function loadLobbySnapshot(
       loadOnlineUsers(prisma),
       loadRecentMatches(),
       loadLobbyLeaderboard(prisma),
-      loadLobbyWoloEarnersBoard(prisma),
+      loadLobbyWoloEarnersBoard(prisma, { mode: "all_time" }),
       loadAoe2HdPulseSnapshot(),
     ]);
 

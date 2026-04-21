@@ -41,11 +41,12 @@ function coerceAccount(value: RawWoloAccount | undefined): LobbyWoloAccount | nu
 }
 
 export async function loadWoloDevSnapshot(): Promise<LobbyWoloSnapshot | null> {
-  const allow = process.env.AOE2_ENABLE_WOLO_DEV_SNAPSHOT === "1";
+  const explicitFilePath = process.env.WOLO_LOCAL_BALANCES_FILE?.trim();
+  const allow = process.env.AOE2_ENABLE_WOLO_DEV_SNAPSHOT === "1" || Boolean(explicitFilePath);
   if (!allow) return null;
 
   const filePath =
-    process.env.WOLO_LOCAL_BALANCES_FILE ||
+    explicitFilePath ||
     path.join(homedir(), "projects", "WoloChain", "build", "local-balances.json");
 
   try {

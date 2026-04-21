@@ -49,6 +49,12 @@ function modeTakeLabel(mode: WarChestMode) {
   return mode === "weekly" ? "Weekly Take" : "All-Time Take";
 }
 
+function modeIntentCopy(mode: WarChestMode) {
+  return mode === "weekly"
+    ? "Weekly shows current UTC-week heat only. All Time is the broader prestige board."
+    : "All Time is the prestige view: settled plus claimable WOLO. Weekly shows current UTC-week heat only.";
+}
+
 function entryModeTake(entry: { allTimeTakeWolo: number; weeklyTakeWolo: number }, mode: WarChestMode) {
   return mode === "weekly" ? entry.weeklyTakeWolo : entry.allTimeTakeWolo;
 }
@@ -102,15 +108,10 @@ export default async function WarChestPage({ searchParams }: WarChestPageProps) 
         <div className="relative z-10 grid gap-7 xl:grid-cols-[1.08fr_0.92fr] xl:items-start">
           <div className="space-y-6">
             <div className="flex flex-wrap gap-2">
-              <HeroPill tone="amber">{modeLabel(mode)} betting power board</HeroPill>
+              <ModeToggleChip mode={mode} />
               <HeroPill tone="emerald">{snapshot.weekly.activeBettors} active bettors</HeroPill>
               <HeroPill tone="sky">{snapshot.lifetime.openMarkets} open markets</HeroPill>
               {claims?.uid ? <HeroPill tone="slate">Signed in as {claims.uid}</HeroPill> : null}
-            </div>
-
-            <div className="inline-flex rounded-full border border-white/10 bg-slate-950/55 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-              <ModeLink mode="all_time" active={mode === "all_time"}>ALL TIME</ModeLink>
-              <ModeLink mode="weekly" active={mode === "weekly"}>WEEKLY</ModeLink>
             </div>
 
             <div className="space-y-4">
@@ -124,8 +125,7 @@ export default async function WarChestPage({ searchParams }: WarChestPageProps) 
                 </h1>
               </div>
               <p className="max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
-                All Time ranks settled plus claimable WOLO. Weekly ranks only this current UTC week,
-                with no carryover from older payouts.
+                {modeIntentCopy(mode)}
               </p>
             </div>
 
@@ -215,7 +215,7 @@ export default async function WarChestPage({ searchParams }: WarChestPageProps) 
 
               <div className="mt-5 rounded-[1.4rem] border border-white/8 bg-white/5 p-4 text-sm leading-6 text-slate-300">
                 {leader
-                  ? `${leader.name} leads the ${modeLabel(mode).toLowerCase()} board. Ties break by the other take window, then wagered WOLO, activity, and name.`
+                  ? `${leader.name} leads the ${modeLabel(mode).toLowerCase()} board. Tap the mode chip to switch views; ties break by the other take window, then wagered WOLO, activity, and name.`
                   : "Once the first payouts and slips land, this page turns into the betting pulse of the site."}
               </div>
             </section>
@@ -558,26 +558,22 @@ function HeroPill({
   return <span className={`rounded-full border px-3 py-1 text-xs ${toneClassName}`}>{children}</span>;
 }
 
-function ModeLink({
-  mode,
-  active,
-  children,
-}: {
-  mode: WarChestMode;
-  active: boolean;
-  children: ReactNode;
-}) {
+function ModeToggleChip({ mode }: { mode: WarChestMode }) {
+  const nextMode = mode === "weekly" ? "all_time" : "weekly";
+  const currentLabel = mode === "weekly" ? "WEEKLY" : "ALL TIME";
+  const nextLabel = nextMode === "weekly" ? "Weekly" : "All Time";
+
   return (
     <Link
-      href={mode === "all_time" ? "/war-chest" : "/war-chest?mode=weekly"}
-      aria-current={active ? "page" : undefined}
-      className={`rounded-full px-3.5 py-1.5 text-[11px] font-semibold tracking-[0.22em] transition ${
-        active
-          ? "bg-amber-300 text-slate-950 shadow-[0_8px_22px_rgba(251,191,36,0.22)]"
-          : "text-slate-400 hover:bg-white/8 hover:text-white"
-      }`}
+      href={nextMode === "all_time" ? "/war-chest" : "/war-chest?mode=weekly"}
+      aria-label={`Switch War Chest to ${nextLabel}`}
+      title={`Switch to ${nextLabel}`}
+      className="group inline-flex items-center gap-2 rounded-full border border-amber-300/22 bg-amber-400/10 px-3 py-1 text-xs text-amber-100 transition hover:border-amber-200/45 hover:bg-amber-300 hover:text-slate-950"
     >
-      {children}
+      <span className="font-semibold tracking-[0.22em]">{currentLabel}</span>
+      <span className="rounded-full border border-current/20 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] opacity-70 transition group-hover:opacity-100">
+        switch
+      </span>
     </Link>
   );
 }

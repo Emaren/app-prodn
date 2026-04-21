@@ -89,7 +89,8 @@ export function TopWoloEarnersTile({
   const tone = getLobbyPresentationTone(themeKey, viewMode);
   const reserve = formatCompactWolo(wolo?.accounts.ecosystembounties?.wolo ?? null);
   const entries = board?.entries ?? [];
-  const statusLabel = entries.length > 0 ? "Weekly" : "Standby";
+  const mode = board?.mode ?? "all_time";
+  const statusLabel = entries.length > 0 ? (mode === "weekly" ? "Weekly" : "All Time") : "Standby";
   const headlineMeta =
     entries.length > 0 ? `${entries.length} earners` : reserve ? `${reserve} reserve` : "4 earners";
   const placeholderCount = Math.max(0, VISIBLE_ROWS - entries.length);
@@ -187,13 +188,8 @@ export function TopWoloEarnersTile({
               {entries.map((entry) => {
 
                 const primaryMetric =
-                  entry.weeklyTakeWolo > 0
-                    ? entry.weeklyTakeWolo
-                    : entry.claimableWolo > 0
-                      ? entry.claimableWolo
-                      : entry.settledWolo;
-
-                const primaryLabel = "Weekly take";
+                  mode === "weekly" ? entry.weeklyTakeWolo : entry.allTimeTakeWolo;
+                const primaryLabel = mode === "weekly" ? "Weekly take" : "All-time take";
 
                 return (
                   <Link
