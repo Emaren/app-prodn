@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import type { KeyboardEvent, MouseEvent, ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 
 import {
   getLobbyPresentationTone,
@@ -10,6 +10,7 @@ import {
   type LobbyViewMode,
 } from "@/components/lobby/lobbyPresentation";
 import type { LobbySnapshot } from "@/lib/lobby";
+import type { LobbyWoloEarnersEntry, LobbyWoloEarnersMode } from "@/lib/lobby";
 
 const WOLO_LOGO_SRC = "/legacy/wolo-logo-transparent.png";
 
@@ -79,6 +80,53 @@ function WoloMarkBadge() {
   );
 }
 
+function getEntryTake(entry: LobbyWoloEarnersEntry, mode: LobbyWoloEarnersMode) {
+  return mode === "weekly" ? entry.weeklyTakeWolo : entry.allTimeTakeWolo;
+}
+
+function compareEntriesForMode(mode: LobbyWoloEarnersMode) {
+  return (a: LobbyWoloEarnersEntry, b: LobbyWoloEarnersEntry) => {
+    const aTake = getEntryTake(a, mode);
+    const bTake = getEntryTake(b, mode);
+    if (bTake !== aTake) {
+      return bTake - aTake;
+    }
+
+    const aOtherTake = mode === "weekly" ? a.allTimeTakeWolo : a.weeklyTakeWolo;
+    const bOtherTake = mode === "weekly" ? b.allTimeTakeWolo : b.weeklyTakeWolo;
+    if (bOtherTake !== aOtherTake) {
+      return bOtherTake - aOtherTake;
+    }
+
+    const wageredDiff = b.wageredWolo - a.wageredWolo;
+    if (wageredDiff !== 0) return wageredDiff;
+
+    const settledDiff = b.settledWolo - a.settledWolo;
+    if (settledDiff !== 0) return settledDiff;
+
+    const claimableDiff = b.claimableWolo - a.claimableWolo;
+    if (claimableDiff !== 0) return claimableDiff;
+
+    const wagerCountDiff = b.wagerCount - a.wagerCount;
+    if (wagerCountDiff !== 0) return wagerCountDiff;
+
+    const claimCountDiff = b.claimCount - a.claimCount;
+    if (claimCountDiff !== 0) return claimCountDiff;
+
+    const aLastActiveAt = a.lastActiveAt ? new Date(a.lastActiveAt).getTime() : 0;
+    const bLastActiveAt = b.lastActiveAt ? new Date(b.lastActiveAt).getTime() : 0;
+    if (bLastActiveAt !== aLastActiveAt) {
+      return bLastActiveAt - aLastActiveAt;
+    }
+
+    return a.name.localeCompare(b.name);
+  };
+}
+
+function modeHref(mode: LobbyWoloEarnersMode) {
+  return mode === "weekly" ? "/war-chest?mode=weekly" : "/war-chest";
+}
+
 export function TopWoloEarnersTile({
   wolo,
   board,
@@ -88,77 +136,60 @@ export function TopWoloEarnersTile({
 }: TopWoloEarnersTileProps) {
   const tone = getLobbyPresentationTone(themeKey, viewMode);
   const reserve = formatCompactWolo(wolo?.accounts.ecosystembounties?.wolo ?? null);
-  const entries = board?.entries ?? [];
-  const mode = board?.mode ?? "all_time";
-  const statusLabel = entries.length > 0 ? (mode === "weekly" ? "Weekly" : "All Time") : "Standby";
+  const [mode, setMode] = useState<LobbyWoloEarnersMode>(board?.mode ?? "all_time");
+  const entries = useMemo(
+    () =>
+      (board?.entries ?? [])
+        .slice()
+        .sort(compareEntriesForMode(mode))
+        .map((entry, index) => ({ ...entry, rank: index + 1 })),
+    [board?.entries, mode]
+  );
+  const statusLabel = mode === "weekly" ? "WEEKLY" : "ALL TIME";
+  const nextModeLabel = mode === "weekly" ? "ALL TIME" : "WEEKLY";
   const headlineMeta =
     entries.length > 0 ? `${entries.length} earners` : reserve ? `${reserve} reserve` : "4 earners";
   const placeholderCount = Math.max(0, VISIBLE_ROWS - entries.length);
-  const destinationHref = "/war-chest";
-
-  function shouldIgnoreTileClick(target: EventTarget | null, currentTarget: EventTarget | null) {
-    if (!(target instanceof Element)) {
-      return false;
-    }
-
-    const interactiveAncestor = target.closest("a,button,input,textarea,select,[role='button']");
-    return Boolean(interactiveAncestor && interactiveAncestor !== currentTarget);
-  }
-
-  function navigateToTileDestination() {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    window.location.assign(destinationHref);
-  }
-
-  function handleTileClick(event: MouseEvent<HTMLElement>) {
-    if (shouldIgnoreTileClick(event.target, event.currentTarget)) {
-      return;
-    }
-
-    navigateToTileDestination();
-  }
-
-  function handleTileKeyDown(event: KeyboardEvent<HTMLElement>) {
-    if (event.key !== "Enter" && event.key !== " ") {
-      return;
-    }
-
-    if (shouldIgnoreTileClick(event.target, event.currentTarget)) {
-      return;
-    }
-
-    event.preventDefault();
-    navigateToTileDestination();
-  }
 
   return (
     <section
-      className={`flex h-full min-h-0 max-h-full cursor-pointer flex-col overflow-hidden rounded-[1.7rem] border p-5 pt-7 transition ${tone.panelShell} ${tone.cardHover} ${className ?? ""}`}
-      role="link"
-      tabIndex={0}
-      aria-label="Open War Chest analytics"
-      onClick={handleTileClick}
-      onKeyDown={handleTileKeyDown}
+      className={`flex h-full min-h-0 max-h-full flex-col overflow-hidden rounded-[1.7rem] border p-5 pt-7 transition ${tone.panelShell} ${className ?? ""}`}
     >
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <div className={`text-xs uppercase tracking-[0.35em] ${tone.accentText}`}>
             Top $WOLO Earners
           </div>
-          <div className="mt-4 flex items-center gap-2.5">
+          <Link
+            href={modeHref(mode)}
+            className="mt-4 flex items-center gap-2.5 rounded-2xl transition hover:text-amber-100"
+            aria-label={`Open War Chest ${statusLabel.toLowerCase()} board`}
+          >
             <WoloMarkBadge />
             <h3 className="text-[1.65rem] font-semibold text-white">WAR CHEST</h3>
-          </div>
+          </Link>
         </div>
 
         <div className="flex flex-col items-end gap-2 text-right">
-          <div className={`inline-flex rounded-full border px-3 py-1 text-xs ${tone.neutralPill}`}>
+          <button
+            type="button"
+            onClick={() => setMode((current) => (current === "weekly" ? "all_time" : "weekly"))}
+            className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs transition ${tone.neutralPill} hover:border-amber-200/45 hover:bg-amber-300 hover:text-slate-950`}
+            aria-label={`Switch War Chest tile to ${nextModeLabel}`}
+            title={`Switch to ${nextModeLabel}`}
+          >
             {statusLabel}
-          </div>
+            <span className="rounded-full border border-current/20 px-1.5 py-0.5 text-[9px] uppercase tracking-[0.16em] opacity-70">
+              switch
+            </span>
+          </button>
           <div className="text-[10px] uppercase tracking-[0.28em] text-slate-400">{headlineMeta}</div>
+          <Link
+            href={modeHref(mode)}
+            className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-slate-300 transition hover:border-amber-200/30 hover:bg-amber-300/10 hover:text-amber-100"
+          >
+            Open board
+          </Link>
         </div>
       </div>
 
