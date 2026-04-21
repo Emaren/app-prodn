@@ -171,8 +171,8 @@ export function TopWoloEarnersTile({
             type="button"
             onClick={() => setMode((current) => (current === "weekly" ? "all_time" : "weekly"))}
             className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs transition ${tone.neutralPill} hover:border-amber-200/45 hover:bg-amber-300 hover:text-slate-950`}
-            aria-label={`Switch War Chest tile to ${nextModeLabel}`}
-            title={`Switch to ${nextModeLabel}`}
+            aria-label={`Show War Chest ${nextModeLabel}`}
+            title={`Show ${nextModeLabel}`}
           >
             {statusLabel}
           </button>

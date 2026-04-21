@@ -566,8 +566,8 @@ function ModeToggleChip({ mode }: { mode: WarChestMode }) {
   return (
     <Link
       href={nextMode === "all_time" ? "/war-chest?mode=all_time" : "/war-chest?mode=weekly"}
-      aria-label={`Switch War Chest to ${nextLabel}`}
-      title={`Switch to ${nextLabel}`}
+      aria-label={`Show War Chest ${nextLabel}`}
+      title={`Show ${nextLabel}`}
       className="group inline-flex items-center gap-2 rounded-full border border-amber-300/22 bg-amber-400/10 px-3 py-1 text-xs text-amber-100 transition hover:border-amber-200/45 hover:bg-amber-300 hover:text-slate-950"
     >
       <span className="font-semibold tracking-[0.22em]">{currentLabel}</span>
