@@ -189,21 +189,21 @@ export function LobbyChat(props: LobbyChatProps) {
                     title={aiEnabled ? "House voices enabled" : "House voices disabled"}
                     className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition ${
                       aiEnabled
-                        ? "border-emerald-300/30 bg-emerald-400/14 text-emerald-100 shadow-[0_0_18px_rgba(52,211,153,0.18)]"
-                        : "border-red-300/24 bg-red-400/10 text-red-100 shadow-[0_0_18px_rgba(248,113,113,0.12)]"
+                        ? "border-emerald-300/24 bg-emerald-400/12 text-emerald-100 shadow-[0_0_14px_rgba(52,211,153,0.14)]"
+                        : "border-red-300/20 bg-red-400/8 text-red-100 shadow-[0_0_14px_rgba(248,113,113,0.10)]"
                     }`}
                   >
                     <svg viewBox="0 0 20 20" className="h-4.5 w-4.5" fill="none" aria-hidden="true">
                       <path
                         d="M10 2.75v5.5"
                         stroke="currentColor"
-                        strokeWidth="1.8"
+                        strokeWidth="1.45"
                         strokeLinecap="round"
                       />
                       <path
                         d="M6.35 5.2a6 6 0 1 0 7.3 0"
                         stroke="currentColor"
-                        strokeWidth="1.8"
+                        strokeWidth="1.45"
                         strokeLinecap="round"
                       />
                     </svg>

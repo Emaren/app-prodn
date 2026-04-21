@@ -123,10 +123,6 @@ function compareEntriesForMode(mode: LobbyWoloEarnersMode) {
   };
 }
 
-function modeHref(mode: LobbyWoloEarnersMode) {
-  return mode === "weekly" ? "/war-chest?mode=weekly" : "/war-chest";
-}
-
 export function TopWoloEarnersTile({
   wolo,
   board,
@@ -136,7 +132,7 @@ export function TopWoloEarnersTile({
 }: TopWoloEarnersTileProps) {
   const tone = getLobbyPresentationTone(themeKey, viewMode);
   const reserve = formatCompactWolo(wolo?.accounts.ecosystembounties?.wolo ?? null);
-  const [mode, setMode] = useState<LobbyWoloEarnersMode>(board?.mode ?? "all_time");
+  const [mode, setMode] = useState<LobbyWoloEarnersMode>(board?.mode ?? "weekly");
   const entries = useMemo(
     () =>
       (board?.entries ?? [])
@@ -161,9 +157,9 @@ export function TopWoloEarnersTile({
             Top $WOLO Earners
           </div>
           <Link
-            href={modeHref(mode)}
+            href="/war-chest"
             className="mt-4 flex items-center gap-2.5 rounded-2xl transition hover:text-amber-100"
-            aria-label={`Open War Chest ${statusLabel.toLowerCase()} board`}
+            aria-label="Open War Chest"
           >
             <WoloMarkBadge />
             <h3 className="text-[1.65rem] font-semibold text-white">WAR CHEST</h3>
@@ -179,17 +175,8 @@ export function TopWoloEarnersTile({
             title={`Switch to ${nextModeLabel}`}
           >
             {statusLabel}
-            <span className="rounded-full border border-current/20 px-1.5 py-0.5 text-[9px] uppercase tracking-[0.16em] opacity-70">
-              switch
-            </span>
           </button>
           <div className="text-[10px] uppercase tracking-[0.28em] text-slate-400">{headlineMeta}</div>
-          <Link
-            href={modeHref(mode)}
-            className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-slate-300 transition hover:border-amber-200/30 hover:bg-amber-300/10 hover:text-amber-100"
-          >
-            Open board
-          </Link>
         </div>
       </div>
 

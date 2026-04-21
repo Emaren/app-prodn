@@ -287,7 +287,7 @@ export function getFallbackLeaderboard(): LobbyLeaderboardSummary {
 export function getFallbackWoloEarnersBoard(): LobbyWoloEarnersBoard {
   const generatedAt = new Date().toISOString();
   return {
-    mode: "all_time",
+    mode: "weekly",
     timeframeDays: 7,
     visibleSlots: 3,
     totalParticipants: 0,

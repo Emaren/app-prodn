@@ -189,7 +189,7 @@ export function outcomeBadgeLabel(
 ) {
   if (isEarlyExitNoResult(parseReason)) return "Under 60s drop";
   if (!winner || winner === "Unknown") return null;
-  if (isFallbackWinnerInference(parseReason)) return "Fallback inference";
+  if (isFallbackWinnerInference(parseReason)) return null;
   if (isProvisionalWinnerInference(parseReason)) return "Provisional inference";
   return isResignationOutcome(parseReason) ? "Win by resignation" : null;
 }

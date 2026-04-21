@@ -215,7 +215,7 @@ export default async function WarChestPage({ searchParams }: WarChestPageProps) 
 
               <div className="mt-5 rounded-[1.4rem] border border-white/8 bg-white/5 p-4 text-sm leading-6 text-slate-300">
                 {leader
-                  ? `${leader.name} leads the ${modeLabel(mode).toLowerCase()} board. Tap the mode chip to switch views; ties break by the other take window, then wagered WOLO, activity, and name.`
+                  ? `${leader.name} leads the ${modeLabel(mode).toLowerCase()} board. Tap the mode chip to compare views; ties break by the other take window, then wagered WOLO, activity, and name.`
                   : "Once the first payouts and slips land, this page turns into the betting pulse of the site."}
               </div>
             </section>
@@ -565,15 +565,12 @@ function ModeToggleChip({ mode }: { mode: WarChestMode }) {
 
   return (
     <Link
-      href={nextMode === "all_time" ? "/war-chest" : "/war-chest?mode=weekly"}
+      href={nextMode === "all_time" ? "/war-chest?mode=all_time" : "/war-chest?mode=weekly"}
       aria-label={`Switch War Chest to ${nextLabel}`}
       title={`Switch to ${nextLabel}`}
       className="group inline-flex items-center gap-2 rounded-full border border-amber-300/22 bg-amber-400/10 px-3 py-1 text-xs text-amber-100 transition hover:border-amber-200/45 hover:bg-amber-300 hover:text-slate-950"
     >
       <span className="font-semibold tracking-[0.22em]">{currentLabel}</span>
-      <span className="rounded-full border border-current/20 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] opacity-70 transition group-hover:opacity-100">
-        switch
-      </span>
     </Link>
   );
 }

@@ -71,7 +71,7 @@ export type WarChestSnapshot = {
 export type WarChestMode = LobbyWoloEarnersMode;
 
 export function normalizeWarChestMode(value: string | null | undefined): WarChestMode {
-  return value === "weekly" ? "weekly" : "all_time";
+  return value === "all_time" ? "all_time" : "weekly";
 }
 
 function resolvePlayerHref(input: {
@@ -105,7 +105,7 @@ export async function loadWarChestSnapshot(
   viewerUid?: string | null,
   options: { mode?: WarChestMode } = {}
 ): Promise<WarChestSnapshot> {
-  const mode = options.mode ?? "all_time";
+  const mode = options.mode ?? "weekly";
   const [wolo, earners, betBoard] = await Promise.all([
     loadWoloDevSnapshot(),
     loadLobbyWoloEarnersBoard(prisma, { mode }),
