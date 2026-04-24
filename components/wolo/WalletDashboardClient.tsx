@@ -30,11 +30,7 @@ const WALLET_ACTIONS = [
 
 function formatWalletBalance(rawBalance?: string) {
   const amount = Number(rawBalance ?? "0");
-
-  if (!Number.isFinite(amount)) {
-    return "0.00";
-  }
-
+  if (!Number.isFinite(amount)) return "0.00";
   return (amount / 1_000_000).toFixed(2);
 }
 
@@ -46,34 +42,54 @@ function formatAddress(address?: string) {
 export default function WalletDashboardClient() {
   const { address, status, connect, disconnect } = useKeplr();
   const { data: rawBalance, isLoading, refetch } = useWoloBalance(address);
+  const [walletNotice, setWalletNotice] = useState<string | null>(null);
   const [walletError, setWalletError] = useState<string | null>(null);
-  const [isConnecting, setIsConnecting] = useState(false);
+  const [isBusy, setIsBusy] = useState(false);
 
   const formattedBalance = useMemo(() => formatWalletBalance(rawBalance), [rawBalance]);
 
   const keplrMissing = status === "not_installed";
   const connected = status === "connected";
+  const connecting = status === "connecting" || isBusy;
 
   const statusLabel =
-    status === "connected"
+    connected
       ? "Connected"
       : status === "connecting"
         ? "Connecting"
-        : status === "not_installed"
+        : keplrMissing
           ? "Keplr not installed"
           : "Not connected";
 
+  const primaryLabel = keplrMissing
+    ? "Install Keplr"
+    : connected
+      ? "Refresh Balance"
+      : connecting
+        ? "Connecting..."
+        : "Connect Keplr";
+
   async function handlePrimaryWalletAction() {
     setWalletError(null);
+    setWalletNotice(null);
 
     if (keplrMissing) {
       window.open(WOLO_KEPLR_DOWNLOAD_URL, "_blank", "noopener,noreferrer");
+      setWalletNotice("Install Keplr, unlock it, then refresh this page.");
       return;
     }
 
     try {
-      setIsConnecting(true);
-      await connect();
+      setIsBusy(true);
+
+      if (!connected) {
+        await connect();
+        setWalletNotice("Wallet connected. Balance should appear once Keplr returns your Wolo address.");
+        return;
+      }
+
+      await refetch();
+      setWalletNotice("Balance refreshed.");
     } catch (error) {
       setWalletError(
         error instanceof Error
@@ -81,24 +97,37 @@ export default function WalletDashboardClient() {
           : "Could not connect Keplr. Check that the extension is installed and unlocked."
       );
     } finally {
-      setIsConnecting(false);
+      setIsBusy(false);
     }
   }
 
-  async function handleRefreshBalance() {
+  async function handleSecondaryRefresh() {
     setWalletError(null);
+    setWalletNotice(null);
 
-    if (!address) {
-      setWalletError("Connect Keplr first, then refresh your WOLO balance.");
+    if (keplrMissing) {
+      window.open(WOLO_KEPLR_DOWNLOAD_URL, "_blank", "noopener,noreferrer");
+      setWalletNotice("Install Keplr first, then connect your WoloChain wallet.");
       return;
     }
 
     try {
+      setIsBusy(true);
+
+      if (!connected) {
+        await connect();
+        setWalletNotice("Wallet connected. Your balance will load automatically.");
+        return;
+      }
+
       await refetch();
+      setWalletNotice("Balance refreshed.");
     } catch (error) {
       setWalletError(
         error instanceof Error ? error.message : "Could not refresh WOLO balance."
       );
+    } finally {
+      setIsBusy(false);
     }
   }
 
@@ -123,13 +152,13 @@ export default function WalletDashboardClient() {
 
             {keplrMissing ? (
               <p className="max-w-2xl text-sm leading-6 text-slate-300">
-                Keplr is the wallet AoE2HDBets uses for WoloChain. Install it first,
-                refresh this page, then connect your wallet.
+                Keplr is the wallet AoE2HDBets uses for WoloChain. Install it,
+                unlock it, refresh this page, then connect.
               </p>
             ) : !connected ? (
               <p className="max-w-2xl text-sm leading-6 text-slate-300">
-                Connect Keplr to verify your WoloChain address and view your WOLO
-                balance.
+                Keplr is available. Connect once and AoE2HDBets will show your
+                WoloChain address and WOLO balance.
               </p>
             ) : (
               <p className="max-w-2xl text-sm leading-6 text-emerald-100">
@@ -145,37 +174,43 @@ export default function WalletDashboardClient() {
                 void handlePrimaryWalletAction();
               }}
               className="rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-70"
-              disabled={isConnecting || status === "connecting"}
+              disabled={connecting}
             >
-              {keplrMissing
-                ? "Install Keplr"
-                : connected
-                  ? "Reconnect Keplr"
-                  : isConnecting || status === "connecting"
-                    ? "Connecting..."
-                    : "Connect Keplr"}
+              {primaryLabel}
             </button>
 
             {connected ? (
               <button
                 type="button"
-                onClick={disconnect}
+                onClick={() => {
+                  setWalletError(null);
+                  setWalletNotice(null);
+                  disconnect();
+                }}
                 className="rounded-full border border-white/12 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition hover:border-white/25 hover:bg-white/10"
               >
                 Disconnect
               </button>
             ) : (
-              <a
-                href={WOLO_KEPLR_DOWNLOAD_URL}
-                target="_blank"
-                rel="noreferrer"
-                className="rounded-full border border-white/12 bg-white/5 px-5 py-3 text-center text-sm font-semibold text-white transition hover:border-white/25 hover:bg-white/10"
+              <button
+                type="button"
+                onClick={() => {
+                  void handleSecondaryRefresh();
+                }}
+                className="rounded-full border border-white/12 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition hover:border-white/25 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-70"
+                disabled={connecting}
               >
-                Get Keplr Wallet
-              </a>
+                {keplrMissing ? "Install Help" : "Connect + Load Balance"}
+              </button>
             )}
           </div>
         </div>
+
+        {walletNotice ? (
+          <div className="mt-5 rounded-2xl border border-emerald-400/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+            {walletNotice}
+          </div>
+        ) : null}
 
         {walletError ? (
           <div className="mt-5 rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
@@ -198,11 +233,12 @@ export default function WalletDashboardClient() {
           <button
             type="button"
             onClick={() => {
-              void handleRefreshBalance();
+              void handleSecondaryRefresh();
             }}
-            className="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-5 py-3 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-400/15"
+            className="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-5 py-3 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-400/15 disabled:cursor-not-allowed disabled:opacity-70"
+            disabled={connecting}
           >
-            Refresh Balance
+            {connected ? "Refresh Balance" : keplrMissing ? "Install Keplr" : "Connect + Load Balance"}
           </button>
         </div>
       </section>
@@ -227,8 +263,8 @@ export default function WalletDashboardClient() {
           />
           <OnboardingStep
             number="3"
-            title="Use WOLO"
-            body="Check balance, claim rewards, and use WOLO around AoE2HDBets."
+            title="See Balance"
+            body="Your WoloChain address and WOLO balance confirm success."
             active={connected}
           />
         </div>
