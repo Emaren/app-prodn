@@ -1,20 +1,36 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import Link from "next/link";
 
 import { useKeplr } from "@/hooks/use-keplr";
 import { useWoloBalance } from "@/hooks/useWoloBalance";
+import { WOLO_KEPLR_DOWNLOAD_URL } from "@/lib/woloChain";
 
 const WALLET_ACTIONS = [
-  { label: "Stake Tokens", className: "bg-emerald-700 hover:bg-emerald-600" },
-  { label: "Claim Rewards", className: "bg-amber-700 hover:bg-amber-600" },
-  { label: "View Transaction History", className: "bg-purple-700 hover:bg-purple-600" },
-  { label: "Manage Keys", className: "bg-pink-700 hover:bg-pink-600" },
-  { label: "Refresh Balance", className: "bg-indigo-700 hover:bg-indigo-600" },
+  {
+    label: "Open WoloChain",
+    href: "/wolo",
+    description: "View supply, node status, faucet, and chain context.",
+    className: "border-amber-300/20 bg-amber-400/10 text-amber-100 hover:bg-amber-400/15",
+  },
+  {
+    label: "Download Watcher",
+    href: "/download",
+    description: "Install the replay watcher before live games.",
+    className: "border-sky-300/20 bg-sky-400/10 text-sky-100 hover:bg-sky-400/15",
+  },
+  {
+    label: "Open Bets",
+    href: "/bets",
+    description: "See active markets and match activity.",
+    className: "border-emerald-300/20 bg-emerald-400/10 text-emerald-100 hover:bg-emerald-400/15",
+  },
 ];
 
 function formatWalletBalance(rawBalance?: string) {
   const amount = Number(rawBalance ?? "0");
+
   if (!Number.isFinite(amount)) {
     return "0.00";
   }
@@ -22,57 +38,248 @@ function formatWalletBalance(rawBalance?: string) {
   return (amount / 1_000_000).toFixed(2);
 }
 
+function formatAddress(address?: string) {
+  if (!address) return "Not connected";
+  return `${address.slice(0, 12)}…${address.slice(-8)}`;
+}
+
 export default function WalletDashboardClient() {
-  const { address, status, connect } = useKeplr();
-  const { data: rawBalance, isLoading } = useWoloBalance(address);
+  const { address, status, connect, disconnect } = useKeplr();
+  const { data: rawBalance, isLoading, refetch } = useWoloBalance(address);
+  const [walletError, setWalletError] = useState<string | null>(null);
+  const [isConnecting, setIsConnecting] = useState(false);
+
   const formattedBalance = useMemo(() => formatWalletBalance(rawBalance), [rawBalance]);
+
+  const keplrMissing = status === "not_installed";
+  const connected = status === "connected";
+
+  const statusLabel =
+    status === "connected"
+      ? "Connected"
+      : status === "connecting"
+        ? "Connecting"
+        : status === "not_installed"
+          ? "Keplr not installed"
+          : "Not connected";
+
+  async function handlePrimaryWalletAction() {
+    setWalletError(null);
+
+    if (keplrMissing) {
+      window.open(WOLO_KEPLR_DOWNLOAD_URL, "_blank", "noopener,noreferrer");
+      return;
+    }
+
+    try {
+      setIsConnecting(true);
+      await connect();
+    } catch (error) {
+      setWalletError(
+        error instanceof Error
+          ? error.message
+          : "Could not connect Keplr. Check that the extension is installed and unlocked."
+      );
+    } finally {
+      setIsConnecting(false);
+    }
+  }
+
+  async function handleRefreshBalance() {
+    setWalletError(null);
+
+    if (!address) {
+      setWalletError("Connect Keplr first, then refresh your WOLO balance.");
+      return;
+    }
+
+    try {
+      await refetch();
+    } catch (error) {
+      setWalletError(
+        error instanceof Error ? error.message : "Could not refresh WOLO balance."
+      );
+    }
+  }
 
   return (
     <div className="space-y-6">
-      <section className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-[0_24px_80px_rgba(2,6,23,0.35)]">
-        <div className="space-y-3">
-          <p className="text-xs uppercase tracking-[0.35em] text-amber-200/70">Wallet Status</p>
-          <div className="space-y-2 text-sm text-slate-300">
-            <p>
-              <strong className="text-white">Status:</strong> {status}
+      <section className="overflow-hidden rounded-3xl border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.13),transparent_30%),linear-gradient(135deg,rgba(15,23,42,0.98),rgba(8,13,26,0.98))] p-5 shadow-[0_24px_80px_rgba(2,6,23,0.35)] sm:p-6">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+          <div className="space-y-3">
+            <p className="text-xs uppercase tracking-[0.35em] text-amber-200/70">
+              Wallet Status
             </p>
-            <p className="break-all">
-              <strong className="text-white">Address:</strong> {address || "Not connected"}
-            </p>
+
+            <div className="space-y-2 text-sm text-slate-300">
+              <p>
+                <strong className="text-white">Status:</strong> {statusLabel}
+              </p>
+              <p className="break-all">
+                <strong className="text-white">Address:</strong>{" "}
+                {connected ? formatAddress(address) : "Not connected"}
+              </p>
+            </div>
+
+            {keplrMissing ? (
+              <p className="max-w-2xl text-sm leading-6 text-slate-300">
+                Keplr is the wallet AoE2HDBets uses for WoloChain. Install it first,
+                refresh this page, then connect your wallet.
+              </p>
+            ) : !connected ? (
+              <p className="max-w-2xl text-sm leading-6 text-slate-300">
+                Connect Keplr to verify your WoloChain address and view your WOLO
+                balance.
+              </p>
+            ) : (
+              <p className="max-w-2xl text-sm leading-6 text-emerald-100">
+                Wallet connected. Your WOLO balance is live.
+              </p>
+            )}
+          </div>
+
+          <div className="grid min-w-full gap-3 sm:min-w-[18rem]">
+            <button
+              type="button"
+              onClick={() => {
+                void handlePrimaryWalletAction();
+              }}
+              className="rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-70"
+              disabled={isConnecting || status === "connecting"}
+            >
+              {keplrMissing
+                ? "Install Keplr"
+                : connected
+                  ? "Reconnect Keplr"
+                  : isConnecting || status === "connecting"
+                    ? "Connecting..."
+                    : "Connect Keplr"}
+            </button>
+
+            {connected ? (
+              <button
+                type="button"
+                onClick={disconnect}
+                className="rounded-full border border-white/12 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition hover:border-white/25 hover:bg-white/10"
+              >
+                Disconnect
+              </button>
+            ) : (
+              <a
+                href={WOLO_KEPLR_DOWNLOAD_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="rounded-full border border-white/12 bg-white/5 px-5 py-3 text-center text-sm font-semibold text-white transition hover:border-white/25 hover:bg-white/10"
+              >
+                Get Keplr Wallet
+              </a>
+            )}
           </div>
         </div>
 
-        {!address ? (
-          <button
-            type="button"
-            onClick={() => {
-              void connect();
-            }}
-            className="mt-5 rounded-full bg-blue-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-600"
-          >
-            Connect Keplr
-          </button>
+        {walletError ? (
+          <div className="mt-5 rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+            {walletError}
+          </div>
         ) : null}
       </section>
 
       <section className="rounded-3xl border border-white/10 bg-slate-900/70 p-5 shadow-[0_24px_80px_rgba(2,6,23,0.35)]">
-        <p className="text-xs uppercase tracking-[0.35em] text-emerald-200/70">Balance</p>
-        <p className="mt-3 text-3xl font-semibold tracking-tight text-white">
-          {isLoading ? "Loading..." : `${formattedBalance} WOLO`}
-        </p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-[0.35em] text-emerald-200/70">
+              Balance
+            </p>
+            <p className="mt-3 text-3xl font-semibold tracking-tight text-white">
+              {isLoading ? "Loading..." : `${formattedBalance} WOLO`}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              void handleRefreshBalance();
+            }}
+            className="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-5 py-3 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-400/15"
+          >
+            Refresh Balance
+          </button>
+        </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <section className="rounded-3xl border border-white/10 bg-white/[0.035] p-5">
+        <p className="text-xs uppercase tracking-[0.35em] text-amber-200/70">
+          Start Here
+        </p>
+
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          <OnboardingStep
+            number="1"
+            title="Install Keplr"
+            body="Add the wallet extension and unlock it in your browser."
+            active={keplrMissing}
+          />
+          <OnboardingStep
+            number="2"
+            title="Connect Wallet"
+            body="Approve WoloChain when Keplr asks for permission."
+            active={!keplrMissing && !connected}
+          />
+          <OnboardingStep
+            number="3"
+            title="Use WOLO"
+            body="Check balance, claim rewards, and use WOLO around AoE2HDBets."
+            active={connected}
+          />
+        </div>
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-3">
         {WALLET_ACTIONS.map((action) => (
-          <button
+          <Link
             key={action.label}
-            type="button"
-            className={`w-full rounded-3xl px-5 py-5 text-left text-sm font-semibold text-white shadow-lg transition ${action.className}`}
+            href={action.href}
+            className={`rounded-3xl border px-5 py-5 transition ${action.className}`}
           >
-            {action.label}
-          </button>
+            <div className="text-sm font-semibold">{action.label}</div>
+            <p className="mt-2 text-sm leading-6 text-slate-300">{action.description}</p>
+          </Link>
         ))}
       </section>
+    </div>
+  );
+}
+
+function OnboardingStep({
+  number,
+  title,
+  body,
+  active,
+}: {
+  number: string;
+  title: string;
+  body: string;
+  active: boolean;
+}) {
+  return (
+    <div
+      className={`rounded-2xl border p-4 ${
+        active
+          ? "border-amber-300/30 bg-amber-300/10"
+          : "border-white/10 bg-white/[0.035]"
+      }`}
+    >
+      <div className="flex items-center gap-3">
+        <div
+          className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold ${
+            active ? "bg-amber-300 text-slate-950" : "bg-white/10 text-white"
+          }`}
+        >
+          {number}
+        </div>
+        <div className="font-semibold text-white">{title}</div>
+      </div>
+      <p className="mt-3 text-sm leading-6 text-slate-300">{body}</p>
     </div>
   );
 }
