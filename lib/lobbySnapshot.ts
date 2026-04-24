@@ -1,4 +1,5 @@
 import { PrismaClient } from "@/lib/generated/prisma";
+import { ensureBetMarkets } from "@/lib/bets";
 import { getEmptyAoe2HdPulseSnapshot, loadAoe2HdPulseSnapshot } from "@/lib/aoe2HdPulse";
 import { getBackendUpstreamBase } from "@/lib/backendUpstream";
 import { getFeaturedTournament, getLobbyMessages } from "@/lib/communityStore";
@@ -79,6 +80,11 @@ export async function loadLobbySnapshot(
 
   try {
     await reconcileTournamentMatchProofs(prisma);
+    try {
+      await ensureBetMarkets(prisma);
+    } catch (error) {
+      console.warn("Failed to ensure bet markets before lobby WOLO earners:", error);
+    }
     const tournament = await getFeaturedTournament(prisma, viewerUid);
 
     const [tournamentMessages, onlineUsers, recentMatches, leaderboard, woloEarners, aoe2hdPulse] = await Promise.all([

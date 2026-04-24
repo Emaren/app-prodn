@@ -106,10 +106,14 @@ export async function loadWarChestSnapshot(
   options: { mode?: WarChestMode } = {}
 ): Promise<WarChestSnapshot> {
   const mode = options.mode ?? "weekly";
-  const [wolo, earners, betBoard] = await Promise.all([
+
+  // Important: loadBetBoardSnapshot() runs bet-market reconciliation and creates
+  // pending WOLO claim rows for newly settled markets. Do this before loading
+  // the earners board so War Chest does not race against its own claim creation.
+  const betBoard = await loadBetBoardSnapshot(prisma, viewerUid);
+  const [wolo, earners] = await Promise.all([
     loadWoloDevSnapshot(),
     loadLobbyWoloEarnersBoard(prisma, { mode }),
-    loadBetBoardSnapshot(prisma, viewerUid),
   ]);
 
   const weekStartsAt = new Date(earners.weekStartsAt);
