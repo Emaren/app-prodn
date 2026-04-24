@@ -191,18 +191,7 @@ export default function WalletDashboardClient() {
               >
                 Disconnect
               </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => {
-                  void handleSecondaryRefresh();
-                }}
-                className="rounded-full border border-white/12 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition hover:border-white/25 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-70"
-                disabled={connecting}
-              >
-                {keplrMissing ? "Install Help" : "Connect + Load Balance"}
-              </button>
-            )}
+            ) : null}
           </div>
         </div>
 
