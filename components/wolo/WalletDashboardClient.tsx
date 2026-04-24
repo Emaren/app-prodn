@@ -50,13 +50,16 @@ export default function WalletDashboardClient() {
 
   const keplrMissing = status === "not_installed";
   const connected = status === "connected";
-  const connecting = status === "connecting" || isBusy;
+  const checking = status === "checking";
+  const connecting = status === "connecting" || checking || isBusy;
 
   const statusLabel =
     connected
       ? "Connected"
-      : status === "connecting"
-        ? "Connecting"
+      : status === "checking"
+        ? "Checking wallet"
+        : status === "connecting"
+          ? "Connecting"
         : keplrMissing
           ? "Keplr not installed"
           : "Not connected";
@@ -95,36 +98,6 @@ export default function WalletDashboardClient() {
         error instanceof Error
           ? error.message
           : "Could not connect Keplr. Check that the extension is installed and unlocked."
-      );
-    } finally {
-      setIsBusy(false);
-    }
-  }
-
-  async function handleSecondaryRefresh() {
-    setWalletError(null);
-    setWalletNotice(null);
-
-    if (keplrMissing) {
-      window.open(WOLO_KEPLR_DOWNLOAD_URL, "_blank", "noopener,noreferrer");
-      setWalletNotice("Install Keplr first, then connect your WoloChain wallet.");
-      return;
-    }
-
-    try {
-      setIsBusy(true);
-
-      if (!connected) {
-        await connect();
-        setWalletNotice("Wallet connected. Your balance will load automatically.");
-        return;
-      }
-
-      await refetch();
-      setWalletNotice("Balance refreshed.");
-    } catch (error) {
-      setWalletError(
-        error instanceof Error ? error.message : "Could not refresh WOLO balance."
       );
     } finally {
       setIsBusy(false);
@@ -219,16 +192,6 @@ export default function WalletDashboardClient() {
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={() => {
-              void handleSecondaryRefresh();
-            }}
-            className="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-5 py-3 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-400/15 disabled:cursor-not-allowed disabled:opacity-70"
-            disabled={connecting}
-          >
-            {connected ? "Refresh Balance" : keplrMissing ? "Install Keplr" : "Connect + Load Balance"}
-          </button>
         </div>
       </section>
 

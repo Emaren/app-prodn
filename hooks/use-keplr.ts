@@ -23,7 +23,8 @@ declare global {
   }
 }
 
-type Status = "not_installed" | "disconnected" | "connecting" | "connected";
+type Status = "not_installed" | "disconnected" | "checking" | "connecting" | "connected";
+
 type WalletSnapshot = {
   status: Status;
   address: string;
@@ -36,9 +37,19 @@ let snapshot: WalletSnapshot = {
   status: "disconnected",
   address: "",
 };
+
 let storeInitialized = false;
 let restorePromise: Promise<string | null> | null = null;
 let linkedWalletAddress = "";
+
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => {
+      window.setTimeout(() => reject(new Error(message)), ms);
+    }),
+  ]);
+}
 
 async function persistWalletLink(address: string) {
   const normalized = address.trim();
@@ -66,7 +77,7 @@ async function persistWalletLink(address: string) {
   }
 }
 
-function getAvailabilitySnapshot() {
+function getAvailabilitySnapshot(): WalletSnapshot {
   if (typeof window === "undefined") {
     return snapshot;
   }
@@ -74,7 +85,7 @@ function getAvailabilitySnapshot() {
   return {
     status: window.keplr ? "disconnected" : "not_installed",
     address: "",
-  } satisfies WalletSnapshot;
+  };
 }
 
 function readStoredAddress() {
@@ -95,7 +106,9 @@ function persistSnapshot(next: WalletSnapshot) {
     return;
   }
 
-  window.localStorage.removeItem(STORAGE_KEY);
+  if (next.status === "disconnected" || next.status === "not_installed") {
+    window.localStorage.removeItem(STORAGE_KEY);
+  }
 }
 
 function publishSnapshot(next: WalletSnapshot) {
@@ -104,20 +117,30 @@ function publishSnapshot(next: WalletSnapshot) {
   listeners.forEach((listener) => listener(snapshot));
 }
 
-async function resolveKeplrAddress(options?: { suggestChain?: boolean }) {
+async function resolveKeplrAddress(options?: { suggestChain?: boolean; timeoutMs?: number }) {
   if (typeof window === "undefined" || !window.keplr) {
     throw new Error("Keplr extension not found.");
   }
 
+  const timeoutMs = options?.timeoutMs ?? 30_000;
+
   if (options?.suggestChain && window.keplr.experimentalSuggestChain) {
     try {
-      await window.keplr.experimentalSuggestChain(woloChainConfig);
+      await withTimeout(
+        window.keplr.experimentalSuggestChain(woloChainConfig),
+        timeoutMs,
+        "Keplr did not respond while adding WoloChain. Unlock Keplr and try again."
+      );
     } catch (error) {
       console.warn("WoloChain suggest failed or already exists:", error);
     }
   }
 
-  await window.keplr.enable(woloChainConfig.chainId);
+  await withTimeout(
+    window.keplr.enable(woloChainConfig.chainId),
+    timeoutMs,
+    "Keplr did not respond. Unlock Keplr and try again."
+  );
 
   let nextAddress = "";
 
@@ -141,6 +164,7 @@ async function resolveKeplrAddress(options?: { suggestChain?: boolean }) {
 
 async function restoreStoredConnection() {
   const storedAddress = readStoredAddress();
+
   if (!storedAddress) {
     publishSnapshot(getAvailabilitySnapshot());
     return null;
@@ -151,16 +175,17 @@ async function restoreStoredConnection() {
     return null;
   }
 
-  publishSnapshot({ status: "connecting", address: storedAddress });
+  publishSnapshot({ status: "checking", address: storedAddress });
 
   try {
-    const nextAddress = await resolveKeplrAddress();
+    const nextAddress = await resolveKeplrAddress({ timeoutMs: 8_000 });
     publishSnapshot({ status: "connected", address: nextAddress });
     void persistWalletLink(nextAddress);
     return nextAddress;
   } catch (error) {
     console.warn("Stored Keplr session could not be restored:", error);
     publishSnapshot(getAvailabilitySnapshot());
+    restorePromise = null;
     return null;
   }
 }
@@ -173,9 +198,10 @@ function initializeKeplrStore() {
   storeInitialized = true;
 
   const storedAddress = readStoredAddress();
+
   if (window.keplr) {
     snapshot = storedAddress
-      ? { status: "connected", address: storedAddress }
+      ? { status: "checking", address: storedAddress }
       : { status: "disconnected", address: "" };
   } else {
     snapshot = { status: "not_installed", address: "" };
@@ -223,7 +249,7 @@ export function useKeplr() {
     publishSnapshot({ status: "connecting", address: snapshot.address });
 
     try {
-      const nextAddress = await resolveKeplrAddress({ suggestChain: true });
+      const nextAddress = await resolveKeplrAddress({ suggestChain: true, timeoutMs: 45_000 });
       publishSnapshot({ status: "connected", address: nextAddress });
       void persistWalletLink(nextAddress);
       restorePromise = Promise.resolve(nextAddress);

@@ -157,5 +157,5 @@ export const woloChainConfig = {
       },
     },
   ],
-  features: ["stargate", "ibc-transfer"],
+  features: ["ibc-transfer"],
 } as const;
