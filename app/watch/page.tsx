@@ -16,6 +16,7 @@ type WatchStreamSummary = {
   provider: string;
   label: string;
   url: string;
+  embedId: string | null;
   isPrimary: boolean;
 };
 
@@ -212,6 +213,10 @@ async function loadWatchIndexSnapshot() {
             provider: primaryStream.provider,
             label: primaryStream.label,
             url: primaryStream.url,
+            embedId:
+              primaryStream.embedId ||
+              readTwitchChannel(primaryStream.url) ||
+              null,
             isPrimary: primaryStream.isPrimary,
           }
         : null,
@@ -253,6 +258,39 @@ function formatBattleDate(value: Date) {
   }).format(value);
 }
 
+function readTwitchChannel(url: string) {
+  try {
+    const parsed = new URL(url);
+    if (!parsed.hostname.includes("twitch.tv")) {
+      return null;
+    }
+
+    const channel = parsed.pathname.split("/").filter(Boolean)[0];
+    return channel || null;
+  } catch {
+    return null;
+  }
+}
+
+function buildTwitchPlayerUrl(channel: string) {
+  const params = new URLSearchParams({
+    channel,
+    muted: "true",
+    autoplay: "true",
+  });
+
+  for (const parent of [
+    "aoe2hdbets.com",
+    "www.aoe2hdbets.com",
+    "localhost",
+    "127.0.0.1",
+  ]) {
+    params.append("parent", parent);
+  }
+
+  return `https://player.twitch.tv/?${params.toString()}`;
+}
+
 function HeroScreen({
   match,
   advanced,
@@ -263,7 +301,7 @@ function HeroScreen({
   return (
     <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-black/45 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
       <div className="relative aspect-video min-h-[22rem] overflow-hidden bg-black sm:min-h-[30rem]">
-        <PreviewMotion large />
+        <PreviewMotion match={match} large />
 
         <div className="absolute left-4 top-4 flex flex-wrap gap-2">
           <Pill tone={match.mode === "live" ? "red" : "emerald"}>
@@ -326,7 +364,7 @@ function MiniScreen({ match }: { match: WatchMatchSummary }) {
       className="group relative block overflow-hidden rounded-[1.35rem] border border-white/10 bg-black/50 shadow-[0_18px_60px_rgba(0,0,0,0.24)] transition hover:-translate-y-0.5 hover:border-sky-300/35"
     >
       <div className="aspect-video">
-        <PreviewMotion />
+        <PreviewMotion match={match} />
       </div>
       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/70 to-transparent p-3">
         <div className="truncate text-sm font-semibold text-white group-hover:text-sky-100">
@@ -380,7 +418,7 @@ function ArchiveCard({ match }: { match: WatchMatchSummary }) {
       className="group block overflow-hidden rounded-[1.6rem] border border-white/10 bg-white/[0.035] transition hover:-translate-y-0.5 hover:border-sky-300/35 hover:bg-sky-400/[0.06]"
     >
       <div className="relative aspect-video overflow-hidden bg-black">
-        <PreviewMotion />
+        <PreviewMotion match={match} />
         <div className="absolute left-3 top-3 flex flex-wrap gap-2">
           <Pill tone="emerald">Archive</Pill>
           <Pill tone={match.hasFeed ? "sky" : "amber"}>{match.hasFeed ? "Feed" : "No feed"}</Pill>
@@ -443,43 +481,60 @@ function MatchCard({ match, hot = false }: { match: WatchMatchSummary; hot?: boo
   );
 }
 
-function PreviewMotion({ large = false }: { large?: boolean }) {
-  const screenImage = "url('/watch/aoe2hd-screen.svg')";
+function PreviewMotion({
+  match,
+  large = false,
+}: {
+  match?: WatchMatchSummary;
+  large?: boolean;
+}) {
+  const twitchChannel =
+    match?.primaryStream?.provider === "twitch"
+      ? match.primaryStream.embedId || readTwitchChannel(match.primaryStream.url)
+      : null;
+
+  const iframeSrc = twitchChannel ? buildTwitchPlayerUrl(twitchChannel) : null;
+  const fallbackImage = "url('/watch/aoe2hd-screen.svg')";
 
   return (
     <div className="absolute inset-0 overflow-hidden bg-black">
+      {iframeSrc ? (
+        <iframe
+          title={`${match?.title || "AoE2HD"} live preview`}
+          src={iframeSrc}
+          loading={large ? "eager" : "lazy"}
+          allow="autoplay; fullscreen; picture-in-picture"
+          allowFullScreen
+          className="absolute inset-0 h-full w-full border-0 bg-black"
+        />
+      ) : (
+        <div
+          className={`absolute inset-0 bg-cover bg-center opacity-95 transition duration-700 ${
+            large ? "scale-[1.01]" : "scale-[1.04] group-hover:scale-[1.08]"
+          }`}
+          style={{ backgroundImage: fallbackImage }}
+        />
+      )}
+
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[length:48px_48px] opacity-20" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.05)_48%,rgba(0,0,0,0.58)_100%)]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-black/65 to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/82 via-black/36 to-transparent" />
+
       <div
-        className={`absolute inset-0 bg-cover bg-center opacity-95 transition duration-700 ${
-          large ? "scale-[1.01]" : "scale-[1.04] group-hover:scale-[1.08]"
+        className={`pointer-events-none absolute left-3 top-3 rounded-full border border-white/15 bg-black/45 px-2.5 py-1 font-semibold text-white ${
+          large ? "text-xs" : "text-[10px]"
         }`}
-        style={{ backgroundImage: screenImage }}
-      />
-
-      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.045)_1px,transparent_1px),linear-gradient(rgba(255,255,255,0.035)_1px,transparent_1px)] bg-[length:48px_48px] opacity-35" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.12)_52%,rgba(0,0,0,0.68)_100%)]" />
-      <div className="absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-black/70 to-transparent" />
-      <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/82 via-black/42 to-transparent" />
-
-      <div className={`absolute rounded-full bg-sky-200 shadow-[0_0_18px_rgba(125,211,252,0.95)] ${
-        large ? "left-[30%] top-[58%] h-2.5 w-2.5" : "left-[30%] top-[56%] h-1.5 w-1.5"
-      } animate-pulse`} />
-      <div className={`absolute rounded-full bg-red-300 shadow-[0_0_18px_rgba(252,165,165,0.95)] ${
-        large ? "right-[31%] top-[52%] h-2.5 w-2.5" : "right-[30%] top-[51%] h-1.5 w-1.5"
-      } animate-pulse`} />
-      <div className={`absolute rounded-full bg-amber-200 shadow-[0_0_18px_rgba(253,230,138,0.95)] ${
-        large ? "left-[49%] top-[66%] h-2.5 w-2.5" : "left-[50%] top-[64%] h-1.5 w-1.5"
-      } animate-ping`} />
-
-      <div className={`absolute left-3 top-3 rounded-full border border-white/15 bg-black/45 px-2.5 py-1 font-semibold text-white ${
-        large ? "text-xs" : "text-[10px]"
-      }`}>
+      >
         AOE2HD
       </div>
 
-      <div className={`absolute right-3 top-3 rounded-full border border-red-300/25 bg-red-500/20 px-2.5 py-1 font-semibold text-red-100 ${
-        large ? "text-xs" : "text-[10px]"
-      }`}>
-        BEST OF
+      <div
+        className={`pointer-events-none absolute right-3 top-3 rounded-full border border-red-300/25 bg-red-500/20 px-2.5 py-1 font-semibold text-red-100 ${
+          large ? "text-xs" : "text-[10px]"
+        }`}
+      >
+        LIVE
       </div>
     </div>
   );
