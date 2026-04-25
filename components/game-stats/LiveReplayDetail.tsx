@@ -288,10 +288,10 @@ export default function LiveReplayDetail({
             {isBattleArchive ? "Back To Battle Board" : "Back To Live Games"}
           </Link>
           <Link
-            href="/game-stats"
-            className="w-full rounded-full border border-white/15 px-5 py-3 text-center text-sm text-white/85 transition hover:border-white/30 hover:text-white sm:w-auto"
+            href={`/watch/${encodeURIComponent(snapshot.sessionKey)}`}
+            className="w-full rounded-full border border-cyan-300/30 bg-cyan-400/10 px-5 py-3 text-center text-sm text-cyan-100 transition hover:bg-cyan-400/15 sm:w-auto"
           >
-            Parser Lab
+            Watch Game
           </Link>
           <Link
             href="/lobby"
