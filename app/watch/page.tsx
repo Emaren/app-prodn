@@ -1,4 +1,8 @@
 import Link from "next/link";
+import { promises as fs } from "node:fs";
+import path from "node:path";
+
+import WatchPreviewScreen from "@/components/watch/WatchPreviewScreen";
 
 import {
   displayPlayerName,
@@ -20,6 +24,13 @@ type WatchStreamSummary = {
   isPrimary: boolean;
 };
 
+type WatchMediaEntry = {
+  recordingUrl?: string;
+  previewUrl?: string;
+  thumbnailUrl?: string;
+  bestOfUrl?: string;
+};
+
 type WatchMatchSummary = {
   id: number;
   sessionKey: string;
@@ -34,6 +45,10 @@ type WatchMatchSummary = {
   hasFeed: boolean;
   primaryStream: WatchStreamSummary | null;
   streamCount: number;
+  recordingUrl: string | null;
+  previewUrl: string | null;
+  thumbnailUrl: string | null;
+  bestOfUrl: string | null;
 };
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -163,6 +178,8 @@ async function loadWatchIndexSnapshot() {
   const games = Array.from(latestBySession.values()).slice(0, 36);
   const sessionKeys = games.map(readSessionKey).filter(Boolean);
 
+  const mediaRegistry = await loadWatchMediaRegistry();
+
   const streams = sessionKeys.length
     ? await prisma.gameWatchStream.findMany({
         where: {
@@ -192,6 +209,7 @@ async function loadWatchIndexSnapshot() {
     const attachedStreams = streamsBySession.get(sessionKey) || [];
     const primaryStream = attachedStreams.find((stream) => stream.isPrimary) || attachedStreams[0] || null;
     const isFinal = Boolean(game.is_final);
+    const media = mediaRegistry[sessionKey] || mediaRegistry[String(game.id)] || {};
 
     return {
       id: game.id,
@@ -221,6 +239,10 @@ async function loadWatchIndexSnapshot() {
           }
         : null,
       streamCount: attachedStreams.length,
+      recordingUrl: media.recordingUrl || null,
+      previewUrl: media.previewUrl || null,
+      thumbnailUrl: media.thumbnailUrl || null,
+      bestOfUrl: media.bestOfUrl || null,
     };
   });
 
@@ -235,6 +257,25 @@ async function loadWatchIndexSnapshot() {
     matches,
     totalStreams: streams.length,
   };
+}
+
+async function loadWatchMediaRegistry(): Promise<Record<string, WatchMediaEntry>> {
+  const registryPath =
+    process.env.WATCH_MEDIA_REGISTRY_PATH ||
+    path.join(process.cwd(), "public/watch/watch-media.json");
+
+  try {
+    const raw = await fs.readFile(registryPath, "utf8");
+    const parsed = JSON.parse(raw);
+
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return {};
+    }
+
+    return parsed as Record<string, WatchMediaEntry>;
+  } catch {
+    return {};
+  }
 }
 
 function readSearchParam(value: string | string[] | undefined) {
@@ -493,50 +534,19 @@ function PreviewMotion({
       ? match.primaryStream.embedId || readTwitchChannel(match.primaryStream.url)
       : null;
 
-  const iframeSrc = twitchChannel ? buildTwitchPlayerUrl(twitchChannel) : null;
-  const fallbackImage = "url('/watch/aoe2hd-screen.svg')";
+  const liveEmbedUrl = twitchChannel ? buildTwitchPlayerUrl(twitchChannel) : null;
+  const videoUrl = match?.bestOfUrl || match?.previewUrl || match?.recordingUrl || null;
 
   return (
-    <div className="absolute inset-0 overflow-hidden bg-black">
-      {iframeSrc ? (
-        <iframe
-          title={`${match?.title || "AoE2HD"} live preview`}
-          src={iframeSrc}
-          loading={large ? "eager" : "lazy"}
-          allow="autoplay; fullscreen; picture-in-picture"
-          allowFullScreen
-          className="absolute inset-0 h-full w-full border-0 bg-black"
-        />
-      ) : (
-        <div
-          className={`absolute inset-0 bg-cover bg-center opacity-95 transition duration-700 ${
-            large ? "scale-[1.01]" : "scale-[1.04] group-hover:scale-[1.08]"
-          }`}
-          style={{ backgroundImage: fallbackImage }}
-        />
-      )}
-
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[length:48px_48px] opacity-20" />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.05)_48%,rgba(0,0,0,0.58)_100%)]" />
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-black/65 to-transparent" />
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/82 via-black/36 to-transparent" />
-
-      <div
-        className={`pointer-events-none absolute left-3 top-3 rounded-full border border-white/15 bg-black/45 px-2.5 py-1 font-semibold text-white ${
-          large ? "text-xs" : "text-[10px]"
-        }`}
-      >
-        AOE2HD
-      </div>
-
-      <div
-        className={`pointer-events-none absolute right-3 top-3 rounded-full border border-red-300/25 bg-red-500/20 px-2.5 py-1 font-semibold text-red-100 ${
-          large ? "text-xs" : "text-[10px]"
-        }`}
-      >
-        LIVE
-      </div>
-    </div>
+    <WatchPreviewScreen
+      title={match?.title || "AoE2HD preview"}
+      mediaKey={match?.sessionKey || "aoe2hd-watch-preview"}
+      videoUrl={videoUrl}
+      posterUrl={match?.thumbnailUrl || "/watch/aoe2hd-screen.svg"}
+      liveEmbedUrl={videoUrl ? null : liveEmbedUrl}
+      large={large}
+      badge={videoUrl ? "AUTO" : liveEmbedUrl ? "LIVE" : "BEST OF"}
+    />
   );
 }
 
