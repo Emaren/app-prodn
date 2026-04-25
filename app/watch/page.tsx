@@ -246,16 +246,19 @@ async function loadWatchIndexSnapshot() {
     };
   });
 
-  const hero =
-    matches.find((match) => match.mode === "live" && match.hasFeed) ||
-    matches.find((match) => match.hasFeed) ||
-    matches[0] ||
-    null;
+  const liveBuildingHero = buildLiveBuildingHero();
+  const liveGameHero = matches.find(
+    (match) =>
+      match.mode === "live" &&
+      (match.hasFeed || match.bestOfUrl || match.previewUrl || match.recordingUrl)
+  );
+
+  const hero = liveGameHero || liveBuildingHero;
 
   return {
     hero,
     matches,
-    totalStreams: streams.length,
+    totalStreams: streams.length + 1,
   };
 }
 
@@ -276,6 +279,37 @@ async function loadWatchMediaRegistry(): Promise<Record<string, WatchMediaEntry>
   } catch {
     return {};
   }
+}
+
+function buildLiveBuildingHero(): WatchMatchSummary {
+  const channel = process.env.WATCH_BUILDING_STREAM_CHANNEL || "emaren19";
+  const url = `https://www.twitch.tv/${channel}`;
+
+  return {
+    id: -1,
+    sessionKey: "__live-building__",
+    href: "/watch",
+    title: "Live building",
+    mapName: "AoE2HDBets",
+    durationLabel: "Live",
+    winner: "Building",
+    parseIteration: 0,
+    createdLabel: "Now",
+    mode: "live",
+    hasFeed: true,
+    primaryStream: {
+      provider: "twitch",
+      label: "Live Building",
+      url,
+      embedId: channel,
+      isPrimary: true,
+    },
+    streamCount: 1,
+    recordingUrl: null,
+    previewUrl: null,
+    thumbnailUrl: null,
+    bestOfUrl: null,
+  };
 }
 
 function readSearchParam(value: string | string[] | undefined) {
