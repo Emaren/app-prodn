@@ -241,88 +241,102 @@ export default function BattleTheatreStreams({ sessionKey, playerNames }: Props)
         }}
         className="rounded-[1.4rem] border border-white/10 bg-white/[0.035] p-4"
       >
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-end">
-          <label className="grid gap-2 xl:w-44">
-            <span className="text-[11px] uppercase tracking-[0.24em] text-slate-400">
-              Role
-            </span>
-            <select
-              value={role}
-              onChange={(event) => {
-                const nextRole = event.target.value as WatchStreamRole;
-                setRole(nextRole);
-                if (!label || label === "Main Cast") {
-                  setLabel(nextRole === "caster" ? "Main Cast" : ROLE_OPTIONS.find((item) => item.value === nextRole)?.label || "Watch Feed");
-                }
-              }}
-              className="rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-sky-300/40"
+        <div className="grid gap-3">
+          <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] xl:grid-cols-[10rem_minmax(10rem,1fr)_11rem_8rem]">
+            <label className="grid gap-2">
+              <span className="text-[11px] uppercase tracking-[0.24em] text-slate-400">
+                Role
+              </span>
+              <select
+                value={role}
+                onChange={(event) => {
+                  const nextRole = event.target.value as WatchStreamRole;
+                  setRole(nextRole);
+                  if (!label || label === "Main Cast") {
+                    setLabel(
+                      nextRole === "caster"
+                        ? "Main Cast"
+                        : ROLE_OPTIONS.find((item) => item.value === nextRole)?.label ||
+                            "Watch Feed"
+                    );
+                  }
+                }}
+                className="h-12 w-full rounded-2xl border border-white/10 bg-slate-950 px-4 text-sm text-white outline-none focus:border-sky-300/40"
+              >
+                {ROLE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="grid gap-2">
+              <span className="text-[11px] uppercase tracking-[0.24em] text-slate-400">
+                Label
+              </span>
+              <input
+                value={label}
+                onChange={(event) => setLabel(event.target.value)}
+                className="h-12 w-full rounded-2xl border border-white/10 bg-slate-950 px-4 text-sm text-white outline-none placeholder:text-slate-500 focus:border-sky-300/40"
+                placeholder="Main Cast"
+              />
+            </label>
+
+            <label className="grid gap-2">
+              <span className="text-[11px] uppercase tracking-[0.24em] text-slate-400">
+                Player
+              </span>
+              <select
+                value={playerLabel}
+                onChange={(event) => setPlayerLabel(event.target.value)}
+                className="h-12 w-full rounded-2xl border border-white/10 bg-slate-950 px-4 text-sm text-white outline-none focus:border-sky-300/40"
+              >
+                <option value="">None</option>
+                {playerNames.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="grid gap-2">
+              <span className="text-[11px] uppercase tracking-[0.24em] text-slate-400">
+                Primary
+              </span>
+              <span className="flex h-12 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-slate-950 px-4 text-sm text-slate-200">
+                <input
+                  type="checkbox"
+                  checked={isPrimary}
+                  onChange={(event) => setIsPrimary(event.target.checked)}
+                />
+                Primary
+              </span>
+            </label>
+          </div>
+
+          <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_8.5rem]">
+            <label className="grid min-w-0 gap-2">
+              <span className="text-[11px] uppercase tracking-[0.24em] text-slate-400">
+                Stream URL
+              </span>
+              <input
+                value={url}
+                onChange={(event) => setUrl(event.target.value)}
+                className="h-12 w-full rounded-2xl border border-white/10 bg-slate-950 px-4 text-sm text-white outline-none placeholder:text-slate-500 focus:border-sky-300/40"
+                placeholder="https://www.twitch.tv/emaren19"
+              />
+            </label>
+
+            <button
+              type="submit"
+              disabled={saving || !url.trim()}
+              className="mt-0 rounded-2xl bg-sky-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-60 xl:mt-7"
             >
-              {ROLE_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="grid gap-2 xl:w-48">
-            <span className="text-[11px] uppercase tracking-[0.24em] text-slate-400">
-              Label
-            </span>
-            <input
-              value={label}
-              onChange={(event) => setLabel(event.target.value)}
-              className="rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-sky-300/40"
-              placeholder="Main Cast"
-            />
-          </label>
-
-          <label className="grid min-w-0 flex-1 gap-2">
-            <span className="text-[11px] uppercase tracking-[0.24em] text-slate-400">
-              Stream URL
-            </span>
-            <input
-              value={url}
-              onChange={(event) => setUrl(event.target.value)}
-              className="rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-sky-300/40"
-              placeholder="https://www.twitch.tv/emaren19"
-            />
-          </label>
-
-          <label className="grid gap-2 xl:w-48">
-            <span className="text-[11px] uppercase tracking-[0.24em] text-slate-400">
-              Player
-            </span>
-            <select
-              value={playerLabel}
-              onChange={(event) => setPlayerLabel(event.target.value)}
-              className="rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-sky-300/40"
-            >
-              <option value="">None</option>
-              {playerNames.map((name) => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="flex items-center gap-2 rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-slate-200">
-            <input
-              type="checkbox"
-              checked={isPrimary}
-              onChange={(event) => setIsPrimary(event.target.checked)}
-            />
-            Primary
-          </label>
-
-          <button
-            type="submit"
-            disabled={saving || !url.trim()}
-            className="rounded-full bg-sky-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {saving ? "Saving..." : "Save Feed"}
-          </button>
+              {saving ? "Saving..." : "Save Feed"}
+            </button>
+          </div>
         </div>
 
         {notice ? (
