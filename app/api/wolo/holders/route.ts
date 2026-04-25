@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const UWOLO_PER_WOLO = 1_000_000n;
+const UWOLO_DECIMALS = 6;
 
 const DEFAULT_ALIASES: Record<string, string> = {
   wolo17nkhws8wq48s98ytrgn7exfaz9mltgahxl9hf8: "Founder Cold Wallet",
@@ -56,20 +56,57 @@ type HolderRow = {
   balanceWoloFormatted: string;
 };
 
-function parseUwolo(value: unknown): bigint {
+function normalizeAmount(value: unknown): string {
   if (typeof value !== "string" || !/^\d+$/.test(value)) {
-    return 0n;
+    return "0";
   }
 
-  return BigInt(value);
+  return value.replace(/^0+(?=\d)/, "");
 }
 
-function formatWolo(uwolo: bigint, grouped = false) {
-  const whole = uwolo / UWOLO_PER_WOLO;
-  const fraction = uwolo % UWOLO_PER_WOLO;
-  const wholeText = grouped ? whole.toLocaleString("en-US") : whole.toString();
+function compareAmountStrings(left: string, right: string): number {
+  const cleanLeft = normalizeAmount(left);
+  const cleanRight = normalizeAmount(right);
 
-  return `${wholeText}.${fraction.toString().padStart(6, "0")}`;
+  if (cleanLeft.length !== cleanRight.length) {
+    return cleanLeft.length > cleanRight.length ? 1 : -1;
+  }
+
+  return cleanLeft.localeCompare(cleanRight);
+}
+
+function addAmountStrings(left: string, right: string): string {
+  let carry = 0;
+  let result = "";
+  let leftIndex = left.length - 1;
+  let rightIndex = right.length - 1;
+
+  while (leftIndex >= 0 || rightIndex >= 0 || carry > 0) {
+    const leftDigit = leftIndex >= 0 ? Number(left[leftIndex]) : 0;
+    const rightDigit = rightIndex >= 0 ? Number(right[rightIndex]) : 0;
+    const sum = leftDigit + rightDigit + carry;
+
+    result = String(sum % 10) + result;
+    carry = Math.floor(sum / 10);
+    leftIndex -= 1;
+    rightIndex -= 1;
+  }
+
+  return result.replace(/^0+(?=\d)/, "");
+}
+
+function groupWholeNumber(value: string): string {
+  return value.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
+function formatWolo(amountUwolo: string, grouped = false): string {
+  const normalized = normalizeAmount(amountUwolo);
+  const padded = normalized.padStart(UWOLO_DECIMALS + 1, "0");
+  const whole = padded.slice(0, -UWOLO_DECIMALS) || "0";
+  const fraction = padded.slice(-UWOLO_DECIMALS);
+  const wholeText = grouped ? groupWholeNumber(whole) : whole;
+
+  return `${wholeText}.${fraction}`;
 }
 
 function getRestUrl() {
@@ -103,14 +140,14 @@ async function loadAliases() {
       aliases[match[1]] = match[2].trim();
     }
   } catch {
-    // The fallback registry keeps the public endpoint useful in local/dev builds.
+    // Fallback aliases keep local/dev builds useful.
   }
 
   return aliases;
 }
 
 async function loadDenomOwners(restUrl: string, denom: string) {
-  const owners: Array<{ address: string; amountUwolo: bigint }> = [];
+  const owners: Array<{ address: string; amountUwolo: string }> = [];
   let nextKey: string | null = null;
 
   while (true) {
@@ -136,9 +173,9 @@ async function loadDenomOwners(restUrl: string, denom: string) {
 
     for (const owner of payload.denom_owners || []) {
       const address = typeof owner.address === "string" ? owner.address : "";
-      const amountUwolo = parseUwolo(owner.balance?.amount);
+      const amountUwolo = normalizeAmount(owner.balance?.amount);
 
-      if (address.startsWith("wolo1") && amountUwolo > 0n) {
+      if (address.startsWith("wolo1") && amountUwolo !== "0") {
         owners.push({ address, amountUwolo });
       }
     }
@@ -152,17 +189,19 @@ async function loadDenomOwners(restUrl: string, denom: string) {
   }
 
   owners.sort((left, right) => {
-    if (left.amountUwolo === right.amountUwolo) {
-      return left.address.localeCompare(right.address);
+    const amountCompare = compareAmountStrings(left.amountUwolo, right.amountUwolo);
+
+    if (amountCompare !== 0) {
+      return -amountCompare;
     }
 
-    return left.amountUwolo > right.amountUwolo ? -1 : 1;
+    return left.address.localeCompare(right.address);
   });
 
   return owners;
 }
 
-function renderTable(holders: HolderRow[], totalUwolo: bigint) {
+function renderTable(holders: HolderRow[], totalUwolo: string) {
   const lines = [
     `${"ALIAS".padEnd(30)} ${"ADDRESS".padEnd(48)} ${"WOLO".padStart(18)}`,
     "-".repeat(100),
@@ -183,7 +222,10 @@ export async function GET(request: NextRequest) {
     const denom = process.env.WOLO_DENOM || process.env.WOLO_SETTLEMENT_DENOM || "uwolo";
     const aliases = await loadAliases();
     const owners = await loadDenomOwners(restUrl, denom);
-    const totalUwolo = owners.reduce((sum, owner) => sum + owner.amountUwolo, 0n);
+    const totalUwolo = owners.reduce(
+      (sum, owner) => addAmountStrings(sum, owner.amountUwolo),
+      "0"
+    );
 
     const holders = owners.map((owner, index) => ({
       rank: index + 1,
