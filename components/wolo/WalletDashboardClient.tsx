@@ -34,9 +34,61 @@ function formatWalletBalance(rawBalance?: string) {
   return (amount / 1_000_000).toFixed(2);
 }
 
-function formatAddress(address?: string) {
-  if (!address) return "Not connected";
-  return `${address.slice(0, 12)}…${address.slice(-8)}`;
+async function copyTextToClipboard(value: string) {
+  if (navigator.clipboard && window.isSecureContext) {
+    await navigator.clipboard.writeText(value);
+    return;
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = value;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+  textarea.style.top = "0";
+
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+  document.execCommand("copy");
+  document.body.removeChild(textarea);
+}
+
+function WalletAddressLine({ address }: { address?: string }) {
+  const [copied, setCopied] = useState(false);
+  const value = address?.trim() || "Not connected";
+
+  async function handleCopy() {
+    if (!address) return;
+
+    await copyTextToClipboard(address);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1400);
+  }
+
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3">
+      <div className="flex items-center justify-between gap-3">
+        <strong className="text-white">Address</strong>
+
+        {address ? (
+          <button
+            type="button"
+            onClick={() => {
+              void handleCopy();
+            }}
+            className="rounded-full border border-white/12 bg-white/5 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/85 transition hover:border-emerald-300/35 hover:bg-emerald-400/10 hover:text-emerald-100"
+          >
+            {copied ? "Copied" : "Copy"}
+          </button>
+        ) : null}
+      </div>
+
+      <div className="mt-2 select-all break-all font-mono text-[13px] leading-6 text-slate-100">
+        {value}
+      </div>
+    </div>
+  );
 }
 
 export default function WalletDashboardClient() {
@@ -117,10 +169,7 @@ export default function WalletDashboardClient() {
               <p>
                 <strong className="text-white">Status:</strong> {statusLabel}
               </p>
-              <p className="break-all">
-                <strong className="text-white">Address:</strong>{" "}
-                {connected ? formatAddress(address) : "Not connected"}
-              </p>
+              <WalletAddressLine address={connected ? address : ""} />
             </div>
 
             {keplrMissing ? (

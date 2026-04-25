@@ -41,11 +41,6 @@ const WoloChainTerminalTile = dynamic(
   }
 );
 
-function formatAddress(address?: string) {
-  if (!address) return "Not connected";
-  return `${address.slice(0, 12)}…${address.slice(-8)}`;
-}
-
 function formatTokenAmount(raw?: string) {
   const amount = Number(raw ?? "0");
   if (!Number.isFinite(amount)) return "0.00";
@@ -53,6 +48,26 @@ function formatTokenAmount(raw?: string) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
+}
+
+async function copyTextToClipboard(value: string) {
+  if (navigator.clipboard && window.isSecureContext) {
+    await navigator.clipboard.writeText(value);
+    return;
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = value;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+  textarea.style.top = "0";
+
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+  document.execCommand("copy");
+  document.body.removeChild(textarea);
 }
 
 function shouldToggleFromTarget(target: EventTarget | null) {
@@ -268,7 +283,7 @@ export default function WoloPage() {
                 </div>
 
                 <div className="mt-5 grid gap-4">
-                  <PremiumWalletPanel label="Address" value={formatAddress(address)} mono />
+                  <PremiumWalletAddressPanel address={address} />
                   <PremiumWalletPanel
                     label="Balance"
                     value={balanceLoading ? "Loading..." : `${formattedBalance} WOLO`}
@@ -416,7 +431,7 @@ export default function WoloPage() {
               </div>
 
               <div className="mt-5 grid gap-4">
-                <PremiumWalletPanel label="Address" value={formatAddress(address)} mono />
+                <PremiumWalletAddressPanel address={address} />
                 <PremiumWalletPanel
                   label="Balance"
                   value={balanceLoading ? "Loading..." : `${formattedBalance} WOLO`}
@@ -589,6 +604,48 @@ function WoloSupplyWatermark() {
         className="h-[13.5rem] w-[13.5rem] object-contain sm:h-[18rem] sm:w-[18rem] lg:h-[22rem] lg:w-[22rem]"
         priority={false}
       />
+    </div>
+  );
+}
+
+function PremiumWalletAddressPanel({ address }: { address?: string }) {
+  const [copied, setCopied] = useState(false);
+  const value = address?.trim() || "Not connected";
+
+  async function handleCopy() {
+    if (!address) return;
+
+    await copyTextToClipboard(address);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1400);
+  }
+
+  return (
+    <div
+      data-no-toggle="true"
+      className="rounded-[1.45rem] border border-white/8 bg-[#0d1420] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]"
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-[11px] uppercase tracking-[0.26em] text-slate-400">
+          Address
+        </div>
+
+        {address ? (
+          <button
+            type="button"
+            onClick={() => {
+              void handleCopy();
+            }}
+            className="rounded-full border border-white/12 bg-white/5 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/85 transition hover:border-emerald-300/35 hover:bg-emerald-400/10 hover:text-emerald-100"
+          >
+            {copied ? "Copied" : "Copy"}
+          </button>
+        ) : null}
+      </div>
+
+      <div className="mt-3 select-all break-all font-mono text-[13px] leading-6 text-white sm:text-sm">
+        {value}
+      </div>
     </div>
   );
 }
