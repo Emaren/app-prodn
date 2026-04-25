@@ -230,19 +230,6 @@ function TheatrePill({
   );
 }
 
-function FeedChip({ children, active = false }: { children: React.ReactNode; active?: boolean }) {
-  return (
-    <span
-      className={`inline-flex rounded-full border px-3 py-1.5 text-xs font-medium ${
-        active
-          ? "border-sky-300/35 bg-sky-300/15 text-sky-50"
-          : "border-white/10 bg-white/5 text-slate-300"
-      }`}
-    >
-      {children}
-    </span>
-  );
-}
 
 function Panel({
   eyebrow,
@@ -306,13 +293,3 @@ function IntelCard({ label, value }: { label: string; value: string }) {
   );
 }
 
-function PlayIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 40 40" className="h-9 w-9" fill="none">
-      <path
-        d="M15 11.8v16.4c0 1.4 1.55 2.25 2.74 1.5l13-8.2c1.1-.7 1.1-2.3 0-3l-13-8.2C16.55 9.55 15 10.4 15 11.8Z"
-        fill="currentColor"
-      />
-    </svg>
-  );
-}

@@ -129,8 +129,8 @@ function providerForUrl(url: URL): WatchStreamProvider {
 }
 
 export function normalizeWatchStreamInput(input: {
-  sessionKey: unknown;
-  url: unknown;
+  sessionKey?: unknown;
+  url?: unknown;
   role?: unknown;
   label?: unknown;
   playerLabel?: unknown;
