@@ -6,7 +6,11 @@ import {
 } from "@/lib/betFounderBonuses";
 import { normalizePublicPlayerName } from "@/lib/publicPlayers";
 import { recordUserActivity } from "@/lib/userExperience";
-import { executeWoloPayout } from "@/lib/woloBetSettlement";
+import {
+  executeWoloPayout,
+  executeWoloSettlementRun,
+  type SettlementRunResult,
+} from "@/lib/woloBetSettlement";
 
 type ClaimIdentity = {
   displayPlayerName: string;
@@ -57,6 +61,112 @@ function isAwaitingVerifiedWalletLinkDetail(value: string | null | undefined) {
 
 function compactSettlementNote(label: string, amountWolo: number, txHash: string) {
   return `Auto-settled on-chain · ${label} · ${amountWolo} WOLO · tx ${txHash}`.slice(0, 160);
+}
+
+function compactDbDetail(value: string | null | undefined) {
+  const normalized = (value || "").trim().replace(/\s+/g, " ");
+  return normalized ? normalized.slice(0, 255) : null;
+}
+
+const MARKET_SETTLEMENT_CLAIM_KINDS = new Set(["bet_payout", "bet_refund", "winner_bounty", "founders_bonus"]);
+
+function isMarketSettlementClaim(claim: {
+  sourceMarketId: number | null;
+  claimKind: string | null;
+}) {
+  return Boolean(
+    typeof claim.sourceMarketId === "number" &&
+      MARKET_SETTLEMENT_CLAIM_KINDS.has((claim.claimKind || "").trim())
+  );
+}
+
+function hashValue(value: string) {
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 31 + value.charCodeAt(index)) % 1_000_003;
+  }
+  return Math.abs(hash);
+}
+
+function buildAdminMarketClaimSettlementRunId(sourceMarketId: number, claimId: number) {
+  return `aoe2-market-claim-${sourceMarketId}-${claimId}`;
+}
+
+function buildAdminMarketClaimRequestId(input: {
+  claimId: number;
+  claimKind: string;
+  matchedUserId: number;
+}) {
+  const claimKind = input.claimKind.trim() || "market_claim";
+  const fingerprint = hashValue(`${input.matchedUserId}:${input.claimId}:${claimKind}`);
+  return `aoe2-claim-${input.claimId}-${claimKind}-${fingerprint}`;
+}
+
+function summarizeSettlementRunFailure(
+  run: SettlementRunResult,
+  payout?: SettlementRunResult["payouts"][number] | null
+) {
+  return (
+    payout?.detail ||
+    payout?.failureCode ||
+    run.detail ||
+    run.failureCode ||
+    "WOLO grouped market claim retry failed."
+  );
+}
+
+async function executeMarketClaimSettlementRun(input: {
+  claimId: number;
+  sourceMarketId: number;
+  claimKind: string;
+  amountWolo: number;
+  toAddress: string;
+  matchedUserId: number;
+  marketTitle: string;
+  memoTag: string;
+}) {
+  const settlementRunId = buildAdminMarketClaimSettlementRunId(
+    input.sourceMarketId,
+    input.claimId
+  );
+  const requestId = buildAdminMarketClaimRequestId({
+    claimId: input.claimId,
+    claimKind: input.claimKind,
+    matchedUserId: input.matchedUserId,
+  });
+
+  const execution = await executeWoloSettlementRun({
+    settlementRunId,
+    sourceApp: "aoe2hdbets",
+    sourceEventId: `pending-claim-${input.claimId}`,
+    note: `Admin claim retry · ${input.marketTitle}`,
+    memo: `AoE2 admin claim retry · claim ${input.claimId}`,
+    payouts: [
+      {
+        requestId,
+        toAddress: input.toAddress,
+        amountWolo: input.amountWolo,
+        memo: `${input.marketTitle} · ${input.claimKind} · ${input.memoTag}`,
+      },
+    ],
+  });
+
+  const payout =
+    execution.payouts.find((candidate) => candidate.requestId === requestId) ||
+    execution.payouts[0] ||
+    null;
+
+  if (!execution.ok || !payout?.ok || !payout.txHash) {
+    throw new Error(summarizeSettlementRunFailure(execution, payout));
+  }
+
+  return {
+    settlementRunId: execution.settlementRunId || settlementRunId,
+    status: execution.status,
+    txHash: payout.txHash,
+    proofUrl: payout.proofUrl ?? null,
+    detail: execution.detail ?? payout.detail ?? null,
+  };
 }
 
 export async function findMatchedClaimUser(
@@ -180,7 +290,9 @@ export async function retryPendingClaimSettlement(
       ? await prisma.betMarket.findUnique({
           where: { id: claim.sourceMarketId },
           select: {
+            id: true,
             title: true,
+            eventLabel: true,
           },
         })
       : null;
@@ -189,16 +301,32 @@ export async function retryPendingClaimSettlement(
   const memoTag = options?.memoTag?.trim() || "admin_retry_settlement";
   const activityPath = options?.activityPath?.trim() || "/admin/user-list";
 
+  const useGroupedMarketSettlement = Boolean(market && isMarketSettlementClaim(claim));
+  let settlementRunId: string | null = null;
+
   try {
-    const payout = await executeWoloPayout({
-      toAddress: matchedUser.walletAddress,
-      amountWolo: claim.amountWolo,
-      memo: `${market?.title || claim.displayPlayerName} · ${memoTag}`,
-    });
+    const payout = useGroupedMarketSettlement && market
+      ? await executeMarketClaimSettlementRun({
+          claimId: claim.id,
+          sourceMarketId: market.id,
+          claimKind: claim.claimKind,
+          amountWolo: claim.amountWolo,
+          toAddress: matchedUser.walletAddress,
+          matchedUserId: matchedUser.id,
+          marketTitle: market.title,
+          memoTag,
+        })
+      : await executeWoloPayout({
+          toAddress: matchedUser.walletAddress,
+          amountWolo: claim.amountWolo,
+          memo: `${market?.title || claim.displayPlayerName} · ${memoTag}`,
+        });
 
     if (!payout?.txHash) {
       throw new Error("WOLO payout execution returned no transaction hash.");
     }
+
+    settlementRunId = "settlementRunId" in payout ? payout.settlementRunId : null;
 
     await prisma.pendingWoloClaim.update({
       where: { id: claim.id },
@@ -217,6 +345,36 @@ export async function retryPendingClaimSettlement(
         ),
       },
     });
+
+    if (useGroupedMarketSettlement && market && claim.claimKind !== "founders_bonus") {
+      await prisma.betMarket.update({
+        where: { id: market.id },
+        data: {
+          settlementRunId,
+          settlementStatus: "executed",
+          settlementFailureCode: null,
+          settlementDetail: compactDbDetail(
+            `Admin retry settled claim ${claim.id} on grouped market rail · tx ${payout.txHash}`
+          ),
+          settlementAttemptedAt: attemptAt,
+          settlementExecutedAt: attemptAt,
+        },
+      });
+
+      if (claim.claimKind === "bet_payout" || claim.claimKind === "bet_refund") {
+        await prisma.betWager.updateMany({
+          where: {
+            marketId: market.id,
+            userId: matchedUser.id,
+            status: claim.claimKind === "bet_refund" ? "void" : "won",
+          },
+          data: {
+            payoutTxHash: payout.txHash,
+            payoutProofUrl: payout.proofUrl ?? null,
+          },
+        });
+      }
+    }
 
     if (claim.sourceFounderBonusId) {
       await syncFounderBonusStatus(prisma, [claim.sourceFounderBonusId]);
@@ -253,6 +411,18 @@ export async function retryPendingClaimSettlement(
         payoutAttemptedAt: attemptAt,
       },
     });
+
+    if (useGroupedMarketSettlement && market && claim.claimKind !== "founders_bonus") {
+      await prisma.betMarket.update({
+        where: { id: market.id },
+        data: {
+          settlementStatus: "failed",
+          settlementFailureCode: "ADMIN_RETRY_FAILED",
+          settlementDetail: compactDbDetail(detail),
+          settlementAttemptedAt: attemptAt,
+        },
+      });
+    }
 
     if (claim.sourceFounderBonusId) {
       await syncFounderBonusStatus(prisma, [claim.sourceFounderBonusId]);
