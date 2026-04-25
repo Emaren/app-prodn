@@ -444,20 +444,43 @@ function MatchCard({ match, hot = false }: { match: WatchMatchSummary; hot?: boo
 }
 
 function PreviewMotion({ large = false }: { large?: boolean }) {
+  const screenImage = "url('/watch/aoe2hd-screen.svg')";
+
   return (
-    <div className="absolute inset-0 overflow-hidden bg-[radial-gradient(circle_at_26%_24%,rgba(132,204,22,0.34),transparent_18%),radial-gradient(circle_at_70%_38%,rgba(22,163,74,0.28),transparent_19%),radial-gradient(circle_at_52%_76%,rgba(245,158,11,0.20),transparent_18%),linear-gradient(135deg,#10351d,#182313_45%,#07111f)]">
-      <div className="absolute inset-0 opacity-35 [background-image:linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:34px_34px]" />
-      <div className="absolute left-[12%] top-[18%] h-12 w-20 rounded-sm border border-amber-200/25 bg-amber-900/25 shadow-[0_0_30px_rgba(251,191,36,0.14)]" />
-      <div className="absolute right-[18%] top-[25%] h-10 w-16 rounded-full bg-emerald-400/20 blur-sm" />
-      <div className="absolute bottom-[18%] left-[18%] h-24 w-40 rounded-full bg-black/35 blur-2xl" />
-      <div className="absolute bottom-[16%] right-[16%] h-16 w-28 rounded-full bg-black/30 blur-xl" />
+    <div className="absolute inset-0 overflow-hidden bg-black">
+      <div
+        className={`absolute inset-0 bg-cover bg-center opacity-95 transition duration-700 ${
+          large ? "scale-[1.01]" : "scale-[1.04] group-hover:scale-[1.08]"
+        }`}
+        style={{ backgroundImage: screenImage }}
+      />
 
-      <div className={`absolute rounded-full bg-sky-200 shadow-[0_0_18px_rgba(125,211,252,0.95)] ${large ? "left-[22%] top-[48%] h-2.5 w-2.5" : "left-[24%] top-[50%] h-1.5 w-1.5"} animate-pulse`} />
-      <div className={`absolute rounded-full bg-red-300 shadow-[0_0_18px_rgba(252,165,165,0.95)] ${large ? "right-[25%] top-[42%] h-2.5 w-2.5" : "right-[24%] top-[44%] h-1.5 w-1.5"} animate-pulse`} />
-      <div className={`absolute rounded-full bg-amber-200 shadow-[0_0_18px_rgba(253,230,138,0.95)] ${large ? "left-[50%] top-[58%] h-2.5 w-2.5" : "left-[52%] top-[58%] h-1.5 w-1.5"} animate-ping`} />
+      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.045)_1px,transparent_1px),linear-gradient(rgba(255,255,255,0.035)_1px,transparent_1px)] bg-[length:48px_48px] opacity-35" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.12)_52%,rgba(0,0,0,0.68)_100%)]" />
+      <div className="absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-black/70 to-transparent" />
+      <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/82 via-black/42 to-transparent" />
 
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.08)_45%,rgba(0,0,0,0.42)_100%)]" />
-      <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/70 to-transparent" />
+      <div className={`absolute rounded-full bg-sky-200 shadow-[0_0_18px_rgba(125,211,252,0.95)] ${
+        large ? "left-[30%] top-[58%] h-2.5 w-2.5" : "left-[30%] top-[56%] h-1.5 w-1.5"
+      } animate-pulse`} />
+      <div className={`absolute rounded-full bg-red-300 shadow-[0_0_18px_rgba(252,165,165,0.95)] ${
+        large ? "right-[31%] top-[52%] h-2.5 w-2.5" : "right-[30%] top-[51%] h-1.5 w-1.5"
+      } animate-pulse`} />
+      <div className={`absolute rounded-full bg-amber-200 shadow-[0_0_18px_rgba(253,230,138,0.95)] ${
+        large ? "left-[49%] top-[66%] h-2.5 w-2.5" : "left-[50%] top-[64%] h-1.5 w-1.5"
+      } animate-ping`} />
+
+      <div className={`absolute left-3 top-3 rounded-full border border-white/15 bg-black/45 px-2.5 py-1 font-semibold text-white ${
+        large ? "text-xs" : "text-[10px]"
+      }`}>
+        AOE2HD
+      </div>
+
+      <div className={`absolute right-3 top-3 rounded-full border border-red-300/25 bg-red-500/20 px-2.5 py-1 font-semibold text-red-100 ${
+        large ? "text-xs" : "text-[10px]"
+      }`}>
+        BEST OF
+      </div>
     </div>
   );
 }
