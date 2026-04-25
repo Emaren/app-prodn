@@ -35,9 +35,7 @@ type WatchMatchSummary = {
   streamCount: number;
 };
 
-type SearchParams =
-  | Promise<Record<string, string | string[] | undefined>>
-  | Record<string, string | string[] | undefined>;
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 export default async function WatchIndexPage({
   searchParams,
