@@ -306,9 +306,9 @@ function buildLiveBuildingHero(): WatchMatchSummary {
     },
     streamCount: 1,
     recordingUrl: null,
-    previewUrl: null,
-    thumbnailUrl: null,
-    bestOfUrl: null,
+    previewUrl: process.env.WATCH_BUILDING_LOOP_URL || "/watch/previews/live-building-loop.mp4",
+    thumbnailUrl: "/watch/aoe2hd-screen.svg",
+    bestOfUrl: process.env.WATCH_BUILDING_LOOP_URL || "/watch/previews/live-building-loop.mp4",
   };
 }
 
@@ -345,25 +345,6 @@ function readTwitchChannel(url: string) {
   } catch {
     return null;
   }
-}
-
-function buildTwitchPlayerUrl(channel: string) {
-  const params = new URLSearchParams({
-    channel,
-    muted: "true",
-    autoplay: "true",
-  });
-
-  for (const parent of [
-    "aoe2hdbets.com",
-    "www.aoe2hdbets.com",
-    "localhost",
-    "127.0.0.1",
-  ]) {
-    params.append("parent", parent);
-  }
-
-  return `https://player.twitch.tv/?${params.toString()}`;
 }
 
 function HeroScreen({
@@ -563,12 +544,6 @@ function PreviewMotion({
   match?: WatchMatchSummary;
   large?: boolean;
 }) {
-  const twitchChannel =
-    match?.primaryStream?.provider === "twitch"
-      ? match.primaryStream.embedId || readTwitchChannel(match.primaryStream.url)
-      : null;
-
-  const liveEmbedUrl = twitchChannel ? buildTwitchPlayerUrl(twitchChannel) : null;
   const videoUrl = match?.bestOfUrl || match?.previewUrl || match?.recordingUrl || null;
 
   return (
@@ -577,9 +552,9 @@ function PreviewMotion({
       mediaKey={match?.sessionKey || "aoe2hd-watch-preview"}
       videoUrl={videoUrl}
       posterUrl={match?.thumbnailUrl || "/watch/aoe2hd-screen.svg"}
-      liveEmbedUrl={videoUrl ? null : liveEmbedUrl}
+      liveEmbedUrl={null}
       large={large}
-      badge={videoUrl ? "AUTO" : liveEmbedUrl ? "LIVE" : "BEST OF"}
+      badge={videoUrl ? "AUTO" : "READY"}
     />
   );
 }
