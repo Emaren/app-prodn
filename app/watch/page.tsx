@@ -51,7 +51,6 @@ export default async function WatchIndexPage({
 
   const hero = snapshot.hero;
   const liveMatches = snapshot.matches.filter((match) => match.mode === "live");
-  const archiveMatches = snapshot.matches.filter((match) => match.mode === "archive");
   const secondaryMatches = snapshot.matches.filter((match) => match.id !== hero?.id).slice(0, 12);
   const topScreens = [hero, ...secondaryMatches].filter(Boolean).slice(0, 3) as WatchMatchSummary[];
 
