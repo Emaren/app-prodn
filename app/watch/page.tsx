@@ -263,22 +263,27 @@ async function loadWatchIndexSnapshot() {
 }
 
 async function loadWatchMediaRegistry(): Promise<Record<string, WatchMediaEntry>> {
-  const registryPath =
-    process.env.WATCH_MEDIA_REGISTRY_PATH ||
-    path.join(process.cwd(), "public/watch/watch-media.json");
+  const candidates = [
+    process.env.WATCH_MEDIA_REGISTRY_PATH,
+    path.join(process.cwd(), "public/watch/watch-media.json"),
+  ].filter(Boolean) as string[];
 
-  try {
-    const raw = await fs.readFile(registryPath, "utf8");
-    const parsed = JSON.parse(raw);
+  const merged: Record<string, WatchMediaEntry> = {};
 
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-      return {};
+  for (const registryPath of candidates) {
+    try {
+      const raw = await fs.readFile(registryPath, "utf8");
+      const parsed = JSON.parse(raw);
+
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        Object.assign(merged, parsed as Record<string, WatchMediaEntry>);
+      }
+    } catch {
+      // Keep trying fallbacks.
     }
-
-    return parsed as Record<string, WatchMediaEntry>;
-  } catch {
-    return {};
   }
+
+  return merged;
 }
 
 function buildLiveBuildingHero(): WatchMatchSummary {
