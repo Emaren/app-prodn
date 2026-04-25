@@ -35,56 +35,82 @@ type WatchMatchSummary = {
   streamCount: number;
 };
 
-export default async function WatchIndexPage() {
+type SearchParams =
+  | Promise<Record<string, string | string[] | undefined>>
+  | Record<string, string | string[] | undefined>;
+
+export default async function WatchIndexPage({
+  searchParams,
+}: {
+  searchParams?: SearchParams;
+}) {
+  const resolvedSearchParams = await searchParams;
+  const advanced = readSearchParam(resolvedSearchParams?.view) === "advanced";
+
   const snapshot = await loadWatchIndexSnapshot();
 
   const hero = snapshot.hero;
   const liveMatches = snapshot.matches.filter((match) => match.mode === "live");
   const archiveMatches = snapshot.matches.filter((match) => match.mode === "archive");
   const secondaryMatches = snapshot.matches.filter((match) => match.id !== hero?.id).slice(0, 12);
+  const topScreens = [hero, ...secondaryMatches].filter(Boolean).slice(0, 3) as WatchMatchSummary[];
 
   return (
     <main className="space-y-6 overflow-x-hidden py-4 text-white sm:py-6">
-      <section className="overflow-hidden rounded-[2.2rem] border border-white/10 bg-[radial-gradient(circle_at_18%_8%,rgba(56,189,248,0.22),transparent_28%),radial-gradient(circle_at_84%_0%,rgba(251,191,36,0.18),transparent_24%),linear-gradient(135deg,#07111f,#0b1324_52%,#030712)] p-5 shadow-[0_30px_100px_rgba(2,6,23,0.45)] sm:p-8">
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)] xl:items-stretch">
-          <div className="min-w-0 space-y-5">
-            <div className="flex flex-wrap items-center gap-2">
-              <Pill tone="sky">Broadcast Hall</Pill>
-              <Pill tone={liveMatches.length > 0 ? "red" : "emerald"}>
-                {liveMatches.length > 0 ? `${liveMatches.length} live` : "Archive ready"}
-              </Pill>
-              <Pill>{snapshot.totalStreams} saved feeds</Pill>
-            </div>
-
-            <div>
-              <p className="text-xs uppercase tracking-[0.42em] text-sky-200/70">
-                AOE2HD WATCH
-              </p>
-              <h1 className="mt-3 max-w-5xl text-5xl font-semibold tracking-tight text-white sm:text-7xl">
-                Watch the war, then read the wreckage.
-              </h1>
-              <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-300 sm:text-base">
-                Live Twitch casts, watcher-fed battle pages, final parses, winner signals, and the growing match archive.
-                One hall for every streamed AoE2HDBets fight.
-              </p>
-            </div>
-
-            {hero ? (
-              <HeroMatch match={hero} />
-            ) : (
-              <div className="rounded-[1.8rem] border border-white/10 bg-black/35 p-8 text-slate-300">
-                No streamed matches yet. Start StreamYard, go live to Twitch, and the watcher rail will begin filling this hall.
-              </div>
-            )}
+      <section className="overflow-hidden rounded-[2.2rem] border border-white/10 bg-[radial-gradient(circle_at_18%_8%,rgba(56,189,248,0.18),transparent_30%),radial-gradient(circle_at_88%_0%,rgba(251,191,36,0.14),transparent_26%),linear-gradient(135deg,#07111f,#0b1324_52%,#030712)] p-4 shadow-[0_30px_100px_rgba(2,6,23,0.45)] sm:p-6">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href={advanced ? "/watch" : "/watch?view=advanced"}
+              className={`inline-flex rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                advanced
+                  ? "border-amber-300/35 bg-amber-300/15 text-amber-100"
+                  : "border-sky-300/25 bg-sky-400/10 text-sky-100 hover:border-sky-200/40"
+              }`}
+            >
+              AOE2HD WATCH
+            </Link>
+            <Pill tone={liveMatches.length > 0 ? "red" : "emerald"}>
+              {liveMatches.length > 0 ? `${liveMatches.length} live` : "Archive"}
+            </Pill>
+            <Pill>{snapshot.totalStreams} feeds</Pill>
           </div>
 
-          <aside className="grid gap-4">
-            <StatCard label="Live now" value={String(liveMatches.length)} detail="Watcher sessions still moving." />
-            <StatCard label="Archive" value={String(archiveMatches.length)} detail="Final or recent replay sessions." />
-            <StatCard label="Feeds" value={String(snapshot.totalStreams)} detail="Twitch / external rails attached." />
-            <StatCard label="Latest map" value={hero?.mapName || "Standby"} detail="Current theatre headline." />
-          </aside>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/bets"
+              className="rounded-full border border-amber-300/25 bg-amber-300/10 px-4 py-2 text-xs font-semibold text-amber-100 transition hover:border-amber-200/40 hover:bg-amber-300/15"
+            >
+              Bets
+            </Link>
+            {hero ? (
+              <Link
+                href={hero.href}
+                className="rounded-full bg-sky-300 px-4 py-2 text-xs font-semibold text-slate-950 transition hover:bg-sky-200"
+              >
+                Theatre
+              </Link>
+            ) : null}
+          </div>
         </div>
+
+        {topScreens.length > 0 ? (
+          <div className="mb-4 grid gap-3 md:grid-cols-3">
+            {topScreens.map((match, index) => (
+              <MiniScreen key={`${match.sessionKey}-${index}`} match={match} />
+            ))}
+          </div>
+        ) : null}
+
+        {hero ? (
+          <HeroScreen match={hero} advanced={advanced} />
+        ) : (
+          <div className="rounded-[1.8rem] border border-white/10 bg-black/35 p-8 text-center text-slate-300">
+            No broadcasts yet.
+          </div>
+        )}
+
+        {advanced && hero ? <AdvancedObserverRail match={hero} /> : null}
       </section>
 
       {liveMatches.length > 0 ? (
@@ -99,17 +125,17 @@ export default async function WatchIndexPage() {
       ) : null}
 
       <section className="rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.92),rgba(8,13,25,0.98))] p-5 shadow-[0_24px_80px_rgba(2,6,23,0.36)] sm:p-6">
-        <SectionHeader eyebrow="Recent broadcasts" title="Battle archive" note="Latest streamed or stream-ready match pages." />
+        <SectionHeader eyebrow="Recent broadcasts" title="Battle archive" note="" />
 
         {secondaryMatches.length > 0 ? (
           <div className="mt-5 grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
             {secondaryMatches.map((match) => (
-              <MatchCard key={match.sessionKey} match={match} />
+              <ArchiveCard key={match.sessionKey} match={match} />
             ))}
           </div>
         ) : (
           <div className="mt-5 rounded-3xl border border-white/10 bg-white/[0.035] p-6 text-sm leading-6 text-slate-300">
-            Once a few more games run through the watcher, they’ll stack here as clean broadcast cards.
+            Archive empty.
           </div>
         )}
       </section>
@@ -196,13 +222,21 @@ async function loadWatchIndexSnapshot() {
     };
   });
 
-  const hero = matches.find((match) => match.mode === "live" && match.hasFeed) || matches.find((match) => match.hasFeed) || matches[0] || null;
+  const hero =
+    matches.find((match) => match.mode === "live" && match.hasFeed) ||
+    matches.find((match) => match.hasFeed) ||
+    matches[0] ||
+    null;
 
   return {
     hero,
     matches,
     totalStreams: streams.length,
   };
+}
+
+function readSearchParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
 }
 
 function readSessionKey(game: {
@@ -222,62 +256,156 @@ function formatBattleDate(value: Date) {
   }).format(value);
 }
 
-function HeroMatch({ match }: { match: WatchMatchSummary }) {
+function HeroScreen({
+  match,
+  advanced,
+}: {
+  match: WatchMatchSummary;
+  advanced: boolean;
+}) {
   return (
-    <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-black/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
-      <div className="grid gap-0 lg:grid-cols-[minmax(0,1.25fr)_minmax(17rem,0.75fr)]">
-        <div className="relative min-h-[18rem] overflow-hidden bg-[radial-gradient(circle_at_center,rgba(56,189,248,0.18),transparent_35%),linear-gradient(135deg,#030712,#0b1120)] p-6">
-          <div className="absolute inset-0 opacity-[0.16] [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:34px_34px]" />
-          <div className="relative z-10 flex h-full min-h-[16rem] flex-col justify-between">
-            <div className="flex flex-wrap items-center gap-2">
-              <Pill tone={match.mode === "live" ? "red" : "emerald"}>{match.mode === "live" ? "Live now" : "Featured archive"}</Pill>
-              <Pill tone={match.hasFeed ? "sky" : "amber"}>{match.hasFeed ? "Feed ready" : "No feed"}</Pill>
-              <Pill>{match.mapName}</Pill>
-            </div>
+    <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-black/45 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+      <div className="relative aspect-video min-h-[22rem] overflow-hidden bg-black sm:min-h-[30rem]">
+        <PreviewMotion large />
 
-            <div>
-              <p className="text-xs uppercase tracking-[0.36em] text-sky-200/70">Featured broadcast</p>
-              <h2 className="mt-3 max-w-3xl text-4xl font-semibold tracking-tight text-white sm:text-6xl">
-                {match.title}
-              </h2>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
-                {match.primaryStream
-                  ? `${match.primaryStream.label} is attached through ${match.primaryStream.provider.toUpperCase()}.`
-                  : "No stream rail is attached yet."}
-              </p>
-            </div>
-
-            <div className="flex flex-wrap gap-3">
-              <Link
-                href={match.href}
-                className="rounded-full bg-sky-300 px-6 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-200"
-              >
-                Watch Battle Theatre
-              </Link>
-              {match.primaryStream ? (
-                <a
-                  href={match.primaryStream.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="rounded-full border border-white/15 px-6 py-3 text-sm font-semibold text-white/85 transition hover:border-white/30 hover:text-white"
-                >
-                  Open Source Feed
-                </a>
-              ) : null}
-            </div>
-          </div>
+        <div className="absolute left-4 top-4 flex flex-wrap gap-2">
+          <Pill tone={match.mode === "live" ? "red" : "emerald"}>
+            {match.mode === "live" ? "Live" : "Archive"}
+          </Pill>
+          <Pill tone={match.hasFeed ? "sky" : "amber"}>{match.hasFeed ? "Feed" : "No feed"}</Pill>
+          <Pill>{match.mapName}</Pill>
+          {advanced ? <Pill tone="amber">Advanced</Pill> : null}
         </div>
 
-        <div className="border-t border-white/10 bg-white/[0.035] p-5 lg:border-l lg:border-t-0">
-          <div className="grid gap-3">
-            <MiniStat label="Winner signal" value={match.winner} />
-            <MiniStat label="Duration" value={match.durationLabel} />
-            <MiniStat label="Parse" value={`#${match.parseIteration}`} />
-            <MiniStat label="Captured" value={match.createdLabel} />
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/60 to-transparent p-5 sm:p-7">
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-end">
+            <div className="min-w-0">
+              <h1 className="max-w-4xl text-4xl font-semibold tracking-tight text-white sm:text-6xl">
+                {match.title}
+              </h1>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Link
+                  href={match.href}
+                  className="rounded-full bg-sky-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-200"
+                >
+                  Watch
+                </Link>
+                <Link
+                  href="/bets"
+                  className="rounded-full border border-amber-300/25 bg-amber-300/10 px-5 py-3 text-sm font-semibold text-amber-100 transition hover:border-amber-200/40"
+                >
+                  Bets
+                </Link>
+                {match.primaryStream ? (
+                  <a
+                    href={match.primaryStream.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-full border border-white/15 px-5 py-3 text-sm font-semibold text-white/85 transition hover:border-white/30 hover:text-white"
+                  >
+                    Source
+                  </a>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <MiniStat label="Winner" value={match.winner} />
+              <MiniStat label="Duration" value={match.durationLabel} />
+              <MiniStat label="Parse" value={`#${match.parseIteration}`} />
+              <MiniStat label="Captured" value={match.createdLabel} />
+            </div>
           </div>
         </div>
       </div>
     </section>
+  );
+}
+
+function MiniScreen({ match }: { match: WatchMatchSummary }) {
+  return (
+    <Link
+      href={match.href}
+      className="group relative block overflow-hidden rounded-[1.35rem] border border-white/10 bg-black/50 shadow-[0_18px_60px_rgba(0,0,0,0.24)] transition hover:-translate-y-0.5 hover:border-sky-300/35"
+    >
+      <div className="aspect-video">
+        <PreviewMotion />
+      </div>
+      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/70 to-transparent p-3">
+        <div className="truncate text-sm font-semibold text-white group-hover:text-sky-100">
+          {match.title}
+        </div>
+        <div className="mt-1 text-[11px] uppercase tracking-[0.2em] text-slate-400">
+          {match.mode === "live" ? "Live" : "Archive"} · {match.mapName}
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+function AdvancedObserverRail({ match }: { match: WatchMatchSummary }) {
+  return (
+    <section className="mt-4 rounded-[1.7rem] border border-amber-300/15 bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.12),transparent_30%),rgba(15,23,42,0.82)] p-4">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+        <div>
+          <div className="text-[11px] uppercase tracking-[0.32em] text-amber-200/70">
+            Observer betting
+          </div>
+          <div className="mt-2 text-xl font-semibold text-white">{match.title}</div>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          {[10, 25, 50, 100].map((amount) => (
+            <Link
+              key={amount}
+              href="/bets"
+              className="rounded-full border border-white/10 bg-white/[0.045] px-4 py-2 text-sm font-semibold text-white transition hover:border-amber-300/35 hover:bg-amber-300/10"
+            >
+              {amount}
+            </Link>
+          ))}
+          <Link
+            href="/bets"
+            className="rounded-full bg-amber-300 px-5 py-2 text-sm font-semibold text-slate-950 transition hover:bg-amber-200"
+          >
+            Open Book
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ArchiveCard({ match }: { match: WatchMatchSummary }) {
+  return (
+    <Link
+      href={match.href}
+      className="group block overflow-hidden rounded-[1.6rem] border border-white/10 bg-white/[0.035] transition hover:-translate-y-0.5 hover:border-sky-300/35 hover:bg-sky-400/[0.06]"
+    >
+      <div className="relative aspect-video overflow-hidden bg-black">
+        <PreviewMotion />
+        <div className="absolute left-3 top-3 flex flex-wrap gap-2">
+          <Pill tone="emerald">Archive</Pill>
+          <Pill tone={match.hasFeed ? "sky" : "amber"}>{match.hasFeed ? "Feed" : "No feed"}</Pill>
+        </div>
+        <div className="absolute right-3 top-3 rounded-full border border-white/10 bg-black/35 px-3 py-1 text-xs text-white">
+          #{match.parseIteration}
+        </div>
+      </div>
+
+      <div className="p-5">
+        <h3 className="text-2xl font-semibold tracking-tight text-white group-hover:text-sky-100">
+          {match.title}
+        </h3>
+        <p className="mt-2 text-sm text-slate-400">{match.mapName} · {match.createdLabel}</p>
+
+        <div className="mt-5 grid grid-cols-3 gap-3">
+          <MiniStat label="Winner" value={match.winner} />
+          <MiniStat label="Time" value={match.durationLabel} />
+          <MiniStat label="Feeds" value={String(match.streamCount)} />
+        </div>
+      </div>
+    </Link>
   );
 }
 
@@ -318,6 +446,25 @@ function MatchCard({ match, hot = false }: { match: WatchMatchSummary; hot?: boo
   );
 }
 
+function PreviewMotion({ large = false }: { large?: boolean }) {
+  return (
+    <div className="absolute inset-0 overflow-hidden bg-[radial-gradient(circle_at_26%_24%,rgba(132,204,22,0.34),transparent_18%),radial-gradient(circle_at_70%_38%,rgba(22,163,74,0.28),transparent_19%),radial-gradient(circle_at_52%_76%,rgba(245,158,11,0.20),transparent_18%),linear-gradient(135deg,#10351d,#182313_45%,#07111f)]">
+      <div className="absolute inset-0 opacity-35 [background-image:linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:34px_34px]" />
+      <div className="absolute left-[12%] top-[18%] h-12 w-20 rounded-sm border border-amber-200/25 bg-amber-900/25 shadow-[0_0_30px_rgba(251,191,36,0.14)]" />
+      <div className="absolute right-[18%] top-[25%] h-10 w-16 rounded-full bg-emerald-400/20 blur-sm" />
+      <div className="absolute bottom-[18%] left-[18%] h-24 w-40 rounded-full bg-black/35 blur-2xl" />
+      <div className="absolute bottom-[16%] right-[16%] h-16 w-28 rounded-full bg-black/30 blur-xl" />
+
+      <div className={`absolute rounded-full bg-sky-200 shadow-[0_0_18px_rgba(125,211,252,0.95)] ${large ? "left-[22%] top-[48%] h-2.5 w-2.5" : "left-[24%] top-[50%] h-1.5 w-1.5"} animate-pulse`} />
+      <div className={`absolute rounded-full bg-red-300 shadow-[0_0_18px_rgba(252,165,165,0.95)] ${large ? "right-[25%] top-[42%] h-2.5 w-2.5" : "right-[24%] top-[44%] h-1.5 w-1.5"} animate-pulse`} />
+      <div className={`absolute rounded-full bg-amber-200 shadow-[0_0_18px_rgba(253,230,138,0.95)] ${large ? "left-[50%] top-[58%] h-2.5 w-2.5" : "left-[52%] top-[58%] h-1.5 w-1.5"} animate-ping`} />
+
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.08)_45%,rgba(0,0,0,0.42)_100%)]" />
+      <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/70 to-transparent" />
+    </div>
+  );
+}
+
 function SectionHeader({
   eyebrow,
   title,
@@ -333,17 +480,7 @@ function SectionHeader({
         <p className="text-xs uppercase tracking-[0.36em] text-amber-200/70">{eyebrow}</p>
         <h2 className="mt-2 text-3xl font-semibold tracking-tight text-white">{title}</h2>
       </div>
-      <p className="max-w-xl text-sm leading-6 text-slate-400">{note}</p>
-    </div>
-  );
-}
-
-function StatCard({ label, value, detail }: { label: string; value: string; detail: string }) {
-  return (
-    <div className="rounded-[1.4rem] border border-white/10 bg-white/[0.045] p-5">
-      <div className="text-xs uppercase tracking-[0.32em] text-sky-200/65">{label}</div>
-      <div className="mt-3 text-4xl font-semibold text-white">{value}</div>
-      <p className="mt-2 text-sm leading-6 text-slate-400">{detail}</p>
+      {note ? <p className="max-w-xl text-sm leading-6 text-slate-400">{note}</p> : null}
     </div>
   );
 }
