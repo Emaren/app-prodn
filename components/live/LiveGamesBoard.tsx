@@ -166,17 +166,9 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
     [snapshot.scheduledMatches]
   );
   const liveItemsCount =
-    liveScheduledMatches.length +
-    snapshot.activeSessions.length +
-    snapshot.liveMatches.length +
-    recentScheduledMatches.length +
-    snapshot.recentlyCompletedSessions.length;
-  const sectionStatusLabel =
-    snapshot.liveCount > 0
-      ? `${snapshot.liveCount} live`
-      : recentScheduledMatches.length + snapshot.recentlyCompletedSessions.length > 0
-        ? `${recentScheduledMatches.length + snapshot.recentlyCompletedSessions.length} recent`
-        : "0 live";
+    liveScheduledMatches.length + snapshot.activeSessions.length + snapshot.liveMatches.length;
+  const recentOutcomeCount = recentScheduledMatches.length + snapshot.recentlyCompletedSessions.length;
+  const sectionStatusLabel = snapshot.liveCount > 0 ? `${snapshot.liveCount} live` : "0 live";
 
   const onDeckCount =
     snapshot.readyMatches.length + acceptedScheduledMatches.length + pendingScheduledMatches.length;
@@ -310,20 +302,6 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
                 {snapshot.liveMatches.map((match) => (
                   <TournamentLiveMatchCard key={`match-${match.id}`} match={match} emphasis="live" />
                 ))}
-                {recentScheduledMatches.map((match) => (
-                  <ScheduledMatchCard
-                    key={`scheduled-recent-${match.id}`}
-                    match={match}
-                    viewerUid={uid}
-                    onAccept={(challengeId) => updateChallenge(challengeId, "accept")}
-                    onDecline={(challengeId) => updateChallenge(challengeId, "decline")}
-                    onCancel={(challengeId) => updateChallenge(challengeId, "cancel")}
-                    actionState={actionState}
-                  />
-                ))}
-                {snapshot.recentlyCompletedSessions.map((session) => (
-                  <LiveSessionCard key={`completed-${session.id}`} session={session} />
-                ))}
               </>
             )}
           </div>
@@ -374,6 +352,44 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
                       actionState={actionState}
                       compact
                     />
+                  ))}
+                </>
+              )}
+            </div>
+          </section>
+
+          <section className="rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-5 sm:p-6">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <div className="text-xs uppercase tracking-[0.35em] text-emerald-200/70">Resolved</div>
+                <h2 className="mt-2 text-2xl font-semibold text-white">Recent outcomes</h2>
+              </div>
+              <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-200">
+                {recentOutcomeCount} resolved
+              </div>
+            </div>
+
+            <div className="mt-5 space-y-3">
+              {recentOutcomeCount === 0 ? (
+                <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-5 text-sm text-slate-300">
+                  No resolved live outcomes yet.
+                </div>
+              ) : (
+                <>
+                  {recentScheduledMatches.map((match) => (
+                    <ScheduledMatchCard
+                      key={`scheduled-recent-${match.id}`}
+                      match={match}
+                      viewerUid={uid}
+                      onAccept={(challengeId) => updateChallenge(challengeId, "accept")}
+                      onDecline={(challengeId) => updateChallenge(challengeId, "decline")}
+                      onCancel={(challengeId) => updateChallenge(challengeId, "cancel")}
+                      actionState={actionState}
+                      compact
+                    />
+                  ))}
+                  {snapshot.recentlyCompletedSessions.map((session) => (
+                    <LiveSessionCard key={`completed-${session.id}`} session={session} />
                   ))}
                 </>
               )}
