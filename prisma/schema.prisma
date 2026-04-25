@@ -758,6 +758,27 @@ model BetStakeIntent {
   @@map("bet_stake_intents")
 }
 
+
+model GameWatchStream {
+  id          Int      @id @default(autoincrement())
+  sessionKey  String   @map("session_key") @db.VarChar(255)
+  provider    String   @db.VarChar(24)
+  role        String   @db.VarChar(24)
+  label       String   @db.VarChar(80)
+  url         String   @db.VarChar(500)
+  embedId     String?  @map("embed_id") @db.VarChar(255)
+  playerLabel String?  @map("player_label") @db.VarChar(80)
+  isPrimary   Boolean  @default(false) @map("is_primary")
+  status      String   @default("live") @db.VarChar(24)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  @@index([sessionKey, isPrimary], map: "ix_game_watch_streams_session_primary")
+  @@index([sessionKey, status], map: "ix_game_watch_streams_session_status")
+  @@index([provider], map: "ix_game_watch_streams_provider")
+  @@map("game_watch_streams")
+}
+
 model alembic_version {
   version_num String @id(map: "alembic_version_pkc") @db.VarChar(32)
 }

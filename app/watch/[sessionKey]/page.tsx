@@ -1,4 +1,5 @@
 import Link from "next/link";
+import BattleTheatreStreams from "@/components/watch/BattleTheatreStreams";
 import { notFound } from "next/navigation";
 
 import {
@@ -69,42 +70,10 @@ export default async function BattleTheatrePage({
               </p>
             </div>
 
-            <div className="relative isolate overflow-hidden rounded-[1.8rem] border border-white/10 bg-black shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
-              <div className="aspect-video bg-[radial-gradient(circle_at_50%_35%,rgba(56,189,248,0.18),transparent_22%),radial-gradient(circle_at_70%_70%,rgba(251,191,36,0.12),transparent_24%),linear-gradient(135deg,#020617,#050816_48%,#0f172a)]">
-                <div className="absolute inset-0 bg-[linear-gradient(115deg,transparent,rgba(255,255,255,0.045),transparent)]" />
-                <div className="absolute left-5 top-5 flex flex-wrap gap-2">
-                  <TheatrePill tone="red">Live Slot</TheatrePill>
-                  <TheatrePill>Main Cast</TheatrePill>
-                  <TheatrePill>Embed Later</TheatrePill>
-                </div>
-
-                <div className="absolute inset-0 flex items-center justify-center p-6">
-                  <div className="text-center">
-                    <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full border border-white/15 bg-white/8 text-white shadow-[0_18px_60px_rgba(0,0,0,0.45)]">
-                      <PlayIcon />
-                    </div>
-                    <div className="mt-5 text-2xl font-semibold tracking-tight text-white">
-                      Broadcast feed lands here
-                    </div>
-                    <div className="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-300">
-                      Twitch, YouTube, Steam, Discord, or a future native feed. One primary stream first,
-                      optional POVs below.
-                    </div>
-                  </div>
-                </div>
-
-                <div className="absolute inset-x-0 bottom-0 border-t border-white/10 bg-black/35 p-4 backdrop-blur">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <FeedChip active>Main Cast</FeedChip>
-                    <FeedChip>Observer</FeedChip>
-                    {playerNames.slice(0, 4).map((name) => (
-                      <FeedChip key={name}>{name} POV</FeedChip>
-                    ))}
-                    <FeedChip>Postgame Replay</FeedChip>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <BattleTheatreStreams
+              sessionKey={snapshot.sessionKey}
+              playerNames={playerNames}
+            />
           </div>
 
           <aside className="space-y-4">
