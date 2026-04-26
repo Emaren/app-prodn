@@ -560,7 +560,7 @@ function HeroPill({
 
 function ModeToggleChip({ mode }: { mode: WarChestMode }) {
   const nextMode = mode === "weekly" ? "all_time" : "weekly";
-  const currentLabel = mode === "weekly" ? "WEEKLY" : "ALL TIME";
+  const currentLabel = mode === "weekly" ? "Weekly" : "All Time";
   const nextLabel = nextMode === "weekly" ? "Weekly" : "All Time";
 
   return (

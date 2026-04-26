@@ -2031,7 +2031,7 @@ function BoardPulseSection({
   return (
     <section className={`${shellClass()} p-5 sm:p-6`}>
       <div className="text-[11px] uppercase tracking-[0.35em] text-slate-500">Board Pulse</div>
-      <h2 className="mt-2 text-2xl font-semibold text-white">Enough telemetry to feel alive.</h2>
+      <h2 className="mt-2 text-2xl font-semibold text-white"></h2>
 
       <div className="mt-5 space-y-3">
         <HeatRow

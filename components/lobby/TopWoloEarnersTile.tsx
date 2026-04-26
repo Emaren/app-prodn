@@ -141,8 +141,8 @@ export function TopWoloEarnersTile({
         .map((entry, index) => ({ ...entry, rank: index + 1 })),
     [board?.entries, mode]
   );
-  const statusLabel = mode === "weekly" ? "WEEKLY" : "ALL TIME";
-  const nextModeLabel = mode === "weekly" ? "ALL TIME" : "WEEKLY";
+  const statusLabel = mode === "weekly" ? "Weekly" : "All Time";
+  const nextModeLabel = mode === "weekly" ? "All Time" : "Weekly";
   const headlineMeta =
     entries.length > 0 ? `${entries.length} earners` : reserve ? `${reserve} reserve` : "4 earners";
   const placeholderCount = Math.max(0, VISIBLE_ROWS - entries.length);
