@@ -116,7 +116,13 @@ async function retrySettlementClaim(request: NextRequest, claimId: number) {
   }
 
   if (result.outcome === "failed") {
-    return NextResponse.json({ detail: result.detail }, { status: 500 });
+    return NextResponse.json(
+      {
+        detail: result.detail,
+        retryable: true,
+      },
+      { status: 409 },
+    );
   }
 
   switch (result.reason) {
