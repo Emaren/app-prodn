@@ -54,6 +54,32 @@ type WatchMatchSummary = {
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
+
+const HOSTED_WATCH_LOOPS = [
+  {
+    needle: "emaren vs sechma",
+    url: "/watch-loops/emaren-vs-sechma.mp4",
+  },
+  {
+    needle: "emaren vs sir benni miles",
+    url: "/watch-loops/emaren-vs-sir-benni-miles.mp4",
+  },
+  {
+    needle: "emaren vs ghjambattista2b",
+    url: "/watch-loops/emaren-vs-ghjambattista2b.mp4",
+  },
+] as const;
+
+function normalizeWatchTitle(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function hostedLoopForMatch(match: Pick<WatchMatchSummary, "title">) {
+  const title = normalizeWatchTitle(match.title);
+  return HOSTED_WATCH_LOOPS.find((loop) => title.includes(loop.needle)) || null;
+}
+
+
 export default async function WatchIndexPage({
   searchParams,
 }: {
@@ -92,22 +118,26 @@ export default async function WatchIndexPage({
           <div className="flex flex-wrap items-center gap-2">
             <Link
               href={advanced ? "/watch" : "/watch?view=advanced"}
-              aria-label={advanced ? "Switch to basic watch layout" : "Switch to advanced watch layout"}
-              title={advanced ? "Basic layout" : "Advanced layout"}
+              aria-label={advanced ? "Switch to three-card watch shelf" : "Switch to advanced hero theatre"}
+              title={advanced ? "Three-card shelf" : "Advanced theatre"}
               className={`group grid h-9 w-9 place-items-center rounded-full border transition ${
                 advanced
                   ? "border-sky-300/70 bg-sky-300/20 text-sky-100 shadow-[0_0_22px_rgba(125,211,252,0.18)]"
                   : "border-white/10 bg-white/5 text-slate-300 hover:border-sky-300/50 hover:bg-sky-300/10 hover:text-sky-100"
               }`}
             >
-              <span className="grid h-4.5 w-5 grid-rows-[4px_1fr] gap-1">
-                <span className="grid grid-cols-3 gap-0.5">
-                  <span className="rounded-[2px] bg-current opacity-80" />
-                  <span className="rounded-[2px] bg-current opacity-80" />
-                  <span className="rounded-[2px] bg-current opacity-80" />
+              {advanced ? (
+                <span className="grid h-5 w-5 grid-cols-3 gap-1" aria-hidden="true">
+                  <span className="rounded-[3px] border border-current bg-current/20" />
+                  <span className="rounded-[3px] border border-current bg-current/20" />
+                  <span className="rounded-[3px] border border-current bg-current/20" />
                 </span>
-                <span className="rounded-[3px] border border-current bg-current/20 opacity-95" />
-              </span>
+              ) : (
+                <span className="relative block h-5 w-5" aria-hidden="true">
+                  <span className="absolute inset-x-0 top-0 h-3.5 rounded-[4px] border border-current bg-current/15" />
+                  <span className="absolute bottom-0 left-1/2 h-1.5 w-3 -translate-x-1/2 rounded-full bg-current opacity-80" />
+                </span>
+              )}
             </Link>
 
             <Link
@@ -127,7 +157,7 @@ export default async function WatchIndexPage({
           </div>
         </div>
 
-        {advanced && topScreens.length > 0 ? (
+        {!advanced && topScreens.length > 0 ? (
           <div className="mb-4 grid gap-3 md:grid-cols-3">
             {topScreens.map((match, index) => (
               <MiniScreen key={`${match.sessionKey}-${index}`} match={match} />
@@ -672,6 +702,17 @@ function applyHostedMediaFallback(match: WatchMatchSummary): WatchMatchSummary {
   const registryMatch = applyWatchPreviewRegistryFallback(match);
   if (registryMatch !== match) return registryMatch;
 
+  const hostedLoop = hostedLoopForMatch(match);
+  if (hostedLoop) {
+    return {
+      ...match,
+      previewUrl: match.previewUrl || hostedLoop.url,
+      bestOfUrl: match.bestOfUrl || hostedLoop.url,
+      recordingUrl: match.recordingUrl || hostedLoop.url,
+      thumbnailUrl: match.thumbnailUrl || "/watch/aoe2hd-screen.svg",
+    };
+  }
+
   const title = match.title.toLowerCase();
 
   if (title.includes("koolamumomu")) {
@@ -723,15 +764,21 @@ function pickShelfMatches(snapshot: {
   hero: WatchMatchSummary | null;
   matches: WatchMatchSummary[];
 }) {
-  return [...snapshot.matches]
+  const preferred = HOSTED_WATCH_LOOPS
+    .map((loop) =>
+      snapshot.matches.find((match) => hostedLoopForMatch(match)?.url === loop.url)
+    )
+    .filter((match): match is WatchMatchSummary => Boolean(match));
+
+  const seen = new Set(preferred.map((match) => match.sessionKey));
+  const fallback = snapshot.matches
     .filter((match) => match.sessionKey !== "__live-building__")
     .filter((match) => match.sessionKey !== snapshot.hero?.sessionKey)
-    .sort((left, right) => {
-      const rightHosted = hasHostedWatchMedia(right) ? 1 : 0;
-      const leftHosted = hasHostedWatchMedia(left) ? 1 : 0;
-      return rightHosted - leftHosted;
-    })
-    .slice(0, 3);
+    .filter((match) => !seen.has(match.sessionKey))
+    .filter(hasHostedWatchMedia)
+    .slice(0, 3 - preferred.length);
+
+  return [...preferred, ...fallback].slice(0, 3);
 }
 
 function buildTwitchPlayerUrl(channel: string) {
