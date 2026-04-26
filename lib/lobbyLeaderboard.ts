@@ -341,7 +341,7 @@ function buildPrimaryRatingSourceLabel(entry: EnrichedLeaderboardEntry) {
     return "Steam RM";
   }
 
-  return hasTrackedHistory(entry) ? "Arena Elo" : "Profile";
+  return hasTrackedHistory(entry) ? "Site Elo" : "Profile";
 }
 
 function buildSecondaryRatingLabel(entry: EnrichedLeaderboardEntry) {
@@ -349,7 +349,7 @@ function buildSecondaryRatingLabel(entry: EnrichedLeaderboardEntry) {
     return null;
   }
 
-  return `Arena ${Math.round(entry.arenaElo)}`;
+  return `Site ${Math.round(entry.arenaElo)}`;
 }
 
 function toLobbyLeaderboardEntry(
@@ -476,9 +476,9 @@ export async function loadLobbyLeaderboard(
   return {
     title: "Season Leaderboard",
     statusLabel: selectedEntries.some(hasSteamRmRating)
-      ? "Steam RM + Arena"
+      ? "Steam RM + Site Elo"
       : eligibleEntries.length > 0
-        ? "Arena Elo"
+        ? "Site Elo"
         : "Need games",
     entries: selectedEntries.map((entry, index) =>
       toLobbyLeaderboardEntry(entry, index + 1, recentGames)

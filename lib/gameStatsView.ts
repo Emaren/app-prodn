@@ -330,11 +330,11 @@ function readNumericPlayerField(player: ReplayPlayerRecord, ...keys: string[]) {
 }
 
 export function readPlayerSteamRmRating(player: ReplayPlayerRecord) {
-  return readNumericPlayerField(player, "steam_rm_rating", "hd_rm_rating", "rate_snapshot");
+  return readNumericPlayerField(player, "steam_rm_rating", "hd_rm_rating");
 }
 
 export function readPlayerSteamDmRating(player: ReplayPlayerRecord) {
-  return readNumericPlayerField(player, "steam_dm_rating", "hd_dm_rating");
+  return readNumericPlayerField(player, "steam_dm_rating", "hd_dm_rating", "rate_snapshot");
 }
 
 export function readPlayerSteamId(player: ReplayPlayerRecord) {
