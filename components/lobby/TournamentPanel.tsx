@@ -8,7 +8,7 @@ import {
   type LobbyViewMode,
 } from "@/components/lobby/lobbyPresentation";
 import { getTournamentMatchStatusLabel, getTournamentStatusLabel, type LobbySnapshot } from "@/lib/lobby";
-import { displayMatchPlayer, displayName, formatTournamentWindow } from "@/components/lobby/utils";
+import { displayMatchPlayer, displayName, formatLobbyMoment, formatTournamentWindow } from "@/components/lobby/utils";
 
 type TournamentPanelProps = {
   tournament: LobbySnapshot["tournament"];
@@ -179,7 +179,7 @@ export function TournamentPanel({
 
                   {match.scheduledAt && (
                     <div className="mt-2.5 text-xs text-slate-400">
-                      {new Date(match.scheduledAt).toLocaleString()}
+                      {formatLobbyMoment(match.scheduledAt)}
                     </div>
                   )}
 
@@ -187,7 +187,7 @@ export function TournamentPanel({
                     <div className="mt-2.5 text-xs text-emerald-100/90">
                       {match.proof.mapName || "Unknown map"}
                       {match.proof.playedOn
-                        ? ` · ${new Date(match.proof.playedOn).toLocaleString()}`
+                        ? ` · ${formatLobbyMoment(match.proof.playedOn)}`
                         : ""}
                       {match.proof.winner ? ` · Winner ${match.proof.winner}` : ""}
                     </div>
@@ -213,7 +213,7 @@ export function TournamentPanel({
           >
             {tournament.viewerJoined
               ? joinPending
-                ? "Refreshing..."
+                ? "Leaving..."
                 : "Joined"
               : joinPending
                 ? "Joining..."

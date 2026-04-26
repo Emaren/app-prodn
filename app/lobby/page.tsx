@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 
-import HomePageClient from "@/app/HomePageClient";
+import LobbyClientOnly from "@/app/lobby/LobbyClientOnly";
 import { readGuestReactionSessionIdFromCookies } from "@/lib/guestReactionSession";
 import { loadLobbySnapshot } from "@/lib/lobbySnapshot";
 import { getPrisma } from "@/lib/prisma";
@@ -18,5 +18,5 @@ export default async function LobbyPage() {
     readGuestReactionSessionIdFromCookies(cookieStore)
   );
 
-  return <HomePageClient initialLobby={initialLobby} />;
+  return <LobbyClientOnly initialLobby={initialLobby} />;
 }

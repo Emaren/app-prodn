@@ -52,18 +52,32 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ detail: "This tournament is already completed." }, { status: 400 });
   }
 
-  await prisma.tournamentEntry.upsert({
+  const existingEntry = await prisma.tournamentEntry.findUnique({
     where: {
       tournamentId_userId: {
         tournamentId,
         userId: user.id,
       },
     },
-    update: {
-      status: "joined",
-      note: null,
-    },
-    create: {
+    select: { id: true },
+  });
+
+  if (existingEntry) {
+    await prisma.tournamentEntry.delete({
+      where: { id: existingEntry.id },
+    });
+
+    const featuredTournament = await getFeaturedTournament(prisma, uid);
+    return NextResponse.json({
+      ok: true,
+      action: "left",
+      joined: false,
+      tournament: featuredTournament,
+    });
+  }
+
+  await prisma.tournamentEntry.create({
+    data: {
       tournamentId,
       userId: user.id,
       status: "joined",
@@ -71,5 +85,10 @@ export async function POST(request: NextRequest) {
   });
 
   const featuredTournament = await getFeaturedTournament(prisma, uid);
-  return NextResponse.json({ ok: true, tournament: featuredTournament });
+  return NextResponse.json({
+    ok: true,
+    action: "joined",
+    joined: true,
+    tournament: featuredTournament,
+  });
 }

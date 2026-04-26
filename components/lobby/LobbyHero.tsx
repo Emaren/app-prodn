@@ -1,5 +1,6 @@
 "use client";
 
+import { formatLobbyMoment } from "@/components/lobby/utils";
 import Link from "next/link";
 import type { MouseEvent } from "react";
 import SteamLoginButton from "@/components/SteamLoginButton";
@@ -45,7 +46,7 @@ function formatUpdatedAt(value: string | null | undefined) {
   if (!value) return "Waiting for snapshot";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "Waiting for snapshot";
-  return `Updated ${date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
+  return `Updated ${formatLobbyMoment(value)}`;
 }
 
 function isInteractiveToggleTarget(target: EventTarget | null) {

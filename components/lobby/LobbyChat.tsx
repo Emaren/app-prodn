@@ -1,5 +1,6 @@
 "use client";
 
+import { formatLobbyMoment } from "@/components/lobby/utils";
 import {
   type CSSProperties,
   type MouseEvent,
@@ -470,10 +471,7 @@ function LobbyMessageCard({
         </div>
 
         <div className="text-xs text-slate-400">
-          {new Date(item.message.createdAt).toLocaleTimeString([], {
-            hour: "numeric",
-            minute: "2-digit",
-          })}
+          {formatLobbyMoment(item.message.createdAt)}
         </div>
       </div>
 

@@ -1,3 +1,4 @@
+import { formatLobbyMoment } from "@/components/lobby/utils";
 import Link from "next/link";
 
 import SteamLinkedBadge from "@/components/SteamLinkedBadge";
@@ -22,12 +23,7 @@ function formatLastGame(value: string | null) {
     return "Pending";
   }
 
-  return new Date(value).toLocaleString([], {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  return formatLobbyMoment(value);
 }
 
 function buildRecordLabel(entry: LobbyLeaderboardSummary["entries"][number]) {

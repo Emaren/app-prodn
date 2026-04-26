@@ -52,12 +52,29 @@ export function formatTournamentWindow(startsAt: string | null) {
   const date = new Date(startsAt);
   if (Number.isNaN(date.getTime())) return "Scheduling now";
 
-  return date.toLocaleString([], {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Edmonton",
     month: "short",
     day: "numeric",
     hour: "numeric",
     minute: "2-digit",
-  });
+  }).format(date);
+}
+
+
+export function formatLobbyMoment(value: string | Date | null | undefined) {
+  if (!value) return "Scheduling now";
+
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "Scheduling now";
+
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Edmonton",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
 }
 
 function getDayKey(value: string) {

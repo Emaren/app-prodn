@@ -67,3 +67,15 @@ button:disabled,
 [aria-disabled="true"] {
     cursor: not-allowed;
 }
+
+/* Tournament admin: keep Starts At datetime fields readable. */
+input[type="datetime-local"],
+input[name="startsAt"],
+input[aria-label="Starts At"] {
+  min-width: 16rem;
+}
+
+/* Tournament admin: readable datetime-local inputs. */
+input[type="datetime-local"] {
+  min-width: 18rem;
+}

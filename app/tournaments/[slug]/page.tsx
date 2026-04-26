@@ -39,12 +39,13 @@ function formatMoment(value: string | null) {
   if (!value) return "Scheduling now";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "Scheduling now";
-  return date.toLocaleString([], {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Edmonton",
     month: "short",
     day: "numeric",
     hour: "numeric",
     minute: "2-digit",
-  });
+  }).format(date);
 }
 
 export default async function TournamentDetailPage({

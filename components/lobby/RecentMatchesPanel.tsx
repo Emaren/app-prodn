@@ -1,5 +1,6 @@
 "use client";
 
+import { formatLobbyMoment } from "@/components/lobby/utils";
 import Link from "next/link";
 import { type ReactNode } from "react";
 import {
@@ -113,7 +114,7 @@ function MatchCard({
 
       {playedAt && (
         <div className="mt-3 text-xs text-slate-400">
-          {new Date(playedAt).toLocaleString()}
+          {formatLobbyMoment(playedAt)}
         </div>
       )}
     </Link>
