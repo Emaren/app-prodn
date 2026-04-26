@@ -27,7 +27,7 @@ export default function WatchPreviewScreen({
     setShowLive(false);
   }, [mediaKey]);
 
-  const shouldShowLive = Boolean(liveEmbedUrl && (showLive || !videoUrl));
+  const shouldShowLive = Boolean(liveEmbedUrl && showLive);
   const canOpenLive = Boolean(liveEmbedUrl && !showLive);
 
   return (
@@ -44,7 +44,6 @@ export default function WatchPreviewScreen({
           src={liveEmbedUrl || ""}
           className="absolute inset-0 h-full w-full"
           allow="autoplay; fullscreen; picture-in-picture"
-          allowFullScreen
         />
       ) : videoUrl ? (
         <video

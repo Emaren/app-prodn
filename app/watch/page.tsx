@@ -379,12 +379,14 @@ function HeroScreen({
   match: WatchMatchSummary;
   advanced: boolean;
 }) {
+  const isLiveHero = match.mode === "live";
+
   return (
     <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-black/45 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
       <div className="relative aspect-video min-h-[22rem] overflow-hidden bg-black sm:min-h-[30rem]">
         <PreviewMotion match={match} large />
 
-        <div className="absolute left-4 top-4 flex flex-wrap gap-2">
+        <div className="absolute left-4 top-4 z-20 flex flex-wrap gap-2">
           <Pill tone={match.mode === "live" ? "red" : "emerald"}>
             {match.mode === "live" ? "Live" : "Archive"}
           </Pill>
@@ -393,47 +395,89 @@ function HeroScreen({
           {advanced ? <Pill tone="amber">Advanced</Pill> : null}
         </div>
 
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/60 to-transparent p-5 sm:p-7">
-          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-end">
-            <div className="min-w-0">
-              <h1 className="max-w-4xl text-4xl font-semibold tracking-tight text-white sm:text-6xl">
-                {formatWatchMatchTitle(match)}
-              </h1>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <Link
-                  href={match.href}
-                  className="rounded-full bg-sky-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-200"
-                >
-                  Watch
-                </Link>
-                <Link
-                  href="/bets"
-                  className="rounded-full border border-amber-300/25 bg-amber-300/10 px-5 py-3 text-sm font-semibold text-amber-100 transition hover:border-amber-200/40"
-                >
-                  Bets
-                </Link>
-                {match.primaryStream ? (
-                  <a
-                    href={match.primaryStream.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="rounded-full border border-white/15 px-5 py-3 text-sm font-semibold text-white/85 transition hover:border-white/30 hover:text-white"
+        {!isLiveHero ? (
+          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/60 to-transparent p-5 sm:p-7">
+            <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-end">
+              <div className="min-w-0">
+                <h1 className="max-w-4xl text-4xl font-semibold tracking-tight text-white sm:text-6xl">
+                  {formatWatchMatchTitle(match)}
+                </h1>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Link
+                    href={match.href}
+                    className="rounded-full bg-sky-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-200"
                   >
-                    Source
-                  </a>
-                ) : null}
+                    Watch
+                  </Link>
+                  <Link
+                    href="/bets"
+                    className="rounded-full border border-amber-300/25 bg-amber-300/10 px-5 py-3 text-sm font-semibold text-amber-100 transition hover:border-amber-200/40"
+                  >
+                    Bets
+                  </Link>
+                  {match.primaryStream ? (
+                    <a
+                      href={match.primaryStream.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="rounded-full border border-white/15 px-5 py-3 text-sm font-semibold text-white/85 transition hover:border-white/30 hover:text-white"
+                    >
+                      Source
+                    </a>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <MiniStat label="Winner" value={match.winner} />
+                <MiniStat label="Duration" value={match.durationLabel} />
+                <MiniStat label="Parse" value={`#${match.parseIteration}`} />
+                <MiniStat label="Captured" value={match.createdLabel} />
               </div>
             </div>
+          </div>
+        ) : null}
+      </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <MiniStat label="Winner" value={match.winner} />
-              <MiniStat label="Duration" value={match.durationLabel} />
-              <MiniStat label="Parse" value={`#${match.parseIteration}`} />
-              <MiniStat label="Captured" value={match.createdLabel} />
+      {isLiveHero ? (
+        <div className="border-t border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.10),transparent_32%),rgba(2,6,23,0.72)] px-4 py-3 sm:px-5">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="min-w-0">
+              <div className="text-[10px] font-black uppercase tracking-[0.32em] text-sky-200/70">
+                Live hero
+              </div>
+              <h1 className="mt-1 line-clamp-2 text-lg font-semibold tracking-tight text-white sm:text-xl">
+                {formatWatchMatchTitle(match)}
+              </h1>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <Link
+                href={match.href}
+                className="rounded-full bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200"
+              >
+                Watch
+              </Link>
+              <Link
+                href="/bets"
+                className="rounded-full border border-amber-300/25 bg-amber-300/10 px-4 py-2 text-sm font-semibold text-amber-100 transition hover:border-amber-200/40"
+              >
+                Bets
+              </Link>
+              {match.primaryStream ? (
+                <a
+                  href={match.primaryStream.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white/85 transition hover:border-white/30 hover:text-white"
+                >
+                  Source
+                </a>
+              ) : null}
             </div>
           </div>
         </div>
-      </div>
+      ) : null}
     </section>
   );
 }
@@ -839,21 +883,20 @@ function PreviewMotion({
   match?: WatchMatchSummary;
   large?: boolean;
 }) {
-  const videoUrl = match?.bestOfUrl || match?.previewUrl || match?.recordingUrl || null;
-  const liveEmbedUrl =
-    match?.sessionKey === "__live-building__" || match?.mode === "live"
-      ? getLiveEmbedUrl(match)
-      : null;
+  const isLivePreview = match?.sessionKey === "__live-building__" || match?.mode === "live";
+  const fallbackLiveLoopUrl = isLivePreview ? "/watch/previews/live-building-loop.mp4?v=live-loop" : null;
+  const videoUrl = match?.bestOfUrl || match?.previewUrl || match?.recordingUrl || fallbackLiveLoopUrl;
+  const liveEmbedUrl = isLivePreview ? getLiveEmbedUrl(match) : null;
 
   return (
     <WatchPreviewScreen
       title={formatWatchMatchTitle(match) || "AoE2HD preview"}
       mediaKey={match?.sessionKey || "aoe2hd-watch-preview"}
       videoUrl={videoUrl}
-      posterUrl={videoUrl ? match?.thumbnailUrl || null : null}
+      posterUrl={match?.thumbnailUrl || (isLivePreview ? "/watch/aoe2hd-screen.svg" : null)}
       liveEmbedUrl={liveEmbedUrl}
       large={large}
-      badge={liveEmbedUrl ? "LIVE" : videoUrl ? "AUTO" : "READY"}
+      badge={isLivePreview ? "LIVE" : videoUrl ? "AUTO" : "READY"}
     />
   );
 }
