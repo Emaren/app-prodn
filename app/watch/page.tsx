@@ -68,6 +68,14 @@ const HOSTED_WATCH_LOOPS = [
     needle: "emaren vs ghjambattista2b",
     url: "/watch-loops/emaren-vs-ghjambattista2b.mp4",
   },
+  {
+    needle: "emaren vs highsparrow",
+    url: "/watch-loops/emaren-vs-highsparrow.mp4",
+  },
+  {
+    needle: "emaren vs chronotrigger",
+    url: "/watch-loops/emaren-vs-chronotrigger.mp4",
+  },
 ] as const;
 
 function normalizeWatchTitle(value: string) {
