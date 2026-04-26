@@ -1,3 +1,5 @@
+import path from "node:path";
+import { promises as fs } from "node:fs";
 import Link from "next/link";
 import BattleTheatreStreams from "@/components/watch/BattleTheatreStreams";
 import { notFound } from "next/navigation";
@@ -40,6 +42,13 @@ export default async function BattleTheatrePage({
       : game.originalFilename || game.replayFile || "Battle feed";
   const mapName = readMapName(game.map);
   const durationLabel = formatDurationLabel(game.duration || game.gameDuration);
+  const archiveMedia = await loadBattleTheatreArchiveMedia({
+    sessionKey: decodedSessionKey,
+    matchupLabel,
+    originalFilename: game.originalFilename,
+    replayFile: game.replayFile,
+  });
+  const archiveVideoUrl = archiveMedia?.bestOfUrl || archiveMedia?.previewUrl || archiveMedia?.recordingUrl || null;
   const isFinal = snapshot.mode === "final" || game.isFinal;
   const liveDetailHref = `/game-stats/live/${encodeURIComponent(snapshot.sessionKey)}`;
   const finalStatsHref = snapshot.finalGameId ? `/game-stats/${snapshot.finalGameId}` : null;
@@ -70,10 +79,30 @@ export default async function BattleTheatrePage({
               </p>
             </div>
 
-            <BattleTheatreStreams
-              sessionKey={snapshot.sessionKey}
-              playerNames={playerNames}
-            />
+            {archiveVideoUrl ? (
+              <div className="overflow-hidden rounded-[1.5rem] border border-white/10 bg-black shadow-[0_24px_80px_rgba(0,0,0,0.38)]">
+                <div className="flex flex-wrap items-center gap-2 border-b border-white/10 bg-white/[0.035] px-4 py-3">
+                  <TheatrePill tone="emerald">MP4 Ready</TheatrePill>
+                  <TheatrePill>Main Cast</TheatrePill>
+                  <TheatrePill>Archive Loop</TheatrePill>
+                </div>
+                <video
+                  className="aspect-video w-full bg-black object-cover"
+                  src={archiveVideoUrl}
+                  controls
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  preload="metadata"
+                />
+              </div>
+            ) : (
+              <BattleTheatreStreams
+                sessionKey={snapshot.sessionKey}
+                playerNames={playerNames}
+              />
+            )}
           </div>
 
           <aside className="space-y-4">
@@ -291,5 +320,92 @@ function IntelCard({ label, value }: { label: string; value: string }) {
       <div className="mt-2 break-words text-xl font-semibold text-white">{value}</div>
     </div>
   );
+}
+
+type BattleTheatreArchiveMedia = {
+  bestOfUrl?: string | null;
+  previewUrl?: string | null;
+  recordingUrl?: string | null;
+  thumbnailUrl?: string | null;
+};
+
+type BattleTheatreRegistryEntry = BattleTheatreArchiveMedia & {
+  slug?: string;
+  title?: string;
+  aliases?: string[];
+};
+
+function normalizeBattleMediaKey(value: unknown) {
+  return String(value ?? "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+async function readBattleMediaJson<T>(relativePath: string): Promise<T | null> {
+  try {
+    const raw = await fs.readFile(path.join(process.cwd(), relativePath), "utf8");
+    return JSON.parse(raw) as T;
+  } catch {
+    return null;
+  }
+}
+
+function hasBattleMedia(media: BattleTheatreArchiveMedia | null | undefined) {
+  return Boolean(media?.bestOfUrl || media?.previewUrl || media?.recordingUrl);
+}
+
+async function loadBattleTheatreArchiveMedia({
+  sessionKey,
+  matchupLabel,
+  originalFilename,
+  replayFile,
+}: {
+  sessionKey: string;
+  matchupLabel: string;
+  originalFilename?: string | null;
+  replayFile?: string | null;
+}): Promise<BattleTheatreArchiveMedia | null> {
+  const candidates = [sessionKey, originalFilename, replayFile, matchupLabel]
+    .map((value) => String(value || "").trim())
+    .filter(Boolean);
+
+  const exactRegistry = await readBattleMediaJson<Record<string, BattleTheatreArchiveMedia>>(
+    "public/watch/media.json",
+  );
+
+  if (exactRegistry) {
+    for (const candidate of candidates) {
+      const media = exactRegistry[candidate];
+      if (hasBattleMedia(media)) return media;
+    }
+  }
+
+  const previewRegistry = await readBattleMediaJson<{ items?: BattleTheatreRegistryEntry[] }>(
+    "public/watch/previews/registry.json",
+  );
+
+  const items = Array.isArray(previewRegistry?.items) ? previewRegistry.items : [];
+  const normalizedCandidates = candidates.map(normalizeBattleMediaKey).filter(Boolean);
+
+  for (const item of items) {
+    const aliases = [
+      item.title,
+      item.slug?.replace(/-/g, " "),
+      ...(Array.isArray(item.aliases) ? item.aliases : []),
+    ]
+      .map(normalizeBattleMediaKey)
+      .filter(Boolean);
+
+    const matched = aliases.some((alias) =>
+      normalizedCandidates.some((candidate) => candidate.includes(alias) || alias.includes(candidate)),
+    );
+
+    if (matched && hasBattleMedia(item)) {
+      return item;
+    }
+  }
+
+  return null;
 }
 

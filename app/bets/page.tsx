@@ -463,6 +463,22 @@ function projectReturn(stakeWolo: number, selectedPoolWolo: number, oppositePool
   );
 }
 
+
+function isPendingLivePlaceholderMarket(market: BetBoardMarket | null | undefined) {
+  if (!market) return false;
+
+  const label = market.eventLabel.toLowerCase();
+  const title = market.title.toLowerCase();
+  const rightName = market.right?.name?.toLowerCase?.() ?? "";
+
+  return (
+    label.includes("book pending") ||
+    label.includes("players parsing") ||
+    title === "live 4v4 detected" ||
+    rightName === "parsing"
+  );
+}
+
 function describeStakeLockError(error: unknown, options?: { isLedger?: boolean }) {
   const message =
     error instanceof Error ? error.message.trim() : typeof error === "string" ? error.trim() : "";
@@ -1250,6 +1266,11 @@ export default function BetsPage() {
   }
 
   async function handleLock(market: BetBoardMarket) {
+    if (isPendingLivePlaceholderMarket(market)) {
+      toast.error("This live 4v4 is still parsing. Betting opens once teams are identified.");
+      return;
+    }
+
     if (!selection || selection.marketId !== market.id) return;
     if (!requireSignIn()) return;
     const stakeValidation = validateStakeAmount(selection.stake, maxStakeWolo);

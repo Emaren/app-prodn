@@ -63,3 +63,6 @@ storage/wolo-faucet/
 
 # local watcher release artifacts
 public/downloads/
+
+# Watch theatre full recordings are too large for GitHub.
+public/watch/recordings/*.mp4

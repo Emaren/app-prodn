@@ -23,6 +23,24 @@ const VIEWER_SELECT = {
   walletAddress: true,
 } as const;
 
+
+function isPendingLivePlaceholderMarket(market: {
+  title: string;
+  eventLabel: string;
+  rightLabel: string;
+}) {
+  const label = market.eventLabel.toLowerCase();
+  const title = market.title.toLowerCase();
+  const rightLabel = market.rightLabel.toLowerCase();
+
+  return (
+    label.includes("book pending") ||
+    label.includes("players parsing") ||
+    title === "live 4v4 detected" ||
+    rightLabel === "parsing"
+  );
+}
+
 async function requireViewer(request: NextRequest) {
   const sessionUid = await getSessionUid(request);
   if (!sessionUid) {
@@ -78,6 +96,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { detail: "Market, side, and stake are required." },
         { status: 400 }
+      );
+    }
+
+    const marketForGuard = await prisma.betMarket.findUnique({
+      where: { id: marketId },
+      select: {
+        id: true,
+        title: true,
+        eventLabel: true,
+        rightLabel: true,
+      },
+    });
+
+    if (!marketForGuard) {
+      return NextResponse.json({ detail: "Market not found." }, { status: 404 });
+    }
+
+    if (isPendingLivePlaceholderMarket(marketForGuard)) {
+      return NextResponse.json(
+        { detail: "This live 4v4 is still parsing. Betting opens once teams are identified." },
+        { status: 409 }
       );
     }
 

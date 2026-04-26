@@ -1,17 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
-const STORAGE_KEY = "aoe2hdbets.watch.previewDisabled";
-
-type Props = {
+type WatchPreviewScreenProps = {
   title: string;
   mediaKey: string;
   videoUrl?: string | null;
   posterUrl?: string | null;
   liveEmbedUrl?: string | null;
   large?: boolean;
-  badge?: string;
+  badge?: string | null;
 };
 
 export default function WatchPreviewScreen({
@@ -21,134 +19,87 @@ export default function WatchPreviewScreen({
   posterUrl,
   liveEmbedUrl,
   large = false,
-  badge = "BEST OF",
-}: Props) {
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const [disabled, setDisabled] = useState(false);
-  const [ready, setReady] = useState(false);
-
-  const storageKey = useMemo(() => mediaKey || title, [mediaKey, title]);
+  badge = null,
+}: WatchPreviewScreenProps) {
+  const [showLive, setShowLive] = useState(false);
 
   useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      const parsed = raw ? JSON.parse(raw) : {};
-      setDisabled(Boolean(parsed[storageKey]));
-    } catch {
-      setDisabled(false);
-    }
+    setShowLive(false);
+  }, [mediaKey]);
 
-    setReady(true);
-  }, [storageKey]);
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video || !ready) return;
-
-    if (disabled) {
-      video.pause();
-      return;
-    }
-
-    video.muted = true;
-    video.play().catch(() => {
-      // Browser may block occasionally; the user can tap play.
-    });
-  }, [disabled, ready, videoUrl]);
-
-  function togglePlayback() {
-    const nextDisabled = !disabled;
-    setDisabled(nextDisabled);
-
-    try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      const parsed = raw ? JSON.parse(raw) : {};
-
-      if (nextDisabled) {
-        parsed[storageKey] = true;
-      } else {
-        delete parsed[storageKey];
-      }
-
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
-    } catch {
-      // Non-fatal.
-    }
-  }
-
-  const showHostedVideo = Boolean(videoUrl);
+  const shouldShowLive = Boolean(liveEmbedUrl && (showLive || !videoUrl));
+  const canOpenLive = Boolean(liveEmbedUrl && !showLive);
 
   return (
-    <div className="absolute inset-0 overflow-hidden bg-black">
-      {showHostedVideo ? (
+    <div
+      className={[
+        "relative overflow-hidden rounded-[1.35rem] border border-white/10 bg-black shadow-2xl",
+        large ? "aspect-video min-h-[360px]" : "aspect-video min-h-[120px]",
+      ].join(" ")}
+      data-media-key={mediaKey}
+    >
+      {shouldShowLive ? (
+        <iframe
+          title={`${title} live stream`}
+          src={liveEmbedUrl || ""}
+          className="absolute inset-0 h-full w-full"
+          allow="autoplay; fullscreen; picture-in-picture"
+          allowFullScreen
+        />
+      ) : videoUrl ? (
         <video
-          ref={videoRef}
-          src={videoUrl || undefined}
-          poster={posterUrl || "/watch/aoe2hd-screen.svg"}
+          className="absolute inset-0 h-full w-full object-cover"
+          src={videoUrl}
+          poster={posterUrl || undefined}
+          autoPlay
           muted
           loop
           playsInline
-          preload={large ? "auto" : "metadata"}
-          autoPlay={!disabled}
+          preload="metadata"
+        />
+      ) : posterUrl ? (
+        <img
+          src={posterUrl}
+          alt=""
           className="absolute inset-0 h-full w-full object-cover"
         />
-      ) : liveEmbedUrl ? (
-        <iframe
-          title={`${title} live preview`}
-          src={liveEmbedUrl}
-          loading={large ? "eager" : "lazy"}
-          allow="autoplay; fullscreen; picture-in-picture"
-          allowFullScreen
-          className="absolute inset-0 h-full w-full border-0 bg-black"
-        />
       ) : (
-        <div
-          className="absolute inset-0 bg-cover bg-center opacity-95"
-          style={{ backgroundImage: `url('${posterUrl || "/watch/aoe2hd-screen.svg"}')` }}
-        />
+        <div className="absolute inset-0 overflow-hidden bg-[radial-gradient(circle_at_50%_45%,rgba(125,211,252,0.22),rgba(15,23,42,0.30)_34%,rgba(0,0,0,0.96)_78%)]">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_46%,rgba(56,189,248,0.18),transparent_24%,rgba(0,0,0,0.54)_66%,rgba(0,0,0,0.92)_100%)]" />
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(0,0,0,0.04)_38%,rgba(0,0,0,0.72))]" />
+          <div className="absolute inset-x-0 top-1/2 flex -translate-y-1/2 justify-center px-5">
+            <div className="whitespace-nowrap rounded-full border border-white/12 bg-white/10 px-7 py-2.5 text-[11px] font-black uppercase leading-none tracking-[0.34em] text-slate-200 shadow-[0_0_48px_rgba(125,211,252,0.18)] backdrop-blur-md">
+              Preview pending
+            </div>
+          </div>
+        </div>
       )}
 
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.06)_48%,rgba(0,0,0,0.62)_100%)]" />
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-black/70 to-transparent" />
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/84 via-black/38 to-transparent" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-black/20" />
 
-      <div
-        className={`pointer-events-none absolute left-3 top-3 rounded-full border border-white/15 bg-black/45 px-2.5 py-1 font-semibold text-white ${
-          large ? "text-xs" : "text-[10px]"
-        }`}
-      >
-        AOE2HD
+      <div className="absolute left-3 top-3 flex items-center gap-2">
+        <span className="rounded-full border border-white/10 bg-black/65 px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-white">
+          AoE2HD
+        </span>
+        {badge ? (
+          <span className="rounded-full border border-sky-200/20 bg-sky-300/20 px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-sky-50">
+            {badge}
+          </span>
+        ) : null}
       </div>
 
-      <button
-        type="button"
-        onClick={(event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          togglePlayback();
-        }}
-        className={`absolute right-3 top-3 rounded-full border px-2.5 py-1 font-semibold transition ${
-          disabled
-            ? "border-white/20 bg-black/55 text-white"
-            : "border-red-300/25 bg-red-500/25 text-red-100"
-        } ${large ? "text-xs" : "text-[10px]"}`}
-        title={disabled ? "Autoplay off for this tile" : "Autoplay on for this tile"}
-      >
-        {disabled ? "PAUSED" : badge}
-      </button>
-
-      {disabled && showHostedVideo ? (
+      {canOpenLive ? (
         <button
           type="button"
           onClick={(event) => {
             event.preventDefault();
             event.stopPropagation();
-            togglePlayback();
+            setShowLive(true);
           }}
-          className="absolute left-1/2 top-1/2 grid h-16 w-16 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-white/15 bg-black/55 text-white shadow-2xl transition hover:bg-black/70"
-          title="Play preview"
+          aria-label={`Play ${title} live stream`}
+          className="absolute left-1/2 top-1/2 z-20 grid h-16 w-16 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-white/25 bg-black/45 text-white shadow-[0_16px_50px_rgba(0,0,0,0.45)] backdrop-blur-md transition hover:scale-105 hover:bg-black/60"
         >
-          ▶
+          <span className="ml-1 block h-0 w-0 border-y-[12px] border-l-[18px] border-y-transparent border-l-white" />
         </button>
       ) : null}
     </div>

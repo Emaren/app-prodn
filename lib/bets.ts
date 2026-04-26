@@ -287,22 +287,58 @@ function buildBetMarketHref(input: {
 }
 
 function getNamedSessionPlayers(session: LiveGameSession) {
-  const seen = new Map<string, { name: string; winner: boolean | null }>();
+  const seen = new Map<
+    string,
+    {
+      name: string;
+      winner: boolean | null;
+      team?: unknown;
+      teamNumber?: unknown;
+      team_number?: unknown;
+      teamId?: unknown;
+      team_id?: unknown;
+    }
+  >();
 
   for (const player of session.players) {
     const name = normalizeName(player.name);
     if (!name) continue;
+
+    const record = player as {
+      name?: unknown;
+      winner?: boolean | null;
+      team?: unknown;
+      teamNumber?: unknown;
+      team_number?: unknown;
+      teamId?: unknown;
+      team_id?: unknown;
+    };
+
     const key = name.toLowerCase();
     const existing = seen.get(key);
 
     if (!existing) {
-      seen.set(key, { name, winner: player.winner });
+      seen.set(key, {
+        name,
+        winner: player.winner,
+        team: record.team,
+        teamNumber: record.teamNumber,
+        team_number: record.team_number,
+        teamId: record.teamId,
+        team_id: record.team_id,
+      });
       continue;
     }
 
     if (player.winner === true && existing.winner !== true) {
       existing.winner = true;
     }
+
+    existing.team ??= record.team;
+    existing.teamNumber ??= record.teamNumber;
+    existing.team_number ??= record.team_number;
+    existing.teamId ??= record.teamId;
+    existing.team_id ??= record.team_id;
   }
 
   return Array.from(seen.values());
@@ -316,11 +352,94 @@ type SessionSideDescription = {
   rightNames: string[];
 };
 
+
+function readSessionPlayerTeam(player: ReturnType<typeof getNamedSessionPlayers>[number]) {
+  const record = player as {
+    team?: unknown;
+    teamNumber?: unknown;
+    team_number?: unknown;
+    teamId?: unknown;
+    team_id?: unknown;
+  };
+
+  const rawTeam =
+    record.team ??
+    record.teamNumber ??
+    record.team_number ??
+    record.teamId ??
+    record.team_id ??
+    null;
+
+  if (typeof rawTeam === "number" && Number.isFinite(rawTeam) && rawTeam > 0) {
+    return String(Math.trunc(rawTeam));
+  }
+
+  const teamText = normalizeName(String(rawTeam ?? ""));
+  if (!teamText) return null;
+
+  const lowered = teamText.toLowerCase();
+  if (lowered === "0" || lowered === "-1" || lowered === "none" || lowered === "unknown") {
+    return null;
+  }
+
+  return teamText;
+}
+
+function teamSortKey(team: string) {
+  const numeric = Number(team);
+  return Number.isFinite(numeric) ? numeric : 999;
+}
+
+function compactTeamLabel(names: string[]) {
+  if (names.length <= 2) return names.join(" + ");
+  return `${names[0]} + ${names[1]} + ${names.length - 2} more`;
+}
+
+function clampMarketLabel(label: string) {
+  const clean = normalizeName(label);
+  if (clean.length <= 80) return clean;
+  return `${clean.slice(0, 77).trimEnd()}…`;
+}
+
+function formatTeamLabel(names: string[]) {
+  return clampMarketLabel(compactTeamLabel(names));
+}
+
 function describeSessionSides(session: LiveGameSession): SessionSideDescription | null {
   const players = getNamedSessionPlayers(session);
 
   if (players.length < 2) {
     return null;
+  }
+
+  const teams = new Map<string, string[]>();
+
+  for (const player of players) {
+    const team = readSessionPlayerTeam(player);
+    if (!team) continue;
+
+    const existing = teams.get(team) || [];
+    existing.push(player.name);
+    teams.set(team, existing);
+  }
+
+  const teamEntries = [...teams.entries()]
+    .filter(([, names]) => names.length > 0)
+    .sort((left, right) => teamSortKey(left[0]) - teamSortKey(right[0]) || left[0].localeCompare(right[0]));
+
+  if (teamEntries.length === 2) {
+    const leftNames = teamEntries[0][1];
+    const rightNames = teamEntries[1][1];
+    const leftLabel = formatTeamLabel(leftNames);
+    const rightLabel = formatTeamLabel(rightNames);
+
+    return {
+      title: `${leftLabel} vs ${rightLabel}`,
+      leftLabel,
+      rightLabel,
+      leftNames,
+      rightNames,
+    };
   }
 
   const [focusPlayer, ...fieldPlayers] = players;
@@ -537,32 +656,42 @@ function buildSessionMarketSeed(
   featured: boolean
 ): MarketSeed | null {
   const sides = describeSessionSides(session);
-  if (!sides) return null;
 
+  // Raw watcher-live rows can appear before the parser has player/team data.
+  // Do not hide those from /bets. Surface them as a temporary live observer book.
+  if (!sides && session.state !== "live") return null;
+
+  const leftLabel = sides?.leftLabel || "Live 4v4";
+  const rightLabel = sides?.rightLabel || "Parsing";
+  const rightNames = sides?.rightNames || [];
+  const title = sides?.title || "Live 4v4 detected";
   const settledAtRaw = session.completedAt || session.updatedAt || session.createdAt;
 
   return {
     scheduledMatchId: null,
     linkedSessionKey: session.sessionKey || session.originalFilename || null,
-    slug: buildSessionMarketSlug(session, sides.leftLabel, sides.rightLabel),
-    title: sides.title,
-    eventLabel: buildSessionEventLabel(session),
+    slug: buildSessionMarketSlug(session, leftLabel, rightLabel),
+    title,
+    eventLabel: sides ? buildSessionEventLabel(session) : "Watcher Live · Players parsing",
     status: session.state === "completed" ? "settled" : "live",
     featured,
     sortOrder: index,
     source: "session",
-    leftLabel: sides.leftLabel,
-    rightLabel: sides.rightLabel,
-    leftHref: `/players/by-name/${encodeURIComponent(sides.leftLabel)}`,
+    leftLabel,
+    rightLabel,
+    leftHref: sides ? `/players/by-name/${encodeURIComponent(leftLabel)}` : null,
     rightHref:
-      sides.rightNames.length === 1
-        ? `/players/by-name/${encodeURIComponent(sides.rightNames[0])}`
+      rightNames.length === 1
+        ? `/players/by-name/${encodeURIComponent(rightNames[0])}`
         : null,
     seedLeftWolo: 0,
     seedRightWolo: 0,
     closeAt: null,
     settledAt: session.state === "completed" ? new Date(settledAtRaw) : null,
-    winnerSide: session.state === "completed" ? inferWinnerSideFromSession(session) : null,
+    winnerSide:
+      session.state === "completed" && sides
+        ? inferWinnerSideFromSession(session)
+        : null,
   } satisfies MarketSeed;
 }
 

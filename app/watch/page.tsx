@@ -1,6 +1,7 @@
-import Link from "next/link";
+import nodeFs from "node:fs";
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import Link from "next/link";
 
 import WatchPreviewScreen from "@/components/watch/WatchPreviewScreen";
 
@@ -61,28 +62,27 @@ export default async function WatchIndexPage({
   const resolvedSearchParams = await searchParams;
   const advanced = readSearchParam(resolvedSearchParams?.view) === "advanced";
 
-  const snapshot = await loadWatchIndexSnapshot();
+  const snapshot = applyHostedMediaFallbacks(await loadWatchIndexSnapshot());
 
   const hero = snapshot.hero;
   const liveMatches = snapshot.matches.filter((match) => match.mode === "live");
   const secondaryMatches = snapshot.matches.filter((match) => match.id !== hero?.id).slice(0, 12);
-  const topScreens = [hero, ...secondaryMatches].filter(Boolean).slice(0, 3) as WatchMatchSummary[];
+  const topScreens = pickShelfMatches(snapshot);
 
   return (
     <main className="space-y-6 overflow-x-hidden py-4 text-white sm:py-6">
       <section className="overflow-hidden rounded-[2.2rem] border border-white/10 bg-[radial-gradient(circle_at_18%_8%,rgba(56,189,248,0.18),transparent_30%),radial-gradient(circle_at_88%_0%,rgba(251,191,36,0.14),transparent_26%),linear-gradient(135deg,#07111f,#0b1324_52%,#030712)] p-4 shadow-[0_30px_100px_rgba(2,6,23,0.45)] sm:p-6">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
-            <Link
-              href={advanced ? "/watch" : "/watch?view=advanced"}
-              className={`inline-flex rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+            <span
+              className={`inline-flex rounded-full border px-3 py-1.5 text-xs font-medium ${
                 advanced
                   ? "border-amber-300/35 bg-amber-300/15 text-amber-100"
-                  : "border-sky-300/25 bg-sky-400/10 text-sky-100 hover:border-sky-200/40"
+                  : "border-sky-300/25 bg-sky-400/10 text-sky-100"
               }`}
             >
               AOE2HD WATCH
-            </Link>
+            </span>
             <Pill tone={liveMatches.length > 0 ? "red" : "emerald"}>
               {liveMatches.length > 0 ? `${liveMatches.length} live` : "Archive"}
             </Pill>
@@ -90,6 +90,26 @@ export default async function WatchIndexPage({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href={advanced ? "/watch" : "/watch?view=advanced"}
+              aria-label={advanced ? "Switch to basic watch layout" : "Switch to advanced watch layout"}
+              title={advanced ? "Basic layout" : "Advanced layout"}
+              className={`group grid h-9 w-9 place-items-center rounded-full border transition ${
+                advanced
+                  ? "border-sky-300/70 bg-sky-300/20 text-sky-100 shadow-[0_0_22px_rgba(125,211,252,0.18)]"
+                  : "border-white/10 bg-white/5 text-slate-300 hover:border-sky-300/50 hover:bg-sky-300/10 hover:text-sky-100"
+              }`}
+            >
+              <span className="grid h-4.5 w-5 grid-rows-[4px_1fr] gap-1">
+                <span className="grid grid-cols-3 gap-0.5">
+                  <span className="rounded-[2px] bg-current opacity-80" />
+                  <span className="rounded-[2px] bg-current opacity-80" />
+                  <span className="rounded-[2px] bg-current opacity-80" />
+                </span>
+                <span className="rounded-[3px] border border-current bg-current/20 opacity-95" />
+              </span>
+            </Link>
+
             <Link
               href="/bets"
               className="rounded-full border border-amber-300/25 bg-amber-300/10 px-4 py-2 text-xs font-semibold text-amber-100 transition hover:border-amber-200/40 hover:bg-amber-300/15"
@@ -107,7 +127,7 @@ export default async function WatchIndexPage({
           </div>
         </div>
 
-        {topScreens.length > 0 ? (
+        {advanced && topScreens.length > 0 ? (
           <div className="mb-4 grid gap-3 md:grid-cols-3">
             {topScreens.map((match, index) => (
               <MiniScreen key={`${match.sessionKey}-${index}`} match={match} />
@@ -377,7 +397,7 @@ function HeroScreen({
           <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-end">
             <div className="min-w-0">
               <h1 className="max-w-4xl text-4xl font-semibold tracking-tight text-white sm:text-6xl">
-                {match.title}
+                {formatWatchMatchTitle(match)}
               </h1>
               <div className="mt-4 flex flex-wrap gap-2">
                 <Link
@@ -429,7 +449,7 @@ function MiniScreen({ match }: { match: WatchMatchSummary }) {
       </div>
       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/70 to-transparent p-3">
         <div className="truncate text-sm font-semibold text-white group-hover:text-sky-100">
-          {match.title}
+          {formatWatchMatchTitle(match)}
         </div>
         <div className="mt-1 text-[11px] uppercase tracking-[0.2em] text-slate-400">
           {match.mode === "live" ? "Live" : "Archive"} · {match.mapName}
@@ -447,7 +467,7 @@ function AdvancedObserverRail({ match }: { match: WatchMatchSummary }) {
           <div className="text-[11px] uppercase tracking-[0.32em] text-amber-200/70">
             Observer betting
           </div>
-          <div className="mt-2 text-xl font-semibold text-white">{match.title}</div>
+          <div className="mt-2 text-xl font-semibold text-white">{formatWatchMatchTitle(match)}</div>
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -491,7 +511,7 @@ function ArchiveCard({ match }: { match: WatchMatchSummary }) {
 
       <div className="p-5">
         <h3 className="text-2xl font-semibold tracking-tight text-white group-hover:text-sky-100">
-          {match.title}
+          {formatWatchMatchTitle(match)}
         </h3>
         <p className="mt-2 text-sm text-slate-400">{match.mapName} · {match.createdLabel}</p>
 
@@ -523,7 +543,7 @@ function MatchCard({ match, hot = false }: { match: WatchMatchSummary; hot?: boo
           </div>
 
           <h3 className="mt-4 text-2xl font-semibold tracking-tight text-white group-hover:text-sky-100">
-            {match.title}
+            {formatWatchMatchTitle(match)}
           </h3>
           <p className="mt-2 text-sm text-slate-400">{match.mapName} · {match.createdLabel}</p>
         </div>
@@ -542,6 +562,276 @@ function MatchCard({ match, hot = false }: { match: WatchMatchSummary; hot?: boo
   );
 }
 
+
+type WatchMediaRegistryEntry = {
+  slug?: string;
+  title?: string;
+  aliases?: string[];
+  previewUrl?: string;
+  bestOfUrl?: string;
+  recordingUrl?: string;
+  thumbnailUrl?: string;
+};
+
+function normalizeWatchPreviewRegistryAlias(value: unknown) {
+  return String(value ?? "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function loadWatchPreviewRegistry(): WatchMediaRegistryEntry[] {
+  const registryPath = path.join(process.cwd(), "public/watch/previews/registry.json");
+
+  try {
+    const raw = nodeFs.readFileSync(registryPath, "utf8");
+    const parsed = JSON.parse(raw) as { items?: WatchMediaRegistryEntry[] };
+    return Array.isArray(parsed.items) ? parsed.items : [];
+  } catch {
+    return [];
+  }
+}
+
+function applyWatchPreviewRegistryFallback(match: WatchMatchSummary): WatchMatchSummary {
+  const matchTitle = normalizeWatchPreviewRegistryAlias(match.title);
+
+  for (const entry of loadWatchPreviewRegistry()) {
+    const aliases = [
+      entry.title,
+      entry.slug?.replace(/-/g, " "),
+      ...(Array.isArray(entry.aliases) ? entry.aliases : []),
+    ]
+      .map(normalizeWatchPreviewRegistryAlias)
+      .filter(Boolean);
+
+    const matched = aliases.some((alias) => matchTitle.includes(alias));
+    if (!matched) continue;
+
+    const bestOfUrl = entry.bestOfUrl || entry.previewUrl || entry.recordingUrl || null;
+    const previewUrl = entry.previewUrl || entry.bestOfUrl || entry.recordingUrl || null;
+
+    if (!bestOfUrl && !previewUrl) continue;
+
+    return {
+      ...match,
+      bestOfUrl: match.bestOfUrl || bestOfUrl,
+      previewUrl: match.previewUrl || previewUrl,
+      thumbnailUrl: match.thumbnailUrl || entry.thumbnailUrl || "/watch/aoe2hd-screen.svg",
+    };
+  }
+
+  return match;
+}
+
+
+function applyHostedMediaFallback(match: WatchMatchSummary): WatchMatchSummary {
+  const registryMatch = applyWatchPreviewRegistryFallback(match);
+  if (registryMatch !== match) return registryMatch;
+
+  const title = match.title.toLowerCase();
+
+  if (title.includes("koolamumomu")) {
+    return {
+      ...match,
+      bestOfUrl: match.bestOfUrl || "/watch/previews/emaren-vs-koolamumomu-ai-clip.mp4?v=hotfix",
+      previewUrl: match.previewUrl || "/watch/previews/emaren-vs-koolamumomu-ai-clip.mp4?v=hotfix",
+      thumbnailUrl: match.thumbnailUrl || "/watch/aoe2hd-screen.svg",
+    };
+  }
+
+  if (title.includes("julio")) {
+    return {
+      ...match,
+      bestOfUrl: match.bestOfUrl || "/watch/previews/julio-vs-emaren-ai-clip.mp4?v=hotfix",
+      previewUrl: match.previewUrl || "/watch/previews/julio-vs-emaren-ai-clip.mp4?v=hotfix",
+      thumbnailUrl: match.thumbnailUrl || "/watch/aoe2hd-screen.svg",
+    };
+  }
+
+  if (title.includes("divided")) {
+    return {
+      ...match,
+      bestOfUrl: match.bestOfUrl || "/watch/previews/emaren-vs-divided-ai-clip.mp4?v=hotfix",
+      previewUrl: match.previewUrl || "/watch/previews/emaren-vs-divided-ai-clip.mp4?v=hotfix",
+      thumbnailUrl: match.thumbnailUrl || "/watch/aoe2hd-screen.svg",
+    };
+  }
+
+  return match;
+}
+
+function applyHostedMediaFallbacks<T extends { hero: WatchMatchSummary | null; matches: WatchMatchSummary[] }>(
+  snapshot: T,
+): T {
+  return {
+    ...snapshot,
+    hero: snapshot.hero ? applyHostedMediaFallback(snapshot.hero) : snapshot.hero,
+    matches: snapshot.matches.map(applyHostedMediaFallback),
+  };
+}
+
+
+function hasHostedWatchMedia(match: WatchMatchSummary) {
+  return Boolean(match.bestOfUrl || match.previewUrl || match.recordingUrl);
+}
+
+function pickShelfMatches(snapshot: {
+  hero: WatchMatchSummary | null;
+  matches: WatchMatchSummary[];
+}) {
+  return [...snapshot.matches]
+    .filter((match) => match.sessionKey !== "__live-building__")
+    .filter((match) => match.sessionKey !== snapshot.hero?.sessionKey)
+    .sort((left, right) => {
+      const rightHosted = hasHostedWatchMedia(right) ? 1 : 0;
+      const leftHosted = hasHostedWatchMedia(left) ? 1 : 0;
+      return rightHosted - leftHosted;
+    })
+    .slice(0, 3);
+}
+
+function buildTwitchPlayerUrl(channel: string) {
+  const cleanChannel = channel.trim().replace(/^@/, "");
+  const parents = [
+    process.env.NEXT_PUBLIC_TWITCH_EMBED_PARENT || "aoe2hdbets.com",
+    "www.aoe2hdbets.com",
+  ];
+
+  const params = new URLSearchParams({
+    channel: cleanChannel,
+    autoplay: "false",
+    muted: "false",
+  });
+
+  for (const parent of parents) {
+    params.append("parent", parent);
+  }
+
+  return `https://player.twitch.tv/?${params.toString()}`;
+}
+
+function extractTwitchChannel(url: string | null | undefined) {
+  if (!url) return null;
+
+  const match = url.match(/twitch\.tv\/([^/?#]+)/i);
+  return match?.[1] || null;
+}
+
+function getLiveEmbedUrl(match?: WatchMatchSummary) {
+  if (!match) return null;
+
+  const stream = match.primaryStream;
+  const provider = stream?.provider?.toLowerCase();
+  const embedId = stream?.embedId || extractTwitchChannel(stream?.url);
+
+  if ((provider === "twitch" || stream?.url?.includes("twitch.tv")) && embedId) {
+    return buildTwitchPlayerUrl(embedId);
+  }
+
+  if (match.sessionKey === "__live-building__") {
+    return buildTwitchPlayerUrl(process.env.WATCH_BUILDING_STREAM_CHANNEL || "emaren19");
+  }
+
+  return null;
+}
+
+
+type WatchTitlePlayer = {
+  name?: unknown;
+  team?: unknown;
+  teamNumber?: unknown;
+  team_number?: unknown;
+  teamId?: unknown;
+  team_id?: unknown;
+};
+
+function normalizeWatchTitleName(value: unknown) {
+  return String(value ?? "").replace(/\s+/g, " ").trim();
+}
+
+function readWatchTitleTeam(player: WatchTitlePlayer) {
+  const rawTeam =
+    player.team ??
+    player.teamNumber ??
+    player.team_number ??
+    player.teamId ??
+    player.team_id ??
+    null;
+
+  if (typeof rawTeam === "number" && Number.isFinite(rawTeam) && rawTeam > 0) {
+    return String(Math.trunc(rawTeam));
+  }
+
+  const teamText = normalizeWatchTitleName(rawTeam);
+  if (!teamText) return null;
+
+  const lowered = teamText.toLowerCase();
+  if (lowered === "0" || lowered === "-1" || lowered === "none" || lowered === "unknown") {
+    return null;
+  }
+
+  return teamText;
+}
+
+function formatWatchTeamNames(names: string[]) {
+  return names.join(" + ");
+}
+
+function formatKnownCurrent4v4WatchTitle(title: string) {
+  const teamOne = ["Jim", "copper_head_road", "Horus", "Scavanger_Ab"];
+  const teamTwo = ["Emaren", "anyix3", "CRAZY_ALLOWED", "CN-琴琴"];
+  const haystack = title.toLowerCase();
+
+  const hasAllPlayers = [...teamOne, ...teamTwo].every((name) =>
+    haystack.includes(name.toLowerCase()),
+  );
+
+  if (!hasAllPlayers) return null;
+
+  return `${formatWatchTeamNames(teamOne)} vs ${formatWatchTeamNames(teamTwo)}`;
+}
+
+function formatWatchMatchTitle(match: WatchMatchSummary | null | undefined) {
+  const fallbackTitle = normalizeWatchTitleName(match?.title || "AoE2HD preview");
+  const rawPlayers = (match as { players?: unknown } | null | undefined)?.players;
+
+  if (Array.isArray(rawPlayers)) {
+    const teams = new Map<string, string[]>();
+
+    for (const rawPlayer of rawPlayers) {
+      const player = rawPlayer as WatchTitlePlayer;
+      const name = normalizeWatchTitleName(player.name);
+      const team = readWatchTitleTeam(player);
+
+      if (!name || !team) continue;
+
+      const names = teams.get(team) || [];
+      names.push(name);
+      teams.set(team, names);
+    }
+
+    const teamEntries = [...teams.entries()]
+      .filter(([, names]) => names.length > 0)
+      .sort((left, right) => {
+        const leftNumber = Number(left[0]);
+        const rightNumber = Number(right[0]);
+
+        if (Number.isFinite(leftNumber) && Number.isFinite(rightNumber)) {
+          return leftNumber - rightNumber;
+        }
+
+        return left[0].localeCompare(right[0]);
+      });
+
+    if (teamEntries.length === 2) {
+      return `${formatWatchTeamNames(teamEntries[0][1])} vs ${formatWatchTeamNames(teamEntries[1][1])}`;
+    }
+  }
+
+  return formatKnownCurrent4v4WatchTitle(fallbackTitle) || fallbackTitle;
+}
+
+
 function PreviewMotion({
   match,
   large = false,
@@ -550,16 +840,20 @@ function PreviewMotion({
   large?: boolean;
 }) {
   const videoUrl = match?.bestOfUrl || match?.previewUrl || match?.recordingUrl || null;
+  const liveEmbedUrl =
+    match?.sessionKey === "__live-building__" || match?.mode === "live"
+      ? getLiveEmbedUrl(match)
+      : null;
 
   return (
     <WatchPreviewScreen
-      title={match?.title || "AoE2HD preview"}
+      title={formatWatchMatchTitle(match) || "AoE2HD preview"}
       mediaKey={match?.sessionKey || "aoe2hd-watch-preview"}
       videoUrl={videoUrl}
-      posterUrl={match?.thumbnailUrl || "/watch/aoe2hd-screen.svg"}
-      liveEmbedUrl={null}
+      posterUrl={videoUrl ? match?.thumbnailUrl || null : null}
+      liveEmbedUrl={liveEmbedUrl}
       large={large}
-      badge={videoUrl ? "AUTO" : "READY"}
+      badge={liveEmbedUrl ? "LIVE" : videoUrl ? "AUTO" : "READY"}
     />
   );
 }
