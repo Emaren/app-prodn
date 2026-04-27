@@ -206,16 +206,9 @@ export async function POST(request: NextRequest) {
     }
 
     const existingActiveMatch = await loadChallengeThreadTile(prisma, viewer.id, challenged.id);
-    if (existingActiveMatch) {
-      return NextResponse.json(
-        {
-          detail: `A scheduled match between these players is already active for ${formatScheduledAtForInbox(
-            new Date(existingActiveMatch.scheduledAt)
-          )}.`,
-        },
-        { status: 409 }
-      );
-    }
+    const duplicateWarning = existingActiveMatch
+      ? `You already have another match with ${playerName(challenged)}. Scheduling anyway.`
+      : null;
 
     const challengerName = playerName(viewer);
     const challengedName = playerName(challenged);
@@ -313,6 +306,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       ...refreshed,
       createdChallengeId,
+      duplicateWarning,
     });
   } catch (error) {
     console.error("Failed to create scheduled match:", error);

@@ -314,6 +314,7 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
                     key={`scheduled-live-${match.id}`}
                     match={match}
                     viewerUid={uid}
+                    defaultViewMode="detail"
                     onAccept={(challengeId) => updateChallenge(challengeId, "accept")}
                     onDecline={(challengeId) => updateChallenge(challengeId, "decline")}
                     onCancel={(challengeId) => updateChallenge(challengeId, "cancel")}
@@ -369,6 +370,7 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
                       onCheckIn={(challengeId) => updateChallenge(challengeId, "check_in")}
                       actionState={actionState}
                       compact
+                      defaultViewMode="summary"
                     />
                   ))}
                   {pendingScheduledMatches.map((match) => (
@@ -384,6 +386,7 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
                       onCheckIn={(challengeId) => updateChallenge(challengeId, "check_in")}
                       actionState={actionState}
                       compact
+                      defaultViewMode="summary"
                     />
                   ))}
                 </>
@@ -422,6 +425,7 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
                       onCheckIn={(challengeId) => updateChallenge(challengeId, "check_in")}
                       actionState={actionState}
                       compact
+                      defaultViewMode="summary"
                     />
                   ))}
                   {snapshot.recentlyCompletedSessions.map((session) => (

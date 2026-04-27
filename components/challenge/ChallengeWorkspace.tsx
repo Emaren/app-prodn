@@ -58,6 +58,7 @@ const EMPTY_SNAPSHOT: ChallengeHubSnapshot = {
 type ChallengeCreateSnapshot = ChallengeHubSnapshot & {
   createdChallengeId?: number | null;
   detail?: string;
+  duplicateWarning?: string | null;
 };
 
 const ACTIVE_RUNWAY_STATES: string[] = [
@@ -74,6 +75,8 @@ const ACTIVE_RUNWAY_STATES: string[] = [
   "ready",
   "live",
 ] as const;
+
+type ActivityMatch = ChallengeHubSnapshot["scheduledMatches"][number];
 
 function defaultScheduledAtValue() {
   const next = new Date(Date.now() + 60 * 60 * 1000);
@@ -144,6 +147,51 @@ function formatActivityTitle(activity: ChallengeActivityItem) {
       return "Match forfeited";
     default:
       return activity.eventType.replace(/_/g, " ");
+  }
+}
+
+function formatActivityCompact(activity: ChallengeActivityItem, match?: ActivityMatch) {
+  const totalLabel = match ? `${match.terms.totalFundingWolo.toLocaleString()} WOLO` : "WOLO";
+  const matchLabel = match
+    ? `${match.challenger.name} vs ${match.challenged.name}`
+    : `Match #${activity.scheduledMatchId}`;
+
+  switch (activity.eventType) {
+    case "scheduled":
+    case "accepted":
+    case "terms_accepted":
+    case "rescheduled":
+      return match
+        ? `${matchLabel} · ${totalLabel} each · ${match.economy.statusLabel}`
+        : `${formatActivityTitle(activity)} · Match #${activity.scheduledMatchId}`;
+    case "creator_funded":
+      return match
+        ? `${match.challenger.name} locked ${totalLabel}`
+        : `Creator locked ${totalLabel}`;
+    case "opponent_funded":
+      return match
+        ? `${match.challenged.name} locked ${totalLabel}`
+        : `Opponent locked ${totalLabel}`;
+    case "left_checked_in":
+    case "right_checked_in":
+      return `${activity.actorName || "Player"} checked in`;
+    case "live_confirmed":
+      return match ? `${matchLabel} · Game detected` : `Game detected · Match #${activity.scheduledMatchId}`;
+    case "completed":
+      return match ? `${matchLabel} · ${match.economy.resolution.label || "Resolved"}` : "Match completed";
+    case "declined":
+      return `Challenge declined · Match #${activity.scheduledMatchId}`;
+    case "cancelled":
+    case "canceled":
+      return `Challenge cancelled · Match #${activity.scheduledMatchId}`;
+    case "no_show_left":
+    case "no_show_right":
+    case "double_no_show":
+      return `No-show resolved · Match #${activity.scheduledMatchId}`;
+    case "forfeited":
+      return `Match forfeited · Match #${activity.scheduledMatchId}`;
+    default:
+      return match ? `${matchLabel} · ${match.economy.statusLabel}` : `${formatActivityTitle(activity)} · Match #${activity.scheduledMatchId}`;
   }
 }
 
@@ -261,6 +309,13 @@ export default function ChallengeWorkspace() {
   const historyMatches = useMemo(() => snapshot.historyMatches.slice(0, 8), [snapshot.historyMatches]);
 
   const recentActivities = useMemo(() => snapshot.activities.slice(0, 8), [snapshot.activities]);
+  const activityMatchById = useMemo(() => {
+    const matches = new Map<number, ActivityMatch>();
+    for (const match of [...snapshot.scheduledMatches, ...snapshot.historyMatches]) {
+      matches.set(match.id, match);
+    }
+    return matches;
+  }, [snapshot.historyMatches, snapshot.scheduledMatches]);
 
   const scheduledPreview = useMemo(() => parseLocalDateTimeInputValue(scheduledAt), [scheduledAt]);
   const schedulePreviewLocal = useMemo(
@@ -530,6 +585,7 @@ export default function ChallengeWorkspace() {
       }
 
       setSnapshot(payload);
+      const duplicateWarning = payload.duplicateWarning;
       const createdChallengeId = payload.createdChallengeId;
       if (!createdChallengeId || !Number.isFinite(createdChallengeId)) {
         throw new Error("Challenge created, but the funding rail did not return a match id.");
@@ -564,7 +620,11 @@ export default function ChallengeWorkspace() {
       }
 
       setSnapshot(fundedPayload);
-      setNotice("Challenge funded. Opponent can accept + fund.");
+      setNotice(
+        duplicateWarning
+          ? `${duplicateWarning} Challenge funded. Opponent can accept + fund.`
+          : "Challenge funded. Opponent can accept + fund."
+      );
       setChallengedUid("");
       setChallengeNote("");
       setScheduledAt(defaultScheduledAtValue());
@@ -794,172 +854,85 @@ export default function ChallengeWorkspace() {
             )}
           </section>
 
-          <section className="rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-5 sm:p-6">
+          {focusedMatch ? (
+            <section className="rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-4 sm:p-5">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="min-w-0">
                 <div className="text-xs uppercase tracking-[0.35em] text-cyan-200/70">
                   Coordination Rail
                 </div>
-                <h2 className="mt-2 text-2xl font-semibold text-white">Scheduling Line</h2>
-                <div className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
-                  Keep funding state, check-in pressure, latest note, and the direct thread in one calm rail.
-                </div>
+                <h2 className="mt-2 text-xl font-semibold text-white">Scheduling Line</h2>
               </div>
-              {focusedMatch ? (
-                <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-                  Match #{focusedMatch.id}
-                </div>
-              ) : null}
+              <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+                Match #{focusedMatch.id}
+              </div>
             </div>
 
-            {focusedMatch ? (
-              <>
-                {activeRunwayMatches.length > 1 ? (
-                  <div className="mt-5 flex flex-wrap gap-2">
-                    {activeRunwayMatches.map((match) => {
-                      const counterpart =
-                        uid && match.challenger.uid === uid ? match.challenged : match.challenger;
-                      const active = focusedMatch.id === match.id;
-                      return (
-                        <button
-                          key={`focus-${match.id}`}
-                          type="button"
-                          onClick={() => setFocusedMatchId(match.id)}
-                          className={`rounded-full px-3 py-2 text-left text-xs transition ${
-                            active
-                              ? "border border-amber-300/22 bg-amber-400/10 text-amber-50 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.14)]"
-                              : "border border-white/10 bg-white/[0.04] text-slate-300 hover:border-white/20 hover:text-white"
-                          }`}
-                        >
-                          <span className="block font-semibold">{counterpart.name}</span>
-                          <span className="mt-1 block text-[11px] text-slate-400">
-                            {formatDateTime(
-                              match.scheduledAt,
-                              {
-                                timeDisplayMode: "local",
-                                timezoneOverride: browserTimeZone,
-                              },
-                              {
-                                browserTimeZone,
-                                includeZone: false,
-                              }
-                            )}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                ) : null}
-
-                <div className="mt-5 overflow-hidden rounded-[1.55rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.08),transparent_32%),rgba(255,255,255,0.035)] p-4 sm:p-5">
-                  <div className="space-y-4">
-                    <div className="min-w-0 rounded-[1.35rem] border border-white/10 bg-slate-950/40 px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="text-[10px] uppercase tracking-[0.22em] text-cyan-100/55">
-                            Match lock
-                          </div>
-                          <div className="mt-2 break-words text-lg font-semibold text-white">
-                            {focusedMatch.challenger.name} vs {focusedMatch.challenged.name}
-                          </div>
-                        </div>
-                        <Clock3 className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
-                      </div>
-
-                      <div className="mt-4 rounded-[1rem] border border-white/10 bg-white/[0.04] px-3 py-3">
-                        <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500">
-                          Locked start
-                        </div>
-                        <div className="mt-2 text-sm font-medium text-white">
-                          {formatDateTime(
-                            focusedMatch.scheduledAt,
-                            {
-                              timeDisplayMode: "local",
-                              timezoneOverride: browserTimeZone,
-                            },
-                            {
-                              browserTimeZone,
-                              includeZone: true,
-                            }
-                          )}
-                        </div>
-                        <div className="mt-2 text-xs leading-5 text-slate-400">
-                          UTC ·{" "}
-                          {formatDateTime(
-                            focusedMatch.scheduledAt,
-                            {
-                              timeDisplayMode: "utc",
-                              timezoneOverride: null,
-                            },
-                            {
-                              includeZone: true,
-                            }
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="mt-4 rounded-[1.15rem] border border-amber-300/15 bg-[linear-gradient(180deg,rgba(251,191,36,0.09),rgba(15,23,42,0.18))] px-3 py-3">
-                        <RailMoneyRow
-                          label="Wolo Wager"
-                          value={`${focusedMatch.terms.wagerAmountWolo.toLocaleString()} WOLO`}
-                        />
-                        <RailMoneyRow
-                          label="Match Guarantee"
-                          value={`${focusedMatch.terms.guaranteeAmountWolo.toLocaleString()} WOLO`}
-                        />
-                        <RailMoneyRow
-                          label="Funding Each"
-                          value={`${focusedMatch.terms.totalFundingWolo.toLocaleString()} WOLO`}
-                          total
-                        />
-                      </div>
-
-                      <div className="mt-4 grid gap-3">
-                        <QuickRailCell
-                          label="Funding State"
-                          value={focusedMatch.economy.statusLabel}
-                          detail={focusedMatch.economy.statusDetail}
-                        />
-                        <QuickRailCell
-                          label="Check-In"
-                          value={
-                            focusedMatch.economy.checkInWindowState === "open"
-                              ? "Open now"
-                              : focusedMatch.economy.checkInWindowState === "upcoming"
-                                ? "Opens soon"
-                                : focusedMatch.economy.checkInWindowState === "closed"
-                                  ? "Closed"
-                                  : "Locked after funding"
-                          }
-                          detail="Closes exactly at scheduled start."
-                        />
-                      </div>
-
-                      <div className="mt-4 rounded-[1rem] border border-white/10 bg-white/[0.035] px-3 py-3 text-sm leading-6 text-slate-300">
-                        {focusedMatch.challengeNote ||
-                          "Use the direct line for ready checks, map lock, or a small time shift."}
-                      </div>
-
-                      {focusedCounterpart ? (
-                        <Link
-                          href={`/contact-emaren?user=${encodeURIComponent(focusedCounterpart.uid)}`}
-                          className="mt-4 inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.05] px-4 py-2 text-sm text-white transition hover:border-white/25 hover:bg-white/[0.08]"
-                        >
-                          <MessageSquareMore className="h-4 w-4" />
-                          Open Direct Thread
-                        </Link>
-                      ) : null}
-                    </div>
-
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div className="mt-5 rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-5 text-sm leading-6 text-slate-300">
-                Once a challenge is live, this rail keeps the latest terms, lock timing, and thread shortcut together.
+            {activeRunwayMatches.length > 1 ? (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {activeRunwayMatches.map((match) => {
+                  const counterpart =
+                    uid && match.challenger.uid === uid ? match.challenged : match.challenger;
+                  const active = focusedMatch.id === match.id;
+                  return (
+                    <button
+                      key={`focus-${match.id}`}
+                      type="button"
+                      onClick={() => setFocusedMatchId(match.id)}
+                      className={`rounded-full px-3 py-1.5 text-left text-xs transition ${
+                        active
+                          ? "border border-amber-300/22 bg-amber-400/10 text-amber-50 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.14)]"
+                          : "border border-white/10 bg-white/[0.04] text-slate-300 hover:border-white/20 hover:text-white"
+                      }`}
+                    >
+                      <span className="font-semibold">{counterpart.name}</span>
+                    </button>
+                  );
+                })}
               </div>
-            )}
-          </section>
+            ) : null}
+
+            <div className="mt-4 flex flex-wrap items-center gap-2 rounded-[1.1rem] border border-white/10 bg-white/[0.04] px-3 py-3 text-xs text-slate-300">
+              <Clock3 className="h-4 w-4 shrink-0 text-cyan-100/70" />
+              <span className="min-w-0 truncate font-semibold text-white">
+                {focusedMatch.challenger.name} vs {focusedMatch.challenged.name}
+              </span>
+              <span className="text-slate-600">·</span>
+              <span>{focusedMatch.terms.totalFundingWolo.toLocaleString()} WOLO each</span>
+              <span className="text-slate-600">·</span>
+              <span>
+                {formatDateTime(
+                  focusedMatch.scheduledAt,
+                  {
+                    timeDisplayMode: "local",
+                    timezoneOverride: browserTimeZone,
+                  },
+                  {
+                    browserTimeZone,
+                    includeZone: false,
+                  }
+                )}
+              </span>
+              <span className="text-slate-600">·</span>
+              <span>{focusedMatch.economy.statusLabel}</span>
+              {focusedMatch.challengeNote ? (
+                <>
+                  <span className="text-slate-600">·</span>
+                  <span className="min-w-0 truncate text-slate-400">{focusedMatch.challengeNote}</span>
+                </>
+              ) : null}
+              {focusedCounterpart ? (
+                <Link
+                  href={`/contact-emaren?user=${encodeURIComponent(focusedCounterpart.uid)}`}
+                  className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.05] px-3 py-1.5 text-[11px] font-medium text-white transition hover:border-white/25 hover:bg-white/[0.08]"
+                >
+                  <MessageSquareMore className="h-3.5 w-3.5" />
+                  Thread
+                </Link>
+              ) : null}
+            </div>
+            </section>
+          ) : null}
 
           <section className="rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-5 sm:p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
@@ -1013,6 +986,7 @@ export default function ChallengeWorkspace() {
                     key={match.id}
                     match={match}
                     viewerUid={uid}
+                    defaultViewMode="detail"
                     stacked
                     localTimePrimary
                     serverNow={snapshot.serverNow}
@@ -1053,25 +1027,20 @@ export default function ChallengeWorkspace() {
                 recentActivities.map((activity) => (
                   <div
                     key={`${activity.scheduledMatchId}-${activity.id}`}
-                    className="rounded-[1.25rem] border border-white/10 bg-white/[0.04] px-4 py-3"
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-[1rem] border border-white/10 bg-white/[0.04] px-3 py-2.5"
                   >
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <div className="text-sm font-semibold text-white">
-                          {formatActivityTitle(activity)}
-                        </div>
-                        <div className="mt-1 text-[11px] uppercase tracking-[0.22em] text-slate-500">
-                          {activity.actorName ? `${activity.actorName} · ` : ""}
-                          <TimeDisplayText value={activity.createdAt} className="text-slate-400" />
-                        </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-semibold text-white">
+                        {formatActivityCompact(activity, activityMatchById.get(activity.scheduledMatchId))}
                       </div>
-                      <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-slate-300">
-                        Match #{activity.scheduledMatchId}
+                      <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500">
+                        {activity.actorName ? `${activity.actorName} · ` : ""}
+                        <TimeDisplayText value={activity.createdAt} className="text-slate-400" />
                       </div>
                     </div>
-                    {activity.detail ? (
-                      <div className="mt-3 text-sm leading-6 text-slate-300">{activity.detail}</div>
-                    ) : null}
+                    <div className="shrink-0 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-slate-300">
+                      #{activity.scheduledMatchId}
+                    </div>
                   </div>
                 ))
               )}
@@ -1114,6 +1083,7 @@ export default function ChallengeWorkspace() {
                     preferenceBusy={preferenceBusyId === match.id}
                     actionState={actionState}
                     compact
+                    defaultViewMode="summary"
                   />
                 ))
               )}
@@ -1170,61 +1140,6 @@ function StatCard({
       </div>
       <div className="mt-2 text-2xl font-semibold leading-none text-white">{value}</div>
       {helper ? <div className="mt-1 text-xs leading-5 text-slate-400">{helper}</div> : null}
-    </div>
-  );
-}
-
-function RailMoneyRow({
-  label,
-  value,
-  total = false,
-}: {
-  label: string;
-  value: string;
-  total?: boolean;
-}) {
-  return (
-    <div
-      className={`flex items-center justify-between gap-3 ${
-        total ? "mt-2 border-t border-amber-100/10 pt-2" : "py-1"
-      }`}
-    >
-      <span className="min-w-0 truncate whitespace-nowrap text-[10px] uppercase tracking-[0.16em] text-amber-100/60">
-        {label}
-      </span>
-      <span
-        className={`shrink-0 whitespace-nowrap tabular-nums ${
-          total ? "text-sm font-semibold text-white" : "text-xs font-semibold text-amber-50/90"
-        }`}
-      >
-        {value}
-      </span>
-    </div>
-  );
-}
-
-function QuickRailCell({
-  label,
-  value,
-  detail,
-  className = "",
-  valueClassName = "",
-}: {
-  label: string;
-  value: string;
-  detail?: string;
-  className?: string;
-  valueClassName?: string;
-}) {
-  return (
-    <div className={`min-w-0 rounded-[1rem] border border-white/10 bg-white/[0.04] px-3 py-3 ${className}`}>
-      <div className="truncate whitespace-nowrap text-[10px] uppercase tracking-[0.16em] text-slate-500">
-        {label}
-      </div>
-      <div className={`mt-2 text-sm font-semibold text-white ${valueClassName || "break-words"}`}>
-        {value}
-      </div>
-      {detail ? <div className="mt-1 text-xs leading-5 text-slate-400">{detail}</div> : null}
     </div>
   );
 }

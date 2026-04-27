@@ -8,7 +8,6 @@ import type { ReactNode } from "react";
 
 import CommunityBadgePill from "@/components/contact/CommunityBadgePill";
 import ScheduledMatchCard from "@/components/challenge/ScheduledMatchCard";
-import TimeDisplayText from "@/components/time/TimeDisplayText";
 import AutoGrowTextarea from "@/components/ui/AutoGrowTextarea";
 import {
   DIRECT_MESSAGE_MAX_CHARS,
@@ -149,58 +148,6 @@ function buildPrompt(
   return counterpartName ? `Reply to ${counterpartName}...` : "Write a message...";
 }
 
-function challengeTone(displayState: NonNullable<ContactInboxPayload["activeChallenge"]>["displayState"]) {
-  switch (displayState) {
-    case "proposed":
-    case "pending":
-      return {
-        shell: "border-amber-300/25 bg-amber-400/10",
-        badge: "border-amber-300/25 bg-amber-300/12 text-amber-100",
-        eyebrow: "text-amber-100/80",
-      };
-    case "terms_accepted":
-    case "accepted":
-    case "creator_funded":
-    case "opponent_funded":
-    case "funded":
-    case "checkin_open":
-    case "left_checked_in":
-    case "right_checked_in":
-    case "ready":
-    case "completed":
-      return {
-        shell: "border-emerald-300/25 bg-emerald-500/10",
-        badge: "border-emerald-300/25 bg-emerald-300/12 text-emerald-50",
-        eyebrow: "text-emerald-100/80",
-      };
-    case "live":
-      return {
-        shell: "border-cyan-300/25 bg-cyan-400/10",
-        badge: "border-cyan-300/25 bg-cyan-300/12 text-cyan-50",
-        eyebrow: "text-cyan-100/80",
-      };
-    case "no_show_left":
-    case "no_show_right":
-    case "double_no_show":
-    case "forfeited":
-    case "declined":
-      return {
-        shell: "border-rose-300/25 bg-rose-500/10",
-        badge: "border-rose-300/25 bg-rose-300/12 text-rose-50",
-        eyebrow: "text-rose-100/80",
-      };
-    case "cancelled":
-    case "canceled":
-    case "refunded":
-    default:
-      return {
-        shell: "border-white/10 bg-white/[0.04]",
-        badge: "border-white/15 bg-white/[0.08] text-slate-100",
-        eyebrow: "text-slate-300/80",
-      };
-  }
-}
-
 function challengeNoticeTone(
   summary: ReturnType<typeof summarizeChallengeInboxMessage>
 ) {
@@ -275,57 +222,14 @@ function ChallengeThreadStrip({
     return null;
   }
 
-  const compact = mode === "popover";
-  const primaryHref =
-    (challenge.displayState === "live" || challenge.displayState === "completed") &&
-    challenge.linkedSessionKey
-      ? `/game-stats/live/${encodeURIComponent(challenge.linkedSessionKey)}`
-      : "/challenge";
-
-  if (compact) {
-    const tone = challengeTone(challenge.displayState);
-    return (
-      <div className={`mt-3 rounded-full border px-3 py-2 ${tone.shell}`}>
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0 flex-1 overflow-hidden">
-            <div className="flex items-center gap-2 overflow-hidden whitespace-nowrap text-[11px] text-slate-200">
-              <span className={`inline-flex shrink-0 rounded-full border px-2 py-0.5 ${tone.badge}`}>
-                {challenge.economy.statusLabel}
-              </span>
-              <span className="truncate font-medium text-white">
-                {challenge.challenger.name} vs {challenge.challenged.name}
-              </span>
-              <span className="shrink-0 text-slate-500">·</span>
-              <span className="shrink-0 text-slate-300">
-                {challenge.terms.totalFundingWolo.toLocaleString()} WOLO each
-              </span>
-              <span className="shrink-0 text-slate-500">·</span>
-              <TimeDisplayText
-                value={challenge.scheduledAt}
-                includeZone={false}
-                className="shrink-0 text-slate-300"
-                bubbleClassName="max-w-[14rem] text-center"
-              />
-            </div>
-          </div>
-
-          <Link
-            href={primaryHref}
-            className="shrink-0 rounded-full border border-white/12 bg-white/[0.05] px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-white transition hover:border-white/25 hover:bg-white/[0.08]"
-          >
-            Open
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="mt-3">
       <ScheduledMatchCard
         match={challenge}
         viewerUid={data.viewer.uid}
-        compact
+        compact={mode === "popover"}
+        defaultViewMode="summary"
+        allowExpand
         onAccept={(challengeId) => onChallengeAction?.({ challengeId, action: "accept" })}
         onDecline={(challengeId) => onChallengeAction?.({ challengeId, action: "decline" })}
         onCancel={(challengeId) => onChallengeAction?.({ challengeId, action: "cancel" })}

@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type FormEvent, type MouseEvent, type ReactNode } from "react";
 import {
   Bookmark,
   CalendarClock,
@@ -58,6 +58,8 @@ type FundingWorkflowState =
   | "verified"
   | "failed";
 
+export type ScheduledMatchCardViewMode = "summary" | "detail" | "advanced";
+
 type ScheduledMatchCardProps = {
   match: ScheduledMatchTile;
   viewerUid?: string | null;
@@ -95,6 +97,9 @@ type ScheduledMatchCardProps = {
   stacked?: boolean;
   localTimePrimary?: boolean;
   serverNow?: string | null;
+  viewMode?: ScheduledMatchCardViewMode;
+  defaultViewMode?: ScheduledMatchCardViewMode;
+  allowExpand?: boolean;
 };
 
 function toLocalDateTimeValue(value: string) {
@@ -275,6 +280,16 @@ function playerFundingLabel({
 }) {
   if (funded) return viewer ? "You funded" : "Funded";
   return viewer ? "You wait" : "Waiting";
+}
+
+function defaultCardViewMode({
+  compact,
+  defaultViewMode,
+}: {
+  compact: boolean;
+  defaultViewMode?: ScheduledMatchCardViewMode;
+}) {
+  return defaultViewMode ?? (compact ? "summary" : "detail");
 }
 
 function buildWatcherStatus(match: ScheduledMatchTile) {
@@ -534,11 +549,16 @@ export default function ScheduledMatchCard({
   stacked = false,
   localTimePrimary = false,
   serverNow = null,
+  viewMode,
+  defaultViewMode,
+  allowExpand = true,
 }: ScheduledMatchCardProps) {
   const { address: connectedWalletAddress, connect: connectKeplr } = useKeplr();
   const [mounted, setMounted] = useState(false);
   const [nowMs, setNowMs] = useState(() => (serverNow ? new Date(serverNow).getTime() : 0));
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [internalViewMode, setInternalViewMode] = useState<ScheduledMatchCardViewMode>(() =>
+    defaultCardViewMode({ compact, defaultViewMode })
+  );
   const [showRescheduleForm, setShowRescheduleForm] = useState(false);
   const [showFundingForm, setShowFundingForm] = useState(false);
   const [fundingWorkflow, setFundingWorkflow] = useState<FundingWorkflowState>("idle");
@@ -565,6 +585,10 @@ export default function ScheduledMatchCard({
   }, [serverNow]);
 
   useEffect(() => {
+    setInternalViewMode(defaultCardViewMode({ compact, defaultViewMode }));
+  }, [compact, defaultViewMode, match.id]);
+
+  useEffect(() => {
     setShowRescheduleForm(false);
     setShowFundingForm(false);
     setFundingWorkflow("idle");
@@ -583,6 +607,20 @@ export default function ScheduledMatchCard({
     match.terms.guaranteeAmountWolo,
     match.terms.wagerAmountWolo,
   ]);
+
+  const activeViewMode = viewMode ?? internalViewMode;
+  const canChangeView = allowExpand && !viewMode;
+
+  function setCardViewMode(nextViewMode: ScheduledMatchCardViewMode) {
+    if (!canChangeView) return;
+    setInternalViewMode(nextViewMode);
+  }
+
+  function revealAdvanced() {
+    if (viewMode) return;
+    if (!allowExpand && defaultViewMode !== "advanced") return;
+    setInternalViewMode("advanced");
+  }
 
   const accent = accentClasses(match.displayState);
   const viewerIsChallenger = Boolean(viewerUid && viewerUid === match.challenger.uid);
@@ -623,20 +661,36 @@ export default function ScheduledMatchCard({
   const canCancel = Boolean(
     onCancel &&
       viewerIsParticipant &&
-      !hasFundingOnFile &&
       !hasCheckInOnFile &&
       match.displayState !== "live" &&
       !resolved &&
-      ((viewerIsChallenger && ["proposed", "pending"].includes(match.displayState)) ||
-        ["terms_accepted", "accepted"].includes(match.displayState))
+      [
+        "proposed",
+        "pending",
+        "terms_accepted",
+        "accepted",
+        "creator_funded",
+        "opponent_funded",
+        "funded",
+        "checkin_open",
+      ].includes(match.displayState)
   );
   const canReschedule = Boolean(
     onReschedule &&
       viewerIsParticipant &&
-      !hasFundingOnFile &&
       !hasCheckInOnFile &&
       match.displayState !== "live" &&
-      !resolved
+      !resolved &&
+      [
+        "proposed",
+        "pending",
+        "terms_accepted",
+        "accepted",
+        "creator_funded",
+        "opponent_funded",
+        "funded",
+        "checkin_open",
+      ].includes(match.displayState)
   );
   const canFund = Boolean(
     onFund &&
@@ -682,6 +736,30 @@ export default function ScheduledMatchCard({
     statsHref,
     viewerIsChallenger,
   ]);
+  const viewerFundingSummary = viewerIsParticipant
+    ? viewerAlreadyFunded
+      ? "You funded"
+      : canAcceptAndFund
+        ? "Accept + fund"
+        : canFund
+          ? "You pending"
+          : "You waiting"
+    : bothFunded
+      ? "Funded"
+      : "Funding open";
+  const counterpartFundingSummary = viewerIsChallenger
+    ? opponentFunded
+      ? `${match.challenged.name} funded`
+      : "Awaiting opponent"
+    : viewerIsChallenged
+      ? creatorFunded
+        ? `${match.challenger.name} funded`
+        : "Awaiting creator"
+      : bothFunded
+        ? "Locked"
+        : match.economy.statusLabel;
+  const summaryStateLabel = resolved || bothFunded ? match.economy.statusLabel : counterpartFundingSummary;
+  const summaryCanExpand = canChangeView && activeViewMode === "summary";
 
   async function runAction(action: () => void | Promise<void>) {
     setActionError(null);
@@ -727,6 +805,19 @@ export default function ScheduledMatchCard({
     setShowFundingForm(false);
   }
 
+  async function cancelMatch() {
+    if (!onCancel) return;
+
+    if (hasFundingOnFile) {
+      const confirmed = window.confirm(
+        "Cancel this funded match? Funding proof stays on the rail and any refund must be handled by settlement/operator review."
+      );
+      if (!confirmed) return;
+    }
+
+    await runAction(() => onCancel(match.id));
+  }
+
   async function fundNow() {
     if (!onFund) return;
 
@@ -736,7 +827,7 @@ export default function ScheduledMatchCard({
     if (!challengeFundingEscrowAddress()) {
       setFundingWorkflow("failed");
       setFundingError("Challenge escrow is not exposed to the browser.");
-      setShowAdvanced(true);
+      revealAdvanced();
       return;
     }
 
@@ -762,7 +853,7 @@ export default function ScheduledMatchCard({
     } catch (error) {
       setFundingWorkflow("failed");
       setFundingError(error instanceof Error ? error.message : "Challenge funding failed.");
-      setShowAdvanced(true);
+      revealAdvanced();
     }
   }
 
@@ -781,7 +872,7 @@ export default function ScheduledMatchCard({
 
     if (!challengeFundingEscrowAddress()) {
       setFundingError("Challenge escrow is not exposed to the browser.");
-      setShowAdvanced(true);
+      revealAdvanced();
       return;
     }
 
@@ -809,7 +900,7 @@ export default function ScheduledMatchCard({
     } catch (error) {
       setFundingWorkflow("failed");
       setFundingError(error instanceof Error ? error.message : "Accept + fund failed.");
-      setShowAdvanced(true);
+      revealAdvanced();
     }
   }
 
@@ -866,8 +957,74 @@ export default function ScheduledMatchCard({
     );
   }
 
-  if (compact && resolved) {
+  if (compact && resolved && activeViewMode === "summary") {
     return <CompactScheduledMatchHistoryRow match={match} viewerUid={viewerUid} />;
+  }
+
+  if (activeViewMode === "summary") {
+    const expandSummary = (event: MouseEvent<HTMLDivElement>) => {
+      const target = event.target instanceof HTMLElement ? event.target : null;
+      if (target?.closest("a, button, [role='button']")) return;
+      setCardViewMode("detail");
+    };
+    const summaryContent = (
+      <div
+        onClick={summaryCanExpand ? expandSummary : undefined}
+        className={`flex min-w-0 flex-1 items-center gap-2 overflow-hidden whitespace-nowrap text-[11px] text-slate-200 sm:text-xs ${
+          summaryCanExpand ? "cursor-pointer" : ""
+        }`}
+      >
+        <span className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 ${accent.badge}`}>
+          <CalendarClock className="h-3 w-3" />
+          Scheduled
+        </span>
+        <span className="truncate font-semibold text-white">
+          {match.challenger.name} vs {match.challenged.name}
+        </span>
+        <span className="shrink-0 text-slate-600">·</span>
+        <span className="shrink-0 text-slate-300">
+          {formatWolo(match.terms.totalFundingWolo)} WOLO each
+        </span>
+        <span className="shrink-0 text-slate-600">·</span>
+        <TimeDisplayText
+          value={match.scheduledAt}
+          includeZone={false}
+          className="shrink-0 text-slate-300"
+          bubbleClassName="max-w-[14rem] text-center"
+        />
+        <span className="shrink-0 text-slate-600">·</span>
+        <span className="shrink-0 text-slate-300">{viewerFundingSummary}</span>
+        <span className="shrink-0 text-slate-600">·</span>
+        <span className="truncate text-slate-300">{summaryStateLabel}</span>
+      </div>
+    );
+
+    return (
+      <div className={`min-w-0 rounded-full border px-3 py-2 ${accent.shell}`}>
+        <div className="flex min-w-0 items-center gap-2">
+          <div className="min-w-0 flex-1">{summaryContent}</div>
+
+          {summaryCanExpand ? (
+            <button
+              type="button"
+              title="Details"
+              aria-label="Open scheduled match details"
+              onClick={() => setCardViewMode("detail")}
+              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-slate-300 transition hover:border-white/25 hover:text-white"
+            >
+              <SlidersHorizontal className="h-3.5 w-3.5" />
+            </button>
+          ) : null}
+          <Link
+            href={threadHref}
+            title="Open thread"
+            className="hidden shrink-0 rounded-full border border-white/12 bg-white/[0.05] px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-white transition hover:border-white/25 hover:bg-white/[0.08] sm:inline-flex"
+          >
+            Open
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -895,18 +1052,32 @@ export default function ScheduledMatchCard({
                 : undefined
             }
           />
-          <button
-            type="button"
-            title={showAdvanced ? "Hide details" : "Details"}
-            onClick={() => setShowAdvanced((current) => !current)}
-            className={`inline-flex h-9 w-9 items-center justify-center rounded-full border transition ${
-              showAdvanced
-                ? "border-amber-300/30 bg-amber-300/12 text-amber-100"
-                : "border-white/10 bg-white/[0.04] text-slate-300 hover:border-white/25 hover:text-white"
-            }`}
-          >
-            <SlidersHorizontal className="h-4 w-4" />
-          </button>
+          {canChangeView ? (
+            <>
+              <button
+                type="button"
+                title="Collapse to summary"
+                aria-label="Collapse scheduled match to summary"
+                onClick={() => setCardViewMode("summary")}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-slate-300 transition hover:border-white/25 hover:text-white"
+              >
+                <CircleDashed className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                title={activeViewMode === "advanced" ? "Show basic details" : "Advanced details"}
+                aria-label={activeViewMode === "advanced" ? "Show basic scheduled match details" : "Open advanced scheduled match details"}
+                onClick={() => setCardViewMode(activeViewMode === "advanced" ? "detail" : "advanced")}
+                className={`inline-flex h-9 w-9 items-center justify-center rounded-full border transition ${
+                  activeViewMode === "advanced"
+                    ? "border-amber-300/30 bg-amber-300/12 text-amber-100"
+                    : "border-white/10 bg-white/[0.04] text-slate-300 hover:border-white/25 hover:text-white"
+                }`}
+              >
+                <SlidersHorizontal className="h-4 w-4" />
+              </button>
+            </>
+          ) : null}
         </div>
       </div>
 
@@ -1013,6 +1184,15 @@ export default function ScheduledMatchCard({
 
         <div className="flex flex-wrap items-center gap-2">
           {renderPrimaryAction()}
+          {primaryActionLabel !== "Open Thread" ? (
+            <Link
+              href={threadHref}
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-3 py-2 text-sm font-semibold text-white/85 transition hover:border-white/30 hover:text-white"
+            >
+              <ExternalLink className="h-4 w-4" />
+              Thread
+            </Link>
+          ) : null}
           {canDecline ? (
             <button
               type="button"
@@ -1024,10 +1204,121 @@ export default function ScheduledMatchCard({
               Decline
             </button>
           ) : null}
+          {canReschedule ? (
+            <button
+              type="button"
+              onClick={() => {
+                setShowRescheduleForm((current) => !current);
+                setShowFundingForm(false);
+              }}
+              disabled={cardBusy}
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-sky-300/28 bg-sky-400/10 px-3 py-2 text-sm font-semibold text-sky-100 transition hover:bg-sky-400/15 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <CalendarClock className="h-4 w-4" />
+              {showRescheduleForm ? "Close Time" : "Edit Time"}
+            </button>
+          ) : null}
+          {canCancel ? (
+            <button
+              type="button"
+              onClick={() => void cancelMatch()}
+              disabled={cardBusy}
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-3 py-2 text-sm font-semibold text-white/85 transition hover:border-white/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <XCircle className="h-4 w-4" />
+              {currentActionKind === "cancel"
+                ? "Cancelling"
+                : hasFundingOnFile
+                  ? "Cancel + Refund Pending"
+                  : "Cancel"}
+            </button>
+          ) : null}
         </div>
       </div>
 
-      {showAdvanced ? (
+      {canReschedule && showRescheduleForm ? (
+        <form
+          onSubmit={handleReschedule}
+          className="mt-3 space-y-3 rounded-[0.95rem] border border-white/10 bg-slate-950/35 p-3"
+        >
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,220px)_1fr]">
+            <label className="block space-y-1.5">
+              <span className="text-[10px] uppercase tracking-[0.2em] text-slate-300">New start</span>
+              <input
+                type="datetime-local"
+                value={rescheduledAt}
+                onChange={(event) => setRescheduledAt(event.target.value)}
+                disabled={cardBusy}
+                className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-amber-300/50 disabled:cursor-not-allowed disabled:opacity-60"
+              />
+            </label>
+
+            <label className="block space-y-1.5">
+              <span className="text-[10px] uppercase tracking-[0.2em] text-slate-300">Note</span>
+              <AutoGrowTextarea
+                value={rescheduleNote}
+                onChange={(event) =>
+                  setRescheduleNote(event.target.value.slice(0, CHALLENGE_NOTE_MAX_CHARS))
+                }
+                maxRows={compact ? 3 : 4}
+                maxLength={CHALLENGE_NOTE_MAX_CHARS}
+                disabled={cardBusy}
+                className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm leading-6 text-white outline-none focus:border-amber-300/50 disabled:cursor-not-allowed disabled:opacity-60"
+                placeholder="Shift the lock."
+              />
+            </label>
+          </div>
+
+          {hasFundingOnFile ? (
+            <div className="rounded-[0.95rem] border border-amber-300/18 bg-amber-300/10 px-3 py-3 text-xs font-medium text-amber-50">
+              Funding preserved · {formatWolo(match.terms.totalFundingWolo)} WOLO each
+            </div>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-3">
+              <label className="block space-y-1.5">
+                <span className="text-[10px] uppercase tracking-[0.2em] text-slate-300">Wager</span>
+                <input
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={wagerAmount}
+                  onChange={(event) => setWagerAmount(event.target.value)}
+                  disabled={cardBusy}
+                  className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-amber-300/50 disabled:cursor-not-allowed disabled:opacity-60"
+                />
+              </label>
+              <label className="block space-y-1.5">
+                <span className="text-[10px] uppercase tracking-[0.2em] text-slate-300">Guarantee</span>
+                <input
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={guaranteeAmount}
+                  onChange={(event) => setGuaranteeAmount(event.target.value)}
+                  disabled={cardBusy}
+                  className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-amber-300/50 disabled:cursor-not-allowed disabled:opacity-60"
+                />
+              </label>
+              <MoneyPill
+                icon={<Wallet className="h-3.5 w-3.5" />}
+                label="Total each"
+                value={`${formatWolo((Number.parseInt(wagerAmount, 10) || 0) + (Number.parseInt(guaranteeAmount, 10) || 0))} WOLO`}
+                strong
+              />
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={cardBusy}
+            className="rounded-full bg-amber-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {currentActionKind === "reschedule" ? "Saving" : hasFundingOnFile ? "Save Time" : "Send Terms"}
+          </button>
+        </form>
+      ) : null}
+
+      {activeViewMode === "advanced" ? (
         <div className="mt-4 rounded-[1.1rem] border border-white/10 bg-slate-950/40 p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.24em] text-slate-400">
@@ -1103,29 +1394,6 @@ export default function ScheduledMatchCard({
           ) : null}
 
           <div className="mt-3 flex flex-wrap gap-2">
-            {canCancel ? (
-              <button
-                type="button"
-                onClick={() => void runAction(() => onCancel?.(match.id))}
-                disabled={cardBusy}
-                className="rounded-full border border-white/15 px-4 py-2 text-sm text-white/85 transition hover:border-white/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {currentActionKind === "cancel" ? "Cancelling" : "Cancel"}
-              </button>
-            ) : null}
-            {canReschedule ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setShowRescheduleForm((current) => !current);
-                  setShowFundingForm(false);
-                }}
-                disabled={cardBusy}
-                className="rounded-full border border-sky-300/28 bg-sky-400/10 px-4 py-2 text-sm text-sky-100 transition hover:bg-sky-400/15 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {showRescheduleForm ? "Close Terms" : "Edit Terms"}
-              </button>
-            ) : null}
             {canFund ? (
               <button
                 type="button"
@@ -1194,82 +1462,6 @@ export default function ScheduledMatchCard({
                 className="rounded-full bg-amber-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {currentActionKind === "fund" ? "Recording" : "Record Proof"}
-              </button>
-            </form>
-          ) : null}
-
-          {canReschedule && showRescheduleForm ? (
-            <form
-              onSubmit={handleReschedule}
-              className="mt-3 space-y-3 rounded-[0.95rem] border border-white/10 bg-slate-950/35 p-3"
-            >
-              <div className="grid gap-3 lg:grid-cols-[minmax(0,220px)_1fr]">
-                <label className="block space-y-1.5">
-                  <span className="text-[10px] uppercase tracking-[0.2em] text-slate-300">New start</span>
-                  <input
-                    type="datetime-local"
-                    value={rescheduledAt}
-                    onChange={(event) => setRescheduledAt(event.target.value)}
-                    disabled={cardBusy}
-                    className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-amber-300/50 disabled:cursor-not-allowed disabled:opacity-60"
-                  />
-                </label>
-
-                <label className="block space-y-1.5">
-                  <span className="text-[10px] uppercase tracking-[0.2em] text-slate-300">Note</span>
-                  <AutoGrowTextarea
-                    value={rescheduleNote}
-                    onChange={(event) =>
-                      setRescheduleNote(event.target.value.slice(0, CHALLENGE_NOTE_MAX_CHARS))
-                    }
-                    maxRows={compact ? 3 : 4}
-                    maxLength={CHALLENGE_NOTE_MAX_CHARS}
-                    disabled={cardBusy}
-                    className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm leading-6 text-white outline-none focus:border-amber-300/50 disabled:cursor-not-allowed disabled:opacity-60"
-                    placeholder="Shift the lock."
-                  />
-                </label>
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-3">
-                <label className="block space-y-1.5">
-                  <span className="text-[10px] uppercase tracking-[0.2em] text-slate-300">Wager</span>
-                  <input
-                    type="number"
-                    min={1}
-                    step={1}
-                    value={wagerAmount}
-                    onChange={(event) => setWagerAmount(event.target.value)}
-                    disabled={cardBusy}
-                    className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-amber-300/50 disabled:cursor-not-allowed disabled:opacity-60"
-                  />
-                </label>
-                <label className="block space-y-1.5">
-                  <span className="text-[10px] uppercase tracking-[0.2em] text-slate-300">Guarantee</span>
-                  <input
-                    type="number"
-                    min={1}
-                    step={1}
-                    value={guaranteeAmount}
-                    onChange={(event) => setGuaranteeAmount(event.target.value)}
-                    disabled={cardBusy}
-                    className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-amber-300/50 disabled:cursor-not-allowed disabled:opacity-60"
-                  />
-                </label>
-                <MoneyPill
-                  icon={<Wallet className="h-3.5 w-3.5" />}
-                  label="Total each"
-                  value={`${formatWolo((Number.parseInt(wagerAmount, 10) || 0) + (Number.parseInt(guaranteeAmount, 10) || 0))} WOLO`}
-                  strong
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={cardBusy}
-                className="rounded-full bg-amber-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {currentActionKind === "reschedule" ? "Sending" : "Send Terms"}
               </button>
             </form>
           ) : null}

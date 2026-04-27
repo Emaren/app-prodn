@@ -638,6 +638,7 @@ function ProfilePageContent() {
                   viewerUid={uid}
                   serverNow={challengeSnapshot?.serverNow ?? null}
                   compact
+                  defaultViewMode="summary"
                 />
               ))
             )}

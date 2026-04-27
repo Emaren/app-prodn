@@ -25,15 +25,6 @@ export const dynamic = "force-dynamic";
 
 const SCHEDULE_WINDOW_MIN_MS = 2 * 60 * 1000;
 const SCHEDULE_WINDOW_MAX_MS = 7 * 24 * 60 * 60 * 1000;
-const REOPENABLE_STATUSES = new Set([
-  "proposed",
-  "pending",
-  "terms_accepted",
-  "accepted",
-  "declined",
-  "cancelled",
-  "canceled",
-]);
 const FUNDABLE_STATUSES = new Set([
   "proposed",
   "pending",
@@ -42,6 +33,16 @@ const FUNDABLE_STATUSES = new Set([
   "creator_funded",
   "opponent_funded",
   "funded",
+]);
+const MANAGEABLE_DISPLAY_STATES = new Set([
+  "proposed",
+  "pending",
+  "terms_accepted",
+  "accepted",
+  "creator_funded",
+  "opponent_funded",
+  "funded",
+  "checkin_open",
 ]);
 
 const VIEWER_SELECT = {
@@ -238,13 +239,20 @@ function buildCancellationMessage(input: {
   challengedName: string;
   scheduledAt: Date;
   cancelledByName: string;
+  refundPending?: boolean;
 }) {
-  return [
+  const lines = [
     "Challenge cancelled",
     `${input.challengerName} vs ${input.challengedName}`,
     `Start: ${formatScheduledAtForInbox(input.scheduledAt)}`,
     `Status: Cancelled by ${input.cancelledByName}`,
-  ].join("\n");
+  ];
+
+  if (input.refundPending) {
+    lines.push("Refund: Pending operator review");
+  }
+
+  return lines.join("\n");
 }
 
 function buildRescheduleMessage(input: {
@@ -254,6 +262,7 @@ function buildRescheduleMessage(input: {
   challengeNote: string | null;
   wagerAmountWolo: number;
   guaranteeAmountWolo: number;
+  fundingPreserved?: boolean;
 }) {
   const totalFunding = input.wagerAmountWolo + input.guaranteeAmountWolo;
   const lines = [
@@ -263,7 +272,7 @@ function buildRescheduleMessage(input: {
     `Wolo Wager: ${formatWolo(input.wagerAmountWolo)} WOLO`,
     `Match Guarantee: ${formatWolo(input.guaranteeAmountWolo)} WOLO`,
     `Funding: ${formatWolo(totalFunding)} WOLO each`,
-    "Status: Awaiting terms acceptance",
+    input.fundingPreserved ? "Status: Funding preserved" : "Status: Awaiting terms acceptance",
   ];
 
   if (input.challengeNote) {
@@ -592,24 +601,17 @@ export async function PATCH(
       const hasAnyCheckIn =
         Boolean(scheduledMatch.challengerCheckedInAt) || Boolean(scheduledMatch.challengedCheckedInAt);
 
-      if (hasAnyFunding || hasAnyCheckIn || currentSurface.displayState === "live") {
+      if (hasAnyCheckIn || currentSurface.displayState === "live") {
         return NextResponse.json(
-          { detail: "This match already has economy state on file. Keep it on the rail for manual review." },
+          { detail: "This match is already checked in or live. Keep it on the rail for result resolution." },
           { status: 409 }
         );
       }
 
-      if (!REOPENABLE_STATUSES.has(scheduledMatch.status.toLowerCase())) {
+      if (!MANAGEABLE_DISPLAY_STATES.has(currentSurface.displayState)) {
         return NextResponse.json(
           { detail: "Only active scheduled matches can be cancelled." },
           { status: 409 }
-        );
-      }
-
-      if (["proposed", "pending"].includes(currentSurface.displayState) && !viewerIsChallenger) {
-        return NextResponse.json(
-          { detail: "Only the challenger can cancel before the terms are accepted." },
-          { status: 403 }
         );
       }
 
@@ -617,6 +619,9 @@ export async function PATCH(
       const targetUserId = viewerIsChallenger
         ? scheduledMatch.challengedUserId
         : scheduledMatch.challengerUserId;
+      const cancelDetail = hasAnyFunding
+        ? `${challengeLabel} · cancelled · refund pending operator review`
+        : `${challengeLabel} · cancelled`;
 
       await prisma.$transaction(async (tx) => {
         await tx.scheduledMatch.update({
@@ -631,7 +636,15 @@ export async function PATCH(
           scheduledMatchId: challengeId,
           actorUserId: viewer.id,
           eventType: "canceled",
-          detail: "Challenge cancelled.",
+          detail: cancelDetail,
+          metadata: hasAnyFunding
+            ? {
+                refundPending: true,
+                challengerFunded: Boolean(scheduledMatch.challengerFundedAt),
+                challengedFunded: Boolean(scheduledMatch.challengedFundedAt),
+                totalFundingWolo: fundingTotal,
+              }
+            : undefined,
           createdAt: cancelledAt,
         });
 
@@ -645,6 +658,7 @@ export async function PATCH(
               challengedName,
               scheduledAt: scheduledMatch.scheduledAt,
               cancelledByName: playerName(viewer),
+              refundPending: hasAnyFunding,
             }),
             now: cancelledAt,
           });
@@ -660,6 +674,7 @@ export async function PATCH(
             cancelledByUid: viewer.uid,
             role: viewerRole,
             scheduledAt: scheduledMatch.scheduledAt.toISOString(),
+            refundPending: hasAnyFunding,
           },
         });
 
@@ -673,6 +688,7 @@ export async function PATCH(
             cancelledByUid: viewer.uid,
             role: viewerRole === "challenger" ? "challenged" : viewerRole === "challenged" ? "challenger" : "admin",
             scheduledAt: scheduledMatch.scheduledAt.toISOString(),
+            refundPending: hasAnyFunding,
           },
         });
       });
@@ -684,14 +700,14 @@ export async function PATCH(
       const hasAnyCheckIn =
         Boolean(scheduledMatch.challengerCheckedInAt) || Boolean(scheduledMatch.challengedCheckedInAt);
 
-      if (hasAnyFunding || hasAnyCheckIn || currentSurface.displayState === "live") {
+      if (hasAnyCheckIn || currentSurface.displayState === "live") {
         return NextResponse.json(
-          { detail: "Terms are already funded or locked. Keep this match on the existing rail." },
+          { detail: "This match is already checked in or live. Keep it on the existing rail." },
           { status: 409 }
         );
       }
 
-      if (!REOPENABLE_STATUSES.has(scheduledMatch.status.toLowerCase())) {
+      if (!MANAGEABLE_DISPLAY_STATES.has(currentSurface.displayState)) {
         return NextResponse.json(
           { detail: "This scheduled match can no longer be reopened." },
           { status: 409 }
@@ -710,9 +726,13 @@ export async function PATCH(
 
       const nextChallengeNote = normalizeChallengeNote(payload.challengeNote);
       const wagerAmountWolo =
-        normalizeChallengeWoloAmount(payload.wagerAmountWolo) ?? scheduledMatch.wagerAmountWolo ?? CHALLENGE_DEFAULT_WAGER_WOLO;
+        hasAnyFunding
+          ? scheduledMatch.wagerAmountWolo
+          : normalizeChallengeWoloAmount(payload.wagerAmountWolo) ?? scheduledMatch.wagerAmountWolo ?? CHALLENGE_DEFAULT_WAGER_WOLO;
       const guaranteeAmountWolo =
-        normalizeChallengeWoloAmount(payload.guaranteeAmountWolo) ?? scheduledMatch.guaranteeAmountWolo ?? CHALLENGE_DEFAULT_GUARANTEE_WOLO;
+        hasAnyFunding
+          ? scheduledMatch.guaranteeAmountWolo
+          : normalizeChallengeWoloAmount(payload.guaranteeAmountWolo) ?? scheduledMatch.guaranteeAmountWolo ?? CHALLENGE_DEFAULT_GUARANTEE_WOLO;
       const termsError = validateChallengeTermsAmounts(wagerAmountWolo, guaranteeAmountWolo);
 
       if (termsError) {
@@ -724,49 +744,70 @@ export async function PATCH(
         ? scheduledMatch.challengedUserId
         : scheduledMatch.challengerUserId;
       const nextFundingTotal = wagerAmountWolo + guaranteeAmountWolo;
+      const nextShape = {
+        ...scheduledMatch,
+        scheduledAt: nextScheduledAt,
+        challengeNote: nextChallengeNote,
+        wagerAmountWolo,
+        guaranteeAmountWolo,
+      };
+      const nextSurface = hasAnyFunding
+        ? computeChallengeSurface(nextShape, rescheduledAt)
+        : null;
 
       await prisma.$transaction(async (tx) => {
         await tx.scheduledMatch.update({
           where: { id: challengeId },
-          data: {
-            status: "proposed",
-            scheduledAt: nextScheduledAt,
-            challengeNote: nextChallengeNote,
-            wagerAmountWolo,
-            guaranteeAmountWolo,
-            acceptedAt: null,
-            declinedAt: null,
-            cancelledAt: null,
-            challengerFundingTxHash: null,
-            challengerFundingWalletAddress: null,
-            challengerFundedAt: null,
-            challengedFundingTxHash: null,
-            challengedFundingWalletAddress: null,
-            challengedFundedAt: null,
-            challengerCheckedInAt: null,
-            challengedCheckedInAt: null,
-            liveConfirmedAt: null,
-            resultAt: null,
-            settlementReadyAt: null,
-            linkedSessionKey: null,
-            linkedMapName: null,
-            linkedWinner: null,
-            linkedDurationSeconds: null,
-          },
+          data: hasAnyFunding
+            ? {
+                status: nextSurface?.persistedStatus ?? scheduledMatch.status,
+                scheduledAt: nextScheduledAt,
+                challengeNote: nextChallengeNote,
+                wagerAmountWolo,
+                guaranteeAmountWolo,
+                declinedAt: null,
+                cancelledAt: null,
+              }
+            : {
+                status: "proposed",
+                scheduledAt: nextScheduledAt,
+                challengeNote: nextChallengeNote,
+                wagerAmountWolo,
+                guaranteeAmountWolo,
+                acceptedAt: null,
+                declinedAt: null,
+                cancelledAt: null,
+                challengerFundingTxHash: null,
+                challengerFundingWalletAddress: null,
+                challengerFundedAt: null,
+                challengedFundingTxHash: null,
+                challengedFundingWalletAddress: null,
+                challengedFundedAt: null,
+                challengerCheckedInAt: null,
+                challengedCheckedInAt: null,
+                liveConfirmedAt: null,
+                resultAt: null,
+                settlementReadyAt: null,
+                linkedSessionKey: null,
+                linkedMapName: null,
+                linkedWinner: null,
+                linkedDurationSeconds: null,
+              },
         });
 
         await recordChallengeActivity(tx, {
           scheduledMatchId: challengeId,
           actorUserId: viewer.id,
           eventType: "rescheduled",
-          detail: `Rescheduled for ${formatScheduledAtForInbox(nextScheduledAt)}. Funding stays ${formatWolo(
-            nextFundingTotal
-          )} WOLO each.`,
+          detail: `${challengeLabel} · moved to ${formatScheduledAtForInbox(nextScheduledAt)}${
+            hasAnyFunding ? " · funding preserved" : ""
+          }`,
           metadata: {
             scheduledAt: nextScheduledAt.toISOString(),
             wagerAmountWolo,
             guaranteeAmountWolo,
             totalFundingWolo: nextFundingTotal,
+            fundingPreserved: hasAnyFunding,
           },
           createdAt: rescheduledAt,
         });
@@ -782,6 +823,7 @@ export async function PATCH(
             challengeNote: nextChallengeNote,
             wagerAmountWolo,
             guaranteeAmountWolo,
+            fundingPreserved: hasAnyFunding,
           }),
           now: rescheduledAt,
         });
@@ -800,6 +842,7 @@ export async function PATCH(
             wagerAmountWolo,
             guaranteeAmountWolo,
             totalFundingWolo: nextFundingTotal,
+            fundingPreserved: hasAnyFunding,
           },
         });
 
@@ -817,6 +860,7 @@ export async function PATCH(
             wagerAmountWolo,
             guaranteeAmountWolo,
             totalFundingWolo: nextFundingTotal,
+            fundingPreserved: hasAnyFunding,
           },
         });
       });
