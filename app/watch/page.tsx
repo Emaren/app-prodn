@@ -304,19 +304,14 @@ async function loadWatchIndexSnapshot() {
     };
   });
 
-  const liveBuildingHero = buildLiveBuildingHero();
-  const liveGameHero = matches.find(
-    (match) =>
-      match.mode === "live" &&
-      (match.hasFeed || match.bestOfUrl || match.previewUrl || match.recordingUrl)
-  );
-
-  const hero = liveGameHero || liveBuildingHero;
+  const liveGameHero = matches.find((match) => match.mode === "live") || null;
+  const latestArchiveHero = matches.find((match) => match.mode === "archive") || null;
+  const hero = liveGameHero || latestArchiveHero || buildLiveBuildingHero();
 
   return {
     hero,
     matches,
-    totalStreams: streams.length + 1,
+    totalStreams: streams.length + (hero.sessionKey === "__live-building__" ? 1 : 0),
   };
 }
 
@@ -764,29 +759,14 @@ function applyHostedMediaFallbacks<T extends { hero: WatchMatchSummary | null; m
 }
 
 
-function hasHostedWatchMedia(match: WatchMatchSummary) {
-  return Boolean(match.bestOfUrl || match.previewUrl || match.recordingUrl);
-}
-
 function pickShelfMatches(snapshot: {
   hero: WatchMatchSummary | null;
   matches: WatchMatchSummary[];
 }) {
-  const preferred = HOSTED_WATCH_LOOPS
-    .map((loop) =>
-      snapshot.matches.find((match) => hostedLoopForMatch(match)?.url === loop.url)
-    )
-    .filter((match): match is WatchMatchSummary => Boolean(match));
-
-  const seen = new Set(preferred.map((match) => match.sessionKey));
-  const fallback = snapshot.matches
+  return snapshot.matches
     .filter((match) => match.sessionKey !== "__live-building__")
     .filter((match) => match.sessionKey !== snapshot.hero?.sessionKey)
-    .filter((match) => !seen.has(match.sessionKey))
-    .filter(hasHostedWatchMedia)
-    .slice(0, 3 - preferred.length);
-
-  return [...preferred, ...fallback].slice(0, 3);
+    .slice(0, 3);
 }
 
 function buildTwitchPlayerUrl(channel: string) {
