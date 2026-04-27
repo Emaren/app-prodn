@@ -4,22 +4,18 @@
 import Link from "next/link";
 import { MessageCirclePlus, Mic, Paperclip } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { FormEvent, ReactNode } from "react";
+import type { ReactNode } from "react";
 
 import CommunityBadgePill from "@/components/contact/CommunityBadgePill";
+import ScheduledMatchCard from "@/components/challenge/ScheduledMatchCard";
 import TimeDisplayText from "@/components/time/TimeDisplayText";
 import AutoGrowTextarea from "@/components/ui/AutoGrowTextarea";
 import {
   DIRECT_MESSAGE_MAX_CHARS,
   DIRECT_MESSAGE_REACTIONS,
 } from "@/lib/contactInboxConfig";
-import { useKeplr } from "@/hooks/use-keplr";
 import { AI_CONCIERGE_NAME, AI_CONCIERGE_UID } from "@/lib/aiConciergeConfig";
 import { summarizeChallengeInboxMessage } from "@/lib/challengeInboxMessages";
-import {
-  challengeFundingEscrowAddress,
-  fundChallengeEscrow,
-} from "@/lib/clientChallengeFunding";
 import type {
   ContactChallengeActionKind,
   ContactChallengeActionState,
@@ -27,26 +23,6 @@ import type {
   ContactInboxPayload,
   ContactInboxSummary,
 } from "@/components/contact/types";
-import { CHALLENGE_NOTE_MAX_CHARS } from "@/lib/challengeConfig";
-
-type ChallengeFundingWorkflow = "idle" | "awaiting_wallet" | "confirming_chain" | "recording" | "verified" | "failed";
-
-function challengeFundingButtonLabel(state: ChallengeFundingWorkflow) {
-  switch (state) {
-    case "awaiting_wallet":
-      return "Open wallet...";
-    case "confirming_chain":
-      return "Waiting for funding";
-    case "recording":
-      return "Funding detected";
-    case "verified":
-      return "Funding verified";
-    case "failed":
-      return "Retry funding";
-    default:
-      return "Fund now";
-  }
-}
 
 type ContactInboxPanelProps = {
   data: ContactInboxPayload | null;
@@ -64,6 +40,8 @@ type ContactInboxPanelProps = {
     action: ContactChallengeActionKind;
     scheduledAt?: string;
     challengeNote?: string;
+    wagerAmountWolo?: number;
+    guaranteeAmountWolo?: number;
     fundingTxHash?: string;
     fundingWalletAddress?: string;
   }) => void | Promise<void>;
@@ -169,61 +147,6 @@ function buildPrompt(
   }
 
   return counterpartName ? `Reply to ${counterpartName}...` : "Write a message...";
-}
-
-function toLocalDateTimeValue(value: string) {
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return "";
-  }
-
-  const local = new Date(parsed.getTime() - parsed.getTimezoneOffset() * 60_000);
-  return local.toISOString().slice(0, 16);
-}
-
-function formatChallengeDuration(diffMs: number) {
-  const totalSeconds = Math.max(0, Math.floor(Math.abs(diffMs) / 1000));
-  const days = Math.floor(totalSeconds / 86400);
-  const hours = Math.floor((totalSeconds % 86400) / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-
-  if (days > 0) {
-    return `${days}d ${hours}h`;
-  }
-
-  if (hours > 0) {
-    return `${hours}h ${minutes}m`;
-  }
-
-  return `${minutes}:${String(seconds).padStart(2, "0")}`;
-}
-
-function challengeStatusLine(challenge: NonNullable<ContactInboxPayload["activeChallenge"]>) {
-  const nowMs = Date.now();
-  if (challenge.economy.countdownTargetAt) {
-    const targetMs = new Date(challenge.economy.countdownTargetAt).getTime();
-    const diff = targetMs - nowMs;
-    return {
-      status: challenge.economy.statusLabel,
-      detail:
-        challenge.economy.countdownMode === "opens_in"
-          ? `Check-in opens in ${formatChallengeDuration(diff)}`
-          : `Check-in closes in ${formatChallengeDuration(diff)}`,
-    };
-  }
-
-  if (challenge.displayState === "completed" && challenge.linkedWinner) {
-    return {
-      status: challenge.economy.statusLabel,
-      detail: `Winner ${challenge.linkedWinner}`,
-    };
-  }
-
-  return {
-    status: challenge.economy.statusLabel,
-    detail: challenge.economy.statusDetail,
-  };
 }
 
 function challengeTone(displayState: NonNullable<ContactInboxPayload["activeChallenge"]>["displayState"]) {
@@ -347,122 +270,27 @@ function ChallengeThreadStrip({
 }) {
   const challenge = data.activeChallenge;
   const counterpart = data.activeCounterpart;
-  const challengeId = challenge?.id ?? null;
-  const challengeScheduledAt = challenge?.scheduledAt ?? null;
-  const challengeNoteValue = challenge?.challengeNote ?? "";
-  const { address: connectedWalletAddress, connect: connectKeplr } = useKeplr();
-  const [showRescheduleForm, setShowRescheduleForm] = useState(false);
-  const [showFundingForm, setShowFundingForm] = useState(false);
-  const [fundingWorkflow, setFundingWorkflow] = useState<ChallengeFundingWorkflow>("idle");
-  const [fundingError, setFundingError] = useState<string | null>(null);
-  const [scheduledAt, setScheduledAt] = useState(() =>
-    challenge ? toLocalDateTimeValue(challenge.scheduledAt) : ""
-  );
-  const [challengeNote, setChallengeNote] = useState(challengeNoteValue);
-  const [fundingTxHash, setFundingTxHash] = useState("");
-  const [fundingWalletAddress, setFundingWalletAddress] = useState("");
-
-  useEffect(() => {
-    setShowRescheduleForm(false);
-    setShowFundingForm(false);
-    setFundingWorkflow("idle");
-    setFundingError(null);
-    setScheduledAt(challengeScheduledAt ? toLocalDateTimeValue(challengeScheduledAt) : "");
-    setChallengeNote(challengeNoteValue);
-    setFundingTxHash("");
-    setFundingWalletAddress("");
-  }, [challengeId, challengeScheduledAt, challengeNoteValue]);
 
   if (!challenge || !counterpart || counterpart.threadKind !== "direct") {
     return null;
   }
 
-  const tone = challengeTone(challenge.displayState);
-  const status = challengeStatusLine(challenge);
-  const viewerIsChallenger = data.viewer.uid === challenge.challenger.uid;
-  const viewerIsChallenged = data.viewer.uid === challenge.challenged.uid;
-  const viewerAlreadyFunded = viewerIsChallenger
-    ? Boolean(challenge.economy.creatorFundedAt)
-    : viewerIsChallenged
-      ? Boolean(challenge.economy.opponentFundedAt)
-      : false;
-  const viewerAlreadyCheckedIn = viewerIsChallenger
-    ? Boolean(challenge.economy.leftCheckedInAt)
-    : viewerIsChallenged
-      ? Boolean(challenge.economy.rightCheckedInAt)
-      : false;
-  const hasFundingOnFile = Boolean(
-    challenge.economy.creatorFundedAt || challenge.economy.opponentFundedAt
-  );
-  const hasCheckInOnFile = Boolean(
-    challenge.economy.leftCheckedInAt || challenge.economy.rightCheckedInAt
-  );
-  const canAccept =
-    viewerIsChallenged && ["proposed", "pending"].includes(challenge.displayState);
-  const canDecline =
-    viewerIsChallenged && ["proposed", "pending"].includes(challenge.displayState);
-  const canCancel =
-    (viewerIsChallenger && ["proposed", "pending"].includes(challenge.displayState)) ||
-    ((viewerIsChallenger || viewerIsChallenged) &&
-      !hasFundingOnFile &&
-      !hasCheckInOnFile &&
-      ["terms_accepted", "accepted", "declined", "cancelled", "canceled"].includes(
-        challenge.displayState
-      ));
-  const canReschedule =
-    viewerIsChallenger || viewerIsChallenged
-      ? !hasFundingOnFile &&
-        !hasCheckInOnFile &&
-        ["proposed", "pending", "terms_accepted", "accepted", "declined", "cancelled", "canceled"].includes(
-          challenge.displayState
-        )
-      : false;
-  const canFund =
-    (viewerIsChallenger || viewerIsChallenged) &&
-    challenge.economy.hasTerms &&
-    !viewerAlreadyFunded &&
-    !["completed", "declined", "cancelled", "canceled", "no_show_left", "no_show_right", "double_no_show", "forfeited", "refunded"].includes(
-      challenge.displayState
-    );
-  const canCheckIn =
-    (viewerIsChallenger || viewerIsChallenged) &&
-    viewerAlreadyFunded &&
-    !viewerAlreadyCheckedIn &&
-    challenge.economy.checkInWindowState === "open";
-  const currentAction =
-    challengeActionState?.challengeId === challenge.id ? challengeActionState.action : null;
-  const isBusy = Boolean(currentAction);
-  const reopenLabel =
-    challenge.displayState === "declined" ||
-    challenge.displayState === "cancelled" ||
-    challenge.displayState === "canceled"
-      ? "Challenge Again"
-      : "Edit Terms";
   const compact = mode === "popover";
-  const actionSizing = compact ? "px-2.5 py-1.5 text-[11px]" : "px-3 py-2 text-xs";
   const primaryHref =
     (challenge.displayState === "live" || challenge.displayState === "completed") &&
     challenge.linkedSessionKey
       ? `/game-stats/live/${encodeURIComponent(challenge.linkedSessionKey)}`
       : "/challenge";
-  const primaryLabel =
-    (challenge.displayState === "live" || challenge.displayState === "completed") &&
-    challenge.linkedSessionKey
-      ? challenge.displayState === "completed"
-        ? "Open Final Stats"
-        : "Watch Live Stats"
-      : mode === "popover"
-        ? "Open Runway"
-        : "Open Challenge Hub";
 
   if (compact) {
+    const tone = challengeTone(challenge.displayState);
     return (
       <div className={`mt-3 rounded-full border px-3 py-2 ${tone.shell}`}>
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0 flex-1 overflow-hidden">
             <div className="flex items-center gap-2 overflow-hidden whitespace-nowrap text-[11px] text-slate-200">
               <span className={`inline-flex shrink-0 rounded-full border px-2 py-0.5 ${tone.badge}`}>
-                {status.status}
+                {challenge.economy.statusLabel}
               </span>
               <span className="truncate font-medium text-white">
                 {challenge.challenger.name} vs {challenge.challenged.name}
@@ -492,312 +320,43 @@ function ChallengeThreadStrip({
     );
   }
 
-  async function handleReschedule(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!onChallengeAction || !scheduledAt.trim() || challengeId === null) {
-      return;
-    }
-
-    await onChallengeAction({
-      challengeId,
-      action: "reschedule",
-      scheduledAt: new Date(scheduledAt).toISOString(),
-      challengeNote,
-    });
-    setShowRescheduleForm(false);
-  }
-
-  async function handleFunding(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!onChallengeAction || !fundingTxHash.trim() || challengeId === null) {
-      return;
-    }
-
-    await onChallengeAction({
-      challengeId,
-      action: "fund",
-      fundingTxHash,
-      fundingWalletAddress,
-    });
-    setShowFundingForm(false);
-  }
-
-  async function handleFundingNow() {
-    if (!onChallengeAction || !challenge || challengeId === null) {
-      return;
-    }
-
-    setFundingError(null);
-
-    if (!challengeFundingEscrowAddress()) {
-      setFundingWorkflow("failed");
-      setFundingError("Challenge escrow is not exposed to the browser yet. Use manual rescue for this proof.");
-      setShowFundingForm(true);
-      return;
-    }
-
-    try {
-      setFundingWorkflow("awaiting_wallet");
-      const walletAddress = connectedWalletAddress || (await connectKeplr());
-
-      setFundingWorkflow("confirming_chain");
-      const result = await fundChallengeEscrow({
-        challengeId,
-        amountWolo: challenge.terms.totalFundingWolo,
-        fallbackWalletAddress: walletAddress,
-      });
-
-      setFundingWorkflow("recording");
-      await onChallengeAction({
-        challengeId,
-        action: "fund",
-        fundingTxHash: result.fundingTxHash,
-        fundingWalletAddress: result.walletAddress,
-      });
-      setFundingWorkflow("verified");
-      setShowFundingForm(false);
-    } catch (error) {
-      setFundingWorkflow("failed");
-      setFundingError(error instanceof Error ? error.message : "Challenge funding failed.");
-    }
-  }
-
   return (
-    <div
-      className={`rounded-[1.1rem] border ${compact ? "mt-2.5 px-3 py-2.5" : "mt-3 px-3.5 py-3"} ${
-        tone.shell
-      }`}
-    >
-      <div
-        className={`grid ${compact ? "gap-2 sm:grid-cols-[minmax(0,1fr)_124px]" : "gap-2.5 sm:grid-cols-[minmax(0,1fr)_auto]"}`}
-      >
-        <div className="min-w-0">
-          <div className={`${compact ? "text-[9px]" : "text-[10px]"} uppercase tracking-[0.26em] ${tone.eyebrow}`}>
-            Challenge runway
-          </div>
-          <div className={`mt-1 ${compact ? "text-[15px]" : "text-sm"} font-semibold text-white`}>
-            {challenge.challenger.name} vs {challenge.challenged.name}
-          </div>
-          {challenge.challengeNote ? (
-            <div className="mt-1 line-clamp-1 text-[11px] text-slate-300">
-              {challenge.challengeNote}
-            </div>
-          ) : null}
-          <div className="mt-1.5 flex flex-wrap gap-1.5 text-[10px] text-slate-200">
-            <span className="rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-0.5">
-              {new Date(challenge.scheduledAt).toLocaleString([], {
-                month: "short",
-                day: "numeric",
-                hour: "numeric",
-                minute: "2-digit",
-              })}
-            </span>
-            <span className="rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-0.5">
-              {challenge.terms.totalFundingWolo.toLocaleString()} WOLO each
-            </span>
-            {challenge.linkedMapName ? (
-              <span className="rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-0.5">
-                {challenge.linkedMapName}
-              </span>
-            ) : null}
-          </div>
-        </div>
-
-        <div className={`rounded-[0.95rem] border border-white/10 bg-slate-950/25 ${compact ? "px-2.5 py-1.5" : "px-3 py-2"} text-left sm:text-right`}>
-          <div className={`inline-flex rounded-full border px-2 py-0.5 text-[9px] ${tone.badge}`}>
-            {status.status}
-          </div>
-          <div className="mt-1 text-xs font-semibold text-white/95">{status.status}</div>
-          <div className="mt-0.5 text-[11px] text-slate-300">{status.detail}</div>
-        </div>
-      </div>
-
-      <div className={`mt-2.5 flex flex-wrap gap-1.5 ${compact ? "" : "justify-end"}`}>
-        {canAccept ? (
-          <button
-            type="button"
-            disabled={isBusy}
-            onClick={() => void onChallengeAction?.({ challengeId: challenge.id, action: "accept" })}
-            className={`rounded-full bg-white font-semibold text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60 ${actionSizing}`}
-          >
-            {currentAction === "accept" ? "Accepting..." : "Accept"}
-          </button>
-        ) : null}
-        {canDecline ? (
-          <button
-            type="button"
-            disabled={isBusy}
-            onClick={() => void onChallengeAction?.({ challengeId: challenge.id, action: "decline" })}
-            className={`rounded-full border border-rose-300/30 bg-rose-500/10 font-semibold text-rose-50 transition hover:bg-rose-500/15 disabled:cursor-not-allowed disabled:opacity-60 ${actionSizing}`}
-          >
-            {currentAction === "decline" ? "Declining..." : "Decline"}
-          </button>
-        ) : null}
-        {canFund ? (
-          <>
-            <button
-              type="button"
-              disabled={isBusy || fundingWorkflow === "confirming_chain" || fundingWorkflow === "recording"}
-              onClick={() => void handleFundingNow()}
-              className={`rounded-full bg-amber-300 font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-60 ${actionSizing}`}
-            >
-              {currentAction === "fund" ? "Funding verified" : challengeFundingButtonLabel(fundingWorkflow)}
-            </button>
-            <button
-              type="button"
-              disabled={isBusy}
-              onClick={() => setShowFundingForm((current) => !current)}
-              className={`rounded-full border border-white/15 text-white/70 transition hover:border-white/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-60 ${actionSizing}`}
-            >
-              {showFundingForm ? "Close Rescue" : "Manual rescue"}
-            </button>
-          </>
-        ) : null}
-        {canCheckIn ? (
-          <button
-            type="button"
-            disabled={isBusy}
-            onClick={() => void onChallengeAction?.({ challengeId: challenge.id, action: "check_in" })}
-            className={`rounded-full bg-emerald-300 font-semibold text-slate-950 transition hover:bg-emerald-200 disabled:cursor-not-allowed disabled:opacity-60 ${actionSizing}`}
-          >
-            {currentAction === "check_in" ? "Checking..." : "Check In"}
-          </button>
-        ) : null}
-        {canCancel ? (
-          <button
-            type="button"
-            disabled={isBusy}
-            onClick={() => void onChallengeAction?.({ challengeId: challenge.id, action: "cancel" })}
-            className={`rounded-full border border-white/15 text-white/85 transition hover:border-white/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-60 ${actionSizing}`}
-          >
-            {currentAction === "cancel" ? "Cancelling..." : "Cancel"}
-          </button>
-        ) : null}
-        {canReschedule ? (
-          <button
-            type="button"
-            disabled={isBusy}
-            onClick={() => setShowRescheduleForm((current) => !current)}
-            className={`rounded-full border border-amber-300/30 bg-amber-400/10 text-amber-100 transition hover:bg-amber-400/15 disabled:cursor-not-allowed disabled:opacity-60 ${actionSizing}`}
-          >
-            {showRescheduleForm ? "Close" : reopenLabel}
-          </button>
-        ) : null}
-        <Link
-          href={primaryHref}
-          className={`rounded-full border border-white/15 text-white/85 transition hover:border-white/30 hover:text-white ${actionSizing}`}
-        >
-          {primaryLabel}
-        </Link>
-      </div>
-
-      {canReschedule && showRescheduleForm ? (
-        <form
-          onSubmit={handleReschedule}
-          className={`mt-2.5 space-y-2.5 rounded-[0.95rem] border border-white/10 bg-slate-950/35 ${compact ? "p-2.5" : "p-3"}`}
-        >
-          <label className="block space-y-1.5">
-            <span className="text-[10px] uppercase tracking-[0.2em] text-slate-300">New Start</span>
-            <input
-              type="datetime-local"
-              value={scheduledAt}
-              onChange={(event) => setScheduledAt(event.target.value)}
-              disabled={isBusy}
-              className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white outline-none focus:border-amber-300/50 disabled:cursor-not-allowed disabled:opacity-60"
-            />
-          </label>
-          <label className="block space-y-1.5">
-            <span className="text-[10px] uppercase tracking-[0.2em] text-slate-300">Updated Note</span>
-            <AutoGrowTextarea
-              value={challengeNote}
-              onChange={(event) =>
-                setChallengeNote(event.target.value.slice(0, CHALLENGE_NOTE_MAX_CHARS))
+    <div className="mt-3">
+      <ScheduledMatchCard
+        match={challenge}
+        viewerUid={data.viewer.uid}
+        compact
+        onAccept={(challengeId) => onChallengeAction?.({ challengeId, action: "accept" })}
+        onDecline={(challengeId) => onChallengeAction?.({ challengeId, action: "decline" })}
+        onCancel={(challengeId) => onChallengeAction?.({ challengeId, action: "cancel" })}
+        onReschedule={(challengeId, payload) =>
+          onChallengeAction?.({
+            challengeId,
+            action: "reschedule",
+            scheduledAt: payload.scheduledAt,
+            challengeNote: payload.challengeNote,
+            wagerAmountWolo: payload.wagerAmountWolo,
+            guaranteeAmountWolo: payload.guaranteeAmountWolo,
+          })
+        }
+        onFund={(challengeId, payload) =>
+          onChallengeAction?.({
+            challengeId,
+            action: "fund",
+            fundingTxHash: payload.fundingTxHash,
+            fundingWalletAddress: payload.fundingWalletAddress,
+          })
+        }
+        onCheckIn={(challengeId) => onChallengeAction?.({ challengeId, action: "check_in" })}
+        actionState={
+          challengeActionState
+            ? {
+                challengeId: challengeActionState.challengeId,
+                kind: challengeActionState.action,
               }
-              maxRows={4}
-              maxLength={CHALLENGE_NOTE_MAX_CHARS}
-              disabled={isBusy}
-              className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white outline-none focus:border-amber-300/50 disabled:cursor-not-allowed disabled:opacity-60"
-              placeholder="Push it back 30 minutes."
-            />
-            <div className="text-right text-[10px] uppercase tracking-[0.18em] text-slate-500">
-              {challengeNote.length}/{CHALLENGE_NOTE_MAX_CHARS}
-            </div>
-          </label>
-          <div className="flex flex-wrap gap-1.5">
-            <button
-              type="submit"
-              disabled={isBusy}
-              className={`rounded-full bg-amber-300 font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-60 ${actionSizing}`}
-            >
-              {currentAction === "reschedule" ? "Sending..." : "Send New Time"}
-            </button>
-            <button
-              type="button"
-              disabled={isBusy}
-              onClick={() => setShowRescheduleForm(false)}
-              className={`rounded-full border border-white/15 text-white/85 transition hover:border-white/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-60 ${actionSizing}`}
-            >
-              Close
-            </button>
-          </div>
-        </form>
-      ) : null}
-
-      {canFund && showFundingForm ? (
-        <form
-          onSubmit={handleFunding}
-          className={`mt-2.5 space-y-2.5 rounded-[0.95rem] border border-white/10 bg-slate-950/35 ${compact ? "p-2.5" : "p-3"}`}
-        >
-          <div>
-            <div className="text-[10px] uppercase tracking-[0.22em] text-slate-400">Manual rescue</div>
-            <div className="mt-1 text-[11px] leading-5 text-slate-300">
-              Use only if wallet funding broadcast but the rail did not return.
-            </div>
-            {fundingError ? (
-              <div className="mt-1 text-[11px] leading-5 text-amber-100">{fundingError}</div>
-            ) : null}
-          </div>
-          <label className="block space-y-1.5">
-            <span className="text-[10px] uppercase tracking-[0.2em] text-slate-300">Funding tx hash</span>
-            <input
-              type="text"
-              value={fundingTxHash}
-              onChange={(event) => setFundingTxHash(event.target.value)}
-              disabled={isBusy}
-              className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white outline-none focus:border-amber-300/50 disabled:cursor-not-allowed disabled:opacity-60"
-              placeholder="Signed escrow tx hash"
-            />
-          </label>
-          <label className="block space-y-1.5">
-            <span className="text-[10px] uppercase tracking-[0.2em] text-slate-300">Wallet address</span>
-            <input
-              type="text"
-              value={fundingWalletAddress}
-              onChange={(event) => setFundingWalletAddress(event.target.value)}
-              disabled={isBusy}
-              className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white outline-none focus:border-amber-300/50 disabled:cursor-not-allowed disabled:opacity-60"
-              placeholder="Optional"
-            />
-          </label>
-          <div className="flex flex-wrap gap-1.5">
-            <button
-              type="submit"
-              disabled={isBusy}
-              className={`rounded-full bg-amber-300 font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-60 ${actionSizing}`}
-            >
-              {currentAction === "fund" ? "Recording..." : "Record manual proof"}
-            </button>
-            <button
-              type="button"
-              disabled={isBusy}
-              onClick={() => setShowFundingForm(false)}
-              className={`rounded-full border border-white/15 text-white/85 transition hover:border-white/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-60 ${actionSizing}`}
-            >
-              Close
-            </button>
-          </div>
-        </form>
-      ) : null}
+            : null
+        }
+      />
     </div>
   );
 }

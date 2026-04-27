@@ -3,7 +3,7 @@
 import Link from "next/link";
 import type { FormEvent, ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowUpRight, Clock3, MessageSquareMore, Plus } from "lucide-react";
+import { ArrowUpRight, Clock3, MessageSquareMore, Plus, Wallet } from "lucide-react";
 
 import ScheduledMatchCard, {
   type ScheduledMatchCardActionKind,
@@ -14,11 +14,16 @@ import TimeDisplayText from "@/components/time/TimeDisplayText";
 import SteamLoginButton from "@/components/SteamLoginButton";
 import AutoGrowTextarea from "@/components/ui/AutoGrowTextarea";
 import { useUserAuth } from "@/context/UserAuthContext";
+import { useKeplr } from "@/hooks/use-keplr";
 import {
   CHALLENGE_DEFAULT_GUARANTEE_WOLO,
   CHALLENGE_DEFAULT_WAGER_WOLO,
   CHALLENGE_NOTE_MAX_CHARS,
 } from "@/lib/challengeConfig";
+import {
+  challengeFundingEscrowAddress,
+  fundChallengeEscrow,
+} from "@/lib/clientChallengeFunding";
 import type { ChallengeActivityItem, ChallengeHubSnapshot } from "@/lib/challenges";
 import type {
   ScheduledMatchColorTag,
@@ -48,6 +53,11 @@ const EMPTY_SNAPSHOT: ChallengeHubSnapshot = {
   },
   serverNow: new Date(0).toISOString(),
   updatedAt: new Date(0).toISOString(),
+};
+
+type ChallengeCreateSnapshot = ChallengeHubSnapshot & {
+  createdChallengeId?: number | null;
+  detail?: string;
 };
 
 const ACTIVE_RUNWAY_STATES: string[] = [
@@ -139,11 +149,13 @@ function formatActivityTitle(activity: ChallengeActivityItem) {
 
 export default function ChallengeWorkspace() {
   const { loading: authLoading, isAuthenticated, uid } = useUserAuth();
+  const { status: walletStatus, address: connectedWalletAddress, connect: connectKeplr } = useKeplr();
   const { timeDisplayMode, setTimeDisplayMode, browserTimeZone } = useLobbyAppearance();
   const scheduleFormId = "schedule-game";
   const [snapshot, setSnapshot] = useState<ChallengeHubSnapshot>(EMPTY_SNAPSHOT);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingPhase, setSavingPhase] = useState<"idle" | "connecting" | "creating" | "funding" | "recording">("idle");
   const [actionState, setActionState] = useState<ScheduledMatchCardActionState>({
     challengeId: null,
     kind: null,
@@ -152,7 +164,7 @@ export default function ChallengeWorkspace() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [challengedUid, setChallengedUid] = useState("");
-  const [scheduledAt, setScheduledAt] = useState(() => defaultScheduledAtValue());
+  const [scheduledAt, setScheduledAt] = useState("");
   const [challengeNote, setChallengeNote] = useState("");
   const [wagerAmountWolo, setWagerAmountWolo] = useState(String(CHALLENGE_DEFAULT_WAGER_WOLO));
   const [guaranteeAmountWolo, setGuaranteeAmountWolo] = useState(
@@ -205,6 +217,10 @@ export default function ChallengeWorkspace() {
       cancelled = true;
     };
   }, [authLoading, isAuthenticated]);
+
+  useEffect(() => {
+    setScheduledAt(defaultScheduledAtValue());
+  }, []);
 
   const pendingIncomingCount = useMemo(
     () =>
@@ -295,6 +311,20 @@ export default function ChallengeWorkspace() {
       (Number.parseInt(wagerAmountWolo, 10) || 0) + (Number.parseInt(guaranteeAmountWolo, 10) || 0),
     [guaranteeAmountWolo, wagerAmountWolo]
   );
+  const challengeEscrowReady = Boolean(challengeFundingEscrowAddress());
+  const createButtonLabel = !challengeEscrowReady
+    ? "Escrow Not Wired"
+    : savingPhase === "connecting"
+      ? "Connecting..."
+      : walletStatus !== "connected"
+        ? "Connect Wallet"
+        : savingPhase === "creating"
+          ? "Creating..."
+          : savingPhase === "funding"
+            ? "Sign Escrow"
+            : savingPhase === "recording"
+              ? "Recording..."
+              : `Create + Fund ${totalFundingPreview.toLocaleString()} WOLO`;
   const focusedMatch = useMemo(
     () => activeRunwayMatches.find((match) => match.id === focusedMatchId) || activeRunwayMatches[0] || null,
     [activeRunwayMatches, focusedMatchId]
@@ -366,7 +396,7 @@ export default function ChallengeWorkspace() {
       setSnapshot(payload);
       setNotice(
         action === "accept"
-          ? "Terms accepted. Creator funding is next."
+          ? "Terms accepted."
           : action === "decline"
             ? "Challenge declined."
             : action === "cancel"
@@ -378,7 +408,9 @@ export default function ChallengeWorkspace() {
                   : "New timing and terms sent."
       );
     } catch (updateError) {
-      setError(updateError instanceof Error ? updateError.message : "Challenge update failed.");
+      const message = updateError instanceof Error ? updateError.message : "Challenge update failed.";
+      setError(message);
+      throw new Error(message);
     } finally {
       setActionState({
         challengeId: null,
@@ -440,13 +472,35 @@ export default function ChallengeWorkspace() {
   async function submitChallenge(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSaving(true);
+    setSavingPhase("creating");
     setError(null);
     setNotice(null);
+
+    if (!challengeFundingEscrowAddress()) {
+      setError("Challenge escrow is not configured yet.");
+      setSaving(false);
+      setSavingPhase("idle");
+      return;
+    }
+
+    if (walletStatus !== "connected" || !connectedWalletAddress) {
+      try {
+        setSavingPhase("connecting");
+        await connectKeplr();
+      } catch (walletError) {
+        setError(walletError instanceof Error ? walletError.message : "Connect wallet before creating.");
+      } finally {
+        setSaving(false);
+        setSavingPhase("idle");
+      }
+      return;
+    }
 
     const parsedScheduledAt = parseLocalDateTimeInputValue(scheduledAt);
     if (!parsedScheduledAt) {
       setError("Choose a valid start time.");
       setSaving(false);
+      setSavingPhase("idle");
       return;
     }
 
@@ -468,7 +522,7 @@ export default function ChallengeWorkspace() {
       });
 
       const payload = (await response.json().catch(() => null)) as
-        | (ChallengeHubSnapshot & { detail?: string })
+        | ChallengeCreateSnapshot
         | null;
 
       if (!response.ok || !payload) {
@@ -476,7 +530,41 @@ export default function ChallengeWorkspace() {
       }
 
       setSnapshot(payload);
-      setNotice("Challenge sent with terms on the rail.");
+      const createdChallengeId = payload.createdChallengeId;
+      if (!createdChallengeId || !Number.isFinite(createdChallengeId)) {
+        throw new Error("Challenge created, but the funding rail did not return a match id.");
+      }
+
+      setSavingPhase("funding");
+      const fundingResult = await fundChallengeEscrow({
+        challengeId: createdChallengeId,
+        amountWolo: parsedWagerAmountWolo + parsedGuaranteeAmountWolo,
+        fallbackWalletAddress: connectedWalletAddress,
+      });
+
+      setSavingPhase("recording");
+      const fundResponse = await fetch(`/api/challenges/${createdChallengeId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action: "fund",
+          fundingTxHash: fundingResult.fundingTxHash,
+          fundingWalletAddress: fundingResult.walletAddress,
+        }),
+      });
+
+      const fundedPayload = (await fundResponse.json().catch(() => null)) as
+        | (ChallengeHubSnapshot & { detail?: string })
+        | null;
+
+      if (!fundResponse.ok || !fundedPayload) {
+        throw new Error(fundedPayload?.detail || "Challenge was created, but funding could not be recorded.");
+      }
+
+      setSnapshot(fundedPayload);
+      setNotice("Challenge funded. Opponent can accept + fund.");
       setChallengedUid("");
       setChallengeNote("");
       setScheduledAt(defaultScheduledAtValue());
@@ -486,6 +574,7 @@ export default function ChallengeWorkspace() {
       setError(submitError instanceof Error ? submitError.message : "Unable to schedule the game.");
     } finally {
       setSaving(false);
+      setSavingPhase("idle");
     }
   }
 
@@ -533,6 +622,12 @@ export default function ChallengeWorkspace() {
               >
                 Browse Players
               </Link>
+              <Link
+                href="/betting-mechanics"
+                className="inline-flex min-h-[3rem] items-center justify-center rounded-full border border-white/15 px-5 py-3 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
+              >
+                Mechanics
+              </Link>
             </div>
           </div>
 
@@ -554,13 +649,10 @@ export default function ChallengeWorkspace() {
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="min-w-0">
                 <div className="text-xs uppercase tracking-[0.35em] text-amber-200/70">New Match</div>
-                <h2 className="mt-2 text-2xl font-semibold text-white">Create The Runway</h2>
-                <div className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
-                  Pick the rival, lock the terms, send it.
-                </div>
+                <h2 className="mt-2 text-2xl font-semibold text-white">Challenge + Fund</h2>
               </div>
               <div className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-slate-300">
-                Match economy rail
+                Wallet escrow
               </div>
             </div>
 
@@ -658,9 +750,6 @@ export default function ChallengeWorkspace() {
                     <div className="mt-2 text-lg font-semibold text-white">
                       {totalFundingPreview.toLocaleString()} WOLO
                     </div>
-                    <div className="mt-2 text-xs text-slate-400">
-                      One signed funding action per player.
-                    </div>
                   </div>
                 </div>
 
@@ -695,11 +784,11 @@ export default function ChallengeWorkspace() {
 
                 <button
                   type="submit"
-                  disabled={saving}
+                  disabled={saving || !challengeEscrowReady}
                   className="inline-flex items-center gap-2 rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  <Plus className="h-4 w-4" />
-                  {saving ? "Scheduling..." : "Add Game To The Runway"}
+                  {walletStatus !== "connected" ? <Wallet className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                  {createButtonLabel}
                 </button>
               </form>
             )}

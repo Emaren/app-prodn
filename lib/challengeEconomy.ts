@@ -345,8 +345,8 @@ export function buildChallengeEconomySurface(
         ? input.scheduledAt.toISOString()
         : null;
 
-  let statusLabel = "Awaiting opponent acceptance";
-  let statusDetail = `${formatWolo(totalFundingWolo)} WOLO per player once the terms are accepted.`;
+  let statusLabel = "Creator funding required";
+  let statusDetail = `Creator locks ${formatWolo(totalFundingWolo)} WOLO before opponent accepts.`;
   let resolution: ScheduledMatchResolutionSurface = {
     label: null,
     guarantee: null,

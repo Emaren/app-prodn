@@ -35,6 +35,8 @@ const REOPENABLE_STATUSES = new Set([
   "canceled",
 ]);
 const FUNDABLE_STATUSES = new Set([
+  "proposed",
+  "pending",
   "terms_accepted",
   "accepted",
   "creator_funded",
@@ -207,13 +209,14 @@ function buildTermsAcceptedMessage(input: {
   challengedName: string;
   scheduledAt: Date;
   totalFundingWolo: number;
+  nextStatus: string;
 }) {
   return [
     "Challenge terms accepted",
     `${input.challengerName} vs ${input.challengedName}`,
     `Start: ${formatScheduledAtForInbox(input.scheduledAt)}`,
     `Funding: ${formatWolo(input.totalFundingWolo)} WOLO each`,
-    "Status: Creator funding next",
+    `Status: ${input.nextStatus}`,
   ].join("\n");
 }
 
@@ -422,7 +425,7 @@ export async function PATCH(
         );
       }
 
-      if (!["proposed", "pending"].includes(currentSurface.displayState)) {
+      if (!["proposed", "pending", "creator_funded"].includes(currentSurface.displayState)) {
         return NextResponse.json(
           { detail: "This challenge is no longer awaiting terms acceptance." },
           { status: 409 }
@@ -430,11 +433,17 @@ export async function PATCH(
       }
 
       const acceptedAt = new Date();
+      const nextStatus =
+        fundingTotal > 0
+          ? scheduledMatch.challengerFundedAt && !scheduledMatch.challengedFundedAt
+            ? "creator_funded"
+            : "terms_accepted"
+          : "accepted";
       await prisma.$transaction(async (tx) => {
         await tx.scheduledMatch.update({
           where: { id: challengeId },
           data: {
-            status: fundingTotal > 0 ? "terms_accepted" : "accepted",
+            status: nextStatus,
             acceptedAt,
             declinedAt: null,
             cancelledAt: null,
@@ -446,7 +455,9 @@ export async function PATCH(
           actorUserId: viewer.id,
           eventType: fundingTotal > 0 ? "terms_accepted" : "accepted",
           detail:
-            fundingTotal > 0
+            fundingTotal > 0 && scheduledMatch.challengerFundedAt
+              ? `Terms accepted. Opponent funding is next for ${formatWolo(fundingTotal)} WOLO.`
+              : fundingTotal > 0
               ? `Terms accepted. Creator funding is next for ${formatWolo(fundingTotal)} WOLO.`
               : "Accepted and ready to lock.",
           metadata: {
@@ -465,6 +476,9 @@ export async function PATCH(
             challengedName,
             scheduledAt: scheduledMatch.scheduledAt,
             totalFundingWolo: fundingTotal,
+            nextStatus: scheduledMatch.challengerFundedAt
+              ? "Opponent funding next"
+              : "Creator funding next",
           }),
           now: acceptedAt,
         });
@@ -818,6 +832,13 @@ export async function PATCH(
 
       if (!FUNDABLE_STATUSES.has(scheduledMatch.status.toLowerCase())) {
         return NextResponse.json({ detail: "This match is not open for funding." }, { status: 409 });
+      }
+
+      if (viewerIsChallenged && ["proposed", "pending"].includes(scheduledMatch.status.toLowerCase())) {
+        return NextResponse.json(
+          { detail: "Wait for creator funding, then accept and fund." },
+          { status: 409 }
+        );
       }
 
       if (!fundingTxHash) {

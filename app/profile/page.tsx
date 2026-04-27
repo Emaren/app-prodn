@@ -5,15 +5,21 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
   ArrowRight,
+  Bell,
   Clock3,
   Coins,
   LogOut,
+  Mail,
   Palette,
+  Phone,
   ShieldCheck,
   Trophy,
   Upload,
 } from "lucide-react";
 
+import ScheduledMatchCard, {
+  CompactScheduledMatchHistoryRow,
+} from "@/components/challenge/ScheduledMatchCard";
 import {
   LobbyTextColorPicker,
   LobbyThemePicker,
@@ -83,6 +89,8 @@ function ProfilePageContent() {
   const [challengeSnapshot, setChallengeSnapshot] = useState<ChallengeHubSnapshot | null>(null);
   const [watcherKeys, setWatcherKeys] = useState<WatcherKeyRow[]>([]);
   const [newWatcherKey, setNewWatcherKey] = useState<string | null>(null);
+  const [emailDraft, setEmailDraft] = useState("");
+  const [savingEmail, setSavingEmail] = useState(false);
   const [mintingWatcherKey, setMintingWatcherKey] = useState(false);
   const [watcherPairRequestStarted, setWatcherPairRequestStarted] = useState(false);
   const [claimingWolo, setClaimingWolo] = useState(false);
@@ -143,6 +151,10 @@ function ProfilePageContent() {
     () => challengeSnapshot?.historyMatches.slice(0, 4) ?? [],
     [challengeSnapshot]
   );
+  const currentScheduledMatches = useMemo(
+    () => challengeSnapshot?.scheduledMatches.slice(0, 2) ?? [],
+    [challengeSnapshot]
+  );
 
   const challengeStats = useMemo(
     () => [
@@ -192,6 +204,10 @@ function ProfilePageContent() {
   }, [isAuthenticated, loadProfile]);
 
   useEffect(() => {
+    setEmailDraft(profile?.email ?? "");
+  }, [profile?.email]);
+
+  useEffect(() => {
     if (!claimName || claimSeedApplied || profile?.inGameName) return;
     setStatus(
       `Steam linked. Replay proof will lock in ${claimName} after your first confirmed upload.`
@@ -238,6 +254,36 @@ function ProfilePageContent() {
       setClaimingWolo(false);
     }
   }, []);
+
+  const saveNotificationEmail = useCallback(async () => {
+    setSavingEmail(true);
+    setStatus("");
+
+    try {
+      const response = await fetch("/api/user/me", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email: emailDraft }),
+      });
+
+      const payload = (await response.json().catch(() => null)) as
+        | (ProfileResponse & { detail?: string })
+        | null;
+
+      if (!response.ok || !payload) {
+        throw new Error(payload?.detail || "Email save failed.");
+      }
+
+      setProfile((current) => (current ? { ...current, email: payload.email } : current));
+      setStatus("Notification email saved.");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Email save failed.");
+    } finally {
+      setSavingEmail(false);
+    }
+  }, [emailDraft]);
 
   const createWatcherKey = useCallback(
     async ({ pairToWatcher = false } = {}) => {
@@ -367,7 +413,7 @@ function ProfilePageContent() {
                     <Coins className="h-4 w-4" />
                     Claim $WOLO
                   </div>
-                  <div className="mt-3 text-4xl font-semibold tracking-[-0.04em] text-white">
+                  <div className="mt-3 text-4xl font-semibold tracking-normal text-white">
                     {profile?.pendingClaimAmountWolo ?? 0} WOLO
                   </div>
                   <div className="mt-2 max-w-2xl text-sm leading-6 text-emerald-50/88">
@@ -491,6 +537,114 @@ function ProfilePageContent() {
         </div>
       </section>
 
+      <section className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
+        <div className="rounded-[2rem] border border-white/10 bg-slate-950/70 p-6 sm:p-7">
+          <div className="flex items-center gap-2 text-xs uppercase tracking-[0.32em] text-amber-100/70">
+            <Bell className="h-4 w-4" />
+            Notifications
+          </div>
+
+          <div className="mt-5 grid gap-3">
+            <label className="block space-y-2">
+              <span className="flex items-center gap-2 text-sm text-slate-300">
+                <Mail className="h-4 w-4" />
+                Email
+              </span>
+              <input
+                type="email"
+                value={emailDraft}
+                onChange={(event) => setEmailDraft(event.target.value)}
+                className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-amber-300/50"
+                placeholder="you@example.com"
+              />
+            </label>
+
+            <label className="block space-y-2 opacity-60">
+              <span className="flex items-center gap-2 text-sm text-slate-300">
+                <Phone className="h-4 w-4" />
+                Phone later
+              </span>
+              <input
+                type="tel"
+                disabled
+                className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none"
+                placeholder="SMS not wired"
+              />
+            </label>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            {["All", "Challenges", "Scheduled games", "Tournaments", "Wallet"].map((label) => (
+              <span
+                key={label}
+                className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1.5 text-xs text-slate-200"
+              >
+                {label}
+              </span>
+            ))}
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            {["10 min", "30 min", "1 hr"].map((label) => (
+              <span
+                key={label}
+                className={`rounded-full border px-3 py-1.5 text-xs ${
+                  label === "10 min" || label === "30 min"
+                    ? "border-emerald-300/25 bg-emerald-400/10 text-emerald-100"
+                    : "border-white/10 bg-white/[0.04] text-slate-300"
+                }`}
+              >
+                {label}
+              </span>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => void saveNotificationEmail()}
+            disabled={savingEmail}
+            className="mt-5 rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {savingEmail ? "Saving..." : "Save Email"}
+          </button>
+        </div>
+
+        <div className="rounded-[2rem] border border-white/10 bg-slate-950/70 p-6 sm:p-7">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <div className="text-xs uppercase tracking-[0.35em] text-emerald-100/70">
+                Scheduled games
+              </div>
+              <h2 className="mt-2 text-2xl font-semibold text-white">Current locks</h2>
+            </div>
+            <Link
+              href="/challenge"
+              className="rounded-full border border-white/15 px-4 py-2 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
+            >
+              Challenge Hub
+            </Link>
+          </div>
+
+          <div className="mt-5 space-y-3">
+            {currentScheduledMatches.length === 0 ? (
+              <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4 text-sm text-slate-300">
+                No active scheduled games.
+              </div>
+            ) : (
+              currentScheduledMatches.map((match) => (
+                <ScheduledMatchCard
+                  key={`profile-current-${match.id}`}
+                  match={match}
+                  viewerUid={uid}
+                  serverNow={challengeSnapshot?.serverNow ?? null}
+                  compact
+                />
+              ))
+            )}
+          </div>
+        </div>
+      </section>
+
       <section className="rounded-[2rem] border border-white/10 bg-slate-950/70 p-6 sm:p-8">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -524,27 +678,11 @@ function ProfilePageContent() {
               </div>
             ) : (
               recentChallengeHistory.map((match) => (
-                <div
+                <CompactScheduledMatchHistoryRow
                   key={match.id}
-                  className="rounded-2xl border border-white/10 bg-slate-950/45 px-4 py-4"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="break-words text-sm font-semibold text-white">
-                        {match.challenger.name} vs {match.challenged.name}
-                      </div>
-                      <div className="mt-1 text-[11px] uppercase tracking-[0.22em] text-slate-500">
-                        <TimeDisplayText value={match.activityAt} className="text-slate-400" />
-                      </div>
-                    </div>
-                    <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-slate-300">
-                      {match.displayState}
-                    </div>
-                  </div>
-                  {match.challengeNote ? (
-                    <div className="mt-3 break-words text-sm leading-6 text-slate-300">{match.challengeNote}</div>
-                  ) : null}
-                </div>
+                  match={match}
+                  viewerUid={uid}
+                />
               ))
             )}
           </div>

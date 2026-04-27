@@ -18,10 +18,18 @@ type LiveGamesBoardProps = {
 
 const LIVE_GAMES_POLL_INTERVAL_MS = 5_000;
 
-function formatTime(value: string | null) {
+function formatStableIso(value: string | null) {
   if (!value) return "Now";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "Now";
+  return `${date.toISOString().slice(0, 16).replace("T", " ")} UTC`;
+}
+
+function formatTime(value: string | null, mounted: boolean) {
+  if (!value) return "Now";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Now";
+  if (!mounted) return formatStableIso(value);
   return date.toLocaleString([], {
     month: "short",
     day: "numeric",
@@ -30,10 +38,11 @@ function formatTime(value: string | null) {
   });
 }
 
-function formatUpdatedTime(value: string | null) {
+function formatUpdatedTime(value: string | null, mounted: boolean) {
   if (!value) return "Now";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "Now";
+  if (!mounted) return formatStableIso(value);
   return date.toLocaleTimeString([], {
     hour: "numeric",
     minute: "2-digit",
@@ -70,6 +79,7 @@ function playerLabel(
 export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps) {
   const { uid } = useUserAuth();
   const [snapshot, setSnapshot] = useState(initialSnapshot);
+  const [mounted, setMounted] = useState(false);
   const [actionState, setActionState] = useState<ScheduledMatchCardActionState>({
     challengeId: null,
     kind: null,
@@ -106,6 +116,7 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
   }, []);
 
   useEffect(() => {
+    setMounted(true);
     void refresh();
 
     const interval = window.setInterval(() => {
@@ -174,7 +185,18 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
     snapshot.readyMatches.length + acceptedScheduledMatches.length + pendingScheduledMatches.length;
 
   const updateChallenge = useCallback(
-    async (challengeId: number, action: ScheduledMatchCardActionKind) => {
+    async (
+      challengeId: number,
+      action: ScheduledMatchCardActionKind,
+      extra?: {
+        fundingTxHash?: string;
+        fundingWalletAddress?: string;
+        scheduledAt?: string;
+        challengeNote?: string;
+        wagerAmountWolo?: number;
+        guaranteeAmountWolo?: number;
+      }
+    ) => {
       setActionState({
         challengeId,
         kind: action,
@@ -186,12 +208,13 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
         const response = await fetch(`/api/challenges/${challengeId}`, {
           method: "PATCH",
           headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            action,
-          }),
-        });
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action,
+          ...extra,
+        }),
+      });
 
         const payload = (await response.json().catch(() => null)) as { detail?: string } | null;
         if (!response.ok) {
@@ -209,6 +232,7 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
       } catch (error) {
         const message = error instanceof Error ? error.message : "Challenge could not be updated.";
         setBoardError(message);
+        throw new Error(message);
       } finally {
         setActionState({
           challengeId: null,
@@ -236,7 +260,7 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
               {snapshot.readyCount} ready
             </div>
             <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-300">
-              {formatUpdatedTime(snapshot.updatedAt)}
+              {formatUpdatedTime(snapshot.updatedAt, mounted)}
             </div>
             <Link
               href="/challenge"
@@ -293,14 +317,17 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
                     onAccept={(challengeId) => updateChallenge(challengeId, "accept")}
                     onDecline={(challengeId) => updateChallenge(challengeId, "decline")}
                     onCancel={(challengeId) => updateChallenge(challengeId, "cancel")}
+                    onReschedule={(challengeId, payload) => updateChallenge(challengeId, "reschedule", payload)}
+                    onFund={(challengeId, payload) => updateChallenge(challengeId, "fund", payload)}
+                    onCheckIn={(challengeId) => updateChallenge(challengeId, "check_in")}
                     actionState={actionState}
                   />
                 ))}
                 {snapshot.activeSessions.map((session) => (
-                  <LiveSessionCard key={`session-${session.id}`} session={session} />
+                  <LiveSessionCard key={`session-${session.id}`} session={session} mounted={mounted} />
                 ))}
                 {snapshot.liveMatches.map((match) => (
-                  <TournamentLiveMatchCard key={`match-${match.id}`} match={match} emphasis="live" />
+                  <TournamentLiveMatchCard key={`match-${match.id}`} match={match} emphasis="live" mounted={mounted} />
                 ))}
               </>
             )}
@@ -327,7 +354,7 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
               ) : (
                 <>
                   {snapshot.readyMatches.map((match) => (
-                    <TournamentLiveMatchCard key={`ready-${match.id}`} match={match} emphasis="ready" compact />
+                    <TournamentLiveMatchCard key={`ready-${match.id}`} match={match} emphasis="ready" compact mounted={mounted} />
                   ))}
                   {acceptedScheduledMatches.map((match) => (
                     <ScheduledMatchCard
@@ -337,6 +364,9 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
                       onAccept={(challengeId) => updateChallenge(challengeId, "accept")}
                       onDecline={(challengeId) => updateChallenge(challengeId, "decline")}
                       onCancel={(challengeId) => updateChallenge(challengeId, "cancel")}
+                      onReschedule={(challengeId, payload) => updateChallenge(challengeId, "reschedule", payload)}
+                      onFund={(challengeId, payload) => updateChallenge(challengeId, "fund", payload)}
+                      onCheckIn={(challengeId) => updateChallenge(challengeId, "check_in")}
                       actionState={actionState}
                       compact
                     />
@@ -349,6 +379,9 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
                       onAccept={(challengeId) => updateChallenge(challengeId, "accept")}
                       onDecline={(challengeId) => updateChallenge(challengeId, "decline")}
                       onCancel={(challengeId) => updateChallenge(challengeId, "cancel")}
+                      onReschedule={(challengeId, payload) => updateChallenge(challengeId, "reschedule", payload)}
+                      onFund={(challengeId, payload) => updateChallenge(challengeId, "fund", payload)}
+                      onCheckIn={(challengeId) => updateChallenge(challengeId, "check_in")}
                       actionState={actionState}
                       compact
                     />
@@ -384,12 +417,15 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
                       onAccept={(challengeId) => updateChallenge(challengeId, "accept")}
                       onDecline={(challengeId) => updateChallenge(challengeId, "decline")}
                       onCancel={(challengeId) => updateChallenge(challengeId, "cancel")}
+                      onReschedule={(challengeId, payload) => updateChallenge(challengeId, "reschedule", payload)}
+                      onFund={(challengeId, payload) => updateChallenge(challengeId, "fund", payload)}
+                      onCheckIn={(challengeId) => updateChallenge(challengeId, "check_in")}
                       actionState={actionState}
                       compact
                     />
                   ))}
                   {snapshot.recentlyCompletedSessions.map((session) => (
-                    <LiveSessionCard key={`completed-${session.id}`} session={session} />
+                    <LiveSessionCard key={`completed-${session.id}`} session={session} mounted={mounted} />
                   ))}
                 </>
               )}
@@ -435,7 +471,7 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
                         </div>
                       </div>
                       <div className="text-right text-xs text-slate-400">
-                        {formatTime(match.played_on || match.timestamp)}
+                        {formatTime(match.played_on || match.timestamp, mounted)}
                       </div>
                     </div>
                   </Link>
@@ -451,8 +487,10 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
 
 function LiveSessionCard({
   session,
+  mounted,
 }: {
   session: LiveGamesSnapshot["activeSessions"][number];
+  mounted: boolean;
 }) {
   const isCompleted = session.state === "completed";
   const gameHref = `/game-stats/live/${encodeURIComponent(session.sessionKey)}`;
@@ -487,7 +525,7 @@ function LiveSessionCard({
               Parse #{session.parseIteration}
             </span>
             <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-              Updated {formatUpdatedTime(session.completedAt || session.updatedAt)}
+              Updated {formatUpdatedTime(session.completedAt || session.updatedAt, mounted)}
             </span>
             {session.uploader ? (
               <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
@@ -539,10 +577,12 @@ function LiveSessionCard({
 function TournamentLiveMatchCard({
   match,
   emphasis,
+  mounted,
   compact = false,
 }: {
   match: LiveGamesSnapshot["liveMatches"][number];
   emphasis: "live" | "ready";
+  mounted: boolean;
   compact?: boolean;
 }) {
   const accentClass =
@@ -562,7 +602,7 @@ function TournamentLiveMatchCard({
             {playerLabel(match.playerOne)} vs {playerLabel(match.playerTwo)}
           </div>
           <div className="mt-2 text-sm text-slate-300">
-            {match.proof?.mapName || "Map lock incoming"} · {formatTime(match.proof?.playedOn || match.scheduledAt)}
+            {match.proof?.mapName || "Map lock incoming"} · {formatTime(match.proof?.playedOn || match.scheduledAt, mounted)}
           </div>
         </div>
 

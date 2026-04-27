@@ -523,6 +523,8 @@ export default function ContactEmarenWorkspace() {
     action: ContactChallengeActionKind;
     scheduledAt?: string;
     challengeNote?: string;
+    wagerAmountWolo?: number;
+    guaranteeAmountWolo?: number;
     fundingTxHash?: string;
     fundingWalletAddress?: string;
   }) {
@@ -542,6 +544,8 @@ export default function ContactEmarenWorkspace() {
           action: payload.action,
           scheduledAt: payload.scheduledAt,
           challengeNote: payload.challengeNote,
+          wagerAmountWolo: payload.wagerAmountWolo,
+          guaranteeAmountWolo: payload.guaranteeAmountWolo,
           fundingTxHash: payload.fundingTxHash,
           fundingWalletAddress: payload.fundingWalletAddress,
         }),
@@ -554,7 +558,9 @@ export default function ContactEmarenWorkspace() {
 
       await refreshPanel(selectedTargetUid);
     } catch (challengeError) {
-      setError(challengeError instanceof Error ? challengeError.message : "Challenge action failed.");
+      const message = challengeError instanceof Error ? challengeError.message : "Challenge action failed.";
+      setError(message);
+      throw new Error(message);
     } finally {
       setChallengeActionState({
         challengeId: null,

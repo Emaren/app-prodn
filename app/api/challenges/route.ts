@@ -221,6 +221,7 @@ export async function POST(request: NextRequest) {
     const challengedName = playerName(challenged);
     const challengeLabel = buildChallengeLabel({ challengerName, challengedName });
     const totalFundingWolo = wagerAmountWolo + guaranteeAmountWolo;
+    let createdChallengeId: number | null = null;
 
     await prisma.$transaction(async (tx) => {
       const createdMatch = await tx.scheduledMatch.create({
@@ -234,6 +235,7 @@ export async function POST(request: NextRequest) {
           guaranteeAmountWolo,
         },
       });
+      createdChallengeId = createdMatch.id;
 
       await tx.scheduledMatchActivity.create({
         data: {
@@ -308,7 +310,10 @@ export async function POST(request: NextRequest) {
     });
 
     const refreshed = await loadChallengeHubSnapshot(prisma, viewer.uid);
-    return NextResponse.json(refreshed);
+    return NextResponse.json({
+      ...refreshed,
+      createdChallengeId,
+    });
   } catch (error) {
     console.error("Failed to create scheduled match:", error);
     const detail = error instanceof Error ? error.message : "Challenge could not be scheduled.";
