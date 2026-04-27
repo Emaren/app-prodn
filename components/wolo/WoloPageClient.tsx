@@ -164,7 +164,7 @@ export default function WoloPage() {
           onClick={handleHeroToggle}
           className="overflow-hidden rounded-[1.85rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(251,191,36,0.16),_transparent_26%),radial-gradient(circle_at_bottom_right,_rgba(56,189,248,0.10),_transparent_28%),linear-gradient(135deg,_#0f172a,_#111827_56%,_#050816)] p-4 sm:rounded-[2rem] sm:p-6 lg:p-8"
         >
-          <div className="grid gap-5 lg:grid-cols-[1.12fr_0.88fr] lg:items-start lg:gap-8">
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(25.75rem,27.25rem)] lg:items-start lg:gap-8">
             <div className="space-y-6">
               <div className="flex flex-wrap items-center gap-2">
                 <Link href="/wolochain" data-no-toggle="true" className="inline-flex">
@@ -188,7 +188,7 @@ export default function WoloPage() {
                   </div>
                   <div className="flex flex-wrap items-end gap-3">
                     <div
-                      className="text-[2.75rem] font-semibold leading-[0.9] tracking-[-0.04em] text-white sm:text-[3.35rem] lg:text-[4.5rem]"
+                      className="text-[2.5rem] font-semibold leading-[0.9] tracking-[-0.04em] text-white sm:text-[3.05rem] lg:text-[4.05rem]"
                       style={{
                         fontFamily:
                           '"Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif',
@@ -270,7 +270,7 @@ export default function WoloPage() {
               ) : null}
             </div>
 
-            <div className="space-y-3.5">
+            <div className="w-full space-y-3.5 lg:max-w-[27.25rem] lg:justify-self-end">
               <div className="rounded-[1.8rem] border border-white/10 bg-[linear-gradient(180deg,rgba(11,17,30,0.96),rgba(7,11,19,0.96))] p-5 shadow-[0_28px_80px_rgba(2,6,23,0.34)] sm:p-6">
                 <div className="flex items-start justify-between gap-4">
                   <div className="text-[11px] uppercase tracking-[0.35em] text-amber-200/70">
@@ -350,7 +350,7 @@ export default function WoloPage() {
         onClick={handleHeroToggle}
         className="overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(251,191,36,0.16),_transparent_24%),radial-gradient(circle_at_82%_18%,_rgba(56,189,248,0.12),_transparent_20%),linear-gradient(135deg,_#08111f,_#0b1324_44%,_#050814)] px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8"
       >
-        <div className="grid gap-5 xl:grid-cols-[1.08fr_0.92fr] xl:items-start xl:gap-8">
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(25.75rem,27.25rem)] lg:items-start lg:gap-8">
           <div className="space-y-5">
             <div className="flex flex-wrap items-center gap-2">
               <Link href="/wolochain" data-no-toggle="true" className="inline-flex">
@@ -380,7 +380,7 @@ export default function WoloPage() {
 
                   <div className="flex flex-wrap items-end gap-x-4 gap-y-1 md:flex-nowrap">
                     <div
-                      className="text-[2.75rem] font-semibold leading-[0.9] tracking-[-0.04em] text-white sm:text-[3.35rem] lg:text-[4.5rem]"
+                      className="text-[2.5rem] font-semibold leading-[0.9] tracking-[-0.04em] text-white sm:text-[3.05rem] lg:text-[4.05rem]"
                       style={{
                         fontFamily:
                           '"Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif',
@@ -658,12 +658,13 @@ function WalletCopyIcon({ copied }: { copied: boolean }) {
 
 function PremiumWalletAddressPanel({ address }: { address?: string }) {
   const [copied, setCopied] = useState(false);
-  const value = address?.trim() || "Not connected";
+  const cleanAddress = address?.trim() || "";
+  const displayAddress = cleanAddress || "Not connected";
 
   async function handleCopy() {
-    if (!address) return;
+    if (!cleanAddress) return;
 
-    await copyTextToClipboard(address);
+    await copyTextToClipboard(cleanAddress);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1400);
   }
@@ -673,12 +674,19 @@ function PremiumWalletAddressPanel({ address }: { address?: string }) {
       data-no-toggle="true"
       className="rounded-[1.45rem] border border-white/8 bg-[#0d1420] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]"
     >
-      <div className="flex items-center justify-between gap-3">
-        <div className="text-[11px] uppercase tracking-[0.26em] text-slate-400">
-          Address
+      <div className="text-[11px] uppercase tracking-[0.26em] text-slate-400">
+        Address
+      </div>
+
+      <div className="mt-3 grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-full border border-white/10 bg-black/20 px-4 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.025)]">
+        <div
+          title={cleanAddress || undefined}
+          className="min-w-0 select-all overflow-hidden whitespace-nowrap font-mono text-[12.5px] font-semibold leading-none tracking-[-0.025em] text-white sm:text-[13px]"
+        >
+          {displayAddress}
         </div>
 
-        {address ? (
+        {cleanAddress ? (
           <button
             type="button"
             onClick={() => {
@@ -686,19 +694,15 @@ function PremiumWalletAddressPanel({ address }: { address?: string }) {
             }}
             aria-label={copied ? "Address copied" : "Copy wallet address"}
             title={copied ? "Copied" : "Copy wallet address"}
-            className={`inline-flex h-10 w-10 items-center justify-center rounded-full border transition ${
+            className={`inline-flex shrink-0 items-center justify-center text-sm transition ${
               copied
-                ? "border-emerald-300/45 bg-emerald-400/12 text-emerald-100"
-                : "border-white/12 bg-white/5 text-white/85 hover:border-emerald-300/35 hover:bg-emerald-400/10 hover:text-emerald-100"
+                ? "text-emerald-200"
+                : "text-slate-400 hover:text-white"
             }`}
           >
             <WalletCopyIcon copied={copied} />
           </button>
         ) : null}
-      </div>
-
-      <div className="mt-3 select-all break-all font-mono text-[13px] leading-6 text-white sm:text-sm">
-        {value}
       </div>
     </div>
   );
