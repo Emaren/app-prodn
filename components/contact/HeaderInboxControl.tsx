@@ -379,6 +379,7 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
                 }}
                 reactingMessageId={reactingMessageId}
                 openPageHref={openPageHref}
+                onOpenFullPage={() => setOpen(false)}
               />
             </div>
           </div>

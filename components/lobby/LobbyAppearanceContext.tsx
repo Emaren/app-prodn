@@ -43,6 +43,7 @@ import {
   type TileViewPreferences,
 } from "@/lib/tileViewPreferences";
 import {
+  DEFAULT_TIME_DISPLAY_MODE,
   detectBrowserTimeZone,
   readStoredBrowserTimeZone,
   readStoredTimeDisplayMode,
@@ -78,7 +79,7 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
   const [tileThemeKey, setTileThemeKey] = useState<LobbyThemeKey>(DEFAULT_LOBBY_TILE_THEME);
   const [viewMode, setViewMode] = useState<LobbyViewMode>(DEFAULT_LOBBY_VIEW);
   const [textColor, setTextColor] = useState<LobbyTextColor>(DEFAULT_LOBBY_TEXT_COLOR);
-  const [timeDisplayMode, setTimeDisplayMode] = useState<TimeDisplayMode>("utc");
+  const [timeDisplayMode, setTimeDisplayMode] = useState<TimeDisplayMode>(DEFAULT_TIME_DISPLAY_MODE);
   const [browserTimeZone, setBrowserTimeZone] = useState<string | null>(null);
   const [tileViewPreferences, setTileViewPreferences] = useState<TileViewPreferences>({});
   const [appearanceLoaded, setAppearanceLoaded] = useState(false);

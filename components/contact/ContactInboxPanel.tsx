@@ -49,6 +49,7 @@ type ContactInboxPanelProps = {
   reactingMessageId?: number | null;
   richComposer?: ReactNode;
   openPageHref?: string;
+  onOpenFullPage?: () => void;
 };
 
 type TimelineRow =
@@ -929,6 +930,7 @@ export default function ContactInboxPanel({
   reactingMessageId,
   richComposer,
   openPageHref,
+  onOpenFullPage,
 }: ContactInboxPanelProps) {
   const counterpart = data?.activeCounterpart ?? null;
   const activeTargetUid = data?.activeTargetUid ?? null;
@@ -1197,6 +1199,7 @@ export default function ContactInboxPanel({
               <div className="mt-3 flex justify-end">
                 <Link
                   href={openPageHref}
+                  onClick={onOpenFullPage}
                   className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-slate-500 transition hover:text-white"
                 >
                   <MessageCirclePlus className="h-3.5 w-3.5" />

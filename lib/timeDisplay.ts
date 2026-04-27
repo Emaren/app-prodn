@@ -1,5 +1,7 @@
-export const DEFAULT_TIME_DISPLAY_MODE = "utc" as const;
+export const DEFAULT_TIME_DISPLAY_MODE = "local" as const;
 export const TIME_DISPLAY_STORAGE_KEY = "aoe2hdbets:time-display-mode";
+const TIME_DISPLAY_DEFAULT_VERSION = "browser-local-2026-04-27";
+const TIME_DISPLAY_DEFAULT_VERSION_KEY = "aoe2hdbets:time-display-default-version";
 export const TIME_ZONE_STORAGE_KEY = "aoe2hdbets:browser-time-zone";
 
 export const TIME_DISPLAY_MODES = [
@@ -87,6 +89,16 @@ export function readStoredTimeDisplayMode() {
   }
 
   const value = window.localStorage.getItem(TIME_DISPLAY_STORAGE_KEY);
+  const migratedDefault =
+    window.localStorage.getItem(TIME_DISPLAY_DEFAULT_VERSION_KEY) === TIME_DISPLAY_DEFAULT_VERSION;
+  if (!migratedDefault) {
+    window.localStorage.setItem(TIME_DISPLAY_DEFAULT_VERSION_KEY, TIME_DISPLAY_DEFAULT_VERSION);
+    if (value === "utc") {
+      window.localStorage.setItem(TIME_DISPLAY_STORAGE_KEY, DEFAULT_TIME_DISPLAY_MODE);
+      return DEFAULT_TIME_DISPLAY_MODE;
+    }
+  }
+
   return isTimeDisplayMode(value) ? value : DEFAULT_TIME_DISPLAY_MODE;
 }
 
