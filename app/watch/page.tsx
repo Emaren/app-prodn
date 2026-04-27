@@ -717,7 +717,7 @@ function applyHostedMediaFallback(match: WatchMatchSummary): WatchMatchSummary {
       previewUrl: match.previewUrl || hostedLoop.url,
       bestOfUrl: match.bestOfUrl || hostedLoop.url,
       recordingUrl: match.recordingUrl || hostedLoop.url,
-      thumbnailUrl: match.thumbnailUrl || "/watch/aoe2hd-screen.svg",
+      thumbnailUrl: match.thumbnailUrl || null,
     };
   }
 
@@ -728,7 +728,7 @@ function applyHostedMediaFallback(match: WatchMatchSummary): WatchMatchSummary {
       ...match,
       bestOfUrl: match.bestOfUrl || "/watch/previews/emaren-vs-koolamumomu-ai-clip.mp4?v=hotfix",
       previewUrl: match.previewUrl || "/watch/previews/emaren-vs-koolamumomu-ai-clip.mp4?v=hotfix",
-      thumbnailUrl: match.thumbnailUrl || "/watch/aoe2hd-screen.svg",
+      thumbnailUrl: match.thumbnailUrl || null,
     };
   }
 
@@ -737,7 +737,7 @@ function applyHostedMediaFallback(match: WatchMatchSummary): WatchMatchSummary {
       ...match,
       bestOfUrl: match.bestOfUrl || "/watch/previews/julio-vs-emaren-ai-clip.mp4?v=hotfix",
       previewUrl: match.previewUrl || "/watch/previews/julio-vs-emaren-ai-clip.mp4?v=hotfix",
-      thumbnailUrl: match.thumbnailUrl || "/watch/aoe2hd-screen.svg",
+      thumbnailUrl: match.thumbnailUrl || null,
     };
   }
 
@@ -746,7 +746,7 @@ function applyHostedMediaFallback(match: WatchMatchSummary): WatchMatchSummary {
       ...match,
       bestOfUrl: match.bestOfUrl || "/watch/previews/emaren-vs-divided-ai-clip.mp4?v=hotfix",
       previewUrl: match.previewUrl || "/watch/previews/emaren-vs-divided-ai-clip.mp4?v=hotfix",
-      thumbnailUrl: match.thumbnailUrl || "/watch/aoe2hd-screen.svg",
+      thumbnailUrl: match.thumbnailUrl || null,
     };
   }
 
@@ -930,7 +930,6 @@ function formatWatchMatchTitle(match: WatchMatchSummary | null | undefined) {
   return formatKnownCurrent4v4WatchTitle(fallbackTitle) || fallbackTitle;
 }
 
-
 function PreviewMotion({
   match,
   large = false,
@@ -938,20 +937,25 @@ function PreviewMotion({
   match?: WatchMatchSummary;
   large?: boolean;
 }) {
-  const isLivePreview = match?.sessionKey === "__live-building__" || match?.mode === "live";
-  const fallbackLiveLoopUrl = isLivePreview ? "/watch/previews/live-building-loop.mp4?v=live-loop" : null;
-  const videoUrl = match?.bestOfUrl || match?.previewUrl || match?.recordingUrl || fallbackLiveLoopUrl;
-  const liveEmbedUrl = isLivePreview ? getLiveEmbedUrl(match) : null;
+  const liveEmbedUrl =
+    match?.sessionKey === "__live-building__" || match?.mode === "live"
+      ? getLiveEmbedUrl(match)
+      : null;
+
+  const videoUrl =
+    match?.sessionKey === "__live-building__"
+      ? "/watch-loops/live-hero-loop.mp4?v=hero-loop-v4"
+      : match?.bestOfUrl || match?.previewUrl || match?.recordingUrl || null;
 
   return (
     <WatchPreviewScreen
-      title={formatWatchMatchTitle(match) || "AoE2HD preview"}
+      title={match?.title || "AoE2HD preview"}
       mediaKey={match?.sessionKey || "aoe2hd-watch-preview"}
       videoUrl={videoUrl}
-      posterUrl={match?.thumbnailUrl || (isLivePreview ? "/watch/aoe2hd-screen.svg" : null)}
+      posterUrl={videoUrl ? match?.thumbnailUrl || null : null}
       liveEmbedUrl={liveEmbedUrl}
       large={large}
-      badge={isLivePreview ? "LIVE" : videoUrl ? "AUTO" : "READY"}
+      badge={liveEmbedUrl ? "LIVE" : videoUrl ? "AUTO" : "READY"}
     />
   );
 }

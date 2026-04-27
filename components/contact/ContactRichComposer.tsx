@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { Mic, Paperclip, SendHorizonal, Square, X } from "lucide-react";
-import { useId, useRef } from "react";
+import { useId, useRef, useState, type ClipboardEvent, type DragEvent } from "react";
 
 import AutoGrowTextarea from "@/components/ui/AutoGrowTextarea";
 import { DIRECT_MESSAGE_MAX_CHARS } from "@/lib/contactInboxConfig";
@@ -29,6 +29,42 @@ type ContactRichComposerProps = {
   onToggleVoiceRecording: () => void;
 };
 
+function firstImageFileFromFiles(files: FileList | File[] | null | undefined) {
+  if (!files) return null;
+  return Array.from(files).find((file) => file.type.startsWith("image/")) ?? null;
+}
+
+function firstImageFileFromItems(items: DataTransferItemList | null | undefined) {
+  if (!items) return null;
+
+  for (const item of Array.from(items)) {
+    if (item.kind !== "file") continue;
+    if (!item.type.startsWith("image/")) continue;
+
+    const file = item.getAsFile();
+    if (file) return file;
+  }
+
+  return null;
+}
+
+function imageFileFromTransfer(dataTransfer: DataTransfer) {
+  return (
+    firstImageFileFromFiles(dataTransfer.files) ||
+    firstImageFileFromItems(dataTransfer.items) ||
+    null
+  );
+}
+
+function transferHasFile(dataTransfer: DataTransfer) {
+  const types = Array.from(dataTransfer.types || []);
+  return types.includes("Files") || Array.from(dataTransfer.items || []).some((item) => item.kind === "file");
+}
+
+function transferHasPossibleUrl(dataTransfer: DataTransfer) {
+  return Boolean(dataTransfer.getData("text/uri-list") || dataTransfer.getData("text/plain"));
+}
+
 export default function ContactRichComposer({
   body,
   sendPending,
@@ -45,10 +81,107 @@ export default function ContactRichComposer({
 }: ContactRichComposerProps) {
   const inputId = useId();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [dragActive, setDragActive] = useState(false);
+  const [attachNotice, setAttachNotice] = useState<string | null>(null);
+
+  const attachmentLocked = sendPending || Boolean(unavailableReason);
   const isDisabled = sendPending || Boolean(unavailableReason) || (!body.trim() && !attachment);
 
+  function acceptImageFile(file: File | null, source: "attach" | "drop" | "paste") {
+    if (!file) {
+      setAttachNotice(
+        source === "drop"
+          ? "Drop an actual image file here. Brave may have sent only a link instead of the image."
+          : "No image file was found."
+      );
+      return;
+    }
+
+    setAttachNotice(null);
+    onAttachScreenshot(file);
+  }
+
+  function handlePaste(event: ClipboardEvent<HTMLDivElement>) {
+    if (attachmentLocked) return;
+
+    const nextFile = imageFileFromTransfer(event.clipboardData);
+    if (!nextFile) return;
+
+    event.preventDefault();
+    acceptImageFile(nextFile, "paste");
+  }
+
+  function handleDragEnter(event: DragEvent<HTMLDivElement>) {
+    if (attachmentLocked) return;
+    if (!transferHasFile(event.dataTransfer) && !transferHasPossibleUrl(event.dataTransfer)) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    setDragActive(true);
+  }
+
+  function handleDragOver(event: DragEvent<HTMLDivElement>) {
+    if (attachmentLocked) return;
+    if (!transferHasFile(event.dataTransfer) && !transferHasPossibleUrl(event.dataTransfer)) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    event.dataTransfer.dropEffect = "copy";
+    setDragActive(true);
+  }
+
+  function handleDragLeave(event: DragEvent<HTMLDivElement>) {
+    const relatedNode = event.relatedTarget instanceof Node ? event.relatedTarget : null;
+    if (relatedNode && event.currentTarget.contains(relatedNode)) return;
+
+    setDragActive(false);
+  }
+
+  function handleDrop(event: DragEvent<HTMLDivElement>) {
+    if (attachmentLocked) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    setDragActive(false);
+
+    const nextFile = imageFileFromTransfer(event.dataTransfer);
+    if (nextFile) {
+      acceptImageFile(nextFile, "drop");
+      return;
+    }
+
+    if (transferHasPossibleUrl(event.dataTransfer)) {
+      setAttachNotice(
+        "Brave gave us an image link, not an uploadable image file. Save the image, copy/paste it, or drag the saved file here."
+      );
+      return;
+    }
+
+    setAttachNotice("Drop a PNG, JPG, WebP, or GIF image here.");
+  }
+
   return (
-    <div className="space-y-3">
+    <div
+      className="relative space-y-3"
+      onPaste={handlePaste}
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {dragActive ? (
+        <div className="pointer-events-none absolute inset-0 z-30 grid place-items-center rounded-[1.5rem] border border-sky-300/70 bg-slate-950/80 p-6 text-center shadow-[0_0_55px_rgba(56,189,248,0.22)] backdrop-blur-md">
+          <div>
+            <div className="text-xs font-black uppercase tracking-[0.32em] text-sky-100">
+              Drop image
+            </div>
+            <div className="mt-2 text-sm text-slate-300">
+              PNG, JPG, WebP, GIF, or pasted screenshots work here.
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="text-xs uppercase tracking-[0.28em] text-slate-500">
           {counterpartName ? `Replying to ${counterpartName}` : "Private reply"}
@@ -57,6 +190,12 @@ export default function ContactRichComposer({
           {body.length}/{DIRECT_MESSAGE_MAX_CHARS}
         </div>
       </div>
+
+      {attachNotice ? (
+        <div className="rounded-2xl border border-amber-300/20 bg-amber-300/10 px-3 py-2 text-xs leading-5 text-amber-100">
+          {attachNotice}
+        </div>
+      ) : null}
 
       {attachment ? (
         <div className="rounded-[1.25rem] bg-white/[0.05] p-3 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]">
@@ -72,7 +211,10 @@ export default function ContactRichComposer({
             </div>
             <button
               type="button"
-              onClick={onClearAttachment}
+              onClick={() => {
+                setAttachNotice(null);
+                onClearAttachment();
+              }}
               className="rounded-full bg-white/[0.06] p-2 text-slate-300 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)] transition hover:bg-white/[0.1] hover:text-white"
               aria-label="Remove attachment"
             >
@@ -122,7 +264,7 @@ export default function ContactRichComposer({
               className="hidden"
               onChange={(event) => {
                 const nextFile = event.target.files?.[0] ?? null;
-                onAttachScreenshot(nextFile);
+                acceptImageFile(nextFile, "attach");
                 event.currentTarget.value = "";
               }}
             />
