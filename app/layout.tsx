@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 
 import "./globals.css";
@@ -7,6 +7,7 @@ import PwaRegister from "@/components/pwa/PwaRegister";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://aoe2hdbets.com"),
+  applicationName: "AoE2HDBets",
   title: {
     default: "AoE2HDBets",
     template: "%s | AoE2HDBets",
@@ -17,6 +18,17 @@ export const metadata: Metadata = {
     canonical: "/",
   },
   manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "AoE2HDBets",
+    statusBarStyle: "black-translucent",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  other: {
+    "apple-mobile-web-app-capable": "yes",
+  },
   openGraph: {
     title: "AoE2HDBets",
     description:
@@ -57,10 +69,20 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#07111f" },
+    { media: "(prefers-color-scheme: dark)", color: "#07111f" },
+  ],
+};
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="bg-gray-900 text-white min-h-screen flex flex-col">
+      <body className="bg-[#050814] text-white min-h-screen flex flex-col">
         <Script
           defer
           data-domain="aoe2hdbets.com"

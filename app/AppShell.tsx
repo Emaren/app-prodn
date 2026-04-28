@@ -16,6 +16,7 @@ import {
   LobbyAppearanceProvider,
   useLobbyAppearance,
 } from "@/components/lobby/LobbyAppearanceContext";
+import { GlobalInstallAppPrompt } from "@/components/pwa/InstallAppPrompt";
 import { Toaster } from "sonner";
 import { Providers } from "./Providers";
 import { UserAuthProvider, useUserAuth } from "@/context/UserAuthContext";
@@ -263,6 +264,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
           isContactPage ? "overflow-hidden" : "overflow-x-hidden"
         }`}
       >
+        <GlobalInstallAppPrompt />
         {children}
       </main>
       <Toaster richColors />
