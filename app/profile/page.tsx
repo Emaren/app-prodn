@@ -620,7 +620,7 @@ function ProfilePageContent() {
         </div>
       </section>
 
-      <section className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
+      <section className="space-y-6">
         <div className="rounded-[2rem] border border-white/10 bg-slate-950/70 p-6 sm:p-7">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
