@@ -3,6 +3,7 @@ import Script from "next/script";
 
 import "./globals.css";
 import AppShell from "./AppShell";
+import PwaRegister from "@/components/pwa/PwaRegister";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://aoe2hdbets.com"),
@@ -15,6 +16,7 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "/",
   },
+  manifest: "/manifest.webmanifest",
   openGraph: {
     title: "AoE2HDBets",
     description:
@@ -46,8 +48,12 @@ export const metadata: Metadata = {
     ],
   },
   icons: {
-    icon: "/favicon.ico",
-    apple: "/icons/icon-192x192.png",
+    icon: [
+      { url: "/favicon.ico" },
+      { url: "/icons/icon-192x192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512x512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
   },
 };
 
@@ -61,6 +67,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           src="https://plausible.io/js/script.js"
         />
         <AppShell>{children}</AppShell>
+        <PwaRegister />
       </body>
     </html>
   );
