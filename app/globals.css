@@ -79,3 +79,39 @@ input[aria-label="Starts At"] {
 input[type="datetime-local"] {
   min-width: 18rem;
 }
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes aoe2-install-enter {
+    0% {
+      opacity: 0;
+      transform: translateY(10px) scale(0.98);
+    }
+    58% {
+      opacity: 1;
+      transform: translateY(-2px) scale(1.01);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes aoe2-install-guide {
+    0% {
+      opacity: 0;
+      transform: translateY(18px) scale(0.98);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  .aoe2-install-enter {
+    animation: aoe2-install-enter 760ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+
+  .aoe2-install-guide {
+    animation: aoe2-install-guide 190ms ease-out both;
+  }
+}

@@ -316,7 +316,7 @@ export default function InstalledAppPage() {
             </div>
 
             <div className="space-y-3">
-              <InstallAppPrompt />
+              <InstallAppPrompt featured />
               <div className="rounded-[10px] border border-white/10 bg-slate-950/55 p-4">
                 <div className="text-[11px] uppercase tracking-[0.32em] text-slate-500">Signed in</div>
                 <div className="mt-2 text-2xl font-semibold text-white">{displayName}</div>
