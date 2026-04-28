@@ -3,15 +3,8 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BadgeDollarSign, Coins, Radio, Swords, UserCircle, WalletCards } from "lucide-react";
-
-const APP_NAV = [
-  { href: "/live-games", label: "Live", icon: Radio },
-  { href: "/challenge", label: "Challenge", icon: Swords },
-  { href: "/bets", label: "Bets", icon: BadgeDollarSign },
-  { href: "/wolo", label: "WOLO", icon: Coins },
-  { href: "/profile", label: "Profile", icon: UserCircle },
-] as const;
+import { WalletCards } from "lucide-react";
+import { APP_NAV_ITEMS } from "@/components/pwa/MobileFloatingNav";
 
 export default function AppShellNav({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -28,7 +21,7 @@ export default function AppShellNav({ children }: { children: React.ReactNode })
           <WalletCards className="h-5 w-5" />
         </Link>
         <nav className="space-y-1">
-          {APP_NAV.map((item) => {
+          {APP_NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             const active = pathname?.startsWith(item.href);
             return (
@@ -51,26 +44,6 @@ export default function AppShellNav({ children }: { children: React.ReactNode })
       </aside>
 
       <div className="lg:pl-24">{children}</div>
-
-      <nav className="fixed inset-x-3 bottom-3 z-40 grid grid-cols-5 rounded-[12px] border border-white/10 bg-slate-950/90 p-1 shadow-[0_18px_80px_rgba(0,0,0,0.45)] backdrop-blur-xl lg:hidden">
-        {APP_NAV.map((item) => {
-          const Icon = item.icon;
-          const active = pathname?.startsWith(item.href);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              aria-label={item.label}
-              className={`flex flex-col items-center justify-center gap-1 rounded-[8px] px-2 py-2 text-[11px] font-semibold transition ${
-                active ? "bg-sky-300/15 text-sky-100" : "text-slate-400 hover:text-white"
-              }`}
-            >
-              <Icon className="h-4 w-4" />
-              <span>{item.label}</span>
-            </Link>
-          );
-        })}
-      </nav>
     </div>
   );
 }

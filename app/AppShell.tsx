@@ -17,6 +17,7 @@ import {
   useLobbyAppearance,
 } from "@/components/lobby/LobbyAppearanceContext";
 import { GlobalInstallAppPrompt } from "@/components/pwa/InstallAppPrompt";
+import MobileFloatingNav from "@/components/pwa/MobileFloatingNav";
 import { Toaster } from "sonner";
 import { Providers } from "./Providers";
 import { UserAuthProvider, useUserAuth } from "@/context/UserAuthContext";
@@ -260,13 +261,14 @@ function InnerShell({ children }: { children: React.ReactNode }) {
       </header>
 
       <main
-        className={`mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col px-3 py-4 sm:px-4 ${
+        className={`mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col px-3 py-4 pb-32 sm:px-4 lg:pb-4 ${
           isContactPage ? "overflow-hidden" : "overflow-x-hidden"
         }`}
       >
         <GlobalInstallAppPrompt />
         {children}
       </main>
+      <MobileFloatingNav />
       <Toaster richColors />
     </div>
   );
