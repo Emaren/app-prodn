@@ -17,6 +17,8 @@ export type ChallengeInboxNotice = {
   compactHeadline: string;
   matchup: string | null;
   scheduledLabel: string | null;
+  scheduledAtIso: string | null;
+  fundingLabel: string | null;
   statusLabel: string | null;
   note: string | null;
   compactLine: string;
@@ -96,6 +98,51 @@ function parseChallengeId(value: string | null) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
+function coerceServerScheduledLabelToIso(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  const match = value.match(
+    /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2}),\s+(\d{1,2}):(\d{2})\s+(AM|PM)$/i
+  );
+  if (!match) {
+    return null;
+  }
+
+  const monthIndex = [
+    "jan",
+    "feb",
+    "mar",
+    "apr",
+    "may",
+    "jun",
+    "jul",
+    "aug",
+    "sep",
+    "oct",
+    "nov",
+    "dec",
+  ].indexOf(match[1].toLowerCase());
+  if (monthIndex < 0) {
+    return null;
+  }
+  const now = new Date();
+  let year = now.getFullYear();
+  if (monthIndex < now.getMonth() - 6) year += 1;
+  if (monthIndex > now.getMonth() + 6) year -= 1;
+
+  const day = Number.parseInt(match[2], 10);
+  let hour = Number.parseInt(match[3], 10);
+  const minute = Number.parseInt(match[4], 10);
+  const meridiem = match[5].toUpperCase();
+  if (meridiem === "AM" && hour === 12) hour = 0;
+  if (meridiem === "PM" && hour !== 12) hour += 12;
+
+  const parsed = new Date(Date.UTC(year, monthIndex, day, hour, minute));
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+}
+
 export function summarizeChallengeInboxMessage(
   body: string | null | undefined
 ): ChallengeInboxNotice | null {
@@ -120,6 +167,9 @@ export function summarizeChallengeInboxMessage(
       ? lines[1]
       : null;
   const scheduledLabel = readPrefixedLine(lines, ["Start:", "New start:"]);
+  const scheduledAtIso =
+    readPrefixedLine(lines, ["Start ISO:", "New start ISO:"]) ||
+    coerceServerScheduledLabelToIso(scheduledLabel);
   const fundingLabel = readPrefixedLine(lines, ["Funding:"]);
   const statusLabel = readPrefixedLine(lines, ["Status:"]);
   const note = readPrefixedLine(lines, ["Note:"]);
@@ -140,6 +190,8 @@ export function summarizeChallengeInboxMessage(
     compactHeadline: descriptor.compactHeadline,
     matchup,
     scheduledLabel,
+    scheduledAtIso,
+    fundingLabel,
     statusLabel,
     note,
     compactLine: compactParts.filter(Boolean).join(" · "),

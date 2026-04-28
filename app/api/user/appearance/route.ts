@@ -50,6 +50,7 @@ export async function POST(request: NextRequest) {
       viewMode?: string | null;
       textColor?: string | null;
       timeDisplayMode?: string | null;
+      timeClockMode?: string | null;
       timezoneOverride?: string | null;
       tileViewPreferences?: unknown;
     };
@@ -77,7 +78,7 @@ export async function POST(request: NextRequest) {
       path: request.nextUrl.pathname,
       label:
         `${normalized.themeKey}/${normalized.tileThemeKey}/${normalized.viewMode}/${normalized.textColor}` +
-        `/${normalized.timeDisplayMode}`,
+        `/${normalized.timeDisplayMode}/${normalized.timeClockMode}`,
       metadata: normalized,
       dedupeWithinSeconds: 90,
     });
@@ -88,6 +89,7 @@ export async function POST(request: NextRequest) {
       viewMode: saved.viewMode,
       textColor: saved.textColor,
       timeDisplayMode: saved.timeDisplayMode,
+      timeClockMode: saved.timeClockMode,
       timezoneOverride: saved.timezoneOverride,
       tileViewPreferences: normalized.tileViewPreferences,
       updatedAt: saved.updatedAt.toISOString(),

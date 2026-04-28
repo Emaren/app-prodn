@@ -216,6 +216,7 @@ function buildTermsAcceptedMessage(input: {
     "Challenge terms accepted",
     `${input.challengerName} vs ${input.challengedName}`,
     `Start: ${formatScheduledAtForInbox(input.scheduledAt)}`,
+    `Start ISO: ${input.scheduledAt.toISOString()}`,
     `Funding: ${formatWolo(input.totalFundingWolo)} WOLO each`,
     `Status: ${input.nextStatus}`,
   ].join("\n");
@@ -230,6 +231,7 @@ function buildDeclineMessage(input: {
     "Challenge declined",
     `${input.challengerName} vs ${input.challengedName}`,
     `Start: ${formatScheduledAtForInbox(input.scheduledAt)}`,
+    `Start ISO: ${input.scheduledAt.toISOString()}`,
     "Status: Terms declined",
   ].join("\n");
 }
@@ -245,6 +247,7 @@ function buildCancellationMessage(input: {
     "Challenge cancelled",
     `${input.challengerName} vs ${input.challengedName}`,
     `Start: ${formatScheduledAtForInbox(input.scheduledAt)}`,
+    `Start ISO: ${input.scheduledAt.toISOString()}`,
     `Status: Cancelled by ${input.cancelledByName}`,
   ];
 
@@ -269,6 +272,7 @@ function buildRescheduleMessage(input: {
     "Challenge rescheduled",
     `${input.challengerName} vs ${input.challengedName}`,
     `Start: ${formatScheduledAtForInbox(input.scheduledAt)}`,
+    `Start ISO: ${input.scheduledAt.toISOString()}`,
     `Wolo Wager: ${formatWolo(input.wagerAmountWolo)} WOLO`,
     `Match Guarantee: ${formatWolo(input.guaranteeAmountWolo)} WOLO`,
     `Funding: ${formatWolo(totalFunding)} WOLO each`,
@@ -294,6 +298,7 @@ function buildFundingMessage(input: {
     "Challenge funding recorded",
     `${input.challengerName} vs ${input.challengedName}`,
     `Start: ${formatScheduledAtForInbox(input.scheduledAt)}`,
+    `Start ISO: ${input.scheduledAt.toISOString()}`,
     `Funding: ${input.actorName} locked ${formatWolo(input.totalFundingWolo)} WOLO`,
     `Status: ${input.statusLabel}`,
   ].join("\n");
@@ -310,6 +315,7 @@ function buildCheckInMessage(input: {
     input.statusLabel === "Ready" ? "Challenge ready" : "Challenge check-in recorded",
     `${input.challengerName} vs ${input.challengedName}`,
     `Start: ${formatScheduledAtForInbox(input.scheduledAt)}`,
+    `Start ISO: ${input.scheduledAt.toISOString()}`,
     `Status: ${input.actorName} checked in`,
     input.statusLabel === "Ready" ? "Lock: Both players checked in" : "Lock: Waiting on the other side",
   ].join("\n");
@@ -326,6 +332,7 @@ function buildNoShowMessage(input: {
     "Challenge no-show resolved",
     `${input.challengerName} vs ${input.challengedName}`,
     `Start: ${formatScheduledAtForInbox(input.scheduledAt)}`,
+    `Start ISO: ${input.scheduledAt.toISOString()}`,
     `Status: ${input.resolutionLabel || "No-show resolved"}`,
     input.statusDetail,
   ].join("\n");

@@ -198,7 +198,7 @@ function formatActivityCompact(activity: ChallengeActivityItem, match?: Activity
 export default function ChallengeWorkspace() {
   const { loading: authLoading, isAuthenticated, uid } = useUserAuth();
   const { status: walletStatus, address: connectedWalletAddress, connect: connectKeplr } = useKeplr();
-  const { timeDisplayMode, setTimeDisplayMode, browserTimeZone } = useLobbyAppearance();
+  const { timeDisplayMode, setTimeDisplayMode, timeClockMode, browserTimeZone } = useLobbyAppearance();
   const scheduleFormId = "schedule-game";
   const [snapshot, setSnapshot] = useState<ChallengeHubSnapshot>(EMPTY_SNAPSHOT);
   const [loading, setLoading] = useState(true);
@@ -324,6 +324,7 @@ export default function ChallengeWorkspace() {
         scheduledPreview,
         {
           timeDisplayMode: "local",
+          timeClockMode,
           timezoneOverride: browserTimeZone,
         },
         {
@@ -331,7 +332,7 @@ export default function ChallengeWorkspace() {
           includeZone: true,
         }
       ),
-    [browserTimeZone, scheduledPreview]
+    [browserTimeZone, scheduledPreview, timeClockMode]
   );
   const schedulePreviewUtc = useMemo(
     () =>
@@ -339,13 +340,14 @@ export default function ChallengeWorkspace() {
         scheduledPreview,
         {
           timeDisplayMode: "utc",
+          timeClockMode,
           timezoneOverride: null,
         },
         {
           includeZone: true,
         }
       ),
-    [scheduledPreview]
+    [scheduledPreview, timeClockMode]
   );
   const schedulePreviewUtcCompact = useMemo(
     () =>
@@ -353,13 +355,14 @@ export default function ChallengeWorkspace() {
         scheduledPreview,
         {
           timeDisplayMode: "utc",
+          timeClockMode,
           timezoneOverride: null,
         },
         {
           includeZone: false,
         }
       ),
-    [scheduledPreview]
+    [scheduledPreview, timeClockMode]
   );
   const totalFundingPreview = useMemo(
     () =>
@@ -905,6 +908,7 @@ export default function ChallengeWorkspace() {
                   focusedMatch.scheduledAt,
                   {
                     timeDisplayMode: "local",
+                    timeClockMode,
                     timezoneOverride: browserTimeZone,
                   },
                   {

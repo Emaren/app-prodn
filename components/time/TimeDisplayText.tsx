@@ -5,6 +5,7 @@ import { useMemo, useState, type KeyboardEvent } from "react";
 import { useLobbyAppearance } from "@/components/lobby/LobbyAppearanceContext";
 import {
   formatDateTime,
+  type TimeClockMode,
   type TimeDisplayMode,
 } from "@/lib/timeDisplay";
 
@@ -20,6 +21,7 @@ type TimeDisplayTextProps = {
 function formatForMode(
   value: string | Date | null | undefined,
   mode: TimeDisplayMode,
+  clockMode: TimeClockMode,
   browserTimeZone: string | null,
   includeZone: boolean,
   includeSeconds: boolean
@@ -28,6 +30,7 @@ function formatForMode(
     value,
     {
       timeDisplayMode: mode,
+      timeClockMode: clockMode,
       timezoneOverride: browserTimeZone,
     },
     {
@@ -46,7 +49,7 @@ export default function TimeDisplayText({
   includeZone = true,
   includeSeconds = false,
 }: TimeDisplayTextProps) {
-  const { timeDisplayMode, browserTimeZone } = useLobbyAppearance();
+  const { timeDisplayMode, timeClockMode, browserTimeZone } = useLobbyAppearance();
   const [showMobileReveal, setShowMobileReveal] = useState(false);
 
   const primaryText = useMemo(
@@ -54,11 +57,12 @@ export default function TimeDisplayText({
       formatForMode(
         value,
         timeDisplayMode,
+        timeClockMode,
         browserTimeZone,
         includeZone,
         includeSeconds
       ),
-    [browserTimeZone, includeSeconds, includeZone, timeDisplayMode, value]
+    [browserTimeZone, includeSeconds, includeZone, timeClockMode, timeDisplayMode, value]
   );
 
   const oppositeMode = timeDisplayMode === "utc" ? "local" : "utc";
@@ -67,11 +71,12 @@ export default function TimeDisplayText({
       formatForMode(
         value,
         oppositeMode,
+        timeClockMode,
         browserTimeZone,
         includeZone,
         includeSeconds
       ),
-    [browserTimeZone, includeSeconds, includeZone, oppositeMode, value]
+    [browserTimeZone, includeSeconds, includeZone, oppositeMode, timeClockMode, value]
   );
 
   if (primaryText === "—") {

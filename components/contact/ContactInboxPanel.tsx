@@ -8,6 +8,7 @@ import type { ReactNode } from "react";
 
 import CommunityBadgePill from "@/components/contact/CommunityBadgePill";
 import ScheduledMatchCard from "@/components/challenge/ScheduledMatchCard";
+import TimeDisplayText from "@/components/time/TimeDisplayText";
 import AutoGrowTextarea from "@/components/ui/AutoGrowTextarea";
 import {
   DIRECT_MESSAGE_MAX_CHARS,
@@ -193,13 +194,38 @@ function ChallengeSystemMessageLine({
   message: Extract<ContactInboxMessage, { kind: "text" }>;
   compactNotice: NonNullable<ReturnType<typeof challengeNoticeTone>>;
 }) {
+  const summary = compactNotice.summary;
+  const parts = [
+    summary.compactHeadline,
+    summary.matchup,
+    summary.fundingLabel,
+    summary.statusLabel,
+    summary.note ? "note attached" : null,
+  ].filter(Boolean);
+
   return (
     <div className="flex justify-center">
       <div
         title={message.body}
         className={`max-w-full rounded-full border px-3 py-1.5 text-[11px] font-medium ${compactNotice.shell}`}
       >
-        <div className="truncate whitespace-nowrap">{compactNotice.summary.compactLine}</div>
+        <div className="truncate whitespace-nowrap">
+          {parts.slice(0, 2).join(" · ")}
+          {summary.scheduledAtIso ? (
+            <>
+              {" · "}
+              <TimeDisplayText
+                value={summary.scheduledAtIso}
+                includeZone={false}
+                className="text-inherit"
+                bubbleClassName="w-max max-w-[18rem] text-center"
+              />
+            </>
+          ) : summary.scheduledLabel ? (
+            ` · ${summary.scheduledLabel}`
+          ) : null}
+          {parts.length > 2 ? ` · ${parts.slice(2).join(" · ")}` : ""}
+        </div>
       </div>
     </div>
   );

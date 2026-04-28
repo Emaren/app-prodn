@@ -5,7 +5,7 @@ import type {
   LobbyThemeKey,
   LobbyViewMode,
 } from "@/components/lobby/lobbyPresentation";
-import type { TimeDisplayMode } from "@/lib/timeDisplay";
+import type { TimeClockMode, TimeDisplayMode } from "@/lib/timeDisplay";
 import type { TileViewPreferences } from "@/lib/tileViewPreferences";
 
 export type AppearancePayload = {
@@ -14,6 +14,7 @@ export type AppearancePayload = {
   viewMode: LobbyViewMode;
   textColor: LobbyTextColor;
   timeDisplayMode: TimeDisplayMode;
+  timeClockMode: TimeClockMode;
   timezoneOverride: string | null;
   tileViewPreferences: TileViewPreferences;
   updatedAt: string | null;
@@ -34,6 +35,7 @@ export async function saveUserAppearancePreference(input: {
   viewMode: LobbyViewMode;
   textColor: LobbyTextColor;
   timeDisplayMode: TimeDisplayMode;
+  timeClockMode: TimeClockMode;
   timezoneOverride: string | null;
   tileViewPreferences: TileViewPreferences;
 }) {

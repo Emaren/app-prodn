@@ -538,6 +538,7 @@ model UserAppearancePreference {
 
   user             User    @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   timeDisplayMode  String  @default("local") @map("time_display_mode") @db.VarChar(20)
+  timeClockMode    String  @default("24h") @map("time_clock_mode") @db.VarChar(8)
   timezoneOverride String? @map("timezone_override") @db.VarChar(80)
   tileViewPreferences Json? @map("tile_view_preferences")
 

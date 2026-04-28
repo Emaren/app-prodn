@@ -85,6 +85,7 @@ function buildChallengeInviteMessage({
     "Challenge scheduled",
     `${challengerName} vs ${challengedName}`,
     `Start: ${formatScheduledAtForInbox(scheduledAt)}`,
+    `Start ISO: ${scheduledAt.toISOString()}`,
     `Wolo Wager: ${formatWolo(wagerAmountWolo)} WOLO`,
     `Match Guarantee: ${formatWolo(guaranteeAmountWolo)} WOLO`,
     `Funding: ${formatWolo(totalFundingWolo)} WOLO each`,

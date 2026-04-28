@@ -22,6 +22,7 @@ import {
 
 import TimeDisplayText from "@/components/time/TimeDisplayText";
 import AutoGrowTextarea from "@/components/ui/AutoGrowTextarea";
+import { useLobbyAppearance } from "@/components/lobby/LobbyAppearanceContext";
 import { useKeplr } from "@/hooks/use-keplr";
 import { CHALLENGE_NOTE_MAX_CHARS } from "@/lib/challengeConfig";
 import type { ScheduledMatchTile } from "@/lib/challenges";
@@ -554,6 +555,7 @@ export default function ScheduledMatchCard({
   allowExpand = true,
 }: ScheduledMatchCardProps) {
   const { address: connectedWalletAddress, connect: connectKeplr } = useKeplr();
+  const { timeClockMode, browserTimeZone } = useLobbyAppearance();
   const [mounted, setMounted] = useState(false);
   const [nowMs, setNowMs] = useState(() => (serverNow ? new Date(serverNow).getTime() : 0));
   const [internalViewMode, setInternalViewMode] = useState<ScheduledMatchCardViewMode>(() =>
@@ -1164,9 +1166,11 @@ export default function ScheduledMatchCard({
                   match.scheduledAt,
                   {
                     timeDisplayMode: "local",
-                    timezoneOverride: null,
+                    timeClockMode,
+                    timezoneOverride: browserTimeZone,
                   },
                   {
+                    browserTimeZone,
                     includeZone: true,
                   }
                 )

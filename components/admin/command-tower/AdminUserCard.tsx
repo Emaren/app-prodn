@@ -196,7 +196,7 @@ export default function AdminUserCard({
               label="Theme / Skin"
               value={
                 user.appearance
-                  ? `${user.appearance.themeKey} / ${user.appearance.viewMode} / ${user.appearance.timeDisplayMode}`
+                  ? `${user.appearance.themeKey} / ${user.appearance.viewMode} / ${user.appearance.timeDisplayMode} / ${user.appearance.timeClockMode}`
                   : "midnight / steel"
               }
             />

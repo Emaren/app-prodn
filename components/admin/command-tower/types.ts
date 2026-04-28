@@ -52,6 +52,7 @@ export type Appearance = {
   viewMode: string;
   textColor: string;
   timeDisplayMode: string;
+  timeClockMode: string;
   timezoneOverride: string | null;
   tileViewPreferences: TileViewPreferences;
   updatedAt: string | null;
