@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { OfflineSigner } from "@cosmjs/proto-signing";
+import { Monitor, MonitorOff, Play } from "lucide-react";
 import { toast } from "sonner";
 
 import BetsViewToggle from "@/components/bets/BetsViewToggle";
@@ -35,6 +36,7 @@ type BetSide = "left" | "right";
 type BetStatus = "open" | "closing" | "live" | "settled";
 type BetsViewMode = "basic" | "advanced";
 type FounderBonusType = "participants" | "winner";
+type VideoViewKey = "left" | "god" | "right";
 
 type BetBoardSide = {
   key: BetSide;
@@ -461,6 +463,22 @@ function projectReturn(stakeWolo: number, selectedPoolWolo: number, oppositePool
     stakeWolo,
     Math.round(stakeWolo + oppositePoolWolo * (stakeWolo / nextSelectedPool))
   );
+}
+
+function safePlayerName(value: string | null | undefined, fallback: string) {
+  const trimmed = value?.trim();
+  return trimmed || fallback;
+}
+
+function splitMatchTitle(value: string | null | undefined) {
+  const title = value?.trim() || "";
+  const [left, ...rightParts] = title.split(/\s+vs\s+/i);
+  const right = rightParts.join(" vs ");
+
+  return {
+    leftName: safePlayerName(left, "Player 1"),
+    rightName: safePlayerName(right, "Player 2"),
+  };
 }
 
 
@@ -2098,19 +2116,259 @@ function HeatSection({ board }: { board: BetBoardSnapshot | null }) {
 }
 
 function RecentResultFeature({ result }: { result: BetSettledResult }) {
+  const [videoVisible, setVideoVisible] = useState(true);
+  const resultPlayers = splitMatchTitle(result.title);
+
+  useEffect(() => {
+    setVideoVisible(true);
+  }, [result.id]);
+
   return (
     <div>
-      <div className="text-[11px] uppercase tracking-[0.35em] text-slate-500">Latest Closed Book</div>
-      <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl">
-        {result.title}
-      </h2>
-      <div className="mt-2 text-sm text-slate-400">
-        {result.winner} took {result.mapName} · {formatSettledTime(result.settledAt)}
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-[11px] uppercase tracking-[0.35em] text-slate-500">Latest Closed Book</div>
+          <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl">
+            {result.title}
+          </h2>
+          <div className="mt-2 text-sm text-slate-400">
+            {result.winner} took {result.mapName} · {formatSettledTime(result.settledAt)}
+          </div>
+        </div>
+
+        <VideoVisibilityButton
+          visible={videoVisible}
+          onToggle={() => setVideoVisible((current) => !current)}
+        />
       </div>
+
+      {videoVisible ? (
+        <MarketVideoTile
+          key={result.id}
+          leftName={resultPlayers.leftName}
+          rightName={resultPlayers.rightName}
+          marketTitle={result.title}
+          eventLabel={result.eventLabel}
+          settled
+        />
+      ) : null}
 
       <div className="mt-5">
         <ResultCard result={result} basicLook founderChipVariant="micro" />
       </div>
+    </div>
+  );
+}
+
+function VideoVisibilityButton({
+  visible,
+  onToggle,
+}: {
+  visible: boolean;
+  onToggle: () => void;
+}) {
+  const Icon = visible ? Monitor : MonitorOff;
+
+  return (
+    <button
+      type="button"
+      aria-pressed={visible}
+      aria-label={visible ? "Hide video tile" : "Show video tile"}
+      title={visible ? "Hide video tile" : "Show video tile"}
+      onClick={onToggle}
+      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition ${
+        visible
+          ? "border-amber-200/24 bg-amber-300/12 text-amber-100 shadow-[0_0_24px_rgba(251,191,36,0.08)] hover:bg-amber-300/18"
+          : "border-white/[0.08] bg-white/[0.04] text-slate-300 hover:border-white/14 hover:bg-white/[0.08]"
+      }`}
+    >
+      <Icon className="h-4 w-4" aria-hidden="true" />
+      <span className="hidden sm:inline">{visible ? "Video on" : "Video off"}</span>
+    </button>
+  );
+}
+
+function MarketVideoTile({
+  leftName,
+  rightName,
+  marketTitle,
+  eventLabel,
+  settled = false,
+}: {
+  leftName: string;
+  rightName: string;
+  marketTitle: string;
+  eventLabel: string;
+  settled?: boolean;
+}) {
+  const [selectedView, setSelectedView] = useState<VideoViewKey>("god");
+  const views = useMemo(
+    () =>
+      [
+        {
+          key: "left" as const,
+          label: safePlayerName(leftName, "Player 1"),
+          eyebrow: "Player cam",
+          tone: "warm" as const,
+        },
+        {
+          key: "god" as const,
+          label: "God View",
+          eyebrow: "Observer",
+          tone: "gold" as const,
+        },
+        {
+          key: "right" as const,
+          label: safePlayerName(rightName, "Player 2"),
+          eyebrow: "Player cam",
+          tone: "cool" as const,
+        },
+      ],
+    [leftName, rightName]
+  );
+  const activeView = views.find((view) => view.key === selectedView) || views[1];
+
+  useEffect(() => {
+    setSelectedView("god");
+  }, [marketTitle, leftName, rightName]);
+
+  return (
+    <section
+      data-testid="market-video-tile"
+      className={`${insetClass()} mt-5 overflow-hidden border-amber-200/10 bg-[radial-gradient(circle_at_20%_0%,rgba(251,191,36,0.12),transparent_28%),radial-gradient(circle_at_82%_12%,rgba(56,189,248,0.10),transparent_26%),linear-gradient(180deg,rgba(15,23,42,0.74),rgba(2,6,23,0.36))] p-4`}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-[11px] uppercase tracking-[0.3em] text-amber-100/60">
+            Video tile
+          </div>
+          <div className="mt-1 truncate text-lg font-semibold text-white">{activeView.label}</div>
+          <div className="mt-1 text-xs text-slate-400">
+            {settled ? "Replay camera placeholder" : "Live camera placeholder"} · {eventLabel}
+          </div>
+        </div>
+        <span className="max-w-full truncate rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-slate-300 sm:max-w-[18rem]">
+          {marketTitle}
+        </span>
+      </div>
+
+      <div className="mt-4 grid gap-3 md:grid-cols-3">
+        {views.map((view) => (
+          <VideoPreviewButton
+            key={view.key}
+            label={view.label}
+            eyebrow={view.eyebrow}
+            tone={view.tone}
+            selected={selectedView === view.key}
+            onSelect={() => setSelectedView(view.key)}
+          />
+        ))}
+      </div>
+
+      <VideoPlaceholderFrame
+        label={activeView.label}
+        eyebrow={activeView.eyebrow}
+        tone={activeView.tone}
+        marketTitle={marketTitle}
+      />
+    </section>
+  );
+}
+
+function VideoPreviewButton({
+  label,
+  eyebrow,
+  tone,
+  selected,
+  onSelect,
+}: {
+  label: string;
+  eyebrow: string;
+  tone: "warm" | "gold" | "cool";
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={selected}
+      onClick={onSelect}
+      className={`group overflow-hidden rounded-[1.2rem] border p-2 text-left transition ${
+        selected
+          ? "border-amber-100/45 bg-amber-300/10 shadow-[0_0_30px_rgba(251,191,36,0.10)]"
+          : "border-white/[0.06] bg-white/[0.035] hover:border-white/14 hover:bg-white/[0.055]"
+      }`}
+    >
+      <div className="aspect-video overflow-hidden rounded-[0.95rem] border border-white/[0.06] bg-slate-950/80">
+        <VideoSignalSurface tone={tone} compact />
+      </div>
+      <div className="mt-2 min-w-0">
+        <div className="text-[10px] uppercase tracking-[0.22em] text-slate-500">{eyebrow}</div>
+        <div className="mt-1 truncate text-sm font-semibold text-white">{label}</div>
+      </div>
+    </button>
+  );
+}
+
+function VideoPlaceholderFrame({
+  label,
+  eyebrow,
+  tone,
+  marketTitle,
+}: {
+  label: string;
+  eyebrow: string;
+  tone: "warm" | "gold" | "cool";
+  marketTitle: string;
+}) {
+  return (
+    <div className="mt-4 overflow-hidden rounded-[1.45rem] border border-white/[0.08] bg-slate-950/78 p-3">
+      <div className="aspect-video min-h-[15rem] overflow-hidden rounded-[1.2rem] border border-white/[0.06] bg-black/55">
+        <VideoSignalSurface tone={tone} />
+      </div>
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-3 px-1">
+        <div className="min-w-0">
+          <div className="text-[11px] uppercase tracking-[0.26em] text-slate-500">{eyebrow}</div>
+          <div className="mt-1 truncate text-xl font-semibold text-white">{label}</div>
+        </div>
+        <div className="min-w-0 max-w-full flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-xs text-slate-300 sm:max-w-[24rem]">
+          <Play className="h-3.5 w-3.5 text-amber-100" aria-hidden="true" />
+          <span className="truncate">Placeholder feed · {marketTitle}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function VideoSignalSurface({
+  tone,
+  compact = false,
+}: {
+  tone: "warm" | "gold" | "cool";
+  compact?: boolean;
+}) {
+  const glowClassName =
+    tone === "warm"
+      ? "from-amber-300/24 via-orange-500/12 to-transparent"
+      : tone === "cool"
+        ? "from-sky-300/22 via-cyan-500/12 to-transparent"
+        : "from-emerald-300/20 via-amber-300/12 to-transparent";
+
+  return (
+    <div className="relative flex h-full min-h-full items-center justify-center overflow-hidden">
+      <div className="absolute inset-0 bg-[linear-gradient(115deg,rgba(255,255,255,0.055),transparent_36%,rgba(255,255,255,0.035))]" />
+      <div className={`absolute inset-x-[-15%] top-[-30%] h-[76%] rounded-full bg-gradient-to-b ${glowClassName} blur-3xl`} />
+      <div className="absolute inset-0 bg-[repeating-linear-gradient(0deg,rgba(255,255,255,0.035)_0px,rgba(255,255,255,0.035)_1px,transparent_1px,transparent_12px)] opacity-50" />
+      <div className="absolute left-4 top-4 flex items-center gap-2">
+        <span className="relative flex h-2 w-2">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-30" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-red-400" />
+        </span>
+        <span className="text-[10px] uppercase tracking-[0.22em] text-white/52">
+          {compact ? "Preview" : "No stream wired"}
+        </span>
+      </div>
+      <Monitor className={`${compact ? "h-8 w-8" : "h-14 w-14"} text-white/22`} aria-hidden="true" />
     </div>
   );
 }
@@ -2286,6 +2544,13 @@ function MarketFeature({
       : market.viewerWager
         ? "Add More"
         : "Lock";
+  const [videoVisible, setVideoVisible] = useState(true);
+  const leftVideoName = safePlayerName(market.left.name, "Player 1");
+  const rightVideoName = safePlayerName(market.right.name, "Player 2");
+
+  useEffect(() => {
+    setVideoVisible(true);
+  }, [market.id]);
 
   return (
     <div className="relative">
@@ -2312,6 +2577,10 @@ function MarketFeature({
           <MarketTimingRail market={market} nowMs={nowMs} />
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
+          <VideoVisibilityButton
+            visible={videoVisible}
+            onToggle={() => setVideoVisible((current) => !current)}
+          />
           {market.href ? (
             <Link
               href={market.href}
@@ -2341,6 +2610,16 @@ function MarketFeature({
           <MarketStatusPill market={market} />
         </div>
       </div>
+
+      {videoVisible ? (
+        <MarketVideoTile
+          key={market.id}
+          leftName={leftVideoName}
+          rightName={rightVideoName}
+          marketTitle={market.title}
+          eventLabel={market.eventLabel}
+        />
+      ) : null}
 
       <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_auto_1fr] lg:items-center">
         <SideChoice
