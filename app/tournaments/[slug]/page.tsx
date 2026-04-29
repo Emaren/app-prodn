@@ -150,7 +150,7 @@ export default async function TournamentDetailPage({
               <div className="text-[11px] uppercase tracking-[0.38em] text-amber-200/72">
                 Featured tournament HQ
               </div>
-              <h1 className="max-w-5xl text-4xl font-semibold leading-[0.95] tracking-[-0.045em] text-white sm:text-5xl lg:text-7xl">
+              <h1 className="max-w-5xl text-4xl font-semibold leading-[0.95] tracking-[-0.035em] text-white sm:text-5xl lg:text-7xl">
                 {tournament.title}
               </h1>
               <p className="max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
