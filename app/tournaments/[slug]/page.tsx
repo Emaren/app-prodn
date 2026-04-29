@@ -9,6 +9,7 @@ import {
   getFallbackTournament,
   getTournamentMatchStatusLabel,
   getTournamentStatusLabel,
+  type LobbyTournamentEntrant,
 } from "@/lib/lobby";
 import { getPrisma } from "@/lib/prisma";
 import { readGuestReactionSessionIdFromCookies } from "@/lib/guestReactionSession";
@@ -35,6 +36,18 @@ const CREATION_STEPS = [
   },
 ] as const;
 
+const BRACKET_PRIZE_LABEL = "100,000 WOLO";
+const BRACKET_OPEN_SLOT_COUNT = 2;
+const BRACKET_SEEDED_SLOT_COUNT = 4;
+
+type BracketPreviewSlot = {
+  key: string;
+  name: string;
+  label: string;
+  meta: string;
+  tone: "entrant" | "open" | "forming" | "advance";
+};
+
 function formatMoment(value: string | null) {
   if (!value) return "Scheduling now";
   const date = new Date(value);
@@ -46,6 +59,51 @@ function formatMoment(value: string | null) {
     hour: "numeric",
     minute: "2-digit",
   }).format(date);
+}
+
+function buildBracketPreviewSlots(entrants: LobbyTournamentEntrant[]) {
+  const seededSlots: BracketPreviewSlot[] = entrants.slice(0, BRACKET_SEEDED_SLOT_COUNT).map((entrant, index) => ({
+    key: `entrant-${entrant.entryId ?? entrant.uid}`,
+    name: displayName(entrant.inGameName, entrant.steamPersonaName),
+    label: `Seed ${index + 1}`,
+    meta: entrant.verified ? "Replay verified" : "Steam linked",
+    tone: "entrant",
+  }));
+
+  while (seededSlots.length < BRACKET_SEEDED_SLOT_COUNT) {
+    const seedNumber = seededSlots.length + 1;
+
+    seededSlots.push({
+      key: `forming-${seedNumber}`,
+      name: "Founder seed forming",
+      label: `Seed ${seedNumber}`,
+      meta: "Queue still open",
+      tone: "forming",
+    });
+  }
+
+  const openSlots: BracketPreviewSlot[] = Array.from({ length: BRACKET_OPEN_SLOT_COUNT }, (_, index) => ({
+    key: `open-${index + 1}`,
+    name: "Your name here",
+    label: `Open spot ${index + 1}`,
+    meta: "Join to claim this lane",
+    tone: "open",
+  }));
+
+  return {
+    seededSlots,
+    openSlots,
+  };
+}
+
+function makeAdvanceSlot(key: string, name: string, meta: string): BracketPreviewSlot {
+  return {
+    key,
+    name,
+    label: "Advances",
+    meta,
+    tone: "advance",
+  };
 }
 
 export default async function TournamentDetailPage({
@@ -70,6 +128,7 @@ export default async function TournamentDetailPage({
     uid: claims?.uid ?? null,
     guestSessionId: readGuestReactionSessionIdFromCookies(cookieStore),
   });
+  const bracketPreviewSlots = buildBracketPreviewSlots(tournament.entrants);
 
   return (
     <main className="space-y-6 py-3 text-white sm:space-y-7 sm:py-4">
@@ -205,6 +264,11 @@ export default async function TournamentDetailPage({
           </div>
         </div>
       </section>
+
+      <BracketPreviewTile
+        seededSlots={bracketPreviewSlots.seededSlots}
+        openSlots={bracketPreviewSlots.openSlots}
+      />
 
       <section className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
         <Panel eyebrow="Entrant queue" title="Founding field" count={tournament.entryCount}>
@@ -387,6 +451,135 @@ export default async function TournamentDetailPage({
         </section>
       </section>
     </main>
+  );
+}
+
+function BracketPreviewTile({
+  seededSlots,
+  openSlots,
+}: {
+  seededSlots: BracketPreviewSlot[];
+  openSlots: BracketPreviewSlot[];
+}) {
+  const semifinalSlots = [
+    makeAdvanceSlot("semi-a", "Winner of open-in duel", "Faces Seed 1"),
+    makeAdvanceSlot("semi-b", "Winner of open-in duel", "Faces Seed 2"),
+  ];
+
+  const finalistSlots = [
+    makeAdvanceSlot("final-a", "Semifinal champion", "Final table"),
+    makeAdvanceSlot("final-b", "Semifinal champion", "Final table"),
+  ];
+
+  return (
+    <section className="overflow-hidden rounded-[1.85rem] border border-amber-300/18 bg-[radial-gradient(circle_at_18%_0%,rgba(251,191,36,0.18),transparent_30%),radial-gradient(circle_at_86%_20%,rgba(16,185,129,0.14),transparent_27%),linear-gradient(135deg,rgba(15,23,42,0.92),rgba(2,6,23,0.96))] p-5 shadow-[0_28px_90px_rgba(2,6,23,0.36)] sm:p-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="max-w-3xl">
+          <div className="text-[11px] uppercase tracking-[0.34em] text-amber-200/72">
+            Theoretical bracket
+          </div>
+          <h2 className="mt-2 text-2xl font-semibold text-white sm:text-3xl">
+            Founder path to the grand prize
+          </h2>
+          <p className="mt-3 text-sm leading-6 text-slate-300">
+            The field is still open, but the bracket can already feel like a prize fight. Two live lanes are left open for visitors who want their name in the run.
+          </p>
+        </div>
+
+        <div className="rounded-[1.45rem] border border-amber-200/24 bg-amber-300/10 px-4 py-3 text-right">
+          <div className="text-[11px] uppercase tracking-[0.28em] text-amber-100/70">Winner slot</div>
+          <div className="mt-1 text-2xl font-semibold text-amber-100">{BRACKET_PRIZE_LABEL}</div>
+          <div className="mt-1 text-xs uppercase tracking-[0.22em] text-amber-100/55">Grand prize</div>
+        </div>
+      </div>
+
+      <div className="mt-6 grid gap-4 lg:grid-cols-[0.95fr_1.15fr_1.05fr_0.9fr]">
+        <BracketRound eyebrow="Byes" title="Founder seeds">
+          <BracketSlot slot={seededSlots[0]} />
+          <BracketSlot slot={seededSlots[1]} />
+        </BracketRound>
+
+        <BracketRound eyebrow="Open-in" title="Claimable lanes">
+          <BracketMatch label="Duel A" slots={[seededSlots[2], openSlots[0]]} />
+          <BracketMatch label="Duel B" slots={[seededSlots[3], openSlots[1]]} />
+        </BracketRound>
+
+        <BracketRound eyebrow="Semis" title="Pressure gates">
+          <BracketMatch label="Semifinal A" slots={[seededSlots[0], semifinalSlots[0]]} />
+          <BracketMatch label="Semifinal B" slots={[seededSlots[1], semifinalSlots[1]]} />
+        </BracketRound>
+
+        <BracketRound eyebrow="Final" title="100k finish">
+          <BracketMatch label="Grand final" slots={finalistSlots} />
+          <div className="rounded-[1.35rem] border border-emerald-300/20 bg-emerald-400/10 p-4">
+            <div className="text-[11px] uppercase tracking-[0.25em] text-emerald-100/70">
+              Champion
+            </div>
+            <div className="mt-2 text-xl font-semibold text-white">Winner claims</div>
+            <div className="mt-1 text-2xl font-semibold text-emerald-100">{BRACKET_PRIZE_LABEL}</div>
+          </div>
+        </BracketRound>
+      </div>
+    </section>
+  );
+}
+
+function BracketRound({
+  eyebrow,
+  title,
+  children,
+}: {
+  eyebrow: string;
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="rounded-[1.5rem] border border-white/10 bg-slate-950/58 p-4">
+      <div className="text-[11px] uppercase tracking-[0.28em] text-white/45">{eyebrow}</div>
+      <div className="mt-1 text-lg font-semibold text-white">{title}</div>
+      <div className="mt-4 grid gap-3">{children}</div>
+    </div>
+  );
+}
+
+function BracketMatch({
+  label,
+  slots,
+}: {
+  label: string;
+  slots: BracketPreviewSlot[];
+}) {
+  return (
+    <div className="rounded-[1.35rem] border border-white/8 bg-white/[0.045] p-3">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="text-[11px] uppercase tracking-[0.24em] text-slate-400">{label}</div>
+        <div className="h-px flex-1 bg-white/10" />
+      </div>
+      <div className="grid gap-2">
+        {slots.map((slot) => (
+          <BracketSlot key={slot.key} slot={slot} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function BracketSlot({ slot }: { slot: BracketPreviewSlot }) {
+  const toneClassName =
+    slot.tone === "open"
+      ? "border-amber-200/34 bg-[linear-gradient(135deg,rgba(251,191,36,0.16),rgba(15,23,42,0.84))] text-amber-50 shadow-[0_0_34px_rgba(251,191,36,0.08)]"
+      : slot.tone === "entrant"
+        ? "border-sky-200/18 bg-sky-400/10 text-white"
+        : slot.tone === "advance"
+          ? "border-emerald-200/16 bg-emerald-400/10 text-emerald-50"
+          : "border-white/10 bg-white/5 text-slate-200";
+
+  return (
+    <div className={`min-h-[5.25rem] rounded-[1.15rem] border px-3.5 py-3 ${toneClassName}`}>
+      <div className="text-[10px] uppercase tracking-[0.24em] text-white/45">{slot.label}</div>
+      <div className="mt-1 truncate text-base font-semibold">{slot.name}</div>
+      <div className="mt-1 text-xs leading-5 text-slate-300">{slot.meta}</div>
+    </div>
   );
 }
 
