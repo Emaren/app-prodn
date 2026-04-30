@@ -32,6 +32,27 @@ export type BetWarTapeRow = {
   createdAt: string;
 };
 
+export type BetBroadcastFeed = {
+  id: number;
+  sessionKey: string;
+  provider: "twitch" | "youtube" | "steam" | "discord" | "custom";
+  role: "caster" | "observer" | "player_pov" | "team_pov" | "postgame" | "external";
+  label: string;
+  url: string;
+  embedId: string | null;
+  playerLabel: string | null;
+  isPrimary: boolean;
+  status: string;
+  canEmbed: boolean;
+  externalOnly: boolean;
+};
+
+export type BetBroadcastFeeds = {
+  left: BetBroadcastFeed | null;
+  god: BetBroadcastFeed | null;
+  right: BetBroadcastFeed | null;
+};
+
 export type BetBoardSide = {
   key: BetSide;
   name: string;
@@ -59,6 +80,7 @@ export type BetBoardMarket = {
   right: BetBoardSide;
   founderBonuses: BetFounderChip[];
   warTape: BetWarTapeRow[];
+  broadcastFeeds: BetBroadcastFeeds;
   viewerWager: {
     side: BetSide;
     amountWolo: number;
@@ -99,6 +121,8 @@ export type BetSettledResult = {
   payoutWolo: number;
   settledAt: string | null;
   href: string | null;
+  linkedSessionKey: string | null;
+  broadcastFeeds: BetBroadcastFeeds;
   founderBonuses: BetFounderChip[];
 };
 

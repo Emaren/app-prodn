@@ -32,6 +32,10 @@ import {
   isBetStakeIntentCountableStatus,
   loadViewerBetStakeIntents,
 } from "@/lib/betStakeIntents";
+import {
+  toWatchStreamPayload,
+  type WatchStreamPayload,
+} from "@/lib/watchStreams";
 
 export type BetSide = "left" | "right";
 export type BetStatus = "open" | "closing" | "live" | "settled";
@@ -69,6 +73,18 @@ export type BetWarTapeRow = {
   createdAt: string;
 };
 
+export type BetBroadcastFeeds = {
+  left: WatchStreamPayload | null;
+  god: WatchStreamPayload | null;
+  right: WatchStreamPayload | null;
+};
+
+const EMPTY_BROADCAST_FEEDS: BetBroadcastFeeds = {
+  left: null,
+  god: null,
+  right: null,
+};
+
 export type BetBoardMarket = {
   id: number;
   slug: string;
@@ -86,6 +102,7 @@ export type BetBoardMarket = {
   right: BetBoardSide;
   founderBonuses: BetFounderChip[];
   warTape: BetWarTapeRow[];
+  broadcastFeeds: BetBroadcastFeeds;
   viewerWager: {
     side: BetSide;
     amountWolo: number;
@@ -126,6 +143,8 @@ export type BetSettledResult = {
   payoutWolo: number;
   settledAt: string | null;
   href: string | null;
+  linkedSessionKey: string | null;
+  broadcastFeeds: BetBroadcastFeeds;
   founderBonuses: BetFounderChip[];
 };
 
@@ -2038,6 +2057,7 @@ function buildMarketCard(
     },
     founderBonuses,
     warTape,
+    broadcastFeeds: EMPTY_BROADCAST_FEEDS,
     viewerWager: latestViewerWager
       ? {
           side: latestViewerWager.side as BetSide,
@@ -2201,6 +2221,8 @@ async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettle
         payoutWolo,
         settledAt: matchedSession?.settledAt || market.settledAt?.toISOString() || null,
         href,
+        linkedSessionKey,
+        broadcastFeeds: EMPTY_BROADCAST_FEEDS,
         founderBonuses: market.founderBonuses.map((bonus) => ({
           id: bonus.id,
           bonusType: bonus.bonusType === "winner" ? "winner" : "participants",
@@ -2222,6 +2244,8 @@ async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettle
     take: 4,
     select: {
       id: true,
+      replay_file: true,
+      original_filename: true,
       winner: true,
       map: true,
       players: true,
@@ -2254,9 +2278,149 @@ async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettle
       payoutWolo: 110 + (hashValue(`${row.id}:${row.winner}`) % 240),
       settledAt: row.played_on?.toISOString() || row.timestamp?.toISOString() || null,
       href: null,
+      linkedSessionKey: (row.original_filename || row.replay_file || "").trim() || null,
+      broadcastFeeds: EMPTY_BROADCAST_FEEDS,
       founderBonuses: [],
     };
   });
+}
+
+function normalizeBroadcastToken(value: string | null | undefined) {
+  return String(value ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function streamMatchesPlayer(stream: WatchStreamPayload, playerName: string) {
+  const target = normalizeBroadcastToken(playerName);
+  if (!target) return false;
+
+  const fields = [stream.playerLabel, stream.label, stream.url]
+    .map(normalizeBroadcastToken)
+    .filter(Boolean);
+
+  return fields.some((field) => field === target || field.includes(target));
+}
+
+function isPlayerViewStream(stream: WatchStreamPayload) {
+  return stream.role === "player_pov" || stream.role === "team_pov";
+}
+
+function selectGodBroadcastFeed(streams: WatchStreamPayload[]) {
+  return (
+    streams.find((stream) => stream.isPrimary) ||
+    streams.find((stream) => stream.role === "observer") ||
+    streams.find((stream) => stream.role === "caster") ||
+    streams.find((stream) => stream.role === "external") ||
+    streams[0] ||
+    null
+  );
+}
+
+function selectPlayerBroadcastFeed({
+  streams,
+  playerName,
+  side,
+  godFeed,
+}: {
+  streams: WatchStreamPayload[];
+  playerName: string;
+  side: BetSide;
+  godFeed: WatchStreamPayload | null;
+}) {
+  const playerStreams = streams.filter(
+    (stream) => isPlayerViewStream(stream) && stream.id !== godFeed?.id
+  );
+
+  const namedMatch =
+    playerStreams.find((stream) => streamMatchesPlayer(stream, playerName)) ||
+    streams.find(
+      (stream) =>
+        stream.id !== godFeed?.id &&
+        !stream.isPrimary &&
+        !["caster", "observer"].includes(stream.role) &&
+        streamMatchesPlayer(stream, playerName)
+    );
+
+  if (namedMatch) {
+    return namedMatch;
+  }
+
+  if (playerStreams.length >= 2) {
+    return side === "left" ? playerStreams[0] : playerStreams[1];
+  }
+
+  if (side === "left" && playerStreams.length === 1) {
+    return playerStreams[0];
+  }
+
+  return null;
+}
+
+function buildBroadcastFeedsForMatch({
+  streams,
+  leftName,
+  rightName,
+}: {
+  streams: WatchStreamPayload[] | undefined;
+  leftName: string;
+  rightName: string;
+}): BetBroadcastFeeds {
+  if (!streams?.length) {
+    return EMPTY_BROADCAST_FEEDS;
+  }
+
+  const god = selectGodBroadcastFeed(streams);
+
+  return {
+    left: selectPlayerBroadcastFeed({
+      streams,
+      playerName: leftName,
+      side: "left",
+      godFeed: god,
+    }),
+    god,
+    right: selectPlayerBroadcastFeed({
+      streams,
+      playerName: rightName,
+      side: "right",
+      godFeed: god,
+    }),
+  };
+}
+
+async function loadWatchStreamsBySession(
+  prisma: PrismaClient,
+  sessionKeys: string[]
+) {
+  const uniqueSessionKeys = Array.from(new Set(sessionKeys.map((key) => key.trim()).filter(Boolean)));
+  if (!uniqueSessionKeys.length) {
+    return new Map<string, WatchStreamPayload[]>();
+  }
+
+  const rows = await prisma.gameWatchStream.findMany({
+    where: {
+      sessionKey: {
+        in: uniqueSessionKeys,
+      },
+      status: {
+        not: "removed",
+      },
+    },
+    orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }, { id: "asc" }],
+  });
+
+  const streamsBySession = new Map<string, WatchStreamPayload[]>();
+
+  for (const row of rows) {
+    const stream = toWatchStreamPayload(row);
+    const bucket = streamsBySession.get(stream.sessionKey) ?? [];
+    bucket.push(stream);
+    streamsBySession.set(stream.sessionKey, bucket);
+  }
+
+  return streamsBySession;
 }
 
 export async function loadBetBoardSnapshot(
@@ -2277,7 +2441,7 @@ export async function loadBetBoardSnapshot(
       })
     : null;
 
-  const [openMarketsRaw, settledResults, unresolvedStakeIntents, settlementSurface] = await Promise.all([
+  const [openMarketsRaw, settledResultsRaw, unresolvedStakeIntents, settlementSurface] = await Promise.all([
     loadOpenMarkets(prisma),
     loadRecentSettledResults(prisma),
     viewer?.id ? loadViewerBetStakeIntents(prisma, viewer.id) : Promise.resolve([]),
@@ -2319,9 +2483,38 @@ export async function loadBetBoardSnapshot(
     claimsByMarketId.set(claim.sourceMarketId, bucket);
   }
 
-  const openMarkets = openMarketsRaw.map((market) =>
+  const openMarketsWithoutFeeds = openMarketsRaw.map((market) =>
     buildMarketCard(market, viewer?.id ?? null, claimsByMarketId)
   );
+  const broadcastSessionKeys = [
+    ...openMarketsWithoutFeeds.map((market) => market.linkedSessionKey),
+    ...settledResultsRaw.map((result) => result.linkedSessionKey),
+  ].filter(Boolean) as string[];
+  const streamsBySession = await loadWatchStreamsBySession(prisma, broadcastSessionKeys);
+  const openMarkets = openMarketsWithoutFeeds.map((market) => ({
+    ...market,
+    broadcastFeeds: buildBroadcastFeedsForMatch({
+      streams: market.linkedSessionKey
+        ? streamsBySession.get(market.linkedSessionKey)
+        : undefined,
+      leftName: market.left.name,
+      rightName: market.right.name,
+    }),
+  }));
+  const settledResults = settledResultsRaw.map((result) => {
+    const [leftName = "", rightName = ""] = result.title.split(/\s+vs\s+/i);
+
+    return {
+      ...result,
+      broadcastFeeds: buildBroadcastFeedsForMatch({
+        streams: result.linkedSessionKey
+          ? streamsBySession.get(result.linkedSessionKey)
+          : undefined,
+        leftName,
+        rightName,
+      }),
+    };
+  });
   const featuredMarket = openMarkets.find((market) => market.featured) || openMarkets[0] || null;
 
   const openWagers = openMarkets

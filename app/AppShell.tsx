@@ -132,12 +132,12 @@ function InnerShell({ children }: { children: React.ReactNode }) {
     >
       <UserExperienceTracker />
       <header
-        className={`relative z-[90] border-b px-3 py-4 backdrop-blur-xl transition-[background-color,border-color] duration-500 sm:px-4 ${headerSkin.shell}`}
+        className={`relative z-[90] border-b px-3 pb-4 pt-[calc(env(safe-area-inset-top)+1rem)] backdrop-blur-xl transition-[background-color,border-color] duration-500 sm:px-4 lg:py-4 ${headerSkin.shell}`}
       >
-        <div className="mx-auto max-w-6xl overflow-visible">
-          <div className="space-y-3 lg:hidden">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0 flex-1 pt-1">
+        <div className="mx-auto w-full max-w-6xl overflow-visible">
+          <div className="space-y-4 lg:hidden">
+            <div className="flex min-w-0 items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
                 <Link href="/lobby" className="inline-block min-w-0">
                   <div className={`text-[11px] uppercase tracking-[0.35em] transition ${headerTone.eyebrow}`}>
                     AoE2HD Bets
@@ -148,7 +148,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                 </Link>
               </div>
 
-              <div className="flex shrink-0 flex-col items-end gap-2 pt-1">
+              <div className="flex min-w-0 max-w-[48%] shrink-0 flex-col items-end gap-2">
                 {uid ? (
                   <div className="flex items-center justify-end gap-2">
                     <HeaderInboxControl buttonClassName={headerSkin.surface} />
@@ -166,7 +166,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                 ) : (
                   <SteamLoginButton
                     label="Steam Sign In"
-                    className="inline-flex min-w-[10.5rem] items-center justify-center rounded-full bg-amber-300 px-4 py-2.5 text-sm font-semibold text-slate-950 shadow-[0_10px_30px_rgba(251,191,36,0.18)] transition hover:bg-amber-200"
+                    className="inline-flex max-w-full min-w-0 items-center justify-center truncate rounded-full bg-amber-300 px-3 py-2 text-xs font-semibold text-slate-950 shadow-[0_10px_30px_rgba(251,191,36,0.18)] transition hover:bg-amber-200 sm:min-w-[10.5rem] sm:px-4 sm:py-2.5 sm:text-sm"
                   />
                 )}
 
@@ -261,7 +261,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
       </header>
 
       <main
-        className={`mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col px-3 py-4 pb-32 sm:px-4 lg:pb-4 ${
+        className={`mx-auto flex min-h-0 min-w-0 w-full max-w-6xl flex-1 flex-col px-3 py-4 pb-32 sm:px-4 lg:pb-4 ${
           isContactPage ? "overflow-hidden" : "overflow-x-hidden"
         }`}
       >

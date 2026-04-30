@@ -36,7 +36,34 @@ type BetSide = "left" | "right";
 type BetStatus = "open" | "closing" | "live" | "settled";
 type BetsViewMode = "basic" | "advanced";
 type FounderBonusType = "participants" | "winner";
-type VideoViewKey = "left" | "god" | "right";
+type BroadcastViewKey = "left" | "god" | "right";
+
+type BroadcastFeed = {
+  id: number;
+  sessionKey: string;
+  provider: "twitch" | "youtube" | "steam" | "discord" | "custom";
+  role: "caster" | "observer" | "player_pov" | "team_pov" | "postgame" | "external";
+  label: string;
+  url: string;
+  embedId: string | null;
+  playerLabel: string | null;
+  isPrimary: boolean;
+  status: string;
+  canEmbed: boolean;
+  externalOnly: boolean;
+};
+
+type BroadcastFeeds = {
+  left: BroadcastFeed | null;
+  god: BroadcastFeed | null;
+  right: BroadcastFeed | null;
+};
+
+const EMPTY_BROADCAST_FEEDS: BroadcastFeeds = {
+  left: null,
+  god: null,
+  right: null,
+};
 
 type BetBoardSide = {
   key: BetSide;
@@ -65,6 +92,7 @@ type BetBoardMarket = {
   right: BetBoardSide;
   founderBonuses: BetFounderChip[];
   warTape: BetWarTapeRow[];
+  broadcastFeeds: BroadcastFeeds;
   viewerWager: {
     side: BetSide;
     amountWolo: number;
@@ -127,6 +155,8 @@ type BetSettledResult = {
   payoutWolo: number;
   settledAt: string | null;
   href: string | null;
+  linkedSessionKey: string | null;
+  broadcastFeeds: BroadcastFeeds;
   founderBonuses: BetFounderChip[];
 };
 
@@ -690,15 +720,15 @@ function edgeButton(kind: "gold" | "blue" | "glass") {
 }
 
 function shellClass() {
-  return "rounded-[1.9rem] border border-white/[0.06] bg-[radial-gradient(circle_at_top_left,rgba(96,165,250,0.08),transparent_26%),radial-gradient(circle_at_bottom_right,rgba(251,191,36,0.08),transparent_30%),linear-gradient(180deg,rgba(13,20,36,0.98),rgba(8,13,24,0.98))] shadow-[0_28px_80px_rgba(2,6,23,0.36)]";
+  return "min-w-0 w-full max-w-full rounded-[1.9rem] border border-white/[0.06] bg-[radial-gradient(circle_at_top_left,rgba(96,165,250,0.08),transparent_26%),radial-gradient(circle_at_bottom_right,rgba(251,191,36,0.08),transparent_30%),linear-gradient(180deg,rgba(13,20,36,0.98),rgba(8,13,24,0.98))] shadow-[0_28px_80px_rgba(2,6,23,0.36)]";
 }
 
 function insetClass() {
-  return "rounded-[1.55rem] border border-white/[0.06] bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.024))] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]";
+  return "min-w-0 max-w-full rounded-[1.55rem] border border-white/[0.06] bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.024))] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]";
 }
 
 function cardClass() {
-  return "rounded-[1.45rem] border border-white/[0.06] bg-[linear-gradient(180deg,rgba(255,255,255,0.038),rgba(255,255,255,0.02))] shadow-[0_18px_42px_rgba(2,6,23,0.22)]";
+  return "min-w-0 max-w-full rounded-[1.45rem] border border-white/[0.06] bg-[linear-gradient(180deg,rgba(255,255,255,0.038),rgba(255,255,255,0.02))] shadow-[0_18px_42px_rgba(2,6,23,0.22)]";
 }
 
 function CoinMark({ small = false }: { small?: boolean }) {
@@ -765,6 +795,7 @@ export default function BetsPage() {
   const [founderComposer, setFounderComposer] = useState<FounderComposerState | null>(null);
   const [savingFounderBonus, setSavingFounderBonus] = useState(false);
   const [founderBonusError, setFounderBonusError] = useState<string | null>(null);
+  const [broadcastVisible, setBroadcastVisible] = useState(true);
 
   const loadBoard = useCallback(async (quiet = false) => {
     try {
@@ -1454,9 +1485,63 @@ export default function BetsPage() {
 
   const viewerName = board?.viewerName || user?.inGameName || user?.steamPersonaName || "Your book";
   const pendingStakeRecoveries = readPendingStakeRecoveries();
+  const latestResult = recentResults[0] ?? null;
+  const broadcastSurface = useMemo(() => {
+    if (spotlightMarket) {
+      return {
+        key: `market-${spotlightMarket.id}`,
+        leftName: safePlayerName(spotlightMarket.left.name, "Player 1"),
+        rightName: safePlayerName(spotlightMarket.right.name, "Player 2"),
+        marketTitle: spotlightMarket.title,
+        eventLabel: spotlightMarket.eventLabel,
+        settled: false,
+        feeds: spotlightMarket.broadcastFeeds ?? EMPTY_BROADCAST_FEEDS,
+      };
+    }
+
+    if (latestResult) {
+      const resultPlayers = splitMatchTitle(latestResult.title);
+
+      return {
+        key: `result-${latestResult.id}`,
+        leftName: resultPlayers.leftName,
+        rightName: resultPlayers.rightName,
+        marketTitle: latestResult.title,
+        eventLabel: latestResult.eventLabel,
+        settled: true,
+        feeds: latestResult.broadcastFeeds ?? EMPTY_BROADCAST_FEEDS,
+      };
+    }
+
+    return {
+      key: "broadcast-empty",
+      leftName: "Player 1",
+      rightName: "Player 2",
+      marketTitle: "Broadcast arming",
+      eventLabel: "Waiting for the next book",
+      settled: false,
+      feeds: EMPTY_BROADCAST_FEEDS,
+    };
+  }, [latestResult, spotlightMarket]);
+
+  useEffect(() => {
+    setBroadcastVisible(true);
+  }, [broadcastSurface.key]);
 
   return (
     <main className="space-y-5 overflow-x-hidden py-4 text-white sm:space-y-6 sm:py-5">
+      <BroadcastHeroTile
+        key={broadcastSurface.key}
+        leftName={broadcastSurface.leftName}
+        rightName={broadcastSurface.rightName}
+        marketTitle={broadcastSurface.marketTitle}
+        eventLabel={broadcastSurface.eventLabel}
+        settled={broadcastSurface.settled}
+        feeds={broadcastSurface.feeds}
+        visible={broadcastVisible}
+        onToggle={() => setBroadcastVisible((current) => !current)}
+      />
+
       {betsView === "basic" ? (
         <>
           <section className="grid gap-5 xl:grid-cols-[0.84fr_1.16fr]">
@@ -1484,7 +1569,7 @@ export default function BetsPage() {
                 </h1>
               </div>
 
-              <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              <div className="mt-5 grid grid-cols-2 gap-2 sm:mt-6 sm:gap-3">
                 <MiniMetric label="Open" value={String(openCount)} />
                 <MiniMetric label="In Play" value={String(liveCount)} />
                 <MiniMetric label="Book Pot" value={`${formatExactWolo(totalBookPot || 0)} WOLO`} />
@@ -1494,15 +1579,15 @@ export default function BetsPage() {
                 />
               </div>
 
-              <div className={`mt-5 ${insetClass()} px-4 py-4`}>
+              <div className={`mt-4 ${insetClass()} px-3 py-3 sm:mt-5 sm:px-4 sm:py-4`}>
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <div className="text-[11px] uppercase tracking-[0.32em] text-slate-500">Your Book</div>
-                    <div className="mt-2 text-lg font-semibold text-white">{viewerName}</div>
+                    <div className="mt-2 text-base font-semibold text-white sm:text-lg">{viewerName}</div>
                   </div>
                   <div className="text-right">
                     <div className="text-[11px] uppercase tracking-[0.28em] text-slate-500">If Right</div>
-                    <div className="mt-2 text-lg font-semibold text-white">
+                    <div className="mt-2 text-base font-semibold text-white sm:text-lg">
                       {isAuthenticated
                         ? `${formatCompact(board?.yourBook.projectedReturnWolo || 0)} WOLO`
                         : "Open"}
@@ -1682,7 +1767,7 @@ export default function BetsPage() {
                 </h1>
               </div>
 
-              <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              <div className="mt-5 grid grid-cols-2 gap-2 sm:mt-6 sm:gap-3">
                 <MiniMetric label="Open" value={String(openCount)} />
                 <MiniMetric label="In Play" value={String(liveCount)} />
                 <MiniMetric label="Book Pot" value={`${formatExactWolo(totalBookPot || 0)} WOLO`} />
@@ -1692,15 +1777,15 @@ export default function BetsPage() {
                 />
               </div>
 
-              <div className={`mt-5 ${insetClass()} px-4 py-4`}>
+              <div className={`mt-4 ${insetClass()} px-3 py-3 sm:mt-5 sm:px-4 sm:py-4`}>
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <div className="text-[11px] uppercase tracking-[0.32em] text-slate-500">Your Book</div>
-                    <div className="mt-2 text-lg font-semibold text-white">{viewerName}</div>
+                    <div className="mt-2 text-base font-semibold text-white sm:text-lg">{viewerName}</div>
                   </div>
                   <div className="text-right">
                     <div className="text-[11px] uppercase tracking-[0.28em] text-slate-500">If Right</div>
-                    <div className="mt-2 text-lg font-semibold text-white">
+                    <div className="mt-2 text-base font-semibold text-white sm:text-lg">
                       {isAuthenticated
                         ? `${formatCompact(board?.yourBook.projectedReturnWolo || 0)} WOLO`
                         : "Open"}
@@ -2116,42 +2201,17 @@ function HeatSection({ board }: { board: BetBoardSnapshot | null }) {
 }
 
 function RecentResultFeature({ result }: { result: BetSettledResult }) {
-  const [videoVisible, setVideoVisible] = useState(true);
-  const resultPlayers = splitMatchTitle(result.title);
-
-  useEffect(() => {
-    setVideoVisible(true);
-  }, [result.id]);
-
   return (
     <div>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="text-[11px] uppercase tracking-[0.35em] text-slate-500">Latest Closed Book</div>
-          <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl">
-            {result.title}
-          </h2>
-          <div className="mt-2 text-sm text-slate-400">
-            {result.winner} took {result.mapName} · {formatSettledTime(result.settledAt)}
-          </div>
+      <div className="min-w-0">
+        <div className="text-[11px] uppercase tracking-[0.35em] text-slate-500">Latest Closed Book</div>
+        <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl">
+          {result.title}
+        </h2>
+        <div className="mt-2 text-sm text-slate-400">
+          {result.winner} took {result.mapName} · {formatSettledTime(result.settledAt)}
         </div>
-
-        <VideoVisibilityButton
-          visible={videoVisible}
-          onToggle={() => setVideoVisible((current) => !current)}
-        />
       </div>
-
-      {videoVisible ? (
-        <MarketVideoTile
-          key={result.id}
-          leftName={resultPlayers.leftName}
-          rightName={resultPlayers.rightName}
-          marketTitle={result.title}
-          eventLabel={result.eventLabel}
-          settled
-        />
-      ) : null}
 
       <div className="mt-5">
         <ResultCard result={result} basicLook founderChipVariant="micro" />
@@ -2160,7 +2220,7 @@ function RecentResultFeature({ result }: { result: BetSettledResult }) {
   );
 }
 
-function VideoVisibilityButton({
+function BroadcastVisibilityButton({
   visible,
   onToggle,
 }: {
@@ -2173,35 +2233,75 @@ function VideoVisibilityButton({
     <button
       type="button"
       aria-pressed={visible}
-      aria-label={visible ? "Hide video tile" : "Show video tile"}
-      title={visible ? "Hide video tile" : "Show video tile"}
+      aria-label={visible ? "Hide Broadcast" : "Show Broadcast"}
+      title={visible ? "Hide Broadcast" : "Show Broadcast"}
       onClick={onToggle}
-      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition ${
+      className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition ${
         visible
-          ? "border-amber-200/24 bg-amber-300/12 text-amber-100 shadow-[0_0_24px_rgba(251,191,36,0.08)] hover:bg-amber-300/18"
-          : "border-white/[0.08] bg-white/[0.04] text-slate-300 hover:border-white/14 hover:bg-white/[0.08]"
+          ? "bg-amber-300/12 text-amber-100 shadow-[0_0_24px_rgba(251,191,36,0.08)] hover:bg-amber-300/18"
+          : "bg-white/[0.04] text-slate-300 hover:bg-white/[0.08]"
       }`}
     >
-      <Icon className="h-4 w-4" aria-hidden="true" />
-      <span className="hidden sm:inline">{visible ? "Video on" : "Video off"}</span>
+      <Icon className="h-5 w-5" aria-hidden="true" />
     </button>
   );
 }
 
-function MarketVideoTile({
+function providerLabel(feed: BroadcastFeed | null | undefined) {
+  if (!feed) return "Placeholder";
+  if (feed.provider === "twitch") return "Twitch";
+  if (feed.provider === "youtube") return "YouTube";
+  if (feed.provider === "steam") return "Steam";
+  if (feed.provider === "discord") return "Discord";
+  return "External";
+}
+
+function buildBroadcastEmbedSrc(
+  feed: BroadcastFeed | null | undefined,
+  browserHost: string,
+  compact = false
+) {
+  if (!feed?.embedId || !feed.canEmbed) {
+    return null;
+  }
+
+  if (feed.provider === "twitch") {
+    const parent = encodeURIComponent(browserHost || "aoe2hdbets.com");
+    return `https://player.twitch.tv/?channel=${encodeURIComponent(
+      feed.embedId
+    )}&parent=${parent}&autoplay=false&muted=${compact ? "true" : "false"}`;
+  }
+
+  if (feed.provider === "youtube") {
+    return `https://www.youtube.com/embed/${encodeURIComponent(
+      feed.embedId
+    )}?rel=0&modestbranding=1`;
+  }
+
+  return null;
+}
+
+function BroadcastHeroTile({
   leftName,
   rightName,
   marketTitle,
   eventLabel,
   settled = false,
+  feeds,
+  visible,
+  onToggle,
 }: {
   leftName: string;
   rightName: string;
   marketTitle: string;
   eventLabel: string;
   settled?: boolean;
+  feeds: BroadcastFeeds;
+  visible: boolean;
+  onToggle: () => void;
 }) {
-  const [selectedView, setSelectedView] = useState<VideoViewKey>("god");
+  const [selectedView, setSelectedView] = useState<BroadcastViewKey>("god");
+  const [browserHost, setBrowserHost] = useState("aoe2hdbets.com");
   const views = useMemo(
     () =>
       [
@@ -2210,23 +2310,30 @@ function MarketVideoTile({
           label: safePlayerName(leftName, "Player 1"),
           eyebrow: "Player cam",
           tone: "warm" as const,
+          feed: feeds.left,
         },
         {
           key: "god" as const,
           label: "God View",
           eyebrow: "Observer",
           tone: "gold" as const,
+          feed: feeds.god,
         },
         {
           key: "right" as const,
           label: safePlayerName(rightName, "Player 2"),
           eyebrow: "Player cam",
           tone: "cool" as const,
+          feed: feeds.right,
         },
       ],
-    [leftName, rightName]
+    [feeds, leftName, rightName]
   );
   const activeView = views.find((view) => view.key === selectedView) || views[1];
+
+  useEffect(() => {
+    setBrowserHost(window.location.hostname || "aoe2hdbets.com");
+  }, []);
 
   useEffect(() => {
     setSelectedView("god");
@@ -2234,57 +2341,83 @@ function MarketVideoTile({
 
   return (
     <section
-      data-testid="market-video-tile"
-      className={`${insetClass()} mt-5 overflow-hidden border-amber-200/10 bg-[radial-gradient(circle_at_20%_0%,rgba(251,191,36,0.12),transparent_28%),radial-gradient(circle_at_82%_12%,rgba(56,189,248,0.10),transparent_26%),linear-gradient(180deg,rgba(15,23,42,0.74),rgba(2,6,23,0.36))] p-4`}
+      data-testid="broadcast-hero-tile"
+      className={`${shellClass()} overflow-hidden border-amber-200/10 bg-[radial-gradient(circle_at_14%_0%,rgba(251,191,36,0.14),transparent_30%),radial-gradient(circle_at_86%_14%,rgba(56,189,248,0.11),transparent_30%),linear-gradient(180deg,rgba(15,23,42,0.82),rgba(2,6,23,0.48))] p-4 sm:p-5 lg:p-6`}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-[11px] uppercase tracking-[0.3em] text-amber-100/60">
-            Video tile
+          <div className="text-[11px] uppercase tracking-[0.32em] text-amber-100/70">
+            Broadcast
           </div>
-          <div className="mt-1 truncate text-lg font-semibold text-white">{activeView.label}</div>
-          <div className="mt-1 text-xs text-slate-400">
-            {settled ? "Replay camera placeholder" : "Live camera placeholder"} · {eventLabel}
+          <h2 className="mt-2 truncate text-2xl font-semibold tracking-[-0.04em] text-white sm:text-3xl lg:text-4xl">
+            {activeView.label}
+          </h2>
+          <div className="mt-2 text-sm text-slate-400">
+            {activeView.feed
+              ? `${providerLabel(activeView.feed)} feed`
+              : settled
+                ? "Replay camera placeholder"
+                : "Live camera placeholder"} · {eventLabel}
           </div>
         </div>
-        <span className="max-w-full truncate rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-slate-300 sm:max-w-[18rem]">
-          {marketTitle}
-        </span>
+
+        <div className="flex min-w-0 items-start gap-2">
+          <span className="max-w-[14rem] truncate rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-slate-300 sm:max-w-[22rem]">
+            {marketTitle}
+          </span>
+          <BroadcastVisibilityButton visible={visible} onToggle={onToggle} />
+        </div>
       </div>
 
-      <div className="mt-4 grid gap-3 md:grid-cols-3">
-        {views.map((view) => (
-          <VideoPreviewButton
-            key={view.key}
-            label={view.label}
-            eyebrow={view.eyebrow}
-            tone={view.tone}
-            selected={selectedView === view.key}
-            onSelect={() => setSelectedView(view.key)}
+      {visible ? (
+        <>
+          <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
+            {views.map((view) => (
+              <BroadcastPreviewButton
+                key={view.key}
+                label={view.label}
+                eyebrow={view.eyebrow}
+                tone={view.tone}
+                feed={view.feed}
+                browserHost={browserHost}
+                selected={selectedView === view.key}
+                onSelect={() => setSelectedView(view.key)}
+              />
+            ))}
+          </div>
+
+          <BroadcastPlaceholderFrame
+            label={activeView.label}
+            eyebrow={activeView.eyebrow}
+            tone={activeView.tone}
+            feed={activeView.feed}
+            browserHost={browserHost}
+            marketTitle={marketTitle}
           />
-        ))}
-      </div>
-
-      <VideoPlaceholderFrame
-        label={activeView.label}
-        eyebrow={activeView.eyebrow}
-        tone={activeView.tone}
-        marketTitle={marketTitle}
-      />
+        </>
+      ) : (
+        <div className={`${insetClass()} mt-4 px-4 py-5 text-sm text-slate-300`}>
+          Broadcast hidden.
+        </div>
+      )}
     </section>
   );
 }
 
-function VideoPreviewButton({
+function BroadcastPreviewButton({
   label,
   eyebrow,
   tone,
+  feed,
+  browserHost,
   selected,
   onSelect,
 }: {
   label: string;
   eyebrow: string;
   tone: "warm" | "gold" | "cool";
+  feed: BroadcastFeed | null;
+  browserHost: string;
   selected: boolean;
   onSelect: () => void;
 }) {
@@ -2293,60 +2426,90 @@ function VideoPreviewButton({
       type="button"
       aria-pressed={selected}
       onClick={onSelect}
-      className={`group overflow-hidden rounded-[1.2rem] border p-2 text-left transition ${
+      className={`group min-w-0 overflow-hidden rounded-[1.05rem] border p-1.5 text-left transition sm:rounded-[1.2rem] sm:p-2 ${
         selected
           ? "border-amber-100/45 bg-amber-300/10 shadow-[0_0_30px_rgba(251,191,36,0.10)]"
           : "border-white/[0.06] bg-white/[0.035] hover:border-white/14 hover:bg-white/[0.055]"
       }`}
     >
-      <div className="aspect-video overflow-hidden rounded-[0.95rem] border border-white/[0.06] bg-slate-950/80">
-        <VideoSignalSurface tone={tone} compact />
+      <div className="aspect-video overflow-hidden rounded-[0.85rem] border border-white/[0.06] bg-slate-950/80 sm:rounded-[0.95rem]">
+        <BroadcastSignalSurface
+          tone={tone}
+          feed={feed}
+          browserHost={browserHost}
+          compact
+        />
       </div>
       <div className="mt-2 min-w-0">
-        <div className="text-[10px] uppercase tracking-[0.22em] text-slate-500">{eyebrow}</div>
-        <div className="mt-1 truncate text-sm font-semibold text-white">{label}</div>
+        <div className="truncate text-[9px] uppercase tracking-[0.18em] text-slate-500 sm:text-[10px] sm:tracking-[0.22em]">
+          {feed ? providerLabel(feed) : eyebrow}
+        </div>
+        <div className="mt-1 truncate text-xs font-semibold text-white sm:text-sm">{label}</div>
       </div>
     </button>
   );
 }
 
-function VideoPlaceholderFrame({
+function BroadcastPlaceholderFrame({
   label,
   eyebrow,
   tone,
+  feed,
+  browserHost,
   marketTitle,
 }: {
   label: string;
   eyebrow: string;
   tone: "warm" | "gold" | "cool";
+  feed: BroadcastFeed | null;
+  browserHost: string;
   marketTitle: string;
 }) {
   return (
-    <div className="mt-4 overflow-hidden rounded-[1.45rem] border border-white/[0.08] bg-slate-950/78 p-3">
-      <div className="aspect-video min-h-[15rem] overflow-hidden rounded-[1.2rem] border border-white/[0.06] bg-black/55">
-        <VideoSignalSurface tone={tone} />
+    <div className="mt-4 overflow-hidden rounded-[1.45rem] border border-white/[0.08] bg-slate-950/78 p-2.5 sm:p-3">
+      <div className="aspect-video min-h-[12rem] overflow-hidden rounded-[1.2rem] border border-white/[0.06] bg-black/55 sm:min-h-[15rem]">
+        <BroadcastSignalSurface tone={tone} feed={feed} browserHost={browserHost} />
       </div>
       <div className="mt-3 flex flex-wrap items-center justify-between gap-3 px-1">
         <div className="min-w-0">
-          <div className="text-[11px] uppercase tracking-[0.26em] text-slate-500">{eyebrow}</div>
-          <div className="mt-1 truncate text-xl font-semibold text-white">{label}</div>
+          <div className="text-[11px] uppercase tracking-[0.26em] text-slate-500">
+            {feed ? providerLabel(feed) : eyebrow}
+          </div>
+          <div className="mt-1 truncate text-lg font-semibold text-white sm:text-xl">{label}</div>
         </div>
-        <div className="min-w-0 max-w-full flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-xs text-slate-300 sm:max-w-[24rem]">
-          <Play className="h-3.5 w-3.5 text-amber-100" aria-hidden="true" />
-          <span className="truncate">Placeholder feed · {marketTitle}</span>
-        </div>
+        {feed ? (
+          <a
+            href={feed.url}
+            target="_blank"
+            rel="noreferrer"
+            className="min-w-0 max-w-full overflow-hidden flex items-center gap-2 rounded-full border border-emerald-200/12 bg-emerald-400/10 px-3 py-1.5 text-xs text-emerald-100 transition hover:bg-emerald-400/16 sm:max-w-[24rem]"
+          >
+            <Play className="h-3.5 w-3.5 text-emerald-100" aria-hidden="true" />
+            <span className="truncate">{providerLabel(feed)} feed · {feed.label}</span>
+          </a>
+        ) : (
+          <div className="min-w-0 max-w-full overflow-hidden flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-xs text-slate-300 sm:max-w-[24rem]">
+            <Play className="h-3.5 w-3.5 text-amber-100" aria-hidden="true" />
+            <span className="truncate">Placeholder feed · {marketTitle}</span>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-function VideoSignalSurface({
+function BroadcastSignalSurface({
   tone,
+  feed,
+  browserHost,
   compact = false,
 }: {
   tone: "warm" | "gold" | "cool";
+  feed?: BroadcastFeed | null;
+  browserHost?: string;
   compact?: boolean;
 }) {
+  const embedSrc = buildBroadcastEmbedSrc(feed, browserHost || "aoe2hdbets.com", compact);
   const glowClassName =
     tone === "warm"
       ? "from-amber-300/24 via-orange-500/12 to-transparent"
@@ -2356,19 +2519,42 @@ function VideoSignalSurface({
 
   return (
     <div className="relative flex h-full min-h-full items-center justify-center overflow-hidden">
+      {embedSrc ? (
+        <iframe
+          src={embedSrc}
+          title={feed?.label || "Broadcast feed"}
+          className={`absolute inset-0 h-full w-full ${compact ? "pointer-events-none" : ""}`}
+          allow="autoplay; fullscreen; picture-in-picture"
+          allowFullScreen
+        />
+      ) : null}
       <div className="absolute inset-0 bg-[linear-gradient(115deg,rgba(255,255,255,0.055),transparent_36%,rgba(255,255,255,0.035))]" />
       <div className={`absolute inset-x-[-15%] top-[-30%] h-[76%] rounded-full bg-gradient-to-b ${glowClassName} blur-3xl`} />
       <div className="absolute inset-0 bg-[repeating-linear-gradient(0deg,rgba(255,255,255,0.035)_0px,rgba(255,255,255,0.035)_1px,transparent_1px,transparent_12px)] opacity-50" />
-      <div className="absolute left-4 top-4 flex items-center gap-2">
+      <div className="absolute left-3 top-3 flex items-center gap-2 sm:left-4 sm:top-4">
         <span className="relative flex h-2 w-2">
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-30" />
           <span className="relative inline-flex h-2 w-2 rounded-full bg-red-400" />
         </span>
-        <span className="text-[10px] uppercase tracking-[0.22em] text-white/52">
-          {compact ? "Preview" : "No stream wired"}
-        </span>
+        {compact ? null : (
+          <span className="text-[9px] uppercase tracking-[0.18em] text-white/52 sm:text-[10px] sm:tracking-[0.22em]">
+            {feed ? `${providerLabel(feed)} feed` : "No stream wired"}
+          </span>
+        )}
       </div>
-      <Monitor className={`${compact ? "h-8 w-8" : "h-14 w-14"} text-white/22`} aria-hidden="true" />
+      {!embedSrc ? (
+        <div className="relative z-10 flex flex-col items-center gap-3 text-white/70">
+          <Monitor
+            className={`${compact ? "h-7 w-7 sm:h-8 sm:w-8" : "h-14 w-14"} text-white/70`}
+            aria-hidden="true"
+          />
+          {feed && !compact ? (
+            <div className="rounded-full border border-white/10 bg-black/30 px-3 py-1 text-xs text-white/70">
+              External feed saved
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -2544,13 +2730,6 @@ function MarketFeature({
       : market.viewerWager
         ? "Add More"
         : "Lock";
-  const [videoVisible, setVideoVisible] = useState(true);
-  const leftVideoName = safePlayerName(market.left.name, "Player 1");
-  const rightVideoName = safePlayerName(market.right.name, "Player 2");
-
-  useEffect(() => {
-    setVideoVisible(true);
-  }, [market.id]);
 
   return (
     <div className="relative">
@@ -2577,10 +2756,6 @@ function MarketFeature({
           <MarketTimingRail market={market} nowMs={nowMs} />
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
-          <VideoVisibilityButton
-            visible={videoVisible}
-            onToggle={() => setVideoVisible((current) => !current)}
-          />
           {market.href ? (
             <Link
               href={market.href}
@@ -2610,16 +2785,6 @@ function MarketFeature({
           <MarketStatusPill market={market} />
         </div>
       </div>
-
-      {videoVisible ? (
-        <MarketVideoTile
-          key={market.id}
-          leftName={leftVideoName}
-          rightName={rightVideoName}
-          marketTitle={market.title}
-          eventLabel={market.eventLabel}
-        />
-      ) : null}
 
       <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_auto_1fr] lg:items-center">
         <SideChoice
@@ -2997,9 +3162,13 @@ function SideMiniChoice({
 
 function MiniMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className={`${cardClass()} px-4 py-4`}>
-      <div className="text-[11px] uppercase tracking-[0.28em] text-slate-500">{label}</div>
-      <div className="mt-2 text-2xl font-semibold tracking-tight text-white">{value}</div>
+    <div className={`${cardClass()} px-3 py-3 sm:px-4 sm:py-4`}>
+      <div className="text-[10px] uppercase tracking-[0.22em] text-slate-500 sm:text-[11px] sm:tracking-[0.28em]">
+        {label}
+      </div>
+      <div className="mt-2 text-lg font-semibold leading-tight tracking-tight text-white break-words sm:text-2xl">
+        {value}
+      </div>
     </div>
   );
 }
