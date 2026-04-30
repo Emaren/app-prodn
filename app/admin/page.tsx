@@ -40,6 +40,23 @@ type MatchDraft = {
   proof: LobbyTournamentMatchProof | null;
 };
 
+type BroadcastPreviewSlot = "left" | "god" | "right";
+
+type BroadcastPreviewUrls = Record<BroadcastPreviewSlot, string | null>;
+
+type BroadcastPreviewTarget = {
+  id: string;
+  kind: "market" | "result";
+  title: string;
+  eventLabel: string;
+  sessionKey: string;
+  playedAt: string | null;
+  leftName: string;
+  rightName: string;
+  previewUrls: BroadcastPreviewUrls;
+  feedSlots: Record<BroadcastPreviewSlot, boolean>;
+};
+
 function toFormState(tournament: LobbyTournament | null): FormState {
   const base = tournament ?? getFallbackTournament(false);
   return {
@@ -121,6 +138,14 @@ export default function AdminPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [bracketError, setBracketError] = useState<string | null>(null);
   const [bracketNotice, setBracketNotice] = useState<string | null>(null);
+  const [broadcastTargets, setBroadcastTargets] = useState<BroadcastPreviewTarget[]>([]);
+  const [broadcastTargetId, setBroadcastTargetId] = useState("");
+  const [broadcastSlot, setBroadcastSlot] = useState<BroadcastPreviewSlot>("god");
+  const [broadcastFile, setBroadcastFile] = useState<File | null>(null);
+  const [broadcastLoading, setBroadcastLoading] = useState(false);
+  const [broadcastUploading, setBroadcastUploading] = useState(false);
+  const [broadcastError, setBroadcastError] = useState<string | null>(null);
+  const [broadcastNotice, setBroadcastNotice] = useState<string | null>(null);
   const usedReplayIds = new Set(
     matches
       .map((match) => (match.sourceGameStatsId ? Number(match.sourceGameStatsId) : null))
@@ -204,6 +229,49 @@ export default function AdminPage() {
       active = false;
     };
   }, [isAdmin, isAuthenticated]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !isAdmin) {
+      return;
+    }
+
+    void refreshBroadcastTargets();
+  }, [isAdmin, isAuthenticated]);
+
+  async function refreshBroadcastTargets() {
+    try {
+      setBroadcastLoading(true);
+      setBroadcastError(null);
+      const response = await fetch("/api/admin/bets/broadcast-previews", {
+        cache: "no-store",
+      });
+      const payload = (await response.json().catch(() => ({}))) as
+        | { detail?: string; targets?: BroadcastPreviewTarget[] }
+        | Record<string, unknown>;
+
+      if (!response.ok) {
+        throw new Error(
+          typeof payload.detail === "string"
+            ? payload.detail
+            : "Could not load Broadcast targets."
+        );
+      }
+
+      const targets = Array.isArray(payload.targets)
+        ? (payload.targets as BroadcastPreviewTarget[])
+        : [];
+      setBroadcastTargets(targets);
+      setBroadcastTargetId((current) =>
+        targets.some((target) => target.id === current) ? current : targets[0]?.id ?? ""
+      );
+    } catch (loadError) {
+      setBroadcastError(
+        loadError instanceof Error ? loadError.message : "Could not load Broadcast targets."
+      );
+    } finally {
+      setBroadcastLoading(false);
+    }
+  }
 
   if (!isAuthenticated) {
     return (
@@ -417,6 +485,65 @@ export default function AdminPage() {
     }
   }
 
+  const selectedBroadcastTarget =
+    broadcastTargets.find((target) => target.id === broadcastTargetId) ||
+    broadcastTargets[0] ||
+    null;
+
+  async function handleBroadcastUpload(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!selectedBroadcastTarget) {
+      setBroadcastError("Choose a Broadcast target first.");
+      return;
+    }
+
+    if (!broadcastFile) {
+      setBroadcastError("Choose a downloaded MP4 loop first.");
+      return;
+    }
+
+    try {
+      setBroadcastUploading(true);
+      setBroadcastError(null);
+      setBroadcastNotice(null);
+
+      const formData = new FormData();
+      formData.set("sessionKey", selectedBroadcastTarget.sessionKey);
+      formData.set("slot", broadcastSlot);
+      formData.set("title", selectedBroadcastTarget.title);
+      formData.set("eventLabel", selectedBroadcastTarget.eventLabel);
+      formData.set("playedAt", selectedBroadcastTarget.playedAt || "");
+      formData.set("file", broadcastFile);
+
+      const response = await fetch("/api/admin/bets/broadcast-previews", {
+        method: "POST",
+        body: formData,
+      });
+      const payload = (await response.json().catch(() => ({}))) as
+        | { detail?: string }
+        | Record<string, unknown>;
+
+      if (!response.ok) {
+        throw new Error(
+          typeof payload.detail === "string"
+            ? payload.detail
+            : "Could not upload Broadcast loop."
+        );
+      }
+
+      setBroadcastFile(null);
+      setBroadcastNotice("Broadcast loop attached to the selected slot.");
+      await refreshBroadcastTargets();
+    } catch (uploadError) {
+      setBroadcastError(
+        uploadError instanceof Error ? uploadError.message : "Could not upload Broadcast loop."
+      );
+    } finally {
+      setBroadcastUploading(false);
+    }
+  }
+
   return (
     <div className="mx-auto max-w-6xl space-y-6 py-10 text-white">
       <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
@@ -551,6 +678,23 @@ export default function AdminPage() {
           </div>
         </div>
       </div>
+
+      <BroadcastPreviewUploadPanel
+        targets={broadcastTargets}
+        selectedTarget={selectedBroadcastTarget}
+        selectedTargetId={broadcastTargetId}
+        selectedSlot={broadcastSlot}
+        file={broadcastFile}
+        loading={broadcastLoading}
+        uploading={broadcastUploading}
+        error={broadcastError}
+        notice={broadcastNotice}
+        onTargetChange={setBroadcastTargetId}
+        onSlotChange={setBroadcastSlot}
+        onFileChange={setBroadcastFile}
+        onRefresh={() => void refreshBroadcastTargets()}
+        onSubmit={(event) => void handleBroadcastUpload(event)}
+      />
 
       <section className="rounded-[2rem] border border-white/10 bg-slate-950/70 p-8">
         <div className="flex flex-wrap items-start justify-between gap-4">
@@ -804,6 +948,228 @@ export default function AdminPage() {
       </section>
     </div>
   );
+}
+
+function BroadcastPreviewUploadPanel({
+  targets,
+  selectedTarget,
+  selectedTargetId,
+  selectedSlot,
+  file,
+  loading,
+  uploading,
+  error,
+  notice,
+  onTargetChange,
+  onSlotChange,
+  onFileChange,
+  onRefresh,
+  onSubmit,
+}: {
+  targets: BroadcastPreviewTarget[];
+  selectedTarget: BroadcastPreviewTarget | null;
+  selectedTargetId: string;
+  selectedSlot: BroadcastPreviewSlot;
+  file: File | null;
+  loading: boolean;
+  uploading: boolean;
+  error: string | null;
+  notice: string | null;
+  onTargetChange: (targetId: string) => void;
+  onSlotChange: (slot: BroadcastPreviewSlot) => void;
+  onFileChange: (file: File | null) => void;
+  onRefresh: () => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+}) {
+  const existingPreviewUrl = selectedTarget?.previewUrls[selectedSlot] ?? null;
+
+  return (
+    <section className="overflow-hidden rounded-[2rem] border border-amber-200/10 bg-[radial-gradient(circle_at_18%_0%,rgba(251,191,36,0.12),transparent_28%),radial-gradient(circle_at_82%_20%,rgba(56,189,248,0.12),transparent_30%),linear-gradient(180deg,rgba(15,23,42,0.78),rgba(2,6,23,0.72))] p-6 sm:p-8">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <div className="text-xs uppercase tracking-[0.35em] text-amber-100/60">Broadcast</div>
+          <h2 className="mt-2 text-2xl font-semibold text-white">Loop Thumbnail Control</h2>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
+            Upload the downloaded StreamYard MP4 loop against the exact game and slot. Targets include the game time and session key so repeat matchups stay separated.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={onRefresh}
+          disabled={loading}
+          className="rounded-full border border-white/15 px-5 py-3 text-sm text-white/85 transition hover:border-white/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {loading ? "Refreshing..." : "Refresh Targets"}
+        </button>
+      </div>
+
+      <form className="mt-6 grid gap-5 xl:grid-cols-[1fr_0.86fr]" onSubmit={onSubmit}>
+        <div className="space-y-4">
+          <Field label="Game / Session">
+            <select
+              value={selectedTargetId}
+              onChange={(event) => onTargetChange(event.target.value)}
+              disabled={loading || targets.length === 0}
+              className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-amber-300/50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {targets.length === 0 ? (
+                <option value="">No Broadcast-linked games found</option>
+              ) : (
+                targets.map((target) => (
+                  <option key={target.id} value={target.id}>
+                    {target.kind === "market" ? "Open" : "Closed"} · {target.title} ·{" "}
+                    {formatBroadcastTargetTime(target.playedAt)} · {target.sessionKey}
+                  </option>
+                ))
+              )}
+            </select>
+          </Field>
+
+          {selectedTarget ? (
+            <div className="rounded-[1.35rem] border border-white/8 bg-black/20 p-4">
+              <div className="grid gap-3 md:grid-cols-3">
+                {(["left", "god", "right"] as BroadcastPreviewSlot[]).map((slot) => {
+                  const isSelected = selectedSlot === slot;
+                  const slotName = getBroadcastSlotLabel(selectedTarget, slot);
+                  const hasPreview = Boolean(selectedTarget.previewUrls[slot]);
+                  const hasFeed = Boolean(selectedTarget.feedSlots[slot]);
+
+                  return (
+                    <button
+                      key={slot}
+                      type="button"
+                      onClick={() => onSlotChange(slot)}
+                      className={`rounded-[1.15rem] border px-4 py-3 text-left transition ${
+                        isSelected
+                          ? "border-amber-200/45 bg-amber-300/10 text-white"
+                          : "border-white/10 bg-white/[0.04] text-slate-200 hover:border-white/20"
+                      }`}
+                    >
+                      <div className="text-[10px] uppercase tracking-[0.28em] text-slate-500">
+                        {slot === "god" ? "Observer" : "Player cam"}
+                      </div>
+                      <div className="mt-1 truncate text-sm font-semibold">{slotName}</div>
+                      <div className="mt-3 flex flex-wrap gap-2 text-[10px] uppercase tracking-[0.18em]">
+                        <span className="rounded-full border border-white/10 bg-black/25 px-2 py-1 text-slate-300">
+                          {hasFeed ? "Feed wired" : "No feed"}
+                        </span>
+                        <span className="rounded-full border border-white/10 bg-black/25 px-2 py-1 text-slate-300">
+                          {hasPreview ? "Loop set" : "Loop empty"}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="mt-4 grid gap-3 text-xs uppercase tracking-[0.18em] text-slate-400 sm:grid-cols-2">
+                <div className="rounded-2xl border border-white/8 bg-slate-950/70 px-4 py-3">
+                  <div className="text-slate-500">Selected slot</div>
+                  <div className="mt-1 truncate font-semibold text-white">
+                    {getBroadcastSlotLabel(selectedTarget, selectedSlot)}
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-white/8 bg-slate-950/70 px-4 py-3">
+                  <div className="text-slate-500">Session key</div>
+                  <div className="mt-1 truncate font-semibold text-white">
+                    {selectedTarget.sessionKey}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-[1.35rem] border border-white/8 bg-black/20 p-4 text-sm text-slate-300">
+              Broadcast targets appear here after a market or result has a linked session key.
+            </div>
+          )}
+
+          <Field label="MP4 Loop">
+            <input
+              key={file ? file.name : "empty-broadcast-loop"}
+              type="file"
+              accept="video/mp4,.mp4"
+              onChange={(event) => onFileChange(event.target.files?.[0] ?? null)}
+              className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-white file:mr-4 file:rounded-full file:border-0 file:bg-amber-300 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-slate-950 focus:border-amber-300/50"
+            />
+          </Field>
+
+          {file ? (
+            <div className="rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3 text-sm text-slate-300">
+              Ready: <span className="font-semibold text-white">{file.name}</span>
+            </div>
+          ) : null}
+
+          {error ? (
+            <div className="rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+              {error}
+            </div>
+          ) : null}
+
+          {notice ? (
+            <div className="rounded-2xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+              {notice}
+            </div>
+          ) : null}
+
+          <button
+            type="submit"
+            disabled={uploading || !selectedTarget || !file}
+            className="rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {uploading ? "Uploading Loop..." : "Attach Loop To Broadcast Slot"}
+          </button>
+        </div>
+
+        <div className="overflow-hidden rounded-[1.5rem] border border-white/10 bg-black shadow-2xl">
+          <div className="relative aspect-video min-h-[14rem] overflow-hidden bg-[radial-gradient(circle_at_34%_28%,rgba(56,189,248,0.20),transparent_32%),radial-gradient(circle_at_72%_42%,rgba(251,191,36,0.13),transparent_30%),linear-gradient(135deg,rgba(15,23,42,0.98),rgba(2,6,23,0.99))]">
+            {existingPreviewUrl ? (
+              <video
+                key={existingPreviewUrl}
+                className="absolute inset-0 h-full w-full object-cover"
+                src={existingPreviewUrl}
+                muted
+                autoPlay
+                loop
+                playsInline
+                preload="metadata"
+              />
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="rounded-full border border-white/12 bg-white/10 px-7 py-2.5 text-[11px] font-black uppercase leading-none tracking-[0.34em] text-slate-200 shadow-[0_0_48px_rgba(125,211,252,0.18)] backdrop-blur-md">
+                  Preview pending
+                </div>
+              </div>
+            )}
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/78 via-black/12 to-black/20" />
+            <div className="pointer-events-none absolute bottom-4 left-4 right-4">
+              <div className="text-[10px] uppercase tracking-[0.28em] text-amber-100/65">
+                {selectedTarget ? selectedTarget.eventLabel : "Broadcast"}
+              </div>
+              <div className="mt-1 truncate text-lg font-semibold text-white">
+                {selectedTarget
+                  ? getBroadcastSlotLabel(selectedTarget, selectedSlot)
+                  : "No target selected"}
+              </div>
+            </div>
+          </div>
+        </div>
+      </form>
+    </section>
+  );
+}
+
+function getBroadcastSlotLabel(target: BroadcastPreviewTarget, slot: BroadcastPreviewSlot) {
+  if (slot === "left") return target.leftName || "Player 1";
+  if (slot === "right") return target.rightName || "Player 2";
+  return "God View";
+}
+
+function formatBroadcastTargetTime(value: string | null) {
+  if (!value) return "Time pending";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString();
 }
 
 function Field({ label, children }: { label: string; children: ReactNode }) {

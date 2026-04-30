@@ -53,6 +53,12 @@ export type BetBroadcastFeeds = {
   right: BetBroadcastFeed | null;
 };
 
+export type BetBroadcastPreviewUrls = {
+  left: string | null;
+  god: string | null;
+  right: string | null;
+};
+
 export type BetBoardSide = {
   key: BetSide;
   name: string;
@@ -81,6 +87,7 @@ export type BetBoardMarket = {
   founderBonuses: BetFounderChip[];
   warTape: BetWarTapeRow[];
   broadcastFeeds: BetBroadcastFeeds;
+  broadcastPreviewUrls: BetBroadcastPreviewUrls;
   viewerWager: {
     side: BetSide;
     amountWolo: number;
@@ -123,6 +130,7 @@ export type BetSettledResult = {
   href: string | null;
   linkedSessionKey: string | null;
   broadcastFeeds: BetBroadcastFeeds;
+  broadcastPreviewUrls: BetBroadcastPreviewUrls;
   founderBonuses: BetFounderChip[];
 };
 

@@ -59,7 +59,19 @@ type BroadcastFeeds = {
   right: BroadcastFeed | null;
 };
 
+type BroadcastPreviewUrls = {
+  left: string | null;
+  god: string | null;
+  right: string | null;
+};
+
 const EMPTY_BROADCAST_FEEDS: BroadcastFeeds = {
+  left: null,
+  god: null,
+  right: null,
+};
+
+const EMPTY_BROADCAST_PREVIEW_URLS: BroadcastPreviewUrls = {
   left: null,
   god: null,
   right: null,
@@ -93,6 +105,7 @@ type BetBoardMarket = {
   founderBonuses: BetFounderChip[];
   warTape: BetWarTapeRow[];
   broadcastFeeds: BroadcastFeeds;
+  broadcastPreviewUrls: BroadcastPreviewUrls;
   viewerWager: {
     side: BetSide;
     amountWolo: number;
@@ -157,6 +170,7 @@ type BetSettledResult = {
   href: string | null;
   linkedSessionKey: string | null;
   broadcastFeeds: BroadcastFeeds;
+  broadcastPreviewUrls: BroadcastPreviewUrls;
   founderBonuses: BetFounderChip[];
 };
 
@@ -1496,6 +1510,7 @@ export default function BetsPage() {
         eventLabel: spotlightMarket.eventLabel,
         settled: false,
         feeds: spotlightMarket.broadcastFeeds ?? EMPTY_BROADCAST_FEEDS,
+        previews: spotlightMarket.broadcastPreviewUrls ?? EMPTY_BROADCAST_PREVIEW_URLS,
       };
     }
 
@@ -1510,6 +1525,7 @@ export default function BetsPage() {
         eventLabel: latestResult.eventLabel,
         settled: true,
         feeds: latestResult.broadcastFeeds ?? EMPTY_BROADCAST_FEEDS,
+        previews: latestResult.broadcastPreviewUrls ?? EMPTY_BROADCAST_PREVIEW_URLS,
       };
     }
 
@@ -1521,6 +1537,7 @@ export default function BetsPage() {
       eventLabel: "Waiting for the next book",
       settled: false,
       feeds: EMPTY_BROADCAST_FEEDS,
+      previews: EMPTY_BROADCAST_PREVIEW_URLS,
     };
   }, [latestResult, spotlightMarket]);
 
@@ -1538,6 +1555,7 @@ export default function BetsPage() {
         eventLabel={broadcastSurface.eventLabel}
         settled={broadcastSurface.settled}
         feeds={broadcastSurface.feeds}
+        previews={broadcastSurface.previews}
         visible={broadcastVisible}
         onToggle={() => setBroadcastVisible((current) => !current)}
       />
@@ -2259,23 +2277,28 @@ function providerLabel(feed: BroadcastFeed | null | undefined) {
 function buildBroadcastEmbedSrc(
   feed: BroadcastFeed | null | undefined,
   browserHost: string,
-  compact = false
+  options: { compact?: boolean; autoplay?: boolean } = {}
 ) {
   if (!feed?.embedId || !feed.canEmbed) {
     return null;
   }
 
+  const compact = Boolean(options.compact);
+  const autoplay = Boolean(options.autoplay);
+
   if (feed.provider === "twitch") {
     const parent = encodeURIComponent(browserHost || "aoe2hdbets.com");
     return `https://player.twitch.tv/?channel=${encodeURIComponent(
       feed.embedId
-    )}&parent=${parent}&autoplay=false&muted=${compact ? "true" : "false"}`;
+    )}&parent=${parent}&autoplay=${autoplay ? "true" : "false"}&muted=${
+      compact ? "true" : autoplay ? "false" : "false"
+    }`;
   }
 
   if (feed.provider === "youtube") {
     return `https://www.youtube.com/embed/${encodeURIComponent(
       feed.embedId
-    )}?rel=0&modestbranding=1`;
+    )}?rel=0&modestbranding=1&autoplay=${autoplay ? "1" : "0"}`;
   }
 
   return null;
@@ -2288,6 +2311,7 @@ function BroadcastHeroTile({
   eventLabel,
   settled = false,
   feeds,
+  previews,
   visible,
   onToggle,
 }: {
@@ -2297,10 +2321,12 @@ function BroadcastHeroTile({
   eventLabel: string;
   settled?: boolean;
   feeds: BroadcastFeeds;
+  previews: BroadcastPreviewUrls;
   visible: boolean;
   onToggle: () => void;
 }) {
   const [selectedView, setSelectedView] = useState<BroadcastViewKey>("god");
+  const [playingView, setPlayingView] = useState<BroadcastViewKey | null>(null);
   const [browserHost, setBrowserHost] = useState("aoe2hdbets.com");
   const views = useMemo(
     () =>
@@ -2311,6 +2337,7 @@ function BroadcastHeroTile({
           eyebrow: "Player cam",
           tone: "warm" as const,
           feed: feeds.left,
+          previewUrl: previews.left,
         },
         {
           key: "god" as const,
@@ -2318,6 +2345,7 @@ function BroadcastHeroTile({
           eyebrow: "Observer",
           tone: "gold" as const,
           feed: feeds.god,
+          previewUrl: previews.god,
         },
         {
           key: "right" as const,
@@ -2325,9 +2353,10 @@ function BroadcastHeroTile({
           eyebrow: "Player cam",
           tone: "cool" as const,
           feed: feeds.right,
+          previewUrl: previews.right,
         },
       ],
-    [feeds, leftName, rightName]
+    [feeds, leftName, previews, rightName]
   );
   const activeView = views.find((view) => view.key === selectedView) || views[1];
 
@@ -2337,6 +2366,7 @@ function BroadcastHeroTile({
 
   useEffect(() => {
     setSelectedView("god");
+    setPlayingView(null);
   }, [marketTitle, leftName, rightName]);
 
   return (
@@ -2379,9 +2409,12 @@ function BroadcastHeroTile({
                 eyebrow={view.eyebrow}
                 tone={view.tone}
                 feed={view.feed}
-                browserHost={browserHost}
+                previewUrl={view.previewUrl}
                 selected={selectedView === view.key}
-                onSelect={() => setSelectedView(view.key)}
+                onSelect={() => {
+                  setSelectedView(view.key);
+                  setPlayingView(null);
+                }}
               />
             ))}
           </div>
@@ -2391,8 +2424,11 @@ function BroadcastHeroTile({
             eyebrow={activeView.eyebrow}
             tone={activeView.tone}
             feed={activeView.feed}
+            previewUrl={activeView.previewUrl}
             browserHost={browserHost}
             marketTitle={marketTitle}
+            isPlaying={playingView === activeView.key}
+            onPlay={() => setPlayingView(activeView.key)}
           />
         </>
       ) : (
@@ -2409,7 +2445,7 @@ function BroadcastPreviewButton({
   eyebrow,
   tone,
   feed,
-  browserHost,
+  previewUrl,
   selected,
   onSelect,
 }: {
@@ -2417,7 +2453,7 @@ function BroadcastPreviewButton({
   eyebrow: string;
   tone: "warm" | "gold" | "cool";
   feed: BroadcastFeed | null;
-  browserHost: string;
+  previewUrl: string | null;
   selected: boolean;
   onSelect: () => void;
 }) {
@@ -2436,7 +2472,7 @@ function BroadcastPreviewButton({
         <BroadcastSignalSurface
           tone={tone}
           feed={feed}
-          browserHost={browserHost}
+          previewUrl={previewUrl}
           compact
         />
       </div>
@@ -2455,20 +2491,33 @@ function BroadcastPlaceholderFrame({
   eyebrow,
   tone,
   feed,
+  previewUrl,
   browserHost,
   marketTitle,
+  isPlaying,
+  onPlay,
 }: {
   label: string;
   eyebrow: string;
   tone: "warm" | "gold" | "cool";
   feed: BroadcastFeed | null;
+  previewUrl: string | null;
   browserHost: string;
   marketTitle: string;
+  isPlaying: boolean;
+  onPlay: () => void;
 }) {
   return (
     <div className="mt-4 overflow-hidden rounded-[1.45rem] border border-white/[0.08] bg-slate-950/78 p-2.5 sm:p-3">
       <div className="aspect-video min-h-[12rem] overflow-hidden rounded-[1.2rem] border border-white/[0.06] bg-black/55 sm:min-h-[15rem]">
-        <BroadcastSignalSurface tone={tone} feed={feed} browserHost={browserHost} />
+        <BroadcastSignalSurface
+          tone={tone}
+          feed={feed}
+          previewUrl={previewUrl}
+          browserHost={browserHost}
+          isPlaying={isPlaying}
+          onPlay={onPlay}
+        />
       </div>
       <div className="mt-3 flex flex-wrap items-center justify-between gap-3 px-1">
         <div className="min-w-0">
@@ -2501,15 +2550,31 @@ function BroadcastPlaceholderFrame({
 function BroadcastSignalSurface({
   tone,
   feed,
+  previewUrl,
   browserHost,
   compact = false,
+  isPlaying = false,
+  onPlay,
 }: {
   tone: "warm" | "gold" | "cool";
   feed?: BroadcastFeed | null;
+  previewUrl?: string | null;
   browserHost?: string;
   compact?: boolean;
+  isPlaying?: boolean;
+  onPlay?: () => void;
 }) {
-  const embedSrc = buildBroadcastEmbedSrc(feed, browserHost || "aoe2hdbets.com", compact);
+  const [loopReady, setLoopReady] = useState(false);
+  const [loopFailed, setLoopFailed] = useState(false);
+  const embedSrc = isPlaying
+    ? buildBroadcastEmbedSrc(feed, browserHost || "aoe2hdbets.com", {
+        compact,
+        autoplay: true,
+      })
+    : null;
+  const hasLoop = Boolean(previewUrl) && !isPlaying && !loopFailed;
+  const hasEmbeddableFeed = Boolean(feed?.canEmbed && feed.embedId);
+  const hasExternalFeed = Boolean(feed && !hasEmbeddableFeed);
   const glowClassName =
     tone === "warm"
       ? "from-amber-300/24 via-orange-500/12 to-transparent"
@@ -2517,21 +2582,64 @@ function BroadcastSignalSurface({
         ? "from-sky-300/22 via-cyan-500/12 to-transparent"
         : "from-emerald-300/20 via-amber-300/12 to-transparent";
 
+  useEffect(() => {
+    setLoopReady(false);
+    setLoopFailed(false);
+  }, [previewUrl, isPlaying]);
+
   return (
-    <div className="relative flex h-full min-h-full items-center justify-center overflow-hidden">
+    <div className="relative isolate flex h-full min-h-full items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_34%_28%,rgba(56,189,248,0.18),transparent_32%),radial-gradient(circle_at_72%_42%,rgba(251,191,36,0.13),transparent_30%),linear-gradient(135deg,#020617,#050816_48%,#0f172a)]">
+      {hasLoop ? (
+        <video
+          key={previewUrl}
+          className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-500 ${
+            loopReady ? "opacity-100" : "opacity-0"
+          }`}
+          src={previewUrl || undefined}
+          muted
+          autoPlay
+          loop
+          playsInline
+          preload={compact ? "metadata" : "auto"}
+          onLoadedData={() => {
+            setLoopReady(true);
+            setLoopFailed(false);
+          }}
+          onCanPlay={() => {
+            setLoopReady(true);
+            setLoopFailed(false);
+          }}
+          onError={() => {
+            setLoopReady(false);
+            setLoopFailed(true);
+          }}
+        />
+      ) : null}
+
       {embedSrc ? (
         <iframe
           src={embedSrc}
           title={feed?.label || "Broadcast feed"}
-          className={`absolute inset-0 h-full w-full ${compact ? "pointer-events-none" : ""}`}
+          className={`absolute inset-0 z-20 h-full w-full border-0 ${
+            compact ? "pointer-events-none" : ""
+          }`}
           allow="autoplay; fullscreen; picture-in-picture"
           allowFullScreen
         />
       ) : null}
-      <div className="absolute inset-0 bg-[linear-gradient(115deg,rgba(255,255,255,0.055),transparent_36%,rgba(255,255,255,0.035))]" />
-      <div className={`absolute inset-x-[-15%] top-[-30%] h-[76%] rounded-full bg-gradient-to-b ${glowClassName} blur-3xl`} />
-      <div className="absolute inset-0 bg-[repeating-linear-gradient(0deg,rgba(255,255,255,0.035)_0px,rgba(255,255,255,0.035)_1px,transparent_1px,transparent_12px)] opacity-50" />
-      <div className="absolute left-3 top-3 flex items-center gap-2 sm:left-4 sm:top-4">
+
+      {!embedSrc ? (
+        <>
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(115deg,rgba(255,255,255,0.055),transparent_36%,rgba(255,255,255,0.035))]" />
+          <div
+            className={`pointer-events-none absolute inset-x-[-15%] top-[-30%] h-[76%] rounded-full bg-gradient-to-b ${glowClassName} blur-3xl`}
+          />
+          <div className="pointer-events-none absolute inset-0 bg-[repeating-linear-gradient(0deg,rgba(255,255,255,0.035)_0px,rgba(255,255,255,0.035)_1px,transparent_1px,transparent_12px)] opacity-50" />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/78 via-black/10 to-black/24" />
+        </>
+      ) : null}
+
+      <div className="pointer-events-none absolute left-3 top-3 z-30 flex items-center gap-2 sm:left-4 sm:top-4">
         <span className="relative flex h-2 w-2">
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-30" />
           <span className="relative inline-flex h-2 w-2 rounded-full bg-red-400" />
@@ -2542,13 +2650,37 @@ function BroadcastSignalSurface({
           </span>
         )}
       </div>
-      {!embedSrc ? (
+
+      {!embedSrc && !compact && hasEmbeddableFeed ? (
+        <button
+          type="button"
+          onClick={onPlay}
+          className="absolute left-1/2 top-1/2 z-40 flex h-20 w-20 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/25 bg-black/45 text-white shadow-2xl backdrop-blur-md transition duration-200 hover:scale-105 hover:bg-black/65 focus:outline-none focus:ring-2 focus:ring-sky-300"
+          aria-label={`Play ${feed?.label || "Broadcast feed"}`}
+        >
+          <span className="ml-1 block h-0 w-0 border-y-[16px] border-l-[25px] border-y-transparent border-l-white" />
+        </button>
+      ) : null}
+
+      {!embedSrc && !compact && hasExternalFeed ? (
+        <a
+          href={feed?.url}
+          target="_blank"
+          rel="noreferrer"
+          className="absolute left-1/2 top-1/2 z-40 flex h-20 w-20 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/25 bg-black/45 text-white shadow-2xl backdrop-blur-md transition duration-200 hover:scale-105 hover:bg-black/65 focus:outline-none focus:ring-2 focus:ring-sky-300"
+          aria-label={`Open ${feed?.label || "Broadcast feed"}`}
+        >
+          <span className="ml-1 block h-0 w-0 border-y-[16px] border-l-[25px] border-y-transparent border-l-white" />
+        </a>
+      ) : null}
+
+      {!embedSrc && (!hasLoop || !loopReady) ? (
         <div className="relative z-10 flex flex-col items-center gap-3 text-white/70">
           <Monitor
             className={`${compact ? "h-7 w-7 sm:h-8 sm:w-8" : "h-14 w-14"} text-white/70`}
             aria-hidden="true"
           />
-          {feed && !compact ? (
+          {feed && !compact && !hasEmbeddableFeed ? (
             <div className="rounded-full border border-white/10 bg-black/30 px-3 py-1 text-xs text-white/70">
               External feed saved
             </div>

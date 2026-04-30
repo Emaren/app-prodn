@@ -36,6 +36,12 @@ import {
   toWatchStreamPayload,
   type WatchStreamPayload,
 } from "@/lib/watchStreams";
+import {
+  buildBetBroadcastPreviewUrls,
+  EMPTY_BET_BROADCAST_PREVIEW_URLS,
+  loadBetBroadcastPreviewMap,
+  type BetBroadcastPreviewUrls,
+} from "@/lib/betBroadcastPreviews";
 
 export type BetSide = "left" | "right";
 export type BetStatus = "open" | "closing" | "live" | "settled";
@@ -103,6 +109,7 @@ export type BetBoardMarket = {
   founderBonuses: BetFounderChip[];
   warTape: BetWarTapeRow[];
   broadcastFeeds: BetBroadcastFeeds;
+  broadcastPreviewUrls: BetBroadcastPreviewUrls;
   viewerWager: {
     side: BetSide;
     amountWolo: number;
@@ -145,6 +152,7 @@ export type BetSettledResult = {
   href: string | null;
   linkedSessionKey: string | null;
   broadcastFeeds: BetBroadcastFeeds;
+  broadcastPreviewUrls: BetBroadcastPreviewUrls;
   founderBonuses: BetFounderChip[];
 };
 
@@ -2058,6 +2066,7 @@ function buildMarketCard(
     founderBonuses,
     warTape,
     broadcastFeeds: EMPTY_BROADCAST_FEEDS,
+    broadcastPreviewUrls: { ...EMPTY_BET_BROADCAST_PREVIEW_URLS },
     viewerWager: latestViewerWager
       ? {
           side: latestViewerWager.side as BetSide,
@@ -2223,6 +2232,7 @@ async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettle
         href,
         linkedSessionKey,
         broadcastFeeds: EMPTY_BROADCAST_FEEDS,
+        broadcastPreviewUrls: { ...EMPTY_BET_BROADCAST_PREVIEW_URLS },
         founderBonuses: market.founderBonuses.map((bonus) => ({
           id: bonus.id,
           bonusType: bonus.bonusType === "winner" ? "winner" : "participants",
@@ -2280,6 +2290,7 @@ async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettle
       href: null,
       linkedSessionKey: (row.original_filename || row.replay_file || "").trim() || null,
       broadcastFeeds: EMPTY_BROADCAST_FEEDS,
+      broadcastPreviewUrls: { ...EMPTY_BET_BROADCAST_PREVIEW_URLS },
       founderBonuses: [],
     };
   });
@@ -2490,7 +2501,10 @@ export async function loadBetBoardSnapshot(
     ...openMarketsWithoutFeeds.map((market) => market.linkedSessionKey),
     ...settledResultsRaw.map((result) => result.linkedSessionKey),
   ].filter(Boolean) as string[];
-  const streamsBySession = await loadWatchStreamsBySession(prisma, broadcastSessionKeys);
+  const [streamsBySession, broadcastPreviewsByKey] = await Promise.all([
+    loadWatchStreamsBySession(prisma, broadcastSessionKeys),
+    loadBetBroadcastPreviewMap(),
+  ]);
   const openMarkets = openMarketsWithoutFeeds.map((market) => ({
     ...market,
     broadcastFeeds: buildBroadcastFeedsForMatch({
@@ -2500,6 +2514,10 @@ export async function loadBetBoardSnapshot(
       leftName: market.left.name,
       rightName: market.right.name,
     }),
+    broadcastPreviewUrls: buildBetBroadcastPreviewUrls(
+      market.linkedSessionKey,
+      broadcastPreviewsByKey
+    ),
   }));
   const settledResults = settledResultsRaw.map((result) => {
     const [leftName = "", rightName = ""] = result.title.split(/\s+vs\s+/i);
@@ -2513,6 +2531,10 @@ export async function loadBetBoardSnapshot(
         leftName,
         rightName,
       }),
+      broadcastPreviewUrls: buildBetBroadcastPreviewUrls(
+        result.linkedSessionKey,
+        broadcastPreviewsByKey
+      ),
     };
   });
   const featuredMarket = openMarkets.find((market) => market.featured) || openMarkets[0] || null;
