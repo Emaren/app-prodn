@@ -33,6 +33,7 @@ import {
   loadViewerBetStakeIntents,
 } from "@/lib/betStakeIntents";
 import {
+  normalizeWatchStreamInput,
   toWatchStreamPayload,
   type WatchStreamPayload,
 } from "@/lib/watchStreams";
@@ -2366,39 +2367,168 @@ function selectPlayerBroadcastFeed({
     return playerStreams[0];
   }
 
+  if (godFeed && streamMatchesPlayer(godFeed, playerName)) {
+    return godFeed;
+  }
+
   return null;
+}
+
+function stableProfileStreamId(parts: Array<string | null | undefined>) {
+  const input = parts.filter(Boolean).join("::");
+  let hash = 0;
+  for (let index = 0; index < input.length; index += 1) {
+    hash = (hash * 31 + input.charCodeAt(index)) >>> 0;
+  }
+  return -1 - (hash % 1_000_000_000);
+}
+
+function buildProfileBroadcastFeed({
+  sessionKey,
+  playerName,
+  url,
+  side,
+}: {
+  sessionKey: string | null | undefined;
+  playerName: string;
+  url: string | null | undefined;
+  side: BetSide;
+}): WatchStreamPayload | null {
+  if (!url) {
+    return null;
+  }
+
+  try {
+    const normalized = normalizeWatchStreamInput({
+      sessionKey: sessionKey || `profile-${side}-${normalizeBroadcastToken(playerName) || side}`,
+      url,
+      role: "player_pov",
+      label: `${playerName || (side === "left" ? "Player 1" : "Player 2")} POV`,
+      playerLabel: playerName,
+      isPrimary: false,
+    });
+    const timestamp = new Date(0).toISOString();
+
+    return {
+      id: stableProfileStreamId([normalized.sessionKey, side, playerName, normalized.url]),
+      ...normalized,
+      status: "profile",
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    };
+  } catch {
+    return null;
+  }
 }
 
 function buildBroadcastFeedsForMatch({
   streams,
   leftName,
   rightName,
+  sessionKey,
+  profileFeedUrls,
 }: {
   streams: WatchStreamPayload[] | undefined;
   leftName: string;
   rightName: string;
+  sessionKey?: string | null;
+  profileFeedUrls?: {
+    left?: string | null;
+    right?: string | null;
+  };
 }): BetBroadcastFeeds {
-  if (!streams?.length) {
-    return EMPTY_BROADCAST_FEEDS;
-  }
-
-  const god = selectGodBroadcastFeed(streams);
+  const availableStreams = streams ?? [];
+  const god = selectGodBroadcastFeed(availableStreams);
 
   return {
-    left: selectPlayerBroadcastFeed({
-      streams,
-      playerName: leftName,
-      side: "left",
-      godFeed: god,
-    }),
+    left:
+      selectPlayerBroadcastFeed({
+        streams: availableStreams,
+        playerName: leftName,
+        side: "left",
+        godFeed: god,
+      }) ||
+      buildProfileBroadcastFeed({
+        sessionKey,
+        playerName: leftName,
+        url: profileFeedUrls?.left,
+        side: "left",
+      }),
     god,
-    right: selectPlayerBroadcastFeed({
-      streams,
-      playerName: rightName,
-      side: "right",
-      godFeed: god,
-    }),
+    right:
+      selectPlayerBroadcastFeed({
+        streams: availableStreams,
+        playerName: rightName,
+        side: "right",
+        godFeed: god,
+      }) ||
+      buildProfileBroadcastFeed({
+        sessionKey,
+        playerName: rightName,
+        url: profileFeedUrls?.right,
+        side: "right",
+      }),
   };
+}
+
+function splitBetTitlePlayers(title: string) {
+  const [leftName = "", ...rightParts] = title.split(/\s+vs\s+/i);
+  return {
+    leftName: leftName.trim(),
+    rightName: rightParts.join(" vs ").trim(),
+  };
+}
+
+async function loadProfileTwitchStreamsByPlayerName(
+  prisma: PrismaClient,
+  playerNames: string[]
+) {
+  const requestedNames = new Set(
+    playerNames.map(normalizeBroadcastToken).filter(Boolean)
+  );
+
+  if (!requestedNames.size) {
+    return new Map<string, string>();
+  }
+
+  const rows = await prisma.user.findMany({
+    where: {
+      twitchStreamUrl: {
+        not: null,
+      },
+    },
+    select: {
+      uid: true,
+      inGameName: true,
+      steamPersonaName: true,
+      twitchStreamUrl: true,
+    },
+  });
+
+  const streamByName = new Map<string, string>();
+
+  for (const row of rows) {
+    if (!row.twitchStreamUrl) {
+      continue;
+    }
+
+    const aliases = [row.inGameName, row.steamPersonaName, row.uid]
+      .map(normalizeBroadcastToken)
+      .filter(Boolean);
+
+    for (const alias of aliases) {
+      if (requestedNames.has(alias)) {
+        streamByName.set(alias, row.twitchStreamUrl);
+      }
+    }
+  }
+
+  return streamByName;
+}
+
+function getProfileTwitchStreamUrl(streamByName: Map<string, string>, playerName: string) {
+  const key = normalizeBroadcastToken(playerName);
+  return key ? streamByName.get(key) ?? null : null;
 }
 
 async function loadWatchStreamsBySession(
@@ -2501,9 +2631,17 @@ export async function loadBetBoardSnapshot(
     ...openMarketsWithoutFeeds.map((market) => market.linkedSessionKey),
     ...settledResultsRaw.map((result) => result.linkedSessionKey),
   ].filter(Boolean) as string[];
-  const [streamsBySession, broadcastPreviewsByKey] = await Promise.all([
+  const broadcastPlayerNames = [
+    ...openMarketsWithoutFeeds.flatMap((market) => [market.left.name, market.right.name]),
+    ...settledResultsRaw.flatMap((result) => {
+      const players = splitBetTitlePlayers(result.title);
+      return [players.leftName, players.rightName];
+    }),
+  ];
+  const [streamsBySession, broadcastPreviewsByKey, profileTwitchStreamsByName] = await Promise.all([
     loadWatchStreamsBySession(prisma, broadcastSessionKeys),
     loadBetBroadcastPreviewMap(),
+    loadProfileTwitchStreamsByPlayerName(prisma, broadcastPlayerNames),
   ]);
   const openMarkets = openMarketsWithoutFeeds.map((market) => ({
     ...market,
@@ -2513,6 +2651,11 @@ export async function loadBetBoardSnapshot(
         : undefined,
       leftName: market.left.name,
       rightName: market.right.name,
+      sessionKey: market.linkedSessionKey,
+      profileFeedUrls: {
+        left: getProfileTwitchStreamUrl(profileTwitchStreamsByName, market.left.name),
+        right: getProfileTwitchStreamUrl(profileTwitchStreamsByName, market.right.name),
+      },
     }),
     broadcastPreviewUrls: buildBetBroadcastPreviewUrls(
       market.linkedSessionKey,
@@ -2520,7 +2663,7 @@ export async function loadBetBoardSnapshot(
     ),
   }));
   const settledResults = settledResultsRaw.map((result) => {
-    const [leftName = "", rightName = ""] = result.title.split(/\s+vs\s+/i);
+    const { leftName, rightName } = splitBetTitlePlayers(result.title);
 
     return {
       ...result,
@@ -2530,6 +2673,11 @@ export async function loadBetBoardSnapshot(
           : undefined,
         leftName,
         rightName,
+        sessionKey: result.linkedSessionKey,
+        profileFeedUrls: {
+          left: getProfileTwitchStreamUrl(profileTwitchStreamsByName, leftName),
+          right: getProfileTwitchStreamUrl(profileTwitchStreamsByName, rightName),
+        },
       }),
       broadcastPreviewUrls: buildBetBroadcastPreviewUrls(
         result.linkedSessionKey,

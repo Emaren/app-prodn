@@ -1,7 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { type FormEvent, type ReactNode, useEffect, useState } from "react";
+import {
+  type DragEvent,
+  type FormEvent,
+  type ReactNode,
+  useEffect,
+  useState,
+} from "react";
 import { useUserAuth } from "@/context/UserAuthContext";
 import {
   type AdminReplayCandidate,
@@ -490,15 +496,21 @@ export default function AdminPage() {
     broadcastTargets[0] ||
     null;
 
-  async function handleBroadcastUpload(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function uploadBroadcastLoop(input?: {
+    target?: BroadcastPreviewTarget | null;
+    slot?: BroadcastPreviewSlot;
+    file?: File | null;
+  }) {
+    const target = input?.target ?? selectedBroadcastTarget;
+    const slot = input?.slot ?? broadcastSlot;
+    const file = input?.file ?? broadcastFile;
 
-    if (!selectedBroadcastTarget) {
+    if (!target) {
       setBroadcastError("Choose a Broadcast target first.");
       return;
     }
 
-    if (!broadcastFile) {
+    if (!file) {
       setBroadcastError("Choose a downloaded MP4 loop first.");
       return;
     }
@@ -509,12 +521,12 @@ export default function AdminPage() {
       setBroadcastNotice(null);
 
       const formData = new FormData();
-      formData.set("sessionKey", selectedBroadcastTarget.sessionKey);
-      formData.set("slot", broadcastSlot);
-      formData.set("title", selectedBroadcastTarget.title);
-      formData.set("eventLabel", selectedBroadcastTarget.eventLabel);
-      formData.set("playedAt", selectedBroadcastTarget.playedAt || "");
-      formData.set("file", broadcastFile);
+      formData.set("sessionKey", target.sessionKey);
+      formData.set("slot", slot);
+      formData.set("title", target.title);
+      formData.set("eventLabel", target.eventLabel);
+      formData.set("playedAt", target.playedAt || "");
+      formData.set("file", file);
 
       const response = await fetch("/api/admin/bets/broadcast-previews", {
         method: "POST",
@@ -542,6 +554,17 @@ export default function AdminPage() {
     } finally {
       setBroadcastUploading(false);
     }
+  }
+
+  async function handleBroadcastUpload(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await uploadBroadcastLoop();
+  }
+
+  async function handleBroadcastDrop(slot: BroadcastPreviewSlot, file: File) {
+    setBroadcastSlot(slot);
+    setBroadcastFile(file);
+    await uploadBroadcastLoop({ slot, file });
   }
 
   return (
@@ -692,6 +715,7 @@ export default function AdminPage() {
         onTargetChange={setBroadcastTargetId}
         onSlotChange={setBroadcastSlot}
         onFileChange={setBroadcastFile}
+        onDropFile={(slot, droppedFile) => void handleBroadcastDrop(slot, droppedFile)}
         onRefresh={() => void refreshBroadcastTargets()}
         onSubmit={(event) => void handleBroadcastUpload(event)}
       />
@@ -963,6 +987,7 @@ function BroadcastPreviewUploadPanel({
   onTargetChange,
   onSlotChange,
   onFileChange,
+  onDropFile,
   onRefresh,
   onSubmit,
 }: {
@@ -978,10 +1003,22 @@ function BroadcastPreviewUploadPanel({
   onTargetChange: (targetId: string) => void;
   onSlotChange: (slot: BroadcastPreviewSlot) => void;
   onFileChange: (file: File | null) => void;
+  onDropFile: (slot: BroadcastPreviewSlot, file: File) => void;
   onRefresh: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
   const existingPreviewUrl = selectedTarget?.previewUrls[selectedSlot] ?? null;
+  const [dragTarget, setDragTarget] = useState<BroadcastPreviewSlot | "preview" | null>(null);
+
+  function handleSlotDrop(event: DragEvent<HTMLElement>, slot: BroadcastPreviewSlot) {
+    event.preventDefault();
+    setDragTarget(null);
+    const droppedFile = event.dataTransfer.files?.[0] ?? null;
+    if (!droppedFile) {
+      return;
+    }
+    onDropFile(slot, droppedFile);
+  }
 
   return (
     <section className="overflow-hidden rounded-[2rem] border border-amber-200/10 bg-[radial-gradient(circle_at_18%_0%,rgba(251,191,36,0.12),transparent_28%),radial-gradient(circle_at_82%_20%,rgba(56,189,248,0.12),transparent_30%),linear-gradient(180deg,rgba(15,23,42,0.78),rgba(2,6,23,0.72))] p-6 sm:p-8">
@@ -1040,9 +1077,22 @@ function BroadcastPreviewUploadPanel({
                       key={slot}
                       type="button"
                       onClick={() => onSlotChange(slot)}
+                      onDragEnter={(event) => {
+                        event.preventDefault();
+                        setDragTarget(slot);
+                      }}
+                      onDragOver={(event) => {
+                        event.preventDefault();
+                        event.dataTransfer.dropEffect = "copy";
+                        setDragTarget(slot);
+                      }}
+                      onDragLeave={() => setDragTarget((current) => (current === slot ? null : current))}
+                      onDrop={(event) => handleSlotDrop(event, slot)}
                       className={`rounded-[1.15rem] border px-4 py-3 text-left transition ${
                         isSelected
                           ? "border-amber-200/45 bg-amber-300/10 text-white"
+                          : dragTarget === slot
+                            ? "border-sky-200/50 bg-sky-300/10 text-white"
                           : "border-white/10 bg-white/[0.04] text-slate-200 hover:border-white/20"
                       }`}
                     >
@@ -1055,7 +1105,7 @@ function BroadcastPreviewUploadPanel({
                           {hasFeed ? "Feed wired" : "No feed"}
                         </span>
                         <span className="rounded-full border border-white/10 bg-black/25 px-2 py-1 text-slate-300">
-                          {hasPreview ? "Loop set" : "Loop empty"}
+                          {dragTarget === slot ? "Drop MP4" : hasPreview ? "Loop set" : "Loop empty"}
                         </span>
                       </div>
                     </button>
@@ -1121,7 +1171,22 @@ function BroadcastPreviewUploadPanel({
           </button>
         </div>
 
-        <div className="overflow-hidden rounded-[1.5rem] border border-white/10 bg-black shadow-2xl">
+        <div
+          onDragEnter={(event) => {
+            event.preventDefault();
+            setDragTarget("preview");
+          }}
+          onDragOver={(event) => {
+            event.preventDefault();
+            event.dataTransfer.dropEffect = "copy";
+            setDragTarget("preview");
+          }}
+          onDragLeave={() => setDragTarget((current) => (current === "preview" ? null : current))}
+          onDrop={(event) => handleSlotDrop(event, selectedSlot)}
+          className={`overflow-hidden rounded-[1.5rem] border bg-black shadow-2xl transition ${
+            dragTarget === "preview" ? "border-sky-200/55" : "border-white/10"
+          }`}
+        >
           <div className="relative aspect-video min-h-[14rem] overflow-hidden bg-[radial-gradient(circle_at_34%_28%,rgba(56,189,248,0.20),transparent_32%),radial-gradient(circle_at_72%_42%,rgba(251,191,36,0.13),transparent_30%),linear-gradient(135deg,rgba(15,23,42,0.98),rgba(2,6,23,0.99))]">
             {existingPreviewUrl ? (
               <video
@@ -1137,7 +1202,7 @@ function BroadcastPreviewUploadPanel({
             ) : (
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="rounded-full border border-white/12 bg-white/10 px-7 py-2.5 text-[11px] font-black uppercase leading-none tracking-[0.34em] text-slate-200 shadow-[0_0_48px_rgba(125,211,252,0.18)] backdrop-blur-md">
-                  Preview pending
+                  {dragTarget === "preview" ? "Drop MP4" : "Preview pending"}
                 </div>
               </div>
             )}

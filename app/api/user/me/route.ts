@@ -30,6 +30,45 @@ function normalizeWalletAddress(address: string) {
   return address.trim();
 }
 
+function normalizeTwitchStreamUrl(raw: unknown) {
+  if (raw === null || typeof raw === "undefined") {
+    return null;
+  }
+  if (typeof raw !== "string") {
+    throw new Error("Twitch stream URL must be text.");
+  }
+
+  const value = raw.trim();
+  if (!value) {
+    return null;
+  }
+
+  let url: URL;
+  try {
+    url = new URL(/^https?:\/\//i.test(value) ? value : `https://${value}`);
+  } catch {
+    throw new Error("Enter a valid Twitch stream URL.");
+  }
+
+  const host = url.hostname.replace(/^www\./, "").toLowerCase();
+  if (host !== "twitch.tv") {
+    throw new Error("Use a Twitch channel URL for Broadcast.");
+  }
+
+  const channel = url.pathname
+    .split("/")
+    .map((part) => part.trim())
+    .filter(Boolean)[0];
+  if (
+    !channel ||
+    ["directory", "videos", "p", "settings", "downloads"].includes(channel.toLowerCase())
+  ) {
+    throw new Error("Use a Twitch channel URL for Broadcast.");
+  }
+
+  return `https://www.twitch.tv/${channel.slice(0, 80)}`;
+}
+
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null;
 }
@@ -60,6 +99,7 @@ const USER_SELECT = {
   verified: true,
   lockName: true,
   walletAddress: true,
+  twitchStreamUrl: true,
   createdAt: true,
   lastSeen: true,
   isAdmin: true,
@@ -139,6 +179,25 @@ export async function POST(request: NextRequest) {
       : typeof body?.wallet_address === "string"
         ? normalizeWalletAddress(body.wallet_address)
         : null;
+  const hasTwitchUpdate =
+    Object.prototype.hasOwnProperty.call(body, "twitchStreamUrl") ||
+    Object.prototype.hasOwnProperty.call(body, "twitch_stream_url");
+  let incomingTwitchStreamUrl: string | null = null;
+
+  if (hasTwitchUpdate) {
+    try {
+      incomingTwitchStreamUrl = normalizeTwitchStreamUrl(
+        Object.prototype.hasOwnProperty.call(body, "twitchStreamUrl")
+          ? body.twitchStreamUrl
+          : body.twitch_stream_url
+      );
+    } catch (error) {
+      return NextResponse.json(
+        { detail: error instanceof Error ? error.message : "Invalid Twitch stream URL." },
+        { status: 400 }
+      );
+    }
+  }
 
   if (incomingWalletAddress) {
     const addressError = validateWoloAddress(incomingWalletAddress);
@@ -187,6 +246,9 @@ export async function POST(request: NextRequest) {
             // keep email as-is (already emailNorm)
             inGameName: nextName,
             walletAddress: incomingWalletAddress || byEmail.walletAddress,
+            twitchStreamUrl: hasTwitchUpdate
+              ? incomingTwitchStreamUrl
+              : byEmail.twitchStreamUrl,
           },
           select: USER_SELECT,
         });
@@ -203,6 +265,7 @@ export async function POST(request: NextRequest) {
           email: emailNorm,
           inGameName: incomingName ? normalizeInGameName(incomingName) : null,
           walletAddress: incomingWalletAddress,
+          twitchStreamUrl: hasTwitchUpdate ? incomingTwitchStreamUrl : null,
           isAdmin: false,
         },
         select: USER_SELECT,
@@ -223,6 +286,9 @@ export async function POST(request: NextRequest) {
             data: {
               uid,
               walletAddress: incomingWalletAddress || byEmail.walletAddress,
+              twitchStreamUrl: hasTwitchUpdate
+                ? incomingTwitchStreamUrl
+                : byEmail.twitchStreamUrl,
             },
             select: USER_SELECT,
           });
@@ -250,8 +316,10 @@ export async function POST(request: NextRequest) {
     typeof incomingWalletAddress === "string" &&
     incomingWalletAddress.length > 0 &&
     incomingWalletAddress !== (existing.walletAddress ?? "");
+  const wantsTwitchUpdate =
+    hasTwitchUpdate && incomingTwitchStreamUrl !== (existing.twitchStreamUrl ?? null);
 
-  if (!wantsEmailUpdate && !wantsNameUpdate && !wantsWalletUpdate) {
+  if (!wantsEmailUpdate && !wantsNameUpdate && !wantsWalletUpdate && !wantsTwitchUpdate) {
     return NextResponse.json(toUserApi(existing, await fetchUserVerification(prisma, existing.uid)));
   }
 
@@ -275,6 +343,9 @@ export async function POST(request: NextRequest) {
           email: wantsEmailUpdate ? (emailNorm as string) : existing.email,
           inGameName: nextName,
           walletAddress: wantsWalletUpdate ? incomingWalletAddress : existing.walletAddress,
+          twitchStreamUrl: wantsTwitchUpdate
+            ? incomingTwitchStreamUrl
+            : existing.twitchStreamUrl,
           verified: false,
           lockName: false,
         },
@@ -315,6 +386,9 @@ export async function POST(request: NextRequest) {
       data: {
         email: wantsEmailUpdate ? (emailNorm as string) : existing.email,
         walletAddress: wantsWalletUpdate ? incomingWalletAddress : existing.walletAddress,
+        twitchStreamUrl: wantsTwitchUpdate
+          ? incomingTwitchStreamUrl
+          : existing.twitchStreamUrl,
       },
       select: USER_SELECT,
     });

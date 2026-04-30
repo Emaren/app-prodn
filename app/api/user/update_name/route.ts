@@ -36,6 +36,7 @@ export async function POST(request: NextRequest) {
       inGameName: true,
       verified: true,
       walletAddress: true,
+      twitchStreamUrl: true,
       lockName: true,
       createdAt: true,
       token: true,

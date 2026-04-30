@@ -25,6 +25,7 @@ model User {
   // and rely on the DB for enforcement.
   steamId            String?   @unique(map: "uq_users_steam_id") @map("steam_id") @db.VarChar(32)
   steamPersonaName   String?   @map("steam_persona_name") @db.VarChar(255)
+  twitchStreamUrl    String?   @map("twitch_stream_url") @db.VarChar(500)
   verificationLevel  Int       @default(0) @map("verification_level")
   verificationMethod String    @default("none") @map("verification_method") @db.VarChar(32)
   verifiedAt         DateTime? @map("verified_at") @db.Timestamp(6)

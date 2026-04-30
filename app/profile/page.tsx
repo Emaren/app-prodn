@@ -20,6 +20,7 @@ import {
   Coins,
   LogOut,
   Mail,
+  Monitor,
   Palette,
   Phone,
   ShieldCheck,
@@ -51,6 +52,7 @@ type ProfileResponse = {
   inGameName: string | null;
   verified: boolean;
   isAdmin: boolean;
+  twitchStreamUrl: string | null;
   steamId: string | null;
   steamPersonaName: string | null;
   verificationLevel: number;
@@ -119,7 +121,9 @@ function ProfilePageContent() {
   const [watcherKeys, setWatcherKeys] = useState<WatcherKeyRow[]>([]);
   const [newWatcherKey, setNewWatcherKey] = useState<string | null>(null);
   const [emailDraft, setEmailDraft] = useState("");
+  const [twitchDraft, setTwitchDraft] = useState("");
   const [savingEmail, setSavingEmail] = useState(false);
+  const [savingTwitch, setSavingTwitch] = useState(false);
   const [moneyRows, setMoneyRows] = useState<WoloTransactionRow[]>([]);
   const [moneyLoading, setMoneyLoading] = useState(false);
   const [moneyHasMore, setMoneyHasMore] = useState(false);
@@ -290,6 +294,10 @@ function ProfilePageContent() {
   }, [profile?.email]);
 
   useEffect(() => {
+    setTwitchDraft(profile?.twitchStreamUrl ?? "");
+  }, [profile?.twitchStreamUrl]);
+
+  useEffect(() => {
     if (!claimName || claimSeedApplied || profile?.inGameName) return;
     setStatus(
       `Steam linked. Replay proof will lock in ${claimName} after your first confirmed upload.`
@@ -367,6 +375,38 @@ function ProfilePageContent() {
       setSavingEmail(false);
     }
   }, [emailDraft]);
+
+  const saveTwitchStream = useCallback(async () => {
+    setSavingTwitch(true);
+    setStatus("");
+
+    try {
+      const response = await fetch("/api/user/me", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ twitchStreamUrl: twitchDraft }),
+      });
+
+      const payload = (await response.json().catch(() => null)) as
+        | (ProfileResponse & { detail?: string })
+        | null;
+
+      if (!response.ok || !payload) {
+        throw new Error(payload?.detail || "Twitch stream save failed.");
+      }
+
+      setProfile((current) =>
+        current ? { ...current, twitchStreamUrl: payload.twitchStreamUrl } : current
+      );
+      setStatus(payload.twitchStreamUrl ? "Twitch stream saved." : "Twitch stream cleared.");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Twitch stream save failed.");
+    } finally {
+      setSavingTwitch(false);
+    }
+  }, [twitchDraft]);
 
   const createWatcherKey = useCallback(
     async ({ pairToWatcher = false } = {}) => {
@@ -481,6 +521,46 @@ function ProfilePageContent() {
                 value={profile?.steamPersonaName || "Unknown"}
                 meta={profile?.steamId ? `Steam ID ${profile.steamId}` : "Not connected"}
               />
+            </div>
+
+            <div className="mt-4 rounded-[1.35rem] border border-white/10 bg-white/[0.035] p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-2">
+                  <Monitor className="h-4 w-4 text-sky-100" aria-hidden="true" />
+                  <div>
+                    <div className="text-[10px] uppercase tracking-[0.28em] text-slate-500">
+                      Broadcast
+                    </div>
+                    <div className="text-sm font-semibold text-white">Twitch player cam</div>
+                  </div>
+                </div>
+                {profile?.twitchStreamUrl ? (
+                  <span className="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-3 py-1 text-xs text-emerald-100">
+                    Wired
+                  </span>
+                ) : (
+                  <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs text-slate-300">
+                    Empty
+                  </span>
+                )}
+              </div>
+              <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+                <input
+                  type="url"
+                  value={twitchDraft}
+                  onChange={(event) => setTwitchDraft(event.target.value)}
+                  placeholder="https://www.twitch.tv/channel"
+                  className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-sky-300/45"
+                />
+                <button
+                  type="button"
+                  onClick={saveTwitchStream}
+                  disabled={savingTwitch}
+                  className="rounded-full bg-sky-200 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-55"
+                >
+                  {savingTwitch ? "Saving..." : "Save Stream"}
+                </button>
+              </div>
             </div>
 
             {status ? (

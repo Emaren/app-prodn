@@ -7,6 +7,7 @@ export type UserCoreRow = {
   inGameName: string | null;
   verified: boolean;
   walletAddress: string | null;
+  twitchStreamUrl: string | null;
   lockName: boolean;
   createdAt: Date;
   token: string | null;
@@ -35,6 +36,7 @@ export type UserApi = {
   inGameName: string | null;
   verified: boolean;
   walletAddress: string | null;
+  twitchStreamUrl: string | null;
   lockName: boolean;
   createdAt: string;
   token: string | null;
@@ -67,6 +69,7 @@ export function toUserApi(core: UserCoreRow, ver?: Partial<UserVerificationRow> 
     inGameName: core.inGameName,
     verified: core.verified,
     walletAddress: core.walletAddress,
+    twitchStreamUrl: core.twitchStreamUrl,
     lockName: core.lockName,
     createdAt: core.createdAt.toISOString(),
     token: core.token,

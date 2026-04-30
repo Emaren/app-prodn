@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 export const BET_BROADCAST_PREVIEW_SLOTS = ["left", "god", "right"] as const;
@@ -73,6 +73,42 @@ function isMp4Upload(input: { originalName?: string | null; mimeType?: string | 
 
 export function betBroadcastPreviewKey(sessionKey: string, slot: BetBroadcastPreviewSlot) {
   return `${sessionKey}::${slot}`;
+}
+
+function safePreviewFileName(value: string) {
+  const fileName = path.basename(value);
+  if (fileName !== value || !/^[a-z0-9][a-z0-9._-]*\.mp4$/i.test(fileName)) {
+    return null;
+  }
+  return fileName;
+}
+
+export async function readBetBroadcastPreviewFile(fileNameValue: string) {
+  const fileName = safePreviewFileName(fileNameValue);
+  if (!fileName) {
+    return null;
+  }
+
+  const filePath = path.join(PUBLIC_DIR, fileName);
+
+  try {
+    const fileStats = await stat(filePath);
+    if (!fileStats.isFile()) {
+      return null;
+    }
+
+    return {
+      buffer: await readFile(filePath),
+      fileName,
+      size: fileStats.size,
+    };
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === "ENOENT") {
+      return null;
+    }
+    throw error;
+  }
 }
 
 export async function readBetBroadcastPreviewRegistry(): Promise<BetBroadcastPreviewEntry[]> {
