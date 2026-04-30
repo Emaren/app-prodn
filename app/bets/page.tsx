@@ -514,6 +514,16 @@ function safePlayerName(value: string | null | undefined, fallback: string) {
   return trimmed || fallback;
 }
 
+function sameBroadcastSource(
+  first: BroadcastFeed | null | undefined,
+  second: BroadcastFeed | null | undefined
+) {
+  if (!first || !second) return false;
+  const firstUrl = first.url.trim().toLowerCase();
+  const secondUrl = second.url.trim().toLowerCase();
+  return Boolean(firstUrl && firstUrl === secondUrl);
+}
+
 function splitMatchTitle(value: string | null | undefined) {
   const title = value?.trim() || "";
   const [left, ...rightParts] = title.split(/\s+vs\s+/i);
@@ -2328,6 +2338,10 @@ function BroadcastHeroTile({
   const [selectedView, setSelectedView] = useState<BroadcastViewKey>("god");
   const [playingView, setPlayingView] = useState<BroadcastViewKey | null>(null);
   const [browserHost, setBrowserHost] = useState("aoe2hdbets.com");
+  const leftPreviewUrl =
+    previews.left || (sameBroadcastSource(feeds.left, feeds.god) ? previews.god : null);
+  const rightPreviewUrl =
+    previews.right || (sameBroadcastSource(feeds.right, feeds.god) ? previews.god : null);
   const views = useMemo(
     () =>
       [
@@ -2337,7 +2351,7 @@ function BroadcastHeroTile({
           eyebrow: "Player cam",
           tone: "warm" as const,
           feed: feeds.left,
-          previewUrl: previews.left,
+          previewUrl: leftPreviewUrl,
         },
         {
           key: "god" as const,
@@ -2353,10 +2367,10 @@ function BroadcastHeroTile({
           eyebrow: "Player cam",
           tone: "cool" as const,
           feed: feeds.right,
-          previewUrl: previews.right,
+          previewUrl: rightPreviewUrl,
         },
       ],
-    [feeds, leftName, previews, rightName]
+    [feeds, leftName, leftPreviewUrl, previews.god, rightName, rightPreviewUrl]
   );
   const activeView = views.find((view) => view.key === selectedView) || views[1];
 

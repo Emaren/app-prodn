@@ -3,8 +3,13 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import Link from "next/link";
 
+import RecentBroadcastArchive from "@/components/watch/RecentBroadcastArchive";
 import WatchPreviewScreen from "@/components/watch/WatchPreviewScreen";
 
+import {
+  buildBetBroadcastPreviewUrls,
+  loadBetBroadcastPreviewMap,
+} from "@/lib/betBroadcastPreviews";
 import {
   displayPlayerName,
   formatDurationLabel,
@@ -100,7 +105,9 @@ export default async function WatchIndexPage({
 
   const hero = snapshot.hero;
   const liveMatches = snapshot.matches.filter((match) => match.mode === "live");
-  const secondaryMatches = snapshot.matches.filter((match) => match.id !== hero?.id).slice(0, 12);
+  const archiveMatches = snapshot.matches
+    .filter((match) => match.mode === "archive" && match.id !== hero?.id)
+    .slice(0, 96);
   const topScreens = pickShelfMatches(snapshot);
 
   return (
@@ -198,17 +205,7 @@ export default async function WatchIndexPage({
       <section className="rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.92),rgba(8,13,25,0.98))] p-5 shadow-[0_24px_80px_rgba(2,6,23,0.36)] sm:p-6">
         <SectionHeader eyebrow="Recent broadcasts" title="Battle archive" note="" />
 
-        {secondaryMatches.length > 0 ? (
-          <div className="mt-5 grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
-            {secondaryMatches.map((match) => (
-              <ArchiveCard key={match.sessionKey} match={match} />
-            ))}
-          </div>
-        ) : (
-          <div className="mt-5 rounded-3xl border border-white/10 bg-white/[0.035] p-6 text-sm leading-6 text-slate-300">
-            Archive empty.
-          </div>
-        )}
+        <RecentBroadcastArchive matches={archiveMatches} />
       </section>
     </main>
   );
@@ -233,10 +230,13 @@ async function loadWatchIndexSnapshot() {
     latestBySession.set(sessionKey, row);
   }
 
-  const games = Array.from(latestBySession.values()).slice(0, 36);
+  const games = Array.from(latestBySession.values()).slice(0, 120);
   const sessionKeys = games.map(readSessionKey).filter(Boolean);
 
-  const mediaRegistry = await loadWatchMediaRegistry();
+  const [mediaRegistry, broadcastPreviewsByKey] = await Promise.all([
+    loadWatchMediaRegistry(),
+    loadBetBroadcastPreviewMap(),
+  ]);
 
   const streams = sessionKeys.length
     ? await prisma.gameWatchStream.findMany({
@@ -268,6 +268,12 @@ async function loadWatchIndexSnapshot() {
     const primaryStream = attachedStreams.find((stream) => stream.isPrimary) || attachedStreams[0] || null;
     const isFinal = Boolean(game.is_final);
     const media = mediaRegistry[sessionKey] || mediaRegistry[String(game.id)] || {};
+    const broadcastPreviewUrls = buildBetBroadcastPreviewUrls(sessionKey, broadcastPreviewsByKey);
+    const broadcastLoopUrl =
+      broadcastPreviewUrls.god ||
+      broadcastPreviewUrls.left ||
+      broadcastPreviewUrls.right ||
+      null;
 
     return {
       id: game.id,
@@ -298,9 +304,9 @@ async function loadWatchIndexSnapshot() {
         : null,
       streamCount: attachedStreams.length,
       recordingUrl: media.recordingUrl || null,
-      previewUrl: media.previewUrl || null,
-      thumbnailUrl: media.thumbnailUrl || null,
-      bestOfUrl: media.bestOfUrl || null,
+      previewUrl: broadcastLoopUrl || media.previewUrl || null,
+      thumbnailUrl: broadcastLoopUrl ? null : media.thumbnailUrl || null,
+      bestOfUrl: broadcastLoopUrl || media.bestOfUrl || null,
     };
   });
 
@@ -566,39 +572,6 @@ function AdvancedObserverRail({ match }: { match: WatchMatchSummary }) {
         </div>
       </div>
     </section>
-  );
-}
-
-function ArchiveCard({ match }: { match: WatchMatchSummary }) {
-  return (
-    <Link
-      href={match.href}
-      className="group block overflow-hidden rounded-[1.6rem] border border-white/10 bg-white/[0.035] transition hover:-translate-y-0.5 hover:border-sky-300/35 hover:bg-sky-400/[0.06]"
-    >
-      <div className="relative aspect-video overflow-hidden bg-black">
-        <PreviewMotion match={match} />
-        <div className="absolute left-3 top-3 flex flex-wrap gap-2">
-          <Pill tone="emerald">Archive</Pill>
-          <Pill tone={match.hasFeed ? "sky" : "amber"}>{match.hasFeed ? "Feed" : "No feed"}</Pill>
-        </div>
-        <div className="absolute right-3 top-3 rounded-full border border-white/10 bg-black/35 px-3 py-1 text-xs text-white">
-          #{match.parseIteration}
-        </div>
-      </div>
-
-      <div className="p-5">
-        <h3 className="text-2xl font-semibold tracking-tight text-white group-hover:text-sky-100">
-          {formatWatchMatchTitle(match)}
-        </h3>
-        <p className="mt-2 text-sm text-slate-400">{match.mapName} · {match.createdLabel}</p>
-
-        <div className="mt-5 grid grid-cols-3 gap-3">
-          <MiniStat label="Winner" value={match.winner} />
-          <MiniStat label="Time" value={match.durationLabel} />
-          <MiniStat label="Feeds" value={String(match.streamCount)} />
-        </div>
-      </div>
-    </Link>
   );
 }
 

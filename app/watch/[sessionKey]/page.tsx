@@ -14,6 +14,10 @@ import {
   readPlayerSteamRmRating,
   winnerLabel,
 } from "@/lib/gameStatsView";
+import {
+  buildBetBroadcastPreviewUrls,
+  loadBetBroadcastPreviewMap,
+} from "@/lib/betBroadcastPreviews";
 import { loadLiveReplayDetailSnapshot } from "@/lib/liveReplayDetail";
 import { getPrisma } from "@/lib/prisma";
 
@@ -370,6 +374,20 @@ async function loadBattleTheatreArchiveMedia({
     .map((value) => String(value || "").trim())
     .filter(Boolean);
 
+  const broadcastPreviewsByKey = await loadBetBroadcastPreviewMap();
+  for (const candidate of candidates) {
+    const urls = buildBetBroadcastPreviewUrls(candidate, broadcastPreviewsByKey);
+    const broadcastLoopUrl = urls.god || urls.left || urls.right || null;
+    if (broadcastLoopUrl) {
+      return {
+        bestOfUrl: broadcastLoopUrl,
+        previewUrl: broadcastLoopUrl,
+        recordingUrl: broadcastLoopUrl,
+        thumbnailUrl: null,
+      };
+    }
+  }
+
   const exactRegistry = await readBattleMediaJson<Record<string, BattleTheatreArchiveMedia>>(
     "public/watch/media.json",
   );
@@ -408,4 +426,3 @@ async function loadBattleTheatreArchiveMedia({
 
   return null;
 }
-
