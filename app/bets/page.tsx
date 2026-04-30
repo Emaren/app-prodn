@@ -479,7 +479,7 @@ function getMarketTiming(market: BetBoardMarket, nowMs: number) {
 }
 
 function useNowTicker(intervalMs = 30_000) {
-  const [nowMs, setNowMs] = useState(() => Date.now());
+  const [nowMs, setNowMs] = useState(0);
 
   useEffect(() => {
     const refresh = () => setNowMs(Date.now());
@@ -820,6 +820,31 @@ export default function BetsPage() {
   const [savingFounderBonus, setSavingFounderBonus] = useState(false);
   const [founderBonusError, setFounderBonusError] = useState<string | null>(null);
   const [broadcastVisible, setBroadcastVisible] = useState(true);
+  const [pendingStakeRecoveries, setPendingStakeRecoveries] = useState<PendingStakeRecovery[]>([]);
+
+  const syncPendingStakeRecoveries = useCallback(() => {
+    setPendingStakeRecoveries(readPendingStakeRecoveries());
+  }, []);
+
+  const savePendingStakeRecovery = useCallback(
+    (item: PendingStakeRecovery) => {
+      upsertPendingStakeRecovery(item);
+      syncPendingStakeRecoveries();
+    },
+    [syncPendingStakeRecoveries]
+  );
+
+  const clearPendingStakeRecovery = useCallback(
+    (intentId: number) => {
+      removePendingStakeRecovery(intentId);
+      syncPendingStakeRecoveries();
+    },
+    [syncPendingStakeRecoveries]
+  );
+
+  useEffect(() => {
+    syncPendingStakeRecoveries();
+  }, [syncPendingStakeRecoveries]);
 
   const loadBoard = useCallback(async (quiet = false) => {
     try {
@@ -1145,7 +1170,7 @@ export default function BetsPage() {
           throw new Error(payload.detail || "Could not recover this signed stake.");
         }
 
-        removePendingStakeRecovery(intentId);
+        clearPendingStakeRecovery(intentId);
         await refreshBoard(payload);
         if (!options?.automatic) {
           toast.success("Recovered the signed WOLO stake into the book.");
@@ -1160,7 +1185,7 @@ export default function BetsPage() {
         setRecoveringIntentId((current) => (current === intentId ? null : current));
       }
     },
-    [board, connectedWalletAddress, refreshBoard]
+    [board, clearPendingStakeRecovery, connectedWalletAddress, refreshBoard]
   );
 
   useEffect(() => {
@@ -1394,7 +1419,7 @@ export default function BetsPage() {
           routePath: "/bets",
           updatedAt: new Date().toISOString(),
         };
-        upsertPendingStakeRecovery(pendingRecovery);
+        savePendingStakeRecovery(pendingRecovery);
       }
 
       const stakeExecution = await lockStakeOnChain(market, selection.stake, preparedWallet);
@@ -1407,7 +1432,7 @@ export default function BetsPage() {
           walletType: stakeExecution.walletType,
           updatedAt: new Date().toISOString(),
         };
-        upsertPendingStakeRecovery(pendingRecovery);
+        savePendingStakeRecovery(pendingRecovery);
       }
 
       setLockWorkflow({
@@ -1442,7 +1467,7 @@ export default function BetsPage() {
       }
 
       if (intentId) {
-        removePendingStakeRecovery(intentId);
+        clearPendingStakeRecovery(intentId);
       }
       await refreshBoard(payload);
       setSelection(null);
@@ -1464,7 +1489,7 @@ export default function BetsPage() {
           status: pendingRecovery?.stakeTxHash ? "suspect" : "failed",
         });
         if (!pendingRecovery?.stakeTxHash) {
-          removePendingStakeRecovery(intentId);
+          clearPendingStakeRecovery(intentId);
         }
       }
       toast.error(error instanceof Error ? error.message : "Could not lock the wager.");
@@ -1508,7 +1533,6 @@ export default function BetsPage() {
   }
 
   const viewerName = board?.viewerName || user?.inGameName || user?.steamPersonaName || "Your book";
-  const pendingStakeRecoveries = readPendingStakeRecoveries();
   const latestResult = recentResults[0] ?? null;
   const broadcastSurface = useMemo(() => {
     if (spotlightMarket) {
@@ -2301,7 +2325,7 @@ function buildBroadcastEmbedSrc(
     return `https://player.twitch.tv/?channel=${encodeURIComponent(
       feed.embedId
     )}&parent=${parent}&autoplay=${autoplay ? "true" : "false"}&muted=${
-      compact ? "true" : autoplay ? "false" : "false"
+      compact || autoplay ? "true" : "false"
     }`;
   }
 
