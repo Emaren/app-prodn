@@ -445,7 +445,6 @@ export default async function StakingPage({
 
             <StakingHeroStakeTiles
               totalStakedLabel={formatWolo(snapshot.totalStakedWolo, { compact: false })}
-              totalWeightLabel={formatWeightStat(snapshot.totalStakingWeight)}
             />
 
             <CompactLeaderboard

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { Check, Copy } from "lucide-react";
 
 import { useKeplr } from "@/hooks/use-keplr";
 import { useUserAuth } from "@/context/UserAuthContext";
@@ -11,7 +12,6 @@ type StakingMe = {
   };
   position: {
     currentStakedWolo: number;
-    stakingWeight: string;
   };
 };
 
@@ -28,10 +28,8 @@ function formatWholeWolo(value: number | null | undefined) {
 
 export default function StakingHeroStakeTiles({
   totalStakedLabel,
-  totalWeightLabel,
 }: {
   totalStakedLabel: string;
-  totalWeightLabel: string;
 }) {
   const { isAuthenticated } = useUserAuth();
   const { address, status } = useKeplr();
@@ -70,38 +68,27 @@ export default function StakingHeroStakeTiles({
   }, [isAuthenticated]);
 
   const currentStaked = stakingState?.position.currentStakedWolo ?? 0;
-  const walletLabel = useMemo(() => {
-    if (status === "connected" && address) return shortAddress(address);
-    return shortAddress(stakingState?.user.walletAddress);
+  const walletAddress = useMemo(() => {
+    if (status === "connected" && address) return address;
+    return stakingState?.user.walletAddress ?? null;
   }, [address, stakingState?.user.walletAddress, status]);
-  const stakeStatus = !isAuthenticated
-    ? "Sign in"
-    : currentStaked > 0
-      ? "Active"
-      : "Not staked yet";
 
   return (
     <div className="grid gap-3 sm:grid-cols-3">
       <StakeHeroTile
         label="My Stake"
         value={loading ? "Syncing" : formatWholeWolo(currentStaked)}
-        helper={walletLabel}
-        badge={stakeStatus}
-        tone={currentStaked > 0 ? "emerald" : "slate"}
+        helper={<AddressLine address={walletAddress} />}
       />
       <StakeHeroTile
         label="Total Staked"
         value={totalStakedLabel}
-        helper={totalWeightLabel}
-        badge="Staking Weight"
-        tone="amber"
+        helper="Across all stakers"
       />
       <StakeHeroTile
         label="Fee Split"
         value="50 / 50"
-        helper="Stakers and treasury"
-        badge="0.75% fee"
-        tone="emerald"
+        helper="Stakers / Treasury"
       />
     </div>
   );
@@ -111,32 +98,50 @@ function StakeHeroTile({
   label,
   value,
   helper,
-  badge,
-  tone,
 }: {
   label: string;
   value: string;
-  helper: string;
-  badge: string;
-  tone: "amber" | "emerald" | "slate";
+  helper: ReactNode;
 }) {
-  const badgeClass =
-    tone === "amber"
-      ? "border-amber-300/25 bg-amber-300/10 text-amber-100"
-      : tone === "emerald"
-        ? "border-emerald-300/25 bg-emerald-500/10 text-emerald-100"
-        : "border-white/10 bg-white/[0.055] text-slate-300";
+  return (
+    <div className="min-h-[7.4rem] rounded-[1.2rem] border border-white/10 bg-white/[0.045] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+      <div className="text-[11px] uppercase tracking-[0.22em] text-slate-500">{label}</div>
+      <div className="mt-4 text-2xl font-semibold text-white">{value}</div>
+      <div className="mt-2 text-sm leading-5 text-slate-400">{helper}</div>
+    </div>
+  );
+}
+
+function AddressLine({ address }: { address: string | null }) {
+  const [copied, setCopied] = useState(false);
+
+  if (!address) {
+    return <span>Wallet not linked</span>;
+  }
+
+  async function handleCopy() {
+    if (!address) return;
+    try {
+      await navigator.clipboard.writeText(address);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1200);
+    } catch {
+      setCopied(false);
+    }
+  }
 
   return (
-    <div className="min-h-[8.6rem] rounded-[1.2rem] border border-white/10 bg-white/[0.045] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-      <div className="flex items-start justify-between gap-3">
-        <div className="text-[11px] uppercase tracking-[0.22em] text-slate-500">{label}</div>
-        <div className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${badgeClass}`}>
-          {badge}
-        </div>
-      </div>
-      <div className="mt-4 text-2xl font-semibold text-white">{value}</div>
-      <div className="mt-2 truncate text-sm text-slate-400">{helper}</div>
-    </div>
+    <button
+      type="button"
+      onClick={() => {
+        void handleCopy();
+      }}
+      title={address}
+      aria-label="Copy WOLO address"
+      className="inline-flex max-w-full items-center gap-2 rounded-full border border-white/10 bg-black/15 px-2.5 py-1 text-left text-xs font-semibold text-slate-300 transition hover:border-white/20 hover:bg-white/[0.07] hover:text-white"
+    >
+      <span className="truncate">{shortAddress(address)}</span>
+      {copied ? <Check className="h-3.5 w-3.5 shrink-0 text-emerald-200" /> : <Copy className="h-3.5 w-3.5 shrink-0" />}
+    </button>
   );
 }
