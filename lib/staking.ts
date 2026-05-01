@@ -273,6 +273,7 @@ export async function loadStakingSummary(
       },
     }),
     prisma.stakingEvent.findMany({
+      where: { status: { not: "PENDING_CHAIN" } },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       take: 6,
       select: {

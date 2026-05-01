@@ -29,7 +29,7 @@ import { fetchWoloBalanceAmount } from "@/lib/woloRuntime";
 import { formatWoloAmount, shortenAddress, WOLO_REST_URL } from "@/lib/woloChain";
 import StakingWalletPanel from "./StakingWalletPanel";
 import StakingActivityFeed from "./StakingActivityFeed";
-import StakingQuickStake from "./StakingQuickStake";
+import StakingHeroStakeTiles from "./StakingHeroStakeTiles";
 import TreasuryActions from "./TreasuryActions";
 
 export const runtime = "nodejs";
@@ -443,13 +443,10 @@ export default async function StakingPage({
               </p>
             </div>
 
-            <StakingQuickStake />
-
-            <div className="grid gap-3 sm:grid-cols-3">
-              <HeroStat label="Instant Stake" value="Ready" helper="No long lockups" />
-              <HeroStat label="Staking Weight" value={formatWeightStat(snapshot.totalStakingWeight)} helper="WOLO + time" />
-              <HeroStat label="Fee Split" value="50 / 50" helper="Stakers and treasury" />
-            </div>
+            <StakingHeroStakeTiles
+              totalStakedLabel={formatWolo(snapshot.totalStakedWolo, { compact: false })}
+              totalWeightLabel={formatWeightStat(snapshot.totalStakingWeight)}
+            />
 
             <CompactLeaderboard
               board={board}

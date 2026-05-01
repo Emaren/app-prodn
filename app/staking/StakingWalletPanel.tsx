@@ -195,7 +195,7 @@ export default function StakingWalletPanel() {
             <StakingMetric
               label="Pending Rewards"
               value={stakingLoading ? "Syncing" : formatWholeWolo(stakingState?.position.pendingRewardsWolo)}
-              helper="Claim after chain cutover"
+              helper="Claims open next"
             />
             <StakingMetric
               label="Lifetime Rewards"
@@ -214,13 +214,13 @@ export default function StakingWalletPanel() {
           </div>
 
           <div className="mt-5 grid gap-2 sm:grid-cols-3">
-            <DisabledAction label="Stake" helper="Chain pending" />
-            <DisabledAction label="Unstake" helper="Chain pending" />
-            <DisabledAction label="Claim" helper="Chain pending" />
+            <DisabledAction label="Stake" helper="Opens soon" />
+            <DisabledAction label="Unstake" helper="Opens soon" />
+            <DisabledAction label="Claim" helper="Opens soon" />
           </div>
 
           <div className="mt-4 rounded-[1.2rem] border border-emerald-300/15 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
-            {stakingState?.execution.detail ?? "Staking ledger ready. Chain execution pending."}
+            App ledger ready. Keplr staking tx next.
           </div>
         </div>
       </div>
