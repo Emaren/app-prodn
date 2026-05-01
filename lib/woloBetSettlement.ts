@@ -11,6 +11,7 @@ import {
   WOLO_REST_URL,
   WOLO_RPC_URL,
   buildWoloRestTxLookupUrl,
+  estimateWoloNetworkFeeWolo,
   getWoloBetEscrowRuntime,
   toUwoLoAmount,
 } from "@/lib/woloChain";
@@ -20,6 +21,7 @@ export type StakeVerificationResult = {
   detail: string;
   txHash?: string;
   proofUrl?: string | null;
+  txFeeWolo?: number | null;
 };
 
 export type PayoutExecutionResult = {
@@ -687,6 +689,24 @@ async function fetchTx(txHash: string) {
   return response.json();
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function fetchTxWithRetry(txHash: string, attempts = 6) {
+  for (let index = 0; index < attempts; index += 1) {
+    const payload = await fetchTx(txHash);
+    if (payload) return payload;
+    await sleep(700 + index * 350);
+  }
+  return null;
+}
+
+function txNetworkFeeWolo(payload: unknown) {
+  const txResponse = asRecord(asRecord(payload)?.tx_response);
+  return estimateWoloNetworkFeeWolo(getStringField(txResponse || {}, "gas_wanted"));
+}
+
 async function verifyStakeTransferViaSettlementService(input: {
   txHash: string;
   fromAddress: string;
@@ -1324,10 +1344,76 @@ export async function verifyStakeTransfer(input: {
     detail: "Stake tx verified via WOLO REST fallback.",
     txHash: normalizedTxHash,
     proofUrl: buildWoloRestTxLookupUrl(normalizedTxHash),
+    txFeeWolo: txNetworkFeeWolo(payload),
   };
 }
 
+export async function verifyWoloTransfer(input: {
+  txHash: string;
+  fromAddress: string;
+  toAddress: string;
+  expectedAmountWolo: number;
+}): Promise<StakeVerificationResult> {
+  const normalizedTxHash = normalizeTxHash(input.txHash);
+  if (!normalizedTxHash) {
+    return { verified: false, detail: "Transaction hash is required." };
+  }
+
+  const fromAddressError = validateWoloAddress(input.fromAddress);
+  if (fromAddressError) {
+    return { verified: false, detail: fromAddressError };
+  }
+
+  const toAddressError = validateWoloAddress(input.toAddress);
+  if (toAddressError) {
+    return { verified: false, detail: toAddressError };
+  }
+
+  const payload = await fetchTxWithRetry(normalizedTxHash);
+  if (!payload) {
+    return { verified: false, detail: "Tx could not be loaded from the WOLO REST API." };
+  }
+
+  const txResponse = asRecord(asRecord(payload)?.tx_response);
+  const codeValue = Number(txResponse?.code ?? 0);
+  if (!txResponse || codeValue !== 0) {
+    return {
+      verified: false,
+      detail: `Tx failed or returned code ${String(txResponse?.code ?? "unknown")}.`,
+    };
+  }
+
+  const expectedAmount = `${toUwoLoAmount(input.expectedAmountWolo)}${WOLO_BASE_DENOM}`;
+  const transfers = extractTransferEvents(payload);
+  const matched = transfers.some((event) =>
+    normalizeAddress(event.sender) === normalizeAddress(input.fromAddress) &&
+    normalizeAddress(event.recipient) === normalizeAddress(input.toAddress) &&
+    event.amount.split(",").map((value) => value.trim()).includes(expectedAmount)
+  );
+
+  if (!matched) {
+    return {
+      verified: false,
+      detail: `Tx did not show ${expectedAmount} from ${input.fromAddress} to ${input.toAddress}.`,
+    };
+  }
+
+  return {
+    verified: true,
+    detail: "Tx verified via WOLO REST.",
+    txHash: normalizedTxHash,
+    proofUrl: buildWoloRestTxLookupUrl(normalizedTxHash),
+    txFeeWolo: txNetworkFeeWolo(payload),
+  };
+}
+
+export async function readWoloTxNetworkFeeWolo(txHash: string) {
+  const payload = await fetchTxWithRetry(txHash, 4);
+  return payload ? txNetworkFeeWolo(payload) : null;
+}
+
 export async function executeWoloPayout(input: {
+  requestId?: string | null;
   toAddress: string;
   amountWolo: number;
   memo: string;

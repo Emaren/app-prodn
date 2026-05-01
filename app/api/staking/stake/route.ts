@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
-import { createPendingStakingEvent, StakingActionError } from "@/lib/staking";
-import { validateWoloAddress } from "@/lib/woloBetSettlement";
+import { createConfirmedStakingEvent, StakingActionError } from "@/lib/staking";
+import { validateWoloAddress, verifyWoloTransfer } from "@/lib/woloBetSettlement";
+import { getWoloStakingRuntime } from "@/lib/woloStakingRuntime";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,10 +28,28 @@ export async function POST(request: NextRequest) {
     const payload = (await request.json().catch(() => ({}))) as {
       amountWolo?: number | string;
       walletAddress?: string;
+      txHash?: string;
+      txFeeWolo?: number;
     };
     const amountWolo = normalizeWholeWolo(payload.amountWolo);
     if (!amountWolo || amountWolo <= 0) {
       return NextResponse.json({ detail: "Enter a stake amount in whole WOLO." }, { status: 400 });
+    }
+
+    const txHash = payload.txHash?.trim().toUpperCase() || "";
+    if (!txHash) {
+      return NextResponse.json(
+        { detail: "Stake requires a signed Keplr tx." },
+        { status: 400 }
+      );
+    }
+
+    const stakingRuntime = getWoloStakingRuntime();
+    if (!stakingRuntime.stakeReady || !stakingRuntime.stakingWalletAddress) {
+      return NextResponse.json(
+        { detail: "Staking wallet is not configured." },
+        { status: 409 }
+      );
     }
 
     const prisma = getPrisma();
@@ -55,12 +74,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ detail: addressError }, { status: 400 });
     }
 
-    const event = await createPendingStakingEvent(prisma, {
+    const verification = await verifyWoloTransfer({
+      txHash,
+      fromAddress: walletAddress,
+      toAddress: stakingRuntime.stakingWalletAddress,
+      expectedAmountWolo: amountWolo,
+    });
+    if (!verification.verified) {
+      return NextResponse.json({ detail: verification.detail }, { status: 409 });
+    }
+
+    const event = await createConfirmedStakingEvent(prisma, {
       userId: viewer.id,
       walletAddress,
       type: "STAKE",
       amountWolo,
-      metadata: { routePath: request.nextUrl.pathname },
+      txHash: verification.txHash || txHash,
+      txFeeWolo: verification.txFeeWolo ?? payload.txFeeWolo ?? 0,
+      proofUrl: verification.proofUrl ?? null,
+      metadata: {
+        routePath: request.nextUrl.pathname,
+        stakingWalletAddress: stakingRuntime.stakingWalletAddress,
+      },
     });
 
     return NextResponse.json(
@@ -69,10 +104,11 @@ export async function POST(request: NextRequest) {
         type: event.type,
         amountWolo: event.amountWolo,
         status: event.status,
-        executionPending: true,
-        detail: "Staking ledger ready. Chain execution pending.",
+        txHash: event.txHash,
+        txFeeWolo: verification.txFeeWolo ?? payload.txFeeWolo ?? 0,
+        detail: "Stake confirmed on WoloChain.",
       },
-      { status: 202 }
+      { status: 200 }
     );
   } catch (error) {
     if (error instanceof StakingActionError) {

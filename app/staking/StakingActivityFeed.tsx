@@ -92,6 +92,7 @@ function ActivityRow({
 
   const typeLabel = item.eventType || item.meta;
   const amountLabel = item.amountLabel;
+  const txFeeLabel = item.txFeeLabel;
   const timestampLabel = item.timestampLabel || item.meta;
 
   return (
@@ -109,6 +110,7 @@ function ActivityRow({
       <div className="flex shrink-0 flex-wrap gap-2 pl-5 sm:justify-end sm:pl-0">
         <FeedChip>{typeLabel}</FeedChip>
         {amountLabel ? <FeedChip>{amountLabel}</FeedChip> : null}
+        {txFeeLabel ? <TxFeeImprint>{txFeeLabel}</TxFeeImprint> : null}
         <FeedChip>{timestampLabel}</FeedChip>
       </div>
     </div>
@@ -118,6 +120,18 @@ function ActivityRow({
 function FeedChip({ children }: { children: string }) {
   return (
     <span className="rounded-full border border-white/10 bg-black/20 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-300">
+      {children}
+    </span>
+  );
+}
+
+function TxFeeImprint({ children }: { children: string }) {
+  return (
+    <span
+      title="TX fee"
+      aria-label={`TX fee ${children} WOLO`}
+      className="rounded-full border border-white/[0.07] bg-black/15 px-2.5 py-1 text-[10px] font-semibold tracking-[0.12em] text-slate-500"
+    >
       {children}
     </span>
   );

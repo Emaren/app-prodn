@@ -15,6 +15,7 @@ export type StakingActivityItem = {
   meta: string;
   eventType?: string;
   amountLabel?: string;
+  txFeeLabel?: string;
   timestampLabel?: string;
   tone: "amber" | "emerald" | "sky" | "slate";
 };
@@ -160,6 +161,33 @@ function formatActivityWolo(value: number) {
   }).format(value)} WOLO`;
 }
 
+function formatTxFee(value: number | null | undefined) {
+  if (!value || value <= 0) return null;
+  return new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 6,
+  }).format(value);
+}
+
+function jsonObject(value: Prisma.JsonValue | null | undefined) {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, Prisma.JsonValue>)
+    : {};
+}
+
+function metadataNumber(
+  metadata: Prisma.JsonValue | null | undefined,
+  key: string
+) {
+  const value = jsonObject(metadata)[key];
+  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+  if (typeof value === "string") {
+    const parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  return 0;
+}
+
 function badgeForRank(index: number, fallback: string) {
   if (index === 0) return "Crown lane";
   if (index === 1) return "Early seat";
@@ -282,6 +310,8 @@ export async function loadStakingSummary(
         amountWolo: true,
         status: true,
         createdAt: true,
+        txHash: true,
+        metadata: true,
         user: {
           select: {
             uid: true,
@@ -306,16 +336,24 @@ export async function loadStakingSummary(
     const amountLabel = formatActivityWolo(event.amountWolo);
     const eventType = event.type.toUpperCase();
     const timestampLabel = formatMoment(event.createdAt);
+    const txFeeLabel = formatTxFee(metadataNumber(event.metadata, "txFeeWolo"));
+    const verb =
+      event.type === "UNSTAKE"
+        ? "unstake"
+        : event.type === "CLAIM"
+          ? "claim"
+          : "stake";
     activity.push({
       key: `staking-event-${event.id}`,
-      label: `${amountLabel} ${event.type.toLowerCase()} request: ${player}`,
+      label: `${amountLabel} ${verb}: ${player}`,
       detail:
-        event.status === "PENDING_CHAIN"
-          ? "Chain execution pending."
+        event.txHash
+          ? `${event.type === "UNSTAKE" ? "Returned to wallet" : "Keplr signed"} · ${event.txHash.slice(0, 8)}...${event.txHash.slice(-6)}`
           : `Ledger status: ${event.status.toLowerCase()}.`,
       meta: timestampLabel,
       eventType,
       amountLabel,
+      txFeeLabel: txFeeLabel ?? undefined,
       timestampLabel,
       tone: event.type === "CLAIM" ? "emerald" : "amber",
       sortAt: event.createdAt,
@@ -383,6 +421,7 @@ export async function loadStakingSummary(
         meta: item.meta,
         eventType: item.eventType,
         amountLabel: item.amountLabel,
+        txFeeLabel: item.txFeeLabel,
         timestampLabel: item.timestampLabel,
         tone: item.tone,
       })),
@@ -495,7 +534,7 @@ export async function loadStakingLeaderboard(
 
 export async function loadStakingMe(prisma: PrismaClient, userId: number) {
   const now = new Date();
-  const [user, position, events, lastReward] = await Promise.all([
+  const [user, position, events, txFeeEvents, lastReward] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -520,7 +559,12 @@ export async function loadStakingMe(prisma: PrismaClient, userId: number) {
         status: true,
         createdAt: true,
         txHash: true,
+        metadata: true,
       },
+    }),
+    prisma.stakingEvent.findMany({
+      where: { userId, status: "CONFIRMED" },
+      select: { metadata: true },
     }),
     prisma.stakingRewardAllocation.findFirst({
       where: {
@@ -542,6 +586,10 @@ export async function loadStakingMe(prisma: PrismaClient, userId: number) {
   }
 
   const stakingWeight = position ? computeCurrentStakingWeight(position, now) : BigInt(0);
+  const lifetimeTxFeesWolo = txFeeEvents.reduce(
+    (sum, event) => sum + metadataNumber(event.metadata, "txFeeWolo"),
+    0
+  );
 
   return {
     user: {
@@ -556,6 +604,7 @@ export async function loadStakingMe(prisma: PrismaClient, userId: number) {
       pendingRewardsWolo: position?.pendingRewardsWolo ?? 0,
       lifetimeRewardsWolo: position?.lifetimeRewardsWolo ?? 0,
       claimedRewardsWolo: position?.claimedRewardsWolo ?? 0,
+      lifetimeTxFeesWolo,
       status: position?.status ?? "ledger_ready",
       lastWeightUpdateAt: position?.lastWeightUpdateAt.toISOString() ?? null,
       lastRewardPaymentAt:
@@ -629,6 +678,95 @@ export async function createPendingStakingEvent(
         },
       },
     });
+  });
+}
+
+export async function createConfirmedStakingEvent(
+  prisma: PrismaClient,
+  input: {
+    userId: number;
+    walletAddress?: string | null;
+    type: Extract<StakingActionType, "STAKE" | "UNSTAKE">;
+    amountWolo: number;
+    txHash: string;
+    txFeeWolo?: number | null;
+    proofUrl?: string | null;
+    metadata?: Prisma.InputJsonValue;
+  }
+) {
+  if (!Number.isInteger(input.amountWolo) || input.amountWolo <= 0) {
+    throw new StakingActionError("Amount must be greater than 0 WOLO.", 400);
+  }
+
+  const normalizedTxHash = input.txHash.trim().toUpperCase();
+  if (!normalizedTxHash) {
+    throw new StakingActionError("A confirmed chain tx hash is required.", 400);
+  }
+
+  const existing = await prisma.stakingEvent.findFirst({
+    where: { txHash: normalizedTxHash },
+  });
+  if (existing) {
+    return existing;
+  }
+
+  return prisma.$transaction(async (tx) => {
+    const now = new Date();
+    const position = await tx.stakingPosition.upsert({
+      where: { userId: input.userId },
+      create: {
+        userId: input.userId,
+        walletAddress: input.walletAddress ?? null,
+        lastWeightUpdateAt: now,
+      },
+      update: input.walletAddress ? { walletAddress: input.walletAddress } : {},
+    });
+
+    const weightBefore = computeCurrentStakingWeight(position, now);
+    const balanceBefore = position.currentStakedWolo;
+    const balanceAfter =
+      input.type === "STAKE"
+        ? balanceBefore + input.amountWolo
+        : balanceBefore - input.amountWolo;
+
+    if (balanceAfter < 0) {
+      throw new StakingActionError("No confirmed stake is available for that unstake.", 409);
+    }
+
+    const event = await tx.stakingEvent.create({
+      data: {
+        userId: input.userId,
+        positionId: position.id,
+        walletAddress: input.walletAddress ?? position.walletAddress,
+        type: input.type,
+        amountWolo: input.amountWolo,
+        txHash: normalizedTxHash,
+        status: "CONFIRMED",
+        weightBefore,
+        weightAfter: weightBefore,
+        balanceBefore,
+        balanceAfter,
+        confirmedAt: now,
+        metadata: {
+          txFeeWolo: input.txFeeWolo ?? 0,
+          proofUrl: input.proofUrl ?? null,
+          ...(typeof input.metadata === "object" && input.metadata ? input.metadata : {}),
+        },
+      },
+    });
+
+    await tx.stakingPosition.update({
+      where: { id: position.id },
+      data: {
+        walletAddress: input.walletAddress ?? position.walletAddress,
+        currentStakedWolo: balanceAfter,
+        accumulatedWeight: weightBefore,
+        lastWeightUpdateAt: now,
+        status: balanceAfter > 0 ? "active" : "inactive",
+      },
+    });
+
+    return event;
   });
 }
 

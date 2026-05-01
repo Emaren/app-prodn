@@ -45,6 +45,7 @@ export const metadata: Metadata = {
 };
 
 const WOLO_LOGO_SRC = "/legacy/wolo-logo-transparent.png";
+const EXAMPLE_TX_FEE_WOLO = 0.001324;
 
 type PeriodKey = "24h" | "7d" | "30d" | "all";
 type BoardKey = "stakers" | "earners" | "rewards";
@@ -198,6 +199,13 @@ function formatWolo(
 
 function formatFeeShareWolo(value: number | null) {
   return formatWolo(value, { compact: false, decimals: 2 });
+}
+
+function formatTinyWolo(value: number) {
+  return `${new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 6,
+  }).format(value)} WOLO`;
 }
 
 function formatWeight(value: string | null | undefined) {
@@ -615,6 +623,14 @@ export default async function StakingPage({
                 Betting Fee
               </div>
               <div className="mt-4 text-5xl font-semibold text-amber-100">0.75%</div>
+              <div className="mt-3 rounded-[1rem] border border-white/[0.08] bg-black/20 px-4 py-3">
+                <div className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
+                  TX Fee
+                </div>
+                <div className="mt-1 text-lg font-semibold text-slate-200">
+                  {formatTinyWolo(EXAMPLE_TX_FEE_WOLO)}
+                </div>
+              </div>
               <div className="mt-5 h-3 overflow-hidden rounded-full bg-black/30">
                 <div className="grid h-full grid-cols-2">
                   <div className="bg-amber-300" />
@@ -642,6 +658,7 @@ export default async function StakingPage({
               <div className="mt-5 grid gap-2">
                 <SplitRow label="Pot" value="20,000 WOLO" />
                 <SplitRow label="Betting fee" value="150 WOLO" />
+                <SplitRow label="TX fee" value={formatTinyWolo(EXAMPLE_TX_FEE_WOLO)} />
                 <SplitRow label="Stakers receive" value="75 WOLO" tone="amber" />
                 <SplitRow label="Treasury receives" value="75 WOLO" tone="emerald" />
                 <SplitRow label="Winner receives" value="19,850 WOLO" tone="white" />

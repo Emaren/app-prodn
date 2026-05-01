@@ -33,6 +33,8 @@ export const WOLO_DEFAULT_GAS_PRICE =
   process.env.WOLO_GAS_PRICE?.trim() ||
   `0.025${WOLO_BASE_DENOM}`;
 
+export const WOLO_TYPICAL_TX_GAS = 52_960;
+
 const explicitBetEscrowMode =
   process.env.NEXT_PUBLIC_WOLO_BET_ESCROW_MODE?.trim().toLowerCase() ||
   process.env.WOLO_BET_ESCROW_MODE?.trim().toLowerCase() ||
@@ -107,6 +109,27 @@ export function shortenAddress(address?: string, lead = 12, tail = 8) {
 
 export function toUwoLoAmount(amountWolo: number) {
   return String(Math.max(0, Math.round(amountWolo * 10 ** WOLO_COIN_DECIMALS)));
+}
+
+export function parseWoloGasPriceMinimalDenom(value = WOLO_DEFAULT_GAS_PRICE) {
+  const match = value.trim().match(/^([0-9]+(?:\.[0-9]+)?)\s*([a-zA-Z0-9/]+)$/);
+  if (!match || match[2] !== WOLO_BASE_DENOM) return 0;
+  const parsed = Number.parseFloat(match[1]);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+export function estimateWoloNetworkFeeWolo(gasWanted?: number | string | bigint | null) {
+  const gas =
+    typeof gasWanted === "number"
+      ? gasWanted
+      : typeof gasWanted === "bigint"
+        ? Number(gasWanted)
+      : typeof gasWanted === "string"
+        ? Number.parseInt(gasWanted, 10)
+        : WOLO_TYPICAL_TX_GAS;
+  const gasPriceMinimalDenom = parseWoloGasPriceMinimalDenom();
+  if (!Number.isFinite(gas) || gas <= 0 || gasPriceMinimalDenom <= 0) return 0;
+  return (gas * gasPriceMinimalDenom) / 10 ** WOLO_COIN_DECIMALS;
 }
 
 export function buildWoloRestTxLookupUrl(txHash?: string | null) {
