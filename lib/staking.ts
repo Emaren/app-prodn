@@ -9,9 +9,13 @@ export type StakingBoardKey = "stakers" | "earners" | "rewards";
 export type StakingActionType = "STAKE" | "UNSTAKE" | "CLAIM" | "ADJUSTMENT";
 
 export type StakingActivityItem = {
+  key?: string;
   label: string;
   detail: string;
   meta: string;
+  eventType?: string;
+  amountLabel?: string;
+  timestampLabel?: string;
   tone: "amber" | "emerald" | "sky" | "slate";
 };
 
@@ -245,8 +249,9 @@ export async function loadStakingSummary(
     }),
     prisma.betWager.findMany({
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-      take: 5,
+      take: 8,
       select: {
+        id: true,
         amountWolo: true,
         payoutWolo: true,
         status: true,
@@ -269,8 +274,9 @@ export async function loadStakingSummary(
     }),
     prisma.stakingEvent.findMany({
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-      take: 3,
+      take: 6,
       select: {
+        id: true,
         type: true,
         amountWolo: true,
         status: true,
@@ -292,36 +298,26 @@ export async function loadStakingSummary(
     (sum, position) => sum + computeCurrentStakingWeight(position, now),
     BigInt(0)
   );
-  const activity: StakingActivityItem[] = [];
-
-  if (feePools.stakerPoolWolo > 0) {
-    activity.push({
-      label: `${formatActivityWolo(feePools.stakerPoolWolo)} modeled for stakers`,
-      detail: "50% share from settled betting fees.",
-      meta: "Fee model",
-      tone: "amber",
-    });
-  }
-
-  if (feePools.treasuryPoolWolo > 0) {
-    activity.push({
-      label: `${formatActivityWolo(feePools.treasuryPoolWolo)} modeled for treasury`,
-      detail: "Matching 50% share for the Community Treasury.",
-      meta: "Fee model",
-      tone: "emerald",
-    });
-  }
+  const activity: Array<StakingActivityItem & { sortAt: Date }> = [];
 
   for (const event of recentEvents) {
     const player = displayPlayerName(event.user);
+    const amountLabel = formatActivityWolo(event.amountWolo);
+    const eventType = event.type.toUpperCase();
+    const timestampLabel = formatMoment(event.createdAt);
     activity.push({
-      label: `${player} ${event.type.toLowerCase()} request: ${formatActivityWolo(event.amountWolo)}`,
+      key: `staking-event-${event.id}`,
+      label: `${amountLabel} ${event.type.toLowerCase()} request: ${player}`,
       detail:
         event.status === "PENDING_CHAIN"
           ? "Chain execution pending."
           : `Ledger status: ${event.status.toLowerCase()}.`,
-      meta: formatMoment(event.createdAt),
+      meta: timestampLabel,
+      eventType,
+      amountLabel,
+      timestampLabel,
       tone: event.type === "CLAIM" ? "emerald" : "amber",
+      sortAt: event.createdAt,
     });
   }
 
@@ -330,22 +326,34 @@ export async function loadStakingSummary(
     const pickedLabel = wager.side === "right" ? wager.market.rightLabel : wager.market.leftLabel;
     const matchLabel = `${wager.market.leftLabel} vs ${wager.market.rightLabel}`;
     const isWin = wager.status === "won" && (wager.payoutWolo ?? 0) > 0;
+    const amountLabel = formatActivityWolo(isWin ? wager.payoutWolo ?? 0 : wager.amountWolo);
+    const eventType = isWin ? "PAYOUT" : "WAGER";
+    const timestampLabel = formatMoment(wager.createdAt);
     activity.push({
+      key: `wager-${wager.id}`,
       label: isWin
-        ? `${formatActivityWolo(wager.payoutWolo ?? 0)} payout: ${matchLabel}`
-        : `${formatActivityWolo(wager.amountWolo)} wager: ${matchLabel}`,
+        ? `${amountLabel} payout: ${matchLabel}`
+        : `${amountLabel} wager: ${matchLabel}`,
       detail: isWin ? `${player} won on ${pickedLabel}` : `${player} picked ${pickedLabel}`,
-      meta: formatMoment(wager.createdAt),
+      meta: timestampLabel,
+      eventType,
+      amountLabel,
+      timestampLabel,
       tone: isWin ? "emerald" : "sky",
+      sortAt: wager.createdAt,
     });
   }
 
   if (activity.length === 0) {
     activity.push({
+      key: "activity-standby",
       label: "Recent activity is warming up",
       detail: "Settled matches, treasury movement, and staking rewards will land here.",
       meta: "Standby",
+      eventType: "STANDBY",
+      timestampLabel: "Standby",
       tone: "slate",
+      sortAt: now,
     });
   }
 
@@ -364,7 +372,19 @@ export async function loadStakingSummary(
     activeStakers: stakingAggregate._count._all,
     totalStakedWolo: stakingAggregate._sum.currentStakedWolo ?? 0,
     totalStakingWeight: totalStakingWeight.toString(),
-    activity: activity.slice(0, 7),
+    activity: activity
+      .sort((left, right) => right.sortAt.getTime() - left.sortAt.getTime())
+      .slice(0, 7)
+      .map((item) => ({
+        key: item.key,
+        label: item.label,
+        detail: item.detail,
+        meta: item.meta,
+        eventType: item.eventType,
+        amountLabel: item.amountLabel,
+        timestampLabel: item.timestampLabel,
+        tone: item.tone,
+      })),
   };
 }
 
