@@ -32,7 +32,7 @@ const HEADER_LINKS: ReadonlyArray<{
   { href: "/players", label: "Players" },
   { href: "/rivalries", label: "Rivalries" },
   { href: "/wolo", label: "$WOLO" },
-  { href: "/requests", label: "Requests", countKey: "requests" },
+  { href: "/staking", label: "Staking" },
 ];
 
 function HeaderPillLink({
