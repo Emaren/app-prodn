@@ -76,6 +76,9 @@ function InnerShell({ children }: { children: React.ReactNode }) {
   const [liveGamesCount, setLiveGamesCount] = React.useState(0);
   const [requestCount, setRequestCount] = React.useState(0);
   const isContactPage = pathname?.startsWith("/contact-emaren");
+  const isStakingPage = pathname?.startsWith("/staking");
+  const headerHref = isStakingPage ? "/staking" : "/lobby";
+  const headerTitle = isStakingPage ? "WOLO Staking" : "Tournament Lobby";
   const headerSkin = getLobbyHeaderSkin(themeKey);
   const headerTone = React.useMemo(
     () => getLobbyPresentationTone(themeKey, viewMode),
@@ -138,12 +141,12 @@ function InnerShell({ children }: { children: React.ReactNode }) {
           <div className="space-y-4 lg:hidden">
             <div className="flex min-w-0 items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <Link href="/lobby" className="inline-block min-w-0">
+                <Link href={headerHref} className="inline-block min-w-0">
                   <div className={`text-[11px] uppercase tracking-[0.35em] transition ${headerTone.eyebrow}`}>
                     AoE2HD Bets
                   </div>
                   <h1 className="text-2xl font-semibold leading-tight text-white transition hover:text-amber-100">
-                    Tournament Lobby
+                    {headerTitle}
                   </h1>
                 </Link>
               </div>
@@ -208,12 +211,12 @@ function InnerShell({ children }: { children: React.ReactNode }) {
 
           <div className="hidden lg:grid lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:items-center lg:gap-3">
             <div className="min-w-0">
-              <Link href="/lobby" className="inline-block min-w-0">
+              <Link href={headerHref} className="inline-block min-w-0">
                 <div className={`text-xs uppercase tracking-[0.35em] transition ${headerTone.eyebrow}`}>
                   AoE2HD Bets
                 </div>
                 <h1 className="text-xl font-semibold text-white transition hover:text-amber-100">
-                  Tournament Lobby
+                  {headerTitle}
                 </h1>
               </Link>
             </div>

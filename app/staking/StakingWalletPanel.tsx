@@ -53,9 +53,9 @@ export default function StakingWalletPanel() {
 
   return (
     <section className="overflow-hidden rounded-[1.65rem] border border-white/10 bg-[linear-gradient(180deg,rgba(10,16,29,0.96),rgba(4,7,14,0.98))] shadow-[0_26px_90px_rgba(2,6,23,0.35)]">
-      <div className="grid gap-0 lg:grid-cols-[0.92fr_1.08fr]">
-        <div className="border-b border-white/10 bg-white/[0.035] p-5 sm:p-6 lg:border-b-0 lg:border-r">
-          <div className="flex items-start justify-between gap-4">
+      <div>
+        <div className="border-b border-white/10 bg-white/[0.035] p-5 sm:p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <div className="text-xs uppercase tracking-[0.28em] text-amber-200/75">
                 My Staking
@@ -107,23 +107,23 @@ export default function StakingWalletPanel() {
         </div>
 
         <div className="p-5 sm:p-6">
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <StakingMetric label="Wallet Balance" value={status === "connected" ? balanceLabel : "--"} />
-            <StakingMetric label="Currently Staked" value="--" helper="Coming soon" />
-            <StakingMetric label="Staking Weight" value="--" helper="WOLO x time" />
-            <StakingMetric label="Pending Rewards" value="--" helper="Awaiting ledger" />
-            <StakingMetric label="Lifetime Rewards" value="--" helper="Awaiting ledger" />
-            <StakingMetric label="Last Reward Payment" value="Coming soon" />
+            <StakingMetric label="Currently Staked" value="Ledger pending" helper="No stake recorded yet" />
+            <StakingMetric label="Staking Weight" value="Preparing" helper="More WOLO + time" />
+            <StakingMetric label="Pending Rewards" value="Estimate unlocks" helper="After first stake" />
+            <StakingMetric label="Lifetime Rewards" value="Preparing" helper="Awaiting ledger" />
+            <StakingMetric label="Last Reward Payment" value="No payments yet" />
           </div>
 
           <div className="mt-5 grid gap-2 sm:grid-cols-3">
-            <DisabledAction label="Stake" />
-            <DisabledAction label="Unstake" />
-            <DisabledAction label="Claim Rewards" />
+            <DisabledAction label="Stake" helper="Ledger pending" />
+            <DisabledAction label="Unstake" helper="Ledger pending" />
+            <DisabledAction label="Claim" helper="Rewards pending" />
           </div>
 
           <div className="mt-4 rounded-[1.2rem] border border-emerald-300/15 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
-            Instant stake and unstake are the target rails. The first UI pass is read-only until the staking ledger lands.
+            Stake, unstake, and claims are preparing for the staking ledger cutover. This panel is read-only for now.
           </div>
         </div>
       </div>
@@ -149,14 +149,17 @@ function StakingMetric({
   );
 }
 
-function DisabledAction({ label }: { label: string }) {
+function DisabledAction({ label, helper }: { label: string; helper: string }) {
   return (
     <button
       type="button"
       disabled
-      className="inline-flex min-h-11 cursor-not-allowed items-center justify-center rounded-full border border-white/10 bg-white/[0.045] px-4 py-2.5 text-sm font-semibold text-slate-500"
+      className="inline-flex min-h-14 cursor-not-allowed flex-col items-center justify-center rounded-[1rem] border border-white/10 bg-white/[0.045] px-4 py-2.5 text-sm font-semibold text-slate-500"
     >
-      {label}
+      <span>{label}</span>
+      <span className="mt-0.5 text-[10px] font-medium uppercase tracking-[0.16em] text-slate-600">
+        {helper}
+      </span>
     </button>
   );
 }
