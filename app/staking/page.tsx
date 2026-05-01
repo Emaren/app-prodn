@@ -18,6 +18,12 @@ import {
 } from "lucide-react";
 
 import { getPrisma } from "@/lib/prisma";
+import {
+  loadStakingLeaderboard,
+  loadStakingSummary,
+  type StakingActivityItem,
+  type StakingLeaderboardRow,
+} from "@/lib/staking";
 import StakingWalletPanel from "./StakingWalletPanel";
 
 export const runtime = "nodejs";
@@ -33,8 +39,6 @@ export const metadata: Metadata = {
 };
 
 const WOLO_LOGO_SRC = "/legacy/wolo-logo-transparent.png";
-const BETTING_FEE_RATE = 0.0075;
-const STAKER_SHARE = 0.5;
 
 type PeriodKey = "24h" | "7d" | "30d" | "all";
 type BoardKey = "stakers" | "earners" | "rewards";
@@ -44,12 +48,7 @@ type StakingSearchParams = Promise<{
   board?: string | string[];
 }>;
 
-type ActivityItem = {
-  label: string;
-  detail: string;
-  meta: string;
-  tone: "amber" | "emerald" | "sky" | "slate";
-};
+type ActivityItem = StakingActivityItem;
 
 type EconomySnapshot = {
   period: PeriodKey;
@@ -63,6 +62,9 @@ type EconomySnapshot = {
   treasuryShareWolo: number | null;
   activeBettors: number | null;
   activePlayers: number | null;
+  activeStakers: number | null;
+  totalStakedWolo: number | null;
+  totalStakingWeight: string | null;
   activity: ActivityItem[];
 };
 
@@ -71,6 +73,7 @@ type BoardRow = {
   badge: string;
   staked: string;
   rewards: string;
+  weight: string;
   status: string;
   tone: "gold" | "emerald" | "sky" | "slate";
 };
@@ -93,22 +96,22 @@ const BOARD_ROWS: Record<
   BoardRow[]
 > = {
   stakers: [
-    { player: "Founder Seat", badge: "Crown lane", staked: "Ledger pending", rewards: "Modeled", status: "Top seat", tone: "gold" },
-    { player: "Early Backer", badge: "First wave", staked: "Ledger pending", rewards: "Modeled", status: "Ready soon", tone: "emerald" },
-    { player: "Verified Grinder", badge: "Match regular", staked: "Ledger pending", rewards: "Modeled", status: "Open slot", tone: "sky" },
-    { player: "War Chest Leader", badge: "Top earner", staked: "Ledger pending", rewards: "Modeled", status: "Unclaimed", tone: "slate" },
+    { player: "Founder Seat", badge: "Crown lane", staked: "Ledger pending", rewards: "Modeled", weight: "Opening soon", status: "Top seat", tone: "gold" },
+    { player: "Early Backer", badge: "First wave", staked: "Ledger pending", rewards: "Modeled", weight: "Opening soon", status: "Ready soon", tone: "emerald" },
+    { player: "Verified Grinder", badge: "Match regular", staked: "Ledger pending", rewards: "Modeled", weight: "Opening soon", status: "Open slot", tone: "sky" },
+    { player: "War Chest Leader", badge: "Top earner", staked: "Ledger pending", rewards: "Modeled", weight: "Opening soon", status: "Unclaimed", tone: "slate" },
   ],
   earners: [
-    { player: "Top Earner", badge: "Crown lane", staked: "Ledger pending", rewards: "Modeled", status: "Preview", tone: "gold" },
-    { player: "Fee Hunter", badge: "Daily share", staked: "Ledger pending", rewards: "Modeled", status: "Preview", tone: "emerald" },
-    { player: "Match Regular", badge: "Steady heat", staked: "Ledger pending", rewards: "Modeled", status: "Preview", tone: "sky" },
-    { player: "New Backer", badge: "Open seat", staked: "Ledger pending", rewards: "Modeled", status: "Preview", tone: "slate" },
+    { player: "Top Earner", badge: "Crown lane", staked: "Ledger pending", rewards: "Modeled", weight: "Opening soon", status: "Preview", tone: "gold" },
+    { player: "Fee Hunter", badge: "Daily share", staked: "Ledger pending", rewards: "Modeled", weight: "Opening soon", status: "Preview", tone: "emerald" },
+    { player: "Match Regular", badge: "Steady heat", staked: "Ledger pending", rewards: "Modeled", weight: "Opening soon", status: "Preview", tone: "sky" },
+    { player: "New Backer", badge: "Open seat", staked: "Ledger pending", rewards: "Modeled", weight: "Opening soon", status: "Preview", tone: "slate" },
   ],
   rewards: [
-    { player: "Daily Pool", badge: "Preparing", staked: "0.75% fee", rewards: "50% share", status: "Stakers", tone: "gold" },
-    { player: "Treasury", badge: "Community", staked: "0.75% fee", rewards: "50% share", status: "Visible", tone: "emerald" },
-    { player: "Next Match", badge: "Settles soon", staked: "Open", rewards: "Feeds pool", status: "Live loop", tone: "sky" },
-    { player: "Reward Cutover", badge: "Ledger", staked: "Pending", rewards: "Preparing", status: "Next", tone: "slate" },
+    { player: "Daily Pool", badge: "Preparing", staked: "0.75% fee", rewards: "50% share", weight: "Pool weight", status: "Stakers", tone: "gold" },
+    { player: "Treasury", badge: "Community", staked: "0.75% fee", rewards: "50% share", weight: "Visible", status: "Visible", tone: "emerald" },
+    { player: "Next Match", badge: "Settles soon", staked: "Open", rewards: "Feeds pool", weight: "Live loop", status: "Live loop", tone: "sky" },
+    { player: "Reward Cutover", badge: "Ledger", staked: "Pending", rewards: "Preparing", weight: "Pending", status: "Next", tone: "slate" },
   ],
 };
 
@@ -126,12 +129,6 @@ function normalizeBoard(value: string | string[] | undefined): BoardKey {
   return raw === "earners" || raw === "rewards" ? raw : "stakers";
 }
 
-function getPeriodStart(period: PeriodKey) {
-  const config = PERIODS.find((item) => item.key === period);
-  if (!config?.days) return null;
-  return new Date(Date.now() - config.days * 24 * 60 * 60 * 1000);
-}
-
 function hrefFor(params: { period: PeriodKey; board: BoardKey }) {
   const search = new URLSearchParams();
   if (params.period !== "24h") search.set("period", params.period);
@@ -147,7 +144,7 @@ function formatNumber(value: number | null) {
 
 function formatWolo(
   value: number | null,
-  options: { approximate?: boolean; compact?: boolean; decimals?: number } = {}
+  options: { compact?: boolean; decimals?: number } = {}
 ) {
   if (value == null) return "--";
   const compact = options.compact ?? value >= 10000;
@@ -160,11 +157,23 @@ function formatWolo(
     notation: compact ? "compact" : "standard",
   }).format(value);
 
-  return `${options.approximate ? "≈" : ""}${formatted} WOLO`;
+  return `${formatted} WOLO`;
 }
 
 function formatFeeShareWolo(value: number | null) {
-  return formatWolo(value, { approximate: true, compact: false, decimals: 2 });
+  return formatWolo(value, { compact: false, decimals: 2 });
+}
+
+function formatWeight(value: string | null | undefined) {
+  if (!value || value === "0") return "--";
+  const raw = BigInt(value);
+  if (raw >= BigInt(1_000_000_000)) {
+    return `${new Intl.NumberFormat("en-US", {
+      maximumFractionDigits: 1,
+      notation: "compact",
+    }).format(Number(raw))} weight`;
+  }
+  return `${new Intl.NumberFormat("en-US").format(Number(raw))} weight`;
 }
 
 function stakerEarnedLabel(period: PeriodKey) {
@@ -174,149 +183,8 @@ function stakerEarnedLabel(period: PeriodKey) {
   return "All-Time Stakers Earned";
 }
 
-function formatMoment(value: Date) {
-  return value.toLocaleString([], {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
-function displayPlayerName(input: {
-  inGameName: string | null;
-  steamPersonaName: string | null;
-  uid: string;
-}) {
-  return input.inGameName?.trim() || input.steamPersonaName?.trim() || input.uid;
-}
-
 async function loadEconomySnapshot(period: PeriodKey): Promise<EconomySnapshot> {
-  const prisma = getPrisma();
-  const periodStart = getPeriodStart(period);
-  const wagerWhere = periodStart ? { createdAt: { gte: periodStart } } : {};
-  const settledWhere = periodStart
-    ? { settledAt: { gte: periodStart } }
-    : { settledAt: { not: null } };
-  const activeUserWhere = periodStart ? { lastSeen: { gte: periodStart } } : {};
-
-  const [
-    wagerAggregate,
-    settledAggregate,
-    payoutAggregate,
-    activeBettorRows,
-    activePlayers,
-    recentWagers,
-  ] = await Promise.all([
-    prisma.betWager.aggregate({
-      where: wagerWhere,
-      _count: { _all: true },
-      _sum: { amountWolo: true },
-    }),
-    prisma.betWager.aggregate({
-      where: settledWhere,
-      _sum: { amountWolo: true },
-    }),
-    prisma.betWager.aggregate({
-      where: settledWhere,
-      _sum: { payoutWolo: true },
-    }),
-    prisma.betWager.findMany({
-      where: wagerWhere,
-      distinct: ["userId"],
-      select: { userId: true },
-    }),
-    prisma.user.count({ where: activeUserWhere }),
-    prisma.betWager.findMany({
-      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-      take: 5,
-      select: {
-        amountWolo: true,
-        payoutWolo: true,
-        status: true,
-        side: true,
-        createdAt: true,
-        user: {
-          select: {
-            uid: true,
-            inGameName: true,
-            steamPersonaName: true,
-          },
-        },
-        market: {
-          select: {
-            title: true,
-            leftLabel: true,
-            rightLabel: true,
-          },
-        },
-      },
-    }),
-  ]);
-
-  const settledVolumeWolo = settledAggregate._sum.amountWolo ?? 0;
-  const bettingFeePool = settledVolumeWolo * BETTING_FEE_RATE;
-  const stakerFeePoolWolo = bettingFeePool * STAKER_SHARE;
-  const treasuryShareWolo = bettingFeePool * (1 - STAKER_SHARE);
-
-  const activity: ActivityItem[] = [];
-
-  if (stakerFeePoolWolo > 0) {
-    activity.push({
-      label: `${formatFeeShareWolo(stakerFeePoolWolo)} modeled for stakers`,
-      detail: "50% share from settled betting fees.",
-      meta: "Fee model",
-      tone: "amber",
-    });
-  }
-
-  if (treasuryShareWolo > 0) {
-    activity.push({
-      label: `${formatFeeShareWolo(treasuryShareWolo)} modeled for treasury`,
-      detail: "Matching 50% share for the Community Treasury.",
-      meta: "Fee model",
-      tone: "emerald",
-    });
-  }
-
-  for (const wager of recentWagers) {
-    const player = displayPlayerName(wager.user);
-    const pickedLabel = wager.side === "right" ? wager.market.rightLabel : wager.market.leftLabel;
-    const matchLabel = `${wager.market.leftLabel} vs ${wager.market.rightLabel}`;
-    const isWin = wager.status === "won" && (wager.payoutWolo ?? 0) > 0;
-    activity.push({
-      label: isWin
-        ? `${formatWolo(wager.payoutWolo ?? 0)} payout: ${matchLabel}`
-        : `${formatWolo(wager.amountWolo)} wager: ${matchLabel}`,
-      detail: isWin ? `${player} won on ${pickedLabel}` : `${player} picked ${pickedLabel}`,
-      meta: formatMoment(wager.createdAt),
-      tone: isWin ? "emerald" : "sky",
-    });
-  }
-
-  if (activity.length === 0) {
-    activity.push({
-      label: "Recent activity is warming up",
-      detail: "Settled matches, treasury movement, and staking rewards will land here.",
-      meta: "Standby",
-      tone: "slate",
-    });
-  }
-
-  return {
-    period,
-    generatedAt: new Date().toISOString(),
-    dataLive: true,
-    betsPlaced: wagerAggregate._count._all,
-    betVolumeWolo: wagerAggregate._sum.amountWolo ?? 0,
-    payoutWolo: payoutAggregate._sum.payoutWolo ?? 0,
-    settledVolumeWolo,
-    stakerFeePoolWolo,
-    treasuryShareWolo,
-    activeBettors: activeBettorRows.length,
-    activePlayers,
-    activity: activity.slice(0, 7),
-  };
+  return loadStakingSummary(getPrisma(), period);
 }
 
 function fallbackSnapshot(period: PeriodKey): EconomySnapshot {
@@ -332,6 +200,9 @@ function fallbackSnapshot(period: PeriodKey): EconomySnapshot {
     treasuryShareWolo: null,
     activeBettors: null,
     activePlayers: null,
+    activeStakers: null,
+    totalStakedWolo: null,
+    totalStakingWeight: null,
     activity: [
       {
         label: "Economy feed is offline",
@@ -340,6 +211,18 @@ function fallbackSnapshot(period: PeriodKey): EconomySnapshot {
         tone: "slate",
       },
     ],
+  };
+}
+
+function mapLeaderboardRow(row: StakingLeaderboardRow): BoardRow {
+  return {
+    player: row.player,
+    badge: row.badge,
+    staked: row.stakedWolo > 0 ? formatWolo(row.stakedWolo) : "--",
+    rewards: row.rewardsWolo > 0 ? formatWolo(row.rewardsWolo) : "--",
+    weight: formatWeight(row.stakingWeight),
+    status: row.status,
+    tone: row.tone,
   };
 }
 
@@ -359,6 +242,16 @@ export default async function StakingPage({
   } catch (error) {
     console.warn("Failed to load staking economy snapshot:", error);
     snapshot = fallbackSnapshot(period);
+  }
+
+  let boardRows = BOARD_ROWS[board];
+  try {
+    const leaderboard = await loadStakingLeaderboard(getPrisma(), board);
+    if (leaderboard.rows.length > 0) {
+      boardRows = leaderboard.rows.map(mapLeaderboardRow);
+    }
+  } catch (error) {
+    console.warn("Failed to load staking leaderboard:", error);
   }
 
   return (
@@ -387,7 +280,7 @@ export default async function StakingPage({
                 Stake WOLO. Earn from Real Matches.
               </h1>
               <p className="max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
-                Stakers receive 50% of betting fees, paid from real AoE2HDBets activity. No fake APY. No lockups. Just WOLO working while matches settle.
+                50% of betting fees go to stakers.
               </p>
             </div>
 
@@ -421,7 +314,7 @@ export default async function StakingPage({
               <DataBadge live={snapshot.dataLive} />
             </div>
 
-            <div className="mt-5 rounded-[1.45rem] border border-amber-300/25 bg-[radial-gradient(circle_at_18%_18%,rgba(251,191,36,0.22),transparent_32%),linear-gradient(180deg,rgba(251,191,36,0.14),rgba(255,255,255,0.045))] p-5 shadow-[0_24px_70px_rgba(251,191,36,0.08)]">
+            <div className="mt-5 rounded-[1.45rem] border border-amber-300/25 bg-white/[0.045] p-5 shadow-[0_24px_70px_rgba(2,6,23,0.16)]">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="text-[11px] uppercase tracking-[0.26em] text-amber-100/70">
@@ -435,8 +328,8 @@ export default async function StakingPage({
                   <Crown className="h-5 w-5" />
                 </div>
               </div>
-              <div className="mt-4 text-sm leading-6 text-amber-50/82">
-                Modeled from the 50% staker share of settled betting fees.
+              <div className="mt-4 text-sm leading-6 text-slate-300">
+                50% of settled betting fees.
               </div>
             </div>
 
@@ -542,8 +435,8 @@ export default async function StakingPage({
           <EconomyCard
             icon={<BarChart3 className="h-5 w-5" />}
             label="Active Stakers"
-            value="--"
-            helper="Ledger coming soon"
+            value={formatNumber(snapshot.activeStakers)}
+            helper={snapshot.totalStakedWolo ? `${formatWolo(snapshot.totalStakedWolo)} staked` : "Ledger ready"}
             tone="emerald"
           />
         </div>
@@ -589,7 +482,7 @@ export default async function StakingPage({
                 <SplitRow label="Winner receives" value="19,850 WOLO" tone="white" />
               </div>
               <p className="mt-4 text-sm leading-6 text-slate-300">
-                A tiny betting fee keeps the economy alive. Half goes to stakers. Half strengthens the Community Treasury.
+                Every settled bet feeds both pools.
               </p>
             </div>
           </div>
@@ -652,14 +545,15 @@ export default async function StakingPage({
           </div>
 
           <div className="space-y-2">
-            <div className="hidden rounded-xl border border-white/10 bg-white/[0.035] px-4 py-3 text-xs uppercase tracking-[0.18em] text-slate-500 md:grid md:grid-cols-[3rem_1.3fr_1fr_1fr_0.9fr] md:gap-3">
+            <div className="hidden rounded-xl border border-white/10 bg-white/[0.035] px-4 py-3 text-xs uppercase tracking-[0.18em] text-slate-500 md:grid md:grid-cols-[3rem_1.25fr_0.85fr_0.85fr_1fr_0.8fr] md:gap-3">
               <div>Rank</div>
               <div>Player</div>
               <div>Staked</div>
               <div>Rewards</div>
+              <div>Weight</div>
               <div>Status</div>
             </div>
-            {BOARD_ROWS[board].map((row, index) => (
+            {boardRows.map((row, index) => (
               <LeaderboardRow key={`${board}-${row.player}`} rank={index + 1} row={row} />
             ))}
           </div>
@@ -675,11 +569,11 @@ export default async function StakingPage({
       </section>
 
       <section className="grid gap-4 lg:grid-cols-5">
-        <TrustCard title="No Inflation" copy="Rewards come from betting fees." />
-        <TrustCard title="No Lockups" copy="Stake and unstake are instant." />
-        <TrustCard title="Fair Weight" copy="Reward share uses Staking Weight." />
-        <TrustCard title="Visible Pools" copy="Treasury and staker revenue stay surfaced." />
-        <TrustCard title="No Fake APY" copy="No emission promises. No tricks." />
+        <TrustCard title="No Inflation" copy="Betting fees only." />
+        <TrustCard title="No Lockups" copy="Stake and unstake freely." />
+        <TrustCard title="Fair Weight" copy="WOLO x time." />
+        <TrustCard title="Visible Pools" copy="Staker and treasury revenue." />
+        <TrustCard title="No Fake APY" copy="No emissions." />
       </section>
 
       <section className="overflow-hidden rounded-[1.65rem] border border-amber-300/18 bg-[radial-gradient(circle_at_16%_18%,rgba(251,191,36,0.18),transparent_30%),linear-gradient(135deg,rgba(18,24,38,0.98),rgba(6,10,18,0.98))] p-6 sm:p-8">
@@ -784,7 +678,7 @@ function EconomyCard({
           : "text-slate-200 bg-white/[0.045] border-white/10";
 
   return (
-    <div className={`min-h-[9.4rem] rounded-[1.35rem] border p-4 shadow-[0_18px_65px_rgba(2,6,23,0.22)] ${featured ? "border-amber-300/30 bg-[linear-gradient(180deg,rgba(251,191,36,0.14),rgba(255,255,255,0.045))]" : "border-white/10 bg-white/[0.04]"}`}>
+    <div className={`min-h-[9.4rem] rounded-[1.35rem] border p-4 shadow-[0_18px_65px_rgba(2,6,23,0.22)] ${featured ? "border-amber-300/25 bg-white/[0.045]" : "border-white/10 bg-white/[0.04]"}`}>
       <div className={`inline-flex rounded-full border p-2 ${toneClass}`}>{icon}</div>
       <div className="mt-4 text-[11px] uppercase tracking-[0.22em] text-slate-500">{label}</div>
       <div className="mt-2 text-2xl font-semibold text-white">{value}</div>
@@ -878,7 +772,7 @@ function LeaderboardRow({
           : "border-white/10 bg-white/[0.055] text-slate-200";
 
   return (
-    <div className="rounded-[1.1rem] border border-white/10 bg-white/[0.04] p-4 md:grid md:grid-cols-[3rem_1.35fr_1fr_1fr_0.9fr] md:items-center md:gap-3">
+    <div className="rounded-[1.1rem] border border-white/10 bg-white/[0.04] p-4 md:grid md:grid-cols-[3rem_1.25fr_0.85fr_0.85fr_1fr_0.8fr] md:items-center md:gap-3">
       <div className="flex items-center justify-between gap-3 md:block">
         <div className={`flex h-9 w-9 items-center justify-center rounded-full border text-sm font-semibold ${
           row.tone === "gold"
@@ -897,6 +791,7 @@ function LeaderboardRow({
       </div>
       <MobileLabel label="Staked" value={row.staked} />
       <MobileLabel label="Rewards" value={row.rewards} />
+      <MobileLabel label="Weight" value={row.weight} />
       <div className={`mt-3 rounded-full border px-3 py-1 text-xs md:mt-0 md:text-center ${badgeClass}`}>
         {row.status}
       </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, Wallet } from "lucide-react";
 
 import { useKeplr } from "@/hooks/use-keplr";
@@ -22,11 +22,53 @@ function shortAddress(value: string) {
   return `${value.slice(0, 10)}...${value.slice(-6)}`;
 }
 
+type StakingMe = {
+  position: {
+    currentStakedWolo: number;
+    stakingWeight: string;
+    pendingRewardsWolo: number;
+    lifetimeRewardsWolo: number;
+    lastRewardPaymentAt: string | null;
+    lastRewardAmountWolo: number;
+  };
+  execution: {
+    detail: string;
+  };
+};
+
+function formatWholeWolo(value: number | null | undefined) {
+  if (!value) return "--";
+  return `${new Intl.NumberFormat("en-US").format(value)} WOLO`;
+}
+
+function formatWeight(value: string | null | undefined) {
+  if (!value || value === "0") return "--";
+  const raw = BigInt(value);
+  if (raw >= BigInt(1_000_000_000)) {
+    return `${new Intl.NumberFormat("en-US", {
+      maximumFractionDigits: 1,
+      notation: "compact",
+    }).format(Number(raw))} weight`;
+  }
+  return `${new Intl.NumberFormat("en-US").format(Number(raw))} weight`;
+}
+
+function formatRewardDate(value: string | null | undefined) {
+  if (!value) return "No payments yet";
+  return new Date(value).toLocaleDateString([], {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
 export default function StakingWalletPanel() {
   const { address, status, connect } = useKeplr();
   const { data: rawBalance, isLoading: balanceLoading } = useWoloBalance(address);
   const { isAuthenticated, loading, playerName, loginWithSteam } = useUserAuth();
   const [walletError, setWalletError] = useState<string | null>(null);
+  const [stakingState, setStakingState] = useState<StakingMe | null>(null);
+  const [stakingLoading, setStakingLoading] = useState(false);
 
   const balanceLabel = useMemo(
     () => (balanceLoading ? "Syncing" : `${formatTokenAmount(rawBalance)} WOLO`),
@@ -41,6 +83,37 @@ export default function StakingWalletPanel() {
         : status === "connecting" || status === "checking"
           ? "Checking wallet"
           : "Wallet offline";
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadStakingState() {
+      if (!isAuthenticated) {
+        setStakingState(null);
+        return;
+      }
+
+      setStakingLoading(true);
+      try {
+        const response = await fetch("/api/staking/me", { cache: "no-store" });
+        if (!response.ok) {
+          if (!cancelled) setStakingState(null);
+          return;
+        }
+        const payload = (await response.json()) as StakingMe;
+        if (!cancelled) setStakingState(payload);
+      } catch {
+        if (!cancelled) setStakingState(null);
+      } finally {
+        if (!cancelled) setStakingLoading(false);
+      }
+    }
+
+    void loadStakingState();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated]);
 
   async function handleConnect() {
     try {
@@ -109,21 +182,45 @@ export default function StakingWalletPanel() {
         <div className="p-5 sm:p-6">
           <div className="grid gap-3 sm:grid-cols-2">
             <StakingMetric label="Wallet Balance" value={status === "connected" ? balanceLabel : "--"} />
-            <StakingMetric label="Currently Staked" value="Ledger pending" helper="No stake recorded yet" />
-            <StakingMetric label="Staking Weight" value="Preparing" helper="More WOLO + time" />
-            <StakingMetric label="Pending Rewards" value="Estimate unlocks" helper="After first stake" />
-            <StakingMetric label="Lifetime Rewards" value="Preparing" helper="Awaiting ledger" />
-            <StakingMetric label="Last Reward Payment" value="No payments yet" />
+            <StakingMetric
+              label="Currently Staked"
+              value={stakingLoading ? "Syncing" : formatWholeWolo(stakingState?.position.currentStakedWolo)}
+              helper={stakingState?.position.currentStakedWolo ? "Confirmed ledger stake" : "No stake recorded"}
+            />
+            <StakingMetric
+              label="Staking Weight"
+              value={stakingLoading ? "Syncing" : formatWeight(stakingState?.position.stakingWeight)}
+              helper="More WOLO + time"
+            />
+            <StakingMetric
+              label="Pending Rewards"
+              value={stakingLoading ? "Syncing" : formatWholeWolo(stakingState?.position.pendingRewardsWolo)}
+              helper="Claim after chain cutover"
+            />
+            <StakingMetric
+              label="Lifetime Rewards"
+              value={stakingLoading ? "Syncing" : formatWholeWolo(stakingState?.position.lifetimeRewardsWolo)}
+              helper="Credited fee share"
+            />
+            <StakingMetric
+              label="Last Reward Payment"
+              value={stakingLoading ? "Syncing" : formatRewardDate(stakingState?.position.lastRewardPaymentAt)}
+              helper={
+                stakingState?.position.lastRewardAmountWolo
+                  ? formatWholeWolo(stakingState.position.lastRewardAmountWolo)
+                  : undefined
+              }
+            />
           </div>
 
           <div className="mt-5 grid gap-2 sm:grid-cols-3">
-            <DisabledAction label="Stake" helper="Ledger pending" />
-            <DisabledAction label="Unstake" helper="Ledger pending" />
-            <DisabledAction label="Claim" helper="Rewards pending" />
+            <DisabledAction label="Stake" helper="Chain pending" />
+            <DisabledAction label="Unstake" helper="Chain pending" />
+            <DisabledAction label="Claim" helper="Chain pending" />
           </div>
 
           <div className="mt-4 rounded-[1.2rem] border border-emerald-300/15 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
-            Stake, unstake, and claims are preparing for the staking ledger cutover. This panel is read-only for now.
+            {stakingState?.execution.detail ?? "Staking ledger ready. Chain execution pending."}
           </div>
         </div>
       </div>
