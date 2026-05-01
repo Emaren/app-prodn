@@ -12,6 +12,7 @@ import {
   Crown,
   Gem,
   HandCoins,
+  Landmark,
   Swords,
   Trophy,
   Users,
@@ -24,7 +25,10 @@ import {
   type StakingActivityItem,
   type StakingLeaderboardRow,
 } from "@/lib/staking";
+import { fetchWoloBalanceAmount } from "@/lib/woloRuntime";
+import { formatWoloAmount, shortenAddress, WOLO_REST_URL } from "@/lib/woloChain";
 import StakingWalletPanel from "./StakingWalletPanel";
+import TreasuryActions from "./TreasuryActions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -78,6 +82,15 @@ type BoardRow = {
   tone: "gold" | "emerald" | "sky" | "slate";
 };
 
+type CommunityTreasurySnapshot = {
+  address: string | null;
+  shortAddress: string;
+  balanceLabel: string;
+  proofUrl: string | null;
+  status: "ready" | "pending" | "error";
+  detail: string;
+};
+
 const PERIODS: Array<{ key: PeriodKey; label: string; days: number | null }> = [
   { key: "24h", label: "24H", days: 1 },
   { key: "7d", label: "7D", days: 7 },
@@ -90,6 +103,27 @@ const BOARDS: Array<{ key: BoardKey; label: string }> = [
   { key: "earners", label: "Top Earners" },
   { key: "rewards", label: "Recent Rewards" },
 ];
+
+const TREASURY_ADDRESS_ENV_NAMES = [
+  "WOLO_COMMUNITY_TREASURY_ADDRESS",
+  "WOLO_COMMUNITY_TREASURY",
+  "WOLO_TREASURY_ADDRESS",
+  "WOLO_TREASURY",
+  "WOLO_MATCH_GUARANTEE_TREASURY_ADDRESS",
+  "WOLO_MATCH_GUARANTEE_TREASURY",
+  "WOLO_TREASURY_WALLET_ADDRESS",
+  "WOLO_TREASURY_WALLET",
+  "WOLO_COMMUNITY_TREASURY_WALLET_ADDRESS",
+  "WOLO_COMMUNITY_TREASURY_WALLET",
+  "NEXT_PUBLIC_WOLO_COMMUNITY_TREASURY_ADDRESS",
+  "NEXT_PUBLIC_WOLO_COMMUNITY_TREASURY",
+  "NEXT_PUBLIC_WOLO_TREASURY_ADDRESS",
+  "NEXT_PUBLIC_WOLO_TREASURY",
+  "NEXT_PUBLIC_WOLO_MATCH_GUARANTEE_TREASURY_ADDRESS",
+  "NEXT_PUBLIC_WOLO_MATCH_GUARANTEE_TREASURY",
+  "NEXT_PUBLIC_WOLO_TREASURY_WALLET_ADDRESS",
+  "NEXT_PUBLIC_WOLO_TREASURY_WALLET",
+] as const;
 
 const BOARD_ROWS: Record<
   BoardKey,
@@ -183,6 +217,59 @@ function stakerEarnedLabel(period: PeriodKey) {
   return "All-Time Stakers Earned";
 }
 
+function resolveTreasuryAddress() {
+  for (const name of TREASURY_ADDRESS_ENV_NAMES) {
+    const value = process.env[name]?.trim();
+    if (value) return value;
+  }
+  return null;
+}
+
+function buildTreasuryProofUrl(address: string) {
+  const template = process.env.NEXT_PUBLIC_WOLO_EXPLORER_ADDRESS_URL?.trim();
+  if (template) return template.replace("{address}", encodeURIComponent(address));
+
+  const base = process.env.NEXT_PUBLIC_WOLO_EXPLORER_URL?.trim();
+  if (base) return `${base.replace(/\/+$/, "")}/address/${encodeURIComponent(address)}`;
+
+  return `${WOLO_REST_URL.replace(/\/+$/, "")}/cosmos/bank/v1beta1/balances/${encodeURIComponent(address)}`;
+}
+
+async function loadCommunityTreasurySnapshot(): Promise<CommunityTreasurySnapshot> {
+  const address = resolveTreasuryAddress();
+  if (!address) {
+    return {
+      address: null,
+      shortAddress: "Wallet pending",
+      balanceLabel: "--",
+      proofUrl: null,
+      status: "pending",
+      detail: "Public treasury wallet config pending.",
+    };
+  }
+
+  try {
+    const amountUWolo = await fetchWoloBalanceAmount(address);
+    return {
+      address,
+      shortAddress: shortenAddress(address, 10, 6),
+      balanceLabel: `${formatWoloAmount(amountUWolo)} WOLO`,
+      proofUrl: buildTreasuryProofUrl(address),
+      status: "ready",
+      detail: "Public wallet",
+    };
+  } catch (error) {
+    return {
+      address,
+      shortAddress: shortenAddress(address, 10, 6),
+      balanceLabel: "--",
+      proofUrl: buildTreasuryProofUrl(address),
+      status: "error",
+      detail: error instanceof Error ? "Balance lookup pending." : "Balance pending.",
+    };
+  }
+}
+
 async function loadEconomySnapshot(period: PeriodKey): Promise<EconomySnapshot> {
   return loadStakingSummary(getPrisma(), period);
 }
@@ -234,7 +321,6 @@ export default async function StakingPage({
   const resolvedSearchParams = await searchParams;
   const period = normalizePeriod(resolvedSearchParams?.period);
   const board = normalizeBoard(resolvedSearchParams?.board);
-  const periodLabel = PERIODS.find((item) => item.key === period)?.label ?? "24H";
 
   let snapshot: EconomySnapshot;
   try {
@@ -254,8 +340,33 @@ export default async function StakingPage({
     console.warn("Failed to load staking leaderboard:", error);
   }
 
+  const treasury = await loadCommunityTreasurySnapshot();
+  const activityRows = snapshot.activity.slice(0, 6);
+
   return (
     <main className="space-y-6 py-3 text-white sm:space-y-7 sm:py-4">
+      <style>{`
+        @keyframes stakingActivityGlow {
+          0% {
+            border-color: rgba(251, 191, 36, 0.55);
+            box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.16), 0 0 34px rgba(251, 191, 36, 0.22);
+            transform: translateY(-2px);
+          }
+          62% {
+            border-color: rgba(251, 191, 36, 0.26);
+            box-shadow: 0 0 28px rgba(251, 191, 36, 0.11);
+            transform: translateY(0);
+          }
+          100% {
+            border-color: rgba(255, 255, 255, 0.1);
+            box-shadow: none;
+            transform: translateY(0);
+          }
+        }
+        .staking-activity-new {
+          animation: stakingActivityGlow 1.8s ease-out 1;
+        }
+      `}</style>
       <section className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_12%_18%,rgba(251,191,36,0.2),transparent_24%),radial-gradient(circle_at_86%_12%,rgba(16,185,129,0.16),transparent_24%),radial-gradient(circle_at_70%_86%,rgba(148,163,184,0.12),transparent_22%),linear-gradient(135deg,#07101d,#111827_52%,#040712)] p-5 shadow-[0_42px_120px_rgba(2,6,23,0.45)] sm:p-7 lg:p-9">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(251,191,36,0.6),transparent)]" />
         <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full border border-amber-300/10" />
@@ -276,8 +387,8 @@ export default async function StakingPage({
                   WOLO Economy
                 </div>
               </div>
-              <h1 className="max-w-4xl text-4xl font-semibold leading-tight text-white sm:text-5xl lg:text-6xl">
-                Stake WOLO. Earn from Real Matches.
+              <h1 className="max-w-4xl text-[2.05rem] font-semibold leading-tight text-white sm:text-[2.7rem] lg:text-[3.35rem]">
+                Stake WOLO.
               </h1>
               <p className="max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
                 50% of betting fees go to stakers.
@@ -299,64 +410,85 @@ export default async function StakingPage({
               <HeroStat label="Staking Weight" value="More WOLO + time" helper="More rewards" />
               <HeroStat label="Fee Split" value="50 / 50" helper="Stakers and treasury" />
             </div>
+
+            <CompactLeaderboard
+              board={board}
+              boardRows={boardRows}
+              period={period}
+            />
           </div>
 
-          <section className="rounded-[1.65rem] border border-white/10 bg-[linear-gradient(180deg,rgba(7,12,22,0.94),rgba(3,6,12,0.98))] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:p-6">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <div className="text-xs uppercase tracking-[0.28em] text-white/45">
-                  War Chest Pulse
-                </div>
-                <h2 className="mt-2 text-2xl font-semibold text-white">
-                  {periodLabel} economy
-                </h2>
-              </div>
-              <DataBadge live={snapshot.dataLive} />
-            </div>
-
-            <div className="mt-5 rounded-[1.45rem] border border-amber-300/25 bg-white/[0.045] p-5 shadow-[0_24px_70px_rgba(2,6,23,0.16)]">
-              <div className="flex items-start justify-between gap-3">
+          <div className="space-y-4">
+            <section className="rounded-[1.65rem] border border-white/10 bg-[linear-gradient(180deg,rgba(7,12,22,0.94),rgba(3,6,12,0.98))] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:p-6">
+              <div className="flex items-start justify-between gap-4">
                 <div>
-                  <div className="text-[11px] uppercase tracking-[0.26em] text-amber-100/70">
-                    {stakerEarnedLabel(period)}
-                  </div>
-                  <div className="mt-3 text-4xl font-semibold tracking-tight text-white sm:text-5xl">
-                    {formatFeeShareWolo(snapshot.stakerFeePoolWolo)}
+                  <div className="text-xs uppercase tracking-[0.28em] text-white/45">
+                    War Chest Pulse
                   </div>
                 </div>
-                <div className="rounded-full border border-amber-200/25 bg-amber-300/12 p-3 text-amber-100">
-                  <Crown className="h-5 w-5" />
+                <DataBadge live={snapshot.dataLive} />
+              </div>
+
+              <div className="mt-5 rounded-[1.45rem] border border-amber-300/25 bg-white/[0.045] p-5 shadow-[0_24px_70px_rgba(2,6,23,0.16)]">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-[11px] uppercase tracking-[0.26em] text-amber-100/70">
+                      {stakerEarnedLabel(period)}
+                    </div>
+                    <div className="mt-3 text-4xl font-semibold tracking-tight text-white sm:text-5xl">
+                      {formatFeeShareWolo(snapshot.stakerFeePoolWolo)}
+                    </div>
+                  </div>
+                  <div className="rounded-full border border-amber-200/25 bg-amber-300/12 p-3 text-amber-100">
+                    <Crown className="h-5 w-5" />
+                  </div>
+                </div>
+                <div className="mt-4 text-sm leading-6 text-slate-300">
+                  50% of settled betting fees.
                 </div>
               </div>
-              <div className="mt-4 text-sm leading-6 text-slate-300">
-                50% of settled betting fees.
+
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <HeroStat label="Bet Volume" value={formatWolo(snapshot.betVolumeWolo)} helper={`${formatNumber(snapshot.betsPlaced)} bets`} />
+                <HeroStat label="Payouts" value={formatWolo(snapshot.payoutWolo)} helper="Settled returns" />
+                <HeroStat label="Bets Placed" value={formatNumber(snapshot.betsPlaced)} helper="Wagers in window" />
+                <HeroStat label="Treasury Share" value={formatFeeShareWolo(snapshot.treasuryShareWolo)} helper="Modeled fee share" />
               </div>
-            </div>
 
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              <HeroStat label="Bet Volume" value={formatWolo(snapshot.betVolumeWolo)} helper={`${formatNumber(snapshot.betsPlaced)} bets`} />
-              <HeroStat label="Payouts" value={formatWolo(snapshot.payoutWolo)} helper="Settled returns" />
-              <HeroStat label="Bets Placed" value={formatNumber(snapshot.betsPlaced)} helper="Wagers in window" />
-              <HeroStat label="Treasury Share" value={formatFeeShareWolo(snapshot.treasuryShareWolo)} helper="Modeled fee share" />
-            </div>
-
-            <div className="mt-5 rounded-[1.35rem] border border-amber-300/15 bg-amber-300/10 p-4">
-              <div className="flex items-center justify-between gap-3">
-                <div className="text-sm font-semibold text-amber-100">Staking Weight</div>
-                <div className="rounded-full border border-amber-200/20 bg-black/20 px-3 py-1 text-xs text-amber-100">
-                  WOLO x time
+              <div className="mt-5 rounded-[1.35rem] border border-amber-300/15 bg-amber-300/10 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-sm font-semibold text-amber-100">Staking Weight</div>
+                  <div className="rounded-full border border-amber-200/20 bg-black/20 px-3 py-1 text-xs text-amber-100">
+                    WOLO x time
+                  </div>
                 </div>
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/35">
+                  <div className="h-full w-[58%] rounded-full bg-[linear-gradient(90deg,#fbbf24,#34d399)]" />
+                </div>
+                <p className="mt-3 text-sm leading-6 text-amber-50/80">
+                  More WOLO plus more time equals more reward weight.
+                </p>
               </div>
-              <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/35">
-                <div className="h-full w-[58%] rounded-full bg-[linear-gradient(90deg,#fbbf24,#34d399)]" />
-              </div>
-              <p className="mt-3 text-sm leading-6 text-amber-50/80">
-                More WOLO plus more time equals more reward weight.
-              </p>
-            </div>
-          </section>
+            </section>
+
+            <CommunityTreasuryTile treasury={treasury} />
+          </div>
         </div>
       </section>
+
+      <Panel eyebrow="Recent Activity" title="War chest feed">
+        <div className="space-y-2.5">
+          {activityRows.map((item, index) => (
+            <ActivityRow
+              key={`${item.label}-${index}`}
+              item={item}
+              compact
+              isFresh={index === 0}
+              className={index === 5 ? "hidden sm:flex" : undefined}
+            />
+          ))}
+        </div>
+      </Panel>
 
       <section className="space-y-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
@@ -526,48 +658,6 @@ export default async function StakingPage({
         </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr] xl:items-start">
-        <Panel eyebrow="Loyalty Board" title="Staker status room">
-          <div className="mb-4 flex flex-wrap gap-2">
-            {BOARDS.map((item) => (
-              <Link
-                key={item.key}
-                href={hrefFor({ period, board: item.key })}
-                className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-                  board === item.key
-                    ? "border-emerald-300/40 bg-emerald-400/15 text-emerald-100"
-                    : "border-white/10 bg-white/[0.045] text-slate-300 hover:border-white/20 hover:bg-white/[0.075]"
-                }`}
-              >
-                {item.label}
-              </Link>
-            ))}
-          </div>
-
-          <div className="space-y-2">
-            <div className="hidden rounded-xl border border-white/10 bg-white/[0.035] px-4 py-3 text-xs uppercase tracking-[0.18em] text-slate-500 md:grid md:grid-cols-[3rem_1.25fr_0.85fr_0.85fr_1fr_0.8fr] md:gap-3">
-              <div>Rank</div>
-              <div>Player</div>
-              <div>Staked</div>
-              <div>Rewards</div>
-              <div>Weight</div>
-              <div>Status</div>
-            </div>
-            {boardRows.map((row, index) => (
-              <LeaderboardRow key={`${board}-${row.player}`} rank={index + 1} row={row} />
-            ))}
-          </div>
-        </Panel>
-
-        <Panel eyebrow="Recent Activity" title="War chest feed">
-          <div className="space-y-3">
-            {snapshot.activity.map((item, index) => (
-              <ActivityRow key={`${item.label}-${index}`} item={item} />
-            ))}
-          </div>
-        </Panel>
-      </section>
-
       <section className="grid gap-4 lg:grid-cols-5">
         <TrustCard title="No Inflation" copy="Betting fees only." />
         <TrustCard title="No Lockups" copy="Stake and unstake freely." />
@@ -699,6 +789,138 @@ function Panel({ eyebrow, title, children }: { eyebrow: string; title: string; c
   );
 }
 
+function CompactLeaderboard({
+  board,
+  boardRows,
+  period,
+}: {
+  board: BoardKey;
+  boardRows: BoardRow[];
+  period: PeriodKey;
+}) {
+  return (
+    <section className="rounded-[1.45rem] border border-white/10 bg-black/20 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="text-xs uppercase tracking-[0.28em] text-slate-500">Loyalty Board</div>
+          <h2 className="mt-1 text-xl font-semibold text-white">Staker status room</h2>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {BOARDS.map((item) => (
+            <Link
+              key={item.key}
+              href={hrefFor({ period, board: item.key })}
+              className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold transition ${
+                board === item.key
+                  ? "border-emerald-300/40 bg-emerald-400/15 text-emerald-100"
+                  : "border-white/10 bg-white/[0.045] text-slate-300 hover:border-white/20 hover:bg-white/[0.075]"
+              }`}
+            >
+              {item.label}
+            </Link>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-4 space-y-2">
+        <div className="hidden rounded-xl border border-white/10 bg-white/[0.035] px-3 py-2 text-[10px] uppercase tracking-[0.16em] text-slate-500 md:grid md:grid-cols-[2.5rem_1.3fr_0.9fr_1fr_0.75fr] md:gap-2">
+          <div>Rank</div>
+          <div>Player</div>
+          <div>Staked</div>
+          <div>Weight</div>
+          <div>Status</div>
+        </div>
+        {boardRows.slice(0, 4).map((row, index) => (
+          <CompactLeaderboardRow key={`${board}-${row.player}`} rank={index + 1} row={row} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function CompactLeaderboardRow({
+  rank,
+  row,
+}: {
+  rank: number;
+  row: BoardRow;
+}) {
+  const badgeClass =
+    row.tone === "gold"
+      ? "border-amber-300/25 bg-amber-300/12 text-amber-100"
+      : row.tone === "emerald"
+        ? "border-emerald-300/20 bg-emerald-500/10 text-emerald-100"
+        : row.tone === "sky"
+          ? "border-sky-300/20 bg-sky-500/10 text-sky-100"
+          : "border-white/10 bg-white/[0.055] text-slate-200";
+
+  return (
+    <div className="rounded-[1rem] border border-white/10 bg-white/[0.04] p-3 md:grid md:grid-cols-[2.5rem_1.3fr_0.9fr_1fr_0.75fr] md:items-center md:gap-2">
+      <div className="flex items-center justify-between gap-3 md:block">
+        <div className={`flex h-8 w-8 items-center justify-center rounded-full border text-xs font-semibold ${
+          row.tone === "gold"
+            ? "border-amber-300/25 bg-amber-300/12 text-amber-100"
+            : "border-white/10 bg-white/[0.055] text-slate-200"
+        }`}>
+          {rank}
+        </div>
+        <div className="text-xs uppercase tracking-[0.2em] text-slate-500 md:hidden">Rank</div>
+      </div>
+      <div className="mt-3 min-w-0 md:mt-0">
+        <div className="text-sm font-semibold text-white">{row.player}</div>
+        <div className={`mt-1 inline-flex rounded-full border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] ${badgeClass}`}>
+          {row.badge}
+        </div>
+      </div>
+      <MobileLabel label="Staked" value={row.staked} />
+      <MobileLabel label="Weight" value={row.weight} />
+      <div className={`mt-3 rounded-full border px-2.5 py-1 text-[11px] md:mt-0 md:text-center ${badgeClass}`}>
+        {row.status}
+      </div>
+    </div>
+  );
+}
+
+function CommunityTreasuryTile({ treasury }: { treasury: CommunityTreasurySnapshot }) {
+  const statusClass =
+    treasury.status === "ready"
+      ? "border-emerald-300/25 bg-emerald-500/10 text-emerald-100"
+      : treasury.status === "error"
+        ? "border-amber-300/25 bg-amber-300/10 text-amber-100"
+        : "border-white/10 bg-white/[0.055] text-slate-300";
+
+  return (
+    <section className="rounded-[1.45rem] border border-emerald-300/18 bg-[linear-gradient(180deg,rgba(6,18,15,0.78),rgba(4,7,14,0.98))] p-5 shadow-[0_22px_75px_rgba(2,6,23,0.22)]">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="text-xs uppercase tracking-[0.28em] text-emerald-100/65">
+            Community Treasury
+          </div>
+          <div className="mt-2 text-3xl font-semibold text-white">
+            {treasury.balanceLabel}
+          </div>
+        </div>
+        <div className="rounded-full border border-emerald-300/20 bg-emerald-500/10 p-3 text-emerald-100">
+          <Landmark className="h-5 w-5" />
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+        <div className="min-w-0 rounded-[1rem] border border-white/10 bg-black/20 px-4 py-3">
+          <div className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Public Wallet</div>
+          <div className="mt-1 truncate text-sm font-semibold text-slate-100">
+            {treasury.shortAddress}
+          </div>
+          <div className={`mt-2 inline-flex rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] ${statusClass}`}>
+            {treasury.detail}
+          </div>
+        </div>
+        <TreasuryActions address={treasury.address} proofUrl={treasury.proofUrl} />
+      </div>
+    </section>
+  );
+}
+
 function SplitRow({
   label,
   value,
@@ -755,50 +977,6 @@ function FormulaTile({
   );
 }
 
-function LeaderboardRow({
-  rank,
-  row,
-}: {
-  rank: number;
-  row: BoardRow;
-}) {
-  const badgeClass =
-    row.tone === "gold"
-      ? "border-amber-300/25 bg-amber-300/12 text-amber-100"
-      : row.tone === "emerald"
-        ? "border-emerald-300/20 bg-emerald-500/10 text-emerald-100"
-        : row.tone === "sky"
-          ? "border-sky-300/20 bg-sky-500/10 text-sky-100"
-          : "border-white/10 bg-white/[0.055] text-slate-200";
-
-  return (
-    <div className="rounded-[1.1rem] border border-white/10 bg-white/[0.04] p-4 md:grid md:grid-cols-[3rem_1.25fr_0.85fr_0.85fr_1fr_0.8fr] md:items-center md:gap-3">
-      <div className="flex items-center justify-between gap-3 md:block">
-        <div className={`flex h-9 w-9 items-center justify-center rounded-full border text-sm font-semibold ${
-          row.tone === "gold"
-            ? "border-amber-300/25 bg-amber-300/12 text-amber-100"
-            : "border-white/10 bg-white/[0.055] text-slate-200"
-        }`}>
-          {rank}
-        </div>
-        <div className="text-xs uppercase tracking-[0.2em] text-slate-500 md:hidden">Rank</div>
-      </div>
-      <div className="mt-3 min-w-0 md:mt-0">
-        <div className="font-semibold text-white">{row.player}</div>
-        <div className={`mt-1 inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] ${badgeClass}`}>
-          {row.badge}
-        </div>
-      </div>
-      <MobileLabel label="Staked" value={row.staked} />
-      <MobileLabel label="Rewards" value={row.rewards} />
-      <MobileLabel label="Weight" value={row.weight} />
-      <div className={`mt-3 rounded-full border px-3 py-1 text-xs md:mt-0 md:text-center ${badgeClass}`}>
-        {row.status}
-      </div>
-    </div>
-  );
-}
-
 function MobileLabel({ label, value }: { label: string; value: string }) {
   return (
     <div className="mt-3 flex items-center justify-between gap-3 text-sm md:mt-0 md:block">
@@ -808,7 +986,17 @@ function MobileLabel({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ActivityRow({ item }: { item: ActivityItem }) {
+function ActivityRow({
+  item,
+  compact = false,
+  isFresh = false,
+  className = "",
+}: {
+  item: ActivityItem;
+  compact?: boolean;
+  isFresh?: boolean;
+  className?: string;
+}) {
   const toneClass =
     item.tone === "amber"
       ? "bg-amber-300 text-slate-950"
@@ -819,12 +1007,12 @@ function ActivityRow({ item }: { item: ActivityItem }) {
           : "bg-slate-300 text-slate-950";
 
   return (
-    <div className="flex gap-3 rounded-[1.1rem] border border-white/10 bg-white/[0.04] p-4">
+    <div className={`flex gap-3 rounded-[1.1rem] border bg-white/[0.04] ${compact ? "p-3.5" : "p-4"} ${isFresh ? "staking-activity-new border-amber-300/30" : "border-white/10"} ${className}`}>
       <div className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${toneClass}`} />
       <div className="min-w-0 flex-1">
         <div className="font-semibold text-white">{item.label}</div>
-        <div className="mt-1 text-sm leading-6 text-slate-300">{item.detail}</div>
-        <div className="mt-2 text-xs uppercase tracking-[0.18em] text-slate-500">{item.meta}</div>
+        <div className={`${compact ? "mt-0.5" : "mt-1"} text-sm leading-6 text-slate-300`}>{item.detail}</div>
+        <div className={`${compact ? "mt-1" : "mt-2"} text-xs uppercase tracking-[0.18em] text-slate-500`}>{item.meta}</div>
       </div>
     </div>
   );
