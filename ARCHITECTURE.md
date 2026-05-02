@@ -100,7 +100,7 @@ Challenge and bet settlement now have a real happy path:
 - `/bets` records an `onchain_escrow` wager only after the signed stake tx verifies against WOLO REST
 - winning payouts can execute through `WOLO_SETTLEMENT_URL` or the configured fallback signer when the winner has a trusted identity and linked wallet
 
-The `/staking` page is an app-side WOLO staking ledger, not native Cosmos validator staking. Stake actions are user-signed Keplr transfers into the configured staking wallet. Unstake actions are WoloChain settlement payouts back to the user wallet. User principal stays separate from the staking wallet's operator-funded reserve: max unstake follows confirmed stake, while the API keeps the reserve/headroom guard and raises an operator top-up warning if the wallet cannot cover total confirmed stake plus reserve.
+The `/staking` page is an app-side WOLO staking ledger, not native Cosmos validator staking. Stake actions are user-signed Keplr transfers into the configured staking wallet. Unstake actions are WoloChain settlement payouts back to the user wallet. User principal stays separate from the staking wallet's operator-funded reserve: max unstake follows confirmed stake, while the API checks that post-unstake wallet balance can still cover remaining confirmed stake plus reserve.
 
 This repo still does not own chain truth. AoE2HDBets owns market seeding, user-facing lock/settle UX, and claim fallback rails. WoloChain still owns transfer semantics, chain identity, and final settlement execution truth.
 

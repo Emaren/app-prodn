@@ -4,7 +4,7 @@ import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 import { createConfirmedStakingEvent, StakingActionError } from "@/lib/staking";
 import {
-  canExecuteUnstakeWithReserve,
+  getUnstakeReserveCheck,
   loadStakingExecutionLimits,
   STAKING_WALLET_TOP_UP_DETAIL,
 } from "@/lib/stakingExecution";
@@ -102,15 +102,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!canExecuteUnstakeWithReserve(limits, amountWolo)) {
+    const reserveCheck = getUnstakeReserveCheck(
+      limits,
+      amountWolo,
+      position.currentStakedWolo
+    );
+    if (!reserveCheck.executable) {
+      console.warn("Staking unstake reserve check failed:", reserveCheck);
       return NextResponse.json(
         {
           detail: STAKING_WALLET_TOP_UP_DETAIL,
+          reserveCheck,
           maxUnstakeWolo: limits.maxUnstakeWolo,
           stakingWalletBalanceWolo: limits.stakingWalletBalanceWolo,
           stakingWalletReserveHeadroomWolo: limits.stakingWalletReserveHeadroomWolo,
           requiredStakingWalletBalanceWolo: limits.requiredStakingWalletBalanceWolo,
-          operatorTopUpNeededWolo: limits.operatorTopUpNeededWolo,
+          operatorTopUpNeededWolo: reserveCheck.operatorTopUpNeededWolo,
         },
         { status: 409 }
       );

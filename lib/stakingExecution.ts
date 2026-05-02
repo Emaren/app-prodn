@@ -8,6 +8,37 @@ const DEFAULT_UNSTAKE_HEADROOM_UWOLO = BigInt(10_000_000);
 export const STAKING_WALLET_TOP_UP_DETAIL =
   "Staking wallet needs operator top-up before this unstake can execute.";
 
+type StakingExecutionLimits = {
+  maxUnstakeWolo: number;
+  totalConfirmedStakedWolo: number;
+  activeStakers: number;
+  stakingWalletBalanceWolo: number | null;
+  stakingWalletBalanceUWolo: string | null;
+  stakingWalletReserveHeadroomWolo: number;
+  unstakeHeadroomWolo: number;
+  unstakeHeadroomUWolo: string;
+  requiredStakingWalletBalanceWolo: number;
+  operatorTopUpNeededWolo: number;
+  walletUnderfunded: boolean;
+  currentUnstakeExecutable: boolean;
+  currentUnstakeReserveCheck: UnstakeReserveCheck;
+  operatorWarning: string | null;
+  balanceLookupError: string | null;
+};
+
+export type UnstakeReserveCheck = {
+  executable: boolean;
+  requestedUnstakeWolo: number;
+  userConfirmedStakeWolo: number;
+  totalConfirmedStakedWolo: number;
+  stakingWalletBalanceWolo: number | null;
+  operatorReserveWolo: number;
+  remainingStakeAfterUnstakeWolo: number;
+  requiredBalanceAfterUnstakeWolo: number;
+  availableAfterUnstakeWolo: number | null;
+  operatorTopUpNeededWolo: number;
+};
+
 function readHeadroomUWolo() {
   const raw =
     process.env.WOLO_STAKING_UNSTAKE_HEADROOM_UWOLO?.trim() ||
@@ -38,7 +69,7 @@ export function getStakingWalletReserveHeadroomWolo() {
 export async function loadStakingExecutionLimits(
   prisma: PrismaClient,
   currentStakedWolo: number
-) {
+): Promise<StakingExecutionLimits> {
   const runtime = getWoloStakingRuntime();
   const headroomUWolo = readHeadroomUWolo();
   const currentStake = Math.max(0, Math.floor(currentStakedWolo || 0));
@@ -71,19 +102,21 @@ export async function loadStakingExecutionLimits(
 
   const requiredStakingWalletBalanceUWolo =
     wholeWoloToUWolo(totalConfirmedStakedWolo) + headroomUWolo;
-  const currentUnstakeRequiredUWolo = wholeWoloToUWolo(currentStake) + headroomUWolo;
   const walletUnderfunded =
     stakingWalletBalanceUWolo == null
       ? false
       : stakingWalletBalanceUWolo < requiredStakingWalletBalanceUWolo;
-  const currentUnstakeExecutable =
-    stakingWalletBalanceUWolo == null
-      ? true
-      : stakingWalletBalanceUWolo >= currentUnstakeRequiredUWolo;
   const operatorTopUpNeededUWolo =
     stakingWalletBalanceUWolo == null || !walletUnderfunded
       ? BigInt(0)
       : requiredStakingWalletBalanceUWolo - stakingWalletBalanceUWolo;
+  const currentUnstakeReserveCheck = buildUnstakeReserveCheck({
+    requestedUnstakeWolo: currentStake,
+    userConfirmedStakeWolo: currentStake,
+    totalConfirmedStakedWolo,
+    stakingWalletBalanceUWolo,
+    operatorReserveUWolo: headroomUWolo,
+  });
 
   return {
     maxUnstakeWolo: currentStake,
@@ -91,25 +124,85 @@ export async function loadStakingExecutionLimits(
     activeStakers,
     stakingWalletBalanceWolo:
       stakingWalletBalanceUWolo == null ? null : woloFromUWolo(stakingWalletBalanceUWolo),
+    stakingWalletBalanceUWolo:
+      stakingWalletBalanceUWolo == null ? null : stakingWalletBalanceUWolo.toString(),
     stakingWalletReserveHeadroomWolo: woloFromUWolo(headroomUWolo),
     unstakeHeadroomWolo: woloFromUWolo(headroomUWolo),
     unstakeHeadroomUWolo: headroomUWolo.toString(),
     requiredStakingWalletBalanceWolo: woloFromUWolo(requiredStakingWalletBalanceUWolo),
     operatorTopUpNeededWolo: woloFromUWolo(operatorTopUpNeededUWolo),
     walletUnderfunded,
-    currentUnstakeExecutable,
+    currentUnstakeExecutable: currentUnstakeReserveCheck.executable,
+    currentUnstakeReserveCheck,
     operatorWarning: walletUnderfunded ? STAKING_WALLET_TOP_UP_DETAIL : null,
     balanceLookupError,
   };
 }
 
-export function canExecuteUnstakeWithReserve(
-  limits: Awaited<ReturnType<typeof loadStakingExecutionLimits>>,
-  amountWolo: number
-) {
-  if (limits.stakingWalletBalanceWolo == null) return true;
-  return (
-    limits.stakingWalletBalanceWolo >=
-    Math.max(0, Math.floor(amountWolo || 0)) + limits.stakingWalletReserveHeadroomWolo
+function buildUnstakeReserveCheck(input: {
+  requestedUnstakeWolo: number;
+  userConfirmedStakeWolo: number;
+  totalConfirmedStakedWolo: number;
+  stakingWalletBalanceUWolo: bigint | null;
+  operatorReserveUWolo: bigint;
+}): UnstakeReserveCheck {
+  const requestedUnstakeWolo = Math.max(0, Math.floor(input.requestedUnstakeWolo || 0));
+  const userConfirmedStakeWolo = Math.max(0, Math.floor(input.userConfirmedStakeWolo || 0));
+  const totalConfirmedStakedWolo = Math.max(
+    0,
+    Math.floor(input.totalConfirmedStakedWolo || 0)
   );
+  const requestedUnstakeUWolo = wholeWoloToUWolo(requestedUnstakeWolo);
+  const totalConfirmedStakeUWolo = wholeWoloToUWolo(totalConfirmedStakedWolo);
+  const remainingStakeAfterUnstakeUWolo =
+    totalConfirmedStakeUWolo > requestedUnstakeUWolo
+      ? totalConfirmedStakeUWolo - requestedUnstakeUWolo
+      : BigInt(0);
+  const requiredBalanceAfterUnstakeUWolo =
+    remainingStakeAfterUnstakeUWolo + input.operatorReserveUWolo;
+  const availableAfterUnstakeUWolo =
+    input.stakingWalletBalanceUWolo == null
+      ? null
+      : input.stakingWalletBalanceUWolo - requestedUnstakeUWolo;
+  const operatorTopUpNeededUWolo =
+    availableAfterUnstakeUWolo == null ||
+    availableAfterUnstakeUWolo >= requiredBalanceAfterUnstakeUWolo
+      ? BigInt(0)
+      : requiredBalanceAfterUnstakeUWolo - availableAfterUnstakeUWolo;
+
+  return {
+    executable:
+      availableAfterUnstakeUWolo == null ||
+      availableAfterUnstakeUWolo >= requiredBalanceAfterUnstakeUWolo,
+    requestedUnstakeWolo,
+    userConfirmedStakeWolo,
+    totalConfirmedStakedWolo,
+    stakingWalletBalanceWolo:
+      input.stakingWalletBalanceUWolo == null
+        ? null
+        : woloFromUWolo(input.stakingWalletBalanceUWolo),
+    operatorReserveWolo: woloFromUWolo(input.operatorReserveUWolo),
+    remainingStakeAfterUnstakeWolo: woloFromUWolo(remainingStakeAfterUnstakeUWolo),
+    requiredBalanceAfterUnstakeWolo: woloFromUWolo(requiredBalanceAfterUnstakeUWolo),
+    availableAfterUnstakeWolo:
+      availableAfterUnstakeUWolo == null ? null : woloFromUWolo(availableAfterUnstakeUWolo),
+    operatorTopUpNeededWolo: woloFromUWolo(operatorTopUpNeededUWolo),
+  };
+}
+
+export function getUnstakeReserveCheck(
+  limits: StakingExecutionLimits,
+  amountWolo: number,
+  userConfirmedStakeWolo: number
+) {
+  return buildUnstakeReserveCheck({
+    requestedUnstakeWolo: amountWolo,
+    userConfirmedStakeWolo,
+    totalConfirmedStakedWolo: limits.totalConfirmedStakedWolo,
+    stakingWalletBalanceUWolo:
+      limits.stakingWalletBalanceUWolo == null
+        ? null
+        : BigInt(limits.stakingWalletBalanceUWolo),
+    operatorReserveUWolo: BigInt(limits.unstakeHeadroomUWolo),
+  });
 }

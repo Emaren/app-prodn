@@ -18,6 +18,7 @@ type StakingMe = {
   };
   execution: {
     maxUnstakeWolo?: number;
+    totalConfirmedStakedWolo?: number;
     stakingWalletBalanceWolo?: number | null;
     stakingWalletReserveHeadroomWolo?: number;
     unstakeHeadroomWolo?: number;
@@ -25,6 +26,18 @@ type StakingMe = {
     operatorTopUpNeededWolo?: number;
     walletUnderfunded?: boolean;
     currentUnstakeExecutable?: boolean;
+    currentUnstakeReserveCheck?: {
+      executable: boolean;
+      requestedUnstakeWolo: number;
+      userConfirmedStakeWolo: number;
+      totalConfirmedStakedWolo: number;
+      stakingWalletBalanceWolo: number | null;
+      operatorReserveWolo: number;
+      remainingStakeAfterUnstakeWolo: number;
+      requiredBalanceAfterUnstakeWolo: number;
+      availableAfterUnstakeWolo: number | null;
+      operatorTopUpNeededWolo: number;
+    };
     operatorWarning?: string | null;
   };
 };
@@ -37,6 +50,7 @@ type StakingConfig = {
   stakingWalletReserveHeadroomWolo?: number;
   operatorFunding?: {
     walletUnderfunded?: boolean;
+    totalConfirmedStakedWolo?: number;
     operatorTopUpNeededWolo?: number;
     requiredStakingWalletBalanceWolo?: number;
     warning?: string | null;
@@ -81,6 +95,10 @@ export default function StakingActionTile() {
     stakingState?.execution.operatorTopUpNeededWolo ??
     stakingConfig?.operatorFunding?.operatorTopUpNeededWolo ??
     0;
+  const totalConfirmedStakedWolo =
+    stakingState?.execution.totalConfirmedStakedWolo ??
+    stakingConfig?.operatorFunding?.totalConfirmedStakedWolo ??
+    currentStakedWolo;
   const walletUnderfunded =
     Boolean(stakingState?.execution.walletUnderfunded) ||
     Boolean(stakingConfig?.operatorFunding?.walletUnderfunded);
@@ -248,7 +266,8 @@ export default function StakingActionTile() {
     }
     if (
       stakingWalletBalanceWolo != null &&
-      stakingWalletBalanceWolo < amountWolo + reserveHeadroomWolo
+      stakingWalletBalanceWolo - amountWolo <
+        Math.max(0, totalConfirmedStakedWolo - amountWolo) + reserveHeadroomWolo
     ) {
       setMessage(STAKING_WALLET_TOP_UP_DETAIL);
       return;
