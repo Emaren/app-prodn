@@ -19,7 +19,13 @@ type StakingMe = {
   execution: {
     maxUnstakeWolo?: number;
     stakingWalletBalanceWolo?: number | null;
+    stakingWalletReserveHeadroomWolo?: number;
     unstakeHeadroomWolo?: number;
+    requiredStakingWalletBalanceWolo?: number;
+    operatorTopUpNeededWolo?: number;
+    walletUnderfunded?: boolean;
+    currentUnstakeExecutable?: boolean;
+    operatorWarning?: string | null;
   };
 };
 
@@ -28,7 +34,17 @@ type StakingConfig = {
   stakingWalletShortAddress: string;
   stakeReady: boolean;
   unstakeReady: boolean;
+  stakingWalletReserveHeadroomWolo?: number;
+  operatorFunding?: {
+    walletUnderfunded?: boolean;
+    operatorTopUpNeededWolo?: number;
+    requiredStakingWalletBalanceWolo?: number;
+    warning?: string | null;
+  };
 };
+
+const STAKING_WALLET_TOP_UP_DETAIL =
+  "Staking wallet needs operator top-up before this unstake can execute.";
 
 function formatWholeWolo(value: number | null | undefined) {
   if (value == null) return "--";
@@ -37,7 +53,7 @@ function formatWholeWolo(value: number | null | undefined) {
 
 export default function StakingActionTile() {
   const { address, status, connect } = useKeplr();
-  const { isAuthenticated, playerName, loginWithSteam } = useUserAuth();
+  const { isAuthenticated, isAdmin, playerName, loginWithSteam } = useUserAuth();
   const router = useRouter();
   const [stakingState, setStakingState] = useState<StakingMe | null>(null);
   const [stakingConfig, setStakingConfig] = useState<StakingConfig | null>(null);
@@ -55,6 +71,19 @@ export default function StakingActionTile() {
     () => formatWholeWolo(currentStakedWolo),
     [currentStakedWolo]
   );
+  const reserveHeadroomWolo =
+    stakingState?.execution.stakingWalletReserveHeadroomWolo ??
+    stakingState?.execution.unstakeHeadroomWolo ??
+    stakingConfig?.stakingWalletReserveHeadroomWolo ??
+    0;
+  const stakingWalletBalanceWolo = stakingState?.execution.stakingWalletBalanceWolo;
+  const operatorTopUpNeededWolo =
+    stakingState?.execution.operatorTopUpNeededWolo ??
+    stakingConfig?.operatorFunding?.operatorTopUpNeededWolo ??
+    0;
+  const walletUnderfunded =
+    Boolean(stakingState?.execution.walletUnderfunded) ||
+    Boolean(stakingConfig?.operatorFunding?.walletUnderfunded);
   const actionPill =
     currentStakedWolo > 0 ? `Max ${formatWholeWolo(maxUnstakeWolo)}` : "Ready";
 
@@ -210,12 +239,19 @@ export default function StakingActionTile() {
       return;
     }
     if (maxUnstakeWolo <= 0) {
-      setMessage("Staking wallet needs fee headroom.");
+      setMessage("No confirmed stake is available for unstake.");
       return;
     }
     if (amountWolo > maxUnstakeWolo) {
       amountWolo = maxUnstakeWolo;
       setAmountInput(String(maxUnstakeWolo));
+    }
+    if (
+      stakingWalletBalanceWolo != null &&
+      stakingWalletBalanceWolo < amountWolo + reserveHeadroomWolo
+    ) {
+      setMessage(STAKING_WALLET_TOP_UP_DETAIL);
+      return;
     }
 
     setBusy("unstake");
@@ -328,6 +364,11 @@ export default function StakingActionTile() {
       {message ? (
         <div className="mt-2 rounded-[0.85rem] border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs leading-5 text-slate-300">
           {message}
+        </div>
+      ) : null}
+      {isAdmin && walletUnderfunded ? (
+        <div className="mt-2 rounded-[0.85rem] border border-amber-300/20 bg-amber-300/10 px-3 py-1.5 text-xs leading-5 text-amber-100">
+          Operator top-up needed: {formatWholeWolo(operatorTopUpNeededWolo)} reserve gap.
         </div>
       ) : null}
     </section>

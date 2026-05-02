@@ -3,7 +3,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 import { createConfirmedStakingEvent, StakingActionError } from "@/lib/staking";
-import { loadStakingExecutionLimits } from "@/lib/stakingExecution";
+import {
+  canExecuteUnstakeWithReserve,
+  loadStakingExecutionLimits,
+  STAKING_WALLET_TOP_UP_DETAIL,
+} from "@/lib/stakingExecution";
 import {
   executeWoloPayout,
   hasWoloPayoutExecutionConfigured,
@@ -82,17 +86,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const limits = await loadStakingExecutionLimits(position.currentStakedWolo);
+    const limits = await loadStakingExecutionLimits(prisma, position.currentStakedWolo);
     if (amountWolo > limits.maxUnstakeWolo) {
       return NextResponse.json(
         {
           detail:
             limits.maxUnstakeWolo > 0
               ? `Max unstake is ${limits.maxUnstakeWolo.toLocaleString()} WOLO right now.`
-              : "Staking wallet needs fee headroom before this unstake can execute.",
+              : "No confirmed stake is available for that unstake.",
           maxUnstakeWolo: limits.maxUnstakeWolo,
-          unstakeHeadroomWolo: limits.unstakeHeadroomWolo,
+          stakingWalletReserveHeadroomWolo: limits.stakingWalletReserveHeadroomWolo,
           stakingWalletBalanceWolo: limits.stakingWalletBalanceWolo,
+        },
+        { status: 409 }
+      );
+    }
+
+    if (!canExecuteUnstakeWithReserve(limits, amountWolo)) {
+      return NextResponse.json(
+        {
+          detail: STAKING_WALLET_TOP_UP_DETAIL,
+          maxUnstakeWolo: limits.maxUnstakeWolo,
+          stakingWalletBalanceWolo: limits.stakingWalletBalanceWolo,
+          stakingWalletReserveHeadroomWolo: limits.stakingWalletReserveHeadroomWolo,
+          requiredStakingWalletBalanceWolo: limits.requiredStakingWalletBalanceWolo,
+          operatorTopUpNeededWolo: limits.operatorTopUpNeededWolo,
         },
         { status: 409 }
       );
@@ -145,9 +163,13 @@ export async function POST(request: NextRequest) {
     if (error instanceof StakingActionError) {
       return NextResponse.json({ detail: error.message }, { status: error.status });
     }
+    const detail = error instanceof Error ? error.message : "Could not prepare unstake request.";
+    if (/headroom|reserve|top-up|top up|underfunded/i.test(detail)) {
+      return NextResponse.json({ detail: STAKING_WALLET_TOP_UP_DETAIL }, { status: 409 });
+    }
     console.error("Failed to prepare unstake request:", error);
     return NextResponse.json(
-      { detail: error instanceof Error ? error.message : "Could not prepare unstake request." },
+      { detail },
       { status: 500 }
     );
   }

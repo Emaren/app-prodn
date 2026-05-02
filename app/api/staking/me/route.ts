@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
 
     const stakingState = await loadStakingMe(prisma, viewer.id);
     const limits = await loadStakingExecutionLimits(
+      prisma,
       stakingState.position.currentStakedWolo
     );
 

@@ -26,6 +26,7 @@ import {
   type StakingActivityItem,
   type StakingLeaderboardRow,
 } from "@/lib/staking";
+import { getStakingWalletReserveHeadroomWolo } from "@/lib/stakingExecution";
 import { fetchWoloBalanceAmount } from "@/lib/woloRuntime";
 import { formatWoloAmount, shortenAddress, WOLO_REST_URL } from "@/lib/woloChain";
 import { getWoloStakingRuntime } from "@/lib/woloStakingRuntime";
@@ -433,6 +434,7 @@ export default async function StakingPage({
     loadStakingWalletSnapshot(),
     loadCommunityTreasurySnapshot(),
   ]);
+  const stakingWalletReserveHeadroomWolo = getStakingWalletReserveHeadroomWolo();
   const activityRows = snapshot.activity.slice(0, 6);
   const meter = weightMeter(snapshot.totalStakingWeight);
 
@@ -560,7 +562,10 @@ export default async function StakingPage({
               </div>
             </section>
 
-            <StakingWalletTrustTile wallet={stakingWallet} />
+            <StakingWalletTrustTile
+              wallet={stakingWallet}
+              reserveHeadroomWolo={stakingWalletReserveHeadroomWolo}
+            />
             <CommunityTreasuryTile treasury={treasury} />
           </div>
         </div>
@@ -1011,7 +1016,13 @@ function CommunityTreasuryTile({
   );
 }
 
-function StakingWalletTrustTile({ wallet }: { wallet: TrustWalletSnapshot }) {
+function StakingWalletTrustTile({
+  wallet,
+  reserveHeadroomWolo,
+}: {
+  wallet: TrustWalletSnapshot;
+  reserveHeadroomWolo: number;
+}) {
   return (
     <section className="rounded-[1.25rem] border border-white/10 bg-white/[0.045] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
       <div className="flex items-center justify-between gap-3">
@@ -1033,6 +1044,12 @@ function StakingWalletTrustTile({ wallet }: { wallet: TrustWalletSnapshot }) {
           proofUrl={wallet.proofUrl}
           label="staking wallet"
         />
+      </div>
+      <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/15 px-3 py-2 text-xs">
+        <span className="uppercase tracking-[0.18em] text-slate-500">Reserve</span>
+        <span className="font-semibold text-slate-200">
+          {formatWolo(reserveHeadroomWolo, { compact: false, decimals: 0 })}
+        </span>
       </div>
     </section>
   );
