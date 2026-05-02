@@ -96,14 +96,18 @@ export default function WoloPage() {
   const { data: rawBalance, isLoading: balanceLoading } = useWoloBalance(address);
   const [walletError, setWalletError] = useState<string | null>(null);
   const [balanceOverride, setBalanceOverride] = useState<string | null>(null);
-  const [premiumHeroView, setPremiumHeroView] = useState(() =>
-    readStoredPremiumPreference(HERO_VIEW_KEY, false)
-  );
+  const [premiumHeroView, setPremiumHeroView] = useState(false);
+  const [premiumPreferenceLoaded, setPremiumPreferenceLoaded] = useState(false);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    setPremiumHeroView(readStoredPremiumPreference(HERO_VIEW_KEY, false));
+    setPremiumPreferenceLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if (!premiumPreferenceLoaded || typeof window === "undefined") return;
     window.localStorage.setItem(HERO_VIEW_KEY, premiumHeroView ? "premium" : "prod");
-  }, [premiumHeroView]);
+  }, [premiumHeroView, premiumPreferenceLoaded]);
 
   const chainId =
     typeof chainData === "string" && chainData.trim().length > 0

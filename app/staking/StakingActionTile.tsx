@@ -161,6 +161,25 @@ export default function StakingActionTile() {
     return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
   }
 
+  useEffect(() => {
+    if (message !== STAKING_WALLET_TOP_UP_DETAIL) return;
+    const parsed = Number.parseInt(amountInput.trim(), 10);
+    const amountWolo = Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+    if (!amountWolo || stakingWalletBalanceWolo == null) return;
+    const availableAfterUnstake = stakingWalletBalanceWolo - amountWolo;
+    const requiredAfterUnstake =
+      Math.max(0, totalConfirmedStakedWolo - amountWolo) + reserveHeadroomWolo;
+    if (availableAfterUnstake >= requiredAfterUnstake) {
+      setMessage(null);
+    }
+  }, [
+    amountInput,
+    message,
+    reserveHeadroomWolo,
+    stakingWalletBalanceWolo,
+    totalConfirmedStakedWolo,
+  ]);
+
   function pushActivity(input: {
     type: "STAKE" | "UNSTAKE";
     amountWolo: number;

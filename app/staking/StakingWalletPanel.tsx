@@ -6,6 +6,7 @@ import { ArrowRight, Wallet } from "lucide-react";
 import { useKeplr } from "@/hooks/use-keplr";
 import { useWoloBalance } from "@/hooks/useWoloBalance";
 import { useUserAuth } from "@/context/UserAuthContext";
+import { formatPublicStakingWeight } from "@/lib/stakingDisplay";
 
 function formatTokenAmount(raw?: string) {
   const amount = Number(raw ?? "0");
@@ -52,18 +53,6 @@ function formatTinyWolo(value: number | null | undefined) {
     minimumFractionDigits: 0,
     maximumFractionDigits: 6,
   }).format(value);
-}
-
-function formatWeight(value: string | null | undefined) {
-  if (!value || value === "0") return "--";
-  const raw = BigInt(value);
-  if (raw >= BigInt(1_000_000_000)) {
-    return `${new Intl.NumberFormat("en-US", {
-      maximumFractionDigits: 1,
-      notation: "compact",
-    }).format(Number(raw))} weight`;
-  }
-  return `${new Intl.NumberFormat("en-US").format(Number(raw))} weight`;
 }
 
 function formatRewardDate(value: string | null | undefined) {
@@ -202,7 +191,7 @@ export default function StakingWalletPanel() {
             />
             <StakingMetric
               label="Staking Weight"
-              value={stakingLoading ? "Syncing" : formatWeight(stakingState?.position.stakingWeight)}
+              value={stakingLoading ? "Syncing" : formatPublicStakingWeight(stakingState?.position.stakingWeight)}
               helper="More WOLO + time"
             />
             <StakingMetric

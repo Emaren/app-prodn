@@ -26,9 +26,18 @@ import {
   type StakingActivityItem,
   type StakingLeaderboardRow,
 } from "@/lib/staking";
+import {
+  formatPublicStakingWeight,
+  formatPublicStakingWeightStat,
+} from "@/lib/stakingDisplay";
 import { getStakingWalletReserveHeadroomWolo } from "@/lib/stakingExecution";
 import { fetchWoloBalanceAmount } from "@/lib/woloRuntime";
-import { formatWoloAmount, shortenAddress, WOLO_REST_URL } from "@/lib/woloChain";
+import {
+  formatWoloAmount,
+  shortenAddress,
+  WOLO_COIN_DECIMALS,
+  WOLO_REST_URL,
+} from "@/lib/woloChain";
 import { getWoloStakingRuntime } from "@/lib/woloStakingRuntime";
 import StakingWalletPanel from "./StakingWalletPanel";
 import StakingActivityFeed from "./StakingActivityFeed";
@@ -93,6 +102,7 @@ type TrustWalletSnapshot = {
   address: string | null;
   shortAddress: string;
   balanceLabel: string;
+  balanceWolo: number | null;
   proofUrl: string | null;
   status: "ready" | "pending" | "error";
   detail: string;
@@ -207,22 +217,6 @@ function formatFeeShareWolo(value: number | null) {
   return formatWolo(value, { compact: false, decimals: 2 });
 }
 
-function formatWeight(value: string | null | undefined) {
-  if (!value || value === "0") return "--";
-  const raw = BigInt(value);
-  if (raw >= BigInt(1_000_000_000)) {
-    return `${new Intl.NumberFormat("en-US", {
-      maximumFractionDigits: 1,
-      notation: "compact",
-    }).format(Number(raw))} weight`;
-  }
-  return `${new Intl.NumberFormat("en-US").format(Number(raw))} weight`;
-}
-
-function formatWeightStat(value: string | null | undefined) {
-  return formatWeight(value) === "--" ? "0 weight" : formatWeight(value);
-}
-
 function weightMeter(value: string | null | undefined) {
   if (!value || value === "0") {
     return {
@@ -296,6 +290,7 @@ async function loadCommunityTreasurySnapshot(): Promise<CommunityTreasurySnapsho
       address: null,
       shortAddress: "Wallet pending",
       balanceLabel: "--",
+      balanceWolo: null,
       proofUrl: null,
       status: "pending",
       detail: "Public treasury wallet config pending.",
@@ -308,6 +303,7 @@ async function loadCommunityTreasurySnapshot(): Promise<CommunityTreasurySnapsho
       address,
       shortAddress: shortenAddress(address, 10, 6),
       balanceLabel: `${formatWoloAmount(amountUWolo)} WOLO`,
+      balanceWolo: Number(amountUWolo) / 10 ** WOLO_COIN_DECIMALS,
       proofUrl: buildWalletProofUrl(address),
       status: "ready",
       detail: "Public wallet",
@@ -317,6 +313,7 @@ async function loadCommunityTreasurySnapshot(): Promise<CommunityTreasurySnapsho
       address,
       shortAddress: shortenAddress(address, 10, 6),
       balanceLabel: "--",
+      balanceWolo: null,
       proofUrl: buildWalletProofUrl(address),
       status: "error",
       detail: error instanceof Error ? "Balance lookup pending." : "Balance pending.",
@@ -332,6 +329,7 @@ async function loadStakingWalletSnapshot(): Promise<TrustWalletSnapshot> {
       address: null,
       shortAddress: "Wallet pending",
       balanceLabel: "--",
+      balanceWolo: null,
       proofUrl: null,
       status: "pending",
       detail: "Staking wallet pending.",
@@ -344,6 +342,7 @@ async function loadStakingWalletSnapshot(): Promise<TrustWalletSnapshot> {
       address,
       shortAddress: shortenAddress(address, 10, 6),
       balanceLabel: `${formatWoloAmount(amountUWolo)} WOLO`,
+      balanceWolo: Number(amountUWolo) / 10 ** WOLO_COIN_DECIMALS,
       proofUrl: buildWalletProofUrl(address),
       status: "ready",
       detail: runtime.walletSource === "staking" ? "Staking wallet" : "Custody rail",
@@ -353,6 +352,7 @@ async function loadStakingWalletSnapshot(): Promise<TrustWalletSnapshot> {
       address,
       shortAddress: shortenAddress(address, 10, 6),
       balanceLabel: "--",
+      balanceWolo: null,
       proofUrl: buildWalletProofUrl(address),
       status: "error",
       detail: "Balance lookup pending.",
@@ -397,7 +397,7 @@ function mapLeaderboardRow(row: StakingLeaderboardRow): BoardRow {
     badge: row.badge,
     staked: row.stakedWolo > 0 ? formatWolo(row.stakedWolo) : "--",
     rewards: row.rewardsWolo > 0 ? formatWolo(row.rewardsWolo) : "--",
-    weight: formatWeight(row.stakingWeight),
+    weight: formatPublicStakingWeight(row.stakingWeight),
     status: row.status,
     tone: row.tone,
   };
@@ -435,6 +435,10 @@ export default async function StakingPage({
     loadCommunityTreasurySnapshot(),
   ]);
   const stakingWalletReserveHeadroomWolo = getStakingWalletReserveHeadroomWolo();
+  const visibleStakingWalletReserveWolo =
+    stakingWallet.balanceWolo == null || snapshot.totalStakedWolo == null
+      ? null
+      : Math.max(0, stakingWallet.balanceWolo - snapshot.totalStakedWolo);
   const activityRows = snapshot.activity.slice(0, 6);
   const meter = weightMeter(snapshot.totalStakingWeight);
 
@@ -482,12 +486,14 @@ export default async function StakingPage({
                   WOLO Economy
                 </div>
               </StakingAdvancedTrigger>
-              <h1 className="max-w-4xl text-[2.05rem] font-semibold leading-tight text-white sm:text-[2.7rem] lg:text-[3.35rem]">
-                Stake WOLO.
-              </h1>
-              <p className="max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
-                50% of betting fees go to stakers.
-              </p>
+              <div className="space-y-4 sm:pl-[4.25rem]">
+                <h1 className="max-w-4xl text-[2.05rem] font-semibold leading-tight text-white sm:text-[2.7rem] lg:text-[3.35rem]">
+                  Stake WOLO.
+                </h1>
+                <p className="max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
+                  50% of betting fees go to stakers.
+                </p>
+              </div>
             </div>
 
             <StakingHeroStakeTiles
@@ -548,7 +554,7 @@ export default async function StakingPage({
                   </div>
                 </div>
                 <div className="mt-2 text-2xl font-semibold text-white">
-                  {formatWeightStat(snapshot.totalStakingWeight)}
+                  {formatPublicStakingWeightStat(snapshot.totalStakingWeight)}
                 </div>
                 <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/35">
                   <div
@@ -564,7 +570,8 @@ export default async function StakingPage({
 
             <StakingWalletTrustTile
               wallet={stakingWallet}
-              reserveHeadroomWolo={stakingWalletReserveHeadroomWolo}
+              visibleReserveWolo={visibleStakingWalletReserveWolo}
+              requiredReserveWolo={stakingWalletReserveHeadroomWolo}
             />
             <CommunityTreasuryTile treasury={treasury} />
           </div>
@@ -1018,10 +1025,12 @@ function CommunityTreasuryTile({
 
 function StakingWalletTrustTile({
   wallet,
-  reserveHeadroomWolo,
+  visibleReserveWolo,
+  requiredReserveWolo,
 }: {
   wallet: TrustWalletSnapshot;
-  reserveHeadroomWolo: number;
+  visibleReserveWolo: number | null;
+  requiredReserveWolo: number;
 }) {
   return (
     <section className="rounded-[1.25rem] border border-white/10 bg-white/[0.045] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
@@ -1046,9 +1055,16 @@ function StakingWalletTrustTile({
         />
       </div>
       <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/15 px-3 py-2 text-xs">
-        <span className="uppercase tracking-[0.18em] text-slate-500">Reserve</span>
+        <div>
+          <div className="uppercase tracking-[0.18em] text-slate-500">Reserve</div>
+          <div className="mt-0.5 text-[11px] text-slate-500">
+            {formatWolo(requiredReserveWolo, { compact: false, decimals: 0 })} required
+          </div>
+        </div>
         <span className="font-semibold text-slate-200">
-          {formatWolo(reserveHeadroomWolo, { compact: false, decimals: 0 })}
+          {visibleReserveWolo == null
+            ? "--"
+            : formatWolo(visibleReserveWolo, { compact: false, decimals: 0 })}
         </span>
       </div>
     </section>
