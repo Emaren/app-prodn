@@ -1,6 +1,6 @@
 import type { Prisma, PrismaClient } from "@/lib/generated/prisma";
 
-export const BETTING_FEE_RATE_BPS = 75; // 0.75%
+export const BETTING_FEE_RATE_BPS = 100; // 1%
 export const STAKER_SHARE_BPS = 5_000; // 50%
 export const BPS_DENOMINATOR = 10_000;
 

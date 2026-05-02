@@ -5,10 +5,14 @@ import { Check, Copy, ExternalLink } from "lucide-react";
 
 export default function TreasuryActions({
   address,
+  addressLabel,
   proofUrl,
+  label = "wallet",
 }: {
   address: string | null;
+  addressLabel?: string;
   proofUrl: string | null;
+  label?: string;
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -25,26 +29,38 @@ export default function TreasuryActions({
   }
 
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex min-w-0 flex-wrap items-center gap-2">
       <button
         type="button"
         onClick={() => {
           void handleCopy();
         }}
-        className="inline-flex items-center justify-center gap-2 rounded-full border border-white/10 bg-white/[0.055] px-3 py-2 text-xs font-semibold text-slate-200 transition hover:border-white/20 hover:bg-white/[0.09] hover:text-white"
-        title="Copy treasury wallet"
+        className="inline-flex min-w-0 max-w-full items-center rounded-full border border-white/10 bg-black/20 px-3 py-2 text-left text-xs font-semibold text-slate-200 transition hover:border-white/20 hover:bg-white/[0.07] hover:text-white"
+        title={address}
+        aria-label={`Copy ${label}`}
+      >
+        <span className="truncate">{addressLabel || address}</span>
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          void handleCopy();
+        }}
+        className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.055] text-slate-200 transition hover:border-white/20 hover:bg-white/[0.09] hover:text-white"
+        title={`Copy ${label}`}
+        aria-label={`Copy ${label}`}
       >
         {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-        {copied ? "Copied" : "Copy"}
       </button>
       {proofUrl ? (
         <a
           href={proofUrl}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex items-center justify-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-100 transition hover:border-emerald-200/35 hover:bg-emerald-500/15"
+          title={`Open ${label}`}
+          aria-label={`Open ${label}`}
+          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-emerald-300/20 bg-emerald-500/10 text-emerald-100 transition hover:border-emerald-200/35 hover:bg-emerald-500/15"
         >
-          View
           <ExternalLink className="h-3.5 w-3.5" />
         </a>
       ) : null}

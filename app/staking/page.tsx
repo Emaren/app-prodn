@@ -16,6 +16,7 @@ import {
   Swords,
   Trophy,
   Users,
+  Wallet,
 } from "lucide-react";
 
 import { getPrisma } from "@/lib/prisma";
@@ -27,9 +28,11 @@ import {
 } from "@/lib/staking";
 import { fetchWoloBalanceAmount } from "@/lib/woloRuntime";
 import { formatWoloAmount, shortenAddress, WOLO_REST_URL } from "@/lib/woloChain";
+import { getWoloStakingRuntime } from "@/lib/woloStakingRuntime";
 import StakingWalletPanel from "./StakingWalletPanel";
 import StakingActivityFeed from "./StakingActivityFeed";
 import StakingHeroStakeTiles from "./StakingHeroStakeTiles";
+import StakingActionTile from "./StakingActionTile";
 import TreasuryActions from "./TreasuryActions";
 
 export const runtime = "nodejs";
@@ -85,7 +88,7 @@ type BoardRow = {
   tone: "gold" | "emerald" | "sky" | "slate";
 };
 
-type CommunityTreasurySnapshot = {
+type TrustWalletSnapshot = {
   address: string | null;
   shortAddress: string;
   balanceLabel: string;
@@ -93,6 +96,8 @@ type CommunityTreasurySnapshot = {
   status: "ready" | "pending" | "error";
   detail: string;
 };
+
+type CommunityTreasurySnapshot = TrustWalletSnapshot;
 
 const PERIODS: Array<{ key: PeriodKey; label: string; days: number | null }> = [
   { key: "24h", label: "24H", days: 1 },
@@ -145,8 +150,8 @@ const BOARD_ROWS: Record<
     { player: "New Backer", badge: "Open seat", staked: "Ledger pending", rewards: "Modeled", weight: "Opening soon", status: "Preview", tone: "slate" },
   ],
   rewards: [
-    { player: "Daily Pool", badge: "Preparing", staked: "0.75% fee", rewards: "50% share", weight: "Pool weight", status: "Stakers", tone: "gold" },
-    { player: "Treasury", badge: "Community", staked: "0.75% fee", rewards: "50% share", weight: "Visible", status: "Visible", tone: "emerald" },
+    { player: "Daily Pool", badge: "Preparing", staked: "1% fee", rewards: "50% share", weight: "Pool weight", status: "Stakers", tone: "gold" },
+    { player: "Treasury", badge: "Community", staked: "1% fee", rewards: "50% share", weight: "Visible", status: "Visible", tone: "emerald" },
     { player: "Next Match", badge: "Settles soon", staked: "Open", rewards: "Feeds pool", weight: "Live loop", status: "Live loop", tone: "sky" },
     { player: "Reward Cutover", badge: "Ledger", staked: "Pending", rewards: "Preparing", weight: "Pending", status: "Next", tone: "slate" },
   ],
@@ -280,7 +285,7 @@ function resolveTreasuryAddress() {
   return null;
 }
 
-function buildTreasuryProofUrl(address: string) {
+function buildWalletProofUrl(address: string) {
   const template = process.env.NEXT_PUBLIC_WOLO_EXPLORER_ADDRESS_URL?.trim();
   if (template) return template.replace("{address}", encodeURIComponent(address));
 
@@ -309,7 +314,7 @@ async function loadCommunityTreasurySnapshot(): Promise<CommunityTreasurySnapsho
       address,
       shortAddress: shortenAddress(address, 10, 6),
       balanceLabel: `${formatWoloAmount(amountUWolo)} WOLO`,
-      proofUrl: buildTreasuryProofUrl(address),
+      proofUrl: buildWalletProofUrl(address),
       status: "ready",
       detail: "Public wallet",
     };
@@ -318,9 +323,45 @@ async function loadCommunityTreasurySnapshot(): Promise<CommunityTreasurySnapsho
       address,
       shortAddress: shortenAddress(address, 10, 6),
       balanceLabel: "--",
-      proofUrl: buildTreasuryProofUrl(address),
+      proofUrl: buildWalletProofUrl(address),
       status: "error",
       detail: error instanceof Error ? "Balance lookup pending." : "Balance pending.",
+    };
+  }
+}
+
+async function loadStakingWalletSnapshot(): Promise<TrustWalletSnapshot> {
+  const runtime = getWoloStakingRuntime();
+  const address = runtime.stakingWalletAddress || null;
+  if (!address) {
+    return {
+      address: null,
+      shortAddress: "Wallet pending",
+      balanceLabel: "--",
+      proofUrl: null,
+      status: "pending",
+      detail: "Staking wallet pending.",
+    };
+  }
+
+  try {
+    const amountUWolo = await fetchWoloBalanceAmount(address);
+    return {
+      address,
+      shortAddress: shortenAddress(address, 10, 6),
+      balanceLabel: `${formatWoloAmount(amountUWolo)} WOLO`,
+      proofUrl: buildWalletProofUrl(address),
+      status: "ready",
+      detail: runtime.walletSource === "staking" ? "Staking wallet" : "Custody rail",
+    };
+  } catch {
+    return {
+      address,
+      shortAddress: shortenAddress(address, 10, 6),
+      balanceLabel: "--",
+      proofUrl: buildWalletProofUrl(address),
+      status: "error",
+      detail: "Balance lookup pending.",
     };
   }
 }
@@ -395,7 +436,10 @@ export default async function StakingPage({
     console.warn("Failed to load staking leaderboard:", error);
   }
 
-  const treasury = await loadCommunityTreasurySnapshot();
+  const [stakingWallet, treasury] = await Promise.all([
+    loadStakingWalletSnapshot(),
+    loadCommunityTreasurySnapshot(),
+  ]);
   const activityRows = snapshot.activity.slice(0, 6);
   const meter = weightMeter(snapshot.totalStakingWeight);
 
@@ -431,7 +475,7 @@ export default async function StakingPage({
         <div className="relative z-10 grid gap-7 xl:grid-cols-[1.02fr_0.98fr] xl:items-stretch">
           <div className="flex h-full flex-col gap-6">
             <div className="flex flex-wrap gap-2">
-              <HeroPill tone="amber">0.75% betting fee</HeroPill>
+              <HeroPill tone="amber">1% betting fee</HeroPill>
               <HeroPill tone="emerald">50% to stakers</HeroPill>
               <HeroPill tone="slate">No lockups</HeroPill>
             </div>
@@ -461,6 +505,7 @@ export default async function StakingPage({
               period={period}
               className="flex-1"
             />
+            <StakingActionTile />
           </div>
 
           <div className="flex h-full flex-col gap-4">
@@ -522,7 +567,8 @@ export default async function StakingPage({
               </div>
             </section>
 
-            <CommunityTreasuryTile treasury={treasury} className="mt-auto" />
+            <StakingWalletTrustTile wallet={stakingWallet} />
+            <CommunityTreasuryTile treasury={treasury} />
           </div>
         </div>
       </section>
@@ -622,7 +668,7 @@ export default async function StakingPage({
               <div className="text-xs uppercase tracking-[0.26em] text-amber-100/70">
                 Betting Fee
               </div>
-              <div className="mt-4 text-5xl font-semibold text-amber-100">0.75%</div>
+              <div className="mt-4 text-5xl font-semibold text-amber-100">1%</div>
               <div className="mt-3 rounded-[1rem] border border-white/[0.08] bg-black/20 px-4 py-3">
                 <div className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
                   TX Fee
@@ -657,11 +703,11 @@ export default async function StakingPage({
               </div>
               <div className="mt-5 grid gap-2">
                 <SplitRow label="Pot" value="20,000 WOLO" />
-                <SplitRow label="Betting fee" value="150 WOLO" />
+                <SplitRow label="Betting fee" value="200 WOLO" />
                 <SplitRow label="TX fee" value={formatTinyWolo(EXAMPLE_TX_FEE_WOLO)} />
-                <SplitRow label="Stakers receive" value="75 WOLO" tone="amber" />
-                <SplitRow label="Treasury receives" value="75 WOLO" tone="emerald" />
-                <SplitRow label="Winner receives" value="19,850 WOLO" tone="white" />
+                <SplitRow label="Stakers receive" value="100 WOLO" tone="amber" />
+                <SplitRow label="Treasury receives" value="100 WOLO" tone="emerald" />
+                <SplitRow label="Winner receives" value="19,800 WOLO" tone="white" />
               </div>
               <p className="mt-4 text-sm leading-6 text-slate-300">
                 Every settled bet feeds both pools.
@@ -940,21 +986,14 @@ function CommunityTreasuryTile({
   treasury: CommunityTreasurySnapshot;
   className?: string;
 }) {
-  const statusClass =
-    treasury.status === "ready"
-      ? "border-emerald-300/25 bg-emerald-500/10 text-emerald-100"
-      : treasury.status === "error"
-        ? "border-amber-300/25 bg-amber-300/10 text-amber-100"
-        : "border-white/10 bg-white/[0.055] text-slate-300";
-
   return (
-    <section className={`rounded-[1.45rem] border border-emerald-300/18 bg-[linear-gradient(180deg,rgba(6,18,15,0.78),rgba(4,7,14,0.98))] p-5 shadow-[0_22px_75px_rgba(2,6,23,0.22)] ${className}`}>
+    <section className={`rounded-[1.55rem] border border-emerald-300/22 bg-[radial-gradient(circle_at_88%_12%,rgba(52,211,153,0.14),transparent_30%),linear-gradient(180deg,rgba(6,18,15,0.86),rgba(4,7,14,0.99))] p-5 shadow-[0_26px_85px_rgba(2,6,23,0.28)] sm:p-6 ${className}`}>
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="text-xs uppercase tracking-[0.28em] text-emerald-100/65">
             Community Treasury
           </div>
-          <div className="mt-2 text-3xl font-semibold text-white">
+          <div className="mt-3 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
             {treasury.balanceLabel}
           </div>
         </div>
@@ -963,17 +1002,40 @@ function CommunityTreasuryTile({
         </div>
       </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
-        <div className="min-w-0 rounded-[1rem] border border-white/10 bg-black/20 px-4 py-3">
-          <div className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Public Wallet</div>
-          <div className="mt-1 truncate text-sm font-semibold text-slate-100">
-            {treasury.shortAddress}
+      <div className="mt-5">
+        <TreasuryActions
+          address={treasury.address}
+          addressLabel={treasury.shortAddress}
+          proofUrl={treasury.proofUrl}
+          label="community treasury"
+        />
+      </div>
+    </section>
+  );
+}
+
+function StakingWalletTrustTile({ wallet }: { wallet: TrustWalletSnapshot }) {
+  return (
+    <section className="rounded-[1.25rem] border border-white/10 bg-white/[0.045] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-[11px] uppercase tracking-[0.24em] text-slate-500">
+            Staking Wallet
           </div>
-          <div className={`mt-2 inline-flex rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] ${statusClass}`}>
-            {treasury.detail}
-          </div>
+          <div className="mt-2 text-2xl font-semibold text-white">{wallet.balanceLabel}</div>
         </div>
-        <TreasuryActions address={treasury.address} proofUrl={treasury.proofUrl} />
+        <div className="rounded-full border border-sky-300/20 bg-sky-500/10 p-2.5 text-sky-100">
+          <Wallet className="h-4 w-4" />
+        </div>
+      </div>
+
+      <div className="mt-3">
+        <TreasuryActions
+          address={wallet.address}
+          addressLabel={wallet.shortAddress}
+          proofUrl={wallet.proofUrl}
+          label="staking wallet"
+        />
       </div>
     </section>
   );

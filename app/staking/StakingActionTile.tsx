@@ -1,0 +1,343 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { ArrowRight } from "lucide-react";
+import { useRouter } from "next/navigation";
+
+import { useKeplr } from "@/hooks/use-keplr";
+import { useUserAuth } from "@/context/UserAuthContext";
+import { stakeWoloOnChain } from "@/lib/clientStaking";
+
+type StakingMe = {
+  user: {
+    playerName: string;
+    walletAddress: string | null;
+  };
+  position: {
+    currentStakedWolo: number;
+  };
+};
+
+type StakingConfig = {
+  stakingWalletAddress: string;
+  stakingWalletShortAddress: string;
+  stakeReady: boolean;
+  unstakeReady: boolean;
+  txFeeEstimateWolo: number;
+};
+
+function formatWholeWolo(value: number | null | undefined) {
+  if (value == null) return "--";
+  return `${new Intl.NumberFormat("en-US").format(value)} WOLO`;
+}
+
+function formatTinyWolo(value: number | null | undefined) {
+  if (!value || value <= 0) return "0";
+  return new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 6,
+  }).format(value);
+}
+
+export default function StakingActionTile() {
+  const { address, status, connect } = useKeplr();
+  const { isAuthenticated, playerName, loginWithSteam } = useUserAuth();
+  const router = useRouter();
+  const [stakingState, setStakingState] = useState<StakingMe | null>(null);
+  const [stakingConfig, setStakingConfig] = useState<StakingConfig | null>(null);
+  const [amountInput, setAmountInput] = useState("1000");
+  const [busy, setBusy] = useState<"stake" | "unstake" | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const currentStakeLabel = useMemo(
+    () => formatWholeWolo(stakingState?.position.currentStakedWolo ?? 0),
+    [stakingState?.position.currentStakedWolo]
+  );
+
+  async function reloadStakingState() {
+    if (!isAuthenticated) {
+      setStakingState(null);
+      return;
+    }
+
+    const response = await fetch("/api/staking/me", { cache: "no-store" });
+    if (response.ok) {
+      setStakingState((await response.json()) as StakingMe);
+    }
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      if (!isAuthenticated) {
+        setStakingState(null);
+        return;
+      }
+
+      try {
+        const [stateResponse, configResponse] = await Promise.all([
+          fetch("/api/staking/me", { cache: "no-store" }),
+          fetch("/api/staking/config", { cache: "no-store" }),
+        ]);
+        if (!cancelled && stateResponse.ok) {
+          setStakingState((await stateResponse.json()) as StakingMe);
+        }
+        if (!cancelled && configResponse.ok) {
+          setStakingConfig((await configResponse.json()) as StakingConfig);
+        }
+      } catch {
+        if (!cancelled) {
+          setStakingConfig(null);
+        }
+      }
+    }
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated]);
+
+  function parseAmount() {
+    const parsed = Number.parseInt(amountInput.trim(), 10);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+  }
+
+  function pushActivity(input: {
+    type: "STAKE" | "UNSTAKE";
+    amountWolo: number;
+    txHash?: string | null;
+    txFeeWolo?: number | null;
+  }) {
+    const actor = playerName || stakingState?.user.playerName || "Staker";
+    const amountLabel = formatWholeWolo(input.amountWolo);
+    const timestampLabel = new Date().toLocaleString([], {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+    window.dispatchEvent(
+      new CustomEvent("staking:activity", {
+        detail: {
+          item: {
+            key: `staking-live-${input.type}-${input.txHash || Date.now()}`,
+            label: `${amountLabel} ${input.type === "STAKE" ? "stake" : "unstake"}: ${actor}`,
+            detail: input.txHash
+              ? `${input.type === "STAKE" ? "Keplr signed" : "Returned to wallet"} · ${input.txHash.slice(0, 8)}...${input.txHash.slice(-6)}`
+              : input.type === "STAKE"
+                ? "Keplr signed."
+                : "Returned to wallet.",
+            meta: timestampLabel,
+            eventType: input.type,
+            amountLabel,
+            txFeeLabel: formatTinyWolo(input.txFeeWolo),
+            timestampLabel,
+            tone: input.type === "STAKE" ? "amber" : "emerald",
+          },
+        },
+      })
+    );
+  }
+
+  async function ensureWallet() {
+    if (status === "connected") return address;
+    return connect();
+  }
+
+  async function handleStake() {
+    const amountWolo = parseAmount();
+    if (!amountWolo) {
+      setMessage("Enter WOLO.");
+      return;
+    }
+    if (!stakingConfig?.stakeReady || !stakingConfig.stakingWalletAddress) {
+      setMessage("Staking wallet pending.");
+      return;
+    }
+
+    setBusy("stake");
+    setMessage(null);
+    try {
+      const walletAddress = await ensureWallet();
+      const signed = await stakeWoloOnChain({
+        amountWolo,
+        stakingWalletAddress: stakingConfig.stakingWalletAddress,
+        fallbackWalletAddress: walletAddress,
+      });
+      const response = await fetch("/api/staking/stake", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amountWolo,
+          walletAddress: signed.walletAddress,
+          txHash: signed.stakingTxHash,
+          txFeeWolo: signed.txFeeWolo,
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload.detail || "Stake tx could not be confirmed.");
+      }
+      pushActivity({
+        type: "STAKE",
+        amountWolo,
+        txHash: payload.txHash || signed.stakingTxHash,
+        txFeeWolo: payload.txFeeWolo ?? signed.txFeeWolo,
+      });
+      setMessage("Stake confirmed.");
+      await reloadStakingState();
+      router.refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Stake failed.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function handleUnstake() {
+    const amountWolo = parseAmount();
+    if (!amountWolo) {
+      setMessage("Enter WOLO.");
+      return;
+    }
+
+    setBusy("unstake");
+    setMessage(null);
+    try {
+      const walletAddress = await ensureWallet();
+      const response = await fetch("/api/staking/unstake", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amountWolo,
+          walletAddress: walletAddress || stakingState?.user.walletAddress,
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload.detail || "Unstake could not be executed.");
+      }
+      pushActivity({
+        type: "UNSTAKE",
+        amountWolo,
+        txHash: payload.txHash,
+        txFeeWolo: payload.txFeeWolo,
+      });
+      setMessage("Unstake sent.");
+      await reloadStakingState();
+      router.refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unstake failed.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <section className="rounded-[1.2rem] border border-amber-300/15 bg-amber-300/10 p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="text-[11px] uppercase tracking-[0.24em] text-amber-100/70">
+              Quick Stake
+            </div>
+            <div className="mt-1 text-lg font-semibold text-white">Sign in to stake WOLO.</div>
+          </div>
+          <button
+            type="button"
+            onClick={() => loginWithSteam("/staking")}
+            className="inline-flex items-center justify-center gap-2 rounded-full bg-amber-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-amber-200"
+          >
+            Sign In
+            <ArrowRight className="h-4 w-4" />
+          </button>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="rounded-[1.2rem] border border-white/10 bg-black/20 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+      <div className="mb-2 flex items-center justify-between gap-3 px-1">
+        <div>
+          <div className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Quick Stake</div>
+          <div className="mt-1 text-sm font-semibold text-white">My Stake: {currentStakeLabel}</div>
+        </div>
+        <div className="rounded-full border border-white/10 bg-white/[0.045] px-2.5 py-1 text-[10px] font-semibold text-slate-400">
+          tx {formatTinyWolo(stakingConfig?.txFeeEstimateWolo)}
+        </div>
+      </div>
+
+      <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto]">
+        <label className="flex min-h-12 items-center overflow-hidden rounded-[0.95rem] border border-white/10 bg-white/[0.045]">
+          <input
+            value={amountInput}
+            onChange={(event) => setAmountInput(event.target.value.replace(/[^0-9]/g, ""))}
+            inputMode="numeric"
+            className="min-w-0 flex-1 bg-transparent px-3 text-sm font-semibold text-white outline-none placeholder:text-slate-600"
+            placeholder="1000"
+            disabled={Boolean(busy)}
+          />
+          <span className="border-l border-white/10 px-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+            WOLO
+          </span>
+        </label>
+        <ActionButton
+          label="Stake"
+          busy={busy === "stake"}
+          disabled={!stakingConfig?.stakeReady || Boolean(busy)}
+          onClick={() => {
+            void handleStake();
+          }}
+        />
+        <ActionButton
+          label="Unstake"
+          busy={busy === "unstake"}
+          disabled={!stakingConfig?.unstakeReady || Boolean(busy) || (stakingState?.position.currentStakedWolo ?? 0) <= 0}
+          tone="ghost"
+          onClick={() => {
+            void handleUnstake();
+          }}
+        />
+      </div>
+
+      {message ? (
+        <div className="mt-2 truncate rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-slate-300">
+          {message}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function ActionButton({
+  label,
+  busy,
+  disabled,
+  onClick,
+  tone = "gold",
+}: {
+  label: string;
+  busy: boolean;
+  disabled: boolean;
+  onClick: () => void;
+  tone?: "gold" | "ghost";
+}) {
+  const toneClass =
+    tone === "gold"
+      ? "bg-amber-300 text-slate-950 hover:bg-amber-200 disabled:bg-white/[0.045] disabled:text-slate-500"
+      : "border border-white/12 bg-white/[0.045] text-slate-200 hover:border-white/25 hover:bg-white/[0.075] disabled:text-slate-600";
+
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className={`inline-flex min-h-12 items-center justify-center rounded-[0.95rem] px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed ${toneClass}`}
+    >
+      {busy ? "Signing" : label}
+    </button>
+  );
+}
