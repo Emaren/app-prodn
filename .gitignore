@@ -58,6 +58,9 @@ public/downloads/latest-mac.yml
 # Local direct-message attachment blobs
 storage/direct-message-attachments/
 
+# Runtime bet broadcast preview uploads
+public/bets/
+
 # Local faucet cooldown ledger
 storage/wolo-faucet/
 
