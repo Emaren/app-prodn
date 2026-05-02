@@ -174,3 +174,22 @@ python /var/www/AoE2HDBets/api-prodn/scripts/set_admin.py --email you@example.co
 - `/wolo` now includes an app-side starter faucet claim path, a clean Wallet Snapshot connect surface, a tight `WOLO Market` tile, and a slim faucet claim row underneath
 - the top-nav Roadmap link intentionally renders without the old blue count badge
 - exact replay/postgame authority still belongs to `api-prodn`
+
+
+### Staking unstake custody rail
+
+Staking deposits are held by the configured staking wallet. Unstake execution should sign from the local WoloChain keyring key named `staking`, not the generic bet payout service and not a web-stored mnemonic.
+
+Required production env:
+
+- `WOLO_STAKING_WALLET_ADDRESS`
+- `WOLO_STAKING_CLI`
+- `WOLO_STAKING_HOME`
+- `WOLO_STAKING_KEY_NAME`
+- `WOLO_STAKING_KEYRING_BACKEND`
+- `WOLO_STAKING_CHAIN_ID`
+- `WOLO_STAKING_NODE_RPC`
+- `WOLO_STAKING_UNSTAKE_FEE`
+- `WOLO_STAKING_UNSTAKE_HEADROOM_UWOLO`
+
+The web service user must be able to read the `staking` key from the WoloChain keyring.

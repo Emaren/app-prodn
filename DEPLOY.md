@@ -252,3 +252,18 @@ Do not restart blindly before the schema is in place.
 - watcher uploads should continue to target `api-prodn.aoe2hdbets.com`, not the public web host
 - browser wallet reads and stake verification depend on `rpc.aoe2hdbets.com` and `rest.aoe2hdbets.com` staying CORS-clean for both `aoe2hdbets.com` and `www.aoe2hdbets.com`
 - dedicated nginx request-log runbook for AoE2 Phase 1 lives at [deploy/aoe2-access-logging-phase1.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/deploy/aoe2-access-logging-phase1.md)
+
+
+## Staking unstake signer
+
+`/api/staking/unstake` must use the staking custody rail.
+
+Preferred live setup:
+
+- key name: `staking`
+- home: `/var/lib/wolochaind-testnet`
+- CLI: `/var/www/WoloChain/build/wolochaind`
+- keyring backend: `test`
+- fee: `5000uwolo`
+
+Do not route staking unstake through the generic betting payout service. That path has different settlement headroom semantics and can block valid staking returns.
