@@ -5,13 +5,20 @@ import {
 } from "@/lib/woloChain";
 import {
   getWoloPayoutSignerRuntime,
-  hasWoloPayoutExecutionConfigured,
 } from "@/lib/woloBetSettlement";
 
 const explicitStakingWalletAddress =
   process.env.NEXT_PUBLIC_WOLO_STAKING_WALLET_ADDRESS?.trim() ||
   process.env.WOLO_STAKING_WALLET_ADDRESS?.trim() ||
   "";
+
+function hasStakingWalletSignerConfigured() {
+  if (process.env.WOLO_STAKING_WALLET_MNEMONIC?.trim()) return true;
+  return (
+    process.env.WOLO_STAKING_ALLOW_PAYOUT_MNEMONIC_FALLBACK?.trim() === "1" &&
+    Boolean(process.env.WOLO_BET_PAYOUT_MNEMONIC?.trim())
+  );
+}
 
 export function getWoloStakingRuntime() {
   const payoutRuntime = getWoloPayoutSignerRuntime();
@@ -33,7 +40,13 @@ export function getWoloStakingRuntime() {
       : "Wallet pending",
     walletSource,
     stakeReady: Boolean(stakingWalletAddress),
-    unstakeReady: hasWoloPayoutExecutionConfigured(),
+    unstakeReady: Boolean(stakingWalletAddress && hasStakingWalletSignerConfigured()),
+    unstakeExecutionMode: hasStakingWalletSignerConfigured()
+      ? "staking_wallet_signer"
+      : "unconfigured",
+    unstakeReadyDetail: hasStakingWalletSignerConfigured()
+      ? "Staking wallet signer ready."
+      : "Staking wallet signer is not configured.",
     payoutExecutionMode: payoutRuntime.settlementServiceConfigured
       ? "settlement_service"
       : payoutRuntime.localSignerFallbackConfigured

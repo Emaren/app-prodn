@@ -9,12 +9,14 @@ import {
   STAKING_WALLET_TOP_UP_DETAIL,
 } from "@/lib/stakingExecution";
 import {
-  executeWoloPayout,
-  hasWoloPayoutExecutionConfigured,
   readWoloTxNetworkFeeWolo,
   validateWoloAddress,
 } from "@/lib/woloBetSettlement";
 import { getWoloStakingRuntime } from "@/lib/woloStakingRuntime";
+import {
+  executeWoloStakingUnstake,
+  hasWoloStakingUnstakeExecutionConfigured,
+} from "@/lib/woloStakingUnstake";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -68,9 +70,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!hasWoloPayoutExecutionConfigured()) {
+    if (!hasWoloStakingUnstakeExecutionConfigured()) {
       return NextResponse.json(
-        { detail: "WoloChain payout execution is not configured for unstaking." },
+        { detail: "Staking wallet signer is not configured for unstaking." },
         { status: 409 }
       );
     }
@@ -124,33 +126,31 @@ export async function POST(request: NextRequest) {
     }
 
     const stakingRuntime = getWoloStakingRuntime();
-    const requestId = `aoe2hdbets-staking-unstake-${viewer.id}-${Date.now()}`;
-    const payout = await executeWoloPayout({
-      requestId,
+    const unstake = await executeWoloStakingUnstake({
       toAddress: walletAddress,
       amountWolo,
       memo: `AoE2HDBets staking unstake`,
     });
-    if (!payout?.txHash) {
+    if (!unstake?.txHash) {
       return NextResponse.json(
         { detail: "WoloChain did not return an unstake tx." },
         { status: 502 }
       );
     }
 
-    const txFeeWolo = await readWoloTxNetworkFeeWolo(payout.txHash);
+    const txFeeWolo = await readWoloTxNetworkFeeWolo(unstake.txHash);
     const event = await createConfirmedStakingEvent(prisma, {
       userId: viewer.id,
       walletAddress,
       type: "UNSTAKE",
       amountWolo,
-      txHash: payout.txHash,
+      txHash: unstake.txHash,
       txFeeWolo,
-      proofUrl: payout.proofUrl ?? null,
+      proofUrl: unstake.proofUrl ?? null,
       metadata: {
         routePath: request.nextUrl.pathname,
-        requestId: payout.requestId ?? requestId,
         stakingWalletAddress: stakingRuntime.stakingWalletAddress || null,
+        unstakeExecutionMode: stakingRuntime.unstakeExecutionMode,
       },
     });
 
@@ -171,6 +171,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ detail: error.message }, { status: error.status });
     }
     const detail = error instanceof Error ? error.message : "Could not prepare unstake request.";
+    if (/staking wallet signer|staking signer|configured staking wallet/i.test(detail)) {
+      return NextResponse.json({ detail }, { status: 409 });
+    }
     if (/headroom|reserve|top-up|top up|underfunded/i.test(detail)) {
       return NextResponse.json({ detail: STAKING_WALLET_TOP_UP_DETAIL }, { status: 409 });
     }

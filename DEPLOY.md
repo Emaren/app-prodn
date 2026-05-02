@@ -64,10 +64,14 @@ When `/bets` is expected to open real Keplr stake locks, these envs must agree i
 - `WOLO_BET_ESCROW_ADDRESS`
 - `WOLO_SETTLEMENT_URL`
 - `WOLO_STAKING_WALLET_ADDRESS` / `NEXT_PUBLIC_WOLO_STAKING_WALLET_ADDRESS`
+- `WOLO_STAKING_WALLET_MNEMONIC`
+- `WOLO_STAKING_UNSTAKE_FEE` (optional; defaults to `auto`)
 
 If `NEXT_PUBLIC_WOLO_BET_ESCROW_ADDRESS` or `WOLO_BET_ESCROW_ADDRESS` are missing, `/bets` silently falls back toward app-only behavior and no real stake window will open.
 
-For `/staking`, fund the staking wallet with total confirmed user stake plus the operator reserve/headroom used for WoloChain unstake sends. AoE2HDBets defaults to a `10 WOLO` reserve unless `WOLO_STAKING_UNSTAKE_HEADROOM_UWOLO` is set to match the live settlement service. User max-unstake should not be reduced by this reserve; underfunding should show the operator top-up warning instead.
+For `/staking`, fund the staking wallet with total confirmed user stake plus the operator reserve/headroom used for WoloChain unstake sends. AoE2HDBets defaults to a `10 WOLO` reserve unless `WOLO_STAKING_UNSTAKE_HEADROOM_UWOLO` is set. User max-unstake should not be reduced by this reserve; underfunding should show the operator top-up warning instead.
+
+Unstake execution must sign from the staking wallet itself. Do not route unstake through the generic betting payout service: that service may preserve its own settlement headroom and will block or pay from the wrong custody rail. The live web env needs `WOLO_STAKING_WALLET_MNEMONIC` for `/api/staking/unstake` to broadcast the return transfer.
 
 ## Verification
 

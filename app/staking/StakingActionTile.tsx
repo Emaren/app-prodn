@@ -47,6 +47,8 @@ type StakingConfig = {
   stakingWalletShortAddress: string;
   stakeReady: boolean;
   unstakeReady: boolean;
+  unstakeReadyDetail?: string;
+  unstakeExecutionMode?: string;
   stakingWalletReserveHeadroomWolo?: number;
   operatorFunding?: {
     walletUnderfunded?: boolean;
@@ -402,6 +404,10 @@ export default function StakingActionTile() {
       {message ? (
         <div className="mt-2 rounded-[0.85rem] border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs leading-5 text-slate-300">
           {message}
+        </div>
+      ) : stakingConfig?.unstakeReady === false && currentStakedWolo > 0 ? (
+        <div className="mt-2 rounded-[0.85rem] border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs leading-5 text-slate-400">
+          {stakingConfig.unstakeReadyDetail || "Staking wallet signer is not configured."}
         </div>
       ) : null}
       {isAdmin && walletUnderfunded ? (
