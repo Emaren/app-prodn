@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 import { loadStakingMe } from "@/lib/staking";
+import { loadStakingExecutionLimits } from "@/lib/stakingExecution";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,7 +25,22 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ detail: "Viewer not found" }, { status: 404 });
     }
 
-    return NextResponse.json(await loadStakingMe(prisma, viewer.id));
+    const stakingState = await loadStakingMe(prisma, viewer.id);
+    const limits = await loadStakingExecutionLimits(
+      stakingState.position.currentStakedWolo
+    );
+
+    return NextResponse.json({
+      ...stakingState,
+      execution: {
+        ...stakingState.execution,
+        ...limits,
+        status: "READY",
+        detail: limits.balanceLookupError
+          ? "Staking ledger ready. Wallet balance lookup pending."
+          : "Staking ledger ready.",
+      },
+    });
   } catch (error) {
     console.error("Failed to load viewer staking state:", error);
     return NextResponse.json(

@@ -85,6 +85,8 @@ WOLO betting / settlement:
 - `WOLO_SETTLEMENT_URL`
 - `WOLO_SETTLEMENT_AUTH_TOKEN` (optional if the settlement service is protected)
 - `WOLO_BET_PAYOUT_MNEMONIC` / `WOLO_BET_PAYOUT_ADDRESS` only when using the local fallback signer instead of the settlement service
+- `WOLO_STAKING_WALLET_ADDRESS` / `NEXT_PUBLIC_WOLO_STAKING_WALLET_ADDRESS` for the `/staking` custody rail
+- `WOLO_STAKING_UNSTAKE_HEADROOM_UWOLO` if the app should mirror a staking-specific WoloChain payout headroom; otherwise it defaults to the settlement service's `10 WOLO` fee headroom
 
 Optional migration compatibility:
 
@@ -161,6 +163,7 @@ python /var/www/AoE2HDBets/api-prodn/scripts/set_admin.py --email you@example.co
 
 - `/lobby` is now a real product destination with leaderboard + tournament surface
 - `/bets` now supports real Keplr-signed WOLO stake locks when escrow env is configured, and the wager is only recorded after the stake tx verifies against WoloChain REST
+- `/staking` uses real Keplr stake transfers into the staking wallet, app-side staking ledger rows, and WoloChain payout execution for unstake. The UI caps unstake requests to the staking wallet balance minus settlement fee headroom so full-balance payout attempts do not hit WoloChain reserve errors.
 - trusted wallet-linked winners can now auto-settle on-chain, while unmatched or failed payouts still fall back to the pending-claim/admin rail
 - accepted scheduled matches now seed pre-live runway books so betting does not have to wait for watcher-live detection
 - player pages still need another premium pass

@@ -16,6 +16,11 @@ type StakingMe = {
   position: {
     currentStakedWolo: number;
   };
+  execution: {
+    maxUnstakeWolo?: number;
+    stakingWalletBalanceWolo?: number | null;
+    unstakeHeadroomWolo?: number;
+  };
 };
 
 type StakingConfig = {
@@ -23,20 +28,11 @@ type StakingConfig = {
   stakingWalletShortAddress: string;
   stakeReady: boolean;
   unstakeReady: boolean;
-  txFeeEstimateWolo: number;
 };
 
 function formatWholeWolo(value: number | null | undefined) {
   if (value == null) return "--";
   return `${new Intl.NumberFormat("en-US").format(value)} WOLO`;
-}
-
-function formatTinyWolo(value: number | null | undefined) {
-  if (!value || value <= 0) return "0";
-  return new Intl.NumberFormat("en-US", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 6,
-  }).format(value);
 }
 
 export default function StakingActionTile() {
@@ -46,13 +42,21 @@ export default function StakingActionTile() {
   const [stakingState, setStakingState] = useState<StakingMe | null>(null);
   const [stakingConfig, setStakingConfig] = useState<StakingConfig | null>(null);
   const [amountInput, setAmountInput] = useState("1000");
+  const [amountTouched, setAmountTouched] = useState(false);
   const [busy, setBusy] = useState<"stake" | "unstake" | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  const currentStakeLabel = useMemo(
-    () => formatWholeWolo(stakingState?.position.currentStakedWolo ?? 0),
-    [stakingState?.position.currentStakedWolo]
+  const currentStakedWolo = stakingState?.position.currentStakedWolo ?? 0;
+  const maxUnstakeWolo = Math.max(
+    0,
+    Math.floor(stakingState?.execution.maxUnstakeWolo ?? currentStakedWolo)
   );
+  const currentStakeLabel = useMemo(
+    () => formatWholeWolo(currentStakedWolo),
+    [currentStakedWolo]
+  );
+  const actionPill =
+    currentStakedWolo > 0 ? `Max ${formatWholeWolo(maxUnstakeWolo)}` : "Ready";
 
   async function reloadStakingState() {
     if (!isAuthenticated) {
@@ -99,6 +103,12 @@ export default function StakingActionTile() {
     };
   }, [isAuthenticated]);
 
+  useEffect(() => {
+    if (amountTouched || busy || currentStakedWolo <= 0) return;
+    const preferred = maxUnstakeWolo > 0 ? Math.min(1000, maxUnstakeWolo) : currentStakedWolo;
+    setAmountInput(String(preferred));
+  }, [amountTouched, busy, currentStakedWolo, maxUnstakeWolo]);
+
   function parseAmount() {
     const parsed = Number.parseInt(amountInput.trim(), 10);
     return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
@@ -108,7 +118,6 @@ export default function StakingActionTile() {
     type: "STAKE" | "UNSTAKE";
     amountWolo: number;
     txHash?: string | null;
-    txFeeWolo?: number | null;
   }) {
     const actor = playerName || stakingState?.user.playerName || "Staker";
     const amountLabel = formatWholeWolo(input.amountWolo);
@@ -132,7 +141,6 @@ export default function StakingActionTile() {
             meta: timestampLabel,
             eventType: input.type,
             amountLabel,
-            txFeeLabel: formatTinyWolo(input.txFeeWolo),
             timestampLabel,
             tone: input.type === "STAKE" ? "amber" : "emerald",
           },
@@ -184,7 +192,6 @@ export default function StakingActionTile() {
         type: "STAKE",
         amountWolo,
         txHash: payload.txHash || signed.stakingTxHash,
-        txFeeWolo: payload.txFeeWolo ?? signed.txFeeWolo,
       });
       setMessage("Stake confirmed.");
       await reloadStakingState();
@@ -197,10 +204,18 @@ export default function StakingActionTile() {
   }
 
   async function handleUnstake() {
-    const amountWolo = parseAmount();
+    let amountWolo = parseAmount();
     if (!amountWolo) {
       setMessage("Enter WOLO.");
       return;
+    }
+    if (maxUnstakeWolo <= 0) {
+      setMessage("Staking wallet needs fee headroom.");
+      return;
+    }
+    if (amountWolo > maxUnstakeWolo) {
+      amountWolo = maxUnstakeWolo;
+      setAmountInput(String(maxUnstakeWolo));
     }
 
     setBusy("unstake");
@@ -223,7 +238,6 @@ export default function StakingActionTile() {
         type: "UNSTAKE",
         amountWolo,
         txHash: payload.txHash,
-        txFeeWolo: payload.txFeeWolo,
       });
       setMessage("Unstake sent.");
       await reloadStakingState();
@@ -266,7 +280,7 @@ export default function StakingActionTile() {
           <div className="mt-1 text-sm font-semibold text-white">My Stake: {currentStakeLabel}</div>
         </div>
         <div className="rounded-full border border-white/10 bg-white/[0.045] px-2.5 py-1 text-[10px] font-semibold text-slate-400">
-          tx {formatTinyWolo(stakingConfig?.txFeeEstimateWolo)}
+          {actionPill}
         </div>
       </div>
 
@@ -274,7 +288,10 @@ export default function StakingActionTile() {
         <label className="flex min-h-12 items-center overflow-hidden rounded-[0.95rem] border border-white/10 bg-white/[0.045]">
           <input
             value={amountInput}
-            onChange={(event) => setAmountInput(event.target.value.replace(/[^0-9]/g, ""))}
+            onChange={(event) => {
+              setAmountTouched(true);
+              setAmountInput(event.target.value.replace(/[^0-9]/g, ""));
+            }}
             inputMode="numeric"
             className="min-w-0 flex-1 bg-transparent px-3 text-sm font-semibold text-white outline-none placeholder:text-slate-600"
             placeholder="1000"
@@ -295,7 +312,12 @@ export default function StakingActionTile() {
         <ActionButton
           label="Unstake"
           busy={busy === "unstake"}
-          disabled={!stakingConfig?.unstakeReady || Boolean(busy) || (stakingState?.position.currentStakedWolo ?? 0) <= 0}
+          disabled={
+            !stakingConfig?.unstakeReady ||
+            Boolean(busy) ||
+            currentStakedWolo <= 0 ||
+            maxUnstakeWolo <= 0
+          }
           tone="ghost"
           onClick={() => {
             void handleUnstake();
@@ -304,7 +326,7 @@ export default function StakingActionTile() {
       </div>
 
       {message ? (
-        <div className="mt-2 truncate rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-slate-300">
+        <div className="mt-2 rounded-[0.85rem] border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs leading-5 text-slate-300">
           {message}
         </div>
       ) : null}

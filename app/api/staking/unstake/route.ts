@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 import { createConfirmedStakingEvent, StakingActionError } from "@/lib/staking";
+import { loadStakingExecutionLimits } from "@/lib/stakingExecution";
 import {
   executeWoloPayout,
   hasWoloPayoutExecutionConfigured,
@@ -77,6 +78,22 @@ export async function POST(request: NextRequest) {
     if (!position || position.currentStakedWolo < amountWolo) {
       return NextResponse.json(
         { detail: "No confirmed stake is available for that unstake." },
+        { status: 409 }
+      );
+    }
+
+    const limits = await loadStakingExecutionLimits(position.currentStakedWolo);
+    if (amountWolo > limits.maxUnstakeWolo) {
+      return NextResponse.json(
+        {
+          detail:
+            limits.maxUnstakeWolo > 0
+              ? `Max unstake is ${limits.maxUnstakeWolo.toLocaleString()} WOLO right now.`
+              : "Staking wallet needs fee headroom before this unstake can execute.",
+          maxUnstakeWolo: limits.maxUnstakeWolo,
+          unstakeHeadroomWolo: limits.unstakeHeadroomWolo,
+          stakingWalletBalanceWolo: limits.stakingWalletBalanceWolo,
+        },
         { status: 409 }
       );
     }

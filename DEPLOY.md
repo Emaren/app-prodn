@@ -63,8 +63,11 @@ When `/bets` is expected to open real Keplr stake locks, these envs must agree i
 - `NEXT_PUBLIC_WOLO_BET_ESCROW_ADDRESS`
 - `WOLO_BET_ESCROW_ADDRESS`
 - `WOLO_SETTLEMENT_URL`
+- `WOLO_STAKING_WALLET_ADDRESS` / `NEXT_PUBLIC_WOLO_STAKING_WALLET_ADDRESS`
 
 If `NEXT_PUBLIC_WOLO_BET_ESCROW_ADDRESS` or `WOLO_BET_ESCROW_ADDRESS` are missing, `/bets` silently falls back toward app-only behavior and no real stake window will open.
+
+For `/staking`, the staking wallet must retain enough WoloChain payout headroom for unstake sends. AoE2HDBets defaults to a `10 WOLO` unstake headroom unless `WOLO_STAKING_UNSTAKE_HEADROOM_UWOLO` is set to match the live settlement service.
 
 ## Verification
 

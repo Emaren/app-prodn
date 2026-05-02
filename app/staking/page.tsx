@@ -33,6 +33,7 @@ import StakingWalletPanel from "./StakingWalletPanel";
 import StakingActivityFeed from "./StakingActivityFeed";
 import StakingHeroStakeTiles from "./StakingHeroStakeTiles";
 import StakingActionTile from "./StakingActionTile";
+import StakingAdvancedTrigger from "./StakingAdvancedTrigger";
 import TreasuryActions from "./TreasuryActions";
 
 export const runtime = "nodejs";
@@ -48,7 +49,6 @@ export const metadata: Metadata = {
 };
 
 const WOLO_LOGO_SRC = "/legacy/wolo-logo-transparent.png";
-const EXAMPLE_TX_FEE_WOLO = 0.001324;
 
 type PeriodKey = "24h" | "7d" | "30d" | "all";
 type BoardKey = "stakers" | "earners" | "rewards";
@@ -204,13 +204,6 @@ function formatWolo(
 
 function formatFeeShareWolo(value: number | null) {
   return formatWolo(value, { compact: false, decimals: 2 });
-}
-
-function formatTinyWolo(value: number) {
-  return `${new Intl.NumberFormat("en-US", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 6,
-  }).format(value)} WOLO`;
 }
 
 function formatWeight(value: string | null | undefined) {
@@ -467,13 +460,13 @@ export default async function StakingPage({
           animation: stakingActivityGlow 1.8s ease-out 1;
         }
       `}</style>
-      <section className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_12%_18%,rgba(251,191,36,0.2),transparent_24%),radial-gradient(circle_at_86%_12%,rgba(16,185,129,0.16),transparent_24%),radial-gradient(circle_at_70%_86%,rgba(148,163,184,0.12),transparent_22%),linear-gradient(135deg,#07101d,#111827_52%,#040712)] p-5 shadow-[0_42px_120px_rgba(2,6,23,0.45)] sm:p-7 lg:p-9">
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(251,191,36,0.6),transparent)]" />
+      <section className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_14%_18%,rgba(148,163,184,0.12),transparent_26%),radial-gradient(circle_at_86%_12%,rgba(16,185,129,0.14),transparent_24%),radial-gradient(circle_at_70%_86%,rgba(59,130,246,0.08),transparent_24%),linear-gradient(135deg,#07101d,#111827_52%,#040712)] p-5 shadow-[0_42px_120px_rgba(2,6,23,0.45)] sm:p-7 lg:p-9">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(148,163,184,0.34),transparent)]" />
         <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full border border-amber-300/10" />
         <div className="pointer-events-none absolute bottom-0 left-0 h-24 w-full bg-[linear-gradient(180deg,transparent,rgba(0,0,0,0.2))]" />
 
-        <div className="relative z-10 grid gap-7 xl:grid-cols-[1.02fr_0.98fr] xl:items-stretch">
-          <div className="flex h-full flex-col gap-6">
+        <div className="relative z-10 grid min-w-0 gap-7 xl:grid-cols-[minmax(0,1fr)_minmax(0,0.82fr)] xl:items-stretch">
+          <div className="flex h-full min-w-0 flex-col gap-6">
             <div className="flex flex-wrap gap-2">
               <HeroPill tone="amber">1% betting fee</HeroPill>
               <HeroPill tone="emerald">50% to stakers</HeroPill>
@@ -481,12 +474,12 @@ export default async function StakingPage({
             </div>
 
             <div className="space-y-4">
-              <div className="flex items-center gap-3">
+              <StakingAdvancedTrigger>
                 <WoloMark />
                 <div className="text-xs uppercase tracking-[0.34em] text-amber-200/75">
                   WOLO Economy
                 </div>
-              </div>
+              </StakingAdvancedTrigger>
               <h1 className="max-w-4xl text-[2.05rem] font-semibold leading-tight text-white sm:text-[2.7rem] lg:text-[3.35rem]">
                 Stake WOLO.
               </h1>
@@ -508,7 +501,7 @@ export default async function StakingPage({
             <StakingActionTile />
           </div>
 
-          <div className="flex h-full flex-col gap-4">
+          <div className="flex h-full min-w-0 flex-col gap-4">
             <section className="rounded-[1.65rem] border border-white/10 bg-[linear-gradient(180deg,rgba(7,12,22,0.94),rgba(3,6,12,0.98))] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:p-6">
               <div className="flex items-start justify-between gap-4">
                 <div>
@@ -545,7 +538,7 @@ export default async function StakingPage({
                 <HeroStat label="Treasury Share" value={formatFeeShareWolo(snapshot.treasuryShareWolo)} helper="50% fee share" />
               </div>
 
-              <div className="mt-5 rounded-[1.35rem] border border-amber-300/15 bg-amber-300/10 p-4">
+              <div className="mt-5 rounded-[1.35rem] border border-amber-300/12 bg-white/[0.045] p-4">
                 <div className="flex items-center justify-between gap-3">
                   <div className="text-sm font-semibold text-amber-100">Staking Weight</div>
                   <div className={`rounded-full border px-3 py-1 text-xs ${meter.chipClass}`}>
@@ -561,7 +554,7 @@ export default async function StakingPage({
                     style={{ width: `${meter.width}%` }}
                   />
                 </div>
-                <p className="mt-3 text-sm leading-6 text-amber-50/80">
+                <p className="mt-3 text-sm leading-6 text-slate-300">
                   More WOLO plus more time.
                 </p>
               </div>
@@ -573,7 +566,7 @@ export default async function StakingPage({
         </div>
       </section>
 
-      <Panel eyebrow="Recent Activity" title="Live activity">
+      <Panel id="staking-advanced" eyebrow="Recent Activity" title="Live activity">
         <StakingActivityFeed items={activityRows} />
       </Panel>
 
@@ -664,22 +657,14 @@ export default async function StakingPage({
       <section className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
         <Panel eyebrow="Betting Fee" title="Every Bet Feeds the System">
           <div className="grid gap-4 md:grid-cols-[0.85fr_1.15fr]">
-            <div className="rounded-[1.35rem] border border-amber-300/15 bg-amber-300/10 p-5">
+            <div className="rounded-[1.35rem] border border-amber-300/12 bg-white/[0.045] p-5">
               <div className="text-xs uppercase tracking-[0.26em] text-amber-100/70">
                 Betting Fee
               </div>
-              <div className="mt-4 text-5xl font-semibold text-amber-100">1%</div>
-              <div className="mt-3 rounded-[1rem] border border-white/[0.08] bg-black/20 px-4 py-3">
-                <div className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
-                  TX Fee
-                </div>
-                <div className="mt-1 text-lg font-semibold text-slate-200">
-                  {formatTinyWolo(EXAMPLE_TX_FEE_WOLO)}
-                </div>
-              </div>
+              <div className="mt-4 text-5xl font-semibold text-white">1%</div>
               <div className="mt-5 h-3 overflow-hidden rounded-full bg-black/30">
                 <div className="grid h-full grid-cols-2">
-                  <div className="bg-amber-300" />
+                  <div className="bg-amber-200/80" />
                   <div className="bg-emerald-300" />
                 </div>
               </div>
@@ -704,7 +689,6 @@ export default async function StakingPage({
               <div className="mt-5 grid gap-2">
                 <SplitRow label="Pot" value="20,000 WOLO" />
                 <SplitRow label="Betting fee" value="200 WOLO" />
-                <SplitRow label="TX fee" value={formatTinyWolo(EXAMPLE_TX_FEE_WOLO)} />
                 <SplitRow label="Stakers receive" value="100 WOLO" tone="amber" />
                 <SplitRow label="Treasury receives" value="100 WOLO" tone="emerald" />
                 <SplitRow label="Winner receives" value="19,800 WOLO" tone="white" />
@@ -873,9 +857,22 @@ function EconomyCard({
   );
 }
 
-function Panel({ eyebrow, title, children }: { eyebrow: string; title: string; children: ReactNode }) {
+function Panel({
+  id,
+  eyebrow,
+  title,
+  children,
+}: {
+  id?: string;
+  eyebrow: string;
+  title: string;
+  children: ReactNode;
+}) {
   return (
-    <section className="rounded-[1.65rem] border border-white/10 bg-[linear-gradient(180deg,rgba(10,16,29,0.92),rgba(4,7,14,0.98))] p-5 shadow-[0_24px_90px_rgba(2,6,23,0.25)] sm:p-6">
+    <section
+      id={id}
+      className="scroll-mt-24 rounded-[1.65rem] border border-white/10 bg-[linear-gradient(180deg,rgba(10,16,29,0.92),rgba(4,7,14,0.98))] p-5 shadow-[0_24px_90px_rgba(2,6,23,0.25)] sm:p-6"
+    >
       <div className="mb-5">
         <div className="text-xs uppercase tracking-[0.28em] text-slate-500">{eyebrow}</div>
         <h2 className="mt-2 text-2xl font-semibold text-white">{title}</h2>
