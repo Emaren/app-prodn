@@ -106,7 +106,6 @@ export default function DownloadPage() {
             <div className="mt-7 flex flex-wrap gap-3">
               <a
                 href={primaryArtifact.trackedHref}
-                download={primaryArtifact.filename}
                 rel="nofollow"
                 className={`inline-flex items-center gap-3 rounded-full px-5 py-3 text-sm font-semibold transition ${tone.primaryButton}`}
               >
@@ -210,7 +209,6 @@ export default function DownloadPage() {
                   <a
                     key={artifact.key}
                     href={artifact.trackedHref}
-                    download={artifact.filename}
                     rel="nofollow"
                     className={`group block rounded-[1.4rem] border p-4 transition ${tone.insetPanel} hover:border-white/20 hover:bg-white/[0.06]`}
                   >
