@@ -1,35 +1,26 @@
 "use client";
 
-import React from "react";
+import { useEffect } from "react";
 
 export default function PwaRegister() {
-  React.useEffect(() => {
+  useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
 
-    let cancelled = false;
-    const register = () => {
-      navigator.serviceWorker
-        .register("/sw.js", { scope: "/" })
-        .then((registration) => {
-          if (cancelled) return;
-          void registration.update();
-          console.info("AoE2HDBets service worker ready:", registration.scope);
-        })
-        .catch((error) => {
-          console.warn("AoE2HDBets service worker registration failed:", error);
+    navigator.serviceWorker
+      .getRegistrations()
+      .then((registrations) => {
+        registrations.forEach((registration) => {
+          registration.unregister().catch(() => {});
         });
-    };
+      })
+      .catch(() => {});
 
-    if (document.readyState === "complete") {
-      register();
-    } else {
-      window.addEventListener("load", register, { once: true });
+    if ("caches" in window) {
+      caches
+        .keys()
+        .then((keys) => Promise.all(keys.map((key) => caches.delete(key))))
+        .catch(() => {});
     }
-
-    return () => {
-      cancelled = true;
-      window.removeEventListener("load", register);
-    };
   }, []);
 
   return null;
