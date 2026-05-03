@@ -26,7 +26,7 @@ export const WATCHER_RELEASE = {
   version: "1.1.1",
   label: "AoE2HDBets Watcher 1.1.1",
   releasedOn: "Apr 11, 2026",
-  signingStatus: "Unsigned builds for now",
+  signingStatus: "Microsoft-signed Windows builds",
   featureChips: [
     "AoE2HDBets Watcher 1.1.1",
     "Apr 11, 2026",

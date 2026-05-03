@@ -123,8 +123,7 @@ export default function DownloadPage() {
             </div>
 
             <div className="mt-4 rounded-2xl border border-amber-300/15 bg-amber-300/5 px-4 py-3 text-xs leading-6 text-amber-50/85">
-              Unsigned for now. If Windows blocks the installer, use Portable. If Mac blocks
-              launch, use the ZIP or clear quarantine once.
+              Windows builds are Microsoft-signed. Mac/Linux may still show platform trust prompts during beta.
             </div>
           </div>
 
