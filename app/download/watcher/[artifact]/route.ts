@@ -1,3 +1,8 @@
+import { createReadStream } from "node:fs";
+import { stat } from "node:fs/promises";
+import path from "node:path";
+import { Readable } from "node:stream";
+
 import { NextRequest, NextResponse } from "next/server";
 
 import { getPrisma } from "@/lib/prisma";
@@ -28,12 +33,52 @@ async function resolveViewerId(request: NextRequest) {
   return viewer?.id ?? null;
 }
 
-function buildDownloadRedirectResponse(downloadPath: string) {
-  const response = new NextResponse(null, { status: 307 });
-  response.headers.set("Location", downloadPath);
-  response.headers.set("Cache-Control", "no-store, no-cache, max-age=0, must-revalidate");
-  response.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
-  return response;
+function resolveDownloadFilePath(downloadPath: string) {
+  if (!downloadPath.startsWith("/downloads/")) {
+    throw new Error(`Unsafe watcher download path: ${downloadPath}`);
+  }
+
+  const relativeFile = decodeURIComponent(downloadPath.replace(/^\/downloads\//, ""));
+  return path.join(process.cwd(), "public", "downloads", relativeFile);
+}
+
+function buildAttachmentHeaders(filename: string, size: number) {
+  const safeName = filename.replace(/["\\]/g, "_");
+  const encodedName = encodeURIComponent(filename);
+
+  return {
+    "Content-Type": "application/octet-stream",
+    "Content-Length": String(size),
+    "Content-Disposition": `attachment; filename="${safeName}"; filename*=UTF-8''${encodedName}`,
+    "Cache-Control": "no-store, no-cache, max-age=0, must-revalidate",
+    "X-Robots-Tag": "noindex, nofollow, noarchive",
+  };
+}
+
+async function recordWatcherDownload(request: NextRequest, artifact: NonNullable<ReturnType<typeof getWatcherDownloadArtifact>>) {
+  if (shouldSkipWatcherDownloadLogging(request)) {
+    return;
+  }
+
+  try {
+    const prisma = getPrisma();
+    const userId = await resolveViewerId(request);
+
+    await prisma.watcherDownloadEvent.create({
+      data: {
+        userId,
+        platform: artifact.platform,
+        artifact: artifact.key,
+        version: WATCHER_RELEASE.version,
+        filename: artifact.filename,
+        ipAddress: readWatcherDownloadIpAddress(request),
+        userAgent: readWatcherDownloadUserAgent(request),
+        referer: readWatcherDownloadReferer(request),
+      },
+    });
+  } catch (error) {
+    console.error(`Failed to record watcher download for ${artifact.key}:`, error);
+  }
 }
 
 export async function GET(
@@ -47,29 +92,17 @@ export async function GET(
     return NextResponse.json({ detail: "Watcher artifact not found." }, { status: 404 });
   }
 
-  if (!shouldSkipWatcherDownloadLogging(request)) {
-    try {
-      const prisma = getPrisma();
-      const userId = await resolveViewerId(request);
+  const filePath = resolveDownloadFilePath(artifact.downloadPath);
+  const fileStat = await stat(filePath);
 
-      await prisma.watcherDownloadEvent.create({
-        data: {
-          userId,
-          platform: artifact.platform,
-          artifact: artifact.key,
-          version: WATCHER_RELEASE.version,
-          filename: artifact.filename,
-          ipAddress: readWatcherDownloadIpAddress(request),
-          userAgent: readWatcherDownloadUserAgent(request),
-          referer: readWatcherDownloadReferer(request),
-        },
-      });
-    } catch (error) {
-      console.error(`Failed to record watcher download for ${artifact.key}:`, error);
-    }
-  }
+  await recordWatcherDownload(request, artifact);
 
-  return buildDownloadRedirectResponse(artifact.downloadPath);
+  const stream = Readable.toWeb(createReadStream(filePath)) as ReadableStream<Uint8Array>;
+
+  return new NextResponse(stream, {
+    status: 200,
+    headers: buildAttachmentHeaders(artifact.filename, fileStat.size),
+  });
 }
 
 export async function HEAD(
@@ -83,5 +116,11 @@ export async function HEAD(
     return new NextResponse(null, { status: 404 });
   }
 
-  return buildDownloadRedirectResponse(artifact.downloadPath);
+  const filePath = resolveDownloadFilePath(artifact.downloadPath);
+  const fileStat = await stat(filePath);
+
+  return new NextResponse(null, {
+    status: 200,
+    headers: buildAttachmentHeaders(artifact.filename, fileStat.size),
+  });
 }

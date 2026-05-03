@@ -11,7 +11,6 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import TrackedDownloadLink from "@/components/download/TrackedDownloadLink";
 
 import { useLobbyAppearance } from "@/components/lobby/LobbyAppearanceContext";
 import { getLobbyPresentationTone } from "@/components/lobby/lobbyPresentation";
@@ -105,15 +104,15 @@ export default function DownloadPage() {
             </div>
 
             <div className="mt-7 flex flex-wrap gap-3">
-              <TrackedDownloadLink
-                href={primaryArtifact.downloadPath}
-                trackHref={primaryArtifact.trackedHref}
-                filename={primaryArtifact.filename}
+              <a
+                href={primaryArtifact.trackedHref}
+                download={primaryArtifact.filename}
+                rel="nofollow"
                 className={`inline-flex items-center gap-3 rounded-full px-5 py-3 text-sm font-semibold transition ${tone.primaryButton}`}
               >
                 <ArrowDownToLine className="h-4 w-4" />
                 Download {primaryArtifact.title}
-              </TrackedDownloadLink>
+              </a>
 
               <Link
                 href="/profile?watcher_pair=1"
@@ -208,11 +207,11 @@ export default function DownloadPage() {
 
               <div className="mt-5 space-y-3">
                 {artifacts.map((artifact) => (
-                  <TrackedDownloadLink
+                  <a
                     key={artifact.key}
-                    href={artifact.downloadPath}
-                    trackHref={artifact.trackedHref}
-                    filename={artifact.filename}
+                    href={artifact.trackedHref}
+                    download={artifact.filename}
+                    rel="nofollow"
                     className={`group block rounded-[1.4rem] border p-4 transition ${tone.insetPanel} hover:border-white/20 hover:bg-white/[0.06]`}
                   >
                     <div className="flex items-center justify-between gap-3">
@@ -233,7 +232,7 @@ export default function DownloadPage() {
                       <ArrowDownToLine className="h-4 w-4" />
                       Download
                     </div>
-                  </TrackedDownloadLink>
+                  </a>
                 ))}
               </div>
             </div>
