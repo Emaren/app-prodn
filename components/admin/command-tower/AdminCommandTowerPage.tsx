@@ -326,10 +326,7 @@ export default function AdminCommandTowerPage() {
 
       {data ? (
         <div className="mt-6">
-          <WatcherDownloadRail
-            summary={data.watcherDownloads.summary}
-            recent={data.watcherDownloads.recent}
-          />
+          <WatcherDownloadRail analytics={data.watcherDownloads} />
         </div>
       ) : null}
 

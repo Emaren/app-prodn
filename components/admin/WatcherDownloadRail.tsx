@@ -1,56 +1,38 @@
 "use client";
 
 import {
+  Activity,
   ArrowDownToLine,
-  Clock3,
-  Download,
+  FileCheck2,
+  Link2,
   MonitorDown,
-  ShieldCheck,
-  Sparkles,
+  PackageOpen,
+  ShieldAlert,
+  UploadCloud,
+  Users,
 } from "lucide-react";
 
 import TimeDisplayText from "@/components/time/TimeDisplayText";
-
-type WatcherDownloadSummaryRow = {
-  key: string;
-  platform: "windows" | "macos" | "linux";
-  title: string;
-  shortLabel: string;
-  format: string;
-  totalCount: number;
-  likelyExternalCount: number;
-  likelyInternalTestCount: number;
-  last24Hours: number;
-  last7Days: number;
-};
-
-type WatcherDownloadRecentRow = {
-  id: number;
-  createdAt: string;
-  platform: "windows" | "macos" | "linux";
-  artifact: string;
-  title: string;
-  format: string;
-  version: string;
-  filename: string;
-  ipAddress: string | null;
-  userAgent: string | null;
-  referer: string | null;
-  trafficClass: "external" | "internal_test";
-  userUid: string | null;
-  userDisplayName: string | null;
-};
+import type {
+  WatcherDownloadRecentRow,
+  WatcherDownloadSummaryRow,
+  WatcherDownloadsPayload,
+  WatcherMetricWindow,
+  WatcherPackagePullClassification,
+} from "@/components/admin/command-tower/types";
 
 type WatcherDownloadRailProps = {
-  summary: {
-    totalCount: number;
-    likelyExternalCount: number;
-    likelyInternalTestCount: number;
-    last24Hours: number;
-    last7Days: number;
-    rows: WatcherDownloadSummaryRow[];
-  };
-  recent: WatcherDownloadRecentRow[];
+  analytics: WatcherDownloadsPayload;
+};
+
+const CLASSIFICATION_LABELS: Record<WatcherPackagePullClassification, string> = {
+  converted_to_match: "Converted to match",
+  converted_to_app_open: "Converted to app open",
+  signed_in_package_pull: "Signed-in pull",
+  guest_direct_pull: "Guest direct pull",
+  likely_scraper_probe: "Likely scraper/probe",
+  suspicious_platform_mismatch: "Platform mismatch",
+  unknown_one_off_external_pull: "Unknown one-off pull",
 };
 
 function platformTone(platform: WatcherDownloadSummaryRow["platform"]) {
@@ -63,12 +45,20 @@ function platformTone(platform: WatcherDownloadSummaryRow["platform"]) {
   return "border-emerald-300/20 bg-emerald-400/10 text-emerald-100";
 }
 
-function trafficTone(trafficClass: WatcherDownloadRecentRow["trafficClass"]) {
-  if (trafficClass === "internal_test") {
-    return "border-fuchsia-300/20 bg-fuchsia-400/10 text-fuchsia-100";
+function classificationTone(classification: WatcherDownloadRecentRow["classification"]) {
+  if (classification === "converted_to_match" || classification === "converted_to_app_open") {
+    return "border-emerald-300/25 bg-emerald-400/10 text-emerald-100";
   }
-
-  return "border-emerald-300/20 bg-emerald-400/10 text-emerald-100";
+  if (classification === "signed_in_package_pull") {
+    return "border-sky-300/25 bg-sky-400/10 text-sky-100";
+  }
+  if (classification === "likely_scraper_probe" || classification === "suspicious_platform_mismatch") {
+    return "border-rose-300/25 bg-rose-400/10 text-rose-100";
+  }
+  if (classification === "guest_direct_pull") {
+    return "border-amber-300/25 bg-amber-400/10 text-amber-100";
+  }
+  return "border-white/10 bg-white/5 text-slate-200";
 }
 
 function compactHost(input: string | null) {
@@ -94,6 +84,10 @@ function compactUserAgent(input: string | null) {
   return input.slice(0, 60);
 }
 
+function windowLabel(metric: WatcherMetricWindow) {
+  return `7d ${metric.last7Days} · all ${metric.allTime}`;
+}
+
 function StatTile({
   label,
   value,
@@ -103,11 +97,11 @@ function StatTile({
   label: string;
   value: string;
   sublabel: string;
-  icon: typeof Download;
+  icon: typeof PackageOpen;
 }) {
   return (
-    <div className="rounded-[1.3rem] border border-white/8 bg-slate-900/70 p-4">
-      <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.24em] text-slate-500">
+    <div className="rounded-lg border border-white/8 bg-slate-900/70 p-4">
+      <div className="flex items-center gap-2 text-[11px] uppercase text-slate-500">
         <Icon className="h-4 w-4" />
         {label}
       </div>
@@ -117,79 +111,154 @@ function StatTile({
   );
 }
 
-export function WatcherDownloadRail({ summary, recent }: WatcherDownloadRailProps) {
+export function WatcherDownloadRail({ analytics }: WatcherDownloadRailProps) {
+  const { packagePulls, confirmedWatcherUsers, watcherAppOpens, linkedWatcherOpens, summary, recent } =
+    analytics;
+  const touchedLanes = summary.rows.reduce((sum, row) => sum + Number(row.totalCount > 0), 0);
+
   return (
-    <section className="rounded-[1.6rem] border border-white/10 bg-slate-950/70 p-5">
+    <section className="rounded-lg border border-white/10 bg-slate-950/70 p-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="max-w-3xl">
-          <div className="flex items-center gap-2 text-xs uppercase tracking-[0.28em] text-slate-500">
+          <div className="flex items-center gap-2 text-xs uppercase text-slate-500">
             <ArrowDownToLine className="h-4 w-4" />
-            Watcher Downloads
+            Watcher Package Pulls
           </div>
-          <h2 className="mt-3 text-2xl font-semibold text-white">
-            Tracked package pulls with the noisy edges shaved off
-          </h2>
+          <h2 className="mt-3 text-2xl font-semibold text-white">Watcher conversion funnel</h2>
           <p className="mt-2 text-sm leading-6 text-slate-300">
-            Direct tracked redirects still log the package, version, filename, request fingerprint,
-            and signed-in user when present. Prefetch-style route warming is ignored, and the rail
-            now calls out known internal or test traffic separately.
+            Noisy external package hits. Not confirmed installs. Confirmed users come from watcher
+            client events or watcher-submitted matches.
           </p>
         </div>
 
         <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-          {summary.rows.reduce((sum, row) => sum + Number(row.totalCount > 0), 0)} package lanes touched
+          {touchedLanes} package lanes touched
         </div>
       </div>
 
-      <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         <StatTile
-          label="Recorded"
-          value={String(summary.totalCount)}
-          sublabel={`Raw rows after prefetch filtering · 7d ${summary.last7Days}`}
-          icon={Download}
+          label="Package Pulls"
+          value={String(packagePulls.last24Hours)}
+          sublabel={`${windowLabel(packagePulls)} · guest ${packagePulls.guest}`}
+          icon={PackageOpen}
         />
         <StatTile
-          label="Likely External"
-          value={String(summary.likelyExternalCount)}
-          sublabel="Best current read on real user pulls"
-          icon={Sparkles}
+          label="Confirmed Watcher Users"
+          value={String(confirmedWatcherUsers.totalKnown)}
+          sublabel={`client ${confirmedWatcherUsers.fromClientEvents} · games ${confirmedWatcherUsers.fromWatcherSubmittedGames}`}
+          icon={Users}
         />
         <StatTile
-          label="Internal/Test"
-          value={String(summary.likelyInternalTestCount)}
-          sublabel="Known local, scripted, or operator traffic"
-          icon={ShieldCheck}
+          label="Watcher App Opens"
+          value={String(watcherAppOpens.last24Hours)}
+          sublabel={windowLabel(watcherAppOpens)}
+          icon={Activity}
         />
         <StatTile
-          label="Last 24h"
-          value={String(summary.last24Hours)}
-          sublabel="Fresh pull volume after route filtering"
-          icon={Clock3}
+          label="Linked Watcher Opens"
+          value={String(linkedWatcherOpens.last24Hours)}
+          sublabel={`${windowLabel(linkedWatcherOpens)} · user attached`}
+          icon={Link2}
         />
+        <StatTile
+          label="Manual Upload Users"
+          value={String(analytics.manualUploadUsers)}
+          sublabel={`${analytics.parsedMatches.fileUpload.allTime} file-upload parsed matches`}
+          icon={UploadCloud}
+        />
+        <StatTile
+          label="Parsed Watcher Matches"
+          value={String(analytics.parsedMatches.watcher.last24Hours)}
+          sublabel={windowLabel(analytics.parsedMatches.watcher)}
+          icon={FileCheck2}
+        />
+      </div>
+
+      <div className="mt-4 grid gap-3 md:grid-cols-3">
+        <div className="rounded-lg border border-white/8 bg-white/5 p-4">
+          <div className="flex items-center gap-2 text-[11px] uppercase text-slate-500">
+            <ShieldAlert className="h-4 w-4" />
+            Pull Quality
+          </div>
+          <div className="mt-3 grid gap-2 text-sm text-slate-300">
+            <div className="flex justify-between gap-3">
+              <span>Signed-in pulls</span>
+              <span className="font-semibold text-white">{packagePulls.signedIn}</span>
+            </div>
+            <div className="flex justify-between gap-3">
+              <span>Guest pulls</span>
+              <span className="font-semibold text-white">{packagePulls.guest}</span>
+            </div>
+            <div className="flex justify-between gap-3">
+              <span>Likely scraper/probe</span>
+              <span className="font-semibold text-white">{packagePulls.likelyProbe}</span>
+            </div>
+          </div>
+        </div>
+        <div className="rounded-lg border border-white/8 bg-white/5 p-4">
+          <div className="flex items-center gap-2 text-[11px] uppercase text-slate-500">
+            <UploadCloud className="h-4 w-4" />
+            Upload Telemetry
+          </div>
+          <div className="mt-3 grid gap-2 text-sm text-slate-300">
+            <div className="flex justify-between gap-3">
+              <span>Attempted 24h</span>
+              <span className="font-semibold text-white">{analytics.uploadEvents.attempted.last24Hours}</span>
+            </div>
+            <div className="flex justify-between gap-3">
+              <span>Succeeded 24h</span>
+              <span className="font-semibold text-white">{analytics.uploadEvents.succeeded.last24Hours}</span>
+            </div>
+            <div className="flex justify-between gap-3">
+              <span>Failed 24h</span>
+              <span className="font-semibold text-white">{analytics.uploadEvents.failed.last24Hours}</span>
+            </div>
+          </div>
+        </div>
+        <div className="rounded-lg border border-white/8 bg-white/5 p-4">
+          <div className="flex items-center gap-2 text-[11px] uppercase text-slate-500">
+            <FileCheck2 className="h-4 w-4" />
+            Parsed Sources
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-300">
+            {analytics.parsedMatches.bySource.length > 0 ? (
+              analytics.parsedMatches.bySource.slice(0, 8).map((row) => (
+                <span key={row.parseSource} className="rounded-full border border-white/10 bg-slate-950/60 px-2.5 py-1">
+                  {row.parseSource} {row.count}
+                </span>
+              ))
+            ) : (
+              <span>No parsed matches yet.</span>
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="mt-5 grid gap-3 xl:grid-cols-5">
         {summary.rows.map((row) => (
-          <div key={row.key} className="rounded-[1.25rem] border border-white/8 bg-white/5 p-4">
+          <div key={row.key} className="rounded-lg border border-white/8 bg-white/5 p-4">
             <div className="flex items-center justify-between gap-3">
               <span className={`rounded-full border px-2.5 py-1 text-[11px] ${platformTone(row.platform)}`}>
                 {row.platform}
               </span>
-              <span className="text-[11px] uppercase tracking-[0.22em] text-slate-500">
-                {row.format}
-              </span>
+              <span className="text-[11px] uppercase text-slate-500">{row.format}</span>
             </div>
             <div className="mt-4 text-sm font-semibold text-white">{row.title}</div>
             <div className="mt-1 text-xs text-slate-400">{row.shortLabel}</div>
             <div className="mt-4 text-3xl font-semibold text-white">{row.totalCount}</div>
             <div className="mt-3 grid gap-2 text-xs text-slate-300">
               <div className="flex items-center justify-between gap-3">
-                <span>Likely external</span>
-                <span className="font-semibold text-white">{row.likelyExternalCount}</span>
+                <span>Signed-in</span>
+                <span className="font-semibold text-white">{row.signedInCount}</span>
               </div>
               <div className="flex items-center justify-between gap-3 text-slate-400">
-                <span>Internal/test</span>
-                <span>{row.likelyInternalTestCount}</span>
+                <span>Guest</span>
+                <span>{row.guestCount}</span>
+              </div>
+              <div className="flex items-center justify-between gap-3 text-slate-400">
+                <span>Likely probe</span>
+                <span>{row.likelyProbeCount}</span>
               </div>
             </div>
             <div className="mt-3 flex items-center justify-between text-xs text-slate-400">
@@ -201,18 +270,15 @@ export function WatcherDownloadRail({ summary, recent }: WatcherDownloadRailProp
       </div>
 
       <div className="mt-6">
-        <div className="flex items-center gap-2 text-xs uppercase tracking-[0.25em] text-slate-500">
+        <div className="flex items-center gap-2 text-xs uppercase text-slate-500">
           <MonitorDown className="h-4 w-4" />
-          Recent Pulls
+          Recent Package Pulls
         </div>
 
         <div className="mt-4 grid gap-3 lg:grid-cols-2">
           {recent.length > 0 ? (
             recent.map((event) => (
-              <article
-                key={event.id}
-                className="rounded-[1.25rem] border border-white/8 bg-slate-900/70 p-4"
-              >
+              <article key={event.id} className="rounded-lg border border-white/8 bg-slate-900/70 p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="text-sm font-semibold text-white">{event.title}</div>
@@ -220,24 +286,25 @@ export function WatcherDownloadRail({ summary, recent }: WatcherDownloadRailProp
                       {event.version} · {event.filename}
                     </div>
                   </div>
-                  <span
-                    className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] ${platformTone(
-                      event.platform
-                    )}`}
-                  >
+                  <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] ${platformTone(event.platform)}`}>
                     {event.platform}
                   </span>
                 </div>
 
-                <div className="mt-3">
+                <div className="mt-3 flex flex-wrap gap-2">
                   <span
-                    className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] ${trafficTone(
-                      event.trafficClass
+                    className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] ${classificationTone(
+                      event.classification
                     )}`}
                   >
-                    {event.trafficClass === "internal_test" ? "internal/test" : "likely external"}
+                    {CLASSIFICATION_LABELS[event.classification]}
+                  </span>
+                  <span className="inline-flex rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-slate-300">
+                    {event.userDisplayName || event.userUid || "Guest"}
                   </span>
                 </div>
+
+                <p className="mt-3 text-xs leading-5 text-slate-400">{event.classificationDetail}</p>
 
                 <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-slate-400">
                   <TimeDisplayText
@@ -246,7 +313,6 @@ export function WatcherDownloadRail({ summary, recent }: WatcherDownloadRailProp
                     bubbleClassName="max-w-[16rem] text-center"
                     emptyValue="Unknown"
                   />
-                  <span>{event.userDisplayName || event.userUid || "Guest"}</span>
                   <span>{compactHost(event.referer)}</span>
                   <span>{compactUserAgent(event.userAgent)}</span>
                   {event.ipAddress ? <span>{event.ipAddress}</span> : null}
@@ -254,8 +320,8 @@ export function WatcherDownloadRail({ summary, recent }: WatcherDownloadRailProp
               </article>
             ))
           ) : (
-            <div className="rounded-[1.25rem] border border-white/8 bg-slate-900/70 px-4 py-5 text-sm text-slate-400">
-              No watcher downloads recorded yet.
+            <div className="rounded-lg border border-white/8 bg-slate-900/70 px-4 py-5 text-sm text-slate-400">
+              No watcher package pulls recorded yet.
             </div>
           )}
         </div>

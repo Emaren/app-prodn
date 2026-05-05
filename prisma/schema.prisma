@@ -50,6 +50,7 @@ model User {
   appearancePreference           UserAppearancePreference?
   activityEvents                 UserActivityEvent[]
   watcherDownloadEvents          WatcherDownloadEvent[]
+  watcherClientEvents            WatcherClientEvent[]
   betWagers                      BetWager[]
   betStakeIntents                BetStakeIntent[]
   betMarketWallets               BetMarketWallet[]
@@ -112,7 +113,9 @@ model GameStats {
   replayParseAttempts  ReplayParseAttempt[] @relation("GameStatsParseAttempts")
 
   @@unique([replayHash, is_final], map: "uq_replay_final")
+  @@index([createdAt], map: "ix_game_stats_created_at")
   @@index([userUid], map: "ix_game_stats_user_uid")
+  @@index([parse_source], map: "ix_game_stats_parse_source")
   @@index([replayHash, parse_iteration], map: "ix_replay_hash_iteration")
   @@index([replay_file, parse_iteration], map: "ix_replay_iteration")
   @@map("game_stats")
@@ -581,8 +584,38 @@ model WatcherDownloadEvent {
 
   @@index([createdAt], map: "ix_watcher_download_events_created_at")
   @@index([platform, artifact, createdAt], map: "ix_watcher_download_events_platform_artifact_created_at")
+  @@index([userId], map: "ix_watcher_download_events_user_id")
   @@index([userId, createdAt], map: "ix_watcher_download_events_user_id_created_at")
   @@map("watcher_download_events")
+}
+
+model WatcherClientEvent {
+  id          BigInt   @id @default(autoincrement())
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  userId      Int?     @map("user_id")
+  userUid     String?  @map("user_uid") @db.VarChar(100)
+  eventType   String   @map("event_type") @db.VarChar(40)
+  appVersion  String?  @map("app_version") @db.VarChar(32)
+  platform    String?  @db.VarChar(24)
+  artifact    String?  @db.VarChar(40)
+  watcherId   String?  @map("watcher_id") @db.VarChar(80)
+  sessionId   String?  @map("session_id") @db.VarChar(80)
+  replayHash  String?  @map("replay_hash") @db.VarChar(64)
+  replayFile  String?  @map("replay_file") @db.VarChar(255)
+  parseSource String?  @map("parse_source") @db.VarChar(40)
+  parseReason String?  @map("parse_reason") @db.VarChar(80)
+  ipAddress   String?  @map("ip_address") @db.VarChar(80)
+  userAgent   String?  @map("user_agent") @db.VarChar(512)
+  metadata    Json?
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([createdAt], map: "ix_watcher_client_events_created_at")
+  @@index([userId], map: "ix_watcher_client_events_user_id")
+  @@index([userUid], map: "ix_watcher_client_events_user_uid")
+  @@index([eventType], map: "ix_watcher_client_events_event_type")
+  @@index([watcherId], map: "ix_watcher_client_events_watcher_id")
+  @@map("watcher_client_events")
 }
 
 model BetMarket {

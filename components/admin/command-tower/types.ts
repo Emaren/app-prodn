@@ -197,11 +197,21 @@ export type WatcherDownloadSummaryRow = {
   shortLabel: string;
   format: string;
   totalCount: number;
-  likelyExternalCount: number;
-  likelyInternalTestCount: number;
+  signedInCount: number;
+  guestCount: number;
+  likelyProbeCount: number;
   last24Hours: number;
   last7Days: number;
 };
+
+export type WatcherPackagePullClassification =
+  | "converted_to_match"
+  | "converted_to_app_open"
+  | "signed_in_package_pull"
+  | "guest_direct_pull"
+  | "likely_scraper_probe"
+  | "suspicious_platform_mismatch"
+  | "unknown_one_off_external_pull";
 
 export type WatcherDownloadRecentRow = {
   id: number;
@@ -215,16 +225,51 @@ export type WatcherDownloadRecentRow = {
   ipAddress: string | null;
   userAgent: string | null;
   referer: string | null;
-  trafficClass: "external" | "internal_test";
+  classification: WatcherPackagePullClassification;
+  classificationDetail: string;
   userUid: string | null;
   userDisplayName: string | null;
 };
 
+export type WatcherMetricWindow = {
+  allTime: number;
+  last24Hours: number;
+  last7Days: number;
+};
+
 export type WatcherDownloadsPayload = {
+  packagePulls: WatcherMetricWindow & {
+    signedIn: number;
+    guest: number;
+    likelyProbe: number;
+  };
+  confirmedWatcherUsers: {
+    fromClientEvents: number;
+    fromWatcherSubmittedGames: number;
+    totalKnown: number;
+    detail: string;
+  };
+  watcherAppOpens: WatcherMetricWindow;
+  linkedWatcherOpens: WatcherMetricWindow;
+  uploadEvents: {
+    attempted: WatcherMetricWindow;
+    succeeded: WatcherMetricWindow;
+    failed: WatcherMetricWindow;
+  };
+  parsedMatches: {
+    watcher: WatcherMetricWindow;
+    fileUpload: WatcherMetricWindow;
+    bySource: Array<{
+      parseSource: string;
+      count: number;
+    }>;
+  };
+  manualUploadUsers: number;
   summary: {
     totalCount: number;
-    likelyExternalCount: number;
-    likelyInternalTestCount: number;
+    signedInCount: number;
+    guestCount: number;
+    likelyProbeCount: number;
     last24Hours: number;
     last7Days: number;
     rows: WatcherDownloadSummaryRow[];

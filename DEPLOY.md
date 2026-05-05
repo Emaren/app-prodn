@@ -54,6 +54,16 @@ systemctl is-active aoe2hdbets-web.service
 journalctl -u aoe2hdbets-web.service -n 40 --no-pager
 ```
 
+## Recent deployment notes
+
+### 2026-05-05 watcher telemetry and funnel truth
+
+- Added `watcher_client_events` for Electron watcher runtime telemetry.
+- Admin watcher rail now treats `/download/watcher/*` rows as noisy package pulls, not confirmed users.
+- Confirmed watcher users come from linked watcher client events plus the historical `game_stats.parse_source in ('watcher_live', 'watcher_final')` fallback.
+- Deployment requires `npx prisma migrate deploy` before restarting `aoe2hdbets-web.service`.
+- Watcher package artifacts should be rebuilt/synced before claiming the new telemetry client is in downloadable packages.
+
 ## WOLO betting env that must stay aligned
 
 When `/bets` is expected to open real Keplr stake locks, these envs must agree in the live web env:
