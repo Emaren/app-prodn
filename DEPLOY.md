@@ -73,6 +73,38 @@ For `/staking`, fund the staking wallet with total confirmed user stake plus the
 
 Unstake execution must sign from the staking wallet itself. Do not route unstake through the generic betting payout service: that service may preserve its own settlement headroom and will block or pay from the wrong custody rail. The live web env needs `WOLO_STAKING_WALLET_MNEMONIC` for `/api/staking/unstake` to broadcast the return transfer.
 
+Staking reward distributions are executed through the protected web route
+`POST /api/staking/rewards/run`. The route finalizes the last closed UTC day,
+allocates the staker side of the 1% betting fee by staking weight, pays valid
+wallets through the WOLO settlement rail, and records successful payouts as
+staking `CLAIM` events for the Recent Activity tile.
+
+Required env:
+
+- `STAKING_REWARD_RUN_TOKEN`
+- `STAKING_REWARD_RUN_URL=http://127.0.0.1:3030`
+- `WOLO_SETTLEMENT_URL` and related settlement auth env
+
+Recommended VPS timer shape:
+
+```ini
+# /etc/systemd/system/aoe2hdbets-staking-rewards.service
+[Service]
+Type=oneshot
+User=tony
+WorkingDirectory=/var/www/AoE2HDBets/app-prodn
+EnvironmentFile=/etc/aoe2hdbets/aoe2hdbets-web.env
+ExecStart=/usr/bin/npm run staking:rewards:run
+
+# /etc/systemd/system/aoe2hdbets-staking-rewards.timer
+[Timer]
+OnCalendar=*-*-* 00:10:00 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+```
+
 ## Verification
 
 Minimum deploy checks:

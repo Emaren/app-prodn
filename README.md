@@ -90,6 +90,8 @@ WOLO betting / settlement:
 - `WOLO_STAKING_ALLOW_PAYOUT_MNEMONIC_FALLBACK=1` only if the payout mnemonic is intentionally the same wallet as the staking wallet; the app still verifies the derived signer address before broadcasting
 - `WOLO_STAKING_UNSTAKE_FEE` (optional; default `auto`) to override the local staking-wallet unstake gas setting
 - `WOLO_STAKING_UNSTAKE_HEADROOM_UWOLO` if the staking wallet should display/enforce a staking-specific operator-funded reserve; otherwise it defaults to the settlement service's `10 WOLO` fee headroom
+- `STAKING_REWARD_RUN_TOKEN` for the protected daily staking-reward runner
+- `STAKING_REWARD_RUN_URL=http://127.0.0.1:3030` for the local runner script used by the VPS timer
 
 Optional migration compatibility:
 
@@ -167,6 +169,7 @@ python /var/www/AoE2HDBets/api-prodn/scripts/set_admin.py --email you@example.co
 - `/lobby` is now a real product destination with leaderboard + tournament surface
 - `/bets` now supports real Keplr-signed WOLO stake locks when escrow env is configured, and the wager is only recorded after the stake tx verifies against WoloChain REST
 - `/staking` uses real Keplr stake transfers into the staking wallet, app-side staking ledger rows, and staking-wallet-signed WoloChain transfers for unstake. User max-unstake follows confirmed staked principal; the staking wallet reserve/headroom is treated as operator-funded and surfaces as an operator top-up warning when the wallet cannot cover remaining confirmed stake plus reserve after the unstake.
+- `/staking` reward distributions are finalized once per closed UTC day through `npm run staking:rewards:run`; valid reward wallets are paid through the WOLO settlement rail and successful payouts are recorded as staking `CLAIM` events for Recent Activity.
 - trusted wallet-linked winners can now auto-settle on-chain, while unmatched or failed payouts still fall back to the pending-claim/admin rail
 - accepted scheduled matches now seed pre-live runway books so betting does not have to wait for watcher-live detection
 - player pages still need another premium pass
@@ -193,3 +196,13 @@ Required production env:
 - `WOLO_STAKING_UNSTAKE_HEADROOM_UWOLO`
 
 The web service user must be able to read the `staking` key from the WoloChain keyring.
+
+### Staking reward runner
+
+The public staking pulse shows the modeled staker share for the selected betting window. The actual daily payout path is the protected `POST /api/staking/rewards/run` route, normally called by the VPS timer through:
+
+```bash
+npm run staking:rewards:run
+```
+
+By default the runner finalizes the last closed UTC day, allocates the staker half of the 1% betting fee by staking weight, pays valid wallets through the configured WOLO settlement service, and records confirmed payouts as staking `CLAIM` events. Backfills can be run with `npm run staking:rewards:run -- --date=YYYY-MM-DD`.

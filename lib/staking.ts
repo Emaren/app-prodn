@@ -1,4 +1,11 @@
 import type { Prisma, PrismaClient } from "@/lib/generated/prisma";
+import {
+  executeWoloSettlementRun,
+  hasWoloPayoutExecutionConfigured,
+  validateWoloAddress,
+  validateWoloSettlementRun,
+  type SettlementRunResult,
+} from "@/lib/woloBetSettlement";
 
 export const BETTING_FEE_RATE_BPS = 100; // 1%
 export const STAKER_SHARE_BPS = 5_000; // 50%
@@ -36,6 +43,20 @@ export type StakingSummary = {
   totalStakedWolo: number;
   totalStakingWeight: string;
   activity: StakingActivityItem[];
+};
+
+export type StakingRewardPayoutRun = {
+  distributionId: number;
+  distributionDate: string;
+  payoutExecutionConfigured: boolean;
+  settlementRunId: string | null;
+  requestedPayouts: number;
+  executedPayouts: number;
+  skippedPayouts: number;
+  status: "confirmed" | "partial" | "skipped" | "not_configured" | "failed";
+  detail: string;
+  validation: SettlementRunResult | null;
+  execution: SettlementRunResult | null;
 };
 
 export type StakingLeaderboardRow = {
@@ -242,6 +263,7 @@ export async function loadStakingSummary(
     stakingPositions,
     recentWagers,
     recentEvents,
+    recentRewardAllocations,
   ] = await Promise.all([
     prisma.betWager.aggregate({
       where: wagerWhere,
@@ -321,6 +343,33 @@ export async function loadStakingSummary(
         },
       },
     }),
+    prisma.stakingRewardAllocation.findMany({
+      where: {
+        rewardWolo: { gt: 0 },
+        status: { not: "CLAIMED" },
+      },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: 6,
+      select: {
+        id: true,
+        rewardWolo: true,
+        status: true,
+        createdAt: true,
+        creditedAt: true,
+        distribution: {
+          select: {
+            distributionDate: true,
+          },
+        },
+        user: {
+          select: {
+            uid: true,
+            inGameName: true,
+            steamPersonaName: true,
+          },
+        },
+      },
+    }),
   ]);
 
   const settledVolumeWolo = settledAggregate._sum.amountWolo ?? 0;
@@ -334,11 +383,15 @@ export async function loadStakingSummary(
   for (const event of recentEvents) {
     const player = displayPlayerName(event.user);
     const amountLabel = formatActivityWolo(event.amountWolo);
-    const eventType = event.type.toUpperCase();
+    const metadata = jsonObject(event.metadata);
+    const isRewardPayout = Boolean(metadata.stakingRewardDistributionId);
+    const eventType = isRewardPayout ? "REWARD" : event.type.toUpperCase();
     const timestampLabel = formatMoment(event.createdAt);
     const txFeeLabel = formatTxFee(metadataNumber(event.metadata, "txFeeWolo"));
     const verb =
-      event.type === "UNSTAKE"
+      isRewardPayout
+        ? "reward payout"
+        : event.type === "UNSTAKE"
         ? "unstake"
         : event.type === "CLAIM"
           ? "claim"
@@ -348,7 +401,7 @@ export async function loadStakingSummary(
       label: `${amountLabel} ${verb}: ${player}`,
       detail:
         event.txHash
-          ? `${event.type === "UNSTAKE" ? "Returned to wallet" : "Keplr signed"} · ${event.txHash.slice(0, 8)}...${event.txHash.slice(-6)}`
+          ? `${isRewardPayout ? "Daily staking share paid" : event.type === "UNSTAKE" ? "Returned to wallet" : "Keplr signed"} · ${event.txHash.slice(0, 8)}...${event.txHash.slice(-6)}`
           : `Ledger status: ${event.status.toLowerCase()}.`,
       meta: timestampLabel,
       eventType,
@@ -357,6 +410,25 @@ export async function loadStakingSummary(
       timestampLabel,
       tone: event.type === "CLAIM" ? "emerald" : "amber",
       sortAt: event.createdAt,
+    });
+  }
+
+  for (const allocation of recentRewardAllocations) {
+    const player = displayPlayerName(allocation.user);
+    const amountLabel = formatActivityWolo(allocation.rewardWolo);
+    const timestamp = allocation.creditedAt ?? allocation.createdAt;
+    const timestampLabel = formatMoment(timestamp);
+    const distributionDate = allocation.distribution.distributionDate.toISOString().slice(0, 10);
+    activity.push({
+      key: `staking-reward-allocation-${allocation.id}`,
+      label: `${amountLabel} reward queued: ${player}`,
+      detail: `Daily staking share for ${distributionDate} is waiting on payout execution.`,
+      meta: timestampLabel,
+      eventType: "REWARD",
+      amountLabel,
+      timestampLabel,
+      tone: "amber",
+      sortAt: timestamp,
     });
   }
 
@@ -774,12 +846,28 @@ function startOfUtcDay(input: Date) {
   return new Date(Date.UTC(input.getUTCFullYear(), input.getUTCMonth(), input.getUTCDate()));
 }
 
+function stakingDistributionDateKey(input: Date) {
+  return startOfUtcDay(input).toISOString().slice(0, 10);
+}
+
+function buildStakingRewardSettlementRunId(distributionId: number, distributionDate: Date) {
+  return `aoe2-staking-${stakingDistributionDateKey(distributionDate)}-${distributionId}`;
+}
+
+function creditedRewardStatuses() {
+  return ["CREDITED", "PENDING"] as const;
+}
+
 export async function calculateDailyStakingRewardDistribution(
   prisma: PrismaClient,
   distributionDate = startOfUtcDay(new Date(Date.now() - 24 * 60 * 60 * 1000))
 ) {
   const periodStart = startOfUtcDay(distributionDate);
   const periodEnd = new Date(periodStart.getTime() + 24 * 60 * 60 * 1000);
+  if (periodEnd.getTime() > Date.now()) {
+    throw new StakingActionError("Cannot finalize an open staking reward window.", 409);
+  }
+
   const existing = await prisma.stakingRewardDistribution.findUnique({
     where: { distributionDate: periodStart },
     include: { allocations: { select: { id: true } } },
@@ -925,4 +1013,216 @@ export async function calculateDailyStakingRewardDistribution(
 
     return { distributionId: distribution.id, created: true, status: distribution.status };
   });
+}
+
+export async function executeDailyStakingRewardPayouts(
+  prisma: PrismaClient,
+  distributionId: number
+): Promise<StakingRewardPayoutRun> {
+  const distribution = await prisma.stakingRewardDistribution.findUnique({
+    where: { id: distributionId },
+    include: {
+      allocations: {
+        where: {
+          rewardWolo: { gt: 0 },
+          status: { in: [...creditedRewardStatuses()] },
+        },
+        orderBy: [{ id: "asc" }],
+        include: {
+          user: {
+            select: {
+              uid: true,
+              inGameName: true,
+              steamPersonaName: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!distribution) {
+    throw new StakingActionError("Staking reward distribution not found.", 404);
+  }
+
+  const distributionDate = stakingDistributionDateKey(distribution.distributionDate);
+  const payoutExecutionConfigured = hasWoloPayoutExecutionConfigured();
+  const validPlans = distribution.allocations
+    .map((allocation) => {
+      const walletAddress = allocation.walletAddress?.trim() || "";
+      const addressError = walletAddress ? validateWoloAddress(walletAddress) : "Wallet address is required.";
+      return {
+        allocation,
+        walletAddress,
+        addressError,
+        requestId: `staking-reward-${distributionDate}-${allocation.userId}`,
+      };
+    })
+    .filter((plan) => !plan.addressError);
+  const skippedPayouts = distribution.allocations.length - validPlans.length;
+
+  if (validPlans.length === 0) {
+    return {
+      distributionId: distribution.id,
+      distributionDate,
+      payoutExecutionConfigured,
+      settlementRunId: null,
+      requestedPayouts: 0,
+      executedPayouts: 0,
+      skippedPayouts,
+      status: "skipped",
+      detail:
+        skippedPayouts > 0
+          ? "No reward payouts had a valid WOLO wallet address."
+          : "No credited staking rewards are waiting for payout.",
+      validation: null,
+      execution: null,
+    };
+  }
+
+  if (!payoutExecutionConfigured) {
+    return {
+      distributionId: distribution.id,
+      distributionDate,
+      payoutExecutionConfigured,
+      settlementRunId: null,
+      requestedPayouts: validPlans.length,
+      executedPayouts: 0,
+      skippedPayouts,
+      status: "not_configured",
+      detail: "WOLO payout execution is not configured; rewards remain queued in the app ledger.",
+      validation: null,
+      execution: null,
+    };
+  }
+
+  const settlementRunId = buildStakingRewardSettlementRunId(
+    distribution.id,
+    distribution.distributionDate
+  );
+  const payouts = validPlans.map((plan) => ({
+    requestId: plan.requestId,
+    toAddress: plan.walletAddress,
+    amountWolo: plan.allocation.rewardWolo,
+    memo: `AoE2 staking reward ${distributionDate}`,
+  }));
+
+  const validation = await validateWoloSettlementRun({
+    settlementRunId,
+    sourceApp: "aoe2hdbets",
+    sourceEventId: `staking-reward-${distribution.id}`,
+    note: `Staking reward distribution ${distributionDate}`,
+    memo: `AoE2 staking rewards ${distributionDate}`,
+    payouts,
+  });
+  const execution = await executeWoloSettlementRun({
+    settlementRunId,
+    sourceApp: "aoe2hdbets",
+    sourceEventId: `staking-reward-${distribution.id}`,
+    note: `Staking reward distribution ${distributionDate}`,
+    memo: `AoE2 staking rewards ${distributionDate}`,
+    payouts,
+  });
+  const payoutByRequestId = new Map(
+    execution.payouts.map((payout) => [payout.requestId, payout] as const)
+  );
+  const paidAt = new Date();
+  let executedPayouts = 0;
+
+  await prisma.$transaction(async (tx) => {
+    for (const plan of validPlans) {
+      const payout = payoutByRequestId.get(plan.requestId);
+      if (!payout?.ok || !payout.txHash) continue;
+
+      const allocation = await tx.stakingRewardAllocation.findUnique({
+        where: { id: plan.allocation.id },
+      });
+      if (!allocation || !creditedRewardStatuses().includes(allocation.status as "CREDITED" | "PENDING")) {
+        continue;
+      }
+
+      const position = allocation.positionId
+        ? await tx.stakingPosition.findUnique({ where: { id: allocation.positionId } })
+        : await tx.stakingPosition.findUnique({ where: { userId: allocation.userId } });
+      const weightBefore = position
+        ? computeCurrentStakingWeight(position, paidAt)
+        : allocation.userWeight;
+      const balanceWolo = position?.currentStakedWolo ?? 0;
+
+      await tx.stakingRewardAllocation.update({
+        where: { id: allocation.id },
+        data: {
+          status: "CLAIMED",
+          claimedAt: paidAt,
+        },
+      });
+
+      if (position) {
+        await tx.stakingPosition.update({
+          where: { id: position.id },
+          data: {
+            pendingRewardsWolo: {
+              decrement: Math.min(position.pendingRewardsWolo, allocation.rewardWolo),
+            },
+            claimedRewardsWolo: { increment: allocation.rewardWolo },
+            accumulatedWeight: weightBefore,
+            lastWeightUpdateAt: paidAt,
+          },
+        });
+      }
+
+      await tx.stakingEvent.create({
+        data: {
+          userId: allocation.userId,
+          positionId: allocation.positionId,
+          walletAddress: plan.walletAddress,
+          type: "CLAIM",
+          amountWolo: allocation.rewardWolo,
+          txHash: payout.txHash,
+          status: "CONFIRMED",
+          weightBefore,
+          weightAfter: weightBefore,
+          balanceBefore: balanceWolo,
+          balanceAfter: balanceWolo,
+          confirmedAt: paidAt,
+          metadata: {
+            stakingRewardDistributionId: distribution.id,
+            stakingRewardAllocationId: allocation.id,
+            payoutRequestId: plan.requestId,
+            payoutProofUrl: payout.proofUrl ?? null,
+            settlementRunId,
+            settlementStatus: execution.status,
+            settlementDetail: payout.detail ?? execution.detail ?? null,
+          },
+        },
+      });
+
+      executedPayouts += 1;
+    }
+  });
+
+  const status =
+    executedPayouts === validPlans.length
+      ? "confirmed"
+      : executedPayouts > 0
+        ? "partial"
+        : "failed";
+
+  return {
+    distributionId: distribution.id,
+    distributionDate,
+    payoutExecutionConfigured,
+    settlementRunId,
+    requestedPayouts: validPlans.length,
+    executedPayouts,
+    skippedPayouts,
+    status,
+    detail:
+      execution.detail ||
+      (status === "confirmed"
+        ? "All staking rewards were paid on WoloChain."
+        : "One or more staking reward payouts did not execute."),
+    validation,
+    execution,
+  };
 }

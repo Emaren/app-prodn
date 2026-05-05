@@ -13,6 +13,7 @@
     "start": "next start --hostname 127.0.0.1 --port 3030",
     "lint": "next lint",
     "watcher:sync": "node scripts/sync-watcher-release.mjs",
+    "staking:rewards:run": "node scripts/run-staking-reward-distribution.mjs",
     "prisma:generate": "prisma generate",
     "prisma:migrate:dev": "prisma migrate dev",
     "prisma:push": "prisma db push",
