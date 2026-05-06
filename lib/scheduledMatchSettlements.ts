@@ -2,9 +2,9 @@ import { Prisma, type PrismaClient } from "@/lib/generated/prisma";
 import { resolveCommunityTreasuryAddressConfig } from "@/lib/woloCommunityTreasury";
 import { getWoloBetEscrowRuntime } from "@/lib/woloChain";
 import {
-  executeWoloSettlementRun,
-  hasWoloPayoutExecutionConfigured,
-  validateWoloSettlementRun,
+  executeWoloEscrowSettlementRun,
+  hasWoloEscrowSettlementExecutionConfigured,
+  validateWoloEscrowSettlementRun,
   type SettlementRunPayoutInput,
   type SettlementRunResult,
 } from "@/lib/woloBetSettlement";
@@ -199,7 +199,7 @@ export type ScheduledMatchSettlementPlansPayload = {
 };
 
 export type ScheduledMatchSettlementExecutionResult = {
-  ok: true;
+  ok: boolean;
   plan: ScheduledMatchSettlementPlan;
   execution: SettlementRunResult;
 };
@@ -716,7 +716,70 @@ async function validatePlanDryRun(plan: ScheduledMatchSettlementPlan) {
   if (plan.transfers.length === 0 || plan.transfers.every(isTransferExecuted)) {
     return null;
   }
-  return validateWoloSettlementRun(buildSettlementRunInput(plan));
+  const dryRun = await validateWoloEscrowSettlementRun(buildSettlementRunInput(plan));
+  return enforceEscrowRunSource(plan, dryRun);
+}
+
+function firstRunSigner(run: SettlementRunResult | null) {
+  const payoutSigner = run?.payouts.find(
+    (payout) => payout.signerRole || payout.signerAddress
+  );
+  return {
+    role: run?.signerRole || payoutSigner?.signerRole || null,
+    address: run?.signerAddress || payoutSigner?.signerAddress || null,
+  };
+}
+
+function enforceEscrowRunSource(
+  plan: ScheduledMatchSettlementPlan,
+  run: SettlementRunResult | null
+) {
+  if (!run) return null;
+  const signer = firstRunSigner(run);
+  const role = signer.role?.trim().toLowerCase() || null;
+  const address = signer.address?.trim() || null;
+  const expectedAddress = plan.sourceWalletAddress?.trim() || null;
+  const roleMismatch = role !== null && role !== "escrow";
+  const addressMismatch =
+    address !== null &&
+    expectedAddress !== null &&
+    address.toLowerCase() !== expectedAddress.toLowerCase();
+  const verified = run.ok && role === "escrow" && Boolean(address);
+  if (!roleMismatch && !addressMismatch && (!run.ok || verified)) {
+    return run;
+  }
+
+  const detail = roleMismatch
+    ? `WoloChain grouped run reported signer role ${role}; scheduled-match settlements must execute from Bet Escrow.`
+    : addressMismatch
+      ? `WoloChain grouped run reported signer ${address}; expected Bet Escrow ${expectedAddress}.`
+      : "WoloChain grouped run did not confirm an escrow signer for this scheduled-match settlement.";
+
+  return {
+    ...run,
+    ok: false,
+    status: "failed",
+    failureCode: "ESCROW_SIGNER_UNVERIFIED",
+    retryable: false,
+    detail,
+  } satisfies SettlementRunResult;
+}
+
+async function requireExecutableEscrowDryRun(plan: ScheduledMatchSettlementPlan) {
+  const dryRun = await validatePlanDryRun(plan);
+  if (!dryRun) {
+    throw new ScheduledMatchSettlementError(
+      "WOLO escrow settlement dry-run is not available in this environment.",
+      { status: 409, code: "ESCROW_DRY_RUN_UNAVAILABLE" }
+    );
+  }
+  if (!dryRun.ok) {
+    throw new ScheduledMatchSettlementError(
+      dryRun.detail || dryRun.failureCode || "WOLO escrow settlement dry-run failed.",
+      { status: 409, code: dryRun.failureCode || "ESCROW_DRY_RUN_FAILED" }
+    );
+  }
+  return dryRun;
 }
 
 function summarizePlans(
@@ -870,7 +933,7 @@ function assertExecutablePlan(plan: ScheduledMatchSettlementPlan) {
       code: "PLAN_BLOCKED",
     });
   }
-  if (!hasWoloPayoutExecutionConfigured()) {
+  if (!hasWoloEscrowSettlementExecutionConfigured()) {
     throw new ScheduledMatchSettlementError(
       "WOLO settlement execution is not configured in this environment.",
       { status: 409, code: "SETTLEMENT_UNCONFIGURED" }
@@ -1056,6 +1119,8 @@ async function recordExecutionResult(
             requestId: transfer.requestId,
             sourceWalletAddress: transfer.sourceWalletAddress,
             sourceWalletRole: "bet_escrow",
+            signerRole: payout?.signerRole ?? execution.signerRole ?? null,
+            signerAddress: payout?.signerAddress ?? execution.signerAddress ?? null,
             transferToAddress: payout?.toAddress ?? null,
             proofUrl: payout?.proofUrl ?? null,
           },
@@ -1085,6 +1150,8 @@ async function recordExecutionResult(
           failedTransfers,
           sourceWalletAddress: plan.sourceWalletAddress,
           sourceWalletRole: "bet_escrow",
+          signerRole: execution.signerRole ?? null,
+          signerAddress: execution.signerAddress ?? null,
         },
       });
     } else {
@@ -1107,6 +1174,8 @@ async function recordExecutionResult(
             amountWolo: plan.liability.plannedTransferWolo,
             sourceWalletAddress: plan.sourceWalletAddress,
             sourceWalletRole: "bet_escrow",
+            signerRole: execution.signerRole ?? null,
+            signerAddress: execution.signerAddress ?? null,
           },
         });
       }
@@ -1163,12 +1232,14 @@ export async function executeScheduledMatchSettlement(
   const markedPlan = await markSettlementExecutionStarted(prisma, matchId);
 
   try {
-    const execution = await executeWoloSettlementRun(buildSettlementRunInput(markedPlan));
-    const plan = await recordExecutionResult(prisma, markedPlan, execution, adminUserId);
+    await requireExecutableEscrowDryRun(markedPlan);
+    const execution = await executeWoloEscrowSettlementRun(buildSettlementRunInput(markedPlan));
+    const guardedExecution = enforceEscrowRunSource(markedPlan, execution) ?? execution;
+    const plan = await recordExecutionResult(prisma, markedPlan, guardedExecution, adminUserId);
     return {
-      ok: true,
+      ok: guardedExecution.ok,
       plan,
-      execution,
+      execution: guardedExecution,
     };
   } catch (error) {
     const detail =

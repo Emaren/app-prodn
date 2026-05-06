@@ -2,6 +2,8 @@
 
 AoE2HDBets owns the app-side Challenge escrow settlement decision. WoloChain remains the chain rail for sending WOLO and proving tx hashes.
 
+Scheduled-match settlement runs must use the WoloChain grouped settlement rail with `signer_role=escrow`. The source signer is Bet Escrow, not the normal payout signer.
+
 ## What Is Settled Here
 
 The scheduled-match executor only handles funded Challenge escrow rows from `scheduled_matches`.
@@ -31,7 +33,7 @@ Each row records:
 - `error_detail`
 - `created_at`, `updated_at`, `executed_at`
 
-The database enforces one row per scheduled match/action/recipient/amount, plus a unique settlement `request_id`, so repeated clicks cannot create duplicate ledger rows. The WoloChain grouped settlement run also uses deterministic request ids for chain-side idempotency.
+The database enforces one row per scheduled match/action/recipient/amount, plus a unique settlement `request_id`, so repeated clicks cannot create duplicate ledger rows. The WoloChain grouped settlement run also uses deterministic request ids for chain-side idempotency and records the signer role so escrow-signed runs cannot be confused with payout-signed runs.
 
 ## Operator Flow
 
@@ -53,7 +55,7 @@ Execute one match after reviewing the plan:
 POST /api/admin/wolochain/scheduled-settlements/:id/execute
 ```
 
-Execution is admin-only, records `refund_sent`, `guarantee_forfeited_to_treasury`, `scheduled_settlement_completed`, and `scheduled_settlement_failed` activity rows, and refuses execution when funding, recipients, or settlement config are missing.
+Execution is admin-only, records `refund_sent`, `guarantee_forfeited_to_treasury`, `scheduled_settlement_completed`, and `scheduled_settlement_failed` activity rows, and refuses execution when funding, recipients, settlement config, or Bet Escrow signer verification are missing.
 
 ## Current Backfill Targets
 

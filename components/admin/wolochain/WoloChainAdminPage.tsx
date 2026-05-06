@@ -405,6 +405,15 @@ function ScheduledSettlementPlanCard({
         {plan.dryRun?.detail ? (
           <div className="mt-2 text-xs leading-5 text-slate-400">{plan.dryRun.detail}</div>
         ) : null}
+        {plan.dryRun?.signerRole || plan.dryRun?.signerAddress ? (
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+            <span>Source signer</span>
+            <span className="text-slate-200">{compactLabel(plan.dryRun.signerRole || "unknown")}</span>
+            {plan.dryRun.signerAddress ? (
+              <CopyableAddress address={plan.dryRun.signerAddress} lead={10} tail={7} />
+            ) : null}
+          </div>
+        ) : null}
         <div className="mt-3 space-y-2">
           {plan.transfers.length ? (
             plan.transfers.map((transfer) => {
