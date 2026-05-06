@@ -418,9 +418,9 @@ export function buildChallengeEconomySurface(
       statusDetail = "Opponent checked in. Creator missed the lock.";
       resolution = {
         label: "Creator no-show",
-        guarantee: "Opponent Match Guarantee returns; creator Match Guarantee goes to the opponent.",
+        guarantee: "Opponent Match Guarantee returns; creator Match Guarantee goes to Community Treasury.",
         wager: "Both Wolo Wagers release because no match was played.",
-        treasury: null,
+        treasury: "Community Treasury",
       };
       break;
     case "no_show_right":
@@ -428,9 +428,9 @@ export function buildChallengeEconomySurface(
       statusDetail = "Creator checked in. Opponent missed the lock.";
       resolution = {
         label: "Opponent no-show",
-        guarantee: "Creator Match Guarantee returns; opponent Match Guarantee goes to the creator.",
+        guarantee: "Creator Match Guarantee returns; opponent Match Guarantee goes to Community Treasury.",
         wager: "Both Wolo Wagers release because no match was played.",
-        treasury: null,
+        treasury: "Community Treasury",
       };
       break;
     case "double_no_show":

@@ -541,7 +541,7 @@ function buildSyntheticChallengeActivities(rows: ScheduledMatchRow[]): Challenge
         id: row.id * 10_000 + 12,
         scheduledMatchId: row.id,
         eventType: "no_show_left",
-        detail: `${challengerName} missed check-in. ${challengedName} gets the forfeit-side Match Guarantee disposition.`,
+        detail: `${challengerName} missed check-in. The missed-side Match Guarantee routes to Community Treasury.`,
         actorUid: null,
         actorName: null,
         createdAt: row.resultAt.toISOString(),
@@ -554,7 +554,7 @@ function buildSyntheticChallengeActivities(rows: ScheduledMatchRow[]): Challenge
         id: row.id * 10_000 + 13,
         scheduledMatchId: row.id,
         eventType: "no_show_right",
-        detail: `${challengedName} missed check-in. ${challengerName} gets the forfeit-side Match Guarantee disposition.`,
+        detail: `${challengedName} missed check-in. The missed-side Match Guarantee routes to Community Treasury.`,
         actorUid: null,
         actorName: null,
         createdAt: row.resultAt.toISOString(),
@@ -1000,9 +1000,9 @@ async function persistScheduledMatchResults(
           eventType: desiredStatus,
           detail:
             desiredStatus === "no_show_left"
-              ? `${challengePlayerName(row.challenger)} missed check-in. ${challengePlayerName(row.challenged)} holds the no-show edge.`
+              ? `${challengePlayerName(row.challenger)} missed check-in. Missed-side Match Guarantee routes to Community Treasury.`
               : desiredStatus === "no_show_right"
-                ? `${challengePlayerName(row.challenged)} missed check-in. ${challengePlayerName(row.challenger)} holds the no-show edge.`
+                ? `${challengePlayerName(row.challenged)} missed check-in. Missed-side Match Guarantee routes to Community Treasury.`
                 : "Both players missed the check-in lock.",
           createdAt: resolvedAt,
         });

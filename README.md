@@ -12,6 +12,7 @@ It currently owns the premium lobby/community surface, leaderboard presentation,
 - [DEPLOY.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/DEPLOY.md)
 - [PRODUCT_STATE.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/PRODUCT_STATE.md)
 - [WORKSPACE.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/WORKSPACE.md)
+- [docs/SCHEDULED_MATCH_SETTLEMENTS.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/docs/SCHEDULED_MATCH_SETTLEMENTS.md)
 
 ## Stack
 

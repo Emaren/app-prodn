@@ -143,11 +143,34 @@ function formatActivityTitle(activity: ChallengeActivityItem) {
       return "Challenge rescheduled";
     case "completed":
       return "Match completed";
+    case "refund_sent":
+      return "Refund sent";
+    case "guarantee_forfeited_to_treasury":
+      return "Guarantee routed to Treasury";
+    case "scheduled_settlement_completed":
+      return "Escrow settlement completed";
+    case "scheduled_settlement_failed":
+      return "Escrow settlement failed";
     case "forfeited":
       return "Match forfeited";
     default:
       return activity.eventType.replace(/_/g, " ");
   }
+}
+
+function metadataNumber(activity: ChallengeActivityItem, key: string) {
+  const value = activity.metadata?.[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function metadataString(activity: ChallengeActivityItem, key: string) {
+  const value = activity.metadata?.[key];
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function shortHash(value: string) {
+  if (value.length <= 16) return value;
+  return `${value.slice(0, 8)}...${value.slice(-6)}`;
 }
 
 function formatActivityCompact(activity: ChallengeActivityItem, match?: ActivityMatch) {
@@ -179,6 +202,20 @@ function formatActivityCompact(activity: ChallengeActivityItem, match?: Activity
       return match ? `${matchLabel} · Game detected` : `Game detected · Match #${activity.scheduledMatchId}`;
     case "completed":
       return match ? `${matchLabel} · ${match.economy.resolution.label || "Resolved"}` : "Match completed";
+    case "refund_sent": {
+      const amount = metadataNumber(activity, "amountWolo");
+      const txHash = metadataString(activity, "txHash");
+      return `Refund sent${amount ? ` · ${amount.toLocaleString()} WOLO` : ""}${txHash ? ` · tx ${shortHash(txHash)}` : ""}`;
+    }
+    case "guarantee_forfeited_to_treasury": {
+      const amount = metadataNumber(activity, "amountWolo");
+      const txHash = metadataString(activity, "txHash");
+      return `Guarantee to Community Treasury${amount ? ` · ${amount.toLocaleString()} WOLO` : ""}${txHash ? ` · tx ${shortHash(txHash)}` : ""}`;
+    }
+    case "scheduled_settlement_completed":
+      return `Escrow settlement completed · Match #${activity.scheduledMatchId}`;
+    case "scheduled_settlement_failed":
+      return activity.detail || `Escrow settlement failed · Match #${activity.scheduledMatchId}`;
     case "declined":
       return `Challenge declined · Match #${activity.scheduledMatchId}`;
     case "cancelled":

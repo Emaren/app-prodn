@@ -248,6 +248,7 @@ model ScheduledMatch {
   updatedAt                      DateTime                       @updatedAt @map("updated_at") @db.Timestamp(6)
   activities                     ScheduledMatchActivity[]
   userPreferences                ScheduledMatchUserPreference[]
+  settlements                    ScheduledMatchSettlement[]
 
   challenger User       @relation("ScheduledMatchChallenger", fields: [challengerUserId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   challenged User       @relation("ScheduledMatchChallenged", fields: [challengedUserId], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -299,6 +300,31 @@ model ScheduledMatchActivity {
   @@index([actorUserId, createdAt], map: "ix_scheduled_match_activities_actor_created_at")
   @@index([eventType, createdAt], map: "ix_scheduled_match_activities_type_created_at")
   @@map("scheduled_match_activities")
+}
+
+model ScheduledMatchSettlement {
+  id                  Int       @id @default(autoincrement())
+  scheduledMatchId    Int       @map("scheduled_match_id")
+  status              String    @default("planned") @db.VarChar(24)
+  action              String    @db.VarChar(48)
+  recipientAddress    String    @map("recipient_address") @db.VarChar(100)
+  amountWolo          Int       @map("amount_wolo")
+  requestId           String    @map("request_id") @db.VarChar(128)
+  sourceWalletAddress String?   @map("source_wallet_address") @db.VarChar(100)
+  txHash              String?   @map("tx_hash") @db.VarChar(128)
+  errorDetail         String?   @map("error_detail") @db.VarChar(500)
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+  executedAt          DateTime? @map("executed_at") @db.Timestamp(6)
+
+  scheduledMatch ScheduledMatch @relation(fields: [scheduledMatchId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([scheduledMatchId, action, recipientAddress, amountWolo], map: "uq_sched_match_settlement_action_recipient_amount")
+  @@unique([requestId], map: "uq_scheduled_match_settlements_request_id")
+  @@index([scheduledMatchId, status], map: "ix_scheduled_match_settlements_match_status")
+  @@index([status, updatedAt], map: "ix_scheduled_match_settlements_status_updated_at")
+  @@index([txHash], map: "ix_scheduled_match_settlements_tx_hash")
+  @@map("scheduled_match_settlements")
 }
 
 model ChatRoom {

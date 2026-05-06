@@ -22,10 +22,15 @@ import type {
   WoloChainAdminChallengeRun,
   WoloChainAdminPayload,
 } from "@/lib/adminWoloChainTypes";
+import type {
+  ScheduledMatchSettlementPlan,
+  ScheduledMatchSettlementPlansPayload,
+} from "@/lib/scheduledMatchSettlements";
 
 type LoadState = {
   wolochain: WoloChainAdminPayload | null;
   rails: AdminUsersRailsPayload | null;
+  scheduledSettlements: ScheduledMatchSettlementPlansPayload | null;
   loading: boolean;
   error: string | null;
 };
@@ -122,6 +127,22 @@ function capabilityTone(value: string | null | undefined) {
     return statusTone("bad");
   }
   return statusTone("muted");
+}
+
+function settlementPlanTone(value: ScheduledMatchSettlementPlan["state"]) {
+  switch (value) {
+    case "executed":
+      return statusTone("good");
+    case "ready":
+    case "funding_recorded":
+    case "review_only":
+      return statusTone("warn");
+    case "blocked":
+    case "failed":
+      return statusTone("bad");
+    default:
+      return statusTone("muted");
+  }
 }
 
 function compactLabel(value: string | null | undefined) {
@@ -299,16 +320,156 @@ function ChallengeRunCard({ run }: { run: WoloChainAdminChallengeRun }) {
   );
 }
 
+function ScheduledSettlementPlanCard({
+  plan,
+  busy,
+  onExecute,
+}: {
+  plan: ScheduledMatchSettlementPlan;
+  busy: boolean;
+  onExecute: (matchId: number) => void;
+}) {
+  const payoutByRequestId = new Map(
+    (plan.dryRun?.payouts ?? []).map((payout) => [payout.requestId, payout])
+  );
+  const canExecute =
+    plan.blockers.length === 0 &&
+    plan.transfers.length > 0 &&
+    !["executed", "review_only", "no_funding", "funding_recorded"].includes(plan.state);
+
+  return (
+    <div className="rounded-[1.35rem] border border-white/10 bg-white/[0.045] p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-[11px] uppercase tracking-[0.26em] text-slate-500">
+            Challenge #{plan.id} escrow settlement
+          </div>
+          <div className="mt-2 truncate text-lg font-semibold text-white">{plan.title}</div>
+          <div className="mt-1 text-sm leading-6 text-slate-400">{plan.stateDetail}</div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className={`rounded-full border px-3 py-1 text-xs ${settlementPlanTone(plan.state)}`}>
+            {plan.stateLabel}
+          </span>
+          <button
+            type="button"
+            disabled={!canExecute || busy}
+            onClick={() => onExecute(plan.id)}
+            className="rounded-full border border-emerald-300/25 bg-emerald-400/10 px-3 py-1 text-xs font-semibold text-emerald-50 transition hover:border-emerald-200/60 hover:bg-emerald-300/20 disabled:cursor-not-allowed disabled:opacity-45"
+          >
+            {busy ? "Executing" : plan.state === "failed" ? "Retry execute" : "Execute"}
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-2 sm:grid-cols-4">
+        <div className="rounded-2xl border border-white/8 bg-slate-950/60 px-3 py-3">
+          <div className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Funded liability</div>
+          <div className="mt-2 font-semibold text-white">{formatWolo(plan.liability.fundedLiabilityWolo)} WOLO</div>
+        </div>
+        <div className="rounded-2xl border border-white/8 bg-slate-950/60 px-3 py-3">
+          <div className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Refund plan</div>
+          <div className="mt-2 font-semibold text-white">{formatWolo(plan.liability.refundWolo)} WOLO</div>
+        </div>
+        <div className="rounded-2xl border border-amber-300/20 bg-amber-400/10 px-3 py-3">
+          <div className="text-[10px] uppercase tracking-[0.22em] text-amber-100/70">Treasury route</div>
+          <div className="mt-2 font-semibold text-amber-50">{formatWolo(plan.liability.treasuryWolo)} WOLO</div>
+        </div>
+        <div className="rounded-2xl border border-emerald-300/20 bg-emerald-400/10 px-3 py-3">
+          <div className="text-[10px] uppercase tracking-[0.22em] text-emerald-100/70">Executed</div>
+          <div className="mt-2 font-semibold text-emerald-50">{formatWolo(plan.liability.executedWolo)} WOLO</div>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-3 text-xs text-slate-400 sm:grid-cols-2">
+        <div>
+          Status <span className="text-slate-200">{compactLabel(plan.status)}</span>
+        </div>
+        <div>
+          Settlement ready{" "}
+          {plan.settlementReadyAt ? (
+            <TimeDisplayText value={plan.settlementReadyAt} className="text-slate-200" />
+          ) : (
+            <span className="text-slate-500">not stamped</span>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-4 rounded-2xl border border-white/8 bg-slate-950/55 p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Dry-run transfer plan</div>
+          <span className={`rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.14em] ${capabilityTone(plan.dryRun?.status)}`}>
+            {plan.dryRun ? compactLabel(plan.dryRun.status) : "App plan"}
+          </span>
+        </div>
+        {plan.dryRun?.detail ? (
+          <div className="mt-2 text-xs leading-5 text-slate-400">{plan.dryRun.detail}</div>
+        ) : null}
+        <div className="mt-3 space-y-2">
+          {plan.transfers.length ? (
+            plan.transfers.map((transfer) => {
+              const payout = payoutByRequestId.get(transfer.requestId);
+              const txHash = transfer.existingSettlement?.txHash || payout?.txHash || null;
+              return (
+                <div
+                  key={transfer.requestId}
+                  className="rounded-xl border border-white/8 bg-white/[0.035] px-3 py-2"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="text-sm font-semibold text-white">
+                      {transfer.label} · {formatWolo(transfer.amountWolo)} WOLO
+                    </div>
+                    <span className={`rounded-full border px-2 py-0.5 text-[10px] ${capabilityTone(transfer.existingSettlement?.status || payout?.status)}`}>
+                      {compactLabel(transfer.existingSettlement?.status || payout?.status || "planned")}
+                    </span>
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                    <span>{transfer.recipientLabel}</span>
+                    <CopyableAddress address={transfer.recipientAddress} lead={10} tail={7} />
+                    {txHash ? <span className="text-emerald-200">tx {shorten(txHash)}</span> : null}
+                    {transfer.existingSettlement?.errorDetail ? (
+                      <span className="text-rose-200">{transfer.existingSettlement.errorDetail}</span>
+                    ) : null}
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div className="rounded-xl border border-dashed border-white/10 px-3 py-3 text-sm text-slate-500">
+              No executable transfer plan for this match.
+            </div>
+          )}
+        </div>
+      </div>
+
+      {plan.blockers.length ? (
+        <div className="mt-3 space-y-2">
+          {plan.blockers.map((blocker) => (
+            <div
+              key={blocker}
+              className="rounded-xl border border-rose-300/20 bg-rose-400/10 px-3 py-2 text-xs leading-5 text-rose-50"
+            >
+              {blocker}
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export default function WoloChainAdminPage() {
   const [state, setState] = useState<LoadState>({
     wolochain: null,
     rails: null,
+    scheduledSettlements: null,
     loading: true,
     error: null,
   });
   const [rescindingClaimId, setRescindingClaimId] = useState<number | null>(null);
   const [retryingClaimId, setRetryingClaimId] = useState<number | null>(null);
   const [reconcilingPending, setReconcilingPending] = useState(false);
+  const [executingScheduledMatchId, setExecutingScheduledMatchId] = useState<number | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
 
   const load = useCallback(async (quiet = false) => {
@@ -317,14 +478,16 @@ export default function WoloChainAdminPage() {
     }
 
     try {
-      const [woloResponse, railsResponse] = await Promise.all([
+      const [woloResponse, railsResponse, scheduledResponse] = await Promise.all([
         fetch("/api/admin/wolochain", { cache: "no-store" }),
         fetch("/api/admin/users/rails", { cache: "no-store" }),
+        fetch("/api/admin/wolochain/scheduled-settlements?dryRun=1", { cache: "no-store" }),
       ]);
 
-      const [woloPayload, railsPayload] = await Promise.all([
+      const [woloPayload, railsPayload, scheduledPayload] = await Promise.all([
         woloResponse.json().catch(() => ({})),
         railsResponse.json().catch(() => ({})),
+        scheduledResponse.json().catch(() => ({})),
       ]);
 
       if (!woloResponse.ok) {
@@ -346,6 +509,9 @@ export default function WoloChainAdminPage() {
       setState({
         wolochain: woloPayload as WoloChainAdminPayload,
         rails: railsPayload as AdminUsersRailsPayload,
+        scheduledSettlements: scheduledResponse.ok
+          ? (scheduledPayload as ScheduledMatchSettlementPlansPayload)
+          : null,
         loading: false,
         error: null,
       });
@@ -451,6 +617,51 @@ export default function WoloChainAdminPage() {
     }
   }
 
+  async function handleExecuteScheduledSettlement(matchId: number) {
+    const confirmed = window.confirm(
+      `Execute scheduled-match escrow settlement for challenge #${matchId}?`
+    );
+    if (!confirmed) return;
+
+    setExecutingScheduledMatchId(matchId);
+    setActionMessage(null);
+    try {
+      const response = await fetch(
+        `/api/admin/wolochain/scheduled-settlements/${matchId}/execute`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "execute" }),
+        }
+      );
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(
+          typeof payload.detail === "string"
+            ? payload.detail
+            : "Scheduled settlement execution failed."
+        );
+      }
+      const execution =
+        payload.execution && typeof payload.execution === "object"
+          ? (payload.execution as { status?: string; confirmedPayoutCount?: number })
+          : null;
+      setActionMessage(
+        `Challenge #${matchId} settlement ${compactLabel(execution?.status || "completed")} · ${
+          execution?.confirmedPayoutCount ?? 0
+        } confirmed transfer(s).`
+      );
+      await load(true);
+    } catch (error) {
+      setActionMessage(
+        error instanceof Error ? error.message : "Scheduled settlement execution failed."
+      );
+      await load(true);
+    } finally {
+      setExecutingScheduledMatchId(null);
+    }
+  }
+
   const failureNotes = useMemo(() => {
     const marketFailures =
       state.rails?.marketRail.rows
@@ -460,9 +671,13 @@ export default function WoloChainAdminPage() {
       state.rails?.settlementRail.rows
         .filter((row) => row.errorState)
         .map((row) => `${row.displayPlayerName}: ${row.errorState}`) ?? [];
+    const scheduledFailures =
+      state.scheduledSettlements?.rows
+        .filter((row) => row.state === "blocked" || row.state === "failed")
+        .map((row) => `Challenge #${row.id}: ${row.stateDetail}`) ?? [];
 
-    return [...(state.wolochain?.warnings ?? []), ...marketFailures, ...payoutFailures].slice(0, 8);
-  }, [state.rails?.marketRail.rows, state.rails?.settlementRail.rows, state.wolochain?.warnings]);
+    return [...(state.wolochain?.warnings ?? []), ...marketFailures, ...payoutFailures, ...scheduledFailures].slice(0, 8);
+  }, [state.rails?.marketRail.rows, state.rails?.settlementRail.rows, state.scheduledSettlements?.rows, state.wolochain?.warnings]);
 
   const chainTone = state.wolochain?.chain.healthy
     ? state.wolochain.chain.consensusStatus === "advancing"
@@ -611,12 +826,12 @@ export default function WoloChainAdminPage() {
         <BucketCard
           label="Match Guarantee"
           value="Coordination bond"
-          detail="Returns when both players check in; forfeits to the checked-in opponent on a one-sided no-show."
+          detail="Returns when both players check in; missed-side guarantees route to Community Treasury on no-show."
         />
         <BucketCard
           label="Treasury Route"
-          value="Double no-show"
-          detail="If neither player checks in before start, both Match Guarantees route to Community Treasury."
+          value="No-show guarantees"
+          detail="One-sided no-show sends the missed guarantee to Treasury; double no-show sends both guarantees."
         />
         <BucketCard
           label="Payout / Refund"
@@ -654,12 +869,21 @@ export default function WoloChainAdminPage() {
             <h2 className="mt-2 text-2xl font-semibold text-white">Scheduled match economy state</h2>
           </div>
           <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-            {state.wolochain?.challengeRuns.length ?? 0} tracked
+            {state.scheduledSettlements?.rows.length ?? state.wolochain?.challengeRuns.length ?? 0} tracked
           </span>
         </div>
 
         <div className="mt-5 grid gap-3 xl:grid-cols-2">
-          {state.wolochain?.challengeRuns.length ? (
+          {state.scheduledSettlements?.rows.length ? (
+            state.scheduledSettlements.rows.map((plan) => (
+              <ScheduledSettlementPlanCard
+                key={plan.id}
+                plan={plan}
+                busy={executingScheduledMatchId === plan.id}
+                onExecute={handleExecuteScheduledSettlement}
+              />
+            ))
+          ) : state.wolochain?.challengeRuns.length ? (
             state.wolochain.challengeRuns.map((run) => <ChallengeRunCard key={run.id} run={run} />)
           ) : (
             <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] px-4 py-5 text-sm text-slate-400">

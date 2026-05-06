@@ -11,6 +11,11 @@ import { loadWoloDevSnapshot } from "@/lib/woloDevSnapshot";
 import { fetchWoloBalanceAmount, fetchWoloStatusSnapshot } from "@/lib/woloRuntime";
 import { WOLO_COIN_DECIMALS, formatWoloAmount, getWoloBetEscrowRuntime } from "@/lib/woloChain";
 import { getWoloSettlementSurfaceStatus } from "@/lib/woloBetSettlement";
+import {
+  resolveAddressFromEnv,
+  resolveCommunityTreasuryAddressConfig,
+  type WoloAddressConfig,
+} from "@/lib/woloCommunityTreasury";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,36 +32,11 @@ function displayUserName(entry: {
   return entry.inGameName || entry.steamPersonaName || entry.uid || "Unknown player";
 }
 
-function getCommunityTreasuryAddressConfig() {
-  return resolveAddressFromEnv(TREASURY_ADDRESS_ENV_NAMES);
-}
-
 function getPayoutSignerAddressConfig() {
   return resolveAddressFromEnv(PAYOUT_SIGNER_ADDRESS_ENV_NAMES);
 }
 
 const PAYOUT_SIGNER_ADDRESS_ENV_NAMES = ["WOLO_BET_PAYOUT_ADDRESS"] as const;
-
-const TREASURY_ADDRESS_ENV_NAMES = [
-  "WOLO_COMMUNITY_TREASURY_ADDRESS",
-  "WOLO_COMMUNITY_TREASURY",
-  "WOLO_TREASURY_ADDRESS",
-  "WOLO_TREASURY",
-  "WOLO_MATCH_GUARANTEE_TREASURY_ADDRESS",
-  "WOLO_MATCH_GUARANTEE_TREASURY",
-  "WOLO_TREASURY_WALLET_ADDRESS",
-  "WOLO_TREASURY_WALLET",
-  "WOLO_COMMUNITY_TREASURY_WALLET_ADDRESS",
-  "WOLO_COMMUNITY_TREASURY_WALLET",
-  "NEXT_PUBLIC_WOLO_COMMUNITY_TREASURY_ADDRESS",
-  "NEXT_PUBLIC_WOLO_COMMUNITY_TREASURY",
-  "NEXT_PUBLIC_WOLO_TREASURY_ADDRESS",
-  "NEXT_PUBLIC_WOLO_TREASURY",
-  "NEXT_PUBLIC_WOLO_MATCH_GUARANTEE_TREASURY_ADDRESS",
-  "NEXT_PUBLIC_WOLO_MATCH_GUARANTEE_TREASURY",
-  "NEXT_PUBLIC_WOLO_TREASURY_WALLET_ADDRESS",
-  "NEXT_PUBLIC_WOLO_TREASURY_WALLET",
-] as const;
 
 const DEX_LIQUIDITY_ADDRESS_ENV_NAMES = [
   "WOLO_DEX_LIQUIDITY_ADDRESS",
@@ -84,37 +64,15 @@ const DEX_LIQUIDITY_SNAPSHOT_ACCOUNT_KEYS = [
   "liquidity",
 ] as const;
 
-type AddressConfig = {
-  address: string | null;
-  sourceLabel: string | null;
-};
-
 type BalanceFallback = {
   amountUWolo: string | null;
   amountWolo: string | null;
 };
 
-type TreasuryConfig = AddressConfig & {
+type TreasuryConfig = WoloAddressConfig & {
   fallbackBalance: BalanceFallback | null;
   missingDetail: string;
 };
-
-function resolveAddressFromEnv(names: readonly string[]): AddressConfig {
-  for (const name of names) {
-    const value = process.env[name]?.trim();
-    if (value) {
-      return {
-        address: value,
-        sourceLabel: name,
-      };
-    }
-  }
-
-  return {
-    address: null,
-    sourceLabel: null,
-  };
-}
 
 function normalizeSnapshotKey(value: string) {
   return value.replace(/[^a-z0-9]/gi, "").toLowerCase();
@@ -145,7 +103,7 @@ function formatSnapshotBalance(account: { uwolo: number; wolo: number }): Balanc
 
 async function resolveCommunityTreasuryConfig(): Promise<TreasuryConfig> {
   return resolveConfiguredBalanceAccount({
-    envConfig: getCommunityTreasuryAddressConfig(),
+    envConfig: resolveCommunityTreasuryAddressConfig(),
     snapshotKeys: TREASURY_SNAPSHOT_ACCOUNT_KEYS,
     missingDetail:
       "Configure WOLO_COMMUNITY_TREASURY_ADDRESS, or set WOLO_LOCAL_BALANCES_FILE to a snapshot exposing accounts.communitytreasury.",
@@ -166,7 +124,7 @@ async function resolveConfiguredBalanceAccount({
   snapshotKeys,
   missingDetail,
 }: {
-  envConfig: AddressConfig;
+  envConfig: WoloAddressConfig;
   snapshotKeys: readonly string[];
   missingDetail: string;
 }): Promise<TreasuryConfig> {
