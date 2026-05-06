@@ -872,23 +872,32 @@ model StakingEvent {
 }
 
 model StakingRewardDistribution {
-  id                 Int       @id @default(autoincrement())
-  distributionDate   DateTime  @map("distribution_date") @db.Date
-  periodStart        DateTime  @map("period_start") @db.Timestamp(6)
-  periodEnd          DateTime  @map("period_end") @db.Timestamp(6)
-  bettingFeePoolWolo Int       @default(0) @map("betting_fee_pool_wolo")
-  stakerPoolWolo     Int       @default(0) @map("staker_pool_wolo")
-  treasuryPoolWolo   Int       @default(0) @map("treasury_pool_wolo")
-  totalWeight        BigInt    @default(0) @map("total_weight")
-  status             String    @default("DRAFT") @db.VarChar(24)
-  metadata           Json?
-  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  finalizedAt        DateTime? @map("finalized_at") @db.Timestamp(6)
+  id                        Int       @id @default(autoincrement())
+  distributionDate          DateTime  @map("distribution_date") @db.Date
+  periodStart               DateTime  @map("period_start") @db.Timestamp(6)
+  periodEnd                 DateTime  @map("period_end") @db.Timestamp(6)
+  bettingFeePoolWolo        Int       @default(0) @map("betting_fee_pool_wolo")
+  stakerPoolWolo            Int       @default(0) @map("staker_pool_wolo")
+  treasuryPoolWolo          Int       @default(0) @map("treasury_pool_wolo")
+  totalWeight               BigInt    @default(0) @map("total_weight")
+  status                    String    @default("DRAFT") @db.VarChar(24)
+  treasuryPayoutStatus      String    @default("UNPAID") @map("treasury_payout_status") @db.VarChar(24)
+  treasuryPayoutRequestId   String    @map("treasury_payout_request_id") @db.VarChar(128)
+  treasuryPayoutTxHash      String?   @map("treasury_payout_tx_hash") @db.VarChar(100)
+  treasuryPayoutAttemptedAt DateTime? @map("treasury_payout_attempted_at") @db.Timestamp(6)
+  treasuryPayoutExecutedAt  DateTime? @map("treasury_payout_executed_at") @db.Timestamp(6)
+  treasuryPayoutError       String?   @map("treasury_payout_error")
+  metadata                  Json?
+  createdAt                 DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  finalizedAt               DateTime? @map("finalized_at") @db.Timestamp(6)
 
   allocations StakingRewardAllocation[]
 
   @@unique([distributionDate], map: "uq_staking_reward_distributions_date")
+  @@unique([treasuryPayoutRequestId], map: "uq_staking_reward_distributions_treasury_request")
   @@index([status, distributionDate], map: "ix_staking_reward_distributions_status_date")
+  @@index([treasuryPayoutStatus, distributionDate], map: "ix_staking_reward_distributions_treasury_status_date")
+  @@index([treasuryPayoutTxHash], map: "ix_staking_reward_distributions_treasury_tx_hash")
   @@map("staking_reward_distributions")
 }
 

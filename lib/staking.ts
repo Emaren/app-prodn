@@ -1,4 +1,5 @@
 import type { Prisma, PrismaClient } from "@/lib/generated/prisma";
+import { buildStakingTreasuryPayoutRequestId } from "@/lib/stakingTreasuryPayouts";
 import {
   executeWoloSettlementRun,
   hasWoloPayoutExecutionConfigured,
@@ -926,6 +927,7 @@ export async function calculateDailyStakingRewardDistribution(
             bettingFeePoolWolo: feePools.bettingFeePoolWolo,
             stakerPoolWolo: feePools.stakerPoolWolo,
             treasuryPoolWolo: feePools.treasuryPoolWolo,
+            treasuryPayoutRequestId: buildStakingTreasuryPayoutRequestId(periodStart),
             totalWeight,
             status: "FINALIZED",
             finalizedAt: new Date(),
@@ -944,6 +946,7 @@ export async function calculateDailyStakingRewardDistribution(
             bettingFeePoolWolo: feePools.bettingFeePoolWolo,
             stakerPoolWolo: feePools.stakerPoolWolo,
             treasuryPoolWolo: feePools.treasuryPoolWolo,
+            treasuryPayoutRequestId: buildStakingTreasuryPayoutRequestId(periodStart),
             totalWeight,
             status: "FINALIZED",
             finalizedAt: new Date(),

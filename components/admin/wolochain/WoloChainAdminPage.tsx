@@ -26,17 +26,31 @@ import type {
   ScheduledMatchSettlementPlan,
   ScheduledMatchSettlementPlansPayload,
 } from "@/lib/scheduledMatchSettlements";
+import type {
+  StakingTreasuryPayoutPlan,
+  StakingTreasuryPayoutsPayload,
+} from "@/lib/stakingTreasuryPayouts";
 
 type LoadState = {
   wolochain: WoloChainAdminPayload | null;
   rails: AdminUsersRailsPayload | null;
   scheduledSettlements: ScheduledMatchSettlementPlansPayload | null;
+  stakingTreasuryPayouts: StakingTreasuryPayoutsPayload | null;
   loading: boolean;
   error: string | null;
 };
 
 function formatWolo(value: number) {
   return value.toLocaleString();
+}
+
+function formatUWoloAsWolo(value: string | null | undefined) {
+  if (!value) return "—";
+  const numeric = Number.parseFloat(value);
+  if (!Number.isFinite(numeric)) return "—";
+  return `${(numeric / 1_000_000).toLocaleString(undefined, {
+    maximumFractionDigits: 6,
+  })} WOLO`;
 }
 
 function shorten(value: string | null | undefined, lead = 10, tail = 8) {
@@ -111,7 +125,13 @@ function statusTone(kind: "good" | "warn" | "bad" | "muted") {
 }
 
 function capabilityTone(value: string | null | undefined) {
-  if (value === "supported" || value === "settlement_service" || value === "executed") {
+  if (
+    value === "supported" ||
+    value === "settlement_service" ||
+    value === "executed" ||
+    value === "confirmed" ||
+    value === "paid"
+  ) {
     return statusTone("good");
   }
   if (
@@ -119,11 +139,20 @@ function capabilityTone(value: string | null | undefined) {
     value === "auth_required" ||
     value === "unknown" ||
     value === "partial" ||
-    value === "dry_run"
+    value === "dry_run" ||
+    value === "ready" ||
+    value === "processing"
   ) {
     return statusTone("warn");
   }
-  if (value === "auth_failed" || value === "failed" || value === "unavailable") {
+  if (
+    value === "auth_failed" ||
+    value === "failed" ||
+    value === "unavailable" ||
+    value === "blocked" ||
+    value === "not_configured" ||
+    value === "unconfigured"
+  ) {
     return statusTone("bad");
   }
   return statusTone("muted");
@@ -136,6 +165,21 @@ function settlementPlanTone(value: ScheduledMatchSettlementPlan["state"]) {
     case "ready":
     case "funding_recorded":
     case "review_only":
+      return statusTone("warn");
+    case "blocked":
+    case "failed":
+      return statusTone("bad");
+    default:
+      return statusTone("muted");
+  }
+}
+
+function stakingTreasuryPlanTone(value: StakingTreasuryPayoutPlan["state"]) {
+  switch (value) {
+    case "paid":
+      return statusTone("good");
+    case "ready":
+    case "processing":
       return statusTone("warn");
     case "blocked":
     case "failed":
@@ -467,11 +511,163 @@ function ScheduledSettlementPlanCard({
   );
 }
 
+function StakingTreasuryPayoutCard({
+  plan,
+  busy,
+  onExecute,
+}: {
+  plan: StakingTreasuryPayoutPlan;
+  busy: boolean;
+  onExecute: (distributionId: number) => void;
+}) {
+  const txHash =
+    plan.treasuryPayoutTxHash ||
+    plan.dryRun?.payouts.find((payout) => payout.requestId === plan.requestId)?.txHash ||
+    null;
+
+  return (
+    <div className="rounded-[1.35rem] border border-white/10 bg-white/[0.045] p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-[11px] uppercase tracking-[0.26em] text-slate-500">
+            Distribution #{plan.id} Treasury payout
+          </div>
+          <div className="mt-2 text-lg font-semibold text-white">
+            {formatWolo(plan.amountWolo)} WOLO to Community Treasury
+          </div>
+          <div className="mt-1 text-sm leading-6 text-slate-400">{plan.stateDetail}</div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className={`rounded-full border px-3 py-1 text-xs ${stakingTreasuryPlanTone(plan.state)}`}>
+            {plan.stateLabel}
+          </span>
+          <button
+            type="button"
+            disabled={!plan.canExecute || busy}
+            onClick={() => onExecute(plan.id)}
+            className="rounded-full border border-emerald-300/25 bg-emerald-400/10 px-3 py-1 text-xs font-semibold text-emerald-50 transition hover:border-emerald-200/60 hover:bg-emerald-300/20 disabled:cursor-not-allowed disabled:opacity-45"
+          >
+            {busy ? "Executing" : plan.state === "failed" ? "Retry" : "Execute"}
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-2 sm:grid-cols-4">
+        <div className="rounded-2xl border border-white/8 bg-slate-950/60 px-3 py-3">
+          <div className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Distribution date</div>
+          <div className="mt-2 font-semibold text-white">{plan.distributionDate}</div>
+        </div>
+        <div className="rounded-2xl border border-white/8 bg-slate-950/60 px-3 py-3">
+          <div className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Signer rail</div>
+          <div className="mt-2 font-semibold text-white">{compactLabel(plan.signingRail)}</div>
+        </div>
+        <div className="rounded-2xl border border-amber-300/20 bg-amber-400/10 px-3 py-3">
+          <div className="text-[10px] uppercase tracking-[0.22em] text-amber-100/70">Balance before</div>
+          <div className="mt-2 font-semibold text-amber-50">
+            {formatUWoloAsWolo(plan.balanceCheck.signerBalanceBeforeUWolo)}
+          </div>
+        </div>
+        <div className="rounded-2xl border border-emerald-300/20 bg-emerald-400/10 px-3 py-3">
+          <div className="text-[10px] uppercase tracking-[0.22em] text-emerald-100/70">Projected after</div>
+          <div className="mt-2 font-semibold text-emerald-50">
+            {formatUWoloAsWolo(plan.balanceCheck.projectedRemainingUWolo)}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-3 text-xs text-slate-400 lg:grid-cols-2">
+        <div className="min-w-0 rounded-2xl border border-white/8 bg-slate-950/55 p-3">
+          <div className="mb-2 text-[10px] uppercase tracking-[0.22em] text-slate-500">
+            Source signer
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 text-[10px] uppercase tracking-[0.18em] text-slate-300">
+              {compactLabel(plan.signerRole)}
+            </span>
+            <CopyableAddress address={plan.signerAddress} lead={10} tail={7} />
+          </div>
+        </div>
+        <div className="min-w-0 rounded-2xl border border-white/8 bg-slate-950/55 p-3">
+          <div className="mb-2 text-[10px] uppercase tracking-[0.22em] text-slate-500">
+            Recipient
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-slate-200">{plan.recipientLabel}</span>
+            <CopyableAddress address={plan.recipientAddress} lead={10} tail={7} />
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4 rounded-2xl border border-white/8 bg-slate-950/55 p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="text-[10px] uppercase tracking-[0.22em] text-slate-500">
+            Dry-run proof
+          </div>
+          <span className={`rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.14em] ${capabilityTone(plan.dryRun?.status || plan.state)}`}>
+            {plan.dryRun ? compactLabel(plan.dryRun.status) : compactLabel(plan.state)}
+          </span>
+        </div>
+        <div className="mt-3 grid gap-2 text-xs text-slate-400 sm:grid-cols-3">
+          <div>
+            Required{" "}
+            <span className="text-slate-200">
+              {formatUWoloAsWolo(plan.balanceCheck.requestedTotalUWolo)}
+            </span>
+          </div>
+          <div>
+            Fee{" "}
+            <span className="text-slate-200">
+              {formatUWoloAsWolo(plan.balanceCheck.estimatedFeeTotalUWolo)}
+            </span>
+          </div>
+          <div>
+            Request <span className="font-mono text-slate-200">{shorten(plan.requestId, 18, 8)}</span>
+          </div>
+        </div>
+        {plan.balanceCheck.detail || plan.treasuryPayoutError ? (
+          <div className="mt-3 text-xs leading-5 text-slate-400">
+            {plan.balanceCheck.detail || plan.treasuryPayoutError}
+          </div>
+        ) : null}
+        {txHash ? (
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-emerald-100">
+            <span>tx {shorten(txHash)}</span>
+            {plan.treasuryPayoutProofUrl ? (
+              <a
+                href={plan.treasuryPayoutProofUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="rounded-full border border-emerald-300/25 bg-emerald-400/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-emerald-50 transition hover:border-emerald-200/60"
+              >
+                Proof
+              </a>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+
+      {plan.blockers.length ? (
+        <div className="mt-3 space-y-2">
+          {plan.blockers.map((blocker) => (
+            <div
+              key={blocker}
+              className="rounded-xl border border-rose-300/20 bg-rose-400/10 px-3 py-2 text-xs leading-5 text-rose-50"
+            >
+              {blocker}
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export default function WoloChainAdminPage() {
   const [state, setState] = useState<LoadState>({
     wolochain: null,
     rails: null,
     scheduledSettlements: null,
+    stakingTreasuryPayouts: null,
     loading: true,
     error: null,
   });
@@ -479,6 +675,7 @@ export default function WoloChainAdminPage() {
   const [retryingClaimId, setRetryingClaimId] = useState<number | null>(null);
   const [reconcilingPending, setReconcilingPending] = useState(false);
   const [executingScheduledMatchId, setExecutingScheduledMatchId] = useState<number | null>(null);
+  const [executingTreasuryDistributionId, setExecutingTreasuryDistributionId] = useState<number | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
 
   const load = useCallback(async (quiet = false) => {
@@ -487,16 +684,18 @@ export default function WoloChainAdminPage() {
     }
 
     try {
-      const [woloResponse, railsResponse, scheduledResponse] = await Promise.all([
+      const [woloResponse, railsResponse, scheduledResponse, stakingTreasuryResponse] = await Promise.all([
         fetch("/api/admin/wolochain", { cache: "no-store" }),
         fetch("/api/admin/users/rails", { cache: "no-store" }),
         fetch("/api/admin/wolochain/scheduled-settlements?dryRun=1", { cache: "no-store" }),
+        fetch("/api/admin/wolochain/staking-treasury-payouts?dryRun=1", { cache: "no-store" }),
       ]);
 
-      const [woloPayload, railsPayload, scheduledPayload] = await Promise.all([
+      const [woloPayload, railsPayload, scheduledPayload, stakingTreasuryPayload] = await Promise.all([
         woloResponse.json().catch(() => ({})),
         railsResponse.json().catch(() => ({})),
         scheduledResponse.json().catch(() => ({})),
+        stakingTreasuryResponse.json().catch(() => ({})),
       ]);
 
       if (!woloResponse.ok) {
@@ -520,6 +719,9 @@ export default function WoloChainAdminPage() {
         rails: railsPayload as AdminUsersRailsPayload,
         scheduledSettlements: scheduledResponse.ok
           ? (scheduledPayload as ScheduledMatchSettlementPlansPayload)
+          : null,
+        stakingTreasuryPayouts: stakingTreasuryResponse.ok
+          ? (stakingTreasuryPayload as StakingTreasuryPayoutsPayload)
           : null,
         loading: false,
         error: null,
@@ -671,6 +873,51 @@ export default function WoloChainAdminPage() {
     }
   }
 
+  async function handleExecuteStakingTreasuryPayout(distributionId: number) {
+    const confirmed = window.confirm(
+      `Execute staking Treasury payout for distribution #${distributionId}?`
+    );
+    if (!confirmed) return;
+
+    setExecutingTreasuryDistributionId(distributionId);
+    setActionMessage(null);
+    try {
+      const response = await fetch(
+        `/api/admin/wolochain/staking-treasury-payouts/${distributionId}/execute`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "execute" }),
+        }
+      );
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(
+          typeof payload.detail === "string"
+            ? payload.detail
+            : "Staking Treasury payout execution failed."
+        );
+      }
+      const plan =
+        payload.plan && typeof payload.plan === "object"
+          ? (payload.plan as { treasuryPayoutTxHash?: string | null })
+          : null;
+      setActionMessage(
+        `Distribution #${distributionId} Treasury payout completed${
+          plan?.treasuryPayoutTxHash ? ` · tx ${shorten(plan.treasuryPayoutTxHash)}` : ""
+        }.`
+      );
+      await load(true);
+    } catch (error) {
+      setActionMessage(
+        error instanceof Error ? error.message : "Staking Treasury payout execution failed."
+      );
+      await load(true);
+    } finally {
+      setExecutingTreasuryDistributionId(null);
+    }
+  }
+
   const failureNotes = useMemo(() => {
     const marketFailures =
       state.rails?.marketRail.rows
@@ -684,9 +931,25 @@ export default function WoloChainAdminPage() {
       state.scheduledSettlements?.rows
         .filter((row) => row.state === "blocked" || row.state === "failed")
         .map((row) => `Challenge #${row.id}: ${row.stateDetail}`) ?? [];
+    const treasuryFailures =
+      state.stakingTreasuryPayouts?.rows
+        .filter((row) => row.state === "blocked" || row.state === "failed" || (row.dryRun && !row.dryRun.ok))
+        .map((row) => `Staking Treasury #${row.id}: ${row.dryRun?.detail || row.stateDetail}`) ?? [];
 
-    return [...(state.wolochain?.warnings ?? []), ...marketFailures, ...payoutFailures, ...scheduledFailures].slice(0, 8);
-  }, [state.rails?.marketRail.rows, state.rails?.settlementRail.rows, state.scheduledSettlements?.rows, state.wolochain?.warnings]);
+    return [
+      ...(state.wolochain?.warnings ?? []),
+      ...marketFailures,
+      ...payoutFailures,
+      ...scheduledFailures,
+      ...treasuryFailures,
+    ].slice(0, 8);
+  }, [
+    state.rails?.marketRail.rows,
+    state.rails?.settlementRail.rows,
+    state.scheduledSettlements?.rows,
+    state.stakingTreasuryPayouts?.rows,
+    state.wolochain?.warnings,
+  ]);
 
   const chainTone = state.wolochain?.chain.healthy
     ? state.wolochain.chain.consensusStatus === "advancing"
@@ -823,6 +1086,113 @@ export default function WoloChainAdminPage() {
               <BalanceTile balance={state.wolochain.balances.dexLiquidity} />
             ) : null}
           </div>
+        </section>
+      ) : null}
+
+      {state.stakingTreasuryPayouts ? (
+        <section className="rounded-[1.7rem] border border-white/10 bg-slate-950/70 p-5">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 text-xs uppercase tracking-[0.3em] text-slate-500">
+                <Banknote className="h-4 w-4" />
+                Staking Treasury
+              </div>
+              <h2 className="mt-2 text-2xl font-semibold text-white">
+                Accounting share payout rail
+              </h2>
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                <span>Source</span>
+                <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 text-[10px] uppercase tracking-[0.18em] text-slate-300">
+                  {compactLabel(state.stakingTreasuryPayouts.signer.signingRail)}
+                </span>
+                <CopyableAddress address={state.stakingTreasuryPayouts.signer.address} lead={10} tail={7} />
+                <span>Recipient</span>
+                <CopyableAddress address={state.stakingTreasuryPayouts.recipient.address} lead={10} tail={7} />
+              </div>
+            </div>
+            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+              {state.stakingTreasuryPayouts.summary.openCount} unpaid /{" "}
+              {state.stakingTreasuryPayouts.summary.paidCount} paid
+            </span>
+          </div>
+
+          <div className="mt-5 grid gap-3 md:grid-cols-4">
+            <SummaryTile
+              label="Treasury Owed"
+              value={`${formatWolo(state.stakingTreasuryPayouts.summary.totalOwedWolo)} WOLO`}
+              detail={`${state.stakingTreasuryPayouts.summary.readyCount} ready`}
+              tone={state.stakingTreasuryPayouts.summary.totalOwedWolo > 0 ? "warn" : "good"}
+            />
+            <SummaryTile
+              label="Treasury Paid"
+              value={`${formatWolo(state.stakingTreasuryPayouts.summary.totalPaidWolo)} WOLO`}
+              detail={`${state.stakingTreasuryPayouts.summary.paidCount} distribution(s)`}
+              tone={state.stakingTreasuryPayouts.summary.totalPaidWolo > 0 ? "good" : "muted"}
+            />
+            <SummaryTile
+              label="Failed"
+              value={String(state.stakingTreasuryPayouts.summary.failedCount)}
+              detail={`${state.stakingTreasuryPayouts.summary.dryRunBlockedCount} dry-run blocked`}
+              tone={state.stakingTreasuryPayouts.summary.failedCount > 0 ? "bad" : "muted"}
+            />
+            <SummaryTile
+              label="Backfill IDs"
+              value={state.stakingTreasuryPayouts.backfillDistributionIds.join(", ")}
+              detail="operator execution only"
+              tone="muted"
+            />
+          </div>
+
+          <div className="mt-5 grid gap-3 xl:grid-cols-2">
+            {state.stakingTreasuryPayouts.rows.length ? (
+              state.stakingTreasuryPayouts.rows.map((plan) => (
+                <StakingTreasuryPayoutCard
+                  key={plan.id}
+                  plan={plan}
+                  busy={executingTreasuryDistributionId === plan.id}
+                  onExecute={handleExecuteStakingTreasuryPayout}
+                />
+              ))
+            ) : (
+              <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] px-4 py-5 text-sm text-slate-400">
+                No unpaid finalized staking Treasury distributions are waiting for payout.
+              </div>
+            )}
+          </div>
+
+          {state.stakingTreasuryPayouts.paidRows.length ? (
+            <div className="mt-5 rounded-2xl border border-emerald-300/15 bg-emerald-400/10 p-4">
+              <div className="text-[10px] uppercase tracking-[0.22em] text-emerald-100/70">
+                Completed Treasury txs
+              </div>
+              <div className="mt-3 space-y-2">
+                {state.stakingTreasuryPayouts.paidRows.map((plan) => (
+                  <div
+                    key={plan.id}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/8 bg-slate-950/45 px-3 py-2 text-sm"
+                  >
+                    <span className="text-emerald-50">
+                      Distribution #{plan.id} · {formatWolo(plan.amountWolo)} WOLO
+                    </span>
+                    {plan.treasuryPayoutProofUrl ? (
+                      <a
+                        href={plan.treasuryPayoutProofUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="font-mono text-xs text-emerald-100 transition hover:text-white"
+                      >
+                        {shorten(plan.treasuryPayoutTxHash)}
+                      </a>
+                    ) : (
+                      <span className="font-mono text-xs text-emerald-100">
+                        {shorten(plan.treasuryPayoutTxHash)}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </section>
       ) : null}
 
