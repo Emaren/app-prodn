@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@/lib/generated/prisma";
+import { Prisma, type PrismaClient } from "@/lib/generated/prisma";
 
 import { toUwoLoAmount } from "@/lib/woloChain";
 import { isWoloBetEscrowEnabled, listRecentEscrowDeposits } from "@/lib/woloBetSettlement";
@@ -41,6 +41,25 @@ type BetStakeIntentDb = Pick<PrismaClient, "betStakeIntent">;
 function normalizeString(value: string | null | undefined, maxLength: number) {
   const normalized = (value || "").trim();
   return normalized ? normalized.slice(0, maxLength) : null;
+}
+
+function readUniqueTargets(error: unknown) {
+  if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") {
+    return [] as string[];
+  }
+
+  const target = error.meta?.target;
+  if (Array.isArray(target)) {
+    return target.map((value) => String(value));
+  }
+  if (typeof target === "string") {
+    return [target];
+  }
+  return [];
+}
+
+function isUniqueStakeTxHashError(error: unknown) {
+  return readUniqueTargets(error).some((target) => target.includes("stake_tx_hash"));
 }
 
 export function normalizeBetStakeIntentStatus(
@@ -251,15 +270,28 @@ async function discoverEscrowDepositForStakeIntent(
 
   if (exactMatches.length === 1) {
     const match = exactMatches[0];
-    await updateBetStakeIntentBroadcast(prisma, {
-      intentId: intent.id,
-      walletAddress,
-      walletProvider: intent.walletProvider,
-      walletType: intent.walletType,
-      browserInfo: intent.browserInfo,
-      routePath: intent.routePath,
-      stakeTxHash: match.txHash,
-    });
+    try {
+      await updateBetStakeIntentBroadcast(prisma, {
+        intentId: intent.id,
+        walletAddress,
+        walletProvider: intent.walletProvider,
+        walletType: intent.walletType,
+        browserInfo: intent.browserInfo,
+        routePath: intent.routePath,
+        stakeTxHash: match.txHash,
+      });
+    } catch (error) {
+      if (!isUniqueStakeTxHashError(error)) {
+        throw error;
+      }
+
+      await markBetStakeIntentFailure(prisma, {
+        intentId: intent.id,
+        status: "suspect",
+        errorDetail:
+          "Recovered escrow tx is already attached to another stake intent. Pools and settlement exclude it until an operator resolves the duplicate.",
+      });
+    }
     return;
   }
 
@@ -322,11 +354,15 @@ export async function refreshRecoverableBetStakeIntents(
       );
     }
 
-    await discoverEscrowDepositForStakeIntent(
-      prisma,
-      intent,
-      depositCache.get(walletAddress) ?? null
-    );
+    try {
+      await discoverEscrowDepositForStakeIntent(
+        prisma,
+        intent,
+        depositCache.get(walletAddress) ?? null
+      );
+    } catch (error) {
+      console.warn(`Failed to refresh bet stake intent #${intent.id}:`, error);
+    }
   }
 
   await markOrphanedBetStakeIntents(prisma, userId);
@@ -336,7 +372,11 @@ export async function loadViewerBetStakeIntents(
   prisma: PrismaClient,
   userId: number
 ) {
-  await refreshRecoverableBetStakeIntents(prisma, userId);
+  try {
+    await refreshRecoverableBetStakeIntents(prisma, userId);
+  } catch (error) {
+    console.warn("Failed to refresh viewer bet stake intents:", error);
+  }
 
   return prisma.betStakeIntent.findMany({
     where: {

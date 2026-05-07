@@ -15,6 +15,14 @@ import { getLobbyMessages } from "@/lib/communityStore";
 import { loadLobbyLeaderboard } from "@/lib/lobbyLeaderboard";
 import { loadLobbyWoloEarnersBoard } from "@/lib/lobbyWoloEarners";
 import { LOBBY_ROOM_SLUG, type LobbyMatchRow } from "@/lib/lobby";
+import {
+  BETTING_FEE_RATE_BPS,
+  BPS_DENOMINATOR,
+  STAKER_SHARE_BPS,
+  loadStakingLeaderboard,
+  loadStakingMe,
+  loadStakingSummary,
+} from "@/lib/staking";
 
 type AiConversationTurn = {
   role: "user" | "assistant";
@@ -164,6 +172,14 @@ type AiMoneyContext = {
   }>;
 };
 
+type AiStakingContext = {
+  summary24h: Awaited<ReturnType<typeof loadStakingSummary>>;
+  summary7d: Awaited<ReturnType<typeof loadStakingSummary>>;
+  stakersLeaderboard: Awaited<ReturnType<typeof loadStakingLeaderboard>>;
+  earnersLeaderboard: Awaited<ReturnType<typeof loadStakingLeaderboard>>;
+  viewer: Awaited<ReturnType<typeof loadStakingMe>> | null;
+};
+
 async function loadAiMoneyContext(
   prisma: PrismaClient,
   viewerUid: string,
@@ -222,6 +238,45 @@ async function loadAiMoneyContext(
     return { viewerUid, betBoard, woloEarners, recentClaims, recentWagers };
   } catch (error) {
     console.warn("Failed to load AI money context:", error);
+    return null;
+  }
+}
+
+async function loadAiStakingContext(
+  prisma: PrismaClient,
+  viewerUid: string,
+): Promise<AiStakingContext | null> {
+  try {
+    const viewerUser = await prisma.user.findUnique({
+      where: { uid: viewerUid },
+      select: { id: true },
+    });
+
+    const [
+      summary24h,
+      summary7d,
+      stakersLeaderboard,
+      earnersLeaderboard,
+      viewer,
+    ] = await Promise.all([
+      loadStakingSummary(prisma, "24h"),
+      loadStakingSummary(prisma, "7d"),
+      loadStakingLeaderboard(prisma, "stakers"),
+      loadStakingLeaderboard(prisma, "earners"),
+      viewerUser
+        ? loadStakingMe(prisma, viewerUser.id)
+        : Promise.resolve(null),
+    ]);
+
+    return {
+      summary24h,
+      summary7d,
+      stakersLeaderboard,
+      earnersLeaderboard,
+      viewer,
+    };
+  } catch (error) {
+    console.warn("Failed to load AI staking context:", error);
     return null;
   }
 }
@@ -361,6 +416,81 @@ function formatMoneyContext(context: AiMoneyContext | null) {
     wagers.length
       ? `Recent wagers:\n${wagers.join("\n")}`
       : "Recent wagers: none.",
+  ].join("\n");
+}
+
+function formatBps(value: number) {
+  return `${(value / 100).toLocaleString("en-US", {
+    maximumFractionDigits: 2,
+  })}%`;
+}
+
+function formatStakingSummaryRow(
+  label: string,
+  summary: AiStakingContext["summary24h"],
+) {
+  return `- ${label}: totalStakedWolo ${summary.totalStakedWolo}, activeStakers ${summary.activeStakers}, betVolumeWolo ${summary.betVolumeWolo}, betsPlaced ${summary.betsPlaced}, stakerFeePoolWolo ${summary.stakerFeePoolWolo}, treasuryShareWolo ${summary.treasuryShareWolo}`;
+}
+
+function formatStakingBoardRows(
+  label: string,
+  rows: AiStakingContext["stakersLeaderboard"]["rows"],
+) {
+  if (rows.length === 0) {
+    return `${label}: none.`;
+  }
+
+  return [
+    `${label}:`,
+    ...rows.slice(0, 5).map(
+      (row, index) =>
+        `- ${index + 1}. ${row.player}: staked ${row.stakedWolo} WOLO, rewards ${row.rewardsWolo} WOLO, stakingWeight ${row.stakingWeight}, status ${row.status}`,
+    ),
+  ].join("\n");
+}
+
+function formatViewerStakingContext(viewer: AiStakingContext["viewer"]) {
+  if (!viewer) {
+    return "Viewer staking position: no logged-in staking position found for this viewer.";
+  }
+
+  const events = viewer.recentEvents.slice(0, 5).map((event) => {
+    const tx = event.txHash ? `, tx ${event.txHash.slice(0, 10)}` : "";
+    return `- ${event.type} ${event.amountWolo} WOLO, status ${event.status}${tx}, at ${event.createdAt}`;
+  });
+
+  return [
+    `Viewer staking position for ${viewer.user.playerName}: currentStakedWolo ${viewer.position.currentStakedWolo}, pendingRewardsWolo ${viewer.position.pendingRewardsWolo}, lifetimeRewardsWolo ${viewer.position.lifetimeRewardsWolo}, claimedRewardsWolo ${viewer.position.claimedRewardsWolo}, lifetimeTxFeesWolo ${viewer.position.lifetimeTxFeesWolo}, lastRewardAmountWolo ${viewer.position.lastRewardAmountWolo}, lastRewardPaymentAt ${viewer.position.lastRewardPaymentAt ?? "none"}, stakingWeight ${viewer.position.stakingWeight}, status ${viewer.position.status}.`,
+    events.length
+      ? `Recent viewer staking events:\n${events.join("\n")}`
+      : "Recent viewer staking events: none.",
+  ].join("\n");
+}
+
+function formatStakingContext(context: AiStakingContext | null) {
+  if (!context) {
+    return "WOLO staking context: unavailable for this reply.";
+  }
+
+  const treasuryShareBps = BPS_DENOMINATOR - STAKER_SHARE_BPS;
+  const activity = context.summary24h.activity.slice(0, 6).map((item) => {
+    const amount = item.amountLabel ? `, ${item.amountLabel}` : "";
+    return `- ${item.label}${amount}: ${item.detail} (${item.meta})`;
+  });
+
+  return [
+    "WOLO staking context, use this first for staking questions.",
+    `Fee rules from code constants: betting fee rate ${formatBps(BETTING_FEE_RATE_BPS)}, staker share ${formatBps(STAKER_SHARE_BPS)}, Community Treasury share ${formatBps(treasuryShareBps)}.`,
+    "This is AoE2HDBets app-side WOLO staking/custody/reward UX, not validator staking.",
+    formatStakingSummaryRow("24h totals", context.summary24h),
+    formatStakingSummaryRow("7d totals", context.summary7d),
+    formatViewerStakingContext(context.viewer),
+    formatStakingBoardRows("Top stakers", context.stakersLeaderboard.topStakers),
+    formatStakingBoardRows("Top earners", context.earnersLeaderboard.topEarners),
+    activity.length
+      ? `Recent staking activity:\n${activity.join("\n")}`
+      : "Recent staking activity: none.",
+    "Important staking rules: currentStakedWolo is principal. stakingWeight is time-weighted stake-seconds, not extra WOLO. pendingRewardsWolo is not paid until credited/claimed/payout flow says so. Do not invent APY. Do not call this validator staking.",
   ].join("\n");
 }
 
@@ -531,6 +661,9 @@ function buildSystemPrompt(
     "Never use em dashes. Use commas, periods, colons, or simple hyphens instead.",
     "Treat WOLO claim states strictly: payout_tx_hash means paid/final; pending without tx means claimable, unpaid, and rescindable; awaiting wallet link means no payout happened.",
     "For exact loss/profit questions, use the Viewer money summary first. Do not estimate, round, or add unrelated claimables unless asked.",
+    "For staking questions, use WOLO staking context first. Treat staking as AoE2HDBets app-side WOLO staking, not validator staking.",
+    "Do not invent APY, reward rates, or chain facts not supplied by context. 1% betting fee is split 50/50 between stakers and Community Treasury when the constants say so.",
+    "stakingWeight is time-weighted accounting, not extra WOLO balance.",
     "For human/user/player count questions, use Site identity summary first. Never count AI persona/system accounts as human users.",
     "Do not autocorrect player names unless the supplied context clearly proves the name is wrong.",
   ];
@@ -636,6 +769,7 @@ function buildUserPrompt(
     leaderboard: Awaited<ReturnType<typeof loadLobbyLeaderboard>>;
     recentMatches: LobbyMatchRow[];
     moneyContext: AiMoneyContext | null;
+    stakingContext: AiStakingContext | null;
     peopleContext: AiPeopleContext | null;
   },
 ) {
@@ -658,6 +792,7 @@ function buildUserPrompt(
     formatRecentMatchesContext(context.recentMatches),
     formatPeopleContext(context.peopleContext),
     formatMoneyContext(context.moneyContext),
+    formatStakingContext(context.stakingContext),
     threadHistory,
     `Question or message to answer:\n${args.userMessage}`,
   ].join("\n\n");
@@ -718,6 +853,7 @@ export async function requestAiConciergeReply(
     leaderboard,
     recentMatches,
     moneyContext,
+    stakingContext,
     peopleContext,
   ] = await Promise.all([
     getLobbyMessages(args.prisma, args.roomSlug || LOBBY_ROOM_SLUG, 24, {
@@ -726,6 +862,7 @@ export async function requestAiConciergeReply(
     loadLobbyLeaderboard(args.prisma),
     loadRecentMatchesForAi(),
     loadAiMoneyContext(args.prisma, args.viewer.uid),
+    loadAiStakingContext(args.prisma, args.viewer.uid),
     loadAiPeopleContext(args.prisma),
   ]);
 
@@ -748,6 +885,7 @@ export async function requestAiConciergeReply(
             leaderboard,
             recentMatches,
             moneyContext,
+            stakingContext,
             peopleContext,
           }),
         },

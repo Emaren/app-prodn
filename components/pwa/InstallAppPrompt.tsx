@@ -75,7 +75,6 @@ export default function InstallAppPrompt({
     setAnimateEntry(shouldAnimateInstallPrompt());
 
     const handleBeforeInstallPrompt = (event: Event) => {
-      event.preventDefault();
       setPromptEvent(event as BeforeInstallPromptEvent);
     };
 
@@ -102,9 +101,14 @@ export default function InstallAppPrompt({
       return;
     }
 
-    await promptEvent.prompt();
-    await promptEvent.userChoice.catch(() => null);
-    setPromptEvent(null);
+    try {
+      await promptEvent.prompt();
+      await promptEvent.userChoice.catch(() => null);
+      setPromptEvent(null);
+    } catch {
+      setPromptEvent(null);
+      setGuideOpen(true);
+    }
   };
 
   const handleDismiss = () => {

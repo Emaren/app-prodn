@@ -102,6 +102,8 @@ Challenge and bet settlement now have a real happy path:
 
 The `/staking` page is an app-side WOLO staking ledger, not native Cosmos validator staking. Stake actions are user-signed Keplr transfers into the configured staking wallet. Unstake actions are WoloChain settlement payouts back to the user wallet. User principal stays separate from the staking wallet's operator-funded reserve: max unstake follows confirmed stake, while the API checks that post-unstake wallet balance can still cover remaining confirmed stake plus reserve.
 
+`lib/aiConcierge.ts` feeds The AI Scribe and Grimer the same live app-side staking context used by `/staking`: 24h/7d fee summaries, staker and earner boards, viewer position/reward state, and recent staking activity. AI replies must treat this as AoE2HDBets custody/reward UX, not validator staking, and must not invent APY, reward rates, or WoloChain facts that are not supplied by context.
+
 This repo still does not own chain truth. AoE2HDBets owns market seeding, user-facing lock/settle UX, and claim fallback rails. WoloChain still owns transfer semantics, chain identity, and final settlement execution truth.
 
 ### Presentation system

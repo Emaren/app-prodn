@@ -171,6 +171,7 @@ python /var/www/AoE2HDBets/api-prodn/scripts/set_admin.py --email you@example.co
 - `/bets` now supports real Keplr-signed WOLO stake locks when escrow env is configured, and the wager is only recorded after the stake tx verifies against WoloChain REST
 - `/staking` uses real Keplr stake transfers into the staking wallet, app-side staking ledger rows, and staking-wallet-signed WoloChain transfers for unstake. User max-unstake follows confirmed staked principal; the staking wallet reserve/headroom is treated as operator-funded and surfaces as an operator top-up warning when the wallet cannot cover remaining confirmed stake plus reserve after the unstake.
 - `/staking` reward distributions are finalized once per closed UTC day through `npm run staking:rewards:run`; valid reward wallets are paid through the WOLO settlement rail and successful payouts are recorded as staking `CLAIM` events for Recent Activity.
+- The AI Scribe and Grimer receive live `/staking` context through `lib/aiConcierge.ts` for lobby and contact replies. They should explain app-side WOLO staking state, fee splits, rewards, and viewer positions from supplied context only, without calling it validator staking or inventing APY.
 - trusted wallet-linked winners can now auto-settle on-chain, while unmatched or failed payouts still fall back to the pending-claim/admin rail
 - accepted scheduled matches now seed pre-live runway books so betting does not have to wait for watcher-live detection
 - player pages still need another premium pass
