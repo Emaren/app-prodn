@@ -17,7 +17,7 @@ import { useWoloBalance } from "@/hooks/useWoloBalance";
 
 const KEPLR_DOWNLOAD_URL = "https://www.keplr.app/get";
 const HERO_VIEW_KEY = "wolo-hero-view";
-const PING_PUB_BASE_URL = "https://ping.pub";
+const WOLO_EXPLORER_BASE_URL = "https://explorer.testnet.aoe2hdbets.com";
 const OSMOSIS_DEX_URL = "https://app.osmosis.zone";
 const WOLO_EMBLEM_SRC = "/legacy/wolo-logo-transparent.png";
 const DEFAULT_WOLO_MARKET_PRICE = "$0.001";
@@ -79,7 +79,7 @@ function shouldToggleFromTarget(target: EventTarget | null) {
 
 function buildPingPubUrl(chainId: string) {
   const normalized = chainId.trim() || "wolo-testnet";
-  return `${PING_PUB_BASE_URL}/${normalized}`;
+  return `${WOLO_EXPLORER_BASE_URL}/${normalized}`;
 }
 
 function readStoredPremiumPreference(storageKey: string, fallback: boolean) {
@@ -263,7 +263,7 @@ export default function WoloPage() {
                   className={WOLO_PROD_SECONDARY_ACTION_CLASSNAME}
                   data-no-toggle="true"
                 >
-                  Open Ping.pub
+                  Open Explorer
                 </a>
               </div>
 
@@ -850,7 +850,7 @@ function WoloHeroActionDock({
             rel="noreferrer"
             className={WOLO_PREMIUM_PING_ACTION_CLASSNAME}
           >
-            Open Ping.pub
+            Open Explorer
           </a>
         ) : null}
       </div>

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 const FAUCET_AMOUNT_WOLO = 2;
 const COOLDOWN_MS = 24 * 60 * 60 * 1000;
-const PING_PUB_BASE_URL = "https://ping.pub";
+const WOLO_EXPLORER_BASE_URL = "https://explorer.testnet.aoe2hdbets.com";
 
 type WoloFaucetCardProps = {
   address?: string;
@@ -49,7 +49,7 @@ function formatTxhash(txhash?: string | null) {
 function buildPingPubTxUrl(chainId: string, txhash?: string | null) {
   if (!txhash) return null;
   const normalized = chainId.trim() || "wolo-testnet";
-  return `${PING_PUB_BASE_URL}/${normalized}/tx/${txhash}`;
+  return `${WOLO_EXPLORER_BASE_URL}/${normalized}/tx/${txhash}`;
 }
 
 function parseStoredClaimState(raw: string | null): StoredClaimState | null {
@@ -292,7 +292,7 @@ export default function WoloFaucetCard({
               rel="noreferrer"
               className="rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 py-1.5 text-cyan-100 transition hover:bg-cyan-400/15"
             >
-              Open on Ping.pub
+              Open on Explorer
             </a>
           ) : null}
         </div>
