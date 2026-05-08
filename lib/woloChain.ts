@@ -5,7 +5,7 @@ export const WOLO_CHAIN_NAME = "WoloChain Testnet";
 export const WOLO_ADDRESS_PREFIX = "wolo";
 export const WOLO_BASE_DENOM = "uwolo";
 export const WOLO_DISPLAY_DENOM = "WOLO";
-export const WOLO_LOGO_URL = "https://explorer.testnet.aoe2hdbets.com/logos/wolo-icon-128.png";
+export const WOLO_LOGO_URL = "https://explorer.testnet.aoe2hdbets.com/logos/wolo-keplr-256.png";
 export const WOLO_COIN_DECIMALS = 6;
 export const WOLO_COIN_TYPE = 118;
 
