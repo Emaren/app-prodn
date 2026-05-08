@@ -5,6 +5,7 @@ export const WOLO_CHAIN_NAME = "WoloChain Testnet";
 export const WOLO_ADDRESS_PREFIX = "wolo";
 export const WOLO_BASE_DENOM = "uwolo";
 export const WOLO_DISPLAY_DENOM = "WOLO";
+export const WOLO_LOGO_URL = "https://explorer.testnet.aoe2hdbets.com/logos/wolo.png";
 export const WOLO_COIN_DECIMALS = 6;
 export const WOLO_COIN_TYPE = 118;
 
@@ -152,6 +153,7 @@ function buildBech32Config(prefix: string) {
 export const woloChainConfig = {
   chainId: WOLO_CHAIN_ID,
   chainName: WOLO_CHAIN_NAME,
+  chainSymbolImageUrl: WOLO_LOGO_URL,
   rpc: WOLO_RPC_URL,
   rest: WOLO_REST_URL,
   bip44: { coinType: WOLO_COIN_TYPE },
@@ -160,12 +162,14 @@ export const woloChainConfig = {
     coinDenom: WOLO_DISPLAY_DENOM,
     coinMinimalDenom: WOLO_BASE_DENOM,
     coinDecimals: WOLO_COIN_DECIMALS,
+    coinImageUrl: WOLO_LOGO_URL,
   },
   currencies: [
     {
       coinDenom: WOLO_DISPLAY_DENOM,
       coinMinimalDenom: WOLO_BASE_DENOM,
       coinDecimals: WOLO_COIN_DECIMALS,
+      coinImageUrl: WOLO_LOGO_URL,
     },
   ],
   feeCurrencies: [
@@ -173,6 +177,7 @@ export const woloChainConfig = {
       coinDenom: WOLO_DISPLAY_DENOM,
       coinMinimalDenom: WOLO_BASE_DENOM,
       coinDecimals: WOLO_COIN_DECIMALS,
+      coinImageUrl: WOLO_LOGO_URL,
       gasPriceStep: {
         low: 0.01,
         average: 0.025,
