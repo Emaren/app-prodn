@@ -180,6 +180,7 @@ The most important public product smoke tests are now:
 4. tournament panel loads cleanly
 5. `/live-games` responds
 6. same-origin `/api/lobby` returns a believable snapshot shape
+7. a cancelled or failed Keplr/Ledger stake attempt records a `bet_wallet_error` activity event when it fails before stake-intent creation
 
 This matters more now than older homepage-only checks because the lobby/community shell is the real public spine.
 

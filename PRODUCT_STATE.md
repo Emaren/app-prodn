@@ -134,6 +134,7 @@ Current state:
 - default WOLO runtime/daemon consoles stay in the raw matrix style without per-line separators, but the stat-card labels/values use the normal slate/white treatment again; premium runtime/daemon consoles keep the darker structured shell
 - Keplr wallet state now persists across route changes instead of acting page-local
 - `/bets` now opens a real signed WOLO stake path when escrow env is configured, and the wager is only accepted after the stake tx verifies against WoloChain REST
+- `/bets` now records pre-intent Keplr/Ledger wallet failures as `bet_wallet_error` activity events, so operator/debug history includes failures that happen before a stake intent can exist
 - winning payouts can now auto-settle on-chain for trusted wallet-linked winners, with tx hashes visible in the admin settlement rail
 - unmatched or failed payouts still fall back into the pending-claim/admin rescue rail instead of vanishing
 
@@ -182,8 +183,9 @@ Current state:
 - one-sided winner bounties and two-sided pot payouts are now being pushed through the chain-backed settlement rail on the happy path
 
 Still wanted:
-- signed-but-unrecorded stake recovery/reconciliation if a user finishes the wallet tx but the app misses the wager write
-- tighter Ledger/browser guidance and clearer surfaced errors before the broadcast stage dies
+- admin/operator rollups for recent wallet-friction events beside the claim and settlement rails
+- more recovery/reconciliation coverage for edge cases where the wallet tx lands but the browser misses both the wager write and local recovery update
+- tighter Ledger/browser guidance before the broadcast stage dies
 - one consistent market lifecycle so scheduled, live, and just-finished versions of the same match never feel like different books
 - remove or further de-emphasize fallback synthetic books when the challenge slate is rich enough
 
@@ -216,8 +218,8 @@ Still wanted:
 
 ## Best next moves
 
-1. Stake recovery / escrow reconciliation for signed txs that do not finish recording cleanly
-2. Capture and surface exact Keplr/Ledger failure breadcrumbs before the wager API is even hit
+1. Add an admin/operator wallet-friction rollup for recent `bet_wallet_error` events
+2. Tighten stake recovery for tx-landed/browser-lost edge cases that escape local recovery storage
 3. Tighten scheduled/live/settled market lifecycle so the book never disappears prematurely
 4. Premium pass on individual player pages
 5. Improve tournament gravity, bracket storytelling, and event visibility

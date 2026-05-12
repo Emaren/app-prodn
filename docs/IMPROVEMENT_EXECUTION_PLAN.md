@@ -1,0 +1,45 @@
+# AoE2HDBets Improvement Execution Plan
+
+Last updated: 2026-05-12
+
+## Highest-ROI order
+
+1. WOLO betting trust and recovery
+   - Keep signed-stake recovery reliable when the wallet broadcast succeeds but wager recording fails.
+   - Capture Keplr/Ledger failures before a stake intent exists, with market, side, amount, wallet type, browser, and workflow phase.
+   - Keep wording honest: verified escrow only when a real chain transfer is signed and verified.
+
+2. Challenge-to-bet market lifecycle
+   - Prevent scheduled, live, and just-finished versions of the same matchup from feeling like separate books.
+   - Tighten stale-book retirement and duplicate-looking settled rows.
+
+3. Individual player pages
+   - Bring `/players/[uid]` and `/players/by-name/[name]` up to the lobby/directory standard.
+   - Emphasize rivalry hooks, recent proof, WOLO state when relevant, and next actions.
+
+4. Tournament gravity
+   - Improve bracket storytelling, event state, watch/bet links, and historical results.
+
+5. Watcher/runtime tuning
+   - Reduce noisy live parse passes while preserving the now-healthier final parse behavior.
+   - Keep watcher telemetry honest about real users versus package pulls.
+
+6. Rankings depth
+   - Clarify tracked, active, claimable, and pending profiles.
+   - Align leaderboard semantics with player detail surfaces.
+
+7. Testing and deploy hygiene
+   - Keep the practical gate green: `npx prisma generate`, `npx tsc --noEmit --pretty false`, `npm run build`.
+   - Add focused API/browser checks around money-adjacent flows before broader refactors.
+
+## Started first
+
+The first shipped slice is WOLO betting trust:
+
+- Added `POST /api/bets/wallet-errors` to record authenticated pre-intent wallet failures as `bet_wallet_error` activity events.
+- Wired `/bets` to report failures before a stake intent exists, including `awaiting_wallet`, `stake_intent`, `confirming_chain`, and `recording_wager` phases.
+- Kept signed-broadcast recovery on the existing stake-intent rail, while improving phase accuracy for failures that do have an intent.
+
+## Next concrete slice
+
+Add an operator/admin rollup for recent `bet_wallet_error` activity so `/admin/user-list` can show wallet friction beside claim/settlement telemetry without digging through raw activity history.

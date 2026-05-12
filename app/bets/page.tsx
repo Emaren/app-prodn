@@ -1122,6 +1122,34 @@ export default function BetsPage() {
     }).catch(() => null);
   }
 
+  async function recordBetWalletError(input: {
+    marketId: number;
+    side: BetSide;
+    amountWolo: number;
+    walletAddress?: string | null;
+    walletProvider?: string | null;
+    walletType?: string | null;
+    step: string;
+    rawError: string;
+  }) {
+    await fetch("/api/bets/wallet-errors", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        marketId: input.marketId,
+        side: input.side,
+        amountWolo: input.amountWolo,
+        walletAddress: input.walletAddress,
+        walletProvider: input.walletProvider,
+        walletType: input.walletType,
+        browserInfo: typeof navigator !== "undefined" ? navigator.userAgent.slice(0, 500) : null,
+        routePath: "/bets",
+        step: input.step,
+        rawError: input.rawError,
+      }),
+    }).catch(() => null);
+  }
+
   const recoverStakeIntent = useCallback(
     async (intentId: number, options?: { automatic?: boolean }) => {
       const recovery = readPendingStakeRecoveries().find((entry) => entry.intentId === intentId) || null;
@@ -1392,10 +1420,14 @@ export default function BetsPage() {
     let intentId: number | null = null;
     let pendingRecovery: PendingStakeRecovery | null = null;
     let preparedWallet: PreparedStakeWallet | null = null;
+    let workflowStep: LockWorkflow["phase"] | "stake_intent" | "lock_wager" =
+      "awaiting_wallet";
 
     try {
       if (onchainBetEscrowEnabled && runtimeBetEscrowAddress) {
+        workflowStep = "awaiting_wallet";
         preparedWallet = await prepareStakeWallet(market);
+        workflowStep = "stake_intent";
         intentId = await createStakeIntent({
           marketId: market.id,
           side: selection.side,
@@ -1422,6 +1454,8 @@ export default function BetsPage() {
         savePendingStakeRecovery(pendingRecovery);
       }
 
+      workflowStep =
+        onchainBetEscrowEnabled && runtimeBetEscrowAddress ? "confirming_chain" : "lock_wager";
       const stakeExecution = await lockStakeOnChain(market, selection.stake, preparedWallet);
       if (pendingRecovery) {
         pendingRecovery = {
@@ -1440,6 +1474,7 @@ export default function BetsPage() {
         phase: "recording_wager",
         stakeTxHash: stakeExecution.stakeTxHash,
       });
+      workflowStep = "recording_wager";
 
       if (intentId && pendingRecovery?.stakeTxHash) {
         await recordStakeIntentBroadcast(intentId, pendingRecovery);
@@ -1478,21 +1513,33 @@ export default function BetsPage() {
       }
     } catch (error) {
       console.error("Failed to lock wager:", error);
+      const rawError = error instanceof Error ? error.message : "Could not lock the wager.";
       if (intentId) {
         await recordStakeIntentFailure({
           intentId,
           walletAddress: pendingRecovery?.walletAddress || connectedWalletAddress || null,
           walletProvider: pendingRecovery?.walletProvider || "keplr",
           walletType: pendingRecovery?.walletType || null,
-          step: lockWorkflow?.phase || "lock_wager",
-          rawError: error instanceof Error ? error.message : "Could not lock the wager.",
+          step: workflowStep,
+          rawError,
           status: pendingRecovery?.stakeTxHash ? "suspect" : "failed",
         });
         if (!pendingRecovery?.stakeTxHash) {
           clearPendingStakeRecovery(intentId);
         }
+      } else if (onchainBetEscrowEnabled && runtimeBetEscrowAddress) {
+        await recordBetWalletError({
+          marketId: market.id,
+          side: selection.side,
+          amountWolo: selection.stake,
+          walletAddress: preparedWallet?.walletAddress || connectedWalletAddress || null,
+          walletProvider: preparedWallet?.walletProvider || "keplr",
+          walletType: preparedWallet?.walletType || null,
+          step: workflowStep,
+          rawError,
+        });
       }
-      toast.error(error instanceof Error ? error.message : "Could not lock the wager.");
+      toast.error(rawError);
     } finally {
       setWorkingKey(null);
       setLockWorkflow(null);
