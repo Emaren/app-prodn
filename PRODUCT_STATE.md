@@ -135,6 +135,7 @@ Current state:
 - Keplr wallet state now persists across route changes instead of acting page-local
 - `/bets` now opens a real signed WOLO stake path when escrow env is configured, and the wager is only accepted after the stake tx verifies against WoloChain REST
 - `/bets` now records pre-intent Keplr/Ledger wallet failures as `bet_wallet_error` activity events, so operator/debug history includes failures that happen before a stake intent can exist
+- `/bets` now keeps recent no-proof stake intents visible in Your Book and gives the server 24 hours to discover matching WoloChain escrow deposits for tx-landed/browser-lost recovery
 - `/admin/wolochain` now shows a wallet-friction rail for recent Keplr/Ledger stake failures, and `/admin/user-list` surfaces the last-24h count in the WoloChain entry tile
 - winning payouts can now auto-settle on-chain for trusted wallet-linked winners, with tx hashes visible in the admin settlement rail
 - unmatched or failed payouts still fall back into the pending-claim/admin rescue rail instead of vanishing
@@ -195,7 +196,7 @@ Still wanted:
 - tournament presentation is good, but not yet “must-watch”
 - leaderboard is now real, but deeper ranking semantics still need tightening
 - some surfaces still carry more explanatory copy than ideal
-- token rail is now partially real, but stake recovery and pre-submit signer telemetry are still behind the rest of the UX
+- token rail is now partially real, but live wallet edge cases still need hardening
 - challenge-derived bet markets are much healthier than before, but fast-finish lifecycle edge cases and duplicate-looking settled rows still need cleanup
 - exact postgame achievement extraction is still the big missing depth layer
 - watcher behavior works better than before, but still feels somewhat noisy under the hood
@@ -218,9 +219,9 @@ Still wanted:
 
 ## Best next moves
 
-1. Tighten stake recovery for tx-landed/browser-lost edge cases that escape local recovery storage
-2. Tighten scheduled/live/settled market lifecycle so the book never disappears prematurely
-3. Premium pass on individual player pages
-4. Improve tournament gravity, bracket storytelling, and event visibility
-5. Tune watcher/runtime behavior now that final parse behavior looks healthier
+1. Tighten scheduled/live/settled market lifecycle so the book never disappears prematurely
+2. Premium pass on individual player pages
+3. Improve tournament gravity, bracket storytelling, and event visibility
+4. Tune watcher/runtime behavior now that final parse behavior looks healthier
+5. Keep hardening live wallet edge cases around Keplr/Ledger handoff and signer/browser failures
 6. Clean API testing workflow and keep docs aligned with the now-real WOLO betting rails

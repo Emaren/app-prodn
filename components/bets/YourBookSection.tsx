@@ -54,6 +54,15 @@ export default function YourBookSection({
         (intent.stakeTxHash || pendingRecovery?.stakeTxHash)
     );
   });
+  const pendingProofStakeIntents = unresolvedStakeIntents.filter((intent) => {
+    const pendingRecovery =
+      pendingStakeRecoveries.find((entry) => entry.intentId === intent.id) || null;
+    return Boolean(
+      isRecoveryBookOpen(intent.marketStatus) &&
+        !intent.stakeTxHash &&
+        !pendingRecovery?.stakeTxHash
+    );
+  });
 
   return (
     <section id="your-book" className={`${shellClass()} p-5 sm:p-6`}>
@@ -146,6 +155,43 @@ export default function YourBookSection({
                   </div>
                 );
               })}
+            </div>
+          ) : null}
+
+          {pendingProofStakeIntents.length ? (
+            <div className="mt-5 space-y-2">
+              {pendingProofStakeIntents.map((intent) => (
+                <div
+                  key={intent.id}
+                  className={`${cardClass()} border-cyan-300/15 bg-cyan-500/[0.05] px-4 py-4`}
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-white">
+                        Stake proof pending · {intent.title}
+                      </div>
+                      <div className="mt-1 text-sm text-slate-300">
+                        {intent.side === "left" ? "Left side" : "Right side"} · {formatCompact(intent.amountWolo)} WOLO · {formatRecoveryIntentStatus(intent.status)}
+                      </div>
+                      <div className="mt-1 max-w-xl text-xs leading-5 text-slate-400">
+                        No usable stake tx is attached yet. If the wallet broadcast landed,
+                        AoE2HDBets keeps scanning WoloChain escrow deposits for this intent.
+                        Pools and settlement exclude it until proof lands.
+                      </div>
+                      <div className="mt-1 text-xs text-slate-400">
+                        {formatSettledTime(intent.updatedAt)}
+                      </div>
+                      {intent.errorDetail ? (
+                        <div className="mt-2 text-xs text-cyan-100">{intent.errorDetail}</div>
+                      ) : null}
+                    </div>
+
+                    <div className="rounded-full border border-cyan-200/15 bg-cyan-200/[0.06] px-3 py-2 text-xs font-semibold text-cyan-100">
+                      Watching chain
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           ) : null}
 

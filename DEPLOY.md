@@ -146,6 +146,7 @@ Expected result for the browser pass:
 - clicking `Lock 100` opens Keplr
 - after approval, the UI reaches `Escrow confirmed`
 - only then does `/api/bets/wager` record the slip
+- if a stake intent exists but no usable tx proof is attached yet, Your Book shows a pending proof row and the server keeps scanning recent WoloChain escrow deposits for 24 hours
 
 If browser wallets report `Failed to fetch balance`, `network error`, or a dead Keplr handoff, check these before blaming app code:
 
@@ -182,6 +183,7 @@ The most important public product smoke tests are now:
 6. same-origin `/api/lobby` returns a believable snapshot shape
 7. a cancelled or failed Keplr/Ledger stake attempt records a `bet_wallet_error` activity event when it fails before stake-intent creation
 8. `/api/admin/users/rails` includes `walletFriction`, and `/admin/wolochain` renders the wallet-friction rail
+9. signed-stake recovery still requires a real tx hash, while recent no-proof stake intents remain visible as pending proof rows
 
 This matters more now than older homepage-only checks because the lobby/community shell is the real public spine.
 

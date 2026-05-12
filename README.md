@@ -175,9 +175,10 @@ python /var/www/AoE2HDBets/api-prodn/scripts/set_admin.py --email you@example.co
 - trusted wallet-linked winners can now auto-settle on-chain, while unmatched or failed payouts still fall back to the pending-claim/admin rail
 - accepted scheduled matches now seed pre-live runway books so betting does not have to wait for watcher-live detection
 - `/bets` records pre-intent Keplr/Ledger stake failures through `/api/bets/wallet-errors` as `bet_wallet_error` activity events, with market, side, amount, wallet type, browser, and workflow phase for operator debugging.
+- `/bets` now keeps recent no-proof stake intents visible in Your Book and scans WoloChain escrow deposits for 24 hours, so tx-landed/browser-lost cases have a server-side recovery path without being counted in pools before proof lands.
 - `/admin/wolochain` and the `/admin/user-list` WoloChain entry tile now surface recent wallet-friction events beside settlement and market rails.
 - player pages still need another premium pass
-- the app now presents `$WOLO` as both a product rail and a partially real money-movement rail, but stake recovery and Ledger/browser failure handling still need another hardening pass
+- the app now presents `$WOLO` as both a product rail and a partially real money-movement rail, with remaining hardening focused on live wallet edge cases and market lifecycle cleanup
 - `/wolo` now includes an app-side starter faucet claim path, a clean Wallet Snapshot connect surface, a tight `WOLO Market` tile, and a slim faucet claim row underneath
 - the top-nav Roadmap link intentionally renders without the old blue count badge
 - exact replay/postgame authority still belongs to `api-prodn`

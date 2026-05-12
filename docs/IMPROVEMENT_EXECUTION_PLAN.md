@@ -47,6 +47,12 @@ The second shipped slice is operator visibility:
 - Added a WoloChain admin rail showing recent Keplr/Ledger failures, phase, user, market, wallet, amount, raw error, and browser breadcrumb.
 - Added the wallet-friction count into the `/admin/user-list` WoloChain entry tile so operator pressure is visible before opening the full cockpit.
 
+The third shipped slice is stake recovery visibility:
+
+- Extended server-side signed-stake discovery from 1 hour to 24 hours for recoverable stake intents.
+- Increased the settlement-service recent-deposit scan depth so tx-landed/browser-lost cases have a wider recovery net.
+- Kept recent no-proof stake intents visible in Your Book as pending chain-proof rows, while still excluding them from pools and settlement until a real WoloChain stake tx is attached.
+
 ## Next concrete slice
 
-Tighten recovery for tx-landed/browser-lost edge cases that escape local recovery storage, then continue into scheduled/live/settled market lifecycle cleanup.
+Continue into scheduled/live/settled market lifecycle cleanup so challenge-linked books do not disappear prematurely or produce duplicate-looking settled rows.
