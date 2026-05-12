@@ -53,6 +53,12 @@ The third shipped slice is stake recovery visibility:
 - Increased the settlement-service recent-deposit scan depth so tx-landed/browser-lost cases have a wider recovery net.
 - Kept recent no-proof stake intents visible in Your Book as pending chain-proof rows, while still excluding them from pools and settlement until a real WoloChain stake tx is attached.
 
+The fourth shipped slice is challenge/watcher market lifecycle cleanup:
+
+- Reconciled detached `watcher-live-*` shadow books into the canonical challenge runway book when both point at the same session and the left/right labels can be mapped safely.
+- Moved wagers, recoverable stake intents, wallet locks, founder bonuses, and claim breadcrumbs onto the canonical challenge market before settlement runs.
+- Deduped the recent settled-result rail by linked session, preferring the challenge-linked market over a watcher shadow so one match does not appear twice.
+
 ## Next concrete slice
 
-Continue into scheduled/live/settled market lifecycle cleanup so challenge-linked books do not disappear prematurely or produce duplicate-looking settled rows.
+Continue with a premium pass on individual player pages, unless live wallet handoff telemetry shows a fresher production issue.

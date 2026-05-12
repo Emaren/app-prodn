@@ -636,6 +636,46 @@ function normalizeSettledMatchKey(title: string, mapName: string | null | undefi
   return `${normalizeName(title).toLowerCase()}::${normalizeName(mapName).toLowerCase()}`;
 }
 
+function readMarketMapLabel(eventLabel: string) {
+  return eventLabel.includes("•")
+    ? eventLabel.split("•").slice(1).join("•").trim() || eventLabel
+    : eventLabel;
+}
+
+function marketSideKey(value: string | null | undefined) {
+  return normalizeName(value).toLowerCase();
+}
+
+function resolveMarketSideTransfer(
+  source: {
+    leftLabel: string;
+    rightLabel: string;
+  },
+  target: {
+    leftLabel: string;
+    rightLabel: string;
+  }
+) {
+  const sourceLeft = marketSideKey(source.leftLabel);
+  const sourceRight = marketSideKey(source.rightLabel);
+  const targetLeft = marketSideKey(target.leftLabel);
+  const targetRight = marketSideKey(target.rightLabel);
+
+  if (!sourceLeft || !sourceRight || !targetLeft || !targetRight) {
+    return null;
+  }
+
+  if (sourceLeft === targetLeft && sourceRight === targetRight) {
+    return { left: "left", right: "right" } as const;
+  }
+
+  if (sourceLeft === targetRight && sourceRight === targetLeft) {
+    return { left: "right", right: "left" } as const;
+  }
+
+  return null;
+}
+
 function splitSideNames(label: string) {
   return normalizeName(label)
     .split(/\s*\/\s*/)
@@ -1908,6 +1948,167 @@ async function reconcileDetachedWatcherMarkets(
   );
 }
 
+async function reconcileChallengeSessionShadowMarkets(
+  prisma: PrismaClient,
+  seeds: MarketSeed[]
+) {
+  const challengeSessionKeys = [
+    ...new Set(
+      seeds
+        .filter((seed) => seed.source === "challenge")
+        .map((seed) => normalizeName(seed.linkedSessionKey))
+        .filter(Boolean)
+    ),
+  ];
+
+  if (challengeSessionKeys.length === 0) {
+    return;
+  }
+
+  const markets = await prisma.betMarket.findMany({
+    where: {
+      linkedSessionKey: {
+        in: challengeSessionKeys,
+      },
+    },
+    select: {
+      id: true,
+      scheduledMatchId: true,
+      linkedSessionKey: true,
+      slug: true,
+      status: true,
+      leftLabel: true,
+      rightLabel: true,
+    },
+  });
+
+  const canonicalBySessionKey = new Map<string, (typeof markets)[number]>();
+  for (const market of markets) {
+    const sessionKey = normalizeName(market.linkedSessionKey);
+    if (!sessionKey || typeof market.scheduledMatchId !== "number") {
+      continue;
+    }
+
+    const existing = canonicalBySessionKey.get(sessionKey);
+    if (!existing || market.id < existing.id) {
+      canonicalBySessionKey.set(sessionKey, market);
+    }
+  }
+
+  const shadowMarkets = markets.filter((market) => {
+    const sessionKey = normalizeName(market.linkedSessionKey);
+    const canonical = sessionKey ? canonicalBySessionKey.get(sessionKey) : null;
+    return Boolean(
+      canonical &&
+        canonical.id !== market.id &&
+        market.scheduledMatchId === null &&
+        market.slug.startsWith(WATCHER_MARKET_SLUG_PREFIX) &&
+        OPEN_STATUSES.includes(market.status as BetStatus)
+    );
+  });
+
+  for (const shadow of shadowMarkets) {
+    const sessionKey = normalizeName(shadow.linkedSessionKey);
+    const canonical = sessionKey ? canonicalBySessionKey.get(sessionKey) : null;
+    if (!canonical) {
+      continue;
+    }
+
+    const sideTransfer = resolveMarketSideTransfer(shadow, canonical);
+    if (!sideTransfer) {
+      console.warn(
+        `Skipped watcher market #${shadow.id} merge into challenge market #${canonical.id}: side labels do not match.`
+      );
+      continue;
+    }
+
+    try {
+      await prisma.$transaction(async (tx) => {
+        const [sourceWallets, targetWallets] = await Promise.all([
+          tx.betMarketWallet.findMany({
+            where: { marketId: shadow.id },
+            select: {
+              id: true,
+              walletAddress: true,
+              side: true,
+            },
+          }),
+          tx.betMarketWallet.findMany({
+            where: { marketId: canonical.id },
+            select: {
+              walletAddress: true,
+            },
+          }),
+        ]);
+        const targetWalletKeys = new Set(
+          targetWallets.map((wallet) => marketSideKey(wallet.walletAddress))
+        );
+
+        for (const wallet of sourceWallets) {
+          const walletKey = marketSideKey(wallet.walletAddress);
+          if (targetWalletKeys.has(walletKey)) {
+            await tx.betMarketWallet.delete({
+              where: { id: wallet.id },
+            });
+            continue;
+          }
+
+          await tx.betMarketWallet.update({
+            where: { id: wallet.id },
+            data: {
+              marketId: canonical.id,
+              side: wallet.side === "right" ? sideTransfer.right : sideTransfer.left,
+            },
+          });
+        }
+
+        await Promise.all([
+          tx.betWager.updateMany({
+            where: { marketId: shadow.id, side: "left" },
+            data: { marketId: canonical.id, side: sideTransfer.left },
+          }),
+          tx.betWager.updateMany({
+            where: { marketId: shadow.id, side: "right" },
+            data: { marketId: canonical.id, side: sideTransfer.right },
+          }),
+          tx.betStakeIntent.updateMany({
+            where: { marketId: shadow.id, side: "left" },
+            data: { marketId: canonical.id, side: sideTransfer.left },
+          }),
+          tx.betStakeIntent.updateMany({
+            where: { marketId: shadow.id, side: "right" },
+            data: { marketId: canonical.id, side: sideTransfer.right },
+          }),
+          tx.betMarketFounderBonus.updateMany({
+            where: { marketId: shadow.id },
+            data: { marketId: canonical.id },
+          }),
+          tx.pendingWoloClaim.updateMany({
+            where: { sourceMarketId: shadow.id },
+            data: { sourceMarketId: canonical.id },
+          }),
+        ]);
+
+        await tx.betMarket.update({
+          where: { id: shadow.id },
+          data: {
+            status: "settled",
+            featured: false,
+            closeAt: null,
+            settledAt: new Date(),
+            winnerSide: null,
+          },
+        });
+      });
+    } catch (error) {
+      console.warn(
+        `Failed to merge watcher market #${shadow.id} into challenge market #${canonical.id}:`,
+        error
+      );
+    }
+  }
+}
+
 export async function ensureBetMarkets(prisma: PrismaClient) {
   const { seeds, visibleSessionKeys } = await buildOpenMarketSeeds(prisma);
   const slugs = [...new Set(seeds.map((seed) => seed.slug))];
@@ -1933,6 +2134,7 @@ export async function ensureBetMarkets(prisma: PrismaClient) {
     })
   );
 
+  await reconcileChallengeSessionShadowMarkets(prisma, seeds);
   await reconcileDetachedWatcherMarkets(prisma, visibleSessionKeys);
 
   await prisma.betMarket.updateMany({
@@ -2138,7 +2340,7 @@ async function loadOpenMarkets(prisma: PrismaClient) {
 }
 
 async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettledResult[]> {
-  const [settledMarkets, sessionSnapshot] = await Promise.all([
+  const [settledMarketsRaw, sessionSnapshot] = await Promise.all([
     prisma.betMarket.findMany({
       where: {
         status: "settled",
@@ -2147,7 +2349,7 @@ async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettle
         },
       },
       orderBy: [{ settledAt: "desc" }, { updatedAt: "desc" }, { id: "desc" }],
-      take: 4,
+      take: 12,
       include: {
         scheduledMatch: {
           select: {
@@ -2177,6 +2379,35 @@ async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettle
     }),
     loadLiveSessionSnapshot(prisma),
   ]);
+  const settledMarketBySurfaceKey = new Map<
+    string,
+    (typeof settledMarketsRaw)[number]
+  >();
+
+  for (const market of settledMarketsRaw) {
+    const linkedSessionKey =
+      normalizeName(market.linkedSessionKey) ||
+      normalizeName(market.scheduledMatch?.linkedSessionKey) ||
+      "";
+    const mapName = readMarketMapLabel(market.eventLabel);
+    const surfaceKey = linkedSessionKey
+      ? `session:${linkedSessionKey.toLowerCase()}`
+      : `match:${normalizeSettledMatchKey(market.title, mapName)}`;
+    const existing = settledMarketBySurfaceKey.get(surfaceKey);
+
+    if (!existing) {
+      settledMarketBySurfaceKey.set(surfaceKey, market);
+      continue;
+    }
+
+    const marketIsChallenge = typeof market.scheduledMatchId === "number";
+    const existingIsChallenge = typeof existing.scheduledMatchId === "number";
+    if (marketIsChallenge && !existingIsChallenge) {
+      settledMarketBySurfaceKey.set(surfaceKey, market);
+    }
+  }
+
+  const settledMarkets = [...settledMarketBySurfaceKey.values()].slice(0, 4);
 
   const sessionHrefByMatchKey = new Map(
     sessionSnapshot.recentlyCompletedSessions.map((session) => [
@@ -2205,9 +2436,7 @@ async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettle
         settledPayoutTotal > 0
           ? settledPayoutTotal
           : totalPotWolo;
-      const mapName = market.eventLabel.includes("•")
-        ? market.eventLabel.split("•").slice(1).join("•").trim() || market.eventLabel
-        : market.eventLabel;
+      const mapName = readMarketMapLabel(market.eventLabel);
       const matchedSession = sessionHrefByMatchKey.get(
         normalizeSettledMatchKey(market.title, mapName)
       );
