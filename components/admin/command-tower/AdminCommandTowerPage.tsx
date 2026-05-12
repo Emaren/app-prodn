@@ -320,6 +320,7 @@ export default function AdminCommandTowerPage() {
           <WoloChainEntryTile
             marketSummary={data.marketRail.summary}
             settlementSummary={data.settlementRail.summary}
+            walletFrictionSummary={data.walletFriction.summary}
           />
         </div>
       ) : null}

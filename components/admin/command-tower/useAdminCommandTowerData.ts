@@ -176,6 +176,7 @@ export function useAdminCommandTowerData(): CommandTowerState {
           ...current,
           marketRail: payload.marketRail,
           settlementRail: payload.settlementRail,
+          walletFriction: payload.walletFriction,
           watcherDownloads: payload.watcherDownloads,
         };
       });

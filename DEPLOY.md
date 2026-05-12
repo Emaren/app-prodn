@@ -181,6 +181,7 @@ The most important public product smoke tests are now:
 5. `/live-games` responds
 6. same-origin `/api/lobby` returns a believable snapshot shape
 7. a cancelled or failed Keplr/Ledger stake attempt records a `bet_wallet_error` activity event when it fails before stake-intent creation
+8. `/api/admin/users/rails` includes `walletFriction`, and `/admin/wolochain` renders the wallet-friction rail
 
 This matters more now than older homepage-only checks because the lobby/community shell is the real public spine.
 

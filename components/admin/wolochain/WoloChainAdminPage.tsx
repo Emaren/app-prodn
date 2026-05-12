@@ -17,6 +17,7 @@ import TimeDisplayText from "@/components/time/TimeDisplayText";
 import type { AdminUsersRailsPayload } from "@/components/admin/command-tower/types";
 import WoloMarketRail from "@/components/admin/WoloMarketRail";
 import WoloSettlementRail from "@/components/admin/WoloSettlementRail";
+import WoloWalletFrictionRail from "@/components/admin/WoloWalletFrictionRail";
 import type {
   WoloChainAdminBalance,
   WoloChainAdminChallengeRun,
@@ -927,6 +928,10 @@ export default function WoloChainAdminPage() {
       state.rails?.settlementRail.rows
         .filter((row) => row.errorState)
         .map((row) => `${row.displayPlayerName}: ${row.errorState}`) ?? [];
+    const walletFailures =
+      state.rails?.walletFriction.rows
+        .filter((row) => row.rawError)
+        .map((row) => `${row.userDisplayName}: ${row.rawError}`) ?? [];
     const scheduledFailures =
       state.scheduledSettlements?.rows
         .filter((row) => row.state === "blocked" || row.state === "failed")
@@ -940,12 +945,14 @@ export default function WoloChainAdminPage() {
       ...(state.wolochain?.warnings ?? []),
       ...marketFailures,
       ...payoutFailures,
+      ...walletFailures,
       ...scheduledFailures,
       ...treasuryFailures,
     ].slice(0, 8);
   }, [
     state.rails?.marketRail.rows,
     state.rails?.settlementRail.rows,
+    state.rails?.walletFriction.rows,
     state.scheduledSettlements?.rows,
     state.stakingTreasuryPayouts?.rows,
     state.wolochain?.warnings,
@@ -1230,6 +1237,10 @@ export default function WoloChainAdminPage() {
             onRescind={handleRescind}
             onRetry={handleRetry}
             onReconcilePending={handleReconcilePending}
+          />
+          <WoloWalletFrictionRail
+            summary={state.rails.walletFriction.summary}
+            rows={state.rails.walletFriction.rows}
           />
           <WoloMarketRail
             summary={state.rails.marketRail.summary}

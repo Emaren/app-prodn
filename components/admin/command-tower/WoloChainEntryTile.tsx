@@ -6,11 +6,13 @@ import { ArrowUpRight, CircuitBoard, WalletCards } from "lucide-react";
 
 import type { MarketRailSummary } from "@/components/admin/WoloMarketRail";
 import type { SettlementRailSummary } from "@/components/admin/WoloSettlementRail";
+import type { WalletFrictionRailSummary } from "@/lib/adminWalletFriction";
 import type { WoloChainAdminPayload } from "@/lib/adminWoloChainTypes";
 
 type Props = {
   marketSummary: MarketRailSummary;
   settlementSummary: SettlementRailSummary;
+  walletFrictionSummary: WalletFrictionRailSummary;
 };
 
 function formatWolo(value: number) {
@@ -38,7 +40,11 @@ function compactCapability(value: string) {
     .join(" ");
 }
 
-export default function WoloChainEntryTile({ marketSummary, settlementSummary }: Props) {
+export default function WoloChainEntryTile({
+  marketSummary,
+  settlementSummary,
+  walletFrictionSummary,
+}: Props) {
   const [snapshot, setSnapshot] = useState<WoloChainAdminPayload | null>(null);
 
   useEffect(() => {
@@ -71,7 +77,8 @@ export default function WoloChainEntryTile({ marketSummary, settlementSummary }:
   const warningCount =
     (snapshot?.warnings.length ?? 0) +
     marketSummary.failedSettlementCount +
-    settlementSummary.failedCount;
+    settlementSummary.failedCount +
+    walletFrictionSummary.last24Hours;
 
   return (
     <section className="overflow-hidden rounded-[1.7rem] border border-cyan-200/15 bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.14),_transparent_26%),linear-gradient(135deg,_rgba(15,23,42,0.94),_rgba(2,6,23,0.96))] p-5 shadow-[0_20px_55px_rgba(0,0,0,0.28)]">
@@ -95,7 +102,7 @@ export default function WoloChainEntryTile({ marketSummary, settlementSummary }:
           </div>
         </div>
 
-        <div className="grid gap-2 text-xs sm:grid-cols-3 lg:min-w-[28rem]">
+        <div className="grid gap-2 text-xs sm:grid-cols-4 lg:min-w-[34rem]">
           <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-3">
             <div className="text-slate-500">Escrow</div>
             <div className="mt-1 font-semibold text-white">
@@ -115,6 +122,12 @@ export default function WoloChainEntryTile({ marketSummary, settlementSummary }:
             </div>
             <div className="mt-1 font-semibold text-white">
               {formatWolo(marketSummary.totalPotWolo)} WOLO
+            </div>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-3">
+            <div className="text-slate-500">Wallet friction</div>
+            <div className="mt-1 font-semibold text-white">
+              {walletFrictionSummary.last24Hours} / 24h
             </div>
           </div>
         </div>

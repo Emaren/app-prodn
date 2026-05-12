@@ -22,6 +22,7 @@ import {
 import { loadWatcherDownloadAnalytics } from "@/lib/watcherDownloads";
 import { getWoloSettlementSurfaceStatus } from "@/lib/woloBetSettlement";
 import { buildWoloRestTxLookupUrl, getWoloBetEscrowRuntime } from "@/lib/woloChain";
+import { loadBetWalletFrictionRail } from "@/lib/adminWalletFriction";
 
 function buildPairKey(leftUserId: number, rightUserId: number) {
   return [leftUserId, rightUserId].sort((a, b) => a - b).join(":");
@@ -240,6 +241,7 @@ export async function GET(request: NextRequest) {
       marketRows,
       settlementSurface,
       watcherDownloads,
+      walletFriction,
     ] = await Promise.all([
       loadUserCommunitySummaries(prisma, userIds, { includePending: true }),
       loadInboxPayload(prisma, admin.uid, { summaryOnly: true }),
@@ -445,9 +447,10 @@ export async function GET(request: NextRequest) {
             },
           },
           },
-        }),
+      }),
       getWoloSettlementSurfaceStatus(),
       loadWatcherDownloadAnalytics(prisma),
+      loadBetWalletFrictionRail(prisma),
     ]);
 
     const unreadMap = new Map(
@@ -1251,6 +1254,7 @@ export async function GET(request: NextRequest) {
       overview,
       settlementRail,
       marketRail,
+      walletFriction,
       watcherDownloads,
     });
   } catch (err) {

@@ -40,6 +40,13 @@ The first shipped slice is WOLO betting trust:
 - Wired `/bets` to report failures before a stake intent exists, including `awaiting_wallet`, `stake_intent`, `confirming_chain`, and `recording_wager` phases.
 - Kept signed-broadcast recovery on the existing stake-intent rail, while improving phase accuracy for failures that do have an intent.
 
+The second shipped slice is operator visibility:
+
+- Added a shared wallet-friction rail loader for recent `bet_wallet_error` activity.
+- Added wallet-friction summary data to `/api/admin/users` and `/api/admin/users/rails`.
+- Added a WoloChain admin rail showing recent Keplr/Ledger failures, phase, user, market, wallet, amount, raw error, and browser breadcrumb.
+- Added the wallet-friction count into the `/admin/user-list` WoloChain entry tile so operator pressure is visible before opening the full cockpit.
+
 ## Next concrete slice
 
-Add an operator/admin rollup for recent `bet_wallet_error` activity so `/admin/user-list` can show wallet friction beside claim/settlement telemetry without digging through raw activity history.
+Tighten recovery for tx-landed/browser-lost edge cases that escape local recovery storage, then continue into scheduled/live/settled market lifecycle cleanup.

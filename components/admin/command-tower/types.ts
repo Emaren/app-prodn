@@ -6,6 +6,7 @@ import type {
   SettlementRailRow,
   SettlementRailSummary,
 } from "@/components/admin/WoloSettlementRail";
+import type { WalletFrictionRailPayload } from "@/lib/adminWalletFriction";
 import type { ScheduledMatchColorTag } from "@/lib/scheduledMatchPreferences";
 import type { TileViewMode, TileViewPreferences } from "@/lib/tileViewPreferences";
 
@@ -288,6 +289,7 @@ export type AdminUsersPayload = {
     summary: MarketRailSummary;
     rows: MarketRailRow[];
   };
+  walletFriction: WalletFrictionRailPayload;
   watcherDownloads: WatcherDownloadsPayload;
 };
 
@@ -335,7 +337,7 @@ export type AdminUsersLivePayload = {
 
 export type AdminUsersRailsPayload = Pick<
   AdminUsersPayload,
-  "marketRail" | "settlementRail" | "watcherDownloads"
+  "marketRail" | "settlementRail" | "walletFriction" | "watcherDownloads"
 >;
 
 export type DraftState = {

@@ -10,6 +10,7 @@ import { loadPendingWoloClaimsForAdmin } from "@/lib/pendingWoloClaims";
 import { loadWatcherDownloadAnalytics } from "@/lib/watcherDownloads";
 import { getWoloSettlementSurfaceStatus } from "@/lib/woloBetSettlement";
 import { buildWoloRestTxLookupUrl, getWoloBetEscrowRuntime } from "@/lib/woloChain";
+import { loadBetWalletFrictionRail } from "@/lib/adminWalletFriction";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -146,7 +147,7 @@ export async function GET(request: NextRequest) {
     ] as const;
 
     const escrowRuntime = getWoloBetEscrowRuntime();
-    const [allClaims, marketRows, settlementSurface, watcherDownloads] = await Promise.all([
+    const [allClaims, marketRows, settlementSurface, watcherDownloads, walletFriction] = await Promise.all([
       loadPendingWoloClaimsForAdmin(prisma, { take: 500 }),
       prisma.betMarket.findMany({
         where: {
@@ -244,6 +245,7 @@ export async function GET(request: NextRequest) {
       }),
       getWoloSettlementSurfaceStatus(),
       loadWatcherDownloadAnalytics(prisma),
+      loadBetWalletFrictionRail(prisma),
     ]);
 
     const settlementMarketIds = Array.from(
@@ -566,6 +568,7 @@ export async function GET(request: NextRequest) {
         },
         rows: marketRailRows,
       },
+      walletFriction,
       watcherDownloads,
     };
 
