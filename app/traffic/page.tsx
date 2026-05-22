@@ -129,10 +129,10 @@ const SUMMARY_DEFAULTS: Summary = {
   top_paths_by_host_24h: {},
   top_suspicious_paths_by_host_24h: {},
   top_referrers_by_host_24h: {},
-  primary_host_aliases: ["aoe2hdbets.com", "www.aoe2hdbets.com"],
+  primary_host_aliases: ["aoe2war.com", "www.aoe2war.com"],
   primary_host_focus: {
-    host: "aoe2hdbets.com",
-    aliases: ["aoe2hdbets.com", "www.aoe2hdbets.com"],
+    host: "aoe2war.com",
+    aliases: ["aoe2war.com", "www.aoe2war.com"],
     unique_ips_24h: 0,
     unique_human_ips_24h: 0,
     unique_bot_ips_24h: 0,
@@ -544,7 +544,7 @@ export default function TrafficPage() {
             label="AoE2HD unique human visitors (24h)"
             value={formatNumber(primaryHostFocus.unique_human_ips_24h)}
             accentClass="text-emerald-300"
-            sublabel="aoe2hdbets.com + www.aoe2hdbets.com"
+            sublabel="aoe2war.com + www.aoe2war.com"
             className="border-emerald-500/20 bg-emerald-500/[0.04]"
           />
           <StatCard

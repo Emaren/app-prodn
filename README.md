@@ -141,10 +141,10 @@ python /var/www/AoE2HDBets/api-prodn/scripts/set_admin.py --email you@example.co
 
 ## Production routing
 
-- `aoe2hdbets.com/*` should proxy to `app-prodn` (Next.js on `127.0.0.1:3030`)
+- `aoe2war.com/*` should proxy to `app-prodn` (Next.js on `127.0.0.1:3030`)
 - Keep browser calls same-origin (`/api/...`) so Next local API handlers enforce session/admin checks
 - Next rewrites selected API paths to backend using `AOE2_BACKEND_UPSTREAM`
-- `api-prodn.aoe2hdbets.com/*` should proxy directly to `api-prodn` (`127.0.0.1:3330`) for watcher/automation uploads and backend APIs
+- `api-prodn.aoe2war.com/*` should proxy directly to `api-prodn` (`127.0.0.1:3330`) for watcher/automation uploads and backend APIs
 
 ## Production runtime truth
 

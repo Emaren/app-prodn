@@ -3,19 +3,43 @@
 
 server {
     listen 80;
-    server_name aoe2hdbets.com www.aoe2hdbets.com;
-    return 301 https://aoe2hdbets.com$request_uri;
+    server_name aoe2war.com www.aoe2war.com;
+    return 301 https://aoe2war.com$request_uri;
 }
 
 server {
     listen 443 ssl http2;
-    server_name aoe2hdbets.com;
+    server_name aoe2war.com www.aoe2war.com;
 
-    # ssl_certificate     /etc/letsencrypt/live/aoe2hdbets.com/fullchain.pem;
-    # ssl_certificate_key /etc/letsencrypt/live/aoe2hdbets.com/privkey.pem;
+    # ssl_certificate     /etc/letsencrypt/live/aoe2war.com/fullchain.pem;
+    # ssl_certificate_key /etc/letsencrypt/live/aoe2war.com/privkey.pem;
+
+    location ^~ /rpc/ {
+        proxy_pass http://127.0.0.1:26657/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        add_header Access-Control-Allow-Origin $http_origin always;
+        add_header Access-Control-Allow-Methods "GET, POST, OPTIONS" always;
+        add_header Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With" always;
+        add_header Vary "Origin" always;
+    }
+
+    location ^~ /rest/ {
+        proxy_pass http://127.0.0.1:1317/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        add_header Access-Control-Allow-Origin $http_origin always;
+        add_header Access-Control-Allow-Methods "GET, POST, OPTIONS" always;
+        add_header Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With" always;
+        add_header Vary "Origin" always;
+    }
 
     location / {
-        proxy_pass http://127.0.0.1:3004;
+        proxy_pass http://127.0.0.1:3030;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -28,16 +52,16 @@ server {
 
 server {
     listen 80;
-    server_name api-prodn.aoe2hdbets.com;
-    return 301 https://api-prodn.aoe2hdbets.com$request_uri;
+    server_name api-prodn.aoe2war.com;
+    return 301 https://api-prodn.aoe2war.com$request_uri;
 }
 
 server {
     listen 443 ssl http2;
-    server_name api-prodn.aoe2hdbets.com;
+    server_name api-prodn.aoe2war.com;
 
-    # ssl_certificate     /etc/letsencrypt/live/api-prodn.aoe2hdbets.com/fullchain.pem;
-    # ssl_certificate_key /etc/letsencrypt/live/api-prodn.aoe2hdbets.com/privkey.pem;
+    # ssl_certificate     /etc/letsencrypt/live/api-prodn.aoe2war.com/fullchain.pem;
+    # ssl_certificate_key /etc/letsencrypt/live/api-prodn.aoe2war.com/privkey.pem;
 
     location / {
         proxy_pass http://127.0.0.1:3330;

@@ -745,8 +745,8 @@ function pickShelfMatches(snapshot: {
 function buildTwitchPlayerUrl(channel: string) {
   const cleanChannel = channel.trim().replace(/^@/, "");
   const parents = [
-    process.env.NEXT_PUBLIC_TWITCH_EMBED_PARENT || "aoe2hdbets.com",
-    "www.aoe2hdbets.com",
+    process.env.NEXT_PUBLIC_TWITCH_EMBED_PARENT || "aoe2war.com",
+    "www.aoe2war.com",
   ];
 
   const params = new URLSearchParams({

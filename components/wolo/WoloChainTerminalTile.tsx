@@ -79,7 +79,7 @@ function consensusChipClasses(
     : "border border-white/10 bg-white/5 text-slate-200";
 }
 function prettySource(value: string | undefined) {
-  return (value || "https://rpc.aoe2hdbets.com").replace(/^https?:\/\//, "");
+  return (value || "https://aoe2war.com/rpc").replace(/^https?:\/\//, "");
 }
 
 function shouldToggleFromTarget(target: EventTarget | null) {
@@ -433,7 +433,7 @@ export default function WoloChainTerminalTile() {
             </div>
 
             <ConsolePanel
-              title={snapshot?.source || "rpc.aoe2hdbets.com"}
+              title={snapshot?.source || "aoe2war.com/rpc"}
               badge={snapshot?.moniker || "WoloChain"}
               lines={runtimeLines}
             />

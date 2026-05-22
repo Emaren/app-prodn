@@ -15,7 +15,7 @@ Together, they power the AoE2HDBets public product, replay ingest pipeline, and 
 
 ### 1. `app-prodn`
 
-- Next.js web app at `aoe2hdbets.com`
+- Next.js web app at `aoe2war.com`
 - Public product shell for lobby, leaderboard, players, rivalries, live-games, requests, inbox/admin, and `$WOLO`
 - Prisma-backed user/profile/community APIs and auth session cookie handling
 - Same-origin browser API routes that proxy or reshape selected `api-prodn` data
@@ -23,7 +23,7 @@ Together, they power the AoE2HDBets public product, replay ingest pipeline, and 
 
 ### 2. `api-prodn`
 
-- FastAPI backend at `api-prodn.aoe2hdbets.com`
+- FastAPI backend at `api-prodn.aoe2war.com`
 - Replay upload + parsing + storage in Postgres (`game_stats`)
 - Live/non-final replay handling for watcher uploads
 - Admin and diagnostics APIs
@@ -71,10 +71,10 @@ Important:
 
 ## Required production routing model
 
-- `aoe2hdbets.com/*` -> `app-prodn` (Next.js)
-- `api-prodn.aoe2hdbets.com/*` -> `api-prodn` (FastAPI)
+- `aoe2war.com/*` -> `app-prodn` (Next.js)
+- `api-prodn.aoe2war.com/*` -> `api-prodn` (FastAPI)
 - Browser should use same-origin `/api/*` via `app-prodn`
-- Watcher should upload directly to `api-prodn.aoe2hdbets.com/api/replay/upload`
+- Watcher should upload directly to `api-prodn.aoe2war.com/api/replay/upload`
 
 ## Secrets and env baseline
 

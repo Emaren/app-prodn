@@ -75,8 +75,8 @@ sudo chown -R tony:tony /var/www/AoE2HDBets/app-prodn
 
 ## 5) Confirm nginx routing model
 
-- `aoe2hdbets.com/*` -> `127.0.0.1:3030` (Next)
-- `api-prodn.aoe2hdbets.com/*` -> `127.0.0.1:3330` (FastAPI)
+- `aoe2war.com/*` -> `127.0.0.1:3030` (Next)
+- `api-prodn.aoe2war.com/*` -> `127.0.0.1:3330` (FastAPI)
 
 Template file:
 - `/var/www/AoE2HDBets/app-prodn/deploy/nginx.conf.example`
@@ -91,20 +91,20 @@ sudo nginx -t && sudo systemctl reload nginx
 
 ```bash
 # App health path (via rewrite)
-curl -I https://aoe2hdbets.com/
-curl -I https://aoe2hdbets.com/lobby
-curl -I https://aoe2hdbets.com/live-games
-curl -I https://aoe2hdbets.com/challenge
-curl -I https://aoe2hdbets.com/contact-emaren
+curl -I https://aoe2war.com/
+curl -I https://aoe2war.com/lobby
+curl -I https://aoe2war.com/live-games
+curl -I https://aoe2war.com/challenge
+curl -I https://aoe2war.com/contact-emaren
 
 # Traffic endpoint should reject anonymous access
-curl -i https://aoe2hdbets.com/api/traffic
+curl -i https://aoe2war.com/api/traffic
 
 # Backend traffic endpoint should reject missing admin token
-curl -i https://api-prodn.aoe2hdbets.com/api/traffic
+curl -i https://api-prodn.aoe2war.com/api/traffic
 
 # Backend traffic endpoint with admin token
-curl -i -H "Authorization: Bearer $ADMIN_TOKEN" https://api-prodn.aoe2hdbets.com/api/traffic
+curl -i -H "Authorization: Bearer $ADMIN_TOKEN" https://api-prodn.aoe2war.com/api/traffic
 
 # Web service logs
 journalctl -u aoe2hdbets-web.service -n 40 --no-pager
@@ -114,7 +114,7 @@ For inbox attachment issues, verify the protected binary route directly with a r
 
 ```bash
 curl -I --cookie "aoe2hdbets_session=..." \
-  https://aoe2hdbets.com/api/contact-emaren/attachments/<messageId>
+  https://aoe2war.com/api/contact-emaren/attachments/<messageId>
 ```
 
 If logs show `Cannot convert argument to a ByteString`, inspect `Content-Disposition` generation in the attachment route before touching the chat UI.
@@ -123,5 +123,5 @@ If logs show `Cannot convert argument to a ByteString`, inspect `Content-Disposi
 
 Set watcher env for users:
 
-- `AOE2_API_BASE_URL=https://api-prodn.aoe2hdbets.com`
+- `AOE2_API_BASE_URL=https://api-prodn.aoe2war.com`
 - optional: `AOE2_UPLOAD_API_KEY=...` (if backend `INTERNAL_API_KEY` enabled)

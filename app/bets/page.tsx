@@ -2368,7 +2368,7 @@ function buildBroadcastEmbedSrc(
   const autoplay = Boolean(options.autoplay);
 
   if (feed.provider === "twitch") {
-    const parent = encodeURIComponent(browserHost || "aoe2hdbets.com");
+    const parent = encodeURIComponent(browserHost || "aoe2war.com");
     return `https://player.twitch.tv/?channel=${encodeURIComponent(
       feed.embedId
     )}&parent=${parent}&autoplay=${autoplay ? "true" : "false"}&muted=${
@@ -2408,7 +2408,7 @@ function BroadcastHeroTile({
 }) {
   const [selectedView, setSelectedView] = useState<BroadcastViewKey>("god");
   const [playingView, setPlayingView] = useState<BroadcastViewKey | null>(null);
-  const [browserHost, setBrowserHost] = useState("aoe2hdbets.com");
+  const [browserHost, setBrowserHost] = useState("aoe2war.com");
   const leftPreviewUrl =
     previews.left || (sameBroadcastSource(feeds.left, feeds.god) ? previews.god : null);
   const rightPreviewUrl =
@@ -2446,7 +2446,7 @@ function BroadcastHeroTile({
   const activeView = views.find((view) => view.key === selectedView) || views[1];
 
   useEffect(() => {
-    setBrowserHost(window.location.hostname || "aoe2hdbets.com");
+    setBrowserHost(window.location.hostname || "aoe2war.com");
   }, []);
 
   useEffect(() => {
@@ -2652,7 +2652,7 @@ function BroadcastSignalSurface({
   const [loopReady, setLoopReady] = useState(false);
   const [loopFailed, setLoopFailed] = useState(false);
   const embedSrc = isPlaying
-    ? buildBroadcastEmbedSrc(feed, browserHost || "aoe2hdbets.com", {
+    ? buildBroadcastEmbedSrc(feed, browserHost || "aoe2war.com", {
         compact,
         autoplay: true,
       })

@@ -2,7 +2,7 @@
 
 ## Scope
 
-Phase 1 owns raw nginx request logging for `aoe2hdbets.com` only.
+Phase 1 owns raw nginx request logging for `aoe2war.com` only.
 
 - nginx emits raw AoE2 request logs
 - logrotate owns file rotation
@@ -17,7 +17,7 @@ Live inspection on `hel1` showed:
 
 - `/etc/nginx/nginx.conf` already defines the house JSON format: `traffic_master`
 - `/etc/nginx/nginx.conf` already writes a shared catch-all log: `/var/log/nginx/access.log`
-- `/etc/nginx/sites-available/aoe2hdbets.com` does **not** define a dedicated AoE2 access log
+- `/etc/nginx/sites-available/aoe2war.com` does **not** define a dedicated AoE2 access log
 - the only `access_log off` lines in that vhost are the deny-list locations for dotfiles and secret-like extensions
 - `/etc/logrotate.d/nginx` currently rotates `/var/log/nginx/*.log` daily
 
@@ -30,7 +30,7 @@ So the real gap is not "AoE2 is fully unlogged." The real gap is:
 
 These production files live outside the repo:
 
-1. `/etc/nginx/sites-available/aoe2hdbets.com`
+1. `/etc/nginx/sites-available/aoe2war.com`
 2. `/etc/logrotate.d/nginx`
 3. `/etc/logrotate.d/00-aoe2hdbets-nginx`
 
@@ -40,7 +40,7 @@ This repo cannot honestly claim those files were changed unless the operator has
 
 ### 1) Add a dedicated AoE2 access log to the live vhost
 
-Edit `/etc/nginx/sites-available/aoe2hdbets.com`.
+Edit `/etc/nginx/sites-available/aoe2war.com`.
 
 Add this near the top of **both** the `443` and `80` server blocks:
 
@@ -60,7 +60,7 @@ The live vhost should end up following this pattern:
 
 ```nginx
 server {
-    server_name aoe2hdbets.com www.aoe2hdbets.com;
+    server_name aoe2war.com www.aoe2war.com;
     access_log /var/log/nginx/aoe2hdbets.access.log traffic_master;
 
     location /.well-known/acme-challenge/ { root /var/www/html; }
@@ -81,7 +81,7 @@ server {
 }
 
 server {
-    server_name aoe2hdbets.com www.aoe2hdbets.com;
+    server_name aoe2war.com www.aoe2war.com;
     listen 80;
     listen [::]:80;
     access_log /var/log/nginx/aoe2hdbets.access.log traffic_master;
@@ -178,14 +178,14 @@ Suggested backup-first flow:
 
 ```bash
 ssh hel1
-sudo cp /etc/nginx/sites-available/aoe2hdbets.com /etc/nginx/sites-available/aoe2hdbets.com.bak.$(date +%Y%m%d-%H%M%S)
+sudo cp /etc/nginx/sites-available/aoe2war.com /etc/nginx/sites-available/aoe2war.com.bak.$(date +%Y%m%d-%H%M%S)
 sudo cp /etc/logrotate.d/nginx /etc/logrotate.d/nginx.bak.$(date +%Y%m%d-%H%M%S)
 ```
 
 Then edit:
 
 ```bash
-sudoedit /etc/nginx/sites-available/aoe2hdbets.com
+sudoedit /etc/nginx/sites-available/aoe2war.com
 sudoedit /etc/logrotate.d/nginx
 sudoedit /etc/logrotate.d/00-aoe2hdbets-nginx
 ```
@@ -219,7 +219,7 @@ sudo logrotate -d /etc/logrotate.conf 2>&1 | grep -n "aoe2hdbets.access.log\|dup
 Confirm live requests are landing in the dedicated AoE2 log:
 
 ```bash
-curl -sSI https://aoe2hdbets.com/lobby >/dev/null && sudo tail -n 5 /var/log/nginx/aoe2hdbets.access.log
+curl -sSI https://aoe2war.com/lobby >/dev/null && sudo tail -n 5 /var/log/nginx/aoe2hdbets.access.log
 ```
 
 Optional sanity check that the dedicated AoE2 log is still using the JSON house format:

@@ -115,7 +115,7 @@ function getRestUrl() {
     process.env.WOLO_SETTLEMENT_PUBLIC_REST_URL ||
     process.env.NEXT_PUBLIC_WOLO_REST_URL ||
     process.env.WOLO_SETTLEMENT_REST_URL ||
-    "https://rest.aoe2hdbets.com"
+    "https://aoe2war.com/rest"
   ).replace(/\/+$/, "");
 }
 

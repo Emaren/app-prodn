@@ -5,17 +5,17 @@ export const WOLO_CHAIN_NAME = "WoloChain Testnet";
 export const WOLO_ADDRESS_PREFIX = "wolo";
 export const WOLO_BASE_DENOM = "uwolo";
 export const WOLO_DISPLAY_DENOM = "WOLO";
-export const WOLO_LOGO_URL = "https://explorer.testnet.aoe2hdbets.com/logos/wolo-keplr-256.png";
+export const WOLO_LOGO_URL = "https://aoe2war.com/legacy/wolo-logo-transparent.png";
 export const WOLO_COIN_DECIMALS = 6;
 export const WOLO_COIN_TYPE = 118;
 
 export const WOLO_MAX_SUPPLY_DISPLAY = "100,000,000";
 
 export const WOLO_RPC_URL =
-  process.env.NEXT_PUBLIC_WOLO_RPC_URL?.trim() || "https://rpc.aoe2hdbets.com";
+  process.env.NEXT_PUBLIC_WOLO_RPC_URL?.trim() || "https://aoe2war.com/rpc";
 
 export const WOLO_REST_URL =
-  process.env.NEXT_PUBLIC_WOLO_REST_URL?.trim() || "https://rest.aoe2hdbets.com";
+  process.env.NEXT_PUBLIC_WOLO_REST_URL?.trim() || "https://aoe2war.com/rest";
 
 export const WOLO_BET_ESCROW_ADDRESS =
   process.env.NEXT_PUBLIC_WOLO_BET_ESCROW_ADDRESS?.trim() ||

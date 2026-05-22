@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 const FAUCET_AMOUNT_WOLO = 2;
 const COOLDOWN_MS = 24 * 60 * 60 * 1000;
-const WOLO_EXPLORER_BASE_URL = "https://explorer.testnet.aoe2hdbets.com";
+const WOLO_EXPLORER_BASE_URL = "https://aoe2war.com";
 
 type WoloFaucetCardProps = {
   address?: string;

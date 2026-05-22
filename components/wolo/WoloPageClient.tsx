@@ -17,7 +17,7 @@ import { useWoloBalance } from "@/hooks/useWoloBalance";
 
 const KEPLR_DOWNLOAD_URL = "https://www.keplr.app/get";
 const HERO_VIEW_KEY = "wolo-hero-view";
-const WOLO_EXPLORER_BASE_URL = "https://explorer.testnet.aoe2hdbets.com";
+const WOLO_EXPLORER_BASE_URL = "https://aoe2war.com";
 const OSMOSIS_DEX_URL = "https://app.osmosis.zone";
 const WOLO_EMBLEM_SRC = "/legacy/wolo-logo-transparent.png";
 const DEFAULT_WOLO_MARKET_PRICE = "$0.001";
