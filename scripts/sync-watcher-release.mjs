@@ -204,6 +204,10 @@ async function main() {
       target: path.join(downloadsDir, `AoE2HDBets Watcher-${version}-arm64.dmg`),
     },
     {
+      source: path.join(watcherDistDir, `AoE2HDBets Watcher-${version}-arm64.dmg`),
+      target: path.join(downloadsDir, `AoE2HDBets-Watcher-${version}-arm64.dmg`),
+    },
+    {
       source: path.join(watcherDistDir, `AoE2HDBets Watcher-${version}-arm64.dmg.blockmap`),
       target: path.join(downloadsDir, `AoE2HDBets Watcher-${version}-arm64.dmg.blockmap`),
     },
@@ -220,6 +224,10 @@ async function main() {
       target: path.join(downloadsDir, `AoE2HDBets Watcher Setup ${version}.exe`),
     },
     {
+      source: path.join(watcherDistDir, `AoE2HDBets Watcher Setup ${version}.exe`),
+      target: path.join(downloadsDir, `AoE2HDBets-Watcher-Setup-${version}.exe`),
+    },
+    {
       source: path.join(watcherDistDir, `AoE2HDBets Watcher Setup ${version}.exe.blockmap`),
       target: path.join(downloadsDir, `AoE2HDBets Watcher Setup ${version}.exe.blockmap`),
     },
@@ -234,6 +242,14 @@ async function main() {
     {
       source: path.join(watcherDistDir, `AoE2HDBets Watcher-${version}.AppImage`),
       target: path.join(downloadsDir, `AoE2HDBets Watcher-${version}.AppImage`),
+    },
+    {
+      source: path.join(watcherDistDir, `AoE2HDBets Watcher-${version}.AppImage`),
+      target: path.join(downloadsDir, `AoE2HDBets-Watcher-${version}.AppImage`),
+    },
+    {
+      source: path.join(watcherDistDir, "latest-linux.yml"),
+      target: path.join(downloadsDir, "latest-linux.yml"),
     },
   ];
 

@@ -122,7 +122,7 @@ These routes are important because they often do more than simple pass-through w
 - Lobby snapshot endpoint: `/api/lobby`
 - Lobby stream endpoint: `/api/lobby/stream`
 - Recent Match Feed sorts and displays the backend `played_at` contract so bulk reparses of old saved games do not outrank newer actual matches
-- Watcher package: `public/downloads/aoe2hd-watcher-1.0.0-arm64.dmg`
+- Watcher packages: generated in `aoe2-watcher/dist`, then synced into `public/downloads` with `npm run watcher:sync`
 - Watcher pairing route: `/profile?watcher_pair=1` (mints a key and launches `aoe2hd-watcher://pair?...`)
 - Replay parser page: `/replay-parser`
 
@@ -160,6 +160,7 @@ python /var/www/AoE2HDBets/api-prodn/scripts/set_admin.py --email you@example.co
 
 - A local fix is not live until `main` is pushed, the VPS checkout is pulled, the app is rebuilt, and `aoe2hdbets-web.service` is restarted.
 - Watcher package downloads are tracked server-side through `/download/watcher/[artifact]` redirects. The route now skips obvious prefetch or route-warmup requests, and `/admin/user-list` separates likely external pulls from obvious internal or test traffic.
+- When watcher upload defaults change, rebuild Mac/Windows/Linux artifacts, rerun `npm run watcher:sync`, and deploy the refreshed `public/downloads` files; source changes alone do not update existing installers.
 - If deploys fail with `Permission denied` or Next logs `EACCES` writing `.next/cache/images`, check ownership drift in `/var/www/AoE2HDBets/app-prodn` before assuming the app code is broken. `npm run build` and `npm run start` now both prepare `.next/cache/images` up front and will fail early with a direct `chown` hint if the cache tree is not writable.
 - Direct-message attachments are served through a session-protected binary route: `/api/contact-emaren/attachments/[messageId]`.
 - New direct-message uploads are stored as disk-backed `file:v1:` refs under `DIRECT_MESSAGE_ATTACHMENT_DIR`; older `data:` rows are still readable as a fallback.
