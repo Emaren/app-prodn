@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireAdmin } from "@/lib/adminSession";
-import { getPrisma } from "@/lib/prisma";
 import { loadIndexedWoloTransferActivityRows } from "@/lib/woloMainnetTransfers";
 import { loadWoloMainnetActivityRows } from "@/lib/woloTransactionRecovery";
 
@@ -73,12 +72,9 @@ function kindMatches(row: ActivityRailRow, filter: string) {
 }
 
 export async function GET(request: NextRequest) {
-  const admin = await requireAdmin(request);
-  if (!admin) {
-    return NextResponse.json(
-      { ok: false, detail: "Unauthorized" },
-      { status: 401, headers: NO_STORE_HEADERS }
-    );
+  const gate = await requireAdmin(request);
+  if ("error" in gate) {
+    return gate.error;
   }
 
   const { searchParams } = new URL(request.url);
@@ -87,7 +83,7 @@ export async function GET(request: NextRequest) {
   const filter = (searchParams.get("filter") || "all").toLowerCase();
   const includeFaucet = searchParams.get("includeFaucet") === "1" || filter === "faucet";
 
-  const prisma = getPrisma();
+  const { prisma } = gate;
 
   // Helpers currently expose capped recent lists, so fetch enough to page within the operator rail.
   const helperLimit = Math.max(25, Math.min(80, offset + take + 25));
