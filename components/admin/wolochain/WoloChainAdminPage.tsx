@@ -19,6 +19,7 @@ import type { AdminUsersRailsPayload } from "@/components/admin/command-tower/ty
 import WoloMarketRail from "@/components/admin/WoloMarketRail";
 import WoloSettlementRail from "@/components/admin/WoloSettlementRail";
 import WoloWalletFrictionRail from "@/components/admin/WoloWalletFrictionRail";
+import WoloMainnetActivityRail from "@/components/admin/wolochain/WoloMainnetActivityRail";
 import type {
   WoloChainAdminBalance,
   WoloChainAdminChallengeRun,
@@ -1105,6 +1106,8 @@ export default function WoloChainAdminPage() {
           </div>
         </section>
       ) : null}
+
+      <WoloMainnetActivityRail />
 
       {state.stakingTreasuryPayouts ? (
         <section className="rounded-[1.7rem] border border-white/10 bg-slate-950/70 p-5">
