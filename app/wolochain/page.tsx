@@ -62,7 +62,7 @@ const treasurySlices: TreasurySlice[] = [
 ];
 
 const chainFacts = [
-  ["Chain ID", "wolo-testnet"],
+  ["Chain ID", "wolo-1"],
   ["Ticker", "WOLO"],
   ["Base Denom", "uwolo"],
   ["Prefix", "wolo1…"],

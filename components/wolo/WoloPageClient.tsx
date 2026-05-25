@@ -78,7 +78,7 @@ function shouldToggleFromTarget(target: EventTarget | null) {
 }
 
 function buildPingPubUrl(chainId: string) {
-  const normalized = chainId.trim() || "wolo-testnet";
+  const normalized = chainId.trim() || "wolo-1";
   return `${WOLO_EXPLORER_BASE_URL}/${normalized}`;
 }
 
@@ -112,7 +112,7 @@ export default function WoloPage() {
   const chainId =
     typeof chainData === "string" && chainData.trim().length > 0
       ? chainData.trim()
-      : "wolo-testnet";
+      : "wolo-1";
 
   useEffect(() => {
     setBalanceOverride(null);

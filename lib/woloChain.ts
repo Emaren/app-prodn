@@ -1,7 +1,9 @@
 export const WOLO_CHAIN_ID =
-  process.env.NEXT_PUBLIC_WOLO_CHAIN_ID?.trim() || "wolo-testnet";
+  process.env.NEXT_PUBLIC_WOLO_CHAIN_ID?.trim() || "wolo-1";
 
-export const WOLO_CHAIN_NAME = "WoloChain Testnet";
+export const WOLO_CHAIN_NAME =
+  process.env.NEXT_PUBLIC_WOLO_CHAIN_NAME?.trim() ||
+  (WOLO_CHAIN_ID === "wolo-1" ? "WoloChain Mainnet" : "WoloChain Testnet");
 export const WOLO_ADDRESS_PREFIX = "wolo";
 export const WOLO_BASE_DENOM = "uwolo";
 export const WOLO_DISPLAY_DENOM = "WOLO";
@@ -12,10 +14,16 @@ export const WOLO_COIN_TYPE = 118;
 export const WOLO_MAX_SUPPLY_DISPLAY = "100,000,000";
 
 export const WOLO_RPC_URL =
-  process.env.NEXT_PUBLIC_WOLO_RPC_URL?.trim() || "https://aoe2war.com/rpc";
+  process.env.NEXT_PUBLIC_WOLO_RPC_URL?.trim() ||
+  (WOLO_CHAIN_ID === "wolo-1"
+    ? "https://rpc-mainnet.aoe2war.com"
+    : "https://aoe2war.com/rpc");
 
 export const WOLO_REST_URL =
-  process.env.NEXT_PUBLIC_WOLO_REST_URL?.trim() || "https://aoe2war.com/rest";
+  process.env.NEXT_PUBLIC_WOLO_REST_URL?.trim() ||
+  (WOLO_CHAIN_ID === "wolo-1"
+    ? "https://rest-mainnet.aoe2war.com"
+    : "https://aoe2war.com/rest");
 
 export const WOLO_BET_ESCROW_ADDRESS =
   process.env.NEXT_PUBLIC_WOLO_BET_ESCROW_ADDRESS?.trim() ||
