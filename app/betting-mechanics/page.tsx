@@ -40,14 +40,14 @@ const rules = [
   {
     icon: <Trophy className="h-5 w-5" />,
     title: "Fee",
-    value: "0% beta. Future fee only on completed wager wins.",
+    value: "2% on completed wager wins. Split 50/50.",
   },
 ];
 
 const outcomes = [
   {
     title: "Both play",
-    rows: ["Winner gets both wagers.", "Guarantees return."],
+    rows: ["Winner gets the pot minus the 2% fee.", "Guarantees return."],
   },
   {
     title: "One no-show",
@@ -84,7 +84,7 @@ export default function BettingMechanicsPage() {
                 10 min check-in
               </span>
               <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-xs text-slate-200">
-                0% beta fee
+                2% fee · 50/50 split
               </span>
             </div>
           </div>

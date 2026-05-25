@@ -1,4 +1,9 @@
 import type { Prisma, PrismaClient } from "@/lib/generated/prisma";
+import {
+  BETTING_FEE_RATE_BPS,
+  BPS_DENOMINATOR,
+  STAKER_SHARE_BPS,
+} from "@/lib/bettingFees";
 import { buildStakingTreasuryPayoutRequestId } from "@/lib/stakingTreasuryPayouts";
 import {
   executeWoloSettlementRun,
@@ -7,10 +12,16 @@ import {
   validateWoloSettlementRun,
   type SettlementRunResult,
 } from "@/lib/woloBetSettlement";
+import {
+  loadWoloMainnetActivityRows,
+  type WoloMainnetActivityRow,
+} from "@/lib/woloTransactionRecovery";
 
-export const BETTING_FEE_RATE_BPS = 100; // 1%
-export const STAKER_SHARE_BPS = 5_000; // 50%
-export const BPS_DENOMINATOR = 10_000;
+export {
+  BETTING_FEE_RATE_BPS,
+  BPS_DENOMINATOR,
+  STAKER_SHARE_BPS,
+} from "@/lib/bettingFees";
 
 export type StakingPeriodKey = "24h" | "7d" | "30d" | "all";
 export type StakingBoardKey = "stakers" | "earners" | "rewards";
@@ -191,6 +202,60 @@ function formatTxFee(value: number | null | undefined) {
   }).format(value);
 }
 
+function shortHash(value: string | null | undefined) {
+  const clean = value?.trim();
+  if (!clean) return null;
+  if (clean.length <= 16) return clean;
+  return `${clean.slice(0, 8)}...${clean.slice(-6)}`;
+}
+
+function shortAddress(value: string | null | undefined) {
+  const clean = value?.trim();
+  if (!clean) return null;
+  if (clean.length <= 18) return clean;
+  return `${clean.slice(0, 10)}...${clean.slice(-6)}`;
+}
+
+function eventTypeForMainnetActivity(row: WoloMainnetActivityRow) {
+  if (row.actionType === "faucet_claim") return "CLAIM";
+  if (row.actionType === "stake") return "STAKE";
+  if (row.actionType === "unstake") return "UNSTAKE";
+  if (row.actionType === "bet_challenge_escrow") return "ESCROW";
+  if (row.actionType === "payout_settlement") return "PAYOUT";
+  return "TX";
+}
+
+function toneForMainnetActivity(row: WoloMainnetActivityRow): StakingActivityItem["tone"] {
+  if (row.actionType === "payout_settlement" || row.actionType === "faucet_claim") return "emerald";
+  if (row.actionType === "bet_challenge_escrow") return "sky";
+  if (row.actionType === "stake" || row.actionType === "unstake") return "amber";
+  return "slate";
+}
+
+function labelForMainnetActivity(row: WoloMainnetActivityRow) {
+  const actor = row.userLabel || shortAddress(row.walletAddress) || "wallet";
+  const amount = row.amountWolo != null ? formatActivityWolo(row.amountWolo) : "WOLO";
+  return `${amount} ${row.actionLabel.toLowerCase()}: ${actor}`;
+}
+
+function dedupeActivityRows(
+  rows: Array<StakingActivityItem & { sortAt: Date }>,
+  limit: number
+) {
+  const seen = new Set<string>();
+  const deduped: Array<StakingActivityItem & { sortAt: Date }> = [];
+
+  for (const item of rows.sort((left, right) => right.sortAt.getTime() - left.sortAt.getTime())) {
+    const key = item.key || `${item.label}:${item.detail}:${item.meta}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(item);
+    if (deduped.length >= limit) break;
+  }
+
+  return deduped;
+}
+
 function jsonObject(value: Prisma.JsonValue | null | undefined) {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, Prisma.JsonValue>)
@@ -265,6 +330,7 @@ export async function loadStakingSummary(
     recentWagers,
     recentEvents,
     recentRewardAllocations,
+    mainnetActivityRows,
   ] = await Promise.all([
     prisma.betWager.aggregate({
       where: wagerWhere,
@@ -371,6 +437,7 @@ export async function loadStakingSummary(
         },
       },
     }),
+    loadWoloMainnetActivityRows(prisma, 25).catch(() => []),
   ]);
 
   const settledVolumeWolo = settledAggregate._sum.amountWolo ?? 0;
@@ -398,7 +465,7 @@ export async function loadStakingSummary(
           ? "claim"
           : "stake";
     activity.push({
-      key: `staking-event-${event.id}`,
+      key: event.txHash ? `tx-${event.txHash}` : `staking-event-${event.id}`,
       label: `${amountLabel} ${verb}: ${player}`,
       detail:
         event.txHash
@@ -430,6 +497,32 @@ export async function loadStakingSummary(
       timestampLabel,
       tone: "amber",
       sortAt: timestamp,
+    });
+  }
+
+  for (const row of mainnetActivityRows) {
+    const timestamp = new Date(row.updatedAt || row.createdAt);
+    const safeTimestamp = Number.isNaN(timestamp.getTime()) ? now : timestamp;
+    const timestampLabel = formatMoment(safeTimestamp);
+    const txLabel = shortHash(row.txHash);
+    const amountLabel = row.amountWolo != null ? formatActivityWolo(row.amountWolo) : undefined;
+    const addressLabel = shortAddress(row.walletAddress);
+    const contextParts = [
+      row.contextLabel,
+      txLabel ? `tx ${txLabel}` : null,
+      addressLabel ? `wallet ${addressLabel}` : null,
+    ].filter(Boolean);
+
+    activity.push({
+      key: row.key,
+      label: labelForMainnetActivity(row),
+      detail: contextParts.join(" · "),
+      meta: timestampLabel,
+      eventType: eventTypeForMainnetActivity(row),
+      amountLabel,
+      timestampLabel,
+      tone: toneForMainnetActivity(row),
+      sortAt: safeTimestamp,
     });
   }
 
@@ -484,9 +577,7 @@ export async function loadStakingSummary(
     activeStakers: stakingAggregate._count._all,
     totalStakedWolo: stakingAggregate._sum.currentStakedWolo ?? 0,
     totalStakingWeight: totalStakingWeight.toString(),
-    activity: activity
-      .sort((left, right) => right.sortAt.getTime() - left.sortAt.getTime())
-      .slice(0, 7)
+    activity: dedupeActivityRows(activity, 16)
       .map((item) => ({
         key: item.key,
         label: item.label,

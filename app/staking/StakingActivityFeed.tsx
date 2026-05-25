@@ -6,7 +6,7 @@ import type { StakingActivityItem } from "@/lib/staking";
 
 type ActivityFeedEvent = CustomEvent<{ item?: StakingActivityItem }>;
 
-const MAX_ROWS = 6;
+const MAX_ROWS = 16;
 
 function activityKey(item: StakingActivityItem) {
   return item.key || `${item.label}:${item.detail}:${item.meta}`;
@@ -31,8 +31,10 @@ function mergeActivityRows(
 
 export default function StakingActivityFeed({
   items,
+  note,
 }: {
   items: StakingActivityItem[];
+  note?: string;
 }) {
   const initialRows = useMemo(() => items.slice(0, MAX_ROWS), [items]);
   const [rows, setRows] = useState(initialRows);
@@ -57,6 +59,12 @@ export default function StakingActivityFeed({
 
   return (
     <div className="space-y-2.5">
+      {note ? (
+        <div className="rounded-[1rem] border border-cyan-300/14 bg-cyan-400/[0.055] px-3.5 py-3 text-xs leading-5 text-cyan-50/80">
+          {note}
+        </div>
+      ) : null}
+
       {rows.map((item, index) => {
         const key = activityKey(item);
         return (
@@ -64,7 +72,7 @@ export default function StakingActivityFeed({
             key={key}
             item={item}
             isFresh={key === freshKey}
-            className={index === MAX_ROWS - 1 ? "hidden sm:flex" : undefined}
+            className={index >= 10 ? "hidden xl:flex" : undefined}
           />
         );
       })}

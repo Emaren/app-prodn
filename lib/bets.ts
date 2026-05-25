@@ -33,6 +33,10 @@ import {
   loadViewerBetStakeIntents,
 } from "@/lib/betStakeIntents";
 import {
+  BETTING_FEE_RATE_BPS,
+  BPS_DENOMINATOR,
+} from "@/lib/bettingFees";
+import {
   normalizeWatchStreamInput,
   toWatchStreamPayload,
   type WatchStreamPayload,
@@ -1332,6 +1336,66 @@ function buildCountableActiveWagerWhere() {
   };
 }
 
+function allocateBettingFeeByWagerId(
+  wagers: Array<{ id: number; amountWolo: number }>,
+  totalFeeWolo: number
+) {
+  const feeByWagerId = new Map<number, number>();
+  const totalWinningStake = wagers.reduce((sum, wager) => sum + wager.amountWolo, 0);
+
+  if (totalFeeWolo <= 0 || totalWinningStake <= 0) {
+    return feeByWagerId;
+  }
+
+  const allocations = wagers.map((wager) => {
+    const exact = (totalFeeWolo * wager.amountWolo) / totalWinningStake;
+    const base = Math.floor(exact);
+    return {
+      id: wager.id,
+      amountWolo: wager.amountWolo,
+      feeWolo: base,
+      remainder: exact - base,
+    };
+  });
+
+  let assigned = allocations.reduce((sum, allocation) => sum + allocation.feeWolo, 0);
+  let remaining = Math.max(0, totalFeeWolo - assigned);
+
+  allocations
+    .sort((left, right) => {
+      if (right.remainder !== left.remainder) return right.remainder - left.remainder;
+      if (right.amountWolo !== left.amountWolo) return right.amountWolo - left.amountWolo;
+      return left.id - right.id;
+    })
+    .forEach((allocation) => {
+      if (remaining <= 0) return;
+      allocation.feeWolo += 1;
+      remaining -= 1;
+    });
+
+  assigned = allocations.reduce((sum, allocation) => sum + allocation.feeWolo, 0);
+  if (assigned > totalFeeWolo) {
+    let overage = assigned - totalFeeWolo;
+    [...allocations]
+      .sort((left, right) => {
+        if (left.remainder !== right.remainder) return left.remainder - right.remainder;
+        if (left.amountWolo !== right.amountWolo) return left.amountWolo - right.amountWolo;
+        return right.id - left.id;
+      })
+      .forEach((allocation) => {
+        if (overage <= 0 || allocation.feeWolo <= 0) return;
+        allocation.feeWolo -= 1;
+        overage -= 1;
+      });
+  }
+
+  for (const allocation of allocations) {
+    feeByWagerId.set(allocation.id, allocation.feeWolo);
+  }
+
+  return feeByWagerId;
+}
+
 function combineSettlementDetail(
   detail: string | null,
   warnings: string[] = []
@@ -1429,6 +1493,15 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
             .filter((wager) => wager.side === "left")
             .reduce((sum, wager) => sum + wager.amountWolo, 0)
         : 0;
+    const settledUserPool = market.wagers.reduce((sum, wager) => sum + wager.amountWolo, 0);
+    const bettingFeePoolWolo =
+      winningSide && settledUserPool > 0
+        ? Math.round((settledUserPool * BETTING_FEE_RATE_BPS) / BPS_DENOMINATOR)
+        : 0;
+    const feeByWinningWagerId = allocateBettingFeeByWagerId(
+      winningSide ? market.wagers.filter((wager) => wager.side === winningSide) : [],
+      bettingFeePoolWolo
+    );
 
     const claimPlans = new Map<string, MarketSettlementClaimPlan>();
 
@@ -1436,6 +1509,7 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
       for (const wager of market.wagers) {
         let nextStatus: "won" | "lost" | "void";
         let payoutWolo: number;
+        let bettingFeeWolo = 0;
 
         if (!winningSide) {
           nextStatus = "void";
@@ -1445,14 +1519,15 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
           payoutWolo = 0;
         } else {
           nextStatus = "won";
+          bettingFeeWolo = feeByWinningWagerId.get(wager.id) ?? 0;
           payoutWolo =
             winningUserPool > 0
               ? Math.max(
-                  wager.amountWolo,
+                  0,
                   Math.round(
                     wager.amountWolo +
                       losingSidePool * (wager.amountWolo / winningUserPool)
-                  )
+                  ) - bettingFeeWolo
                 )
               : wager.amountWolo;
         }
@@ -1485,6 +1560,8 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
             side: wager.side,
             amountWolo: wager.amountWolo,
             payoutWolo,
+            bettingFeeRateBps: BETTING_FEE_RATE_BPS,
+            bettingFeeWolo,
             settledAt: settledAt.toISOString(),
             outcome: nextStatus,
             winnerSide: winningSide,
@@ -1523,7 +1600,8 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
     if (winningSide) {
       const winningWagers = market.wagers.filter((wager) => wager.side === winningSide);
       const losingWagers = market.wagers.filter((wager) => wager.side !== winningSide);
-      const winnerBountyWolo = losingWagers.reduce((sum, wager) => sum + wager.amountWolo, 0);
+      const grossWinnerBountyWolo = losingWagers.reduce((sum, wager) => sum + wager.amountWolo, 0);
+      const winnerBountyWolo = Math.max(0, grossWinnerBountyWolo - bettingFeePoolWolo);
 
       if (winningWagers.length === 0 && winnerBountyWolo > 0) {
         const winnerName = getWinningPlayerName(market, winningSide);

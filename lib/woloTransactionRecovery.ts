@@ -94,6 +94,19 @@ type WoloRecoveryCandidate = Omit<
   "appStatus" | "txUrl" | "lastCheckedAt" | "chain"
 >;
 
+export type WoloMainnetActivityRow = {
+  key: string;
+  actionType: WoloRecoveryActionType;
+  actionLabel: string;
+  txHash: string | null;
+  userLabel: string | null;
+  walletAddress: string | null;
+  amountWolo: number | null;
+  contextLabel: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 type RecoveryUser = {
   id: number;
   uid: string;
@@ -942,6 +955,28 @@ async function loadRecoveryCandidates(prisma: PrismaClient) {
   rows.push(...(await loadFaucetLedgerRows(faucetActivityTxHashes)));
 
   return rows;
+}
+
+export async function loadWoloMainnetActivityRows(
+  prisma: PrismaClient,
+  limit = 25
+): Promise<WoloMainnetActivityRow[]> {
+  const candidates = dedupeRows(await loadRecoveryCandidates(prisma))
+    .sort((left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime())
+    .slice(0, Math.max(1, Math.min(limit, SOURCE_TAKE)));
+
+  return candidates.map((row) => ({
+    key: row.txHash ? `tx-${row.txHash}` : `${row.source}:${row.sourceId}`,
+    actionType: row.actionType,
+    actionLabel: row.actionLabel,
+    txHash: row.txHash,
+    userLabel: row.user?.displayName ?? null,
+    walletAddress: row.walletAddress,
+    amountWolo: row.amountWolo,
+    contextLabel: row.contextLabel,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  }));
 }
 
 function dedupeRows(rows: WoloRecoveryCandidate[]) {

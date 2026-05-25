@@ -1330,7 +1330,7 @@ export default function ScheduledMatchCard({
               Details
             </div>
             <div className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] text-slate-300">
-              Fee 0% beta
+              Fee 2% · 50/50 split
             </div>
           </div>
 

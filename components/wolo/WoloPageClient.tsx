@@ -95,8 +95,7 @@ function buildPingPubUrl(chainId: string) {
 function formatAddressForDisplay(address?: string) {
   const cleanAddress = address?.trim() || "";
   if (!cleanAddress) return "Not connected";
-  if (cleanAddress.length <= 24) return cleanAddress;
-  return `${cleanAddress.slice(0, 12)}...${cleanAddress.slice(-8)}`;
+  return cleanAddress;
 }
 
 function readStoredPremiumPreference(storageKey: string, fallback: boolean) {
@@ -185,7 +184,7 @@ export default function WoloPage() {
           onClick={handleHeroToggle}
           className="overflow-hidden rounded-[1.85rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(251,191,36,0.16),_transparent_26%),radial-gradient(circle_at_bottom_right,_rgba(56,189,248,0.10),_transparent_28%),linear-gradient(135deg,_#0f172a,_#111827_56%,_#050816)] p-4 sm:rounded-[2rem] sm:p-6 lg:p-8"
         >
-          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(25.75rem,27.25rem)] lg:items-start lg:gap-8">
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(27rem,29rem)] lg:items-start lg:gap-8">
             <div className="space-y-6">
               <div className="flex flex-wrap items-center gap-2">
                 <Link href="/wolochain" data-no-toggle="true" className="inline-flex">
@@ -200,8 +199,6 @@ export default function WoloPage() {
               </div>
 
               <div className="space-y-5">
-                <WoloLaunchBanner variant="prod" />
-
                 <div className="text-[11px] uppercase tracking-[0.35em] text-amber-200/70">
                   WoloChain
                 </div>
@@ -293,7 +290,7 @@ export default function WoloPage() {
               ) : null}
             </div>
 
-            <div className="w-full space-y-3.5 lg:max-w-[27.25rem] lg:justify-self-end">
+            <div className="w-full space-y-3.5 lg:max-w-[29rem] lg:justify-self-end">
               <div className="rounded-[1.8rem] border border-white/10 bg-[linear-gradient(180deg,rgba(11,17,30,0.96),rgba(7,11,19,0.96))] p-5 shadow-[0_28px_80px_rgba(2,6,23,0.34)] sm:p-6">
                 <div className="flex items-start justify-between gap-4">
                   <div className="text-[11px] uppercase tracking-[0.35em] text-amber-200/70">
@@ -362,8 +359,9 @@ export default function WoloPage() {
           </div>
         </section>
 
-        <WoloChainTerminalTile />
+        <WoloLaunchBanner />
         <WoloTechnicalDetails />
+        <WoloChainTerminalTile />
       </main>
     );
   }
@@ -374,7 +372,7 @@ export default function WoloPage() {
         onClick={handleHeroToggle}
         className="overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(251,191,36,0.16),_transparent_24%),radial-gradient(circle_at_82%_18%,_rgba(56,189,248,0.12),_transparent_20%),linear-gradient(135deg,_#08111f,_#0b1324_44%,_#050814)] px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8"
       >
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(25.75rem,27.25rem)] lg:items-start lg:gap-8">
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(27rem,29rem)] lg:items-start lg:gap-8">
           <div className="space-y-5">
             <div className="flex flex-wrap items-center gap-2">
               <Link href="/wolochain" data-no-toggle="true" className="inline-flex">
@@ -392,7 +390,6 @@ export default function WoloPage() {
             <div className="relative isolate overflow-hidden rounded-[1.85rem] border border-white/10 bg-[linear-gradient(135deg,rgba(251,191,36,0.10),rgba(9,15,27,0.94)_34%,rgba(5,8,20,0.98)_100%)] px-5 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] sm:px-6 sm:py-6">
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.14),transparent_26%),radial-gradient(circle_at_84%_22%,rgba(59,130,246,0.12),transparent_20%)]" />
               <WoloSupplyWatermark />
-              <WoloLaunchBanner variant="premium" />
               <div className="relative z-10 max-w-[40rem] space-y-4">
                 <div className="text-[11px] uppercase tracking-[0.38em] text-amber-200/70">
                   WoloChain
@@ -443,7 +440,7 @@ export default function WoloPage() {
 
           </div>
 
-          <div className="space-y-3.5">
+          <div className="w-full space-y-3.5 lg:max-w-[29rem] lg:justify-self-end">
             <div className="rounded-[1.8rem] border border-white/10 bg-[linear-gradient(180deg,rgba(11,17,30,0.96),rgba(7,11,19,0.96))] p-5 shadow-[0_28px_80px_rgba(2,6,23,0.34)] sm:p-6">
               <div className="flex items-start justify-between gap-4">
                 <div className="text-[11px] uppercase tracking-[0.35em] text-amber-200/70">
@@ -512,8 +509,9 @@ export default function WoloPage() {
         </div>
       </section>
 
-      <WoloChainTerminalTile />
+      <WoloLaunchBanner />
       <WoloTechnicalDetails />
+      <WoloChainTerminalTile />
     </main>
   );
 }
@@ -684,13 +682,13 @@ function PremiumWalletAddressPanel({ address }: { address?: string }) {
         disabled={!cleanAddress}
         aria-label={cleanAddress ? "Copy wallet address" : "Wallet address not connected"}
         title={cleanAddress || "Wallet address not connected"}
-        className={`mt-3 flex w-full min-w-0 rounded-full border border-white/10 bg-black/20 px-4 py-3.5 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.025)] ${
+        className={`mt-3 flex min-h-[3.35rem] w-full min-w-0 rounded-[1.1rem] border border-white/10 bg-black/20 px-4 py-3.5 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.025)] ${
           cleanAddress
             ? "cursor-pointer transition hover:border-cyan-300/30 hover:bg-cyan-400/[0.08]"
             : "cursor-not-allowed"
         }`}
       >
-        <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap font-mono text-[12.5px] font-semibold leading-none text-white sm:text-[13px]">
+        <span className="min-w-0 break-all font-mono text-[11px] font-semibold leading-5 text-white sm:text-[11.5px] lg:text-[12px]">
           {displayAddress}
         </span>
       </button>
@@ -787,8 +785,7 @@ function MarketContextTile({
   );
 }
 
-function WoloLaunchBanner({ variant }: { variant: "prod" | "premium" }) {
-  const compact = variant === "prod";
+function WoloLaunchBanner() {
   const stats = [
     ["Launch price", WOLO_LAUNCH_PRICE],
     ["Pool", `#${OSMOSIS_POOL_ID}`],
@@ -801,9 +798,7 @@ function WoloLaunchBanner({ variant }: { variant: "prod" | "premium" }) {
   return (
     <div
       data-no-toggle="true"
-      className={`relative z-10 overflow-hidden rounded-[1.65rem] border border-amber-300/18 bg-[linear-gradient(135deg,rgba(251,191,36,0.13),rgba(8,13,26,0.97)_38%,rgba(5,10,20,0.99))] shadow-[0_24px_70px_rgba(2,6,23,0.32),inset_0_1px_0_rgba(255,255,255,0.04)] ${
-        compact ? "p-4 sm:p-5" : "mb-5 p-4 sm:p-5"
-      }`}
+      className="relative z-10 overflow-hidden rounded-[1.75rem] border border-amber-300/18 bg-[radial-gradient(circle_at_12%_18%,rgba(251,191,36,0.17),transparent_28%),linear-gradient(135deg,rgba(251,191,36,0.11),rgba(8,13,26,0.97)_38%,rgba(5,10,20,0.99))] p-5 shadow-[0_24px_70px_rgba(2,6,23,0.32),inset_0_1px_0_rgba(255,255,255,0.04)] sm:p-6 lg:p-7"
     >
       <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
         <div className="min-w-0">

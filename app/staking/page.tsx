@@ -21,8 +21,11 @@ import {
 
 import { getPrisma } from "@/lib/prisma";
 import {
+  BETTING_FEE_RATE_BPS,
+  BPS_DENOMINATOR,
   loadStakingLeaderboard,
   loadStakingSummary,
+  STAKER_SHARE_BPS,
   type StakingActivityItem,
   type StakingLeaderboardRow,
 } from "@/lib/staking";
@@ -161,8 +164,8 @@ const BOARD_ROWS: Record<
     { player: "New Backer", badge: "Open seat", staked: "Ledger pending", rewards: "Modeled", weight: "Opening soon", status: "Preview", tone: "slate" },
   ],
   rewards: [
-    { player: "Daily Pool", badge: "Preparing", staked: "1% fee", rewards: "50% share", weight: "Pool weight", status: "Stakers", tone: "gold" },
-    { player: "Treasury", badge: "Community", staked: "1% fee", rewards: "50% share", weight: "Visible", status: "Visible", tone: "emerald" },
+    { player: "Daily Pool", badge: "Preparing", staked: "1% of pot", rewards: "50% share", weight: "Pool weight", status: "Stakers", tone: "gold" },
+    { player: "Treasury", badge: "Community", staked: "1% of pot", rewards: "50% share", weight: "Visible", status: "Visible", tone: "emerald" },
     { player: "Next Match", badge: "Settles soon", staked: "Open", rewards: "Feeds pool", weight: "Live loop", status: "Live loop", tone: "sky" },
     { player: "Reward Cutover", badge: "Ledger", staked: "Pending", rewards: "Preparing", weight: "Pending", status: "Next", tone: "slate" },
   ],
@@ -215,6 +218,12 @@ function formatWolo(
 
 function formatFeeShareWolo(value: number | null) {
   return formatWolo(value, { compact: false, decimals: 2 });
+}
+
+function formatBpsPercent(value: number) {
+  return `${new Intl.NumberFormat("en-US", {
+    maximumFractionDigits: 2,
+  }).format(value / 100)}%`;
 }
 
 function weightMeter(value: string | null | undefined) {
@@ -439,7 +448,17 @@ export default async function StakingPage({
     stakingWallet.balanceWolo == null || snapshot.totalStakedWolo == null
       ? null
       : Math.max(0, stakingWallet.balanceWolo - snapshot.totalStakedWolo);
-  const activityRows = snapshot.activity.slice(0, 6);
+  const activityRows = snapshot.activity.slice(0, 16);
+  const bettingFeeLabel = formatBpsPercent(BETTING_FEE_RATE_BPS);
+  const stakerShareLabel = formatBpsPercent(
+    Math.floor((BETTING_FEE_RATE_BPS * STAKER_SHARE_BPS) / BPS_DENOMINATOR)
+  );
+  const treasuryShareLabel = formatBpsPercent(
+    BETTING_FEE_RATE_BPS -
+      Math.floor((BETTING_FEE_RATE_BPS * STAKER_SHARE_BPS) / BPS_DENOMINATOR)
+  );
+  const mainnetActivityNote =
+    "Mainnet transfer feed is limited until chain tx indexing is enabled. This feed shows app-recorded wolo-1 tx hashes, staking, wager, settlement, faucet, and treasury movements.";
   const meter = weightMeter(snapshot.totalStakingWeight);
 
   return (
@@ -466,7 +485,7 @@ export default async function StakingPage({
           animation: stakingActivityGlow 1.8s ease-out 1;
         }
       `}</style>
-      <section className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_14%_18%,rgba(148,163,184,0.12),transparent_26%),radial-gradient(circle_at_86%_12%,rgba(16,185,129,0.14),transparent_24%),radial-gradient(circle_at_70%_86%,rgba(59,130,246,0.08),transparent_24%),linear-gradient(135deg,#07101d,#111827_52%,#040712)] p-5 shadow-[0_42px_120px_rgba(2,6,23,0.45)] sm:p-7 lg:p-9">
+      <section className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_14%_18%,rgba(148,163,184,0.12),transparent_26%),radial-gradient(circle_at_86%_12%,rgba(251,191,36,0.12),transparent_24%),radial-gradient(circle_at_70%_86%,rgba(59,130,246,0.08),transparent_24%),linear-gradient(135deg,#07101d,#111827_52%,#040712)] p-5 shadow-[0_42px_120px_rgba(2,6,23,0.45)] sm:p-7 lg:p-9">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(148,163,184,0.34),transparent)]" />
         <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full border border-amber-300/10" />
         <div className="pointer-events-none absolute bottom-0 left-0 h-24 w-full bg-[linear-gradient(180deg,transparent,rgba(0,0,0,0.2))]" />
@@ -474,7 +493,7 @@ export default async function StakingPage({
         <div className="relative z-10 grid min-w-0 gap-7 xl:grid-cols-[minmax(0,1fr)_minmax(0,0.82fr)] xl:items-stretch">
           <div className="flex h-full min-w-0 flex-col gap-6">
             <div className="flex flex-wrap gap-2">
-              <HeroPill tone="amber">1% betting fee</HeroPill>
+              <HeroPill tone="amber">{bettingFeeLabel} betting fee</HeroPill>
               <HeroPill tone="emerald">50% to stakers</HeroPill>
               <HeroPill tone="slate">No lockups</HeroPill>
             </div>
@@ -579,7 +598,7 @@ export default async function StakingPage({
       </section>
 
       <Panel id="staking-advanced" eyebrow="Recent Activity" title="Live activity">
-        <StakingActivityFeed items={activityRows} />
+        <StakingActivityFeed items={activityRows} note={mainnetActivityNote} />
       </Panel>
 
       <section className="space-y-4">
@@ -673,7 +692,7 @@ export default async function StakingPage({
               <div className="text-xs uppercase tracking-[0.26em] text-amber-100/70">
                 Betting Fee
               </div>
-              <div className="mt-4 text-5xl font-semibold text-white">1%</div>
+              <div className="mt-4 text-5xl font-semibold text-white">{bettingFeeLabel}</div>
               <div className="mt-5 h-3 overflow-hidden rounded-full bg-black/30">
                 <div className="grid h-full grid-cols-2">
                   <div className="bg-amber-200/80" />
@@ -700,13 +719,13 @@ export default async function StakingPage({
               </div>
               <div className="mt-5 grid gap-2">
                 <SplitRow label="Pot" value="20,000 WOLO" />
-                <SplitRow label="Betting fee" value="200 WOLO" />
-                <SplitRow label="Stakers receive" value="100 WOLO" tone="amber" />
-                <SplitRow label="Treasury receives" value="100 WOLO" tone="emerald" />
-                <SplitRow label="Winner receives" value="19,800 WOLO" tone="white" />
+                <SplitRow label="Betting fee" value="400 WOLO" />
+                <SplitRow label="Stakers receive" value="200 WOLO" tone="amber" />
+                <SplitRow label="Treasury receives" value="200 WOLO" tone="emerald" />
+                <SplitRow label="Winner receives" value="19,600 WOLO" tone="white" />
               </div>
               <p className="mt-4 text-sm leading-6 text-slate-300">
-                Every settled bet feeds both pools.
+                Every settled bet feeds both pools: {stakerShareLabel} to stakers and {treasuryShareLabel} to treasury.
               </p>
             </div>
           </div>
@@ -744,7 +763,7 @@ export default async function StakingPage({
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
             <FormulaTile label="Staking Weight" value="More WOLO + time" helper="WOLO x time" />
-            <FormulaTile label="Daily Pool" value="50% fees" />
+            <FormulaTile label="Daily Pool" value={`${stakerShareLabel} of pot`} helper="50% of fee" />
             <FormulaTile label="Your Share" value="Fair split" />
           </div>
         </div>
@@ -786,7 +805,7 @@ export default async function StakingPage({
 
 function WoloMark() {
   return (
-    <div className="flex h-14 w-14 items-center justify-center rounded-full border border-amber-300/20 bg-amber-300/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+    <div className="flex h-14 w-14 items-center justify-center rounded-full border border-amber-300/28 bg-[radial-gradient(circle_at_35%_25%,rgba(251,191,36,0.18),rgba(15,23,42,0.92))] shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_12px_34px_rgba(2,6,23,0.28)]">
       <Image src={WOLO_LOGO_SRC} alt="" width={32} height={32} className="h-8 w-8 object-contain" />
     </div>
   );

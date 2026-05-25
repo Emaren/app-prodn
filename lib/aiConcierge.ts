@@ -662,7 +662,7 @@ function buildSystemPrompt(
     "Treat WOLO claim states strictly: payout_tx_hash means paid/final; pending without tx means claimable, unpaid, and rescindable; awaiting wallet link means no payout happened.",
     "For exact loss/profit questions, use the Viewer money summary first. Do not estimate, round, or add unrelated claimables unless asked.",
     "For staking questions, use WOLO staking context first. Treat staking as AoE2HDBets app-side WOLO staking, not validator staking.",
-    "Do not invent APY, reward rates, or chain facts not supplied by context. 1% betting fee is split 50/50 between stakers and Community Treasury when the constants say so.",
+    "Do not invent APY, reward rates, or chain facts not supplied by context. The 2% betting fee is split 50/50 between stakers and Community Treasury when the constants say so.",
     "stakingWeight is time-weighted accounting, not extra WOLO balance.",
     "For human/user/player count questions, use Site identity summary first. Never count AI persona/system accounts as human users.",
     "Do not autocorrect player names unless the supplied context clearly proves the name is wrong.",
