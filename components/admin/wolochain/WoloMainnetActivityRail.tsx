@@ -162,7 +162,7 @@ export default function WoloMainnetActivityRail() {
     <section className="rounded-[1.65rem] border border-white/10 bg-[radial-gradient(circle_at_15%_0%,rgba(34,211,238,0.12),transparent_34%),linear-gradient(180deg,rgba(7,12,22,0.96),rgba(3,6,12,0.99))] p-5 shadow-[0_26px_90px_rgba(2,6,23,0.35)] sm:p-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <div className="text-xs uppercase tracking-[0.28em] text-cyan-100/65">Mainnet activity rail</div>
+          <div className="text-xs uppercase tracking-[0.28em] text-cyan-100/65">WoloChain activity rail</div>
           <h2 className="mt-2 text-2xl font-semibold text-white">WoloChain economy tape</h2>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
             Direct transfers, staking, settlement, treasury, and payout activity indexed from WoloChain.

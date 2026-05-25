@@ -151,7 +151,7 @@ export async function GET(request: NextRequest) {
       totalVisible: combined.length,
       defaultExcludesFaucet: !includeFaucet,
       note:
-        "Read-only WoloChain activity rail. Direct transfers come from indexed mainnet bank sends; default view only shows tx-backed WoloChain activity; faucet and non-tx app records stay out of the main tape.",
+        "Read-only WoloChain activity rail. Direct transfers come from indexed WoloChain bank sends; default view only shows tx-backed WoloChain activity; faucet and non-tx app records stay out of the main tape.",
     },
     { headers: NO_STORE_HEADERS }
   );
