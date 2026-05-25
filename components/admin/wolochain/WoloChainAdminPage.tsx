@@ -10,6 +10,7 @@ import {
   CircuitBoard,
   Check,
   Copy,
+  Search,
   WalletCards,
 } from "lucide-react";
 
@@ -974,13 +975,22 @@ export default function WoloChainAdminPage() {
       <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.16),_transparent_28%),radial-gradient(circle_at_top_right,_rgba(251,191,36,0.13),_transparent_30%),linear-gradient(135deg,_#06111f,_#0f172a_56%,_#020617)] p-8 shadow-[0_24px_70px_rgba(0,0,0,0.36)]">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-4xl">
-            <Link
-              href="/admin/user-list"
-              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:border-white/20 hover:bg-white/10 hover:text-white"
-            >
-              <ArrowLeft className="h-3.5 w-3.5" />
-              Back to user ops
-            </Link>
+            <div className="flex flex-wrap gap-2">
+              <Link
+                href="/admin/user-list"
+                className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:border-white/20 hover:bg-white/10 hover:text-white"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                Back to user ops
+              </Link>
+              <Link
+                href="/admin/wolo-transactions"
+                className="inline-flex items-center gap-2 rounded-full border border-cyan-200/20 bg-cyan-400/10 px-3 py-1.5 text-xs font-medium text-cyan-100 transition hover:border-cyan-200/50 hover:bg-cyan-400/15"
+              >
+                <Search className="h-3.5 w-3.5" />
+                Tx recovery
+              </Link>
+            </div>
             <div className="mt-6 text-xs uppercase tracking-[0.38em] text-cyan-200/70">
               WoloChain Admin
             </div>

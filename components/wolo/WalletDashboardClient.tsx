@@ -145,6 +145,147 @@ function WalletAddressLine({ address }: { address?: string }) {
   );
 }
 
+type TxLookupState = {
+  status: "idle" | "checking" | "found" | "not_found" | "unavailable" | "error";
+  detail: string | null;
+  height?: string | null;
+  code?: number | null;
+  success?: boolean | null;
+  rawLogSummary?: string | null;
+};
+
+type TxLookupResponse = {
+  detail?: string;
+  chain?: {
+    status?: "found" | "not_found" | "not_checked" | "unavailable";
+    height?: string | null;
+    code?: number | null;
+    success?: boolean | null;
+    rawLogSummary?: string | null;
+    detail?: string | null;
+  };
+};
+
+function TxRecoveryLookup() {
+  const [txHash, setTxHash] = useState("");
+  const [lookup, setLookup] = useState<TxLookupState>({
+    status: "idle",
+    detail: null,
+  });
+
+  async function handleLookup() {
+    const normalized = txHash.trim().toUpperCase();
+    if (!normalized) {
+      setLookup({ status: "error", detail: "Paste a WOLO transaction hash first." });
+      return;
+    }
+
+    try {
+      setLookup({ status: "checking", detail: "Checking transaction..." });
+      const response = await fetch(`/api/wolo/tx/${encodeURIComponent(normalized)}`, {
+        cache: "no-store",
+      });
+      const payload = (await response.json().catch(() => ({}))) as TxLookupResponse;
+
+      if (!response.ok) {
+        throw new Error(payload.detail || "Transaction lookup failed.");
+      }
+
+      const chain = payload.chain;
+      if (chain?.status === "found") {
+        setLookup({
+          status: "found",
+          detail:
+            chain.success === false
+              ? "Chain found this transaction, but it returned a failure code."
+              : "Chain found this transaction. If app state still shows pending, it needs reconciliation.",
+          height: chain.height ?? null,
+          code: chain.code ?? null,
+          success: chain.success ?? null,
+          rawLogSummary: chain.rawLogSummary ?? null,
+        });
+        return;
+      }
+
+      if (chain?.status === "not_found") {
+        setLookup({
+          status: "not_found",
+          detail: "Chain lookup did not find this transaction hash yet.",
+        });
+        return;
+      }
+
+      setLookup({
+        status: "unavailable",
+        detail: chain?.detail || "Chain lookup is unavailable right now.",
+      });
+    } catch (error) {
+      setLookup({
+        status: "error",
+        detail: error instanceof Error ? error.message : "Transaction lookup failed.",
+      });
+    }
+  }
+
+  const tone =
+    lookup.status === "found" && lookup.success !== false
+      ? "border-emerald-300/20 bg-emerald-400/10 text-emerald-100"
+      : lookup.status === "idle"
+        ? "border-white/10 bg-white/[0.035] text-slate-300"
+        : lookup.status === "checking"
+          ? "border-cyan-300/20 bg-cyan-400/10 text-cyan-100"
+          : "border-amber-300/20 bg-amber-400/10 text-amber-100";
+
+  return (
+    <section className="rounded-3xl border border-white/10 bg-slate-950/70 p-5">
+      <div>
+        <p className="text-xs uppercase tracking-[0.28em] text-slate-500">Transaction Check</p>
+        <h2 className="mt-2 text-xl font-semibold text-white">Check a WOLO tx hash</h2>
+        <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-400">
+          Chain success means the transaction landed. App balances, bets, or claims may still need
+          operator reconciliation if they remain pending.
+        </p>
+      </div>
+
+      <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_auto]">
+        <input
+          value={txHash}
+          onChange={(event) => setTxHash(event.target.value)}
+          placeholder="Paste WOLO transaction hash"
+          className="w-full rounded-full border border-white/10 bg-slate-950/80 px-4 py-3 font-mono text-sm text-white outline-none transition placeholder:font-sans placeholder:text-slate-500 focus:border-cyan-200/40"
+        />
+        <button
+          type="button"
+          onClick={() => {
+            void handleLookup();
+          }}
+          disabled={lookup.status === "checking"}
+          className="rounded-full border border-cyan-200/30 bg-cyan-400/10 px-5 py-3 text-sm font-semibold text-cyan-50 transition hover:border-cyan-200/60 hover:bg-cyan-400/15 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {lookup.status === "checking" ? "Checking..." : "Check Transaction"}
+        </button>
+      </div>
+
+      {lookup.detail ? (
+        <div className={`mt-4 rounded-2xl border px-4 py-3 text-sm leading-6 ${tone}`}>
+          <div>{lookup.detail}</div>
+          {lookup.height || typeof lookup.code === "number" ? (
+            <div className="mt-1 text-xs opacity-80">
+              {lookup.height ? `height ${lookup.height}` : "height unknown"}
+              {typeof lookup.code === "number" ? ` · code ${lookup.code}` : ""}
+            </div>
+          ) : null}
+          {lookup.rawLogSummary ? (
+            <div className="mt-1 break-words font-mono text-xs opacity-80">
+              {lookup.rawLogSummary}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 export default function WalletDashboardClient() {
   const { address, status, connect, disconnect } = useKeplr();
   const { data: rawBalance, isLoading, refetch } = useWoloBalance(address);
@@ -283,6 +424,8 @@ export default function WalletDashboardClient() {
           </div>
         ) : null}
       </section>
+
+      <TxRecoveryLookup />
 
       <section className="rounded-3xl border border-white/10 bg-slate-900/70 p-5 shadow-[0_24px_80px_rgba(2,6,23,0.35)]">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
