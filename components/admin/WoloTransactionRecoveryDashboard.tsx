@@ -21,6 +21,7 @@ import {
   WOLO_RECOVERY_ACTION_LABELS,
   WOLO_RECOVERY_STATUS_LABELS,
 } from "@/lib/woloTransactionRecovery";
+import WoloTransferBackfillButton from "./WoloTransferBackfillButton";
 
 type Props = {
   data: WoloTransactionRecoveryDashboard;
@@ -245,6 +246,53 @@ function TxRow({ row }: { row: WoloRecoveryRow }) {
   );
 }
 
+function DirectTransferRow({
+  row,
+}: {
+  row: WoloTransactionRecoveryDashboard["indexedTransfers"]["rows"][number];
+}) {
+  const sender = row.senderLabel || shortAddress(row.senderAddress);
+  const recipient = row.recipientLabel || shortAddress(row.recipientAddress);
+
+  return (
+    <article className="rounded-lg border border-white/10 bg-slate-950/60 p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-emerald-300/25 bg-emerald-400/10 px-2.5 py-1 text-xs text-emerald-100">
+              direct transfer
+            </span>
+            <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-slate-300">
+              {row.amountLabel}
+            </span>
+            <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-slate-300">
+              height {row.height}
+            </span>
+          </div>
+          <h3 className="mt-3 break-words text-base font-semibold text-white">
+            {sender} {"->"} {recipient}
+          </h3>
+          <div className="mt-1 font-mono text-xs text-slate-500">{shortHash(row.txHash)}</div>
+          {row.memo ? (
+            <p className="mt-2 text-sm leading-5 text-slate-400">memo: {row.memo}</p>
+          ) : null}
+        </div>
+        <div className="text-right text-xs text-slate-400">{formatDate(row.timestamp)}</div>
+      </div>
+      <div className="mt-3 grid gap-2 text-xs md:grid-cols-2">
+        <div className="rounded-lg border border-white/8 bg-white/5 p-3">
+          <div className="uppercase text-slate-500">Sender</div>
+          <div className="mt-1 break-all font-mono text-slate-300">{row.senderAddress}</div>
+        </div>
+        <div className="rounded-lg border border-white/8 bg-white/5 p-3">
+          <div className="uppercase text-slate-500">Recipient</div>
+          <div className="mt-1 break-all font-mono text-slate-300">{row.recipientAddress}</div>
+        </div>
+      </div>
+    </article>
+  );
+}
+
 export default function WoloTransactionRecoveryDashboard({ data }: Props) {
   return (
     <main className="space-y-6 py-6 text-white">
@@ -323,6 +371,63 @@ export default function WoloTransactionRecoveryDashboard({ data }: Props) {
             </div>
             <div className="mt-3 text-3xl font-semibold text-white">{data.summary.totalRows}</div>
           </div>
+        </div>
+      </section>
+
+      <section className="rounded-lg border border-emerald-300/15 bg-[linear-gradient(135deg,rgba(6,20,18,0.86),rgba(2,6,23,0.96))] p-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <div className="text-xs uppercase tracking-[0.28em] text-emerald-100/65">
+              Mainnet Bank Sends
+            </div>
+            <h2 className="mt-2 text-2xl font-semibold text-white">Indexed direct transfers</h2>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
+              Successful wolo-1 MsgSend transfers cached from WoloChain REST tx search. This is a
+              read-only scan and does not replay, send, or settle funds.
+            </p>
+          </div>
+          <WoloTransferBackfillButton />
+        </div>
+
+        <div className="mt-5 grid gap-3 md:grid-cols-3">
+          <div className="rounded-lg border border-white/10 bg-slate-950/55 p-4">
+            <div className="text-[11px] uppercase text-slate-500">Cached transfers</div>
+            <div className="mt-2 text-3xl font-semibold text-white">
+              {formatNumber(data.indexedTransfers.totalRows)}
+            </div>
+          </div>
+          <div className="rounded-lg border border-white/10 bg-slate-950/55 p-4">
+            <div className="text-[11px] uppercase text-slate-500">Latest transfer</div>
+            <div className="mt-2 text-lg font-semibold text-white">
+              {formatDate(data.indexedTransfers.latestTimestamp)}
+            </div>
+          </div>
+          <div className="rounded-lg border border-white/10 bg-slate-950/55 p-4">
+            <div className="text-[11px] uppercase text-slate-500">Source</div>
+            <div className="mt-2 break-words font-mono text-sm text-slate-200">
+              {data.indexedTransfers.source}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-3 xl:grid-cols-2">
+          {data.indexedTransfers.notes.map((note) => (
+            <div key={note} className="rounded-lg border border-white/10 bg-white/5 p-3 text-sm leading-6 text-slate-300">
+              {note}
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-5 grid gap-3 xl:grid-cols-2">
+          {data.indexedTransfers.rows.length > 0 ? (
+            data.indexedTransfers.rows.map((row) => (
+              <DirectTransferRow key={row.key} row={row} />
+            ))
+          ) : (
+            <div className="rounded-lg border border-white/10 bg-slate-950/60 px-4 py-6 text-sm text-slate-400 xl:col-span-2">
+              No direct bank-send transfers are cached yet. Run the capped read-only backfill.
+            </div>
+          )}
         </div>
       </section>
 

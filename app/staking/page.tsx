@@ -88,6 +88,7 @@ type EconomySnapshot = {
   activeStakers: number | null;
   totalStakedWolo: number | null;
   totalStakingWeight: string | null;
+  directTransferCount: number;
   activity: ActivityItem[];
 };
 
@@ -389,6 +390,7 @@ function fallbackSnapshot(period: PeriodKey): EconomySnapshot {
     activeStakers: null,
     totalStakedWolo: null,
     totalStakingWeight: null,
+    directTransferCount: 0,
     activity: [
       {
         label: "Economy feed is offline",
@@ -458,7 +460,9 @@ export default async function StakingPage({
       Math.floor((BETTING_FEE_RATE_BPS * STAKER_SHARE_BPS) / BPS_DENOMINATOR)
   );
   const mainnetActivityNote =
-    "Mainnet transfer feed is limited until chain tx indexing is enabled. This feed shows app-recorded wolo-1 tx hashes, staking, wager, settlement, faucet, and treasury movements.";
+    snapshot.directTransferCount > 0
+      ? "Direct wolo-1 bank sends are indexed from WoloChain REST tx search. Admin backfills are capped, read-only, and merged with staking, wager, settlement, faucet, and treasury activity."
+      : "Direct wolo-1 bank-send indexing is ready and appears here after an admin backfill. App-recorded staking, wager, settlement, faucet, and treasury activity still appears live.";
   const meter = weightMeter(snapshot.totalStakingWeight);
 
   return (

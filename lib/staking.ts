@@ -16,6 +16,10 @@ import {
   loadWoloMainnetActivityRows,
   type WoloMainnetActivityRow,
 } from "@/lib/woloTransactionRecovery";
+import {
+  loadIndexedWoloTransferActivityRows,
+  type WoloIndexedTransferActivityRow,
+} from "@/lib/woloMainnetTransfers";
 
 export {
   BETTING_FEE_RATE_BPS,
@@ -54,6 +58,7 @@ export type StakingSummary = {
   activeStakers: number;
   totalStakedWolo: number;
   totalStakingWeight: string;
+  directTransferCount: number;
   activity: StakingActivityItem[];
 };
 
@@ -238,6 +243,19 @@ function labelForMainnetActivity(row: WoloMainnetActivityRow) {
   return `${amount} ${row.actionLabel.toLowerCase()}: ${actor}`;
 }
 
+function labelForIndexedTransfer(row: WoloIndexedTransferActivityRow) {
+  return `${row.amountLabel} direct transfer`;
+}
+
+function detailForIndexedTransfer(row: WoloIndexedTransferActivityRow) {
+  const sender = row.senderLabel || shortAddress(row.senderAddress) || "wallet";
+  const recipient = row.recipientLabel || shortAddress(row.recipientAddress) || "wallet";
+  const txLabel = shortHash(row.txHash);
+  const parts = [`${sender} -> ${recipient}`, txLabel ? `tx ${txLabel}` : null];
+  if (row.memo) parts.push(`memo ${row.memo.slice(0, 80)}`);
+  return parts.filter(Boolean).join(" · ");
+}
+
 function dedupeActivityRows(
   rows: Array<StakingActivityItem & { sortAt: Date }>,
   limit: number
@@ -331,6 +349,7 @@ export async function loadStakingSummary(
     recentEvents,
     recentRewardAllocations,
     mainnetActivityRows,
+    indexedTransferRows,
   ] = await Promise.all([
     prisma.betWager.aggregate({
       where: wagerWhere,
@@ -438,6 +457,7 @@ export async function loadStakingSummary(
       },
     }),
     loadWoloMainnetActivityRows(prisma, 25).catch(() => []),
+    loadIndexedWoloTransferActivityRows(prisma, 25).catch(() => []),
   ]);
 
   const settledVolumeWolo = settledAggregate._sum.amountWolo ?? 0;
@@ -526,6 +546,24 @@ export async function loadStakingSummary(
     });
   }
 
+  for (const row of indexedTransferRows) {
+    const timestamp = new Date(row.timestamp);
+    const safeTimestamp = Number.isNaN(timestamp.getTime()) ? now : timestamp;
+    const timestampLabel = formatMoment(safeTimestamp);
+
+    activity.push({
+      key: row.key,
+      label: labelForIndexedTransfer(row),
+      detail: detailForIndexedTransfer(row),
+      meta: timestampLabel,
+      eventType: "DIRECT",
+      amountLabel: row.amountLabel,
+      timestampLabel,
+      tone: "emerald",
+      sortAt: safeTimestamp,
+    });
+  }
+
   for (const wager of recentWagers) {
     const player = displayPlayerName(wager.user);
     const pickedLabel = wager.side === "right" ? wager.market.rightLabel : wager.market.leftLabel;
@@ -577,6 +615,7 @@ export async function loadStakingSummary(
     activeStakers: stakingAggregate._count._all,
     totalStakedWolo: stakingAggregate._sum.currentStakedWolo ?? 0,
     totalStakingWeight: totalStakingWeight.toString(),
+    directTransferCount: indexedTransferRows.length,
     activity: dedupeActivityRows(activity, 16)
       .map((item) => ({
         key: item.key,

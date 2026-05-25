@@ -871,6 +871,31 @@ model StakingEvent {
   @@map("staking_events")
 }
 
+model WoloIndexedTransfer {
+  id                Int      @id @default(autoincrement())
+  chainId           String   @map("chain_id") @db.VarChar(32)
+  txHash            String   @unique(map: "uq_wolo_indexed_transfers_tx_hash") @map("tx_hash") @db.VarChar(128)
+  height            BigInt
+  timestamp         DateTime @db.Timestamp(6)
+  senderAddress     String   @map("sender_address") @db.VarChar(100)
+  recipientAddress  String   @map("recipient_address") @db.VarChar(100)
+  amountUwolo       BigInt   @map("amount_uwolo")
+  amountWoloDisplay Decimal  @map("amount_wolo_display") @db.Decimal(20, 6)
+  denom             String   @db.VarChar(32)
+  memo              String?
+  rawType           String?  @map("raw_type") @db.VarChar(100)
+  eventType         String?  @map("event_type") @db.VarChar(80)
+  source            String   @default("wolo-mainnet-bank-send") @db.VarChar(80)
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  @@index([chainId, height], map: "ix_wolo_indexed_transfers_chain_height")
+  @@index([senderAddress], map: "ix_wolo_indexed_transfers_sender")
+  @@index([recipientAddress], map: "ix_wolo_indexed_transfers_recipient")
+  @@index([timestamp], map: "ix_wolo_indexed_transfers_timestamp")
+  @@map("wolo_indexed_transfers")
+}
+
 model StakingRewardDistribution {
   id                        Int       @id @default(autoincrement())
   distributionDate          DateTime  @map("distribution_date") @db.Date

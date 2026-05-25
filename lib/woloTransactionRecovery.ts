@@ -3,6 +3,10 @@ import path from "node:path";
 
 import type { Prisma, PrismaClient } from "@/lib/generated/prisma";
 import { buildWoloRestTxLookupUrl, WOLO_REST_URL } from "@/lib/woloChain";
+import {
+  loadWoloIndexedTransferDashboard,
+  type WoloIndexedTransferDashboard,
+} from "@/lib/woloMainnetTransfers";
 
 const SOURCE_TAKE = 80;
 const DISPLAY_LIMIT = 80;
@@ -67,6 +71,7 @@ export type WoloRecoveryRow = {
 export type WoloTransactionRecoveryDashboard = {
   generatedAt: string;
   rows: WoloRecoveryRow[];
+  indexedTransfers: WoloIndexedTransferDashboard;
   filters: {
     status: WoloRecoveryAppStatus | "all";
     actionType: WoloRecoveryActionType | "all";
@@ -1034,7 +1039,22 @@ export async function loadWoloTransactionRecoveryDashboard(
   const query = (input?.query || "").trim().slice(0, 160);
   const queryTxHash = isTxHashLike(query) ? normalizeTxHash(query) : null;
 
-  let candidates = dedupeRows(await loadRecoveryCandidates(prisma))
+  const [candidateRows, indexedTransfers] = await Promise.all([
+    loadRecoveryCandidates(prisma),
+    loadWoloIndexedTransferDashboard(prisma, 10).catch(
+      (): WoloIndexedTransferDashboard => ({
+        source: "wolo-mainnet-bank-send",
+        totalRows: 0,
+        latestTimestamp: null,
+        rows: [],
+        notes: [
+          "Indexed direct transfers are not available yet. Run the read-only backfill after the database migration is applied.",
+        ],
+      })
+    ),
+  ]);
+
+  let candidates = dedupeRows(candidateRows)
     .filter((row) => actionType === "all" || row.actionType === actionType)
     .filter((row) => matchesQuery(row, query))
     .sort((left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime());
@@ -1123,6 +1143,7 @@ export async function loadWoloTransactionRecoveryDashboard(
   return {
     generatedAt,
     rows,
+    indexedTransfers,
     filters: { status, actionType, query },
     summary: {
       totalRows: rows.length,
@@ -1141,7 +1162,7 @@ export async function loadWoloTransactionRecoveryDashboard(
     notes: [
       "This page is read-only. It queries chain status and highlights mismatches; it does not replay payouts, alter claims, or change balances.",
       "A successful chain tx with pending/failed app state is marked needs review so an operator can reconcile through an existing safe path.",
-      "Rows are capped to recent source records plus an ad-hoc pasted tx lookup; direct chain history is not indexed by this app.",
+      "Rows are capped to recent source records plus an ad-hoc pasted tx lookup; direct bank-send transfers are cached separately from WoloChain REST tx search.",
       "Faucet rows come from user activity and the faucet JSON ledger when available, not from a normalized faucet DB table.",
     ],
   };
