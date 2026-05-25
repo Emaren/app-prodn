@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
-import { LayoutGrid, Palette, Sparkles } from "lucide-react";
+import { ArrowRight, LayoutGrid, Palette, RadioTower, Sparkles } from "lucide-react";
 
 import AdminUserCard from "@/components/admin/command-tower/AdminUserCard";
 import type { DraftState } from "@/components/admin/command-tower/types";
@@ -327,6 +328,16 @@ export default function AdminCommandTowerPage() {
 
       {data ? (
         <div className="mt-6">
+          <div className="mb-3 flex justify-end">
+            <Link
+              href="/admin/watcher-funnel"
+              className="inline-flex items-center gap-2 rounded-full border border-cyan-200/20 bg-cyan-400/10 px-3 py-1.5 text-xs font-medium text-cyan-100 transition hover:border-cyan-200/50 hover:bg-cyan-400/15"
+            >
+              <RadioTower className="h-3.5 w-3.5" />
+              Detailed watcher funnel
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
           <WatcherDownloadRail analytics={data.watcherDownloads} />
         </div>
       ) : null}
