@@ -222,7 +222,7 @@ function shortAddress(value: string | null | undefined) {
 }
 
 function eventTypeForMainnetActivity(row: WoloMainnetActivityRow) {
-  if (row.actionType === "faucet_claim") return "CLAIM";
+  if (row.actionType === "faucet_claim") return "FAUCET";
   if (row.actionType === "stake") return "STAKE";
   if (row.actionType === "unstake") return "UNSTAKE";
   if (row.actionType === "bet_challenge_escrow") return "ESCROW";
@@ -231,7 +231,8 @@ function eventTypeForMainnetActivity(row: WoloMainnetActivityRow) {
 }
 
 function toneForMainnetActivity(row: WoloMainnetActivityRow): StakingActivityItem["tone"] {
-  if (row.actionType === "payout_settlement" || row.actionType === "faucet_claim") return "emerald";
+  if (row.actionType === "payout_settlement") return "emerald";
+  if (row.actionType === "faucet_claim") return "slate";
   if (row.actionType === "bet_challenge_escrow") return "sky";
   if (row.actionType === "stake" || row.actionType === "unstake") return "amber";
   return "slate";

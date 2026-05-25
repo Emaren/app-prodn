@@ -1,9 +1,7 @@
 export const WOLO_CHAIN_ID =
   process.env.NEXT_PUBLIC_WOLO_CHAIN_ID?.trim() || "wolo-1";
 
-export const WOLO_CHAIN_NAME =
-  process.env.NEXT_PUBLIC_WOLO_CHAIN_NAME?.trim() ||
-  (WOLO_CHAIN_ID === "wolo-1" ? "WoloChain Mainnet" : "WoloChain Testnet");
+export const WOLO_CHAIN_NAME = "WoloChain";
 export const WOLO_ADDRESS_PREFIX = "wolo";
 export const WOLO_BASE_DENOM = "uwolo";
 export const WOLO_DISPLAY_DENOM = "WOLO";
