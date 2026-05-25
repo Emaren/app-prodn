@@ -602,7 +602,15 @@ export default async function StakingPage({
       </section>
 
       <Panel id="staking-advanced" eyebrow="Recent Activity" title="Live activity">
-        <StakingActivityFeed items={activityRows} note={mainnetActivityNote} />
+        <StakingActivityFeed
+          items={activityRows.filter(
+            (item) =>
+              item.eventType !== "FAUCET" &&
+              !/faucet/i.test(item.label) &&
+              !/faucet/i.test(item.detail)
+          )}
+          note={mainnetActivityNote}
+        />
       </Panel>
 
       <section className="space-y-4">
