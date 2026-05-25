@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
+import { Check, Copy, ExternalLink } from "lucide-react";
 import {
   useEffect,
   useMemo,
@@ -18,9 +19,18 @@ import { useWoloBalance } from "@/hooks/useWoloBalance";
 const KEPLR_DOWNLOAD_URL = "https://www.keplr.app/get";
 const HERO_VIEW_KEY = "wolo-hero-view";
 const WOLO_EXPLORER_BASE_URL = "https://aoe2war.com";
-const OSMOSIS_DEX_URL = "https://app.osmosis.zone";
+const OSMOSIS_POOL_ID = "3461";
+const OSMOSIS_POOL_URL = `https://app.osmosis.zone/pool/${OSMOSIS_POOL_ID}`;
 const WOLO_EMBLEM_SRC = "/legacy/wolo-logo-transparent.png";
-const DEFAULT_WOLO_MARKET_PRICE = "$0.001";
+const WOLO_LAUNCH_PRICE = "$0.0001";
+const WOLO_LAUNCH_PAIR = "WOLO/USDC";
+const WOLO_INITIAL_LIQUIDITY = "200,000 WOLO / 20 USDC";
+const WOLO_FIXED_SUPPLY = "100,000,000 WOLO";
+const WOLO_LAUNCH_FDV = "$10,000";
+const OSMOSIS_WOLO_IBC_DENOM =
+  "ibc/D09120C7085DFA412DF77608DAD3A4797F5F097A038DA0C2E1D1426FC9CD836D";
+const OSMOSIS_USDC_DENOM =
+  "ibc/498A0751C798A0D9A389AA3691123DADA57DAA4FE165D5C75894505B876BA6E4";
 const WOLO_PROD_ACTION_CLASSNAME =
   "inline-flex items-center justify-center whitespace-nowrap rounded-full px-4 py-2.5 text-[13px] transition";
 const WOLO_PROD_PRIMARY_ACTION_CLASSNAME = `${WOLO_PROD_ACTION_CLASSNAME} bg-amber-300 font-semibold text-slate-950 hover:bg-amber-200`;
@@ -80,6 +90,13 @@ function shouldToggleFromTarget(target: EventTarget | null) {
 function buildPingPubUrl(chainId: string) {
   const normalized = chainId.trim() || "wolo-1";
   return `${WOLO_EXPLORER_BASE_URL}/${normalized}`;
+}
+
+function formatAddressForDisplay(address?: string) {
+  const cleanAddress = address?.trim() || "";
+  if (!cleanAddress) return "Not connected";
+  if (cleanAddress.length <= 24) return cleanAddress;
+  return `${cleanAddress.slice(0, 12)}...${cleanAddress.slice(-8)}`;
 }
 
 function readStoredPremiumPreference(storageKey: string, fallback: boolean) {
@@ -183,6 +200,8 @@ export default function WoloPage() {
               </div>
 
               <div className="space-y-5">
+                <WoloLaunchBanner variant="prod" />
+
                 <div className="text-[11px] uppercase tracking-[0.35em] text-amber-200/70">
                   WoloChain
                 </div>
@@ -330,7 +349,7 @@ export default function WoloPage() {
               </div>
 
               <div className="space-y-1.5">
-                <MarketContextTile href={OSMOSIS_DEX_URL} variant="prod" />
+                <MarketContextTile href={OSMOSIS_POOL_URL} variant="prod" />
                 <WoloFaucetCard
                   address={address}
                   status={status}
@@ -344,6 +363,7 @@ export default function WoloPage() {
         </section>
 
         <WoloChainTerminalTile />
+        <WoloTechnicalDetails />
       </main>
     );
   }
@@ -372,6 +392,7 @@ export default function WoloPage() {
             <div className="relative isolate overflow-hidden rounded-[1.85rem] border border-white/10 bg-[linear-gradient(135deg,rgba(251,191,36,0.10),rgba(9,15,27,0.94)_34%,rgba(5,8,20,0.98)_100%)] px-5 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] sm:px-6 sm:py-6">
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.14),transparent_26%),radial-gradient(circle_at_84%_22%,rgba(59,130,246,0.12),transparent_20%)]" />
               <WoloSupplyWatermark />
+              <WoloLaunchBanner variant="premium" />
               <div className="relative z-10 max-w-[40rem] space-y-4">
                 <div className="text-[11px] uppercase tracking-[0.38em] text-amber-200/70">
                   WoloChain
@@ -478,7 +499,7 @@ export default function WoloPage() {
             </div>
 
             <div className="space-y-1.5">
-              <MarketContextTile href={OSMOSIS_DEX_URL} variant="premium" />
+              <MarketContextTile href={OSMOSIS_POOL_URL} variant="premium" />
               <WoloFaucetCard
                 address={address}
                 status={status}
@@ -492,6 +513,7 @@ export default function WoloPage() {
       </section>
 
       <WoloChainTerminalTile />
+      <WoloTechnicalDetails />
     </main>
   );
 }
@@ -612,58 +634,10 @@ function WoloSupplyWatermark() {
   );
 }
 
-function WalletCopyIcon({ copied }: { copied: boolean }) {
-  if (copied) {
-    return (
-      <svg
-        aria-hidden="true"
-        viewBox="0 0 24 24"
-        className="h-4 w-4"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <path
-          d="M20 6 9 17l-5-5"
-          stroke="currentColor"
-          strokeWidth="2.4"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    );
-  }
-
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      className="h-4 w-4"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <rect
-        x="8"
-        y="8"
-        width="10"
-        height="10"
-        rx="2"
-        stroke="currentColor"
-        strokeWidth="2"
-      />
-      <path
-        d="M6 14H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v1"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
 function PremiumWalletAddressPanel({ address }: { address?: string }) {
   const [copied, setCopied] = useState(false);
   const cleanAddress = address?.trim() || "";
-  const displayAddress = cleanAddress || "Not connected";
+  const displayAddress = formatAddressForDisplay(cleanAddress);
 
   async function handleCopy() {
     if (!cleanAddress) return;
@@ -678,16 +652,9 @@ function PremiumWalletAddressPanel({ address }: { address?: string }) {
       data-no-toggle="true"
       className="rounded-[1.45rem] border border-white/8 bg-[#0d1420] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]"
     >
-      <div className="text-[11px] uppercase tracking-[0.26em] text-slate-400">
-        Address
-      </div>
-
-      <div className="mt-3 grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-full border border-white/10 bg-black/20 px-4 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.025)]">
-        <div
-          title={cleanAddress || undefined}
-          className="min-w-0 select-all overflow-hidden whitespace-nowrap font-mono text-[12.5px] font-semibold leading-none tracking-[-0.025em] text-white sm:text-[13px]"
-        >
-          {displayAddress}
+      <div className="flex items-start justify-between gap-3">
+        <div className="text-[11px] uppercase tracking-[0.26em] text-slate-400">
+          Address
         </div>
 
         {cleanAddress ? (
@@ -698,16 +665,35 @@ function PremiumWalletAddressPanel({ address }: { address?: string }) {
             }}
             aria-label={copied ? "Address copied" : "Copy wallet address"}
             title={copied ? "Copied" : "Copy wallet address"}
-            className={`inline-flex shrink-0 items-center justify-center text-sm transition ${
+            className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition ${
               copied
-                ? "text-emerald-200"
-                : "text-slate-400 hover:text-white"
+                ? "border-emerald-300/45 bg-emerald-400/12 text-emerald-100"
+                : "border-white/12 bg-white/5 text-slate-300 hover:border-cyan-300/35 hover:bg-cyan-400/10 hover:text-white"
             }`}
           >
-            <WalletCopyIcon copied={copied} />
+            {copied ? <Check aria-hidden="true" className="h-3.5 w-3.5" /> : <Copy aria-hidden="true" className="h-3.5 w-3.5" />}
           </button>
         ) : null}
       </div>
+
+      <button
+        type="button"
+        onClick={() => {
+          void handleCopy();
+        }}
+        disabled={!cleanAddress}
+        aria-label={cleanAddress ? "Copy wallet address" : "Wallet address not connected"}
+        title={cleanAddress || "Wallet address not connected"}
+        className={`mt-3 flex w-full min-w-0 rounded-full border border-white/10 bg-black/20 px-4 py-3.5 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.025)] ${
+          cleanAddress
+            ? "cursor-pointer transition hover:border-cyan-300/30 hover:bg-cyan-400/[0.08]"
+            : "cursor-not-allowed"
+        }`}
+      >
+        <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap font-mono text-[12.5px] font-semibold leading-none text-white sm:text-[13px]">
+          {displayAddress}
+        </span>
+      </button>
     </div>
   );
 }
@@ -756,7 +742,7 @@ function MarketContextTile({
       target="_blank"
       rel="noreferrer"
       data-no-toggle="true"
-      title="WOLO Market via Osmosis DEX"
+      title={`Open WOLO/USDC Osmosis Pool #${OSMOSIS_POOL_ID}`}
       className={`group flex w-full items-center justify-between gap-3 ${
         compact
           ? "rounded-[1.15rem] border border-cyan-300/15 bg-[linear-gradient(135deg,rgba(255,255,255,0.05),rgba(9,15,28,0.95)_52%,rgba(8,35,46,0.78))] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
@@ -778,25 +764,128 @@ function MarketContextTile({
           </div>
           <div className="mt-1 flex flex-wrap items-end gap-x-1.5 gap-y-0.5">
             <div className={compact ? "text-lg font-semibold text-white" : "text-xl font-semibold text-white"}>
-              {DEFAULT_WOLO_MARKET_PRICE}
+              {WOLO_LAUNCH_PRICE}
             </div>
             <div className="pb-0.5 text-[10px] uppercase tracking-[0.24em] text-white/55">
               / WOLO
             </div>
           </div>
           <div className="mt-2 text-xs text-slate-300/78">
-            Osmosis listing soon.
+            Pool #{OSMOSIS_POOL_ID} · {WOLO_LAUNCH_PAIR}
           </div>
         </div>
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
         <MarketTileGraph compact={compact} />
-        <div className="rounded-full border border-cyan-300/18 bg-cyan-400/10 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.24em] text-cyan-100">
+        <div className="inline-flex items-center gap-1 rounded-full border border-cyan-300/18 bg-cyan-400/10 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-cyan-100">
           DEX
+          <ExternalLink aria-hidden="true" className="h-3 w-3" />
         </div>
       </div>
     </a>
+  );
+}
+
+function WoloLaunchBanner({ variant }: { variant: "prod" | "premium" }) {
+  const compact = variant === "prod";
+  const stats = [
+    ["Launch price", WOLO_LAUNCH_PRICE],
+    ["Pool", `#${OSMOSIS_POOL_ID}`],
+    ["Pair", WOLO_LAUNCH_PAIR],
+    ["Initial liquidity", WOLO_INITIAL_LIQUIDITY],
+    ["Fixed supply", WOLO_FIXED_SUPPLY],
+    ["Launch FDV", WOLO_LAUNCH_FDV],
+  ] as const;
+
+  return (
+    <div
+      data-no-toggle="true"
+      className={`relative z-10 overflow-hidden rounded-[1.65rem] border border-amber-300/18 bg-[linear-gradient(135deg,rgba(251,191,36,0.13),rgba(8,13,26,0.97)_38%,rgba(5,10,20,0.99))] shadow-[0_24px_70px_rgba(2,6,23,0.32),inset_0_1px_0_rgba(255,255,255,0.04)] ${
+        compact ? "p-4 sm:p-5" : "mb-5 p-4 sm:p-5"
+      }`}
+    >
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+        <div className="min-w-0">
+          <div className="inline-flex rounded-full border border-amber-300/20 bg-amber-300/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-amber-100">
+            Mainnet launch
+          </div>
+          <div className="mt-3 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+            WOLO is live on Osmosis
+          </div>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
+            Launch price: {WOLO_LAUNCH_PRICE}. Trade {WOLO_LAUNCH_PAIR} on Pool #
+            {OSMOSIS_POOL_ID}. 100M fixed supply. Built for AoE2WAR.
+          </p>
+        </div>
+
+        <a
+          href={OSMOSIS_POOL_URL}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200"
+        >
+          Open Osmosis Pool
+          <ExternalLink aria-hidden="true" className="h-4 w-4" />
+        </a>
+      </div>
+
+      <div className="mt-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+        {stats.map(([label, value]) => (
+          <div
+            key={label}
+            className="rounded-[1.1rem] border border-white/8 bg-white/[0.045] px-3.5 py-3"
+          >
+            <div className="text-[10px] uppercase tracking-[0.22em] text-slate-400">
+              {label}
+            </div>
+            <div className="mt-1.5 text-sm font-semibold text-white">{value}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function WoloTechnicalDetails() {
+  return (
+    <section className="rounded-[1.75rem] border border-white/10 bg-[#050b15] p-5 sm:p-6">
+      <details className="group">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-4">
+          <div>
+            <div className="text-xs uppercase tracking-[0.32em] text-cyan-100/65">
+              Osmosis Details
+            </div>
+            <div className="mt-2 text-sm text-slate-300">
+              Compact denom notes for wallets and explorers.
+            </div>
+          </div>
+          <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-200 transition group-open:bg-white/10">
+            View
+          </div>
+        </summary>
+
+        <div className="mt-5 space-y-4 border-t border-white/8 pt-5 text-sm leading-6 text-slate-300">
+          <p>
+            Osmosis currently may display WOLO as <span className="font-mono text-cyan-100">ibc/D091...</span> until asset metadata propagates.
+          </p>
+
+          <div className="grid gap-3 lg:grid-cols-2">
+            <TechnicalDenomCard label="WOLO denom on Osmosis" value={OSMOSIS_WOLO_IBC_DENOM} />
+            <TechnicalDenomCard label="USDC denom" value={OSMOSIS_USDC_DENOM} />
+          </div>
+        </div>
+      </details>
+    </section>
+  );
+}
+
+function TechnicalDenomCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[1.25rem] border border-white/10 bg-white/[0.035] p-4">
+      <div className="text-[10px] uppercase tracking-[0.24em] text-slate-400">{label}</div>
+      <div className="mt-2 break-all font-mono text-xs leading-5 text-slate-100">{value}</div>
+    </div>
   );
 }
 

@@ -118,16 +118,28 @@ function ansiClassFromCodes(codes: number[]) {
       bold = true;
     } else if (code === 22) {
       bold = false;
+    } else if (code === 31) {
+      fg = "text-rose-300";
     } else if (code === 32) {
-      fg = "text-emerald-400";
+      fg = "text-cyan-300";
+    } else if (code === 33) {
+      fg = "text-amber-200";
+    } else if (code === 35) {
+      fg = "text-fuchsia-300";
     } else if (code === 36) {
       fg = "text-cyan-300";
     } else if (code === 37) {
       fg = "text-slate-100";
     } else if (code === 90) {
       fg = "text-slate-400";
+    } else if (code === 91) {
+      fg = "text-rose-200";
     } else if (code === 92) {
-      fg = "text-emerald-300";
+      fg = "text-cyan-200";
+    } else if (code === 93) {
+      fg = "text-amber-100";
+    } else if (code === 95) {
+      fg = "text-fuchsia-200";
     } else if (code === 96) {
       fg = "text-cyan-200";
     } else if (code === 39) {
@@ -508,7 +520,7 @@ export default function WoloChainTerminalTile() {
           </div>
 
           <div className="mt-5">
-            <ConsolePanel
+            <DaemonConsolePanel
               title={daemon?.label || "daemon.log"}
               badge="local"
               lines={plainDaemonLines.length > 0 ? plainDaemonLines : daemonLines}
@@ -595,25 +607,25 @@ function DaemonConsolePanel({
   lines: string[];
 }) {
   return (
-    <div className="overflow-hidden rounded-[1.6rem] border border-slate-500/20 bg-[#0a1018] shadow-[inset_0_0_0_1px_rgba(148,163,184,0.06)]">
+    <div className="overflow-hidden rounded-[1.6rem] border border-cyan-300/12 bg-[#07101b] shadow-[inset_0_0_0_1px_rgba(34,211,238,0.05)]">
       <div className="border-b border-slate-400/15 px-5 py-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <div className="text-[11px] uppercase tracking-[0.28em] text-slate-300/80">
+            <div className="text-[11px] uppercase tracking-[0.28em] text-cyan-100/75">
               {title}
             </div>
             <div className="mt-1 text-xs text-slate-400 sm:text-sm">
-              live validator output · terminal color rail
+              live validator output · control-room color rail
             </div>
           </div>
 
-          <div className="rounded-full border border-slate-400/15 bg-slate-300/5 px-3 py-1 text-xs text-slate-200 whitespace-nowrap">
+          <div className="rounded-full border border-fuchsia-300/15 bg-fuchsia-300/5 px-3 py-1 text-xs text-slate-200 whitespace-nowrap">
             {badge}
           </div>
         </div>
       </div>
 
-      <div className="max-h-[26rem] overflow-auto bg-[#0b1118] px-5 py-4 font-mono text-[14px] leading-[1.55] sm:text-[15px]">
+      <div className="max-h-[26rem] overflow-auto bg-[#080f18] px-5 py-4 font-mono text-[14px] leading-[1.55] text-slate-100 sm:text-[15px]">
         <div>
           {lines.map((line, index) => renderDaemonLine(line, index))}
         </div>

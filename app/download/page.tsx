@@ -123,7 +123,7 @@ export default function DownloadPage() {
             </div>
 
             <div className="mt-4 rounded-2xl border border-amber-300/15 bg-amber-300/5 px-4 py-3 text-xs leading-6 text-amber-50/85">
-              Windows builds are Microsoft-signed. Mac/Linux may still show platform trust prompts during beta.
+              Unsigned build for now. Windows SmartScreen may warn on first install; signing is planned.
             </div>
           </div>
 

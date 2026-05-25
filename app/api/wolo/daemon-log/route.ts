@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 
 const execFileAsync = promisify(execFile);
 
-const DEFAULT_UNIT = process.env.WOLO_DAEMON_SYSTEMD_UNIT?.trim() || "wolochaind-testnet";
+const DEFAULT_UNIT = process.env.WOLO_DAEMON_SYSTEMD_UNIT?.trim() || "wolochaind-mainnet";
 const DEFAULT_LINES =
   Number.parseInt(process.env.WOLO_DAEMON_TAIL_LINES?.trim() || "40", 10) || 40;
 

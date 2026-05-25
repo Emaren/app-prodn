@@ -48,7 +48,7 @@ function formatTxhash(txhash?: string | null) {
 
 function buildPingPubTxUrl(chainId: string, txhash?: string | null) {
   if (!txhash) return null;
-  const normalized = chainId.trim() || "wolo-testnet";
+  const normalized = chainId.trim() || "wolo-1";
   return `${WOLO_EXPLORER_BASE_URL}/${normalized}/tx/${txhash}`;
 }
 
@@ -94,7 +94,9 @@ export default function WoloFaucetCard({
   variant,
 }: WoloFaucetCardProps) {
   const isConnected = status === "connected" && Boolean(address);
-  const isTestnet = chainId.toLowerCase().includes("testnet");
+  const normalizedChainId = chainId.trim().toLowerCase();
+  const isTestnet = normalizedChainId.includes("testnet");
+  const isMainnet = normalizedChainId === "wolo-1" || !isTestnet;
   const storageKey = useMemo(() => buildStorageKey(chainId, address), [chainId, address]);
 
   const [claimState, setClaimState] = useState<StoredClaimState | null>(null);
@@ -135,7 +137,7 @@ export default function WoloFaucetCard({
 
       if (!address || !isConnected) return;
       if (!isTestnet) {
-        setClaimError("Starter Faucet is testnet only.");
+        setClaimError("Mainnet faucet not configured.");
         return;
       }
 
@@ -187,9 +189,11 @@ export default function WoloFaucetCard({
   }
 
   const statusLabel = !isConnected
-    ? "Connect Keplr to claim."
+    ? isMainnet
+      ? "Connect Keplr. Mainnet claim is coming online."
+      : "Connect Keplr to claim."
     : !isTestnet
-      ? "Faucet is only live on Wolo testnet."
+      ? "Mainnet claim coming online."
       : isClaiming
         ? "Broadcasting faucet transfer."
         : isCoolingDown
@@ -208,7 +212,9 @@ export default function WoloFaucetCard({
     ? "Sending..."
     : isCoolingDown
       ? formatCooldown(msRemaining)
-      : `Claim ${FAUCET_AMOUNT_WOLO} WOLO`;
+      : !isTestnet
+        ? "Coming Online"
+        : `Claim ${FAUCET_AMOUNT_WOLO} WOLO`;
   const premiumStatusClassName = claimError
     ? "text-red-200/85"
     : isCoolingDown
@@ -223,7 +229,7 @@ export default function WoloFaucetCard({
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="text-[10px] uppercase tracking-[0.28em] text-cyan-100/55">
-              Starter Faucet
+              {isTestnet ? "Starter Faucet" : "Mainnet Claim"}
             </div>
           </div>
 
@@ -253,10 +259,12 @@ export default function WoloFaucetCard({
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="text-[10px] uppercase tracking-[0.28em] text-cyan-100/55">
-            Starter Faucet
+            {isTestnet ? "Starter Faucet" : "Mainnet Claim"}
           </div>
           <div className="mt-1 text-sm font-medium text-white">
-            Claim {FAUCET_AMOUNT_WOLO} WOLO on testnet
+            {isTestnet
+              ? `Claim ${FAUCET_AMOUNT_WOLO} WOLO on testnet`
+              : "Mainnet faucet not configured"}
           </div>
           <div className={`mt-1 text-[11px] leading-5 ${premiumStatusClassName}`}>
             {statusLabel}
