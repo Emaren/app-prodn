@@ -607,7 +607,8 @@ export default async function StakingPage({
             (item) =>
               item.eventType !== "FAUCET" &&
               !/faucet/i.test(item.label) &&
-              !/faucet/i.test(item.detail)
+              !/faucet/i.test(item.detail) &&
+              ((item.key?.startsWith("tx-") ?? false) || /\btx\s+[0-9a-f]{8}/i.test(item.detail))
           )}
           note={mainnetActivityNote}
         />

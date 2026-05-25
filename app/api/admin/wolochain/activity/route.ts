@@ -132,8 +132,11 @@ export async function GET(request: NextRequest) {
     };
   });
 
+  const txBackedOnly = filter !== "faucet";
+
   const combined = [...directActivity, ...appActivity]
     .filter((row) => includeFaucet || row.kind !== "faucet")
+    .filter((row) => !txBackedOnly || Boolean(row.txHash))
     .filter((row) => kindMatches(row, filter))
     .sort((a, b) => timestampOf(b) - timestampOf(a));
 
@@ -148,7 +151,7 @@ export async function GET(request: NextRequest) {
       totalVisible: combined.length,
       defaultExcludesFaucet: !includeFaucet,
       note:
-        "Read-only WoloChain activity rail. Direct transfers come from indexed mainnet bank sends; app activity comes from staking, wager, settlement, treasury, and payout records.",
+        "Read-only WoloChain activity rail. Direct transfers come from indexed mainnet bank sends; default view only shows tx-backed WoloChain activity; faucet and non-tx app records stay out of the main tape.",
     },
     { headers: NO_STORE_HEADERS }
   );
