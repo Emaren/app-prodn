@@ -461,7 +461,7 @@ export default async function StakingPage({
   );
   const mainnetActivityNote =
     snapshot.directTransferCount > 0
-      ? "Direct wolo-1 bank sends are indexed from WoloChain REST tx search. Admin backfills are capped, read-only, and merged with staking, wager, settlement, treasury, and direct transfer activity."
+      ? "Direct WoloChain bank sends are indexed from the WoloChain REST tx search. Admin backfills are capped, read-only, and merged with staking, wager, settlement, treasury, and direct transfer activity."
       : "Direct wolo-1 bank-send indexing is ready and appears here after an admin backfill. App-recorded staking, wager, settlement, treasury, and direct transfer activity still appears live.";
   const meter = weightMeter(snapshot.totalStakingWeight);
 
