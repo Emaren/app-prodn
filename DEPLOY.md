@@ -43,6 +43,7 @@ ssh hel1
 cd /var/www/AoE2HDBets/app-prodn
 git status --short
 git pull --ff-only origin main
+npx prisma migrate deploy
 npm run build
 ```
 
@@ -55,6 +56,14 @@ journalctl -u aoe2hdbets-web.service -n 40 --no-pager
 ```
 
 ## Recent deployment notes
+
+### 2026-05-30 Advanced lobby arena and live ticker
+
+- Added `live_ticker_messages` for admin-managed text ticker messages.
+- `/lobby` defaults to Advanced view with a header ticker, Watch & Chat hero, WOLO market tile, then the existing Community Lobby content.
+- Basic view remains available and should preserve the simpler lobby-first layout.
+- Deployment requires `npx prisma migrate deploy` before restarting `aoe2hdbets-web.service`.
+- Optional market display env: `WOLO_OSMOSIS_POOL_ID=3461`, `WOLO_OSMOSIS_POOL_URL=https://app.osmosis.zone/pool/3461`, `WOLO_MARKET_LABEL=WOLO Market`.
 
 ### 2026-05-05 watcher telemetry and funnel truth
 
@@ -127,6 +136,7 @@ curl -I https://aoe2war.com/challenge
 curl -I https://aoe2war.com/players
 curl -I https://aoe2war.com/contact-emaren
 curl -s https://aoe2war.com/api/lobby | jq '.leaderboard.trackedPlayers, (.leaderboard.entries | length)'
+curl -s https://aoe2war.com/api/lobby | jq '{ticker: (.liveTicker.items | length), market: .woloMarket.poolId}'
 curl -s https://aoe2war.com/api/bets | jq '.wolo | { onchainEscrowEnabled, betEscrowAddress }'
 journalctl -u aoe2hdbets-web.service -n 20 --no-pager
 ```
@@ -177,15 +187,19 @@ Expected result:
 The most important public product smoke tests are now:
 
 1. `/lobby` loads cleanly
-2. leaderboard renders and count matches entry length
-3. `/bets` reports live escrow truth and can still open a real lock flow in-browser
-4. tournament panel loads cleanly
-5. `/live-games` responds
-6. same-origin `/api/lobby` returns a believable snapshot shape
-7. a cancelled or failed Keplr/Ledger stake attempt records a `bet_wallet_error` activity event when it fails before stake-intent creation
-8. `/api/admin/users/rails` includes `walletFriction`, and `/admin/wolochain` renders the wallet-friction rail
-9. signed-stake recovery still requires a real tx hash, while recent no-proof stake intents remain visible as pending proof rows
-10. recent settled `/bets` results show one row per linked session, preferring challenge-linked books over watcher shadows
+2. Advanced `/lobby` shows the live ticker, Watch & Chat hero, WOLO market tile, and the existing Community Lobby below them
+3. Basic `/lobby` view still shows the simpler leaderboard/tournament/war-chest-first layout
+4. `/api/lobby` includes `liveTicker` and `woloMarket`
+5. `/admin` can create/enable/disable ticker messages without exposing controls to normal users
+6. leaderboard renders and count matches entry length
+7. `/bets` reports live escrow truth and can still open a real lock flow in-browser
+8. tournament panel loads cleanly
+9. `/live-games` responds
+10. same-origin `/api/lobby` returns a believable snapshot shape
+11. a cancelled or failed Keplr/Ledger stake attempt records a `bet_wallet_error` activity event when it fails before stake-intent creation
+12. `/api/admin/users/rails` includes `walletFriction`, and `/admin/wolochain` renders the wallet-friction rail
+13. signed-stake recovery still requires a real tx hash, while recent no-proof stake intents remain visible as pending proof rows
+14. recent settled `/bets` results show one row per linked session, preferring challenge-linked books over watcher shadows
 
 This matters more now than older homepage-only checks because the lobby/community shell is the real public spine.
 

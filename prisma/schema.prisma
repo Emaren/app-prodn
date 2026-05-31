@@ -391,6 +391,20 @@ model ChatMessageGuestReaction {
   @@map("chat_message_guest_reactions")
 }
 
+model LiveTickerMessage {
+  id        Int       @id @default(autoincrement())
+  text      String    @db.VarChar(180)
+  enabled   Boolean   @default(true)
+  priority  Int       @default(0)
+  expiresAt DateTime? @map("expires_at") @db.Timestamp(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  @@index([enabled, priority, expiresAt], map: "ix_live_ticker_messages_enabled_priority")
+  @@index([expiresAt], map: "ix_live_ticker_messages_expires_at")
+  @@map("live_ticker_messages")
+}
+
 model DirectConversation {
   id        Int      @id @default(autoincrement())
   pairKey   String   @unique(map: "uq_direct_conversations_pair_key") @map("pair_key") @db.VarChar(64)

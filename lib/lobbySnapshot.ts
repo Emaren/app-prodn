@@ -5,6 +5,7 @@ import { getBackendUpstreamBase } from "@/lib/backendUpstream";
 import { getFeaturedTournament, getLobbyMessages } from "@/lib/communityStore";
 import { loadLobbyLeaderboard } from "@/lib/lobbyLeaderboard";
 import { loadLobbyWoloEarnersBoard } from "@/lib/lobbyWoloEarners";
+import { getFallbackLiveTickerSnapshot, loadLiveTickerSnapshot } from "@/lib/liveTicker";
 import {
   LOBBY_ROOM_SLUG,
   getFallbackLeaderboard,
@@ -17,6 +18,7 @@ import {
 import { getLobbyMatchPlayedAtMs } from "@/lib/lobbyMatchTime";
 import { reconcileTournamentMatchProofs } from "@/lib/tournamentProofReconciler";
 import { loadWoloDevSnapshot } from "@/lib/woloDevSnapshot";
+import { loadWoloMarketSnapshot } from "@/lib/woloMarket";
 
 async function loadRecentMatches(): Promise<LobbyMatchRow[]> {
   try {
@@ -77,6 +79,7 @@ export async function loadLobbySnapshot(
   guestReactionSessionId?: string | null
 ): Promise<LobbySnapshot> {
   const wolo = await loadWoloDevSnapshot();
+  const woloMarket = loadWoloMarketSnapshot();
 
   try {
     await reconcileTournamentMatchProofs(prisma);
@@ -98,6 +101,12 @@ export async function loadLobbySnapshot(
       loadLobbyWoloEarnersBoard(prisma, { mode: "weekly" }),
       loadAoe2HdPulseSnapshot(),
     ]);
+    const liveTicker = await loadLiveTickerSnapshot(prisma, {
+      tournament,
+      leaderboard,
+      recentMatches,
+      woloMarket,
+    });
 
     const messages =
       tournamentMessages.length > 0 || tournament.roomSlug === LOBBY_ROOM_SLUG
@@ -116,6 +125,8 @@ export async function loadLobbySnapshot(
       wolo,
       woloEarners,
       aoe2hdPulse,
+      liveTicker,
+      woloMarket,
     };
   } catch (error) {
     console.warn("Falling back to lobby snapshot defaults:", error);
@@ -129,6 +140,8 @@ export async function loadLobbySnapshot(
       wolo,
       woloEarners: getFallbackWoloEarnersBoard(),
       aoe2hdPulse: getEmptyAoe2HdPulseSnapshot(),
+      liveTicker: getFallbackLiveTickerSnapshot(),
+      woloMarket,
     };
   }
 }

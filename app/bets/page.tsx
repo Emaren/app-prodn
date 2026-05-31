@@ -2426,7 +2426,7 @@ function BroadcastHeroTile({
         },
         {
           key: "god" as const,
-          label: "God View",
+          label: "Battle Cam",
           eyebrow: "Observer",
           tone: "gold" as const,
           feed: feeds.god,

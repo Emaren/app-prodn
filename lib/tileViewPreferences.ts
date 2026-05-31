@@ -14,6 +14,9 @@ export type TileViewPreferences = Partial<Record<TileViewKey, TileViewMode>>;
 
 const TILE_VIEW_KEY_SET = new Set<string>(TILE_VIEW_KEYS);
 const TILE_VIEW_MODE_SET = new Set<string>(TILE_VIEW_MODES);
+const DEFAULT_TILE_VIEW_MODES: TileViewPreferences = {
+  community_lobby: "advanced",
+};
 
 export function isTileViewKey(value: string | null | undefined): value is TileViewKey {
   return Boolean(value && TILE_VIEW_KEY_SET.has(value));
@@ -42,7 +45,7 @@ export function getTileViewMode(
   preferences: TileViewPreferences | null | undefined,
   tileKey: TileViewKey
 ): TileViewMode {
-  return preferences?.[tileKey] ?? "basic";
+  return preferences?.[tileKey] ?? DEFAULT_TILE_VIEW_MODES[tileKey] ?? "basic";
 }
 
 export function setTileViewPreference(

@@ -182,9 +182,9 @@ export function LobbyHero({
 
     onToggleTileViewMode();
   };
+  const tone = getLobbyPresentationTone(themeKey, viewMode);
 
   if (tileViewMode === "advanced") {
-    const tone = getLobbyPresentationTone(themeKey, viewMode);
     const pulseItems = buildPulseItems({
       pulse: aoe2hdPulse,
       leaderboard,
@@ -316,6 +316,16 @@ export function LobbyHero({
           </div>
         </div>
 
+        <div data-ignore-tile-toggle="true">
+          <LeaderboardPanel
+            leaderboard={leaderboard}
+            onlineCount={leaderboard.activePlayers}
+            themeKey={themeKey}
+            viewMode={viewMode}
+            onViewModeChange={onViewModeChange}
+          />
+        </div>
+
         <div
           className={
             isAuthenticated
@@ -360,27 +370,44 @@ export function LobbyHero({
       data-lobby-hero-stack="true"
       onClick={handleTileClick}
     >
-      <div className="flex flex-wrap items-center gap-3">
-        <div className={`text-sm uppercase tracking-[0.4em] ${accentTextClassName}`}>
-          Community Lobby
-        </div>
-        <div
-          className={`rounded-full px-3 py-1 text-xs ${
-            liveConnected
-              ? viewMode === "field"
-                ? "border border-emerald-300/30 bg-emerald-500/12 text-emerald-50"
-                : "border border-emerald-400/30 bg-emerald-500/10 text-emerald-100"
-              : "border border-white/10 bg-white/5 text-slate-300"
-          }`}
-        >
-          {liveConnected ? "Live updates connected" : "Polling fallback"}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className={`text-sm uppercase tracking-[0.4em] ${accentTextClassName}`}>
+            Community Lobby
+          </div>
+          <div
+            className={`rounded-full px-3 py-1 text-xs ${
+              liveConnected
+                ? viewMode === "field"
+                  ? "border border-emerald-300/30 bg-emerald-500/12 text-emerald-50"
+                  : "border border-emerald-400/30 bg-emerald-500/10 text-emerald-100"
+                : "border border-white/10 bg-white/5 text-slate-300"
+            }`}
+          >
+            {liveConnected ? "Live updates connected" : "Polling fallback"}
+          </div>
+
+          {wolo?.enabled && (
+            <div className={`rounded-full px-3 py-1 text-xs ${woloPillClassName}`}>
+              WoloChain {wolo.chainId}
+            </div>
+          )}
         </div>
 
-        {wolo?.enabled && (
-          <div className={`rounded-full px-3 py-1 text-xs ${woloPillClassName}`}>
-            WoloChain {wolo.chainId}
-          </div>
-        )}
+        <div className={`flex rounded-full border p-1 text-xs ${tone.viewToggle}`} data-ignore-tile-toggle="true">
+          {(["basic", "advanced"] as const).map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => onTileViewModeChange(mode)}
+              className={`rounded-full px-3 py-1 capitalize transition ${
+                tileViewMode === mode ? tone.viewToggleActive : "text-slate-400 hover:text-white"
+              }`}
+            >
+              {mode}
+            </button>
+          ))}
+        </div>
       </div>
 
       {authError && (

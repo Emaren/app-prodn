@@ -8,6 +8,7 @@ import {
   useEffect,
   useState,
 } from "react";
+import LiveTickerAdminPanel from "@/components/admin/LiveTickerAdminPanel";
 import { useUserAuth } from "@/context/UserAuthContext";
 import {
   type AdminReplayCandidate,
@@ -702,6 +703,8 @@ export default function AdminPage() {
         </div>
       </div>
 
+      <LiveTickerAdminPanel />
+
       <BroadcastPreviewUploadPanel
         targets={broadcastTargets}
         selectedTarget={selectedBroadcastTarget}
@@ -1227,7 +1230,7 @@ function BroadcastPreviewUploadPanel({
 function getBroadcastSlotLabel(target: BroadcastPreviewTarget, slot: BroadcastPreviewSlot) {
   if (slot === "left") return target.leftName || "Player 1";
   if (slot === "right") return target.rightName || "Player 2";
-  return "God View";
+  return "Battle Cam";
 }
 
 function formatBroadcastTargetTime(value: string | null) {

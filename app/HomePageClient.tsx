@@ -3,12 +3,15 @@
 import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LobbyChat } from "@/components/lobby/LobbyChat";
 import { LobbyHero } from "@/components/lobby/LobbyHero";
+import { LiveTickerStrip } from "@/components/lobby/LiveTickerStrip";
 import { getLobbyHeroBackground } from "@/components/lobby/lobbyPresentation";
 import { useLobbyAppearance } from "@/components/lobby/LobbyAppearanceContext";
 import { OnlinePlayersPanel } from "@/components/lobby/OnlinePlayersPanel";
 import { RecentMatchesPanel } from "@/components/lobby/RecentMatchesPanel";
 import { TopWoloEarnersTile } from "@/components/lobby/TopWoloEarnersTile";
 import { TournamentPanel } from "@/components/lobby/TournamentPanel";
+import { WatchAndChatHero } from "@/components/lobby/WatchAndChatHero";
+import { WoloMarketTile } from "@/components/lobby/WoloMarketTile";
 import { useTileViewPreference } from "@/components/tile-view/useTileViewPreference";
 import { buildChatItems } from "@/components/lobby/utils";
 import { useUserAuth } from "@/context/UserAuthContext";
@@ -139,6 +142,9 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
   const wolo = lobby?.wolo ?? null;
   const woloEarners = lobby?.woloEarners ?? null;
   const aoe2hdPulse = lobby?.aoe2hdPulse ?? null;
+  const liveTicker = lobby?.liveTicker ?? null;
+  const woloMarket = lobby?.woloMarket ?? null;
+  const isAdvancedLobby = communityLobbyTile.viewMode === "advanced";
 
   const chatItems = buildChatItems(messages);
   const latestChatMessageKey = useMemo(
@@ -469,6 +475,27 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
 
   return (
     <div className="space-y-4 overflow-x-hidden py-2 text-white sm:space-y-6 sm:py-3">
+      {isAdvancedLobby ? (
+        <>
+          <LiveTickerStrip
+            ticker={liveTicker}
+            themeKey={tileThemeKey}
+            viewMode={viewMode}
+          />
+          <WatchAndChatHero
+            tournament={tournament}
+            recentMatches={recentMatches}
+            themeKey={tileThemeKey}
+            viewMode={viewMode}
+          />
+          <WoloMarketTile
+            market={woloMarket}
+            themeKey={tileThemeKey}
+            viewMode={viewMode}
+          />
+        </>
+      ) : null}
+
       <section
         className={`overflow-hidden rounded-[1.75rem] border p-4 transition-all duration-500 sm:rounded-[2rem] sm:p-6 lg:p-8 ${heroShellClassName}`}
         style={heroStyle}
@@ -524,7 +551,7 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
         </div>
       </section>
 
-      <section className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr] lg:items-start">
+      <section id="lobby-chat" className="grid scroll-mt-24 gap-6 lg:grid-cols-[1.15fr_0.85fr] lg:items-start">
         <LobbyChat
           style={chatCardStyle}
           themeKey={tileThemeKey}

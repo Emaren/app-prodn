@@ -1,4 +1,6 @@
 import type { Aoe2HdPulseSnapshot } from "@/lib/aoe2HdPulse";
+import type { LiveTickerSnapshot } from "@/lib/liveTicker";
+import type { WoloMarketSnapshot } from "@/lib/woloMarket";
 
 export const LOBBY_ROOM_SLUG = "main-lobby";
 export const LOBBY_MESSAGE_MAX_CHARS = 280;
@@ -228,6 +230,8 @@ export type LobbySnapshot = {
   wolo: LobbyWoloSnapshot | null;
   woloEarners: LobbyWoloEarnersBoard;
   aoe2hdPulse: Aoe2HdPulseSnapshot;
+  liveTicker: LiveTickerSnapshot;
+  woloMarket: WoloMarketSnapshot;
 };
 
 export function slugifyTournamentTitle(value: string) {
