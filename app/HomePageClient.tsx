@@ -485,6 +485,7 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
           <WatchAndChatHero
             tournament={tournament}
             recentMatches={recentMatches}
+            messages={messages}
             themeKey={tileThemeKey}
             viewMode={viewMode}
           />

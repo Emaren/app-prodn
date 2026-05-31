@@ -20,7 +20,7 @@ It currently owns the premium lobby/community surface, leaderboard presentation,
 - Prisma 7 (`@prisma/client` + `@prisma/adapter-pg`) for user/profile/community APIs
 - Same-origin browser API routes for replay upload, lobby snapshot, inbox/admin actions, and appearance state
 - Premium lobby presentation layer with theme circles and lobby-specific shell behavior
-- Advanced `/lobby` arena stack with the live ticker, Watch & Chat hero, WOLO market tile, and the preserved Basic community lobby toggle
+- Advanced `/lobby` arena stack with the moving live ticker, Watch & Chat hero/comments rail, compact WOLO swap tile, and the preserved Basic community lobby toggle
 - Lazy client islands for wallet-heavy `/wolo`, `/wallet`, and `/connect-wallet` routes so the server shell paints with a small first-load bundle
 
 ## Shipped public surfaces
@@ -77,7 +77,7 @@ Common:
 - `INTERNAL_API_KEY` (optional; forwarded on replay upload when backend enforces API keys)
 - `ALLOW_GUEST_SESSIONS=false` (recommended; keep guest sessions off so replay evidence ties to signed identities)
 - `DIRECT_MESSAGE_ATTACHMENT_DIR` (optional; default `storage/direct-message-attachments/`; new inbox uploads store file refs there instead of base64 rows)
-- `WOLO_OSMOSIS_POOL_ID=3461` / `WOLO_OSMOSIS_POOL_URL=https://app.osmosis.zone/pool/3461` / `WOLO_MARKET_LABEL=WOLO Market` (optional display config for the Advanced lobby market tile and ticker)
+- `WOLO_OSMOSIS_POOL_ID=3461` / `WOLO_OSMOSIS_POOL_URL=https://app.osmosis.zone/pool/3461` / `WOLO_MARKET_LABEL=WOLO Market` / `WOLO_USD_PRICE_DEFAULT=0.000100` / `WOLO_USD_PRICE=0.000100` (optional display config for the Advanced lobby market tile and ticker)
 
 WOLO betting / settlement:
 
@@ -173,7 +173,7 @@ python /var/www/AoE2HDBets/api-prodn/scripts/set_admin.py --email you@example.co
 ## Current notes
 
 - `/lobby` is now a real product destination with leaderboard + tournament surface
-- `/lobby` defaults to Advanced view: a thin live ticker, Watch & Chat arena hero, WOLO / USDC Osmosis market tile, then the existing Community Lobby surface. Basic view remains available and preserves the simpler lobby-first layout.
+- `/lobby` defaults to Advanced view: a moving live ticker, Watch & Chat arena hero with comments to the right and reactions under the video, a compact WOLO / USDC swap tile, then the existing Community Lobby surface. Basic view remains available and preserves the simpler lobby-first layout with a low-glare outline toggle.
 - Admins manage custom live ticker messages from `/admin`; enabled messages are text-only, ordered by priority, and mixed with system ticker items from tournament/replay/lobby/WOLO market state.
 - `/bets` now supports real Keplr-signed WOLO stake locks when escrow env is configured, and the wager is only recorded after the stake tx verifies against WoloChain REST
 - `/staking` uses real Keplr stake transfers into the staking wallet, app-side staking ledger rows, and staking-wallet-signed WoloChain transfers for unstake. User max-unstake follows confirmed staked principal; the staking wallet reserve/headroom is treated as operator-funded and surfaces as an operator top-up warning when the wallet cannot cover remaining confirmed stake plus reserve after the unstake.

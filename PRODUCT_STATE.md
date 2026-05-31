@@ -20,7 +20,7 @@ The app is no longer just a replay/stat shell. It now has a real public product 
 Current strengths:
 - premium dark/gold/blue theme system with 7 theme circles
 - `/lobby` now feels like a real destination, not filler
-- `/lobby` now defaults to Advanced view with a live ticker, Watch & Chat arena hero, WOLO market tile, and the existing Community Lobby pushed below the arena stack
+- `/lobby` now defaults to Advanced view with a moving live ticker, Watch & Chat arena hero with comments on the right and reactions below the video, a compact WOLO swap tile, and the existing Community Lobby pushed below the arena stack
 - Basic view remains available behind the lobby toggle and keeps the simpler leaderboard/tournament/war-chest-first layout intact
 - admin-created text ticker messages are managed from `/admin` and combine with system ticker items from tournament, replay, lobby, and WOLO market state
 - the Advanced Watch & Chat hero prefers real live-game/session data, then recent completed sessions, then the latest verified replay or next tournament state
@@ -133,7 +133,7 @@ Current state:
 - gifts exist in app logic
 - token rail is visible in product language and navigation
 - wallet snapshot is the right-rail anchor on `/wolo`, with the tight `WOLO Market` tile living directly below it and the starter faucet claim strip tucked underneath
-- `/lobby` now presents the WOLO / USDC Osmosis 3461 market tile in Advanced view with graceful price-unavailable and registry-metadata-pending states instead of inventing a live price
+- `/lobby` now presents the WOLO / USDC Osmosis 3461 market tile in Advanced view as a logo/price/swap surface, defaulting to `1 WOLO = $0.000100` unless `WOLO_USD_PRICE` overrides it
 - `/wolo` now has a real app-side starter faucet claim route that sends `2 WOLO`, enforces a 24-hour cooldown, and updates the wallet snapshot from the returned balance
 - default `/wolo` hero keeps the simpler legacy action row, while premium mode uses the two-lane action dock with borderless utility pills so `Open Ping.pub` stays grouped without a harsh white outline treatment
 - default WOLO runtime/daemon consoles stay in the raw matrix style without per-line separators, but the stat-card labels/values use the normal slate/white treatment again; premium runtime/daemon consoles keep the darker structured shell
@@ -201,7 +201,7 @@ Still wanted:
 
 - player profile pages lag behind directory and lobby polish
 - tournament presentation is good, but not yet “must-watch”
-- Watch & Chat reactions are intentionally lightweight/local for now; persistent match-scoped comments need a dedicated context table or reuse plan before they become durable product state
+- Watch & Chat reactions are intentionally lightweight/local for now; the right-side hero comments reuse the public lobby messages, and persistent match-scoped comments need a dedicated context table or reuse plan before they become durable product state
 - leaderboard is now real, but deeper ranking semantics still need tightening
 - some surfaces still carry more explanatory copy than ideal
 - token rail is now partially real, but live wallet edge cases still need hardening

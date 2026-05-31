@@ -17,7 +17,7 @@ Together, they power the AoE2HDBets public product, replay ingest pipeline, and 
 
 - Next.js web app at `aoe2war.com`
 - Public product shell for lobby, leaderboard, players, rivalries, live-games, requests, inbox/admin, and `$WOLO`
-- Advanced lobby arena stack: live ticker, Watch & Chat hero, WOLO market tile, and preserved Basic lobby toggle
+- Advanced lobby arena stack: moving live ticker, Watch & Chat hero/comments rail, compact WOLO swap tile, and preserved Basic lobby toggle
 - Prisma-backed user/profile/community APIs and auth session cookie handling
 - Same-origin browser API routes that proxy or reshape selected `api-prodn` data
 - Lazy client-loader shells for wallet-heavy routes so `/wolo`, `/wallet`, and `/connect-wallet` avoid pulling Keplr/Cosmos bundles into the initial server page
@@ -43,7 +43,7 @@ AoE2HDBets is no longer just a replay parser plus a few pages.
 The main public spine now includes:
 
 - a real `/lobby` community surface
-- Advanced `/lobby` as the default public first impression, with Basic view preserved for the simpler community layout
+- Advanced `/lobby` as the default public first impression, with Basic view preserved for the simpler community layout and a low-glare outline toggle
 - shipped leaderboard presentation
 - tournament panel / queue / bracket-preview product UI
 - players, rivalries, and live-games as real first-class destinations

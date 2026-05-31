@@ -60,10 +60,10 @@ journalctl -u aoe2hdbets-web.service -n 40 --no-pager
 ### 2026-05-30 Advanced lobby arena and live ticker
 
 - Added `live_ticker_messages` for admin-managed text ticker messages.
-- `/lobby` defaults to Advanced view with a header ticker, Watch & Chat hero, WOLO market tile, then the existing Community Lobby content.
+- `/lobby` defaults to Advanced view with a moving header ticker, Watch & Chat hero/comments rail, compact WOLO swap tile, then the existing Community Lobby content.
 - Basic view remains available and should preserve the simpler lobby-first layout.
 - Deployment requires `npx prisma migrate deploy` before restarting `aoe2hdbets-web.service`.
-- Optional market display env: `WOLO_OSMOSIS_POOL_ID=3461`, `WOLO_OSMOSIS_POOL_URL=https://app.osmosis.zone/pool/3461`, `WOLO_MARKET_LABEL=WOLO Market`.
+- Optional market display env: `WOLO_OSMOSIS_POOL_ID=3461`, `WOLO_OSMOSIS_POOL_URL=https://app.osmosis.zone/pool/3461`, `WOLO_MARKET_LABEL=WOLO Market`, `WOLO_USD_PRICE_DEFAULT=0.000100`, `WOLO_USD_PRICE=0.000100`.
 
 ### 2026-05-05 watcher telemetry and funnel truth
 
@@ -187,7 +187,7 @@ Expected result:
 The most important public product smoke tests are now:
 
 1. `/lobby` loads cleanly
-2. Advanced `/lobby` shows the live ticker, Watch & Chat hero, WOLO market tile, and the existing Community Lobby below them
+2. Advanced `/lobby` shows the moving live ticker, Watch & Chat hero with comments to the right and reactions under the video, WOLO swap tile, and the existing Community Lobby below them
 3. Basic `/lobby` view still shows the simpler leaderboard/tournament/war-chest-first layout
 4. `/api/lobby` includes `liveTicker` and `woloMarket`
 5. `/admin` can create/enable/disable ticker messages without exposing controls to normal users

@@ -421,7 +421,8 @@ function getLobbyAccentTone(viewMode: LobbyViewMode): LobbyAccentTone {
       secondaryButton:
         "border-emerald-200/18 text-emerald-50/90 hover:border-emerald-200/32 hover:bg-emerald-500/10 hover:text-white",
       viewToggle: "border-emerald-200/12 bg-emerald-950/25 text-emerald-50/85",
-      viewToggleActive: "bg-emerald-300 text-slate-950",
+      viewToggleActive:
+        "bg-transparent text-emerald-50 ring-1 ring-inset ring-emerald-200/65 shadow-[0_0_18px_rgba(110,231,183,0.08)]",
       rankBadge: "border-emerald-300/25 bg-emerald-500/14 text-emerald-50",
       rating: "text-emerald-100",
       activeBadge: "border-emerald-300/25 bg-emerald-500/15 text-emerald-50",
@@ -440,7 +441,8 @@ function getLobbyAccentTone(viewMode: LobbyViewMode): LobbyAccentTone {
     secondaryButton:
       "border-white/15 text-white/85 hover:border-white/30 hover:bg-white/10 hover:text-white",
     viewToggle: "border-white/12 bg-white/5 text-slate-200/80",
-    viewToggleActive: "bg-white text-slate-950",
+    viewToggleActive:
+      "bg-transparent text-white ring-1 ring-inset ring-white/70 shadow-[0_0_18px_rgba(255,255,255,0.08)]",
     rankBadge: "border-amber-300/20 bg-amber-300/10 text-amber-100",
     rating: "text-amber-100",
     activeBadge: "border-emerald-400/25 bg-emerald-500/10 text-emerald-200",

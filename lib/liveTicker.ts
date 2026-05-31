@@ -203,7 +203,9 @@ function buildSystemTickerItems({
     items.push({
       key: `system-wolo-market-${woloMarket.poolId}`,
       text: cleanTickerText(
-        `MARKET · ${woloMarket.pairLabel} pool live on Osmosis ${woloMarket.poolId}`
+        `MARKET · 1 WOLO = ${
+          woloMarket.priceUsd == null ? "$0.000100" : `$${woloMarket.priceUsd.toFixed(6)}`
+        } · ${woloMarket.pairLabel} pool ${woloMarket.poolId}`
       ),
       source: "system",
       priority: 25,

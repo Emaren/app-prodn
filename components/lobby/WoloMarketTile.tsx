@@ -1,7 +1,9 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
-import { ArrowUpRight, Coins } from "lucide-react";
+import { ArrowLeftRight, ArrowUpRight } from "lucide-react";
+import { useMemo, useState } from "react";
 
 import {
   getLobbyPresentationTone,
@@ -16,63 +18,130 @@ type WoloMarketTileProps = {
   viewMode: LobbyViewMode;
 };
 
+const WOLO_LOGO_SRC = "/legacy/wolo-logo-transparent.png";
+const DEFAULT_WOLO_PRICE_USD = 0.0001;
+
+function formatUsdPrice(value: number) {
+  return `$${value.toFixed(6)}`;
+}
+
+function formatSwapAmount(value: number) {
+  if (!Number.isFinite(value)) return "0";
+  if (value >= 1_000_000) return value.toLocaleString(undefined, { maximumFractionDigits: 0 });
+  if (value >= 1) return value.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  return value.toLocaleString(undefined, { minimumFractionDigits: 6, maximumFractionDigits: 6 });
+}
+
 export function WoloMarketTile({ market, themeKey, viewMode }: WoloMarketTileProps) {
   const tone = getLobbyPresentationTone(themeKey, viewMode);
   const poolId = market?.poolId ?? "3461";
-  const pairLabel = market?.pairLabel ?? "WOLO / USDC";
+  const poolUrl = market?.poolUrl ?? "https://app.osmosis.zone/pool/3461";
+  const priceUsd = market?.priceUsd ?? DEFAULT_WOLO_PRICE_USD;
+  const [amount, setAmount] = useState("1000");
+  const [swapMode, setSwapMode] = useState<"woloToUsdc" | "usdcToWolo">("woloToUsdc");
+  const numericAmount = Number(amount);
+  const quote = useMemo(() => {
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) return 0;
+    return swapMode === "woloToUsdc" ? numericAmount * priceUsd : numericAmount / priceUsd;
+  }, [numericAmount, priceUsd, swapMode]);
+  const fromSymbol = swapMode === "woloToUsdc" ? "WOLO" : "USDC";
+  const toSymbol = swapMode === "woloToUsdc" ? "USDC" : "WOLO";
 
   return (
-    <section className={`rounded-[2rem] border p-5 sm:p-6 ${tone.panelShell}`}>
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-        <div className="min-w-0">
-          <div className={`flex items-center gap-2 text-xs uppercase tracking-[0.35em] ${tone.accentText}`}>
-            <Coins className="h-4 w-4" aria-hidden="true" />
+    <section className={`overflow-hidden rounded-[2rem] border p-5 sm:p-6 ${tone.panelShell}`}>
+      <div className="mx-auto max-w-4xl">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className={`text-xs uppercase tracking-[0.35em] ${tone.accentText}`}>
             WOLO Market
           </div>
-          <h2 className="mt-3 break-words text-2xl font-semibold text-white sm:text-3xl">
-            {pairLabel} pool live on Osmosis {poolId}
-          </h2>
-          <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-300">
-            <span className={`rounded-full border px-3 py-1.5 ${tone.neutralPill}`}>
-              {market?.priceUsd === null || market?.priceUsd === undefined
-                ? "Price unavailable"
-                : `$${market.priceUsd.toFixed(6)}`}
-            </span>
-            <span className="rounded-full border border-amber-300/20 bg-amber-300/10 px-3 py-1.5 text-amber-100">
-              Registry metadata pending
-            </span>
-            <span className={`rounded-full border px-3 py-1.5 ${tone.neutralPill}`}>
-              Osmosis may show WOLO as an IBC denom
-            </span>
+          <span className={`rounded-full border px-3 py-1 text-[11px] ${tone.neutralPill}`}>
+            Pool #{poolId}
+          </span>
+        </div>
+
+        <div className="mt-5 flex min-w-0 flex-wrap items-center justify-center gap-4 sm:gap-7">
+          <div className="flex h-20 w-20 items-center justify-center rounded-full border border-amber-200/22 bg-[radial-gradient(circle_at_32%_24%,rgba(253,224,71,0.18),transparent_38%),rgba(251,191,36,0.08)] shadow-[0_0_48px_rgba(251,191,36,0.14)] sm:h-24 sm:w-24">
+            <Image
+              src={WOLO_LOGO_SRC}
+              alt="WOLO"
+              width={62}
+              height={62}
+              className="h-16 w-16 object-contain"
+            />
+          </div>
+
+          <div className="flex min-w-[10rem] flex-col items-center">
+            <div className="text-4xl font-semibold text-white">=</div>
+            <h2 className="mt-2 whitespace-nowrap text-center text-2xl font-semibold tracking-tight text-white sm:text-4xl">
+              {formatUsdPrice(priceUsd)}
+            </h2>
+            <div className="mt-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-slate-300">
+              1 WOLO
+            </div>
+          </div>
+
+          <div className="flex h-20 w-20 items-center justify-center rounded-full border border-sky-200/25 bg-[radial-gradient(circle_at_32%_24%,rgba(125,211,252,0.22),transparent_38%),rgba(37,99,235,0.18)] shadow-[0_0_48px_rgba(56,189,248,0.12)] sm:h-24 sm:w-24">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full border border-white/28 bg-[#2775ca] text-sm font-black text-white shadow-[inset_0_0_0_3px_rgba(255,255,255,0.08)]">
+              USDC
+            </div>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 lg:justify-end">
-          {market?.poolUrl ? (
-            <Link
-              href={market.poolUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-amber-300 px-5 text-sm font-semibold text-slate-950 transition hover:bg-amber-200"
-            >
-              Buy / Sell on Osmosis
-              <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
-            </Link>
-          ) : (
+        <div className={`mx-auto mt-5 max-w-2xl rounded-[1.45rem] border p-3 ${tone.insetPanel}`}>
+          <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-center">
+            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-2xl border border-white/10 bg-slate-950/35 px-3 py-2.5">
+              <input
+                aria-label={`Amount of ${fromSymbol} to swap`}
+                inputMode="decimal"
+                value={amount}
+                onChange={(event) => setAmount(event.target.value.replace(/[^0-9.]/g, ""))}
+                className="min-w-0 bg-transparent text-xl font-semibold text-white outline-none placeholder:text-slate-500"
+                placeholder="0"
+              />
+              <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-xs font-semibold text-slate-100">
+                {fromSymbol}
+              </span>
+            </div>
+
             <button
               type="button"
-              disabled
-              className="inline-flex min-h-12 items-center justify-center rounded-full border border-white/10 px-5 text-sm font-semibold text-slate-500"
+              onClick={() =>
+                setSwapMode((current) => (current === "woloToUsdc" ? "usdcToWolo" : "woloToUsdc"))
+              }
+              aria-label="Flip WOLO and USDC"
+              title="Flip WOLO and USDC"
+              className="mx-auto inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/12 bg-white/[0.05] text-slate-100 transition hover:border-white/28 hover:bg-white/[0.1]"
             >
-              Osmosis Link Pending
+              <ArrowLeftRight className="h-4 w-4" aria-hidden="true" />
             </button>
-          )}
-          <Link
-            href="/wolo"
-            className={`inline-flex min-h-12 items-center justify-center rounded-full border px-5 text-sm transition ${tone.secondaryButton}`}
-          >
-            Open $WOLO
-          </Link>
+
+            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2.5">
+              <div className="min-w-0 truncate text-xl font-semibold text-white">
+                {formatSwapAmount(quote)}
+              </div>
+              <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-xs font-semibold text-slate-100">
+                {toSymbol}
+              </span>
+            </div>
+          </div>
+
+          <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto]">
+            <Link
+              href={poolUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-amber-300 px-5 text-sm font-semibold text-slate-950 transition hover:bg-amber-200"
+            >
+              Swap
+              <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+            </Link>
+            <Link
+              href="/wolo"
+              className={`inline-flex min-h-11 items-center justify-center rounded-full border px-4 text-sm transition ${tone.secondaryButton}`}
+            >
+              $WOLO
+            </Link>
+          </div>
         </div>
       </div>
     </section>
