@@ -258,10 +258,12 @@ export function WatchAndChatHero({
     };
   }, [selectedWar?.sessionKey]);
 
-  const primaryStream =
-    streams.find((stream) => stream.isPrimary && stream.canEmbed) ??
-    streams.find((stream) => stream.canEmbed) ??
-    null;
+  const shouldEmbedStream = selectedWar.statusLabel === "Live";
+  const primaryStream = shouldEmbedStream
+    ? streams.find((stream) => stream.isPrimary && stream.canEmbed) ??
+      streams.find((stream) => stream.canEmbed) ??
+      null
+    : null;
   const embedSrc = getEmbedSrc(primaryStream, parentHost);
   const actionHref = primaryStream?.url || selectedWar.href;
 
