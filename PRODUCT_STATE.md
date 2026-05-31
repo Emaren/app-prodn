@@ -20,10 +20,10 @@ The app is no longer just a replay/stat shell. It now has a real public product 
 Current strengths:
 - premium dark/gold/blue theme system with 7 theme circles
 - `/lobby` now feels like a real destination, not filler
-- `/lobby` now defaults to Advanced view with a moving live ticker, Watch & Chat arena hero with comments on the right and reactions below the video, a compact WOLO swap tile, and the existing Community Lobby pushed below the arena stack
+- `/lobby` now defaults to Advanced view with a moving live ticker, Watch & Chat arena hero with comments on the right, reactions plus a compact bet slip below the video, a compact WOLO swap tile, and the existing Community Lobby pushed below the arena stack
 - Basic view remains available behind the lobby toggle and keeps the simpler leaderboard/tournament/war-chest-first layout intact
 - admin-created text ticker messages are managed from `/admin` and combine with system ticker items from tournament, replay, lobby, and WOLO market state
-- the Advanced Watch & Chat hero prefers real live-game/session data, then recent completed sessions, then the latest verified replay or next tournament state
+- the Advanced Watch & Chat hero prefers real live-game/session data, then recent completed sessions, then the latest verified replay or next tournament state; its embedded bet slip reads `/api/bets` and hands wager locking to `/bets`
 - leaderboard is shipped into the lobby surface
 - leaderboard count now matches rendered entries
 - leaderboard cards feel premium and readable
@@ -201,7 +201,7 @@ Still wanted:
 
 - player profile pages lag behind directory and lobby polish
 - tournament presentation is good, but not yet “must-watch”
-- Watch & Chat reactions are intentionally lightweight/local for now; the right-side hero comments reuse the public lobby messages, and persistent match-scoped comments need a dedicated context table or reuse plan before they become durable product state
+- Watch & Chat reactions are intentionally lightweight/local for now; the right-side hero comments reuse the public lobby messages, the hero bet slip is a `/bets` handoff, and persistent match-scoped comments need a dedicated context table or reuse plan before they become durable product state
 - leaderboard is now real, but deeper ranking semantics still need tightening
 - some surfaces still carry more explanatory copy than ideal
 - token rail is now partially real, but live wallet edge cases still need hardening

@@ -10,6 +10,7 @@ import {
   type LobbyThemeKey,
   type LobbyViewMode,
 } from "@/components/lobby/lobbyPresentation";
+import type { BetBoardMarket, BetBoardSnapshot, BetSide } from "@/lib/bets";
 import type { LobbyMatchRow, LobbyMessage, LobbySnapshot } from "@/lib/lobby";
 import type { LiveGameSession } from "@/lib/liveSessionSnapshot";
 import type { WatchStreamPayload } from "@/lib/watchStreams";
@@ -39,6 +40,8 @@ type FeaturedWar = {
 };
 
 type ReactionKey = "fire" | "sword" | "skull" | "wolo";
+
+const HERO_STAKE_OPTIONS = [10, 25, 50, 100] as const;
 
 const REACTIONS: Array<{
   key: ReactionKey;
@@ -148,6 +151,27 @@ function getEmbedSrc(stream: WatchStreamPayload | null, parentHost: string | nul
   return null;
 }
 
+function formatCompactWolo(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    maximumFractionDigits: 0,
+    notation: value >= 1000 ? "compact" : "standard",
+  }).format(value);
+}
+
+function projectHeroReturn(stakeWolo: number, selectedPoolWolo: number, oppositePoolWolo: number) {
+  if (stakeWolo <= 0) return 0;
+  const nextSelectedPool = selectedPoolWolo + stakeWolo;
+  if (nextSelectedPool <= 0) return stakeWolo;
+  return Math.max(
+    stakeWolo,
+    Math.round(stakeWolo + oppositePoolWolo * (stakeWolo / nextSelectedPool))
+  );
+}
+
+function safeStakeDraft(value: string) {
+  return value.replace(/[^0-9]/g, "").slice(0, 7);
+}
+
 export function WatchAndChatHero({
   tournament,
   recentMatches,
@@ -160,6 +184,9 @@ export function WatchAndChatHero({
   const [streams, setStreams] = useState<WatchStreamPayload[]>([]);
   const [selectedSessionKey, setSelectedSessionKey] = useState<string | null>(null);
   const [parentHost, setParentHost] = useState<string | null>(null);
+  const [betBoard, setBetBoard] = useState<BetBoardSnapshot | null>(null);
+  const [selectedBetSide, setSelectedBetSide] = useState<BetSide>("left");
+  const [stakeDraft, setStakeDraft] = useState("25");
   const [reactionCounts, setReactionCounts] = useState<Record<ReactionKey, number>>({
     fire: 0,
     sword: 0,
@@ -192,6 +219,33 @@ export function WatchAndChatHero({
     void loadLiveGames();
     const interval = window.setInterval(() => {
       void loadLiveGames();
+    }, 30_000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadBetBoard() {
+      try {
+        const response = await fetch("/api/bets", { cache: "no-store" });
+        if (!response.ok) return;
+        const payload = (await response.json()) as BetBoardSnapshot;
+        if (!cancelled) {
+          setBetBoard(payload);
+        }
+      } catch (error) {
+        console.warn("Failed to load Watch & Chat bet slip:", error);
+      }
+    }
+
+    void loadBetBoard();
+    const interval = window.setInterval(() => {
+      void loadBetBoard();
     }, 30_000);
 
     return () => {
@@ -269,6 +323,7 @@ export function WatchAndChatHero({
   const embedSrc = getEmbedSrc(primaryStream, parentHost);
   const actionHref = primaryStream?.url || selectedWar.href;
   const commentMessages = messages.slice(-5);
+  const heroBetMarket = betBoard?.featuredMarket ?? betBoard?.openMarkets?.[0] ?? null;
 
   return (
     <section className={`overflow-hidden rounded-[2rem] border ${tone.panelShell}`}>
@@ -395,6 +450,16 @@ export function WatchAndChatHero({
                 </button>
               ))}
             </div>
+
+            <HeroBetSlip
+              market={heroBetMarket}
+              selectedWar={selectedWar}
+              selectedSide={selectedBetSide}
+              stakeDraft={stakeDraft}
+              onSelectedSideChange={setSelectedBetSide}
+              onStakeDraftChange={setStakeDraft}
+              tone={tone}
+            />
           </div>
         </div>
 
@@ -435,6 +500,155 @@ export function WatchAndChatHero({
         </aside>
       </div>
     </section>
+  );
+}
+
+function HeroBetSlip({
+  market,
+  selectedWar,
+  selectedSide,
+  stakeDraft,
+  onSelectedSideChange,
+  onStakeDraftChange,
+  tone,
+}: {
+  market: BetBoardMarket | null;
+  selectedWar: FeaturedWar;
+  selectedSide: BetSide;
+  stakeDraft: string;
+  onSelectedSideChange: (side: BetSide) => void;
+  onStakeDraftChange: (value: string) => void;
+  tone: ReturnType<typeof getLobbyPresentationTone>;
+}) {
+  const fallbackNames = selectedWar.players.length >= 2
+    ? [selectedWar.players[0], selectedWar.players[1]]
+    : ["Player 1", "Player 2"];
+  const leftName = market?.left.name || fallbackNames[0];
+  const rightName = market?.right.name || fallbackNames[1];
+  const stakeWolo = Math.max(0, Math.round(Number(stakeDraft) || 0));
+  const selectedPool = selectedSide === "left" ? market?.left.poolWolo ?? 0 : market?.right.poolWolo ?? 0;
+  const oppositePool = selectedSide === "left" ? market?.right.poolWolo ?? 0 : market?.left.poolWolo ?? 0;
+  const projectedReturn = market
+    ? projectHeroReturn(stakeWolo, selectedPool, oppositePool)
+    : stakeWolo;
+  const betHref = market
+    ? `/bets?market=${market.id}&side=${selectedSide}&stake=${stakeWolo || 25}`
+    : "/bets";
+
+  return (
+    <div className={`mt-4 rounded-[1.45rem] border p-4 ${tone.subduedCard}`}>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div className={`text-[10px] uppercase tracking-[0.28em] ${tone.accentText}`}>
+            Betting
+          </div>
+          <div className="mt-1 text-sm font-semibold text-white">
+            {market?.title || selectedWar.title}
+          </div>
+        </div>
+        <span className={`rounded-full border px-3 py-1 text-xs ${tone.neutralPill}`}>
+          {market ? `${formatCompactWolo(market.totalPotWolo)} WOLO pot` : "Book arming"}
+        </span>
+      </div>
+
+      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+        <HeroBetSideButton
+          active={selectedSide === "left"}
+          name={leftName}
+          poolWolo={market?.left.poolWolo ?? null}
+          crowdPercent={market?.left.crowdPercent ?? null}
+          onClick={() => onSelectedSideChange("left")}
+        />
+        <HeroBetSideButton
+          active={selectedSide === "right"}
+          name={rightName}
+          poolWolo={market?.right.poolWolo ?? null}
+          crowdPercent={market?.right.crowdPercent ?? null}
+          onClick={() => onSelectedSideChange("right")}
+        />
+      </div>
+
+      <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+        <div>
+          <div className="flex flex-wrap gap-1.5">
+            {HERO_STAKE_OPTIONS.map((stake) => (
+              <button
+                key={stake}
+                type="button"
+                onClick={() => onStakeDraftChange(String(stake))}
+                className={`rounded-full border px-3 py-1.5 text-xs transition ${
+                  stakeDraft === String(stake)
+                    ? "border-amber-200/45 bg-amber-300/10 text-amber-50"
+                    : "border-white/10 bg-white/[0.04] text-slate-300 hover:border-white/24 hover:text-white"
+                }`}
+              >
+                {stake}
+              </button>
+            ))}
+          </div>
+          <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-2xl border border-white/10 bg-slate-950/35 px-3 py-2.5">
+            <input
+              aria-label="WOLO stake"
+              inputMode="numeric"
+              value={stakeDraft}
+              onChange={(event) => onStakeDraftChange(safeStakeDraft(event.target.value))}
+              className="min-w-0 bg-transparent text-lg font-semibold text-white outline-none placeholder:text-slate-500"
+              placeholder="25"
+            />
+            <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-xs font-semibold text-slate-100">
+              WOLO
+            </span>
+          </div>
+        </div>
+
+        <div className="grid gap-2 sm:grid-cols-[1fr_auto] lg:min-w-[18rem]">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2.5">
+            <div className="text-[10px] uppercase tracking-[0.2em] text-slate-500">If right</div>
+            <div className="mt-1 text-lg font-semibold text-white">
+              {formatCompactWolo(projectedReturn)} WOLO
+            </div>
+          </div>
+          <Link
+            href={betHref}
+            className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-amber-300 px-5 text-sm font-semibold text-slate-950 transition hover:bg-amber-200"
+          >
+            Open Slip
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function HeroBetSideButton({
+  active,
+  name,
+  poolWolo,
+  crowdPercent,
+  onClick,
+}: {
+  active: boolean;
+  name: string;
+  poolWolo: number | null;
+  crowdPercent: number | null;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-2xl border px-3 py-3 text-left transition ${
+        active
+          ? "border-amber-200/45 bg-amber-300/10 text-white shadow-[inset_0_0_0_1px_rgba(251,191,36,0.08)]"
+          : "border-white/10 bg-white/[0.04] text-slate-300 hover:border-white/24 hover:text-white"
+      }`}
+    >
+      <div className="truncate text-sm font-semibold">{name}</div>
+      <div className="mt-1 flex items-center justify-between gap-3 text-[11px] text-slate-400">
+        <span>{poolWolo == null ? "new side" : `${formatCompactWolo(poolWolo)} WOLO`}</span>
+        <span>{crowdPercent == null ? "open" : `${crowdPercent}% crowd`}</span>
+      </div>
+    </button>
   );
 }
 
