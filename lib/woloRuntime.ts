@@ -156,6 +156,7 @@ function getSourceLabel(value: string) {
 function getRpcSource() {
   return (
     process.env.WOLO_INTERNAL_RPC_URL ||
+    process.env.WOLO_RPC_URL ||
     process.env.NEXT_PUBLIC_WOLO_RPC_URL ||
     woloChainConfig.rpc
   );
@@ -164,6 +165,7 @@ function getRpcSource() {
 function getRestSource() {
   return (
     process.env.WOLO_INTERNAL_REST_URL ||
+    process.env.WOLO_REST_URL ||
     process.env.NEXT_PUBLIC_WOLO_REST_URL ||
     woloChainConfig.rest
   );
@@ -184,6 +186,7 @@ function getQueryCliNode() {
   return (
     process.env.WOLO_FAUCET_NODE_RPC?.trim() ||
     process.env.WOLO_INTERNAL_RPC_URL?.trim() ||
+    process.env.WOLO_RPC_URL?.trim() ||
     process.env.NEXT_PUBLIC_WOLO_RPC_URL?.trim() ||
     "http://127.0.0.1:26657"
   );

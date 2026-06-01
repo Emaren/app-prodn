@@ -18,12 +18,14 @@ export const WOLO_MAX_SUPPLY_DISPLAY = "100,000,000";
 
 export const WOLO_RPC_URL =
   process.env.NEXT_PUBLIC_WOLO_RPC_URL?.trim() ||
+  process.env.WOLO_RPC_URL?.trim() ||
   (WOLO_CHAIN_ID === WOLO_MAINNET_CHAIN_ID
     ? "https://rpc-mainnet.aoe2war.com"
     : "https://aoe2war.com/rpc");
 
 export const WOLO_REST_URL =
   process.env.NEXT_PUBLIC_WOLO_REST_URL?.trim() ||
+  process.env.WOLO_REST_URL?.trim() ||
   (WOLO_CHAIN_ID === WOLO_MAINNET_CHAIN_ID
     ? "https://rest-mainnet.aoe2war.com"
     : "https://aoe2war.com/rest");

@@ -4,6 +4,12 @@ import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 import { pendingWoloClaimNameKeys } from "@/lib/pendingWoloClaims";
 import { getWoloMainnetDisplayStartAt, isWoloMainnet } from "@/lib/woloChain";
+import {
+  WOLO_INDEXED_TRANSFER_SOURCE,
+  WOLO_MAINNET_BASE_DENOM,
+  WOLO_MAINNET_CHAIN_ID,
+  buildWoloAddressBook,
+} from "@/lib/woloMainnetTransfers";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -88,6 +94,7 @@ export async function GET(request: NextRequest) {
         uid: true,
         inGameName: true,
         steamPersonaName: true,
+        walletAddress: true,
       },
     });
 
@@ -100,8 +107,19 @@ export async function GET(request: NextRequest) {
       user.steamPersonaName,
       user.uid,
     ]);
+    const addressBook = await buildWoloAddressBook(prisma).catch(() => new Map());
+    const linkedWalletAddresses = new Set<string>();
+    if (user.walletAddress?.trim()) {
+      linkedWalletAddresses.add(user.walletAddress.trim().toLowerCase());
+    }
+    for (const entry of addressBook.values()) {
+      if (entry.userId === user.id || entry.uid === user.uid) {
+        linkedWalletAddresses.add(entry.address.toLowerCase());
+      }
+    }
+    const linkedWalletAddressList = Array.from(linkedWalletAddresses);
 
-    const [claims, gifts, wagers, stakeIntents, scheduledMatches] = await Promise.all([
+    const [claims, gifts, wagers, stakeIntents, scheduledMatches, indexedTransfers] = await Promise.all([
       prisma.pendingWoloClaim.findMany({
         where: {
           ...(mainnetCutoffWhere() ? { createdAt: mainnetCutoffWhere() } : {}),
@@ -219,6 +237,31 @@ export async function GET(request: NextRequest) {
           },
         },
       }),
+      linkedWalletAddressList.length
+        ? prisma.woloIndexedTransfer.findMany({
+            where: {
+              chainId: WOLO_MAINNET_CHAIN_ID,
+              denom: WOLO_MAINNET_BASE_DENOM,
+              source: WOLO_INDEXED_TRANSFER_SOURCE,
+              ...(mainnetCutoffWhere() ? { timestamp: mainnetCutoffWhere() } : {}),
+              OR: [
+                { senderAddress: { in: linkedWalletAddressList } },
+                { recipientAddress: { in: linkedWalletAddressList } },
+              ],
+            },
+            orderBy: [{ timestamp: "desc" }, { height: "desc" }, { id: "desc" }],
+            take: sourceTake,
+            select: {
+              id: true,
+              txHash: true,
+              timestamp: true,
+              senderAddress: true,
+              recipientAddress: true,
+              amountWoloDisplay: true,
+              memo: true,
+            },
+          })
+        : Promise.resolve([]),
     ]);
 
     const rows: WoloTransactionRow[] = [];
@@ -249,6 +292,25 @@ export async function GET(request: NextRequest) {
         status: formatStatus(gift.status),
         occurredAt: (gift.acceptedAt || gift.createdAt).toISOString(),
         txHash: null,
+      });
+    }
+
+    for (const transfer of indexedTransfers) {
+      const senderAddress = transfer.senderAddress.toLowerCase();
+      const recipientAddress = transfer.recipientAddress.toLowerCase();
+      const incoming = linkedWalletAddresses.has(recipientAddress);
+      const counterpartyAddress = incoming ? senderAddress : recipientAddress;
+      const counterparty = addressBook.get(counterpartyAddress);
+      const counterpartyLabel = counterparty?.label || `${counterpartyAddress.slice(0, 10)}...${counterpartyAddress.slice(-6)}`;
+      const memoLabel = transfer.memo?.trim() ? ` · ${transfer.memo.trim().slice(0, 48)}` : "";
+      pushRow(rows, {
+        id: `mainnet-transfer-${transfer.id}`,
+        direction: incoming ? "in" : "out",
+        amountWolo: Number(transfer.amountWoloDisplay) || 0,
+        label: `Mainnet transfer · ${incoming ? "from" : "to"} ${counterpartyLabel}${memoLabel}`,
+        status: "confirmed",
+        occurredAt: transfer.timestamp.toISOString(),
+        txHash: transfer.txHash,
       });
     }
 

@@ -1,0 +1,159 @@
+export type MainnetStakingTransferInput = {
+  txHash: string;
+  timestamp: Date | string;
+  senderAddress: string;
+  recipientAddress: string;
+  amountWolo: number;
+  senderUserId?: number | null;
+  senderLabel?: string | null;
+  recipientUserId?: number | null;
+  recipientLabel?: string | null;
+};
+
+export type DerivedMainnetStakingPosition = {
+  userId: number;
+  player: string;
+  walletAddress: string | null;
+  currentStakedWolo: number;
+  totalStakedWolo: number;
+  totalUnstakedWolo: number;
+  stakingWeight: string;
+  firstStakedAt: Date | null;
+  lastTxAt: Date | null;
+  txHashes: string[];
+};
+
+function normalizeAddress(value: string | null | undefined) {
+  return (value || "").trim().toLowerCase();
+}
+
+function parseTimestamp(value: Date | string) {
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function addWeight(
+  currentWeight: bigint,
+  currentStakeWolo: number,
+  from: Date | null,
+  to: Date
+) {
+  if (!from) return currentWeight;
+  const seconds = Math.max(0, Math.floor((to.getTime() - from.getTime()) / 1000));
+  return currentWeight + BigInt(Math.max(0, Math.trunc(currentStakeWolo))) * BigInt(seconds);
+}
+
+export function deriveMainnetStakingPositionsFromTransfers(
+  transfers: MainnetStakingTransferInput[],
+  options: {
+    stakingWalletAddress: string;
+    mainnetStartAt: Date | string;
+    asOf?: Date | string;
+  }
+): DerivedMainnetStakingPosition[] {
+  const stakingWalletAddress = normalizeAddress(options.stakingWalletAddress);
+  const mainnetStartAt = parseTimestamp(options.mainnetStartAt) || new Date(0);
+  const asOf = parseTimestamp(options.asOf ?? new Date()) || new Date();
+  if (!stakingWalletAddress) return [];
+
+  type MutablePosition = DerivedMainnetStakingPosition & {
+    _weight: bigint;
+    _lastWeightAt: Date | null;
+  };
+
+  const positions = new Map<number, MutablePosition>();
+  const sortedTransfers = [...transfers]
+    .map((transfer) => ({ transfer, timestamp: parseTimestamp(transfer.timestamp) }))
+    .filter(
+      (item): item is { transfer: MainnetStakingTransferInput; timestamp: Date } => {
+        if (!item.timestamp) return false;
+        return (
+          item.timestamp.getTime() >= mainnetStartAt.getTime() &&
+          item.timestamp.getTime() <= asOf.getTime()
+        );
+      }
+    )
+    .sort((left, right) => left.timestamp.getTime() - right.timestamp.getTime());
+
+  for (const { transfer, timestamp } of sortedTransfers) {
+    const senderAddress = normalizeAddress(transfer.senderAddress);
+    const recipientAddress = normalizeAddress(transfer.recipientAddress);
+    const amountWolo = Number.isFinite(transfer.amountWolo) ? transfer.amountWolo : 0;
+    if (amountWolo <= 0) continue;
+
+    const isStake = recipientAddress === stakingWalletAddress && transfer.senderUserId;
+    const isUnstake = senderAddress === stakingWalletAddress && transfer.recipientUserId;
+    if (!isStake && !isUnstake) continue;
+
+    const userId = Number(isStake ? transfer.senderUserId : transfer.recipientUserId);
+    if (!Number.isInteger(userId) || userId <= 0) continue;
+
+    const walletAddress = isStake ? senderAddress : recipientAddress;
+    const player =
+      (isStake ? transfer.senderLabel : transfer.recipientLabel)?.trim() || `user ${userId}`;
+
+    const existing =
+      positions.get(userId) ||
+      ({
+        userId,
+        player,
+        walletAddress,
+        currentStakedWolo: 0,
+        totalStakedWolo: 0,
+        totalUnstakedWolo: 0,
+        stakingWeight: "0",
+        firstStakedAt: null,
+        lastTxAt: null,
+        txHashes: [],
+        _weight: BigInt(0),
+        _lastWeightAt: null,
+      } satisfies MutablePosition);
+
+    existing._weight = addWeight(
+      existing._weight,
+      existing.currentStakedWolo,
+      existing._lastWeightAt,
+      timestamp
+    );
+    existing._lastWeightAt = timestamp;
+    existing.lastTxAt = timestamp;
+    existing.player = player;
+    existing.walletAddress = walletAddress || existing.walletAddress;
+    existing.txHashes.push(transfer.txHash);
+
+    if (isStake) {
+      existing.currentStakedWolo += amountWolo;
+      existing.totalStakedWolo += amountWolo;
+      existing.firstStakedAt ||= timestamp;
+    } else {
+      const unstaked = Math.min(existing.currentStakedWolo, amountWolo);
+      existing.currentStakedWolo = Math.max(0, existing.currentStakedWolo - amountWolo);
+      existing.totalUnstakedWolo += unstaked;
+    }
+
+    positions.set(userId, existing);
+  }
+
+  return Array.from(positions.values())
+    .map((position) => {
+      const finalWeight = addWeight(
+        position._weight,
+        position.currentStakedWolo,
+        position._lastWeightAt,
+        asOf
+      );
+      return {
+        userId: position.userId,
+        player: position.player,
+        walletAddress: position.walletAddress,
+        currentStakedWolo: position.currentStakedWolo,
+        totalStakedWolo: position.totalStakedWolo,
+        totalUnstakedWolo: position.totalUnstakedWolo,
+        stakingWeight: finalWeight.toString(),
+        firstStakedAt: position.firstStakedAt,
+        lastTxAt: position.lastTxAt,
+        txHashes: Array.from(new Set(position.txHashes)),
+      };
+    })
+    .filter((position) => position.currentStakedWolo > 0 || position.totalStakedWolo > 0);
+}

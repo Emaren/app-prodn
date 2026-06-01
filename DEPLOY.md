@@ -79,11 +79,13 @@ journalctl -u aoe2hdbets-web.service -n 40 --no-pager
 When `/bets` is expected to open real Keplr stake locks, these envs must agree in the live web env:
 
 - `NEXT_PUBLIC_WOLO_CHAIN_ID=wolo-1`
-- `NEXT_PUBLIC_WOLO_RPC_URL`
-- `NEXT_PUBLIC_WOLO_REST_URL`
+- `NEXT_PUBLIC_WOLO_RPC_URL=https://rpc-mainnet.aoe2war.com`
+- `WOLO_RPC_URL=https://rpc-mainnet.aoe2war.com`
+- `NEXT_PUBLIC_WOLO_REST_URL=https://rest-mainnet.aoe2war.com`
+- `WOLO_REST_URL=https://rest-mainnet.aoe2war.com`
 - `NEXT_PUBLIC_WOLO_BET_ESCROW_ADDRESS`
 - `WOLO_BET_ESCROW_ADDRESS`
-- `WOLO_SETTLEMENT_URL`
+- `WOLO_SETTLEMENT_URL` must not point at the old local testnet settlement target `127.0.0.1:8091`; on `wolo-1` the app ignores that legacy URL and leaves settlement unconfigured instead.
 - `WOLO_STAKING_WALLET_ADDRESS` / `NEXT_PUBLIC_WOLO_STAKING_WALLET_ADDRESS`
 - `WOLO_STAKING_WALLET_MNEMONIC`
 - `WOLO_STAKING_UNSTAKE_FEE` (optional; defaults to `auto`)
@@ -91,6 +93,22 @@ When `/bets` is expected to open real Keplr stake locks, these envs must agree i
 If `NEXT_PUBLIC_WOLO_BET_ESCROW_ADDRESS` or `WOLO_BET_ESCROW_ADDRESS` are missing on `wolo-1`, `/bets` must block with an escrow config error. It should not record an app-only mainnet wager.
 
 For `/staking`, fund the staking wallet with total confirmed user stake plus the operator reserve/headroom used for WoloChain unstake sends. AoE2HDBets defaults to a `10 WOLO` reserve unless `WOLO_STAKING_UNSTAKE_HEADROOM_UWOLO` is set. User max-unstake should not be reduced by this reserve; underfunding should show the operator top-up warning instead.
+
+On `wolo-1`, `/staking` public totals, personal stake, leaderboards, and reward
+weights are rebuilt from indexed WoloChain mainnet `MsgSend` rows to/from the
+staking wallet on or after `2026-05-25T00:00:00.000Z`. Do not use legacy
+app-only `staking_positions` as public mainnet truth. Refresh the transfer
+index with:
+
+```bash
+node scripts/backfill-wolo-mainnet-transfers.mjs --block-limit=100000 --global-limit=100
+```
+
+The read-only smoke endpoint is:
+
+```bash
+curl -s https://aoe2war.com/api/wolo/mainnet-transfers?limit=10 | jq '{totalRows, latestTimestamp, rows: [.rows[] | {txHash, amountLabel, senderLabel, recipientLabel, timestamp}]}'
+```
 
 Unstake execution must sign from the staking wallet itself. Do not route unstake through the generic betting payout service: that service may preserve its own settlement headroom and will block or pay from the wrong custody rail. The live web env needs `WOLO_STAKING_WALLET_MNEMONIC` for `/api/staking/unstake` to broadcast the return transfer.
 
@@ -140,6 +158,8 @@ curl -I https://aoe2war.com/contact-emaren
 curl -s https://aoe2war.com/api/lobby | jq '.leaderboard.trackedPlayers, (.leaderboard.entries | length)'
 curl -s https://aoe2war.com/api/lobby | jq '{ticker: (.liveTicker.items | length), market: .woloMarket.poolId}'
 curl -s https://aoe2war.com/api/bets | jq '.wolo | { betEscrowMode, onchainEscrowEnabled, onchainEscrowRequired, betEscrowAddress }'
+curl -s https://aoe2war.com/api/staking/summary?period=24h | jq '.summary["24h"] | {betsPlaced, betVolumeWolo, activeStakers, totalStakedWolo, directTransferCount}'
+curl -s https://aoe2war.com/api/wolo/mainnet-transfers?limit=5 | jq '{totalRows, latestTimestamp}'
 journalctl -u aoe2hdbets-web.service -n 20 --no-pager
 ```
 

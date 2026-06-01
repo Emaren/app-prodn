@@ -17,6 +17,10 @@ import {
   type WoloMainnetActivityRow,
 } from "@/lib/woloTransactionRecovery";
 import {
+  loadMainnetStakingPositionForUser,
+  loadMainnetStakingPositions,
+} from "@/lib/mainnetStakingPositions";
+import {
   loadIndexedWoloTransferActivityRows,
   type WoloIndexedTransferActivityRow,
 } from "@/lib/woloMainnetTransfers";
@@ -373,6 +377,7 @@ export async function loadStakingSummary(
     activePlayers,
     stakingAggregate,
     stakingPositions,
+    mainnetStakingPositions,
     recentWagers,
     recentEvents,
     recentRewardAllocations,
@@ -411,6 +416,7 @@ export async function loadStakingSummary(
         lastWeightUpdateAt: true,
       },
     }),
+    isWoloMainnet() ? loadMainnetStakingPositions(prisma) : Promise.resolve([]),
     prisma.betWager.findMany({
       where: visibleMainnetWagerWhere(),
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
@@ -438,7 +444,11 @@ export async function loadStakingSummary(
       },
     }),
     prisma.stakingEvent.findMany({
-      where: { status: { not: "PENDING_CHAIN" }, ...mainnetDisplayDateWhere() },
+      where: {
+        status: { not: "PENDING_CHAIN" },
+        ...(isWoloMainnet() ? { txHash: { not: null } } : {}),
+        ...mainnetDisplayDateWhere(),
+      },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       take: 6,
       select: {
@@ -462,6 +472,7 @@ export async function loadStakingSummary(
       where: {
         rewardWolo: { gt: 0 },
         status: { not: "CLAIMED" },
+        ...(isWoloMainnet() ? { positionId: null } : {}),
         ...mainnetDisplayDateWhere(),
       },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
@@ -492,10 +503,23 @@ export async function loadStakingSummary(
 
   const settledVolumeWolo = settledAggregate._sum.amountWolo ?? 0;
   const feePools = calculateModeledFeePools(settledVolumeWolo);
-  const totalStakingWeight = stakingPositions.reduce(
+  const legacyTotalStakingWeight = stakingPositions.reduce(
     (sum, position) => sum + computeCurrentStakingWeight(position, now),
     BigInt(0)
   );
+  const mainnetTotalStakingWeight = mainnetStakingPositions.reduce(
+    (sum, position) => sum + BigInt(position.stakingWeight || 0),
+    BigInt(0)
+  );
+  const publicActiveStakers = isWoloMainnet()
+    ? mainnetStakingPositions.filter((position) => position.currentStakedWolo > 0).length
+    : stakingAggregate._count._all;
+  const publicTotalStakedWolo = isWoloMainnet()
+    ? mainnetStakingPositions.reduce((sum, position) => sum + position.currentStakedWolo, 0)
+    : stakingAggregate._sum.currentStakedWolo ?? 0;
+  const totalStakingWeight = isWoloMainnet()
+    ? mainnetTotalStakingWeight
+    : legacyTotalStakingWeight;
   const activity: Array<StakingActivityItem & { sortAt: Date }> = [];
 
   for (const event of recentEvents) {
@@ -642,8 +666,8 @@ export async function loadStakingSummary(
     treasuryShareWolo: feePools.treasuryPoolWolo,
     activeBettors: activeBettorRows.length,
     activePlayers,
-    activeStakers: stakingAggregate._count._all,
-    totalStakedWolo: stakingAggregate._sum.currentStakedWolo ?? 0,
+    activeStakers: publicActiveStakers,
+    totalStakedWolo: publicTotalStakedWolo,
     totalStakingWeight: totalStakingWeight.toString(),
     directTransferCount: indexedTransferRows.length,
     activity: dedupeActivityRows(activity, 16)
@@ -666,6 +690,56 @@ async function loadBoardRows(
   mode: "staked" | "earned" | "weight"
 ): Promise<StakingLeaderboardRow[]> {
   const now = new Date();
+  if (isWoloMainnet()) {
+    const [positions, allocations] = await Promise.all([
+      loadMainnetStakingPositions(prisma, { asOf: now }),
+      prisma.stakingRewardAllocation.findMany({
+        where: {
+          ...(isWoloMainnet() ? { positionId: null } : {}),
+          ...mainnetDisplayDateWhere(),
+        },
+        select: {
+          userId: true,
+          rewardWolo: true,
+        },
+        take: 5_000,
+      }),
+    ]);
+    const rewardsByUserId = new Map<number, number>();
+    for (const allocation of allocations) {
+      rewardsByUserId.set(
+        allocation.userId,
+        (rewardsByUserId.get(allocation.userId) ?? 0) + allocation.rewardWolo
+      );
+    }
+
+    return positions
+      .map((position, index) => ({
+        player: position.player,
+        badge: badgeForRank(index, mode === "earned" ? "Fee share" : "Mainnet stake"),
+        stakedWolo: position.currentStakedWolo,
+        rewardsWolo: rewardsByUserId.get(position.userId) ?? 0,
+        stakingWeight: position.stakingWeight,
+        status: "Live",
+        tone: toneForRank(index),
+      }))
+      .sort((left, right) => {
+        if (mode === "earned") return right.rewardsWolo - left.rewardsWolo || right.stakedWolo - left.stakedWolo;
+        if (mode === "weight") {
+          const leftWeight = BigInt(left.stakingWeight || 0);
+          const rightWeight = BigInt(right.stakingWeight || 0);
+          if (leftWeight !== rightWeight) return leftWeight > rightWeight ? -1 : 1;
+        }
+        return right.stakedWolo - left.stakedWolo || right.rewardsWolo - left.rewardsWolo;
+      })
+      .slice(0, 8)
+      .map((row, index) => ({
+        ...row,
+        badge: badgeForRank(index, mode === "earned" ? "Fee share" : "Mainnet stake"),
+        tone: toneForRank(index),
+      }));
+  }
+
   const orderBy =
     mode === "earned"
       ? [{ lifetimeRewardsWolo: "desc" as const }, { currentStakedWolo: "desc" as const }]
@@ -713,6 +787,7 @@ async function loadBoardRows(
 async function loadRecentRewardRows(prisma: PrismaClient): Promise<StakingLeaderboardRow[]> {
   const allocations = await prisma.stakingRewardAllocation.findMany({
     where: {
+      ...(isWoloMainnet() ? { positionId: null } : {}),
       ...mainnetDisplayDateWhere(),
     },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
@@ -770,7 +845,7 @@ export async function loadStakingLeaderboard(
 
 export async function loadStakingMe(prisma: PrismaClient, userId: number) {
   const now = new Date();
-  const [user, position, events, txFeeEvents, lastReward] = await Promise.all([
+  const [user, position, mainnetPosition, events, txFeeEvents, lastReward] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -784,8 +859,16 @@ export async function loadStakingMe(prisma: PrismaClient, userId: number) {
     prisma.stakingPosition.findUnique({
       where: { userId },
     }),
+    isWoloMainnet()
+      ? loadMainnetStakingPositionForUser(prisma, userId, { asOf: now })
+      : Promise.resolve(null),
     prisma.stakingEvent.findMany({
-      where: { userId },
+      where: {
+        userId,
+        ...(isWoloMainnet()
+          ? { txHash: { not: null }, ...mainnetDisplayDateWhere() }
+          : {}),
+      },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       take: 6,
       select: {
@@ -799,12 +882,19 @@ export async function loadStakingMe(prisma: PrismaClient, userId: number) {
       },
     }),
     prisma.stakingEvent.findMany({
-      where: { userId, status: "CONFIRMED" },
+      where: {
+        userId,
+        status: "CONFIRMED",
+        ...(isWoloMainnet()
+          ? { txHash: { not: null }, ...mainnetDisplayDateWhere() }
+          : {}),
+      },
       select: { metadata: true },
     }),
     prisma.stakingRewardAllocation.findFirst({
       where: {
         userId,
+        ...(isWoloMainnet() ? { positionId: null, ...mainnetDisplayDateWhere() } : {}),
         OR: [{ creditedAt: { not: null } }, { claimedAt: { not: null } }],
       },
       orderBy: [{ creditedAt: "desc" }, { claimedAt: "desc" }, { createdAt: "desc" }],
@@ -821,11 +911,19 @@ export async function loadStakingMe(prisma: PrismaClient, userId: number) {
     throw new StakingActionError("Viewer not found.", 404);
   }
 
-  const stakingWeight = position ? computeCurrentStakingWeight(position, now) : BigInt(0);
+  const useMainnetPosition = isWoloMainnet();
+  const stakingWeight = useMainnetPosition
+    ? BigInt(mainnetPosition?.stakingWeight || 0)
+    : position
+      ? computeCurrentStakingWeight(position, now)
+      : BigInt(0);
   const lifetimeTxFeesWolo = txFeeEvents.reduce(
     (sum, event) => sum + metadataNumber(event.metadata, "txFeeWolo"),
     0
   );
+  const currentStakedWolo = useMainnetPosition
+    ? mainnetPosition?.currentStakedWolo ?? 0
+    : position?.currentStakedWolo ?? 0;
 
   return {
     user: {
@@ -835,14 +933,20 @@ export async function loadStakingMe(prisma: PrismaClient, userId: number) {
       walletAddress: user.walletAddress,
     },
     position: {
-      currentStakedWolo: position?.currentStakedWolo ?? 0,
+      currentStakedWolo,
       stakingWeight: stakingWeight.toString(),
-      pendingRewardsWolo: position?.pendingRewardsWolo ?? 0,
-      lifetimeRewardsWolo: position?.lifetimeRewardsWolo ?? 0,
-      claimedRewardsWolo: position?.claimedRewardsWolo ?? 0,
+      pendingRewardsWolo: useMainnetPosition ? 0 : position?.pendingRewardsWolo ?? 0,
+      lifetimeRewardsWolo: useMainnetPosition ? 0 : position?.lifetimeRewardsWolo ?? 0,
+      claimedRewardsWolo: useMainnetPosition ? 0 : position?.claimedRewardsWolo ?? 0,
       lifetimeTxFeesWolo,
-      status: position?.status ?? "ledger_ready",
-      lastWeightUpdateAt: position?.lastWeightUpdateAt.toISOString() ?? null,
+      status: useMainnetPosition
+        ? currentStakedWolo > 0
+          ? "mainnet_tx_backed"
+          : "ledger_ready"
+        : position?.status ?? "ledger_ready",
+      lastWeightUpdateAt: useMainnetPosition
+        ? mainnetPosition?.lastTxAt?.toISOString() ?? null
+        : position?.lastWeightUpdateAt.toISOString() ?? null,
       lastRewardPaymentAt:
         lastReward?.claimedAt?.toISOString() ?? lastReward?.creditedAt?.toISOString() ?? null,
       lastRewardAmountWolo: lastReward?.rewardWolo ?? 0,
@@ -1045,7 +1149,7 @@ export async function calculateDailyStakingRewardDistribution(
     throw new StakingActionError("Distribution already has allocations; refusing to double-credit.", 409);
   }
 
-  const [settledAggregate, positions] = await Promise.all([
+  const [settledAggregate, legacyPositions, mainnetPositions] = await Promise.all([
     prisma.betWager.aggregate({
       where: visibleMainnetWagerWhere({
         settledAt: {
@@ -1067,13 +1171,39 @@ export async function calculateDailyStakingRewardDistribution(
         lastWeightUpdateAt: true,
       },
     }),
+    isWoloMainnet()
+      ? loadMainnetStakingPositions(prisma, { asOf: periodEnd })
+      : Promise.resolve([]),
   ]);
 
+  const positions = isWoloMainnet()
+    ? mainnetPositions.map((position) => ({
+        id: null as number | null,
+        userId: position.userId,
+        walletAddress: position.walletAddress,
+        currentStakedWolo: position.currentStakedWolo,
+        accumulatedWeight: BigInt(position.stakingWeight || 0),
+        lastWeightUpdateAt: periodEnd,
+      }))
+    : legacyPositions.map((position) => ({
+        ...position,
+        id: position.id as number | null,
+      }));
   const settledVolumeWolo = settledAggregate._sum.amountWolo ?? 0;
   const feePools = calculateLedgerFeePools(settledVolumeWolo);
   const weightedPositions = positions.map((position) => ({
     ...position,
-    userWeight: computeCurrentStakingWeight(position, periodEnd),
+    userWeight:
+      position.id == null
+        ? position.accumulatedWeight
+        : computeCurrentStakingWeight(
+            {
+              currentStakedWolo: position.currentStakedWolo,
+              accumulatedWeight: position.accumulatedWeight,
+              lastWeightUpdateAt: position.lastWeightUpdateAt,
+            },
+            periodEnd
+          ),
   }));
   const totalWeight = weightedPositions.reduce(
     (sum, position) => sum + position.userWeight,
@@ -1142,15 +1272,17 @@ export async function calculateDailyStakingRewardDistribution(
           },
         });
 
-        await tx.stakingPosition.update({
-          where: { id: position.id },
-          data: {
-            pendingRewardsWolo: { increment: rewardWolo },
-            lifetimeRewardsWolo: { increment: rewardWolo },
-            accumulatedWeight: position.userWeight,
-            lastWeightUpdateAt: periodEnd,
-          },
-        });
+        if (!isWoloMainnet() && position.id) {
+          await tx.stakingPosition.update({
+            where: { id: position.id },
+            data: {
+              pendingRewardsWolo: { increment: rewardWolo },
+              lifetimeRewardsWolo: { increment: rewardWolo },
+              accumulatedWeight: position.userWeight,
+              lastWeightUpdateAt: periodEnd,
+            },
+          });
+        }
       }
     }
 

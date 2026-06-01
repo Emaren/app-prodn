@@ -81,8 +81,10 @@ Common:
 
 WOLO betting / settlement:
 
-- `NEXT_PUBLIC_WOLO_RPC_URL`
-- `NEXT_PUBLIC_WOLO_REST_URL`
+- `NEXT_PUBLIC_WOLO_RPC_URL=https://rpc-mainnet.aoe2war.com`
+- `WOLO_RPC_URL=https://rpc-mainnet.aoe2war.com`
+- `NEXT_PUBLIC_WOLO_REST_URL=https://rest-mainnet.aoe2war.com`
+- `WOLO_REST_URL=https://rest-mainnet.aoe2war.com`
 - `NEXT_PUBLIC_WOLO_CHAIN_ID=wolo-1` for mainnet
 - `NEXT_PUBLIC_WOLO_BET_ESCROW_ADDRESS`
 - `WOLO_BET_ESCROW_ADDRESS`
@@ -97,6 +99,15 @@ WOLO betting / settlement:
 - `WOLO_STAKING_UNSTAKE_HEADROOM_UWOLO` if the staking wallet should display/enforce a staking-specific operator-funded reserve; otherwise it defaults to the settlement service's `10 WOLO` fee headroom
 - `STAKING_REWARD_RUN_TOKEN` for the protected daily staking-reward runner
 - `STAKING_REWARD_RUN_URL=http://127.0.0.1:3030` for the local runner script used by the VPS timer
+
+On `wolo-1`, public staking totals and leaderboards are derived from indexed,
+tx-backed WoloChain bank sends to/from the configured staking wallet on or
+after `WOLO_MAINNET_DISPLAY_START_AT`. Legacy `staking_positions` rows are kept
+for migration/operator history, but they must not drive mainnet-facing staking
+totals. Mainnet direct-transfer indexing is exposed read-only at
+`GET /api/wolo/mainnet-transfers`; operators can refresh the index with
+`POST /api/admin/wolo-transfers/backfill` or
+`node scripts/backfill-wolo-mainnet-transfers.mjs`.
 
 Optional migration compatibility:
 
@@ -178,7 +189,7 @@ python /var/www/AoE2HDBets/api-prodn/scripts/set_admin.py --email you@example.co
 - `/lobby` defaults to Advanced view: a moving live ticker, Watch & Chat arena hero with comments to the right, reactions and a compact bet slip under the video, a compact WOLO / USDC swap tile, then the existing Community Lobby surface. Basic view remains available and preserves the simpler lobby-first layout with a low-glare outline toggle.
 - Admins manage custom live ticker messages from `/admin`; enabled messages are text-only, ordered by priority, and mixed with system ticker items from tournament/replay/lobby/WOLO market state.
 - `/bets` now requires real Keplr-signed WOLO stake locks on `wolo-1`; the wager is only recorded after the stake tx verifies against WoloChain REST, and app-only wager rows stay out of mainnet-facing bet, profile, staking, war-chest, and admin rails
-- `/staking` uses real Keplr stake transfers into the staking wallet, app-side staking ledger rows, and staking-wallet-signed WoloChain transfers for unstake. User max-unstake follows confirmed staked principal; the staking wallet reserve/headroom is treated as operator-funded and surfaces as an operator top-up warning when the wallet cannot cover remaining confirmed stake plus reserve after the unstake.
+- `/staking` uses real Keplr stake transfers into the staking wallet, indexed mainnet `MsgSend` rows for public stake display, and staking-wallet-signed WoloChain transfers for unstake. User max-unstake follows confirmed tx-backed principal; the staking wallet reserve/headroom is treated as operator-funded and surfaces as an operator top-up warning when the wallet cannot cover remaining confirmed stake plus reserve after the unstake.
 - `/staking` reward distributions are finalized once per closed UTC day through `npm run staking:rewards:run`; valid reward wallets are paid through the WOLO settlement rail and successful payouts are recorded as staking `CLAIM` events for Recent Activity.
 - The AI Scribe and Grimer receive live `/staking` context through `lib/aiConcierge.ts` for lobby and contact replies. They should explain app-side WOLO staking state, fee splits, rewards, and viewer positions from supplied context only, without calling it validator staking or inventing APY.
 - trusted wallet-linked winners can now auto-settle on-chain, while unmatched or failed payouts still fall back to the pending-claim/admin rail

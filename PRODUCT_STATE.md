@@ -140,6 +140,8 @@ Current state:
 - Keplr wallet state now persists across route changes instead of acting page-local
 - `/bets` now requires the real signed WOLO stake path on `wolo-1`; wagers are only accepted after the stake tx verifies against WoloChain REST
 - mainnet-facing WOLO/bet rails hide pre-mainnet testnet-era rows and app-only wagers, so profile ledgers, staking fee stats, war-chest totals, `/bets`, and admin WoloChain rails only count Keplr-verified mainnet stakes
+- `/staking` mainnet display is tx-backed: public totals, personal stake, leaderboards, and reward weights are derived from indexed WoloChain `MsgSend` rows to/from the configured staking wallet on/after the mainnet display start. Legacy `staking_positions` rows are not public mainnet truth.
+- mainnet direct transfers are indexed in `wolo_indexed_transfers`, surfaced at `/api/wolo/mainnet-transfers`, and refreshed through the admin backfill route or `scripts/backfill-wolo-mainnet-transfers.mjs`.
 - `/bets` now records pre-intent Keplr/Ledger wallet failures as `bet_wallet_error` activity events, so operator/debug history includes failures that happen before a stake intent can exist
 - `/bets` now keeps recent no-proof stake intents visible in Your Book and gives the server 24 hours to discover matching WoloChain escrow deposits for tx-landed/browser-lost recovery
 - challenge-linked `/bets` markets now merge safe duplicate `watcher-live-*` shadows for the same live/completed session into the canonical challenge book, including wagers, stake intents, wallet locks, founder bonuses, and claim breadcrumbs

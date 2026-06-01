@@ -12,6 +12,7 @@
     "prestart": "node scripts/prepare-runtime-cache.mjs",
     "start": "next start --hostname 127.0.0.1 --port 3030",
     "lint": "next lint",
+    "test:mainnet-staking": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/mainnet-staking-visibility.test.mts",
     "watcher:sync": "node scripts/sync-watcher-release.mjs",
     "staking:rewards:run": "node scripts/run-staking-reward-distribution.mjs",
     "prisma:generate": "prisma generate",

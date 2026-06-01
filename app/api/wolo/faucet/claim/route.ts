@@ -36,6 +36,7 @@ const FAUCET_CHAIN_ID = process.env.WOLO_FAUCET_CHAIN_ID?.trim() || WOLO_CHAIN_I
 const FAUCET_NODE_RPC =
   process.env.WOLO_FAUCET_NODE_RPC?.trim() ||
   process.env.WOLO_INTERNAL_RPC_URL?.trim() ||
+  process.env.WOLO_RPC_URL?.trim() ||
   process.env.NEXT_PUBLIC_WOLO_RPC_URL?.trim() ||
   "http://127.0.0.1:26657";
 const FAUCET_KEYRING_BACKEND =

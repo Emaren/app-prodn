@@ -168,6 +168,7 @@ type RpcStatusPayload = {
 function getRestUrl() {
   return (
     process.env.WOLO_INTERNAL_REST_URL?.trim() ||
+    process.env.WOLO_REST_URL?.trim() ||
     process.env.NEXT_PUBLIC_WOLO_REST_URL?.trim() ||
     "https://rest-mainnet.aoe2war.com"
   ).replace(/\/+$/, "");
@@ -176,6 +177,7 @@ function getRestUrl() {
 function getRpcUrl() {
   return (
     process.env.WOLO_INTERNAL_RPC_URL?.trim() ||
+    process.env.WOLO_RPC_URL?.trim() ||
     process.env.NEXT_PUBLIC_WOLO_RPC_URL?.trim() ||
     "https://rpc-mainnet.aoe2war.com"
   ).replace(/\/+$/, "");

@@ -13,6 +13,7 @@ import {
   buildWoloRestTxLookupUrl,
   estimateWoloNetworkFeeWolo,
   getWoloBetEscrowRuntime,
+  isWoloMainnet,
   toUwoLoAmount,
 } from "@/lib/woloChain";
 
@@ -146,7 +147,27 @@ const WOLO_PAYOUT_ADDRESS =
   getWoloBetEscrowRuntime().escrowAddress ||
   "";
 const WOLO_PAYOUT_FEE = process.env.WOLO_BET_PAYOUT_FEE?.trim() || "auto";
-const WOLO_SETTLEMENT_URL = process.env.WOLO_SETTLEMENT_URL?.trim() || "";
+const rawWoloSettlementUrl = process.env.WOLO_SETTLEMENT_URL?.trim() || "";
+function isLegacyLocalTestnetSettlementUrl(value: string) {
+  if (!value) return false;
+  try {
+    const url = new URL(value);
+    return (
+      (url.hostname === "127.0.0.1" || url.hostname === "localhost") &&
+      url.port === "8091"
+    );
+  } catch {
+    return /(?:localhost|127\.0\.0\.1):8091/.test(value);
+  }
+}
+const WOLO_SETTLEMENT_URL =
+  isWoloMainnet() && isLegacyLocalTestnetSettlementUrl(rawWoloSettlementUrl)
+    ? ""
+    : rawWoloSettlementUrl;
+const WOLO_SETTLEMENT_CONFIG_WARNING =
+  isWoloMainnet() && rawWoloSettlementUrl && !WOLO_SETTLEMENT_URL
+    ? "Ignored legacy local testnet WOLO_SETTLEMENT_URL on wolo-1."
+    : null;
 const WOLO_SETTLEMENT_AUTH_TOKEN = process.env.WOLO_SETTLEMENT_AUTH_TOKEN?.trim() || "";
 const WOLO_LOCAL_PAYOUT_SIGNER_FALLBACK_ENABLED =
   process.env.WOLO_LOCAL_PAYOUT_SIGNER_FALLBACK?.trim() === "1";
@@ -593,6 +614,9 @@ export async function getWoloSettlementSurfaceStatus(): Promise<WoloSettlementSu
           : [
               "WoloChain settlement service is not configured here. Auto-settlement stays pending instead of falling back silently.",
             ];
+      if (WOLO_SETTLEMENT_CONFIG_WARNING) {
+        warnings.unshift(WOLO_SETTLEMENT_CONFIG_WARNING);
+      }
       const value = {
         checkedAt: new Date().toISOString(),
         settlementServiceConfigured: false,
@@ -620,7 +644,9 @@ export async function getWoloSettlementSurfaceStatus(): Promise<WoloSettlementSu
       probeEscrowRecentCapability(),
     ]);
 
-    const warnings: string[] = [];
+    const warnings: string[] = WOLO_SETTLEMENT_CONFIG_WARNING
+      ? [WOLO_SETTLEMENT_CONFIG_WARNING]
+      : [];
     if (grouped.capability === "fallback_to_singles") {
       warnings.push(
         "Grouped settlement is not live on the current WoloChain target. AoE2HDBets will fall back to single payout requests."

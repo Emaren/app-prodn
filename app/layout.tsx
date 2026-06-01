@@ -81,8 +81,11 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className="bg-[#050814] text-white min-h-screen flex flex-col">
+    <html lang="en" suppressHydrationWarning>
+      <body
+        className="bg-[#050814] text-white min-h-screen flex flex-col"
+        suppressHydrationWarning
+      >
         <Script
           defer
           data-domain="aoe2war.com"
