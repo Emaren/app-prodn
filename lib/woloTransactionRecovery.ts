@@ -2,7 +2,12 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 
 import type { Prisma, PrismaClient } from "@/lib/generated/prisma";
-import { buildWoloRestTxLookupUrl, WOLO_REST_URL } from "@/lib/woloChain";
+import {
+  buildWoloRestTxLookupUrl,
+  isMainnetVisibleWoloTx,
+  isWoloMainnet,
+  WOLO_REST_URL,
+} from "@/lib/woloChain";
 import {
   loadWoloIndexedTransferDashboard,
   type WoloIndexedTransferDashboard,
@@ -967,6 +972,15 @@ export async function loadWoloMainnetActivityRows(
   limit = 25
 ): Promise<WoloMainnetActivityRow[]> {
   const candidates = dedupeRows(await loadRecoveryCandidates(prisma))
+    .filter((row) =>
+      isWoloMainnet()
+        ? isMainnetVisibleWoloTx({
+            txHash: row.txHash,
+            createdAt: row.createdAt,
+            updatedAt: row.updatedAt,
+          })
+        : true
+    )
     .sort((left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime())
     .slice(0, Math.max(1, Math.min(limit, SOURCE_TAKE)));
 

@@ -1,5 +1,6 @@
-import type { PrismaClient } from "@/lib/generated/prisma";
+import type { Prisma, PrismaClient } from "@/lib/generated/prisma";
 import { normalizePublicPlayerName } from "@/lib/publicPlayers";
+import { getWoloMainnetDisplayStartAt, isWoloMainnet } from "@/lib/woloChain";
 
 export type PendingWoloClaimSummary = {
   pendingAmountWolo: number;
@@ -77,6 +78,16 @@ function mergeSummary(
   }
 }
 
+function visibleMainnetClaimWhere(
+  extra: Prisma.PendingWoloClaimWhereInput = {}
+): Prisma.PendingWoloClaimWhereInput {
+  if (!isWoloMainnet()) return extra;
+  return {
+    ...extra,
+    createdAt: { gte: getWoloMainnetDisplayStartAt() },
+  };
+}
+
 export async function loadPendingWoloClaimSummariesByName(
   prisma: PendingWoloClaimDb,
   names: Array<string | null | undefined>
@@ -89,10 +100,10 @@ export async function loadPendingWoloClaimSummariesByName(
   }
 
   const rows = await prisma.pendingWoloClaim.findMany({
-    where: {
+    where: visibleMainnetClaimWhere({
       status: "pending",
       normalizedPlayerName: { in: keys },
-    },
+    }),
     select: {
       id: true,
       normalizedPlayerName: true,
@@ -278,10 +289,10 @@ export async function claimPendingWoloClaimsForUser(
   }
 
   const rows = await prisma.pendingWoloClaim.findMany({
-    where: {
+    where: visibleMainnetClaimWhere({
       status: "pending",
       normalizedPlayerName: { in: keys },
-    },
+    }),
     select: {
       id: true,
       amountWolo: true,
@@ -344,7 +355,7 @@ export async function loadPendingWoloClaimsForAdmin(
   }
 ) {
   return prisma.pendingWoloClaim.findMany({
-    where: options?.status ? { status: options.status } : undefined,
+    where: visibleMainnetClaimWhere(options?.status ? { status: options.status } : {}),
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: options?.take ?? 100,
   });

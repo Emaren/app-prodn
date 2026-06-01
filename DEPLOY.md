@@ -64,6 +64,7 @@ journalctl -u aoe2hdbets-web.service -n 40 --no-pager
 - Basic view remains available and should preserve the simpler lobby-first layout.
 - Deployment requires `npx prisma migrate deploy` before restarting `aoe2hdbets-web.service`.
 - Optional market display env: `WOLO_OSMOSIS_POOL_ID=3461`, `WOLO_OSMOSIS_POOL_URL=https://app.osmosis.zone/pool/3461`, `WOLO_MARKET_LABEL=WOLO Market`, `WOLO_USD_PRICE_DEFAULT=0.000100`, `WOLO_USD_PRICE=0.000100`.
+- `wolo-1` is strict mainnet mode: `/bets` requires a Keplr-signed stake tx, and mainnet-facing WOLO/bet rails hide pre-mainnet testnet-era rows. Optional display cutoff: `WOLO_MAINNET_DISPLAY_START_AT=2026-05-25T00:00:00.000Z`.
 
 ### 2026-05-05 watcher telemetry and funnel truth
 
@@ -77,6 +78,7 @@ journalctl -u aoe2hdbets-web.service -n 40 --no-pager
 
 When `/bets` is expected to open real Keplr stake locks, these envs must agree in the live web env:
 
+- `NEXT_PUBLIC_WOLO_CHAIN_ID=wolo-1`
 - `NEXT_PUBLIC_WOLO_RPC_URL`
 - `NEXT_PUBLIC_WOLO_REST_URL`
 - `NEXT_PUBLIC_WOLO_BET_ESCROW_ADDRESS`
@@ -86,7 +88,7 @@ When `/bets` is expected to open real Keplr stake locks, these envs must agree i
 - `WOLO_STAKING_WALLET_MNEMONIC`
 - `WOLO_STAKING_UNSTAKE_FEE` (optional; defaults to `auto`)
 
-If `NEXT_PUBLIC_WOLO_BET_ESCROW_ADDRESS` or `WOLO_BET_ESCROW_ADDRESS` are missing, `/bets` silently falls back toward app-only behavior and no real stake window will open.
+If `NEXT_PUBLIC_WOLO_BET_ESCROW_ADDRESS` or `WOLO_BET_ESCROW_ADDRESS` are missing on `wolo-1`, `/bets` must block with an escrow config error. It should not record an app-only mainnet wager.
 
 For `/staking`, fund the staking wallet with total confirmed user stake plus the operator reserve/headroom used for WoloChain unstake sends. AoE2HDBets defaults to a `10 WOLO` reserve unless `WOLO_STAKING_UNSTAKE_HEADROOM_UWOLO` is set. User max-unstake should not be reduced by this reserve; underfunding should show the operator top-up warning instead.
 
@@ -137,7 +139,7 @@ curl -I https://aoe2war.com/players
 curl -I https://aoe2war.com/contact-emaren
 curl -s https://aoe2war.com/api/lobby | jq '.leaderboard.trackedPlayers, (.leaderboard.entries | length)'
 curl -s https://aoe2war.com/api/lobby | jq '{ticker: (.liveTicker.items | length), market: .woloMarket.poolId}'
-curl -s https://aoe2war.com/api/bets | jq '.wolo | { onchainEscrowEnabled, betEscrowAddress }'
+curl -s https://aoe2war.com/api/bets | jq '.wolo | { betEscrowMode, onchainEscrowEnabled, onchainEscrowRequired, betEscrowAddress }'
 journalctl -u aoe2hdbets-web.service -n 20 --no-pager
 ```
 
@@ -145,7 +147,7 @@ For WOLO betting deploys, also do this manual smoke pass:
 
 ```bash
 # 1. Confirm the public payload still exposes live escrow truth.
-curl -s https://aoe2war.com/api/bets | jq '.wolo | { onchainEscrowEnabled, betEscrowAddress }'
+curl -s https://aoe2war.com/api/bets | jq '.wolo | { betEscrowMode, onchainEscrowEnabled, onchainEscrowRequired, betEscrowAddress }'
 
 # 2. Verify the service is healthy, then open /bets in a real browser session.
 journalctl -u aoe2hdbets-web.service -n 20 --no-pager
@@ -156,6 +158,7 @@ Expected result for the browser pass:
 - clicking `Lock 100` opens Keplr
 - after approval, the UI reaches `Escrow confirmed`
 - only then does `/api/bets/wager` record the slip
+- `/api/bets` reports `betEscrowMode: "required"` and `onchainEscrowRequired: true` on `wolo-1`
 - if a stake intent exists but no usable tx proof is attached yet, Your Book shows a pending proof row and the server keeps scanning recent WoloChain escrow deposits for 24 hours
 - challenge-linked markets should not appear beside a duplicate `watcher-live-*` market for the same session when the sides map safely
 

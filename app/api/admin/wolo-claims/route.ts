@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/adminSession";
 import { retryPendingClaimSettlement } from "@/lib/adminWoloClaims";
 import { hasWoloPayoutExecutionConfigured } from "@/lib/woloBetSettlement";
+import { getWoloMainnetDisplayStartAt, isWoloMainnet } from "@/lib/woloChain";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -40,7 +41,10 @@ export async function POST(request: NextRequest) {
 
     const take = clampTake(payload.take);
     const pendingClaims = await gate.prisma.pendingWoloClaim.findMany({
-      where: { status: "pending" },
+      where: {
+        status: "pending",
+        ...(isWoloMainnet() ? { createdAt: { gte: getWoloMainnetDisplayStartAt() } } : {}),
+      },
       orderBy: [{ createdAt: "asc" }, { id: "asc" }],
       select: { id: true },
       take,

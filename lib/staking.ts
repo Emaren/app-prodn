@@ -20,6 +20,7 @@ import {
   loadIndexedWoloTransferActivityRows,
   type WoloIndexedTransferActivityRow,
 } from "@/lib/woloMainnetTransfers";
+import { getWoloMainnetDisplayStartAt, isWoloMainnet } from "@/lib/woloChain";
 
 export {
   BETTING_FEE_RATE_BPS,
@@ -141,6 +142,32 @@ export function normalizeStakingPeriod(value: string | null | undefined): Stakin
 
 export function normalizeStakingBoard(value: string | null | undefined): StakingBoardKey {
   return value === "earners" || value === "rewards" ? value : "stakers";
+}
+
+function visibleMainnetWagerWhere(
+  extra: Prisma.BetWagerWhereInput = {}
+): Prisma.BetWagerWhereInput {
+  if (!isWoloMainnet()) return extra;
+  return {
+    ...extra,
+    executionMode: "onchain_escrow",
+    stakeTxHash: { not: null },
+    stakeLockedAt: { gte: getWoloMainnetDisplayStartAt() },
+    stakeIntent: {
+      is: {
+        status: "recorded",
+      },
+    },
+  };
+}
+
+function mainnetDisplayDateWhere(
+  field: "createdAt" | "creditedAt" = "createdAt"
+): Record<string, unknown> {
+  if (!isWoloMainnet()) return {};
+  return {
+    [field]: { gte: getWoloMainnetDisplayStartAt() },
+  };
 }
 
 export function computeCurrentStakingWeight(position: PositionForWeight, now = new Date()) {
@@ -332,10 +359,10 @@ export async function loadStakingSummary(
 ): Promise<StakingSummary> {
   const now = new Date();
   const periodStart = getStakingPeriodStart(period, now);
-  const wagerWhere = periodStart ? { createdAt: { gte: periodStart } } : {};
-  const settledWhere = periodStart
+  const wagerWhere = visibleMainnetWagerWhere(periodStart ? { createdAt: { gte: periodStart } } : {});
+  const settledWhere = visibleMainnetWagerWhere(periodStart
     ? { settledAt: { gte: periodStart } }
-    : { settledAt: { not: null } };
+    : { settledAt: { not: null } });
   const activeUserWhere = periodStart ? { lastSeen: { gte: periodStart } } : {};
 
   const [
@@ -385,6 +412,7 @@ export async function loadStakingSummary(
       },
     }),
     prisma.betWager.findMany({
+      where: visibleMainnetWagerWhere(),
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       take: 8,
       select: {
@@ -410,7 +438,7 @@ export async function loadStakingSummary(
       },
     }),
     prisma.stakingEvent.findMany({
-      where: { status: { not: "PENDING_CHAIN" } },
+      where: { status: { not: "PENDING_CHAIN" }, ...mainnetDisplayDateWhere() },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       take: 6,
       select: {
@@ -434,6 +462,7 @@ export async function loadStakingSummary(
       where: {
         rewardWolo: { gt: 0 },
         status: { not: "CLAIMED" },
+        ...mainnetDisplayDateWhere(),
       },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       take: 6,
@@ -683,6 +712,9 @@ async function loadBoardRows(
 
 async function loadRecentRewardRows(prisma: PrismaClient): Promise<StakingLeaderboardRow[]> {
   const allocations = await prisma.stakingRewardAllocation.findMany({
+    where: {
+      ...mainnetDisplayDateWhere(),
+    },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: 8,
     include: {
@@ -1015,12 +1047,12 @@ export async function calculateDailyStakingRewardDistribution(
 
   const [settledAggregate, positions] = await Promise.all([
     prisma.betWager.aggregate({
-      where: {
+      where: visibleMainnetWagerWhere({
         settledAt: {
           gte: periodStart,
           lt: periodEnd,
         },
-      },
+      }),
       _sum: { amountWolo: true },
       _count: { _all: true },
     }),

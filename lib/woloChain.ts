@@ -8,18 +8,23 @@ export const WOLO_DISPLAY_DENOM = "WOLO";
 export const WOLO_LOGO_URL = "https://aoe2war.com/legacy/wolo-logo-transparent.png";
 export const WOLO_COIN_DECIMALS = 6;
 export const WOLO_COIN_TYPE = 118;
+export const WOLO_MAINNET_CHAIN_ID = "wolo-1";
+export const WOLO_MAINNET_DISPLAY_START_ISO =
+  process.env.NEXT_PUBLIC_WOLO_MAINNET_DISPLAY_START_AT?.trim() ||
+  process.env.WOLO_MAINNET_DISPLAY_START_AT?.trim() ||
+  "2026-05-25T00:00:00.000Z";
 
 export const WOLO_MAX_SUPPLY_DISPLAY = "100,000,000";
 
 export const WOLO_RPC_URL =
   process.env.NEXT_PUBLIC_WOLO_RPC_URL?.trim() ||
-  (WOLO_CHAIN_ID === "wolo-1"
+  (WOLO_CHAIN_ID === WOLO_MAINNET_CHAIN_ID
     ? "https://rpc-mainnet.aoe2war.com"
     : "https://aoe2war.com/rpc");
 
 export const WOLO_REST_URL =
   process.env.NEXT_PUBLIC_WOLO_REST_URL?.trim() ||
-  (WOLO_CHAIN_ID === "wolo-1"
+  (WOLO_CHAIN_ID === WOLO_MAINNET_CHAIN_ID
     ? "https://rest-mainnet.aoe2war.com"
     : "https://aoe2war.com/rest");
 
@@ -55,10 +60,12 @@ function normalizeBetEscrowMode(value: string): WoloBetEscrowMode | null {
 }
 
 export const WOLO_BET_ESCROW_MODE: WoloBetEscrowMode =
-  normalizeBetEscrowMode(explicitBetEscrowMode) ||
-  (process.env.WOLO_BET_REQUIRE_ONCHAIN === "1" || WOLO_BET_ESCROW_ADDRESS
+  WOLO_CHAIN_ID === WOLO_MAINNET_CHAIN_ID
     ? "required"
-    : "disabled");
+    : (normalizeBetEscrowMode(explicitBetEscrowMode) ||
+        (process.env.WOLO_BET_REQUIRE_ONCHAIN === "1" || WOLO_BET_ESCROW_ADDRESS
+          ? "required"
+          : "disabled"));
 
 export const WOLO_BET_ESCROW_READY = Boolean(WOLO_BET_ESCROW_ADDRESS);
 export const WOLO_BET_ESCROW_REQUIRED = WOLO_BET_ESCROW_MODE === "required";
@@ -79,6 +86,48 @@ export const WOLO_BET_TEST_MODE =
     : explicitBetTestMode === "0"
       ? false
       : /testnet/i.test(WOLO_CHAIN_ID);
+
+export function getWoloMainnetDisplayStartAt() {
+  const parsed = new Date(WOLO_MAINNET_DISPLAY_START_ISO);
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed;
+  }
+  return new Date("2026-05-25T00:00:00.000Z");
+}
+
+export function isWoloMainnet() {
+  return WOLO_CHAIN_ID === WOLO_MAINNET_CHAIN_ID && !WOLO_BET_TEST_MODE;
+}
+
+export function isAtOrAfterWoloMainnetStart(value: Date | string | null | undefined) {
+  if (!isWoloMainnet()) return true;
+  if (!value) return false;
+  const date = value instanceof Date ? value : new Date(value);
+  return !Number.isNaN(date.getTime()) && date.getTime() >= getWoloMainnetDisplayStartAt().getTime();
+}
+
+export function isMainnetVisibleWoloTx(input: {
+  txHash?: string | null;
+  createdAt?: Date | string | null;
+  updatedAt?: Date | string | null;
+}) {
+  if (!isWoloMainnet()) return true;
+  return Boolean(input.txHash?.trim()) && isAtOrAfterWoloMainnetStart(input.updatedAt || input.createdAt);
+}
+
+export function isMainnetVisibleBetWager(input: {
+  executionMode?: string | null;
+  stakeTxHash?: string | null;
+  createdAt?: Date | string | null;
+  stakeLockedAt?: Date | string | null;
+}) {
+  if (!isWoloMainnet()) return true;
+  return (
+    input.executionMode === "onchain_escrow" &&
+    Boolean(input.stakeTxHash?.trim()) &&
+    isAtOrAfterWoloMainnetStart(input.stakeLockedAt || input.createdAt)
+  );
+}
 
 export function getWoloBetEscrowRuntime() {
   return {

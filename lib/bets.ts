@@ -25,7 +25,10 @@ import { recordUserActivity } from "@/lib/userExperience";
 import {
   WOLO_BET_TEST_MODE,
   buildWoloRestTxLookupUrl,
+  getWoloMainnetDisplayStartAt,
   getWoloBetEscrowRuntime,
+  isMainnetVisibleBetWager,
+  isWoloMainnet,
 } from "@/lib/woloChain";
 import {
   BET_STAKE_INTENT_RECOVERABLE_STATUSES,
@@ -1309,15 +1312,36 @@ function isCountableOnchainWagerStakeIntent(
 function isCountableBetWager(
   wager: {
     executionMode: string;
+    stakeTxHash?: string | null;
+    createdAt?: Date | string | null;
+    stakeLockedAt?: Date | string | null;
     stakeIntent?: { status: string | null } | null;
   }
 ) {
+  if (!isMainnetVisibleBetWager(wager)) {
+    return false;
+  }
+
   return (
     wager.executionMode !== "onchain_escrow" || isCountableOnchainWagerStakeIntent(wager.stakeIntent)
   );
 }
 
 function buildCountableActiveWagerWhere() {
+  if (isWoloMainnet()) {
+    return {
+      status: "active",
+      executionMode: "onchain_escrow",
+      stakeTxHash: { not: null },
+      stakeLockedAt: { gte: getWoloMainnetDisplayStartAt() },
+      stakeIntent: {
+        is: {
+          status: "recorded",
+        },
+      },
+    };
+  }
+
   return {
     status: "active",
     OR: [
@@ -2308,7 +2332,10 @@ function buildMarketCard(
   const linkedSessionKey =
     market.linkedSessionKey?.trim() || market.scheduledMatch?.linkedSessionKey?.trim() || null;
   const founderBonuses = buildFounderChipSurface(market.founderBonuses);
-  const warTape = buildMarketWarTapeRows(market, claimsByMarketId.get(market.id) ?? []);
+  const warTape = buildMarketWarTapeRows(
+    { ...market, wagers: activeWagers },
+    claimsByMarketId.get(market.id) ?? []
+  );
 
   return {
     id: market.id,
@@ -2427,7 +2454,7 @@ async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettle
         },
       },
       orderBy: [{ settledAt: "desc" }, { updatedAt: "desc" }, { id: "desc" }],
-      take: 12,
+      take: 40,
       include: {
         scheduledMatch: {
           select: {
@@ -2446,6 +2473,9 @@ async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettle
             payoutWolo: true,
             status: true,
             executionMode: true,
+            stakeTxHash: true,
+            createdAt: true,
+            stakeLockedAt: true,
             stakeIntent: {
               select: {
                 status: true,
@@ -2485,7 +2515,14 @@ async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettle
     }
   }
 
-  const settledMarkets = [...settledMarketBySurfaceKey.values()].slice(0, 4);
+  const settledMarkets = [...settledMarketBySurfaceKey.values()]
+    .filter((market) => {
+      if (!isWoloMainnet()) return true;
+      return market.wagers.some(
+        (wager) => wager.status !== "void" && isCountableBetWager(wager)
+      );
+    })
+    .slice(0, 4);
 
   const sessionHrefByMatchKey = new Map(
     sessionSnapshot.recentlyCompletedSessions.map((session) => [
@@ -2551,6 +2588,10 @@ async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettle
         })),
       } satisfies BetSettledResult;
     });
+  }
+
+  if (isWoloMainnet()) {
+    return [];
   }
 
   const rows = await prisma.gameStats.findMany({

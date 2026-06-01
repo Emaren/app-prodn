@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 import { pendingWoloClaimNameKeys } from "@/lib/pendingWoloClaims";
+import { getWoloMainnetDisplayStartAt, isWoloMainnet } from "@/lib/woloChain";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -49,6 +50,25 @@ function pushRow(rows: WoloTransactionRow[], row: WoloTransactionRow | null) {
   rows.push(row);
 }
 
+function mainnetCutoffWhere() {
+  return isWoloMainnet() ? { gte: getWoloMainnetDisplayStartAt() } : undefined;
+}
+
+function visibleMainnetWagerWhere(userId: number) {
+  if (!isWoloMainnet()) return { userId };
+  return {
+    userId,
+    executionMode: "onchain_escrow",
+    stakeTxHash: { not: null },
+    stakeLockedAt: { gte: getWoloMainnetDisplayStartAt() },
+    stakeIntent: {
+      is: {
+        status: "recorded",
+      },
+    },
+  };
+}
+
 export async function GET(request: NextRequest) {
   try {
     const sessionUid = await getSessionUid(request);
@@ -84,6 +104,7 @@ export async function GET(request: NextRequest) {
     const [claims, gifts, wagers, stakeIntents, scheduledMatches] = await Promise.all([
       prisma.pendingWoloClaim.findMany({
         where: {
+          ...(mainnetCutoffWhere() ? { createdAt: mainnetCutoffWhere() } : {}),
           OR: [
             { claimedByUserId: user.id },
             ...(nameKeys.length > 0 ? [{ normalizedPlayerName: { in: nameKeys } }] : []),
@@ -117,7 +138,7 @@ export async function GET(request: NextRequest) {
         },
       }),
       prisma.betWager.findMany({
-        where: { userId: user.id },
+        where: visibleMainnetWagerWhere(user.id),
         orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
         take: sourceTake,
         select: {
@@ -138,7 +159,10 @@ export async function GET(request: NextRequest) {
         },
       }),
       prisma.betStakeIntent.findMany({
-        where: { userId: user.id },
+        where: {
+          userId: user.id,
+          ...(mainnetCutoffWhere() ? { updatedAt: mainnetCutoffWhere() } : {}),
+        },
         orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
         take: sourceTake,
         select: {
@@ -164,6 +188,7 @@ export async function GET(request: NextRequest) {
       prisma.scheduledMatch.findMany({
         where: {
           OR: [{ challengerUserId: user.id }, { challengedUserId: user.id }],
+          ...(mainnetCutoffWhere() ? { updatedAt: mainnetCutoffWhere() } : {}),
         },
         orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
         take: sourceTake,

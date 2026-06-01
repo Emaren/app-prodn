@@ -83,8 +83,10 @@ WOLO betting / settlement:
 
 - `NEXT_PUBLIC_WOLO_RPC_URL`
 - `NEXT_PUBLIC_WOLO_REST_URL`
+- `NEXT_PUBLIC_WOLO_CHAIN_ID=wolo-1` for mainnet
 - `NEXT_PUBLIC_WOLO_BET_ESCROW_ADDRESS`
 - `WOLO_BET_ESCROW_ADDRESS`
+- `WOLO_MAINNET_DISPLAY_START_AT=2026-05-25T00:00:00.000Z` (optional; mainnet-facing WOLO/bet rails hide pre-cutoff testnet-era rows)
 - `WOLO_SETTLEMENT_URL`
 - `WOLO_SETTLEMENT_AUTH_TOKEN` (optional if the settlement service is protected)
 - `WOLO_BET_PAYOUT_MNEMONIC` / `WOLO_BET_PAYOUT_ADDRESS` only when using the local fallback signer instead of the settlement service
@@ -175,7 +177,7 @@ python /var/www/AoE2HDBets/api-prodn/scripts/set_admin.py --email you@example.co
 - `/lobby` is now a real product destination with leaderboard + tournament surface
 - `/lobby` defaults to Advanced view: a moving live ticker, Watch & Chat arena hero with comments to the right, reactions and a compact bet slip under the video, a compact WOLO / USDC swap tile, then the existing Community Lobby surface. Basic view remains available and preserves the simpler lobby-first layout with a low-glare outline toggle.
 - Admins manage custom live ticker messages from `/admin`; enabled messages are text-only, ordered by priority, and mixed with system ticker items from tournament/replay/lobby/WOLO market state.
-- `/bets` now supports real Keplr-signed WOLO stake locks when escrow env is configured, and the wager is only recorded after the stake tx verifies against WoloChain REST
+- `/bets` now requires real Keplr-signed WOLO stake locks on `wolo-1`; the wager is only recorded after the stake tx verifies against WoloChain REST, and app-only wager rows stay out of mainnet-facing bet, profile, staking, war-chest, and admin rails
 - `/staking` uses real Keplr stake transfers into the staking wallet, app-side staking ledger rows, and staking-wallet-signed WoloChain transfers for unstake. User max-unstake follows confirmed staked principal; the staking wallet reserve/headroom is treated as operator-funded and surfaces as an operator top-up warning when the wallet cannot cover remaining confirmed stake plus reserve after the unstake.
 - `/staking` reward distributions are finalized once per closed UTC day through `npm run staking:rewards:run`; valid reward wallets are paid through the WOLO settlement rail and successful payouts are recorded as staking `CLAIM` events for Recent Activity.
 - The AI Scribe and Grimer receive live `/staking` context through `lib/aiConcierge.ts` for lobby and contact replies. They should explain app-side WOLO staking state, fee splits, rewards, and viewer positions from supplied context only, without calling it validator staking or inventing APY.

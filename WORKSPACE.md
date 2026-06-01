@@ -18,6 +18,7 @@ Together, they power the AoE2HDBets public product, replay ingest pipeline, and 
 - Next.js web app at `aoe2war.com`
 - Public product shell for lobby, leaderboard, players, rivalries, live-games, requests, inbox/admin, and `$WOLO`
 - Advanced lobby arena stack: moving live ticker, Watch & Chat hero/comments rail, compact hero bet slip, compact WOLO swap tile, and preserved Basic lobby toggle
+- `wolo-1` betting is strict mainnet mode: Keplr-signed stake tx required, app-only wagers rejected/hidden, and testnet-era rows filtered from mainnet-facing WOLO/bet rails
 - Prisma-backed user/profile/community APIs and auth session cookie handling
 - Same-origin browser API routes that proxy or reshape selected `api-prodn` data
 - Lazy client-loader shells for wallet-heavy routes so `/wolo`, `/wallet`, and `/connect-wallet` avoid pulling Keplr/Cosmos bundles into the initial server page

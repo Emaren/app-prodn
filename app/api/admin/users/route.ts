@@ -21,7 +21,13 @@ import {
 } from "@/lib/scheduledMatchPreferences";
 import { loadWatcherDownloadAnalytics } from "@/lib/watcherDownloads";
 import { getWoloSettlementSurfaceStatus } from "@/lib/woloBetSettlement";
-import { buildWoloRestTxLookupUrl, getWoloBetEscrowRuntime } from "@/lib/woloChain";
+import {
+  buildWoloRestTxLookupUrl,
+  getWoloBetEscrowRuntime,
+  getWoloMainnetDisplayStartAt,
+  isMainnetVisibleBetWager,
+  isWoloMainnet,
+} from "@/lib/woloChain";
 import { loadBetWalletFrictionRail } from "@/lib/adminWalletFriction";
 
 function buildPairKey(leftUserId: number, rightUserId: number) {
@@ -141,12 +147,37 @@ function projectReturnWolo(stakeWolo: number, selectedPoolWolo: number, opposite
 
 function isCountableWagerRow(wager: {
   executionMode: string;
+  stakeTxHash?: string | null;
+  stakeLockedAt?: Date | string | null;
+  createdAt?: Date | string | null;
   stakeIntent?: { status: string | null } | null;
 }) {
+  if (!isMainnetVisibleBetWager(wager)) {
+    return false;
+  }
+
   return (
     wager.executionMode !== "onchain_escrow" ||
     isBetStakeIntentCountableStatus(wager.stakeIntent?.status)
   );
+}
+
+function isVisibleMainnetClaim(claim: { createdAt: Date }) {
+  return !isWoloMainnet() || claim.createdAt.getTime() >= getWoloMainnetDisplayStartAt().getTime();
+}
+
+function visibleMainnetWagerWhere() {
+  if (!isWoloMainnet()) return {};
+  return {
+    executionMode: "onchain_escrow",
+    stakeTxHash: { not: null },
+    stakeLockedAt: { gte: getWoloMainnetDisplayStartAt() },
+    stakeIntent: {
+      is: {
+        status: "recorded",
+      },
+    },
+  };
 }
 
 function resolveExecutionMode(
@@ -342,6 +373,7 @@ export async function GET(request: NextRequest) {
       prisma.betWager.findMany({
         where: {
           userId: { in: userIds },
+          ...visibleMainnetWagerWhere(),
         },
         orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
         include: {
@@ -509,7 +541,9 @@ export async function GET(request: NextRequest) {
     const rescindedClaimsByUserId = new Map<number, SerializedClaim[]>();
     const claimsByName = new Map<string, SerializedClaim[]>();
 
-    for (const claim of allClaims) {
+    const visibleClaims = allClaims.filter(isVisibleMainnetClaim);
+
+    for (const claim of visibleClaims) {
       const serialized = {
         id: claim.id,
         displayPlayerName: claim.displayPlayerName,
@@ -890,7 +924,7 @@ export async function GET(request: NextRequest) {
 
     const settlementMarketIds = Array.from(
       new Set(
-        allClaims
+        visibleClaims
           .map((claim) => claim.sourceMarketId)
           .filter((value): value is number => typeof value === "number" && Number.isFinite(value))
       )
@@ -914,7 +948,7 @@ export async function GET(request: NextRequest) {
       settlementMarkets.map((market) => [market.id, market] as const)
     );
 
-    const settlementRows = allClaims.slice(0, 60).map((claim) => {
+    const settlementRows = visibleClaims.slice(0, 60).map((claim) => {
       const market = typeof claim.sourceMarketId === "number"
         ? settlementMarketById.get(claim.sourceMarketId)
         : null;
@@ -958,18 +992,18 @@ export async function GET(request: NextRequest) {
 
     const settlementRail = {
       summary: {
-        totalCount: allClaims.length,
-        totalAmountWolo: allClaims.reduce((sum, claim) => sum + claim.amountWolo, 0),
-        pendingCount: allClaims.filter((claim) => claim.status === "pending").length,
-        pendingAmountWolo: allClaims
+        totalCount: visibleClaims.length,
+        totalAmountWolo: visibleClaims.reduce((sum, claim) => sum + claim.amountWolo, 0),
+        pendingCount: visibleClaims.filter((claim) => claim.status === "pending").length,
+        pendingAmountWolo: visibleClaims
           .filter((claim) => claim.status === "pending")
           .reduce((sum, claim) => sum + claim.amountWolo, 0),
-        claimedCount: allClaims.filter((claim) => claim.status === "claimed").length,
-        claimedAmountWolo: allClaims
+        claimedCount: visibleClaims.filter((claim) => claim.status === "claimed").length,
+        claimedAmountWolo: visibleClaims
           .filter((claim) => claim.status === "claimed")
           .reduce((sum, claim) => sum + claim.amountWolo, 0),
-        rescindedCount: allClaims.filter((claim) => claim.status === "rescinded").length,
-        rescindedAmountWolo: allClaims
+        rescindedCount: visibleClaims.filter((claim) => claim.status === "rescinded").length,
+        rescindedAmountWolo: visibleClaims
           .filter((claim) => claim.status === "rescinded")
           .reduce((sum, claim) => sum + claim.amountWolo, 0),
         autoSettledCount: settlementRows.filter((row) => row.settlementMode === "auto_settled").length,
@@ -1167,6 +1201,12 @@ export async function GET(request: NextRequest) {
       };
     });
 
+    const visibleMarketRailRows = marketRailRows.filter((market) => {
+      if (!isWoloMainnet()) return true;
+      if (["open", "closing", "live"].includes(market.status)) return true;
+      return market.leftBettors.length > 0 || market.rightBettors.length > 0 || market.unresolvedIntents.length > 0;
+    });
+
     const marketRail = {
       summary: {
         betEscrowMode: escrowRuntime.mode,
@@ -1181,23 +1221,23 @@ export async function GET(request: NextRequest) {
         escrowRecentCapability: settlementSurface.escrowRecentCapability,
         settlementSurfaceWarnings: settlementSurface.warnings,
         settlementSurfaceDetail: settlementSurface.detail,
-        openCount: marketRailRows.filter((market) =>
+        openCount: visibleMarketRailRows.filter((market) =>
           ["open", "closing", "live"].includes(market.status)
         ).length,
-        liveCount: marketRailRows.filter((market) => market.status === "live").length,
-        pendingSettlementCount: marketRailRows.filter((market) =>
+        liveCount: visibleMarketRailRows.filter((market) => market.status === "live").length,
+        pendingSettlementCount: visibleMarketRailRows.filter((market) =>
           market.settlementStatus === "pending" || market.settlementStatus === "dry_run"
         ).length,
-        failedSettlementCount: marketRailRows.filter((market) =>
+        failedSettlementCount: visibleMarketRailRows.filter((market) =>
           market.settlementStatus === "failed" || market.settlementStatus === "partial"
         ).length,
-        unresolvedIntentCount: marketRailRows.reduce(
+        unresolvedIntentCount: visibleMarketRailRows.reduce(
           (sum, market) => sum + market.unresolvedIntents.length,
           0
         ),
-        totalPotWolo: marketRailRows.reduce((sum, market) => sum + market.totalPotWolo, 0),
+        totalPotWolo: visibleMarketRailRows.reduce((sum, market) => sum + market.totalPotWolo, 0),
       },
-      rows: marketRailRows,
+      rows: visibleMarketRailRows,
     };
 
     const communityLobbyBasicCount = userRows.filter(

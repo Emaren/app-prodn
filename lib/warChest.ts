@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@/lib/generated/prisma";
+import type { Prisma, PrismaClient } from "@/lib/generated/prisma";
 
 import { loadBetBoardSnapshot, type BetBoardSnapshot } from "@/lib/bets";
 import type {
@@ -13,6 +13,7 @@ import {
   normalizePublicPlayerName,
 } from "@/lib/publicPlayers";
 import { loadWoloDevSnapshot } from "@/lib/woloDevSnapshot";
+import { getWoloMainnetDisplayStartAt, isWoloMainnet } from "@/lib/woloChain";
 
 export type WarChestRecentWager = {
   id: number;
@@ -100,6 +101,33 @@ function displayActorName(input: {
   );
 }
 
+function visibleMainnetWagerWhere(
+  extra: Prisma.BetWagerWhereInput = {}
+): Prisma.BetWagerWhereInput {
+  if (!isWoloMainnet()) return extra;
+  return {
+    ...extra,
+    executionMode: "onchain_escrow",
+    stakeTxHash: { not: null },
+    stakeLockedAt: { gte: getWoloMainnetDisplayStartAt() },
+    stakeIntent: {
+      is: {
+        status: "recorded",
+      },
+    },
+  };
+}
+
+function visibleMainnetClaimWhere(
+  extra: Prisma.PendingWoloClaimWhereInput = {}
+): Prisma.PendingWoloClaimWhereInput {
+  if (!isWoloMainnet()) return extra;
+  return {
+    ...extra,
+    createdAt: { gte: getWoloMainnetDisplayStartAt() },
+  };
+}
+
 export async function loadWarChestSnapshot(
   prisma: PrismaClient,
   viewerUid?: string | null,
@@ -130,9 +158,9 @@ export async function loadWarChestSnapshot(
     settledMarketCount,
   ] = await Promise.all([
     prisma.betWager.findMany({
-      where: {
+      where: visibleMainnetWagerWhere({
         createdAt: { gte: weeklyWindowStart },
-      },
+      }),
       select: {
         userId: true,
         amountWolo: true,
@@ -142,6 +170,7 @@ export async function loadWarChestSnapshot(
       },
     }),
     prisma.betWager.aggregate({
+      where: visibleMainnetWagerWhere(),
       _sum: {
         amountWolo: true,
         payoutWolo: true,
@@ -151,10 +180,10 @@ export async function loadWarChestSnapshot(
       },
     }),
     prisma.pendingWoloClaim.aggregate({
-      where: {
+      where: visibleMainnetClaimWhere({
         status: "pending",
         rescindedAt: null,
-      },
+      }),
       _sum: {
         amountWolo: true,
       },
@@ -163,6 +192,7 @@ export async function loadWarChestSnapshot(
       },
     }),
     prisma.betWager.findMany({
+      where: visibleMainnetWagerWhere(),
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       take: 10,
       select: {
@@ -192,9 +222,9 @@ export async function loadWarChestSnapshot(
       },
     }),
     prisma.pendingWoloClaim.findMany({
-      where: {
+      where: visibleMainnetClaimWhere({
         rescindedAt: null,
-      },
+      }),
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       take: 10,
       select: {
@@ -213,6 +243,13 @@ export async function loadWarChestSnapshot(
     prisma.betMarket.count({
       where: {
         status: "settled",
+        ...(isWoloMainnet()
+          ? {
+              wagers: {
+                some: visibleMainnetWagerWhere(),
+              },
+            }
+          : {}),
       },
     }),
   ]);

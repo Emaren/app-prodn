@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@/lib/generated/prisma";
+import type { Prisma, PrismaClient } from "@/lib/generated/prisma";
 import {
   buildClaimedPlayerHref,
   buildClaimedPlayerToken,
@@ -12,6 +12,7 @@ import type {
   LobbyWoloEarnersEntry,
   LobbyWoloEarnersMode,
 } from "@/lib/lobby";
+import { getWoloMainnetDisplayStartAt, isWoloMainnet } from "@/lib/woloChain";
 
 const WEEKLY_TIMEFRAME_DAYS = 7;
 const MIN_VISIBLE_SLOTS = 3;
@@ -300,6 +301,7 @@ async function loadClaims(prisma: PrismaClient) {
   return prisma.pendingWoloClaim.findMany({
     where: {
       rescindedAt: null,
+      ...(isWoloMainnet() ? { createdAt: { gte: getWoloMainnetDisplayStartAt() } } : {}),
     },
     select: {
       claimedByUserId: true,
@@ -317,6 +319,7 @@ async function loadClaims(prisma: PrismaClient) {
 
 async function loadWagers(prisma: PrismaClient) {
   return prisma.betWager.findMany({
+    where: visibleMainnetWagerWhere(),
     select: {
       userId: true,
       amountWolo: true,
@@ -327,6 +330,20 @@ async function loadWagers(prisma: PrismaClient) {
     },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
   }) as Promise<WagerSample[]>;
+}
+
+function visibleMainnetWagerWhere(): Prisma.BetWagerWhereInput {
+  if (!isWoloMainnet()) return {};
+  return {
+    executionMode: "onchain_escrow",
+    stakeTxHash: { not: null },
+    stakeLockedAt: { gte: getWoloMainnetDisplayStartAt() },
+    stakeIntent: {
+      is: {
+        status: "recorded",
+      },
+    },
+  };
 }
 
 function claimCountsAsWeeklyTake(claim: Pick<ClaimSample, "claimKind">) {
