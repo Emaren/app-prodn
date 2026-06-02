@@ -88,11 +88,19 @@ When `/bets` is expected to open real Keplr stake locks, these envs must agree i
 - `WOLO_SETTLEMENT_URL` must not point at the old local testnet settlement target `127.0.0.1:8091`; on `wolo-1` the app ignores that legacy URL and leaves settlement unconfigured instead.
 - `WOLO_STAKING_WALLET_ADDRESS` / `NEXT_PUBLIC_WOLO_STAKING_WALLET_ADDRESS`
 - `WOLO_STAKING_WALLET_MNEMONIC`
+- `WOLO_STAKING_HOME=/var/lib/aoe2hdbets-wolo-mainnet`
 - `WOLO_STAKING_UNSTAKE_FEE` (optional; defaults to `auto`)
 
 If `NEXT_PUBLIC_WOLO_BET_ESCROW_ADDRESS` or `WOLO_BET_ESCROW_ADDRESS` are missing on `wolo-1`, `/bets` must block with an escrow config error. It should not record an app-only mainnet wager.
 
 For `/staking`, fund the staking wallet with total confirmed user stake plus the operator reserve/headroom used for WoloChain unstake sends. AoE2HDBets defaults to a `10 WOLO` reserve unless `WOLO_STAKING_UNSTAKE_HEADROOM_UWOLO` is set. User max-unstake should not be reduced by this reserve; underfunding should show the operator top-up warning instead.
+
+Mainnet public staking display derives from tx-backed rows only: indexed
+WoloChain `MsgSend` rows to/from the staking wallet plus confirmed app
+`staking_events` with verified `wolo-1` tx hashes. Legacy `staking_positions`
+rows may exist for operator/history workflows, but must not drive public
+mainnet totals. After deploy, run `scripts/backfill-wolo-mainnet-transfers.mjs`
+or the admin backfill route to refresh `/api/wolo/mainnet-transfers`.
 
 The `/staking` public economy rail displays bank balances for the configured
 staking wallet, community treasury, bet escrow, payout signer, and DEX liquidity

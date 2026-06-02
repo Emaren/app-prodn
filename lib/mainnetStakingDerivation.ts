@@ -43,6 +43,15 @@ function addWeight(
   return currentWeight + BigInt(Math.max(0, Math.trunc(currentStakeWolo))) * BigInt(seconds);
 }
 
+function transferResolutionScore(transfer: MainnetStakingTransferInput) {
+  let score = 0;
+  if (transfer.senderUserId) score += 4;
+  if (transfer.recipientUserId) score += 4;
+  if (transfer.senderLabel?.trim()) score += 1;
+  if (transfer.recipientLabel?.trim()) score += 1;
+  return score;
+}
+
 export function deriveMainnetStakingPositionsFromTransfers(
   transfers: MainnetStakingTransferInput[],
   options: {
@@ -62,7 +71,7 @@ export function deriveMainnetStakingPositionsFromTransfers(
   };
 
   const positions = new Map<number, MutablePosition>();
-  const sortedTransfers = [...transfers]
+  const visibleTransfers = [...transfers]
     .map((transfer) => ({ transfer, timestamp: parseTimestamp(transfer.timestamp) }))
     .filter(
       (item): item is { transfer: MainnetStakingTransferInput; timestamp: Date } => {
@@ -72,8 +81,25 @@ export function deriveMainnetStakingPositionsFromTransfers(
           item.timestamp.getTime() <= asOf.getTime()
         );
       }
-    )
-    .sort((left, right) => left.timestamp.getTime() - right.timestamp.getTime());
+    );
+  const transfersByTxHash = new Map<string, { transfer: MainnetStakingTransferInput; timestamp: Date }>();
+  const unhashedTransfers: Array<{ transfer: MainnetStakingTransferInput; timestamp: Date }> = [];
+
+  for (const item of visibleTransfers) {
+    const txKey = item.transfer.txHash.trim().toUpperCase();
+    if (!txKey) {
+      unhashedTransfers.push(item);
+      continue;
+    }
+    const existing = transfersByTxHash.get(txKey);
+    if (!existing || transferResolutionScore(item.transfer) > transferResolutionScore(existing.transfer)) {
+      transfersByTxHash.set(txKey, item);
+    }
+  }
+
+  const sortedTransfers = [...transfersByTxHash.values(), ...unhashedTransfers].sort(
+    (left, right) => left.timestamp.getTime() - right.timestamp.getTime()
+  );
 
   for (const { transfer, timestamp } of sortedTransfers) {
     const senderAddress = normalizeAddress(transfer.senderAddress);

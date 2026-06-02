@@ -17,7 +17,6 @@ import {
   type WoloMainnetActivityRow,
 } from "@/lib/woloTransactionRecovery";
 import {
-  loadMainnetStakingPositionForUser,
   loadMainnetStakingPositions,
 } from "@/lib/mainnetStakingPositions";
 import {
@@ -819,6 +818,84 @@ async function loadRecentRewardRows(prisma: PrismaClient): Promise<StakingLeader
   }));
 }
 
+async function loadMainnetRewardSnapshotForUser(
+  prisma: PrismaClient,
+  userId: number,
+  positions: Awaited<ReturnType<typeof loadMainnetStakingPositions>>
+) {
+  const [unpaidAllocation, claimedAllocation, lifetimeAllocation, settledAggregate] =
+    await Promise.all([
+      prisma.stakingRewardAllocation.aggregate({
+        where: {
+          userId,
+          positionId: null,
+          rewardWolo: { gt: 0 },
+          status: { not: "CLAIMED" },
+          ...mainnetDisplayDateWhere(),
+        },
+        _sum: { rewardWolo: true },
+      }),
+      prisma.stakingRewardAllocation.aggregate({
+        where: {
+          userId,
+          positionId: null,
+          rewardWolo: { gt: 0 },
+          status: "CLAIMED",
+          ...mainnetDisplayDateWhere(),
+        },
+        _sum: { rewardWolo: true },
+      }),
+      prisma.stakingRewardAllocation.aggregate({
+        where: {
+          userId,
+          positionId: null,
+          rewardWolo: { gt: 0 },
+          ...mainnetDisplayDateWhere(),
+        },
+        _sum: { rewardWolo: true },
+      }),
+      prisma.betWager.aggregate({
+        where: visibleMainnetWagerWhere({
+          settledAt: { not: null },
+        }),
+        _sum: { amountWolo: true },
+      }),
+    ]);
+
+  const pendingAllocatedWolo = unpaidAllocation._sum.rewardWolo ?? 0;
+  const claimedRewardsWolo = claimedAllocation._sum.rewardWolo ?? 0;
+  const lifetimeAllocatedWolo = lifetimeAllocation._sum.rewardWolo ?? 0;
+  const viewerPosition = positions.find((position) => position.userId === userId);
+  const viewerWeight = BigInt(viewerPosition?.stakingWeight || 0);
+  const totalWeight = positions.reduce(
+    (sum, position) => sum + BigInt(position.stakingWeight || 0),
+    BigInt(0)
+  );
+
+  let modeledPendingWolo = 0;
+  if (viewerWeight > BigInt(0) && totalWeight > BigInt(0)) {
+    const settledVolumeWolo = settledAggregate._sum.amountWolo ?? 0;
+    const feePools = calculateModeledFeePools(settledVolumeWolo);
+    const shareRatio = Number(viewerWeight) / Number(totalWeight);
+    const modeledGrossWolo = Number.isFinite(shareRatio)
+      ? feePools.stakerPoolWolo * shareRatio
+      : 0;
+    modeledPendingWolo = Math.max(0, modeledGrossWolo - claimedRewardsWolo);
+  }
+
+  const pendingRewardsWolo = Math.max(pendingAllocatedWolo, modeledPendingWolo);
+  const lifetimeRewardsWolo = Math.max(
+    lifetimeAllocatedWolo,
+    pendingRewardsWolo + claimedRewardsWolo
+  );
+
+  return {
+    pendingRewardsWolo,
+    lifetimeRewardsWolo,
+    claimedRewardsWolo,
+  };
+}
+
 export async function loadStakingLeaderboard(
   prisma: PrismaClient,
   board: StakingBoardKey
@@ -845,7 +922,7 @@ export async function loadStakingLeaderboard(
 
 export async function loadStakingMe(prisma: PrismaClient, userId: number) {
   const now = new Date();
-  const [user, position, mainnetPosition, events, txFeeEvents, lastReward] = await Promise.all([
+  const [user, position, mainnetPositions, events, txFeeEvents, lastReward] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -859,9 +936,7 @@ export async function loadStakingMe(prisma: PrismaClient, userId: number) {
     prisma.stakingPosition.findUnique({
       where: { userId },
     }),
-    isWoloMainnet()
-      ? loadMainnetStakingPositionForUser(prisma, userId, { asOf: now })
-      : Promise.resolve(null),
+    isWoloMainnet() ? loadMainnetStakingPositions(prisma, { asOf: now }) : Promise.resolve([]),
     prisma.stakingEvent.findMany({
       where: {
         userId,
@@ -912,6 +987,14 @@ export async function loadStakingMe(prisma: PrismaClient, userId: number) {
   }
 
   const useMainnetPosition = isWoloMainnet();
+  const mainnetPosition = mainnetPositions.find((position) => position.userId === userId) ?? null;
+  const mainnetRewardSnapshot = useMainnetPosition
+    ? await loadMainnetRewardSnapshotForUser(prisma, userId, mainnetPositions)
+    : {
+        pendingRewardsWolo: 0,
+        lifetimeRewardsWolo: 0,
+        claimedRewardsWolo: 0,
+      };
   const stakingWeight = useMainnetPosition
     ? BigInt(mainnetPosition?.stakingWeight || 0)
     : position
@@ -935,9 +1018,15 @@ export async function loadStakingMe(prisma: PrismaClient, userId: number) {
     position: {
       currentStakedWolo,
       stakingWeight: stakingWeight.toString(),
-      pendingRewardsWolo: useMainnetPosition ? 0 : position?.pendingRewardsWolo ?? 0,
-      lifetimeRewardsWolo: useMainnetPosition ? 0 : position?.lifetimeRewardsWolo ?? 0,
-      claimedRewardsWolo: useMainnetPosition ? 0 : position?.claimedRewardsWolo ?? 0,
+      pendingRewardsWolo: useMainnetPosition
+        ? mainnetRewardSnapshot.pendingRewardsWolo
+        : position?.pendingRewardsWolo ?? 0,
+      lifetimeRewardsWolo: useMainnetPosition
+        ? mainnetRewardSnapshot.lifetimeRewardsWolo
+        : position?.lifetimeRewardsWolo ?? 0,
+      claimedRewardsWolo: useMainnetPosition
+        ? mainnetRewardSnapshot.claimedRewardsWolo
+        : position?.claimedRewardsWolo ?? 0,
       lifetimeTxFeesWolo,
       status: useMainnetPosition
         ? currentStakedWolo > 0

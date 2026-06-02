@@ -77,3 +77,67 @@ test("mainnet staking derivation subtracts confirmed staking-wallet returns only
   assert.equal(rows[0].totalStakedWolo, 100);
   assert.equal(rows[0].totalUnstakedWolo, 40);
 });
+
+test("mainnet staking derivation maps an operating wallet deposit into custody stake", () => {
+  const operatingWallet = "wolo1wue7vyque2pssskgdrww0fcadlq9ps6mtn605e";
+  const custodyWallet = "wolo1rmr39nd5gnnv5y5f66qtq367xfwvx9jt5w7ucr";
+
+  const rows = deriveMainnetStakingPositionsFromTransfers(
+    [
+      {
+        txHash: "5D4824B1BA911604CD41A53F4C391B1D8B55A696B60DB844039969D0BFD33E05",
+        timestamp: "2026-06-02T01:05:11.000Z",
+        senderAddress: operatingWallet,
+        recipientAddress: custodyWallet,
+        amountWolo: 100,
+        senderUserId: 2,
+        senderLabel: "Emaren",
+      },
+    ],
+    {
+      stakingWalletAddress: custodyWallet,
+      mainnetStartAt,
+      asOf: new Date("2026-06-02T04:00:00.000Z"),
+    }
+  );
+
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].player, "Emaren");
+  assert.equal(rows[0].walletAddress, operatingWallet);
+  assert.equal(rows[0].currentStakedWolo, 100);
+  assert.equal(rows[0].totalStakedWolo, 100);
+  assert.notEqual(rows[0].walletAddress, custodyWallet);
+});
+
+test("mainnet staking derivation dedupes indexed and app-verified rows for the same tx", () => {
+  const rows = deriveMainnetStakingPositionsFromTransfers(
+    [
+      {
+        txHash: "DUPLICATESTAKE",
+        timestamp: "2026-06-02T01:05:11.000Z",
+        senderAddress: "wolo1wue7vyque2pssskgdrww0fcadlq9ps6mtn605e",
+        recipientAddress: stakingWalletAddress,
+        amountWolo: 100,
+      },
+      {
+        txHash: "duplicateStake",
+        timestamp: "2026-06-02T01:05:12.000Z",
+        senderAddress: "wolo1wue7vyque2pssskgdrww0fcadlq9ps6mtn605e",
+        recipientAddress: stakingWalletAddress,
+        amountWolo: 100,
+        senderUserId: 2,
+        senderLabel: "Emaren",
+      },
+    ],
+    {
+      stakingWalletAddress,
+      mainnetStartAt,
+      asOf: new Date("2026-06-02T04:00:00.000Z"),
+    }
+  );
+
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].player, "Emaren");
+  assert.equal(rows[0].currentStakedWolo, 100);
+  assert.deepEqual(rows[0].txHashes, ["duplicateStake"]);
+});
