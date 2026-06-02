@@ -99,8 +99,9 @@ Mainnet public staking display derives from tx-backed rows only: indexed
 WoloChain `MsgSend` rows to/from the staking wallet plus confirmed app
 `staking_events` with verified `wolo-1` tx hashes. Legacy `staking_positions`
 rows may exist for operator/history workflows, but must not drive public
-mainnet totals. After deploy, run `scripts/backfill-wolo-mainnet-transfers.mjs`
-or the admin backfill route to refresh `/api/wolo/mainnet-transfers`.
+mainnet totals, operator funding requirements, or unstake limits. After deploy,
+run `scripts/backfill-wolo-mainnet-transfers.mjs` or the admin backfill route
+to refresh `/api/wolo/mainnet-transfers`.
 
 The `/staking` public economy rail displays bank balances for the configured
 staking wallet, community treasury, bet escrow, payout signer, and DEX liquidity

@@ -8,10 +8,12 @@ import {
   loadStakingExecutionLimits,
   STAKING_WALLET_TOP_UP_DETAIL,
 } from "@/lib/stakingExecution";
+import { loadMainnetStakingPositionForUser } from "@/lib/mainnetStakingPositions";
 import {
   readWoloTxNetworkFeeWolo,
   validateWoloAddress,
 } from "@/lib/woloBetSettlement";
+import { isWoloMainnet } from "@/lib/woloChain";
 import { getWoloStakingRuntime } from "@/lib/woloStakingRuntime";
 import {
   executeWoloStakingUnstake,
@@ -77,18 +79,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const position = await prisma.stakingPosition.findUnique({
-      where: { userId: viewer.id },
-      select: { currentStakedWolo: true },
-    });
-    if (!position || position.currentStakedWolo < amountWolo) {
+    const currentConfirmedStakeWolo = isWoloMainnet()
+      ? (await loadMainnetStakingPositionForUser(prisma, viewer.id))?.currentStakedWolo ?? 0
+      : (await prisma.stakingPosition.findUnique({
+          where: { userId: viewer.id },
+          select: { currentStakedWolo: true },
+        }))?.currentStakedWolo ?? 0;
+
+    if (currentConfirmedStakeWolo < amountWolo) {
       return NextResponse.json(
         { detail: "No confirmed stake is available for that unstake." },
         { status: 409 }
       );
     }
 
-    const limits = await loadStakingExecutionLimits(prisma, position.currentStakedWolo);
+    const limits = await loadStakingExecutionLimits(prisma, currentConfirmedStakeWolo);
     if (amountWolo > limits.maxUnstakeWolo) {
       return NextResponse.json(
         {
@@ -107,7 +112,7 @@ export async function POST(request: NextRequest) {
     const reserveCheck = getUnstakeReserveCheck(
       limits,
       amountWolo,
-      position.currentStakedWolo
+      currentConfirmedStakeWolo
     );
     if (!reserveCheck.executable) {
       console.warn("Staking unstake reserve check failed:", reserveCheck);

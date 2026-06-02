@@ -1,5 +1,6 @@
 import type { PrismaClient } from "@/lib/generated/prisma";
-import { WOLO_COIN_DECIMALS } from "@/lib/woloChain";
+import { loadMainnetStakingPositions } from "@/lib/mainnetStakingPositions";
+import { isWoloMainnet, WOLO_COIN_DECIMALS } from "@/lib/woloChain";
 import { fetchWoloBalanceAmount } from "@/lib/woloRuntime";
 import { getWoloStakingRuntime } from "@/lib/woloStakingRuntime";
 
@@ -75,19 +76,25 @@ export async function loadStakingExecutionLimits(
   const currentStake = Math.max(0, Math.floor(currentStakedWolo || 0));
   let stakingWalletBalanceUWolo: bigint | null = null;
   let balanceLookupError: string | null = null;
-  const positionTotals = await prisma.stakingPosition.aggregate({
-    where: {
-      status: "active",
-      currentStakedWolo: { gt: 0 },
-    },
-    _count: { _all: true },
-    _sum: { currentStakedWolo: true },
-  });
-  const totalConfirmedStakedWolo = Math.max(
-    0,
-    positionTotals._sum.currentStakedWolo ?? 0
-  );
-  const activeStakers = positionTotals._count._all;
+  const mainnetPositions = isWoloMainnet()
+    ? await loadMainnetStakingPositions(prisma)
+    : null;
+  const legacyPositionTotals = mainnetPositions
+    ? null
+    : await prisma.stakingPosition.aggregate({
+        where: {
+          status: "active",
+          currentStakedWolo: { gt: 0 },
+        },
+        _count: { _all: true },
+        _sum: { currentStakedWolo: true },
+      });
+  const totalConfirmedStakedWolo = mainnetPositions
+    ? mainnetPositions.reduce((sum, position) => sum + position.currentStakedWolo, 0)
+    : Math.max(0, legacyPositionTotals?._sum.currentStakedWolo ?? 0);
+  const activeStakers = mainnetPositions
+    ? mainnetPositions.filter((position) => position.currentStakedWolo > 0).length
+    : legacyPositionTotals?._count._all ?? 0;
 
   if (runtime.stakingWalletAddress) {
     try {
