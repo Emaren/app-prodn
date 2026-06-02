@@ -124,6 +124,13 @@ function parseMapName(match: LobbyMatchRow | null | undefined) {
   return null;
 }
 
+function formatWoloMarketTickerPrice(value: number | null) {
+  if (value == null || !Number.isFinite(value)) return "pool syncing";
+  if (value < 0.001) return `$${value.toFixed(7)}`;
+  if (value < 1) return `$${value.toFixed(6)}`;
+  return `$${value.toLocaleString(undefined, { maximumFractionDigits: 4 })}`;
+}
+
 function buildSystemTickerItems({
   tournament,
   leaderboard,
@@ -203,9 +210,7 @@ function buildSystemTickerItems({
     items.push({
       key: `system-wolo-market-${woloMarket.poolId}`,
       text: cleanTickerText(
-        `MARKET · 1 WOLO = ${
-          woloMarket.priceUsd == null ? "$0.000100" : `$${woloMarket.priceUsd.toFixed(6)}`
-        } · ${woloMarket.pairLabel} pool ${woloMarket.poolId}`
+        `MARKET · 1 WOLO = ${formatWoloMarketTickerPrice(woloMarket.priceUsd)} · ${woloMarket.pairLabel} pool ${woloMarket.poolId}`
       ),
       source: "system",
       priority: 25,

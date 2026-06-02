@@ -77,7 +77,7 @@ Common:
 - `INTERNAL_API_KEY` (optional; forwarded on replay upload when backend enforces API keys)
 - `ALLOW_GUEST_SESSIONS=false` (recommended; keep guest sessions off so replay evidence ties to signed identities)
 - `DIRECT_MESSAGE_ATTACHMENT_DIR` (optional; default `storage/direct-message-attachments/`; new inbox uploads store file refs there instead of base64 rows)
-- `WOLO_OSMOSIS_POOL_ID=3461` / `WOLO_OSMOSIS_POOL_URL=https://app.osmosis.zone/pool/3461` / `WOLO_MARKET_LABEL=WOLO Market` / `WOLO_USD_PRICE_DEFAULT=0.000100` / `WOLO_USD_PRICE=0.000100` (optional display config for the Advanced lobby market tile and ticker)
+- `WOLO_OSMOSIS_POOL_ID=3461` / `WOLO_OSMOSIS_POOL_URL=https://app.osmosis.zone/pool/3461` / `WOLO_OSMOSIS_LCD_URL=https://lcd.osmosis.zone` / `WOLO_MARKET_LABEL=WOLO Market`; the Advanced lobby market tile and ticker derive `1 WOLO` price from the Osmosis pool unless `WOLO_USD_PRICE` is explicitly set.
 
 WOLO betting / settlement:
 
@@ -108,6 +108,11 @@ totals. Mainnet direct-transfer indexing is exposed read-only at
 `GET /api/wolo/mainnet-transfers`; operators can refresh the index with
 `POST /api/admin/wolo-transfers/backfill` or
 `node scripts/backfill-wolo-mainnet-transfers.mjs`.
+
+The `/staking` economy surface also renders public custody balances for staking
+wallet, community treasury, bet escrow, payout signer, and DEX liquidity
+addresses. Those cards display real WoloChain bank balances; if the configured
+address has `0 uwolo`, the card should show `0.00 WOLO`.
 
 Optional migration compatibility:
 

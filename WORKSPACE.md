@@ -20,6 +20,7 @@ Together, they power the AoE2HDBets public product, replay ingest pipeline, and 
 - Advanced lobby arena stack: moving live ticker, Watch & Chat hero/comments rail, compact hero bet slip, compact WOLO swap tile, and preserved Basic lobby toggle
 - `wolo-1` betting is strict mainnet mode: Keplr-signed stake tx required, app-only wagers rejected/hidden, and testnet-era rows filtered from mainnet-facing WOLO/bet rails
 - `wolo-1` staking display is strict mainnet mode too: derive public stake totals and leaderboards from indexed mainnet `MsgSend` rows to/from the staking wallet, not from legacy app-only `staking_positions`
+- WOLO market display should read Osmosis pool 3461 for live WOLO/USDC price unless an explicit `WOLO_USD_PRICE` override is set; avoid hardcoded public price fallbacks.
 - Prisma-backed user/profile/community APIs and auth session cookie handling
 - Same-origin browser API routes that proxy or reshape selected `api-prodn` data
 - Lazy client-loader shells for wallet-heavy routes so `/wolo`, `/wallet`, and `/connect-wallet` avoid pulling Keplr/Cosmos bundles into the initial server page

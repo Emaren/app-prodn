@@ -79,7 +79,7 @@ export async function loadLobbySnapshot(
   guestReactionSessionId?: string | null
 ): Promise<LobbySnapshot> {
   const wolo = await loadWoloDevSnapshot();
-  const woloMarket = loadWoloMarketSnapshot();
+  const woloMarket = await loadWoloMarketSnapshot();
 
   try {
     await reconcileTournamentMatchProofs(prisma);

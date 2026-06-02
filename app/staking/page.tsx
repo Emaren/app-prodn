@@ -13,6 +13,7 @@ import {
   Gem,
   HandCoins,
   Landmark,
+  ShieldCheck,
   Swords,
   Trophy,
   Users,
@@ -37,6 +38,7 @@ import { getStakingWalletReserveHeadroomWolo } from "@/lib/stakingExecution";
 import { fetchWoloBalanceAmount } from "@/lib/woloRuntime";
 import {
   formatWoloAmount,
+  getWoloBetEscrowRuntime,
   shortenAddress,
   WOLO_COIN_DECIMALS,
   WOLO_REST_URL,
@@ -113,6 +115,7 @@ type TrustWalletSnapshot = {
 };
 
 type CommunityTreasurySnapshot = TrustWalletSnapshot;
+type CustodyWalletSnapshot = TrustWalletSnapshot;
 
 const PERIODS: Array<{ key: PeriodKey; label: string; days: number | null }> = [
   { key: "24h", label: "24H", days: 1 },
@@ -146,6 +149,18 @@ const TREASURY_ADDRESS_ENV_NAMES = [
   "NEXT_PUBLIC_WOLO_MATCH_GUARANTEE_TREASURY",
   "NEXT_PUBLIC_WOLO_TREASURY_WALLET_ADDRESS",
   "NEXT_PUBLIC_WOLO_TREASURY_WALLET",
+] as const;
+
+const PAYOUT_ADDRESS_ENV_NAMES = ["WOLO_BET_PAYOUT_ADDRESS"] as const;
+
+const DEX_LIQUIDITY_ADDRESS_ENV_NAMES = [
+  "WOLO_DEX_LIQUIDITY_ADDRESS",
+  "WOLO_DEX_LIQUIDITY_WALLET_ADDRESS",
+  "WOLO_LIQUIDITY_ADDRESS",
+  "WOLO_LIQUIDITY_WALLET_ADDRESS",
+  "NEXT_PUBLIC_WOLO_DEX_LIQUIDITY_ADDRESS",
+  "NEXT_PUBLIC_WOLO_DEX_LIQUIDITY_WALLET_ADDRESS",
+  "NEXT_PUBLIC_WOLO_LIQUIDITY_ADDRESS",
 ] as const;
 
 const BOARD_ROWS: Record<
@@ -283,6 +298,14 @@ function resolveTreasuryAddress() {
   return null;
 }
 
+function resolveAddressFromNames(names: readonly string[]) {
+  for (const name of names) {
+    const value = process.env[name]?.trim();
+    if (value) return value;
+  }
+  return null;
+}
+
 function buildWalletProofUrl(address: string) {
   const template = process.env.NEXT_PUBLIC_WOLO_EXPLORER_ADDRESS_URL?.trim();
   if (template) return template.replace("{address}", encodeURIComponent(address));
@@ -317,6 +340,51 @@ async function loadCommunityTreasurySnapshot(): Promise<CommunityTreasurySnapsho
       proofUrl: buildWalletProofUrl(address),
       status: "ready",
       detail: "Public wallet",
+    };
+  } catch (error) {
+    return {
+      address,
+      shortAddress: shortenAddress(address, 10, 6),
+      balanceLabel: "--",
+      balanceWolo: null,
+      proofUrl: buildWalletProofUrl(address),
+      status: "error",
+      detail: error instanceof Error ? "Balance lookup pending." : "Balance pending.",
+    };
+  }
+}
+
+async function loadCustodyWalletSnapshot({
+  address,
+  pendingDetail,
+  readyDetail,
+}: {
+  address: string | null;
+  pendingDetail: string;
+  readyDetail: string;
+}): Promise<CustodyWalletSnapshot> {
+  if (!address) {
+    return {
+      address: null,
+      shortAddress: "Wallet pending",
+      balanceLabel: "--",
+      balanceWolo: null,
+      proofUrl: null,
+      status: "pending",
+      detail: pendingDetail,
+    };
+  }
+
+  try {
+    const amountUWolo = await fetchWoloBalanceAmount(address);
+    return {
+      address,
+      shortAddress: shortenAddress(address, 10, 6),
+      balanceLabel: `${formatWoloAmount(amountUWolo)} WOLO`,
+      balanceWolo: Number(amountUWolo) / 10 ** WOLO_COIN_DECIMALS,
+      proofUrl: buildWalletProofUrl(address),
+      status: "ready",
+      detail: readyDetail,
     };
   } catch (error) {
     return {
@@ -441,9 +509,24 @@ export default async function StakingPage({
     console.warn("Failed to load staking leaderboard:", error);
   }
 
-  const [stakingWallet, treasury] = await Promise.all([
+  const [stakingWallet, treasury, escrowWallet, payoutWallet, dexLiquidityWallet] = await Promise.all([
     loadStakingWalletSnapshot(),
     loadCommunityTreasurySnapshot(),
+    loadCustodyWalletSnapshot({
+      address: getWoloBetEscrowRuntime().escrowAddress,
+      pendingDetail: "Bet escrow address pending.",
+      readyDetail: "Bet escrow",
+    }),
+    loadCustodyWalletSnapshot({
+      address: resolveAddressFromNames(PAYOUT_ADDRESS_ENV_NAMES),
+      pendingDetail: "Payout signer address pending.",
+      readyDetail: "Payout signer",
+    }),
+    loadCustodyWalletSnapshot({
+      address: resolveAddressFromNames(DEX_LIQUIDITY_ADDRESS_ENV_NAMES),
+      pendingDetail: "DEX liquidity wallet pending.",
+      readyDetail: "DEX liquidity",
+    }),
   ]);
   const stakingWalletReserveHeadroomWolo = getStakingWalletReserveHeadroomWolo();
   const visibleStakingWalletReserveWolo =
@@ -597,6 +680,26 @@ export default async function StakingPage({
               requiredReserveWolo={stakingWalletReserveHeadroomWolo}
             />
             <CommunityTreasuryTile treasury={treasury} />
+            <section className="grid gap-3">
+              <CustodyRailTile
+                title="Escrow"
+                wallet={escrowWallet}
+                icon={<ShieldCheck className="h-4 w-4" />}
+                tone="amber"
+              />
+              <CustodyRailTile
+                title="Payout Address"
+                wallet={payoutWallet}
+                icon={<HandCoins className="h-4 w-4" />}
+                tone="sky"
+              />
+              <CustodyRailTile
+                title="DEX Liquidity"
+                wallet={dexLiquidityWallet}
+                icon={<Coins className="h-4 w-4" />}
+                tone="emerald"
+              />
+            </section>
           </div>
         </div>
       </section>
@@ -1049,6 +1152,48 @@ function CommunityTreasuryTile({
           addressLabel={treasury.shortAddress}
           proofUrl={treasury.proofUrl}
           label="community treasury"
+        />
+      </div>
+    </section>
+  );
+}
+
+function CustodyRailTile({
+  title,
+  wallet,
+  icon,
+  tone,
+}: {
+  title: string;
+  wallet: CustodyWalletSnapshot;
+  icon: ReactNode;
+  tone: "amber" | "emerald" | "sky";
+}) {
+  const toneClass =
+    tone === "amber"
+      ? "border-amber-300/20 bg-amber-300/10 text-amber-100"
+      : tone === "emerald"
+        ? "border-emerald-300/20 bg-emerald-500/10 text-emerald-100"
+        : "border-sky-300/20 bg-sky-500/10 text-sky-100";
+
+  return (
+    <section className="rounded-[1.15rem] border border-white/10 bg-white/[0.04] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-[11px] uppercase tracking-[0.22em] text-slate-500">
+            {title}
+          </div>
+          <div className="mt-2 text-xl font-semibold text-white">{wallet.balanceLabel}</div>
+          <div className="mt-1 text-xs text-slate-500">{wallet.detail}</div>
+        </div>
+        <div className={`rounded-full border p-2.5 ${toneClass}`}>{icon}</div>
+      </div>
+      <div className="mt-3">
+        <TreasuryActions
+          address={wallet.address}
+          addressLabel={wallet.shortAddress}
+          proofUrl={wallet.proofUrl}
+          label={title.toLowerCase()}
         />
       </div>
     </section>

@@ -19,10 +19,12 @@ type WoloMarketTileProps = {
 };
 
 const WOLO_LOGO_SRC = "/legacy/wolo-logo-transparent.png";
-const DEFAULT_WOLO_PRICE_USD = 0.0001;
 
-function formatUsdPrice(value: number) {
-  return `$${value.toFixed(6)}`;
+function formatUsdPrice(value: number | null) {
+  if (value == null || !Number.isFinite(value)) return "Pool syncing";
+  if (value < 0.001) return `$${value.toFixed(7)}`;
+  if (value < 1) return `$${value.toFixed(6)}`;
+  return `$${value.toLocaleString(undefined, { maximumFractionDigits: 4 })}`;
 }
 
 function formatSwapAmount(value: number) {
@@ -36,12 +38,12 @@ export function WoloMarketTile({ market, themeKey, viewMode }: WoloMarketTilePro
   const tone = getLobbyPresentationTone(themeKey, viewMode);
   const poolId = market?.poolId ?? "3461";
   const poolUrl = market?.poolUrl ?? "https://app.osmosis.zone/pool/3461";
-  const priceUsd = market?.priceUsd ?? DEFAULT_WOLO_PRICE_USD;
+  const priceUsd = market?.priceUsd ?? null;
   const [amount, setAmount] = useState("1000");
   const [swapMode, setSwapMode] = useState<"woloToUsdc" | "usdcToWolo">("woloToUsdc");
   const numericAmount = Number(amount);
   const quote = useMemo(() => {
-    if (!Number.isFinite(numericAmount) || numericAmount <= 0) return 0;
+    if (priceUsd == null || !Number.isFinite(numericAmount) || numericAmount <= 0) return null;
     return swapMode === "woloToUsdc" ? numericAmount * priceUsd : numericAmount / priceUsd;
   }, [numericAmount, priceUsd, swapMode]);
   const fromSymbol = swapMode === "woloToUsdc" ? "WOLO" : "USDC";
@@ -76,7 +78,7 @@ export function WoloMarketTile({ market, themeKey, viewMode }: WoloMarketTilePro
               {formatUsdPrice(priceUsd)}
             </h2>
             <div className="mt-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-slate-300">
-              1 WOLO
+              {market?.priceStatus === "pool" ? "Pool live" : "1 WOLO"}
             </div>
           </div>
 
@@ -117,7 +119,7 @@ export function WoloMarketTile({ market, themeKey, viewMode }: WoloMarketTilePro
 
             <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2.5">
               <div className="min-w-0 truncate text-xl font-semibold text-white">
-                {formatSwapAmount(quote)}
+                {quote == null ? "--" : formatSwapAmount(quote)}
               </div>
               <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-xs font-semibold text-slate-100">
                 {toSymbol}

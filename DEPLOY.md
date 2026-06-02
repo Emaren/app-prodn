@@ -63,7 +63,7 @@ journalctl -u aoe2hdbets-web.service -n 40 --no-pager
 - `/lobby` defaults to Advanced view with a moving header ticker, Watch & Chat hero/comments rail, compact hero bet slip, compact WOLO swap tile, then the existing Community Lobby content.
 - Basic view remains available and should preserve the simpler lobby-first layout.
 - Deployment requires `npx prisma migrate deploy` before restarting `aoe2hdbets-web.service`.
-- Optional market display env: `WOLO_OSMOSIS_POOL_ID=3461`, `WOLO_OSMOSIS_POOL_URL=https://app.osmosis.zone/pool/3461`, `WOLO_MARKET_LABEL=WOLO Market`, `WOLO_USD_PRICE_DEFAULT=0.000100`, `WOLO_USD_PRICE=0.000100`.
+- Optional market display env: `WOLO_OSMOSIS_POOL_ID=3461`, `WOLO_OSMOSIS_POOL_URL=https://app.osmosis.zone/pool/3461`, `WOLO_OSMOSIS_LCD_URL=https://lcd.osmosis.zone`, `WOLO_MARKET_LABEL=WOLO Market`. Leave `WOLO_USD_PRICE` unset to derive the Advanced lobby market price from pool 3461; set it only as a manual override.
 - `wolo-1` is strict mainnet mode: `/bets` requires a Keplr-signed stake tx, and mainnet-facing WOLO/bet rails hide pre-mainnet testnet-era rows. Optional display cutoff: `WOLO_MAINNET_DISPLAY_START_AT=2026-05-25T00:00:00.000Z`.
 
 ### 2026-05-05 watcher telemetry and funnel truth
@@ -93,6 +93,11 @@ When `/bets` is expected to open real Keplr stake locks, these envs must agree i
 If `NEXT_PUBLIC_WOLO_BET_ESCROW_ADDRESS` or `WOLO_BET_ESCROW_ADDRESS` are missing on `wolo-1`, `/bets` must block with an escrow config error. It should not record an app-only mainnet wager.
 
 For `/staking`, fund the staking wallet with total confirmed user stake plus the operator reserve/headroom used for WoloChain unstake sends. AoE2HDBets defaults to a `10 WOLO` reserve unless `WOLO_STAKING_UNSTAKE_HEADROOM_UWOLO` is set. User max-unstake should not be reduced by this reserve; underfunding should show the operator top-up warning instead.
+
+The `/staking` public economy rail displays bank balances for the configured
+staking wallet, community treasury, bet escrow, payout signer, and DEX liquidity
+addresses. Empty custody wallets should show `0.00 WOLO`; do not replace that
+with modeled or app-ledger values.
 
 On `wolo-1`, `/staking` public totals, personal stake, leaderboards, and reward
 weights are rebuilt from indexed WoloChain mainnet `MsgSend` rows to/from the

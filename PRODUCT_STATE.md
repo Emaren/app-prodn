@@ -133,7 +133,7 @@ Current state:
 - gifts exist in app logic
 - token rail is visible in product language and navigation
 - wallet snapshot is the right-rail anchor on `/wolo`, with the tight `WOLO Market` tile living directly below it and the starter faucet claim strip tucked underneath
-- `/lobby` now presents the WOLO / USDC Osmosis 3461 market tile in Advanced view as a logo/price/swap surface, defaulting to `1 WOLO = $0.000100` unless `WOLO_USD_PRICE` overrides it
+- `/lobby` now presents the WOLO / USDC Osmosis 3461 market tile in Advanced view as a logo/price/swap surface, deriving `1 WOLO` price from the live pool unless `WOLO_USD_PRICE` explicitly overrides it
 - `/wolo` now has a real app-side starter faucet claim route that sends `2 WOLO`, enforces a 24-hour cooldown, and updates the wallet snapshot from the returned balance
 - default `/wolo` hero keeps the simpler legacy action row, while premium mode uses the two-lane action dock with borderless utility pills so `Open Ping.pub` stays grouped without a harsh white outline treatment
 - default WOLO runtime/daemon consoles stay in the raw matrix style without per-line separators, but the stat-card labels/values use the normal slate/white treatment again; premium runtime/daemon consoles keep the darker structured shell
@@ -141,6 +141,7 @@ Current state:
 - `/bets` now requires the real signed WOLO stake path on `wolo-1`; wagers are only accepted after the stake tx verifies against WoloChain REST
 - mainnet-facing WOLO/bet rails hide pre-mainnet testnet-era rows and app-only wagers, so profile ledgers, staking fee stats, war-chest totals, `/bets`, and admin WoloChain rails only count Keplr-verified mainnet stakes
 - `/staking` mainnet display is tx-backed: public totals, personal stake, leaderboards, and reward weights are derived from indexed WoloChain `MsgSend` rows to/from the configured staking wallet on/after the mainnet display start. Legacy `staking_positions` rows are not public mainnet truth.
+- `/staking` also exposes public custody balance cards for staking wallet, community treasury, bet escrow, payout signer, and DEX liquidity; these render real WoloChain bank balances and should show `0.00 WOLO` when the configured wallet is empty.
 - mainnet direct transfers are indexed in `wolo_indexed_transfers`, surfaced at `/api/wolo/mainnet-transfers`, and refreshed through the admin backfill route or `scripts/backfill-wolo-mainnet-transfers.mjs`.
 - `/bets` now records pre-intent Keplr/Ledger wallet failures as `bet_wallet_error` activity events, so operator/debug history includes failures that happen before a stake intent can exist
 - `/bets` now keeps recent no-proof stake intents visible in Your Book and gives the server 24 hours to discover matching WoloChain escrow deposits for tx-landed/browser-lost recovery
