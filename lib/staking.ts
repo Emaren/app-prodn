@@ -293,7 +293,11 @@ function detailForIndexedTransfer(row: WoloIndexedTransferActivityRow) {
 
 function detailForPendingSettlement(row: PendingSettlementActivityGroup) {
   const targetList =
-    row.targetNames.length > 0 ? row.targetNames.slice(0, 3).join(", ") : "players";
+    row.awaitingWalletTargetNames.length > 0
+      ? row.awaitingWalletTargetNames.slice(0, 3).join(", ")
+      : row.targetNames.length > 0
+        ? row.targetNames.slice(0, 3).join(", ")
+        : "players";
   const parts = [`${row.claimCount} pending claim${row.claimCount === 1 ? "" : "s"}`];
 
   if (row.awaitingWalletCount > 0) {

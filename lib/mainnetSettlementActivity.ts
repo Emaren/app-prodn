@@ -27,6 +27,7 @@ export type PendingSettlementActivityGroup = {
   failureCount: number;
   paidTxCount: number;
   targetNames: string[];
+  awaitingWalletTargetNames: string[];
   latestAt: Date;
 };
 
@@ -80,21 +81,25 @@ export function derivePendingSettlementActivityGroups(
         failureCount: 0,
         paidTxCount: 0,
         targetNames: [],
+        awaitingWalletTargetNames: [],
         latestAt,
       } satisfies PendingSettlementActivityGroup);
 
     existing.amountWolo += claim.amountWolo;
     existing.claimCount += 1;
     if (claim.payoutTxHash?.trim()) existing.paidTxCount += 1;
+    const targetName = claim.displayPlayerName?.trim();
     if (isAwaitingWalletLinkedAccountError(claim.errorState)) {
       existing.awaitingWalletCount += 1;
+      if (targetName && !existing.awaitingWalletTargetNames.includes(targetName)) {
+        existing.awaitingWalletTargetNames.push(targetName);
+      }
     } else if (claim.errorState?.trim()) {
       existing.failureCount += 1;
     }
     if (latestAt.getTime() > existing.latestAt.getTime()) {
       existing.latestAt = latestAt;
     }
-    const targetName = claim.displayPlayerName?.trim();
     if (targetName && !existing.targetNames.includes(targetName)) {
       existing.targetNames.push(targetName);
     }

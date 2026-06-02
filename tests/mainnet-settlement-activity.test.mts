@@ -84,4 +84,5 @@ test("pending settlement activity groups no-tx market claims without pretending 
   assert.equal(rows[0].awaitingWalletCount, 2);
   assert.equal(rows[0].failureCount, 1);
   assert.deepEqual(rows[0].targetNames, ["Coco de Hae", "Emaren"]);
+  assert.deepEqual(rows[0].awaitingWalletTargetNames, ["Coco de Hae"]);
 });
