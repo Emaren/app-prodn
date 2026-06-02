@@ -1244,6 +1244,9 @@ export default function WoloChainAdminPage() {
           <WoloSettlementRail
             summary={state.rails.settlementRail.summary}
             rows={state.rails.settlementRail.rows}
+            payoutExecutionConfigured={
+              state.rails.marketRail.summary.settlementExecutionMode !== "unconfigured"
+            }
             rescindingClaimId={rescindingClaimId}
             retryingClaimId={retryingClaimId}
             reconcilingPending={reconcilingPending}

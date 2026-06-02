@@ -134,7 +134,9 @@ export async function GET(request: NextRequest) {
           id: true,
           amountWolo: true,
           claimKind: true,
+          displayPlayerName: true,
           status: true,
+          sourceMarketId: true,
           createdAt: true,
           updatedAt: true,
           claimedAt: true,
@@ -263,15 +265,38 @@ export async function GET(request: NextRequest) {
           })
         : Promise.resolve([]),
     ]);
+    const claimMarketIds = Array.from(
+      new Set(
+        claims
+          .map((claim) => claim.sourceMarketId)
+          .filter((marketId): marketId is number => typeof marketId === "number")
+      )
+    );
+    const claimMarkets = claimMarketIds.length
+      ? await prisma.betMarket.findMany({
+          where: { id: { in: claimMarketIds } },
+          select: {
+            id: true,
+            title: true,
+            eventLabel: true,
+          },
+        })
+      : [];
+    const claimMarketById = new Map(claimMarkets.map((market) => [market.id, market] as const));
 
     const rows: WoloTransactionRow[] = [];
 
     for (const claim of claims) {
+      const market =
+        typeof claim.sourceMarketId === "number"
+          ? claimMarketById.get(claim.sourceMarketId)
+          : null;
+      const marketLabel = market?.title ? ` · ${market.title}` : "";
       pushRow(rows, {
         id: `claim-${claim.id}`,
         direction: "in",
         amountWolo: claim.amountWolo,
-        label: `${claim.claimKind.replace(/_/g, " ")} claim`,
+        label: `${claim.claimKind.replace(/_/g, " ")} claim${marketLabel}`,
         status: formatStatus(claim.status),
         occurredAt: (
           claim.claimedAt ||

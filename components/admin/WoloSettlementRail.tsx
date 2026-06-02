@@ -53,6 +53,7 @@ type Props = {
   onRetry?: (claimId: number) => void | Promise<void>;
   onReconcilePending?: () => void | Promise<void>;
   onAddFounderBonus?: (row: SettlementRailRow, bonusType: FounderBonusType) => void | Promise<void>;
+  payoutExecutionConfigured?: boolean;
 };
 
 function formatWolo(value: number) {
@@ -180,6 +181,7 @@ export function WoloSettlementRail({
   onRetry,
   onReconcilePending,
   onAddFounderBonus,
+  payoutExecutionConfigured = true,
 }: Props) {
   const showActions = !readOnly && Boolean(onRescind || onRetry || onAddFounderBonus);
   const founderRowsByBonusId = new Map<number, SettlementRailRow[]>();
@@ -453,7 +455,7 @@ export function WoloSettlementRail({
                     <td className="px-3 py-3">
                       {row.claimStatus === "pending" ? (
                         <div className="flex flex-wrap gap-2">
-                          {row.errorState && onRetry ? (
+                          {row.errorState && onRetry && (payoutExecutionConfigured || isAwaitingWalletLink(row)) ? (
                             <button
                               type="button"
                               onClick={() => onRetry(row.id)}
@@ -466,6 +468,11 @@ export function WoloSettlementRail({
                                   ? "Retry after link"
                                   : "Retry payout"}
                             </button>
+                          ) : null}
+                          {row.errorState && onRetry && !payoutExecutionConfigured && !isAwaitingWalletLink(row) ? (
+                            <span className="rounded-full border border-amber-300/25 bg-amber-400/10 px-3 py-1.5 text-xs font-medium text-amber-100">
+                              Configure payout execution
+                            </span>
                           ) : null}
                           {row.marketId && onAddFounderBonus ? (
                             <>

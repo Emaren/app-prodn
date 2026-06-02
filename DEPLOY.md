@@ -108,6 +108,13 @@ staking wallet, community treasury, bet escrow, payout signer, and DEX liquidity
 addresses. Empty custody wallets should show `0.00 WOLO`; do not replace that
 with modeled or app-ledger values.
 
+`/staking` Recent Activity should not hide mainnet-era settlement debt just
+because no payout tx exists yet. Verified `wolo-1` stake/transfer rows remain
+tx-backed, while pending `pending_wolo_claims` rows are grouped by market and
+labeled as settlement queue state. A Coco de Hae style app-only market can show
+as pending settlement debt; it must not be described as a chain tx until the
+claim row has a `payout_tx_hash`.
+
 On `wolo-1`, `/staking` public totals, personal stake, leaderboards, and reward
 weights are rebuilt from indexed WoloChain mainnet `MsgSend` rows to/from the
 staking wallet on or after `2026-05-25T00:00:00.000Z`. Do not use legacy
@@ -173,6 +180,7 @@ curl -s https://aoe2war.com/api/lobby | jq '.leaderboard.trackedPlayers, (.leade
 curl -s https://aoe2war.com/api/lobby | jq '{ticker: (.liveTicker.items | length), market: .woloMarket.poolId}'
 curl -s https://aoe2war.com/api/bets | jq '.wolo | { betEscrowMode, onchainEscrowEnabled, onchainEscrowRequired, betEscrowAddress }'
 curl -s https://aoe2war.com/api/staking/summary?period=24h | jq '.summary["24h"] | {betsPlaced, betVolumeWolo, activeStakers, totalStakedWolo, directTransferCount}'
+curl -s https://aoe2war.com/api/staking/summary?period=all | jq '.summary.all.activity[] | select(.eventType=="SETTLEMENT") | {label, detail}'
 curl -s https://aoe2war.com/api/wolo/mainnet-transfers?limit=5 | jq '{totalRows, latestTimestamp}'
 journalctl -u aoe2hdbets-web.service -n 20 --no-pager
 ```

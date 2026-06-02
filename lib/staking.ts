@@ -20,6 +20,10 @@ import {
   loadMainnetStakingPositions,
 } from "@/lib/mainnetStakingPositions";
 import {
+  derivePendingSettlementActivityGroups,
+  type PendingSettlementActivityGroup,
+} from "@/lib/mainnetSettlementActivity";
+import {
   loadIndexedWoloTransferActivityRows,
   type WoloIndexedTransferActivityRow,
 } from "@/lib/woloMainnetTransfers";
@@ -287,6 +291,111 @@ function detailForIndexedTransfer(row: WoloIndexedTransferActivityRow) {
   return parts.filter(Boolean).join(" · ");
 }
 
+function detailForPendingSettlement(row: PendingSettlementActivityGroup) {
+  const targetList =
+    row.targetNames.length > 0 ? row.targetNames.slice(0, 3).join(", ") : "players";
+  const parts = [`${row.claimCount} pending claim${row.claimCount === 1 ? "" : "s"}`];
+
+  if (row.awaitingWalletCount > 0) {
+    parts.push(`${targetList} awaiting verified wallet${row.awaitingWalletCount === 1 ? "" : "s"}`);
+  }
+
+  if (row.failureCount > 0) {
+    parts.push("operator payout path needs attention");
+  }
+
+  if (row.eventLabel) {
+    parts.push(row.eventLabel);
+  }
+
+  return parts.join(" · ");
+}
+
+async function loadPendingSettlementActivityRows(
+  prisma: PrismaClient,
+  take = 12
+): Promise<PendingSettlementActivityGroup[]> {
+  if (!isWoloMainnet()) return [];
+
+  const claims = await prisma.pendingWoloClaim.findMany({
+    where: {
+      status: "pending",
+      amountWolo: { gt: 0 },
+      sourceMarketId: { not: null },
+      createdAt: { gte: getWoloMainnetDisplayStartAt() },
+    },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: Math.max(20, take * 8),
+    select: {
+      id: true,
+      sourceMarketId: true,
+      displayPlayerName: true,
+      amountWolo: true,
+      claimKind: true,
+      status: true,
+      errorState: true,
+      payoutTxHash: true,
+      payoutAttemptedAt: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
+  const marketIds = Array.from(
+    new Set(
+      claims
+        .map((claim) => claim.sourceMarketId)
+        .filter((marketId): marketId is number => typeof marketId === "number")
+    )
+  );
+  const markets = marketIds.length
+    ? await prisma.betMarket.findMany({
+        where: { id: { in: marketIds } },
+        select: {
+          id: true,
+          title: true,
+          eventLabel: true,
+          leftLabel: true,
+          rightLabel: true,
+          winnerSide: true,
+        },
+      })
+    : [];
+  const marketsById = new Map(markets.map((market) => [market.id, market] as const));
+
+  return derivePendingSettlementActivityGroups(
+    claims.map((claim) => {
+      const market =
+        typeof claim.sourceMarketId === "number"
+          ? marketsById.get(claim.sourceMarketId)
+          : null;
+      const winnerName =
+        market?.winnerSide === "left"
+          ? market.leftLabel
+          : market?.winnerSide === "right"
+            ? market.rightLabel
+            : null;
+
+      return {
+        id: claim.id,
+        sourceMarketId: claim.sourceMarketId,
+        marketTitle: market?.title ?? null,
+        eventLabel: market?.eventLabel ?? null,
+        winnerName,
+        displayPlayerName: claim.displayPlayerName,
+        amountWolo: claim.amountWolo,
+        claimKind: claim.claimKind,
+        status: claim.status,
+        errorState: claim.errorState,
+        payoutTxHash: claim.payoutTxHash,
+        payoutAttemptedAt: claim.payoutAttemptedAt,
+        createdAt: claim.createdAt,
+        updatedAt: claim.updatedAt,
+      };
+    }),
+    { limit: take }
+  );
+}
+
 function dedupeActivityRows(
   rows: Array<StakingActivityItem & { sortAt: Date }>,
   limit: number
@@ -381,6 +490,7 @@ export async function loadStakingSummary(
     recentEvents,
     recentRewardAllocations,
     mainnetActivityRows,
+    pendingSettlementRows,
     indexedTransferRows,
   ] = await Promise.all([
     prisma.betWager.aggregate({
@@ -497,6 +607,7 @@ export async function loadStakingSummary(
       },
     }),
     loadWoloMainnetActivityRows(prisma, 25).catch(() => []),
+    loadPendingSettlementActivityRows(prisma, 12).catch(() => []),
     loadIndexedWoloTransferActivityRows(prisma, 25).catch(() => []),
   ]);
 
@@ -596,6 +707,23 @@ export async function loadStakingSummary(
       timestampLabel,
       tone: toneForMainnetActivity(row),
       sortAt: safeTimestamp,
+    });
+  }
+
+  for (const row of pendingSettlementRows) {
+    const timestampLabel = formatMoment(row.latestAt);
+    const amountLabel = formatActivityWolo(row.amountWolo);
+
+    activity.push({
+      key: row.key,
+      label: `${amountLabel} settlement queue: ${row.marketTitle}`,
+      detail: detailForPendingSettlement(row),
+      meta: timestampLabel,
+      eventType: "SETTLEMENT",
+      amountLabel,
+      timestampLabel,
+      tone: row.failureCount > 0 ? "amber" : "sky",
+      sortAt: row.latestAt,
     });
   }
 

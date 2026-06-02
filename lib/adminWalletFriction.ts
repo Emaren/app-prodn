@@ -1,4 +1,5 @@
 import { Prisma, type PrismaClient } from "@/lib/generated/prisma";
+import { getWoloMainnetDisplayStartAt, isWoloMainnet } from "@/lib/woloChain";
 
 export type WalletFrictionRailRow = {
   id: number;
@@ -103,25 +104,32 @@ export async function loadBetWalletFrictionRail(
   const now = Date.now();
   const last24Cutoff = new Date(now - 24 * 60 * 60 * 1000);
   const last7Cutoff = new Date(now - 7 * 24 * 60 * 60 * 1000);
+  const visibleCreatedAt = isWoloMainnet()
+    ? { gte: getWoloMainnetDisplayStartAt() }
+    : undefined;
+  const baseWhere: Prisma.UserActivityEventWhereInput = {
+    type: "bet_wallet_error",
+    ...(visibleCreatedAt ? { createdAt: visibleCreatedAt } : {}),
+  };
 
   const [totalCount, last24Hours, last7Days, events] = await Promise.all([
     prisma.userActivityEvent.count({
-      where: { type: "bet_wallet_error" },
+      where: baseWhere,
     }),
     prisma.userActivityEvent.count({
       where: {
-        type: "bet_wallet_error",
-        createdAt: { gte: last24Cutoff },
+        ...baseWhere,
+        createdAt: { gte: visibleCreatedAt?.gte && visibleCreatedAt.gte > last24Cutoff ? visibleCreatedAt.gte : last24Cutoff },
       },
     }),
     prisma.userActivityEvent.count({
       where: {
-        type: "bet_wallet_error",
-        createdAt: { gte: last7Cutoff },
+        ...baseWhere,
+        createdAt: { gte: visibleCreatedAt?.gte && visibleCreatedAt.gte > last7Cutoff ? visibleCreatedAt.gte : last7Cutoff },
       },
     }),
     prisma.userActivityEvent.findMany({
-      where: { type: "bet_wallet_error" },
+      where: baseWhere,
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       take,
       select: {

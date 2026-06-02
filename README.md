@@ -116,6 +116,13 @@ wallet, community treasury, bet escrow, payout signer, and DEX liquidity
 addresses. Those cards display real WoloChain bank balances; if the configured
 address has `0 uwolo`, the card should show `0.00 WOLO`.
 
+The `/staking` Recent Activity rail intentionally mixes two honest states:
+tx-backed WoloChain activity and grouped pending settlement claims. Rows like
+BigJobs94/VNS with verified stake txs display the tx-backed wager transfer;
+older app-only markets such as Coco de Hae can still appear as settlement queue
+debt when they have pending claim rows but no payout tx hash yet. Do not label
+those settlement queue rows as chain txs until `payout_tx_hash` exists.
+
 Optional migration compatibility:
 
 - `ALLOW_LEGACY_UID_HEADERS=true` to temporarily allow `x-user-uid` / body uid fallback for user routes
@@ -197,6 +204,7 @@ python /var/www/AoE2HDBets/api-prodn/scripts/set_admin.py --email you@example.co
 - Admins manage custom live ticker messages from `/admin`; enabled messages are text-only, ordered by priority, and mixed with system ticker items from tournament/replay/lobby/WOLO market state.
 - `/bets` now requires real Keplr-signed WOLO stake locks on `wolo-1`; the wager is only recorded after the stake tx verifies against WoloChain REST, and app-only wager rows stay out of mainnet-facing bet, profile, staking, war-chest, and admin rails
 - `/staking` uses real Keplr stake transfers into the staking wallet, indexed mainnet `MsgSend` rows plus confirmed app staking events for public stake display, and staking-wallet-signed WoloChain transfers for unstake. User max-unstake follows confirmed tx-backed principal; the staking wallet reserve/headroom is treated as operator-funded and surfaces as an operator top-up warning when the wallet cannot cover remaining confirmed stake plus reserve after the unstake.
+- `/staking` Recent Activity shows grouped pending settlement claims for mainnet-era markets even when there is no payout tx yet; that is app claim debt, not WoloChain transfer truth.
 - `/staking` reward distributions are finalized once per closed UTC day through `npm run staking:rewards:run`; valid reward wallets are paid through the WOLO settlement rail and successful payouts are recorded as staking `CLAIM` events for Recent Activity. Before a daily distribution exists, personal pending rewards can show the modeled unpaid mainnet fee share from settled signed wagers.
 - The AI Scribe and Grimer receive live `/staking` context through `lib/aiConcierge.ts` for lobby and contact replies. They should explain app-side WOLO staking state, fee splits, rewards, and viewer positions from supplied context only, without calling it validator staking or inventing APY.
 - trusted wallet-linked winners can now auto-settle on-chain, while unmatched or failed payouts still fall back to the pending-claim/admin rail

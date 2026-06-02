@@ -544,8 +544,8 @@ export default async function StakingPage({
   );
   const mainnetActivityNote =
     snapshot.directTransferCount > 0
-      ? "Direct WoloChain bank sends are indexed from the WoloChain REST tx search. Mainnet wager rows only count Keplr-signed WOLO stake transactions."
-      : "Direct wolo-1 bank-send indexing is ready and appears here after an admin backfill. Mainnet wager rows stay hidden until a Keplr-signed WOLO stake transaction is verified.";
+      ? "Direct WoloChain bank sends are indexed from REST tx search. Wager rows count Keplr-signed stake transactions; settlement queue rows are app claims until a payout tx exists."
+      : "Direct wolo-1 bank-send indexing is ready after admin backfill. Wager rows stay hidden until Keplr-signed stake tx verification; settlement queue rows show app claims awaiting payout.";
   const meter = weightMeter(snapshot.totalStakingWeight);
 
   return (
@@ -711,7 +711,9 @@ export default async function StakingPage({
               item.eventType !== "FAUCET" &&
               !/faucet/i.test(item.label) &&
               !/faucet/i.test(item.detail) &&
-              ((item.key?.startsWith("tx-") ?? false) || /\btx\s+[0-9a-f]{8}/i.test(item.detail))
+              (item.eventType === "SETTLEMENT" ||
+                (item.key?.startsWith("tx-") ?? false) ||
+                /\btx\s+[0-9a-f]{8}/i.test(item.detail))
           )}
           note={mainnetActivityNote}
         />
