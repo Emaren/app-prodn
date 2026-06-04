@@ -57,6 +57,12 @@ function pushRow(rows: WoloTransactionRow[], row: WoloTransactionRow | null) {
   rows.push(row);
 }
 
+function transactionRowRank(row: WoloTransactionRow) {
+  if (row.id.startsWith("mainnet-transfer-")) return 0;
+  if (row.txHash) return 1;
+  return 2;
+}
+
 function mainnetCutoffWhere() {
   return isWoloMainnet() ? { gte: getWoloMainnetDisplayStartAt() } : undefined;
 }
@@ -468,6 +474,8 @@ export async function GET(request: NextRequest) {
     }
 
     rows.sort((left, right) => {
+      const rankDiff = transactionRowRank(left) - transactionRowRank(right);
+      if (rankDiff) return rankDiff;
       const timeDiff = new Date(right.occurredAt).getTime() - new Date(left.occurredAt).getTime();
       return timeDiff || right.id.localeCompare(left.id);
     });
