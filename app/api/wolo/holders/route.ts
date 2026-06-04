@@ -97,7 +97,10 @@ function getRestUrl() {
 }
 
 async function loadAliases() {
-  const aliases: Record<string, string> = { ...WOLO_MAINNET_WALLET_ALIAS_BY_ADDRESS };
+  const staticAliases: Record<string, string> = {
+    ...WOLO_MAINNET_WALLET_ALIAS_BY_ADDRESS,
+  };
+  const aliases: Record<string, string> = { ...staticAliases };
   const aliasFile = process.env.WOLO_WALLET_ALIAS_FILE || "/etc/aoe2hdbets/wolo-wallet-aliases.tsv";
 
   try {
@@ -114,7 +117,10 @@ async function loadAliases() {
         continue;
       }
 
-      aliases[match[1]] = match[2].trim();
+      const address = match[1].toLowerCase();
+      if (!staticAliases[address]) {
+        aliases[address] = match[2].trim();
+      }
     }
   } catch {
     // Fallback aliases keep local/dev builds useful.
