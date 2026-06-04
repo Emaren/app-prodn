@@ -95,6 +95,29 @@ function aliasMatchesUser(
   );
 }
 
+function profileKeysMatchUser(
+  profileNameKeys: readonly string[] | undefined,
+  user: {
+    uid: string;
+    inGameName: string | null;
+    steamPersonaName: string | null;
+  }
+) {
+  const aliasKeys = (profileNameKeys || [])
+    .map(normalizeAliasMatcher)
+    .filter(Boolean);
+  if (aliasKeys.length === 0) return false;
+
+  const userKeys = [user.inGameName, user.steamPersonaName, user.uid]
+    .map(normalizeAliasMatcher)
+    .filter(Boolean);
+  return userKeys.some((key) => aliasKeys.includes(key));
+}
+
+function walletProfileNameKeys(wallet: (typeof WOLO_MAINNET_WALLET_ALIASES)[number]) {
+  return "profileNameKeys" in wallet ? wallet.profileNameKeys : undefined;
+}
+
 function visibleMainnetWagerWhere(userId: number) {
   if (!isWoloMainnet()) return { userId };
   return {
@@ -153,7 +176,10 @@ export async function GET(request: NextRequest) {
       }
     }
     for (const wallet of WOLO_MAINNET_WALLET_ALIASES) {
-      if (aliasMatchesUser(wallet.label, user)) {
+      if (
+        aliasMatchesUser(wallet.label, user) ||
+        profileKeysMatchUser(walletProfileNameKeys(wallet), user)
+      ) {
         linkedWalletAddresses.add(wallet.address.toLowerCase());
       }
     }

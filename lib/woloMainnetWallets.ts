@@ -1,6 +1,7 @@
 export type WoloMainnetWalletAlias = {
   label: string;
   address: string;
+  profileNameKeys?: readonly string[];
   role:
     | "founder"
     | "treasury"
@@ -45,6 +46,7 @@ export const WOLO_MAINNET_WALLET_ALIASES = [
   {
     label: "Founder Operating / Emaren",
     address: "wolo1wue7vyque2pssskgdrww0fcadlq9ps6mtn605e",
+    profileNameKeys: ["emaren"],
     role: "founder",
   },
   {
@@ -55,6 +57,7 @@ export const WOLO_MAINNET_WALLET_ALIASES = [
   {
     label: "Faucet Hot Wallet",
     address: "wolo1dshyzxffd0jj39k7gj9tq9hgsx96ylxamyp5g0",
+    profileNameKeys: ["emaren"],
     role: "faucet",
   },
   {
