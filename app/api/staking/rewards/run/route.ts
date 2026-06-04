@@ -6,6 +6,10 @@ import {
   executeDailyStakingRewardPayouts,
   StakingActionError,
 } from "@/lib/staking";
+import {
+  executeStakingTreasuryPayout,
+  StakingTreasuryPayoutError,
+} from "@/lib/stakingTreasuryPayouts";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -61,10 +65,39 @@ export async function POST(request: NextRequest) {
       prisma,
       distribution.distributionId
     );
+    let treasuryPayout:
+      | Awaited<ReturnType<typeof executeStakingTreasuryPayout>>
+      | {
+          ok: false;
+          skipped: true;
+          code: string;
+          detail: string;
+        };
+
+    try {
+      treasuryPayout = await executeStakingTreasuryPayout(
+        prisma,
+        distribution.distributionId
+      );
+    } catch (error) {
+      treasuryPayout = {
+        ok: false,
+        skipped: true,
+        code:
+          error instanceof StakingTreasuryPayoutError
+            ? error.code
+            : "STAKING_TREASURY_PAYOUT_ERROR",
+        detail:
+          error instanceof Error
+            ? error.message
+            : "Staking Treasury payout was not executed.",
+      };
+    }
 
     return NextResponse.json({
       distribution,
       payout,
+      treasuryPayout,
     });
   } catch (error) {
     if (error instanceof StakingActionError) {

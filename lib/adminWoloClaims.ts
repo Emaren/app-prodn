@@ -9,6 +9,7 @@ import { recordUserActivity } from "@/lib/userExperience";
 import {
   executeWoloPayout,
   executeWoloSettlementRun,
+  getWoloPayoutExecutionBlocker,
   type SettlementRunResult,
 } from "@/lib/woloBetSettlement";
 
@@ -323,7 +324,10 @@ export async function retryPendingClaimSettlement(
         });
 
     if (!payout?.txHash) {
-      throw new Error("WOLO payout execution returned no transaction hash.");
+      throw new Error(
+        getWoloPayoutExecutionBlocker() ||
+          "WOLO payout execution returned no transaction hash."
+      );
     }
 
     settlementRunId = "settlementRunId" in payout ? payout.settlementRunId : null;

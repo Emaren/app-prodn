@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { requireAdmin } from "@/lib/adminSession";
 import { retryPendingClaimSettlement } from "@/lib/adminWoloClaims";
-import { hasWoloPayoutExecutionConfigured } from "@/lib/woloBetSettlement";
+import {
+  getWoloPayoutExecutionBlocker,
+  hasWoloPayoutExecutionConfigured,
+} from "@/lib/woloBetSettlement";
 import { getWoloMainnetDisplayStartAt, isWoloMainnet } from "@/lib/woloChain";
 
 export const runtime = "nodejs";
@@ -25,7 +28,11 @@ export async function POST(request: NextRequest) {
 
     if (!hasWoloPayoutExecutionConfigured()) {
       return NextResponse.json(
-        { detail: "WOLO payout execution is not configured in this environment." },
+        {
+          detail:
+            getWoloPayoutExecutionBlocker() ||
+            "WOLO payout execution is not configured in this environment.",
+        },
         { status: 409 }
       );
     }

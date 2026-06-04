@@ -542,10 +542,6 @@ export default async function StakingPage({
     BETTING_FEE_RATE_BPS -
       Math.floor((BETTING_FEE_RATE_BPS * STAKER_SHARE_BPS) / BPS_DENOMINATOR)
   );
-  const mainnetActivityNote =
-    snapshot.directTransferCount > 0
-      ? "Direct WoloChain bank sends are indexed from REST tx search. Wager rows count Keplr-signed stake transactions; settlement queue rows are app claims until a payout tx exists."
-      : "Direct wolo-1 bank-send indexing is ready after admin backfill. Wager rows stay hidden until Keplr-signed stake tx verification; settlement queue rows show app claims awaiting payout.";
   const meter = weightMeter(snapshot.totalStakingWeight);
 
   return (
@@ -682,19 +678,19 @@ export default async function StakingPage({
             <CommunityTreasuryTile treasury={treasury} />
             <section className="grid gap-3">
               <CustodyRailTile
-                title="Escrow"
+                title="Bet Escrow"
                 wallet={escrowWallet}
                 icon={<ShieldCheck className="h-4 w-4" />}
                 tone="amber"
               />
               <CustodyRailTile
-                title="Payout Address"
+                title="Bet Payout"
                 wallet={payoutWallet}
                 icon={<HandCoins className="h-4 w-4" />}
                 tone="sky"
               />
               <CustodyRailTile
-                title="DEX Liquidity"
+                title="DEX Liquidity Reserve"
                 wallet={dexLiquidityWallet}
                 icon={<Coins className="h-4 w-4" />}
                 tone="emerald"
@@ -706,16 +702,8 @@ export default async function StakingPage({
 
       <Panel id="staking-advanced" eyebrow="Recent Activity" title="Live activity">
         <StakingActivityFeed
-          items={activityRows.filter(
-            (item) =>
-              item.eventType !== "FAUCET" &&
-              !/faucet/i.test(item.label) &&
-              !/faucet/i.test(item.detail) &&
-              (item.eventType === "SETTLEMENT" ||
-                (item.key?.startsWith("tx-") ?? false) ||
-                /\btx\s+[0-9a-f]{8}/i.test(item.detail))
-          )}
-          note={mainnetActivityNote}
+          items={activityRows}
+          loadMoreEndpoint="/api/staking/activity"
         />
       </Panel>
 

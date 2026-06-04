@@ -203,8 +203,8 @@ This is product state, not just decoration, because the current lobby identity d
 - `api-prodn` through `AOE2_BACKEND_UPSTREAM`
 - nginx for public routing
 - `aoe2hdbets-web.service` for runtime
-- `aoe2war.com/rpc` / `aoe2war.com/rest` for browser wallet reads and stake verification
-- WoloChain settlement execution through `WOLO_SETTLEMENT_URL`
+- `https://rpc-mainnet.aoe2war.com` / `https://rest-mainnet.aoe2war.com` for `wolo-1` browser wallet reads and stake verification
+- WoloChain settlement execution through `WOLO_SETTLEMENT_URL` only when the mainnet settlement service is deliberately deployed on `127.0.0.1:8092`
 
 Canonical VPS truth:
 - web env file: `/etc/aoe2hdbets/aoe2hdbets-web.env`

@@ -142,10 +142,10 @@ export type EscrowDepositRecord = {
 };
 
 const WOLO_PAYOUT_MNEMONIC = process.env.WOLO_BET_PAYOUT_MNEMONIC?.trim() || "";
+const explicitWoloPayoutAddress = process.env.WOLO_BET_PAYOUT_ADDRESS?.trim() || "";
 const WOLO_PAYOUT_ADDRESS =
-  process.env.WOLO_BET_PAYOUT_ADDRESS?.trim() ||
-  getWoloBetEscrowRuntime().escrowAddress ||
-  "";
+  explicitWoloPayoutAddress ||
+  (isWoloMainnet() ? "" : getWoloBetEscrowRuntime().escrowAddress || "");
 const WOLO_PAYOUT_FEE = process.env.WOLO_BET_PAYOUT_FEE?.trim() || "auto";
 const rawWoloSettlementUrl = process.env.WOLO_SETTLEMENT_URL?.trim() || "";
 function isLegacyLocalTestnetSettlementUrl(value: string) {
@@ -358,6 +358,19 @@ export function requiresOnchainStakeProof() {
 
 export function hasWoloPayoutExecutionConfigured() {
   return Boolean(WOLO_SETTLEMENT_URL || hasLocalPayoutSignerFallbackConfigured());
+}
+
+export function getWoloPayoutExecutionBlocker() {
+  if (hasWoloPayoutExecutionConfigured()) return null;
+
+  if (isWoloMainnet()) {
+    const oldTarget = WOLO_SETTLEMENT_CONFIG_WARNING
+      ? `${WOLO_SETTLEMENT_CONFIG_WARNING} `
+      : "";
+    return `${oldTarget}wolo-1 payout execution is blocked: the mainnet settlement service is not configured on 127.0.0.1:8092, and no explicit mainnet Bet Payout signer fallback is configured. Do not use 127.0.0.1:8091; that is wolo-testnet.`;
+  }
+
+  return "WOLO payout execution is not configured in this environment.";
 }
 
 export function hasWoloEscrowSettlementExecutionConfigured() {
@@ -612,7 +625,8 @@ export async function getWoloSettlementSurfaceStatus(): Promise<WoloSettlementSu
               "App-local payout signer fallback was requested, but the local signer credentials are incomplete.",
             ]
           : [
-              "WoloChain settlement service is not configured here. Auto-settlement stays pending instead of falling back silently.",
+              getWoloPayoutExecutionBlocker() ||
+                "WoloChain settlement service is not configured here. Auto-settlement stays pending instead of falling back silently.",
             ];
       if (WOLO_SETTLEMENT_CONFIG_WARNING) {
         warnings.unshift(WOLO_SETTLEMENT_CONFIG_WARNING);
@@ -1170,7 +1184,9 @@ async function executeWoloSettlementRunFallback(input: {
       warnings: [
         "WoloChain settlement service is not configured here. AoE2HDBets will not execute payouts locally unless WOLO_LOCAL_PAYOUT_SIGNER_FALLBACK=1 is set explicitly.",
       ],
-      detail: "Settlement execution is not configured in this environment.",
+      detail:
+        getWoloPayoutExecutionBlocker() ||
+        "Settlement execution is not configured in this environment.",
       payouts: input.payouts.map((payout, index) => ({
         index,
         requestId:
@@ -1188,7 +1204,9 @@ async function executeWoloSettlementRunFallback(input: {
         amountWolo: String(payout.amountWolo),
         memo: payout.memo?.trim() || input.memo?.trim() || null,
         txHash: null,
-        detail: "Settlement execution is not configured in this environment.",
+        detail:
+          getWoloPayoutExecutionBlocker() ||
+          "Settlement execution is not configured in this environment.",
         proofUrl: null,
         canonicalTxLookupPublic: null,
         canonicalTxLookupInternal: null,

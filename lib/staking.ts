@@ -7,6 +7,7 @@ import {
 import { buildStakingTreasuryPayoutRequestId } from "@/lib/stakingTreasuryPayouts";
 import {
   executeWoloSettlementRun,
+  getWoloPayoutExecutionBlocker,
   hasWoloPayoutExecutionConfigured,
   validateWoloAddress,
   validateWoloSettlementRun,
@@ -48,7 +49,15 @@ export type StakingActivityItem = {
   amountLabel?: string;
   txFeeLabel?: string;
   timestampLabel?: string;
+  occurredAt?: string;
   tone: "amber" | "emerald" | "sky" | "slate";
+};
+
+export type StakingActivityPage = {
+  generatedAt: string;
+  rows: StakingActivityItem[];
+  hasMore: boolean;
+  nextBefore: string | null;
 };
 
 export type StakingSummary = {
@@ -253,6 +262,40 @@ function shortAddress(value: string | null | undefined) {
   if (!clean) return null;
   if (clean.length <= 18) return clean;
   return `${clean.slice(0, 10)}...${clean.slice(-6)}`;
+}
+
+export function isPublicStakingActivityItem(item: StakingActivityItem) {
+  return (
+    item.eventType !== "FAUCET" &&
+    !/faucet/i.test(item.label) &&
+    !/faucet/i.test(item.detail) &&
+    (item.eventType === "SETTLEMENT" ||
+      item.eventType === "DIRECT" ||
+      (item.key?.startsWith("tx-") ?? false) ||
+      /\btx\s+[0-9a-f]{8}/i.test(item.detail))
+  );
+}
+
+function indexedTransferToActivityItem(
+  row: WoloIndexedTransferActivityRow,
+  now = new Date()
+): StakingActivityItem & { sortAt: Date } {
+  const timestamp = new Date(row.timestamp);
+  const safeTimestamp = Number.isNaN(timestamp.getTime()) ? now : timestamp;
+  const timestampLabel = formatMoment(safeTimestamp);
+
+  return {
+    key: row.key,
+    label: labelForIndexedTransfer(row),
+    detail: detailForIndexedTransfer(row),
+    meta: timestampLabel,
+    eventType: "DIRECT",
+    amountLabel: row.amountLabel,
+    timestampLabel,
+    occurredAt: safeTimestamp.toISOString(),
+    tone: "emerald",
+    sortAt: safeTimestamp,
+  };
 }
 
 function eventTypeForMainnetActivity(row: WoloMainnetActivityRow) {
@@ -664,6 +707,7 @@ export async function loadStakingSummary(
       amountLabel,
       txFeeLabel: txFeeLabel ?? undefined,
       timestampLabel,
+      occurredAt: event.createdAt.toISOString(),
       tone: event.type === "CLAIM" ? "emerald" : "amber",
       sortAt: event.createdAt,
     });
@@ -683,6 +727,7 @@ export async function loadStakingSummary(
       eventType: "REWARD",
       amountLabel,
       timestampLabel,
+      occurredAt: timestamp.toISOString(),
       tone: "amber",
       sortAt: timestamp,
     });
@@ -709,6 +754,7 @@ export async function loadStakingSummary(
       eventType: eventTypeForMainnetActivity(row),
       amountLabel,
       timestampLabel,
+      occurredAt: safeTimestamp.toISOString(),
       tone: toneForMainnetActivity(row),
       sortAt: safeTimestamp,
     });
@@ -726,27 +772,14 @@ export async function loadStakingSummary(
       eventType: "SETTLEMENT",
       amountLabel,
       timestampLabel,
+      occurredAt: row.latestAt.toISOString(),
       tone: row.failureCount > 0 ? "amber" : "sky",
       sortAt: row.latestAt,
     });
   }
 
   for (const row of indexedTransferRows) {
-    const timestamp = new Date(row.timestamp);
-    const safeTimestamp = Number.isNaN(timestamp.getTime()) ? now : timestamp;
-    const timestampLabel = formatMoment(safeTimestamp);
-
-    activity.push({
-      key: row.key,
-      label: labelForIndexedTransfer(row),
-      detail: detailForIndexedTransfer(row),
-      meta: timestampLabel,
-      eventType: "DIRECT",
-      amountLabel: row.amountLabel,
-      timestampLabel,
-      tone: "emerald",
-      sortAt: safeTimestamp,
-    });
+    activity.push(indexedTransferToActivityItem(row, now));
   }
 
   for (const wager of recentWagers) {
@@ -767,6 +800,7 @@ export async function loadStakingSummary(
       eventType,
       amountLabel,
       timestampLabel,
+      occurredAt: wager.createdAt.toISOString(),
       tone: isWin ? "emerald" : "sky",
       sortAt: wager.createdAt,
     });
@@ -780,10 +814,15 @@ export async function loadStakingSummary(
       meta: "Standby",
       eventType: "STANDBY",
       timestampLabel: "Standby",
+      occurredAt: now.toISOString(),
       tone: "slate",
       sortAt: now,
     });
   }
+
+  const publicActivity = dedupeActivityRows(activity, 64)
+    .filter(isPublicStakingActivityItem)
+    .slice(0, 16);
 
   return {
     period,
@@ -801,7 +840,7 @@ export async function loadStakingSummary(
     totalStakedWolo: publicTotalStakedWolo,
     totalStakingWeight: totalStakingWeight.toString(),
     directTransferCount: indexedTransferRows.length,
-    activity: dedupeActivityRows(activity, 16)
+    activity: publicActivity
       .map((item) => ({
         key: item.key,
         label: item.label,
@@ -811,8 +850,45 @@ export async function loadStakingSummary(
         amountLabel: item.amountLabel,
         txFeeLabel: item.txFeeLabel,
         timestampLabel: item.timestampLabel,
+        occurredAt: item.occurredAt,
         tone: item.tone,
       })),
+  };
+}
+
+export async function loadMainnetTransferStakingActivityPage(
+  prisma: PrismaClient,
+  options: {
+    before?: Date | string | null;
+    limit?: number | null;
+  } = {}
+): Promise<StakingActivityPage> {
+  const limit = Math.max(1, Math.min(options.limit ?? 16, 40));
+  const rows = await loadIndexedWoloTransferActivityRows(prisma, limit + 1, {
+    before: options.before ?? null,
+  });
+  const pageRows = rows.slice(0, limit).map((row) => {
+    const item = indexedTransferToActivityItem(row);
+    return {
+      key: item.key,
+      label: item.label,
+      detail: item.detail,
+      meta: item.meta,
+      eventType: item.eventType,
+      amountLabel: item.amountLabel,
+      txFeeLabel: item.txFeeLabel,
+      timestampLabel: item.timestampLabel,
+      occurredAt: item.occurredAt,
+      tone: item.tone,
+    };
+  });
+  const lastRow = pageRows[pageRows.length - 1] ?? null;
+
+  return {
+    generatedAt: new Date().toISOString(),
+    rows: pageRows,
+    hasMore: rows.length > limit,
+    nextBefore: lastRow?.occurredAt ?? null,
   };
 }
 
@@ -1609,7 +1685,9 @@ export async function executeDailyStakingRewardPayouts(
       executedPayouts: 0,
       skippedPayouts,
       status: "not_configured",
-      detail: "WOLO payout execution is not configured; rewards remain queued in the app ledger.",
+      detail:
+        getWoloPayoutExecutionBlocker() ||
+        "WOLO payout execution is not configured; rewards remain queued in the app ledger.",
       validation: null,
       execution: null,
     };

@@ -8,6 +8,7 @@ import {
 import { resolveCommunityTreasuryAddressConfig } from "@/lib/woloCommunityTreasury";
 import {
   executeWoloSettlementRun,
+  getWoloPayoutExecutionBlocker,
   getWoloPayoutSignerRuntime,
   hasWoloPayoutExecutionConfigured,
   validateWoloAddress,
@@ -244,7 +245,10 @@ function buildBlockers(row: StakingTreasuryDistributionRow) {
     blockers.push("WOLO_BET_PAYOUT_ADDRESS is not configured for the Bet Payout signer.");
   }
   if (!hasWoloPayoutExecutionConfigured()) {
-    blockers.push("WOLO payout execution is not configured in this environment.");
+    blockers.push(
+      getWoloPayoutExecutionBlocker() ||
+        "WOLO payout execution is not configured in this environment."
+    );
   }
   if (normalizePayoutStatus(row.treasuryPayoutStatus) === "PAID" && !row.treasuryPayoutTxHash) {
     blockers.push("Treasury payout is marked PAID but has no tx hash; operator review is required.");

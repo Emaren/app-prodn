@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@/lib/generated/prisma";
+import { WOLO_MAINNET_WALLET_ALIASES } from "@/lib/woloMainnetWallets";
 
 export const WOLO_MAINNET_CHAIN_ID = "wolo-1";
 export const WOLO_MAINNET_BASE_DENOM = "uwolo";
@@ -6,14 +7,15 @@ export const WOLO_MAINNET_DISPLAY_DENOM = "WOLO";
 export const WOLO_INDEXED_TRANSFER_SOURCE = "wolo-mainnet-bank-send";
 
 const WOLO_COIN_DECIMALS = 6;
-const DEFAULT_BLOCK_LIMIT = 20_000;
+const DEFAULT_BLOCK_LIMIT = 5_000_000;
 const DEFAULT_ADDRESS_LIMIT = 80;
-const DEFAULT_PER_ADDRESS_LIMIT = 20;
-const DEFAULT_GLOBAL_LIMIT = 25;
-const MAX_BLOCK_LIMIT = 100_000;
-const MAX_ADDRESS_LIMIT = 160;
-const MAX_PER_ADDRESS_LIMIT = 50;
-const MAX_GLOBAL_LIMIT = 100;
+const DEFAULT_PER_ADDRESS_LIMIT = 250;
+const DEFAULT_GLOBAL_LIMIT = 10_000;
+const MAX_BLOCK_LIMIT = 20_000_000;
+const MAX_ADDRESS_LIMIT = 400;
+const MAX_PER_ADDRESS_LIMIT = 2_000;
+const MAX_GLOBAL_LIMIT = 50_000;
+const TX_SEARCH_PAGE_SIZE = 50;
 const TX_SEARCH_TIMEOUT_MS = 8_000;
 const QUERY_CONCURRENCY = 4;
 
@@ -239,6 +241,15 @@ function envAddress(name: string) {
   return normalizeAddress(process.env[name]?.trim());
 }
 
+function addressBookKindForWalletAlias(
+  role: (typeof WOLO_MAINNET_WALLET_ALIASES)[number]["role"]
+): AddressKind {
+  if (role === "treasury") return "community_treasury";
+  if (role === "staking") return "staking_wallet";
+  if (role === "escrow") return "escrow";
+  return "tracked";
+}
+
 async function fetchJson<T>(url: string, timeoutMs = TX_SEARCH_TIMEOUT_MS): Promise<T> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -280,20 +291,33 @@ async function fetchMainnetHeight() {
 }
 
 async function searchRestTxs(query: string, limit: number) {
-  const params = new URLSearchParams();
-  params.set("query", query);
-  params.set("order_by", "ORDER_BY_DESC");
-  params.set("pagination.limit", String(limit));
+  const requested = Math.max(1, Math.min(MAX_GLOBAL_LIMIT, Math.floor(limit)));
+  const txs: ChainTxResponse[] = [];
+  let offset = 0;
 
-  const payload = await fetchJson<TxSearchPayload>(
-    `${getRestUrl()}/cosmos/tx/v1beta1/txs?${params.toString()}`
-  );
+  while (txs.length < requested) {
+    const pageLimit = Math.min(TX_SEARCH_PAGE_SIZE, requested - txs.length);
+    const params = new URLSearchParams();
+    params.set("query", query);
+    params.set("order_by", "ORDER_BY_DESC");
+    params.set("pagination.limit", String(pageLimit));
+    params.set("pagination.offset", String(offset));
 
-  if (payload.code) {
-    throw new Error(payload.message || `REST tx search returned code ${payload.code}`);
+    const payload = await fetchJson<TxSearchPayload>(
+      `${getRestUrl()}/cosmos/tx/v1beta1/txs?${params.toString()}`
+    );
+
+    if (payload.code) {
+      throw new Error(payload.message || `REST tx search returned code ${payload.code}`);
+    }
+
+    const page = payload.tx_responses || [];
+    txs.push(...page);
+    if (page.length < pageLimit) break;
+    offset += page.length;
   }
 
-  return payload.tx_responses || [];
+  return txs;
 }
 
 function parseUwoloAmount(message: ChainMessage) {
@@ -371,6 +395,13 @@ async function mapWithConcurrency<T, R>(
 
 export async function buildWoloAddressBook(prisma: PrismaClient) {
   const book = new Map<string, WoloAddressBookEntry>();
+
+  for (const wallet of WOLO_MAINNET_WALLET_ALIASES) {
+    putAddress(book, wallet.address, {
+      label: wallet.label,
+      kind: addressBookKindForWalletAlias(wallet.role),
+    });
+  }
 
   putAddress(book, process.env.NEXT_PUBLIC_WOLO_STAKING_WALLET_ADDRESS, {
     label: "Staking wallet",
@@ -691,8 +722,18 @@ export async function backfillWoloMainnetTransfers(
 
 export async function loadIndexedWoloTransferActivityRows(
   prisma: PrismaClient,
-  limit = 20
+  limit = 20,
+  options: { before?: Date | string | null; offset?: number | null } = {}
 ): Promise<WoloIndexedTransferActivityRow[]> {
+  const before =
+    options.before instanceof Date
+      ? options.before
+      : options.before
+        ? new Date(options.before)
+        : null;
+  const timestampWhere =
+    before && !Number.isNaN(before.getTime()) ? { lt: before } : undefined;
+
   const [addressBook, rows] = await Promise.all([
     buildWoloAddressBook(prisma),
     prisma.woloIndexedTransfer.findMany({
@@ -700,9 +741,11 @@ export async function loadIndexedWoloTransferActivityRows(
         chainId: WOLO_MAINNET_CHAIN_ID,
         denom: WOLO_MAINNET_BASE_DENOM,
         source: WOLO_INDEXED_TRANSFER_SOURCE,
+        ...(timestampWhere ? { timestamp: timestampWhere } : {}),
       },
       orderBy: [{ timestamp: "desc" }, { height: "desc" }, { id: "desc" }],
-      take: Math.max(1, Math.min(50, limit)),
+      skip: Math.max(0, Math.min(10_000, Math.floor(options.offset ?? 0))),
+      take: Math.max(1, Math.min(100, limit)),
     }),
   ]);
 

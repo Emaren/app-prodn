@@ -127,6 +127,12 @@ function isAwaitingVerifiedWalletLinkDetail(value: string | null | undefined) {
   );
 }
 
+function isSettlementUnavailableDetail(value: string | null | undefined) {
+  return /settlement.*not configured|payout execution.*not configured|service.*unconfigured|signer.*missing|signers unavailable|127\.0\.0\.1:8092|127\.0\.0\.1:8091|wolo-testnet/i.test(
+    value || ""
+  );
+}
+
 function displayUserName(entry: {
   uid?: string | null;
   inGameName?: string | null;
@@ -1011,12 +1017,17 @@ export async function GET(request: NextRequest) {
           .filter((row) => row.settlementMode === "auto_settled")
           .reduce((sum, row) => sum + row.amountWolo, 0),
         failedCount: settlementRows.filter(
-          (row) => Boolean(row.errorState) && !isAwaitingVerifiedWalletLinkDetail(row.errorState)
+          (row) =>
+            Boolean(row.errorState) &&
+            !isAwaitingVerifiedWalletLinkDetail(row.errorState) &&
+            !isSettlementUnavailableDetail(row.errorState)
         ).length,
         failedAmountWolo: settlementRows
           .filter(
             (row) =>
-              Boolean(row.errorState) && !isAwaitingVerifiedWalletLinkDetail(row.errorState)
+              Boolean(row.errorState) &&
+              !isAwaitingVerifiedWalletLinkDetail(row.errorState) &&
+              !isSettlementUnavailableDetail(row.errorState)
           )
           .reduce((sum, row) => sum + row.amountWolo, 0),
       },

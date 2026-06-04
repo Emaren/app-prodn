@@ -1,12 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { StakingActivityItem } from "@/lib/staking";
 
 type ActivityFeedEvent = CustomEvent<{ item?: StakingActivityItem }>;
 
-const MAX_ROWS = 16;
+const PAGE_SIZE = 16;
+
+type ActivityPageResponse = {
+  rows?: StakingActivityItem[];
+  hasMore?: boolean;
+  nextBefore?: string | null;
+};
 
 function activityKey(item: StakingActivityItem) {
   return item.key || `${item.label}:${item.detail}:${item.meta}`;
@@ -26,24 +32,35 @@ function mergeActivityRows(
     merged.push(item);
   }
 
-  return merged.slice(0, MAX_ROWS);
+  return merged;
 }
 
 export default function StakingActivityFeed({
   items,
   note,
+  loadMoreEndpoint,
 }: {
   items: StakingActivityItem[];
   note?: string;
+  loadMoreEndpoint?: string;
 }) {
-  const initialRows = useMemo(() => items.slice(0, MAX_ROWS), [items]);
+  const initialRows = useMemo(() => items.slice(0, PAGE_SIZE), [items]);
   const [rows, setRows] = useState(initialRows);
   const [freshKey, setFreshKey] = useState<string | null>(activityKey(initialRows[0] ?? { label: "", detail: "", meta: "", tone: "slate" }));
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(Boolean(loadMoreEndpoint));
+  const [nextBefore, setNextBefore] = useState<string | null>(() => oldestDirectRowTimestamp(initialRows));
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setRows((current) => mergeActivityRows(initialRows, current));
     setFreshKey(activityKey(initialRows[0] ?? { label: "", detail: "", meta: "", tone: "slate" }));
   }, [initialRows]);
+
+  useEffect(() => {
+    setHasMore(Boolean(loadMoreEndpoint));
+    setNextBefore(oldestDirectRowTimestamp(initialRows));
+  }, [initialRows, loadMoreEndpoint]);
 
   useEffect(() => {
     function handleActivity(event: Event) {
@@ -57,6 +74,52 @@ export default function StakingActivityFeed({
     return () => window.removeEventListener("staking:activity", handleActivity);
   }, []);
 
+  const loadMore = useCallback(async () => {
+    if (!loadMoreEndpoint || loadingMore || !hasMore) return;
+    setLoadingMore(true);
+
+    try {
+      const url = new URL(loadMoreEndpoint, window.location.origin);
+      url.searchParams.set("limit", String(PAGE_SIZE));
+      if (nextBefore) {
+        url.searchParams.set("before", nextBefore);
+      }
+
+      const response = await fetch(url.toString(), { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error(`Activity request failed: ${response.status}`);
+      }
+
+      const payload = (await response.json()) as ActivityPageResponse;
+      const nextRows = Array.isArray(payload.rows) ? payload.rows : [];
+      setRows((current) => mergeActivityRows(current, nextRows));
+      setHasMore(Boolean(payload.hasMore));
+      setNextBefore(payload.nextBefore || oldestDirectRowTimestamp(nextRows) || nextBefore);
+    } catch (error) {
+      console.warn("Failed to load older staking activity:", error);
+      setHasMore(false);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [hasMore, loadMoreEndpoint, loadingMore, nextBefore]);
+
+  useEffect(() => {
+    if (!loadMoreEndpoint || !hasMore) return;
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          void loadMore();
+        }
+      },
+      { rootMargin: "240px 0px" }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, loadMore, loadMoreEndpoint]);
+
   return (
     <div className="space-y-2.5">
       {note ? (
@@ -65,19 +128,52 @@ export default function StakingActivityFeed({
         </div>
       ) : null}
 
-      {rows.map((item, index) => {
+      {rows.length === 0 ? (
+        <div className="rounded-[1.1rem] border border-white/10 bg-white/[0.04] p-3.5 text-sm text-slate-300">
+          No mainnet activity rows are visible yet.
+        </div>
+      ) : null}
+
+      {rows.map((item) => {
         const key = activityKey(item);
         return (
           <ActivityRow
             key={key}
             item={item}
             isFresh={key === freshKey}
-            className={index >= 10 ? "hidden xl:flex" : undefined}
           />
         );
       })}
+
+      {loadMoreEndpoint ? (
+        <div ref={sentinelRef} className="flex justify-center pt-2">
+          {hasMore ? (
+            <button
+              type="button"
+              onClick={() => void loadMore()}
+              disabled={loadingMore}
+              className="rounded-full border border-white/15 bg-white/[0.04] px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-200 transition hover:border-white/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {loadingMore ? "Loading..." : "Load older mainnet transfers"}
+            </button>
+          ) : rows.length > 0 ? (
+            <div className="text-xs uppercase tracking-[0.18em] text-slate-500">
+              Beginning of indexed mainnet transfers
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
+}
+
+function oldestDirectRowTimestamp(rows: StakingActivityItem[]) {
+  return rows
+    .filter((row) => row.eventType === "DIRECT" && row.occurredAt)
+    .map((row) => new Date(row.occurredAt || ""))
+    .filter((date) => !Number.isNaN(date.getTime()))
+    .sort((left, right) => left.getTime() - right.getTime())[0]
+    ?.toISOString() ?? null;
 }
 
 function ActivityRow({

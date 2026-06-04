@@ -1,38 +1,12 @@
 import { readFile } from "fs/promises";
 import { NextRequest, NextResponse } from "next/server";
 
+import { WOLO_MAINNET_WALLET_ALIAS_BY_ADDRESS } from "@/lib/woloMainnetWallets";
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const UWOLO_DECIMALS = 6;
-
-const DEFAULT_ALIASES: Record<string, string> = {
-  wolo17nkhws8wq48s98ytrgn7exfaz9mltgahxl9hf8: "Founder Cold Wallet",
-  wolo18vu2rz7wnnmtnyjzmqxarus94njt4x4t3p8z4a: "DEX Liquidity",
-  wolo1tn9qxc9ruqjz9lqrja0qz8vrn72mkk9p7repsp: "Community Treasury",
-  wolo1jx4n3n2ey6uzfq28kplkmpd2am98xsmcn0nerx: "Faucet Drip Reserve",
-  wolo1uu0lwp9s9ugvuydxrlfg2vrvamaehkf9kv8q4t: "Validator Ops",
-  wolo1fxw6u72zaf0xt47n5mj99yvsxhy6fq8j63wz62: "Ecosystem Bounties",
-  wolo1yj2u283x3c25rdp34ytpju02xyaz47cx5g2ssj: "Founder Operating / Emaren",
-  wolo10zspyrrphzctrpysh6l9dsqj4wcwmj3tk660sz: "Jim",
-  wolo1mcmckkr360n47wyc408xmlsv4tzw95kkczvfp9: "Sniper",
-  wolo1t4jq7wd4x030t9f0yfqfq74pt4pmaep5nu67y4: "Bet Escrow",
-  wolo1n0yg6ltqxl05ljaqftvvtgec5qavf9a3uh090h: "Julio Alvarez",
-  wolo1ntal93v8c5wryq2d9puhks8l25zedhepyv8n5k: "[BDB]Pigman",
-  wolo1cy04t5af0mr9d8n6rrzgr8e9j4vuf42nfg02q5: "Bet Payout",
-  wolo1fl48vsnmsdzcv85q5d2q4z5ajdha8yu3aqv4s2: "Validator Ops Reserve",
-  wolo1yyuu097eppte7qya48r3dth86smdl3sjyxg284: "DM Linked Wallet",
-  wolo1ptwu2lnm5nzpzup9v9kree67x2t8fd2rck7uc4: "Faucet/Test Wallet 01",
-  wolo19cwjk5z5rw4wc4ymfevtncw9rmv5akrahmjw7c: "Faucet/Test Wallet 02",
-  wolo1r82vt3jmnhc2qudz2h2578g8arpgwr997z0l8n: "Faucet/Test Wallet 03",
-  wolo147z5hs875wqdjarqxvhdjheeze9cn66d38vus5: "Faucet/Test Wallet 04",
-  wolo12knhgh73p2k8l0l46syruw00rjeazhgsma83eq: "Faucet/Test Wallet 05",
-  wolo1j5xzt48ql2gg5eh5p0xgy0048gahqyq2gfdt8r: "Faucet/Test Wallet 06",
-  wolo1f2nrhnwuu23t32x5k2d74g0jwtjcpcsl355urv: "Faucet/Test Wallet 07",
-  wolo178vwml3r64rjawaujk700rvw6chr7lkg7yaean: "Faucet/Test Wallet 08",
-  wolo1ahjjy7us2frzmgp6kcv6tsk76mg8a4308vv54m: "Faucet/Test Wallet 09",
-  wolo1jv65s3grqf6v6jl3dp4t6c9t9rk99cd80ypxqz: "Faucet/Test Wallet 10",
-};
 
 type DenomOwner = {
   address?: unknown;
@@ -115,12 +89,12 @@ function getRestUrl() {
     process.env.WOLO_SETTLEMENT_PUBLIC_REST_URL ||
     process.env.NEXT_PUBLIC_WOLO_REST_URL ||
     process.env.WOLO_SETTLEMENT_REST_URL ||
-    "https://aoe2war.com/rest"
+    "https://rest-mainnet.aoe2war.com"
   ).replace(/\/+$/, "");
 }
 
 async function loadAliases() {
-  const aliases = { ...DEFAULT_ALIASES };
+  const aliases: Record<string, string> = { ...WOLO_MAINNET_WALLET_ALIAS_BY_ADDRESS };
   const aliasFile = process.env.WOLO_WALLET_ALIAS_FILE || "/etc/aoe2hdbets/wolo-wallet-aliases.tsv";
 
   try {

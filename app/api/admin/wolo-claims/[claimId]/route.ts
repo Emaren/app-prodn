@@ -6,7 +6,10 @@ import {
   findMatchedClaimUser,
   retryPendingClaimSettlement,
 } from "@/lib/adminWoloClaims";
-import { hasWoloPayoutExecutionConfigured } from "@/lib/woloBetSettlement";
+import {
+  getWoloPayoutExecutionBlocker,
+  hasWoloPayoutExecutionConfigured,
+} from "@/lib/woloBetSettlement";
 import { rescindPendingWoloClaim } from "@/lib/pendingWoloClaims";
 import { recordUserActivity } from "@/lib/userExperience";
 
@@ -95,7 +98,9 @@ async function retrySettlementClaim(request: NextRequest, claimId: number) {
   if (!hasWoloPayoutExecutionConfigured()) {
     return NextResponse.json(
       {
-        detail: "WOLO payout execution is not configured in this environment.",
+        detail:
+          getWoloPayoutExecutionBlocker() ||
+          "WOLO payout execution is not configured in this environment.",
       },
       { status: 409 },
     );

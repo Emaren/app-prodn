@@ -85,7 +85,7 @@ When `/bets` is expected to open real Keplr stake locks, these envs must agree i
 - `WOLO_REST_URL=https://rest-mainnet.aoe2war.com`
 - `NEXT_PUBLIC_WOLO_BET_ESCROW_ADDRESS`
 - `WOLO_BET_ESCROW_ADDRESS`
-- `WOLO_SETTLEMENT_URL` must not point at the old local testnet settlement target `127.0.0.1:8091`; on `wolo-1` the app ignores that legacy URL and leaves settlement unconfigured instead.
+- `WOLO_SETTLEMENT_URL` must remain empty unless the mainnet settlement service is deliberately deployed and verified on `127.0.0.1:8092`; it must not point at the old local testnet settlement target `127.0.0.1:8091`.
 - `WOLO_STAKING_WALLET_ADDRESS` / `NEXT_PUBLIC_WOLO_STAKING_WALLET_ADDRESS`
 - `WOLO_STAKING_WALLET_MNEMONIC`
 - `WOLO_STAKING_HOME=/var/lib/aoe2hdbets-wolo-mainnet`
@@ -207,10 +207,10 @@ Expected result for the browser pass:
 If browser wallets report `Failed to fetch balance`, `network error`, or a dead Keplr handoff, check these before blaming app code:
 
 ```bash
-curl -sSI -H 'Origin: https://aoe2war.com' https://aoe2war.com/rpc/status | rg 'Access-Control-Allow-Origin|HTTP/'
-curl -sSI -H 'Origin: https://www.aoe2war.com' https://aoe2war.com/rpc/status | rg 'Access-Control-Allow-Origin|HTTP/'
-curl -sSI -H 'Origin: https://aoe2war.com' https://aoe2war.com/rest/cosmos/base/tendermint/v1beta1/blocks/latest | rg 'Access-Control-Allow-Origin|HTTP/'
-curl -sSI -H 'Origin: https://www.aoe2war.com' https://aoe2war.com/rest/cosmos/base/tendermint/v1beta1/blocks/latest | rg 'Access-Control-Allow-Origin|HTTP/'
+curl -sSI -H 'Origin: https://aoe2war.com' https://rpc-mainnet.aoe2war.com/status | rg 'Access-Control-Allow-Origin|HTTP/'
+curl -sSI -H 'Origin: https://www.aoe2war.com' https://rpc-mainnet.aoe2war.com/status | rg 'Access-Control-Allow-Origin|HTTP/'
+curl -sSI -H 'Origin: https://aoe2war.com' https://rest-mainnet.aoe2war.com/cosmos/base/tendermint/v1beta1/blocks/latest | rg 'Access-Control-Allow-Origin|HTTP/'
+curl -sSI -H 'Origin: https://www.aoe2war.com' https://rest-mainnet.aoe2war.com/cosmos/base/tendermint/v1beta1/blocks/latest | rg 'Access-Control-Allow-Origin|HTTP/'
 journalctl -u aoe2hdbets-web.service -n 20 --no-pager
 ```
 
@@ -357,7 +357,7 @@ Do not restart blindly before the schema is in place.
 - backend upstream should remain `http://127.0.0.1:3330`
 - browser should stay same-origin for `/api/*`
 - watcher uploads should continue to target `api-prodn.aoe2war.com`, not the public web host
-- browser wallet reads and stake verification depend on `aoe2war.com/rpc` and `aoe2war.com/rest` staying CORS-clean for both `aoe2war.com` and `www.aoe2war.com`
+- browser wallet reads and stake verification depend on `rpc-mainnet.aoe2war.com` and `rest-mainnet.aoe2war.com` staying CORS-clean for both `aoe2war.com` and `www.aoe2war.com`
 - dedicated nginx request-log runbook for AoE2 Phase 1 lives at [deploy/aoe2-access-logging-phase1.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/deploy/aoe2-access-logging-phase1.md)
 
 

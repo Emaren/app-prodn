@@ -4,6 +4,7 @@ import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 import { pendingWoloClaimNameKeys } from "@/lib/pendingWoloClaims";
 import { getWoloMainnetDisplayStartAt, isWoloMainnet } from "@/lib/woloChain";
+import { WOLO_MAINNET_WALLET_ALIASES } from "@/lib/woloMainnetWallets";
 import {
   WOLO_INDEXED_TRANSFER_SOURCE,
   WOLO_MAINNET_BASE_DENOM,
@@ -32,7 +33,7 @@ function clampLimit(value: string | null) {
 
 function clampOffset(value: string | null) {
   const parsed = Number.parseInt(value ?? "", 10);
-  return Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, 2_000) : 0;
+  return Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, 25_000) : 0;
 }
 
 function formatStatus(value: string | null | undefined) {
@@ -60,6 +61,40 @@ function mainnetCutoffWhere() {
   return isWoloMainnet() ? { gte: getWoloMainnetDisplayStartAt() } : undefined;
 }
 
+function normalizeAliasMatcher(value: string | null | undefined) {
+  return (value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function aliasMatchesUser(
+  aliasLabel: string,
+  user: {
+    uid: string;
+    inGameName: string | null;
+    steamPersonaName: string | null;
+  }
+) {
+  const userKeys = [user.inGameName, user.steamPersonaName, user.uid]
+    .map(normalizeAliasMatcher)
+    .filter(Boolean);
+  if (userKeys.length === 0) return false;
+
+  const aliasSegments = aliasLabel
+    .split("/")
+    .map(normalizeAliasMatcher)
+    .filter(Boolean);
+  const fullAlias = normalizeAliasMatcher(aliasLabel);
+
+  return userKeys.some(
+    (key) =>
+      aliasSegments.includes(key) ||
+      fullAlias === key ||
+      fullAlias.endsWith(` ${key}`)
+  );
+}
+
 function visibleMainnetWagerWhere(userId: number) {
   if (!isWoloMainnet()) return { userId };
   return {
@@ -84,7 +119,7 @@ export async function GET(request: NextRequest) {
 
     const limit = clampLimit(request.nextUrl.searchParams.get("limit"));
     const offset = clampOffset(request.nextUrl.searchParams.get("offset"));
-    const sourceTake = Math.min(2_500, offset + limit + 80);
+    const sourceTake = Math.min(25_000, Math.max(offset + limit + 2_000, 5_000));
     const prisma = getPrisma();
 
     const user = await prisma.user.findUnique({
@@ -115,6 +150,11 @@ export async function GET(request: NextRequest) {
     for (const entry of addressBook.values()) {
       if (entry.userId === user.id || entry.uid === user.uid) {
         linkedWalletAddresses.add(entry.address.toLowerCase());
+      }
+    }
+    for (const wallet of WOLO_MAINNET_WALLET_ALIASES) {
+      if (aliasMatchesUser(wallet.label, user)) {
+        linkedWalletAddresses.add(wallet.address.toLowerCase());
       }
     }
     const linkedWalletAddressList = Array.from(linkedWalletAddresses);

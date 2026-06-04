@@ -479,7 +479,7 @@ export function LobbyHero({
               viewMode={viewMode}
             />
             <StatCard
-              label="DEX Liquidity"
+              label="DEX Liquidity Reserve"
               value={formatCompactWolo(liquidity)}
               subtext="Reserved market depth."
               themeKey={themeKey}

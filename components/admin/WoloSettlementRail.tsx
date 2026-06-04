@@ -74,13 +74,38 @@ function isAwaitingWalletLink(row: SettlementRailRow) {
   );
 }
 
-function isRetryableSettlementFailure(row: SettlementRailRow) {
-  return row.claimStatus === "pending" && Boolean(row.errorState) && !isAwaitingWalletLink(row);
+function isSettlementUnavailableDetail(value: string | null | undefined) {
+  return /settlement.*not configured|payout execution.*not configured|service.*unconfigured|signer.*missing|signers unavailable|127\.0\.0\.1:8092|127\.0\.0\.1:8091|wolo-testnet/i.test(
+    value || ""
+  );
 }
 
-function pendingDetail(row: SettlementRailRow) {
+function isSettlementUnavailable(row: SettlementRailRow, payoutExecutionConfigured: boolean) {
+  return (
+    row.claimStatus === "pending" &&
+    !isAwaitingWalletLink(row) &&
+    (!payoutExecutionConfigured || isSettlementUnavailableDetail(row.errorState))
+  );
+}
+
+function isRetryableSettlementFailure(row: SettlementRailRow) {
+  return (
+    row.claimStatus === "pending" &&
+    Boolean(row.errorState) &&
+    !isAwaitingWalletLink(row) &&
+    !isSettlementUnavailableDetail(row.errorState)
+  );
+}
+
+function pendingDetail(row: SettlementRailRow, payoutExecutionConfigured: boolean) {
   if (isAwaitingWalletLink(row)) {
     return "Awaiting verified wallet-linked account for this player. Retry once the player signs in and links a verified wallet.";
+  }
+  if (isSettlementUnavailable(row, payoutExecutionConfigured)) {
+    return (
+      row.errorState ||
+      "Settlement service/signers unavailable: wolo-1 payouts require the mainnet settlement service on 127.0.0.1:8092 or an explicit mainnet Bet Payout signer. Do not retry against 127.0.0.1:8091; that is wolo-testnet."
+    );
   }
   return row.errorState;
 }
@@ -91,12 +116,15 @@ function statusTone(
     | "paid"
     | "retryable_failure"
     | "awaiting_wallet_link"
-) {
+    | "settlement_unavailable"
+  ) {
   switch (mode) {
     case "paid":
       return "border-emerald-500/30 bg-emerald-500/10 text-emerald-100";
     case "awaiting_wallet_link":
       return "border-amber-400/30 bg-amber-500/10 text-amber-100";
+    case "settlement_unavailable":
+      return "border-cyan-300/25 bg-cyan-400/10 text-cyan-100";
     case "retryable_failure":
       return "border-rose-400/30 bg-rose-500/10 text-rose-100";
     case "rescinded":
@@ -112,12 +140,15 @@ function statusLabel(
     | "paid"
     | "retryable_failure"
     | "awaiting_wallet_link"
-) {
+    | "settlement_unavailable"
+  ) {
   switch (mode) {
     case "paid":
       return "Paid";
     case "awaiting_wallet_link":
       return "Awaiting verified wallet-linked account";
+    case "settlement_unavailable":
+      return "Settlement service/signers unavailable";
     case "retryable_failure":
       return "Retryable settlement failure";
     case "rescinded":
@@ -321,7 +352,9 @@ export function WoloSettlementRail({
                       ? "rescinded"
                       : isAwaitingWalletLink(row)
                         ? "awaiting_wallet_link"
-                        : isRetryableSettlementFailure(row)
+                        : isSettlementUnavailable(row, payoutExecutionConfigured)
+                          ? "settlement_unavailable"
+                          : isRetryableSettlementFailure(row)
                           ? "retryable_failure"
                           : row.settlementMode;
 
@@ -365,10 +398,23 @@ export function WoloSettlementRail({
                           Retryable settlement failure
                         </span>
                       ) : null}
+                      {isSettlementUnavailable(row, payoutExecutionConfigured) ? (
+                        <span className="inline-flex rounded-full border border-cyan-300/20 bg-cyan-400/10 px-2.5 py-1 text-[11px] uppercase tracking-[0.16em] text-cyan-100">
+                          Settlement service/signers unavailable
+                        </span>
+                      ) : null}
                     </div>
-                    {pendingDetail(row) ? (
-                      <div className={`mt-2 text-xs ${isAwaitingWalletLink(row) ? "text-amber-200" : "text-rose-300"}`}>
-                        {pendingDetail(row)}
+                    {pendingDetail(row, payoutExecutionConfigured) ? (
+                      <div
+                        className={`mt-2 text-xs ${
+                          isAwaitingWalletLink(row)
+                            ? "text-amber-200"
+                            : isSettlementUnavailable(row, payoutExecutionConfigured)
+                              ? "text-cyan-100"
+                              : "text-rose-300"
+                        }`}
+                      >
+                        {pendingDetail(row, payoutExecutionConfigured)}
                       </div>
                     ) : null}
                   </td>
@@ -455,7 +501,10 @@ export function WoloSettlementRail({
                     <td className="px-3 py-3">
                       {row.claimStatus === "pending" ? (
                         <div className="flex flex-wrap gap-2">
-                          {row.errorState && onRetry && (payoutExecutionConfigured || isAwaitingWalletLink(row)) ? (
+                          {row.errorState &&
+                          onRetry &&
+                          payoutExecutionConfigured &&
+                          !isSettlementUnavailable(row, payoutExecutionConfigured) ? (
                             <button
                               type="button"
                               onClick={() => onRetry(row.id)}
@@ -464,14 +513,14 @@ export function WoloSettlementRail({
                             >
                               {retryingClaimId === row.id
                                 ? "Retrying..."
-                                : isAwaitingWalletLink(row)
-                                  ? "Retry after link"
-                                  : "Retry payout"}
+                                  : isAwaitingWalletLink(row)
+                                    ? "Retry after link"
+                                    : "Retry payout"}
                             </button>
                           ) : null}
-                          {row.errorState && onRetry && !payoutExecutionConfigured && !isAwaitingWalletLink(row) ? (
-                            <span className="rounded-full border border-amber-300/25 bg-amber-400/10 px-3 py-1.5 text-xs font-medium text-amber-100">
-                              Configure payout execution
+                          {onRetry && isSettlementUnavailable(row, payoutExecutionConfigured) ? (
+                            <span className="rounded-full border border-cyan-300/25 bg-cyan-400/10 px-3 py-1.5 text-xs font-medium text-cyan-100">
+                              Configure mainnet settlement
                             </span>
                           ) : null}
                           {row.marketId && onAddFounderBonus ? (
