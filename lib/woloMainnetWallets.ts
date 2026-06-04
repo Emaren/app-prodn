@@ -76,7 +76,7 @@ export const WOLO_MAINNET_WALLET_ALIASES = [
     role: "player",
   },
   {
-    label: "Validator Ops Reserve",
+    label: "Module: bonded_tokens_pool",
     address: "wolo1fl48vsnmsdzcv85q5d2q4z5ajdha8yu3aqv4s2",
     role: "validator",
   },
@@ -111,7 +111,7 @@ export const WOLO_MAINNET_WALLET_ALIASES = [
     role: "payout",
   },
   {
-    label: "Faucet/Test Wallet 10",
+    label: "Module: distribution",
     address: "wolo1jv65s3grqf6v6jl3dp4t6c9t9rk99cd80ypxqz",
     role: "test",
   },
