@@ -167,13 +167,26 @@ function isLegacyLocalTestnetSettlementUrl(value: string) {
     return /(?:localhost|127\.0\.0\.1):8091/.test(value);
   }
 }
+function isExpectedMainnetSettlementUrl(value: string) {
+  if (!value) return false;
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" && url.hostname === "127.0.0.1" && url.port === "8092";
+  } catch {
+    return value === "http://127.0.0.1:8092";
+  }
+}
 const WOLO_SETTLEMENT_URL =
-  isWoloMainnet() && isLegacyLocalTestnetSettlementUrl(rawWoloSettlementUrl)
+  isWoloMainnet() &&
+  (!isExpectedMainnetSettlementUrl(rawWoloSettlementUrl) ||
+    isLegacyLocalTestnetSettlementUrl(rawWoloSettlementUrl))
     ? ""
     : rawWoloSettlementUrl;
 const WOLO_SETTLEMENT_CONFIG_WARNING =
   isWoloMainnet() && rawWoloSettlementUrl && !WOLO_SETTLEMENT_URL
-    ? "Ignored legacy local testnet WOLO_SETTLEMENT_URL on wolo-1."
+    ? isLegacyLocalTestnetSettlementUrl(rawWoloSettlementUrl)
+      ? "Ignored legacy local testnet WOLO_SETTLEMENT_URL on wolo-1."
+      : "Ignored non-mainnet WOLO_SETTLEMENT_URL on wolo-1; expected http://127.0.0.1:8092."
     : null;
 const WOLO_SETTLEMENT_AUTH_TOKEN = process.env.WOLO_SETTLEMENT_AUTH_TOKEN?.trim() || "";
 const WOLO_LOCAL_PAYOUT_SIGNER_FALLBACK_ENABLED =

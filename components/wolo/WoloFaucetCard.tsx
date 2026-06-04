@@ -97,6 +97,7 @@ export default function WoloFaucetCard({
   const normalizedChainId = chainId.trim().toLowerCase();
   const isTestnet = normalizedChainId.includes("testnet");
   const isMainnet = normalizedChainId === "wolo-1" || !isTestnet;
+  const isSupportedChain = isTestnet || isMainnet;
   const storageKey = useMemo(() => buildStorageKey(chainId, address), [chainId, address]);
 
   const [claimState, setClaimState] = useState<StoredClaimState | null>(null);
@@ -129,15 +130,15 @@ export default function WoloFaucetCard({
   const cooldownEndsAtMs = claimState?.cooldownEndsAtMs ?? 0;
   const msRemaining = cooldownEndsAtMs ? Math.max(0, cooldownEndsAtMs - now) : 0;
   const isCoolingDown = isConnected && msRemaining > 0;
-  const isEligible = isConnected && isTestnet && !isCoolingDown && !isClaiming;
+  const isEligible = isConnected && isSupportedChain && !isCoolingDown && !isClaiming;
 
   async function handleClaimClick() {
     try {
       setClaimError(null);
 
       if (!address || !isConnected) return;
-      if (!isTestnet) {
-        setClaimError("Mainnet faucet not configured.");
+      if (!isSupportedChain) {
+        setClaimError("Faucet is not configured for this chain.");
         return;
       }
 
@@ -190,10 +191,10 @@ export default function WoloFaucetCard({
 
   const statusLabel = !isConnected
     ? isMainnet
-      ? "Connect Keplr. Mainnet claim is coming online."
+      ? "Connect Keplr to claim on mainnet."
       : "Connect Keplr to claim."
-    : !isTestnet
-      ? "Mainnet claim coming online."
+    : !isSupportedChain
+      ? "Faucet is not configured for this chain."
       : isClaiming
         ? "Broadcasting faucet transfer."
         : isCoolingDown
@@ -212,8 +213,8 @@ export default function WoloFaucetCard({
     ? "Sending..."
     : isCoolingDown
       ? formatCooldown(msRemaining)
-      : !isTestnet
-        ? "Coming Online"
+      : !isSupportedChain
+        ? "Unavailable"
         : `Claim ${FAUCET_AMOUNT_WOLO} WOLO`;
   const premiumStatusClassName = claimError
     ? "text-red-200/85"
@@ -264,7 +265,7 @@ export default function WoloFaucetCard({
           <div className="mt-1 text-sm font-medium text-white">
             {isTestnet
               ? `Claim ${FAUCET_AMOUNT_WOLO} WOLO on testnet`
-              : "Mainnet faucet not configured"}
+              : `Claim ${FAUCET_AMOUNT_WOLO} WOLO on mainnet`}
           </div>
           <div className={`mt-1 text-[11px] leading-5 ${premiumStatusClassName}`}>
             {statusLabel}

@@ -94,6 +94,7 @@ WOLO betting / settlement:
 - `WOLO_BET_PAYOUT_ADDRESS=wolo1zfa9ssu2gpgqg7yzvhmjt4w66mza07qr2a4rwu` for the fresh mainnet Bet Payout signer after cutover
 - `WOLO_BET_ESCROW_ADDRESS=wolo1zygwt232ymc4h2g52yvkntffhmd5alx2kglw7p` for the fresh mainnet Bet Escrow signer after cutover
 - `WOLO_COMMUNITY_TREASURY_ADDRESS=wolo1hlfvzuv4dc46ngvh3zlteuegx0xga20hj20zd2`
+- `WOLO_FAUCET_CLI=/usr/local/bin/wolochaind-mainnet`, `WOLO_FAUCET_HOME=/var/lib/aoe2hdbets-wolo-mainnet`, `WOLO_FAUCET_FROM`, `WOLO_FAUCET_CHAIN_ID=wolo-1`, and `WOLO_FAUCET_NODE_RPC=http://127.0.0.1:27657` for mainnet faucet claims from the app signer; do not point faucet claims at local testnet RPC or 8091
 - `WOLO_BET_PAYOUT_MNEMONIC` only when using the local fallback signer instead of the settlement service; do not enable local fallback on mainnet unless explicitly approved
 - `WOLO_STAKING_WALLET_ADDRESS` / `NEXT_PUBLIC_WOLO_STAKING_WALLET_ADDRESS` for the `/staking` custody rail
 - `WOLO_STAKING_WALLET_MNEMONIC` for unstake execution from the staking custody wallet

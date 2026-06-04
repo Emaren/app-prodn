@@ -267,8 +267,6 @@ function shortAddress(value: string | null | undefined) {
 export function isPublicStakingActivityItem(item: StakingActivityItem) {
   return (
     item.eventType !== "FAUCET" &&
-    !/faucet/i.test(item.label) &&
-    !/faucet/i.test(item.detail) &&
     (item.eventType === "SETTLEMENT" ||
       item.eventType === "DIRECT" ||
       (item.key?.startsWith("tx-") ?? false) ||

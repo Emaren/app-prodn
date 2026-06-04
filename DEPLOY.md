@@ -90,6 +90,11 @@ When `/bets` is expected to open real Keplr stake locks, these envs must agree i
 - `WOLO_BET_PAYOUT_ADDRESS=wolo1zfa9ssu2gpgqg7yzvhmjt4w66mza07qr2a4rwu`
 - `WOLO_BET_ESCROW_ADDRESS=wolo1zygwt232ymc4h2g52yvkntffhmd5alx2kglw7p`
 - `WOLO_COMMUNITY_TREASURY_ADDRESS=wolo1hlfvzuv4dc46ngvh3zlteuegx0xga20hj20zd2`
+- `WOLO_FAUCET_CLI=/usr/local/bin/wolochaind-mainnet`
+- `WOLO_FAUCET_HOME=/var/lib/aoe2hdbets-wolo-mainnet`
+- `WOLO_FAUCET_FROM` set to the wolo-1 app signer key name
+- `WOLO_FAUCET_CHAIN_ID=wolo-1`
+- `WOLO_FAUCET_NODE_RPC=http://127.0.0.1:27657`
 - `WOLO_STAKING_WALLET_ADDRESS` / `NEXT_PUBLIC_WOLO_STAKING_WALLET_ADDRESS`
 - `WOLO_STAKING_WALLET_MNEMONIC`
 - `WOLO_STAKING_HOME=/var/lib/aoe2hdbets-wolo-mainnet`
