@@ -85,7 +85,11 @@ When `/bets` is expected to open real Keplr stake locks, these envs must agree i
 - `WOLO_REST_URL=https://rest-mainnet.aoe2war.com`
 - `NEXT_PUBLIC_WOLO_BET_ESCROW_ADDRESS`
 - `WOLO_BET_ESCROW_ADDRESS`
-- `WOLO_SETTLEMENT_URL` must remain empty unless the mainnet settlement service is deliberately deployed and verified on `127.0.0.1:8092`; it must not point at the old local testnet settlement target `127.0.0.1:8091`.
+- `WOLO_SETTLEMENT_URL` must remain empty unless the mainnet settlement service is deliberately deployed on `127.0.0.1:8092`, `/settlement/v1/health` reports `ok=true` and `chain_id=wolo-1`, and the fresh payout/escrow signers are funded. It must not point at the old local testnet settlement target `127.0.0.1:8091`.
+- `WOLO_SETTLEMENT_AUTH_TOKEN` must come from the root-only WoloChain mainnet settlement env after the 8092 health gate is green.
+- `WOLO_BET_PAYOUT_ADDRESS=wolo1zfa9ssu2gpgqg7yzvhmjt4w66mza07qr2a4rwu`
+- `WOLO_BET_ESCROW_ADDRESS=wolo1zygwt232ymc4h2g52yvkntffhmd5alx2kglw7p`
+- `WOLO_COMMUNITY_TREASURY_ADDRESS=wolo1hlfvzuv4dc46ngvh3zlteuegx0xga20hj20zd2`
 - `WOLO_STAKING_WALLET_ADDRESS` / `NEXT_PUBLIC_WOLO_STAKING_WALLET_ADDRESS`
 - `WOLO_STAKING_WALLET_MNEMONIC`
 - `WOLO_STAKING_HOME=/var/lib/aoe2hdbets-wolo-mainnet`
@@ -101,7 +105,13 @@ WoloChain `MsgSend` rows to/from the staking wallet plus confirmed app
 rows may exist for operator/history workflows, but must not drive public
 mainnet totals, operator funding requirements, or unstake limits. After deploy,
 run `scripts/backfill-wolo-mainnet-transfers.mjs` or the admin backfill route
-to refresh `/api/wolo/mainnet-transfers`.
+to refresh `/api/wolo/mainnet-transfers`. After the June 2026 transfer-index
+composition migration, run the backfill with explicit wide limits so older direct
+bank sends, including Jim/Sniper transfers, are indexed:
+
+```bash
+node scripts/backfill-wolo-mainnet-transfers.mjs --block-limit=5000000 --address-limit=400 --per-address-limit=5000 --global-limit=100000
+```
 
 The `/staking` public economy rail displays bank balances for the configured
 staking wallet, community treasury, bet escrow, payout signer, and DEX liquidity

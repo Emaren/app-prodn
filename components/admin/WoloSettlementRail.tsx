@@ -75,7 +75,7 @@ function isAwaitingWalletLink(row: SettlementRailRow) {
 }
 
 function isSettlementUnavailableDetail(value: string | null | undefined) {
-  return /settlement.*not configured|payout execution.*not configured|service.*unconfigured|signer.*missing|signers unavailable|127\.0\.0\.1:8092|127\.0\.0\.1:8091|wolo-testnet/i.test(
+  return /settlement.*not configured|settlement_health|payout_fee_headroom_too_low|escrow_balance_too_low|payout execution.*not configured|service.*unconfigured|signer.*missing|signers unavailable|127\.0\.0\.1:8092|127\.0\.0\.1:8091|wolo-testnet/i.test(
     value || ""
   );
 }

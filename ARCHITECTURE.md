@@ -98,7 +98,7 @@ Challenge and bet settlement now have a real happy path:
 - `bet_wagers` now persists `execution_mode`, `stake_tx_hash`, `stake_wallet_address`, `stake_escrowed_at`, `payout_wolo`, and settled status
 - `pending_wolo_claims` now carries `payout_tx_hash`, `payout_attempted_at`, and `error_state` for operator truth
 - `/bets` records an `onchain_escrow` wager only after the signed stake tx verifies against WOLO REST
-- winning payouts can execute through `WOLO_SETTLEMENT_URL` or the configured fallback signer when the winner has a trusted identity and linked wallet
+- winning payouts can execute through `WOLO_SETTLEMENT_URL` only after grouped dry-run validation succeeds and the mainnet settlement health route reports `ok=true` on `wolo-1`, or through an explicitly approved fallback signer in non-mainnet/operator-only contexts
 
 The `/staking` page is an app-side WOLO staking ledger, not native Cosmos validator staking. Stake actions are user-signed Keplr transfers into the configured staking wallet. Unstake actions are WoloChain settlement payouts back to the user wallet. User principal stays separate from the staking wallet's operator-funded reserve: max unstake follows confirmed stake, while the API checks that post-unstake wallet balance can still cover remaining confirmed stake plus reserve.
 
@@ -204,7 +204,7 @@ This is product state, not just decoration, because the current lobby identity d
 - nginx for public routing
 - `aoe2hdbets-web.service` for runtime
 - `https://rpc-mainnet.aoe2war.com` / `https://rest-mainnet.aoe2war.com` for `wolo-1` browser wallet reads and stake verification
-- WoloChain settlement execution through `WOLO_SETTLEMENT_URL` only when the mainnet settlement service is deliberately deployed on `127.0.0.1:8092`
+- WoloChain settlement execution through `WOLO_SETTLEMENT_URL` only when the mainnet settlement service is deliberately deployed on `127.0.0.1:8092`, reports `ok=true` and `chain_id=wolo-1`, and the fresh Bet Payout / Bet Escrow signers are funded; `127.0.0.1:8091` is wolo-testnet and must never be used for mainnet
 
 Canonical VPS truth:
 - web env file: `/etc/aoe2hdbets/aoe2hdbets-web.env`

@@ -73,7 +73,11 @@ export default function WoloChainEntryTile({
     : snapshot
       ? "bad"
       : "muted";
-  const settlementTone = marketSummary.settlementServiceConfigured ? "good" : "warn";
+  const settlementTone = marketSummary.settlementPayoutReady
+    ? "good"
+    : marketSummary.settlementServiceConfigured
+      ? "warn"
+      : "bad";
   const warningCount =
     (snapshot?.warnings.length ?? 0) +
     marketSummary.failedSettlementCount +
@@ -94,7 +98,13 @@ export default function WoloChainEntryTile({
               Chain {snapshot?.chain.statusLabel ?? "loading"}
             </span>
             <span className={`rounded-full border px-3 py-1 ${statusTone(settlementTone)}`}>
-              Settlement {compactCapability(marketSummary.settlementExecutionMode)}
+              Settlement{" "}
+              {marketSummary.settlementPayoutReady
+                ? compactCapability(marketSummary.settlementExecutionMode)
+                : compactCapability(
+                    marketSummary.settlementHealthFailureCode ||
+                      marketSummary.settlementExecutionMode
+                  )}
             </span>
             <span className={`rounded-full border px-3 py-1 ${statusTone(warningCount > 0 ? "warn" : "good")}`}>
               {warningCount} warning{warningCount === 1 ? "" : "s"}

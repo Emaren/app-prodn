@@ -67,6 +67,8 @@ export type MarketRailSummary = {
   escrowConfigError: string | null;
   settlementServiceConfigured: boolean;
   settlementAuthConfigured: boolean;
+  settlementPayoutReady: boolean;
+  settlementHealthFailureCode: string | null;
   settlementExecutionMode: "settlement_service" | "local_signer_fallback" | "unconfigured";
   groupedRunCapability:
     | "supported"
@@ -166,6 +168,11 @@ function escrowLabel(summary: MarketRailSummary) {
 }
 
 function groupedRunLabel(summary: MarketRailSummary) {
+  if (summary.settlementServiceConfigured && !summary.settlementPayoutReady) {
+    return summary.settlementHealthFailureCode
+      ? `Settlement blocked: ${summary.settlementHealthFailureCode.replace(/_/g, " ")}`
+      : "Settlement service blocked";
+  }
   switch (summary.groupedRunCapability) {
     case "supported":
       return "Grouped settlement ready";
@@ -183,6 +190,9 @@ function groupedRunLabel(summary: MarketRailSummary) {
 }
 
 function groupedRunTone(summary: MarketRailSummary) {
+  if (summary.settlementServiceConfigured && !summary.settlementPayoutReady) {
+    return "border-amber-400/30 bg-amber-500/10 text-amber-100";
+  }
   switch (summary.groupedRunCapability) {
     case "supported":
       return "border-emerald-400/30 bg-emerald-500/10 text-emerald-100";

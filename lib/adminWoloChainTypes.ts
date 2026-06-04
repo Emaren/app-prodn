@@ -73,6 +73,12 @@ export type WoloChainAdminPayload = {
     checkedAt: string | null;
     settlementServiceConfigured: boolean;
     settlementAuthConfigured: boolean;
+    settlementHealthOk: boolean | null;
+    settlementHealthStatus: string | null;
+    settlementHealthFailureCode: string | null;
+    settlementHealthDetail: string | null;
+    settlementHealthChainId: string | null;
+    payoutReady: boolean;
     payoutExecutionMode: string;
     localSignerFallbackEnabled: boolean;
     groupedRunCapability: string;

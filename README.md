@@ -89,9 +89,12 @@ WOLO betting / settlement:
 - `NEXT_PUBLIC_WOLO_BET_ESCROW_ADDRESS`
 - `WOLO_BET_ESCROW_ADDRESS`
 - `WOLO_MAINNET_DISPLAY_START_AT=2026-05-25T00:00:00.000Z` (optional; mainnet-facing WOLO/bet rails hide pre-cutoff testnet-era rows)
-- `WOLO_SETTLEMENT_URL`
-- `WOLO_SETTLEMENT_AUTH_TOKEN` (optional if the settlement service is protected)
-- `WOLO_BET_PAYOUT_MNEMONIC` / `WOLO_BET_PAYOUT_ADDRESS` only when using the local fallback signer instead of the settlement service
+- `WOLO_SETTLEMENT_URL=http://127.0.0.1:8092` only after the mainnet settlement service health route reports `ok=true` and `chain_id=wolo-1`; never use `127.0.0.1:8091` for mainnet because that is `wolo-testnet`
+- `WOLO_SETTLEMENT_AUTH_TOKEN` from the root-only WoloChain mainnet settlement env once 8092 is payout-ready
+- `WOLO_BET_PAYOUT_ADDRESS=wolo1zfa9ssu2gpgqg7yzvhmjt4w66mza07qr2a4rwu` for the fresh mainnet Bet Payout signer after cutover
+- `WOLO_BET_ESCROW_ADDRESS=wolo1zygwt232ymc4h2g52yvkntffhmd5alx2kglw7p` for the fresh mainnet Bet Escrow signer after cutover
+- `WOLO_COMMUNITY_TREASURY_ADDRESS=wolo1hlfvzuv4dc46ngvh3zlteuegx0xga20hj20zd2`
+- `WOLO_BET_PAYOUT_MNEMONIC` only when using the local fallback signer instead of the settlement service; do not enable local fallback on mainnet unless explicitly approved
 - `WOLO_STAKING_WALLET_ADDRESS` / `NEXT_PUBLIC_WOLO_STAKING_WALLET_ADDRESS` for the `/staking` custody rail
 - `WOLO_STAKING_WALLET_MNEMONIC` for unstake execution from the staking custody wallet
 - `WOLO_STAKING_ALLOW_PAYOUT_MNEMONIC_FALLBACK=1` only if the payout mnemonic is intentionally the same wallet as the staking wallet; the app still verifies the derived signer address before broadcasting
@@ -109,7 +112,9 @@ not drive mainnet-facing staking totals. Mainnet direct-transfer indexing is
 exposed read-only at
 `GET /api/wolo/mainnet-transfers`; operators can refresh the index with
 `POST /api/admin/wolo-transfers/backfill` or
-`node scripts/backfill-wolo-mainnet-transfers.mjs`.
+`node scripts/backfill-wolo-mainnet-transfers.mjs`. The index stores one row per
+successful `MsgSend` inside a tx, so a multi-send transaction is not collapsed
+into the first recipient.
 
 The `/staking` economy surface also renders public custody balances for staking
 wallet, community treasury, bet escrow, payout signer, and DEX liquidity

@@ -50,6 +50,7 @@ export default function StakingActivityFeed({
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(Boolean(loadMoreEndpoint));
   const [nextBefore, setNextBefore] = useState<string | null>(() => oldestDirectRowTimestamp(initialRows));
+  const scrollRootRef = useRef<HTMLDivElement | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -106,7 +107,8 @@ export default function StakingActivityFeed({
   useEffect(() => {
     if (!loadMoreEndpoint || !hasMore) return;
     const sentinel = sentinelRef.current;
-    if (!sentinel) return;
+    const root = scrollRootRef.current;
+    if (!sentinel || !root) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -114,7 +116,7 @@ export default function StakingActivityFeed({
           void loadMore();
         }
       },
-      { rootMargin: "240px 0px" }
+      { root, rootMargin: "160px 0px" }
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
@@ -134,35 +136,43 @@ export default function StakingActivityFeed({
         </div>
       ) : null}
 
-      {rows.map((item) => {
-        const key = activityKey(item);
-        return (
-          <ActivityRow
-            key={key}
-            item={item}
-            isFresh={key === freshKey}
-          />
-        );
-      })}
+      <div className="rounded-[1.2rem] border border-white/10 bg-black/15 p-2">
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2 px-1 text-[10px] uppercase tracking-[0.18em] text-slate-500">
+          <span>{rows.length.toLocaleString()} rows loaded</span>
+          <span>{hasMore ? "Scroll for older rows" : rows.length > 0 ? "At mainnet start" : "No rows"}</span>
+        </div>
+        <div ref={scrollRootRef} className="max-h-[34rem] space-y-2.5 overflow-y-auto pr-1">
+          {rows.map((item) => {
+            const key = activityKey(item);
+            return (
+              <ActivityRow
+                key={key}
+                item={item}
+                isFresh={key === freshKey}
+              />
+            );
+          })}
 
-      {loadMoreEndpoint ? (
-        <div ref={sentinelRef} className="flex justify-center pt-2">
-          {hasMore ? (
-            <button
-              type="button"
-              onClick={() => void loadMore()}
-              disabled={loadingMore}
-              className="rounded-full border border-white/15 bg-white/[0.04] px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-200 transition hover:border-white/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {loadingMore ? "Loading..." : "Load older mainnet transfers"}
-            </button>
-          ) : rows.length > 0 ? (
-            <div className="text-xs uppercase tracking-[0.18em] text-slate-500">
-              Beginning of indexed mainnet transfers
+          {loadMoreEndpoint ? (
+            <div ref={sentinelRef} className="flex justify-center pt-2">
+              {hasMore ? (
+                <button
+                  type="button"
+                  onClick={() => void loadMore()}
+                  disabled={loadingMore}
+                  className="rounded-full border border-white/15 bg-white/[0.04] px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-200 transition hover:border-white/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {loadingMore ? "Loading..." : "Load older mainnet transfers"}
+                </button>
+              ) : rows.length > 0 ? (
+                <div className="text-xs uppercase tracking-[0.18em] text-slate-500">
+                  Beginning of indexed mainnet transfers
+                </div>
+              ) : null}
             </div>
           ) : null}
         </div>
-      ) : null}
+      </div>
     </div>
   );
 }

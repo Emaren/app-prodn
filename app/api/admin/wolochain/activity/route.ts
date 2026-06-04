@@ -99,7 +99,7 @@ export async function GET(request: NextRequest) {
     const tx = shortTx(row.txHash);
 
     return {
-      key: `direct:${row.txHash}`,
+      key: `direct:${row.txHash}:${row.transferIndex}`,
       kind: "direct",
       label: `${row.amountLabel} direct transfer`,
       detail: `${sender} → ${recipient}${tx ? ` · tx ${tx}` : ""}${row.memo ? ` · memo ${row.memo}` : ""}`,

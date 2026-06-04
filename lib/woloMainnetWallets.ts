@@ -91,12 +91,22 @@ export const WOLO_MAINNET_WALLET_ALIASES = [
     role: "relayer",
   },
   {
-    label: "Bet Escrow",
+    label: "Bet Payout Signer",
+    address: "wolo1zfa9ssu2gpgqg7yzvhmjt4w66mza07qr2a4rwu",
+    role: "payout",
+  },
+  {
+    label: "Bet Escrow Signer",
+    address: "wolo1zygwt232ymc4h2g52yvkntffhmd5alx2kglw7p",
+    role: "escrow",
+  },
+  {
+    label: "Legacy Bet Escrow",
     address: "wolo1t4jq7wd4x030t9f0yfqfq74pt4pmaep5nu67y4",
     role: "escrow",
   },
   {
-    label: "Bet Payout",
+    label: "Retired Bet Payout",
     address: "wolo1cy04t5af0mr9d8n6rrzgr8e9j4vuf42nfg02q5",
     role: "payout",
   },

@@ -1712,6 +1712,41 @@ export async function executeDailyStakingRewardPayouts(
     memo: `AoE2 staking rewards ${distributionDate}`,
     payouts,
   });
+  if (!validation) {
+    return {
+      distributionId: distribution.id,
+      distributionDate,
+      payoutExecutionConfigured,
+      settlementRunId,
+      requestedPayouts: validPlans.length,
+      executedPayouts: 0,
+      skippedPayouts,
+      status: "failed",
+      detail:
+        "WOLO grouped payout dry-run is not available; refusing to execute staking rewards without settlement validation.",
+      validation,
+      execution: null,
+    };
+  }
+  if (!validation.ok) {
+    return {
+      distributionId: distribution.id,
+      distributionDate,
+      payoutExecutionConfigured,
+      settlementRunId,
+      requestedPayouts: validPlans.length,
+      executedPayouts: 0,
+      skippedPayouts,
+      status: "failed",
+      detail:
+        validation.detail ||
+        validation.failureCode ||
+        "WOLO grouped payout dry-run failed; refusing to execute staking rewards.",
+      validation,
+      execution: null,
+    };
+  }
+
   const execution = await executeWoloSettlementRun({
     settlementRunId,
     sourceApp: "aoe2hdbets",

@@ -888,7 +888,8 @@ model StakingEvent {
 model WoloIndexedTransfer {
   id                Int      @id @default(autoincrement())
   chainId           String   @map("chain_id") @db.VarChar(32)
-  txHash            String   @unique(map: "uq_wolo_indexed_transfers_tx_hash") @map("tx_hash") @db.VarChar(128)
+  txHash            String   @map("tx_hash") @db.VarChar(128)
+  transferIndex     Int      @default(0) @map("transfer_index")
   height            BigInt
   timestamp         DateTime @db.Timestamp(6)
   senderAddress     String   @map("sender_address") @db.VarChar(100)
@@ -903,7 +904,9 @@ model WoloIndexedTransfer {
   createdAt         DateTime @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
 
+  @@unique([txHash, transferIndex], map: "uq_wolo_indexed_transfers_tx_hash_transfer_index")
   @@index([chainId, height], map: "ix_wolo_indexed_transfers_chain_height")
+  @@index([txHash], map: "ix_wolo_indexed_transfers_tx_hash")
   @@index([senderAddress], map: "ix_wolo_indexed_transfers_sender")
   @@index([recipientAddress], map: "ix_wolo_indexed_transfers_recipient")
   @@index([timestamp], map: "ix_wolo_indexed_transfers_timestamp")

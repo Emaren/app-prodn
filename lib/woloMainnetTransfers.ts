@@ -9,12 +9,12 @@ export const WOLO_INDEXED_TRANSFER_SOURCE = "wolo-mainnet-bank-send";
 const WOLO_COIN_DECIMALS = 6;
 const DEFAULT_BLOCK_LIMIT = 5_000_000;
 const DEFAULT_ADDRESS_LIMIT = 80;
-const DEFAULT_PER_ADDRESS_LIMIT = 250;
-const DEFAULT_GLOBAL_LIMIT = 10_000;
+const DEFAULT_PER_ADDRESS_LIMIT = 2_000;
+const DEFAULT_GLOBAL_LIMIT = 50_000;
 const MAX_BLOCK_LIMIT = 20_000_000;
 const MAX_ADDRESS_LIMIT = 400;
-const MAX_PER_ADDRESS_LIMIT = 2_000;
-const MAX_GLOBAL_LIMIT = 50_000;
+const MAX_PER_ADDRESS_LIMIT = 5_000;
+const MAX_GLOBAL_LIMIT = 100_000;
 const TX_SEARCH_PAGE_SIZE = 50;
 const TX_SEARCH_TIMEOUT_MS = 8_000;
 const QUERY_CONCURRENCY = 4;
@@ -57,6 +57,7 @@ export type WoloAddressBookEntry = {
 
 export type IndexedWoloTransfer = {
   txHash: string;
+  transferIndex: number;
   chainId: string;
   height: bigint;
   timestamp: Date;
@@ -101,6 +102,7 @@ export type WoloTransferBackfillResult = {
 export type WoloIndexedTransferActivityRow = {
   key: string;
   txHash: string;
+  transferIndex: number;
   height: string;
   timestamp: string;
   senderAddress: string;
@@ -332,18 +334,19 @@ function parseUwoloAmount(message: ChainMessage) {
   }
 }
 
-function parseBankSendTx(tx: ChainTxResponse): IndexedWoloTransfer | null {
-  if (Number(tx.code || 0) !== 0) return null;
+function parseBankSendTx(tx: ChainTxResponse): IndexedWoloTransfer[] {
+  if (Number(tx.code || 0) !== 0) return [];
 
   const txHash = normalizeTxHash(tx.txhash);
   const height = Number.parseInt(tx.height || "0", 10);
   const timestamp = tx.timestamp ? new Date(tx.timestamp) : null;
   const messages = tx.tx?.body?.messages || [];
   if (!txHash || !Number.isFinite(height) || height <= 0 || !timestamp || Number.isNaN(timestamp.getTime())) {
-    return null;
+    return [];
   }
 
-  for (const message of messages) {
+  const transfers: IndexedWoloTransfer[] = [];
+  for (const [messageIndex, message] of messages.entries()) {
     if (message["@type"] !== "/cosmos.bank.v1beta1.MsgSend") continue;
 
     const senderAddress = normalizeAddress(message.from_address);
@@ -351,9 +354,10 @@ function parseBankSendTx(tx: ChainTxResponse): IndexedWoloTransfer | null {
     const amountUwolo = parseUwoloAmount(message);
     if (!senderAddress || !recipientAddress || !amountUwolo) continue;
 
-    return {
+    transfers.push({
       chainId: WOLO_MAINNET_CHAIN_ID,
       txHash,
+      transferIndex: messageIndex,
       height: BigInt(height),
       timestamp,
       senderAddress,
@@ -365,10 +369,10 @@ function parseBankSendTx(tx: ChainTxResponse): IndexedWoloTransfer | null {
       rawType: message["@type"],
       eventType: "direct_bank_send",
       source: WOLO_INDEXED_TRANSFER_SOURCE,
-    };
+    });
   }
 
-  return null;
+  return transfers;
 }
 
 async function mapWithConcurrency<T, R>(
@@ -601,16 +605,40 @@ export async function buildWoloAddressBook(prisma: PrismaClient) {
 }
 
 async function upsertTransfer(prisma: PrismaClient, transfer: IndexedWoloTransfer) {
-  const existing = await prisma.woloIndexedTransfer.findUnique({
-    where: { txHash: transfer.txHash },
+  const existing = await prisma.woloIndexedTransfer.findFirst({
+    where: {
+      txHash: transfer.txHash,
+      transferIndex: transfer.transferIndex,
+    },
     select: { id: true },
   });
 
-  await prisma.woloIndexedTransfer.upsert({
-    where: { txHash: transfer.txHash },
-    create: transfer,
-    update: {
+  if (existing) {
+    await prisma.woloIndexedTransfer.update({
+      where: { id: existing.id },
+      data: {
+        chainId: transfer.chainId,
+        height: transfer.height,
+        timestamp: transfer.timestamp,
+        senderAddress: transfer.senderAddress,
+        recipientAddress: transfer.recipientAddress,
+        amountUwolo: transfer.amountUwolo,
+        amountWoloDisplay: transfer.amountWoloDisplay,
+        denom: transfer.denom,
+        memo: transfer.memo,
+        rawType: transfer.rawType,
+        eventType: transfer.eventType,
+        source: transfer.source,
+      },
+    });
+    return "updated";
+  }
+
+  await prisma.woloIndexedTransfer.create({
+    data: {
       chainId: transfer.chainId,
+      txHash: transfer.txHash,
+      transferIndex: transfer.transferIndex,
       height: transfer.height,
       timestamp: transfer.timestamp,
       senderAddress: transfer.senderAddress,
@@ -625,7 +653,7 @@ async function upsertTransfer(prisma: PrismaClient, transfer: IndexedWoloTransfe
     },
   });
 
-  return existing ? "updated" : "created";
+  return "created";
 }
 
 export async function backfillWoloMainnetTransfers(
@@ -686,17 +714,23 @@ export async function backfillWoloMainnetTransfers(
   const txHashes: string[] = [];
 
   for (const tx of txsByHash.values()) {
-    const transfer = parseBankSendTx(tx);
-    if (!transfer) {
+    const transfers = parseBankSendTx(tx);
+    if (transfers.length === 0) {
       skipped += 1;
       continue;
     }
 
-    transfersParsed += 1;
-    const outcome = await upsertTransfer(prisma, transfer);
-    if (outcome === "created") created += 1;
-    else updated += 1;
-    txHashes.push(transfer.txHash);
+    for (const transfer of transfers) {
+      transfersParsed += 1;
+      const outcome = await upsertTransfer(prisma, transfer);
+      if (outcome === "created") created += 1;
+      else updated += 1;
+      txHashes.push(
+        transfer.transferIndex > 0
+          ? `${transfer.txHash}#${transfer.transferIndex}`
+          : transfer.txHash
+      );
+    }
   }
 
   return {
@@ -757,8 +791,9 @@ export async function loadIndexedWoloTransferActivityRows(
     const amountWolo = Number(row.amountWoloDisplay);
 
     return {
-      key: `tx-${row.txHash}`,
+      key: `tx-${row.txHash}-${row.transferIndex}`,
       txHash: row.txHash,
+      transferIndex: row.transferIndex,
       height: row.height.toString(),
       timestamp: row.timestamp.toISOString(),
       senderAddress,
@@ -803,8 +838,9 @@ export async function loadWoloIndexedTransferDashboard(
     const amountWolo = Number(row.amountWoloDisplay);
 
     return {
-      key: `tx-${row.txHash}`,
+      key: `tx-${row.txHash}-${row.transferIndex}`,
       txHash: row.txHash,
+      transferIndex: row.transferIndex,
       height: row.height.toString(),
       timestamp: row.timestamp.toISOString(),
       senderAddress,

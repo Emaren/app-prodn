@@ -965,11 +965,18 @@ export default function WoloChainAdminPage() {
       ? "good"
       : "warn"
     : "bad";
-  const settlementTone = state.wolochain?.settlementService.settlementServiceConfigured
+  const settlementTone = state.wolochain?.settlementService.payoutReady
     ? "good"
-    : state.wolochain?.settlementService.localSignerFallbackEnabled
+    : state.wolochain?.settlementService.settlementServiceConfigured ||
+        state.wolochain?.settlementService.localSignerFallbackEnabled
       ? "warn"
       : "bad";
+  const settlementDetail =
+    state.wolochain?.settlementService.payoutReady
+      ? state.wolochain.settlementService.groupedRunCapability
+      : state.wolochain?.settlementService.settlementHealthFailureCode ||
+        state.wolochain?.settlementService.settlementHealthStatus ||
+        state.wolochain?.settlementService.groupedRunCapability;
 
   return (
     <main className="space-y-6 py-6 text-white">
@@ -1048,7 +1055,7 @@ export default function WoloChainAdminPage() {
           }
           detail={
             state.wolochain
-              ? compactLabel(state.wolochain.settlementService.groupedRunCapability)
+              ? compactLabel(settlementDetail)
               : "Awaiting settlement probe"
           }
           tone={settlementTone}
@@ -1245,7 +1252,7 @@ export default function WoloChainAdminPage() {
             summary={state.rails.settlementRail.summary}
             rows={state.rails.settlementRail.rows}
             payoutExecutionConfigured={
-              state.rails.marketRail.summary.settlementExecutionMode !== "unconfigured"
+              Boolean(state.wolochain?.settlementService.payoutReady)
             }
             rescindingClaimId={rescindingClaimId}
             retryingClaimId={retryingClaimId}
@@ -1330,6 +1337,8 @@ export default function WoloChainAdminPage() {
         <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
           {[
             ["Grouped runs", state.wolochain?.settlementService.groupedRunCapability],
+            ["Health", state.wolochain?.settlementService.settlementHealthOk ? "ready" : state.wolochain?.settlementService.settlementHealthFailureCode || state.wolochain?.settlementService.settlementHealthStatus],
+            ["Payout ready", state.wolochain?.settlementService.payoutReady ? "ready" : "blocked"],
             ["Escrow verify", state.wolochain?.settlementService.escrowVerifyCapability],
             ["Escrow deposits", state.wolochain?.settlementService.escrowRecentCapability],
             ["Execution mode", state.wolochain?.settlementService.payoutExecutionMode],

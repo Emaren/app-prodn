@@ -2,7 +2,13 @@
 
 AoE2HDBets owns the app-side Challenge escrow settlement decision. WoloChain remains the chain rail for sending WOLO and proving tx hashes.
 
-Scheduled-match settlement runs must use the WoloChain grouped settlement rail with `signer_role=escrow`. The source signer is Bet Escrow, not the normal payout signer.
+Scheduled-match settlement runs must use the WoloChain grouped settlement rail with `signer_role=escrow`. The source signer is the fresh mainnet Bet Escrow signer (`WOLO_BET_ESCROW_ADDRESS=wolo1zygwt232ymc4h2g52yvkntffhmd5alx2kglw7p`), not the normal payout signer.
+
+On mainnet, grouped settlement can execute only through `http://127.0.0.1:8092`
+after `/settlement/v1/health` reports `ok=true` and `chain_id=wolo-1`. If health
+reports `PAYOUT_FEE_HEADROOM_TOO_LOW`, `ESCROW_BALANCE_TOO_LOW`, or any other
+non-ok state, the app should surface a blocked dry-run and must not retry
+against `127.0.0.1:8091`.
 
 ## What Is Settled Here
 
