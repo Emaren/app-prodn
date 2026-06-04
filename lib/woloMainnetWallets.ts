@@ -82,7 +82,7 @@ export const WOLO_MAINNET_WALLET_ALIASES = [
   },
   {
     label: "Staking Wallet",
-    address: "wolo1rmr39nd5gnnv5y5f66qtq367xfwvx9jt5w7ucr",
+    address: "wolo18v9ugfdrnz2ll2ah5z2yqzm5kzlg3e7l7jy6rn",
     role: "staking",
   },
   {
