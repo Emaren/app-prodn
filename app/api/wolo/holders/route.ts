@@ -1,7 +1,10 @@
 import { readFile } from "fs/promises";
 import { NextRequest, NextResponse } from "next/server";
 
-import { WOLO_MAINNET_WALLET_ALIAS_BY_ADDRESS } from "@/lib/woloMainnetWallets";
+import {
+  WOLO_MAINNET_WALLET_ALIASES,
+  WOLO_MAINNET_WALLET_ALIAS_BY_ADDRESS,
+} from "@/lib/woloMainnetWallets";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -201,12 +204,26 @@ export async function GET(request: NextRequest) {
       "0"
     );
 
-    const holders = owners.map((owner, index) => ({
+    const seenOwnerAddresses = new Set(owners.map((owner) => owner.address.toLowerCase()));
+    const zeroBalanceAliases = WOLO_MAINNET_WALLET_ALIASES.filter(
+      (wallet) => !seenOwnerAddresses.has(wallet.address.toLowerCase())
+    );
+    const holders = [
+      ...owners.map((owner) => ({
+        alias: aliases[owner.address] || "Unaliased",
+        address: owner.address,
+        balanceWolo: formatWolo(owner.amountUwolo),
+        balanceWoloFormatted: formatWolo(owner.amountUwolo, true),
+      })),
+      ...zeroBalanceAliases.map((wallet) => ({
+        alias: aliases[wallet.address] || wallet.label,
+        address: wallet.address,
+        balanceWolo: formatWolo("0"),
+        balanceWoloFormatted: formatWolo("0", true),
+      })),
+    ].map((holder, index) => ({
+      ...holder,
       rank: index + 1,
-      alias: aliases[owner.address] || "Unaliased",
-      address: owner.address,
-      balanceWolo: formatWolo(owner.amountUwolo),
-      balanceWoloFormatted: formatWolo(owner.amountUwolo, true),
     }));
 
     const format = request.nextUrl.searchParams.get("format");
