@@ -1,5 +1,5 @@
 import type { PrismaClient } from "@/lib/generated/prisma";
-import { WOLO_MAINNET_WALLET_ALIASES } from "@/lib/woloMainnetWallets";
+import { WOLO_MAINNET_WALLET_ALIASES } from "./woloMainnetWallets.ts";
 
 export const WOLO_MAINNET_CHAIN_ID = "wolo-1";
 export const WOLO_MAINNET_BASE_DENOM = "uwolo";
