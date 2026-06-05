@@ -50,6 +50,8 @@ const FAUCET_FROM =
   process.env.WOLO_FAUCET_FROM?.trim() ||
   (isMainnetFaucetRuntime ? MAINNET_FAUCET_KEY_NAME : "faucetgrowth");
 const FAUCET_ADDRESS = normalizeAddress(process.env.WOLO_FAUCET_ADDRESS);
+const FAUCET_SENDER_ADDRESS =
+  isMainnetFaucetRuntime ? WOLO_MAINNET_FAUCET_HOT_WALLET_ADDRESS : FAUCET_FROM;
 const FAUCET_CHAIN_ID =
   process.env.WOLO_FAUCET_CHAIN_ID?.trim() ||
   (isMainnetFaucetRuntime ? WOLO_MAINNET_CHAIN_ID : WOLO_CHAIN_ID);
@@ -177,7 +179,7 @@ async function sendFaucetTransfer(address: string) {
     "tx",
     "bank",
     "send",
-    FAUCET_FROM,
+    FAUCET_SENDER_ADDRESS,
     address,
     `${CLAIM_AMOUNT_UWOLO}${WOLO_BASE_DENOM}`,
     "--home",
@@ -196,6 +198,10 @@ async function sendFaucetTransfer(address: string) {
     "json",
     "-y",
   ];
+
+  if (isMainnetFaucetRuntime) {
+    txArgs.push("--from", FAUCET_FROM);
+  }
 
   const { stdout, stderr } = await execFileAsync(FAUCET_CLI, txArgs, {
     maxBuffer: 1024 * 1024,
