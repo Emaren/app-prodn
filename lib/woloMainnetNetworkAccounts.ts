@@ -146,6 +146,12 @@ export const WOLO_MAINNET_NETWORK_ACCOUNTS = [
     role: "user",
   },
   {
+    label: "Julio Alvarez",
+    address: "wolo1n0yg6ltqxl05ljaqftvvtgec5qavf9a3uh090h",
+    use: "USER",
+    role: "user",
+  },
+  {
     label: "Module: bonded_tokens_pool",
     address: "wolo1fl48vsnmsdzcv85q5d2q4z5ajdha8yu3aqv4s2",
     use: "MODULE_DO_NOT_USE",

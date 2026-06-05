@@ -17,6 +17,10 @@ export type WoloMainnetWalletAlias = {
     | "test";
 };
 
+export const WOLO_MAINNET_FAUCET_HOT_WALLET_ADDRESS =
+  "wolo1dshyzxffd0jj39k7gj9tq9hgsx96ylxamyp5g0";
+export const WOLO_MAINNET_FAUCET_CLAIM_AMOUNT_UWOLO = "2000000";
+
 export const WOLO_MAINNET_WALLET_ALIASES = [
   {
     label: "Founder Cold",
@@ -56,7 +60,7 @@ export const WOLO_MAINNET_WALLET_ALIASES = [
   },
   {
     label: "Faucet Hot Wallet",
-    address: "wolo1dshyzxffd0jj39k7gj9tq9hgsx96ylxamyp5g0",
+    address: WOLO_MAINNET_FAUCET_HOT_WALLET_ADDRESS,
     profileNameKeys: ["emaren"],
     role: "faucet",
   },
@@ -73,6 +77,12 @@ export const WOLO_MAINNET_WALLET_ALIASES = [
   {
     label: "Sniper",
     address: "wolo1mcmckkr360n47wyc408xmlsv4tzw95kkczvfp9",
+    role: "player",
+  },
+  {
+    label: "Julio Alvarez",
+    address: "wolo1n0yg6ltqxl05ljaqftvvtgec5qavf9a3uh090h",
+    profileNameKeys: ["julio alvarez", "julio"],
     role: "player",
   },
   {

@@ -14,6 +14,7 @@ import {
   isWoloMainnet,
 } from "@/lib/woloChain";
 import { fetchWoloBalanceAmount } from "@/lib/woloRuntime";
+import { WOLO_MAINNET_FAUCET_HOT_WALLET_ADDRESS } from "@/lib/woloMainnetWallets";
 import { getPrisma } from "@/lib/prisma";
 import { resolveRequestUid } from "@/lib/requestIdentity";
 import { recordUserActivity } from "@/lib/userExperience";
@@ -34,6 +35,7 @@ const FAUCET_LEDGER_PATH =
   path.join(process.cwd(), "storage", "wolo-faucet", "claims.json");
 const MAINNET_FAUCET_CLI = "/usr/local/bin/wolochaind-mainnet";
 const MAINNET_FAUCET_HOME = "/var/lib/aoe2hdbets-wolo-mainnet";
+const MAINNET_FAUCET_KEY_NAME = "faucet-hot-mainnet";
 const MAINNET_FAUCET_NODE_RPC = "http://127.0.0.1:27657";
 const isMainnetFaucetRuntime = isWoloMainnet();
 const FAUCET_CLI =
@@ -45,7 +47,9 @@ const FAUCET_HOME =
   process.env.WOLO_FAUCET_HOME?.trim() ||
   (isMainnetFaucetRuntime ? MAINNET_FAUCET_HOME : path.join(os.homedir(), ".wolochain"));
 const FAUCET_FROM =
-  process.env.WOLO_FAUCET_FROM?.trim() || (isMainnetFaucetRuntime ? "" : "faucetgrowth");
+  process.env.WOLO_FAUCET_FROM?.trim() ||
+  (isMainnetFaucetRuntime ? MAINNET_FAUCET_KEY_NAME : "faucetgrowth");
+const FAUCET_ADDRESS = normalizeAddress(process.env.WOLO_FAUCET_ADDRESS);
 const FAUCET_CHAIN_ID =
   process.env.WOLO_FAUCET_CHAIN_ID?.trim() ||
   (isMainnetFaucetRuntime ? WOLO_MAINNET_CHAIN_ID : WOLO_CHAIN_ID);
@@ -57,7 +61,7 @@ const FAUCET_NODE_RPC =
   (isMainnetFaucetRuntime ? MAINNET_FAUCET_NODE_RPC : "http://127.0.0.1:26657");
 const FAUCET_KEYRING_BACKEND =
   process.env.WOLO_FAUCET_KEYRING_BACKEND?.trim() ||
-  (isMainnetFaucetRuntime ? "file" : "test");
+  (isMainnetFaucetRuntime ? "test" : "test");
 const FAUCET_FEE =
   process.env.WOLO_FAUCET_FEE?.trim() || `5000${WOLO_BASE_DENOM}`;
 
@@ -106,8 +110,14 @@ function validateFaucetRuntimeConfig() {
   if (FAUCET_CHAIN_ID !== WOLO_MAINNET_CHAIN_ID) {
     issues.push("WOLO_FAUCET_CHAIN_ID must be wolo-1 for mainnet claims.");
   }
-  if (!FAUCET_FROM) {
-    issues.push("WOLO_FAUCET_FROM must name the wolo-1 app signer key.");
+  if (FAUCET_FROM !== MAINNET_FAUCET_KEY_NAME) {
+    issues.push("WOLO_FAUCET_FROM must be faucet-hot-mainnet for mainnet claims.");
+  }
+  if (FAUCET_ADDRESS && FAUCET_ADDRESS !== WOLO_MAINNET_FAUCET_HOT_WALLET_ADDRESS) {
+    issues.push("WOLO_FAUCET_ADDRESS must be the funded wolo-1 Faucet Hot Wallet.");
+  }
+  if (FAUCET_KEYRING_BACKEND !== "test") {
+    issues.push("WOLO_FAUCET_KEYRING_BACKEND must be test for the mainnet app signer home.");
   }
   if (FAUCET_CLI !== MAINNET_FAUCET_CLI && !process.env.WOLO_FAUCET_CLI?.trim()) {
     issues.push("WOLO_FAUCET_CLI must point at the mainnet wolochaind binary.");

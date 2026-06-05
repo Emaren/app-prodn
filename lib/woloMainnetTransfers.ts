@@ -1,5 +1,9 @@
 import type { PrismaClient } from "@/lib/generated/prisma";
-import { WOLO_MAINNET_WALLET_ALIASES } from "./woloMainnetWallets.ts";
+import {
+  WOLO_MAINNET_FAUCET_CLAIM_AMOUNT_UWOLO,
+  WOLO_MAINNET_FAUCET_HOT_WALLET_ADDRESS,
+  WOLO_MAINNET_WALLET_ALIASES,
+} from "./woloMainnetWallets.ts";
 
 export const WOLO_MAINNET_CHAIN_ID = "wolo-1";
 export const WOLO_MAINNET_BASE_DENOM = "uwolo";
@@ -18,6 +22,7 @@ const MAX_GLOBAL_LIMIT = 100_000;
 const TX_SEARCH_PAGE_SIZE = 50;
 const TX_SEARCH_TIMEOUT_MS = 8_000;
 const QUERY_CONCURRENCY = 4;
+const FAUCET_CLAIM_AMOUNT_UWOLO_BIGINT = BigInt(WOLO_MAINNET_FAUCET_CLAIM_AMOUNT_UWOLO);
 
 const COMMUNITY_TREASURY_ENV_NAMES = [
   "WOLO_COMMUNITY_TREASURY_ADDRESS",
@@ -250,6 +255,16 @@ function addressBookKindForWalletAlias(
   if (role === "staking") return "staking_wallet";
   if (role === "escrow") return "escrow";
   return "tracked";
+}
+
+function isIndexedFaucetClaimTransfer(row: {
+  senderAddress: string;
+  amountUwolo: bigint;
+}) {
+  return (
+    row.senderAddress.toLowerCase() === WOLO_MAINNET_FAUCET_HOT_WALLET_ADDRESS &&
+    row.amountUwolo === FAUCET_CLAIM_AMOUNT_UWOLO_BIGINT
+  );
 }
 
 async function fetchJson<T>(url: string, timeoutMs = TX_SEARCH_TIMEOUT_MS): Promise<T> {
@@ -776,6 +791,12 @@ export async function loadIndexedWoloTransferActivityRows(
         denom: WOLO_MAINNET_BASE_DENOM,
         source: WOLO_INDEXED_TRANSFER_SOURCE,
         ...(timestampWhere ? { timestamp: timestampWhere } : {}),
+        NOT: [
+          {
+            senderAddress: WOLO_MAINNET_FAUCET_HOT_WALLET_ADDRESS,
+            amountUwolo: FAUCET_CLAIM_AMOUNT_UWOLO_BIGINT,
+          },
+        ],
       },
       orderBy: [{ timestamp: "desc" }, { height: "desc" }, { id: "desc" }],
       skip: Math.max(0, Math.min(10_000, Math.floor(options.offset ?? 0))),
@@ -783,7 +804,7 @@ export async function loadIndexedWoloTransferActivityRows(
     }),
   ]);
 
-  return rows.map((row) => {
+  return rows.filter((row) => !isIndexedFaucetClaimTransfer(row)).map((row) => {
     const senderAddress = row.senderAddress.toLowerCase();
     const recipientAddress = row.recipientAddress.toLowerCase();
     const sender = addressBook.get(senderAddress) || null;
