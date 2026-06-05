@@ -1,6 +1,6 @@
 # AoE2HDBets Improvement Execution Plan
 
-Last updated: 2026-05-12
+Last updated: 2026-06-05
 
 ## Highest-ROI order
 
@@ -13,22 +13,18 @@ Last updated: 2026-05-12
    - Prevent scheduled, live, and just-finished versions of the same matchup from feeling like separate books.
    - Tighten stale-book retirement and duplicate-looking settled rows.
 
-3. Individual player pages
-   - Bring `/players/[uid]` and `/players/by-name/[name]` up to the lobby/directory standard.
-   - Emphasize rivalry hooks, recent proof, WOLO state when relevant, and next actions.
-
-4. Tournament gravity
+3. Tournament gravity
    - Improve bracket storytelling, event state, watch/bet links, and historical results.
 
-5. Watcher/runtime tuning
+4. Watcher/runtime tuning
    - Reduce noisy live parse passes while preserving the now-healthier final parse behavior.
    - Keep watcher telemetry honest about real users versus package pulls.
 
-6. Rankings depth
+5. Rankings depth
    - Clarify tracked, active, claimable, and pending profiles.
    - Align leaderboard semantics with player detail surfaces.
 
-7. Testing and deploy hygiene
+6. Testing and deploy hygiene
    - Keep the practical gate green: `npx prisma generate`, `npx tsc --noEmit --pretty false`, `npm run build`.
    - Add focused API/browser checks around money-adjacent flows before broader refactors.
 
@@ -59,6 +55,15 @@ The fourth shipped slice is challenge/watcher market lifecycle cleanup:
 - Moved wagers, recoverable stake intents, wallet locks, founder bonuses, and claim breadcrumbs onto the canonical challenge market before settlement runs.
 - Deduped the recent settled-result rail by linked session, preferring the challenge-linked market over a watcher shadow so one match does not appear twice.
 
+The fifth shipped slice is the premium player profile pass:
+
+- Replaced duplicated Basic player pages with a shared profile data layer and renderer for `/players/[uid]` and `/players/by-name/[name]`.
+- Made Advanced the default profile view and kept Basic behind the `?view=basic` toggle.
+- Added command-center stats: form, win rates, streaks, civ/map breakdowns, best games, rivalries, watcher proof, Twitch signal, and `$WOLO` rails.
+- Added lazy loading for the Match Feed through `/api/player-profile/matches`, so older manual backfills remain reachable.
+- Added honest resource/economy rails that show total food/wood/gold/stone only when stored achievement/economy values exist.
+- Aggregated live watcher uploaders per session so dual/stacked watcher coverage displays as a stronger proof signal instead of clashing chips.
+
 ## Next concrete slice
 
-Continue with a premium pass on individual player pages, unless live wallet handoff telemetry shows a fresher production issue.
+Continue with tournament gravity and exact postgame achievement/economy depth, unless live wallet handoff telemetry shows a fresher production issue.

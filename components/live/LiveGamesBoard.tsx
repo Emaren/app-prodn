@@ -498,6 +498,36 @@ function LiveSessionCard({
 }) {
   const isCompleted = session.state === "completed";
   const gameHref = `/game-stats/live/${encodeURIComponent(session.sessionKey)}`;
+  const uploaders =
+    session.uploaders?.length > 0
+      ? session.uploaders
+      : session.uploader
+        ? [
+            {
+              uid: session.uploader.uid,
+              displayName: session.uploader.displayName,
+              parseRows: session.parseRows || 1,
+              lastSeenAt: session.updatedAt,
+            },
+          ]
+        : [];
+  const watcherCount = session.watcherCount || uploaders.length;
+  const visibleUploaders = uploaders.slice(0, 3);
+  const hiddenUploaderCount = Math.max(0, uploaders.length - visibleUploaders.length);
+  const coverageLabel =
+    watcherCount >= 3
+      ? `${watcherCount} watcher stack`
+      : watcherCount === 2
+        ? "Dual watcher coverage"
+        : watcherCount === 1
+          ? "Single watcher source"
+          : "Watcher source pending";
+  const coverageClass =
+    watcherCount >= 3
+      ? "border-sky-300/25 bg-sky-400/10 text-sky-100"
+      : watcherCount === 2
+        ? "border-amber-300/25 bg-amber-400/10 text-amber-100"
+        : "border-white/10 bg-white/5 text-slate-300";
   const title =
     session.players.length > 0
       ? session.players.map((player) => player.name).join(" vs ")
@@ -528,12 +558,25 @@ function LiveSessionCard({
             <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-200">
               Parse #{session.parseIteration}
             </span>
+            {session.parseRows > 1 ? (
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+                {session.parseRows} stored rows
+              </span>
+            ) : null}
             <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
               Updated {formatUpdatedTime(session.completedAt || session.updatedAt, mounted)}
             </span>
-            {session.uploader ? (
+            <span className={`rounded-full border px-3 py-1 text-xs ${coverageClass}`}>
+              {coverageLabel}
+            </span>
+            {visibleUploaders.map((uploader) => (
+              <span key={uploader.uid} className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+                {uploader.displayName}
+              </span>
+            ))}
+            {hiddenUploaderCount > 0 ? (
               <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-                {session.uploader.displayName}
+                +{hiddenUploaderCount} more
               </span>
             ) : null}
             {isCompleted && session.winner && session.winner !== "Unknown" ? (

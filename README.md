@@ -21,6 +21,7 @@ It currently owns the premium lobby/community surface, leaderboard presentation,
 - Same-origin browser API routes for replay upload, lobby snapshot, inbox/admin actions, and appearance state
 - Premium lobby presentation layer with theme circles and lobby-specific shell behavior
 - Advanced `/lobby` arena stack with the moving live ticker, Watch & Chat hero/comments rail, compact hero bet slip, compact WOLO swap tile, and the preserved Basic community lobby toggle
+- Advanced player profile command center with Basic toggle, lazy match archive, watcher proof, resource/economy rails, stream signal, rivalry hooks, and `$WOLO` stats
 - Lazy client islands for wallet-heavy `/wolo`, `/wallet`, and `/connect-wallet` routes so the server shell paints with a small first-load bundle
 
 ## Shipped public surfaces
@@ -219,7 +220,7 @@ python /var/www/AoE2HDBets/api-prodn/scripts/set_admin.py --email you@example.co
 - `/bets` records pre-intent Keplr/Ledger stake failures through `/api/bets/wallet-errors` as `bet_wallet_error` activity events, with market, side, amount, wallet type, browser, and workflow phase for operator debugging.
 - `/bets` now keeps recent no-proof stake intents visible in Your Book and scans WoloChain escrow deposits for 24 hours, so tx-landed/browser-lost cases have a server-side recovery path without being counted in pools before proof lands.
 - `/admin/wolochain` and the `/admin/user-list` WoloChain entry tile now surface recent wallet-friction events beside settlement and market rails.
-- player pages still need another premium pass
+- `/players/[uid]` and `/players/by-name/[name]` now default to the Advanced command-center profile; Basic remains available with `?view=basic`, and Match Feed lazy-loads older replay/manual-backfill rows through `/api/player-profile/matches`
 - the app now presents `$WOLO` as both a product rail and a partially real money-movement rail, with remaining hardening focused on live wallet edge cases and player/tournament depth
 - `/wolo` now includes an app-side starter faucet claim path, a clean Wallet Snapshot connect surface, a tight `WOLO Market` tile, and a slim faucet claim row underneath
 - the top-nav Roadmap link intentionally renders without the old blue count badge

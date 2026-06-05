@@ -65,6 +65,17 @@ Current strengths:
 - less clutter than earlier versions
 - directory now fits the broader lobby/leaderboard product better
 
+### Individual player pages
+
+Current strengths:
+- `/players/[uid]` and `/players/by-name/[name]` now share one command-center profile renderer
+- Advanced view is the default player profile surface; Basic view remains available through `?view=basic`
+- the Advanced profile has a compact hero, live ticker, command deck, form chart, civ/map breakdowns, best-game rail, rivalry rail, watcher proof, stream signal, and `$WOLO` flex rail
+- Match Feed is now a scrollable replay archive backed by `/api/player-profile/matches`, with lazy loading so older manual uploads can be reached instead of being trapped outside the initial page
+- economy/resource display is honest: total food/wood/gold/stone and best resource games show when stored replay achievement/economy values exist, and otherwise render as gated/fog instead of invented numbers
+- optional WOLO/community profile rails degrade to zero/empty when a migration-era table is unavailable, so a public player page should not white-screen because one side rail is missing
+- live-game session cards now aggregate watcher uploaders per session and show single, dual, or stacked watcher coverage instead of awkwardly competing uploader chips
+
 ### Rivalries / broader public shell
 
 Current strengths:
@@ -91,14 +102,6 @@ Current strengths:
 - operator control surface is real, not fake scaffolding
 
 ## Still unfinished
-
-### Individual player pages
-
-Need another pass:
-- `/players/[uid]`
-- `/players/by-name/[name]`
-
-They work, but they are not yet as sharp as the community lobby, leaderboard, or directory.
 
 ### Rankings depth
 
@@ -204,7 +207,7 @@ Still wanted:
 
 ## Current known product rough edges
 
-- player profile pages lag behind directory and lobby polish
+- player profile pages are now premium, but the resource/economy rail is only as complete as captured postgame achievement data
 - tournament presentation is good, but not yet “must-watch”
 - Watch & Chat reactions are intentionally lightweight/local for now; the right-side hero comments reuse the public lobby messages, the hero bet slip is a `/bets` handoff, and persistent match-scoped comments need a dedicated context table or reuse plan before they become durable product state
 - leaderboard is now real, but deeper ranking semantics still need tightening
@@ -219,9 +222,9 @@ Still wanted:
 - Community Lobby / homepage spine: `9.7/10`
 - Leaderboard surface: `9.4/10`
 - Players directory: `9.2/10`
+- Individual player pages: `9.3/10`
 - Rivalries / public shell: `8.9/10`
 - Tournament panel / lobby integration: `8.8/10`
-- Individual player pages: `7.3/10`
 - Contact / inbox: `8.9/10`
 - Admin dashboard: `8.8/10`
 - Replay parser / metadata capture: `8.5/10`
@@ -232,8 +235,8 @@ Still wanted:
 
 ## Best next moves
 
-1. Premium pass on individual player pages
-2. Improve tournament gravity, bracket storytelling, and event visibility
+1. Improve tournament gravity, bracket storytelling, and event visibility
+2. Deepen exact postgame achievement/economy extraction so resource rails can fill every game
 3. Tune watcher/runtime behavior now that final parse behavior looks healthier
 4. Add operator visibility for skipped challenge/watcher merges when parser labels do not safely map
 5. Keep hardening live wallet edge cases around Keplr/Ledger handoff and signer/browser failures
