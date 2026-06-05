@@ -15,6 +15,7 @@ export type SettlementRailRow = {
   claimKind: string;
   targetScope: string | null;
   sourceFounderBonusId: number | null;
+  sourceGameStatsId: number | null;
   claimStatus: "pending" | "claimed" | "rescinded";
   settlementMode: "pending" | "auto_settled" | "claimed_manual" | "rescinded";
   payoutTxHash: string | null;
@@ -88,10 +89,21 @@ function isSettlementUnavailable(row: SettlementRailRow, payoutExecutionConfigur
   );
 }
 
+function requiresAdminReview(row: SettlementRailRow) {
+  if (row.claimStatus !== "pending") return false;
+  const detail = `${row.errorState || ""} ${row.note || ""}`.trim();
+  if (!detail) return false;
+  if (/fresh payout|retry fresh|fresh 1000/i.test(detail)) return false;
+  return /admin review|review required|duplicate.*(?:tx|market)|single-send|duplicate-paid|duplicate_tx_hash/i.test(
+    detail
+  );
+}
+
 function isRetryableSettlementFailure(row: SettlementRailRow) {
   return (
     row.claimStatus === "pending" &&
     Boolean(row.errorState) &&
+    !requiresAdminReview(row) &&
     !isAwaitingWalletLink(row) &&
     !isSettlementUnavailableDetail(row.errorState)
   );
@@ -117,6 +129,7 @@ function statusTone(
     | "retryable_failure"
     | "awaiting_wallet_link"
     | "settlement_unavailable"
+    | "review_required"
   ) {
   switch (mode) {
     case "paid":
@@ -127,6 +140,8 @@ function statusTone(
       return "border-cyan-300/25 bg-cyan-400/10 text-cyan-100";
     case "retryable_failure":
       return "border-rose-400/30 bg-rose-500/10 text-rose-100";
+    case "review_required":
+      return "border-fuchsia-300/30 bg-fuchsia-400/10 text-fuchsia-100";
     case "rescinded":
       return "border-rose-500/30 bg-rose-500/10 text-rose-200";
     default:
@@ -141,6 +156,7 @@ function statusLabel(
     | "retryable_failure"
     | "awaiting_wallet_link"
     | "settlement_unavailable"
+    | "review_required"
   ) {
   switch (mode) {
     case "paid":
@@ -151,6 +167,8 @@ function statusLabel(
       return "Settlement service/signers unavailable";
     case "retryable_failure":
       return "Retryable settlement failure";
+    case "review_required":
+      return "Admin review required";
     case "rescinded":
       return "Rescinded";
     default:
@@ -354,6 +372,8 @@ export function WoloSettlementRail({
                         ? "awaiting_wallet_link"
                         : isSettlementUnavailable(row, payoutExecutionConfigured)
                           ? "settlement_unavailable"
+                          : requiresAdminReview(row)
+                            ? "review_required"
                           : isRetryableSettlementFailure(row)
                           ? "retryable_failure"
                           : row.settlementMode;
@@ -398,6 +418,11 @@ export function WoloSettlementRail({
                           Retryable settlement failure
                         </span>
                       ) : null}
+                      {requiresAdminReview(row) ? (
+                        <span className="inline-flex rounded-full border border-fuchsia-300/20 bg-fuchsia-400/10 px-2.5 py-1 text-[11px] uppercase tracking-[0.16em] text-fuchsia-100">
+                          Duplicate guard review
+                        </span>
+                      ) : null}
                       {isSettlementUnavailable(row, payoutExecutionConfigured) ? (
                         <span className="inline-flex rounded-full border border-cyan-300/20 bg-cyan-400/10 px-2.5 py-1 text-[11px] uppercase tracking-[0.16em] text-cyan-100">
                           Settlement service/signers unavailable
@@ -423,6 +448,9 @@ export function WoloSettlementRail({
                     <div className="font-medium text-white">{row.winnerName || "—"}</div>
                     <div className="mt-1 text-xs text-slate-400">target {row.displayPlayerName}</div>
                     <div className="mt-1 text-xs text-slate-500">claim #{row.id}</div>
+                    {row.sourceGameStatsId ? (
+                      <div className="mt-1 text-xs text-slate-500">game #{row.sourceGameStatsId}</div>
+                    ) : null}
                   </td>
 
                   <td className="px-3 py-3">
@@ -504,6 +532,7 @@ export function WoloSettlementRail({
                           {row.errorState &&
                           onRetry &&
                           payoutExecutionConfigured &&
+                          !requiresAdminReview(row) &&
                           !isSettlementUnavailable(row, payoutExecutionConfigured) ? (
                             <button
                               type="button"
@@ -521,6 +550,11 @@ export function WoloSettlementRail({
                           {onRetry && isSettlementUnavailable(row, payoutExecutionConfigured) ? (
                             <span className="rounded-full border border-cyan-300/25 bg-cyan-400/10 px-3 py-1.5 text-xs font-medium text-cyan-100">
                               Configure mainnet settlement
+                            </span>
+                          ) : null}
+                          {requiresAdminReview(row) ? (
+                            <span className="rounded-full border border-fuchsia-300/25 bg-fuchsia-400/10 px-3 py-1.5 text-xs font-medium text-fuchsia-100">
+                              Review before retry
                             </span>
                           ) : null}
                           {row.marketId && onAddFounderBonus ? (

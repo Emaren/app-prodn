@@ -16,11 +16,16 @@ import {
 import { settleFounderBonuses } from "@/lib/betFounderBonuses";
 import {
   executeWoloSettlementRun,
+  getWoloPayoutExecutionBlocker,
   getWoloSettlementSurfaceStatus,
   hasWoloPayoutExecutionConfigured,
   type SettlementRunResult,
   validateWoloSettlementRun,
 } from "@/lib/woloBetSettlement";
+import {
+  validateDistinctClaimPayoutTxBatch,
+  type ClaimPayoutGuardResult,
+} from "@/lib/woloClaimPayoutGuards";
 import { recordUserActivity } from "@/lib/userExperience";
 import {
   WOLO_BET_TEST_MODE,
@@ -1443,6 +1448,18 @@ function combineSettlementDetail(
   return clampNullableDbText(combined, 255);
 }
 
+function guardFailureDetail(result: ClaimPayoutGuardResult | null | undefined) {
+  if (!result || result.ok) return null;
+  return result.detail || result.failureCode || "WOLO payout tx failed distinct-send validation.";
+}
+
+function summarizeSettlementConfigBlocker() {
+  return (
+    getWoloPayoutExecutionBlocker() ||
+    "Claim rail pending manual or unmatched payouts; no auto payout signer matched these claims."
+  );
+}
+
 async function settleResolvedMarketWagers(prisma: PrismaClient) {
   const markets = await prisma.betMarket.findMany({
     where: {
@@ -1699,24 +1716,67 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
     const payoutByRequestId = new Map(
       (executionResult?.payouts || []).map((payout) => [payout.requestId, payout] as const)
     );
-    const settlementStatus = resolveMarketSettlementStatus(
-      executionResult,
-      validationResult,
-      claimPlanList.length
+
+    const payoutGuardByRequestId = new Map<string, ClaimPayoutGuardResult>();
+    const payoutGuardEntries = autoClaimPlans
+      .map((plan) => {
+        const payout = payoutByRequestId.get(plan.requestId);
+        if (!payout?.ok || !payout.txHash || !plan.walletAddress) return null;
+        return {
+          key: plan.requestId,
+          txHash: payout.txHash,
+          toAddress: plan.walletAddress,
+          amountWolo: plan.amountWolo,
+        };
+      })
+      .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
+
+    if (payoutGuardEntries.length > 0) {
+      const guardResults = await validateDistinctClaimPayoutTxBatch(prisma, payoutGuardEntries);
+      for (const [requestId, result] of guardResults.entries()) {
+        payoutGuardByRequestId.set(requestId, result);
+      }
+    }
+
+    const guardFailures = Array.from(payoutGuardByRequestId.values()).filter(
+      (result) => !result.ok
+    );
+    const settlementStatus =
+      guardFailures.length > 0
+        ? guardFailures.length >= payoutGuardByRequestId.size
+          ? "failed"
+          : "partial"
+        : resolveMarketSettlementStatus(
+            executionResult,
+            validationResult,
+            claimPlanList.length
+          );
+    const fallbackSettlementDetail =
+      claimPlanList.length > 0 && autoClaimPlans.length === 0
+        ? hasWoloPayoutExecutionConfigured()
+          ? "Claim rail pending manual or unmatched payouts."
+          : summarizeSettlementConfigBlocker()
+        : null;
+    const guardWarnings = guardFailures.map(
+      (result) =>
+        `Duplicate guard ${result.key}: ${result.detail || result.failureCode || "failed"}`
     );
     const settlementFailureCode = clampNullableDbText(
-      executionResult?.failureCode || validationResult?.failureCode || null,
+      guardFailures.length > 0
+        ? "DUPLICATE_TX_GUARD"
+        : executionResult?.failureCode || validationResult?.failureCode || null,
       80
     );
     const settlementDetail = combineSettlementDetail(
       executionResult?.detail ||
       validationResult?.detail ||
-      (claimPlanList.length > 0 && autoClaimPlans.length === 0
-        ? hasWoloPayoutExecutionConfigured()
-          ? "Claim rail pending manual or unmatched payouts."
-          : "Settlement execution is not configured in this environment."
-        : null),
-      [...(validationResult?.warnings || []), ...(executionResult?.warnings || [])]
+      guardFailureDetail(guardFailures[0]) ||
+      fallbackSettlementDetail,
+      [
+        ...(validationResult?.warnings || []),
+        ...(executionResult?.warnings || []),
+        ...guardWarnings,
+      ]
     );
 
     await prisma.$transaction(async (tx) => {
@@ -1734,9 +1794,11 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
 
       for (const plan of claimPlanList) {
         const payout = payoutByRequestId.get(plan.requestId);
-        const payoutSucceeded = Boolean(payout?.ok && payout.txHash);
+        const payoutGuard = payoutGuardByRequestId.get(plan.requestId) ?? null;
+        const payoutSucceeded = Boolean(payout?.ok && payout.txHash && payoutGuard?.ok);
         const awaitingWalletLink = !plan.walletAddress || !plan.claimedByUserId;
-        const payoutError = resolveSettlementPlanError(validationResult, payout);
+        const payoutError =
+          guardFailureDetail(payoutGuard) || resolveSettlementPlanError(validationResult, payout);
         const pendingError =
           !payoutSucceeded && awaitingWalletLink
             ? buildAwaitingWalletLinkClaimDetail(plan.displayPlayerName)
@@ -1766,7 +1828,7 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
             sourceMarketId: market.id,
             sourceGameStatsId: market.linkedGameStatsId ?? null,
             payoutTxHash: payout?.txHash ?? null,
-            payoutProofUrl: payout?.proofUrl ?? null,
+            payoutProofUrl: payoutGuard?.proofUrl ?? payout?.proofUrl ?? null,
             errorState: null,
             payoutAttemptedAt: settlementExecutedAt ?? settledAt,
             note: buildOnchainSettlementNote(
@@ -1785,7 +1847,7 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
               where: { id: { in: plan.wagerIds } },
               data: {
                 payoutTxHash: payout?.txHash ?? null,
-                payoutProofUrl: payout?.proofUrl ?? null,
+                payoutProofUrl: payoutGuard?.proofUrl ?? payout?.proofUrl ?? null,
               },
             });
           }
@@ -1800,7 +1862,7 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
             sourceMarketId: market.id,
             sourceGameStatsId: market.linkedGameStatsId ?? null,
             payoutTxHash: payout?.txHash ?? null,
-            payoutProofUrl: payout?.proofUrl ?? null,
+            payoutProofUrl: payoutGuard?.proofUrl ?? payout?.proofUrl ?? null,
             errorState: pendingError,
             payoutAttemptedAt: awaitingWalletLink ? null : settlementAttemptedAt,
             note: claimNote,
@@ -1821,7 +1883,7 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
               claimReason: plan.claimReason,
               claimStatus: payoutSucceeded ? "claimed" : "pending",
               payoutTxHash: payout?.txHash ?? null,
-              payoutProofUrl: payout?.proofUrl ?? null,
+              payoutProofUrl: payoutGuard?.proofUrl ?? payout?.proofUrl ?? null,
               settlementRunId,
               settledAt: settledAt.toISOString(),
               errorState: payoutSucceeded ? null : pendingError,

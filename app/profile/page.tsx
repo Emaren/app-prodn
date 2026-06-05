@@ -85,6 +85,10 @@ type WoloTransactionRow = {
   status: string;
   occurredAt: string;
   txHash: string | null;
+  proofUrl?: string | null;
+  category?: string;
+  network?: string;
+  riskLabel?: string | null;
 };
 
 type WoloTransactionsResponse = {
@@ -1022,6 +1026,22 @@ function ProfilePageContent() {
 function WoloTransactionLine({ row }: { row: WoloTransactionRow }) {
   const isIn = row.direction === "in";
   const Icon = isIn ? ArrowDownLeft : ArrowUpRight;
+  const categoryLabel =
+    row.category === "chain_confirmed"
+      ? "confirmed chain"
+      : row.category === "app_retry"
+        ? "retry-needed claim"
+        : row.category === "app_pending"
+          ? "app-side pending"
+          : row.network === "mainnet"
+            ? "mainnet"
+            : "app ledger";
+  const categoryClass =
+    row.category === "chain_confirmed"
+      ? "border-emerald-300/20 bg-emerald-400/10 text-emerald-100"
+      : row.category === "app_retry" || row.riskLabel
+        ? "border-amber-300/20 bg-amber-400/10 text-amber-100"
+        : "border-white/10 bg-white/[0.04] text-slate-300";
 
   return (
     <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm">
@@ -1051,10 +1071,33 @@ function WoloTransactionLine({ row }: { row: WoloTransactionRow }) {
           />
           <span>·</span>
           <span className="truncate">{row.status}</span>
+          <span>·</span>
+          <span className={`rounded-full border px-2 py-0.5 ${categoryClass}`}>
+            {categoryLabel}
+          </span>
+          {row.riskLabel ? (
+            <>
+              <span>·</span>
+              <span className="rounded-full border border-rose-300/25 bg-rose-400/10 px-2 py-0.5 text-rose-100">
+                {row.riskLabel}
+              </span>
+            </>
+          ) : null}
           {row.txHash ? (
             <>
               <span>·</span>
-              <span className="truncate font-mono">{row.txHash.slice(0, 10)}…</span>
+              {row.proofUrl ? (
+                <a
+                  href={row.proofUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="truncate font-mono text-cyan-200 transition hover:text-white"
+                >
+                  {row.txHash.slice(0, 10)}…
+                </a>
+              ) : (
+                <span className="truncate font-mono">{row.txHash.slice(0, 10)}…</span>
+              )}
             </>
           ) : null}
         </div>

@@ -64,9 +64,7 @@ export function derivePendingSettlementActivityGroups(
       dateFrom(claim.updatedAt) ||
       dateFrom(claim.createdAt) ||
       new Date(0);
-    const key = claim.sourceMarketId
-      ? `settlement-queue-market-${claim.sourceMarketId}`
-      : `settlement-queue-claim-${claim.id}`;
+    const key = `settlement-queue-claim-${claim.id}`;
     const existing =
       groups.get(key) ||
       ({

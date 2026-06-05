@@ -49,6 +49,30 @@ function resolveSettlementError(claim: {
   return claim.errorState?.trim() || extractAutoSettleError(claim.note);
 }
 
+function refineSettlementErrorForCurrentSurface(
+  value: string | null,
+  settlementSurface: Awaited<ReturnType<typeof getWoloSettlementSurfaceStatus>>
+) {
+  if (!value) return null;
+  const normalized = value.trim();
+  if (
+    /settlement execution is not configured|payout execution.*not configured|settlement service.*not configured/i.test(
+      normalized
+    ) &&
+    settlementSurface.settlementHealthOk &&
+    settlementSurface.settlementHealthChainId === "wolo-1"
+  ) {
+    return "Current wolo-1 settlement health is ok; this row needs retry/review rather than service configuration.";
+  }
+  if (/auth/i.test(normalized) && settlementSurface.groupedRunCapability === "auth_failed") {
+    return "WoloChain grouped settlement auth rejected the configured bearer token.";
+  }
+  if (/auth/i.test(normalized) && settlementSurface.groupedRunCapability === "auth_required") {
+    return "WoloChain grouped settlement auth is required, but the app has no settlement auth token configured.";
+  }
+  return normalized;
+}
+
 function deriveSettlementMode(
   status: "pending" | "claimed" | "rescinded",
   payoutTxHash: string | null
@@ -315,7 +339,10 @@ export async function GET(request: NextRequest) {
             : null;
 
       const payoutTxHash = resolveSettlementTxHash(claim);
-      const errorState = resolveSettlementError(claim);
+      const errorState = refineSettlementErrorForCurrentSurface(
+        resolveSettlementError(claim),
+        settlementSurface
+      );
       const settlementMode = deriveSettlementMode(
         claim.status as "pending" | "claimed" | "rescinded",
         payoutTxHash
@@ -332,6 +359,7 @@ export async function GET(request: NextRequest) {
         claimKind: claim.claimKind ?? "bet_payout",
         targetScope: claim.targetScope ?? null,
         sourceFounderBonusId: claim.sourceFounderBonusId ?? null,
+        sourceGameStatsId: claim.sourceGameStatsId ?? null,
         claimStatus: claim.status as "pending" | "claimed" | "rescinded",
         settlementMode,
         payoutTxHash,

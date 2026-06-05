@@ -43,6 +43,9 @@ type LoadState = {
   error: string | null;
 };
 
+type DuplicateTxDiagnostics = WoloChainAdminPayload["duplicateTxDiagnostics"];
+type WatcherDiagnostics = WoloChainAdminPayload["watcherDiagnostics"];
+
 function formatWolo(value: number) {
   return value.toLocaleString();
 }
@@ -201,6 +204,20 @@ function compactLabel(value: string | null | undefined) {
     .join(" ");
 }
 
+function duplicateClassificationTone(value: string) {
+  switch (value) {
+    case "MAINNET_VERIFIED_MULTI_PAYOUT":
+      return statusTone("good");
+    case "LEGACY_TESTNET_SINGLE_SEND_DUPLICATE":
+      return statusTone("warn");
+    case "MAINNET_SUSPICIOUS_DUPLICATE":
+    case "REST_NOT_FOUND":
+      return statusTone("bad");
+    default:
+      return statusTone("muted");
+  }
+}
+
 function SummaryTile({
   label,
   value,
@@ -270,6 +287,342 @@ function BucketCard({
       <div className="mt-2 text-lg font-semibold text-white">{value}</div>
       <div className="mt-2 text-sm leading-6 text-slate-400">{detail}</div>
     </div>
+  );
+}
+
+function DuplicateTxDiagnosticsRail({
+  diagnostics,
+}: {
+  diagnostics: DuplicateTxDiagnostics;
+}) {
+  return (
+    <section className="rounded-[1.7rem] border border-white/10 bg-slate-950/70 p-5">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 text-xs uppercase tracking-[0.3em] text-slate-500">
+            <Search className="h-4 w-4" />
+            Duplicate Tx Diagnostics
+          </div>
+          <h2 className="mt-2 text-2xl font-semibold text-white">
+            Mainnet payouts vs legacy testnet noise
+          </h2>
+          <div className="mt-2 text-sm text-slate-400">
+            Mainnet REST: {diagnostics.mainnetRestUrl} · legacy testnet REST:{" "}
+            {diagnostics.legacyTestnetRestUrl}
+          </div>
+        </div>
+        <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+          {diagnostics.duplicateGroupCount} duplicate group(s)
+        </span>
+      </div>
+
+      <div className="mt-5 grid gap-3 md:grid-cols-5">
+        <SummaryTile
+          label="Suspicious Mainnet"
+          value={String(diagnostics.suspiciousMainnetCount)}
+          detail="needs review"
+          tone={diagnostics.suspiciousMainnetCount > 0 ? "bad" : "good"}
+        />
+        <SummaryTile
+          label="Verified Multi"
+          value={String(diagnostics.verifiedMultiPayoutCount)}
+          detail="distinct sends"
+          tone={diagnostics.verifiedMultiPayoutCount > 0 ? "good" : "muted"}
+        />
+        <SummaryTile
+          label="Legacy Testnet"
+          value={String(diagnostics.legacyTestnetCount)}
+          detail="excluded from mainnet"
+          tone={diagnostics.legacyTestnetCount > 0 ? "warn" : "muted"}
+        />
+        <SummaryTile
+          label="REST Missing"
+          value={String(diagnostics.restNotFoundCount)}
+          detail="no proof found"
+          tone={diagnostics.restNotFoundCount > 0 ? "bad" : "muted"}
+        />
+        <SummaryTile
+          label="Index Gaps"
+          value={String(diagnostics.indexedTransferGapCount)}
+          detail="REST proves tx"
+          tone={diagnostics.indexedTransferGapCount > 0 ? "warn" : "good"}
+        />
+      </div>
+
+      {diagnostics.indexedTransferGaps.length ? (
+        <div className="mt-5 rounded-2xl border border-amber-300/20 bg-amber-400/10 p-4">
+          <div className="text-[10px] uppercase tracking-[0.24em] text-amber-100/70">
+            Mainnet transfer index gaps
+          </div>
+          <div className="mt-3 space-y-2">
+            {diagnostics.indexedTransferGaps.map((gap) => (
+              <div
+                key={gap.txHash}
+                className="rounded-xl border border-white/8 bg-slate-950/55 px-3 py-3 text-sm"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="font-mono text-amber-50">{shorten(gap.txHash, 12, 10)}</div>
+                  {gap.mainnetProofUrl ? (
+                    <a
+                      href={gap.mainnetProofUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs text-amber-100 transition hover:text-white"
+                    >
+                      proof
+                    </a>
+                  ) : null}
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2 text-xs text-amber-50/80">
+                  <span>claims {gap.claimIds.join(", ")}</span>
+                  <span>{formatWolo(gap.amountWolo)} WOLO</span>
+                  <span>{gap.mainnetMsgSendCount} MsgSend(s)</span>
+                  {gap.wallets.map((wallet) => (
+                    <CopyableAddress key={wallet} address={wallet} lead={10} tail={7} />
+                  ))}
+                </div>
+                <div className="mt-2 text-xs leading-5 text-amber-50/70">{gap.detail}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      <div className="mt-5 space-y-3">
+        {diagnostics.groups.length ? (
+          diagnostics.groups.map((group) => (
+            <details
+              key={group.txHash}
+              className="rounded-2xl border border-white/10 bg-white/[0.035] p-4"
+            >
+              <summary className="cursor-pointer list-none">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <div className="font-mono text-sm text-white">
+                      {shorten(group.txHash, 14, 10)}
+                    </div>
+                    <div className="mt-1 text-xs text-slate-400">{group.detail}</div>
+                  </div>
+                  <span className={`rounded-full border px-3 py-1 text-xs ${duplicateClassificationTone(group.classification)}`}>
+                    {compactLabel(group.classification)}
+                  </span>
+                </div>
+              </summary>
+              <div className="mt-4 grid gap-2 text-xs text-slate-400 sm:grid-cols-4">
+                <div>mainnet sends {group.mainnetMsgSendCount}</div>
+                <div>testnet sends {group.testnetMsgSendCount}</div>
+                <div>indexed rows {group.indexedTransferCount}</div>
+                <div>claims {group.claimCount}</div>
+              </div>
+              <div className="mt-4 overflow-x-auto">
+                <table className="min-w-full text-left text-xs">
+                  <thead className="uppercase tracking-[0.22em] text-slate-500">
+                    <tr>
+                      <th className="px-2 py-2 font-medium">Claim</th>
+                      <th className="px-2 py-2 font-medium">Player</th>
+                      <th className="px-2 py-2 font-medium">Wallet</th>
+                      <th className="px-2 py-2 font-medium">Amount</th>
+                      <th className="px-2 py-2 font-medium">Market / Game</th>
+                      <th className="px-2 py-2 font-medium">Proof</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {group.claims.map((claim) => (
+                      <tr key={claim.claimId}>
+                        <td className="px-2 py-2 text-slate-200">#{claim.claimId}</td>
+                        <td className="px-2 py-2 text-white">{claim.player}</td>
+                        <td className="px-2 py-2">
+                          <CopyableAddress address={claim.wallet} lead={10} tail={7} />
+                        </td>
+                        <td className="px-2 py-2 text-slate-200">
+                          {formatWolo(claim.amountWolo)} WOLO
+                        </td>
+                        <td className="px-2 py-2 text-slate-300">
+                          M{claim.marketId ?? "—"} / G{claim.gameId ?? "—"}
+                        </td>
+                        <td className="px-2 py-2">
+                          {claim.proofUrl ? (
+                            <a
+                              href={claim.proofUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-cyan-200 transition hover:text-white"
+                            >
+                              proof
+                            </a>
+                          ) : (
+                            <span className="text-slate-500">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          ))
+        ) : (
+          <div className="rounded-2xl border border-emerald-300/20 bg-emerald-400/10 px-4 py-4 text-sm text-emerald-50">
+            No duplicate claimed payout tx groups in the loaded claim window.
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function WatcherDiagnosticsRail({
+  diagnostics,
+}: {
+  diagnostics: WatcherDiagnostics;
+}) {
+  return (
+    <section className="rounded-[1.7rem] border border-white/10 bg-slate-950/70 p-5">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 text-xs uppercase tracking-[0.3em] text-slate-500">
+            <Activity className="h-4 w-4" />
+            Watcher Diagnostics
+          </div>
+          <h2 className="mt-2 text-2xl font-semibold text-white">
+            Client heartbeat, replay, upload, and parse rail
+          </h2>
+        </div>
+        <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+          {diagnostics.userCount} watcher user(s) · {diagnostics.windowDays}d
+        </span>
+      </div>
+
+      <div className="mt-5 space-y-3">
+        {diagnostics.rows.length ? (
+          diagnostics.rows.map((row) => (
+            <details
+              key={row.key}
+              className="rounded-2xl border border-white/10 bg-white/[0.035] p-4"
+            >
+              <summary className="cursor-pointer list-none">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <div className="text-lg font-semibold text-white">{row.displayName}</div>
+                    <div className="mt-1 flex flex-wrap gap-2 text-xs text-slate-400">
+                      <span>{row.platform || "platform unknown"}</span>
+                      <span>{row.artifact || "artifact unknown"}</span>
+                      <span>{row.appVersion || "version unknown"}</span>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-xs sm:grid-cols-6">
+                    <span className="rounded-xl border border-white/10 bg-slate-950/60 px-2 py-1 text-center">
+                      {row.replayFiles} files
+                    </span>
+                    <span className="rounded-xl border border-white/10 bg-slate-950/60 px-2 py-1 text-center">
+                      {row.replayHashes} hashes
+                    </span>
+                    <span className="rounded-xl border border-emerald-300/20 bg-emerald-400/10 px-2 py-1 text-center text-emerald-50">
+                      {row.parsedFinals} parsed
+                    </span>
+                    <span className="rounded-xl border border-amber-300/20 bg-amber-400/10 px-2 py-1 text-center text-amber-50">
+                      {row.unparsedFinals} unparsed
+                    </span>
+                    <span className="rounded-xl border border-rose-300/20 bg-rose-400/10 px-2 py-1 text-center text-rose-50">
+                      {row.uploadFailed} upload
+                    </span>
+                    <span className="rounded-xl border border-rose-300/20 bg-rose-400/10 px-2 py-1 text-center text-rose-50">
+                      {row.parseFailed} parse
+                    </span>
+                  </div>
+                </div>
+              </summary>
+
+              <div className="mt-4 grid gap-3 text-xs text-slate-400 sm:grid-cols-2">
+                <div>
+                  Last heartbeat{" "}
+                  {row.lastHeartbeatAt ? (
+                    <TimeDisplayText value={row.lastHeartbeatAt} className="text-slate-200" />
+                  ) : (
+                    <span className="text-slate-500">not seen</span>
+                  )}
+                </div>
+                <div>
+                  Last watcher event{" "}
+                  {row.lastEventAt ? (
+                    <TimeDisplayText value={row.lastEventAt} className="text-slate-200" />
+                  ) : (
+                    <span className="text-slate-500">not seen</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-4 space-y-2">
+                {row.replayRollups.length ? (
+                  row.replayRollups.map((replay) => (
+                    <div
+                      key={replay.key}
+                      className="rounded-xl border border-white/8 bg-slate-950/55 px-3 py-3"
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-semibold text-white">
+                            {replay.replayFile || replay.replayHash || "Replay file"}
+                          </div>
+                          <div className="mt-1 font-mono text-[11px] text-slate-500">
+                            {replay.replayHash ? shorten(replay.replayHash, 12, 10) : "hash unknown"}
+                          </div>
+                        </div>
+                        <div className="text-xs text-slate-400">
+                          {replay.lastSeenAt ? (
+                            <TimeDisplayText value={replay.lastSeenAt} className="text-slate-200" />
+                          ) : (
+                            "time unknown"
+                          )}
+                        </div>
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
+                        <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 text-slate-300">
+                          {replay.eventCount} events
+                        </span>
+                        <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 text-slate-300">
+                          {replay.parseAttemptCount} attempts
+                        </span>
+                        {replay.parsedGameStatsIds.length ? (
+                          <span className="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-2 py-1 text-emerald-50">
+                            game {replay.parsedGameStatsIds.join(", ")}
+                          </span>
+                        ) : null}
+                        {replay.statuses.map((status) => (
+                          <span
+                            key={status}
+                            className="rounded-full border border-cyan-300/15 bg-cyan-400/10 px-2 py-1 text-cyan-50"
+                          >
+                            {compactLabel(status)}
+                          </span>
+                        ))}
+                      </div>
+                      {replay.failureDetails.length ? (
+                        <div className="mt-2 space-y-1">
+                          {replay.failureDetails.map((detail) => (
+                            <div key={detail} className="text-xs leading-5 text-rose-100">
+                              {detail}
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  ))
+                ) : (
+                  <div className="rounded-xl border border-dashed border-white/10 px-3 py-3 text-sm text-slate-500">
+                    No replay-file rollup for this watcher in the active window.
+                  </div>
+                )}
+              </div>
+            </details>
+          ))
+        ) : (
+          <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] px-4 py-5 text-sm text-slate-400">
+            No watcher client events in the loaded diagnostics window.
+          </div>
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -1115,6 +1468,13 @@ export default function WoloChainAdminPage() {
       ) : null}
 
       <WoloMainnetActivityRail />
+
+      {state.wolochain ? (
+        <>
+          <DuplicateTxDiagnosticsRail diagnostics={state.wolochain.duplicateTxDiagnostics} />
+          <WatcherDiagnosticsRail diagnostics={state.wolochain.watcherDiagnostics} />
+        </>
+      ) : null}
 
       {state.stakingTreasuryPayouts ? (
         <section className="rounded-[1.7rem] border border-white/10 bg-slate-950/70 p-5">

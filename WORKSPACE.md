@@ -20,6 +20,9 @@ Together, they power the AoE2HDBets public product, replay ingest pipeline, and 
 - Advanced lobby arena stack: moving live ticker, Watch & Chat hero/comments rail, compact hero bet slip, compact WOLO swap tile, and preserved Basic lobby toggle
 - `wolo-1` betting is strict mainnet mode: Keplr-signed stake tx required, app-only wagers rejected/hidden, and testnet-era rows filtered from mainnet-facing WOLO/bet rails
 - `wolo-1` staking display is strict mainnet mode too: derive public stake totals and leaderboards from indexed mainnet `MsgSend` rows plus confirmed app staking events with verified tx hashes, not from legacy app-only `staking_positions`
+- App-side payout claims require distinct mainnet `MsgSend` proof before the app marks them claimed; duplicate tx hashes are blocked unless the tx contains enough distinct matching sends.
+- `/admin/wolochain` owns app-side duplicate tx diagnostics, indexed-transfer gap visibility, settlement service messaging, and watcher diagnostics rails; WoloChain still owns chain truth.
+- `/profile` WOLO ledger is a mainnet-facing user surface: confirmed chain transfers, app-side pending/retry rows, and duplicate/suspicious claim flags must stay visibly separate.
 - WOLO market display should read Osmosis pool 3461 for live WOLO/USDC price unless an explicit `WOLO_USD_PRICE` override is set; avoid hardcoded public price fallbacks.
 - Prisma-backed user/profile/community APIs and auth session cookie handling
 - Same-origin browser API routes that proxy or reshape selected `api-prodn` data
@@ -135,6 +138,7 @@ python /var/www/AoE2HDBets/api-prodn/scripts/set_admin.py --email you@example.co
 - exact postgame achievement-table extraction is still not solved
 - watcher behavior is materially healthier, but still a little noisy while iterating
 - docs should stay aligned with the shipped lobby/leaderboard reality as the product evolves
+- old testnet WOLO rows may remain in historical app tables; do not count them in mainnet-facing profile, staking, betting, or admin accounting unless explicitly labeled as legacy/testnet
 - VPS ownership drift can block deploys or `.next` image-cache writes
 - inbox attachment debugging requires a valid participant session because the binary route is protected
 - old inbox attachments may still be legacy `data:` rows, but new uploads are written to disk-backed `file:v1:` refs

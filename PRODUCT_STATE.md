@@ -153,6 +153,11 @@ Current state:
 - the recent settled-results rail dedupes by linked session and prefers the challenge-linked market over watcher shadows
 - `/admin/wolochain` now shows a wallet-friction rail for recent Keplr/Ledger stake failures, and `/admin/user-list` surfaces the last-24h count in the WoloChain entry tile
 - winning payouts can now auto-settle on-chain for trusted wallet-linked winners, with tx hashes visible in the admin settlement rail
+- payout claims now have a distinct-send guard: before a claim row is marked `claimed`, the returned tx must contain a matching WoloChain `MsgSend` for that recipient and amount, and a reused tx hash must have enough distinct matching sends for every claimed row using it
+- `/admin/wolochain` now includes duplicate-tx diagnostics and indexed-transfer gap diagnostics, separating verified mainnet multi-payouts from suspicious mainnet duplicates, legacy testnet single-send duplicates, and REST-not-found rows
+- `/profile` now presents WOLO ledger rows newest-first, labels confirmed mainnet transfers separately from app-side pending/retry claim rows, filters old testnet claim rows out of mainnet accounting, and flags duplicate/suspicious claim tx groups
+- pending settlement activity is claim-level instead of market-collapsed, so individual child claims remain visible to operators
+- `/admin/wolochain` also includes an Admin Watcher Diagnostics rail with per-user app version, platform, artifact, last heartbeat, replay files/hashes, parsed/unparsed finals, upload failures, parse failures, and replay-file rollups
 - unmatched or failed payouts still fall back into the pending-claim/admin rescue rail instead of vanishing
 
 ### Replay trust / postgame depth
@@ -214,6 +219,7 @@ Still wanted:
 - leaderboard is now real, but deeper ranking semantics still need tightening
 - some surfaces still carry more explanatory copy than ideal
 - token rail is now partially real, but live wallet edge cases still need hardening
+- mainnet transfer indexing can still miss a directly provable tx; the admin index-gap diagnostic now flags those cases so operators can rerun/expand the mainnet transfer backfill instead of treating the app ledger as chain truth
 - challenge-derived bet markets are much healthier than before, but long-tail parser/session label mismatches still need operator visibility
 - exact postgame achievement extraction is still the big missing depth layer
 - watcher behavior works better than before, but still feels somewhat noisy under the hood

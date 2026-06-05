@@ -93,6 +93,7 @@ WOLO betting / settlement:
 - `WOLO_MAINNET_DISPLAY_START_AT=2026-05-25T00:00:00.000Z` (optional; mainnet-facing WOLO/bet rails hide pre-cutoff testnet-era rows)
 - `WOLO_SETTLEMENT_URL=http://127.0.0.1:8092` only after the mainnet settlement service health route reports `ok=true` and `chain_id=wolo-1`; never use `127.0.0.1:8091` for mainnet because that is `wolo-testnet`
 - `WOLO_SETTLEMENT_AUTH_TOKEN` from the root-only WoloChain mainnet settlement env once 8092 is payout-ready
+- `WOLO_LEGACY_TESTNET_REST_URL=http://127.0.0.1:1317` may be set for admin duplicate-tx diagnostics that classify old testnet rows separately from mainnet; never count those rows as mainnet accounting
 - `WOLO_BET_PAYOUT_ADDRESS=wolo1zfa9ssu2gpgqg7yzvhmjt4w66mza07qr2a4rwu` for the fresh mainnet Bet Payout signer after cutover
 - `WOLO_BET_ESCROW_ADDRESS=wolo1zygwt232ymc4h2g52yvkntffhmd5alx2kglw7p` for the fresh mainnet Bet Escrow signer after cutover
 - `WOLO_COMMUNITY_TREASURY_ADDRESS=wolo1hlfvzuv4dc46ngvh3zlteuegx0xga20hj20zd2`
@@ -118,6 +119,15 @@ exposed read-only at
 `node scripts/backfill-wolo-mainnet-transfers.mjs`. The index stores one row per
 successful `MsgSend` inside a tx, so a multi-send transaction is not collapsed
 into the first recipient.
+
+Payout claim rows are only marked `claimed` after the app verifies that the
+returned WoloChain tx contains a distinct matching `MsgSend` for that claim's
+recipient wallet and amount. A reused payout tx hash is blocked unless the tx
+contains enough distinct matching sends for every claimed row using it.
+`/admin/wolochain` shows duplicate-tx diagnostics, legacy-testnet
+classification, and direct-REST/index-gap warnings. `/profile` keeps the WOLO
+ledger newest-first while visibly separating confirmed mainnet transfers from
+app-side pending/retry claim rows.
 
 The `/staking` economy surface also renders public custody balances for staking
 wallet, community treasury, bet escrow, payout signer, and DEX liquidity
@@ -216,7 +226,7 @@ python /var/www/AoE2HDBets/api-prodn/scripts/set_admin.py --email you@example.co
 - `/staking` Recent Activity shows grouped pending settlement claims for mainnet-era markets even when there is no payout tx yet; that is app claim debt, not WoloChain transfer truth.
 - `/staking` reward distributions are finalized once per closed UTC day through `npm run staking:rewards:run`; valid reward wallets are paid through the WOLO settlement rail and successful payouts are recorded as staking `CLAIM` events for Recent Activity. Before a daily distribution exists, personal pending rewards can show the modeled unpaid mainnet fee share from settled signed wagers.
 - The AI Scribe and Grimer receive live `/staking` context through `lib/aiConcierge.ts` for lobby and contact replies. They should explain app-side WOLO staking state, fee splits, rewards, and viewer positions from supplied context only, without calling it validator staking or inventing APY.
-- trusted wallet-linked winners can now auto-settle on-chain, while unmatched or failed payouts still fall back to the pending-claim/admin rail
+- trusted wallet-linked winners can now auto-settle on-chain after distinct `MsgSend` proof, while unmatched, duplicate-guarded, review-needed, or failed payouts still fall back to the pending-claim/admin rail
 - accepted scheduled matches now seed pre-live runway books so betting does not have to wait for watcher-live detection
 - challenge-linked books now absorb safe duplicate `watcher-live-*` shadows for the same session, preserving wagers and stake recovery rails on the canonical challenge market.
 - `/bets` records pre-intent Keplr/Ledger stake failures through `/api/bets/wallet-errors` as `bet_wallet_error` activity events, with market, side, amount, wallet type, browser, and workflow phase for operator debugging.

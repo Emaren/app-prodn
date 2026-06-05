@@ -55,6 +55,31 @@ Replay file telemetry stores the basename only, for example `recorded-game.aoe2r
 
 Telemetry failures must not block the watcher. The Electron app uses fire-and-forget telemetry with short timeouts; upload and replay monitoring continue if telemetry is unavailable.
 
+## Admin Watcher Diagnostics Rail
+
+`/admin/wolochain` includes an Admin Watcher Diagnostics rail that combines
+`watcher_client_events`, `replay_parse_attempts`, and watcher-backed
+`game_stats` rows.
+
+Per user, it shows:
+
+- `app_version`
+- `platform`
+- `artifact`
+- last heartbeat
+- last watcher event
+- replay file count
+- replay hash count
+- parsed finals
+- unparsed finals
+- upload failures
+- parse failures
+- replay-file rollups with statuses, parse attempts, parsed game ids, and failure breadcrumbs
+
+Use this rail when a player says the watcher saw a replay but the site did not
+show a live game or final result. The rail is diagnostic only: it does not
+fabricate replay outcomes and it does not replace parser truth.
+
 ## Debug Queries
 
 Package pulls in the last 24 hours:

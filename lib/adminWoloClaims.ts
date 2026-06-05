@@ -6,6 +6,7 @@ import {
 } from "@/lib/betFounderBonuses";
 import { normalizePublicPlayerName } from "@/lib/publicPlayers";
 import { recordUserActivity } from "@/lib/userExperience";
+import { validateDistinctClaimPayoutTx } from "@/lib/woloClaimPayoutGuards";
 import {
   executeWoloPayout,
   executeWoloSettlementRun,
@@ -332,6 +333,22 @@ export async function retryPendingClaimSettlement(
 
     settlementRunId = "settlementRunId" in payout ? payout.settlementRunId : null;
 
+    const payoutGuard = await validateDistinctClaimPayoutTx(prisma, {
+      key: `claim-${claim.id}`,
+      claimId: claim.id,
+      txHash: payout.txHash,
+      toAddress: matchedUser.walletAddress,
+      amountWolo: claim.amountWolo,
+    });
+
+    if (!payoutGuard.ok) {
+      throw new Error(
+        payoutGuard.detail ||
+          payoutGuard.failureCode ||
+          "WOLO payout tx failed distinct MsgSend validation."
+      );
+    }
+
     await prisma.pendingWoloClaim.update({
       where: { id: claim.id },
       data: {
@@ -339,7 +356,7 @@ export async function retryPendingClaimSettlement(
         claimedByUserId: matchedUser.id,
         claimedAt: attemptAt,
         payoutTxHash: payout.txHash,
-        payoutProofUrl: payout.proofUrl ?? null,
+        payoutProofUrl: payoutGuard.proofUrl ?? payout.proofUrl ?? null,
         errorState: null,
         payoutAttemptedAt: attemptAt,
         note: compactSettlementNote(
@@ -374,7 +391,7 @@ export async function retryPendingClaimSettlement(
           },
           data: {
             payoutTxHash: payout.txHash,
-            payoutProofUrl: payout.proofUrl ?? null,
+            payoutProofUrl: payoutGuard.proofUrl ?? payout.proofUrl ?? null,
           },
         });
       }

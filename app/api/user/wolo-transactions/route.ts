@@ -23,6 +23,17 @@ type WoloTransactionRow = {
   status: string;
   occurredAt: string;
   txHash: string | null;
+  proofUrl?: string | null;
+  category:
+    | "chain_confirmed"
+    | "app_claim"
+    | "app_pending"
+    | "app_retry"
+    | "app_gift"
+    | "bet"
+    | "challenge";
+  network: "mainnet" | "app";
+  riskLabel?: string | null;
 };
 
 function clampLimit(value: string | null) {
@@ -124,6 +135,34 @@ function walletProfileNameKeys(wallet: (typeof WOLO_MAINNET_WALLET_ALIASES)[numb
   return "profileNameKeys" in wallet ? wallet.profileNameKeys : undefined;
 }
 
+function normalizeTxHash(value: string | null | undefined) {
+  const clean = (value || "").trim().toUpperCase();
+  return /^[A-F0-9]{16,128}$/.test(clean) ? clean : null;
+}
+
+function claimCategory(claim: {
+  status: string;
+  errorState?: string | null;
+}): WoloTransactionRow["category"] {
+  if (claim.status === "claimed") return "app_claim";
+  if (/retry|duplicate_tx_hash_corrected/i.test(claim.errorState || "")) return "app_retry";
+  return "app_pending";
+}
+
+function claimStatusLabel(claim: {
+  status: string;
+  errorState?: string | null;
+  payoutTxHash?: string | null;
+}) {
+  if (claim.status === "claimed" && claim.payoutTxHash) return "claimed · chain tx recorded";
+  if (claim.status === "claimed") return "claimed · app recorded";
+  if (/review/i.test(claim.errorState || "")) return "pending · admin review";
+  if (/retry|duplicate_tx_hash_corrected/i.test(claim.errorState || "")) {
+    return "pending · retry needed";
+  }
+  return formatStatus(claim.status);
+}
+
 function visibleMainnetWagerWhere(userId: number) {
   if (!isWoloMainnet()) return { userId };
   return {
@@ -214,6 +253,8 @@ export async function GET(request: NextRequest) {
           claimedAt: true,
           payoutAttemptedAt: true,
           payoutTxHash: true,
+          payoutProofUrl: true,
+          errorState: true,
         },
       }),
       prisma.userGift.findMany({
@@ -355,6 +396,40 @@ export async function GET(request: NextRequest) {
         })
       : [];
     const claimMarketById = new Map(claimMarkets.map((market) => [market.id, market] as const));
+    const claimTxHashes = Array.from(
+      new Set(
+        claims
+          .map((claim) => normalizeTxHash(claim.payoutTxHash))
+          .filter((txHash): txHash is string => Boolean(txHash))
+      )
+    );
+    const duplicateClaimTxHashes = new Set<string>();
+
+    if (claimTxHashes.length > 0) {
+      const duplicateClaimRows = await prisma.pendingWoloClaim.findMany({
+        where: {
+          status: "claimed",
+          payoutTxHash: {
+            in: Array.from(
+              new Set(claimTxHashes.flatMap((txHash) => [txHash, txHash.toLowerCase()]))
+            ),
+          },
+        },
+        select: {
+          payoutTxHash: true,
+        },
+        take: 2_000,
+      });
+      const counts = new Map<string, number>();
+      for (const row of duplicateClaimRows) {
+        const txHash = normalizeTxHash(row.payoutTxHash);
+        if (!txHash) continue;
+        counts.set(txHash, (counts.get(txHash) ?? 0) + 1);
+      }
+      for (const [txHash, count] of counts.entries()) {
+        if (count > 1) duplicateClaimTxHashes.add(txHash);
+      }
+    }
 
     const rows: WoloTransactionRow[] = [];
 
@@ -364,12 +439,16 @@ export async function GET(request: NextRequest) {
           ? claimMarketById.get(claim.sourceMarketId)
           : null;
       const marketLabel = market?.title ? ` · ${market.title}` : "";
+      const txHash = normalizeTxHash(claim.payoutTxHash);
+      const duplicateRisk = Boolean(txHash && duplicateClaimTxHashes.has(txHash));
       pushRow(rows, {
         id: `claim-${claim.id}`,
         direction: "in",
         amountWolo: claim.amountWolo,
-        label: `${claim.claimKind.replace(/_/g, " ")} claim${marketLabel}`,
-        status: formatStatus(claim.status),
+        label: `${claim.status === "claimed" ? "Mainnet payout claim" : "App-side claim"} · ${claim.claimKind.replace(/_/g, " ")}${marketLabel}`,
+        status: duplicateRisk
+          ? `${claimStatusLabel(claim)} · duplicate review`
+          : claimStatusLabel(claim),
         occurredAt: (
           claim.claimedAt ||
           claim.payoutAttemptedAt ||
@@ -377,6 +456,10 @@ export async function GET(request: NextRequest) {
           claim.createdAt
         ).toISOString(),
         txHash: claim.payoutTxHash,
+        proofUrl: claim.payoutProofUrl,
+        category: claimCategory(claim),
+        network: "mainnet",
+        riskLabel: duplicateRisk ? "Duplicate tx group" : null,
       });
     }
 
@@ -389,6 +472,9 @@ export async function GET(request: NextRequest) {
         status: formatStatus(gift.status),
         occurredAt: (gift.acceptedAt || gift.createdAt).toISOString(),
         txHash: null,
+        proofUrl: null,
+        category: "app_gift",
+        network: "app",
       });
     }
 
@@ -404,10 +490,13 @@ export async function GET(request: NextRequest) {
         id: `mainnet-transfer-${transfer.id}`,
         direction: incoming ? "in" : "out",
         amountWolo: Number(transfer.amountWoloDisplay) || 0,
-        label: `Mainnet transfer · ${incoming ? "from" : "to"} ${counterpartyLabel}${memoLabel}`,
+        label: `Confirmed mainnet transfer · ${incoming ? "from" : "to"} ${counterpartyLabel}${memoLabel}`,
         status: "confirmed",
         occurredAt: transfer.timestamp.toISOString(),
         txHash: transfer.txHash,
+        proofUrl: null,
+        category: "chain_confirmed",
+        network: "mainnet",
       });
     }
 
@@ -420,6 +509,9 @@ export async function GET(request: NextRequest) {
         status: formatStatus(wager.status),
         occurredAt: (wager.stakeLockedAt || wager.createdAt).toISOString(),
         txHash: wager.stakeTxHash,
+        proofUrl: null,
+        category: "bet",
+        network: wager.stakeTxHash ? "mainnet" : "app",
       });
 
       pushRow(rows, {
@@ -430,6 +522,9 @@ export async function GET(request: NextRequest) {
         status: wager.payoutTxHash ? "paid" : formatStatus(wager.status),
         occurredAt: (wager.settledAt || wager.createdAt).toISOString(),
         txHash: wager.payoutTxHash,
+        proofUrl: null,
+        category: "bet",
+        network: wager.payoutTxHash ? "mainnet" : "app",
       });
     }
 
@@ -443,6 +538,9 @@ export async function GET(request: NextRequest) {
         status: formatStatus(intent.status),
         occurredAt: (intent.recordedAt || intent.verifiedAt || intent.createdAt).toISOString(),
         txHash: intent.stakeTxHash,
+        proofUrl: null,
+        category: "bet",
+        network: intent.stakeTxHash ? "mainnet" : "app",
       });
     }
 
@@ -458,6 +556,9 @@ export async function GET(request: NextRequest) {
           status: formatStatus(match.status),
           occurredAt: match.challengerFundedAt?.toISOString() ?? "",
           txHash: match.challengerFundingTxHash,
+          proofUrl: null,
+          category: "challenge",
+          network: match.challengerFundingTxHash ? "mainnet" : "app",
         });
       }
       if (match.challengedUserId === user.id) {
@@ -469,15 +570,18 @@ export async function GET(request: NextRequest) {
           status: formatStatus(match.status),
           occurredAt: match.challengedFundedAt?.toISOString() ?? "",
           txHash: match.challengedFundingTxHash,
+          proofUrl: null,
+          category: "challenge",
+          network: match.challengedFundingTxHash ? "mainnet" : "app",
         });
       }
     }
 
     rows.sort((left, right) => {
-      const rankDiff = transactionRowRank(left) - transactionRowRank(right);
-      if (rankDiff) return rankDiff;
       const timeDiff = new Date(right.occurredAt).getTime() - new Date(left.occurredAt).getTime();
-      return timeDiff || right.id.localeCompare(left.id);
+      if (timeDiff) return timeDiff;
+      const rankDiff = transactionRowRank(left) - transactionRowRank(right);
+      return rankDiff || right.id.localeCompare(left.id);
     });
 
     const pageRows = rows.slice(offset, offset + limit);

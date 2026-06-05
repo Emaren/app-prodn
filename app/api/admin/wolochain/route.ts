@@ -6,7 +6,9 @@ import type {
   WoloChainAdminPayload,
 } from "@/lib/adminWoloChainTypes";
 import { requireAdmin } from "@/lib/adminSession";
+import { loadAdminWatcherDiagnostics } from "@/lib/adminWatcherDiagnostics";
 import { buildChallengeEconomySurface } from "@/lib/challengeEconomy";
+import { loadWoloDuplicateTxDiagnostics } from "@/lib/woloDuplicateTxDiagnostics";
 import { loadWoloDevSnapshot } from "@/lib/woloDevSnapshot";
 import { fetchWoloBalanceAmount, fetchWoloStatusSnapshot } from "@/lib/woloRuntime";
 import { WOLO_COIN_DECIMALS, formatWoloAmount, getWoloBetEscrowRuntime } from "@/lib/woloChain";
@@ -322,7 +324,7 @@ export async function GET(request: NextRequest) {
     const treasuryConfig = await resolveCommunityTreasuryConfig();
     const dexLiquidityConfig = await resolveDexLiquidityConfig();
 
-    const [chain, settlementService, balances, challengeRows] = await Promise.all([
+    const [chain, settlementService, balances, challengeRows, duplicateTxDiagnostics, watcherDiagnostics] = await Promise.all([
       fetchWoloStatusSnapshot(),
       getWoloSettlementSurfaceStatus(),
       Promise.all([
@@ -433,6 +435,8 @@ export async function GET(request: NextRequest) {
           },
         },
       }),
+      loadWoloDuplicateTxDiagnostics(prisma),
+      loadAdminWatcherDiagnostics(prisma),
     ]);
 
     const [escrow, payoutSigner, treasury, dexLiquidity] = balances;
@@ -440,6 +444,21 @@ export async function GET(request: NextRequest) {
       .filter((balance): balance is WoloChainAdminBalance => Boolean(balance))
       .filter((balance) => balance.status !== "ready" && balance.detail)
       .map((balance) => `${balance.label}: ${balance.detail}`);
+    const diagnosticWarnings = [
+      ...(duplicateTxDiagnostics.suspiciousMainnetCount > 0
+        ? [
+            `${duplicateTxDiagnostics.suspiciousMainnetCount} suspicious mainnet duplicate tx group(s) require review.`,
+          ]
+        : []),
+      ...(duplicateTxDiagnostics.indexedTransferGapCount > 0
+        ? [
+            `${duplicateTxDiagnostics.indexedTransferGapCount} mainnet payout tx(s) are visible on REST but missing from wolo_indexed_transfers.`,
+          ]
+        : []),
+      ...(watcherDiagnostics.rows.some((row) => row.uploadFailed > 0 || row.parseFailed > 0)
+        ? ["Watcher diagnostics show upload/parse failures in the active window."]
+        : []),
+    ];
 
     const payload: WoloChainAdminPayload = {
       checkedAt: new Date().toISOString(),
@@ -463,7 +482,9 @@ export async function GET(request: NextRequest) {
         dexLiquidity,
       },
       challengeRuns: challengeRows.map(toChallengeRun),
-      warnings: [...settlementService.warnings, ...balanceWarnings],
+      duplicateTxDiagnostics,
+      watcherDiagnostics,
+      warnings: [...settlementService.warnings, ...balanceWarnings, ...diagnosticWarnings],
     };
 
     return NextResponse.json(payload, {
