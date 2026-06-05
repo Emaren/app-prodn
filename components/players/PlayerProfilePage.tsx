@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { ReactNode } from "react";
 
 import CommunityBadgePill from "@/components/contact/CommunityBadgePill";
@@ -21,6 +22,13 @@ type PlayerProfilePageProps = {
 };
 
 const RESOURCE_LABELS: Array<keyof PlayerResourceStats["totals"]> = ["wood", "food", "gold", "stone"];
+const WOLO_LOGO_SRC = "/legacy/wolo-logo-transparent.png";
+const RESOURCE_META: Record<keyof PlayerResourceStats["totals"], { label: string; icon: string; accent: string }> = {
+  wood: { label: "Wood", icon: "🪵", accent: "from-emerald-400 to-lime-200" },
+  food: { label: "Food", icon: "🥩", accent: "from-red-400 to-amber-200" },
+  gold: { label: "Gold", icon: "🥇", accent: "from-amber-300 to-yellow-100" },
+  stone: { label: "Stone", icon: "🪨", accent: "from-slate-300 to-sky-200" },
+};
 
 export default function PlayerProfilePage({ profile, viewMode }: PlayerProfilePageProps) {
   return viewMode === "basic" ? (
@@ -31,6 +39,12 @@ export default function PlayerProfilePage({ profile, viewMode }: PlayerProfilePa
 }
 
 function PlayerProfileAdvanced({ profile }: { profile: PlayerProfile }) {
+  const currentStreakTone = profile.command.currentStreakLabel.includes("loss")
+    ? "red"
+    : profile.command.currentStreakLabel.includes("win")
+      ? "emerald"
+      : "amber";
+
   return (
     <main className="space-y-5 py-5 text-white sm:space-y-6 sm:py-6">
       <AdvancedHero profile={profile} />
@@ -39,11 +53,11 @@ function PlayerProfileAdvanced({ profile }: { profile: PlayerProfile }) {
       <section className="grid gap-5 xl:grid-cols-[1.12fr_0.88fr]">
         <div className="space-y-5">
           <Panel eyebrow="Command Deck" title="Performance radar" count={`${profile.command.totalMatches} games`}>
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               <CommandTile label="Win Rate" value={formatPercent(profile.command.winRate)} detail={`${profile.command.wins}W / ${profile.command.losses}L`} tone="emerald" />
-              <CommandTile label="Current Streak" value={profile.command.currentStreakLabel} detail={`${profile.command.matchesLast30Days} games in 30d`} tone="amber" />
+              <CommandTile label="Current Streak" value={profile.command.currentStreakLabel} detail={`${profile.command.matchesLast30Days} games in 30d`} tone={currentStreakTone} />
               <CommandTile label="Peak Score" value={formatNumber(profile.command.bestScore)} detail={`avg ${formatNumber(profile.command.averageScore)}`} tone="sky" />
-              <CommandTile label="Peak EAPM" value={formatDecimal(profile.command.bestEapm)} detail={`avg ${formatDecimal(profile.command.averageEapm)}`} tone="rose" />
+              <CommandTile label="Peak EAPM" value={formatDecimal(profile.command.bestEapm)} detail={`avg ${formatDecimal(profile.command.averageEapm)}`} tone="red" />
             </div>
 
             <div className="mt-5 grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
@@ -93,6 +107,10 @@ function PlayerProfileAdvanced({ profile }: { profile: PlayerProfile }) {
             <WatcherRail profile={profile} />
           </Panel>
 
+          <Panel eyebrow="AI War Room" title="Scribe / Grimer readout" count="coach">
+            <AiRail profile={profile} />
+          </Panel>
+
           <Panel eyebrow="$WOLO" title="Earnings rail" count={`${profile.wolo.totalFlexWolo} WOLO`}>
             <WoloRail profile={profile} />
           </Panel>
@@ -111,6 +129,14 @@ function PlayerProfileAdvanced({ profile }: { profile: PlayerProfile }) {
 }
 
 function PlayerProfileBasic({ profile }: { profile: PlayerProfile }) {
+  if (!profile.isClaimed) {
+    return <ReplayClassicBasicProfile profile={profile} />;
+  }
+
+  return <ClaimedBasicProfile profile={profile} />;
+}
+
+function ClaimedBasicProfile({ profile }: { profile: PlayerProfile }) {
   return (
     <main className="space-y-6 py-6 text-white">
       <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(251,191,36,0.18),_transparent_32%),linear-gradient(135deg,_#0f172a,_#111827_58%,_#020617)] p-8">
@@ -199,6 +225,155 @@ function PlayerProfileBasic({ profile }: { profile: PlayerProfile }) {
             accent={profile.identity.kind === "replay" ? "rose" : "amber"}
           />
         </Panel>
+      </section>
+    </main>
+  );
+}
+
+function ReplayClassicBasicProfile({ profile }: { profile: PlayerProfile }) {
+  const wins = profile.command.wins;
+  const losses = profile.command.losses;
+  const unknowns = profile.command.unknowns;
+  const pendingClaimAmount = profile.currentPlayer.pendingWoloClaimAmount || profile.wolo.pendingClaimWolo;
+  const pendingClaimCount = profile.currentPlayer.pendingWoloClaimCount || profile.wolo.pendingClaimCount;
+
+  return (
+    <main className="space-y-6 py-6 text-white">
+      <ViewToggleRail profile={profile} active="basic" />
+
+      <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(248,113,113,0.18),_transparent_32%),linear-gradient(135deg,_#0f172a,_#111827_58%,_#020617)] p-8">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="space-y-4">
+            <div className="text-xs uppercase tracking-[0.35em] text-rose-200/70">Replay-Built Warrior Page</div>
+            <h1 className="text-4xl font-semibold text-white sm:text-5xl">{profile.displayName}</h1>
+            <p className="max-w-3xl text-base leading-7 text-slate-300 sm:text-lg">
+              This public page was created automatically from parsed AoE2HD replays. If this is
+              you, sign in with Steam, claim the name, and start building a verified tournament and
+              betting identity.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Tag>unclaimed identity</Tag>
+              <Tag>{profile.command.totalMatches} parsed matches</Tag>
+              {pendingClaimCount > 0 ? <Tag>{pendingClaimAmount} WOLO unclaimed</Tag> : null}
+              {wins > 0 ? <Tag>{wins} wins</Tag> : null}
+              {losses > 0 ? <Tag>{losses} losses</Tag> : null}
+              {unknowns > 0 ? <Tag>{unknowns} unknown outcomes</Tag> : null}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-3">
+            {profile.claimHref ? (
+              <Link
+                href={profile.claimHref}
+                className="rounded-full bg-rose-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-rose-200"
+              >
+                Claim This Identity
+              </Link>
+            ) : null}
+            <Link
+              href="/players"
+              className="rounded-full border border-white/15 px-5 py-3 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
+            >
+              Browse Players
+            </Link>
+            <Link
+              href="/game-stats"
+              className="rounded-full border border-white/15 px-5 py-3 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
+            >
+              Back To Parser Lab
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
+        <section className="space-y-6">
+          <section className="rounded-[1.75rem] border border-white/10 bg-slate-950/70 p-6">
+            {pendingClaimCount > 0 ? (
+              <div className="mb-5 rounded-2xl border border-amber-300/20 bg-amber-400/10 px-4 py-4 text-sm leading-6 text-amber-100">
+                {pendingClaimAmount} WOLO is still waiting in the claim ledger for this replay-built warrior page.
+              </div>
+            ) : null}
+            <div className="text-xs uppercase tracking-[0.35em] text-white/45">Stats</div>
+            <h2 className="mt-2 text-2xl font-semibold text-white">Performance Snapshot</h2>
+
+            <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              <MetricCard label="Steam RM" value={formatRatingMetric(profile.performance.steamRating)} />
+              <MetricCard label="Steam DM" value={formatRatingMetric(profile.performance.ladderRating)} />
+              <MetricCard label="Win Rate" value={formatPercent(profile.performance.winRate)} />
+              <MetricCard label="Rated Matches" value={String(profile.performance.ratedMatches)} />
+              <MetricCard label="Avg Game Length" value={formatDurationLabel(profile.performance.averageDurationSeconds)} />
+              <MetricCard label="Longest Game" value={formatDurationLabel(profile.performance.longestDurationSeconds)} />
+              <MetricCard label="Shortest Game" value={formatDurationLabel(profile.performance.shortestDurationSeconds)} />
+              <MetricCard label="Unique Opponents" value={String(profile.performance.uniqueOpponents)} />
+              <MetricCard label="Civilizations Played" value={String(profile.performance.civilizationsPlayed)} />
+              <MetricCard label="Most Played Map" value={profile.performance.mostPlayedMap || "Unknown"} />
+            </div>
+            {profile.performance.ratingLastSeenAt ? (
+              <div className="mt-4 text-xs text-slate-400">
+                Official rating last seen {new Date(profile.performance.ratingLastSeenAt).toLocaleString()}
+              </div>
+            ) : null}
+          </section>
+
+          <section className="rounded-[1.75rem] border border-white/10 bg-slate-950/70 p-6">
+            <div className="text-xs uppercase tracking-[0.35em] text-white/45">Why Claim It</div>
+            <h2 className="mt-2 text-2xl font-semibold text-white">Turn replay sightings into a real profile</h2>
+
+            <div className="mt-5 space-y-4 text-sm leading-6 text-slate-300">
+              <p>
+                Right now this page only knows what the parser saw in replay files. Claiming it lets
+                you link Steam, join tournaments, chat in the lobby, mint a watcher key, and turn this
+                into a verified player identity.
+              </p>
+              <div className="rounded-2xl border border-white/8 bg-white/5 px-4 py-4">
+                <div className="text-sm font-medium text-white">Claim flow</div>
+                <ol className="mt-3 space-y-2 text-slate-300">
+                  <li>1. Sign in with Steam.</li>
+                  <li>2. Save this in-game name on your profile.</li>
+                  <li>3. Upload one replay with your watcher key to verify it.</li>
+                </ol>
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-[1.75rem] border border-white/10 bg-slate-950/70 p-6">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <div className="text-xs uppercase tracking-[0.35em] text-white/45">Rivalries</div>
+                <h2 className="mt-2 text-2xl font-semibold text-white">Top Head-To-Heads</h2>
+              </div>
+              <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+                {profile.rivalries.length} rivals
+              </div>
+            </div>
+
+            <ClassicRivalries profile={profile} />
+          </section>
+        </section>
+
+        <section className="rounded-[1.75rem] border border-white/10 bg-slate-950/70 p-6">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <div className="text-xs uppercase tracking-[0.35em] text-white/45">Match Feed</div>
+              <h2 className="mt-2 text-2xl font-semibold text-white">Recent Parsed Matches</h2>
+            </div>
+            <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+              {profile.matchFeed.totalMatches} total
+            </div>
+          </div>
+
+          <div className="mt-5">
+            <PlayerMatchFeedClient
+              identity={profile.identity}
+              initialItems={profile.matchFeed.items}
+              initialNextCursor={profile.matchFeed.nextCursor}
+              totalMatches={profile.matchFeed.totalMatches}
+              accent="rose"
+              variant="classic"
+            />
+          </div>
+        </section>
       </section>
     </main>
   );
@@ -308,13 +483,36 @@ function PlayerProfileTicker({ items }: { items: string[] }) {
   );
 }
 
+function defaultViewMode(profile: PlayerProfile): PlayerProfileViewMode {
+  return profile.isClaimed ? "advanced" : "basic";
+}
+
+function playerProfileViewHref(profile: PlayerProfile, mode: PlayerProfileViewMode) {
+  if (mode === defaultViewMode(profile)) return profile.href;
+  return `${profile.href}?view=${mode}`;
+}
+
+function ViewToggleRail({ profile, active }: { profile: PlayerProfile; active: PlayerProfileViewMode }) {
+  return (
+    <section className="flex flex-wrap items-center justify-between gap-3 rounded-[1.35rem] border border-white/10 bg-slate-950/58 px-4 py-3 shadow-[0_18px_50px_rgba(2,6,23,0.18)]">
+      <div className="min-w-0">
+        <div className="text-[10px] uppercase tracking-[0.3em] text-white/45">Profile Display</div>
+        <div className="mt-1 text-sm text-slate-300">
+          {profile.isClaimed ? "Claimed profiles open on Advanced." : "Replay-built profiles open on Basic."}
+        </div>
+      </div>
+      <ViewToggle profile={profile} active={active} />
+    </section>
+  );
+}
+
 function ViewToggle({ profile, active }: { profile: PlayerProfile; active: PlayerProfileViewMode }) {
   return (
     <div className="flex rounded-full border border-white/10 bg-slate-950/55 p-1 text-xs">
-      {(["advanced", "basic"] as PlayerProfileViewMode[]).map((mode) => (
+      {(["basic", "advanced"] as PlayerProfileViewMode[]).map((mode) => (
         <Link
           key={mode}
-          href={mode === "advanced" ? profile.href : `${profile.href}?view=basic`}
+          href={playerProfileViewHref(profile, mode)}
           className={`rounded-full px-3 py-2 font-medium uppercase tracking-[0.2em] transition ${
             active === mode
               ? mode === "advanced"
@@ -406,22 +604,22 @@ function CommandTile({
   label: string;
   value: string;
   detail: string;
-  tone: "emerald" | "amber" | "sky" | "rose";
+  tone: "emerald" | "amber" | "sky" | "red";
 }) {
-  const border =
+  const toneClass =
     tone === "emerald"
-      ? "border-emerald-300/18"
+      ? "border-emerald-500/34 bg-[radial-gradient(circle_at_25%_0%,rgba(16,185,129,0.24),transparent_42%),linear-gradient(180deg,rgba(6,78,59,0.42),rgba(15,23,42,0.6))] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
       : tone === "sky"
-        ? "border-sky-300/18"
-        : tone === "rose"
-          ? "border-rose-300/18"
-          : "border-amber-300/18";
+        ? "border-sky-400/24 bg-[radial-gradient(circle_at_25%_0%,rgba(14,165,233,0.18),transparent_42%),linear-gradient(180deg,rgba(12,74,110,0.26),rgba(15,23,42,0.6))]"
+        : tone === "red"
+          ? "border-red-500/34 bg-[radial-gradient(circle_at_25%_0%,rgba(220,38,38,0.24),transparent_42%),linear-gradient(180deg,rgba(127,29,29,0.42),rgba(15,23,42,0.64))] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
+          : "border-amber-400/26 bg-[radial-gradient(circle_at_25%_0%,rgba(245,158,11,0.18),transparent_42%),linear-gradient(180deg,rgba(120,53,15,0.28),rgba(15,23,42,0.6))]";
 
   return (
-    <div className={`rounded-[1.25rem] border bg-white/5 px-4 py-4 ${border}`}>
-      <div className="text-[11px] uppercase tracking-[0.24em] text-slate-500">{label}</div>
-      <div className="mt-3 text-xl font-semibold text-white">{value}</div>
-      <div className="mt-1 text-xs text-slate-400">{detail}</div>
+    <div className={`min-h-[9.5rem] rounded-[1.35rem] border px-5 py-5 ${toneClass}`}>
+      <div className="text-[11px] uppercase tracking-[0.24em] text-slate-400">{label}</div>
+      <div className="mt-4 break-words text-2xl font-semibold leading-tight text-white">{value}</div>
+      <div className="mt-2 text-sm text-slate-300">{detail}</div>
     </div>
   );
 }
@@ -437,35 +635,41 @@ function MiniStat({ label, value }: { label: string; value: string }) {
 
 function FormChart({ points }: { points: PlayerFormPoint[] }) {
   return (
-    <div className="rounded-[1.25rem] border border-white/8 bg-white/5 p-4">
+    <div className="rounded-[1.35rem] border border-white/8 bg-white/5 p-5">
       <div className="flex items-center justify-between gap-3">
         <div className="text-xs uppercase tracking-[0.24em] text-slate-500">Last 12 form</div>
         <div className="text-xs text-slate-400">oldest to newest</div>
       </div>
-      <div className="mt-5 flex h-24 items-end gap-2">
+      <div className="mt-5">
         {points.length === 0 ? (
-          <div className="text-sm text-slate-400">Form chart wakes up after the first parsed match.</div>
+          <div className="rounded-2xl border border-white/8 bg-slate-950/35 px-4 py-8 text-sm text-slate-400">
+            Form chart wakes up after the first parsed match.
+          </div>
         ) : (
-          points.map((point) => {
-            const height = point.result === "win" ? "h-24" : point.result === "loss" ? "h-12" : "h-7";
-            const color =
-              point.result === "win"
-                ? "bg-emerald-300"
-                : point.result === "loss"
-                  ? "bg-rose-300"
-                  : "bg-slate-500";
-            return (
-              <Link
-                key={point.gameId}
-                href={`/game-stats/${point.gameId}`}
-                className="group flex min-w-0 flex-1 flex-col items-center gap-2"
-                title={point.result}
-              >
-                <div className={`w-full rounded-t-lg ${height} ${color} opacity-80 transition group-hover:opacity-100`} />
-                <div className="text-[10px] text-slate-500">{point.label}</div>
-              </Link>
-            );
-          })
+          <div className="grid h-36 grid-cols-12 items-end gap-2">
+            {points.map((point) => {
+              const height = point.result === "win" ? "h-28" : point.result === "loss" ? "h-14" : "h-8";
+              const color =
+                point.result === "win"
+                  ? "bg-emerald-500 shadow-[0_0_18px_rgba(16,185,129,0.24)]"
+                  : point.result === "loss"
+                    ? "bg-red-500 shadow-[0_0_18px_rgba(239,68,68,0.22)]"
+                    : "bg-slate-500";
+              return (
+                <Link
+                  key={point.gameId}
+                  href={`/game-stats/${point.gameId}`}
+                  className="group flex h-full min-w-0 flex-col justify-end gap-2 rounded-lg px-0.5 pb-1 transition hover:bg-white/5"
+                  aria-label={`${point.label} ${point.result}`}
+                >
+                  <div className="flex h-28 w-full items-end">
+                    <div className={`mx-auto w-full max-w-8 rounded-t-[0.6rem] ${height} ${color} opacity-85 transition group-hover:opacity-100`} />
+                  </div>
+                  <div className="w-full truncate text-center text-[9px] text-slate-500">{point.label}</div>
+                </Link>
+              );
+            })}
+          </div>
         )}
       </div>
     </div>
@@ -482,17 +686,23 @@ function ResourceVault({ resources }: { resources: PlayerResourceStats }) {
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {RESOURCE_LABELS.map((resource) => {
+          const meta = RESOURCE_META[resource];
           const total = resources.totals[resource];
           const best = resources.best[resource];
           const width = total ? Math.max(8, Math.round((total / maxTotal) * 100)) : 0;
           return (
-            <div key={resource} className="rounded-[1.25rem] border border-white/8 bg-white/5 px-4 py-4">
-              <div className="text-[11px] uppercase tracking-[0.24em] text-slate-500">{resource}</div>
+            <div key={resource} className="rounded-[1.35rem] border border-white/8 bg-white/5 px-4 py-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-[11px] uppercase tracking-[0.24em] text-slate-500">{meta.label}</div>
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-slate-950/45 text-2xl leading-none">
+                  {meta.icon}
+                </div>
+              </div>
               <div className="mt-3 text-2xl font-semibold capitalize text-white">
                 {total !== null ? total.toLocaleString() : "Fog"}
               </div>
               <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/8">
-                <div className="h-full rounded-full bg-gradient-to-r from-amber-300 to-sky-300" style={{ width: `${width}%` }} />
+                <div className={`h-full rounded-full bg-gradient-to-r ${meta.accent}`} style={{ width: `${width}%` }} />
               </div>
               <div className="mt-3 text-xs text-slate-400">
                 {best ? `Best ${best.value.toLocaleString()} on ${best.mapName}` : "Awaiting postgame table"}
@@ -582,15 +792,65 @@ function WatcherRail({ profile }: { profile: PlayerProfile }) {
   );
 }
 
+function AiRail({ profile }: { profile: PlayerProfile }) {
+  const contactHref = profile.identity.kind === "claimed"
+    ? `/contact-emaren?user=${encodeURIComponent(profile.identity.uid)}`
+    : "/contact-emaren";
+  const mapLabel = profile.command.favoriteMap || "map pool";
+  const civLabel = profile.command.mostPlayedCivilization || "civ mix";
+  const weaknessLabel = profile.command.losses > 0
+    ? `${profile.command.losses} loss${profile.command.losses === 1 ? "" : "es"} to review`
+    : "no clear leak yet";
+
+  return (
+    <div className="space-y-3">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="rounded-[1.15rem] border border-sky-300/18 bg-sky-400/10 px-4 py-4">
+          <div className="text-[10px] uppercase tracking-[0.24em] text-sky-100/70">The AI Scribe</div>
+          <div className="mt-3 text-lg font-semibold text-white">{formatPercent(profile.command.winRate)} pressure read</div>
+          <div className="mt-2 text-xs leading-5 text-slate-300">
+            {mapLabel} plus {civLabel}; use the archive to spot repeat openings.
+          </div>
+        </div>
+        <div className="rounded-[1.15rem] border border-red-500/22 bg-red-500/10 px-4 py-4">
+          <div className="text-[10px] uppercase tracking-[0.24em] text-red-100/75">Grimer</div>
+          <div className="mt-3 text-lg font-semibold text-white">{weaknessLabel}</div>
+          <div className="mt-2 text-xs leading-5 text-slate-300">
+            Bring receipts: replay-backed losses, rival patterns, and late-game fades.
+          </div>
+        </div>
+      </div>
+      <Link
+        href={contactHref}
+        className="inline-flex rounded-full border border-white/12 bg-white/5 px-4 py-2 text-sm font-medium text-slate-100 transition hover:border-sky-300/35 hover:bg-sky-400/10"
+      >
+        Open AI corner
+      </Link>
+    </div>
+  );
+}
+
 function WoloRail({ profile }: { profile: PlayerProfile }) {
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
-      <MiniStat label="Pending Claims" value={formatWolo(profile.wolo.pendingClaimWolo)} />
-      <MiniStat label="Claimed Claims" value={formatWolo(profile.wolo.claimedClaimWolo)} />
-      <MiniStat label="Wagered" value={formatWolo(profile.wolo.wageredWolo)} />
-      <MiniStat label="Payout Tx" value={String(profile.wolo.payoutTxCount)} />
-      <MiniStat label="Staked" value={formatWolo(profile.wolo.activeStakeWolo)} />
-      <MiniStat label="Rewards" value={formatWolo(profile.wolo.stakingRewardsWolo)} />
+    <div className="space-y-3">
+      <div className="flex items-center gap-4 rounded-[1.25rem] border border-amber-300/20 bg-[radial-gradient(circle_at_top_left,rgba(250,204,21,0.2),transparent_34%),linear-gradient(135deg,rgba(120,53,15,0.28),rgba(15,23,42,0.7))] px-4 py-4">
+        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-amber-200/20 bg-slate-950/48">
+          <Image src={WOLO_LOGO_SRC} alt="WOLO" width={42} height={42} className="h-10 w-10 object-contain" />
+        </div>
+        <div className="min-w-0">
+          <div className="text-[10px] uppercase tracking-[0.28em] text-amber-100/70">WOLO Economy</div>
+          <div className="mt-1 text-xl font-semibold text-white">{formatWolo(profile.wolo.totalFlexWolo)}</div>
+          <div className="mt-1 text-xs text-slate-300">claims, wagers, staking, and reward flex in one rail</div>
+        </div>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <MiniStat label="Pending Claims" value={formatWolo(profile.wolo.pendingClaimWolo)} />
+        <MiniStat label="Claimed Claims" value={formatWolo(profile.wolo.claimedClaimWolo)} />
+        <MiniStat label="Wagered" value={formatWolo(profile.wolo.wageredWolo)} />
+        <MiniStat label="Payout Tx" value={String(profile.wolo.payoutTxCount)} />
+        <MiniStat label="Staked" value={formatWolo(profile.wolo.activeStakeWolo)} />
+        <MiniStat label="Rewards" value={formatWolo(profile.wolo.stakingRewardsWolo)} />
+      </div>
     </div>
   );
 }
@@ -624,6 +884,45 @@ function RivalryList({ profile, compact = false }: { profile: PlayerProfile; com
           ) : null}
         </Link>
       ))}
+    </div>
+  );
+}
+
+function ClassicRivalries({ profile }: { profile: PlayerProfile }) {
+  return (
+    <div className="mt-5 space-y-3">
+      {profile.rivalries.length === 0 ? (
+        <div className="rounded-2xl border border-white/8 bg-white/5 px-4 py-5 text-sm text-slate-300">
+          No rivalries yet. The first repeat opponent will show up here.
+        </div>
+      ) : (
+        profile.rivalries.slice(0, 6).map((rivalry) => (
+          <Link
+            key={rivalry.ref.token}
+            href={buildMatchupHref(profile.currentPlayer, rivalry.ref)}
+            className="block rounded-2xl border border-white/8 bg-white/5 px-4 py-4 transition hover:border-rose-300/30 hover:bg-white/10"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="font-medium text-white">{rivalry.ref.name}</div>
+                <div className="mt-1 text-xs uppercase tracking-[0.25em] text-slate-400">
+                  {rivalry.ref.claimed ? "claimed rival" : "replay-built rival"}
+                </div>
+              </div>
+              <div className="text-right text-xs text-slate-300">
+                {rivalry.wins}-{rivalry.losses}
+                {rivalry.unknowns > 0 ? ` · ${rivalry.unknowns} unknown` : ""}
+              </div>
+            </div>
+
+            {rivalry.lastPlayedAt ? (
+              <div className="mt-3 text-xs text-slate-400">
+                Last met {new Date(rivalry.lastPlayedAt).toLocaleString()}
+              </div>
+            ) : null}
+          </Link>
+        ))
+      )}
     </div>
   );
 }
@@ -687,6 +986,10 @@ function Tag({ children }: { children: ReactNode }) {
       {children}
     </span>
   );
+}
+
+function formatRatingMetric(value: number | null | undefined) {
+  return typeof value === "number" && Number.isFinite(value) ? String(Math.round(value)) : "Unknown";
 }
 
 function formatNumber(value: number | null | undefined) {

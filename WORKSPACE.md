@@ -47,7 +47,7 @@ The main public spine now includes:
 
 - a real `/lobby` community surface
 - Advanced `/lobby` as the default public first impression, with Basic view preserved for the simpler community layout and a low-glare outline toggle
-- Advanced player profiles as the default for `/players/[uid]` and `/players/by-name/[name]`, with Basic view preserved through `?view=basic`
+- Claimed player profiles default to Advanced command-center view; unclaimed replay-built profiles default to the classic Basic claim view, with Basic/Advanced toggles on both surfaces
 - shipped leaderboard presentation
 - tournament panel / queue / bracket-preview product UI
 - players, rivalries, and live-games as real first-class destinations
@@ -131,6 +131,7 @@ python /var/www/AoE2HDBets/api-prodn/scripts/set_admin.py --email you@example.co
 ## Current known rough edges
 
 - player profiles are now premium command-center surfaces; exact resource/economy completeness still depends on captured postgame achievement data
+- watcher final replay uploads that trip MGZ full-summary decoding can be preserved as explicit header-only fallback rows; they are proof/identity breadcrumbs, not invented outcome or economy truth
 - exact postgame achievement-table extraction is still not solved
 - watcher behavior is materially healthier, but still a little noisy while iterating
 - docs should stay aligned with the shipped lobby/leaderboard reality as the product evolves

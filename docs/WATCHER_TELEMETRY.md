@@ -10,6 +10,8 @@ Watcher analytics now separates noisy package pulls from confirmed watcher behav
 
 `game_stats` remains the historical fallback for confirmed watcher usage. Rows with `parse_source in ('watcher_live', 'watcher_final')` prove that a watcher-submitted game reached the app, even if no `app_open` telemetry existed yet.
 
+If MGZ full-summary decoding fails on a watcher final upload, the API may store a header-only fallback row with `parse_reason = 'header_only_summary_fallback'` and `key_events.header_only_fallback = true`. Treat that as replay identity/proof preservation only: it may include player/header metadata, but it must not be read as final winner, score, or postgame resource truth.
+
 ## Event Types
 
 Allowed `watcher_client_events.event_type` values:
@@ -102,6 +104,15 @@ where parse_source in ('watcher_live', 'watcher_final')
   and user_uid is not null;
 ```
 
+Header-only fallback watcher rows:
+
+```sql
+select id, user_uid, original_filename, created_at, parse_source, parse_reason
+from game_stats
+where parse_reason = 'header_only_summary_fallback'
+order by created_at desc;
+```
+
 Manual upload users:
 
 ```sql
@@ -110,4 +121,3 @@ from game_stats
 where parse_source = 'file_upload'
   and user_uid is not null;
 ```
-

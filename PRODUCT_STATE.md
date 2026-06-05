@@ -69,8 +69,8 @@ Current strengths:
 
 Current strengths:
 - `/players/[uid]` and `/players/by-name/[name]` now share one command-center profile renderer
-- Advanced view is the default player profile surface; Basic view remains available through `?view=basic`
-- the Advanced profile has a compact hero, live ticker, command deck, form chart, civ/map breakdowns, best-game rail, rivalry rail, watcher proof, stream signal, and `$WOLO` flex rail
+- claimed player pages default to the Advanced command-center surface, while unclaimed replay-built player pages default to the classic Basic claim surface; both account types can toggle Basic/Advanced without changing their natural default URL
+- the Advanced profile has a compact hero, live ticker, command deck, deeper red/green form/status treatment, resource emblems, civ/map breakdowns, best-game rail, rivalry rail, watcher proof, AI Scribe/Grimer readout, stream signal, and premium `$WOLO` logo/flex/staking rail
 - Match Feed is now a scrollable replay archive backed by `/api/player-profile/matches`, with lazy loading so older manual uploads can be reached instead of being trapped outside the initial page
 - economy/resource display is honest: total food/wood/gold/stone and best resource games show when stored replay achievement/economy values exist, and otherwise render as gated/fog instead of invented numbers
 - optional WOLO/community profile rails degrade to zero/empty when a migration-era table is unavailable, so a public player page should not white-screen because one side rail is missing
@@ -161,6 +161,7 @@ Current state:
 - parser now captures much more replay metadata
 - official HD rating snapshots are surfaced
 - normal live-to-final behavior looks materially healthier than before
+- watcher final uploads that hit an MGZ full-summary decoding edge can now fall back to header-only parser metadata instead of disappearing as repeated generic parse failures; those rows keep explicit `header_only_summary_fallback` / `header_only_fallback` breadcrumbs and do not invent winners or postgame economy
 - exact postgame achievement tabs still are not solved
 
 If exact score/economy/military tables matter, likely next step is:

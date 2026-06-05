@@ -29,7 +29,7 @@ export default async function PublicPlayerPage({
   return (
     <PlayerProfilePage
       profile={profile}
-      viewMode={parsePlayerProfileViewMode(resolvedSearchParams.view)}
+      viewMode={parsePlayerProfileViewMode(resolvedSearchParams.view, "advanced")}
     />
   );
 }

@@ -11,6 +11,7 @@ type PlayerMatchFeedClientProps = {
   initialNextCursor: number | null;
   totalMatches: number;
   accent?: "amber" | "rose" | "sky";
+  variant?: "command" | "classic";
 };
 
 function formatDate(value: string | null) {
@@ -59,6 +60,7 @@ export default function PlayerMatchFeedClient({
   initialNextCursor,
   totalMatches,
   accent = "amber",
+  variant = "command",
 }: PlayerMatchFeedClientProps) {
   const [items, setItems] = useState(initialItems);
   const [nextCursor, setNextCursor] = useState(initialNextCursor);
@@ -142,40 +144,72 @@ export default function PlayerMatchFeedClient({
             No replay-backed matches have landed here yet.
           </div>
         ) : (
-          items.map((item) => (
-            <Link
-              key={item.id}
-              href={item.href}
-              className={`block rounded-[1.25rem] border border-white/8 bg-white/5 px-4 py-4 transition hover:bg-white/10 ${accentHoverClass(accent)}`}
-            >
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <div className="font-semibold text-white">{item.mapName}</div>
-                    <span className={`rounded-full border px-2.5 py-1 text-[11px] uppercase tracking-[0.18em] ${resultClass(item.result)}`}>
-                      {item.result}
-                    </span>
+          items.map((item) => {
+            if (variant === "classic") {
+              return (
+                <Link
+                  key={item.id}
+                  href={item.href}
+                  className={`block rounded-2xl border border-white/8 bg-white/5 px-4 py-4 transition hover:bg-white/10 ${accentHoverClass(accent)}`}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="font-medium text-white">{item.mapName}</div>
+                      <div className="mt-1 text-sm text-slate-300">{item.playersLabel}</div>
+                    </div>
+                    <div className="text-right text-xs uppercase tracking-[0.25em] text-slate-400">
+                      {item.winnerLabel}
+                    </div>
                   </div>
-                  <div className="mt-1 text-sm leading-6 text-slate-300">{item.playersLabel}</div>
-                </div>
-                <div className="text-right text-xs uppercase tracking-[0.22em] text-slate-400">
-                  {item.winnerLabel}
-                </div>
-              </div>
 
-              <div className="mt-4 flex flex-wrap gap-2">
-                <Tag>{item.parseLabel}</Tag>
-                <Tag>{item.durationLabel}</Tag>
-                <Tag>{item.playerCivilization}</Tag>
-                {item.score !== null ? <Tag>{Math.round(item.score).toLocaleString()} score</Tag> : null}
-                {item.eapm !== null ? <Tag>{Math.round(item.eapm * 10) / 10} EAPM</Tag> : null}
-                {item.outcomeLabel ? <Tag>{item.outcomeLabel}</Tag> : null}
-                {item.disconnectDetected ? <Tag>disconnect suspected</Tag> : null}
-              </div>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {item.outcomeLabel ? <Tag>{item.outcomeLabel}</Tag> : null}
+                    <Tag>{item.parseLabel}</Tag>
+                    {item.disconnectDetected ? <Tag>disconnect suspected</Tag> : null}
+                  </div>
 
-              <div className="mt-3 text-xs text-slate-400">{formatDate(item.playedAt)}</div>
-            </Link>
-          ))
+                  {item.playedAt ? (
+                    <div className="mt-3 text-xs text-slate-400">{formatDate(item.playedAt)}</div>
+                  ) : null}
+                </Link>
+              );
+            }
+
+            return (
+              <Link
+                key={item.id}
+                href={item.href}
+                className={`block rounded-[1.25rem] border border-white/8 bg-white/5 px-4 py-4 transition hover:bg-white/10 ${accentHoverClass(accent)}`}
+              >
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="font-semibold text-white">{item.mapName}</div>
+                      <span className={`rounded-full border px-2.5 py-1 text-[11px] uppercase tracking-[0.18em] ${resultClass(item.result)}`}>
+                        {item.result}
+                      </span>
+                    </div>
+                    <div className="mt-1 text-sm leading-6 text-slate-300">{item.playersLabel}</div>
+                  </div>
+                  <div className="text-right text-xs uppercase tracking-[0.22em] text-slate-400">
+                    {item.winnerLabel}
+                  </div>
+                </div>
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Tag>{item.parseLabel}</Tag>
+                  <Tag>{item.durationLabel}</Tag>
+                  <Tag>{item.playerCivilization}</Tag>
+                  {item.score !== null ? <Tag>{Math.round(item.score).toLocaleString()} score</Tag> : null}
+                  {item.eapm !== null ? <Tag>{Math.round(item.eapm * 10) / 10} EAPM</Tag> : null}
+                  {item.outcomeLabel ? <Tag>{item.outcomeLabel}</Tag> : null}
+                  {item.disconnectDetected ? <Tag>disconnect suspected</Tag> : null}
+                </div>
+
+                <div className="mt-3 text-xs text-slate-400">{formatDate(item.playedAt)}</div>
+              </Link>
+            );
+          })
         )}
         <div ref={sentinelRef} className="h-6" />
       </div>

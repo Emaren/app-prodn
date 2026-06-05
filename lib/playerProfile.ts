@@ -442,7 +442,8 @@ function buildCurrentStreakLabel(games: PlayerProfileGameRow[], currentPlayer: P
   }
 
   if (!streakKind || count === 0) return "No locked streak";
-  return `${count} ${streakKind === "win" ? "win" : "loss"}${count === 1 ? "" : "s"}`;
+  if (streakKind === "win") return `${count} ${count === 1 ? "win" : "wins"}`;
+  return `${count} ${count === 1 ? "loss" : "losses"}`;
 }
 
 function buildCommandStats(games: PlayerProfileGameRow[], currentPlayer: PublicPlayerRef): PlayerCommandStats {
@@ -1234,7 +1235,11 @@ export async function loadPlayerProfileMatchPage(
   );
 }
 
-export function parsePlayerProfileViewMode(value: string | string[] | undefined): PlayerProfileViewMode {
+export function parsePlayerProfileViewMode(
+  value: string | string[] | undefined,
+  defaultMode: PlayerProfileViewMode = "advanced"
+): PlayerProfileViewMode {
   const raw = Array.isArray(value) ? value[0] : value;
-  return raw === "basic" ? "basic" : "advanced";
+  if (raw === "basic" || raw === "advanced") return raw;
+  return defaultMode;
 }

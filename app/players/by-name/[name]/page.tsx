@@ -51,7 +51,7 @@ export default async function ReplayOnlyPlayerPage({
   return (
     <PlayerProfilePage
       profile={profile}
-      viewMode={parsePlayerProfileViewMode(resolvedSearchParams.view)}
+      viewMode={parsePlayerProfileViewMode(resolvedSearchParams.view, "basic")}
     />
   );
 }

@@ -58,11 +58,17 @@ The fourth shipped slice is challenge/watcher market lifecycle cleanup:
 The fifth shipped slice is the premium player profile pass:
 
 - Replaced duplicated Basic player pages with a shared profile data layer and renderer for `/players/[uid]` and `/players/by-name/[name]`.
-- Made Advanced the default profile view and kept Basic behind the `?view=basic` toggle.
+- Made claimed profiles default to Advanced and kept Basic available through the view toggle.
 - Added command-center stats: form, win rates, streaks, civ/map breakdowns, best games, rivalries, watcher proof, Twitch signal, and `$WOLO` rails.
 - Added lazy loading for the Match Feed through `/api/player-profile/matches`, so older manual backfills remain reachable.
 - Added honest resource/economy rails that show total food/wood/gold/stone only when stored achievement/economy values exist.
 - Aggregated live watcher uploaders per session so dual/stacked watcher coverage displays as a stronger proof signal instead of clashing chips.
+
+The sixth shipped slice is the profile first-impression and parser-resilience polish:
+
+- Unclaimed replay-built profiles now default back to the classic Basic claim page, while still allowing Advanced via the toggle.
+- Advanced profile polish adds deeper red/green command-deck treatment, cleaner form-chart spacing, resource emblems, a premium WOLO logo rail, and an AI Scribe/Grimer readout.
+- API replay parsing now falls back to explicit header-only metadata when MGZ full-summary decoding fails, preserving watcher proof rows without inventing winners or postgame economy.
 
 ## Next concrete slice
 

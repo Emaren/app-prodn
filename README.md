@@ -21,7 +21,8 @@ It currently owns the premium lobby/community surface, leaderboard presentation,
 - Same-origin browser API routes for replay upload, lobby snapshot, inbox/admin actions, and appearance state
 - Premium lobby presentation layer with theme circles and lobby-specific shell behavior
 - Advanced `/lobby` arena stack with the moving live ticker, Watch & Chat hero/comments rail, compact hero bet slip, compact WOLO swap tile, and the preserved Basic community lobby toggle
-- Advanced player profile command center with Basic toggle, lazy match archive, watcher proof, resource/economy rails, stream signal, rivalry hooks, and `$WOLO` stats
+- Claimed player profiles default to the Advanced command center; unclaimed replay-built profiles default to the classic Basic claim page, and both can toggle Basic/Advanced
+- Advanced player profiles include lazy match archive, watcher proof, form/rivalry diagnostics, resource emblems, AI Scribe/Grimer readout, stream signal, and premium `$WOLO`/staking stats
 - Lazy client islands for wallet-heavy `/wolo`, `/wallet`, and `/connect-wallet` routes so the server shell paints with a small first-load bundle
 
 ## Shipped public surfaces
@@ -159,6 +160,7 @@ These routes are important because they often do more than simple pass-through w
 - Lobby snapshot endpoint: `/api/lobby`
 - Lobby stream endpoint: `/api/lobby/stream`
 - Recent Match Feed sorts and displays the backend `played_at` contract so bulk reparses of old saved games do not outrank newer actual matches
+- Watcher final uploads can store header-only fallback rows when MGZ full-summary decoding fails; fallback rows are explicit parser breadcrumbs and do not fabricate a winner or postgame resource table
 - Watcher packages: generated in `aoe2-watcher/dist`, then synced into `public/downloads` with `npm run watcher:sync`
 - Watcher latest-version metadata: `/api/watcher/release` feeds the desktop app's Update / Latest Version indicator
 - Watcher pairing route: `/profile?watcher_pair=1` (mints a key and launches `aoe2hd-watcher://pair?...`)
