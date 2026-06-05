@@ -53,14 +53,14 @@ function PlayerProfileAdvanced({ profile }: { profile: PlayerProfile }) {
       <section className="grid gap-5 xl:grid-cols-[1.12fr_0.88fr]">
         <div className="space-y-5">
           <Panel eyebrow="Command Deck" title="Performance radar" count={`${profile.command.totalMatches} games`}>
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
               <CommandTile label="Win Rate" value={formatPercent(profile.command.winRate)} detail={`${profile.command.wins}W / ${profile.command.losses}L`} tone="emerald" />
               <CommandTile label="Current Streak" value={profile.command.currentStreakLabel} detail={`${profile.command.matchesLast30Days} games in 30d`} tone={currentStreakTone} />
               <CommandTile label="Peak Score" value={formatNumber(profile.command.bestScore)} detail={`avg ${formatNumber(profile.command.averageScore)}`} tone="sky" />
               <CommandTile label="Peak EAPM" value={formatDecimal(profile.command.bestEapm)} detail={`avg ${formatDecimal(profile.command.averageEapm)}`} tone="red" />
             </div>
 
-            <div className="mt-5 grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
+            <div className="mt-5 grid gap-4 2xl:grid-cols-[0.95fr_1.05fr]">
               <FormChart points={profile.charts.form} />
               <div className="grid gap-3 sm:grid-cols-3">
                 <MiniStat label="Steam RM" value={formatNumber(profile.steam.rmRating)} />
@@ -616,9 +616,9 @@ function CommandTile({
           : "border-amber-400/26 bg-[radial-gradient(circle_at_25%_0%,rgba(245,158,11,0.18),transparent_42%),linear-gradient(180deg,rgba(120,53,15,0.28),rgba(15,23,42,0.6))]";
 
   return (
-    <div className={`min-h-[9.5rem] rounded-[1.35rem] border px-5 py-5 ${toneClass}`}>
+    <div className={`min-h-[9.5rem] min-w-0 rounded-[1.35rem] border px-5 py-5 ${toneClass}`}>
       <div className="text-[11px] uppercase tracking-[0.24em] text-slate-400">{label}</div>
-      <div className="mt-4 break-words text-2xl font-semibold leading-tight text-white">{value}</div>
+      <div className="mt-4 text-2xl font-semibold leading-tight text-white">{value}</div>
       <div className="mt-2 text-sm text-slate-300">{detail}</div>
     </div>
   );
@@ -646,7 +646,7 @@ function FormChart({ points }: { points: PlayerFormPoint[] }) {
             Form chart wakes up after the first parsed match.
           </div>
         ) : (
-          <div className="grid h-36 grid-cols-12 items-end gap-2">
+          <div className="grid h-36 grid-cols-12 items-end gap-1 sm:gap-2">
             {points.map((point) => {
               const height = point.result === "win" ? "h-28" : point.result === "loss" ? "h-14" : "h-8";
               const color =
@@ -663,9 +663,9 @@ function FormChart({ points }: { points: PlayerFormPoint[] }) {
                   aria-label={`${point.label} ${point.result}`}
                 >
                   <div className="flex h-28 w-full items-end">
-                    <div className={`mx-auto w-full max-w-8 rounded-t-[0.6rem] ${height} ${color} opacity-85 transition group-hover:opacity-100`} />
+                    <div className={`mx-auto w-full max-w-7 rounded-t-[0.6rem] ${height} ${color} opacity-85 transition group-hover:opacity-100 sm:max-w-8`} />
                   </div>
-                  <div className="w-full truncate text-center text-[9px] text-slate-500">{point.label}</div>
+                  <div className="w-full text-center text-[9px] leading-none text-slate-500 sm:text-[10px]">{point.label}</div>
                 </Link>
               );
             })}
