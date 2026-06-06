@@ -23,12 +23,12 @@ export type WatcherDownloadArtifact = {
 };
 
 export const WATCHER_RELEASE = {
-  version: "1.1.4",
-  label: "AoE2HDBets Watcher 1.1.4",
+  version: "1.1.5",
+  label: "AoE2HDBets Watcher 1.1.5",
   releasedOn: "May 24, 2026",
   signingStatus: "Unsigned builds for now",
   featureChips: [
-    "AoE2HDBets Watcher 1.1.4",
+    "AoE2HDBets Watcher 1.1.5",
     "May 24, 2026",
     "Windows installer",
     "Windows portable fallback",
@@ -45,11 +45,11 @@ export const WATCHER_DOWNLOAD_ARTIFACTS: readonly WatcherDownloadArtifact[] = [
     title: "Windows Installer",
     shortLabel: "NSIS installer",
     badge: "Recommended",
-    filename: "AoE2HDBets Watcher Setup 1.1.4.exe",
+    filename: "AoE2HDBets Watcher Setup 1.1.5.exe",
     format: "NSIS",
     description:
       "Smoothest Windows path. Installs cleanly, creates shortcuts, and keeps the first run obvious.",
-    downloadPath: "/downloads/AoE2HDBets%20Watcher%20Setup%201.1.4.exe",
+    downloadPath: "/downloads/AoE2HDBets%20Watcher%20Setup%201.1.5.exe",
     trackedHref: "/download/watcher/windows-installer",
     primary: true,
     featuredOnDownloadPage: true,
@@ -60,11 +60,11 @@ export const WATCHER_DOWNLOAD_ARTIFACTS: readonly WatcherDownloadArtifact[] = [
     title: "Windows Portable",
     shortLabel: "Backup EXE",
     badge: "Fallback",
-    filename: "AoE2HDBets Watcher 1.1.4.exe",
+    filename: "AoE2HDBets Watcher 1.1.5.exe",
     format: "portable",
     description:
       "Same watcher core in a no-installer package if SmartScreen or installer policy gets in the way.",
-    downloadPath: "/downloads/AoE2HDBets%20Watcher%201.1.4.exe",
+    downloadPath: "/downloads/AoE2HDBets%20Watcher%201.1.5.exe",
     trackedHref: "/download/watcher/windows-portable",
     primary: false,
     featuredOnDownloadPage: true,
