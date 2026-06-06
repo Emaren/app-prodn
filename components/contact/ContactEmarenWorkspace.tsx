@@ -296,7 +296,7 @@ export default function ContactEmarenWorkspace() {
       } else {
         void refreshSummary(undefined, { silent: true });
       }
-    }, 4_000);
+    }, 15_000);
 
     return () => {
       window.clearInterval(interval);

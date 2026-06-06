@@ -116,7 +116,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
     void loadHeaderCounts();
     const interval = window.setInterval(() => {
       void loadHeaderCounts();
-    }, 10_000);
+    }, 30_000);
 
     return () => {
       cancelled = true;

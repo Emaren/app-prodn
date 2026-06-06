@@ -134,7 +134,7 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
     void refreshSummary();
     const interval = window.setInterval(() => {
       void refreshSummary();
-    }, 5_000);
+    }, 60_000);
 
     return () => {
       window.clearInterval(interval);
@@ -147,7 +147,7 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
     void refreshPanel(selectedTargetUidRef.current);
     const interval = window.setInterval(() => {
       void refreshPanel(undefined, { silent: true });
-    }, 4_000);
+    }, 15_000);
 
     return () => {
       window.clearInterval(interval);

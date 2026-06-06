@@ -73,6 +73,7 @@ function OnlineUserCard({
   return (
     <Link
       href={`/players/${user.uid}`}
+      prefetch={false}
       className={`flex flex-wrap items-center justify-between gap-3 rounded-2xl border px-4 py-4 transition ${tone.card} ${tone.cardHover}`}
     >
       <div>

@@ -147,6 +147,7 @@ function PlayerCard({
   return (
     <Link
       href={entry.href}
+      prefetch={false}
       className={`block rounded-2xl border border-white/8 bg-white/5 p-5 transition hover:bg-white/10 ${accentStyles}`}
     >
       <div className="flex items-start justify-between gap-4">
