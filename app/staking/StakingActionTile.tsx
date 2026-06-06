@@ -410,7 +410,7 @@ export default function StakingActionTile() {
           {stakingConfig.unstakeReadyDetail || "Staking wallet signer is not configured."}
         </div>
       ) : null}
-      {isAdmin && walletUnderfunded ? (
+      {isAdmin && walletUnderfunded && operatorTopUpNeededWolo >= 1 ? (
         <div className="mt-2 rounded-[0.85rem] border border-amber-300/20 bg-amber-300/10 px-3 py-1.5 text-xs leading-5 text-amber-100">
           Operator top-up needed: {formatWholeWolo(operatorTopUpNeededWolo)} reserve gap.
         </div>

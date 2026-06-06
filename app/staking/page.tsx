@@ -49,6 +49,7 @@ import StakingActivityFeed from "./StakingActivityFeed";
 import StakingHeroStakeTiles from "./StakingHeroStakeTiles";
 import StakingActionTile from "./StakingActionTile";
 import StakingAdvancedTrigger from "./StakingAdvancedTrigger";
+import StakingPayoutSchedule from "./StakingPayoutSchedule";
 import TreasuryActions from "./TreasuryActions";
 
 export const runtime = "nodejs";
@@ -595,6 +596,7 @@ export default async function StakingPage({
                 <p className="max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
                   50% of betting fees go to stakers.
                 </p>
+                  <StakingPayoutSchedule />
               </div>
             </div>
 
@@ -911,7 +913,7 @@ export default async function StakingPage({
 
 function WoloMark() {
   return (
-    <div className="flex h-14 w-14 items-center justify-center rounded-full border border-amber-300/28 bg-[radial-gradient(circle_at_35%_25%,rgba(251,191,36,0.18),rgba(15,23,42,0.92))] shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_12px_34px_rgba(2,6,23,0.28)]">
+      <div className="flex h-14 w-14 items-center justify-center rounded-full border border-amber-300/28 bg-slate-950/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
       <Image src={WOLO_LOGO_SRC} alt="" width={32} height={32} className="h-8 w-8 object-contain" />
     </div>
   );
