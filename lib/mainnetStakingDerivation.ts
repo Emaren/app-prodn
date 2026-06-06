@@ -36,10 +36,14 @@ function addWeight(
   currentWeight: bigint,
   currentStakeWolo: number,
   from: Date | null,
-  to: Date
+  to: Date,
+  weightStartAt?: Date
 ) {
   if (!from) return currentWeight;
-  const seconds = Math.max(0, Math.floor((to.getTime() - from.getTime()) / 1000));
+
+  const startMs = Math.max(from.getTime(), weightStartAt?.getTime() ?? from.getTime());
+  const seconds = Math.max(0, Math.floor((to.getTime() - startMs) / 1000));
+
   return currentWeight + BigInt(Math.max(0, Math.trunc(currentStakeWolo))) * BigInt(seconds);
 }
 
@@ -58,11 +62,15 @@ export function deriveMainnetStakingPositionsFromTransfers(
     stakingWalletAddress: string;
     mainnetStartAt: Date | string;
     asOf?: Date | string;
+    weightStartAt?: Date | string;
   }
 ): DerivedMainnetStakingPosition[] {
   const stakingWalletAddress = normalizeAddress(options.stakingWalletAddress);
   const mainnetStartAt = parseTimestamp(options.mainnetStartAt) || new Date(0);
   const asOf = parseTimestamp(options.asOf ?? new Date()) || new Date();
+  const parsedWeightStartAt = parseTimestamp(options.weightStartAt ?? mainnetStartAt) || mainnetStartAt;
+  const weightStartAt =
+    parsedWeightStartAt.getTime() < mainnetStartAt.getTime() ? mainnetStartAt : parsedWeightStartAt;
   if (!stakingWalletAddress) return [];
 
   type MutablePosition = DerivedMainnetStakingPosition & {
@@ -136,11 +144,12 @@ export function deriveMainnetStakingPositionsFromTransfers(
       } satisfies MutablePosition);
 
     existing._weight = addWeight(
-      existing._weight,
-      existing.currentStakedWolo,
-      existing._lastWeightAt,
-      timestamp
-    );
+        existing._weight,
+        existing.currentStakedWolo,
+        existing._lastWeightAt,
+        timestamp,
+        weightStartAt
+      );
     existing._lastWeightAt = timestamp;
     existing.lastTxAt = timestamp;
     existing.player = player;
@@ -163,11 +172,12 @@ export function deriveMainnetStakingPositionsFromTransfers(
   return Array.from(positions.values())
     .map((position) => {
       const finalWeight = addWeight(
-        position._weight,
-        position.currentStakedWolo,
-        position._lastWeightAt,
-        asOf
-      );
+          position._weight,
+          position.currentStakedWolo,
+          position._lastWeightAt,
+          asOf,
+          weightStartAt
+        );
       return {
         userId: position.userId,
         player: position.player,

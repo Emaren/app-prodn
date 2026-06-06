@@ -32,6 +32,7 @@ function displayUserName(user: {
 
 export type LoadMainnetStakingPositionsOptions = {
   asOf?: Date;
+  weightStartAt?: Date;
   take?: number;
 };
 
@@ -44,6 +45,7 @@ export async function loadMainnetStakingPositions(
 
   const asOf = options.asOf ?? new Date();
   const mainnetStartAt = getWoloMainnetDisplayStartAt();
+  const weightStartAt = options.weightStartAt ?? mainnetStartAt;
   const take = Math.max(1, Math.min(options.take ?? 5_000, 10_000));
   const [addressBook, rows, events] = await Promise.all([
     buildWoloAddressBook(prisma),
@@ -149,6 +151,7 @@ export async function loadMainnetStakingPositions(
     stakingWalletAddress,
     mainnetStartAt,
     asOf,
+    weightStartAt,
   });
 }
 

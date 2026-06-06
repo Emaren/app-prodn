@@ -1467,7 +1467,7 @@ export async function calculateDailyStakingRewardDistribution(
       },
     }),
     isWoloMainnet()
-      ? loadMainnetStakingPositions(prisma, { asOf: periodEnd })
+      ? loadMainnetStakingPositions(prisma, { asOf: periodEnd, weightStartAt: periodStart })
       : Promise.resolve([]),
   ]);
 
@@ -1546,40 +1546,72 @@ export async function calculateDailyStakingRewardDistribution(
           },
         });
 
-    if (totalWeight > BigInt(0) && feePools.stakerPoolWolo > 0) {
-      for (const position of weightedPositions) {
-        const rewardWolo = Number(
-          (BigInt(feePools.stakerPoolWolo) * position.userWeight) / totalWeight
-        );
-        if (rewardWolo <= 0) continue;
+      if (totalWeight > BigInt(0) && feePools.stakerPoolWolo > 0) {
+        const rewardPlans = weightedPositions
+          .filter((position) => position.userWeight > BigInt(0))
+          .map((position, originalIndex) => {
+            const numerator = BigInt(feePools.stakerPoolWolo) * position.userWeight;
 
-        await tx.stakingRewardAllocation.create({
-          data: {
-            distributionId: distribution.id,
-            userId: position.userId,
-            positionId: position.id,
-            walletAddress: position.walletAddress,
-            userWeight: position.userWeight,
-            totalWeight,
-            rewardWolo,
-            status: "CREDITED",
-            creditedAt: new Date(),
-          },
-        });
+            return {
+              ...position,
+              rewardWolo: Number(numerator / totalWeight),
+              rewardRemainder: numerator % totalWeight,
+              originalIndex,
+            };
+          });
 
-        if (!isWoloMainnet() && position.id) {
-          await tx.stakingPosition.update({
-            where: { id: position.id },
+        let unallocatedRewardWolo =
+          feePools.stakerPoolWolo -
+          rewardPlans.reduce((sum, position) => sum + position.rewardWolo, 0);
+
+        for (const position of [...rewardPlans].sort((left, right) => {
+          if (left.rewardRemainder !== right.rewardRemainder) {
+            return left.rewardRemainder > right.rewardRemainder ? -1 : 1;
+          }
+
+          if (left.userWeight !== right.userWeight) {
+            return left.userWeight > right.userWeight ? -1 : 1;
+          }
+
+          return left.userId - right.userId;
+        })) {
+          if (unallocatedRewardWolo <= 0) break;
+
+          position.rewardWolo += 1;
+          unallocatedRewardWolo -= 1;
+        }
+
+        for (const position of rewardPlans.sort((left, right) => left.originalIndex - right.originalIndex)) {
+          const rewardWolo = position.rewardWolo;
+          if (rewardWolo <= 0) continue;
+
+          await tx.stakingRewardAllocation.create({
             data: {
-              pendingRewardsWolo: { increment: rewardWolo },
-              lifetimeRewardsWolo: { increment: rewardWolo },
-              accumulatedWeight: position.userWeight,
-              lastWeightUpdateAt: periodEnd,
+              distributionId: distribution.id,
+              userId: position.userId,
+              positionId: position.id,
+              walletAddress: position.walletAddress,
+              userWeight: position.userWeight,
+              totalWeight,
+              rewardWolo,
+              status: "CREDITED",
+              creditedAt: new Date(),
             },
           });
+
+          if (!isWoloMainnet() && position.id) {
+            await tx.stakingPosition.update({
+              where: { id: position.id },
+              data: {
+                pendingRewardsWolo: { increment: rewardWolo },
+                lifetimeRewardsWolo: { increment: rewardWolo },
+                accumulatedWeight: position.userWeight,
+                lastWeightUpdateAt: periodEnd,
+              },
+            });
+          }
         }
       }
-    }
 
     await tx.stakingDailyStat.upsert({
       where: { date: periodStart },

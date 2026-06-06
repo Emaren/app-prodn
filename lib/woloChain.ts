@@ -12,7 +12,7 @@ export const WOLO_MAINNET_CHAIN_ID = "wolo-1";
 export const WOLO_MAINNET_DISPLAY_START_ISO =
   process.env.NEXT_PUBLIC_WOLO_MAINNET_DISPLAY_START_AT?.trim() ||
   process.env.WOLO_MAINNET_DISPLAY_START_AT?.trim() ||
-  "2026-05-25T00:00:00.000Z";
+  "2026-06-01T00:00:00.000Z";
 
 export const WOLO_MAX_SUPPLY_DISPLAY = "100,000,000";
 
@@ -94,7 +94,7 @@ export function getWoloMainnetDisplayStartAt() {
   if (!Number.isNaN(parsed.getTime())) {
     return parsed;
   }
-  return new Date("2026-05-25T00:00:00.000Z");
+  return new Date("2026-06-01T00:00:00.000Z");
 }
 
 export function isWoloMainnet() {
