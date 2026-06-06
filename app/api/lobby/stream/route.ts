@@ -28,12 +28,21 @@ export async function GET(request: NextRequest) {
       const cleanup = () => {
         if (closed) return;
         closed = true;
-        if (interval) clearInterval(interval);
-        if (heartbeat) clearInterval(heartbeat);
+
+        if (interval) {
+          clearInterval(interval);
+          interval = null;
+        }
+
+        if (heartbeat) {
+          clearInterval(heartbeat);
+          heartbeat = null;
+        }
       };
 
       const safeEnqueue = (payload: Uint8Array) => {
         if (closed || request.signal.aborted) {
+          cleanup();
           return false;
         }
 
@@ -48,6 +57,7 @@ export async function GET(request: NextRequest) {
 
       const pushSnapshot = async () => {
         if (closed || request.signal.aborted || snapshotInFlight) {
+          cleanup();
           return;
         }
 
@@ -59,16 +69,26 @@ export async function GET(request: NextRequest) {
             viewerUid,
             guestReactionSessionId
           );
+
           safeEnqueue(formatSse("snapshot", snapshot));
         } catch (error) {
-          console.warn("Failed to stream lobby snapshot:", error);
-          safeEnqueue(formatSse("error", { detail: "Failed to load live lobby snapshot." }));
+          if (!closed && !request.signal.aborted) {
+            console.warn("Failed to stream lobby snapshot:", error);
+            safeEnqueue(formatSse("error", { detail: "Failed to load live lobby snapshot." }));
+          }
         } finally {
           snapshotInFlight = false;
         }
       };
 
+      request.signal.addEventListener("abort", cleanup, { once: true });
+
       await pushSnapshot();
+
+      if (closed || request.signal.aborted) {
+        cleanup();
+        return;
+      }
 
       interval = setInterval(() => {
         void pushSnapshot();
@@ -77,14 +97,20 @@ export async function GET(request: NextRequest) {
       heartbeat = setInterval(() => {
         safeEnqueue(encoder.encode(":keep-alive\n\n"));
       }, 15_000);
-
-      request.signal.addEventListener("abort", cleanup, { once: true });
     },
     cancel() {
       if (closed) return;
       closed = true;
-      if (interval) clearInterval(interval);
-      if (heartbeat) clearInterval(heartbeat);
+
+      if (interval) {
+        clearInterval(interval);
+        interval = null;
+      }
+
+      if (heartbeat) {
+        clearInterval(heartbeat);
+        heartbeat = null;
+      }
     },
   });
 
