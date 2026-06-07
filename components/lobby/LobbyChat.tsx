@@ -532,7 +532,7 @@ function LobbyMessageCard({
 
       <p className="mt-3 text-sm leading-6 text-slate-200">{item.message.body}</p>
 
-      <div className="mt-4 flex flex-wrap items-center gap-2">
+      <div className="mt-4 flex min-w-0 max-w-full flex-wrap items-center gap-2 overflow-x-hidden">
         {item.message.reactions.map((reaction) => {
           const tooltip =
             isAuthenticated && (reaction.users.length > 0 || reaction.anonymousCount > 0)
@@ -564,20 +564,20 @@ function LobbyMessageCard({
           onClick={handleReactionHandleClick}
           aria-label={pickerVisible ? "Hide reactions" : "Show reactions"}
           aria-expanded={pickerVisible}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-[#0c1524] text-base text-slate-300 transition hover:border-white/18 hover:text-white"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-[#0c1524] text-base text-slate-300 transition hover:border-white/18 hover:text-white"
         >
           +
         </button>
       </div>
 
         <div
-          className={`mt-3 overflow-hidden transition-all duration-150 ${
-            pickerVisible ? "max-h-48 opacity-100" : "max-h-0 opacity-0"
+          className={`mt-3 max-w-full overflow-hidden transition-all duration-150 ${
+            pickerVisible ? "max-h-64 opacity-100" : "max-h-0 opacity-0"
           }`}
           onMouseEnter={handleDesktopHoverStart}
           onMouseLeave={handleDesktopHoverEnd}
         >
-          <div className="flex w-full flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-[#091321] p-2 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.025)]">
+          <div className="flex w-full min-w-0 max-w-full flex-wrap items-center gap-2 overflow-x-hidden rounded-2xl border border-white/10 bg-[#091321] p-2 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.025)]">
             {LOBBY_MESSAGE_REACTIONS.map((emoji) => {
               const existing = item.message.reactions.find((reaction) => reaction.emoji === emoji);
               const isActive = Boolean(existing?.viewerReacted);
@@ -589,7 +589,7 @@ function LobbyMessageCard({
                   onClick={(event) => handleReactionToggle(event, emoji)}
                   aria-pressed={isActive}
                   disabled={reactingMessageId === item.message.id}
-                  className={`flex h-10 min-w-10 items-center justify-center rounded-full border px-3 text-base transition ${
+                  className={`flex h-11 min-w-11 items-center justify-center rounded-full border px-3.5 text-[17px] transition ${
                     isActive
                       ? "border-amber-300/30 bg-amber-400/16 text-amber-50 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.12)]"
                       : "border-white/10 bg-white/[0.045] text-slate-200 hover:border-white/18 hover:bg-white/[0.1] hover:text-white"
