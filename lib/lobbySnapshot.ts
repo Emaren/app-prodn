@@ -32,7 +32,7 @@ async function loadRecentMatches(): Promise<LobbyMatchRow[]> {
     return payload
       .slice()
       .sort((a, b) => getLobbyMatchPlayedAtMs(b) - getLobbyMatchPlayedAtMs(a))
-      .slice(0, 6);
+      .slice(0, 60);
   } catch (error) {
     console.warn("Failed to load recent matches for lobby:", error);
     return [];
