@@ -85,6 +85,9 @@ export function LobbyChat(props: LobbyChatProps) {
     aiGrimerEnabled,
     onMessageBodyChange,
     onSendMessage,
+    onAiEnabledChange,
+    onAiScribeEnabledChange,
+    onAiGrimerEnabledChange,
     onToggleReaction,
     onEditMessage,
     onDeleteMessage,
@@ -107,7 +110,7 @@ export function LobbyChat(props: LobbyChatProps) {
 
   return (
     <div
-      className={`flex h-[min(88dvh,48rem)] min-h-[32rem] w-full min-w-0 max-w-full flex-col overflow-hidden rounded-[1.75rem] border p-4 sm:h-[min(88dvh,52rem)] sm:min-h-[35rem] sm:p-5 lg:h-[min(82dvh,52rem)] lg:min-h-[34rem] lg:p-6 ${tone.panelShell}`}
+      className={`flex h-[min(76dvh,46rem)] min-h-[28rem] w-full min-w-0 max-w-full flex-col overflow-hidden rounded-[1.75rem] border p-4 sm:h-[min(78dvh,48rem)] sm:min-h-[30rem] sm:p-5 lg:h-[min(78dvh,50rem)] lg:min-h-[32rem] lg:p-6 ${tone.panelShell}`}
       style={style}
     >
       <div className="flex items-center justify-between gap-4">
@@ -178,6 +181,39 @@ export function LobbyChat(props: LobbyChatProps) {
         <div className="rounded-[1.25rem] px-1 py-1">
           {isAuthenticated ? (
             <div className="space-y-2">
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-[1.15rem] border border-white/10 bg-[#09111d]/75 p-2 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.035)]">
+                <button
+                  type="button"
+                  onClick={() => onAiEnabledChange(!aiEnabled)}
+                  disabled={chatPending}
+                  aria-pressed={aiEnabled}
+                  aria-label={aiEnabled ? "Turn AI voices off" : "Turn AI voices on"}
+                  title={aiEnabled ? "AI voices on" : "AI voices off"}
+                  className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                    aiEnabled
+                      ? "border-emerald-300/24 bg-emerald-400/12 text-emerald-100 shadow-[0_0_22px_rgba(52,211,153,0.10)]"
+                      : "border-white/10 bg-[#0d1524]/90 text-slate-400 hover:border-white/18 hover:text-white"
+                  }`}
+                >
+                  ⏻
+                </button>
+
+                <div className="flex min-w-0 flex-1 flex-wrap justify-center gap-2">
+                  <AiVoicePill
+                    label="The AI Scribe"
+                    checked={aiEnabled && aiScribeEnabled}
+                    disabled={!aiEnabled || chatPending}
+                    onToggle={() => onAiScribeEnabledChange(!aiScribeEnabled)}
+                  />
+                  <AiVoicePill
+                    label="Grimer"
+                    checked={aiEnabled && aiGrimerEnabled}
+                    disabled={!aiEnabled || chatPending}
+                    onToggle={() => onAiGrimerEnabledChange(!aiGrimerEnabled)}
+                  />
+                </div>
+              </div>
+
               <div className="flex items-center justify-between gap-3 px-1">
                 <div className="truncate text-xs text-slate-500">
                   Chatting as <span className="font-semibold text-slate-300">{playerName || displayName(currentUserInGameName, currentUserSteamPersonaName)}</span>
@@ -209,7 +245,7 @@ export function LobbyChat(props: LobbyChatProps) {
                   type="button"
                   onClick={onSendMessage}
                   disabled={chatPending || messageBody.trim().length === 0}
-                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${tone.primaryButton}`}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-cyan-300/16 bg-[#132338]/92 text-sm font-semibold text-cyan-50 transition hover:border-cyan-200/30 hover:bg-[#18304d] disabled:cursor-not-allowed disabled:opacity-50"
                   aria-label={chatPending ? "Sending message" : "Send message"}
                   title={chatPending ? "Sending..." : "Send"}
                 >
@@ -256,6 +292,34 @@ export function LobbyChat(props: LobbyChatProps) {
   );
 }
 
+
+function AiVoicePill({
+  label,
+  checked,
+  disabled,
+  onToggle,
+}: {
+  label: string;
+  checked: boolean;
+  disabled: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      disabled={disabled}
+      aria-pressed={checked}
+      className={`inline-flex h-10 min-w-[9.75rem] max-w-full items-center justify-center rounded-full border px-4 text-center text-[11px] font-medium uppercase tracking-[0.16em] transition ${
+        checked
+          ? "border-cyan-300/20 bg-[#132338] text-cyan-50 shadow-[inset_0_0_0_1px_rgba(34,211,238,0.14)]"
+          : "border-white/10 bg-[#0d1524]/90 text-slate-300 hover:border-white/18 hover:bg-[#10192a] hover:text-white"
+      } disabled:cursor-not-allowed disabled:opacity-45`}
+    >
+      <span className="truncate">{label}</span>
+    </button>
+  );
+}
 
 function LobbyMessageCard({
   item,

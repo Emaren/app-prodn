@@ -2,7 +2,7 @@
 
 import { formatLobbyMoment } from "@/components/lobby/utils";
 import Link from "next/link";
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode } from "react";
 import {
   getLobbyPresentationTone,
   type LobbyThemeKey,
@@ -31,43 +31,11 @@ export function RecentMatchesPanel({
   viewMode,
 }: RecentMatchesPanelProps) {
   const tone = getLobbyPresentationTone(themeKey, viewMode);
-  const [visibleCount, setVisibleCount] = useState(MATCH_FEED_PAGE_SIZE);
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
-
-  const visibleMatches = useMemo(
-    () => recentMatches.slice(0, Math.min(visibleCount, recentMatches.length)),
-    [recentMatches, visibleCount]
-  );
-
-  const hasMoreMatches = visibleMatches.length < recentMatches.length;
-
-  useEffect(() => {
-    setVisibleCount(MATCH_FEED_PAGE_SIZE);
-  }, [recentMatches.length]);
-
-  useEffect(() => {
-    if (!hasMoreMatches) return;
-
-    const sentinel = sentinelRef.current;
-    if (!sentinel) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (!entries.some((entry) => entry.isIntersecting)) return;
-
-        setVisibleCount((current) =>
-          Math.min(recentMatches.length, current + MATCH_FEED_PAGE_SIZE)
-        );
-      },
-      { rootMargin: "240px 0px" }
-    );
-
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [hasMoreMatches, recentMatches.length]);
+  const visibleMatches = recentMatches.slice(0, MATCH_FEED_PAGE_SIZE * 3);
+  const hiddenMatchCount = Math.max(0, recentMatches.length - visibleMatches.length);
 
   return (
-    <div className={`rounded-[1.75rem] border p-6 ${tone.panelShell}`}>
+    <div className={`flex h-[min(76dvh,46rem)] min-h-[28rem] flex-col overflow-hidden rounded-[1.75rem] border p-5 sm:h-[min(78dvh,48rem)] sm:min-h-[30rem] sm:p-6 lg:h-[min(78dvh,50rem)] lg:min-h-[32rem] ${tone.panelShell}`}>
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <div className={`text-xs uppercase tracking-[0.35em] ${tone.eyebrow}`}>
@@ -86,43 +54,35 @@ export function RecentMatchesPanel({
         </Link>
       </div>
 
-      <div className="mt-5 space-y-3">
-        {recentMatches.length === 0 ? (
-          <p className={`rounded-2xl border px-4 py-5 text-sm text-slate-300 ${tone.card}`}>
-            Parsed matches will show here as soon as the watcher uploads them.
-          </p>
-        ) : (
-          <>
-            {visibleMatches.map((match) => (
-              <MatchCard
-                key={match.id}
-                match={match}
-                themeKey={themeKey}
-                viewMode={viewMode}
-              />
-            ))}
+      <div className="mt-5 min-h-0 flex-1 overflow-y-auto pr-1">
+        <div className="space-y-3">
+          {recentMatches.length === 0 ? (
+            <p className={`rounded-2xl border px-4 py-5 text-sm text-slate-300 ${tone.card}`}>
+              Parsed matches will show here as soon as the watcher uploads them.
+            </p>
+          ) : (
+            <>
+              {visibleMatches.map((match) => (
+                <MatchCard
+                  key={match.id}
+                  match={match}
+                  themeKey={themeKey}
+                  viewMode={viewMode}
+                />
+              ))}
 
-            <div ref={sentinelRef} className="flex justify-center pt-2">
-              {hasMoreMatches ? (
-                <button
-                  type="button"
-                  onClick={() =>
-                    setVisibleCount((current) =>
-                      Math.min(recentMatches.length, current + MATCH_FEED_PAGE_SIZE)
-                    )
-                  }
-                  className={`rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] transition ${tone.secondaryButton}`}
-                >
-                  Show older games
-                </button>
+              {hiddenMatchCount > 0 ? (
+                <div className="rounded-2xl border border-white/10 bg-black/15 px-4 py-3 text-center text-xs uppercase tracking-[0.16em] text-slate-500">
+                  Showing newest {visibleMatches.length.toLocaleString()} of {recentMatches.length.toLocaleString()} games · open full feed for the archive
+                </div>
               ) : recentMatches.length > MATCH_FEED_PAGE_SIZE ? (
-                <div className="text-xs uppercase tracking-[0.18em] text-slate-500">
-                  All {recentMatches.length.toLocaleString()} recent games loaded
+                <div className="rounded-2xl border border-white/10 bg-black/15 px-4 py-3 text-center text-xs uppercase tracking-[0.16em] text-slate-500">
+                  All visible recent games loaded
                 </div>
               ) : null}
-            </div>
-          </>
-        )}
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
