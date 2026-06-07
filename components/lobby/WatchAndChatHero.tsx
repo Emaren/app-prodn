@@ -48,6 +48,7 @@ type FeaturedWar = {
 type ReactionKey = "fire" | "sword" | "skull" | "wolo";
 
 const HERO_STAKE_OPTIONS = [10, 25, 50, 100] as const;
+const WATCH_CHAT_LOOP_URL = "/watch-loops/live-hero-loop.mp4?v=watch-chat-v1";
 
 const REACTIONS: Array<{
   key: ReactionKey;
@@ -216,6 +217,7 @@ export function WatchAndChatHero({
   const [betBoard, setBetBoard] = useState<BetBoardSnapshot | null>(null);
   const [selectedBetSide, setSelectedBetSide] = useState<BetSide>("left");
   const [stakeDraft, setStakeDraft] = useState("25");
+  const [fallbackLoopFailed, setFallbackLoopFailed] = useState(false);
   const [reactionCounts, setReactionCounts] = useState<Record<ReactionKey, number>>({
     fire: 0,
     sword: 0,
@@ -307,6 +309,10 @@ export function WatchAndChatHero({
   }, [featuredOptions]);
 
   useEffect(() => {
+    setFallbackLoopFailed(false);
+  }, [selectedWar.key]);
+
+  useEffect(() => {
     let cancelled = false;
     const sessionKey = selectedWar?.sessionKey;
 
@@ -351,6 +357,7 @@ export function WatchAndChatHero({
     : null;
   const embedSrc = getEmbedSrc(primaryStream, parentHost);
   const actionHref = primaryStream?.url || selectedWar.href;
+  const fallbackVideoUrl = embedSrc || fallbackLoopFailed ? null : WATCH_CHAT_LOOP_URL;
   const commentMessages = messages.slice(-5);
   const heroBetMarket = betBoard?.featuredMarket ?? betBoard?.openMarkets?.[0] ?? null;
 
@@ -366,6 +373,18 @@ export function WatchAndChatHero({
                 className="absolute inset-0 h-full w-full border-0"
                 allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
                 allowFullScreen
+              />
+            ) : fallbackVideoUrl ? (
+              <video
+                key={`${selectedWar.key}-${fallbackVideoUrl}`}
+                className="absolute inset-0 h-full w-full object-cover opacity-85"
+                src={fallbackVideoUrl}
+                autoPlay
+                muted
+                loop
+                playsInline
+                preload="metadata"
+                onError={() => setFallbackLoopFailed(true)}
               />
             ) : (
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_24%_18%,rgba(245,158,11,0.22),transparent_30%),radial-gradient(circle_at_78%_42%,rgba(56,189,248,0.18),transparent_34%),linear-gradient(135deg,rgba(15,23,42,0.98),rgba(2,6,23,0.99))]">
