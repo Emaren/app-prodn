@@ -132,7 +132,7 @@ export function LobbyChat(props: LobbyChatProps) {
         >
           <div ref={chatScrollRef} className="min-h-0 min-w-0 flex-1 space-y-2 overflow-x-hidden overflow-y-auto pb-12 pr-1">
             {chatItems.length === 0 ? (
-              <div className={`rounded-xl border px-4 py-5 text-base text-slate-300 ${tone.subduedCard}`}>
+              <div className={`rounded-xl border px-4 py-5 text-sm text-slate-300 ${tone.subduedCard}`}>
                 No messages yet. The first tournament chatter starts here.
               </div>
             ) : (
