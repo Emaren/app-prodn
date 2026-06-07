@@ -236,6 +236,26 @@ function isDepositAfterIntent(
   return parsed >= createdAt.getTime() - 2 * 60 * 1000;
 }
 
+function isTerminalBetStakeIntentWithoutBroadcast(intent: {
+  status: string;
+  stakeTxHash: string | null;
+  errorDetail: string | null;
+}) {
+  if (intent.stakeTxHash) return false;
+
+  const status = intent.status.trim().toLowerCase();
+  if (status === "orphaned") return true;
+
+  const detail = (intent.errorDetail || "").trim().toLowerCase();
+  const looksCancelled =
+    detail.includes("cancel") ||
+    detail.includes("rejected") ||
+    detail.includes("denied") ||
+    detail.includes("no usable stake tx");
+
+  return status === "failed" && looksCancelled;
+}
+
 async function discoverEscrowDepositForStakeIntent(
   prisma: BetStakeIntentDb,
   intent: {
@@ -259,7 +279,7 @@ async function discoverEscrowDepositForStakeIntent(
   }
 
   const walletAddress = (intent.walletAddress || "").trim();
-  if (!walletAddress || intent.stakeTxHash) {
+  if (!walletAddress || intent.stakeTxHash || isTerminalBetStakeIntentWithoutBroadcast(intent)) {
     return;
   }
 
