@@ -110,7 +110,7 @@ export function LobbyChat(props: LobbyChatProps) {
 
   return (
     <div
-      className={`flex min-h-[32rem] w-full min-w-0 max-w-full max-h-[min(88dvh,48rem)] flex-col overflow-x-hidden rounded-[1.75rem] border p-4 sm:min-h-[35rem] sm:max-h-[52rem] sm:p-5 lg:min-h-[34rem] lg:max-h-none lg:p-6 ${tone.panelShell}`}
+      className={`flex h-[min(88dvh,48rem)] min-h-[32rem] w-full min-w-0 max-w-full flex-col overflow-hidden rounded-[1.75rem] border p-4 sm:h-[min(88dvh,52rem)] sm:min-h-[35rem] sm:p-5 lg:h-[min(82dvh,52rem)] lg:min-h-[34rem] lg:p-6 ${tone.panelShell}`}
       style={style}
     >
       <div className="flex items-center justify-between gap-4">
@@ -130,7 +130,7 @@ export function LobbyChat(props: LobbyChatProps) {
         <div
           className={`flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-[1.5rem] border p-3 sm:p-4 ${tone.insetPanel}`}
         >
-          <div ref={chatScrollRef} className="min-h-0 min-w-0 flex-1 space-y-2 overflow-x-hidden overflow-y-auto pb-12 pr-1">
+          <div ref={chatScrollRef} className="min-h-0 min-w-0 flex-1 space-y-2 overflow-x-hidden overflow-y-auto pb-3 pr-1">
             {chatItems.length === 0 ? (
               <div className={`rounded-xl border px-4 py-5 text-sm text-slate-300 ${tone.subduedCard}`}>
                 No messages yet. The first tournament chatter starts here.
@@ -178,120 +178,64 @@ export function LobbyChat(props: LobbyChatProps) {
           </div>
         ) : null}
 
-        <div className="rounded-[1.4rem] px-1 py-1 sm:px-1.5 sm:py-1">
+        <div className="rounded-[1.25rem] px-1 py-1">
           {isAuthenticated ? (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0 text-[11px] uppercase tracking-[0.28em] text-slate-500">
-                  Chatting as
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-3 px-1">
+                <div className="truncate text-xs text-slate-500">
+                  Chatting as <span className="font-semibold text-slate-300">{playerName || displayName(currentUserInGameName, currentUserSteamPersonaName)}</span>
                 </div>
-                <div className="truncate text-sm font-semibold text-white">
-                  {playerName || displayName(currentUserInGameName, currentUserSteamPersonaName)}
+                <div className="text-[11px] uppercase tracking-[0.16em] text-slate-600">
+                  {messageBody.length}/{LOBBY_MESSAGE_MAX_CHARS}
                 </div>
               </div>
 
-              <div className="rounded-[1.25rem] bg-[#10192a]/72 px-2.5 py-2.5 text-sm text-slate-200 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)]">
-                <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
-                  <div className="flex justify-end">
-                    <AiVoicePill
-                      label="The AI Scribe"
-                      checked={aiScribeEnabled}
-                      disabled={!aiEnabled}
-                      onToggle={() => onAiScribeEnabledChange(!aiScribeEnabled)}
-                    />
-                  </div>
+              <div className="flex items-end gap-2 rounded-full border border-white/10 bg-[#09111d]/75 p-1.5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)]">
+                <AutoGrowTextarea
+                  value={messageBody}
+                  maxRows={2}
+                  maxLength={LOBBY_MESSAGE_MAX_CHARS}
+                  onChange={(event) =>
+                    onMessageBodyChange(event.target.value.slice(0, LOBBY_MESSAGE_MAX_CHARS))
+                  }
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && !event.shiftKey) {
+                      event.preventDefault();
+                      onSendMessage();
+                    }
+                  }}
+                  placeholder="Chat with the lobby..."
+                  className="min-h-10 min-w-0 flex-1 resize-none bg-transparent px-3 py-2 text-sm leading-6 text-white outline-none placeholder:text-slate-500"
+                />
 
-                  <button
-                    type="button"
-                    onClick={() => onAiEnabledChange(!aiEnabled)}
-                    aria-pressed={aiEnabled}
-                    aria-label={aiEnabled ? "House voices enabled" : "House voices disabled"}
-                    title={aiEnabled ? "House voices enabled" : "House voices disabled"}
-                    className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition ${
-                      aiEnabled
-                        ? "border-emerald-300/30 bg-emerald-400/14 text-emerald-100 shadow-[0_0_18px_rgba(52,211,153,0.18)]"
-                        : "border-red-300/24 bg-red-400/10 text-red-100 shadow-[0_0_18px_rgba(248,113,113,0.12)]"
-                    }`}
-                  >
+                <button
+                  type="button"
+                  onClick={onSendMessage}
+                  disabled={chatPending || messageBody.trim().length === 0}
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${tone.primaryButton}`}
+                  aria-label={chatPending ? "Sending message" : "Send message"}
+                  title={chatPending ? "Sending..." : "Send"}
+                >
+                  {chatPending ? (
+                    <span className="h-3.5 w-3.5 animate-pulse rounded-full bg-current/70" />
+                  ) : (
                     <svg viewBox="0 0 20 20" className="h-4.5 w-4.5" fill="none" aria-hidden="true">
                       <path
-                        d="M10 2.75v5.5"
+                        d="M3.25 10.35 16.5 3.75l-4.1 12.5-2.45-5.05-5.25-1.15Z"
                         stroke="currentColor"
-                        strokeWidth="1.44"
+                        strokeWidth="1.55"
                         strokeLinecap="round"
+                        strokeLinejoin="round"
                       />
                       <path
-                        d="M6.35 5.2a6 6 0 1 0 7.3 0"
+                        d="m9.95 11.2 2.8-2.95"
                         stroke="currentColor"
-                        strokeWidth="1.44"
+                        strokeWidth="1.55"
                         strokeLinecap="round"
                       />
                     </svg>
-                  </button>
-
-                  <div className="flex justify-start">
-                    <AiVoicePill
-                      label="Grimer"
-                      checked={aiGrimerEnabled}
-                      disabled={!aiEnabled}
-                      onToggle={() => onAiGrimerEnabledChange(!aiGrimerEnabled)}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-end gap-2">
-                <div className="flex-1 rounded-[1.2rem] bg-[#09111d]/75 p-1.5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)]">
-                  <AutoGrowTextarea
-                    value={messageBody}
-                    maxRows={4}
-                    maxLength={LOBBY_MESSAGE_MAX_CHARS}
-                    onChange={(event) =>
-                      onMessageBodyChange(event.target.value.slice(0, LOBBY_MESSAGE_MAX_CHARS))
-                    }
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" && !event.shiftKey) {
-                        event.preventDefault();
-                        onSendMessage();
-                      }
-                    }}
-                    placeholder="Message the lobby..."
-                    className={`min-w-0 w-full rounded-[1rem] border px-4 py-3 text-sm leading-6 outline-none ${tone.input}`}
-                  />
-                </div>
-
-                  <button
-                    type="button"
-                    onClick={onSendMessage}
-                    disabled={chatPending || messageBody.trim().length === 0}
-                    className={`flex min-h-[3.25rem] w-[3.25rem] shrink-0 items-center justify-center rounded-full text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${tone.primaryButton}`}
-                    aria-label={chatPending ? "Sending message" : "Send message"}
-                    title={chatPending ? "Sending..." : "Send"}
-                  >
-                    {chatPending ? (
-                      <span className="h-4 w-4 animate-pulse rounded-full bg-current/70" />
-                    ) : (
-                      <svg viewBox="0 0 20 20" className="h-4.5 w-4.5" fill="none" aria-hidden="true">
-                        <path
-                          d="M3.25 10.35 16.5 3.75l-4.1 12.5-2.45-5.05-5.25-1.15Z"
-                          stroke="currentColor"
-                          strokeWidth="1.55"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                        <path
-                          d="m9.95 11.2 2.8-2.95"
-                          stroke="currentColor"
-                          strokeWidth="1.55"
-                          strokeLinecap="round"
-                        />
-                      </svg>
-                    )}
-                  </button>
-              </div>
-
-              <div className="flex justify-end text-[11px] uppercase tracking-[0.18em] text-slate-600">
-                {messageBody.length}/{LOBBY_MESSAGE_MAX_CHARS}
+                  )}
+                </button>
               </div>
             </div>
           ) : (
@@ -495,14 +439,13 @@ function LobbyMessageCard({
   return (
     <div
       ref={cardRef}
-      className={`group relative overflow-hidden rounded-xl border px-4 py-4 ${tone.subduedCard}`}
+      className={`group relative overflow-visible rounded-xl border px-4 py-4 ${tone.subduedCard}`}
       onClick={handleCardTap}
       onPointerDown={(event) => beginLongPress(event.pointerType)}
       onPointerUp={clearHoldTimer}
       onPointerCancel={clearHoldTimer}
       onPointerLeave={clearHoldTimer}
-      onMouseEnter={handleDesktopHoverStart}
-      onMouseLeave={handleDesktopHoverEnd}
+      
     >
       <div className="flex items-center justify-between gap-3">
         <div className="font-medium text-white">
@@ -559,25 +502,27 @@ function LobbyMessageCard({
           );
         })}
 
-        <button
-          type="button"
-          onClick={handleReactionHandleClick}
-          aria-label={pickerVisible ? "Hide reactions" : "Show reactions"}
-          aria-expanded={pickerVisible}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-[#0c1524] text-base text-slate-300 transition hover:border-white/18 hover:text-white"
-        >
-          +
-        </button>
-      </div>
-
         <div
-          className={`mt-3 max-w-full overflow-hidden transition-all duration-150 ${
-            pickerVisible ? "max-h-64 opacity-100" : "max-h-0 opacity-0"
-          }`}
+          className="relative"
           onMouseEnter={handleDesktopHoverStart}
           onMouseLeave={handleDesktopHoverEnd}
         >
-          <div className="flex w-full min-w-0 max-w-full flex-wrap items-center gap-2 overflow-x-hidden rounded-2xl border border-white/10 bg-[#091321] p-2 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.025)]">
+          <button
+            type="button"
+            onClick={handleReactionHandleClick}
+            aria-label={pickerVisible ? "Hide reactions" : "Show reactions"}
+            aria-expanded={pickerVisible}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-[#0c1524] text-base text-slate-300 transition hover:border-white/18 hover:text-white"
+          >
+            +
+          </button>
+
+          <div
+            className={`pointer-events-none absolute bottom-full right-0 z-30 mb-2 w-max max-w-[min(22rem,calc(100vw-3rem))] origin-bottom-right transition duration-150 ${
+              pickerVisible ? "translate-y-0 scale-100 opacity-100" : "translate-y-1 scale-[0.98] opacity-0"
+            }`}
+          >
+            <div className="pointer-events-auto flex max-w-full flex-wrap items-center gap-2 rounded-2xl border border-white/12 bg-[#07101d]/95 p-2 shadow-[0_18px_50px_rgba(0,0,0,0.45),inset_0_0_0_1px_rgba(255,255,255,0.035)] backdrop-blur">
             {LOBBY_MESSAGE_REACTIONS.map((emoji) => {
               const existing = item.message.reactions.find((reaction) => reaction.emoji === emoji);
               const isActive = Boolean(existing?.viewerReacted);
@@ -621,8 +566,10 @@ function LobbyMessageCard({
                 Delete
               </button>
             ) : null}
+            </div>
           </div>
         </div>
+      </div>
     </div>
   );
 }
