@@ -2446,6 +2446,7 @@ function BroadcastHeroTile({
     [feeds, leftName, leftPreviewUrl, previews.god, rightName, rightPreviewUrl]
   );
   const activeView = views.find((view) => view.key === selectedView) || views[1];
+  const activeViewHasEmbeddableFeed = Boolean(activeView.feed?.canEmbed && activeView.feed.embedId);
 
   useEffect(() => {
     setBrowserHost(window.location.hostname || "aoe2war.com");
@@ -2514,7 +2515,7 @@ function BroadcastHeroTile({
             previewUrl={activeView.previewUrl}
             browserHost={browserHost}
             marketTitle={marketTitle}
-            isPlaying={playingView === activeView.key}
+            isPlaying={activeViewHasEmbeddableFeed || playingView === activeView.key}
             onPlay={() => setPlayingView(activeView.key)}
           />
         </>
