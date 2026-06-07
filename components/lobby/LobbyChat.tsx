@@ -85,9 +85,6 @@ export function LobbyChat(props: LobbyChatProps) {
     aiGrimerEnabled,
     onMessageBodyChange,
     onSendMessage,
-    onAiEnabledChange,
-    onAiScribeEnabledChange,
-    onAiGrimerEnabledChange,
     onToggleReaction,
     onEditMessage,
     onDeleteMessage,
@@ -259,33 +256,6 @@ export function LobbyChat(props: LobbyChatProps) {
   );
 }
 
-function AiVoicePill({
-  label,
-  checked,
-  disabled,
-  onToggle,
-}: {
-  label: string;
-  checked: boolean;
-  disabled: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      disabled={disabled}
-      aria-pressed={checked}
-      className={`inline-flex h-10 w-[9.75rem] max-w-full items-center justify-center rounded-full px-4 text-center text-[11px] font-medium uppercase tracking-[0.16em] transition ${
-        checked
-          ? "bg-[#132338] text-cyan-50 shadow-[inset_0_0_0_1px_rgba(34,211,238,0.14)]"
-          : "bg-[#0d1524]/90 text-slate-300 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05)] hover:bg-[#10192a] hover:text-white"
-      } disabled:cursor-not-allowed disabled:opacity-50`}
-    >
-      <span className="truncate">{label}</span>
-    </button>
-  );
-}
 
 function LobbyMessageCard({
   item,
