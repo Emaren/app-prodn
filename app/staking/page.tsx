@@ -91,6 +91,7 @@ type EconomySnapshot = {
   activeStakers: number | null;
   totalStakedWolo: number | null;
   totalStakingWeight: string | null;
+  totalTxFeesAllTimeWolo?: number | null;
   directTransferCount: number;
   activity: ActivityItem[];
 };
@@ -459,6 +460,7 @@ function fallbackSnapshot(period: PeriodKey): EconomySnapshot {
     activeStakers: null,
     totalStakedWolo: null,
     totalStakingWeight: null,
+    totalTxFeesAllTimeWolo: null,
     directTransferCount: 0,
     activity: [
       {
@@ -529,6 +531,29 @@ export default async function StakingPage({
       readyDetail: "DEX liquidity",
     }),
   ]);
+  const txFeeEvents = await getPrisma().stakingEvent.findMany({
+    where: {
+      status: "CONFIRMED",
+    },
+    select: {
+      metadata: true,
+    },
+  });
+  snapshot.totalTxFeesAllTimeWolo = txFeeEvents.reduce((sum, event) => {
+    const metadata = event.metadata;
+    if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return sum;
+
+    const raw = (metadata as Record<string, unknown>).txFeeWolo;
+    const value =
+      typeof raw === "number"
+        ? raw
+        : typeof raw === "string"
+          ? Number.parseFloat(raw)
+          : 0;
+
+    return sum + (Number.isFinite(value) ? value : 0);
+  }, 0);
+
   const stakingWalletReserveHeadroomWolo = getStakingWalletReserveHeadroomWolo();
   const visibleStakingWalletReserveWolo =
     stakingWallet.balanceWolo == null || snapshot.totalStakedWolo == null
@@ -647,6 +672,7 @@ export default async function StakingPage({
                 <HeroStat label="Bet Volume" value={formatWolo(snapshot.betVolumeWolo)} helper={`${formatNumber(snapshot.betsPlaced)} bets`} />
                 <HeroStat label="Payouts" value={formatWolo(snapshot.payoutWolo)} helper="Settled returns" />
                 <HeroStat label="Bets Placed" value={formatNumber(snapshot.betsPlaced)} helper="Wagers in window" />
+                  <HeroStat label="Total Tx Fees All Time" value={formatFeeShareWolo(snapshot.totalTxFeesAllTimeWolo ?? null)} helper="Confirmed staking tx fees" />
                 <HeroStat label="Treasury Share" value={formatFeeShareWolo(snapshot.treasuryShareWolo)} helper="50% fee share" />
               </div>
 
@@ -790,6 +816,13 @@ export default async function StakingPage({
             helper={snapshot.totalStakedWolo ? `${formatWolo(snapshot.totalStakedWolo)} staked` : "Ledger ready"}
             tone="emerald"
           />
+          <EconomyCard
+            icon={<BadgeDollarSign className="h-5 w-5" />}
+            label="Total Tx Fees All Time"
+            value={formatFeeShareWolo(snapshot.totalTxFeesAllTimeWolo ?? null)}
+            helper="Confirmed staking tx fees"
+            tone="amber"
+          />
         </div>
       </section>
 
@@ -913,8 +946,8 @@ export default async function StakingPage({
 
 function WoloMark() {
   return (
-      <div className="flex h-14 w-14 items-center justify-center rounded-full border border-amber-300/28 bg-slate-950/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
-      <Image src={WOLO_LOGO_SRC} alt="" width={32} height={32} className="h-8 w-8 object-contain" />
+    <div className="flex h-14 w-14 items-center justify-center rounded-full border border-amber-300/28 bg-slate-950/80 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+      <Image src={WOLO_LOGO_SRC} alt="" width={48} height={48} className="h-12 w-12 object-contain" />
     </div>
   );
 }

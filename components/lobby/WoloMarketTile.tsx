@@ -132,7 +132,7 @@ export function WoloMarketTile({ market, themeKey, viewMode }: WoloMarketTilePro
               href={poolUrl}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-amber-300 px-5 text-sm font-semibold text-slate-950 transition hover:bg-amber-200"
+              className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold transition ${tone.primaryButton}`}
             >
               Swap
               <ArrowUpRight className="h-4 w-4" aria-hidden="true" />

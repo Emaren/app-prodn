@@ -69,7 +69,7 @@ export async function loadMainnetStakingPositions(
     prisma.stakingEvent.findMany({
       where: {
         status: "CONFIRMED",
-        type: { in: ["STAKE", "UNSTAKE"] },
+        type: { in: ["STAKE", "UNSTAKE", "COMPOUND"] },
         amountWolo: { gt: 0 },
         txHash: { not: null },
         OR: [
@@ -131,7 +131,7 @@ export async function loadMainnetStakingPositions(
   });
   const eventTransfers: MainnetStakingTransferInput[] = events.map((event) => {
     const walletAddress = normalizeAddress(event.walletAddress || event.user.walletAddress);
-    const isStake = event.type === "STAKE";
+    const isStake = event.type === "STAKE" || event.type === "COMPOUND";
     const player = displayUserName(event.user);
 
     return {

@@ -15,6 +15,9 @@ type StakingMe = {
   };
   position: {
     currentStakedWolo: number;
+    pendingRewardsWolo?: number;
+    autoCompoundRewards?: boolean;
+    compoundedRewardsWolo?: number;
   };
   execution: {
     maxUnstakeWolo?: number;
@@ -76,9 +79,12 @@ export default function StakingActionTile() {
   const [amountInput, setAmountInput] = useState("1000");
   const [amountTouched, setAmountTouched] = useState(false);
   const [busy, setBusy] = useState<"stake" | "unstake" | null>(null);
+  const [autoCompoundBusy, setAutoCompoundBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   const currentStakedWolo = stakingState?.position.currentStakedWolo ?? 0;
+  const autoCompoundRewards = stakingState?.position.autoCompoundRewards ?? true;
+  const compoundedRewardsWolo = stakingState?.position.compoundedRewardsWolo ?? 0;
   const maxUnstakeWolo = Math.max(
     0,
     Math.floor(stakingState?.execution.maxUnstakeWolo ?? currentStakedWolo)
@@ -271,6 +277,47 @@ export default function StakingActionTile() {
     }
   }
 
+  async function handleAutoCompoundToggle() {
+    if (!isAuthenticated || autoCompoundBusy) return;
+
+    const nextEnabled = !autoCompoundRewards;
+    setAutoCompoundBusy(true);
+    setMessage(null);
+
+    try {
+      const response = await fetch("/api/staking/auto-compound", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: nextEnabled }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload.detail || "Could not update auto-stake rewards.");
+      }
+
+      setStakingState((current) =>
+        current
+          ? {
+              ...current,
+              position: {
+                ...current.position,
+                autoCompoundRewards: Boolean(payload.autoCompoundRewards),
+                compoundedRewardsWolo:
+                  typeof payload.compoundedRewardsWolo === "number"
+                    ? payload.compoundedRewardsWolo
+                    : current.position.compoundedRewardsWolo,
+              },
+            }
+          : current
+      );
+      setMessage(payload.detail || (nextEnabled ? "Auto-stake rewards is on." : "Auto-stake rewards is off."));
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Auto-stake update failed.");
+    } finally {
+      setAutoCompoundBusy(false);
+    }
+  }
+
   async function handleUnstake() {
     let amountWolo = parseAmount();
     if (!amountWolo) {
@@ -359,6 +406,39 @@ export default function StakingActionTile() {
           {actionPill}
         </div>
       </div>
+
+      <button
+        type="button"
+        onClick={() => {
+          void handleAutoCompoundToggle();
+        }}
+        disabled={autoCompoundBusy}
+        className={`mb-3 flex w-full items-center justify-between gap-3 rounded-[0.95rem] border px-3 py-2.5 text-left transition disabled:cursor-not-allowed disabled:opacity-60 ${
+          autoCompoundRewards
+            ? "border-emerald-300/25 bg-emerald-400/10 text-emerald-50"
+            : "border-white/10 bg-white/[0.045] text-slate-300 hover:border-white/20 hover:bg-white/[0.075]"
+        }`}
+      >
+        <span className="min-w-0">
+          <span className="block text-[11px] font-semibold uppercase tracking-[0.18em]">
+            Auto-stake rewards
+          </span>
+          <span className="mt-1 block text-xs leading-5 text-slate-400">
+            {autoCompoundRewards
+              ? `Rewards compound with your principal${compoundedRewardsWolo > 0 ? ` · ${formatWholeWolo(compoundedRewardsWolo)} compounded` : ""}.`
+              : "Future rewards wait for wallet payout instead of compounding."}
+          </span>
+        </span>
+        <span
+          className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${
+            autoCompoundRewards
+              ? "bg-emerald-300 text-slate-950"
+              : "border border-white/10 bg-black/20 text-slate-400"
+          }`}
+        >
+          {autoCompoundBusy ? "Saving" : autoCompoundRewards ? "On" : "Off"}
+        </span>
+      </button>
 
       <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto]">
         <label className="flex min-h-12 items-center overflow-hidden rounded-[0.95rem] border border-white/10 bg-white/[0.045]">

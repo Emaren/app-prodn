@@ -64,9 +64,12 @@ export default function HeaderMenu({
   const menuEntries = useMemo<MenuEntry[]>(
     () => [
       { href: "/profile", label: "Profile", icon: UserCircle, featured: true },
-      { href: "/admin/user-list", label: "Admin", icon: Shield, adminOnly: true, featured: true },
-      { href: "/contact-emaren", label: "Contact", icon: MessageSquareMore, featured: true },
+      { href: "/wallet", label: "Wallet", icon: Coins, featured: true },
+      { href: "/wolo", label: "$WOLO", icon: Coins, featured: true },
+      { href: "/staking", label: "Staking", icon: HandCoins, featured: true },
       { href: "/bets", label: "Bets", icon: BadgeDollarSign, featured: true },
+      { href: "/watch", label: "Watcher / Streaming", icon: Radio, featured: true },
+      { href: "/admin/user-list", label: "Admin", icon: Shield, adminOnly: true, featured: true },
       {
         href: "/live-games",
         label: "Live Games",
@@ -74,9 +77,7 @@ export default function HeaderMenu({
         badge: liveGamesCount > 0 ? String(liveGamesCount) : null,
         featured: true,
       },
-      { href: "/watch", label: "Watch Hall", icon: Radio, featured: true },
       { href: "/players", label: "Players", icon: Users, featured: true },
-      { href: "/staking", label: "Staking", icon: HandCoins, featured: true },
       {
         href: "/requests",
         label: "Requests",
@@ -84,12 +85,12 @@ export default function HeaderMenu({
         badge: requestCount > 0 ? String(requestCount) : null,
         featured: true,
       },
+      { href: "/contact-emaren", label: "Contact", icon: MessageSquareMore },
       { href: "/rivalries", label: "Rivalries", icon: Swords },
       { href: "/upload", label: "Upload Replay", icon: Upload },
       { href: "/game-stats", label: "Game Stats", icon: BarChart3 },
       { href: "/download", label: "Download Watcher", icon: Download },
-      { href: "/wolo", label: "$WOLO", icon: Coins },
-    ],
+      ],
     [liveGamesCount, requestCount]
   );
 
@@ -134,7 +135,7 @@ export default function HeaderMenu({
         <div
           id={panelId}
           className={[
-            "fixed inset-x-2 bottom-2 top-[4.75rem] z-50 overflow-hidden rounded-[1.85rem] border p-2 shadow-2xl sm:absolute sm:bottom-auto sm:left-auto sm:right-0 sm:top-14 sm:max-h-[min(42rem,calc(100dvh-7rem))] sm:w-72",
+            "fixed inset-x-2 bottom-2 top-[4.75rem] z-50 overflow-hidden rounded-[1.85rem] border p-2 shadow-2xl sm:absolute sm:bottom-auto sm:left-auto sm:right-0 sm:top-14 sm:max-h-[min(42rem,calc(100dvh-7rem))] sm:w-[22rem] sm:max-w-[calc(100vw-1.5rem)]",
             menuClassName || "border-white/10 bg-[#0b1324]",
           ]
             .filter(Boolean)
@@ -205,7 +206,7 @@ export default function HeaderMenu({
                 await logout();
               }}
             >
-              Log Out
+              Sign out
             </button>
           </div>
 
@@ -239,7 +240,7 @@ export default function HeaderMenu({
                 await logout();
               }}
             >
-              Log Out
+              Sign out
             </button>
           </div>
         </div>

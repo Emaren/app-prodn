@@ -2379,7 +2379,9 @@ function buildBroadcastEmbedSrc(
   if (feed.provider === "youtube") {
     return `https://www.youtube.com/embed/${encodeURIComponent(
       feed.embedId
-    )}?rel=0&modestbranding=1&autoplay=${autoplay ? "1" : "0"}`;
+    )}?rel=0&modestbranding=1&playsinline=1&mute=${autoplay ? "1" : "0"}&autoplay=${
+      autoplay ? "1" : "0"
+    }`;
   }
 
   return null;
@@ -2708,7 +2710,7 @@ function BroadcastSignalSurface({
           className={`absolute inset-0 z-20 h-full w-full border-0 ${
             compact ? "pointer-events-none" : ""
           }`}
-          allow="autoplay; fullscreen; picture-in-picture"
+          allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
           allowFullScreen
         />
       ) : null}
@@ -2724,7 +2726,11 @@ function BroadcastSignalSurface({
         </>
       ) : null}
 
-      <div className="pointer-events-none absolute left-3 top-3 z-30 flex items-center gap-2 sm:left-4 sm:top-4">
+      <div
+        className={`pointer-events-none absolute left-3 top-3 z-30 items-center gap-2 sm:left-4 sm:top-4 ${
+          embedSrc ? "hidden" : "flex"
+        }`}
+      >
         <span className="relative flex h-2 w-2">
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-30" />
           <span className="relative inline-flex h-2 w-2 rounded-full bg-red-400" />

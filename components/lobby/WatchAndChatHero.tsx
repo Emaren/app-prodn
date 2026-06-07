@@ -141,11 +141,15 @@ function getEmbedSrc(stream: WatchStreamPayload | null, parentHost: string | nul
   if (!stream?.canEmbed || !stream.embedId) return null;
 
   if (stream.provider === "youtube") {
-    return `https://www.youtube-nocookie.com/embed/${encodeURIComponent(stream.embedId)}`;
+    return `https://www.youtube-nocookie.com/embed/${encodeURIComponent(
+      stream.embedId
+    )}?autoplay=1&mute=1&playsinline=1&rel=0&modestbranding=1`;
   }
 
   if (stream.provider === "twitch" && parentHost) {
-    return `https://player.twitch.tv/?channel=${encodeURIComponent(stream.embedId)}&parent=${encodeURIComponent(parentHost)}&muted=true`;
+    return `https://player.twitch.tv/?channel=${encodeURIComponent(
+      stream.embedId
+    )}&parent=${encodeURIComponent(parentHost)}&autoplay=true&muted=true`;
   }
 
   return null;
@@ -329,13 +333,13 @@ export function WatchAndChatHero({
     <section className={`overflow-hidden rounded-[2rem] border ${tone.panelShell}`}>
       <div className="grid gap-0 lg:grid-cols-[minmax(0,1.45fr)_minmax(20rem,0.74fr)]">
         <div className="flex min-w-0 flex-col">
-          <div className="relative min-h-[21rem] overflow-hidden bg-black lg:min-h-[27rem]">
+          <div className="relative aspect-video min-h-[15rem] overflow-hidden bg-black sm:min-h-[20rem] lg:min-h-[27rem]">
             {embedSrc ? (
               <iframe
                 src={embedSrc}
                 title={primaryStream?.label || selectedWar.title}
-                className="absolute inset-0 h-full w-full"
-                allow="autoplay; fullscreen; picture-in-picture"
+                className="absolute inset-0 h-full w-full border-0"
+                allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
                 allowFullScreen
               />
             ) : (
@@ -354,46 +358,44 @@ export function WatchAndChatHero({
                 </div>
               </div>
             )}
-
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/88 via-black/12 to-black/20" />
-            <div className="pointer-events-none absolute bottom-0 left-0 right-0 p-5 sm:p-7">
-              <div className="flex flex-wrap items-end justify-between gap-4">
-                <div className="min-w-0">
-                  <div className="text-[10px] uppercase tracking-[0.34em] text-amber-100/70">
-                    Watch & Chat
-                  </div>
-                  <h2 className="mt-2 break-words text-2xl font-semibold text-white sm:text-3xl">
-                    {selectedWar.title}
-                  </h2>
-                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-300">
-                    <span className="rounded-full border border-emerald-300/25 bg-emerald-400/10 px-3 py-1 text-emerald-100">
-                      {selectedWar.statusLabel}
-                    </span>
-                    {selectedWar.mapName ? (
-                      <span className="rounded-full border border-white/10 bg-white/8 px-3 py-1">
-                        {selectedWar.mapName}
-                      </span>
-                    ) : null}
-                    <span className="rounded-full border border-white/10 bg-white/8 px-3 py-1">
-                      {selectedWar.detail}
-                    </span>
-                  </div>
-                </div>
-                <Link
-                  href={actionHref}
-                  target={primaryStream?.url ? "_blank" : undefined}
-                  rel={primaryStream?.url ? "noreferrer" : undefined}
-                  className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200"
-                >
-                  Watch
-                  {primaryStream?.url ? <ExternalLink className="h-4 w-4" aria-hidden="true" /> : null}
-                </Link>
-              </div>
-            </div>
           </div>
 
           <div className={`border-t p-4 sm:p-5 ${tone.insetPanel}`}>
-            <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="min-w-0">
+                <div className="text-[10px] uppercase tracking-[0.34em] text-amber-100/70">
+                  Watch & Chat
+                </div>
+                <h2 className="mt-2 break-words text-2xl font-semibold text-white sm:text-3xl">
+                  {selectedWar.title}
+                </h2>
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-300">
+                  <span className="rounded-full border border-emerald-300/25 bg-emerald-400/10 px-3 py-1 text-emerald-100">
+                    {selectedWar.statusLabel}
+                  </span>
+                  {selectedWar.mapName ? (
+                    <span className="rounded-full border border-white/10 bg-white/8 px-3 py-1">
+                      {selectedWar.mapName}
+                    </span>
+                  ) : null}
+                  <span className="rounded-full border border-white/10 bg-white/8 px-3 py-1">
+                    {selectedWar.detail}
+                  </span>
+                </div>
+              </div>
+
+              <Link
+                href={actionHref}
+                target={primaryStream?.url ? "_blank" : undefined}
+                rel={primaryStream?.url ? "noreferrer" : undefined}
+                className={`inline-flex shrink-0 items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold transition ${tone.primaryButton}`}
+              >
+                Watch
+                {primaryStream?.url ? <ExternalLink className="h-4 w-4" aria-hidden="true" /> : null}
+              </Link>
+            </div>
+
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
               <div className="flex min-w-0 flex-wrap items-center gap-2">
                 <span className={`text-[10px] uppercase tracking-[0.28em] ${tone.accentText}`}>
                   Reactions
@@ -442,10 +444,10 @@ export function WatchAndChatHero({
                       [key]: current[key] + 1,
                     }))
                   }
-                  className="flex min-h-12 flex-col items-center justify-center gap-1 rounded-2xl border border-white/10 bg-white/[0.04] text-xs text-slate-200 transition hover:border-amber-200/35 hover:bg-amber-300/10 hover:text-white"
+                  className="flex min-h-[3.3rem] flex-col items-center justify-center gap-1 rounded-2xl border border-white/10 bg-white/[0.04] text-xs text-slate-200 transition hover:border-amber-200/35 hover:bg-amber-300/10 hover:text-white"
                   title={label}
                 >
-                  <Icon className="h-4 w-4" aria-hidden="true" />
+                  <Icon className="h-[1.1rem] w-[1.1rem]" aria-hidden="true" />
                   <span className="tabular-nums">{reactionCounts[key]}</span>
                 </button>
               ))}
@@ -610,7 +612,7 @@ function HeroBetSlip({
           </div>
           <Link
             href={betHref}
-            className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-amber-300 px-5 text-sm font-semibold text-slate-950 transition hover:bg-amber-200"
+            className={`inline-flex min-h-12 items-center justify-center rounded-2xl px-5 text-sm font-semibold transition ${tone.primaryButton}`}
           >
             Open Slip
           </Link>

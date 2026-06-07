@@ -1233,6 +1233,8 @@ export async function loadStakingMe(prisma: PrismaClient, userId: number) {
       claimedRewardsWolo: useMainnetPosition
         ? mainnetRewardSnapshot.claimedRewardsWolo
         : position?.claimedRewardsWolo ?? 0,
+      autoCompoundRewards: position?.autoCompoundRewards ?? true,
+      compoundedRewardsWolo: position?.compoundedRewardsWolo ?? 0,
       lifetimeTxFeesWolo,
       status: useMainnetPosition
         ? currentStakedWolo > 0
@@ -1585,7 +1587,14 @@ export async function calculateDailyStakingRewardDistribution(
           const rewardWolo = position.rewardWolo;
           if (rewardWolo <= 0) continue;
 
-          await tx.stakingRewardAllocation.create({
+          const preference = await tx.stakingPosition.findUnique({
+            where: { userId: position.userId },
+            select: { autoCompoundRewards: true },
+          });
+          const shouldCompound = preference?.autoCompoundRewards ?? true;
+          const creditedAt = new Date();
+
+          const allocation = await tx.stakingRewardAllocation.create({
             data: {
               distributionId: distribution.id,
               userId: position.userId,
@@ -1594,12 +1603,65 @@ export async function calculateDailyStakingRewardDistribution(
               userWeight: position.userWeight,
               totalWeight,
               rewardWolo,
-              status: "CREDITED",
-              creditedAt: new Date(),
+              status: shouldCompound ? "COMPOUNDED" : "CREDITED",
+              creditedAt,
             },
           });
 
-          if (!isWoloMainnet() && position.id) {
+          if (shouldCompound) {
+            const balanceBefore = position.currentStakedWolo;
+            const balanceAfter = balanceBefore + rewardWolo;
+            const compoundTxHash = `COMPOUND-${distribution.id}-${position.userId}`;
+
+            const compoundPosition = await tx.stakingPosition.upsert({
+              where: { userId: position.userId },
+              create: {
+                userId: position.userId,
+                walletAddress: position.walletAddress,
+                currentStakedWolo: isWoloMainnet() ? 0 : balanceAfter,
+                compoundedRewardsWolo: rewardWolo,
+                lifetimeRewardsWolo: rewardWolo,
+                autoCompoundRewards: true,
+                accumulatedWeight: position.userWeight,
+                lastWeightUpdateAt: periodEnd,
+                status: "active",
+              },
+              update: {
+                walletAddress: position.walletAddress,
+                ...(isWoloMainnet()
+                  ? {}
+                  : { currentStakedWolo: { increment: rewardWolo } }),
+                compoundedRewardsWolo: { increment: rewardWolo },
+                lifetimeRewardsWolo: { increment: rewardWolo },
+                accumulatedWeight: position.userWeight,
+                lastWeightUpdateAt: periodEnd,
+                status: "active",
+              },
+            });
+
+            await tx.stakingEvent.create({
+              data: {
+                userId: position.userId,
+                positionId: compoundPosition.id,
+                walletAddress: position.walletAddress,
+                type: "COMPOUND",
+                amountWolo: rewardWolo,
+                txHash: compoundTxHash,
+                status: "CONFIRMED",
+                weightBefore: position.userWeight,
+                weightAfter: position.userWeight,
+                balanceBefore,
+                balanceAfter,
+                confirmedAt: periodEnd,
+                metadata: {
+                  internalCompound: true,
+                  stakingRewardDistributionId: distribution.id,
+                  stakingRewardAllocationId: allocation.id,
+                  detail: "Auto-compounded staking reward.",
+                },
+              },
+            });
+          } else if (!isWoloMainnet() && position.id) {
             await tx.stakingPosition.update({
               where: { id: position.id },
               data: {

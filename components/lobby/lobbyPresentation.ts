@@ -117,15 +117,6 @@ export const LOBBY_THEME_OPTIONS: LobbyThemeOption[] = [
       "radial-gradient(circle at top left, rgba(245, 205, 141, 0.2), transparent 29%), linear-gradient(135deg, #1b140d, #5b4630 52%, #24180d)",
   },
   {
-    key: "walnut",
-    label: "Walnut",
-    swatch: "linear-gradient(135deg,#6b4226,#2b1810)",
-    pageBackground:
-      "linear-gradient(180deg, rgba(78,47,28,0.95), rgba(50,29,18,0.95) 36%, rgba(19,11,8,0.99) 100%)",
-    heroBackground:
-      "radial-gradient(circle at top left, rgba(166, 94, 46, 0.22), transparent 29%), linear-gradient(135deg, #160d08, #3b2418 52%, #120a07)",
-  },
-  {
     key: "crimson",
     label: "Crimson",
     swatch: "linear-gradient(135deg,#a10f2b,#2b0a12)",
