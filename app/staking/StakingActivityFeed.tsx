@@ -7,6 +7,7 @@ import type { StakingActivityItem } from "@/lib/staking";
 type ActivityFeedEvent = CustomEvent<{ item?: StakingActivityItem }>;
 
 const PAGE_SIZE = 16;
+const LIVE_POLL_INTERVAL_MS = 12_000;
 
 type ActivityPageResponse = {
   rows?: StakingActivityItem[];
@@ -16,6 +17,11 @@ type ActivityPageResponse = {
 
 function activityKey(item: StakingActivityItem) {
   return item.key || `${item.label}:${item.detail}:${item.meta}`;
+}
+
+function activityTimestamp(item: StakingActivityItem) {
+  const parsed = item.occurredAt ? Date.parse(item.occurredAt) : Number.NaN;
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 function mergeActivityRows(
@@ -32,7 +38,7 @@ function mergeActivityRows(
     merged.push(item);
   }
 
-  return merged;
+  return merged.sort((left, right) => activityTimestamp(right) - activityTimestamp(left));
 }
 
 export default function StakingActivityFeed({
@@ -50,6 +56,7 @@ export default function StakingActivityFeed({
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(Boolean(loadMoreEndpoint));
   const [nextBefore, setNextBefore] = useState<string | null>(() => oldestDirectRowTimestamp(initialRows));
+  const rowsRef = useRef<StakingActivityItem[]>(initialRows);
   const scrollRootRef = useRef<HTMLDivElement | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
@@ -62,6 +69,85 @@ export default function StakingActivityFeed({
     setHasMore(Boolean(loadMoreEndpoint));
     setNextBefore(oldestDirectRowTimestamp(initialRows));
   }, [initialRows, loadMoreEndpoint]);
+
+  useEffect(() => {
+    rowsRef.current = rows;
+  }, [rows]);
+
+  useEffect(() => {
+    if (!loadMoreEndpoint) return;
+
+    let cancelled = false;
+    let inFlight = false;
+    let timer: number | null = null;
+
+    const schedule = () => {
+      if (cancelled) return;
+      timer = window.setTimeout(() => void poll(), LIVE_POLL_INTERVAL_MS);
+    };
+
+    const poll = async () => {
+      if (cancelled) return;
+      if (document.visibilityState !== "visible" || inFlight) {
+        schedule();
+        return;
+      }
+
+      inFlight = true;
+      try {
+        const url = new URL(loadMoreEndpoint, window.location.origin);
+        url.searchParams.set("limit", String(PAGE_SIZE));
+
+        const response = await fetch(url.toString(), { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error(`Activity refresh failed: ${response.status}`);
+        }
+
+        const payload = (await response.json()) as ActivityPageResponse;
+        const nextRows = Array.isArray(payload.rows) ? payload.rows : [];
+        if (nextRows.length > 0) {
+          const knownKeys = new Set(rowsRef.current.map(activityKey));
+          const freshRows = nextRows.filter((row) => !knownKeys.has(activityKey(row)));
+
+          setRows((current) => mergeActivityRows(nextRows, current));
+          setHasMore((current) => current || Boolean(payload.hasMore));
+
+          if (freshRows.length > 0) {
+            const newestFresh = mergeActivityRows(freshRows)[0];
+            setFreshKey(activityKey(newestFresh));
+
+            const nextOldest = oldestDirectRowTimestamp(
+              mergeActivityRows(nextRows, rowsRef.current)
+            );
+            if (nextOldest) {
+              setNextBefore((current) => current || nextOldest);
+            }
+          }
+        }
+      } catch (error) {
+        console.warn("Failed to refresh staking activity:", error);
+      } finally {
+        inFlight = false;
+        schedule();
+      }
+    };
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        if (timer) window.clearTimeout(timer);
+        void poll();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibility);
+    schedule();
+
+    return () => {
+      cancelled = true;
+      if (timer) window.clearTimeout(timer);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [loadMoreEndpoint]);
 
   useEffect(() => {
     function handleActivity(event: Event) {
