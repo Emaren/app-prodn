@@ -547,7 +547,7 @@ function LobbyMessageCard({
               title={tooltip}
               aria-pressed={reaction.viewerReacted}
               disabled={reactingMessageId === item.message.id}
-              className={`inline-flex min-h-9 min-w-[3.3rem] items-center justify-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-medium transition ${
+              className={`inline-flex min-h-10 min-w-[3.55rem] items-center justify-center gap-1.5 rounded-full border px-4 py-2 text-[13px] font-medium transition ${
                 reaction.viewerReacted
                   ? "border-amber-300/20 bg-amber-400/12 text-amber-100"
                   : "border-white/10 bg-[#0c1524] text-slate-300 hover:border-white/18 hover:text-white"
