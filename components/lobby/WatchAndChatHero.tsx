@@ -520,7 +520,7 @@ export function WatchAndChatHero({
           {isAuthenticated && onMessageBodyChange && onSendMessage ? (
               <form
                 onSubmit={handleQuickChatSubmit}
-                className="pointer-events-auto flex min-w-[min(100%,18rem)] max-w-full items-center gap-2 rounded-full border border-white/10 bg-black/30 p-1.5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)]"
+                className="pointer-events-auto mt-4 flex min-w-[min(100%,18rem)] max-w-full items-center gap-2 rounded-full border border-white/10 bg-black/30 p-1.5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)]"
               >
                 <input
                   value={messageBody}
@@ -561,7 +561,7 @@ export function WatchAndChatHero({
               <button
                 type="button"
                 onClick={onLogin}
-                className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200"
+                className="pointer-events-auto mt-4 inline-flex items-center gap-2 rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200"
               >
                 <MessageSquareMore className="h-4 w-4" aria-hidden="true" />
                 Sign In To Chat
@@ -569,7 +569,7 @@ export function WatchAndChatHero({
             ) : (
               <a
                 href="#lobby-chat"
-                className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200"
+                className="pointer-events-auto mt-4 inline-flex items-center gap-2 rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200"
               >
                 <MessageSquareMore className="h-4 w-4" aria-hidden="true" />
                 Open Chat
