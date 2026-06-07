@@ -2514,7 +2514,7 @@ function BroadcastHeroTile({
             previewUrl={activeView.previewUrl}
             browserHost={browserHost}
             marketTitle={marketTitle}
-            isPlaying={playingView === activeView.key}
+            isPlaying={Boolean(activeView.feed?.canEmbed && activeView.feed.embedId) || playingView === activeView.key}
             onPlay={() => setPlayingView(activeView.key)}
           />
         </>

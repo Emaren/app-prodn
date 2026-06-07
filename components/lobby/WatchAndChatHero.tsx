@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Coins, ExternalLink, Flame, MessageSquareMore, Play, Skull, Swords } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { Coins, ExternalLink, Flame, MessageSquareMore, Play, SendHorizonal, Skull, Swords } from "lucide-react";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
 
 import { displayName, formatLobbyMoment } from "@/components/lobby/utils";
 import {
@@ -21,6 +21,12 @@ type WatchAndChatHeroProps = {
   messages: LobbyMessage[];
   themeKey: LobbyThemeKey;
   viewMode: LobbyViewMode;
+  isAuthenticated?: boolean;
+  messageBody?: string;
+  chatPending?: boolean;
+  onMessageBodyChange?: (value: string) => void;
+  onSendMessage?: () => void;
+  onLogin?: () => void;
 };
 
 type LiveGamesPayload = {
@@ -182,8 +188,27 @@ export function WatchAndChatHero({
   messages,
   themeKey,
   viewMode,
+  isAuthenticated = false,
+  messageBody = "",
+  chatPending = false,
+  onMessageBodyChange,
+  onSendMessage,
+  onLogin,
 }: WatchAndChatHeroProps) {
   const tone = getLobbyPresentationTone(themeKey, viewMode);
+  const quickChatDraft = messageBody;
+  const quickChatReady = quickChatDraft.trim().length > 0 && !chatPending;
+
+  function handleQuickChatSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!isAuthenticated) {
+      onLogin?.();
+      return;
+    }
+    if (!quickChatReady) return;
+    onSendMessage?.();
+  }
+
   const [liveGames, setLiveGames] = useState<LiveGamesPayload | null>(null);
   const [streams, setStreams] = useState<WatchStreamPayload[]>([]);
   const [selectedSessionKey, setSelectedSessionKey] = useState<string | null>(null);
@@ -384,238 +409,48 @@ export function WatchAndChatHero({
                 </div>
               </div>
 
-              <Link
-                href={actionHref}
-                target={primaryStream?.url ? "_blank" : undefined}
-                rel={primaryStream?.url ? "noreferrer" : undefined}
-                className={`inline-flex shrink-0 items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold transition ${tone.primaryButton}`}
-              >
-                Watch
-                {primaryStream?.url ? <ExternalLink className="h-4 w-4" aria-hidden="true" /> : null}
-              </Link>
-            </div>
-
-            <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-              <div className="flex min-w-0 flex-wrap items-center gap-2">
-                <span className={`text-[10px] uppercase tracking-[0.28em] ${tone.accentText}`}>
-                  Reactions
-                </span>
-                {selectedWar.players.length > 0 ? (
-                  selectedWar.players.slice(0, 3).map((player) => (
-                    <span key={player} className={`rounded-full border px-3 py-1 text-xs ${tone.neutralPill}`}>
-                      {player}
-                    </span>
-                  ))
-                ) : (
-                  <span className={`rounded-full border px-3 py-1 text-xs ${tone.neutralPill}`}>
-                    Founders Cup
-                  </span>
-                )}
-              </div>
-
-              {featuredOptions.length > 1 ? (
-                <div className="flex flex-wrap gap-2">
-                  {featuredOptions.slice(0, 3).map((option) => (
+              {isAuthenticated && onMessageBodyChange && onSendMessage ? (
+                  <form
+                    onSubmit={handleQuickChatSubmit}
+                    className="flex min-w-[min(100%,18rem)] max-w-full items-center gap-2 rounded-full border border-white/10 bg-black/28 p-1.5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.035)]"
+                  >
+                    <input
+                      value={quickChatDraft}
+                      maxLength={180}
+                      onChange={(event) => onMessageBodyChange(event.target.value)}
+                      placeholder="Chat with the lobby..."
+                      className="min-w-0 flex-1 bg-transparent px-3 text-sm text-white outline-none placeholder:text-slate-500"
+                    />
                     <button
-                      key={option.key}
-                      type="button"
-                      onClick={() => setSelectedSessionKey(option.sessionKey)}
-                      className={`rounded-full border px-3 py-1.5 text-[11px] transition ${
-                        option.key === selectedWar.key
-                          ? "border-amber-200/45 bg-amber-300/10 text-white"
-                          : `${tone.neutralPill} hover:border-white/24 hover:text-white`
-                      }`}
+                      type="submit"
+                      disabled={!quickChatReady}
+                      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-300 text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-45"
+                      aria-label={chatPending ? "Sending chat message" : "Send chat message"}
+                      title={chatPending ? "Sending..." : "Send"}
                     >
-                      {option.statusLabel}
+                      <SendHorizonal className="h-4 w-4" aria-hidden="true" />
                     </button>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-
-            <div className="mt-3 grid grid-cols-4 gap-2">
-              {REACTIONS.map(({ key, label, icon: Icon }) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() =>
-                    setReactionCounts((current) => ({
-                      ...current,
-                      [key]: current[key] + 1,
-                    }))
-                  }
-                  className="flex min-h-[3.3rem] flex-col items-center justify-center gap-1 rounded-2xl border border-white/10 bg-white/[0.04] text-xs text-slate-200 transition hover:border-amber-200/35 hover:bg-amber-300/10 hover:text-white"
-                  title={label}
-                >
-                  <Icon className="h-[1.1rem] w-[1.1rem]" aria-hidden="true" />
-                  <span className="tabular-nums">{reactionCounts[key]}</span>
-                </button>
-              ))}
-            </div>
-
-            <HeroBetSlip
-              market={heroBetMarket}
-              selectedWar={selectedWar}
-              selectedSide={selectedBetSide}
-              stakeDraft={stakeDraft}
-              onSelectedSideChange={setSelectedBetSide}
-              onStakeDraftChange={setStakeDraft}
-              tone={tone}
-            />
-          </div>
-        </div>
-
-        <aside className="flex min-h-[22rem] flex-col border-t border-white/10 p-4 sm:p-5 lg:border-l lg:border-t-0">
-          <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <div className={`text-xs uppercase tracking-[0.35em] ${tone.accentText}`}>
-                Live Comments
-              </div>
-              <div className="mt-1 truncate text-sm text-slate-400">
-                {selectedWar.title}
-              </div>
-            </div>
-            <span className={`shrink-0 rounded-full border px-3 py-1 text-xs ${tone.neutralPill}`}>
-              {messages.length} recent
-            </span>
-          </div>
-
-          <div className="mt-4 min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
-            {commentMessages.length === 0 ? (
-              <div className={`rounded-2xl border px-4 py-5 text-sm text-slate-300 ${tone.subduedCard}`}>
-                No comments yet. The first war-room callout lands here.
-              </div>
-            ) : (
-              commentMessages.map((message) => (
-                <CompactCommentCard key={message.id} message={message} tone={tone} />
-              ))
-            )}
-          </div>
-
-          <a
-            href="#lobby-chat"
-            className={`mt-4 inline-flex min-h-10 items-center justify-center gap-2 rounded-full border px-4 text-sm transition ${tone.secondaryButton}`}
-          >
-            <MessageSquareMore className="h-4 w-4" aria-hidden="true" />
-            Open Chat
-          </a>
-        </aside>
-      </div>
-    </section>
-  );
-}
-
-function HeroBetSlip({
-  market,
-  selectedWar,
-  selectedSide,
-  stakeDraft,
-  onSelectedSideChange,
-  onStakeDraftChange,
-  tone,
-}: {
-  market: BetBoardMarket | null;
-  selectedWar: FeaturedWar;
-  selectedSide: BetSide;
-  stakeDraft: string;
-  onSelectedSideChange: (side: BetSide) => void;
-  onStakeDraftChange: (value: string) => void;
-  tone: ReturnType<typeof getLobbyPresentationTone>;
-}) {
-  const fallbackNames = selectedWar.players.length >= 2
-    ? [selectedWar.players[0], selectedWar.players[1]]
-    : ["Player 1", "Player 2"];
-  const leftName = market?.left.name || fallbackNames[0];
-  const rightName = market?.right.name || fallbackNames[1];
-  const stakeWolo = Math.max(0, Math.round(Number(stakeDraft) || 0));
-  const selectedPool = selectedSide === "left" ? market?.left.poolWolo ?? 0 : market?.right.poolWolo ?? 0;
-  const oppositePool = selectedSide === "left" ? market?.right.poolWolo ?? 0 : market?.left.poolWolo ?? 0;
-  const projectedReturn = market
-    ? projectHeroReturn(stakeWolo, selectedPool, oppositePool)
-    : stakeWolo;
-  const betHref = market
-    ? `/bets?market=${market.id}&side=${selectedSide}&stake=${stakeWolo || 25}`
-    : "/bets";
-
-  return (
-    <div className={`mt-4 rounded-[1.45rem] border p-4 ${tone.subduedCard}`}>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <div className={`text-[10px] uppercase tracking-[0.28em] ${tone.accentText}`}>
-            Betting
-          </div>
-          <div className="mt-1 text-sm font-semibold text-white">
-            {market?.title || selectedWar.title}
-          </div>
-        </div>
-        <span className={`rounded-full border px-3 py-1 text-xs ${tone.neutralPill}`}>
-          {market ? `${formatCompactWolo(market.totalPotWolo)} WOLO pot` : "Book arming"}
-        </span>
-      </div>
-
-      <div className="mt-3 grid gap-2 sm:grid-cols-2">
-        <HeroBetSideButton
-          active={selectedSide === "left"}
-          name={leftName}
-          poolWolo={market?.left.poolWolo ?? null}
-          crowdPercent={market?.left.crowdPercent ?? null}
-          onClick={() => onSelectedSideChange("left")}
-        />
-        <HeroBetSideButton
-          active={selectedSide === "right"}
-          name={rightName}
-          poolWolo={market?.right.poolWolo ?? null}
-          crowdPercent={market?.right.crowdPercent ?? null}
-          onClick={() => onSelectedSideChange("right")}
-        />
-      </div>
-
-      <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-        <div>
-          <div className="flex flex-wrap gap-1.5">
-            {HERO_STAKE_OPTIONS.map((stake) => (
-              <button
-                key={stake}
-                type="button"
-                onClick={() => onStakeDraftChange(String(stake))}
-                className={`rounded-full border px-3 py-1.5 text-xs transition ${
-                  stakeDraft === String(stake)
-                    ? "border-amber-200/45 bg-amber-300/10 text-amber-50"
-                    : "border-white/10 bg-white/[0.04] text-slate-300 hover:border-white/24 hover:text-white"
-                }`}
-              >
-                {stake}
-              </button>
-            ))}
-          </div>
-          <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-2xl border border-white/10 bg-slate-950/35 px-3 py-2.5">
-            <input
-              aria-label="WOLO stake"
-              inputMode="numeric"
-              value={stakeDraft}
-              onChange={(event) => onStakeDraftChange(safeStakeDraft(event.target.value))}
-              className="min-w-0 bg-transparent text-lg font-semibold text-white outline-none placeholder:text-slate-500"
-              placeholder="25"
-            />
-            <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-xs font-semibold text-slate-100">
-              WOLO
-            </span>
-          </div>
-        </div>
-
-        <div className="grid gap-2 sm:grid-cols-[1fr_auto] lg:min-w-[18rem]">
-          <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2.5">
-            <div className="text-[10px] uppercase tracking-[0.2em] text-slate-500">If right</div>
-            <div className="mt-1 text-lg font-semibold text-white">
-              {formatCompactWolo(projectedReturn)} WOLO
-            </div>
-          </div>
-          <Link
-            href={betHref}
-            className={`inline-flex min-h-12 items-center justify-center rounded-2xl px-5 text-sm font-semibold transition ${tone.primaryButton}`}
-          >
-            Open Slip
-          </Link>
+                  </form>
+                ) : onLogin ? (
+                  <button
+                    type="button"
+                    onClick={onLogin}
+                    className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200"
+                  >
+                    <MessageSquareMore className="h-4 w-4" aria-hidden="true" />
+                    Sign In To Chat
+                  </button>
+                ) : (
+                  <Link
+                    href={actionHref}
+                    target={primaryStream?.url ? "_blank" : undefined}
+                    rel={primaryStream?.url ? "noreferrer" : undefined}
+                    className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200"
+                  >
+                    <MessageSquareMore className="h-4 w-4" aria-hidden="true" />
+                    Open Chat
+                  </Link>
+                )}
         </div>
       </div>
     </div>

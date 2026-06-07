@@ -488,7 +488,16 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
             messages={messages}
             themeKey={tileThemeKey}
             viewMode={viewMode}
-          />
+          
+              isAuthenticated={isAuthenticated}
+              messageBody={messageBody}
+              chatPending={chatPending}
+              onMessageBodyChange={setMessageBody}
+              onSendMessage={() => {
+                void handleSendMessage();
+              }}
+              onLogin={() => loginWithSteam("/")}
+/>
           <WoloMarketTile
             market={woloMarket}
             themeKey={tileThemeKey}
