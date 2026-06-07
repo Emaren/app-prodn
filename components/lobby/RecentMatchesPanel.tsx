@@ -2,7 +2,7 @@
 
 import { formatLobbyMoment } from "@/components/lobby/utils";
 import Link from "next/link";
-import { type ReactNode } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import {
   getLobbyPresentationTone,
   type LobbyThemeKey,
@@ -23,12 +23,48 @@ type RecentMatchesPanelProps = {
   viewMode: LobbyViewMode;
 };
 
+const MATCH_FEED_PAGE_SIZE = 8;
+
 export function RecentMatchesPanel({
   recentMatches,
   themeKey,
   viewMode,
 }: RecentMatchesPanelProps) {
   const tone = getLobbyPresentationTone(themeKey, viewMode);
+  const [visibleCount, setVisibleCount] = useState(MATCH_FEED_PAGE_SIZE);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  const visibleMatches = useMemo(
+    () => recentMatches.slice(0, Math.min(visibleCount, recentMatches.length)),
+    [recentMatches, visibleCount]
+  );
+
+  const hasMoreMatches = visibleMatches.length < recentMatches.length;
+
+  useEffect(() => {
+    setVisibleCount(MATCH_FEED_PAGE_SIZE);
+  }, [recentMatches.length]);
+
+  useEffect(() => {
+    if (!hasMoreMatches) return;
+
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+
+        setVisibleCount((current) =>
+          Math.min(recentMatches.length, current + MATCH_FEED_PAGE_SIZE)
+        );
+      },
+      { rootMargin: "240px 0px" }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMoreMatches, recentMatches.length]);
 
   return (
     <div className={`rounded-[1.75rem] border p-6 ${tone.panelShell}`}>
@@ -56,14 +92,36 @@ export function RecentMatchesPanel({
             Parsed matches will show here as soon as the watcher uploads them.
           </p>
         ) : (
-          recentMatches.map((match) => (
-            <MatchCard
-              key={match.id}
-              match={match}
-              themeKey={themeKey}
-              viewMode={viewMode}
-            />
-          ))
+          <>
+            {visibleMatches.map((match) => (
+              <MatchCard
+                key={match.id}
+                match={match}
+                themeKey={themeKey}
+                viewMode={viewMode}
+              />
+            ))}
+
+            <div ref={sentinelRef} className="flex justify-center pt-2">
+              {hasMoreMatches ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setVisibleCount((current) =>
+                      Math.min(recentMatches.length, current + MATCH_FEED_PAGE_SIZE)
+                    )
+                  }
+                  className={`rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] transition ${tone.secondaryButton}`}
+                >
+                  Show older games
+                </button>
+              ) : recentMatches.length > MATCH_FEED_PAGE_SIZE ? (
+                <div className="text-xs uppercase tracking-[0.18em] text-slate-500">
+                  All {recentMatches.length.toLocaleString()} recent games loaded
+                </div>
+              ) : null}
+            </div>
+          </>
         )}
       </div>
     </div>
