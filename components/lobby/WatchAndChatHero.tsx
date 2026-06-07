@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Coins, ExternalLink, Flame, MessageSquareMore, Play, Skull, Swords } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
 
 import { displayName, formatLobbyMoment } from "@/components/lobby/utils";
 import {
@@ -21,6 +21,12 @@ type WatchAndChatHeroProps = {
   messages: LobbyMessage[];
   themeKey: LobbyThemeKey;
   viewMode: LobbyViewMode;
+  isAuthenticated?: boolean;
+  messageBody?: string;
+  chatPending?: boolean;
+  onMessageBodyChange?: (value: string) => void;
+  onSendMessage?: () => void;
+  onLogin?: () => void;
 };
 
 type LiveGamesPayload = {
@@ -182,8 +188,27 @@ export function WatchAndChatHero({
   messages,
   themeKey,
   viewMode,
+  isAuthenticated = false,
+  messageBody = "",
+  chatPending = false,
+  onMessageBodyChange,
+  onSendMessage,
+  onLogin,
 }: WatchAndChatHeroProps) {
   const tone = getLobbyPresentationTone(themeKey, viewMode);
+  const quickChatReady = messageBody.trim().length > 0 && !chatPending;
+
+  function handleQuickChatSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!isAuthenticated) {
+      onLogin?.();
+      return;
+    }
+
+    if (!quickChatReady) return;
+    onSendMessage?.();
+  }
   const [liveGames, setLiveGames] = useState<LiveGamesPayload | null>(null);
   const [streams, setStreams] = useState<WatchStreamPayload[]>([]);
   const [selectedSessionKey, setSelectedSessionKey] = useState<string | null>(null);
@@ -492,13 +517,64 @@ export function WatchAndChatHero({
             )}
           </div>
 
-          <a
-            href="#lobby-chat"
-            className={`mt-4 inline-flex min-h-10 items-center justify-center gap-2 rounded-full border px-4 text-sm transition ${tone.secondaryButton}`}
-          >
-            <MessageSquareMore className="h-4 w-4" aria-hidden="true" />
-            Open Chat
-          </a>
+          {isAuthenticated && onMessageBodyChange && onSendMessage ? (
+              <form
+                onSubmit={handleQuickChatSubmit}
+                className="pointer-events-auto flex min-w-[min(100%,18rem)] max-w-full items-center gap-2 rounded-full border border-white/10 bg-black/30 p-1.5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)]"
+              >
+                <input
+                  value={messageBody}
+                  maxLength={180}
+                  onChange={(event) => onMessageBodyChange(event.target.value)}
+                  placeholder="Chat with the lobby..."
+                  className="min-w-0 flex-1 bg-transparent px-3 text-sm text-white outline-none placeholder:text-slate-500"
+                />
+                <button
+                  type="submit"
+                  disabled={!quickChatReady}
+                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-300 text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-45"
+                  aria-label={chatPending ? "Sending chat message" : "Send chat message"}
+                  title={chatPending ? "Sending..." : "Send"}
+                >
+                  {chatPending ? (
+                    <span className="h-3.5 w-3.5 animate-pulse rounded-full bg-current/70" />
+                  ) : (
+                    <svg viewBox="0 0 20 20" className="h-4.5 w-4.5" fill="none" aria-hidden="true">
+                      <path
+                        d="M3.25 10.35 16.5 3.75l-4.1 12.5-2.45-5.05-5.25-1.15Z"
+                        stroke="currentColor"
+                        strokeWidth="1.55"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      <path
+                        d="m9.95 11.2 2.8-2.95"
+                        stroke="currentColor"
+                        strokeWidth="1.55"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                  )}
+                </button>
+              </form>
+            ) : onLogin ? (
+              <button
+                type="button"
+                onClick={onLogin}
+                className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200"
+              >
+                <MessageSquareMore className="h-4 w-4" aria-hidden="true" />
+                Sign In To Chat
+              </button>
+            ) : (
+              <a
+                href="#lobby-chat"
+                className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200"
+              >
+                <MessageSquareMore className="h-4 w-4" aria-hidden="true" />
+                Open Chat
+              </a>
+            )}
         </aside>
       </div>
     </section>
