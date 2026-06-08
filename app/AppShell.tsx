@@ -18,6 +18,7 @@ import {
 } from "@/components/lobby/LobbyAppearanceContext";
 import { GlobalInstallAppPrompt } from "@/components/pwa/InstallAppPrompt";
 import MobileFloatingNav from "@/components/pwa/MobileFloatingNav";
+import AoE2WarFooter from "@/components/pwa/AoE2WarFooter";
 import { Toaster } from "sonner";
 import { Providers } from "./Providers";
 import { UserAuthProvider, useUserAuth } from "@/context/UserAuthContext";
@@ -271,6 +272,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
         <GlobalInstallAppPrompt />
         {children}
       </main>
+      {!isContactPage ? <AoE2WarFooter /> : null}
       <MobileFloatingNav />
       <Toaster richColors />
     </div>
