@@ -410,7 +410,10 @@ function AdvancedHero({ profile }: { profile: PlayerProfile }) {
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <HeroStat label="Games" value={String(profile.command.totalMatches)} />
             <HeroStat label="Win Rate" value={formatPercent(profile.command.winRate)} />
-            <HeroStat label="WOLO Flex" value={formatWolo(profile.wolo.totalFlexWolo)} />
+            <HeroStat
+                label={profile.wolo.pendingClaimWolo > 0 ? "Claimable WOLO" : "WOLO Flex"}
+                value={formatWolo(profile.wolo.pendingClaimWolo > 0 ? profile.wolo.pendingClaimWolo : profile.wolo.totalFlexWolo)}
+              />
             <HeroStat label="Proof" value={`${profile.watcher.proofScore}/100`} />
           </div>
 

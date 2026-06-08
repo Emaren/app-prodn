@@ -307,6 +307,39 @@ export async function loadPublicPlayerDirectory(
   );
   const claimedPlayersByReplayName = await findClaimedUsersForReplayNames(prisma, replayNames);
 
+    const pendingGiftByUserUid = new Map<string, { count: number; amount: number }>();
+    const userIdToUid = new Map(users.map((user) => [user.id, user.uid]));
+    const claimedUserIds = users.map((user) => user.id);
+
+    if (claimedUserIds.length > 0) {
+      try {
+        const pendingGiftGroups = await prisma.userGift.groupBy({
+          by: ["userId"],
+          where: {
+            userId: { in: claimedUserIds },
+            kind: "WOLO",
+            status: "pending",
+            amount: { gt: 0 },
+          },
+          _count: { _all: true },
+          _sum: { amount: true },
+        });
+
+        for (const group of pendingGiftGroups) {
+          const uid = userIdToUid.get(group.userId);
+          if (!uid) continue;
+
+          pendingGiftByUserUid.set(uid, {
+            count: group._count._all,
+            amount: group._sum.amount ?? 0,
+          });
+        }
+      } catch (error) {
+        console.warn(`Public player directory pending WOLO gift rail unavailable: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+
+
   const directory = new Map<string, PublicPlayerDirectoryEntry>();
 
   for (const user of users) {
@@ -399,7 +432,20 @@ export async function loadPublicPlayerDirectory(
   );
 
   const allEntries = Array.from(directory.values())
-    .map((entry) => applyPendingWoloClaimSummary(entry, pendingClaimSummaries))
+    .map((entry) => {
+        const withClaims = applyPendingWoloClaimSummary(entry, pendingClaimSummaries);
+        const pendingGift = withClaims.uid ? pendingGiftByUserUid.get(withClaims.uid) : null;
+
+        if (!pendingGift) {
+          return withClaims;
+        }
+
+        return {
+          ...withClaims,
+          pendingWoloClaimCount: withClaims.pendingWoloClaimCount + pendingGift.count,
+          pendingWoloClaimAmount: withClaims.pendingWoloClaimAmount + pendingGift.amount,
+        };
+      })
     .filter((entry) => {
     if (!entry.claimed) {
       return true;

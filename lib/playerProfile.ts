@@ -864,9 +864,43 @@ async function loadWoloStats(
     return emptyWoloStats(communityGiftWolo);
   }
 
+  let profileGiftRows: Array<{
+    amount: number | null;
+    status: string;
+    acceptedAt: Date | null;
+    createdAt: Date;
+  }> = [];
+  
+  if (user) {
+    try {
+      profileGiftRows = await prisma.userGift.findMany({
+        where: {
+          userId: user.id,
+          kind: "WOLO",
+          status: { in: ["pending", "accepted"] },
+          amount: { gt: 0 },
+        },
+        select: {
+          amount: true,
+          status: true,
+          acceptedAt: true,
+          createdAt: true,
+        },
+      });
+    } catch (error) {
+      if (!isMissingPrismaStorageError(error)) {
+        throw error;
+      }
+      warnOptionalProfileRail("pending WOLO gift", error);
+    }
+  }
+  
   const visibleClaims = claims.filter((claim) => isAtOrAfterWoloMainnetStart(claim.claimedAt || claim.createdAt));
   const pendingClaims = visibleClaims.filter((claim) => claim.status === "pending" && !claim.rescindedAt);
   const claimedClaims = visibleClaims.filter((claim) => claim.status === "claimed" || claim.claimedAt);
+  const visibleGiftRows = profileGiftRows.filter((gift) => isAtOrAfterWoloMainnetStart(gift.acceptedAt || gift.createdAt));
+  const pendingGiftRows = visibleGiftRows.filter((gift) => gift.status === "pending");
+  const pendingGiftWolo = pendingGiftRows.reduce((sum, gift) => sum + (gift.amount ?? 0), 0);
   const visibleWagers = wagers.filter(isMainnetVisibleBetWager);
   const payoutWolo = visibleWagers.reduce((sum, wager) => sum + (wager.payoutTxHash ? wager.payoutWolo ?? 0 : 0), 0);
   const stakingRewardsWolo =
@@ -877,8 +911,8 @@ async function loadWoloStats(
   const claimedClaimWolo = claimedClaims.reduce((sum, claim) => sum + claim.amountWolo, 0);
 
   return {
-    pendingClaimWolo: pendingClaims.reduce((sum, claim) => sum + claim.amountWolo, 0),
-    pendingClaimCount: pendingClaims.length,
+    pendingClaimWolo: pendingClaims.reduce((sum, claim) => sum + claim.amountWolo, 0) + pendingGiftWolo,
+    pendingClaimCount: pendingClaims.length + pendingGiftRows.length,
     claimedClaimWolo,
     claimedClaimCount: claimedClaims.length,
     payoutTxCount:
