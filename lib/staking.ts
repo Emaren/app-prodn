@@ -269,6 +269,7 @@ export function isPublicStakingActivityItem(item: StakingActivityItem) {
     item.eventType !== "FAUCET" &&
     (item.eventType === "SETTLEMENT" ||
       item.eventType === "DIRECT" ||
+        item.eventType === "GIFT" ||
       (item.key?.startsWith("tx-") ?? false) ||
       /\btx\s+[0-9a-f]{8}/i.test(item.detail))
   );
@@ -331,6 +332,96 @@ function detailForIndexedTransfer(row: WoloIndexedTransferActivityRow) {
   if (row.memo) parts.push(`memo ${row.memo.slice(0, 80)}`);
   return parts.filter(Boolean).join(" · ");
 }
+
+
+type WoloGiftActivityRow = {
+  id: number;
+  kind: string;
+  amount: number | null;
+  note: string | null;
+  status: string;
+  acceptedAt: Date | null;
+  createdAt: Date;
+  user: DisplayUser;
+};
+
+function giftCreatedAtWhere(before?: Date | string | null): Prisma.DateTimeFilter | undefined {
+  const createdAt: Prisma.DateTimeFilter = {};
+
+  if (isWoloMainnet()) {
+    createdAt.gte = getWoloMainnetDisplayStartAt();
+  }
+
+  if (before) {
+    const parsed = before instanceof Date ? before : new Date(before);
+    if (!Number.isNaN(parsed.getTime())) {
+      createdAt.lt = parsed;
+    }
+  }
+
+  return Object.keys(createdAt).length ? createdAt : undefined;
+}
+
+async function loadRecentWoloGiftActivityRows(
+  prisma: PrismaClient,
+  take = 12,
+  before?: Date | string | null
+): Promise<WoloGiftActivityRow[]> {
+  const createdAt = giftCreatedAtWhere(before);
+
+  return prisma.userGift.findMany({
+    where: {
+      kind: "WOLO",
+      amount: { gt: 0 },
+      status: { in: ["pending", "accepted"] },
+      ...(createdAt ? { createdAt } : {}),
+    },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: Math.max(1, take),
+    select: {
+      id: true,
+      kind: true,
+      amount: true,
+      note: true,
+      status: true,
+      acceptedAt: true,
+      createdAt: true,
+      user: {
+        select: {
+          uid: true,
+          inGameName: true,
+          steamPersonaName: true,
+        },
+      },
+    },
+  });
+}
+
+function giftToActivityItem(
+  row: WoloGiftActivityRow,
+  now = new Date()
+): StakingActivityItem & { sortAt: Date } {
+  const timestamp = row.acceptedAt ?? row.createdAt;
+  const safeTimestamp = Number.isNaN(timestamp.getTime()) ? now : timestamp;
+  const timestampLabel = formatMoment(safeTimestamp);
+  const player = displayPlayerName(row.user);
+  const amountLabel = row.amount != null ? formatActivityWolo(row.amount) : undefined;
+  const statusLabel = row.status === "accepted" ? "Accepted app gift" : "Claimable app gift";
+
+  return {
+    key: `gift-${row.id}`,
+    label: `${amountLabel ?? row.kind} gift: ${player}`,
+    detail: [statusLabel, row.note?.trim() || null].filter(Boolean).join(" · "),
+    meta: timestampLabel,
+    eventType: "GIFT",
+    amountLabel,
+    timestampLabel,
+    occurredAt: safeTimestamp.toISOString(),
+    tone: row.status === "accepted" ? "emerald" : "sky",
+    sortAt: safeTimestamp,
+  };
+}
+
 
 function detailForPendingSettlement(row: PendingSettlementActivityGroup) {
   const targetList =
@@ -862,30 +953,39 @@ export async function loadMainnetTransferStakingActivityPage(
   } = {}
 ): Promise<StakingActivityPage> {
   const limit = Math.max(1, Math.min(options.limit ?? 16, 40));
-  const rows = await loadIndexedWoloTransferActivityRows(prisma, limit + 1, {
-    before: options.before ?? null,
-  });
-  const pageRows = rows.slice(0, limit).map((row) => {
-    const item = indexedTransferToActivityItem(row);
-    return {
-      key: item.key,
-      label: item.label,
-      detail: item.detail,
-      meta: item.meta,
-      eventType: item.eventType,
-      amountLabel: item.amountLabel,
-      txFeeLabel: item.txFeeLabel,
-      timestampLabel: item.timestampLabel,
-      occurredAt: item.occurredAt,
-      tone: item.tone,
-    };
-  });
+  const before = options.before ?? null;
+
+  const [indexedTransferRows, giftRows] = await Promise.all([
+    loadIndexedWoloTransferActivityRows(prisma, limit + 8, { before }),
+    loadRecentWoloGiftActivityRows(prisma, limit + 8, before).catch(() => []),
+  ]);
+
+  const combined = dedupeActivityRows(
+    [
+      ...indexedTransferRows.map((row) => indexedTransferToActivityItem(row)),
+      ...giftRows.map((row) => giftToActivityItem(row)),
+    ],
+    limit + 1
+  ).filter(isPublicStakingActivityItem);
+
+  const pageRows = combined.slice(0, limit).map((item) => ({
+    key: item.key,
+    label: item.label,
+    detail: item.detail,
+    meta: item.meta,
+    eventType: item.eventType,
+    amountLabel: item.amountLabel,
+    txFeeLabel: item.txFeeLabel,
+    timestampLabel: item.timestampLabel,
+    occurredAt: item.occurredAt,
+    tone: item.tone,
+  }));
   const lastRow = pageRows[pageRows.length - 1] ?? null;
 
   return {
     generatedAt: new Date().toISOString(),
     rows: pageRows,
-    hasMore: rows.length > limit,
+    hasMore: combined.length > limit,
     nextBefore: lastRow?.occurredAt ?? null,
   };
 }
