@@ -18,6 +18,12 @@ const BASE_ARENA_ELO = 1500;
 const ARENA_ELO_K_FACTOR = 32;
 const LEADERBOARD_GAME_WINDOW = 5000;
 
+export type LoadLobbyLeaderboardOptions = {
+  offset?: number;
+  limit?: number;
+  includePendingClaimed?: boolean;
+};
+
 type PreparedLeaderboardGame = {
   winner: string | null;
   players: ReturnType<typeof parsePlayers>;
@@ -144,7 +150,7 @@ function compareLeaderboardEntries(left: EnrichedLeaderboardEntry, right: Enrich
 
 const LOBBY_LEADERBOARD_INITIAL_ENTRY_LIMIT = 80;
 
-function buildLeaderboardSelection(entries: EnrichedLeaderboardEntry[]) {
+function buildLeaderboardSelection(entries: EnrichedLeaderboardEntry[], options: LoadLobbyLeaderboardOptions = {}) {
   const eligibleEntries = entries
     .filter((entry) => entry.totalMatches >= LOBBY_LEADERBOARD_MIN_MATCHES)
     .sort(compareLeaderboardEntries);
@@ -167,14 +173,22 @@ function buildLeaderboardSelection(entries: EnrichedLeaderboardEntry[]) {
       return left.name.localeCompare(right.name);
     });
 
+  const safeOffset = Math.max(0, Math.floor(options.offset ?? 0));
+  const safeLimit = Math.max(
+    1,
+    Math.min(200, Math.floor(options.limit ?? LOBBY_LEADERBOARD_INITIAL_ENTRY_LIMIT))
+  );
+  const includePendingClaimed = options.includePendingClaimed ?? true;
   const selectedByKey = new Map<string, EnrichedLeaderboardEntry>();
 
-  for (const entry of rankedEntries.slice(0, LOBBY_LEADERBOARD_INITIAL_ENTRY_LIMIT)) {
+  for (const entry of rankedEntries.slice(safeOffset, safeOffset + safeLimit)) {
     selectedByKey.set(entry.key, entry);
   }
 
-  for (const entry of pendingClaimedEntries) {
-    selectedByKey.set(entry.key, entry);
+  if (includePendingClaimed) {
+    for (const entry of pendingClaimedEntries) {
+      selectedByKey.set(entry.key, entry);
+    }
   }
 
   const selectedEntries = Array.from(selectedByKey.values());
@@ -447,7 +461,8 @@ function sortCandidateGamesByPlayedAtDesc(
 }
 
 export async function loadLobbyLeaderboard(
-  prisma: PrismaClient
+  prisma: PrismaClient,
+  options: LoadLobbyLeaderboardOptions = {}
 ): Promise<LobbyLeaderboardSummary> {
   const dayStart = new Date();
   dayStart.setHours(0, 0, 0, 0);
@@ -503,7 +518,7 @@ export async function loadLobbyLeaderboard(
   applyPendingClaimSummaries(candidates, pendingSummaries);
   buildArenaElo(candidates, preparedGames);
 
-  const { eligibleEntries, selectedEntries, rankByKey, fullEntryCount } = buildLeaderboardSelection(candidates);
+  const { eligibleEntries, selectedEntries, rankByKey, fullEntryCount } = buildLeaderboardSelection(candidates, options);
 
   return {
     title: "Season Leaderboard",

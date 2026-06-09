@@ -1,5 +1,8 @@
+"use client";
+
 import { formatLobbyMoment } from "@/components/lobby/utils";
 import Link from "next/link";
+import { type UIEvent, useCallback, useEffect, useRef, useState } from "react";
 
 import SteamLinkedBadge from "@/components/SteamLinkedBadge";
 import {
@@ -17,6 +20,38 @@ type LeaderboardPanelProps = {
   viewMode: LobbyViewMode;
   onViewModeChange: (viewMode: LobbyViewMode) => void;
 };
+
+const LEADERBOARD_PAGE_SIZE = 80;
+
+type LeaderboardPageResponse = {
+  ok?: boolean;
+  entries?: LobbyLeaderboardSummary["entries"];
+  nextOffset?: number;
+  hasMore?: boolean;
+};
+
+function countRankedLeaderboardEntries(entries: LobbyLeaderboardSummary["entries"]) {
+  return entries.filter((entry) => entry.totalMatches > 0).length;
+}
+
+function mergeLeaderboardEntries(
+  primary: LobbyLeaderboardSummary["entries"],
+  secondary: LobbyLeaderboardSummary["entries"]
+) {
+  const byKey = new Map<string, LobbyLeaderboardSummary["entries"][number]>();
+
+  for (const entry of [...primary, ...secondary]) {
+    byKey.set(entry.key, entry);
+  }
+
+  return Array.from(byKey.values()).sort((left, right) => {
+    if (left.rank !== right.rank) {
+      return left.rank - right.rank;
+    }
+
+    return left.name.localeCompare(right.name);
+  });
+}
 
 function formatLastGame(value: string | null) {
   if (!value) {
@@ -39,6 +74,77 @@ export function LeaderboardPanel({
   onViewModeChange,
 }: LeaderboardPanelProps) {
   const tone = getLobbyPresentationTone(themeKey, viewMode);
+  const [entries, setEntries] = useState(leaderboard.entries);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const entriesRef = useRef(entries);
+  const loadingRef = useRef(false);
+  const nextOffsetRef = useRef(countRankedLeaderboardEntries(leaderboard.entries));
+  const hasMoreRef = useRef(
+    leaderboard.trackedPlayers > countRankedLeaderboardEntries(leaderboard.entries)
+  );
+
+  useEffect(() => {
+    const rankedEntryCount = countRankedLeaderboardEntries(leaderboard.entries);
+    setEntries((current) => mergeLeaderboardEntries(leaderboard.entries, current));
+    nextOffsetRef.current = Math.max(nextOffsetRef.current, rankedEntryCount);
+    hasMoreRef.current = leaderboard.trackedPlayers > nextOffsetRef.current;
+  }, [leaderboard.entries, leaderboard.trackedPlayers]);
+
+  useEffect(() => {
+    entriesRef.current = entries;
+  }, [entries]);
+
+  const loadMoreLeaderboardEntries = useCallback(async () => {
+    if (loadingRef.current || !hasMoreRef.current) return;
+
+    loadingRef.current = true;
+    setIsLoadingMore(true);
+
+    try {
+      const offset = nextOffsetRef.current;
+      const response = await fetch(
+        `/api/lobby/leaderboard?offset=${offset}&limit=${LEADERBOARD_PAGE_SIZE}`,
+        { cache: "no-store" }
+      );
+
+      if (!response.ok) {
+        hasMoreRef.current = false;
+        return;
+      }
+
+      const payload = (await response.json()) as LeaderboardPageResponse;
+      const nextEntries = Array.isArray(payload.entries) ? payload.entries : [];
+
+      setEntries((current) => mergeLeaderboardEntries(current, nextEntries));
+
+      const fallbackNextOffset = offset + countRankedLeaderboardEntries(nextEntries);
+      nextOffsetRef.current =
+        typeof payload.nextOffset === "number" ? payload.nextOffset : fallbackNextOffset;
+      hasMoreRef.current =
+        typeof payload.hasMore === "boolean"
+          ? payload.hasMore
+          : countRankedLeaderboardEntries(nextEntries) >= LEADERBOARD_PAGE_SIZE;
+    } catch (error) {
+      console.warn("Failed to load more lobby leaderboard entries:", error);
+      hasMoreRef.current = false;
+    } finally {
+      loadingRef.current = false;
+      setIsLoadingMore(false);
+    }
+  }, []);
+
+  const handleLeaderboardScroll = useCallback(
+    (event: UIEvent<HTMLDivElement>) => {
+      const target = event.currentTarget;
+      const distanceFromBottom =
+        target.scrollHeight - target.scrollTop - target.clientHeight;
+
+      if (distanceFromBottom < 420) {
+        void loadMoreLeaderboardEntries();
+      }
+    },
+    [loadMoreLeaderboardEntries]
+  );
 
   return (
     <div
@@ -119,13 +225,13 @@ export function LeaderboardPanel({
         </div>
       </div>
 
-      <div className="mt-6 max-h-[58vh] space-y-3 overflow-y-auto pr-2 sm:max-h-[62vh] lg:max-h-[46rem]">
-        {leaderboard.entries.length === 0 ? (
+      <div className="mt-6 max-h-[58vh] space-y-3 overflow-y-auto pr-2 sm:max-h-[62vh] lg:max-h-[46rem]" aria-busy={isLoadingMore} onScroll={handleLeaderboardScroll}>
+        {entries.length === 0 ? (
           <div className="rounded-2xl border border-white/8 bg-white/5 px-4 py-5 text-sm leading-6 text-slate-300">
             Need more final games.
           </div>
         ) : (
-          leaderboard.entries.map((entry) => (
+          entries.map((entry) => (
             <Link
               key={entry.key}
               href={entry.href}
