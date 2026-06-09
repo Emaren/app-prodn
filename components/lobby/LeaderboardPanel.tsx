@@ -117,7 +117,7 @@ export function LeaderboardPanel({
 
       setEntries((current) => mergeLeaderboardEntries(current, nextEntries));
 
-      const fallbackNextOffset = offset + countRankedLeaderboardEntries(nextEntries);
+      const fallbackNextOffset = offset + nextEntries.length;
       nextOffsetRef.current =
         typeof payload.nextOffset === "number" ? payload.nextOffset : fallbackNextOffset;
       hasMoreRef.current =

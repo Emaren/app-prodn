@@ -179,9 +179,10 @@ function buildLeaderboardSelection(entries: EnrichedLeaderboardEntry[], options:
     Math.min(200, Math.floor(options.limit ?? LOBBY_LEADERBOARD_INITIAL_ENTRY_LIMIT))
   );
   const includePendingClaimed = options.includePendingClaimed ?? true;
+  const orderedEntries = [...rankedEntries, ...pendingClaimedEntries];
   const selectedByKey = new Map<string, EnrichedLeaderboardEntry>();
 
-  for (const entry of rankedEntries.slice(safeOffset, safeOffset + safeLimit)) {
+  for (const entry of orderedEntries.slice(safeOffset, safeOffset + safeLimit)) {
     selectedByKey.set(entry.key, entry);
   }
 
@@ -208,7 +209,7 @@ function buildLeaderboardSelection(entries: EnrichedLeaderboardEntry[], options:
     eligibleEntries,
     selectedEntries,
     rankByKey,
-    fullEntryCount: rankedEntries.length,
+    fullEntryCount: orderedEntries.length,
   };
 }
 

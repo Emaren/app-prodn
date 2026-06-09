@@ -27,11 +27,10 @@ export async function GET(request: NextRequest) {
   const leaderboard = await loadLobbyLeaderboard(getPrisma(), {
     offset,
     limit,
-    includePendingClaimed: offset === 0,
+    includePendingClaimed: false,
   });
 
-  const rankedEntryCount = leaderboard.entries.filter((entry) => entry.totalMatches > 0).length;
-  const nextOffset = offset + rankedEntryCount;
+  const nextOffset = offset + leaderboard.entries.length;
 
   return NextResponse.json({
     ok: true,
