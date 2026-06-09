@@ -23,7 +23,6 @@ type RecentMatchesPanelProps = {
   viewMode: LobbyViewMode;
 };
 
-const MATCH_FEED_PAGE_SIZE = 8;
 
 export function RecentMatchesPanel({
   recentMatches,
@@ -31,8 +30,7 @@ export function RecentMatchesPanel({
   viewMode,
 }: RecentMatchesPanelProps) {
   const tone = getLobbyPresentationTone(themeKey, viewMode);
-  const visibleMatches = recentMatches.slice(0, MATCH_FEED_PAGE_SIZE * 3);
-  const hiddenMatchCount = Math.max(0, recentMatches.length - visibleMatches.length);
+  const visibleMatches = recentMatches;
 
   return (
     <div className={`flex h-[min(76dvh,46rem)] min-h-[28rem] flex-col overflow-hidden rounded-[1.75rem] border p-5 sm:h-[min(78dvh,48rem)] sm:min-h-[30rem] sm:p-6 lg:h-[min(78dvh,50rem)] lg:min-h-[32rem] ${tone.panelShell}`}>
@@ -46,12 +44,6 @@ export function RecentMatchesPanel({
           </h3>
         </div>
 
-        <Link
-          href="/game-stats"
-          className={`rounded-full border px-3 py-1 text-xs transition ${tone.secondaryButton}`}
-        >
-          View All Matches
-        </Link>
       </div>
 
       <div className="mt-5 min-h-0 flex-1 overflow-y-auto pr-1">
@@ -71,15 +63,6 @@ export function RecentMatchesPanel({
                 />
               ))}
 
-              {hiddenMatchCount > 0 ? (
-                <div className="rounded-2xl border border-white/10 bg-black/15 px-4 py-3 text-center text-xs uppercase tracking-[0.16em] text-slate-500">
-                  Showing newest {visibleMatches.length.toLocaleString()} of {recentMatches.length.toLocaleString()} games · open full feed for the archive
-                </div>
-              ) : recentMatches.length > MATCH_FEED_PAGE_SIZE ? (
-                <div className="rounded-2xl border border-white/10 bg-black/15 px-4 py-3 text-center text-xs uppercase tracking-[0.16em] text-slate-500">
-                  All visible recent games loaded
-                </div>
-              ) : null}
             </>
           )}
         </div>

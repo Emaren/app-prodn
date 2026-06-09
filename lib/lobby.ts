@@ -240,7 +240,7 @@ export function slugifyTournamentTitle(value: string) {
     .trim()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
-    .slice(0, 70);
+    .slice(0, 24);
 }
 
 export function normalizeTournamentStatus(value: unknown): TournamentStatus {

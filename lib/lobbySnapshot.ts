@@ -20,6 +20,8 @@ import { reconcileTournamentMatchProofs } from "@/lib/tournamentProofReconciler"
 import { loadWoloDevSnapshot } from "@/lib/woloDevSnapshot";
 import { loadWoloMarketSnapshot } from "@/lib/woloMarket";
 
+const LOBBY_RECENT_MATCH_INITIAL_LIMIT = 24;
+
 async function loadRecentMatches(): Promise<LobbyMatchRow[]> {
   try {
     const base = getBackendUpstreamBase();
@@ -32,7 +34,7 @@ async function loadRecentMatches(): Promise<LobbyMatchRow[]> {
     return payload
       .slice()
       .sort((a, b) => getLobbyMatchPlayedAtMs(b) - getLobbyMatchPlayedAtMs(a))
-      .slice(0, 60);
+      .slice(0, LOBBY_RECENT_MATCH_INITIAL_LIMIT);
   } catch (error) {
     console.warn("Failed to load recent matches for lobby:", error);
     return [];
