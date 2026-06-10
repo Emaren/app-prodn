@@ -204,7 +204,7 @@ export default function AdminCommandTowerPage() {
           <StatCard label="Needs Reply" value={data.overview.unreadForAdmin} sublabel="Unread from players to you" />
           <StatCard label="Player Surprise" value={data.overview.unreadForUsers} sublabel="Unread items currently showing for players" />
           <StatCard label="Pending Honors" value={data.overview.pendingHonors} sublabel="Badges + gifts waiting on acceptance" />
-          <StatCard label="Pending Claims" value={data.overview.pendingWoloClaims} sublabel={`${formatWolo(data.overview.pendingWoloClaimAmount)} WOLO unclaimed`} />
+          <StatCard label="Pending Wallet Links" value={data.overview.pendingWoloClaims} sublabel={`${formatWolo(data.overview.pendingWoloClaimAmount)} WOLO awaiting verified wallets`} />
           <StatCard label="Claimed Claims" value={data.overview.claimedWoloClaims} sublabel={`${formatWolo(data.overview.claimedWoloClaimAmount)} WOLO resolved`} />
         </section>
       ) : null}
