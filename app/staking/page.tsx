@@ -614,7 +614,7 @@ export default async function StakingPage({
                   WOLO Economy
                 </div>
               </StakingAdvancedTrigger>
-              <div className="space-y-4 sm:pl-[4.25rem]">
+              <div className="space-y-4">
                 <h1 className="max-w-4xl text-[2.05rem] font-semibold leading-tight text-white sm:text-[2.7rem] lg:text-[3.35rem]">
                   Stake WOLO.
                 </h1>
@@ -672,7 +672,6 @@ export default async function StakingPage({
                 <HeroStat label="Bet Volume" value={formatWolo(snapshot.betVolumeWolo)} helper={`${formatNumber(snapshot.betsPlaced)} bets`} />
                 <HeroStat label="Payouts" value={formatWolo(snapshot.payoutWolo)} helper="Settled returns" />
                 <HeroStat label="Bets Placed" value={formatNumber(snapshot.betsPlaced)} helper="Wagers in window" />
-                  <HeroStat label="Total Tx Fees All Time" value={formatFeeShareWolo(snapshot.totalTxFeesAllTimeWolo ?? null)} helper="Confirmed staking tx fees" />
                 <HeroStat label="Treasury Share" value={formatFeeShareWolo(snapshot.treasuryShareWolo)} helper="50% fee share" />
               </div>
 

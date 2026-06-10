@@ -54,6 +54,12 @@ export const WOLO_MAINNET_WALLET_ALIASES = [
     role: "founder",
   },
   {
+    label: "Founder Rewards",
+    address: "wolo1tg04m57e52evgzjkn9ruwwkz626pfv9qfv27wy",
+    profileNameKeys: ["emaren"],
+    role: "payout",
+  },
+  {
     label: "Ecosystem Bounties",
     address: "wolo1dmj5dnm7g9hmj005yzy5e5xcygudyt7wxzpxjq",
     role: "bounty",

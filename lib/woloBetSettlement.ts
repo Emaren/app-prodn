@@ -189,6 +189,9 @@ const WOLO_SETTLEMENT_CONFIG_WARNING =
       : "Ignored non-mainnet WOLO_SETTLEMENT_URL on wolo-1; expected http://127.0.0.1:8092."
     : null;
 const WOLO_SETTLEMENT_AUTH_TOKEN = process.env.WOLO_SETTLEMENT_AUTH_TOKEN?.trim() || "";
+const WOLO_FOUNDER_SETTLEMENT_URL = process.env.WOLO_FOUNDER_SETTLEMENT_URL?.trim() || "";
+const WOLO_FOUNDER_SETTLEMENT_AUTH_TOKEN =
+  process.env.WOLO_FOUNDER_SETTLEMENT_AUTH_TOKEN?.trim() || "";
 const WOLO_LOCAL_PAYOUT_SIGNER_FALLBACK_ENABLED =
   process.env.WOLO_LOCAL_PAYOUT_SIGNER_FALLBACK?.trim() === "1";
 const WOLO_SETTLEMENT_SURFACE_CACHE_TTL_MS = 60_000;
@@ -365,11 +368,11 @@ function hasLocalPayoutSignerFallbackConfigured() {
   );
 }
 
-function buildSettlementMutationHeaders() {
+function buildSettlementMutationHeaders(authToken = WOLO_SETTLEMENT_AUTH_TOKEN) {
   return {
     "content-type": "application/json",
-    ...(WOLO_SETTLEMENT_AUTH_TOKEN
-      ? { authorization: `Bearer ${WOLO_SETTLEMENT_AUTH_TOKEN}` }
+    ...(authToken
+      ? { authorization: `Bearer ${authToken}` }
       : {}),
   };
 }
@@ -452,6 +455,54 @@ async function fetchWoloSettlementHealth(): Promise<SettlementHealthResult | nul
   }
 
   return normalizeSettlementHealthPayload(payload, response.status);
+}
+
+async function fetchWoloSettlementHealthFromUrl(
+  baseUrlRaw: string,
+  label = "WoloChain settlement service"
+): Promise<SettlementHealthResult | null> {
+  if (!baseUrlRaw) return null;
+
+  const baseUrl = normalizeSettlementBaseUrl(baseUrlRaw);
+  const response = await fetch(`${baseUrl}/settlement/v1/health`, {
+    cache: "no-store",
+  }).catch(() => null);
+
+  if (!response) {
+    return {
+      ok: false,
+      status: "unreachable",
+      failureCode: "SETTLEMENT_HEALTH_UNREACHABLE",
+      detail: `Could not reach the ${label} health route.`,
+      chainId: null,
+      warnings: [],
+    };
+  }
+
+  const payload = (await response.json().catch(() => null)) as SettlementHealthPayload | null;
+  if (!payload || typeof payload !== "object") {
+    return {
+      ok: false,
+      status: "unstructured",
+      failureCode: "SETTLEMENT_HEALTH_UNSTRUCTURED",
+      detail: `${label} health returned an unstructured response.`,
+      chainId: null,
+      warnings: [],
+    };
+  }
+
+  return normalizeSettlementHealthPayload(payload, response.status);
+}
+
+function shouldBlockSettlementForNamedHealth(health: SettlementHealthResult | null) {
+  if (isWoloMainnet()) {
+    return !health?.ok || health.chainId !== WOLO_MAINNET_CHAIN_ID;
+  }
+
+  if (!health || health.ok) return false;
+  return Boolean(
+    health.failureCode && BLOCKING_SETTLEMENT_HEALTH_FAILURE_CODES.has(health.failureCode)
+  );
 }
 
 function shouldBlockSettlementForHealth(health: SettlementHealthResult | null) {
@@ -1345,6 +1396,50 @@ async function executeWoloPayoutViaSettlementService(input: {
   };
 }
 
+async function executeWoloPayoutViaNamedSettlementService(
+  input: {
+    requestId?: string | null;
+    toAddress: string;
+    amountWolo: number;
+    memo: string;
+  },
+  baseUrlRaw: string,
+  authToken: string,
+  label: string
+): Promise<PayoutExecutionResult> {
+  const health = await fetchWoloSettlementHealthFromUrl(baseUrlRaw, label);
+  if (shouldBlockSettlementForNamedHealth(health)) {
+    throw new Error(settlementHealthBlockerDetail(health));
+  }
+
+  const baseUrl = normalizeSettlementBaseUrl(baseUrlRaw);
+  const response = await fetch(`${baseUrl}/settlement/v1/payouts`, {
+    method: "POST",
+    headers: buildSettlementMutationHeaders(authToken),
+    body: JSON.stringify({
+      request_id: input.requestId || buildSettlementRequestId(input),
+      to_address: input.toAddress,
+      amount_uwolo: toUwoLoAmount(input.amountWolo),
+      memo: input.memo.slice(0, 180),
+    }),
+    cache: "no-store",
+  });
+
+  const payload = (await response.json().catch(() => ({}))) as SettlementExecutePayload;
+
+  if (!response.ok || !payload.ok || !payload.tx_hash) {
+    throw new Error(summarizeSettlementDetail(payload));
+  }
+
+  return {
+    txHash: payload.tx_hash,
+    amountWolo: input.amountWolo,
+    toAddress: input.toAddress,
+    requestId: payload.request_id?.trim() || input.requestId || null,
+    proofUrl: selectPreferredProofUrl(payload),
+  };
+}
+
 async function executeWoloSettlementRunFallback(input: {
   settlementRunId: string;
   sourceApp?: string | null;
@@ -1839,6 +1934,24 @@ export async function verifyWoloTransfer(input: {
 export async function readWoloTxNetworkFeeWolo(txHash: string) {
   const payload = await fetchTxWithRetry(txHash, 4);
   return payload ? txNetworkFeeWolo(payload) : null;
+}
+
+export async function executeFounderWoloPayout(input: {
+  requestId?: string | null;
+  toAddress: string;
+  amountWolo: number;
+  memo: string;
+}): Promise<PayoutExecutionResult | null> {
+  if (!WOLO_FOUNDER_SETTLEMENT_URL) {
+    return executeWoloPayout(input);
+  }
+
+  return executeWoloPayoutViaNamedSettlementService(
+    input,
+    WOLO_FOUNDER_SETTLEMENT_URL,
+    WOLO_FOUNDER_SETTLEMENT_AUTH_TOKEN,
+    "Founder Rewards settlement service"
+  );
 }
 
 export async function executeWoloPayout(input: {

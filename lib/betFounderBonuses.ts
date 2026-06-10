@@ -4,7 +4,7 @@ import { createPendingWoloClaim } from "@/lib/pendingWoloClaims";
 import { normalizePublicPlayerName } from "@/lib/publicPlayers";
 import { recordUserActivity } from "@/lib/userExperience";
 import {
-  executeWoloPayout,
+  executeFounderWoloPayout,
   hasWoloPayoutExecutionConfigured,
 } from "@/lib/woloBetSettlement";
 
@@ -806,7 +806,7 @@ export async function settleFounderBonuses(
           throw new Error("Settlement execution is not configured in this environment.");
         }
 
-        const payout = await executeWoloPayout({
+        const payout = await executeFounderWoloPayout({
           toAddress: resolution.matchedUser.walletAddress,
           amountWolo: target.amountWolo,
           memo: `${bonus.market.title} · ${claimKind}`,

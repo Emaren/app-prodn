@@ -50,6 +50,12 @@ export const WOLO_MAINNET_NETWORK_ACCOUNTS = [
     role: "founder",
   },
   {
+    label: "Founder Rewards",
+    address: "wolo1tg04m57e52evgzjkn9ruwwkz626pfv9qfv27wy",
+    use: "APP_SIGNER_NOT_USER_FACING",
+    role: "payout",
+  },
+  {
     label: "Community Treasury",
     address: "wolo1hlfvzuv4dc46ngvh3zlteuegx0xga20hj20zd2",
     use: "TREASURY_PUBLIC_BUT_DO_NOT_USE_FOR_RANDOM_USERS",
