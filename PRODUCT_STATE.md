@@ -149,7 +149,7 @@ Current state:
 - mainnet direct transfers are indexed in `wolo_indexed_transfers`, surfaced at `/api/wolo/mainnet-transfers`, and refreshed through the admin backfill route or `scripts/backfill-wolo-mainnet-transfers.mjs`.
 - `/bets` now records pre-intent Keplr/Ledger wallet failures as `bet_wallet_error` activity events, so operator/debug history includes failures that happen before a stake intent can exist
 - `/bets` now keeps recent no-proof stake intents visible in Your Book and gives the server 24 hours to discover matching WoloChain escrow deposits for tx-landed/browser-lost recovery
-- AoE2WAR browser streaming now exists as the first-party path: signed-in users can pick a screen/window from `/profile` or a watcher-bound `/watch/[sessionKey]`, the app records `aoe2war` browser stream sessions in `game_watch_streams`, stores short WebM chunks under runtime stream storage, and surfaces live thumbnails/playback on `/watch`, `/bets`, `/live-games`, and the lobby Watch & Chat hero. The streamer studio now recovers an active stream after reload, shows compact binding/signal/uptime/chunk stats, keeps watcher-linked theatre/copy actions visible, and accepts watcher handoff params through `/profile?watcher_stream=1&stream_session=...&stream_title=...`. Twitch/YouTube stay as external fallback feeds, not the primary product path.
+- AoE2WAR browser streaming now exists as the first-party path: signed-in users can pick a screen/window from `/profile` or a watcher-bound `/watch/[sessionKey]`, the app records `aoe2war` browser stream sessions in `game_watch_streams`, stores short WebM chunks under runtime stream storage, and surfaces live thumbnails/playback on `/`, `/watch`, `/bets`, `/live-games`, and the lobby Watch & Chat hero. The streamer studio now recovers an active stream after reload, shows compact binding/signal/uptime/chunk stats, keeps watcher-linked theatre/copy actions visible, and accepts watcher handoff params through `/profile?watcher_stream=1&stream_session=...&stream_title=...`. Twitch/YouTube stay as external fallback feeds, not the primary product path.
 - challenge-linked `/bets` markets now merge safe duplicate `watcher-live-*` shadows for the same live/completed session into the canonical challenge book, including wagers, stake intents, wallet locks, founder bonuses, and claim breadcrumbs
 - the recent settled-results rail dedupes by linked session and prefers the challenge-linked market over watcher shadows
 - `/admin/wolochain` now shows a wallet-friction rail for recent Keplr/Ledger stake failures, and `/admin/user-list` surfaces the last-24h count in the WoloChain entry tile
@@ -237,7 +237,7 @@ Still wanted:
 - Admin dashboard: `8.8/10`
 - Replay parser / metadata capture: `8.5/10`
 - Live replay → visible product loop: `8.9/10`
-- AoE2WAR browser streaming loop: `7.8/10`
+- AoE2WAR browser streaming loop: `8.0/10`
 - Exact postgame achievement capture: `4.2/10`
 - Deploy reliability: `8.8/10`
 - Docs / architecture truth: improving, but still worth maintaining intentionally
