@@ -224,6 +224,14 @@ async function main() {
       target: path.join(downloadsDir, `AoE2HDBets Watcher-${version}-arm64.dmg.blockmap`),
     },
     {
+      source: path.join(watcherDistDir, `AoE2HDBets Watcher-${version}-arm64-mac.zip`),
+      target: path.join(downloadsDir, `AoE2HDBets Watcher-${version}-arm64-mac.zip`),
+    },
+    {
+      source: path.join(watcherDistDir, `AoE2HDBets Watcher-${version}-arm64-mac.zip.blockmap`),
+      target: path.join(downloadsDir, `AoE2HDBets Watcher-${version}-arm64-mac.zip.blockmap`),
+    },
+    {
       source: path.join(watcherDistDir, "latest-mac.yml"),
       target: path.join(downloadsDir, "latest-mac.yml"),
     },
