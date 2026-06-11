@@ -113,6 +113,7 @@ export default async function BattleTheatrePage({
               <BrowserStreamStudio
                 sessionKey={snapshot.sessionKey}
                 title={matchupLabel}
+                watcherIntent
               />
             ) : null}
           </div>

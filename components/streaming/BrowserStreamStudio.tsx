@@ -1,7 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Monitor, Play, Radio, Square, Video } from "lucide-react";
+import Link from "next/link";
+import {
+  Activity,
+  Clock3,
+  Copy,
+  Link2,
+  Monitor,
+  Play,
+  Radio,
+  Square,
+  Video,
+} from "lucide-react";
 
 import LiveStreamFrame from "@/components/streaming/LiveStreamFrame";
 import type { WatchStreamPayload } from "@/lib/watchStreams";
@@ -18,10 +29,12 @@ type Props = {
   title?: string | null;
   playerLabel?: string | null;
   compact?: boolean;
+  watcherIntent?: boolean;
 };
 
 const CHUNK_TIMESLICE_MS = 2_000;
 const HEARTBEAT_MS = 8_000;
+const ACTIVE_STREAM_REFRESH_MS = 12_000;
 const MIME_CANDIDATES = [
   "video/webm;codecs=vp8,opus",
   "video/webm;codecs=vp9,opus",
@@ -42,8 +55,8 @@ function buildFreeSessionKey() {
 }
 
 function matchTitle(session: LiveGamesSuggestion | null, fallback: string | null | undefined) {
-  if (fallback?.trim()) return fallback.trim();
   if (session?.title) return session.title;
+  if (fallback?.trim()) return fallback.trim();
   return "AoE2WAR live";
 }
 
@@ -56,11 +69,41 @@ async function fetchJson<T>(url: string, init?: RequestInit) {
   return payload;
 }
 
+function isActiveStream(stream: WatchStreamPayload | null) {
+  return stream?.status === "live" || stream?.status === "starting";
+}
+
+function formatDuration(totalSeconds: number) {
+  if (!Number.isFinite(totalSeconds) || totalSeconds < 1) return "0s";
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = Math.floor(totalSeconds % 60);
+  if (minutes < 1) return `${seconds}s`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 1) return `${minutes}m ${seconds}s`;
+  return `${hours}h ${minutes % 60}m`;
+}
+
+function secondsSince(value: string | null | undefined, now: number) {
+  if (!value) return null;
+  const timestamp = new Date(value).getTime();
+  if (!Number.isFinite(timestamp)) return null;
+  return Math.max(0, Math.round((now - timestamp) / 1000));
+}
+
+function isWatcherBound(sessionKeyValue: string) {
+  return Boolean(sessionKeyValue) && !sessionKeyValue.startsWith("free:");
+}
+
+function watchHref(sessionKeyValue: string) {
+  return `/watch/${encodeURIComponent(sessionKeyValue)}`;
+}
+
 export default function BrowserStreamStudio({
   sessionKey,
   title,
   playerLabel,
   compact = false,
+  watcherIntent = false,
 }: Props) {
   const previewRef = useRef<HTMLVideoElement | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
@@ -75,15 +118,96 @@ export default function BrowserStreamStudio({
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [mediaMimeType, setMediaMimeType] = useState("video/webm");
+  const [copied, setCopied] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
 
   const selectedSuggestion = useMemo(
     () => suggestions.find((entry) => entry.sessionKey === selectedSessionKey) || null,
     [selectedSessionKey, suggestions]
   );
   const activeTitle = matchTitle(selectedSuggestion, title);
+  const isLive = isActiveStream(stream);
+  const streamSessionKey = selectedSessionKey || stream?.sessionKey || "";
+  const hasWatcherBinding = isWatcherBound(streamSessionKey);
+  const uptimeSeconds = secondsSince(stream?.startedAt, now);
+  const heartbeatAgeSeconds = secondsSince(stream?.lastHeartbeatAt, now);
+  const theatreHref = hasWatcherBinding ? watchHref(streamSessionKey) : "";
+
+  const streamStats = useMemo(
+    () => [
+      {
+        label: "Binding",
+        value: hasWatcherBinding ? "Watcher match" : selectedSessionKey ? "Free stream" : "Auto",
+      },
+      {
+        label: "Signal",
+        value: isLive
+          ? (stream?.latestChunkSeq ?? -1) >= 0
+            ? "Live edge"
+            : "Warming"
+          : captureReady
+            ? "Ready"
+            : "Idle",
+      },
+      {
+        label: "Uptime",
+        value: isLive && uptimeSeconds !== null ? formatDuration(uptimeSeconds) : "0s",
+      },
+      {
+        label: "Chunks",
+        value: String(stream?.chunkCount ?? 0),
+      },
+    ],
+    [
+      captureReady,
+      hasWatcherBinding,
+      isLive,
+      selectedSessionKey,
+      stream?.chunkCount,
+      stream?.latestChunkSeq,
+      uptimeSeconds,
+    ]
+  );
 
   useEffect(() => {
     setSelectedSessionKey(sessionKey || "");
+  }, [sessionKey]);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(Date.now()), 5_000);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadMine() {
+      try {
+        const params = new URLSearchParams({ mine: "1" });
+        if (sessionKey) params.set("sessionKey", sessionKey);
+        const payload = await fetchJson<{ streams: WatchStreamPayload[] }>(
+          `/api/streams/active?${params.toString()}`,
+          { cache: "no-store" }
+        );
+        if (cancelled) return;
+        const mine = payload.streams[0] || null;
+        if (!mine) return;
+        setStream((current) => (isActiveStream(current) ? current : mine));
+        setSelectedSessionKey((current) => current || mine.sessionKey);
+      } catch {
+        // Active-stream recovery is best effort; starting a new stream still works.
+      }
+    }
+
+    void loadMine();
+    const interval = window.setInterval(() => {
+      void loadMine();
+    }, ACTIVE_STREAM_REFRESH_MS);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
   }, [sessionKey]);
 
   useEffect(() => {
@@ -185,6 +309,13 @@ export default function BrowserStreamStudio({
 
       mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
       mediaStreamRef.current = nextStream;
+      nextStream.getVideoTracks().forEach((track) => {
+        track.addEventListener("ended", () => {
+          if (!recorderRef.current) {
+            setCaptureReady(false);
+          }
+        });
+      });
       setCaptureReady(true);
       setMediaMimeType(chooseRecorderMimeType());
       setNotice("Source locked.");
@@ -195,7 +326,7 @@ export default function BrowserStreamStudio({
 
   const uploadChunk = useCallback(async (streamId: number, sequence: number, blob: Blob, mimeType: string) => {
     if (!blob.size) return;
-    await fetch(`/api/streams/${streamId}/chunks?sequence=${sequence}`, {
+    const response = await fetch(`/api/streams/${streamId}/chunks?sequence=${sequence}`, {
       method: "POST",
       headers: {
         "Content-Type": blob.type || mimeType,
@@ -203,12 +334,22 @@ export default function BrowserStreamStudio({
       },
       body: blob,
     });
+    const payload = (await response.json().catch(() => null)) as {
+      stream?: WatchStreamPayload;
+      detail?: string;
+    } | null;
+    if (!response.ok) {
+      throw new Error(payload?.detail || "Stream upload missed a beat.");
+    }
+    if (payload?.stream) {
+      setStream(payload.stream);
+    }
   }, []);
 
   const sendHeartbeat = useCallback(
     async (streamId: number, status = "live") => {
       const thumbnailUrl = captureThumbnail();
-      await fetch(`/api/streams/${streamId}/heartbeat`, {
+      const response = await fetch(`/api/streams/${streamId}/heartbeat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -218,7 +359,13 @@ export default function BrowserStreamStudio({
           mediaMimeType,
           thumbnailUrl,
         }),
-      }).catch(() => undefined);
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        stream?: WatchStreamPayload;
+      } | null;
+      if (response.ok && payload?.stream) {
+        setStream(payload.stream);
+      }
     },
     [captureThumbnail, mediaMimeType]
   );
@@ -259,8 +406,8 @@ export default function BrowserStreamStudio({
       recorder.ondataavailable = (event) => {
         const sequence = sequenceRef.current;
         sequenceRef.current += 1;
-        void uploadChunk(payload.stream.id, sequence, event.data, mediaMimeType).catch(() => {
-          setError("Stream upload missed a beat.");
+        void uploadChunk(payload.stream.id, sequence, event.data, mediaMimeType).catch((chunkError) => {
+          setError(chunkError instanceof Error ? chunkError.message : "Stream upload missed a beat.");
         });
       };
       recorder.onstop = () => {
@@ -318,6 +465,17 @@ export default function BrowserStreamStudio({
     }
   }, [stopHeartbeat, stream]);
 
+  const copyWatchLink = useCallback(async () => {
+    if (!theatreHref) return;
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}${theatreHref}`);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1_600);
+    } catch {
+      setError("Could not copy stream link.");
+    }
+  }, [theatreHref]);
+
   useEffect(() => {
     return () => {
       stopHeartbeat();
@@ -326,10 +484,15 @@ export default function BrowserStreamStudio({
     };
   }, [stopHeartbeat]);
 
-  const isLive = stream?.status === "live" || stream?.status === "starting";
-
   return (
-    <div className="rounded-[1.35rem] border border-white/10 bg-white/[0.035] p-4">
+    <div
+      className={[
+        "rounded-[1.35rem] border bg-white/[0.035] p-4",
+        watcherIntent || hasWatcherBinding
+          ? "border-sky-300/20 shadow-[0_0_50px_rgba(56,189,248,0.08)]"
+          : "border-white/10",
+      ].join(" ")}
+    >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.28em] text-slate-500">
@@ -337,7 +500,14 @@ export default function BrowserStreamStudio({
             Streaming
           </div>
           <div className="mt-2 text-lg font-semibold text-white">AoE2WAR Live</div>
-          <div className="mt-1 truncate text-sm text-slate-300">{activeTitle}</div>
+          <div className="mt-1 flex min-w-0 flex-wrap items-center gap-2">
+            <span className="truncate text-sm text-slate-300">{activeTitle}</span>
+            {hasWatcherBinding ? (
+              <span className="rounded-full border border-sky-300/20 bg-sky-400/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-100">
+                Watcher-linked
+              </span>
+            ) : null}
+          </div>
         </div>
         <span
           className={`rounded-full border px-3 py-1 text-xs ${
@@ -375,6 +545,15 @@ export default function BrowserStreamStudio({
           </button>
         </div>
       ) : null}
+
+      <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
+        {streamStats.map((stat) => (
+          <div key={stat.label} className="rounded-2xl border border-white/10 bg-slate-950/45 px-3 py-2">
+            <div className="text-[9px] uppercase tracking-[0.22em] text-slate-500">{stat.label}</div>
+            <div className="mt-1 truncate text-sm font-semibold text-white">{stat.value}</div>
+          </div>
+        ))}
+      </div>
 
       <div className="mt-4">
         {captureReady || isLive ? (
@@ -435,6 +614,27 @@ export default function BrowserStreamStudio({
           </button>
         ) : null}
 
+        {hasWatcherBinding ? (
+          <Link
+            href={theatreHref}
+            className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-5 py-3 text-sm text-slate-200 transition hover:border-white/25 hover:text-white"
+          >
+            <Link2 className="h-4 w-4" aria-hidden="true" />
+            Theatre
+          </Link>
+        ) : null}
+
+        {hasWatcherBinding ? (
+          <button
+            type="button"
+            onClick={copyWatchLink}
+            className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-5 py-3 text-sm text-slate-200 transition hover:border-white/25 hover:text-white"
+          >
+            <Copy className="h-4 w-4" aria-hidden="true" />
+            {copied ? "Copied" : "Copy Link"}
+          </button>
+        ) : null}
+
         {captureReady && !isLive ? (
           <button
             type="button"
@@ -451,6 +651,18 @@ export default function BrowserStreamStudio({
       {notice ? (
         <div className="mt-3 rounded-2xl border border-emerald-300/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100">
           {notice}
+        </div>
+      ) : null}
+      {isLive ? (
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-200">
+            <Activity className="h-4 w-4 text-emerald-200" aria-hidden="true" />
+            {(stream?.latestChunkSeq ?? -1) >= 0 ? "Publishing" : "Signal warming"}
+          </div>
+          <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-200">
+            <Clock3 className="h-4 w-4 text-sky-100" aria-hidden="true" />
+            {heartbeatAgeSeconds === null ? "Heartbeat pending" : `Heartbeat ${heartbeatAgeSeconds}s ago`}
+          </div>
         </div>
       ) : null}
       {error ? (

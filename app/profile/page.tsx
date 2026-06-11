@@ -156,10 +156,19 @@ function ProfilePageContent() {
 
   const claimName = searchParams?.get("claim_name")?.trim() || "";
   const watcherPairIntent = searchParams?.get("watcher_pair") === "1";
+  const streamSessionKey =
+    searchParams?.get("stream_session")?.trim() ||
+    searchParams?.get("sessionKey")?.trim() ||
+    "";
+  const streamTitle = searchParams?.get("stream_title")?.trim() || "";
+  const watcherStreamIntent = searchParams?.get("watcher_stream") === "1" || Boolean(streamSessionKey);
 
   const returnToParams = new URLSearchParams();
   if (claimName) returnToParams.set("claim_name", claimName);
   if (watcherPairIntent) returnToParams.set("watcher_pair", "1");
+  if (watcherStreamIntent) returnToParams.set("watcher_stream", "1");
+  if (streamSessionKey) returnToParams.set("stream_session", streamSessionKey);
+  if (streamTitle) returnToParams.set("stream_title", streamTitle);
 
   const profileReturnTo = returnToParams.toString()
     ? `/profile?${returnToParams.toString()}`
@@ -530,8 +539,10 @@ function ProfilePageContent() {
 
             <div className="mt-4 space-y-4">
               <BrowserStreamStudio
-                title={confirmedName ? `${confirmedName} live` : "AoE2WAR live"}
+                sessionKey={streamSessionKey || undefined}
+                title={streamTitle || (confirmedName ? `${confirmedName} live` : "AoE2WAR live")}
                 playerLabel={confirmedName}
+                watcherIntent={watcherStreamIntent}
               />
 
               <div className="rounded-[1.35rem] border border-white/10 bg-white/[0.035] p-4">

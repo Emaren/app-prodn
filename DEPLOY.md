@@ -257,10 +257,11 @@ The most important public product smoke tests are now:
 9. `/live-games` responds
 10. same-origin `/api/lobby` returns a believable snapshot shape
 11. browser stream routes exist: `/api/streams/active` returns JSON, and `game_watch_streams` has the browser-stream columns after `npx prisma migrate deploy`
-12. a cancelled or failed Keplr/Ledger stake attempt records a `bet_wallet_error` activity event when it fails before stake-intent creation
-13. `/api/admin/users/rails` includes `walletFriction`, and `/admin/wolochain` renders the wallet-friction rail
-14. signed-stake recovery still requires a real tx hash, while recent no-proof stake intents remain visible as pending proof rows
-15. recent settled `/bets` results show one row per linked session, preferring challenge-linked books over watcher shadows
+12. `/profile?watcher_stream=1&stream_session=smoke&stream_title=Smoke%20Match` renders the streamer studio without losing the watcher handoff params through auth
+13. a cancelled or failed Keplr/Ledger stake attempt records a `bet_wallet_error` activity event when it fails before stake-intent creation
+14. `/api/admin/users/rails` includes `walletFriction`, and `/admin/wolochain` renders the wallet-friction rail
+15. signed-stake recovery still requires a real tx hash, while recent no-proof stake intents remain visible as pending proof rows
+16. recent settled `/bets` results show one row per linked session, preferring challenge-linked books over watcher shadows
 
 This matters more now than older homepage-only checks because the lobby/community shell is the real public spine.
 
@@ -269,6 +270,7 @@ Browser stream runtime notes:
 - `storage/live-streams/` is runtime media storage and must stay writable by the web service user.
 - Optional production override: `AOE2_STREAM_STORAGE_DIR=/path/to/stream-storage`.
 - The first AoE2WAR streaming pass is browser WebM chunk distribution. It is intentionally not WOLO-gated and does not require Twitch or OBS.
+- Watcher-native capture is still a later pass, but the web side already accepts watcher-bound stream launch params on `/profile`.
 
 ## Known deploy gotchas
 
