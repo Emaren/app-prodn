@@ -10,11 +10,13 @@ import {
   KeyRound,
   ListChecks,
   RadioTower,
+  UserRound,
   UploadCloud,
 } from "lucide-react";
 
 import type {
   WatcherFunnelDashboardData,
+  WatcherFocusUserDiagnostics,
   WatcherFunnelStage,
   WatcherFunnelWindowCounts,
   WatcherFunnelWindowKey,
@@ -55,6 +57,10 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
+function formatMaybeDate(value: string | null) {
+  return value ? formatDate(value) : "not seen";
+}
+
 function compactValue(value: string | number | null, fallback = "not sent") {
   if (value === null || value === "") {
     return fallback;
@@ -66,6 +72,133 @@ function compactValue(value: string | number | null, fallback = "not sent") {
   }
 
   return `${normalized.slice(0, 12)}...${normalized.slice(-8)}`;
+}
+
+function focusStatusLabel(status: WatcherFocusUserDiagnostics["latestStatus"]) {
+  if (status === "online") return "online";
+  if (status === "watching") return "watching, heartbeat stale";
+  if (status === "idle") return "idle or closed";
+  return "no telemetry";
+}
+
+function focusStatusClass(status: WatcherFocusUserDiagnostics["latestStatus"]) {
+  if (status === "online") return "border-emerald-300/25 bg-emerald-400/10 text-emerald-100";
+  if (status === "watching") return "border-amber-300/25 bg-amber-400/10 text-amber-100";
+  if (status === "idle") return "border-slate-300/15 bg-white/5 text-slate-200";
+  return "border-rose-300/25 bg-rose-400/10 text-rose-100";
+}
+
+function FocusMetric({ label, value }: { label: string; value: string | number | null }) {
+  return (
+    <div className="rounded-lg border border-white/8 bg-white/5 px-3 py-3">
+      <div className="text-[11px] uppercase text-slate-500">{label}</div>
+      <div className="mt-1 break-words text-sm font-semibold text-white">
+        {typeof value === "number" ? formatNumber(value) : value || "none"}
+      </div>
+    </div>
+  );
+}
+
+function JulioDiagnostics({ focusUser }: { focusUser: WatcherFocusUserDiagnostics }) {
+  const visibleCounts = Object.entries(focusUser.eventCounts)
+    .sort((left, right) => right[1] - left[1])
+    .slice(0, 8);
+
+  return (
+    <section className="rounded-lg border border-cyan-300/20 bg-slate-950/70 p-5">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 text-xs uppercase text-cyan-100/70">
+            <UserRound className="h-4 w-4" />
+            Julio Support Tile
+          </div>
+          <h2 className="mt-2 text-2xl font-semibold text-white">{focusUser.label}</h2>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
+            Dedicated watcher diagnostics for UID prefix {focusUser.uidPrefix}. This tile tracks
+            starts, stops, heartbeat freshness, replay detection, upload flow, finality, and failures.
+          </p>
+        </div>
+        <div className={`rounded-full border px-3 py-1.5 text-xs ${focusStatusClass(focusUser.latestStatus)}`}>
+          {focusStatusLabel(focusUser.latestStatus)}
+        </div>
+      </div>
+
+      <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <FocusMetric label="User" value={focusUser.userFound ? `${focusUser.user?.id} / ${focusUser.user?.uid}` : "not found"} />
+        <FocusMetric label="Watcher" value={compactValue(focusUser.activeWatcherId)} />
+        <FocusMetric label="Session" value={compactValue(focusUser.activeSessionId)} />
+        <FocusMetric label="Version / Platform" value={[focusUser.appVersion, focusUser.platform].filter(Boolean).join(" / ") || null} />
+        <FocusMetric label="Last heartbeat" value={formatMaybeDate(focusUser.lastHeartbeatAt)} />
+        <FocusMetric label="Last start" value={formatMaybeDate(focusUser.lastStartedAt)} />
+        <FocusMetric label="Last stop" value={formatMaybeDate(focusUser.lastStoppedAt)} />
+        <FocusMetric label="Last upload" value={formatMaybeDate(focusUser.lastUploadAt)} />
+        <FocusMetric label="Last finality" value={focusUser.lastFinalityStatus} />
+        <FocusMetric label="Deferrals" value={focusUser.finalCandidateDeferrals} />
+        <FocusMetric label="Failures" value={focusUser.failureCount} />
+        <FocusMetric label="Events scanned" value={focusUser.totalEvents} />
+      </div>
+
+      {visibleCounts.length > 0 ? (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {visibleCounts.map(([eventType, count]) => (
+            <span
+              key={eventType}
+              className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-slate-300"
+            >
+              {eventType} {count}
+            </span>
+          ))}
+        </div>
+      ) : null}
+
+      <div className="mt-5 overflow-x-auto">
+        <table className="min-w-[860px] w-full border-separate border-spacing-0 text-left text-sm">
+          <thead>
+            <tr className="text-xs uppercase text-slate-500">
+              <th className="border-b border-white/10 px-3 py-2 font-medium">Time</th>
+              <th className="border-b border-white/10 px-3 py-2 font-medium">Event</th>
+              <th className="border-b border-white/10 px-3 py-2 font-medium">Replay</th>
+              <th className="border-b border-white/10 px-3 py-2 font-medium">Finality</th>
+              <th className="border-b border-white/10 px-3 py-2 font-medium">Detail</th>
+            </tr>
+          </thead>
+          <tbody>
+            {focusUser.recentEvents.length > 0 ? (
+              focusUser.recentEvents.map((event) => (
+                <tr key={`${event.createdAt}-${event.eventType}-${event.replayFile || ""}`} className="align-top text-slate-300">
+                  <td className="border-b border-white/8 px-3 py-3">{formatDate(event.createdAt)}</td>
+                  <td className="border-b border-white/8 px-3 py-3">
+                    <div className="font-semibold text-white">{event.eventType}</div>
+                    <div className="mt-1 text-xs text-slate-500">{compactValue(event.sessionId)}</div>
+                  </td>
+                  <td className="border-b border-white/8 px-3 py-3">
+                    <div>{compactValue(event.replayFile, "no replay")}</div>
+                    <div className="mt-1 text-xs text-slate-500">{compactValue(event.replayHash, "no hash")}</div>
+                  </td>
+                  <td className="border-b border-white/8 px-3 py-3">
+                    <div>{event.finalityStatus || "none"}</div>
+                    <div className="mt-1 text-xs text-slate-500">
+                      settle {event.shouldSettle === null ? "?" : event.shouldSettle ? "yes" : "no"} · accepted{" "}
+                      {event.finalAccepted === null ? "?" : event.finalAccepted ? "yes" : "no"}
+                    </div>
+                  </td>
+                  <td className="border-b border-white/8 px-3 py-3">
+                    {event.errorMessage || event.reason || event.detail || event.parseReason || "none"}
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={5} className="px-3 py-6 text-center text-slate-400">
+                  No watcher telemetry for Julio in the last 30 days.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
 }
 
 function windowValue(counts: WatcherFunnelWindowCounts, key: WatcherFunnelWindowKey) {
@@ -180,6 +313,8 @@ export default function WatcherFunnelDashboard({ data }: WatcherFunnelDashboardP
           })}
         </div>
       </section>
+
+      <JulioDiagnostics focusUser={data.focusUser} />
 
       <section className="rounded-lg border border-white/10 bg-slate-950/70">
         <div className="grid gap-4 px-4 py-4 text-xs uppercase text-slate-500 lg:grid-cols-[minmax(18rem,1.6fr)_repeat(4,minmax(6rem,0.65fr))]">

@@ -41,6 +41,7 @@ export type LiveGameSession = {
 const LIVE_SESSION_FRESHNESS_MS = 12 * 60 * 1000;
 export const LIVE_SESSION_LINGER_MS = 15 * 60 * 1000;
 const SUPERSEDED_PARSE_REASON = "superseded_by_later_upload";
+const UNPARSED_FINAL_PARSE_REASON = "watcher_final_unparsed";
 
 type SessionRow = {
   id: number;
@@ -69,9 +70,36 @@ type SessionRow = {
 export function normalizeSessionKey(row: {
   original_filename?: string | null;
   replay_file?: string | null;
+  key_events?: unknown;
 }) {
+  const keyEvents = readKeyEvents(row.key_events);
+  const platformMatchId =
+    typeof keyEvents.platform_match_id === "string" ? keyEvents.platform_match_id.trim() : "";
+  if (platformMatchId) {
+    return `platform:${platformMatchId}`;
+  }
+
   const rawName = row.original_filename?.trim() || path.basename(row.replay_file || "").trim();
   return rawName || row.replay_file || "";
+}
+
+function readKeyEvents(value: unknown): Record<string, unknown> {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value) as unknown;
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        return parsed as Record<string, unknown>;
+      }
+    } catch {
+      return {};
+    }
+  }
+
+  return {};
 }
 
 function parseMapName(value: unknown) {
@@ -236,7 +264,9 @@ export async function loadLiveSessionSnapshot(prisma: PrismaClient): Promise<{
           },
         ],
         NOT: {
-          parse_reason: SUPERSEDED_PARSE_REASON,
+          parse_reason: {
+            in: [SUPERSEDED_PARSE_REASON, UNPARSED_FINAL_PARSE_REASON],
+          },
         },
       },
       orderBy: [{ createdAt: "desc" }, { parse_iteration: "desc" }, { id: "desc" }],
@@ -282,7 +312,9 @@ export async function loadLiveSessionSnapshot(prisma: PrismaClient): Promise<{
           },
         ],
         NOT: {
-          parse_reason: SUPERSEDED_PARSE_REASON,
+          parse_reason: {
+            in: [SUPERSEDED_PARSE_REASON, UNPARSED_FINAL_PARSE_REASON],
+          },
         },
       },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
@@ -300,6 +332,7 @@ export async function loadLiveSessionSnapshot(prisma: PrismaClient): Promise<{
         game_duration: true,
         winner: true,
         players: true,
+        key_events: true,
         disconnect_detected: true,
         parse_source: true,
         user: {

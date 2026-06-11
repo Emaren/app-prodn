@@ -36,6 +36,37 @@ function readBooleanHeader(request: NextRequest, name: string, fallback = false)
   return fallback;
 }
 
+function parseJsonBody(value: string, contentType: string | null) {
+  if (!value || !contentType?.toLowerCase().includes("json")) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(value) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+function shouldSettleReplayUpload(payload: Record<string, unknown> | null) {
+  if (!payload) {
+    return false;
+  }
+
+  if (payload.should_settle === true || payload.shouldSettle === true) {
+    return true;
+  }
+
+  const finalityStatus = String(payload.finality_status || payload.finalityStatus || "");
+  return [
+    "trusted_final",
+    "trusted_final_duplicate",
+    "trusted_final_refreshed",
+    "reviewed_match_duplicate",
+    "reviewed_match_refreshed",
+  ].includes(finalityStatus);
+}
+
 export async function POST(request: NextRequest) {
   const watcherApiKey = readHeader(request, "x-api-key");
   const watcherUid = readHeader(request, "x-user-uid");
@@ -95,7 +126,18 @@ export async function POST(request: NextRequest) {
   }
   if (isWatcherProxyUpload && watcherApiKey) {
     headers.set("x-api-key", watcherApiKey);
-    for (const headerName of ["x-parse-iteration", "x-is-final", "x-parse-source", "x-parse-reason"]) {
+    for (const headerName of [
+      "x-parse-iteration",
+      "x-is-final",
+      "x-parse-source",
+      "x-parse-reason",
+      "x-watcher-id",
+      "x-watcher-session-id",
+      "x-replay-fingerprint",
+      "x-file-size-bytes",
+      "x-file-mtime-ms",
+      "x-final-candidate",
+    ]) {
       const value = readHeader(request, headerName);
       if (value) {
         headers.set(headerName, value);
@@ -114,14 +156,21 @@ export async function POST(request: NextRequest) {
   };
 
   const upstreamResponse = await fetch(`${base}/api/replay/upload`, init);
+  const upstreamContentType = upstreamResponse.headers.get("content-type") || "application/json";
+  const upstreamBody = await upstreamResponse.text();
+  const upstreamPayload = parseJsonBody(upstreamBody, upstreamContentType);
+  const shouldSettle = shouldSettleReplayUpload(upstreamPayload);
+
   if (upstreamResponse.ok) {
     try {
-      await reconcileTournamentMatchProofs(prisma, { force: true });
+      if (!isFinalUpload || shouldSettle) {
+        await reconcileTournamentMatchProofs(prisma, { force: true });
+      }
     } catch (error) {
       console.warn("Replay upload succeeded but tournament proof reconciliation failed:", error);
     }
 
-    if (isFinalUpload) {
+    if (isFinalUpload && shouldSettle) {
       try {
         await ensureBetMarkets(prisma);
       } catch (error) {
@@ -152,15 +201,24 @@ export async function POST(request: NextRequest) {
           isFinal: readHeader(request, "x-is-final"),
           parseSource: readHeader(request, "x-parse-source"),
           parseReason: readHeader(request, "x-parse-reason"),
+          watcherId: readHeader(request, "x-watcher-id"),
+          watcherSessionId: readHeader(request, "x-watcher-session-id"),
+          replayFingerprint: readHeader(request, "x-replay-fingerprint"),
+          finalityStatus:
+            typeof upstreamPayload?.finality_status === "string"
+              ? upstreamPayload.finality_status
+              : null,
+          shouldSettle,
         },
         dedupeWithinSeconds: 5,
       });
     }
   }
-  return new NextResponse(upstreamResponse.body, {
+
+  return new NextResponse(upstreamBody, {
     status: upstreamResponse.status,
     headers: {
-      "content-type": upstreamResponse.headers.get("content-type") || "application/json",
+      "content-type": upstreamContentType,
     },
   });
 }
