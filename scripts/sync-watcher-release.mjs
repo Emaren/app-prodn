@@ -10,6 +10,7 @@ const FEATURE_CHIPS = [
   "macOS DMG + ZIP",
   "Linux AppImage",
   "Historical replay import",
+  "Stream Match handoff",
 ];
 
 const WATCHER_RELEASE_TEMPLATE = ({ version, releasedOn }) => `export type WatcherArtifactPlatform = "windows" | "macos" | "linux";
@@ -40,7 +41,7 @@ export const WATCHER_RELEASE = {
   version: ${JSON.stringify(version)},
   label: ${JSON.stringify(`AoE2HDBets Watcher ${version}`)},
   releasedOn: ${JSON.stringify(releasedOn)},
-  signingStatus: "Unsigned builds for now",
+  signingStatus: "Signed Windows builds",
   featureChips: ${JSON.stringify(
     [`AoE2HDBets Watcher ${version}`, releasedOn, ...FEATURE_CHIPS],
     null,
@@ -73,7 +74,7 @@ export const WATCHER_DOWNLOAD_ARTIFACTS: readonly WatcherDownloadArtifact[] = [
     filename: ${JSON.stringify(`AoE2HDBets Watcher ${version}.exe`)},
     format: "portable",
     description:
-      "Same watcher core in a no-installer package if SmartScreen or installer policy gets in the way.",
+      "Same signed watcher core in a no-installer package if installer policy gets in the way.",
     downloadPath: ${JSON.stringify(`/downloads/${encodeURIComponent(`AoE2HDBets Watcher ${version}.exe`)}`)},
     trackedHref: "/download/watcher/windows-portable",
     primary: false,

@@ -123,7 +123,7 @@ export default function DownloadPage() {
             </div>
 
             <div className="mt-4 rounded-2xl border border-amber-300/15 bg-amber-300/5 px-4 py-3 text-xs leading-6 text-amber-50/85">
-              Unsigned build for now. Windows SmartScreen may warn on first install until the signing certificate is available to the release build.
+              Signed Windows build. Windows installer and portable EXE are Authenticode-signed and timestamped with Microsoft Trusted Signing. SmartScreen may still warn briefly while reputation builds.
             </div>
           </div>
 

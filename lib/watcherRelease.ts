@@ -26,7 +26,7 @@ export const WATCHER_RELEASE = {
   version: "1.1.8",
   label: "AoE2HDBets Watcher 1.1.8",
   releasedOn: "Jun 10, 2026",
-  signingStatus: "Unsigned builds for now",
+  signingStatus: "Signed Windows builds",
   featureChips: [
     "AoE2HDBets Watcher 1.1.8",
     "Jun 10, 2026",
@@ -63,7 +63,7 @@ export const WATCHER_DOWNLOAD_ARTIFACTS: readonly WatcherDownloadArtifact[] = [
     filename: "AoE2HDBets Watcher 1.1.8.exe",
     format: "portable",
     description:
-      "Same watcher core in a no-installer package if SmartScreen or installer policy gets in the way.",
+      "Same signed watcher core in a no-installer package if installer policy gets in the way.",
     downloadPath: "/downloads/AoE2HDBets%20Watcher%201.1.8.exe",
     trackedHref: "/download/watcher/windows-portable",
     primary: false,
