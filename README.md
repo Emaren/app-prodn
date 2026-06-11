@@ -151,6 +151,12 @@ Important same-origin browser routes include:
 
 - `/api/lobby`
 - `/api/lobby/stream`
+- `/api/streams/start`
+- `/api/streams/[streamId]/chunks`
+- `/api/streams/[streamId]/manifest`
+- `/api/streams/[streamId]/heartbeat`
+- `/api/streams/[streamId]/end`
+- `/api/streams/active`
 - `/api/replay/upload`
 - `/api/contact-emaren`
 - `/api/admin/live-ticker`
@@ -169,6 +175,9 @@ These routes are important because they often do more than simple pass-through w
 - Browser replay upload endpoint: `/api/replay/upload` (proxied to `api-prodn`)
 - Lobby snapshot endpoint: `/api/lobby`
 - Lobby stream endpoint: `/api/lobby/stream`
+- Browser streaming is AoE2WAR-first: `/profile` and `/watch/[sessionKey]` can start a browser `getDisplayMedia` stream, upload short WebM chunks to the app, and expose that feed through `/watch`, `/bets`, `/live-games`, and the lobby Watch & Chat hero.
+- Browser stream chunks default to `storage/live-streams/`; set `AOE2_STREAM_STORAGE_DIR` if production should place chunks on a mounted volume.
+- Twitch/YouTube/custom watch feeds remain external fallbacks through `game_watch_streams`, but they are not required for AoE2WAR browser streaming.
 - Recent Match Feed sorts and displays the backend `played_at` contract so bulk reparses of old saved games do not outrank newer actual matches
 - Watcher final uploads can store header-only fallback rows when MGZ full-summary decoding fails; fallback rows are explicit parser breadcrumbs and do not fabricate a winner or postgame resource table
 - Watcher packages: generated in `aoe2-watcher/dist`, then synced into `public/downloads` with `npm run watcher:sync`

@@ -13,6 +13,7 @@ import YourBookSection from "@/components/bets/YourBookSection";
 
 import FounderBonusChips from "@/components/bets/FounderBonusChips";
 import FounderBonusModal from "@/components/bets/FounderBonusModal";
+import LiveStreamFrame from "@/components/streaming/LiveStreamFrame";
 import WarTape from "@/components/bets/WarTape";
 import { isRecoveryBookOpen } from "@/components/bets/page-shared";
 import { useUserAuth } from "@/context/UserAuthContext";
@@ -41,16 +42,28 @@ type BroadcastViewKey = "left" | "god" | "right";
 type BroadcastFeed = {
   id: number;
   sessionKey: string;
-  provider: "twitch" | "youtube" | "steam" | "discord" | "custom";
+  provider: "aoe2war" | "twitch" | "youtube" | "steam" | "discord" | "custom";
+  sourceType: string;
   role: "caster" | "observer" | "player_pov" | "team_pov" | "postgame" | "external";
   label: string;
+  title: string | null;
   url: string;
+  playbackUrl: string | null;
   embedId: string | null;
   playerLabel: string | null;
+  thumbnailUrl: string | null;
+  mediaMimeType: string | null;
   isPrimary: boolean;
   status: string;
+  chunkCount: number;
+  latestChunkSeq: number;
+  lastHeartbeatAt: string | null;
+  startedAt: string | null;
+  endedAt: string | null;
   canEmbed: boolean;
   externalOnly: boolean;
+  createdAt: string;
+  updatedAt: string;
 };
 
 type BroadcastFeeds = {
@@ -2348,6 +2361,7 @@ function BroadcastVisibilityButton({
 
 function providerLabel(feed: BroadcastFeed | null | undefined) {
   if (!feed) return "Placeholder";
+  if (feed.provider === "aoe2war") return "AoE2WAR";
   if (feed.provider === "twitch") return "Twitch";
   if (feed.provider === "youtube") return "YouTube";
   if (feed.provider === "steam") return "Steam";
@@ -2674,6 +2688,18 @@ function BroadcastSignalSurface({
     setLoopReady(false);
     setLoopFailed(false);
   }, [previewUrl, isPlaying]);
+
+  if (feed?.provider === "aoe2war" || feed?.sourceType === "browser") {
+    return (
+      <LiveStreamFrame
+        stream={feed}
+        title={feed.title || feed.label}
+        compact={compact}
+        fallbackLabel="Live"
+        className="absolute inset-0 h-full min-h-0 rounded-none border-0 shadow-none"
+      />
+    );
+  }
 
   return (
     <div className="relative isolate flex h-full min-h-full items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_34%_28%,rgba(56,189,248,0.18),transparent_32%),radial-gradient(circle_at_72%_42%,rgba(251,191,36,0.13),transparent_30%),linear-gradient(135deg,#020617,#050816_48%,#0f172a)]">

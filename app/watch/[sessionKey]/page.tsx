@@ -2,6 +2,7 @@ import path from "node:path";
 import { promises as fs } from "node:fs";
 import Link from "next/link";
 import BattleTheatreStreams from "@/components/watch/BattleTheatreStreams";
+import BrowserStreamStudio from "@/components/streaming/BrowserStreamStudio";
 import { notFound } from "next/navigation";
 
 import {
@@ -107,6 +108,13 @@ export default async function BattleTheatrePage({
                 playerNames={playerNames}
               />
             )}
+
+            {!isFinal ? (
+              <BrowserStreamStudio
+                sessionKey={snapshot.sessionKey}
+                title={matchupLabel}
+              />
+            ) : null}
           </div>
 
           <aside className="space-y-4">

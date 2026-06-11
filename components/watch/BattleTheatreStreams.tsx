@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 
+import LiveStreamFrame from "@/components/streaming/LiveStreamFrame";
 import type { WatchStreamPayload, WatchStreamRole } from "@/lib/watchStreams";
 
 type Props = {
@@ -150,7 +151,13 @@ export default function BattleTheatreStreams({ sessionKey, playerNames }: Props)
     <div className="space-y-4">
       <div className="relative isolate overflow-hidden rounded-[1.8rem] border border-white/10 bg-black shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
         <div className="aspect-video bg-[radial-gradient(circle_at_50%_35%,rgba(56,189,248,0.18),transparent_22%),radial-gradient(circle_at_70%_70%,rgba(251,191,36,0.12),transparent_24%),linear-gradient(135deg,#020617,#050816_48%,#0f172a)]">
-          {embedSrc ? (
+          {activeStream?.provider === "aoe2war" || activeStream?.sourceType === "browser" ? (
+            <LiveStreamFrame
+              stream={activeStream}
+              title={activeStream.title || activeStream.label}
+              className="absolute inset-0 h-full min-h-0 rounded-none border-0 shadow-none"
+            />
+          ) : embedSrc ? (
             <iframe
               src={embedSrc}
               title={activeStream?.label || "Battle Theatre stream"}
@@ -235,11 +242,16 @@ export default function BattleTheatreStreams({ sessionKey, playerNames }: Props)
         </div>
       </div>
 
+      <details className="rounded-[1.4rem] border border-white/10 bg-white/[0.025] p-4">
+        <summary className="cursor-pointer text-sm font-semibold text-slate-200 marker:text-sky-200">
+          External feed fallback
+        </summary>
+
       <form
         onSubmit={(event) => {
           void handleSubmit(event);
         }}
-        className="rounded-[1.4rem] border border-white/10 bg-white/[0.035] p-4"
+        className="mt-4"
       >
         <div className="grid gap-3">
           <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] xl:grid-cols-[10rem_minmax(10rem,1fr)_11rem_8rem]">
@@ -353,7 +365,7 @@ export default function BattleTheatreStreams({ sessionKey, playerNames }: Props)
       </form>
 
       {streams.length > 0 ? (
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
           {streams.map((stream) => (
             <button
               key={stream.id}
@@ -378,6 +390,7 @@ export default function BattleTheatreStreams({ sessionKey, playerNames }: Props)
           ))}
         </div>
       ) : null}
+      </details>
     </div>
   );
 }

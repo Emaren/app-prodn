@@ -2740,6 +2740,22 @@ function selectGodBroadcastFeed(streams: WatchStreamPayload[]) {
   );
 }
 
+const BROWSER_STREAM_STALE_MS = 45_000;
+
+function isVisibleBroadcastStream(stream: WatchStreamPayload) {
+  if (stream.sourceType !== "browser" && stream.provider !== "aoe2war") {
+    return stream.status !== "removed";
+  }
+
+  if (!["starting", "live"].includes(stream.status)) {
+    return false;
+  }
+
+  const lastSeen = stream.lastHeartbeatAt || stream.updatedAt;
+  const lastSeenMs = new Date(lastSeen).getTime();
+  return Number.isFinite(lastSeenMs) && Date.now() - lastSeenMs <= BROWSER_STREAM_STALE_MS;
+}
+
 function selectPlayerBroadcastFeed({
   streams,
   playerName,
@@ -2822,7 +2838,17 @@ function buildProfileBroadcastFeed({
     return {
       id: stableProfileStreamId([normalized.sessionKey, side, playerName, normalized.url]),
       ...normalized,
+      sourceType: "external",
+      title: `${playerName || (side === "left" ? "Player 1" : "Player 2")} POV`,
+      playbackUrl: null,
+      thumbnailUrl: null,
+      mediaMimeType: null,
       status: "profile",
+      chunkCount: 0,
+      latestChunkSeq: -1,
+      lastHeartbeatAt: null,
+      startedAt: null,
+      endedAt: null,
       createdAt: timestamp,
       updatedAt: timestamp,
     };
@@ -2950,22 +2976,30 @@ async function loadWatchStreamsBySession(
     return new Map<string, WatchStreamPayload[]>();
   }
 
-  const rows = await prisma.gameWatchStream.findMany({
-    where: {
-      sessionKey: {
-        in: uniqueSessionKeys,
+  const rows = await prisma.gameWatchStream
+    .findMany({
+      where: {
+        sessionKey: {
+          in: uniqueSessionKeys,
+        },
+        status: {
+          not: "removed",
+        },
       },
-      status: {
-        not: "removed",
-      },
-    },
-    orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }, { id: "asc" }],
-  });
+      orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }, { id: "asc" }],
+    })
+    .catch((error) => {
+      console.warn("Failed to load streams for bet broadcasts:", error);
+      return [];
+    });
 
   const streamsBySession = new Map<string, WatchStreamPayload[]>();
 
   for (const row of rows) {
     const stream = toWatchStreamPayload(row);
+    if (!isVisibleBroadcastStream(stream)) {
+      continue;
+    }
     const bucket = streamsBySession.get(stream.sessionKey) ?? [];
     bucket.push(stream);
     streamsBySession.set(stream.sessionKey, bucket);

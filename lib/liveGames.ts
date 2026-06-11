@@ -8,6 +8,14 @@ import {
   loadLiveSessionSnapshot,
   normalizeSessionKey,
 } from "@/lib/liveSessionSnapshot";
+import { toWatchStreamPayload, type WatchStreamPayload } from "@/lib/watchStreams";
+
+type StreamedLiveGameSession = LiveGameSession & {
+  streams: WatchStreamPayload[];
+  primaryStream: WatchStreamPayload | null;
+};
+
+const BROWSER_STREAM_STALE_MS = 45_000;
 
 export type LiveGamesSummary = {
   liveCount: number;
@@ -23,8 +31,8 @@ export type LiveGamesSnapshot = LiveGamesSummary & {
     format: string;
     status: string;
   } | null;
-  activeSessions: LiveGameSession[];
-  recentlyCompletedSessions: LiveGameSession[];
+  activeSessions: StreamedLiveGameSession[];
+  recentlyCompletedSessions: StreamedLiveGameSession[];
   liveMatches: LobbyTournamentMatch[];
   readyMatches: LobbyTournamentMatch[];
   scheduledMatches: ScheduledMatchTile[];
@@ -87,6 +95,14 @@ export async function loadLiveGamesSnapshot(prisma: PrismaClient): Promise<LiveG
     .filter((match) => !recentlyCompletedKeys.has(normalizeSessionKey(match)))
     .slice(0, 12);
 
+  const sessionKeys = [
+    ...filteredActiveSessions.map((session) => session.sessionKey),
+    ...filteredCompletedSessions.map((session) => session.sessionKey),
+  ];
+  const streamsBySession = await loadStreamsBySession(prisma, sessionKeys);
+  const streamedActiveSessions = attachStreams(filteredActiveSessions, streamsBySession);
+  const streamedCompletedSessions = attachStreams(filteredCompletedSessions, streamsBySession);
+
   const scheduledLiveCount = scheduledMatches.filter((match) => match.displayState === "live").length;
   const scheduledReadyCount = scheduledMatches.filter(
     (match) =>
@@ -131,11 +147,87 @@ export async function loadLiveGamesSnapshot(prisma: PrismaClient): Promise<LiveG
           format: tournament.format,
           status: tournament.status,
         },
-    activeSessions: filteredActiveSessions,
-    recentlyCompletedSessions: filteredCompletedSessions,
+    activeSessions: streamedActiveSessions,
+    recentlyCompletedSessions: streamedCompletedSessions,
     liveMatches,
     readyMatches,
     scheduledMatches,
     recentMatches: filteredRecentMatches,
   };
+}
+
+async function loadStreamsBySession(prisma: PrismaClient, sessionKeys: string[]) {
+  const uniqueSessionKeys = Array.from(new Set(sessionKeys.filter(Boolean)));
+  if (uniqueSessionKeys.length === 0) {
+    return new Map<string, WatchStreamPayload[]>();
+  }
+
+  const rows = await prisma.gameWatchStream
+    .findMany({
+      where: {
+        sessionKey: {
+          in: uniqueSessionKeys,
+        },
+        status: {
+          not: "removed",
+        },
+      },
+      orderBy: [
+        { isPrimary: "desc" },
+        { lastHeartbeatAt: "desc" },
+        { updatedAt: "desc" },
+        { id: "desc" },
+      ],
+    })
+    .catch((error) => {
+      console.warn("Failed to load streams for live games:", error);
+      return [];
+    });
+
+  const streamsBySession = new Map<string, WatchStreamPayload[]>();
+  for (const row of rows) {
+    const stream = toWatchStreamPayload(row);
+    if (!isVisibleStream(stream)) {
+      continue;
+    }
+    const bucket = streamsBySession.get(stream.sessionKey) ?? [];
+    bucket.push(stream);
+    streamsBySession.set(stream.sessionKey, bucket);
+  }
+
+  return streamsBySession;
+}
+
+function isVisibleStream(stream: WatchStreamPayload) {
+  if (stream.sourceType !== "browser" && stream.provider !== "aoe2war") {
+    return stream.status !== "removed";
+  }
+
+  if (!["starting", "live"].includes(stream.status)) {
+    return false;
+  }
+
+  const lastSeen = stream.lastHeartbeatAt || stream.updatedAt;
+  const lastSeenMs = new Date(lastSeen).getTime();
+  return Number.isFinite(lastSeenMs) && Date.now() - lastSeenMs <= BROWSER_STREAM_STALE_MS;
+}
+
+function attachStreams(
+  sessions: LiveGameSession[],
+  streamsBySession: Map<string, WatchStreamPayload[]>
+): StreamedLiveGameSession[] {
+  return sessions.map((session) => {
+    const streams = streamsBySession.get(session.sessionKey) ?? [];
+    const primaryStream =
+      streams.find((stream) => stream.provider === "aoe2war" && stream.status !== "ended") ||
+      streams.find((stream) => stream.isPrimary) ||
+      streams[0] ||
+      null;
+
+    return {
+      ...session,
+      streams,
+      primaryStream,
+    };
+  });
 }

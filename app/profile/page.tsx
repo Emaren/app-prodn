@@ -31,6 +31,7 @@ import {
 import ScheduledMatchCard, {
   CompactScheduledMatchHistoryRow,
 } from "@/components/challenge/ScheduledMatchCard";
+import BrowserStreamStudio from "@/components/streaming/BrowserStreamStudio";
 import {
   LobbyTextColorPicker,
   LobbyThemePicker,
@@ -527,61 +528,53 @@ function ProfilePageContent() {
               />
             </div>
 
-            <div className="mt-4 rounded-[1.35rem] border border-white/10 bg-white/[0.035] p-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex min-w-0 items-center gap-2">
-                  <Monitor className="h-4 w-4 text-sky-100" aria-hidden="true" />
-                  <div>
-                    <div className="text-[10px] uppercase tracking-[0.28em] text-slate-500">
-                      Video Streaming
-                    </div>
-                      <div className="mt-1 text-base font-semibold text-white">
-                        Twitch channel for live games
-                      </div>
-                      <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
-                        Add your Twitch channel once. When your watcher sees an AoE2HD game, AoE2WAR can use this as the public video rail for Watch, Bets, and the lobby hero.
-                      </p>
-                  </div>
-                </div>
-                {profile?.twitchStreamUrl ? (
-                  <span className="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-3 py-1 text-xs text-emerald-100">
-                    Ready
-                  </span>
-                ) : (
-                    <span className="rounded-full border border-amber-300/20 bg-amber-400/10 px-3 py-1 text-xs text-amber-100">
-                      Setup Needed
-                    </span>
-                )}
-              </div>
-              <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-                <input
-                  type="url"
-                  value={twitchDraft}
-                  onChange={(event) => setTwitchDraft(event.target.value)}
-                  placeholder="https://www.twitch.tv/channel"
-                  className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-sky-300/45"
-                />
-                <button
-                  type="button"
-                  onClick={saveTwitchStream}
-                  disabled={savingTwitch}
-                  className="rounded-full bg-sky-200 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-55"
-                >
-                  {savingTwitch ? "Saving..." : "Save Video"}
-                </button>
-              </div>
+            <div className="mt-4 space-y-4">
+              <BrowserStreamStudio
+                title={confirmedName ? `${confirmedName} live` : "AoE2WAR live"}
+                playerLabel={confirmedName}
+              />
 
-                <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-400">
-                  <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1">
-                    1. Save Twitch
-                  </span>
-                  <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1">
-                    2. Pair watcher
-                  </span>
-                  <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1">
-                    3. Go live
-                  </span>
+              <div className="rounded-[1.35rem] border border-white/10 bg-white/[0.035] p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <Monitor className="h-4 w-4 text-sky-100" aria-hidden="true" />
+                    <div>
+                      <div className="text-[10px] uppercase tracking-[0.28em] text-slate-500">
+                        External Fallback
+                      </div>
+                      <div className="mt-1 text-base font-semibold text-white">
+                        Twitch channel
+                      </div>
+                    </div>
+                  </div>
+                  {profile?.twitchStreamUrl ? (
+                    <span className="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-3 py-1 text-xs text-emerald-100">
+                      Saved
+                    </span>
+                  ) : (
+                    <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+                      Optional
+                    </span>
+                  )}
                 </div>
+                <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+                  <input
+                    type="url"
+                    value={twitchDraft}
+                    onChange={(event) => setTwitchDraft(event.target.value)}
+                    placeholder="https://www.twitch.tv/channel"
+                    className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-sky-300/45"
+                  />
+                  <button
+                    type="button"
+                    onClick={saveTwitchStream}
+                    disabled={savingTwitch}
+                    className="rounded-full border border-sky-200/30 bg-sky-200/10 px-5 py-3 text-sm font-semibold text-sky-100 transition hover:bg-sky-200/15 disabled:cursor-not-allowed disabled:opacity-55"
+                  >
+                    {savingTwitch ? "Saving..." : "Save"}
+                  </button>
+                </div>
+              </div>
             </div>
 
             {status ? (

@@ -149,6 +149,7 @@ Current state:
 - mainnet direct transfers are indexed in `wolo_indexed_transfers`, surfaced at `/api/wolo/mainnet-transfers`, and refreshed through the admin backfill route or `scripts/backfill-wolo-mainnet-transfers.mjs`.
 - `/bets` now records pre-intent Keplr/Ledger wallet failures as `bet_wallet_error` activity events, so operator/debug history includes failures that happen before a stake intent can exist
 - `/bets` now keeps recent no-proof stake intents visible in Your Book and gives the server 24 hours to discover matching WoloChain escrow deposits for tx-landed/browser-lost recovery
+- AoE2WAR browser streaming now exists as the first-party path: signed-in users can pick a screen/window from `/profile` or a watcher-bound `/watch/[sessionKey]`, the app records `aoe2war` browser stream sessions in `game_watch_streams`, stores short WebM chunks under runtime stream storage, and surfaces live thumbnails/playback on `/watch`, `/bets`, `/live-games`, and the lobby Watch & Chat hero. Twitch/YouTube stay as external fallback feeds, not the primary product path.
 - challenge-linked `/bets` markets now merge safe duplicate `watcher-live-*` shadows for the same live/completed session into the canonical challenge book, including wagers, stake intents, wallet locks, founder bonuses, and claim breadcrumbs
 - the recent settled-results rail dedupes by linked session and prefers the challenge-linked market over watcher shadows
 - `/admin/wolochain` now shows a wallet-friction rail for recent Keplr/Ledger stake failures, and `/admin/user-list` surfaces the last-24h count in the WoloChain entry tile
@@ -236,6 +237,7 @@ Still wanted:
 - Admin dashboard: `8.8/10`
 - Replay parser / metadata capture: `8.5/10`
 - Live replay → visible product loop: `8.9/10`
+- AoE2WAR browser streaming loop: `7.4/10`
 - Exact postgame achievement capture: `4.2/10`
 - Deploy reliability: `8.8/10`
 - Docs / architecture truth: improving, but still worth maintaining intentionally
@@ -245,6 +247,7 @@ Still wanted:
 1. Improve tournament gravity, bracket storytelling, and event visibility
 2. Deepen exact postgame achievement/economy extraction so resource rails can fill every game
 3. Tune watcher/runtime behavior now that final parse behavior looks healthier
-4. Add operator visibility for skipped challenge/watcher merges when parser labels do not safely map
-5. Keep hardening live wallet edge cases around Keplr/Ledger handoff and signer/browser failures
-6. Clean API testing workflow and keep docs aligned with the now-real WOLO betting rails
+4. Move streaming distribution from the first-party WebM chunk rail to a purpose-built media provider or watcher-native ingest once real audience size appears
+5. Add operator visibility for skipped challenge/watcher merges when parser labels do not safely map
+6. Keep hardening live wallet edge cases around Keplr/Ledger handoff and signer/browser failures
+7. Clean API testing workflow and keep docs aligned with the now-real WOLO betting rails

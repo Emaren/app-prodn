@@ -59,6 +59,9 @@ public/downloads/latest-mac.yml
 # Local direct-message attachment blobs
 storage/direct-message-attachments/
 
+# Runtime browser stream chunks
+storage/live-streams/
+
 # Runtime bet broadcast preview uploads
 public/bets/
 

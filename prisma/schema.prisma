@@ -51,6 +51,7 @@ model User {
   activityEvents                 UserActivityEvent[]
   watcherDownloadEvents          WatcherDownloadEvent[]
   watcherClientEvents            WatcherClientEvent[]
+  gameWatchStreams               GameWatchStream[]               @relation("GameWatchStreamOwner")
   betWagers                      BetWager[]
   betStakeIntents                BetStakeIntent[]
   betMarketWallets               BetMarketWallet[]
@@ -988,21 +989,36 @@ model StakingDailyStat {
 }
 
 model GameWatchStream {
-  id          Int      @id @default(autoincrement())
-  sessionKey  String   @map("session_key") @db.VarChar(255)
-  provider    String   @db.VarChar(24)
-  role        String   @db.VarChar(24)
-  label       String   @db.VarChar(80)
-  url         String   @db.VarChar(500)
-  embedId     String?  @map("embed_id") @db.VarChar(255)
-  playerLabel String?  @map("player_label") @db.VarChar(80)
-  isPrimary   Boolean  @default(false) @map("is_primary")
-  status      String   @default("live") @db.VarChar(24)
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+  id              Int       @id @default(autoincrement())
+  sessionKey      String    @map("session_key") @db.VarChar(255)
+  userId          Int?      @map("user_id")
+  provider        String    @db.VarChar(24)
+  sourceType      String    @default("external") @map("source_type") @db.VarChar(32)
+  role            String    @db.VarChar(24)
+  label           String    @db.VarChar(80)
+  title           String?   @db.VarChar(140)
+  url             String    @db.VarChar(500)
+  playbackUrl     String?   @map("playback_url") @db.VarChar(500)
+  embedId         String?   @map("embed_id") @db.VarChar(255)
+  playerLabel     String?   @map("player_label") @db.VarChar(80)
+  thumbnailUrl    String?   @map("thumbnail_url") @db.Text
+  mediaMimeType   String?   @map("media_mime_type") @db.VarChar(120)
+  isPrimary       Boolean   @default(false) @map("is_primary")
+  status          String    @default("live") @db.VarChar(24)
+  chunkCount      Int       @default(0) @map("chunk_count")
+  latestChunkSeq  Int       @default(-1) @map("latest_chunk_seq")
+  lastHeartbeatAt DateTime? @map("last_heartbeat_at") @db.Timestamp(6)
+  startedAt       DateTime? @map("started_at") @db.Timestamp(6)
+  endedAt         DateTime? @map("ended_at") @db.Timestamp(6)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  user User? @relation("GameWatchStreamOwner", fields: [userId], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
   @@index([sessionKey, isPrimary], map: "ix_game_watch_streams_session_primary")
   @@index([sessionKey, status], map: "ix_game_watch_streams_session_status")
+  @@index([userId, status], map: "ix_game_watch_streams_user_status")
+  @@index([sourceType, status], map: "ix_game_watch_streams_source_status")
   @@index([provider], map: "ix_game_watch_streams_provider")
   @@map("game_watch_streams")
 }

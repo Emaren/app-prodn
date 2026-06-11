@@ -7,6 +7,7 @@ import ScheduledMatchCard, {
   type ScheduledMatchCardActionKind,
   type ScheduledMatchCardActionState,
 } from "@/components/challenge/ScheduledMatchCard";
+import LiveStreamFrame from "@/components/streaming/LiveStreamFrame";
 import { displayName } from "@/components/lobby/utils";
 import { useUserAuth } from "@/context/UserAuthContext";
 import type { LiveGamesSnapshot } from "@/lib/liveGames";
@@ -498,6 +499,8 @@ function LiveSessionCard({
 }) {
   const isCompleted = session.state === "completed";
   const gameHref = `/game-stats/live/${encodeURIComponent(session.sessionKey)}`;
+  const watchHref = `/watch/${encodeURIComponent(session.sessionKey)}`;
+  const primaryStream = session.primaryStream ?? session.streams?.[0] ?? null;
   const uploaders =
     session.uploaders?.length > 0
       ? session.uploaders
@@ -545,6 +548,17 @@ function LiveSessionCard({
 
   return (
     <div className={`rounded-[1.5rem] border px-4 py-4 ${shellClass}`}>
+      {primaryStream ? (
+        <Link href={watchHref} className="mb-4 block transition hover:scale-[1.01]">
+          <LiveStreamFrame
+            stream={primaryStream}
+            title={title}
+            compact
+            fallbackLabel={isCompleted ? "Replay" : "Live"}
+          />
+        </Link>
+      ) : null}
+
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <div className={`text-xs uppercase tracking-[0.3em] ${eyebrowClass}`}>{eyebrowLabel}</div>
@@ -584,6 +598,11 @@ function LiveSessionCard({
                 Winner {session.winner}
               </span>
             ) : null}
+            {primaryStream ? (
+              <span className="rounded-full border border-red-300/25 bg-red-400/10 px-3 py-1 text-xs text-red-100">
+                Video live
+              </span>
+            ) : null}
           </div>
         </div>
 
@@ -598,6 +617,12 @@ function LiveSessionCard({
       </div>
 
       <div className="mt-4 flex flex-wrap gap-3">
+        <Link
+          href={watchHref}
+          className="rounded-full bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200"
+        >
+          Watch Theatre
+        </Link>
         <Link
           href={gameHref}
           className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-slate-200"

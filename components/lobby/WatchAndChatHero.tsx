@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Coins, ExternalLink, Flame, MessageSquareMore, Play, Skull, Swords } from "lucide-react";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 
+import LiveStreamFrame from "@/components/streaming/LiveStreamFrame";
 import { displayName, formatLobbyMoment } from "@/components/lobby/utils";
 import {
   getLobbyPresentationTone,
@@ -29,9 +30,14 @@ type WatchAndChatHeroProps = {
   onLogin?: () => void;
 };
 
+type StreamedLiveGameSession = LiveGameSession & {
+  streams?: WatchStreamPayload[];
+  primaryStream?: WatchStreamPayload | null;
+};
+
 type LiveGamesPayload = {
-  activeSessions?: LiveGameSession[];
-  recentlyCompletedSessions?: LiveGameSession[];
+  activeSessions?: StreamedLiveGameSession[];
+  recentlyCompletedSessions?: StreamedLiveGameSession[];
 };
 
 type FeaturedWar = {
@@ -43,6 +49,7 @@ type FeaturedWar = {
   mapName: string | null;
   detail: string;
   href: string;
+  primaryStream?: WatchStreamPayload | null;
 };
 
 type ReactionKey = "fire" | "sword" | "skull" | "wolo";
@@ -126,7 +133,7 @@ function featuredFromReplay(match: LobbyMatchRow | null, tournamentTitle: string
   };
 }
 
-function featuredFromLiveSession(session: LiveGameSession): FeaturedWar {
+function featuredFromLiveSession(session: StreamedLiveGameSession): FeaturedWar {
   const players = sessionPlayerNames(session);
 
   return {
@@ -140,7 +147,8 @@ function featuredFromLiveSession(session: LiveGameSession): FeaturedWar {
       session.state === "live"
         ? `Updated ${formatLobbyMoment(session.updatedAt)}`
         : `Completed ${formatLobbyMoment(session.completedAt || session.updatedAt)}`,
-    href: session.state === "live" ? "/live-games" : `/game-stats/${session.id}`,
+    href: session.state === "live" ? `/watch/${encodeURIComponent(session.sessionKey)}` : `/game-stats/${session.id}`,
+    primaryStream: session.primaryStream ?? session.streams?.[0] ?? null,
   };
 }
 
@@ -350,13 +358,19 @@ export function WatchAndChatHero({
   }, [selectedWar?.sessionKey]);
 
   const shouldEmbedStream = selectedWar.statusLabel === "Live";
+  const streamOptions = selectedWar.primaryStream
+    ? [selectedWar.primaryStream, ...streams.filter((stream) => stream.id !== selectedWar.primaryStream?.id)]
+    : streams;
   const primaryStream = shouldEmbedStream
-    ? streams.find((stream) => stream.isPrimary && stream.canEmbed) ??
-      streams.find((stream) => stream.canEmbed) ??
+    ? streamOptions.find((stream) => stream.provider === "aoe2war" || stream.sourceType === "browser") ??
+      streamOptions.find((stream) => stream.isPrimary && stream.canEmbed) ??
+      streamOptions.find((stream) => stream.canEmbed) ??
       null
     : null;
-  const embedSrc = getEmbedSrc(primaryStream, parentHost);
-  const actionHref = primaryStream?.url || selectedWar.href;
+  const primaryIsBrowserStream =
+    primaryStream?.provider === "aoe2war" || primaryStream?.sourceType === "browser";
+  const embedSrc = primaryIsBrowserStream ? null : getEmbedSrc(primaryStream, parentHost);
+  const actionHref = primaryIsBrowserStream ? selectedWar.href : primaryStream?.url || selectedWar.href;
   const fallbackVideoUrl = embedSrc || fallbackLoopFailed ? null : WATCH_CHAT_LOOP_URL;
   const commentMessages = messages.slice(-5);
   const heroBetMarket = betBoard?.featuredMarket ?? betBoard?.openMarkets?.[0] ?? null;
@@ -366,7 +380,14 @@ export function WatchAndChatHero({
       <div className="grid gap-0 lg:grid-cols-[minmax(0,1.45fr)_minmax(20rem,0.74fr)]">
         <div className="flex min-w-0 flex-col">
           <div className="relative aspect-video min-h-[15rem] overflow-hidden bg-black sm:min-h-[20rem] lg:min-h-[27rem]">
-            {embedSrc ? (
+            {primaryIsBrowserStream && primaryStream ? (
+              <LiveStreamFrame
+                stream={primaryStream}
+                title={selectedWar.title}
+                className="absolute inset-0 h-full min-h-0 rounded-none border-0 shadow-none"
+                fallbackLabel="Live"
+              />
+            ) : embedSrc ? (
               <iframe
                 src={embedSrc}
                 title={primaryStream?.label || selectedWar.title}

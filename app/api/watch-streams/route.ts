@@ -14,6 +14,22 @@ const NO_STORE_HEADERS = {
   "Cache-Control": "no-store, max-age=0",
 };
 
+const BROWSER_STREAM_STALE_MS = 45_000;
+
+function isVisibleStream(stream: ReturnType<typeof toWatchStreamPayload>) {
+  if (stream.sourceType !== "browser" && stream.provider !== "aoe2war") {
+    return stream.status !== "removed";
+  }
+
+  if (!["starting", "live"].includes(stream.status)) {
+    return false;
+  }
+
+  const lastSeen = stream.lastHeartbeatAt || stream.updatedAt;
+  const lastSeenMs = new Date(lastSeen).getTime();
+  return Number.isFinite(lastSeenMs) && Date.now() - lastSeenMs <= BROWSER_STREAM_STALE_MS;
+}
+
 export async function GET(request: NextRequest) {
   const sessionKey = request.nextUrl.searchParams.get("sessionKey")?.trim();
 
@@ -25,18 +41,23 @@ export async function GET(request: NextRequest) {
   }
 
   const prisma = getPrisma();
-  const streams = await prisma.gameWatchStream.findMany({
-    where: {
-      sessionKey,
-      status: {
-        not: "removed",
+  const streams = await prisma.gameWatchStream
+    .findMany({
+      where: {
+        sessionKey,
+        status: {
+          not: "removed",
+        },
       },
-    },
-    orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }, { id: "asc" }],
-  });
+      orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }, { id: "asc" }],
+    })
+    .catch((error) => {
+      console.warn("Failed to load watch streams:", error);
+      return [];
+    });
 
   return NextResponse.json(
-    { streams: streams.map(toWatchStreamPayload) },
+    { streams: streams.map(toWatchStreamPayload).filter(isVisibleStream) },
     { headers: NO_STORE_HEADERS }
   );
 }

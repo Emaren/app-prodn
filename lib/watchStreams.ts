@@ -1,4 +1,10 @@
-export type WatchStreamProvider = "twitch" | "youtube" | "steam" | "discord" | "custom";
+export type WatchStreamProvider =
+  | "aoe2war"
+  | "twitch"
+  | "youtube"
+  | "steam"
+  | "discord"
+  | "custom";
 
 export type WatchStreamRole =
   | "caster"
@@ -12,13 +18,23 @@ export type WatchStreamPayload = {
   id: number;
   sessionKey: string;
   provider: WatchStreamProvider;
+  sourceType: string;
   role: WatchStreamRole;
   label: string;
+  title: string | null;
   url: string;
+  playbackUrl: string | null;
   embedId: string | null;
   playerLabel: string | null;
+  thumbnailUrl: string | null;
+  mediaMimeType: string | null;
   isPrimary: boolean;
   status: string;
+  chunkCount: number;
+  latestChunkSeq: number;
+  lastHeartbeatAt: string | null;
+  startedAt: string | null;
+  endedAt: string | null;
   canEmbed: boolean;
   externalOnly: boolean;
   createdAt: string;
@@ -118,6 +134,7 @@ function twitchChannel(url: URL) {
 function providerForUrl(url: URL): WatchStreamProvider {
   const host = url.hostname.replace(/^www\./, "").toLowerCase();
 
+  if (url.protocol === "aoe2war:") return "aoe2war";
   if (host === "twitch.tv") return "twitch";
   if (host === "youtu.be" || host.endsWith("youtube.com") || host.endsWith("youtube-nocookie.com")) {
     return "youtube";
@@ -178,14 +195,24 @@ export function watchStreamCanEmbed(provider: string, embedId: string | null) {
 export function toWatchStreamPayload(row: {
   id: number;
   sessionKey: string;
+  sourceType?: string | null;
   provider: string;
   role: string;
   label: string;
+  title?: string | null;
   url: string;
+  playbackUrl?: string | null;
   embedId: string | null;
   playerLabel: string | null;
+  thumbnailUrl?: string | null;
+  mediaMimeType?: string | null;
   isPrimary: boolean;
   status: string;
+  chunkCount?: number | null;
+  latestChunkSeq?: number | null;
+  lastHeartbeatAt?: Date | null;
+  startedAt?: Date | null;
+  endedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }): WatchStreamPayload {
@@ -195,13 +222,23 @@ export function toWatchStreamPayload(row: {
     id: row.id,
     sessionKey: row.sessionKey,
     provider: row.provider as WatchStreamProvider,
+    sourceType: row.sourceType || "external",
     role: row.role as WatchStreamRole,
     label: row.label,
+    title: row.title ?? null,
     url: row.url,
+    playbackUrl: row.playbackUrl ?? null,
     embedId: row.embedId,
     playerLabel: row.playerLabel,
+    thumbnailUrl: row.thumbnailUrl ?? null,
+    mediaMimeType: row.mediaMimeType ?? null,
     isPrimary: row.isPrimary,
     status: row.status,
+    chunkCount: row.chunkCount ?? 0,
+    latestChunkSeq: row.latestChunkSeq ?? -1,
+    lastHeartbeatAt: row.lastHeartbeatAt?.toISOString() ?? null,
+    startedAt: row.startedAt?.toISOString() ?? null,
+    endedAt: row.endedAt?.toISOString() ?? null,
     canEmbed,
     externalOnly: !canEmbed,
     createdAt: row.createdAt.toISOString(),

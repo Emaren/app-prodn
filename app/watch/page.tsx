@@ -4,7 +4,9 @@ import path from "node:path";
 import Link from "next/link";
 
 import RecentBroadcastArchive from "@/components/watch/RecentBroadcastArchive";
+import LiveStreamFrame from "@/components/streaming/LiveStreamFrame";
 import WatchPreviewScreen from "@/components/watch/WatchPreviewScreen";
+import { toWatchStreamPayload, type WatchStreamPayload } from "@/lib/watchStreams";
 
 import {
   buildBetBroadcastPreviewUrls,
@@ -21,14 +23,6 @@ import { getPrisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-type WatchStreamSummary = {
-  provider: string;
-  label: string;
-  url: string;
-  embedId: string | null;
-  isPrimary: boolean;
-};
 
 type WatchMediaEntry = {
   recordingUrl?: string;
@@ -49,7 +43,7 @@ type WatchMatchSummary = {
   createdLabel: string;
   mode: "live" | "archive";
   hasFeed: boolean;
-  primaryStream: WatchStreamSummary | null;
+  primaryStream: WatchStreamPayload | null;
   streamCount: number;
   recordingUrl: string | null;
   previewUrl: string | null;
@@ -58,6 +52,8 @@ type WatchMatchSummary = {
 };
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+
+const BROWSER_STREAM_STALE_MS = 45_000;
 
 
 const HOSTED_WATCH_LOOPS = [
@@ -238,26 +234,18 @@ async function loadWatchIndexSnapshot() {
     loadBetBroadcastPreviewMap(),
   ]);
 
-  const streams = sessionKeys.length
-    ? await prisma.gameWatchStream.findMany({
-        where: {
-          sessionKey: {
-            in: sessionKeys,
-          },
-          status: {
-            not: "removed",
-          },
-        },
-        orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }, { id: "asc" }],
-      })
-    : [];
+  const streams = await loadWatchStreamsForSessions(prisma, sessionKeys);
 
-  const streamsBySession = new Map<string, typeof streams>();
+  const streamsBySession = new Map<string, WatchStreamPayload[]>();
 
   for (const stream of streams) {
-    const list = streamsBySession.get(stream.sessionKey) || [];
-    list.push(stream);
-    streamsBySession.set(stream.sessionKey, list);
+    const payload = toWatchStreamPayload(stream);
+    if (!isVisibleWatchStream(payload)) {
+      continue;
+    }
+    const list = streamsBySession.get(payload.sessionKey) || [];
+    list.push(payload);
+    streamsBySession.set(payload.sessionKey, list);
   }
 
   const matches: WatchMatchSummary[] = games.map((game) => {
@@ -292,14 +280,8 @@ async function loadWatchIndexSnapshot() {
       hasFeed: attachedStreams.length > 0,
       primaryStream: primaryStream
         ? {
-            provider: primaryStream.provider,
-            label: primaryStream.label,
-            url: primaryStream.url,
-            embedId:
-              primaryStream.embedId ||
-              readTwitchChannel(primaryStream.url) ||
-              null,
-            isPrimary: primaryStream.isPrimary,
+            ...primaryStream,
+            embedId: primaryStream.embedId || readTwitchChannel(primaryStream.url) || null,
           }
         : null,
       streamCount: attachedStreams.length,
@@ -319,6 +301,44 @@ async function loadWatchIndexSnapshot() {
     matches,
     totalStreams: streams.length + (hero.sessionKey === "__live-building__" ? 1 : 0),
   };
+}
+
+async function loadWatchStreamsForSessions(
+  prisma: ReturnType<typeof getPrisma>,
+  sessionKeys: string[]
+) {
+  if (sessionKeys.length === 0) return [];
+
+  try {
+    return await prisma.gameWatchStream.findMany({
+      where: {
+        sessionKey: {
+          in: sessionKeys,
+        },
+        status: {
+          not: "removed",
+        },
+      },
+      orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }, { id: "asc" }],
+    });
+  } catch (error) {
+    console.warn("Failed to load watch streams for Watch index:", error);
+    return [];
+  }
+}
+
+function isVisibleWatchStream(stream: WatchStreamPayload) {
+  if (stream.sourceType !== "browser" && stream.provider !== "aoe2war") {
+    return stream.status !== "removed";
+  }
+
+  if (!["starting", "live"].includes(stream.status)) {
+    return false;
+  }
+
+  const lastSeen = stream.lastHeartbeatAt || stream.updatedAt;
+  const lastSeenMs = new Date(lastSeen).getTime();
+  return Number.isFinite(lastSeenMs) && Date.now() - lastSeenMs <= BROWSER_STREAM_STALE_MS;
 }
 
 async function loadWatchMediaRegistry(): Promise<Record<string, WatchMediaEntry>> {
@@ -362,11 +382,30 @@ function buildLiveBuildingHero(): WatchMatchSummary {
     mode: "live",
     hasFeed: true,
     primaryStream: {
+      id: -1,
+      sessionKey: "__live-building__",
       provider: "twitch",
+      sourceType: "external",
+      role: "caster",
       label: "Live Building",
+      title: "Live building",
       url,
+      playbackUrl: null,
       embedId: channel,
+      playerLabel: null,
+      thumbnailUrl: "/watch/aoe2hd-screen.svg",
+      mediaMimeType: null,
       isPrimary: true,
+      status: "live",
+      chunkCount: 0,
+      latestChunkSeq: -1,
+      lastHeartbeatAt: null,
+      startedAt: null,
+      endedAt: null,
+      canEmbed: true,
+      externalOnly: false,
+      createdAt: new Date(0).toISOString(),
+      updatedAt: new Date(0).toISOString(),
     },
     streamCount: 1,
     recordingUrl: null,
@@ -454,7 +493,7 @@ function HeroScreen({
                   >
                     Bets
                   </Link>
-                  {match.primaryStream ? (
+                  {match.primaryStream && match.primaryStream.provider !== "aoe2war" ? (
                     <a
                       href={match.primaryStream.url}
                       target="_blank"
@@ -503,7 +542,7 @@ function HeroScreen({
               >
                 Bets
               </Link>
-              {match.primaryStream ? (
+              {match.primaryStream && match.primaryStream.provider !== "aoe2war" ? (
                 <a
                   href={match.primaryStream.url}
                   target="_blank"
@@ -890,6 +929,18 @@ function PreviewMotion({
   match?: WatchMatchSummary;
   large?: boolean;
 }) {
+  if (match?.primaryStream?.sourceType === "browser" || match?.primaryStream?.provider === "aoe2war") {
+    return (
+      <LiveStreamFrame
+        stream={match.primaryStream}
+        title={match.title}
+        compact={!large}
+        fallbackLabel="Live"
+        className={large ? "min-h-[360px]" : "min-h-[120px]"}
+      />
+    );
+  }
+
   const liveEmbedUrl =
     match?.sessionKey === "__live-building__" || match?.mode === "live"
       ? getLiveEmbedUrl(match)

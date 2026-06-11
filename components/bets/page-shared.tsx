@@ -35,16 +35,28 @@ export type BetWarTapeRow = {
 export type BetBroadcastFeed = {
   id: number;
   sessionKey: string;
-  provider: "twitch" | "youtube" | "steam" | "discord" | "custom";
+  provider: "aoe2war" | "twitch" | "youtube" | "steam" | "discord" | "custom";
+  sourceType: string;
   role: "caster" | "observer" | "player_pov" | "team_pov" | "postgame" | "external";
   label: string;
+  title: string | null;
   url: string;
+  playbackUrl: string | null;
   embedId: string | null;
   playerLabel: string | null;
+  thumbnailUrl: string | null;
+  mediaMimeType: string | null;
   isPrimary: boolean;
   status: string;
+  chunkCount: number;
+  latestChunkSeq: number;
+  lastHeartbeatAt: string | null;
+  startedAt: string | null;
+  endedAt: string | null;
   canEmbed: boolean;
   externalOnly: boolean;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type BetBroadcastFeeds = {
