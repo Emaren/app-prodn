@@ -156,9 +156,20 @@ async function ensureFileExists(filePath) {
   await fs.access(filePath);
 }
 
-async function copyArtifact(sourcePath, targetPath) {
-  await ensureFileExists(sourcePath);
+async function copyArtifact(sourcePath, targetPath, { optional = false } = {}) {
+  try {
+    await ensureFileExists(sourcePath);
+  } catch (error) {
+    if (optional) {
+      process.stdout.write(`Skipped optional watcher artifact: ${sourcePath}\n`);
+      return false;
+    }
+
+    throw error;
+  }
+
   await fs.copyFile(sourcePath, targetPath);
+  return true;
 }
 
 async function main() {
@@ -231,6 +242,7 @@ async function main() {
     {
       source: path.join(watcherDistDir, `AoE2HDBets Watcher Setup ${version}.exe.blockmap`),
       target: path.join(downloadsDir, `AoE2HDBets Watcher Setup ${version}.exe.blockmap`),
+      optional: true,
     },
     {
       source: path.join(watcherDistDir, "latest.yml"),
@@ -255,7 +267,9 @@ async function main() {
   ];
 
   for (const artifact of artifactCopies) {
-    await copyArtifact(artifact.source, artifact.target);
+    await copyArtifact(artifact.source, artifact.target, {
+      optional: artifact.optional,
+    });
   }
 
   process.stdout.write(
