@@ -4,6 +4,8 @@ const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 const WATCHER_PARSE_SOURCES = ["watcher_live", "watcher_final"] as const;
 const RECENT_EVENT_SCAN_LIMIT = 5000;
 const SESSION_ROW_LIMIT = 50;
+const FOCUS_USER_EVENT_LIMIT = 120;
+const JULIO_UID_PREFIX = "u_79ce46af3d";
 
 export type WatcherFunnelWindowKey = "allTime" | "last30Days" | "last7Days" | "last24Hours";
 
@@ -40,6 +42,57 @@ export type WatcherFunnelSessionRow = {
   eventCounts: Record<string, number>;
 };
 
+export type WatcherFocusUserEvent = {
+  createdAt: string;
+  eventType: string;
+  appVersion: string | null;
+  platform: string | null;
+  watcherId: string | null;
+  sessionId: string | null;
+  replayHash: string | null;
+  replayFile: string | null;
+  parseSource: string | null;
+  parseReason: string | null;
+  finalityStatus: string | null;
+  finalAccepted: boolean | null;
+  shouldSettle: boolean | null;
+  reason: string | null;
+  detail: string | null;
+  errorMessage: string | null;
+  fileSizeBytes: number | null;
+};
+
+export type WatcherFocusUserDiagnostics = {
+  label: string;
+  uidPrefix: string;
+  userFound: boolean;
+  user: {
+    id: number;
+    uid: string;
+    inGameName: string | null;
+    steamPersonaName: string | null;
+  } | null;
+  latestStatus: "online" | "watching" | "idle" | "no_telemetry";
+  lastSeenAt: string | null;
+  lastHeartbeatAt: string | null;
+  lastStartedAt: string | null;
+  lastStoppedAt: string | null;
+  lastAuthAt: string | null;
+  lastReplayDetectedAt: string | null;
+  lastUploadAt: string | null;
+  lastFailureAt: string | null;
+  activeWatcherId: string | null;
+  activeSessionId: string | null;
+  appVersion: string | null;
+  platform: string | null;
+  totalEvents: number;
+  failureCount: number;
+  finalCandidateDeferrals: number;
+  lastFinalityStatus: string | null;
+  eventCounts: Record<string, number>;
+  recentEvents: WatcherFocusUserEvent[];
+};
+
 export type WatcherFunnelUnavailableMetric = {
   label: string;
   reason: string;
@@ -60,6 +113,7 @@ export type WatcherFunnelDashboardData = {
     counts: WatcherFunnelWindowCounts;
   }>;
   sessionRows: WatcherFunnelSessionRow[];
+  focusUser: WatcherFocusUserDiagnostics;
   recentEventScanLimit: number;
   sessionRowLimit: number;
   unknownRecentEvents: number;
@@ -79,6 +133,13 @@ type RecentWatcherEventRow = {
   watcherId: string | null;
   sessionId: string | null;
   replayHash: string | null;
+};
+
+type FocusWatcherEventRow = RecentWatcherEventRow & {
+  replayFile: string | null;
+  parseSource: string | null;
+  parseReason: string | null;
+  metadata: Prisma.JsonValue | null;
 };
 
 type SessionAccumulator = {
@@ -147,6 +208,69 @@ function numberFromCount(value: bigint | number | string | null | undefined) {
   }
 
   return 0;
+}
+
+function metadataObject(value: Prisma.JsonValue | null | undefined) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+
+  return value as Record<string, Prisma.JsonValue>;
+}
+
+function metadataString(metadata: Prisma.JsonValue | null | undefined, key: string) {
+  const value = metadataObject(metadata)[key];
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function metadataBoolean(metadata: Prisma.JsonValue | null | undefined, key: string) {
+  const value = metadataObject(metadata)[key];
+  return typeof value === "boolean" ? value : null;
+}
+
+function metadataNumber(metadata: Prisma.JsonValue | null | undefined, key: string) {
+  const value = metadataObject(metadata)[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function isoOrNull(value: Date | null | undefined) {
+  return value ? value.toISOString() : null;
+}
+
+function firstEventAt(events: FocusWatcherEventRow[], eventTypes: string[]) {
+  const eventTypeSet = new Set(eventTypes);
+  return events.find((event) => eventTypeSet.has(event.eventType))?.createdAt ?? null;
+}
+
+function countEvents(events: FocusWatcherEventRow[], eventTypes: string[]) {
+  const eventTypeSet = new Set(eventTypes);
+  return events.filter((event) => eventTypeSet.has(event.eventType)).length;
+}
+
+function deriveFocusStatus(events: FocusWatcherEventRow[]) {
+  if (events.length === 0) {
+    return "no_telemetry" as const;
+  }
+
+  const lastHeartbeat = firstEventAt(events, ["heartbeat"]);
+  if (lastHeartbeat && Date.now() - lastHeartbeat.getTime() <= 2.5 * 60 * 1000) {
+    return "online" as const;
+  }
+
+  const lastStart = firstEventAt(events, ["watching_started", "watcher_started"]);
+  const lastStop = firstEventAt(events, ["watching_stopped", "watcher_stopped"]);
+  if (lastStart && (!lastStop || lastStart > lastStop)) {
+    return "watching" as const;
+  }
+
+  return "idle" as const;
+}
+
+function compactEventCounts(events: FocusWatcherEventRow[]) {
+  return events.reduce<Record<string, number>>((counts, event) => {
+    counts[event.eventType] = (counts[event.eventType] ?? 0) + 1;
+    return counts;
+  }, {});
 }
 
 function stableClientKeySql(preference: StableKeyPreference) {
@@ -398,6 +522,131 @@ async function loadRecentSessionRows(
   return { rows, unknownRecentEvents };
 }
 
+async function loadFocusUserDiagnostics(
+  prisma: PrismaClient,
+  cutoff: Date
+): Promise<WatcherFocusUserDiagnostics> {
+  const focusUser = await prisma.user.findFirst({
+    where: {
+      OR: [
+        { uid: { startsWith: JULIO_UID_PREFIX } },
+        { inGameName: { contains: "Julio", mode: "insensitive" } },
+        { steamPersonaName: { contains: "Julio", mode: "insensitive" } },
+      ],
+    },
+    orderBy: [{ uid: "asc" }],
+    select: {
+      id: true,
+      uid: true,
+      inGameName: true,
+      steamPersonaName: true,
+    },
+  });
+
+  const eventWhere = focusUser
+    ? {
+        createdAt: { gte: cutoff },
+        OR: [
+          { userId: focusUser.id },
+          { userUid: focusUser.uid },
+          { userUid: { startsWith: JULIO_UID_PREFIX } },
+        ],
+      }
+    : {
+        createdAt: { gte: cutoff },
+        userUid: { startsWith: JULIO_UID_PREFIX },
+      };
+
+  const recentEvents = await prisma.watcherClientEvent.findMany({
+    where: eventWhere,
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: FOCUS_USER_EVENT_LIMIT,
+    select: {
+      createdAt: true,
+      userId: true,
+      userUid: true,
+      eventType: true,
+      appVersion: true,
+      platform: true,
+      watcherId: true,
+      sessionId: true,
+      replayHash: true,
+      replayFile: true,
+      parseSource: true,
+      parseReason: true,
+      metadata: true,
+    },
+  });
+
+  const lastEvent = recentEvents[0] ?? null;
+  const lastUpload = firstEventAt(recentEvents, [
+    "upload_succeeded",
+    "upload_failed",
+    "upload_attempted",
+  ]);
+  const lastFailure = firstEventAt(recentEvents, [
+    "upload_failed",
+    "parse_failed",
+    "watcher_error",
+    "batch_upload_failed",
+    "batch_upload_file_failed",
+  ]);
+  const lastFinalityStatus =
+    recentEvents
+      .map((event) => metadataString(event.metadata, "finalityStatus"))
+      .find(Boolean) ?? null;
+
+  return {
+    label: "Julio Alvarez",
+    uidPrefix: JULIO_UID_PREFIX,
+    userFound: Boolean(focusUser),
+    user: focusUser,
+    latestStatus: deriveFocusStatus(recentEvents),
+    lastSeenAt: isoOrNull(lastEvent?.createdAt),
+    lastHeartbeatAt: isoOrNull(firstEventAt(recentEvents, ["heartbeat"])),
+    lastStartedAt: isoOrNull(firstEventAt(recentEvents, ["watching_started", "watcher_started"])),
+    lastStoppedAt: isoOrNull(firstEventAt(recentEvents, ["watching_stopped", "watcher_stopped"])),
+    lastAuthAt: isoOrNull(firstEventAt(recentEvents, ["auth_success", "auth_failed"])),
+    lastReplayDetectedAt: isoOrNull(firstEventAt(recentEvents, ["replay_detected"])),
+    lastUploadAt: isoOrNull(lastUpload),
+    lastFailureAt: isoOrNull(lastFailure),
+    activeWatcherId: lastEvent?.watcherId ?? null,
+    activeSessionId: lastEvent?.sessionId ?? null,
+    appVersion: lastEvent?.appVersion ?? null,
+    platform: lastEvent?.platform ?? null,
+    totalEvents: recentEvents.length,
+    failureCount: countEvents(recentEvents, [
+      "upload_failed",
+      "parse_failed",
+      "watcher_error",
+      "batch_upload_failed",
+      "batch_upload_file_failed",
+    ]),
+    finalCandidateDeferrals: countEvents(recentEvents, ["final_candidate_deferred"]),
+    lastFinalityStatus,
+    eventCounts: compactEventCounts(recentEvents),
+    recentEvents: recentEvents.slice(0, 16).map((event) => ({
+      createdAt: event.createdAt.toISOString(),
+      eventType: event.eventType,
+      appVersion: event.appVersion,
+      platform: event.platform,
+      watcherId: event.watcherId,
+      sessionId: event.sessionId,
+      replayHash: event.replayHash,
+      replayFile: event.replayFile,
+      parseSource: event.parseSource,
+      parseReason: event.parseReason,
+      finalityStatus: metadataString(event.metadata, "finalityStatus"),
+      finalAccepted: metadataBoolean(event.metadata, "finalAccepted"),
+      shouldSettle: metadataBoolean(event.metadata, "shouldSettle"),
+      reason: metadataString(event.metadata, "reason"),
+      detail: metadataString(event.metadata, "detail"),
+      errorMessage: metadataString(event.metadata, "errorMessage"),
+      fileSizeBytes: metadataNumber(event.metadata, "fileSizeBytes"),
+    })),
+  };
+}
+
 export async function loadWatcherFunnelDashboard(
   prisma: PrismaClient
 ): Promise<WatcherFunnelDashboardData> {
@@ -420,6 +669,7 @@ export async function loadWatcherFunnelDashboard(
     uploadsFailed,
     parsedGames,
     recentSessions,
+    focusUser,
   ] = await Promise.all([
     loadWindowCounts(windows, (cutoff) => countDownloads(prisma, cutoff)),
     loadWindowCounts(windows, (cutoff) =>
@@ -443,6 +693,7 @@ export async function loadWatcherFunnelDashboard(
     loadWindowCounts(windows, (cutoff) => countClientEvents(prisma, ["upload_failed"], cutoff)),
     loadWindowCounts(windows, (cutoff) => countParsedWatcherGames(prisma, cutoff)),
     loadRecentSessionRows(prisma, last30DaysCutoff),
+    loadFocusUserDiagnostics(prisma, last30DaysCutoff),
   ]);
 
   return {
@@ -497,7 +748,6 @@ export async function loadWatcherFunnelDashboard(
         source: "watcher_client_events.event_type = upload_attempted",
         status: "tracked",
         counts: uploadsStarted,
-        note: "The current watcher event name is upload_attempted; replay_upload_started is not tracked yet.",
       },
       {
         key: "upload_finished",
@@ -506,7 +756,6 @@ export async function loadWatcherFunnelDashboard(
         source: "watcher_client_events.event_type = upload_succeeded",
         status: "tracked",
         counts: uploadsFinished,
-        note: "The current watcher event name is upload_succeeded; replay_upload_finished is not tracked yet.",
       },
       {
         key: "parsed_games",
@@ -527,18 +776,11 @@ export async function loadWatcherFunnelDashboard(
       },
     ],
     sessionRows: recentSessions.rows,
+    focusUser,
     recentEventScanLimit: RECENT_EVENT_SCAN_LIMIT,
     sessionRowLimit: SESSION_ROW_LIMIT,
     unknownRecentEvents: recentSessions.unknownRecentEvents,
     unavailableMetrics: [
-      {
-        label: "replay_upload_started / replay_upload_finished / replay_upload_failed",
-        reason: "Those event names are not accepted by the current watcher telemetry route; the live equivalents are upload_attempted, upload_succeeded, and upload_failed.",
-      },
-      {
-        label: "historical_import_started / historical_import_finished",
-        reason: "No accepted watcher telemetry event currently records historical import lifecycle events.",
-      },
       {
         label: "Direct static or nginx-only package downloads",
         reason: "The app database only records downloads that pass through /download/watcher/*.",

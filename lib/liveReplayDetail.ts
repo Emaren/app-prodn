@@ -3,6 +3,7 @@ import path from "node:path";
 import { PrismaClient } from "@/lib/generated/prisma";
 
 const SUPERSEDED_PARSE_REASON = "superseded_by_later_upload";
+const UNPARSED_FINAL_PARSE_REASON = "watcher_final_unparsed";
 
 export type LiveReplayPlayerRecord = Record<string, unknown>;
 
@@ -255,16 +256,42 @@ function hasVisiblePlayerScore(players: LiveReplayPlayerRecord[]) {
 
 function normalizeSessionCandidates(sessionKey: string) {
   const trimmed = sessionKey.trim();
+  if (trimmed.startsWith("platform:")) {
+    return [];
+  }
+
   const basename = path.basename(trimmed);
   return Array.from(new Set([trimmed, basename].filter(Boolean)));
 }
 
-function buildSessionWhere(sessionCandidates: string[]) {
+function readPlatformMatchId(sessionKey: string) {
+  const trimmed = sessionKey.trim();
+  if (!trimmed.startsWith("platform:")) {
+    return null;
+  }
+
+  const value = trimmed.slice("platform:".length).trim();
+  return value || null;
+}
+
+function buildSessionWhere(sessionCandidates: string[], platformMatchId: string | null = null) {
+  const filenameClauses = sessionCandidates.flatMap((value) => [
+    { original_filename: value },
+    { replay_file: value },
+  ]);
+  const platformClauses = platformMatchId
+    ? [
+        {
+          key_events: {
+            path: ["platform_match_id"],
+            equals: platformMatchId,
+          },
+        },
+      ]
+    : [];
+
   return {
-    OR: sessionCandidates.flatMap((value) => [
-      { original_filename: value },
-      { replay_file: value },
-    ]),
+    OR: [...platformClauses, ...filenameClauses],
   };
 }
 
@@ -314,15 +341,19 @@ export async function resolveFinalGameStatsIdForSessionKey(
   prisma: PrismaClient,
   rawSessionKey: string
 ) {
+  const platformMatchId = readPlatformMatchId(rawSessionKey);
   const sessionCandidates = normalizeSessionCandidates(rawSessionKey);
-  if (sessionCandidates.length === 0) {
+  if (sessionCandidates.length === 0 && !platformMatchId) {
     return null;
   }
 
   const latestFinal = await prisma.gameStats.findFirst({
     where: {
-      ...buildSessionWhere(sessionCandidates),
+      ...buildSessionWhere(sessionCandidates, platformMatchId),
       is_final: true,
+      parse_reason: {
+        not: UNPARSED_FINAL_PARSE_REASON,
+      },
     },
     orderBy: [{ timestamp: "desc" }, { createdAt: "desc" }, { id: "desc" }],
     select: {
@@ -337,12 +368,13 @@ export async function loadLiveReplayDetailSnapshot(
   prisma: PrismaClient,
   rawSessionKey: string
 ): Promise<LiveReplayDetailSnapshot | null> {
+  const platformMatchId = readPlatformMatchId(rawSessionKey);
   const sessionCandidates = normalizeSessionCandidates(rawSessionKey);
-  if (sessionCandidates.length === 0) {
+  if (sessionCandidates.length === 0 && !platformMatchId) {
     return null;
   }
 
-  const sessionWhere = buildSessionWhere(sessionCandidates);
+  const sessionWhere = buildSessionWhere(sessionCandidates, platformMatchId);
 
   const [latestLive, latestFinal, historyRows] = await Promise.all([
     prisma.gameStats.findFirst({
@@ -363,6 +395,9 @@ export async function loadLiveReplayDetailSnapshot(
       where: {
         ...sessionWhere,
         is_final: true,
+        parse_reason: {
+          not: UNPARSED_FINAL_PARSE_REASON,
+        },
       },
       orderBy: [{ timestamp: "desc" }, { createdAt: "desc" }, { id: "desc" }],
       select: GAME_SELECT,
@@ -453,7 +488,7 @@ export async function loadLiveReplayDetailSnapshot(
   const completionSource = readStringValue(latestKeyEvents.completion_source);
 
   return {
-    sessionKey: sessionCandidates[0],
+    sessionKey: platformMatchId ? `platform:${platformMatchId}` : sessionCandidates[0],
     mode: finalBeatsLive ? "final" : "live",
     finalGameId: latestFinal?.id ?? null,
     updatedAt: getRowActivityTime(selectedGame).toISOString(),

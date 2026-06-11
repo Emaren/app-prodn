@@ -10,23 +10,63 @@ Watcher analytics now separates noisy package pulls from confirmed watcher behav
 
 `game_stats` remains the historical fallback for confirmed watcher usage. Rows with `parse_source in ('watcher_live', 'watcher_final')` prove that a watcher-submitted game reached the app, even if no `app_open` telemetry existed yet.
 
-If MGZ full-summary decoding fails on a watcher final upload, the API may store a header-only fallback row with `parse_reason = 'header_only_summary_fallback'` and `key_events.header_only_fallback = true`. Treat that as replay identity/proof preservation only: it may include player/header metadata, but it must not be read as final winner, score, or postgame resource truth.
+Watcher v1.1.8 uses a conservative final-candidate contract. A final upload is settlement-safe only when the upload response includes `should_settle = true` or a trusted finality status. Header-only or unparsed proof can be preserved for diagnostics, but it must not be read as final winner, score, postgame resource, or betting truth.
 
 ## Event Types
 
 Allowed `watcher_client_events.event_type` values:
 
 - `app_open`
+- `watcher_started`
+- `watcher_stopped`
+- `watcher_version_seen`
+- `watcher_update_check_started`
+- `watcher_update_available`
+- `watcher_update_not_available`
+- `watcher_update_downloaded`
+- `watcher_update_error`
+- `watcher_update_install_requested`
 - `auth_started`
 - `auth_success`
 - `auth_failed`
 - `watch_folder_selected`
+- `watching_started`
+- `watching_stopped`
+- `watcher_ready`
+- `watcher_error`
+- `monitor_start`
+- `monitor_stop`
+- `monitor_skip_final`
 - `replay_detected`
+- `replay_detected_ignored`
+- `skip_unknown`
+- `skip_upload_in_progress`
+- `skip_file_missing`
+- `skip_file_too_small`
+- `skip_already_finalized`
+- `file_size_progress`
+- `waiting_for_minimum_size`
 - `upload_attempted`
+- `upload_retry`
 - `upload_succeeded`
 - `upload_failed`
 - `parse_succeeded`
+- `parse_pending`
 - `parse_failed`
+- `parse_result_unknown_fields`
+- `final_candidate_ready`
+- `final_candidate_accepted`
+- `final_candidate_deferred`
+- `final_candidate_reopened`
+- `batch_upload_started`
+- `batch_upload_scanned`
+- `batch_upload_file_started`
+- `batch_upload_file_stable`
+- `batch_upload_file_skipped`
+- `batch_upload_file_succeeded`
+- `batch_upload_file_failed`
+- `batch_upload_finished`
+- `batch_upload_failed`
 - `heartbeat`
 
 The watcher posts to `POST /api/watcher/events`. The endpoint accepts a single event object or `{ "events": [...] }` batches up to 25 events and returns `{ "ok": true }` on successful or non-blocking best-effort handling.
@@ -55,11 +95,29 @@ Replay file telemetry stores the basename only, for example `recorded-game.aoe2r
 
 Telemetry failures must not block the watcher. The Electron app uses fire-and-forget telemetry with short timeouts; upload and replay monitoring continue if telemetry is unavailable.
 
+## Finality Contract
+
+Upload responses can include:
+
+- `finality_status = live`
+- `finality_status = live_pending_parse`
+- `finality_status = final_not_ready`
+- `finality_status = final_unparsed_proof`
+- `finality_status = trusted_final`
+- `finality_status = trusted_final_duplicate`
+- `finality_status = trusted_final_refreshed`
+- `finality_status = reviewed_match_duplicate`
+- `finality_status = reviewed_match_refreshed`
+
+Only `trusted_final*` and `reviewed_match*` statuses should set `should_settle = true`. The watcher treats every other final response as a deferred candidate and keeps monitoring the replay file.
+
 ## Admin Watcher Diagnostics Rail
 
 `/admin/wolochain` includes an Admin Watcher Diagnostics rail that combines
 `watcher_client_events`, `replay_parse_attempts`, and watcher-backed
 `game_stats` rows.
+
+`/admin/watcher-funnel` adds a conversion/diagnostic command surface, including a dedicated Julio Alvarez tile keyed by UID prefix `u_79ce46af3d`. Use it while Julio is running the Windows watcher to inspect start/stop/heartbeat, auth, replay detection, final-candidate deferrals, upload failures, finality status, version, platform, watcher id, and session id.
 
 Per user, it shows:
 
