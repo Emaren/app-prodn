@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { getPrisma } from "@/lib/prisma";
 import { resolveRequestUid } from "@/lib/requestIdentity";
+import { maybeCleanupBrowserStreams } from "@/lib/streamCleanup";
 import { toWatchStreamPayload } from "@/lib/watchStreams";
 
 export const runtime = "nodejs";
@@ -23,6 +24,10 @@ export async function GET(request: NextRequest) {
   const mine = request.nextUrl.searchParams.get("mine") === "1";
   const uid = mine ? await resolveRequestUid(request) : null;
   const prisma = getPrisma();
+
+  await maybeCleanupBrowserStreams(prisma).catch((error) => {
+    console.warn("Browser stream cleanup skipped:", error);
+  });
 
   const user = uid
     ? await prisma.user.findUnique({

@@ -178,6 +178,7 @@ These routes are important because they often do more than simple pass-through w
 - Browser streaming is AoE2WAR-first: `/profile` and `/watch/[sessionKey]` can start a browser `getDisplayMedia` stream, upload short WebM chunks to the app, and expose that feed through `/`, `/watch`, `/bets`, `/live-games`, and the lobby Watch & Chat hero.
 - Watcher stream handoff route: `/profile?watcher_stream=1&stream_session=<sessionKey>&stream_title=<matchup>` preserves the detected-match context through Steam login and opens the streamer studio already bound to that watcher session.
 - Browser stream chunks default to `storage/live-streams/`; set `AOE2_STREAM_STORAGE_DIR` if production should place chunks on a mounted volume.
+- Browser stream cleanup is throttled through `/api/streams/active`: silent streams are ended after a few minutes, and old ended chunks are pruned after `AOE2_STREAM_CHUNK_RETENTION_MS` or the default six-hour window.
 - Twitch/YouTube/custom watch feeds remain external fallbacks through `game_watch_streams`, but they are not required for AoE2WAR browser streaming.
 - Recent Match Feed sorts and displays the backend `played_at` contract so bulk reparses of old saved games do not outrank newer actual matches
 - Watcher final uploads can store header-only fallback rows when MGZ full-summary decoding fails; fallback rows are explicit parser breadcrumbs and do not fabricate a winner or postgame resource table
