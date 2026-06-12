@@ -173,6 +173,8 @@ export default function BrowserStreamStudio({
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [lastErrorDetail, setLastErrorDetail] = useState("");
+  const [lastStreamOutput, setLastStreamOutput] = useState("");
+  const [readoutOpen, setReadoutOpen] = useState(false);
   const [captureMode, setCaptureMode] = useState<CaptureModeKey>("sharp");
   const [mediaMimeType, setMediaMimeType] = useState("video/webm");
   const [copied, setCopied] = useState(false);
@@ -226,6 +228,18 @@ export default function BrowserStreamStudio({
       uptimeSeconds,
     ]
   );
+
+  const readoutLine =
+    lastStreamOutput ||
+    (error
+      ? error
+      : isLive
+        ? (stream?.latestChunkSeq ?? -1) >= 0
+          ? `Publishing chunk ${stream?.latestChunkSeq}.`
+          : "Waiting for the first video chunk."
+        : captureReady
+          ? `${activeCaptureMode.label} source ready.`
+          : "Idle.");
 
   useEffect(() => {
     setSelectedSessionKey(sessionKey || "");
@@ -378,6 +392,8 @@ export default function BrowserStreamStudio({
     (eventType: string, message: string, metadata: Record<string, unknown> = {}) => {
       setNotice("");
       setError(message);
+      setLastStreamOutput(message);
+      setReadoutOpen(true);
       setLastErrorDetail(
         metadata.detail && typeof metadata.detail === "string" ? metadata.detail : ""
       );
@@ -404,6 +420,7 @@ export default function BrowserStreamStudio({
         mode: activeCaptureMode.key,
         detail: activeCaptureMode.detail,
       });
+      setLastStreamOutput(`Opening ${activeCaptureMode.label} capture.`);
       const nextStream = await navigator.mediaDevices.getDisplayMedia({
         video: activeCaptureMode.video,
         audio: activeCaptureMode.audio,
@@ -446,6 +463,9 @@ export default function BrowserStreamStudio({
       setCaptureReady(true);
       setMediaMimeType(chooseRecorderMimeType());
       setNotice(`${activeCaptureMode.label} source locked.`);
+      setLastStreamOutput(
+        `${activeCaptureMode.label} source ready${nextStream.getVideoTracks()[0]?.label ? `: ${nextStream.getVideoTracks()[0].label}` : "."}`
+      );
       void sendStreamEvent("stream_source_ready", {
         mode: activeCaptureMode.key,
         trackCount: nextStream.getTracks().length,
@@ -463,27 +483,38 @@ export default function BrowserStreamStudio({
     }
   }, [activeCaptureMode, sendStreamEvent, stopHeartbeat, surfaceStreamError]);
 
-  const uploadChunk = useCallback(async (streamId: number, sequence: number, blob: Blob, mimeType: string) => {
-    if (!blob.size) return;
-    const response = await fetch(`/api/streams/${streamId}/chunks?sequence=${sequence}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": blob.type || mimeType,
-        "x-stream-sequence": String(sequence),
-      },
-      body: blob,
-    });
-    const payload = (await response.json().catch(() => null)) as {
-      stream?: WatchStreamPayload;
-      detail?: string;
-    } | null;
-    if (!response.ok) {
-      throw new Error(payload?.detail || "Stream upload missed a beat.");
-    }
-    if (payload?.stream) {
-      setStream(payload.stream);
-    }
-  }, []);
+  const uploadChunk = useCallback(
+    async (streamId: number, sequence: number, blob: Blob, mimeType: string) => {
+      if (!blob.size) return;
+      const response = await fetch(`/api/streams/${streamId}/chunks?sequence=${sequence}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": blob.type || mimeType,
+          "x-stream-sequence": String(sequence),
+        },
+        body: blob,
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        stream?: WatchStreamPayload;
+        detail?: string;
+      } | null;
+      if (!response.ok) {
+        throw new Error(payload?.detail || "Stream upload missed a beat.");
+      }
+      if (payload?.stream) {
+        setStream(payload.stream);
+      }
+      setLastStreamOutput(`Chunk ${sequence} published (${Math.round(blob.size / 1024)} KB).`);
+      if (sequence === 0 || sequence % 10 === 0) {
+        void sendStreamEvent("stream_chunk_uploaded", {
+          streamId,
+          sequence,
+          blobSize: blob.size,
+        });
+      }
+    },
+    [sendStreamEvent]
+  );
 
   const sendHeartbeat = useCallback(
     async (streamId: number, status = "live") => {
@@ -509,8 +540,16 @@ export default function BrowserStreamStudio({
       if (response.ok && payload?.stream) {
         setStream(payload.stream);
       }
+      setLastStreamOutput(
+        status === "live" ? "Heartbeat OK. Stream is visible on AoE2WAR." : "Heartbeat sent."
+      );
+      void sendStreamEvent("stream_heartbeat", {
+        streamId,
+        status,
+        thumbnailUpdated: Boolean(thumbnailUrl),
+      });
     },
-    [captureThumbnail, mediaMimeType]
+    [captureThumbnail, mediaMimeType, sendStreamEvent]
   );
 
   const goLive = useCallback(async () => {
@@ -539,6 +578,7 @@ export default function BrowserStreamStudio({
           playerLabel,
           thumbnailUrl,
           mediaMimeType,
+          sourceType: "browser",
         }),
       });
 
@@ -586,6 +626,7 @@ export default function BrowserStreamStudio({
         }
       };
       recorder.start(CHUNK_TIMESLICE_MS);
+      setLastStreamOutput(`Recorder started in ${captureMode} mode.`);
 
       await sendHeartbeat(payload.stream.id, "live");
       heartbeatRef.current = window.setInterval(() => {
@@ -601,6 +642,7 @@ export default function BrowserStreamStudio({
         mode: captureMode,
       });
       setNotice("Live.");
+      setLastStreamOutput("Live. First chunks are publishing now.");
     } catch (goLiveError) {
       surfaceStreamError(
         "stream_error",
@@ -653,6 +695,7 @@ export default function BrowserStreamStudio({
         streamId: activeStream?.id || null,
       });
       setNotice("Stream ended.");
+      setLastStreamOutput("Stream ended cleanly.");
     } catch (stopError) {
       surfaceStreamError(
         "stream_error",
@@ -796,6 +839,21 @@ export default function BrowserStreamStudio({
           </div>
         )}
       </div>
+
+      <details
+        className="mt-3 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-300"
+        open={readoutOpen}
+        onToggle={(event) => setReadoutOpen(event.currentTarget.open)}
+      >
+        <summary className="cursor-pointer list-none text-slate-200 [&::-webkit-details-marker]:hidden">
+          {readoutLine}
+        </summary>
+        <div className="mt-2 text-xs leading-5 text-slate-400">
+          {lastErrorDetail || `Mode ${captureMode}. MIME ${mediaMimeType}. Heartbeat ${
+            heartbeatAgeSeconds === null ? "pending" : `${heartbeatAgeSeconds}s ago`
+          }.`}
+        </div>
+      </details>
 
       <div className="mt-4 flex flex-wrap gap-2">
         {!captureReady && !isLive ? (

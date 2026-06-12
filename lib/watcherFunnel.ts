@@ -33,6 +33,28 @@ const WATCHER_FAILURE_EVENTS = [
   "stream_chunk_failed",
   "stream_heartbeat_failed",
 ];
+const STREAM_EVENTS = [
+  "stream_sources_listed",
+  "stream_capture_requested",
+  "stream_preview_started",
+  "stream_source_ready",
+  "stream_started",
+  "stream_chunk_uploaded",
+  "stream_heartbeat",
+  "stream_stopped",
+  "stream_track_ended",
+  "stream_recorder_error",
+  "stream_chunk_failed",
+  "stream_heartbeat_failed",
+  "stream_error",
+];
+const STREAM_FAILURE_EVENTS = [
+  "stream_track_ended",
+  "stream_recorder_error",
+  "stream_chunk_failed",
+  "stream_heartbeat_failed",
+  "stream_error",
+];
 
 export type WatcherFunnelWindowKey = "allTime" | "last30Days" | "last7Days" | "last24Hours";
 
@@ -87,6 +109,33 @@ export type WatcherFocusUserEvent = {
   detail: string | null;
   errorMessage: string | null;
   fileSizeBytes: number | null;
+  streamId: string | null;
+  streamSessionKey: string | null;
+  streamSourceType: string | null;
+  streamSourceName: string | null;
+  streamCaptureMode: string | null;
+  streamSequence: number | null;
+  streamBlobSize: number | null;
+};
+
+export type WatcherFocusUserStreamDiagnostics = {
+  status: "live_or_recent" | "idle" | "issue";
+  sourceType: string | null;
+  sourceName: string | null;
+  captureMode: string | null;
+  streamId: string | null;
+  sessionKey: string | null;
+  lastEventAt: string | null;
+  lastStartedAt: string | null;
+  lastStoppedAt: string | null;
+  lastChunkAt: string | null;
+  lastHeartbeatAt: string | null;
+  lastErrorAt: string | null;
+  chunkEvents: number;
+  heartbeatEvents: number;
+  failureCount: number;
+  lastErrorMessage: string | null;
+  lastDetail: string | null;
 };
 
 export type WatcherFocusUserDiagnostics = {
@@ -117,6 +166,7 @@ export type WatcherFocusUserDiagnostics = {
   failureCount: number;
   finalCandidateDeferrals: number;
   lastFinalityStatus: string | null;
+  stream: WatcherFocusUserStreamDiagnostics | null;
   eventCounts: Record<string, number>;
   recentEvents: WatcherFocusUserEvent[];
 };
@@ -309,6 +359,44 @@ function compactEventCounts(events: FocusWatcherEventRow[]) {
     counts[event.eventType] = (counts[event.eventType] ?? 0) + 1;
     return counts;
   }, {});
+}
+
+function firstMetadataString(events: FocusWatcherEventRow[], key: string) {
+  return events.map((event) => metadataString(event.metadata, key)).find(Boolean) ?? null;
+}
+
+function buildStreamDiagnostics(events: FocusWatcherEventRow[]): WatcherFocusUserStreamDiagnostics | null {
+  const streamEvents = events.filter((event) => STREAM_EVENTS.includes(event.eventType));
+  if (streamEvents.length === 0) {
+    return null;
+  }
+
+  const lastStartedAt = firstEventAt(streamEvents, ["stream_started"]);
+  const lastStoppedAt = firstEventAt(streamEvents, ["stream_stopped"]);
+  const lastErrorAt = firstEventAt(streamEvents, STREAM_FAILURE_EVENTS);
+  const hasActiveStart = Boolean(lastStartedAt && (!lastStoppedAt || lastStartedAt > lastStoppedAt));
+  const hasCurrentIssue = Boolean(lastErrorAt && (!lastStartedAt || lastErrorAt >= lastStartedAt));
+  const lastErrorEvent = streamEvents.find((event) => STREAM_FAILURE_EVENTS.includes(event.eventType)) ?? null;
+
+  return {
+    status: hasCurrentIssue ? "issue" : hasActiveStart ? "live_or_recent" : "idle",
+    sourceType: firstMetadataString(streamEvents, "sourceType"),
+    sourceName: firstMetadataString(streamEvents, "sourceName"),
+    captureMode: firstMetadataString(streamEvents, "captureMode"),
+    streamId: firstMetadataString(streamEvents, "streamId"),
+    sessionKey: firstMetadataString(streamEvents, "sessionKey"),
+    lastEventAt: isoOrNull(streamEvents[0]?.createdAt),
+    lastStartedAt: isoOrNull(lastStartedAt),
+    lastStoppedAt: isoOrNull(lastStoppedAt),
+    lastChunkAt: isoOrNull(firstEventAt(streamEvents, ["stream_chunk_uploaded"])),
+    lastHeartbeatAt: isoOrNull(firstEventAt(streamEvents, ["stream_heartbeat"])),
+    lastErrorAt: isoOrNull(lastErrorAt),
+    chunkEvents: countEvents(streamEvents, ["stream_chunk_uploaded"]),
+    heartbeatEvents: countEvents(streamEvents, ["stream_heartbeat"]),
+    failureCount: countEvents(streamEvents, STREAM_FAILURE_EVENTS),
+    lastErrorMessage: lastErrorEvent ? metadataString(lastErrorEvent.metadata, "errorMessage") : null,
+    lastDetail: firstMetadataString(streamEvents, "detail"),
+  };
 }
 
 function stableClientKeySql(preference: StableKeyPreference) {
@@ -668,6 +756,7 @@ async function loadFocusUserDiagnostics(
     recentEvents
       .map((event) => metadataString(event.metadata, "finalityStatus"))
       .find(Boolean) ?? null;
+  const stream = buildStreamDiagnostics(recentEvents);
 
   return {
     label: displayNameForTarget(target, focusUser),
@@ -692,6 +781,7 @@ async function loadFocusUserDiagnostics(
     failureCount: countEvents(recentEvents, WATCHER_FAILURE_EVENTS),
     finalCandidateDeferrals: countEvents(recentEvents, ["final_candidate_deferred"]),
     lastFinalityStatus,
+    stream,
     eventCounts: compactEventCounts(recentEvents),
     recentEvents: recentEvents.slice(0, 16).map((event) => ({
       createdAt: event.createdAt.toISOString(),
@@ -711,6 +801,13 @@ async function loadFocusUserDiagnostics(
       detail: metadataString(event.metadata, "detail"),
       errorMessage: metadataString(event.metadata, "errorMessage"),
       fileSizeBytes: metadataNumber(event.metadata, "fileSizeBytes"),
+      streamId: metadataString(event.metadata, "streamId"),
+      streamSessionKey: metadataString(event.metadata, "sessionKey"),
+      streamSourceType: metadataString(event.metadata, "sourceType"),
+      streamSourceName: metadataString(event.metadata, "sourceName"),
+      streamCaptureMode: metadataString(event.metadata, "captureMode"),
+      streamSequence: metadataNumber(event.metadata, "sequence"),
+      streamBlobSize: metadataNumber(event.metadata, "blobSize"),
     })),
   };
 }

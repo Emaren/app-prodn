@@ -60,9 +60,13 @@ export const WATCHER_CLIENT_EVENT_TYPES = [
   "batch_upload_finished",
   "batch_upload_failed",
   "stream_handoff_opened",
+  "stream_sources_listed",
   "stream_capture_requested",
+  "stream_preview_started",
   "stream_source_ready",
   "stream_started",
+  "stream_chunk_uploaded",
+  "stream_heartbeat",
   "stream_stopped",
   "stream_track_ended",
   "stream_recorder_error",
@@ -92,6 +96,10 @@ type WatcherIdentity = {
   userId: number | null;
   userUid: string | null;
   resolved: boolean;
+};
+
+type WatcherIdentityOptions = {
+  touchLastUsedAt?: boolean;
 };
 
 const WATCHER_KEY_RE = /^wolo_([a-f0-9]{12})_(.+)$/i;
@@ -173,7 +181,8 @@ function verifyWatcherKeyHash(apiKey: string, storedHash: string) {
 
 export async function resolveWatcherTelemetryIdentity(
   prisma: PrismaClient,
-  apiKey: string | null | undefined
+  apiKey: string | null | undefined,
+  options: WatcherIdentityOptions = {}
 ): Promise<WatcherIdentity> {
   const normalized = apiKey?.trim() || "";
   const match = normalized.match(WATCHER_KEY_RE);
@@ -203,10 +212,12 @@ export async function resolveWatcherTelemetryIdentity(
     return { userId: null, userUid: null, resolved: false };
   }
 
-  await prisma.apiKey.update({
-    where: { id: apiKeyRow.id },
-    data: { lastUsedAt: new Date() },
-  });
+  if (options.touchLastUsedAt !== false) {
+    await prisma.apiKey.update({
+      where: { id: apiKeyRow.id },
+      data: { lastUsedAt: new Date() },
+    });
+  }
 
   return {
     userId: apiKeyRow.user.id,

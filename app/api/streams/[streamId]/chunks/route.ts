@@ -1,7 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { getPrisma } from "@/lib/prisma";
-import { resolveRequestUid } from "@/lib/requestIdentity";
+import {
+  isAoE2WarManagedStream,
+  resolveStreamRequestActor,
+} from "@/lib/streamRequestAuth";
 import { writeStreamChunk } from "@/lib/streamStorage";
 import { toWatchStreamPayload } from "@/lib/watchStreams";
 
@@ -28,8 +31,9 @@ export async function POST(
   request: NextRequest,
   context: { params: Promise<{ streamId: string }> }
 ) {
-  const uid = await resolveRequestUid(request);
-  if (!uid) {
+  const prisma = getPrisma();
+  const actor = await resolveStreamRequestActor(prisma, request, { touchWatcherKey: false });
+  if (!actor) {
     return NextResponse.json(
       { detail: "No active session" },
       { status: 401, headers: NO_STORE_HEADERS }
@@ -46,17 +50,11 @@ export async function POST(
     );
   }
 
-  const prisma = getPrisma();
   const stream = await prisma.gameWatchStream.findUnique({
     where: { id },
-    include: {
-      user: {
-        select: { uid: true },
-      },
-    },
   });
 
-  if (!stream || stream.user?.uid !== uid || stream.sourceType !== "browser") {
+  if (!stream || !isAoE2WarManagedStream(stream, actor.user.id)) {
     return NextResponse.json(
       { detail: "Stream not found." },
       { status: 404, headers: NO_STORE_HEADERS }

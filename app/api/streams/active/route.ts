@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getPrisma } from "@/lib/prisma";
 import { resolveRequestUid } from "@/lib/requestIdentity";
 import { maybeCleanupBrowserStreams } from "@/lib/streamCleanup";
+import { AOE2WAR_STREAM_SOURCE_TYPES } from "@/lib/streamRequestAuth";
 import { toWatchStreamPayload } from "@/lib/watchStreams";
 
 export const runtime = "nodejs";
@@ -39,7 +40,9 @@ export async function GET(request: NextRequest) {
   const streams = await prisma.gameWatchStream
     .findMany({
       where: {
-        sourceType: "browser",
+        sourceType: {
+          in: [...AOE2WAR_STREAM_SOURCE_TYPES],
+        },
         status: {
           in: ["starting", "live"],
         },

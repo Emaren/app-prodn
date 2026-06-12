@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { getPrisma } from "@/lib/prisma";
-import { resolveRequestUid } from "@/lib/requestIdentity";
+import { resolveStreamRequestActor } from "@/lib/streamRequestAuth";
 import {
   isWatcherClientEventType,
   normalizeWatcherString,
@@ -18,9 +18,13 @@ const NO_STORE_HEADERS = {
 };
 
 const STREAM_EVENT_TYPES = new Set([
+  "stream_sources_listed",
   "stream_capture_requested",
+  "stream_preview_started",
   "stream_source_ready",
   "stream_started",
+  "stream_chunk_uploaded",
+  "stream_heartbeat",
   "stream_stopped",
   "stream_track_ended",
   "stream_recorder_error",
@@ -38,8 +42,9 @@ function normalizeEventType(value: unknown): WatcherClientEventInput["eventType"
 }
 
 export async function POST(request: NextRequest) {
-  const uid = await resolveRequestUid(request);
-  if (!uid) {
+  const prisma = getPrisma();
+  const actor = await resolveStreamRequestActor(prisma, request, { touchWatcherKey: true });
+  if (!actor) {
     return NextResponse.json({ ok: false, detail: "No active session." }, { status: 401, headers: NO_STORE_HEADERS });
   }
 
@@ -49,31 +54,24 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, detail: "Invalid stream event." }, { status: 400, headers: NO_STORE_HEADERS });
   }
 
-  const prisma = getPrisma();
-  const user = await prisma.user.findUnique({
-    where: { uid },
-    select: { id: true, uid: true },
-  });
-
-  if (!user) {
-    return NextResponse.json({ ok: false, detail: "User not found." }, { status: 404, headers: NO_STORE_HEADERS });
-  }
-
   const sessionKey = normalizeWatcherString(body.sessionKey, 80);
   const streamId = normalizeWatcherString(body.streamId, 40);
+  const watcherId = normalizeWatcherString(body.watcherId, 80);
   const input: WatcherClientEventInput = {
     eventType,
-    appVersion: "web",
-    platform: normalizeWatcherString(body.platform, 24) || "browser",
-    artifact: "browser_streamer",
-    watcherId: normalizeWatcherString(body.watcherId, 80),
+    appVersion: normalizeWatcherString(body.appVersion, 32) || (actor.authMode === "session" ? "web" : null),
+    platform: normalizeWatcherString(body.platform, 24) || (actor.authMode === "session" ? "browser" : "watcher"),
+    artifact: actor.authMode === "session" ? "browser_streamer" : "watcher_native_streamer",
+    watcherId,
     sessionId: streamId ? `stream_${streamId}` : sessionKey,
-    parseSource: "browser_stream",
+    parseSource: actor.authMode === "session" ? "browser_stream" : "watcher_native_stream",
     parseReason: eventType,
     metadata: sanitizeWatcherMetadata({
       ...(body.metadata && typeof body.metadata === "object" ? body.metadata : {}),
       sessionKey,
       streamId,
+      watcherId,
+      sourceType: actor.authMode === "session" ? "browser" : "watcher_native",
       captureMode: normalizeWatcherString(body.captureMode, 40),
       mediaMimeType: normalizeWatcherString(body.mediaMimeType, 120),
     }),
@@ -81,8 +79,8 @@ export async function POST(request: NextRequest) {
 
   try {
     await recordWatcherClientEvent(prisma, request, input, {
-      userId: user.id,
-      userUid: user.uid,
+      userId: actor.user.id,
+      userUid: actor.user.uid,
       resolved: true,
     });
   } catch (error) {

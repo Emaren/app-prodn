@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@/lib/generated/prisma";
+import { AOE2WAR_STREAM_SOURCE_TYPES } from "@/lib/streamRequestAuth";
 import { removeStreamChunks } from "@/lib/streamStorage";
 
 const CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
@@ -27,7 +28,9 @@ export async function cleanupBrowserStreams(prisma: PrismaClient) {
 
   const staleStreams = await prisma.gameWatchStream.findMany({
     where: {
-      sourceType: "browser",
+      sourceType: {
+        in: [...AOE2WAR_STREAM_SOURCE_TYPES],
+      },
       status: {
         in: ["starting", "live"],
       },
@@ -59,7 +62,9 @@ export async function cleanupBrowserStreams(prisma: PrismaClient) {
 
   const removableStreams = await prisma.gameWatchStream.findMany({
     where: {
-      sourceType: "browser",
+      sourceType: {
+        in: [...AOE2WAR_STREAM_SOURCE_TYPES],
+      },
       status: {
         in: ["ended", "failed", "removed"],
       },

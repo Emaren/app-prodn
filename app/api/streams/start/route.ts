@@ -1,7 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { getPrisma } from "@/lib/prisma";
-import { resolveRequestUid } from "@/lib/requestIdentity";
+import {
+  AOE2WAR_STREAM_SOURCE_TYPES,
+  normalizeAoE2WarStreamSourceType,
+  resolveStreamRequestActor,
+} from "@/lib/streamRequestAuth";
 import { toWatchStreamPayload } from "@/lib/watchStreams";
 
 export const runtime = "nodejs";
@@ -19,8 +23,9 @@ function cleanText(value: unknown, maxLength: number) {
 }
 
 export async function POST(request: NextRequest) {
-  const uid = await resolveRequestUid(request);
-  if (!uid) {
+  const prisma = getPrisma();
+  const actor = await resolveStreamRequestActor(prisma, request, { touchWatcherKey: true });
+  if (!actor) {
     return NextResponse.json(
       { detail: "No active session" },
       { status: 401, headers: NO_STORE_HEADERS }
@@ -34,31 +39,21 @@ export async function POST(request: NextRequest) {
   const playerLabel = cleanText(body.playerLabel, 80) || null;
   const thumbnailUrl = cleanText(body.thumbnailUrl, 200_000) || null;
   const mediaMimeType = cleanText(body.mediaMimeType, 120) || "video/webm";
-
-  const prisma = getPrisma();
-  const user = await prisma.user.findUnique({
-    where: { uid },
-    select: {
-      id: true,
-      uid: true,
-      inGameName: true,
-      steamPersonaName: true,
-    },
-  });
-
-  if (!user) {
-    return NextResponse.json(
-      { detail: "User not found" },
-      { status: 404, headers: NO_STORE_HEADERS }
-    );
-  }
+  const sourceType = normalizeAoE2WarStreamSourceType(
+    body.sourceType,
+    actor.authMode === "watcher_key" ? "watcher_native" : "browser"
+  );
+  const user = actor.user;
 
   const sessionKey = requestedSessionKey || `free:${user.uid}`;
   const now = new Date();
   await prisma.gameWatchStream.updateMany({
     where: {
       userId: user.id,
-      sourceType: "browser",
+      provider: "aoe2war",
+      sourceType: {
+        in: [...AOE2WAR_STREAM_SOURCE_TYPES],
+      },
       status: {
         in: ["starting", "live"],
       },
@@ -84,7 +79,7 @@ export async function POST(request: NextRequest) {
       sessionKey,
       userId: user.id,
       provider: "aoe2war",
-      sourceType: "browser",
+      sourceType,
       role: "caster",
       label,
       title,

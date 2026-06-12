@@ -12,6 +12,7 @@ import {
   RadioTower,
   UserRound,
   UploadCloud,
+  Video,
 } from "lucide-react";
 
 import type {
@@ -88,6 +89,18 @@ function focusStatusClass(status: WatcherFocusUserDiagnostics["latestStatus"]) {
   return "border-rose-300/25 bg-rose-400/10 text-rose-100";
 }
 
+function streamStatusLabel(status: NonNullable<WatcherFocusUserDiagnostics["stream"]>["status"]) {
+  if (status === "live_or_recent") return "streaming";
+  if (status === "issue") return "needs attention";
+  return "idle";
+}
+
+function streamStatusClass(status: NonNullable<WatcherFocusUserDiagnostics["stream"]>["status"]) {
+  if (status === "live_or_recent") return "border-red-300/25 bg-red-400/10 text-red-100";
+  if (status === "issue") return "border-amber-300/25 bg-amber-400/10 text-amber-100";
+  return "border-slate-300/15 bg-white/5 text-slate-200";
+}
+
 function FocusMetric({ label, value }: { label: string; value: string | number | null }) {
   return (
     <div className="rounded-lg border border-white/8 bg-white/5 px-3 py-3">
@@ -97,6 +110,18 @@ function FocusMetric({ label, value }: { label: string; value: string | number |
       </div>
     </div>
   );
+}
+
+function eventDetailText(event: WatcherFocusUserDiagnostics["recentEvents"][number]) {
+  const streamDetail = [
+    event.streamSourceType,
+    event.streamSourceName,
+    event.streamCaptureMode,
+    event.streamSequence === null ? null : `seq ${event.streamSequence}`,
+    event.streamBlobSize === null ? null : `${Math.round(event.streamBlobSize / 1024)} KB`,
+  ].filter(Boolean).join(" · ");
+
+  return event.errorMessage || event.reason || event.detail || streamDetail || event.parseReason || "none";
 }
 
 function SupportUserDiagnostics({ focusUser }: { focusUser: WatcherFocusUserDiagnostics }) {
@@ -138,6 +163,40 @@ function SupportUserDiagnostics({ focusUser }: { focusUser: WatcherFocusUserDiag
         <FocusMetric label="Failures" value={focusUser.failureCount} />
         <FocusMetric label="Events scanned" value={focusUser.totalEvents} />
       </div>
+
+      {focusUser.stream ? (
+        <div className="mt-4 rounded-lg border border-sky-300/20 bg-sky-400/10 p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2 text-xs uppercase text-sky-100/75">
+                <Video className="h-4 w-4" />
+                Streamer
+              </div>
+              <div className="mt-2 text-lg font-semibold text-white">
+                {focusUser.stream.sourceName || focusUser.stream.sourceType || "Stream source"}
+              </div>
+            </div>
+            <span className={`rounded-full border px-3 py-1.5 text-xs ${streamStatusClass(focusUser.stream.status)}`}>
+              {streamStatusLabel(focusUser.stream.status)}
+            </span>
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <FocusMetric label="Source" value={[focusUser.stream.sourceType, focusUser.stream.captureMode].filter(Boolean).join(" / ") || null} />
+            <FocusMetric label="Stream" value={compactValue(focusUser.stream.streamId)} />
+            <FocusMetric label="Match bind" value={compactValue(focusUser.stream.sessionKey)} />
+            <FocusMetric label="Last event" value={formatMaybeDate(focusUser.stream.lastEventAt)} />
+            <FocusMetric label="Last chunk" value={formatMaybeDate(focusUser.stream.lastChunkAt)} />
+            <FocusMetric label="Last heartbeat" value={formatMaybeDate(focusUser.stream.lastHeartbeatAt)} />
+            <FocusMetric label="Chunks / heartbeats" value={`${focusUser.stream.chunkEvents} / ${focusUser.stream.heartbeatEvents}`} />
+            <FocusMetric label="Stream failures" value={focusUser.stream.failureCount} />
+          </div>
+          {focusUser.stream.lastErrorMessage || focusUser.stream.lastDetail ? (
+            <div className="mt-3 rounded-lg border border-white/10 bg-slate-950/45 px-3 py-2 text-sm text-slate-200">
+              {focusUser.stream.lastErrorMessage || focusUser.stream.lastDetail}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       {visibleCounts.length > 0 ? (
         <div className="mt-4 flex flex-wrap gap-2">
@@ -183,9 +242,9 @@ function SupportUserDiagnostics({ focusUser }: { focusUser: WatcherFocusUserDiag
                       {event.finalAccepted === null ? "?" : event.finalAccepted ? "yes" : "no"}
                     </div>
                   </td>
-                  <td className="border-b border-white/8 px-3 py-3">
-                    {event.errorMessage || event.reason || event.detail || event.parseReason || "none"}
-                  </td>
+	                  <td className="border-b border-white/8 px-3 py-3">
+	                    {eventDetailText(event)}
+	                  </td>
                 </tr>
               ))
             ) : (

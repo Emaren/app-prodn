@@ -10,7 +10,7 @@ Watcher analytics now separates noisy package pulls from confirmed watcher behav
 
 `game_stats` remains the historical fallback for confirmed watcher usage. Rows with `parse_source in ('watcher_live', 'watcher_final')` prove that a watcher-submitted game reached the app, even if no `app_open` telemetry existed yet.
 
-Watcher v1.1.8 uses a conservative final-candidate contract. A final upload is settlement-safe only when the upload response includes `should_settle = true` or a trusted finality status. Header-only or unparsed proof can be preserved for diagnostics, but it must not be read as final winner, score, postgame resource, or betting truth.
+Watcher v1.2.0 uses watcher-native streaming plus a faster final-candidate contract. A final upload is settlement-safe only when the upload response includes `should_settle = true` or a trusted finality status. Header-only or unparsed proof can be preserved for diagnostics, but it must not be read as final winner, score, postgame resource, or betting truth.
 
 ## Event Types
 
@@ -67,6 +67,20 @@ Allowed `watcher_client_events.event_type` values:
 - `batch_upload_file_failed`
 - `batch_upload_finished`
 - `batch_upload_failed`
+- `stream_handoff_opened`
+- `stream_sources_listed`
+- `stream_capture_requested`
+- `stream_preview_started`
+- `stream_source_ready`
+- `stream_started`
+- `stream_chunk_uploaded`
+- `stream_heartbeat`
+- `stream_stopped`
+- `stream_track_ended`
+- `stream_recorder_error`
+- `stream_chunk_failed`
+- `stream_heartbeat_failed`
+- `stream_error`
 - `heartbeat`
 
 The watcher posts to `POST /api/watcher/events`. The endpoint accepts a single event object or `{ "events": [...] }` batches up to 25 events and returns `{ "ok": true }` on successful or non-blocking best-effort handling.
@@ -117,7 +131,7 @@ Only `trusted_final*` and `reviewed_match*` statuses should set `should_settle =
 `watcher_client_events`, `replay_parse_attempts`, and watcher-backed
 `game_stats` rows.
 
-`/admin/watcher-funnel` adds a conversion/diagnostic command surface, including a dedicated Julio Alvarez tile keyed by UID prefix `u_79ce46af3d`. Use it while Julio is running the Windows watcher to inspect start/stop/heartbeat, auth, replay detection, final-candidate deferrals, upload failures, finality status, version, platform, watcher id, and session id.
+`/admin/watcher-funnel` adds a conversion/diagnostic command surface, including dedicated support tiles for known watcher users and any signed-in user who emits runtime telemetry. Use it while users are running the watcher to inspect start/stop/heartbeat, auth, replay detection, final-candidate deferrals, upload failures, finality status, version, platform, watcher id, session id, streamer status, source choice, upload chunks, heartbeat freshness, and streamer errors.
 
 Per user, it shows:
 
@@ -132,6 +146,9 @@ Per user, it shows:
 - unparsed finals
 - upload failures
 - parse failures
+- streamer source/mode
+- stream chunk and heartbeat counts
+- latest stream error or status detail
 - replay-file rollups with statuses, parse attempts, parsed game ids, and failure breadcrumbs
 
 Use this rail when a player says the watcher saw a replay but the site did not
