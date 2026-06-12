@@ -99,10 +99,11 @@ function FocusMetric({ label, value }: { label: string; value: string | number |
   );
 }
 
-function JulioDiagnostics({ focusUser }: { focusUser: WatcherFocusUserDiagnostics }) {
+function SupportUserDiagnostics({ focusUser }: { focusUser: WatcherFocusUserDiagnostics }) {
   const visibleCounts = Object.entries(focusUser.eventCounts)
     .sort((left, right) => right[1] - left[1])
     .slice(0, 8);
+  const tileLabel = focusUser.tileKind === "dedicated" ? "Support Tile" : "Recent Watcher Tile";
 
   return (
     <section className="rounded-lg border border-cyan-300/20 bg-slate-950/70 p-5">
@@ -110,12 +111,12 @@ function JulioDiagnostics({ focusUser }: { focusUser: WatcherFocusUserDiagnostic
         <div>
           <div className="flex items-center gap-2 text-xs uppercase text-cyan-100/70">
             <UserRound className="h-4 w-4" />
-            Julio Support Tile
+            {tileLabel}
           </div>
           <h2 className="mt-2 text-2xl font-semibold text-white">{focusUser.label}</h2>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
-            Dedicated watcher diagnostics for UID prefix {focusUser.uidPrefix}. This tile tracks
-            starts, stops, heartbeat freshness, replay detection, upload flow, finality, and failures.
+            {focusUser.uidPrefix ? `UID prefix ${focusUser.uidPrefix}. ` : ""}
+            Starts, stops, heartbeat freshness, replay flow, stream errors, updates, and failures.
           </p>
         </div>
         <div className={`rounded-full border px-3 py-1.5 text-xs ${focusStatusClass(focusUser.latestStatus)}`}>
@@ -190,7 +191,7 @@ function JulioDiagnostics({ focusUser }: { focusUser: WatcherFocusUserDiagnostic
             ) : (
               <tr>
                 <td colSpan={5} className="px-3 py-6 text-center text-slate-400">
-                  No watcher telemetry for Julio in the last 30 days.
+                  No watcher telemetry for this user in the last 30 days.
                 </td>
               </tr>
             )}
@@ -263,6 +264,7 @@ function FunnelStageRow({
 export default function WatcherFunnelDashboard({ data }: WatcherFunnelDashboardProps) {
   const topLine = data.stages.slice(0, 4);
   const uploadFailureMetric = data.supplementalMetrics.find((metric) => metric.key === "upload_failed");
+  const supportUsers = data.supportUsers?.length ? data.supportUsers : [data.focusUser];
 
   return (
     <main className="space-y-6 py-6 text-white">
@@ -314,7 +316,14 @@ export default function WatcherFunnelDashboard({ data }: WatcherFunnelDashboardP
         </div>
       </section>
 
-      <JulioDiagnostics focusUser={data.focusUser} />
+      <section className="grid gap-4">
+        {supportUsers.map((focusUser) => (
+          <SupportUserDiagnostics
+            key={`${focusUser.tileKind}-${focusUser.user?.id || focusUser.uidPrefix || focusUser.label}`}
+            focusUser={focusUser}
+          />
+        ))}
+      </section>
 
       <section className="rounded-lg border border-white/10 bg-slate-950/70">
         <div className="grid gap-4 px-4 py-4 text-xs uppercase text-slate-500 lg:grid-cols-[minmax(18rem,1.6fr)_repeat(4,minmax(6rem,0.65fr))]">

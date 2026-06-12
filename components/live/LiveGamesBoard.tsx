@@ -548,19 +548,8 @@ function LiveSessionCard({
 
   return (
     <div className={`rounded-[1.5rem] border px-4 py-4 ${shellClass}`}>
-      {primaryStream ? (
-        <Link href={watchHref} className="mb-4 block transition hover:scale-[1.01]">
-          <LiveStreamFrame
-            stream={primaryStream}
-            title={title}
-            compact
-            fallbackLabel={isCompleted ? "Replay" : "Live"}
-          />
-        </Link>
-      ) : null}
-
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <div className={`text-xs uppercase tracking-[0.3em] ${eyebrowClass}`}>{eyebrowLabel}</div>
           <div className="mt-2 text-xl font-semibold text-white">{title}</div>
           <div className="mt-3 flex flex-wrap gap-2">
@@ -606,7 +595,18 @@ function LiveSessionCard({
           </div>
         </div>
 
-        <div className="space-y-2 text-right">
+        <div className="flex w-full flex-col gap-2 text-left sm:w-44 sm:text-right">
+          {primaryStream ? (
+            <Link href={watchHref} className="block overflow-hidden rounded-2xl transition hover:scale-[1.02]">
+              <LiveStreamFrame
+                stream={primaryStream}
+                title={title}
+                compact
+                fallbackLabel={isCompleted ? "Replay" : "Live"}
+                className="!min-h-[5.4rem] rounded-2xl"
+              />
+            </Link>
+          ) : null}
           <div className={`rounded-full border px-3 py-1 text-xs ${badgeClass}`}>
             {badgeLabel}
           </div>

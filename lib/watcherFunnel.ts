@@ -6,6 +6,33 @@ const RECENT_EVENT_SCAN_LIMIT = 5000;
 const SESSION_ROW_LIMIT = 50;
 const FOCUS_USER_EVENT_LIMIT = 120;
 const JULIO_UID_PREFIX = "u_79ce46af3d";
+const SUPPORT_USER_TILE_LIMIT = 10;
+const SUPPORT_USER_TARGETS: WatcherSupportUserTarget[] = [
+  {
+    label: "Julio Alvarez",
+    uidPrefix: JULIO_UID_PREFIX,
+    nameMatches: ["Julio"],
+    tileKind: "dedicated",
+  },
+  {
+    label: "Emaren",
+    nameMatches: ["Emaren"],
+    tileKind: "dedicated",
+  },
+];
+const WATCHER_FAILURE_EVENTS = [
+  "upload_failed",
+  "parse_failed",
+  "watcher_error",
+  "watcher_update_error",
+  "batch_upload_failed",
+  "batch_upload_file_failed",
+  "stream_error",
+  "stream_track_ended",
+  "stream_recorder_error",
+  "stream_chunk_failed",
+  "stream_heartbeat_failed",
+];
 
 export type WatcherFunnelWindowKey = "allTime" | "last30Days" | "last7Days" | "last24Hours";
 
@@ -64,7 +91,8 @@ export type WatcherFocusUserEvent = {
 
 export type WatcherFocusUserDiagnostics = {
   label: string;
-  uidPrefix: string;
+  uidPrefix: string | null;
+  tileKind: "dedicated" | "recent";
   userFound: boolean;
   user: {
     id: number;
@@ -114,6 +142,7 @@ export type WatcherFunnelDashboardData = {
   }>;
   sessionRows: WatcherFunnelSessionRow[];
   focusUser: WatcherFocusUserDiagnostics;
+  supportUsers: WatcherFocusUserDiagnostics[];
   recentEventScanLimit: number;
   sessionRowLimit: number;
   unknownRecentEvents: number;
@@ -140,6 +169,15 @@ type FocusWatcherEventRow = RecentWatcherEventRow & {
   parseSource: string | null;
   parseReason: string | null;
   metadata: Prisma.JsonValue | null;
+};
+
+type WatcherSupportUserTarget = {
+  label: string;
+  uidPrefix?: string;
+  nameMatches?: string[];
+  userId?: number | null;
+  userUid?: string | null;
+  tileKind: "dedicated" | "recent";
 };
 
 type SessionAccumulator = {
@@ -522,18 +560,69 @@ async function loadRecentSessionRows(
   return { rows, unknownRecentEvents };
 }
 
+function buildUserNameWhere(target: WatcherSupportUserTarget) {
+  const clauses: Prisma.UserWhereInput[] = [];
+  if (target.userId) {
+    clauses.push({ id: target.userId });
+  }
+  if (target.userUid) {
+    clauses.push({ uid: target.userUid });
+  }
+  if (target.uidPrefix) {
+    clauses.push({ uid: { startsWith: target.uidPrefix } });
+  }
+  for (const match of target.nameMatches || []) {
+    clauses.push({ inGameName: { contains: match, mode: "insensitive" } });
+    clauses.push({ steamPersonaName: { contains: match, mode: "insensitive" } });
+  }
+  return clauses;
+}
+
+function buildFocusEventWhere(
+  target: WatcherSupportUserTarget,
+  cutoff: Date,
+  focusUser: { id: number; uid: string } | null
+): Prisma.WatcherClientEventWhereInput {
+  const clauses: Prisma.WatcherClientEventWhereInput[] = [];
+  if (focusUser) {
+    clauses.push({ userId: focusUser.id }, { userUid: focusUser.uid });
+  }
+  if (target.userId) {
+    clauses.push({ userId: target.userId });
+  }
+  if (target.userUid) {
+    clauses.push({ userUid: target.userUid });
+  }
+  if (target.uidPrefix) {
+    clauses.push({ userUid: { startsWith: target.uidPrefix } });
+  }
+
+  if (clauses.length === 0) {
+    return { createdAt: { gte: cutoff }, userId: -1 };
+  }
+
+  return {
+    createdAt: { gte: cutoff },
+    OR: clauses,
+  };
+}
+
+function displayNameForTarget(
+  target: WatcherSupportUserTarget,
+  user: { uid: string; inGameName: string | null; steamPersonaName: string | null } | null
+) {
+  if (target.tileKind === "dedicated") return target.label;
+  return user?.inGameName || user?.steamPersonaName || target.label;
+}
+
 async function loadFocusUserDiagnostics(
   prisma: PrismaClient,
-  cutoff: Date
+  cutoff: Date,
+  target: WatcherSupportUserTarget
 ): Promise<WatcherFocusUserDiagnostics> {
-  const focusUser = await prisma.user.findFirst({
-    where: {
-      OR: [
-        { uid: { startsWith: JULIO_UID_PREFIX } },
-        { inGameName: { contains: "Julio", mode: "insensitive" } },
-        { steamPersonaName: { contains: "Julio", mode: "insensitive" } },
-      ],
-    },
+  const userWhere = buildUserNameWhere(target);
+  const focusUser = userWhere.length > 0 ? await prisma.user.findFirst({
+    where: { OR: userWhere },
     orderBy: [{ uid: "asc" }],
     select: {
       id: true,
@@ -541,21 +630,9 @@ async function loadFocusUserDiagnostics(
       inGameName: true,
       steamPersonaName: true,
     },
-  });
+  }) : null;
 
-  const eventWhere = focusUser
-    ? {
-        createdAt: { gte: cutoff },
-        OR: [
-          { userId: focusUser.id },
-          { userUid: focusUser.uid },
-          { userUid: { startsWith: JULIO_UID_PREFIX } },
-        ],
-      }
-    : {
-        createdAt: { gte: cutoff },
-        userUid: { startsWith: JULIO_UID_PREFIX },
-      };
+  const eventWhere = buildFocusEventWhere(target, cutoff, focusUser);
 
   const recentEvents = await prisma.watcherClientEvent.findMany({
     where: eventWhere,
@@ -585,11 +662,7 @@ async function loadFocusUserDiagnostics(
     "upload_attempted",
   ]);
   const lastFailure = firstEventAt(recentEvents, [
-    "upload_failed",
-    "parse_failed",
-    "watcher_error",
-    "batch_upload_failed",
-    "batch_upload_file_failed",
+    ...WATCHER_FAILURE_EVENTS,
   ]);
   const lastFinalityStatus =
     recentEvents
@@ -597,8 +670,9 @@ async function loadFocusUserDiagnostics(
       .find(Boolean) ?? null;
 
   return {
-    label: "Julio Alvarez",
-    uidPrefix: JULIO_UID_PREFIX,
+    label: displayNameForTarget(target, focusUser),
+    uidPrefix: target.uidPrefix || focusUser?.uid?.slice(0, 12) || target.userUid?.slice(0, 12) || null,
+    tileKind: target.tileKind,
     userFound: Boolean(focusUser),
     user: focusUser,
     latestStatus: deriveFocusStatus(recentEvents),
@@ -615,13 +689,7 @@ async function loadFocusUserDiagnostics(
     appVersion: lastEvent?.appVersion ?? null,
     platform: lastEvent?.platform ?? null,
     totalEvents: recentEvents.length,
-    failureCount: countEvents(recentEvents, [
-      "upload_failed",
-      "parse_failed",
-      "watcher_error",
-      "batch_upload_failed",
-      "batch_upload_file_failed",
-    ]),
+    failureCount: countEvents(recentEvents, WATCHER_FAILURE_EVENTS),
     finalCandidateDeferrals: countEvents(recentEvents, ["final_candidate_deferred"]),
     lastFinalityStatus,
     eventCounts: compactEventCounts(recentEvents),
@@ -647,6 +715,33 @@ async function loadFocusUserDiagnostics(
   };
 }
 
+function buildSupportUserTargets(rows: WatcherFunnelSessionRow[]) {
+  const targets = [...SUPPORT_USER_TARGETS];
+  const seen = new Set(
+    targets.flatMap((target) => [target.userId ? `id:${target.userId}` : "", target.userUid ? `uid:${target.userUid}` : "", target.uidPrefix ? `prefix:${target.uidPrefix}` : ""]).filter(Boolean)
+  );
+
+  for (const row of rows) {
+    if (!row.userId && !row.userUid) continue;
+
+    const idKey = row.userId ? `id:${row.userId}` : "";
+    const uidKey = row.userUid ? `uid:${row.userUid}` : "";
+    if ((idKey && seen.has(idKey)) || (uidKey && seen.has(uidKey))) continue;
+
+    targets.push({
+      label: row.userId ? `User ${row.userId}` : `Watcher ${row.userUid}`,
+      userId: row.userId,
+      userUid: row.userUid,
+      tileKind: "recent",
+    });
+    if (idKey) seen.add(idKey);
+    if (uidKey) seen.add(uidKey);
+    if (targets.length >= SUPPORT_USER_TILE_LIMIT) break;
+  }
+
+  return targets;
+}
+
 export async function loadWatcherFunnelDashboard(
   prisma: PrismaClient
 ): Promise<WatcherFunnelDashboardData> {
@@ -669,7 +764,6 @@ export async function loadWatcherFunnelDashboard(
     uploadsFailed,
     parsedGames,
     recentSessions,
-    focusUser,
   ] = await Promise.all([
     loadWindowCounts(windows, (cutoff) => countDownloads(prisma, cutoff)),
     loadWindowCounts(windows, (cutoff) =>
@@ -693,8 +787,31 @@ export async function loadWatcherFunnelDashboard(
     loadWindowCounts(windows, (cutoff) => countClientEvents(prisma, ["upload_failed"], cutoff)),
     loadWindowCounts(windows, (cutoff) => countParsedWatcherGames(prisma, cutoff)),
     loadRecentSessionRows(prisma, last30DaysCutoff),
-    loadFocusUserDiagnostics(prisma, last30DaysCutoff),
   ]);
+  const loadedSupportUsers = await Promise.all(
+    buildSupportUserTargets(recentSessions.rows).map((target) =>
+      loadFocusUserDiagnostics(prisma, last30DaysCutoff, target)
+    )
+  );
+  const seenSupportUsers = new Set<string>();
+  const supportUsers = loadedSupportUsers.filter((diagnostic) => {
+    const key = diagnostic.user?.id
+      ? `id:${diagnostic.user.id}`
+      : diagnostic.user?.uid
+        ? `uid:${diagnostic.user.uid}`
+        : diagnostic.uidPrefix
+          ? `prefix:${diagnostic.uidPrefix}`
+          : diagnostic.label;
+    if (seenSupportUsers.has(key)) {
+      return false;
+    }
+    seenSupportUsers.add(key);
+    return true;
+  });
+  const focusUser = supportUsers[0];
+  if (!focusUser) {
+    throw new Error("Watcher support user setup failed.");
+  }
 
   return {
     generatedAt: now.toISOString(),
@@ -777,6 +894,7 @@ export async function loadWatcherFunnelDashboard(
     ],
     sessionRows: recentSessions.rows,
     focusUser,
+    supportUsers,
     recentEventScanLimit: RECENT_EVENT_SCAN_LIMIT,
     sessionRowLimit: SESSION_ROW_LIMIT,
     unknownRecentEvents: recentSessions.unknownRecentEvents,

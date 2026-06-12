@@ -32,9 +32,52 @@ type Props = {
   watcherIntent?: boolean;
 };
 
+type CaptureModeKey = "sharp" | "stable" | "fallback";
+
 const CHUNK_TIMESLICE_MS = 2_000;
 const HEARTBEAT_MS = 8_000;
 const ACTIVE_STREAM_REFRESH_MS = 12_000;
+const CAPTURE_MODES: Array<{
+  key: CaptureModeKey;
+  label: string;
+  detail: string;
+  audio: boolean;
+  video: MediaTrackConstraints;
+}> = [
+  {
+    key: "sharp",
+    label: "Sharp",
+    detail: "30 fps",
+    audio: true,
+    video: {
+      frameRate: { ideal: 30, max: 30 },
+      width: { ideal: 1280 },
+      height: { ideal: 720 },
+    },
+  },
+  {
+    key: "stable",
+    label: "Stable",
+    detail: "15 fps",
+    audio: false,
+    video: {
+      frameRate: { ideal: 15, max: 15 },
+      width: { ideal: 1280 },
+      height: { ideal: 720 },
+    },
+  },
+  {
+    key: "fallback",
+    label: "Screen",
+    detail: "10 fps",
+    audio: false,
+    video: {
+      frameRate: { ideal: 10, max: 10 },
+      width: { ideal: 960 },
+      height: { ideal: 540 },
+    },
+  },
+];
 const MIME_CANDIDATES = [
   "video/webm;codecs=vp8,opus",
   "video/webm;codecs=vp9,opus",
@@ -98,6 +141,15 @@ function watchHref(sessionKeyValue: string) {
   return `/watch/${encodeURIComponent(sessionKeyValue)}`;
 }
 
+function getCaptureMode(key: CaptureModeKey) {
+  return CAPTURE_MODES.find((mode) => mode.key === key) || CAPTURE_MODES[0];
+}
+
+function readBrowserPlatform() {
+  if (typeof navigator === "undefined") return "browser";
+  return navigator.platform || "browser";
+}
+
 export default function BrowserStreamStudio({
   sessionKey,
   title,
@@ -108,7 +160,10 @@ export default function BrowserStreamStudio({
   const previewRef = useRef<HTMLVideoElement | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
+  const streamRef = useRef<WatchStreamPayload | null>(null);
   const heartbeatRef = useRef<number | null>(null);
+  const captureStartedAtRef = useRef<number | null>(null);
+  const manualStopRef = useRef(false);
   const sequenceRef = useRef(0);
   const [captureReady, setCaptureReady] = useState(false);
   const [stream, setStream] = useState<WatchStreamPayload | null>(null);
@@ -117,6 +172,8 @@ export default function BrowserStreamStudio({
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const [lastErrorDetail, setLastErrorDetail] = useState("");
+  const [captureMode, setCaptureMode] = useState<CaptureModeKey>("sharp");
   const [mediaMimeType, setMediaMimeType] = useState("video/webm");
   const [copied, setCopied] = useState(false);
   const [now, setNow] = useState(() => Date.now());
@@ -132,6 +189,7 @@ export default function BrowserStreamStudio({
   const uptimeSeconds = secondsSince(stream?.startedAt, now);
   const heartbeatAgeSeconds = secondsSince(stream?.lastHeartbeatAt, now);
   const theatreHref = hasWatcherBinding ? watchHref(streamSessionKey) : "";
+  const activeCaptureMode = getCaptureMode(captureMode);
 
   const streamStats = useMemo(
     () => [
@@ -172,6 +230,10 @@ export default function BrowserStreamStudio({
   useEffect(() => {
     setSelectedSessionKey(sessionKey || "");
   }, [sessionKey]);
+
+  useEffect(() => {
+    streamRef.current = stream;
+  }, [stream]);
 
   useEffect(() => {
     const interval = window.setInterval(() => setNow(Date.now()), 5_000);
@@ -288,41 +350,118 @@ export default function BrowserStreamStudio({
     return canvas.toDataURL("image/jpeg", 0.58);
   }, []);
 
+  const sendStreamEvent = useCallback(
+    async (eventType: string, metadata: Record<string, unknown> = {}) => {
+      await fetch("/api/streams/client-event", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          eventType,
+          sessionKey: selectedSessionKey || sessionKey || streamRef.current?.sessionKey || "",
+          streamId: streamRef.current?.id ? String(streamRef.current.id) : "",
+          platform: readBrowserPlatform(),
+          captureMode,
+          mediaMimeType,
+          metadata: {
+            title: activeTitle,
+            ...metadata,
+          },
+        }),
+      }).catch(() => undefined);
+    },
+    [activeTitle, captureMode, mediaMimeType, selectedSessionKey, sessionKey]
+  );
+
+  const surfaceStreamError = useCallback(
+    (eventType: string, message: string, metadata: Record<string, unknown> = {}) => {
+      setNotice("");
+      setError(message);
+      setLastErrorDetail(
+        metadata.detail && typeof metadata.detail === "string" ? metadata.detail : ""
+      );
+      void sendStreamEvent(eventType, {
+        ...metadata,
+        errorMessage: message,
+      });
+    },
+    [sendStreamEvent]
+  );
+
   const pickSource = useCallback(async () => {
     setError("");
+    setLastErrorDetail("");
     setNotice("");
 
     if (!navigator.mediaDevices?.getDisplayMedia) {
-      setError("Screen capture is not available in this browser.");
+      surfaceStreamError("stream_error", "Screen capture is not available in this browser.");
       return;
     }
 
     try {
+      void sendStreamEvent("stream_capture_requested", {
+        mode: activeCaptureMode.key,
+        detail: activeCaptureMode.detail,
+      });
       const nextStream = await navigator.mediaDevices.getDisplayMedia({
-        video: {
-          frameRate: { ideal: 30, max: 30 },
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
-        audio: true,
+        video: activeCaptureMode.video,
+        audio: activeCaptureMode.audio,
       });
 
       mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
       mediaStreamRef.current = nextStream;
+      captureStartedAtRef.current = Date.now();
       nextStream.getVideoTracks().forEach((track) => {
         track.addEventListener("ended", () => {
-          if (!recorderRef.current) {
-            setCaptureReady(false);
+          const elapsedMs = captureStartedAtRef.current
+            ? Date.now() - captureStartedAtRef.current
+            : null;
+          const activeStream = streamRef.current;
+          manualStopRef.current = true;
+          try {
+            recorderRef.current?.stop();
+          } catch {
+            // Recorder may already be stopped.
           }
+          recorderRef.current = null;
+          stopHeartbeat();
+          setCaptureReady(false);
+          if (activeStream) {
+            void fetch(`/api/streams/${activeStream.id}/end`, { method: "POST" }).catch(() => undefined);
+          }
+          surfaceStreamError(
+            "stream_track_ended",
+            elapsedMs !== null && elapsedMs < 3_000
+              ? "Screen capture stopped immediately. Try Stable or Screen mode."
+              : "Screen capture stopped.",
+            {
+              elapsedMs,
+              mode: activeCaptureMode.key,
+              detail: track.label || "display track ended",
+            }
+          );
         });
       });
       setCaptureReady(true);
       setMediaMimeType(chooseRecorderMimeType());
-      setNotice("Source locked.");
+      setNotice(`${activeCaptureMode.label} source locked.`);
+      void sendStreamEvent("stream_source_ready", {
+        mode: activeCaptureMode.key,
+        trackCount: nextStream.getTracks().length,
+        videoTrackLabels: nextStream.getVideoTracks().map((track) => track.label).filter(Boolean),
+      });
     } catch (pickError) {
-      setError(pickError instanceof Error ? pickError.message : "Could not open screen capture.");
+      surfaceStreamError(
+        "stream_error",
+        pickError instanceof Error ? pickError.message : "Could not open screen capture.",
+        {
+          mode: activeCaptureMode.key,
+          detail: pickError instanceof Error ? pickError.name : null,
+        }
+      );
     }
-  }, []);
+  }, [activeCaptureMode, sendStreamEvent, stopHeartbeat, surfaceStreamError]);
 
   const uploadChunk = useCallback(async (streamId: number, sequence: number, blob: Blob, mimeType: string) => {
     if (!blob.size) return;
@@ -362,7 +501,11 @@ export default function BrowserStreamStudio({
       });
       const payload = (await response.json().catch(() => null)) as {
         stream?: WatchStreamPayload;
+        detail?: string;
       } | null;
+      if (!response.ok) {
+        throw new Error(payload?.detail || "Stream heartbeat failed.");
+      }
       if (response.ok && payload?.stream) {
         setStream(payload.stream);
       }
@@ -373,6 +516,7 @@ export default function BrowserStreamStudio({
   const goLive = useCallback(async () => {
     setBusy(true);
     setError("");
+    setLastErrorDetail("");
     setNotice("");
 
     try {
@@ -399,29 +543,72 @@ export default function BrowserStreamStudio({
       });
 
       setStream(payload.stream);
+      streamRef.current = payload.stream;
       sequenceRef.current = 0;
+      manualStopRef.current = false;
 
       const recorder = new MediaRecorder(capture, { mimeType: mediaMimeType });
+      const recorderStartedAt = Date.now();
       recorderRef.current = recorder;
+      recorder.onerror = (event) => {
+        const mediaError = (event as Event & { error?: DOMException }).error;
+        surfaceStreamError(
+          "stream_recorder_error",
+          mediaError?.message || "Stream recorder stopped unexpectedly.",
+          {
+            mode: captureMode,
+            detail: mediaError?.name || "MediaRecorder error",
+            elapsedMs: Date.now() - recorderStartedAt,
+          }
+        );
+      };
       recorder.ondataavailable = (event) => {
         const sequence = sequenceRef.current;
         sequenceRef.current += 1;
         void uploadChunk(payload.stream.id, sequence, event.data, mediaMimeType).catch((chunkError) => {
-          setError(chunkError instanceof Error ? chunkError.message : "Stream upload missed a beat.");
+          surfaceStreamError(
+            "stream_chunk_failed",
+            chunkError instanceof Error ? chunkError.message : "Stream upload missed a beat.",
+            {
+              sequence,
+              blobSize: event.data.size,
+            }
+          );
         });
       };
       recorder.onstop = () => {
         stopHeartbeat();
+        if (!manualStopRef.current && Date.now() - recorderStartedAt < 5_000) {
+          surfaceStreamError("stream_recorder_error", "Stream stopped immediately. Try Stable or Screen mode.", {
+            elapsedMs: Date.now() - recorderStartedAt,
+            mode: captureMode,
+          });
+        }
       };
       recorder.start(CHUNK_TIMESLICE_MS);
 
       await sendHeartbeat(payload.stream.id, "live");
       heartbeatRef.current = window.setInterval(() => {
-        void sendHeartbeat(payload.stream.id, "live");
+        void sendHeartbeat(payload.stream.id, "live").catch((heartbeatError) => {
+          surfaceStreamError(
+            "stream_heartbeat_failed",
+            heartbeatError instanceof Error ? heartbeatError.message : "Stream heartbeat failed."
+          );
+        });
       }, HEARTBEAT_MS);
+      void sendStreamEvent("stream_started", {
+        streamId: payload.stream.id,
+        mode: captureMode,
+      });
       setNotice("Live.");
     } catch (goLiveError) {
-      setError(goLiveError instanceof Error ? goLiveError.message : "Could not start stream.");
+      surfaceStreamError(
+        "stream_error",
+        goLiveError instanceof Error ? goLiveError.message : "Could not start stream.",
+        {
+          mode: captureMode,
+        }
+      );
     } finally {
       setBusy(false);
     }
@@ -432,17 +619,22 @@ export default function BrowserStreamStudio({
     playerLabel,
     selectedSessionKey,
     sendHeartbeat,
+    sendStreamEvent,
     sessionKey,
     stopHeartbeat,
+    surfaceStreamError,
     uploadChunk,
+    captureMode,
   ]);
 
   const stopStream = useCallback(async () => {
     setBusy(true);
     setError("");
+    setLastErrorDetail("");
     stopHeartbeat();
 
     const activeStream = stream;
+    manualStopRef.current = true;
     recorderRef.current?.stop();
     recorderRef.current = null;
     mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
@@ -457,13 +649,19 @@ export default function BrowserStreamStudio({
         );
         setStream(payload.stream);
       }
+      void sendStreamEvent("stream_stopped", {
+        streamId: activeStream?.id || null,
+      });
       setNotice("Stream ended.");
     } catch (stopError) {
-      setError(stopError instanceof Error ? stopError.message : "Could not stop stream.");
+      surfaceStreamError(
+        "stream_error",
+        stopError instanceof Error ? stopError.message : "Could not stop stream."
+      );
     } finally {
       setBusy(false);
     }
-  }, [stopHeartbeat, stream]);
+  }, [sendStreamEvent, stopHeartbeat, stream, surfaceStreamError]);
 
   const copyWatchLink = useCallback(async () => {
     if (!theatreHref) return;
@@ -545,6 +743,28 @@ export default function BrowserStreamStudio({
           </button>
         </div>
       ) : null}
+
+      <div className="mt-4 grid gap-2 sm:grid-cols-3">
+        {CAPTURE_MODES.map((mode) => (
+          <button
+            key={mode.key}
+            type="button"
+            onClick={() => setCaptureMode(mode.key)}
+            disabled={busy || isLive}
+            className={[
+              "rounded-2xl border px-3 py-2 text-left transition disabled:cursor-not-allowed disabled:opacity-60",
+              captureMode === mode.key
+                ? "border-sky-300/35 bg-sky-300/12 text-white"
+                : "border-white/10 bg-white/5 text-slate-300 hover:border-white/25",
+            ].join(" ")}
+          >
+            <span className="block text-sm font-semibold">{mode.label}</span>
+            <span className="mt-0.5 block text-[11px] uppercase tracking-[0.18em] text-slate-500">
+              {mode.detail}
+            </span>
+          </button>
+        ))}
+      </div>
 
       <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
         {streamStats.map((stat) => (
@@ -668,6 +888,9 @@ export default function BrowserStreamStudio({
       {error ? (
         <div className="mt-3 rounded-2xl border border-red-300/25 bg-red-400/10 px-4 py-3 text-sm text-red-100">
           {error}
+          {lastErrorDetail ? (
+            <div className="mt-1 text-xs text-red-100/70">{lastErrorDetail}</div>
+          ) : null}
         </div>
       ) : null}
     </div>

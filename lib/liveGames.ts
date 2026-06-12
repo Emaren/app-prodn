@@ -16,6 +16,7 @@ type StreamedLiveGameSession = LiveGameSession & {
 };
 
 const BROWSER_STREAM_STALE_MS = 45_000;
+const BROWSER_STREAM_ARCHIVE_MS = 6 * 60 * 60 * 1000;
 
 export type LiveGamesSummary = {
   liveCount: number;
@@ -203,13 +204,16 @@ function isVisibleStream(stream: WatchStreamPayload) {
     return stream.status !== "removed";
   }
 
-  if (!["starting", "live"].includes(stream.status)) {
+  if (!["starting", "live", "ended"].includes(stream.status)) {
     return false;
   }
 
-  const lastSeen = stream.lastHeartbeatAt || stream.updatedAt;
+  const lastSeen = stream.status === "ended"
+    ? stream.endedAt || stream.updatedAt
+    : stream.lastHeartbeatAt || stream.updatedAt;
   const lastSeenMs = new Date(lastSeen).getTime();
-  return Number.isFinite(lastSeenMs) && Date.now() - lastSeenMs <= BROWSER_STREAM_STALE_MS;
+  const maxAge = stream.status === "ended" ? BROWSER_STREAM_ARCHIVE_MS : BROWSER_STREAM_STALE_MS;
+  return Number.isFinite(lastSeenMs) && Date.now() - lastSeenMs <= maxAge;
 }
 
 function attachStreams(
@@ -220,6 +224,7 @@ function attachStreams(
     const streams = streamsBySession.get(session.sessionKey) ?? [];
     const primaryStream =
       streams.find((stream) => stream.provider === "aoe2war" && stream.status !== "ended") ||
+      streams.find((stream) => stream.provider === "aoe2war" && stream.status === "ended") ||
       streams.find((stream) => stream.isPrimary) ||
       streams[0] ||
       null;

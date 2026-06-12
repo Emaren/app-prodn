@@ -177,7 +177,8 @@ These routes are important because they often do more than simple pass-through w
 - Lobby stream endpoint: `/api/lobby/stream`
 - Browser streaming is AoE2WAR-first: `/profile` and `/watch/[sessionKey]` can start a browser `getDisplayMedia` stream, upload short WebM chunks to the app, and expose that feed through `/`, `/watch`, `/bets`, `/live-games`, and the lobby Watch & Chat hero.
 - Watcher stream handoff route: `/profile?watcher_stream=1&stream_session=<sessionKey>&stream_title=<matchup>` preserves the detected-match context through Steam login and opens the streamer studio already bound to that watcher session.
-- Desktop watcher `1.1.9` adds a `Stream Match` button that opens the same handoff route for watcher-detected replay sessions; public download metadata should only flip after the signed/staged `1.1.9` artifacts are present in `public/downloads`.
+- Desktop watcher `1.1.10` adds a compact control-room UI, safer update handling, and a `Stream Match` button that opens the same handoff route for watcher-detected replay sessions; public download metadata should only flip after the signed/staged `1.1.10` artifacts are present in `public/downloads`.
+- Watcher `1.1.10` treats macOS updates as manual download-and-replace until the app is Developer-ID signed/notarized. Windows signed installer/portable builds can use in-place updater install when the watcher is idle.
 - Browser stream chunks default to `storage/live-streams/`; set `AOE2_STREAM_STORAGE_DIR` if production should place chunks on a mounted volume.
 - Browser stream cleanup is throttled through `/api/streams/active`: silent streams are ended after a few minutes, and old ended chunks are pruned after `AOE2_STREAM_CHUNK_RETENTION_MS` or the default six-hour window.
 - Twitch/YouTube/custom watch feeds remain external fallbacks through `game_watch_streams`, but they are not required for AoE2WAR browser streaming.
@@ -223,7 +224,7 @@ python /var/www/AoE2HDBets/api-prodn/scripts/set_admin.py --email you@example.co
 - A local fix is not live until `main` is pushed, the VPS checkout is pulled, the app is rebuilt, and `aoe2hdbets-web.service` is restarted.
 - Watcher package downloads are tracked server-side through `/download/watcher/[artifact]` redirects. The route now skips obvious prefetch or route-warmup requests, and `/admin/user-list` separates likely external pulls from obvious internal or test traffic.
 - When watcher upload defaults, update UI, or desktop release metadata change, bump the watcher version, rebuild Mac/Windows/Linux artifacts, rerun `npm run watcher:sync`, and deploy the refreshed `public/downloads` files; source changes alone do not update existing installers.
-- For watcher `1.1.9+`, run the signed Windows workflow and stage every platform artifact before publishing the new version in `lib/watcherRelease.ts`.
+- For watcher `1.1.10+`, run the signed Windows workflow and stage every platform artifact before publishing the new version in `lib/watcherRelease.ts`.
 - If deploys fail with `Permission denied` or Next logs `EACCES` writing `.next/cache/images`, check ownership drift in `/var/www/AoE2HDBets/app-prodn` before assuming the app code is broken. `npm run build` and `npm run start` now both prepare `.next/cache/images` up front and will fail early with a direct `chown` hint if the cache tree is not writable.
 - Direct-message attachments are served through a session-protected binary route: `/api/contact-emaren/attachments/[messageId]`.
 - New direct-message uploads are stored as disk-backed `file:v1:` refs under `DIRECT_MESSAGE_ATTACHMENT_DIR`; older `data:` rows are still readable as a fallback.
