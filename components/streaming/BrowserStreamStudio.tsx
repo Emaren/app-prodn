@@ -69,7 +69,7 @@ const CAPTURE_MODES: Array<{
   },
   {
     key: "fallback",
-    label: "Screen",
+    label: "Display",
     detail: "10 fps",
     audio: false,
     video: {
@@ -451,7 +451,7 @@ export default function BrowserStreamStudio({
           surfaceStreamError(
             "stream_track_ended",
             elapsedMs !== null && elapsedMs < 3_000
-              ? "Screen capture stopped immediately. Try Stable or Screen mode."
+              ? "Screen capture stopped immediately. Try Stable or Display mode."
               : "Screen capture stopped.",
             {
               elapsedMs,
@@ -562,7 +562,7 @@ export default function BrowserStreamStudio({
     try {
       const capture = mediaStreamRef.current;
       if (!capture) {
-        throw new Error("Pick the AoE2 window first.");
+        throw new Error("Pick the AoE2 window or display first.");
       }
 
       const effectiveSessionKey = selectedSessionKey || sessionKey || buildFreeSessionKey();
@@ -623,7 +623,7 @@ export default function BrowserStreamStudio({
       recorder.onstop = () => {
         stopHeartbeat();
         if (!manualStopRef.current && Date.now() - recorderStartedAt < 5_000) {
-          surfaceStreamError("stream_recorder_error", "Stream stopped immediately. Try Stable or Screen mode.", {
+          surfaceStreamError("stream_recorder_error", "Stream stopped immediately. Try Stable or Display mode.", {
             elapsedMs: Date.now() - recorderStartedAt,
             mode: captureMode,
           });

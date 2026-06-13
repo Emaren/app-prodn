@@ -27,15 +27,10 @@ type StreamManifest = {
   chunkUrlTemplate: string;
 };
 
-type QueuedChunk = {
-  sequence: number;
-  buffer: ArrayBuffer;
-};
-
-const LIVE_BACKLOG_CHUNKS = 8;
-const MAX_CHUNKS_PER_POLL = 14;
-const RESET_GAP_CHUNKS = 36;
-const MAX_BACK_BUFFER_SECONDS = 40;
+const ROLLING_WINDOW_CHUNKS = 36;
+const ROLLING_COMPACT_WINDOW_CHUNKS = 14;
+const ROLLING_REFRESH_ADVANCE = 6;
+const ROLLING_COMPACT_REFRESH_ADVANCE = 5;
 
 function providerLabel(stream: WatchStreamPayload) {
   if (stream.provider === "aoe2war") return "AoE2WAR";
@@ -63,17 +58,6 @@ function buildEmbedSrc(stream: WatchStreamPayload, browserHost: string) {
   }
 
   return null;
-}
-
-function chooseSourceBufferMimeType(raw: string) {
-  const candidates = [raw, "video/webm;codecs=vp8,opus", "video/webm;codecs=vp9,opus", "video/webm"];
-  return candidates.find((candidate) => {
-    try {
-      return Boolean(candidate) && MediaSource.isTypeSupported(candidate);
-    } catch {
-      return false;
-    }
-  });
 }
 
 export default function LiveStreamFrame({
@@ -200,297 +184,197 @@ function BrowserChunkPlayer({
   compact: boolean;
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const [fallback, setFallback] = useState(false);
+  const lastLoadedSeqRef = useRef<number | null>(null);
+  const currentObjectUrlRef = useRef<string | null>(null);
   const [warming, setWarming] = useState(true);
   const [signalLabel, setSignalLabel] = useState("Catching live edge");
 
   useEffect(() => {
     const video = videoRef.current;
-    if (!video || typeof window === "undefined" || !("MediaSource" in window)) {
-      setFallback(true);
+    if (!video || typeof window === "undefined") {
       return;
     }
 
+    lastLoadedSeqRef.current = null;
     let cancelled = false;
-    let sourceBuffer: SourceBuffer | null = null;
-    let sourceReady = false;
-    let nextSeq: number | null = null;
-    const fetched = new Set<number>();
-    const failedAttempts = new Map<number, number>();
-    const appendAttempts = new Map<number, number>();
-    const queue: QueuedChunk[] = [];
-    const mediaSource = new MediaSource();
-    const objectUrl = URL.createObjectURL(mediaSource);
-    const liveLagSeconds = compact ? 1.4 : 2.4;
+    let pollInFlight = false;
+    let pendingRefresh = false;
+    let durationProbePending = false;
+    const liveLagSeconds = compact ? 0.9 : 1.8;
+    const windowChunks = compact ? ROLLING_COMPACT_WINDOW_CHUNKS : ROLLING_WINDOW_CHUNKS;
+    const refreshAdvance = compact ? ROLLING_COMPACT_REFRESH_ADVANCE : ROLLING_REFRESH_ADVANCE;
 
-    video.src = objectUrl;
     video.muted = true;
     video.playsInline = true;
 
-    const trimBackBuffer = () => {
-      if (!sourceBuffer || sourceBuffer.updating || !video.buffered.length) return;
-      const removeBefore = video.currentTime - MAX_BACK_BUFFER_SECONDS;
-      if (removeBefore <= 0) return;
-
-      try {
-        const start = video.buffered.start(0);
-        if (removeBefore > start + 1) {
-          sourceBuffer.remove(start, removeBefore);
-        }
-      } catch {
-        // Back-buffer trimming is opportunistic.
+    const revokeCurrentObjectUrl = () => {
+      if (currentObjectUrlRef.current) {
+        URL.revokeObjectURL(currentObjectUrlRef.current);
+        currentObjectUrlRef.current = null;
       }
     };
 
-    const pump = () => {
-      if (!sourceBuffer || sourceBuffer.updating || queue.length === 0) return;
+    const nudgeRollingEdge = () => {
+      const seekableEnd = video.seekable.length
+        ? video.seekable.end(video.seekable.length - 1)
+        : null;
+      const liveEnd = Number.isFinite(video.duration)
+        ? video.duration
+        : seekableEnd && Number.isFinite(seekableEnd)
+          ? seekableEnd
+          : null;
 
-      const nextChunk = queue.shift() as QueuedChunk;
-      try {
-        sourceBuffer.appendBuffer(nextChunk.buffer);
-      } catch {
-        const attempts = (appendAttempts.get(nextChunk.sequence) ?? 0) + 1;
-        appendAttempts.set(nextChunk.sequence, attempts);
-        if (attempts < 3) {
-          queue.unshift(nextChunk);
+      if (liveEnd && liveEnd > liveLagSeconds + 0.5) {
+        durationProbePending = false;
+        const target = Math.max(0, liveEnd - liveLagSeconds);
+        if (!Number.isFinite(video.currentTime) || Math.abs(video.currentTime - target) > 1.6) {
+          try {
+            video.currentTime = target;
+          } catch {
+            // Some partial WebM windows refuse seeking until a later readyState.
+          }
         }
-        setSignalLabel("Reconnecting live edge");
-        setWarming(true);
+      } else if (!durationProbePending && video.duration === Number.POSITIVE_INFINITY) {
+        durationProbePending = true;
         try {
-          sourceBuffer.abort();
+          video.currentTime = 1e9;
         } catch {
-          // The buffer may already be recovering.
+          durationProbePending = false;
         }
       }
-    };
 
-    const nudgeLiveEdge = () => {
-      if (!video.buffered.length) {
-        setWarming(true);
-        return;
-      }
-      const index = video.buffered.length - 1;
-      const end = video.buffered.end(index);
-      const start = video.buffered.start(index);
-      if (!Number.isFinite(end)) return;
-
-      if (
-        video.currentTime < start ||
-        end - video.currentTime > (compact ? 4 : 7) ||
-        video.paused
-      ) {
-        video.currentTime = Math.max(start, end - liveLagSeconds);
-      }
       void video.play().catch(() => undefined);
-      if (video.readyState >= 2) {
-        setWarming(false);
-      }
     };
 
-    const enqueueChunk = async (sequence: number, template: string) => {
-      if (fetched.has(sequence)) return true;
-      if (cancelled) return false;
-      const attempts = failedAttempts.get(sequence) ?? 0;
-      if (attempts >= 3) {
-        fetched.add(sequence);
-        return true;
-      }
-
-      const response = await fetch(template.replace("{sequence}", String(sequence)), {
-        cache: "no-store",
-      });
+    const loadRollingWindow = async (endSeq: number) => {
+      const rollingUrl = `/api/streams/${stream.id}/rolling-webm?end=${endSeq}&window=${windowChunks}&v=${Date.now()}`;
+      const response = await fetch(rollingUrl, { cache: "no-store" });
       if (!response.ok) {
-        failedAttempts.set(sequence, attempts + 1);
-        return false;
+        throw new Error("Rolling stream slice unavailable.");
       }
 
-      failedAttempts.delete(sequence);
-      const buffer = await response.arrayBuffer();
-      fetched.add(sequence);
-      queue.push({
-        sequence,
-        buffer,
-      });
-      pump();
-      return true;
-    };
-
-    const firstMediaSequence = (manifest: StreamManifest) => {
-      const availableMediaSeqs = (manifest.availableMediaSeqs ?? []).filter((sequence) => sequence > 0);
-      if (manifest.latestSeq <= MAX_CHUNKS_PER_POLL) {
-        return availableMediaSeqs[0] ?? (manifest.initSeq === null ? 0 : Math.max(1, manifest.initSeq + 1));
+      const blob = await response.blob();
+      if (blob.size <= 0) {
+        throw new Error("Rolling stream slice is empty.");
       }
 
-      const recommended =
-        manifest.recommendedStartSeq ??
-        Math.max(0, manifest.latestSeq - LIVE_BACKLOG_CHUNKS);
-      const availableStart = availableMediaSeqs.find((sequence) => sequence >= recommended);
-      if (availableStart !== undefined) return availableStart;
-      return manifest.initSeq === null ? recommended : Math.max(1, recommended);
+      const objectUrl = URL.createObjectURL(blob);
+      revokeCurrentObjectUrl();
+      currentObjectUrlRef.current = objectUrl;
+      video.src = objectUrl;
+      video.load();
+      lastLoadedSeqRef.current = endSeq;
+      setSignalLabel("Catching live edge");
+      setWarming(true);
     };
 
     const poll = async () => {
-      if (cancelled) return;
+      if (cancelled || pollInFlight) {
+        pendingRefresh = true;
+        return;
+      }
 
+      pollInFlight = true;
       try {
         const response = await fetch(`/api/streams/${stream.id}/manifest`, {
           cache: "no-store",
         });
         if (!response.ok) {
-          setFallback(true);
           return;
         }
 
         const manifest = (await response.json()) as StreamManifest;
-        const newestAvailableSeq = manifest.newestAvailableSeq ?? manifest.latestSeq;
-        if (manifest.latestSeq < 0 || newestAvailableSeq < 0 || manifest.stale) {
+        const availableMediaSeqs = (manifest.availableMediaSeqs ?? []).filter((sequence) => sequence > 0);
+        const newestAvailableSeq =
+          availableMediaSeqs[availableMediaSeqs.length - 1] ??
+          manifest.newestAvailableSeq ??
+          manifest.latestSeq;
+
+        if (manifest.stale) {
           setWarming(true);
-          setSignalLabel(manifest.stale ? "Waiting for streamer" : "Signal warming");
+          setSignalLabel("Waiting for streamer");
           return;
         }
 
-        if (!sourceBuffer && sourceReady) {
-          const mimeType = chooseSourceBufferMimeType(manifest.mediaMimeType);
-          if (!mimeType) {
-            setFallback(true);
-            return;
-          }
-          sourceBuffer = mediaSource.addSourceBuffer(mimeType);
-          mediaSource.duration = Number.POSITIVE_INFINITY;
-          try {
-            sourceBuffer.mode = "sequence";
-          } catch {
-            // Some WebView builds keep the default segments mode. Continue and let MSE decide.
-          }
-          sourceBuffer.addEventListener("updateend", () => {
-            setWarming(false);
-            trimBackBuffer();
-            pump();
-            nudgeLiveEdge();
-          });
-          sourceBuffer.addEventListener("error", () => {
-            setSignalLabel("Reconnecting live edge");
-            setWarming(true);
-          });
-        }
-
-        if (!sourceBuffer) return;
-
-        if (manifest.initSeq !== null) {
-          await enqueueChunk(manifest.initSeq, manifest.chunkUrlTemplate);
-        }
-
-        if (nextSeq === null) {
-          nextSeq = firstMediaSequence(manifest);
-        }
-
-        if (newestAvailableSeq - nextSeq > RESET_GAP_CHUNKS) {
-          const jumpTarget = Math.max(1, newestAvailableSeq - LIVE_BACKLOG_CHUNKS);
-          const availableJumpTarget = (manifest.availableMediaSeqs ?? []).find(
-            (sequence) => sequence >= jumpTarget
-          );
-          nextSeq = availableJumpTarget ?? jumpTarget;
-          queue.length = 0;
-          setSignalLabel("Jumping live edge");
+        if (manifest.latestSeq < 0 || newestAvailableSeq < 1) {
           setWarming(true);
+          setSignalLabel("Signal warming");
+          return;
         }
 
-        const startSeq = nextSeq ?? 0;
-        const availableMediaSeqs = (manifest.availableMediaSeqs ?? []).filter(
-          (sequence) => sequence >= startSeq
-        );
-        const fetchSequences = availableMediaSeqs.length
-          ? availableMediaSeqs.slice(0, MAX_CHUNKS_PER_POLL)
-          : Array.from(
-              {
-                length: Math.max(
-                  0,
-                  Math.min(manifest.latestSeq, startSeq + MAX_CHUNKS_PER_POLL - 1) -
-                    startSeq +
-                    1
-                ),
-              },
-              (_, index) => startSeq + index
-            );
-        let advancedThrough = startSeq - 1;
-        for (const sequence of fetchSequences) {
-          const queued = await enqueueChunk(sequence, manifest.chunkUrlTemplate);
-          if (!queued) {
-            setSignalLabel("Catching live edge");
-            setWarming(true);
-            break;
-          }
-          advancedThrough = sequence;
-        }
+        const lastLoadedSeq = lastLoadedSeqRef.current;
+        const shouldRefresh =
+          lastLoadedSeq === null ||
+          newestAvailableSeq - lastLoadedSeq >= refreshAdvance ||
+          (video.paused && video.readyState < 2);
 
-        nextSeq = advancedThrough + 1;
-        if (nextSeq <= newestAvailableSeq) {
-          setSignalLabel("Catching live edge");
-          setWarming(true);
+        if (shouldRefresh) {
+          await loadRollingWindow(newestAvailableSeq);
+        } else if (video.readyState >= 2) {
+          nudgeRollingEdge();
         }
-        pump();
-        nudgeLiveEdge();
       } catch {
         setSignalLabel("Reconnecting live edge");
         setWarming(true);
+      } finally {
+        pollInFlight = false;
+        if (pendingRefresh && !cancelled) {
+          pendingRefresh = false;
+          window.setTimeout(() => {
+            void poll();
+          }, 250);
+        }
       }
     };
 
-    const handleSourceOpen = () => {
-      sourceReady = true;
-      void poll();
-    };
-
+    const handleLoadedMetadata = () => nudgeRollingEdge();
+    const handleCanPlay = () => nudgeRollingEdge();
+    const handleDurationChange = () => nudgeRollingEdge();
     const handlePlaying = () => {
       setWarming(false);
     };
     const handleWaiting = () => {
       setSignalLabel("Catching live edge");
       setWarming(true);
-      nudgeLiveEdge();
     };
     const handleVideoError = () => {
       setSignalLabel("Reconnecting live edge");
       setWarming(true);
     };
 
-    mediaSource.addEventListener("sourceopen", handleSourceOpen);
+    video.addEventListener("loadedmetadata", handleLoadedMetadata);
+    video.addEventListener("canplay", handleCanPlay);
+    video.addEventListener("durationchange", handleDurationChange);
     video.addEventListener("playing", handlePlaying);
     video.addEventListener("waiting", handleWaiting);
     video.addEventListener("stalled", handleWaiting);
     video.addEventListener("error", handleVideoError);
+    void poll();
     const interval = window.setInterval(() => {
       void poll();
-    }, compact ? 2_200 : 1_250);
+    }, compact ? 4_000 : 3_000);
 
     return () => {
       cancelled = true;
       window.clearInterval(interval);
-      mediaSource.removeEventListener("sourceopen", handleSourceOpen);
+      video.removeEventListener("loadedmetadata", handleLoadedMetadata);
+      video.removeEventListener("canplay", handleCanPlay);
+      video.removeEventListener("durationchange", handleDurationChange);
       video.removeEventListener("playing", handlePlaying);
       video.removeEventListener("waiting", handleWaiting);
       video.removeEventListener("stalled", handleWaiting);
       video.removeEventListener("error", handleVideoError);
-      try {
-        if (mediaSource.readyState === "open") {
-          mediaSource.endOfStream();
-        }
-      } catch {
-        // Best-effort cleanup only.
-      }
-      URL.revokeObjectURL(objectUrl);
+      revokeCurrentObjectUrl();
     };
   }, [compact, stream.id]);
 
-  if (fallback) {
-    return <StreamPoster stream={stream} compact={compact} fallbackLabel="Live" />;
-  }
-
   return (
     <>
+      <StreamPoster stream={stream} compact={compact} fallbackLabel="Live" />
       <video
         ref={videoRef}
         className="absolute inset-0 h-full w-full bg-black object-cover"
+        poster={stream.thumbnailUrl ?? undefined}
         muted
         autoPlay
         playsInline

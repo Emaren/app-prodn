@@ -10,7 +10,7 @@ Watcher analytics now separates noisy package pulls from confirmed watcher behav
 
 `game_stats` remains the historical fallback for confirmed watcher usage. Rows with `parse_source in ('watcher_live', 'watcher_final')` prove that a watcher-submitted game reached the app, even if no `app_open` telemetry existed yet.
 
-Watcher v1.4.0 uses watcher-native streaming plus a faster final-candidate contract. Stream telemetry now includes source kind, capture mode, bitrate, one-second chunk cadence, chunk size, upload queue length, upload latency, dropped slices, heartbeat retries, and early-stop errors so support can tell whether a user is streaming a window, a full display, a slow network, or a failing capture source. A final upload is settlement-safe only when the upload response includes `should_settle = true` or a trusted finality status. Header-only or unparsed proof can be preserved for diagnostics, but it must not be read as final winner, score, postgame resource, or betting truth.
+Watcher v1.5.0 uses watcher-native streaming plus rolling AoE2WAR playback and a faster final-candidate contract. Stream telemetry now includes source kind, capture mode, bitrate, one-second chunk cadence, chunk size, upload queue length, upload latency, dropped slices, heartbeat retries, display-capture guidance, and early-stop errors so support can tell whether a user is streaming a window, a full display, a slow network, or a failing capture source. A final upload is settlement-safe only when the upload response includes `should_settle = true` or a trusted finality status. Header-only or unparsed proof can be preserved for diagnostics, but it must not be read as final winner, score, postgame resource, or betting truth.
 
 ## Event Types
 

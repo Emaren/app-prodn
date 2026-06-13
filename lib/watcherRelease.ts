@@ -23,12 +23,12 @@ export type WatcherDownloadArtifact = {
 };
 
 export const WATCHER_RELEASE = {
-  version: "1.4.0",
-  label: "AoE2HDBets Watcher 1.4.0",
+  version: "1.5.0",
+  label: "AoE2HDBets Watcher 1.5.0",
   releasedOn: "Jun 13, 2026",
   signingStatus: "Signed Windows builds; unsigned macOS builds",
   featureChips: [
-    "AoE2HDBets Watcher 1.4.0",
+    "AoE2HDBets Watcher 1.5.0",
     "Jun 13, 2026",
     "Windows installer",
     "Windows portable fallback",
@@ -39,7 +39,7 @@ export const WATCHER_RELEASE = {
     "Full-screen capture mode",
     "1s live chunks",
     "Upload backpressure",
-    "Live-edge playback",
+    "Rolling playback",
     "Faster final detection"
   ],
 } as const;
@@ -51,11 +51,11 @@ export const WATCHER_DOWNLOAD_ARTIFACTS: readonly WatcherDownloadArtifact[] = [
     title: "Windows Installer",
     shortLabel: "NSIS installer",
     badge: "Recommended",
-    filename: "AoE2HDBets Watcher Setup 1.4.0.exe",
+    filename: "AoE2HDBets Watcher Setup 1.5.0.exe",
     format: "NSIS",
     description:
       "Smoothest Windows path. Installs cleanly, creates shortcuts, and keeps the first run obvious.",
-    downloadPath: "/downloads/AoE2HDBets%20Watcher%20Setup%201.4.0.exe",
+    downloadPath: "/downloads/AoE2HDBets%20Watcher%20Setup%201.5.0.exe",
     trackedHref: "/download/watcher/windows-installer",
     primary: true,
     featuredOnDownloadPage: true,
@@ -66,11 +66,11 @@ export const WATCHER_DOWNLOAD_ARTIFACTS: readonly WatcherDownloadArtifact[] = [
     title: "Windows Portable",
     shortLabel: "Backup EXE",
     badge: "Fallback",
-    filename: "AoE2HDBets Watcher 1.4.0.exe",
+    filename: "AoE2HDBets Watcher 1.5.0.exe",
     format: "portable",
     description:
       "Same signed Windows watcher core in a no-installer package if installer policy gets in the way.",
-    downloadPath: "/downloads/AoE2HDBets%20Watcher%201.4.0.exe",
+    downloadPath: "/downloads/AoE2HDBets%20Watcher%201.5.0.exe",
     trackedHref: "/download/watcher/windows-portable",
     primary: false,
     featuredOnDownloadPage: true,
@@ -81,11 +81,11 @@ export const WATCHER_DOWNLOAD_ARTIFACTS: readonly WatcherDownloadArtifact[] = [
     title: "macOS DMG",
     shortLabel: "Apple Silicon",
     badge: "Mac first",
-    filename: "AoE2HDBets Watcher-1.4.0-arm64.dmg",
+    filename: "AoE2HDBets Watcher-1.5.0-arm64.dmg",
     format: "DMG",
     description:
       "Best Mac install path. Drag in, pair once, and keep it open while AoE2HD runs under macOS or CrossOver.",
-    downloadPath: "/downloads/AoE2HDBets%20Watcher-1.4.0-arm64.dmg",
+    downloadPath: "/downloads/AoE2HDBets%20Watcher-1.5.0-arm64.dmg",
     trackedHref: "/download/watcher/mac-dmg",
     primary: false,
     featuredOnDownloadPage: true,
@@ -111,11 +111,11 @@ export const WATCHER_DOWNLOAD_ARTIFACTS: readonly WatcherDownloadArtifact[] = [
     title: "Linux AppImage",
     shortLabel: "Linux build",
     badge: "Linux",
-    filename: "AoE2HDBets Watcher-1.4.0.AppImage",
+    filename: "AoE2HDBets Watcher-1.5.0.AppImage",
     format: "AppImage",
     description:
       "Portable Linux watcher for Proton or Wine-heavy setups where manual replay-folder selection matters most.",
-    downloadPath: "/downloads/AoE2HDBets%20Watcher-1.4.0.AppImage",
+    downloadPath: "/downloads/AoE2HDBets%20Watcher-1.5.0.AppImage",
     trackedHref: "/download/watcher/linux-appimage",
     primary: false,
     featuredOnDownloadPage: true,

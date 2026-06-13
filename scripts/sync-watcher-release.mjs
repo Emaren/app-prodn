@@ -3,6 +3,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import crypto from "node:crypto";
 
 const FEATURE_CHIPS = [
   "Windows installer",
@@ -14,7 +15,7 @@ const FEATURE_CHIPS = [
   "Full-screen capture mode",
   "1s live chunks",
   "Upload backpressure",
-  "Live-edge playback",
+  "Rolling playback",
   "Faster final detection",
 ];
 
@@ -177,6 +178,35 @@ async function copyArtifact(sourcePath, targetPath, { optional = false } = {}) {
   return true;
 }
 
+async function fileSha512Base64(filePath) {
+  const file = await fs.readFile(filePath);
+  return crypto.createHash("sha512").update(file).digest("base64");
+}
+
+async function writeMacUpdateMetadata({ watcherDistDir, downloadsDir, version }) {
+  const dmgFilename = `AoE2HDBets Watcher-${version}-arm64.dmg`;
+  const dmgPath = path.join(watcherDistDir, dmgFilename);
+  const latestMacPath = path.join(downloadsDir, "latest-mac.yml");
+  const stats = await fs.stat(dmgPath);
+  const sha512 = await fileSha512Base64(dmgPath);
+
+  await fs.writeFile(
+    latestMacPath,
+    [
+      `version: ${version}`,
+      "files:",
+      `  - url: ${dmgFilename}`,
+      `    sha512: ${sha512}`,
+      `    size: ${stats.size}`,
+      `path: ${dmgFilename}`,
+      `sha512: ${sha512}`,
+      `releaseDate: '${new Date(stats.mtimeMs).toISOString()}'`,
+      "",
+    ].join("\n"),
+    "utf8"
+  );
+}
+
 async function main() {
   const scriptDir = path.dirname(fileURLToPath(import.meta.url));
   const appDir = path.resolve(scriptDir, "..");
@@ -231,14 +261,12 @@ async function main() {
     {
       source: path.join(watcherDistDir, `AoE2HDBets Watcher-${version}-arm64-mac.zip`),
       target: path.join(downloadsDir, `AoE2HDBets Watcher-${version}-arm64-mac.zip`),
+      optional: true,
     },
     {
       source: path.join(watcherDistDir, `AoE2HDBets Watcher-${version}-arm64-mac.zip.blockmap`),
       target: path.join(downloadsDir, `AoE2HDBets Watcher-${version}-arm64-mac.zip.blockmap`),
-    },
-    {
-      source: path.join(watcherDistDir, "latest-mac.yml"),
-      target: path.join(downloadsDir, "latest-mac.yml"),
+      optional: true,
     },
     {
       source: path.join(watcherDistDir, "aoe2hdbets-watcher-direct.zip"),
@@ -284,6 +312,8 @@ async function main() {
       optional: artifact.optional,
     });
   }
+
+  await writeMacUpdateMetadata({ watcherDistDir, downloadsDir, version });
 
   process.stdout.write(
     `Synced watcher release AoE2HDBets Watcher ${version} into ${downloadsDir}\n`
