@@ -6,6 +6,7 @@ import {
 } from "@/lib/watchStreams";
 import { getPrisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/adminSession";
+import { AOE2WAR_STREAM_SOURCE_TYPES } from "@/lib/streamRequestAuth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,7 +15,7 @@ const NO_STORE_HEADERS = {
   "Cache-Control": "no-store, max-age=0",
 };
 
-const BROWSER_STREAM_STALE_MS = 45_000;
+const BROWSER_STREAM_STALE_MS = 120_000;
 
 function isVisibleStream(stream: ReturnType<typeof toWatchStreamPayload>) {
   if (stream.sourceType !== "browser" && stream.provider !== "aoe2war") {
@@ -56,8 +57,36 @@ export async function GET(request: NextRequest) {
       return [];
     });
 
+  const visibleStreams = streams.map(toWatchStreamPayload).filter(isVisibleStream);
+  if (visibleStreams.length > 0) {
+    return NextResponse.json({ streams: visibleStreams }, { headers: NO_STORE_HEADERS });
+  }
+
+  const fallbackStreams = await prisma.gameWatchStream
+    .findMany({
+      where: {
+        sourceType: {
+          in: [...AOE2WAR_STREAM_SOURCE_TYPES],
+        },
+        status: {
+          in: ["starting", "live"],
+        },
+      },
+      orderBy: [
+        { isPrimary: "desc" },
+        { lastHeartbeatAt: "desc" },
+        { updatedAt: "desc" },
+        { id: "desc" },
+      ],
+      take: 3,
+    })
+    .catch((error) => {
+      console.warn("Failed to load fallback watch streams:", error);
+      return [];
+    });
+
   return NextResponse.json(
-    { streams: streams.map(toWatchStreamPayload).filter(isVisibleStream) },
+    { streams: fallbackStreams.map(toWatchStreamPayload).filter(isVisibleStream) },
     { headers: NO_STORE_HEADERS }
   );
 }

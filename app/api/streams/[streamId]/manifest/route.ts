@@ -14,7 +14,7 @@ const NO_STORE_HEADERS = {
   "Cache-Control": "no-store, max-age=0",
 };
 
-const STALE_AFTER_MS = 45_000;
+const STALE_AFTER_MS = 120_000;
 
 export async function GET(
   _request: NextRequest,
