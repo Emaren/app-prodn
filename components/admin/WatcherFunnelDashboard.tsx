@@ -75,6 +75,17 @@ function compactValue(value: string | number | null, fallback = "not sent") {
   return `${normalized.slice(0, 12)}...${normalized.slice(-8)}`;
 }
 
+function formatBitrate(value: number | null) {
+  if (!value) return null;
+  return `${(value / 1000000).toFixed(1)} Mbps`;
+}
+
+function formatBytes(value: number | null) {
+  if (!value) return null;
+  if (value < 1024 * 1024) return `${Math.round(value / 1024)} KB`;
+  return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 function focusStatusLabel(status: WatcherFocusUserDiagnostics["latestStatus"]) {
   if (status === "online") return "online";
   if (status === "watching") return "watching, heartbeat stale";
@@ -115,8 +126,10 @@ function FocusMetric({ label, value }: { label: string; value: string | number |
 function eventDetailText(event: WatcherFocusUserDiagnostics["recentEvents"][number]) {
   const streamDetail = [
     event.streamSourceType,
+    event.streamSourceKind,
     event.streamSourceName,
     event.streamCaptureMode,
+    event.streamModeDetail,
     event.streamSequence === null ? null : `seq ${event.streamSequence}`,
     event.streamBlobSize === null ? null : `${Math.round(event.streamBlobSize / 1024)} KB`,
   ].filter(Boolean).join(" · ");
@@ -181,14 +194,20 @@ function SupportUserDiagnostics({ focusUser }: { focusUser: WatcherFocusUserDiag
             </span>
           </div>
           <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <FocusMetric label="Source" value={[focusUser.stream.sourceType, focusUser.stream.captureMode].filter(Boolean).join(" / ") || null} />
+            <FocusMetric label="Source" value={[focusUser.stream.sourceType, focusUser.stream.sourceKind].filter(Boolean).join(" / ") || null} />
+            <FocusMetric label="Mode" value={[focusUser.stream.captureMode, focusUser.stream.modeDetail].filter(Boolean).join(" / ") || null} />
             <FocusMetric label="Stream" value={compactValue(focusUser.stream.streamId)} />
             <FocusMetric label="Match bind" value={compactValue(focusUser.stream.sessionKey)} />
             <FocusMetric label="Last event" value={formatMaybeDate(focusUser.stream.lastEventAt)} />
             <FocusMetric label="Last chunk" value={formatMaybeDate(focusUser.stream.lastChunkAt)} />
             <FocusMetric label="Last heartbeat" value={formatMaybeDate(focusUser.stream.lastHeartbeatAt)} />
             <FocusMetric label="Chunks / heartbeats" value={`${focusUser.stream.chunkEvents} / ${focusUser.stream.heartbeatEvents}`} />
-            <FocusMetric label="Stream failures" value={focusUser.stream.failureCount} />
+            <FocusMetric label="Bitrate / cadence" value={[formatBitrate(focusUser.stream.videoBitrate), focusUser.stream.chunkTimesliceMs ? `${focusUser.stream.chunkTimesliceMs} ms` : null].filter(Boolean).join(" / ") || null} />
+            <FocusMetric label="Last chunk size" value={formatBytes(focusUser.stream.lastChunkBytes)} />
+            <FocusMetric
+              label="Stream failures"
+              value={`${focusUser.stream.failureCount}${focusUser.stream.uploadFailures === null ? "" : ` / ${focusUser.stream.uploadFailures} uploads`}`}
+            />
           </div>
           {focusUser.stream.lastErrorMessage || focusUser.stream.lastDetail ? (
             <div className="mt-3 rounded-lg border border-white/10 bg-slate-950/45 px-3 py-2 text-sm text-slate-200">

@@ -11,6 +11,8 @@ const FEATURE_CHIPS = [
   "Linux AppImage",
   "Historical replay import",
   "Watcher-native streaming",
+  "Full-screen capture mode",
+  "Live-edge playback",
   "Faster final detection",
 ];
 

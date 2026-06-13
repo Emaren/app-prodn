@@ -18,10 +18,19 @@ type StreamManifest = {
   stale: boolean;
   mediaMimeType: string;
   latestSeq: number;
+  chunkCount?: number;
   initSeq: number | null;
   recommendedStartSeq: number | null;
   chunkUrlTemplate: string;
 };
+
+type QueuedChunk = {
+  sequence: number;
+  buffer: ArrayBuffer;
+};
+
+const LIVE_BACKLOG_CHUNKS = 8;
+const MAX_CHUNKS_PER_POLL = 14;
 
 function providerLabel(stream: WatchStreamPayload) {
   if (stream.provider === "aoe2war") return "AoE2WAR";
@@ -188,6 +197,7 @@ function BrowserChunkPlayer({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [fallback, setFallback] = useState(false);
   const [warming, setWarming] = useState(true);
+  const [signalLabel, setSignalLabel] = useState("Catching live edge");
 
   useEffect(() => {
     const video = videoRef.current;
@@ -201,9 +211,11 @@ function BrowserChunkPlayer({
     let sourceReady = false;
     let nextSeq: number | null = null;
     const fetched = new Set<number>();
-    const queue: ArrayBuffer[] = [];
+    const failedAttempts = new Map<number, number>();
+    const queue: QueuedChunk[] = [];
     const mediaSource = new MediaSource();
     const objectUrl = URL.createObjectURL(mediaSource);
+    const liveLagSeconds = compact ? 1.4 : 2.4;
 
     video.src = objectUrl;
     video.muted = true;
@@ -212,35 +224,80 @@ function BrowserChunkPlayer({
     const pump = () => {
       if (!sourceBuffer || sourceBuffer.updating || queue.length === 0) return;
 
+      const nextChunk = queue.shift() as QueuedChunk;
       try {
-        sourceBuffer.appendBuffer(queue.shift() as ArrayBuffer);
+        sourceBuffer.appendBuffer(nextChunk.buffer);
       } catch {
-        setFallback(true);
+        queue.unshift(nextChunk);
+        setSignalLabel("Reconnecting live edge");
+        setWarming(true);
+        try {
+          sourceBuffer.abort();
+        } catch {
+          // The buffer may already be recovering.
+        }
       }
     };
 
     const nudgeLiveEdge = () => {
-      if (!video.buffered.length) return;
+      if (!video.buffered.length) {
+        setWarming(true);
+        return;
+      }
       const index = video.buffered.length - 1;
       const end = video.buffered.end(index);
       const start = video.buffered.start(index);
-      if (Number.isFinite(end) && end - video.currentTime > 7) {
-        video.currentTime = Math.max(start, end - 4);
+      if (!Number.isFinite(end)) return;
+
+      if (
+        video.currentTime < start ||
+        end - video.currentTime > (compact ? 4 : 7) ||
+        video.paused
+      ) {
+        video.currentTime = Math.max(start, end - liveLagSeconds);
       }
       void video.play().catch(() => undefined);
+      if (video.readyState >= 2) {
+        setWarming(false);
+      }
     };
 
     const enqueueChunk = async (sequence: number, template: string) => {
-      if (fetched.has(sequence) || cancelled) return;
-      fetched.add(sequence);
+      if (fetched.has(sequence)) return true;
+      if (cancelled) return false;
+      const attempts = failedAttempts.get(sequence) ?? 0;
+      if (attempts >= 3) {
+        fetched.add(sequence);
+        return true;
+      }
 
       const response = await fetch(template.replace("{sequence}", String(sequence)), {
         cache: "no-store",
       });
-      if (!response.ok) return;
+      if (!response.ok) {
+        failedAttempts.set(sequence, attempts + 1);
+        return false;
+      }
 
-      queue.push(await response.arrayBuffer());
+      failedAttempts.delete(sequence);
+      fetched.add(sequence);
+      queue.push({
+        sequence,
+        buffer: await response.arrayBuffer(),
+      });
       pump();
+      return true;
+    };
+
+    const firstMediaSequence = (manifest: StreamManifest) => {
+      if (manifest.latestSeq <= MAX_CHUNKS_PER_POLL) {
+        return manifest.initSeq === null ? 0 : Math.max(1, manifest.initSeq + 1);
+      }
+
+      const recommended =
+        manifest.recommendedStartSeq ??
+        Math.max(0, manifest.latestSeq - LIVE_BACKLOG_CHUNKS);
+      return manifest.initSeq === null ? recommended : Math.max(1, recommended);
     };
 
     const poll = async () => {
@@ -258,6 +315,7 @@ function BrowserChunkPlayer({
         const manifest = (await response.json()) as StreamManifest;
         if (manifest.latestSeq < 0 || manifest.stale) {
           setWarming(true);
+          setSignalLabel(manifest.stale ? "Waiting for streamer" : "Signal warming");
           return;
         }
 
@@ -268,11 +326,20 @@ function BrowserChunkPlayer({
             return;
           }
           sourceBuffer = mediaSource.addSourceBuffer(mimeType);
-          sourceBuffer.mode = "sequence";
+          mediaSource.duration = Number.POSITIVE_INFINITY;
+          try {
+            sourceBuffer.mode = "sequence";
+          } catch {
+            // Some WebView builds keep the default segments mode. Continue and let MSE decide.
+          }
           sourceBuffer.addEventListener("updateend", () => {
             setWarming(false);
             pump();
             nudgeLiveEdge();
+          });
+          sourceBuffer.addEventListener("error", () => {
+            setSignalLabel("Reconnecting live edge");
+            setWarming(true);
           });
         }
 
@@ -283,17 +350,31 @@ function BrowserChunkPlayer({
         }
 
         if (nextSeq === null) {
-          nextSeq = Math.max(1, manifest.recommendedStartSeq ?? 0);
+          nextSeq = firstMediaSequence(manifest);
         }
 
-        for (let sequence = nextSeq; sequence <= manifest.latestSeq; sequence += 1) {
-          await enqueueChunk(sequence, manifest.chunkUrlTemplate);
+        const fetchThrough = Math.min(manifest.latestSeq, nextSeq + MAX_CHUNKS_PER_POLL - 1);
+        let advancedThrough = nextSeq - 1;
+        for (let sequence = nextSeq; sequence <= fetchThrough; sequence += 1) {
+          const queued = await enqueueChunk(sequence, manifest.chunkUrlTemplate);
+          if (!queued) {
+            setSignalLabel("Catching live edge");
+            setWarming(true);
+            break;
+          }
+          advancedThrough = sequence;
         }
 
-        nextSeq = manifest.latestSeq + 1;
+        nextSeq = advancedThrough + 1;
+        if (nextSeq <= manifest.latestSeq) {
+          setSignalLabel("Catching live edge");
+          setWarming(true);
+        }
         pump();
+        nudgeLiveEdge();
       } catch {
-        setFallback(true);
+        setSignalLabel("Reconnecting live edge");
+        setWarming(true);
       }
     };
 
@@ -302,15 +383,36 @@ function BrowserChunkPlayer({
       void poll();
     };
 
+    const handlePlaying = () => {
+      setWarming(false);
+    };
+    const handleWaiting = () => {
+      setSignalLabel("Catching live edge");
+      setWarming(true);
+      nudgeLiveEdge();
+    };
+    const handleVideoError = () => {
+      setSignalLabel("Reconnecting live edge");
+      setWarming(true);
+    };
+
     mediaSource.addEventListener("sourceopen", handleSourceOpen);
+    video.addEventListener("playing", handlePlaying);
+    video.addEventListener("waiting", handleWaiting);
+    video.addEventListener("stalled", handleWaiting);
+    video.addEventListener("error", handleVideoError);
     const interval = window.setInterval(() => {
       void poll();
-    }, compact ? 2_800 : 1_800);
+    }, compact ? 2_200 : 1_250);
 
     return () => {
       cancelled = true;
       window.clearInterval(interval);
       mediaSource.removeEventListener("sourceopen", handleSourceOpen);
+      video.removeEventListener("playing", handlePlaying);
+      video.removeEventListener("waiting", handleWaiting);
+      video.removeEventListener("stalled", handleWaiting);
+      video.removeEventListener("error", handleVideoError);
       try {
         if (mediaSource.readyState === "open") {
           mediaSource.endOfStream();
@@ -341,7 +443,7 @@ function BrowserChunkPlayer({
         <div className="absolute inset-0 grid place-items-center bg-black/35 text-white/78">
           <div className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-black/45 px-4 py-2 text-xs uppercase tracking-[0.22em] backdrop-blur">
             <Radio className="h-3.5 w-3.5" aria-hidden="true" />
-            Live
+            {signalLabel}
           </div>
         </div>
       ) : null}

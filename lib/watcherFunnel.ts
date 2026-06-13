@@ -113,7 +113,11 @@ export type WatcherFocusUserEvent = {
   streamSessionKey: string | null;
   streamSourceType: string | null;
   streamSourceName: string | null;
+  streamSourceKind: string | null;
   streamCaptureMode: string | null;
+  streamModeDetail: string | null;
+  streamVideoBitrate: number | null;
+  streamChunkTimesliceMs: number | null;
   streamSequence: number | null;
   streamBlobSize: number | null;
 };
@@ -122,7 +126,11 @@ export type WatcherFocusUserStreamDiagnostics = {
   status: "live_or_recent" | "idle" | "issue";
   sourceType: string | null;
   sourceName: string | null;
+  sourceKind: string | null;
   captureMode: string | null;
+  modeDetail: string | null;
+  videoBitrate: number | null;
+  chunkTimesliceMs: number | null;
   streamId: string | null;
   sessionKey: string | null;
   lastEventAt: string | null;
@@ -134,6 +142,8 @@ export type WatcherFocusUserStreamDiagnostics = {
   chunkEvents: number;
   heartbeatEvents: number;
   failureCount: number;
+  lastChunkBytes: number | null;
+  uploadFailures: number | null;
   lastErrorMessage: string | null;
   lastDetail: string | null;
 };
@@ -365,6 +375,10 @@ function firstMetadataString(events: FocusWatcherEventRow[], key: string) {
   return events.map((event) => metadataString(event.metadata, key)).find(Boolean) ?? null;
 }
 
+function firstMetadataNumber(events: FocusWatcherEventRow[], key: string) {
+  return events.map((event) => metadataNumber(event.metadata, key)).find((value) => value !== null) ?? null;
+}
+
 function buildStreamDiagnostics(events: FocusWatcherEventRow[]): WatcherFocusUserStreamDiagnostics | null {
   const streamEvents = events.filter((event) => STREAM_EVENTS.includes(event.eventType));
   if (streamEvents.length === 0) {
@@ -382,7 +396,11 @@ function buildStreamDiagnostics(events: FocusWatcherEventRow[]): WatcherFocusUse
     status: hasCurrentIssue ? "issue" : hasActiveStart ? "live_or_recent" : "idle",
     sourceType: firstMetadataString(streamEvents, "sourceType"),
     sourceName: firstMetadataString(streamEvents, "sourceName"),
+    sourceKind: firstMetadataString(streamEvents, "sourceKind"),
     captureMode: firstMetadataString(streamEvents, "captureMode"),
+    modeDetail: firstMetadataString(streamEvents, "modeDetail"),
+    videoBitrate: firstMetadataNumber(streamEvents, "videoBitrate"),
+    chunkTimesliceMs: firstMetadataNumber(streamEvents, "chunkTimesliceMs"),
     streamId: firstMetadataString(streamEvents, "streamId"),
     sessionKey: firstMetadataString(streamEvents, "sessionKey"),
     lastEventAt: isoOrNull(streamEvents[0]?.createdAt),
@@ -394,6 +412,8 @@ function buildStreamDiagnostics(events: FocusWatcherEventRow[]): WatcherFocusUse
     chunkEvents: countEvents(streamEvents, ["stream_chunk_uploaded"]),
     heartbeatEvents: countEvents(streamEvents, ["stream_heartbeat"]),
     failureCount: countEvents(streamEvents, STREAM_FAILURE_EVENTS),
+    lastChunkBytes: firstMetadataNumber(streamEvents, "lastChunkBytes") ?? firstMetadataNumber(streamEvents, "blobSize"),
+    uploadFailures: firstMetadataNumber(streamEvents, "uploadFailures"),
     lastErrorMessage: lastErrorEvent ? metadataString(lastErrorEvent.metadata, "errorMessage") : null,
     lastDetail: firstMetadataString(streamEvents, "detail"),
   };
@@ -805,7 +825,11 @@ async function loadFocusUserDiagnostics(
       streamSessionKey: metadataString(event.metadata, "sessionKey"),
       streamSourceType: metadataString(event.metadata, "sourceType"),
       streamSourceName: metadataString(event.metadata, "sourceName"),
+      streamSourceKind: metadataString(event.metadata, "sourceKind"),
       streamCaptureMode: metadataString(event.metadata, "captureMode"),
+      streamModeDetail: metadataString(event.metadata, "modeDetail"),
+      streamVideoBitrate: metadataNumber(event.metadata, "videoBitrate"),
+      streamChunkTimesliceMs: metadataNumber(event.metadata, "chunkTimesliceMs"),
       streamSequence: metadataNumber(event.metadata, "sequence"),
       streamBlobSize: metadataNumber(event.metadata, "blobSize"),
     })),

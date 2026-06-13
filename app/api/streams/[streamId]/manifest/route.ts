@@ -1,6 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { getPrisma } from "@/lib/prisma";
+import {
+  AOE2WAR_STREAM_SOURCE_TYPES,
+  type AoE2WarStreamSourceType,
+} from "@/lib/streamRequestAuth";
 import { toWatchStreamPayload } from "@/lib/watchStreams";
 
 export const runtime = "nodejs";
@@ -30,7 +34,12 @@ export async function GET(
     where: { id },
   });
 
-  if (!stream || stream.sourceType !== "browser" || stream.status === "removed") {
+  if (
+    !stream ||
+    stream.provider !== "aoe2war" ||
+    !AOE2WAR_STREAM_SOURCE_TYPES.includes(stream.sourceType as AoE2WarStreamSourceType) ||
+    stream.status === "removed"
+  ) {
     return NextResponse.json(
       { detail: "Stream not found." },
       { status: 404, headers: NO_STORE_HEADERS }
@@ -42,7 +51,7 @@ export async function GET(
     ? Date.now() - heartbeatTime > STALE_AFTER_MS
     : false;
   const latestSeq = stream.latestChunkSeq ?? -1;
-  const recommendedStartSeq = latestSeq > 5 ? latestSeq - 4 : 0;
+  const recommendedStartSeq = latestSeq > 10 ? latestSeq - 8 : 0;
 
   return NextResponse.json(
     {
