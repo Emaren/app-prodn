@@ -16,19 +16,27 @@ const NO_STORE_HEADERS = {
 };
 
 const BROWSER_STREAM_STALE_MS = 120_000;
+const BROWSER_STREAM_ARCHIVE_MS = 6 * 60 * 60 * 1000;
+const EXTERNAL_STREAM_STALE_MS = 20 * 60 * 1000;
 
 function isVisibleStream(stream: ReturnType<typeof toWatchStreamPayload>) {
   if (stream.sourceType !== "browser" && stream.provider !== "aoe2war") {
-    return stream.status !== "removed";
+    if (stream.status === "removed") return false;
+    if (!["starting", "live"].includes(stream.status)) return true;
+    const lastSeenMs = new Date(stream.updatedAt).getTime();
+    return Number.isFinite(lastSeenMs) && Date.now() - lastSeenMs <= EXTERNAL_STREAM_STALE_MS;
   }
 
-  if (!["starting", "live"].includes(stream.status)) {
+  if (!["starting", "live", "ended"].includes(stream.status)) {
     return false;
   }
 
-  const lastSeen = stream.lastHeartbeatAt || stream.updatedAt;
+  const lastSeen = stream.status === "ended"
+    ? stream.endedAt || stream.updatedAt
+    : stream.lastHeartbeatAt || stream.updatedAt;
   const lastSeenMs = new Date(lastSeen).getTime();
-  return Number.isFinite(lastSeenMs) && Date.now() - lastSeenMs <= BROWSER_STREAM_STALE_MS;
+  const maxAge = stream.status === "ended" ? BROWSER_STREAM_ARCHIVE_MS : BROWSER_STREAM_STALE_MS;
+  return Number.isFinite(lastSeenMs) && Date.now() - lastSeenMs <= maxAge;
 }
 
 export async function GET(request: NextRequest) {
@@ -69,7 +77,7 @@ export async function GET(request: NextRequest) {
           in: [...AOE2WAR_STREAM_SOURCE_TYPES],
         },
         status: {
-          in: ["starting", "live"],
+          in: ["starting", "live", "ended"],
         },
       },
       orderBy: [

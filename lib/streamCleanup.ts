@@ -4,6 +4,7 @@ import { removeStreamChunks } from "@/lib/streamStorage";
 
 const CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
 const STALE_STREAM_END_MS = 3 * 60 * 1000;
+const STALE_EXTERNAL_PLACEHOLDER_MS = 20 * 60 * 1000;
 const DEFAULT_CHUNK_RETENTION_MS = 6 * 60 * 60 * 1000;
 const CHUNK_RETENTION_MS = readPositiveMs(
   process.env.AOE2_STREAM_CHUNK_RETENTION_MS,
@@ -23,6 +24,7 @@ function cutoffDate(ageMs: number) {
 
 export async function cleanupBrowserStreams(prisma: PrismaClient) {
   const staleBefore = cutoffDate(STALE_STREAM_END_MS);
+  const staleExternalBefore = cutoffDate(STALE_EXTERNAL_PLACEHOLDER_MS);
   const chunkRemovalBefore = cutoffDate(CHUNK_RETENTION_MS);
   const now = new Date();
 
@@ -60,6 +62,45 @@ export async function cleanupBrowserStreams(prisma: PrismaClient) {
     });
   }
 
+  const staleExternalPlaceholders = await prisma.gameWatchStream.findMany({
+    where: {
+      provider: {
+        not: "aoe2war",
+      },
+      sourceType: {
+        notIn: [...AOE2WAR_STREAM_SOURCE_TYPES],
+      },
+      status: {
+        in: ["starting", "live"],
+      },
+      chunkCount: 0,
+      latestChunkSeq: {
+        lte: -1,
+      },
+      lastHeartbeatAt: null,
+      updatedAt: {
+        lt: staleExternalBefore,
+      },
+    },
+    select: { id: true },
+    take: 200,
+  });
+
+  if (staleExternalPlaceholders.length > 0) {
+    await prisma.gameWatchStream.updateMany({
+      where: {
+        id: {
+          in: staleExternalPlaceholders.map((stream) => stream.id),
+        },
+      },
+      data: {
+        status: "ended",
+        endedAt: now,
+        isPrimary: false,
+      },
+    });
+  }
+
   const removableStreams = await prisma.gameWatchStream.findMany({
     where: {
       sourceType: {
@@ -84,6 +125,7 @@ export async function cleanupBrowserStreams(prisma: PrismaClient) {
 
   return {
     ended: staleStreams.length,
+    endedExternalPlaceholders: staleExternalPlaceholders.length,
     pruned: removableStreams.length,
   };
 }
@@ -91,7 +133,7 @@ export async function cleanupBrowserStreams(prisma: PrismaClient) {
 export async function maybeCleanupBrowserStreams(prisma: PrismaClient) {
   const now = Date.now();
   if (now - lastCleanupAt < CLEANUP_INTERVAL_MS) {
-    return { skipped: true, ended: 0, pruned: 0 };
+    return { skipped: true, ended: 0, endedExternalPlaceholders: 0, pruned: 0 };
   }
 
   lastCleanupAt = now;

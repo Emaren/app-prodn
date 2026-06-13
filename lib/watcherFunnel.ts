@@ -40,6 +40,7 @@ const STREAM_EVENTS = [
   "stream_source_ready",
   "stream_started",
   "stream_chunk_uploaded",
+  "stream_chunk_dropped",
   "stream_heartbeat",
   "stream_stopped",
   "stream_track_ended",
@@ -120,6 +121,10 @@ export type WatcherFocusUserEvent = {
   streamChunkTimesliceMs: number | null;
   streamSequence: number | null;
   streamBlobSize: number | null;
+  streamUploadQueueLength: number | null;
+  streamLastUploadLatencyMs: number | null;
+  streamDroppedChunks: number | null;
+  streamHeartbeatFailures: number | null;
 };
 
 export type WatcherFocusUserStreamDiagnostics = {
@@ -140,10 +145,15 @@ export type WatcherFocusUserStreamDiagnostics = {
   lastHeartbeatAt: string | null;
   lastErrorAt: string | null;
   chunkEvents: number;
+  droppedChunkEvents: number;
   heartbeatEvents: number;
   failureCount: number;
   lastChunkBytes: number | null;
   uploadFailures: number | null;
+  uploadQueueLength: number | null;
+  lastUploadLatencyMs: number | null;
+  droppedChunks: number | null;
+  heartbeatFailures: number | null;
   lastErrorMessage: string | null;
   lastDetail: string | null;
 };
@@ -410,10 +420,15 @@ function buildStreamDiagnostics(events: FocusWatcherEventRow[]): WatcherFocusUse
     lastHeartbeatAt: isoOrNull(firstEventAt(streamEvents, ["stream_heartbeat"])),
     lastErrorAt: isoOrNull(lastErrorAt),
     chunkEvents: countEvents(streamEvents, ["stream_chunk_uploaded"]),
+    droppedChunkEvents: countEvents(streamEvents, ["stream_chunk_dropped"]),
     heartbeatEvents: countEvents(streamEvents, ["stream_heartbeat"]),
     failureCount: countEvents(streamEvents, STREAM_FAILURE_EVENTS),
     lastChunkBytes: firstMetadataNumber(streamEvents, "lastChunkBytes") ?? firstMetadataNumber(streamEvents, "blobSize"),
     uploadFailures: firstMetadataNumber(streamEvents, "uploadFailures"),
+    uploadQueueLength: firstMetadataNumber(streamEvents, "uploadQueueLength"),
+    lastUploadLatencyMs: firstMetadataNumber(streamEvents, "lastUploadLatencyMs") ?? firstMetadataNumber(streamEvents, "uploadLatencyMs"),
+    droppedChunks: firstMetadataNumber(streamEvents, "droppedChunks"),
+    heartbeatFailures: firstMetadataNumber(streamEvents, "heartbeatFailures"),
     lastErrorMessage: lastErrorEvent ? metadataString(lastErrorEvent.metadata, "errorMessage") : null,
     lastDetail: firstMetadataString(streamEvents, "detail"),
   };
@@ -832,6 +847,10 @@ async function loadFocusUserDiagnostics(
       streamChunkTimesliceMs: metadataNumber(event.metadata, "chunkTimesliceMs"),
       streamSequence: metadataNumber(event.metadata, "sequence"),
       streamBlobSize: metadataNumber(event.metadata, "blobSize"),
+      streamUploadQueueLength: metadataNumber(event.metadata, "uploadQueueLength"),
+      streamLastUploadLatencyMs: metadataNumber(event.metadata, "lastUploadLatencyMs") ?? metadataNumber(event.metadata, "uploadLatencyMs"),
+      streamDroppedChunks: metadataNumber(event.metadata, "droppedChunks"),
+      streamHeartbeatFailures: metadataNumber(event.metadata, "heartbeatFailures"),
     })),
   };
 }

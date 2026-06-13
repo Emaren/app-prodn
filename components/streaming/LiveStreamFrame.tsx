@@ -18,9 +18,12 @@ type StreamManifest = {
   stale: boolean;
   mediaMimeType: string;
   latestSeq: number;
+  newestAvailableSeq?: number;
   chunkCount?: number;
   initSeq: number | null;
   recommendedStartSeq: number | null;
+  availableSeqs?: number[];
+  availableMediaSeqs?: number[];
   chunkUrlTemplate: string;
 };
 
@@ -31,6 +34,8 @@ type QueuedChunk = {
 
 const LIVE_BACKLOG_CHUNKS = 8;
 const MAX_CHUNKS_PER_POLL = 14;
+const RESET_GAP_CHUNKS = 36;
+const MAX_BACK_BUFFER_SECONDS = 40;
 
 function providerLabel(stream: WatchStreamPayload) {
   if (stream.provider === "aoe2war") return "AoE2WAR";
@@ -212,6 +217,7 @@ function BrowserChunkPlayer({
     let nextSeq: number | null = null;
     const fetched = new Set<number>();
     const failedAttempts = new Map<number, number>();
+    const appendAttempts = new Map<number, number>();
     const queue: QueuedChunk[] = [];
     const mediaSource = new MediaSource();
     const objectUrl = URL.createObjectURL(mediaSource);
@@ -221,6 +227,21 @@ function BrowserChunkPlayer({
     video.muted = true;
     video.playsInline = true;
 
+    const trimBackBuffer = () => {
+      if (!sourceBuffer || sourceBuffer.updating || !video.buffered.length) return;
+      const removeBefore = video.currentTime - MAX_BACK_BUFFER_SECONDS;
+      if (removeBefore <= 0) return;
+
+      try {
+        const start = video.buffered.start(0);
+        if (removeBefore > start + 1) {
+          sourceBuffer.remove(start, removeBefore);
+        }
+      } catch {
+        // Back-buffer trimming is opportunistic.
+      }
+    };
+
     const pump = () => {
       if (!sourceBuffer || sourceBuffer.updating || queue.length === 0) return;
 
@@ -228,7 +249,11 @@ function BrowserChunkPlayer({
       try {
         sourceBuffer.appendBuffer(nextChunk.buffer);
       } catch {
-        queue.unshift(nextChunk);
+        const attempts = (appendAttempts.get(nextChunk.sequence) ?? 0) + 1;
+        appendAttempts.set(nextChunk.sequence, attempts);
+        if (attempts < 3) {
+          queue.unshift(nextChunk);
+        }
         setSignalLabel("Reconnecting live edge");
         setWarming(true);
         try {
@@ -280,23 +305,27 @@ function BrowserChunkPlayer({
       }
 
       failedAttempts.delete(sequence);
+      const buffer = await response.arrayBuffer();
       fetched.add(sequence);
       queue.push({
         sequence,
-        buffer: await response.arrayBuffer(),
+        buffer,
       });
       pump();
       return true;
     };
 
     const firstMediaSequence = (manifest: StreamManifest) => {
+      const availableMediaSeqs = (manifest.availableMediaSeqs ?? []).filter((sequence) => sequence > 0);
       if (manifest.latestSeq <= MAX_CHUNKS_PER_POLL) {
-        return manifest.initSeq === null ? 0 : Math.max(1, manifest.initSeq + 1);
+        return availableMediaSeqs[0] ?? (manifest.initSeq === null ? 0 : Math.max(1, manifest.initSeq + 1));
       }
 
       const recommended =
         manifest.recommendedStartSeq ??
         Math.max(0, manifest.latestSeq - LIVE_BACKLOG_CHUNKS);
+      const availableStart = availableMediaSeqs.find((sequence) => sequence >= recommended);
+      if (availableStart !== undefined) return availableStart;
       return manifest.initSeq === null ? recommended : Math.max(1, recommended);
     };
 
@@ -313,7 +342,8 @@ function BrowserChunkPlayer({
         }
 
         const manifest = (await response.json()) as StreamManifest;
-        if (manifest.latestSeq < 0 || manifest.stale) {
+        const newestAvailableSeq = manifest.newestAvailableSeq ?? manifest.latestSeq;
+        if (manifest.latestSeq < 0 || newestAvailableSeq < 0 || manifest.stale) {
           setWarming(true);
           setSignalLabel(manifest.stale ? "Waiting for streamer" : "Signal warming");
           return;
@@ -334,6 +364,7 @@ function BrowserChunkPlayer({
           }
           sourceBuffer.addEventListener("updateend", () => {
             setWarming(false);
+            trimBackBuffer();
             pump();
             nudgeLiveEdge();
           });
@@ -353,9 +384,36 @@ function BrowserChunkPlayer({
           nextSeq = firstMediaSequence(manifest);
         }
 
-        const fetchThrough = Math.min(manifest.latestSeq, nextSeq + MAX_CHUNKS_PER_POLL - 1);
-        let advancedThrough = nextSeq - 1;
-        for (let sequence = nextSeq; sequence <= fetchThrough; sequence += 1) {
+        if (newestAvailableSeq - nextSeq > RESET_GAP_CHUNKS) {
+          const jumpTarget = Math.max(1, newestAvailableSeq - LIVE_BACKLOG_CHUNKS);
+          const availableJumpTarget = (manifest.availableMediaSeqs ?? []).find(
+            (sequence) => sequence >= jumpTarget
+          );
+          nextSeq = availableJumpTarget ?? jumpTarget;
+          queue.length = 0;
+          setSignalLabel("Jumping live edge");
+          setWarming(true);
+        }
+
+        const startSeq = nextSeq ?? 0;
+        const availableMediaSeqs = (manifest.availableMediaSeqs ?? []).filter(
+          (sequence) => sequence >= startSeq
+        );
+        const fetchSequences = availableMediaSeqs.length
+          ? availableMediaSeqs.slice(0, MAX_CHUNKS_PER_POLL)
+          : Array.from(
+              {
+                length: Math.max(
+                  0,
+                  Math.min(manifest.latestSeq, startSeq + MAX_CHUNKS_PER_POLL - 1) -
+                    startSeq +
+                    1
+                ),
+              },
+              (_, index) => startSeq + index
+            );
+        let advancedThrough = startSeq - 1;
+        for (const sequence of fetchSequences) {
           const queued = await enqueueChunk(sequence, manifest.chunkUrlTemplate);
           if (!queued) {
             setSignalLabel("Catching live edge");
@@ -366,7 +424,7 @@ function BrowserChunkPlayer({
         }
 
         nextSeq = advancedThrough + 1;
-        if (nextSeq <= manifest.latestSeq) {
+        if (nextSeq <= newestAvailableSeq) {
           setSignalLabel("Catching live edge");
           setWarming(true);
         }

@@ -12,6 +12,8 @@ const FEATURE_CHIPS = [
   "Historical replay import",
   "Watcher-native streaming",
   "Full-screen capture mode",
+  "1s live chunks",
+  "Upload backpressure",
   "Live-edge playback",
   "Faster final detection",
 ];

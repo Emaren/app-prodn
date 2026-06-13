@@ -15,8 +15,9 @@ type StreamedLiveGameSession = LiveGameSession & {
   primaryStream: WatchStreamPayload | null;
 };
 
-const BROWSER_STREAM_STALE_MS = 45_000;
+const BROWSER_STREAM_STALE_MS = 120_000;
 const BROWSER_STREAM_ARCHIVE_MS = 6 * 60 * 60 * 1000;
+const EXTERNAL_STREAM_STALE_MS = 20 * 60 * 1000;
 
 export type LiveGamesSummary = {
   liveCount: number;
@@ -201,7 +202,10 @@ async function loadStreamsBySession(prisma: PrismaClient, sessionKeys: string[])
 
 function isVisibleStream(stream: WatchStreamPayload) {
   if (stream.sourceType !== "browser" && stream.provider !== "aoe2war") {
-    return stream.status !== "removed";
+    if (stream.status === "removed") return false;
+    if (!["starting", "live"].includes(stream.status)) return true;
+    const lastSeenMs = new Date(stream.updatedAt).getTime();
+    return Number.isFinite(lastSeenMs) && Date.now() - lastSeenMs <= EXTERNAL_STREAM_STALE_MS;
   }
 
   if (!["starting", "live", "ended"].includes(stream.status)) {

@@ -24,6 +24,7 @@ const STREAM_EVENT_TYPES = new Set([
   "stream_source_ready",
   "stream_started",
   "stream_chunk_uploaded",
+  "stream_chunk_dropped",
   "stream_heartbeat",
   "stream_stopped",
   "stream_track_ended",

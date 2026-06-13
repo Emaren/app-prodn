@@ -34,8 +34,9 @@ type Props = {
 
 type CaptureModeKey = "sharp" | "stable" | "fallback";
 
-const CHUNK_TIMESLICE_MS = 2_000;
-const HEARTBEAT_MS = 8_000;
+const CHUNK_TIMESLICE_MS = 1_000;
+const HEARTBEAT_MS = 5_000;
+const KEYFRAME_INTERVAL_MS = 1_000;
 const ACTIVE_STREAM_REFRESH_MS = 12_000;
 const CAPTURE_MODES: Array<{
   key: CaptureModeKey;
@@ -587,7 +588,10 @@ export default function BrowserStreamStudio({
       sequenceRef.current = 0;
       manualStopRef.current = false;
 
-      const recorder = new MediaRecorder(capture, { mimeType: mediaMimeType });
+      const recorder = new MediaRecorder(capture, {
+        mimeType: mediaMimeType,
+        videoKeyFrameIntervalDuration: KEYFRAME_INTERVAL_MS,
+      } as MediaRecorderOptions & { videoKeyFrameIntervalDuration?: number });
       const recorderStartedAt = Date.now();
       recorderRef.current = recorder;
       recorder.onerror = (event) => {

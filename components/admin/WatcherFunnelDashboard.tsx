@@ -132,6 +132,8 @@ function eventDetailText(event: WatcherFocusUserDiagnostics["recentEvents"][numb
     event.streamModeDetail,
     event.streamSequence === null ? null : `seq ${event.streamSequence}`,
     event.streamBlobSize === null ? null : `${Math.round(event.streamBlobSize / 1024)} KB`,
+    event.streamUploadQueueLength === null ? null : `queue ${event.streamUploadQueueLength}`,
+    event.streamLastUploadLatencyMs === null ? null : `${event.streamLastUploadLatencyMs} ms`,
   ].filter(Boolean).join(" · ");
 
   return event.errorMessage || event.reason || event.detail || streamDetail || event.parseReason || "none";
@@ -204,6 +206,10 @@ function SupportUserDiagnostics({ focusUser }: { focusUser: WatcherFocusUserDiag
             <FocusMetric label="Chunks / heartbeats" value={`${focusUser.stream.chunkEvents} / ${focusUser.stream.heartbeatEvents}`} />
             <FocusMetric label="Bitrate / cadence" value={[formatBitrate(focusUser.stream.videoBitrate), focusUser.stream.chunkTimesliceMs ? `${focusUser.stream.chunkTimesliceMs} ms` : null].filter(Boolean).join(" / ") || null} />
             <FocusMetric label="Last chunk size" value={formatBytes(focusUser.stream.lastChunkBytes)} />
+            <FocusMetric label="Upload queue" value={focusUser.stream.uploadQueueLength === null ? null : `${focusUser.stream.uploadQueueLength} queued`} />
+            <FocusMetric label="Upload latency" value={focusUser.stream.lastUploadLatencyMs === null ? null : `${focusUser.stream.lastUploadLatencyMs} ms`} />
+            <FocusMetric label="Dropped slices" value={`${focusUser.stream.droppedChunkEvents}${focusUser.stream.droppedChunks === null ? "" : ` / ${focusUser.stream.droppedChunks} total`}`} />
+            <FocusMetric label="Heartbeat retries" value={focusUser.stream.heartbeatFailures === null ? null : String(focusUser.stream.heartbeatFailures)} />
             <FocusMetric
               label="Stream failures"
               value={`${focusUser.stream.failureCount}${focusUser.stream.uploadFailures === null ? "" : ` / ${focusUser.stream.uploadFailures} uploads`}`}

@@ -45,6 +45,19 @@ export async function readStreamChunk(streamId: number | string, sequence: numbe
   return fs.readFile(streamChunkPath(streamId, sequence));
 }
 
+export async function listStreamChunkSequences(streamId: number | string, limit = 80) {
+  const dir = streamChunkDir(streamId);
+  const entries = await fs.readdir(dir).catch(() => []);
+  return entries
+    .map((entry) => {
+      const match = /^(\d+)\.webm$/.exec(entry);
+      return match ? Number(match[1]) : null;
+    })
+    .filter((sequence): sequence is number => sequence !== null && Number.isInteger(sequence) && sequence >= 0)
+    .sort((left, right) => left - right)
+    .slice(-Math.max(1, limit));
+}
+
 export async function removeStreamChunks(streamId: number | string) {
   await fs.rm(streamChunkDir(streamId), { recursive: true, force: true });
 }
