@@ -1179,7 +1179,9 @@ export async function loadMainnetTransferStakingActivityPage(
         : null;
   const validBeforeDate = beforeDate && !Number.isNaN(beforeDate.getTime()) ? beforeDate : null;
 
-  const [indexedTransferRows, giftRows, mainnetActivityRows, pendingSettlementRows, stakingCycleRows] = await Promise.all([
+  const mainnetDisplayStartAt = getWoloMainnetDisplayStartAt();
+
+  const [indexedTransferRows, giftRows, mainnetActivityRows, pendingSettlementRows, stakingCycleRows, stakingAllocationRows] = await Promise.all([
     loadIndexedWoloTransferActivityRows(prisma, rawActivityTake, { before }).catch(() => []),
     loadRecentWoloGiftActivityRows(prisma, rawActivityTake, before).catch(() => []),
     loadWoloMainnetActivityRows(prisma, rawActivityTake).catch(() => []),
@@ -1200,6 +1202,55 @@ export async function loadMainnetTransferStakingActivityPage(
             console.warn("Failed to load staking cycle activity rows:", error);
             return [];
           })
+      : Promise.resolve([]),
+    mode === "ledger" && filter === "staking"
+      ? prisma.$queryRawUnsafe<
+          Array<{
+            id: number;
+            distribution_id: number;
+            distribution_date: Date;
+            distribution_created_at: Date;
+            user_id: number;
+            player: string | null;
+            reward_wolo: number;
+            reward_uwolo: bigint | number | string;
+            status: string;
+            created_at: Date;
+            credited_at: Date | null;
+            claimed_at: Date | null;
+          }>
+        >(
+          `
+          select
+            a.id,
+            a.distribution_id,
+            d.distribution_date,
+            d.created_at as distribution_created_at,
+            a.user_id,
+            coalesce(u.in_game_name, u.steam_persona_name, u.uid::text, ('User #' || a.user_id::text)) as player,
+            a.reward_wolo,
+            a.reward_uwolo,
+            a.status,
+            a.created_at,
+            a.credited_at,
+            a.claimed_at
+          from staking_reward_allocations a
+          join staking_reward_distributions d on d.id = a.distribution_id
+          left join users u on u.id = a.user_id
+          where d.status = 'FINALIZED'
+            and d.distribution_date >= $1::timestamp
+            and ($2::timestamp is null or a.created_at < $2::timestamp)
+            and (a.reward_uwolo > 0 or a.reward_wolo > 0)
+          order by d.created_at desc, a.reward_uwolo desc, a.id desc
+          limit $3
+          `,
+          mainnetDisplayStartAt,
+          validBeforeDate,
+          rawActivityTake * 4
+        ).catch((error) => {
+          console.warn("Failed to load staking allocation activity rows:", error);
+          return [];
+        })
       : Promise.resolve([]),
   ]);
   const mainnetActivityItems: Array<StakingActivityItem & { sortAt: Date }> =
@@ -1301,10 +1352,77 @@ export async function loadMainnetTransferStakingActivityPage(
       };
     });
 
+  const stakingAllocationItems: Array<StakingActivityItem & { sortAt: Date }> =
+    stakingAllocationRows.map((allocation) => {
+      const createdAt =
+        allocation.credited_at ||
+        allocation.claimed_at ||
+        allocation.created_at ||
+        allocation.distribution_created_at ||
+        new Date();
+
+      const distributionDate = new Date(allocation.distribution_date).toISOString().slice(0, 10);
+      const player = allocation.player || `User #${allocation.user_id}`;
+
+      const rewardUwolo = BigInt(String(allocation.reward_uwolo || 0));
+      const wholeWolo = rewardUwolo / BigInt(1_000_000);
+      const rewardWoloDecimal = Number(rewardUwolo) / 1_000_000;
+
+      const amountLabel =
+        rewardUwolo > BigInt(0) && rewardUwolo < BigInt(1_000_000)
+          ? `${rewardWoloDecimal.toFixed(6).replace(/0+$/, "").replace(/\.$/, "")} WOLO`
+          : formatActivityWoloAmount(Number(wholeWolo));
+
+      const status = String(allocation.status || "REWARD").toUpperCase();
+      const isMicro = rewardUwolo > BigInt(0) && rewardUwolo < BigInt(1_000_000);
+      const isCompounded = status === "COMPOUNDED";
+
+      return {
+        key: `staking-allocation-${allocation.id}`,
+        label: isMicro
+          ? `${amountLabel} staking reward held: ${player}`
+          : isCompounded
+            ? `${amountLabel} compound event: ${player}`
+            : `${amountLabel} staking reward payout: ${player}`,
+        detail: isMicro
+          ? `${player} · micro reward accrued · pending 1 WOLO payout threshold · Distribution ${distributionDate}`
+          : isCompounded
+            ? `${player} · compounded reward allocation · Distribution ${distributionDate}`
+            : `${player} · ${status.toLowerCase()} reward allocation · Distribution ${distributionDate}`,
+        meta: formatMoment(createdAt),
+        eventType: "REWARD",
+        amountLabel,
+        timestampLabel: formatMoment(createdAt),
+        occurredAt: createdAt.toISOString(),
+        tone: "amber",
+        sortAt: createdAt,
+      };
+    });
+
+  const compactMainnetActivityItems =
+    stakingAllocationItems.length > 0
+      ? mainnetActivityItems.filter((item) => {
+          const eventType = String(item.eventType || "").toUpperCase();
+          const text = `${item.label || ""} ${item.detail || ""}`.toLowerCase();
+
+          if (
+            eventType === "TX" &&
+            (text.includes("tx compound") ||
+              text.includes("compound-") ||
+              text.includes("compound event"))
+          ) {
+            return false;
+          }
+
+          return true;
+        })
+      : mainnetActivityItems;
+
   const combined = dedupeActivityRows(
     [
-      ...mainnetActivityItems,
+      ...compactMainnetActivityItems,
       ...pendingSettlementItems,
+      ...stakingAllocationItems,
       ...stakingCycleItems,
       ...indexedTransferRows.map((row) => indexedTransferToActivityItem(row)),
       ...giftRows.map((row) => giftToActivityItem(row)),

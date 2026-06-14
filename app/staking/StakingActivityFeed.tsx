@@ -478,13 +478,25 @@ function activityVisual(item: StakingActivityItem) {
   const eventType = String(item.eventType || "").toUpperCase();
   const text = `${item.label || ""} ${item.detail || ""}`.toLowerCase();
 
-  if (eventType === "REWARD" || text.includes("staking reward") || text.includes("staking fee share")) {
+  if (
+    eventType === "REWARD" ||
+    eventType === "COMPOUND" ||
+    (eventType === "TX" && (text.includes("compound") || text.includes("staking event"))) ||
+    (eventType === "PAYOUT" && text.includes("staking treasury")) ||
+    text.includes("compound event") ||
+    text.includes("compounded") ||
+    text.includes("staking reward") ||
+    text.includes("reward payout") ||
+    text.includes("staking fee share") ||
+    text.includes("staking treasury payout") ||
+    text.includes("aoe2 staking treasury")
+  ) {
     return {
-      card: "border-amber-300/35 bg-[radial-gradient(circle_at_0%_50%,rgba(245,158,11,0.18),transparent_34%),linear-gradient(90deg,rgba(120,72,12,0.34),rgba(15,23,42,0.34))] shadow-[inset_3px_0_0_rgba(245,158,11,0.74),0_0_26px_rgba(245,158,11,0.08)]",
-      orb: "border-amber-300/35 bg-amber-400/12 text-amber-200 shadow-[0_0_18px_rgba(245,158,11,0.18)]",
-      dot: "bg-amber-300 shadow-[0_0_14px_rgba(252,211,77,0.65)]",
+      card: "border-amber-300/45 bg-[radial-gradient(circle_at_0%_50%,rgba(245,158,11,0.24),transparent_34%),linear-gradient(90deg,rgba(120,72,12,0.42),rgba(15,23,42,0.36))] shadow-[inset_3px_0_0_rgba(245,158,11,0.86),0_0_30px_rgba(245,158,11,0.12)]",
+      orb: "border-amber-300/45 bg-amber-400/16 text-amber-100 shadow-[0_0_22px_rgba(245,158,11,0.24)]",
+      dot: "bg-amber-300 shadow-[0_0_16px_rgba(252,211,77,0.78)]",
       label: "text-amber-50",
-      detail: "text-amber-100/72",
+      detail: "text-amber-100/78",
       icon: "♛",
     };
   }
