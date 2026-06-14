@@ -361,7 +361,7 @@ export default function StakingActivityFeed({
     return () => observer.disconnect();
   }, [hasMore, loadMore, loadMoreEndpoint]);
 
-  const visibleRows = filterActivityRows(rows, filterMode);
+  const visibleRows = loadMoreEndpoint ? rows : filterActivityRows(rows, filterMode);
 
   return (
     <div className="space-y-2.5 overflow-hidden">
