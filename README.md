@@ -23,6 +23,7 @@ It currently owns the premium lobby/community surface, leaderboard presentation,
 - Advanced `/lobby` arena stack with the moving live ticker, Watch & Chat hero/comments rail, compact hero bet slip, compact WOLO swap tile, and the preserved Basic community lobby toggle
 - Claimed player profiles default to the Advanced command center; unclaimed replay-built profiles default to the classic Basic claim page, and both can toggle Basic/Advanced
 - Advanced player profiles include lazy match archive, watcher proof, form/rivalry diagnostics, resource emblems, AI Scribe/Grimer readout, stream signal, and premium `$WOLO`/staking stats
+- The public Kingdom spine includes `/kingdom`, `/champions`, `/national-champions`, and `/forum`, with the legacy `/belts`, `/nations`, and `/realm` paths redirecting into the new route names
 - Lazy client islands for wallet-heavy `/wolo`, `/wallet`, and `/connect-wallet` routes so the server shell paints with a small first-load bundle
 
 ## Shipped public surfaces
@@ -32,6 +33,10 @@ Current notable product routes include:
 - `/`
 - `/lobby`
 - `/bets`
+- `/kingdom`
+- `/champions`
+- `/national-champions`
+- `/forum`
 - `/live-games`
 - `/players`
 - `/rivalries`
@@ -140,6 +145,12 @@ BigJobs94/VNS with verified stake txs display the tx-backed wager transfer;
 older app-only markets such as Coco de Hae can still appear as settlement queue
 debt when they have pending claim rows but no payout tx hash yet. Do not label
 those settlement queue rows as chain txs until `payout_tx_hash` exists.
+
+Public WOLO betting surfaces should translate settlement-service blockers into
+player-safe copy. For example, a payout signer reserve-floor failure should read
+as the payout rail waiting for operator top-up on `/bets` or `/war-chest`; raw
+health codes, signer balance math, and distinct-send diagnostics belong in
+`/admin/wolochain` and `/admin/user-list`.
 
 Optional migration compatibility:
 

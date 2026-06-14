@@ -1,5 +1,7 @@
 "use client";
 
+import { ExternalLink, Shield, Swords } from "lucide-react";
+
 import type { BetWarTapeRow } from "@/lib/bets";
 
 function shortTxHash(value: string) {
@@ -18,6 +20,55 @@ function formatTapeTime(value: string) {
   });
 }
 
+function actorInitials(value: string | null) {
+  if (!value) return "?";
+  return value
+    .split(/\s+/)
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
+
+function sideLabel(side: BetWarTapeRow["side"]) {
+  if (side === "left") return "Left side";
+  if (side === "right") return "Right side";
+  return null;
+}
+
+function rowTone(row: BetWarTapeRow) {
+  const label = `${row.label} ${row.note || ""}`.toLowerCase();
+  if (row.kind === "tx") {
+    return "border-emerald-300/18 bg-emerald-400/[0.055]";
+  }
+  if (label.includes("failed") || label.includes("blocked") || label.includes("reserve")) {
+    return "border-amber-300/18 bg-amber-400/[0.06]";
+  }
+  if (label.includes("bonus") || label.includes("founder")) {
+    return "border-amber-300/16 bg-amber-400/[0.045]";
+  }
+  return "border-white/[0.06] bg-white/[0.025]";
+}
+
+function friendlyTapeNote(value: string | null) {
+  if (!value) return null;
+  const normalized = value.toLowerCase();
+  if (
+    normalized.includes("payout_reserve_floor_hit") ||
+    normalized.includes("reserve floor") ||
+    normalized.includes("payout signer balance")
+  ) {
+    return "Payout rail waiting for operator top-up.";
+  }
+  if (normalized.includes("settlement_health") || normalized.includes("settlement service")) {
+    return "Payout rail waiting for settlement health.";
+  }
+  if (normalized.includes("auth failed") || normalized.includes("auth_required")) {
+    return "Payout rail waiting for operator auth.";
+  }
+  return value;
+}
+
 export default function WarTape({
   rows,
   emptyLabel = "No tape rows yet. Bets, founder actions, and payouts will stamp in here.",
@@ -26,9 +77,12 @@ export default function WarTape({
   emptyLabel?: string;
 }) {
   return (
-    <div className="mt-4 rounded-[1.3rem] border border-white/[0.06] bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.018))] px-4 py-4">
+    <div className="mt-4 min-w-0 rounded-[1.3rem] border border-white/[0.06] bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.018))] px-3 py-4 sm:px-4">
       <div className="flex items-center justify-between gap-3">
-        <div className="text-[11px] uppercase tracking-[0.32em] text-slate-500">War Tape</div>
+        <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.32em] text-slate-500">
+          <Swords className="h-4 w-4 text-amber-100/70" />
+          War Tape
+        </div>
         <div className="text-[11px] uppercase tracking-[0.24em] text-slate-600">
           {rows.length ? `${rows.length} rows` : "quiet"}
         </div>
@@ -39,35 +93,66 @@ export default function WarTape({
       ) : (
         <div className="mt-3 space-y-2">
           {rows.map((row) => {
+            const note = friendlyTapeNote(row.note);
+            const side = sideLabel(row.side);
             const wrapperClass =
               row.kind === "tx" && row.txUrl
-                ? "block rounded-2xl border border-white/[0.06] bg-white/[0.025] px-3 py-3 transition hover:border-white/12 hover:bg-white/[0.04]"
-                : "rounded-2xl border border-white/[0.06] bg-white/[0.025] px-3 py-3";
+                ? `block min-w-0 rounded-2xl border px-3 py-3 transition hover:border-white/16 hover:bg-white/[0.055] ${rowTone(row)}`
+                : `min-w-0 rounded-2xl border px-3 py-3 ${rowTone(row)}`;
 
             const content = (
-              <>
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="text-sm font-medium text-white">{row.label}</div>
-                    <div className="mt-1 text-xs text-slate-400">
-                      {[row.actor, row.amountWolo ? `${row.amountWolo.toLocaleString()} WOLO` : null, row.note]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </div>
+              <div className="grid min-w-0 gap-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center">
+                <div className="flex items-start gap-3 sm:contents">
+                  <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/10 bg-[radial-gradient(circle_at_30%_20%,rgba(251,191,36,0.24),transparent_34%),linear-gradient(135deg,rgba(15,23,42,0.95),rgba(3,7,18,0.95))] text-xs font-semibold text-amber-100">
+                    {row.kind === "tx" ? <Shield className="h-5 w-5" /> : actorInitials(row.actor)}
                   </div>
 
-                  <div className="shrink-0 text-right">
-                    {row.txHash ? (
-                      <div className="font-mono text-[11px] text-slate-300">
-                        {shortTxHash(row.txHash)}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                      <div className="min-w-0 break-words text-sm font-semibold text-white">
+                        {row.label}
                       </div>
-                    ) : null}
-                    <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-600">
-                      {formatTapeTime(row.createdAt)}
+                      {side ? (
+                        <span
+                          className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] ${
+                            row.side === "left"
+                              ? "border-amber-200/18 bg-amber-300/10 text-amber-100"
+                              : "border-sky-200/18 bg-sky-300/10 text-sky-100"
+                          }`}
+                        >
+                          {side}
+                        </span>
+                      ) : null}
+                    </div>
+
+                    <div className="mt-1 flex min-w-0 flex-wrap gap-2 text-xs">
+                      {row.actor ? (
+                        <span className="max-w-full truncate text-slate-300">{row.actor}</span>
+                      ) : null}
+                      {row.amountWolo ? (
+                        <span className="rounded-full border border-amber-200/12 bg-black/20 px-2 py-0.5 text-amber-100">
+                          {row.amountWolo.toLocaleString()} WOLO
+                        </span>
+                      ) : null}
+                      {note ? (
+                        <span className="min-w-0 max-w-full break-words text-slate-400">{note}</span>
+                      ) : null}
                     </div>
                   </div>
                 </div>
-              </>
+
+                <div className="flex min-w-0 flex-wrap items-center gap-2 sm:justify-end">
+                  {row.txHash ? (
+                    <span className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-full border border-emerald-300/16 bg-emerald-400/10 px-2.5 py-1 font-mono text-[11px] text-emerald-100">
+                      <span className="truncate">{shortTxHash(row.txHash)}</span>
+                      {row.txUrl ? <ExternalLink className="h-3 w-3 shrink-0" /> : null}
+                    </span>
+                  ) : null}
+                  <span className="rounded-full border border-white/8 bg-black/20 px-2.5 py-1 text-[11px] uppercase tracking-[0.14em] text-slate-500">
+                    {formatTapeTime(row.createdAt)}
+                  </span>
+                </div>
+              </div>
             );
 
             if (row.kind === "tx" && row.txUrl) {

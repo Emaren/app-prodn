@@ -162,7 +162,7 @@ export default function ContactRichComposer({
 
   return (
     <div
-      className="relative space-y-3"
+      className="relative min-w-0 space-y-2.5 sm:space-y-3"
       onPaste={handlePaste}
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
@@ -182,8 +182,8 @@ export default function ContactRichComposer({
         </div>
       ) : null}
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="text-xs uppercase tracking-[0.28em] text-slate-500">
+      <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 sm:gap-3">
+        <div className="min-w-0 break-words text-[10px] uppercase tracking-[0.22em] text-slate-500 sm:text-xs sm:tracking-[0.28em]">
           {counterpartName ? `Replying to ${counterpartName}` : "Private reply"}
         </div>
         <div className="text-xs text-slate-600">
@@ -198,13 +198,15 @@ export default function ContactRichComposer({
       ) : null}
 
       {attachment ? (
-        <div className="rounded-[1.25rem] bg-white/[0.05] p-3 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]">
-          <div className="flex items-start justify-between gap-3">
-            <div>
+        <div className="min-w-0 rounded-[1.25rem] bg-white/[0.05] p-3 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]">
+          <div className="flex min-w-0 items-start justify-between gap-3">
+            <div className="min-w-0">
               <div className="text-xs uppercase tracking-[0.24em] text-slate-500">
                 {attachment.kind === "image" ? "Attachment ready" : "Voice note ready"}
               </div>
-              <div className="mt-1 text-sm font-medium text-white">{attachment.name}</div>
+              <div className="mt-1 break-words text-sm font-medium text-white [overflow-wrap:anywhere]">
+                {attachment.name}
+              </div>
               {attachment.durationSeconds ? (
                 <div className="mt-1 text-xs text-slate-500">{attachment.durationSeconds}s</div>
               ) : null}
@@ -215,7 +217,7 @@ export default function ContactRichComposer({
                 setAttachNotice(null);
                 onClearAttachment();
               }}
-              className="rounded-full bg-white/[0.06] p-2 text-slate-300 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)] transition hover:bg-white/[0.1] hover:text-white"
+              className="shrink-0 rounded-full bg-white/[0.06] p-2 text-slate-300 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)] transition hover:bg-white/[0.1] hover:text-white"
               aria-label="Remove attachment"
             >
               <X className="h-4 w-4" />
@@ -236,7 +238,7 @@ export default function ContactRichComposer({
         </div>
       ) : null}
 
-      <div className="rounded-[1.35rem] bg-white/[0.055] p-3 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]">
+      <div className="min-w-0 rounded-[1.2rem] bg-white/[0.055] p-2.5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)] sm:rounded-[1.35rem] sm:p-3">
         <AutoGrowTextarea
           value={body}
           maxRows={4}
@@ -254,8 +256,8 @@ export default function ContactRichComposer({
           className="w-full bg-transparent px-1 py-1 text-sm leading-6 text-white outline-none placeholder:text-slate-500"
         />
 
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-white/8 pt-3">
-          <div className="flex flex-wrap items-center gap-2">
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-white/8 pt-3 sm:gap-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
             <input
               id={inputId}
               ref={fileInputRef}
@@ -284,9 +286,10 @@ export default function ContactRichComposer({
               onClick={onToggleVoiceRecording}
               disabled={!voiceSupported}
               className="inline-flex items-center gap-2 rounded-full bg-white/[0.06] px-3 py-2 text-sm text-slate-200 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)] transition hover:bg-white/[0.1] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+              aria-label={voiceRecording ? "Stop voice recording" : "Start voice recording"}
             >
               {voiceRecording ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-              {voiceRecording ? "Stop Voice" : "Voice Mode"}
+              <span className="hidden sm:inline">{voiceRecording ? "Stop Voice" : "Voice Mode"}</span>
             </button>
           </div>
 
@@ -294,7 +297,7 @@ export default function ContactRichComposer({
             type="button"
             onClick={onSend}
             disabled={isDisabled}
-            className="inline-flex items-center gap-2 rounded-full bg-amber-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-amber-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
           >
             <SendHorizonal className="h-4 w-4" />
             {sendPending ? "Sending..." : "Send"}

@@ -571,7 +571,7 @@ export default async function StakingPage({
   const meter = weightMeter(snapshot.totalStakingWeight);
 
   return (
-    <main className="space-y-6 py-3 text-white sm:space-y-7 sm:py-4">
+    <main className="space-y-6 overflow-x-hidden py-3 text-white sm:space-y-7 sm:py-4">
       <style>{`
         @keyframes stakingActivityGlow {
           0% {

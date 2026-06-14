@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Castle, Crown, Globe2, Landmark, MessageSquare } from "lucide-react";
 import UserExperienceTracker from "@/components/analytics/UserExperienceTracker";
 import HeaderInboxControl from "@/components/contact/HeaderInboxControl";
 import HeaderMenu from "@/components/HeaderMenu";
@@ -36,6 +37,12 @@ const HEADER_LINKS: ReadonlyArray<{
   { href: "/staking", label: "Staking" },
 ];
 
+const KINGDOM_LINKS = [
+  { href: "/champions", label: "Champions", icon: Crown, body: "Belts, reigns, title rules" },
+  { href: "/national-champions", label: "Nations", icon: Globe2, body: "Beacon map and national bounties" },
+  { href: "/forum", label: "Forum", icon: MessageSquare, body: "War Room threads and community" },
+] as const;
+
 function HeaderPillLink({
   href,
   label,
@@ -56,6 +63,58 @@ function HeaderPillLink({
     >
       <span className="relative z-10">{displayLabel}</span>
     </Link>
+  );
+}
+
+function KingdomNavItem({ className }: { className: string }) {
+  return (
+    <div className="group relative inline-flex">
+      <Link
+        href="/kingdom"
+        className={`relative inline-flex items-center justify-center gap-1.5 overflow-visible rounded-full border px-3 py-1.5 text-xs transition ${className}`}
+      >
+        <Castle className="h-3.5 w-3.5 text-amber-100" />
+        <span className="relative z-10">🏰 Kingdom</span>
+      </Link>
+
+      <div className="pointer-events-none absolute right-0 top-full z-[110] w-[min(21rem,calc(100vw-1.5rem))] translate-y-2 opacity-0 transition duration-150 group-hover:pointer-events-auto group-hover:translate-y-3 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:translate-y-3 group-focus-within:opacity-100">
+        <div className="overflow-hidden rounded-[1.25rem] border border-amber-200/18 bg-[#07101a]/95 p-2 shadow-[0_24px_80px_rgba(0,0,0,0.48)] backdrop-blur-xl">
+          <Link
+            href="/kingdom"
+            className="mb-1 flex items-center gap-3 rounded-[1rem] border border-amber-200/18 bg-amber-300/10 px-3 py-3 text-left transition hover:bg-amber-300/16"
+          >
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-amber-200/18 bg-amber-300/10 text-amber-100">
+              <Landmark className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-sm font-semibold text-white">The Kingdom</div>
+              <div className="mt-0.5 text-xs text-slate-400">Founding chronicle and on-chain story</div>
+            </div>
+          </Link>
+
+          <div className="grid gap-1">
+            {KINGDOM_LINKS.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="flex items-center gap-3 rounded-[1rem] px-3 py-2.5 text-left transition hover:bg-white/[0.06]"
+                >
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-amber-100">
+                    <Icon className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold text-slate-100">{item.label}</div>
+                    <div className="mt-0.5 truncate text-xs text-slate-500">{item.body}</div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -198,6 +257,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                     {index === 0 ? <HeaderLiveGamesLink liveGamesCount={liveGamesCount} /> : null}
                   </React.Fragment>
                 ))}
+                <KingdomNavItem className={headerSkin.surface} />
                 {isAdmin ? (
                   <Link
                     href="/admin/user-list"
@@ -234,6 +294,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                   {index === 0 ? <HeaderLiveGamesLink liveGamesCount={liveGamesCount} /> : null}
                 </React.Fragment>
               ))}
+              <KingdomNavItem className={headerSkin.surface} />
             </nav>
 
             <div className="flex flex-col items-end gap-2 lg:justify-self-end">

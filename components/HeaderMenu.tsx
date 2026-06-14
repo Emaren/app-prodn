@@ -5,9 +5,12 @@ import { useMemo, useRef, useState, type ReactNode, useId } from "react";
 import {
   BarChart3,
   BadgeDollarSign,
+  Castle,
   Coins,
   ChevronDown,
+  Crown,
   Download,
+  Globe2,
   HandCoins,
   ListChecks,
   MessageSquareMore,
@@ -68,6 +71,7 @@ export default function HeaderMenu({
       { href: "/wolo", label: "$WOLO", icon: Coins, featured: true },
       { href: "/staking", label: "Staking", icon: HandCoins, featured: true },
       { href: "/bets", label: "Bets", icon: BadgeDollarSign, featured: true },
+      { href: "/kingdom", label: "Kingdom", icon: Castle, featured: true },
       { href: "/watch", label: "Watcher / Streaming", icon: Radio, featured: true },
       { href: "/admin/user-list", label: "Admin", icon: Shield, adminOnly: true, featured: true },
       {
@@ -86,6 +90,9 @@ export default function HeaderMenu({
         featured: true,
       },
       { href: "/contact-emaren", label: "Contact", icon: MessageSquareMore },
+      { href: "/champions", label: "Champions", icon: Crown },
+      { href: "/national-champions", label: "National Champions", icon: Globe2 },
+      { href: "/forum", label: "Forum", icon: MessageSquareMore },
       { href: "/rivalries", label: "Rivalries", icon: Swords },
       { href: "/upload", label: "Upload Replay", icon: Upload },
       { href: "/game-stats", label: "Game Stats", icon: BarChart3 },
@@ -135,7 +142,7 @@ export default function HeaderMenu({
         <div
           id={panelId}
           className={[
-            "fixed inset-x-2 bottom-2 top-[4.75rem] z-50 overflow-hidden rounded-[1.85rem] border p-2 shadow-2xl sm:absolute sm:bottom-auto sm:left-auto sm:right-0 sm:top-14 sm:max-h-[min(42rem,calc(100dvh-7rem))] sm:w-[22rem] sm:max-w-[calc(100vw-1.5rem)]",
+            "fixed inset-x-2 bottom-2 top-[4.75rem] z-[140] overflow-hidden rounded-[1.85rem] border p-2 shadow-2xl sm:absolute sm:bottom-auto sm:left-auto sm:right-0 sm:top-14 sm:max-h-[min(42rem,calc(100dvh-7rem))] sm:w-[22rem] sm:max-w-[calc(100vw-1.5rem)]",
             menuClassName || "border-white/10 bg-[#0b1324]",
           ]
             .filter(Boolean)

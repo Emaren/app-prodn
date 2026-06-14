@@ -698,17 +698,17 @@ function groupedSettlementLabel(
 ) {
   switch (capability) {
     case "supported":
-      return "grouped payouts ready";
+      return "batch payouts ready";
     case "fallback_to_singles":
-      return "single-payout fallback";
+      return "single payout mode";
     case "auth_required":
-      return "settlement auth missing";
+      return "operator auth needed";
     case "auth_failed":
-      return "settlement auth failed";
+      return "operator auth blocked";
     case "not_configured":
-      return "settlement service off";
+      return "payout rail warming";
     default:
-      return "settlement support unconfirmed";
+      return "payout rail checking";
   }
 }
 
@@ -734,6 +734,84 @@ function groupedSettlementTone(
     default:
       return "border-indigo-300/20 bg-indigo-400/10 text-indigo-100";
   }
+}
+
+function stakeRailLabel({
+  required,
+  enabled,
+  mode,
+}: {
+  required: boolean;
+  enabled: boolean;
+  mode: "disabled" | "optional" | "required";
+}) {
+  if (required && enabled) return "wallet stake required";
+  if (required) return "wallet stake pending";
+  if (mode === "optional" && enabled) return "wallet stake ready";
+  return "app slips live";
+}
+
+function settlementRailLabel(
+  mode: "settlement_service" | "local_signer_fallback" | "unconfigured"
+) {
+  if (mode === "settlement_service") return "payout rail online";
+  if (mode === "local_signer_fallback") return "operator signer ready";
+  return "payout rail warming";
+}
+
+function publicRailMessage(value: string | null | undefined) {
+  const normalized = (value || "").toLowerCase();
+  if (!normalized) return null;
+  if (
+    normalized.includes("payout_reserve_floor_hit") ||
+    normalized.includes("reserve floor") ||
+    normalized.includes("payout signer balance")
+  ) {
+    return {
+      title: "Payout rail waiting for operator top-up.",
+      body: "Queued payouts are safe; settlement resumes after the reserve check clears.",
+      tone: "amber" as const,
+    };
+  }
+  if (normalized.includes("auth")) {
+    return {
+      title: "Payout rail waiting for operator auth.",
+      body: "Queued payouts remain visible and will settle after the operator check clears.",
+      tone: "amber" as const,
+    };
+  }
+  if (
+    normalized.includes("settlement_health") ||
+    normalized.includes("settlement service") ||
+    normalized.includes("signer") ||
+    normalized.includes("not configured")
+  ) {
+    return {
+      title: "Payout rail is warming up.",
+      body: "Queued payouts remain in the app ledger while operator settlement health catches up.",
+      tone: "slate" as const,
+    };
+  }
+  return {
+    title: "Payout rail is checking settlement.",
+    body: "Queued payouts remain visible while the settlement rail confirms current health.",
+    tone: "slate" as const,
+  };
+}
+
+function buildPublicRailNotice(detail: string | null, warnings: string[]) {
+  const messages = [detail, ...warnings].map((item) => item?.trim()).filter(Boolean) as string[];
+  if (!messages.length) return null;
+  return publicRailMessage(messages.join(" "));
+}
+
+function publicEscrowConfigMessage(value: string | null) {
+  if (!value) return null;
+  const normalized = value.toLowerCase();
+  if (normalized.includes("escrow") || normalized.includes("wallet") || normalized.includes("address")) {
+    return "Wallet stake rail is waiting for operator configuration.";
+  }
+  return "Wallet stake rail is temporarily unavailable.";
 }
 
 function sideSurface(selected: boolean, emphasis: "warm" | "cool") {
@@ -832,7 +910,7 @@ export default function BetsPage() {
   const [founderComposer, setFounderComposer] = useState<FounderComposerState | null>(null);
   const [savingFounderBonus, setSavingFounderBonus] = useState(false);
   const [founderBonusError, setFounderBonusError] = useState<string | null>(null);
-  const [broadcastVisible, setBroadcastVisible] = useState(true);
+  const [broadcastVisible, setBroadcastVisible] = useState(false);
   const [pendingStakeRecoveries, setPendingStakeRecoveries] = useState<PendingStakeRecovery[]>([]);
 
   const syncPendingStakeRecoveries = useCallback(() => {
@@ -970,6 +1048,11 @@ export default function BetsPage() {
   const groupedRunCapability = board?.wolo.groupedRunCapability || "not_configured";
   const settlementSurfaceWarnings = board?.wolo.settlementSurfaceWarnings || [];
   const settlementSurfaceDetail = board?.wolo.settlementSurfaceDetail ?? null;
+  const publicSettlementNotice = buildPublicRailNotice(
+    settlementSurfaceDetail,
+    settlementSurfaceWarnings
+  );
+  const publicEscrowConfig = publicEscrowConfigMessage(runtimeBetEscrowConfigError);
   const unresolvedStakeIntents = board?.recovery.unresolvedStakeIntents || [];
   const maxStakeWolo = useMemo(() => resolveStakeMax(rawWalletBalance), [rawWalletBalance]);
 
@@ -1636,7 +1719,7 @@ export default function BetsPage() {
   }, [latestResult, spotlightMarket]);
 
   useEffect(() => {
-    setBroadcastVisible(true);
+    setBroadcastVisible(false);
   }, [broadcastSurface.key]);
 
   return (
@@ -1708,11 +1791,11 @@ export default function BetsPage() {
                 </div>
               </div>
 
-              {runtimeBetEscrowConfigError ? (
+              {publicEscrowConfig ? (
                 <div
                   className={`mt-4 ${insetClass()} border-rose-300/15 bg-rose-500/[0.08] px-4 py-4 text-sm text-rose-100`}
                 >
-                  {runtimeBetEscrowConfigError}
+                  {publicEscrowConfig}
                 </div>
               ) : null}
             </div>
@@ -1731,28 +1814,34 @@ export default function BetsPage() {
               {loadingBoard ? (
                 <LoadingMarket />
               ) : spotlightMarket ? (
-                <MarketFeature
-                  market={spotlightMarket}
-                  eyebrowLabel={spotlightMarket.featured ? "Featured Market" : "Current Book"}
-                  detailMode="basic"
-                  selection={selection}
-                  workingKey={workingKey}
-                  lockWorkflow={lockWorkflow}
-                  nowMs={nowMs}
-                  isAuthenticated={isAuthenticated}
-                  isAdmin={isAdmin}
-                  loadingAuth={loading}
-                  maxStakeWolo={maxStakeWolo}
-                  onSelect={handleSelect}
-                  onStakeChange={(stake) =>
-                    setSelection((current) =>
-                      current && current.marketId === spotlightMarket.id ? { ...current, stake } : current
-                    )
-                  }
-                  onLock={() => handleLock(spotlightMarket)}
-                  onClear={() => handleClear(spotlightMarket.id)}
-                  onOpenFounderBonus={openFounderComposer}
-                />
+                <>
+                  <MarketFeature
+                    market={spotlightMarket}
+                    eyebrowLabel={spotlightMarket.featured ? "Featured Market" : "Current Book"}
+                    detailMode="basic"
+                    selection={selection}
+                    workingKey={workingKey}
+                    lockWorkflow={lockWorkflow}
+                    nowMs={nowMs}
+                    isAuthenticated={isAuthenticated}
+                    isAdmin={isAdmin}
+                    loadingAuth={loading}
+                    maxStakeWolo={maxStakeWolo}
+                    onSelect={handleSelect}
+                    onStakeChange={(stake) =>
+                      setSelection((current) =>
+                        current && current.marketId === spotlightMarket.id ? { ...current, stake } : current
+                      )
+                    }
+                    onLock={() => handleLock(spotlightMarket)}
+                    onClear={() => handleClear(spotlightMarket.id)}
+                    onOpenFounderBonus={openFounderComposer}
+                  />
+                  <WarTape
+                    rows={spotlightMarket.warTape.slice(0, 5)}
+                    emptyLabel="Slips and payout proof will stamp in here as the game moves."
+                  />
+                </>
               ) : recentResults.length ? (
                 <RecentResultFeature result={recentResults[0]} />
               ) : (
@@ -1847,13 +1936,11 @@ export default function BetsPage() {
                             : "border border-white/[0.08] bg-white/[0.04] text-slate-300"
                     }`}
                   >
-                    {onchainBetEscrowRequired && onchainBetEscrowEnabled
-                      ? "verified escrow required"
-                      : onchainBetEscrowRequired
-                        ? "escrow required"
-                        : runtimeBetEscrowMode === "optional" && onchainBetEscrowEnabled
-                          ? "escrow optional"
-                          : "app-side fallback"}
+                    {stakeRailLabel({
+                      required: onchainBetEscrowRequired,
+                      enabled: onchainBetEscrowEnabled,
+                      mode: runtimeBetEscrowMode,
+                    })}
                   </span>
                   <span
                     className={`rounded-full border px-2.5 py-0.5 text-[10px] uppercase tracking-[0.16em] ${groupedSettlementTone(groupedRunCapability)}`}
@@ -1861,11 +1948,7 @@ export default function BetsPage() {
                     {groupedSettlementLabel(groupedRunCapability)}
                   </span>
                   <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-0.5 text-[10px] uppercase tracking-[0.16em] text-slate-300">
-                    {settlementExecutionMode === "settlement_service"
-                      ? "chain rail active"
-                      : settlementExecutionMode === "local_signer_fallback"
-                        ? "local signer fallback"
-                        : "chain rail pending"}
+                    {settlementRailLabel(settlementExecutionMode)}
                   </span>
                 </div>
 
@@ -1913,26 +1996,21 @@ export default function BetsPage() {
                 </div>
               ) : null}
 
-              {runtimeBetEscrowConfigError ? (
+              {publicEscrowConfig ? (
                 <div className={`mt-4 ${insetClass()} border-rose-300/15 bg-rose-500/[0.08] px-4 py-4 text-sm text-rose-100`}>
-                  {runtimeBetEscrowConfigError}
+                  {publicEscrowConfig}
                 </div>
               ) : null}
-              {settlementSurfaceDetail ? (
-                <div className={`mt-4 ${insetClass()} px-4 py-4 text-sm text-slate-300`}>
-                  {settlementSurfaceDetail}
-                </div>
-              ) : null}
-              {settlementSurfaceWarnings.length ? (
-                <div className="mt-4 space-y-2">
-                  {settlementSurfaceWarnings.map((warning, index) => (
-                    <div
-                      key={`${warning}-${index}`}
-                      className={`${insetClass()} border-amber-300/15 bg-amber-500/[0.08] px-4 py-4 text-sm text-amber-100`}
-                    >
-                      {warning}
-                    </div>
-                  ))}
+              {publicSettlementNotice ? (
+                <div
+                  className={`mt-4 ${insetClass()} px-4 py-4 text-sm ${
+                    publicSettlementNotice.tone === "amber"
+                      ? "border-amber-300/15 bg-amber-500/[0.08] text-amber-100"
+                      : "text-slate-300"
+                  }`}
+                >
+                  <div className="font-semibold text-white">{publicSettlementNotice.title}</div>
+                  <div className="mt-1 leading-6">{publicSettlementNotice.body}</div>
                 </div>
               ) : null}
             </div>
@@ -1973,8 +2051,10 @@ export default function BetsPage() {
                   onClear={() => handleClear(spotlightMarket.id)}
                   onOpenFounderBonus={openFounderComposer}
                 />
+              ) : recentResults.length ? (
+                <RecentResultFeature result={recentResults[0]} />
               ) : (
-                <EmptyShell label="No books armed yet." />
+                <EmptyShell label="No books armed yet. The latest closed book will linger here once proof lands." />
               )}
             </section>
           </section>
@@ -2345,8 +2425,8 @@ function BroadcastVisibilityButton({
     <button
       type="button"
       aria-pressed={visible}
-      aria-label={visible ? "Hide Broadcast" : "Show Broadcast"}
-      title={visible ? "Hide Broadcast" : "Show Broadcast"}
+      aria-label={visible ? "Compact Broadcast" : "Expand Broadcast"}
+      title={visible ? "Compact Broadcast" : "Expand Broadcast"}
       onClick={onToggle}
       className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition ${
         visible
@@ -2534,8 +2614,35 @@ function BroadcastHeroTile({
           />
         </>
       ) : (
-        <div className={`${insetClass()} mt-4 px-4 py-5 text-sm text-slate-300`}>
-          Broadcast hidden.
+        <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_14rem] lg:items-stretch">
+          <BroadcastCompactFrame
+            label={activeView.label}
+            eyebrow={activeView.eyebrow}
+            tone={activeView.tone}
+            feed={activeView.feed}
+            previewUrl={activeView.previewUrl}
+            browserHost={browserHost}
+            marketTitle={marketTitle}
+            isPlaying={activeViewHasEmbeddableFeed || playingView === activeView.key}
+            onPlay={() => setPlayingView(activeView.key)}
+          />
+          <div className="grid grid-cols-3 gap-2 lg:grid-cols-1">
+            {views.map((view) => (
+              <BroadcastPreviewButton
+                key={view.key}
+                label={view.label}
+                eyebrow={view.eyebrow}
+                tone={view.tone}
+                feed={view.feed}
+                previewUrl={view.previewUrl}
+                selected={selectedView === view.key}
+                onSelect={() => {
+                  setSelectedView(view.key);
+                  setPlayingView(null);
+                }}
+              />
+            ))}
+          </div>
         </div>
       )}
     </section>
@@ -2585,6 +2692,54 @@ function BroadcastPreviewButton({
         <div className="mt-1 truncate text-xs font-semibold text-white sm:text-sm">{label}</div>
       </div>
     </button>
+  );
+}
+
+function BroadcastCompactFrame({
+  label,
+  eyebrow,
+  tone,
+  feed,
+  previewUrl,
+  browserHost,
+  marketTitle,
+  isPlaying,
+  onPlay,
+}: {
+  label: string;
+  eyebrow: string;
+  tone: "warm" | "gold" | "cool";
+  feed: BroadcastFeed | null;
+  previewUrl: string | null;
+  browserHost: string;
+  marketTitle: string;
+  isPlaying: boolean;
+  onPlay: () => void;
+}) {
+  return (
+    <div className="min-w-0 overflow-hidden rounded-[1.35rem] border border-white/[0.08] bg-slate-950/70 p-2">
+      <div className="aspect-video max-h-[18rem] min-h-[9rem] overflow-hidden rounded-[1.1rem] border border-white/[0.06] bg-black/55 sm:min-h-[11rem]">
+        <BroadcastSignalSurface
+          tone={tone}
+          feed={feed}
+          previewUrl={previewUrl}
+          browserHost={browserHost}
+          isPlaying={isPlaying}
+          onPlay={onPlay}
+        />
+      </div>
+      <div className="mt-2 flex min-w-0 flex-wrap items-center justify-between gap-2 px-1">
+        <div className="min-w-0">
+          <div className="truncate text-[10px] uppercase tracking-[0.22em] text-slate-500">
+            {feed ? providerLabel(feed) : eyebrow}
+          </div>
+          <div className="mt-1 truncate text-sm font-semibold text-white sm:text-base">{label}</div>
+        </div>
+        <div className="max-w-full truncate rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-[11px] text-slate-300">
+          {feed ? `${providerLabel(feed)} feed` : `Preview · ${marketTitle}`}
+        </div>
+      </div>
+    </div>
   );
 }
 

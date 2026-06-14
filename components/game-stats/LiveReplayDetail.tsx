@@ -226,8 +226,10 @@ export default function LiveReplayDetail({
             <div className="text-xs uppercase tracking-[0.35em] text-red-200/75">
               {isBattleArchive ? "Battle Archive" : "Live Replay Detail"}
             </div>
-            <h1 className="text-4xl font-semibold text-white sm:text-5xl">{readMapName(game.map)}</h1>
-            <p className="max-w-3xl text-base leading-7 text-slate-300 sm:text-lg">
+            <h1 className="break-words text-4xl font-semibold text-white sm:text-5xl [overflow-wrap:anywhere]">
+              {readMapName(game.map)}
+            </h1>
+            <p className="max-w-3xl break-words text-base leading-7 text-slate-300 sm:text-lg [overflow-wrap:anywhere]">
               {players.length > 0
                 ? players.map((player) => displayPlayerName(player)).join(" vs ")
                 : displayReplayFilename(game.originalFilename, game.replayFile)}
@@ -643,7 +645,9 @@ export default function LiveReplayDetail({
                             <span>{formatDurationLabel(Number(entry.timestamp_seconds))}</span>
                           ) : null}
                         </div>
-                        <div className="mt-2 text-sm text-slate-200">{formatPrimitive(entry.message)}</div>
+                        <div className="mt-2 break-words text-sm text-slate-200 [overflow-wrap:anywhere]">
+                          {formatPrimitive(entry.message)}
+                        </div>
                       </div>
                     ))}
                   </div>

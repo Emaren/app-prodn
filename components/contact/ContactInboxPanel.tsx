@@ -678,7 +678,7 @@ function TextMessageBubble({
     <div className={`flex ${isViewer ? "justify-end" : "justify-start"}`}>
       <div
         ref={bubbleRef}
-        className={`group relative ${maxBubbleWidthClass}`}
+        className={`group relative min-w-0 max-w-full ${maxBubbleWidthClass}`}
         onPointerDown={(event) => beginLongPress(event.pointerType)}
         onPointerUp={clearHoldTimer}
         onPointerCancel={clearHoldTimer}
@@ -694,7 +694,7 @@ function TextMessageBubble({
 
         <div className="relative">
           <div
-            className={`relative rounded-[1.45rem] px-4 py-3 ${bubbleTone}`}
+            className={`relative rounded-[1.25rem] px-3 py-2.5 sm:rounded-[1.45rem] sm:px-4 sm:py-3 ${bubbleTone}`}
             onClick={handleBubbleClick}
           >
             {message.body ? (
@@ -747,7 +747,7 @@ function TextMessageBubble({
 
           {hasTray ? (
             <div
-              className={`absolute z-30 ${isViewer ? "right-3" : "left-3"} top-full mt-2 transition-all duration-150 ${
+              className={`absolute z-30 max-w-[calc(100vw-2rem)] ${isViewer ? "right-0 sm:right-3" : "left-0 sm:left-3"} top-full mt-2 transition-all duration-150 ${
                 trayVisible
                   ? "pointer-events-auto translate-y-0 opacity-100"
                   : "pointer-events-none translate-y-1 opacity-0"
@@ -755,7 +755,7 @@ function TextMessageBubble({
               onMouseEnter={handleDesktopHoverStart}
               onMouseLeave={handleDesktopHoverEnd}
             >
-              <div className="inline-flex items-center gap-2 whitespace-nowrap rounded-full border border-white/10 bg-[#091321] px-2.5 py-2 shadow-[0_22px_48px_rgba(2,6,23,0.6)]">
+              <div className="inline-flex max-w-full flex-wrap items-center gap-1.5 rounded-[1.15rem] border border-white/10 bg-[#091321] px-2.5 py-2 shadow-[0_22px_48px_rgba(2,6,23,0.6)] sm:gap-2 sm:rounded-full">
                 {canToggleLobbyShare ? (
                   <button
                     type="button"
@@ -1024,14 +1024,14 @@ export default function ContactInboxPanel({
 
   return (
     <div
-      className={`flex min-h-0 flex-col overflow-hidden rounded-[1.6rem] text-white shadow-[0_28px_120px_rgba(0,0,0,0.45)] ${shellClassName} ${
+      className={`flex min-h-0 flex-col overflow-hidden rounded-[1.25rem] text-white shadow-[0_28px_120px_rgba(0,0,0,0.45)] sm:rounded-[1.6rem] ${shellClassName} ${
         mode === "page"
           ? "h-full max-h-full flex-1 shadow-[0_32px_140px_rgba(0,0,0,0.5)]"
           : "h-full w-full shadow-[0_34px_120px_rgba(2,6,23,0.82)]"
       }`}
       style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.07), 0 32px 120px rgba(0,0,0,0.45)" }}
     >
-      <div className={`shrink-0 border-b px-4 py-3 ${chromeClassName}`}>
+      <div className={`shrink-0 border-b px-3 py-2.5 sm:px-4 sm:py-3 ${chromeClassName}`}>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="text-[11px] uppercase tracking-[0.32em] text-amber-200/70">
@@ -1041,7 +1041,9 @@ export default function ContactInboxPanel({
                   ? "Private inbox"
                   : "Direct line"}
             </div>
-            <h2 className="mt-2 truncate text-xl font-semibold text-white">{heading}</h2>
+            <h2 className="mt-1.5 break-words text-lg font-semibold text-white sm:mt-2 sm:truncate sm:text-xl">
+              {heading}
+            </h2>
             {counterpart ? (
               <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-400">
                 <span>
@@ -1102,7 +1104,7 @@ export default function ContactInboxPanel({
 
         <div className="flex min-h-0 flex-1 flex-col">
           {showConversationChips ? (
-            <div className={`flex shrink-0 gap-2 overflow-x-auto overscroll-contain border-b px-4 py-3 ${chromeClassName}`}>
+            <div className={`flex shrink-0 gap-2 overflow-x-auto overscroll-contain border-b px-3 py-2.5 sm:px-4 sm:py-3 ${chromeClassName}`}>
               {data?.summaries.map((summary) => (
                 <button
                   key={summary.targetUid}
@@ -1123,7 +1125,7 @@ export default function ContactInboxPanel({
 
           <div
             ref={timelineViewportRef}
-            className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4"
+            className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3 sm:px-4 sm:py-4"
           >
             {typingLabel ? (
               <div className="mb-3 flex justify-center">
@@ -1181,11 +1183,11 @@ export default function ContactInboxPanel({
             )}
           </div>
 
-          <div className={`shrink-0 border-t px-4 py-4 ${chromeClassName} ${composerClassName}`}>
+          <div className={`shrink-0 border-t px-3 py-3 sm:px-4 sm:py-4 ${chromeClassName} ${composerClassName}`}>
             {richComposer ? (
               richComposer
             ) : (
-              <div className="flex gap-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
                 <AutoGrowTextarea
                   value={body}
                   maxRows={4}
@@ -1202,13 +1204,13 @@ export default function ContactInboxPanel({
                     }
                   }}
                   placeholder={buildPrompt(data, counterpart)}
-                  className={`flex-1 rounded-[1.25rem] px-4 py-3 text-sm leading-6 text-white outline-none placeholder:text-slate-500 transition focus:shadow-[inset_0_0_0_1px_rgba(251,191,36,0.25)] ${plainComposerInputClassName}`}
+                  className={`min-w-0 flex-1 rounded-[1.25rem] px-4 py-3 text-sm leading-6 text-white outline-none placeholder:text-slate-500 transition focus:shadow-[inset_0_0_0_1px_rgba(251,191,36,0.25)] ${plainComposerInputClassName}`}
                 />
                 <button
                   type="button"
                   onClick={onSend}
                   disabled={sendPending || !body.trim() || Boolean(data?.unavailableReason)}
-                  className="self-end rounded-full bg-amber-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="min-h-11 rounded-full bg-amber-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-50 sm:self-end"
                 >
                   {sendPending ? "Sending..." : "Send"}
                 </button>

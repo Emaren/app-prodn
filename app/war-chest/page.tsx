@@ -41,6 +41,22 @@ function shortTxHash(value: string | null) {
   return `${value.slice(0, 10)}…${value.slice(-6)}`;
 }
 
+function friendlyClaimError(value: string | null) {
+  if (!value) return null;
+  const normalized = value.toLowerCase();
+  if (
+    normalized.includes("payout_reserve_floor_hit") ||
+    normalized.includes("reserve floor") ||
+    normalized.includes("payout signer balance")
+  ) {
+    return "Payout rail waiting for operator top-up.";
+  }
+  if (normalized.includes("settlement_health") || normalized.includes("settlement service")) {
+    return "Payout rail waiting for settlement health.";
+  }
+  return "Payout queued for operator review.";
+}
+
 function modeLabel(mode: WarChestMode) {
   return mode === "weekly" ? "Weekly" : "All Time";
 }
@@ -101,7 +117,7 @@ export default async function WarChestPage({ searchParams }: WarChestPageProps) 
     : 0;
 
   return (
-    <main className="space-y-6 py-3 text-white sm:space-y-7 sm:py-4">
+    <main className="space-y-6 overflow-x-hidden py-3 text-white sm:space-y-7 sm:py-4">
       <section className="relative overflow-hidden rounded-[2.2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(251,191,36,0.18),_transparent_22%),radial-gradient(circle_at_78%_16%,_rgba(59,130,246,0.16),_transparent_24%),radial-gradient(circle_at_60%_82%,_rgba(16,185,129,0.14),_transparent_22%),linear-gradient(135deg,_#07101d,_#0b1425_50%,_#040812)] p-6 shadow-[0_40px_120px_rgba(2,6,23,0.42)] sm:p-8 lg:p-10">
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(110deg,transparent,rgba(255,255,255,0.035),transparent)]" />
 
@@ -358,7 +374,7 @@ export default async function WarChestPage({ searchParams }: WarChestPageProps) 
                     href={wager.actorHref}
                     className="block rounded-[1.35rem] border border-white/8 bg-white/5 p-4 transition hover:border-sky-300/20 hover:bg-white/10"
                   >
-                    <div className="flex items-start justify-between gap-4">
+                    <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <div className="text-sm font-semibold text-white">{wager.actorName}</div>
@@ -376,7 +392,7 @@ export default async function WarChestPage({ searchParams }: WarChestPageProps) 
                           {wager.eventLabel} · {formatMoment(wager.createdAt)}
                         </div>
                       </div>
-                      <div className="text-right">
+                      <div className="min-w-0 text-left sm:text-right">
                         <div className="text-lg font-semibold text-white">
                           {formatNumber(wager.amountWolo)} WOLO
                         </div>
@@ -399,50 +415,58 @@ export default async function WarChestPage({ searchParams }: WarChestPageProps) 
             {snapshot.recentClaims.length === 0 ? (
               <EmptyPanel message="No claim or payout rows have landed yet." />
             ) : (
-              snapshot.recentClaims.map((claim) => (
-                <Link
-                  key={claim.id}
-                  href={claim.href}
-                  className="block rounded-[1.4rem] border border-white/8 bg-white/5 p-4 transition hover:border-emerald-300/18 hover:bg-white/10"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <div className="text-sm font-semibold text-white">{claim.playerName}</div>
-                        <Tag
-                          tone={
-                            claim.status === "claimed"
-                              ? "emerald"
-                              : claim.errorState
-                                ? "rose"
-                                : "amber"
-                          }
-                        >
-                          {claim.status}
-                        </Tag>
-                      </div>
-                      <div className="mt-2 text-sm text-slate-300">{claim.note || "WOLO claim rail"}</div>
-                      <div className="mt-1 text-xs text-slate-400">
-                        Created {formatMoment(claim.createdAt)}
-                        {claim.claimedAt ? ` · Claimed ${formatMoment(claim.claimedAt)}` : ""}
-                      </div>
-                      {claim.payoutTxHash ? (
-                        <div className="mt-2 text-xs text-emerald-100/90">
-                          Tx {shortTxHash(claim.payoutTxHash)}
+              snapshot.recentClaims.map((claim) => {
+                const claimErrorLabel = friendlyClaimError(claim.errorState);
+
+                return (
+                  <Link
+                    key={claim.id}
+                    href={claim.href}
+                    className="block rounded-[1.4rem] border border-white/8 bg-white/5 p-4 transition hover:border-emerald-300/18 hover:bg-white/10"
+                  >
+                    <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <div className="break-words text-sm font-semibold text-white [overflow-wrap:anywhere]">
+                            {claim.playerName}
+                          </div>
+                          <Tag
+                            tone={
+                              claim.status === "claimed"
+                                ? "emerald"
+                                : claim.errorState
+                                  ? "rose"
+                                  : "amber"
+                            }
+                          >
+                            {claim.status}
+                          </Tag>
                         </div>
-                      ) : null}
-                      {claim.errorState ? (
-                        <div className="mt-2 text-xs text-rose-100/90">{claim.errorState}</div>
-                      ) : null}
-                    </div>
-                    <div className="text-right">
-                      <div className="text-lg font-semibold text-white">
-                        {formatNumber(claim.amountWolo)} WOLO
+                        <div className="mt-2 break-words text-sm text-slate-300 [overflow-wrap:anywhere]">
+                          {claim.note || "WOLO claim rail"}
+                        </div>
+                        <div className="mt-1 text-xs text-slate-400">
+                          Created {formatMoment(claim.createdAt)}
+                          {claim.claimedAt ? ` · Claimed ${formatMoment(claim.claimedAt)}` : ""}
+                        </div>
+                        {claim.payoutTxHash ? (
+                          <div className="mt-2 text-xs text-emerald-100/90">
+                            Tx {shortTxHash(claim.payoutTxHash)}
+                          </div>
+                        ) : null}
+                        {claimErrorLabel ? (
+                          <div className="mt-2 text-xs text-rose-100/90">{claimErrorLabel}</div>
+                        ) : null}
+                      </div>
+                      <div className="min-w-0 text-left sm:text-right">
+                        <div className="text-lg font-semibold text-white">
+                          {formatNumber(claim.amountWolo)} WOLO
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </Link>
-              ))
+                  </Link>
+                );
+              })
             )}
           </div>
         </Panel>

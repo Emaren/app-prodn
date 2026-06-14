@@ -227,7 +227,7 @@ export default function StakingActivityFeed({
           <span>{rows.length.toLocaleString()} rows loaded</span>
           <span>{hasMore ? "Scroll for older rows" : rows.length > 0 ? "At mainnet start" : "No rows"}</span>
         </div>
-        <div ref={scrollRootRef} className="max-h-[34rem] space-y-2.5 overflow-y-auto pr-1">
+        <div ref={scrollRootRef} className="max-h-[34rem] space-y-2.5 overflow-y-auto overflow-x-hidden pr-1">
           {rows.map((item) => {
             const key = activityKey(item);
             return (
@@ -296,17 +296,17 @@ function ActivityRow({
 
   return (
     <div
-      className={`flex flex-col gap-3 rounded-[1.1rem] border bg-white/[0.04] p-3.5 sm:flex-row sm:items-center ${isFresh ? "staking-activity-new border-amber-300/30" : "border-white/10"} ${className}`}
+      className={`flex min-w-0 max-w-full flex-col gap-3 overflow-hidden rounded-[1.1rem] border bg-white/[0.04] p-3.5 sm:flex-row sm:items-center ${isFresh ? "staking-activity-new border-amber-300/30" : "border-white/10"} ${className}`}
     >
       <div className="flex min-w-0 flex-1 gap-3">
         <div className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${toneClass}`} />
         <div className="min-w-0 flex-1">
-          <div className="truncate font-semibold text-white">{item.label}</div>
-          <div className="mt-0.5 truncate text-sm leading-6 text-slate-300">{item.detail}</div>
+          <div className="break-words font-semibold text-white">{item.label}</div>
+          <div className="mt-0.5 break-words text-sm leading-6 text-slate-300">{item.detail}</div>
         </div>
       </div>
 
-      <div className="flex shrink-0 flex-wrap gap-2 pl-5 sm:justify-end sm:pl-0">
+      <div className="flex min-w-0 flex-wrap gap-2 pl-5 sm:justify-end sm:pl-0">
         <FeedChip>{typeLabel}</FeedChip>
         {amountLabel ? <FeedChip>{amountLabel}</FeedChip> : null}
         <FeedChip>{timestampLabel}</FeedChip>
@@ -317,7 +317,7 @@ function ActivityRow({
 
 function FeedChip({ children }: { children: string }) {
   return (
-    <span className="rounded-full border border-white/10 bg-black/20 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-300">
+    <span className="max-w-full break-all rounded-full border border-white/10 bg-black/20 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-300">
       {children}
     </span>
   );

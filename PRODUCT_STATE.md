@@ -11,6 +11,7 @@ The app is no longer just a replay/stat shell. It now has a real public product 
 - next tournament panel is shipped and usable
 - players, rivalries, requests, `$WOLO`, and live-game surfaces are all real navigation destinations
 - `/bets`, `/war-chest`, and tournament detail pages are now real public destinations too
+- `/kingdom`, `/champions`, `/national-champions`, and `/forum` are now public AoE2WAR-style league/community destinations, with `/belts`, `/nations`, and `/realm` redirecting into them
 - live replay ingestion can feed visible match outcomes back into the product without the old obviously-broken feel
 
 ## Strongest shipped modules
@@ -81,6 +82,11 @@ Current strengths:
 Current strengths:
 - rivalries are a real top-level destination
 - public navigation now has enough surface area to feel like an ecosystem
+- the Kingdom dropdown gives the top nav a broader world layer: The Kingdom, Champions, Nations, and Forum
+- `/kingdom` tells the app-side chronicle/wealth story without pretending to own WoloChain truth
+- `/champions` is the championship-belt surface for world, chaos, tag, women, ELO, and designation titles
+- `/national-champions` is the national-beacon surface with claimed and vacant country titles
+- `/forum` is a public War Room shell for community energy, featured threads, champion activity, and WOLO-adjacent calls to action
 - the site answers “what else can I do here?” better than before
 - overall product identity is stronger than the earlier explainer-heavy versions
 
@@ -155,6 +161,7 @@ Current state:
 - `/admin/wolochain` now shows a wallet-friction rail for recent Keplr/Ledger stake failures, and `/admin/user-list` surfaces the last-24h count in the WoloChain entry tile
 - winning payouts can now auto-settle on-chain for trusted wallet-linked winners, with tx hashes visible in the admin settlement rail
 - payout claims now have a distinct-send guard: before a claim row is marked `claimed`, the returned tx must contain a matching WoloChain `MsgSend` for that recipient and amount, and a reused tx hash must have enough distinct matching sends for every claimed row using it
+- public betting and war-chest rails now translate payout reserve-floor/config blockers into player-safe operator top-up language; raw settlement health codes and signer-balance math stay in admin/operator surfaces
 - `/admin/wolochain` now includes duplicate-tx diagnostics and indexed-transfer gap diagnostics, separating verified mainnet multi-payouts from suspicious mainnet duplicates, legacy testnet single-send duplicates, and REST-not-found rows
 - `/profile` now presents WOLO ledger rows newest-first, labels confirmed mainnet transfers separately from app-side pending/retry claim rows, filters old testnet claim rows out of mainnet accounting, and flags duplicate/suspicious claim tx groups
 - pending settlement activity is claim-level instead of market-collapsed, so individual child claims remain visible to operators
