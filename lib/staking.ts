@@ -1253,6 +1253,15 @@ export async function loadMainnetTransferStakingActivityPage(
         eventType === "REWARD" ||
         eventType === "STAKE" ||
         eventType === "UNSTAKE" ||
+        eventType === "CYCLE" ||
+        eventType === "COMPOUND" ||
+        (eventType === "TX" && (text.includes("compound") || text.includes("staking event"))) ||
+        text.includes("staking treasury") ||
+        text.includes("staking payout") ||
+        text.includes("staking fee share") ||
+        text.includes("compound event") ||
+        text.includes("compounded") ||
+        text.includes("compound") ||
         text.includes("staking reward") ||
         text.includes("staking deposit") ||
         text.includes("staking fee share") ||
@@ -1261,6 +1270,26 @@ export async function loadMainnetTransferStakingActivityPage(
     }
 
     if (filter === "bets") {
+      const stakingLike =
+        eventType === "REWARD" ||
+        eventType === "STAKE" ||
+        eventType === "UNSTAKE" ||
+        eventType === "CYCLE" ||
+        eventType === "COMPOUND" ||
+        (eventType === "TX" && (text.includes("compound") || text.includes("staking event"))) ||
+        text.includes("staking treasury") ||
+        text.includes("staking payout") ||
+        text.includes("staking fee share") ||
+        text.includes("staking reward") ||
+        text.includes("staking wallet") ||
+        text.includes("staking deposit") ||
+        text.includes("staking unstake") ||
+        text.includes("compound event") ||
+        text.includes("compounded") ||
+        text.includes("compound");
+
+      if (stakingLike) return false;
+
       return (
         eventType === "GROUPED BET" ||
         eventType === "SETTLEMENT" ||

@@ -30,13 +30,25 @@ function isStakingActivity(item: StakingActivityItem) {
     type === "STAKE" ||
     type === "UNSTAKE" ||
     type === "CYCLE" ||
+    type === "COMPOUND" ||
+    (type === "TX" && (text.includes("compound") || text.includes("staking event"))) ||
     text.includes("staking reward") ||
+    text.includes("staking fee share") ||
     text.includes("staking wallet") ||
-    text.includes("staking deposit")
+    text.includes("staking deposit") ||
+    text.includes("staking treasury") ||
+    text.includes("staking payout") ||
+    text.includes("stake deposit") ||
+    text.includes("staking unstake") ||
+    text.includes("compound event") ||
+    text.includes("compounded") ||
+    text.includes("compound")
   );
 }
 
 function isBetActivity(item: StakingActivityItem) {
+  if (isStakingActivity(item)) return false;
+
   const type = normalizedEventType(item);
   const text = `${item.label || ""} ${item.detail || ""}`.toLowerCase();
   return (
@@ -45,6 +57,7 @@ function isBetActivity(item: StakingActivityItem) {
     type === "PAYOUT" ||
     type === "ESCROW" ||
     text.includes("bet_") ||
+    text.includes("bet payout") ||
     text.includes("bet stake") ||
     text.includes("founders_") ||
     text.includes(" vs ")
