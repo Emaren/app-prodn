@@ -1180,13 +1180,14 @@ export async function loadMainnetTransferStakingActivityPage(
   const validBeforeDate = beforeDate && !Number.isNaN(beforeDate.getTime()) ? beforeDate : null;
 
   const mainnetDisplayStartAt = getWoloMainnetDisplayStartAt();
+  const includeStakingLedgerRows = filter === "all" || filter === "staking";
 
   const [indexedTransferRows, giftRows, mainnetActivityRows, pendingSettlementRows, stakingCycleRows, stakingAllocationRows] = await Promise.all([
     loadIndexedWoloTransferActivityRows(prisma, rawActivityTake, { before }).catch(() => []),
     loadRecentWoloGiftActivityRows(prisma, rawActivityTake, before).catch(() => []),
     loadWoloMainnetActivityRows(prisma, rawActivityTake).catch(() => []),
     loadPendingSettlementActivityRows(prisma, rawActivityTake).catch(() => []),
-    mode === "ledger" && filter === "staking"
+    includeStakingLedgerRows
       ? prisma.stakingRewardDistribution
           .findMany({
             where: {
@@ -1203,7 +1204,7 @@ export async function loadMainnetTransferStakingActivityPage(
             return [];
           })
       : Promise.resolve([]),
-    mode === "ledger" && filter === "staking"
+    includeStakingLedgerRows
       ? prisma.$queryRawUnsafe<
           Array<{
             id: number;
