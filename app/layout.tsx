@@ -91,6 +91,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           data-domain="aoe2war.com"
           src="https://plausible.io/js/script.js"
         />
+        <Script
+          defer
+          src="https://traffic.tokentap.ca/api/beacon.js"
+          data-project="aoe2hdbets"
+        />
         <AppShell>{children}</AppShell>
         <PwaRegister />
       </body>
