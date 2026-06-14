@@ -470,9 +470,12 @@ function shortAddress(value: string | null | undefined) {
 export function isPublicStakingActivityItem(item: StakingActivityItem) {
   return (
     item.eventType !== "FAUCET" &&
-    (item.eventType === "SETTLEMENT" ||
+    (item.eventType === "CYCLE" ||
+      item.eventType === "REWARD" ||
+      item.eventType === "PAYOUT" ||
+      item.eventType === "SETTLEMENT" ||
       item.eventType === "DIRECT" ||
-        item.eventType === "GIFT" ||
+      item.eventType === "GIFT" ||
       (item.key?.startsWith("tx-") ?? false) ||
       /\btx\s+[0-9a-f]{8}/i.test(item.detail))
   );
@@ -1176,11 +1179,28 @@ export async function loadMainnetTransferStakingActivityPage(
         : null;
   const validBeforeDate = beforeDate && !Number.isNaN(beforeDate.getTime()) ? beforeDate : null;
 
-  const [indexedTransferRows, giftRows, mainnetActivityRows, pendingSettlementRows] = await Promise.all([
+  const [indexedTransferRows, giftRows, mainnetActivityRows, pendingSettlementRows, stakingCycleRows] = await Promise.all([
     loadIndexedWoloTransferActivityRows(prisma, rawActivityTake, { before }).catch(() => []),
     loadRecentWoloGiftActivityRows(prisma, rawActivityTake, before).catch(() => []),
     loadWoloMainnetActivityRows(prisma, rawActivityTake).catch(() => []),
     loadPendingSettlementActivityRows(prisma, rawActivityTake).catch(() => []),
+    mode === "ledger" && filter === "staking"
+      ? prisma.stakingRewardDistribution
+          .findMany({
+            where: {
+              ...(validBeforeDate ? { createdAt: { lt: validBeforeDate } } : {}),
+              ...(isWoloMainnet() ? { distributionDate: { gte: getWoloMainnetDisplayStartAt() } } : {}),
+              status: "FINALIZED",
+              stakerPoolWolo: { lte: 0 },
+            },
+            orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+            take: rawActivityTake,
+          })
+          .catch((error) => {
+            console.warn("Failed to load staking cycle activity rows:", error);
+            return [];
+          })
+      : Promise.resolve([]),
   ]);
   const mainnetActivityItems: Array<StakingActivityItem & { sortAt: Date }> =
     mainnetActivityRows.map((row) => {
@@ -1228,10 +1248,64 @@ export async function loadMainnetTransferStakingActivityPage(
       };
     });
 
+  const stakingCycleItems: Array<StakingActivityItem & { sortAt: Date }> =
+    stakingCycleRows.map((distribution) => {
+      const metadata =
+        distribution.metadata &&
+        typeof distribution.metadata === "object" &&
+        !Array.isArray(distribution.metadata)
+          ? (distribution.metadata as Record<string, unknown>)
+          : {};
+
+      const settledBets = Number(metadata.settledBets || 0);
+      const settledVolumeWolo = Number(metadata.settledVolumeWolo || 0);
+      const cycleDate = distribution.distributionDate.toISOString().slice(0, 10);
+      const settledLabel = `${settledBets.toLocaleString()} settled ${settledBets === 1 ? "bet" : "bets"}`;
+      const volumeLabel = `${formatActivityWoloAmount(settledVolumeWolo)} settled volume`;
+
+      const rawStakerPoolUwolo = (distribution as {
+        stakerPoolUwolo?: bigint | number | string | null;
+      }).stakerPoolUwolo;
+
+      const stakerPoolUwolo =
+        rawStakerPoolUwolo == null
+          ? BigInt(Math.max(0, Math.round(Number(distribution.stakerPoolWolo || 0) * 1_000_000)))
+          : BigInt(String(rawStakerPoolUwolo));
+
+      const amountLabel =
+        stakerPoolUwolo > BigInt(0)
+          ? stakerPoolUwolo < BigInt(1_000_000)
+            ? "<1 WOLO"
+            : formatActivityWoloAmount(Number(stakerPoolUwolo / BigInt(1_000_000)))
+          : "0 WOLO";
+
+      const distributionDetail =
+        stakerPoolUwolo > BigInt(0)
+          ? `${amountLabel} staking pool · below 1 WOLO payout threshold · ${settledLabel} · ${volumeLabel}`
+          : `No reward distribution · ${settledLabel} · ${volumeLabel}`;
+
+      return {
+        key: `staking-cycle-${distribution.id}`,
+        label:
+          stakerPoolUwolo > BigInt(0)
+            ? `${amountLabel} staking pool: ${cycleDate}`
+            : `Staking cycle checked: ${cycleDate}`,
+        detail: distributionDetail,
+        meta: formatMoment(distribution.createdAt),
+        eventType: "CYCLE",
+        amountLabel,
+        timestampLabel: formatMoment(distribution.createdAt),
+        occurredAt: distribution.createdAt.toISOString(),
+        tone: "slate",
+        sortAt: distribution.createdAt,
+      };
+    });
+
   const combined = dedupeActivityRows(
     [
       ...mainnetActivityItems,
       ...pendingSettlementItems,
+      ...stakingCycleItems,
       ...indexedTransferRows.map((row) => indexedTransferToActivityItem(row)),
       ...giftRows.map((row) => giftToActivityItem(row)),
     ],
