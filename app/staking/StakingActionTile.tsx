@@ -63,7 +63,9 @@ type StakingConfig = {
 };
 
 const STAKING_WALLET_TOP_UP_DETAIL =
-  "Staking wallet needs operator top-up before this unstake can execute.";
+  "Staking wallet reserve top-up needed.";
+const STAKING_WALLET_TOP_UP_HELP =
+  "This wallet backs app-side staking withdrawals. It needs enough WOLO to cover pending unstake capacity plus fee headroom.";
 
 function formatWholeWolo(value: number | null | undefined) {
   if (value == null) return "--";
@@ -81,6 +83,7 @@ export default function StakingActionTile() {
   const [busy, setBusy] = useState<"stake" | "unstake" | null>(null);
   const [autoCompoundBusy, setAutoCompoundBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [lastCheckedAt, setLastCheckedAt] = useState<string | null>(null);
 
   const currentStakedWolo = stakingState?.position.currentStakedWolo ?? 0;
   const autoCompoundRewards = stakingState?.position.autoCompoundRewards ?? true;
@@ -107,21 +110,50 @@ export default function StakingActionTile() {
     stakingState?.execution.totalConfirmedStakedWolo ??
     stakingConfig?.operatorFunding?.totalConfirmedStakedWolo ??
     currentStakedWolo;
+  const requiredStakingWalletBalanceWolo =
+    stakingState?.execution.requiredStakingWalletBalanceWolo ??
+    stakingConfig?.operatorFunding?.requiredStakingWalletBalanceWolo ??
+    null;
   const walletUnderfunded =
     Boolean(stakingState?.execution.walletUnderfunded) ||
     Boolean(stakingConfig?.operatorFunding?.walletUnderfunded);
+  const reserveTopUpVisible = walletUnderfunded && operatorTopUpNeededWolo >= 1;
+  const recommendedTopUpWolo = reserveTopUpVisible
+    ? Math.ceil(operatorTopUpNeededWolo + Math.max(10, reserveHeadroomWolo))
+    : 0;
+  const lastCheckedLabel = lastCheckedAt
+    ? new Date(lastCheckedAt).toLocaleString([], {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      })
+    : "Not checked";
   const actionPill =
     currentStakedWolo > 0 ? `Max ${formatWholeWolo(maxUnstakeWolo)}` : "Ready";
 
   async function reloadStakingState() {
     if (!isAuthenticated) {
       setStakingState(null);
+      setStakingConfig(null);
       return;
     }
 
-    const response = await fetch("/api/staking/me", { cache: "no-store" });
-    if (response.ok) {
-      setStakingState((await response.json()) as StakingMe);
+    try {
+      const [stateResponse, configResponse] = await Promise.all([
+        fetch("/api/staking/me", { cache: "no-store" }),
+        fetch("/api/staking/config", { cache: "no-store" }),
+      ]);
+      if (stateResponse.ok) {
+        setStakingState((await stateResponse.json()) as StakingMe);
+      }
+      if (configResponse.ok) {
+        setStakingConfig((await configResponse.json()) as StakingConfig);
+      }
+    } catch {
+      setStakingConfig(null);
+    } finally {
+      setLastCheckedAt(new Date().toISOString());
     }
   }
 
@@ -144,6 +176,9 @@ export default function StakingActionTile() {
         }
         if (!cancelled && configResponse.ok) {
           setStakingConfig((await configResponse.json()) as StakingConfig);
+        }
+        if (!cancelled) {
+          setLastCheckedAt(new Date().toISOString());
         }
       } catch {
         if (!cancelled) {
@@ -171,6 +206,10 @@ export default function StakingActionTile() {
 
   useEffect(() => {
     if (message !== STAKING_WALLET_TOP_UP_DETAIL) return;
+    if (!reserveTopUpVisible) {
+      setMessage(null);
+      return;
+    }
     const parsed = Number.parseInt(amountInput.trim(), 10);
     const amountWolo = Number.isInteger(parsed) && parsed > 0 ? parsed : null;
     if (!amountWolo || stakingWalletBalanceWolo == null) return;
@@ -184,6 +223,7 @@ export default function StakingActionTile() {
     amountInput,
     message,
     reserveHeadroomWolo,
+    reserveTopUpVisible,
     stakingWalletBalanceWolo,
     totalConfirmedStakedWolo,
   ]);
@@ -482,17 +522,40 @@ export default function StakingActionTile() {
       </div>
 
       {message ? (
-        <div className="mt-2 rounded-[0.85rem] border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs leading-5 text-slate-300">
-          {message}
-        </div>
+        message === STAKING_WALLET_TOP_UP_DETAIL ? (
+          <div className="mt-2 rounded-[0.85rem] border border-amber-300/18 bg-amber-300/10 px-3 py-2 text-xs leading-5 text-amber-50">
+            <div className="font-semibold">{STAKING_WALLET_TOP_UP_DETAIL}</div>
+            <div className="mt-1 text-amber-50/78">
+              Unstake rail needs operator funding before larger withdrawals. User funds are still recorded in the staking ledger.
+            </div>
+            <div className="mt-1 text-amber-50/62" title={STAKING_WALLET_TOP_UP_HELP}>
+              {STAKING_WALLET_TOP_UP_HELP}
+            </div>
+          </div>
+        ) : (
+          <div className="mt-2 rounded-[0.85rem] border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs leading-5 text-slate-300">
+            {message}
+          </div>
+        )
       ) : stakingConfig?.unstakeReady === false && currentStakedWolo > 0 ? (
         <div className="mt-2 rounded-[0.85rem] border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs leading-5 text-slate-400">
           {stakingConfig.unstakeReadyDetail || "Staking wallet signer is not configured."}
         </div>
       ) : null}
-      {isAdmin && walletUnderfunded && operatorTopUpNeededWolo >= 1 ? (
-        <div className="mt-2 rounded-[0.85rem] border border-amber-300/20 bg-amber-300/10 px-3 py-1.5 text-xs leading-5 text-amber-100">
-          Operator top-up needed: {formatWholeWolo(operatorTopUpNeededWolo)} reserve gap.
+      {isAdmin && reserveTopUpVisible ? (
+        <div className="mt-2 rounded-[0.85rem] border border-amber-300/20 bg-amber-300/10 px-3 py-2 text-xs leading-5 text-amber-100">
+          <div className="font-semibold">Admin: staking wallet reserve top-up needed.</div>
+          <div className="mt-1 text-amber-50/80">{STAKING_WALLET_TOP_UP_HELP}</div>
+          <div className="mt-2 grid gap-1 text-amber-50/75 sm:grid-cols-2">
+            <div>Wallet: {stakingConfig?.stakingWalletAddress || "not configured"}</div>
+            <div>Current balance: {formatWholeWolo(stakingWalletBalanceWolo)}</div>
+            <div>Confirmed stake: {formatWholeWolo(totalConfirmedStakedWolo)}</div>
+            <div>Required balance: {formatWholeWolo(requiredStakingWalletBalanceWolo)}</div>
+            <div>Reserve headroom: {formatWholeWolo(reserveHeadroomWolo)}</div>
+            <div>Gap: {formatWholeWolo(operatorTopUpNeededWolo)}</div>
+            <div>Recommended top-up: {formatWholeWolo(recommendedTopUpWolo)}</div>
+            <div>Last checked: {lastCheckedLabel}</div>
+          </div>
         </div>
       ) : null}
     </section>

@@ -167,6 +167,12 @@ export type WoloChainAdminPayload = {
     settlementHealthFailureCode: string | null;
     settlementHealthDetail: string | null;
     settlementHealthChainId: string | null;
+    settlementHealthRuntimeChainId: string | null;
+    settlementPayoutAddress: string | null;
+    settlementPayoutBalanceWolo: number | null;
+    settlementMinPayoutBalanceWolo: number | null;
+    settlementEscrowAddress: string | null;
+    settlementEscrowBalanceWolo: number | null;
     payoutReady: boolean;
     payoutExecutionMode: string;
     localSignerFallbackEnabled: boolean;

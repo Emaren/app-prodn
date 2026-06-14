@@ -7,7 +7,9 @@ import { getWoloStakingRuntime } from "@/lib/woloStakingRuntime";
 const UWOLO_PER_WOLO = BigInt(10) ** BigInt(WOLO_COIN_DECIMALS);
 const DEFAULT_UNSTAKE_HEADROOM_UWOLO = BigInt(10_000_000);
 export const STAKING_WALLET_TOP_UP_DETAIL =
-  "Staking wallet needs operator top-up before this unstake can execute.";
+  "Staking wallet reserve top-up needed.";
+export const STAKING_WALLET_TOP_UP_HELP =
+  "This wallet backs app-side staking withdrawals. It needs enough WOLO to cover pending unstake capacity plus fee headroom.";
 
 type StakingExecutionLimits = {
   maxUnstakeWolo: number;

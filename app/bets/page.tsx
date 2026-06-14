@@ -2,9 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import type { OfflineSigner } from "@cosmjs/proto-signing";
-import { Monitor, MonitorOff, Play } from "lucide-react";
+import { Monitor, PanelRight, PanelTop, Play } from "lucide-react";
 import { toast } from "sonner";
 
 import BetsViewToggle from "@/components/bets/BetsViewToggle";
@@ -706,9 +706,9 @@ function groupedSettlementLabel(
     case "auth_failed":
       return "operator auth blocked";
     case "not_configured":
-      return "payout rail warming";
+      return "settlement unavailable";
     default:
-      return "payout rail checking";
+      return "settlement checking";
   }
 }
 
@@ -754,9 +754,9 @@ function stakeRailLabel({
 function settlementRailLabel(
   mode: "settlement_service" | "local_signer_fallback" | "unconfigured"
 ) {
-  if (mode === "settlement_service") return "payout rail online";
+  if (mode === "settlement_service") return "settlement rail online";
   if (mode === "local_signer_fallback") return "operator signer ready";
-  return "payout rail warming";
+  return "settlement unavailable";
 }
 
 function publicRailMessage(value: string | null | undefined) {
@@ -768,14 +768,14 @@ function publicRailMessage(value: string | null | undefined) {
     normalized.includes("payout signer balance")
   ) {
     return {
-      title: "Payout rail waiting for operator top-up.",
-      body: "Queued payouts are safe; settlement resumes after the reserve check clears.",
+      title: "Settlement rail waiting for operator top-up.",
+      body: "Queued payouts remain recorded; settlement resumes after the operator top-up clears.",
       tone: "amber" as const,
     };
   }
   if (normalized.includes("auth")) {
     return {
-      title: "Payout rail waiting for operator auth.",
+      title: "Settlement rail waiting for operator auth.",
       body: "Queued payouts remain visible and will settle after the operator check clears.",
       tone: "amber" as const,
     };
@@ -787,13 +787,13 @@ function publicRailMessage(value: string | null | undefined) {
     normalized.includes("not configured")
   ) {
     return {
-      title: "Payout rail is warming up.",
-      body: "Queued payouts remain in the app ledger while operator settlement health catches up.",
+      title: "Settlement status unavailable.",
+      body: "Queued payouts remain visible while the operator rail reports current health.",
       tone: "slate" as const,
     };
   }
   return {
-    title: "Payout rail is checking settlement.",
+    title: "Settlement status unavailable.",
     body: "Queued payouts remain visible while the settlement rail confirms current health.",
     tone: "slate" as const,
   };
@@ -910,7 +910,7 @@ export default function BetsPage() {
   const [founderComposer, setFounderComposer] = useState<FounderComposerState | null>(null);
   const [savingFounderBonus, setSavingFounderBonus] = useState(false);
   const [founderBonusError, setFounderBonusError] = useState<string | null>(null);
-  const [broadcastVisible, setBroadcastVisible] = useState(false);
+  const [broadcastVisible, setBroadcastVisible] = useState(true);
   const [pendingStakeRecoveries, setPendingStakeRecoveries] = useState<PendingStakeRecovery[]>([]);
 
   const syncPendingStakeRecoveries = useCallback(() => {
@@ -1719,7 +1719,7 @@ export default function BetsPage() {
   }, [latestResult, spotlightMarket]);
 
   useEffect(() => {
-    setBroadcastVisible(false);
+    setBroadcastVisible(true);
   }, [broadcastSurface.key]);
 
   return (
@@ -2419,22 +2419,22 @@ function BroadcastVisibilityButton({
   visible: boolean;
   onToggle: () => void;
 }) {
-  const Icon = visible ? Monitor : MonitorOff;
+  const Icon = visible ? PanelRight : PanelTop;
 
   return (
     <button
       type="button"
       aria-pressed={visible}
-      aria-label={visible ? "Compact Broadcast" : "Expand Broadcast"}
-      title={visible ? "Compact Broadcast" : "Expand Broadcast"}
+      aria-label={visible ? "Use side-rail Battle Cam layout" : "Use stacked Battle Cam layout"}
+      title={visible ? "Side-rail Battle Cam" : "Stacked Battle Cam"}
       onClick={onToggle}
-      className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition ${
+      className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition ${
         visible
-          ? "bg-amber-300/12 text-amber-100 shadow-[0_0_24px_rgba(251,191,36,0.08)] hover:bg-amber-300/18"
-          : "bg-white/[0.04] text-slate-300 hover:bg-white/[0.08]"
+          ? "border-amber-200/18 bg-amber-300/12 text-amber-100 shadow-[0_0_24px_rgba(251,191,36,0.08)] hover:bg-amber-300/18"
+          : "border-white/[0.08] bg-white/[0.04] text-slate-300 hover:bg-white/[0.08]"
       }`}
     >
-      <Icon className="h-5 w-5" aria-hidden="true" />
+      <Icon className="h-4 w-4" aria-hidden="true" />
     </button>
   );
 }
@@ -2577,7 +2577,6 @@ function BroadcastHeroTile({
           <span className="max-w-[14rem] truncate rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-slate-300 sm:max-w-[22rem]">
             {marketTitle}
           </span>
-          <BroadcastVisibilityButton visible={visible} onToggle={onToggle} />
         </div>
       </div>
 
@@ -2611,6 +2610,7 @@ function BroadcastHeroTile({
             marketTitle={marketTitle}
             isPlaying={activeViewHasEmbeddableFeed || playingView === activeView.key}
             onPlay={() => setPlayingView(activeView.key)}
+            layoutToggle={<BroadcastVisibilityButton visible={visible} onToggle={onToggle} />}
           />
         </>
       ) : (
@@ -2625,6 +2625,7 @@ function BroadcastHeroTile({
             marketTitle={marketTitle}
             isPlaying={activeViewHasEmbeddableFeed || playingView === activeView.key}
             onPlay={() => setPlayingView(activeView.key)}
+            layoutToggle={<BroadcastVisibilityButton visible={visible} onToggle={onToggle} />}
           />
           <div className="grid grid-cols-3 gap-2 lg:grid-cols-1">
             {views.map((view) => (
@@ -2705,6 +2706,7 @@ function BroadcastCompactFrame({
   marketTitle,
   isPlaying,
   onPlay,
+  layoutToggle,
 }: {
   label: string;
   eyebrow: string;
@@ -2715,6 +2717,7 @@ function BroadcastCompactFrame({
   marketTitle: string;
   isPlaying: boolean;
   onPlay: () => void;
+  layoutToggle?: ReactNode;
 }) {
   return (
     <div className="min-w-0 overflow-hidden rounded-[1.35rem] border border-white/[0.08] bg-slate-950/70 p-2">
@@ -2735,8 +2738,11 @@ function BroadcastCompactFrame({
           </div>
           <div className="mt-1 truncate text-sm font-semibold text-white sm:text-base">{label}</div>
         </div>
-        <div className="max-w-full truncate rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-[11px] text-slate-300">
-          {feed ? `${providerLabel(feed)} feed` : `Preview · ${marketTitle}`}
+        <div className="flex max-w-full min-w-0 items-center gap-2">
+          {layoutToggle}
+          <div className="max-w-full truncate rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-[11px] text-slate-300">
+            {feed ? `${providerLabel(feed)} feed` : `Preview · ${marketTitle}`}
+          </div>
         </div>
       </div>
     </div>
@@ -2753,6 +2759,7 @@ function BroadcastPlaceholderFrame({
   marketTitle,
   isPlaying,
   onPlay,
+  layoutToggle,
 }: {
   label: string;
   eyebrow: string;
@@ -2763,6 +2770,7 @@ function BroadcastPlaceholderFrame({
   marketTitle: string;
   isPlaying: boolean;
   onPlay: () => void;
+  layoutToggle?: ReactNode;
 }) {
   return (
     <div className="mt-4 overflow-hidden rounded-[1.45rem] border border-white/[0.08] bg-slate-950/78 p-2.5 sm:p-3">
@@ -2783,22 +2791,25 @@ function BroadcastPlaceholderFrame({
           </div>
           <div className="mt-1 truncate text-lg font-semibold text-white sm:text-xl">{label}</div>
         </div>
-        {feed ? (
-          <a
-            href={feed.url}
-            target="_blank"
-            rel="noreferrer"
-            className="min-w-0 max-w-full overflow-hidden flex items-center gap-2 rounded-full border border-emerald-200/12 bg-emerald-400/10 px-3 py-1.5 text-xs text-emerald-100 transition hover:bg-emerald-400/16 sm:max-w-[24rem]"
-          >
-            <Play className="h-3.5 w-3.5 text-emerald-100" aria-hidden="true" />
-            <span className="truncate">{providerLabel(feed)} feed · {feed.label}</span>
-          </a>
-        ) : (
-          <div className="min-w-0 max-w-full overflow-hidden flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-xs text-slate-300 sm:max-w-[24rem]">
-            <Play className="h-3.5 w-3.5 text-amber-100" aria-hidden="true" />
-            <span className="truncate">Placeholder feed · {marketTitle}</span>
-          </div>
-        )}
+        <div className="flex max-w-full min-w-0 items-center gap-2">
+          {layoutToggle}
+          {feed ? (
+            <a
+              href={feed.url}
+              target="_blank"
+              rel="noreferrer"
+              className="min-w-0 max-w-full overflow-hidden flex items-center gap-2 rounded-full border border-emerald-200/12 bg-emerald-400/10 px-3 py-1.5 text-xs text-emerald-100 transition hover:bg-emerald-400/16 sm:max-w-[24rem]"
+            >
+              <Play className="h-3.5 w-3.5 text-emerald-100" aria-hidden="true" />
+              <span className="truncate">{providerLabel(feed)} feed · {feed.label}</span>
+            </a>
+          ) : (
+            <div className="min-w-0 max-w-full overflow-hidden flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-xs text-slate-300 sm:max-w-[24rem]">
+              <Play className="h-3.5 w-3.5 text-amber-100" aria-hidden="true" />
+              <span className="truncate">Placeholder feed · {marketTitle}</span>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

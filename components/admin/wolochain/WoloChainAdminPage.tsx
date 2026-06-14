@@ -50,6 +50,13 @@ function formatWolo(value: number) {
   return value.toLocaleString();
 }
 
+function formatWoloMaybe(value: number | null | undefined) {
+  if (value == null || !Number.isFinite(value)) return "—";
+  return `${value.toLocaleString(undefined, {
+    maximumFractionDigits: 6,
+  })} WOLO`;
+}
+
 function formatUWoloAsWolo(value: string | null | undefined) {
   if (!value) return "—";
   const numeric = Number.parseFloat(value);
@@ -1313,23 +1320,24 @@ export default function WoloChainAdminPage() {
     state.wolochain?.warnings,
   ]);
 
+  const settlementService = state.wolochain?.settlementService ?? null;
   const chainTone = state.wolochain?.chain.healthy
     ? state.wolochain.chain.consensusStatus === "advancing"
       ? "good"
       : "warn"
     : "bad";
-  const settlementTone = state.wolochain?.settlementService.payoutReady
+  const settlementTone = settlementService?.payoutReady
     ? "good"
-    : state.wolochain?.settlementService.settlementServiceConfigured ||
-        state.wolochain?.settlementService.localSignerFallbackEnabled
+    : settlementService?.settlementServiceConfigured ||
+        settlementService?.localSignerFallbackEnabled
       ? "warn"
       : "bad";
   const settlementDetail =
-    state.wolochain?.settlementService.payoutReady
-      ? state.wolochain.settlementService.groupedRunCapability
-      : state.wolochain?.settlementService.settlementHealthFailureCode ||
-        state.wolochain?.settlementService.settlementHealthStatus ||
-        state.wolochain?.settlementService.groupedRunCapability;
+    settlementService?.payoutReady
+      ? settlementService.groupedRunCapability
+      : settlementService?.settlementHealthFailureCode ||
+        settlementService?.settlementHealthStatus ||
+        settlementService?.groupedRunCapability;
 
   return (
     <main className="space-y-6 py-6 text-white">
@@ -1696,12 +1704,12 @@ export default function WoloChainAdminPage() {
         </div>
         <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
           {[
-            ["Grouped runs", state.wolochain?.settlementService.groupedRunCapability],
-            ["Health", state.wolochain?.settlementService.settlementHealthOk ? "ready" : state.wolochain?.settlementService.settlementHealthFailureCode || state.wolochain?.settlementService.settlementHealthStatus],
-            ["Payout ready", state.wolochain?.settlementService.payoutReady ? "ready" : "blocked"],
-            ["Escrow verify", state.wolochain?.settlementService.escrowVerifyCapability],
-            ["Escrow deposits", state.wolochain?.settlementService.escrowRecentCapability],
-            ["Execution mode", state.wolochain?.settlementService.payoutExecutionMode],
+            ["Grouped runs", settlementService?.groupedRunCapability],
+            ["Health", settlementService?.settlementHealthOk ? "ready" : settlementService?.settlementHealthFailureCode || settlementService?.settlementHealthStatus],
+            ["Payout ready", settlementService?.payoutReady ? "ready" : "blocked"],
+            ["Escrow verify", settlementService?.escrowVerifyCapability],
+            ["Escrow deposits", settlementService?.escrowRecentCapability],
+            ["Execution mode", settlementService?.payoutExecutionMode],
           ].map(([label, value]) => (
             <div key={label} className="rounded-2xl border border-white/8 bg-white/[0.04] p-4">
               <div className="text-[11px] uppercase tracking-[0.24em] text-slate-500">{label}</div>
@@ -1710,6 +1718,44 @@ export default function WoloChainAdminPage() {
               </div>
             </div>
           ))}
+        </div>
+        <div className="mt-4 grid gap-3 lg:grid-cols-2">
+          <div className="rounded-2xl border border-white/8 bg-white/[0.035] p-4">
+            <div className="text-[11px] uppercase tracking-[0.24em] text-slate-500">
+              Health Payload
+            </div>
+            <div className="mt-3 grid gap-2 text-xs text-slate-300 sm:grid-cols-2">
+              <div>chain {settlementService?.settlementHealthChainId ?? "—"}</div>
+              <div>runtime {settlementService?.settlementHealthRuntimeChainId ?? "—"}</div>
+              <div>status {compactLabel(settlementService?.settlementHealthStatus)}</div>
+              <div>failure {settlementService?.settlementHealthFailureCode ?? "—"}</div>
+            </div>
+            {settlementService?.settlementHealthDetail ? (
+              <div className="mt-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-xs leading-5 text-slate-300">
+                {settlementService.settlementHealthDetail}
+              </div>
+            ) : null}
+          </div>
+          <div className="rounded-2xl border border-white/8 bg-white/[0.035] p-4">
+            <div className="text-[11px] uppercase tracking-[0.24em] text-slate-500">
+              Signer And Escrow
+            </div>
+            <div className="mt-3 space-y-3 text-xs text-slate-300">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span>Payout signer</span>
+                <CopyableAddress address={settlementService?.settlementPayoutAddress} lead={10} tail={7} />
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <span>{formatWoloMaybe(settlementService?.settlementPayoutBalanceWolo)}</span>
+                <span className="text-slate-500">min {formatWoloMaybe(settlementService?.settlementMinPayoutBalanceWolo)}</span>
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/10 pt-3">
+                <span>Escrow</span>
+                <CopyableAddress address={settlementService?.settlementEscrowAddress} lead={10} tail={7} />
+              </div>
+              <div>{formatWoloMaybe(settlementService?.settlementEscrowBalanceWolo)}</div>
+            </div>
+          </div>
         </div>
       </section>
     </main>

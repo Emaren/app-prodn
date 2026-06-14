@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Castle, Crown, Globe2, Landmark, MessageSquare } from "lucide-react";
+import { Crown, Globe2, MessageSquare } from "lucide-react";
 import UserExperienceTracker from "@/components/analytics/UserExperienceTracker";
 import HeaderInboxControl from "@/components/contact/HeaderInboxControl";
 import HeaderMenu from "@/components/HeaderMenu";
@@ -59,39 +59,73 @@ function HeaderPillLink({
   return (
     <Link
       href={href}
-      className={`relative inline-flex items-center justify-center overflow-visible rounded-full border px-3 py-1.5 text-xs transition ${className}`}
+      className={`relative inline-flex items-center justify-center overflow-visible rounded-full border px-2.5 py-1.5 text-xs transition xl:px-3 ${className}`}
     >
       <span className="relative z-10">{displayLabel}</span>
     </Link>
   );
 }
 
-function KingdomNavItem({ className }: { className: string }) {
+function KingdomNavItem({
+  className,
+  compact = false,
+}: {
+  className: string;
+  compact?: boolean;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const rootRef = React.useRef<HTMLDivElement | null>(null);
+
+  React.useEffect(() => {
+    if (!open) return;
+
+    function handlePointerDown(event: PointerEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setOpen(false);
+      }
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
+
   return (
-    <div className="group relative inline-flex">
-      <Link
-        href="/kingdom"
-        className={`relative inline-flex items-center justify-center gap-1.5 overflow-visible rounded-full border px-3 py-1.5 text-xs transition ${className}`}
+    <div
+      ref={rootRef}
+      className="group relative inline-flex"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+      onFocusCapture={() => setOpen(true)}
+    >
+      <button
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label="Open Kingdom pages"
+        onClick={() => setOpen(true)}
+        className={`relative inline-flex items-center justify-center overflow-visible rounded-full border px-2.5 py-1.5 text-xs transition xl:px-3 ${className}`}
       >
-        <Castle className="h-3.5 w-3.5 text-amber-100" />
-        <span className="relative z-10">🏰 Kingdom</span>
-      </Link>
+        <span className="relative z-10">{compact ? "🏰" : "🏰 Kingdom"}</span>
+      </button>
 
-      <div className="pointer-events-none absolute right-0 top-full z-[110] w-[min(21rem,calc(100vw-1.5rem))] translate-y-2 opacity-0 transition duration-150 group-hover:pointer-events-auto group-hover:translate-y-3 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:translate-y-3 group-focus-within:opacity-100">
+      <div
+        className={`absolute right-0 top-full z-[110] w-[min(21rem,calc(100vw-1.5rem))] translate-y-2 opacity-0 transition duration-150 ${
+          open
+            ? "pointer-events-auto translate-y-3 opacity-100"
+            : "pointer-events-none group-hover:pointer-events-auto group-hover:translate-y-3 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:translate-y-3 group-focus-within:opacity-100"
+        }`}
+      >
         <div className="overflow-hidden rounded-[1.25rem] border border-amber-200/18 bg-[#07101a]/95 p-2 shadow-[0_24px_80px_rgba(0,0,0,0.48)] backdrop-blur-xl">
-          <Link
-            href="/kingdom"
-            className="mb-1 flex items-center gap-3 rounded-[1rem] border border-amber-200/18 bg-amber-300/10 px-3 py-3 text-left transition hover:bg-amber-300/16"
-          >
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-amber-200/18 bg-amber-300/10 text-amber-100">
-              <Landmark className="h-5 w-5" />
-            </div>
-            <div className="min-w-0">
-              <div className="text-sm font-semibold text-white">The Kingdom</div>
-              <div className="mt-0.5 text-xs text-slate-400">Founding chronicle and on-chain story</div>
-            </div>
-          </Link>
-
           <div className="grid gap-1">
             {KINGDOM_LINKS.map((item) => {
               const Icon = item.icon;
@@ -99,6 +133,8 @@ function KingdomNavItem({ className }: { className: string }) {
                 <Link
                   key={item.href}
                   href={item.href}
+                  role="menuitem"
+                  onClick={() => setOpen(false)}
                   className="flex items-center gap-3 rounded-[1rem] px-3 py-2.5 text-left transition hover:bg-white/[0.06]"
                 >
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-amber-100">
@@ -244,8 +280,8 @@ function InnerShell({ children }: { children: React.ReactNode }) {
               </div>
             </div>
 
-            <nav className="w-full overflow-x-auto overflow-y-visible pb-1 pt-2 [scrollbar-width:none] [-ms-overflow-style:none]">
-              <div className="flex min-w-max items-center gap-2 pr-1 whitespace-nowrap">
+            <nav className="w-full overflow-visible pb-1 pt-2">
+              <div className="flex flex-wrap items-center gap-2 pr-1">
                 {HEADER_LINKS.map((link, index) => (
                   <React.Fragment key={link.href}>
                     <HeaderPillLink
@@ -270,7 +306,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
             </nav>
           </div>
 
-          <div className="hidden lg:grid lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:items-center lg:gap-3">
+          <div className="hidden lg:grid lg:grid-cols-[minmax(9rem,1fr)_minmax(0,44rem)_minmax(9rem,1fr)] lg:items-center lg:gap-3 xl:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
             <div className="min-w-0">
               <Link href={headerHref} className="inline-block min-w-0">
                 <div className={`text-xs uppercase tracking-[0.35em] transition ${headerTone.eyebrow}`}>
@@ -282,7 +318,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
               </Link>
             </div>
 
-            <nav className="flex max-w-full items-center gap-2 overflow-x-auto overflow-y-visible whitespace-nowrap pb-1 pt-2 [scrollbar-width:none] [-ms-overflow-style:none] lg:justify-self-center lg:pb-0">
+            <nav className="flex max-w-full flex-wrap items-center justify-center gap-1.5 overflow-visible pb-1 pt-2 lg:justify-self-center lg:pb-0 xl:gap-2">
               {HEADER_LINKS.map((link, index) => (
                 <React.Fragment key={link.href}>
                   <HeaderPillLink
@@ -294,7 +330,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                   {index === 0 ? <HeaderLiveGamesLink liveGamesCount={liveGamesCount} /> : null}
                 </React.Fragment>
               ))}
-              <KingdomNavItem className={headerSkin.surface} />
+              <KingdomNavItem className={headerSkin.surface} compact />
             </nav>
 
             <div className="flex flex-col items-end gap-2 lg:justify-self-end">

@@ -49,10 +49,10 @@ function friendlyClaimError(value: string | null) {
     normalized.includes("reserve floor") ||
     normalized.includes("payout signer balance")
   ) {
-    return "Payout rail waiting for operator top-up.";
+    return "Settlement rail waiting for operator top-up.";
   }
   if (normalized.includes("settlement_health") || normalized.includes("settlement service")) {
-    return "Payout rail waiting for settlement health.";
+    return "Settlement status unavailable.";
   }
   return "Payout queued for operator review.";
 }
@@ -410,7 +410,7 @@ export default async function WarChestPage({ searchParams }: WarChestPageProps) 
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-        <Panel eyebrow="Payout rail" title="Settlement watch" count={snapshot.recentClaims.length}>
+        <Panel eyebrow="Settlement rail" title="Settlement watch" count={snapshot.recentClaims.length}>
           <div className="grid gap-3">
             {snapshot.recentClaims.length === 0 ? (
               <EmptyPanel message="No claim or payout rows have landed yet." />

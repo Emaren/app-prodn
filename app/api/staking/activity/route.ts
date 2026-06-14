@@ -24,9 +24,15 @@ function parseBefore(value: string | null) {
 
 export async function GET(request: NextRequest) {
   try {
+    const filterParam = request.nextUrl.searchParams.get("filter");
     const payload = await loadMainnetTransferStakingActivityPage(getPrisma(), {
       limit: clampLimit(request.nextUrl.searchParams.get("limit")),
       before: parseBefore(request.nextUrl.searchParams.get("before")),
+      mode: request.nextUrl.searchParams.get("mode") === "grouped" ? "grouped" : "ledger",
+      filter:
+        filterParam === "staking" || filterParam === "bets" || filterParam === "transfers"
+          ? filterParam
+          : "all",
     });
 
     return NextResponse.json(payload, { headers: NO_STORE_HEADERS });

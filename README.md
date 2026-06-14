@@ -148,9 +148,10 @@ those settlement queue rows as chain txs until `payout_tx_hash` exists.
 
 Public WOLO betting surfaces should translate settlement-service blockers into
 player-safe copy. For example, a payout signer reserve-floor failure should read
-as the payout rail waiting for operator top-up on `/bets` or `/war-chest`; raw
-health codes, signer balance math, and distinct-send diagnostics belong in
-`/admin/wolochain` and `/admin/user-list`.
+as the settlement rail waiting for operator top-up on `/bets` or `/war-chest`;
+raw health codes, signer balance math, and distinct-send diagnostics belong in
+`/admin/wolochain` and `/admin/user-list`. Capability checks should read
+`GET /settlement/v1/health`; do not send empty zero-payout validation probes.
 
 Optional migration compatibility:
 

@@ -37,6 +37,26 @@ If health reports `PAYOUT_FEE_HEADROOM_TOO_LOW`, `ESCROW_BALANCE_TOO_LOW`, or
 any non-ok status, AoE2HDBets should show a blocker and must not execute live
 payouts.
 
+AoE2HDBets health/capability surfaces must probe `GET /settlement/v1/health`.
+Do not use an empty grouped-run validation request as a capability probe; a
+zero-payout `runs/validate` call creates fake `INVALID_RUN` settlement noise.
+Real payout dry-runs still use `validateWoloSettlementRun` with actual payout
+items before execution.
+
+The app keeps health diagnostics split by audience:
+
+- Public `/bets`, `/war-chest`, and `/staking` copy should stay calm: `Settlement
+  rail online`, `Settlement rail waiting for operator top-up`, or `Settlement
+  status unavailable`.
+- Admin/operator surfaces may show exact `chain_id`, `runtime_chain_id`, payout
+  signer address/balance/minimum, escrow address/balance, `failure_code`, and
+  raw detail.
+- Staking reserve warnings are about the staking custody wallet and unstake
+  rail, not the Bet Payout signer. Public copy should say `Staking wallet
+  reserve top-up needed.` Admin copy can include the staking wallet address,
+  current balance, required balance, gap, recommended top-up, and last checked
+  time.
+
 ## App payout behavior
 
 - Staker reward payouts use grouped `validateWoloSettlementRun` first, then

@@ -58,13 +58,13 @@ function friendlyTapeNote(value: string | null) {
     normalized.includes("reserve floor") ||
     normalized.includes("payout signer balance")
   ) {
-    return "Payout rail waiting for operator top-up.";
+    return "Settlement rail waiting for operator top-up.";
   }
   if (normalized.includes("settlement_health") || normalized.includes("settlement service")) {
-    return "Payout rail waiting for settlement health.";
+    return "Settlement status unavailable.";
   }
   if (normalized.includes("auth failed") || normalized.includes("auth_required")) {
-    return "Payout rail waiting for operator auth.";
+    return "Settlement rail waiting for operator auth.";
   }
   return value;
 }

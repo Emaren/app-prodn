@@ -39,6 +39,8 @@ export {
 export type StakingPeriodKey = "24h" | "7d" | "30d" | "all";
 export type StakingBoardKey = "stakers" | "earners" | "rewards";
 export type StakingActionType = "STAKE" | "UNSTAKE" | "CLAIM" | "ADJUSTMENT";
+export type StakingActivityMode = "ledger" | "grouped";
+export type StakingActivityFilter = "all" | "staking" | "bets" | "transfers";
 
 export type StakingActivityItem = {
   key?: string;
@@ -50,6 +52,9 @@ export type StakingActivityItem = {
   txFeeLabel?: string;
   timestampLabel?: string;
   occurredAt?: string;
+  txHash?: string;
+  txUrl?: string;
+  children?: StakingActivityItem[];
   tone: "amber" | "emerald" | "sky" | "slate";
 };
 
@@ -233,6 +238,204 @@ function formatMoment(value: Date) {
     hour: "numeric",
     minute: "2-digit",
   });
+}
+
+function formatActivityWoloAmount(value: number | null | undefined) {
+  const amount = Number(value ?? 0);
+  return `${new Intl.NumberFormat("en-US", {
+    maximumFractionDigits: Number.isInteger(amount) ? 0 : 3,
+    minimumFractionDigits: 0,
+  }).format(amount)} WOLO`;
+}
+
+function formatActivityTimestamp(value: Date | string | null | undefined) {
+  if (!value) return "Ledger";
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "Ledger";
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function extractActivityTxHash(item: StakingActivityItem) {
+  const keyMatch = String(item.key || "").match(/tx-([A-Fa-f0-9]{64})/);
+  if (keyMatch?.[1]) return keyMatch[1].toUpperCase();
+
+  const detailMatch = String(item.detail || "").match(/\btx\s+([A-Fa-f0-9]{64})\b/);
+  if (detailMatch?.[1]) return detailMatch[1].toUpperCase();
+
+  return null;
+}
+
+function stripMemoForUi(value: string) {
+  return value
+    .replace(/\bmemo\s+/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function attachActivityTxFields(item: StakingActivityItem): StakingActivityItem {
+  const txHash = item.txHash || extractActivityTxHash(item) || undefined;
+  return {
+    ...item,
+    label: stripMemoForUi(item.label || ""),
+    detail: stripMemoForUi(item.detail || ""),
+    txHash,
+    txUrl: item.txUrl || (txHash ? `/api/wolo/tx/${txHash}` : undefined),
+  };
+}
+
+function cleanBetActivityMatchLabel(value: string) {
+  return value
+    .replace(/\bmemo\s+/gi, "")
+    .replace(/\s+/g, " ")
+    .replace(/\s+·.*$/g, "")
+    .trim();
+}
+
+function extractBetActivityMatch(item: StakingActivityItem) {
+  const text = `${item.label || ""} · ${item.detail || ""}`;
+
+  const memoMatch = text.match(/memo\s+([^·]{2,96}?\s+vs\s+[^·]{2,96}?)(?=\s*·|\s*$)/i);
+  if (memoMatch?.[1]) {
+    const label = cleanBetActivityMatchLabel(memoMatch[1]);
+    return label || null;
+  }
+
+  const settlementMatch = text.match(/settlement queue:\s*([^·]{2,96}?\s+vs\s+[^·]{2,96}?)(?=\s*·|\s*$)/i);
+  if (settlementMatch?.[1]) {
+    const label = cleanBetActivityMatchLabel(settlementMatch[1]);
+    return label || null;
+  }
+
+  const looseMatch = text.match(/([^·:]{2,96}?\s+vs\s+[^·]{2,96}?)(?=\s*·|\s*$)/i);
+  if (looseMatch?.[1]) {
+    const label = cleanBetActivityMatchLabel(looseMatch[1]);
+    if (!/^aoe2hdbets bet stake/i.test(label)) return label;
+  }
+
+  return null;
+}
+
+function groupedBetRowKind(item: StakingActivityItem) {
+  const eventType = String(item.eventType || "").toUpperCase();
+  const text = `${item.label || ""} ${item.detail || ""}`.toLowerCase();
+
+  if (eventType === "SETTLEMENT" || text.includes("settlement queue") || text.includes("pending claim")) {
+    return "pending settlement";
+  }
+  if (eventType === "ESCROW" || text.includes("bet stake") || text.includes("escrow")) {
+    return "escrow";
+  }
+  if (eventType === "PAYOUT" || text.includes("bet_payout") || text.includes("bet payout")) {
+    return "payout";
+  }
+  if (text.includes("founders_win")) return "founder win";
+  if (text.includes("founders_bonus") || text.includes("founders bonus")) return "founder bonus";
+  if (eventType === "DIRECT") return "transfer";
+
+  return eventType ? eventType.toLowerCase() : "activity";
+}
+
+function groupStakingBetActivityItems(items: StakingActivityItem[], limit: number): StakingActivityItem[] {
+  type Group = {
+    label: string;
+    rows: StakingActivityItem[];
+    newestAt: string;
+    amountTotal: number;
+    hasSettlement: boolean;
+    hasPayout: boolean;
+    hasEscrow: boolean;
+    hasFounder: boolean;
+  };
+
+  const groups = new Map<string, Group>();
+
+  for (const item of items) {
+    const matchLabel = extractBetActivityMatch(item);
+    if (!matchLabel) continue;
+
+    const key = matchLabel.toLowerCase();
+    const occurredAt = item.occurredAt || new Date(0).toISOString();
+    const amount = Number.parseFloat(String(item.amountLabel || "0").replace(/[^0-9.]/g, "")) || 0;
+    const kind = groupedBetRowKind(item);
+
+    const group = groups.get(key) ?? {
+      label: matchLabel,
+      rows: [],
+      newestAt: occurredAt,
+      amountTotal: 0,
+      hasSettlement: false,
+      hasPayout: false,
+      hasEscrow: false,
+      hasFounder: false,
+    };
+
+    group.rows.push(item);
+    group.amountTotal += amount;
+    group.hasSettlement = group.hasSettlement || kind === "pending settlement";
+    group.hasPayout = group.hasPayout || kind === "payout";
+    group.hasEscrow = group.hasEscrow || kind === "escrow";
+    group.hasFounder = group.hasFounder || kind === "founder bonus" || kind === "founder win";
+
+    if (Date.parse(occurredAt) > Date.parse(group.newestAt)) {
+      group.newestAt = occurredAt;
+    }
+
+    groups.set(key, group);
+  }
+
+  return Array.from(groups.values())
+    .map((group) => {
+      const phases = [
+        group.hasEscrow ? "escrow" : null,
+        group.hasFounder ? "founder rewards" : null,
+        group.hasPayout ? "payout" : null,
+        group.hasSettlement ? "pending settlement" : null,
+      ].filter(Boolean);
+
+      const rowSummary = group.rows
+        .slice(0, 5)
+        .map((row) => {
+          const amount = row.amountLabel ? ` ${row.amountLabel}` : "";
+          return `${groupedBetRowKind(row)}${amount}`;
+        })
+        .join(" · ");
+
+      const children = group.rows
+        .sort((left, right) => {
+          const leftTime = Date.parse(left.occurredAt || "");
+          const rightTime = Date.parse(right.occurredAt || "");
+          return (Number.isFinite(rightTime) ? rightTime : 0) - (Number.isFinite(leftTime) ? leftTime : 0);
+        })
+        .map((row) => attachActivityTxFields({
+          ...row,
+          label: `${groupedBetRowKind(row)}${row.amountLabel ? ` · ${row.amountLabel}` : ""}`,
+        }));
+
+      return {
+        key: `grouped-bet-${group.label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+        label: group.label,
+        detail: `${phases.length ? phases.join(" · ") : "bet activity"}${rowSummary ? ` · ${rowSummary}` : ""}`,
+        meta: formatActivityTimestamp(group.newestAt),
+        eventType: "GROUPED BET",
+        amountLabel: group.amountTotal > 0 ? formatActivityWoloAmount(group.amountTotal) : undefined,
+        timestampLabel: formatActivityTimestamp(group.newestAt),
+        occurredAt: group.newestAt,
+        children,
+        tone: group.hasSettlement ? "sky" : group.hasPayout ? "emerald" : group.hasEscrow ? "amber" : "slate",
+      } satisfies StakingActivityItem;
+    })
+    .sort((left, right) => {
+      const leftTime = Date.parse(left.occurredAt || "");
+      const rightTime = Date.parse(right.occurredAt || "");
+      return (Number.isFinite(rightTime) ? rightTime : 0) - (Number.isFinite(leftTime) ? leftTime : 0);
+    })
+    .slice(0, limit);
 }
 
 function formatActivityWolo(value: number) {
@@ -950,43 +1153,167 @@ export async function loadMainnetTransferStakingActivityPage(
   options: {
     before?: Date | string | null;
     limit?: number | null;
+    mode?: StakingActivityMode | null;
+    filter?: StakingActivityFilter | null;
   } = {}
 ): Promise<StakingActivityPage> {
   const limit = Math.max(1, Math.min(options.limit ?? 16, 40));
   const before = options.before ?? null;
+  const mode: StakingActivityMode = options.mode === "grouped" ? "grouped" : "ledger";
+  const filter: StakingActivityFilter =
+    options.filter === "staking" || options.filter === "bets" || options.filter === "transfers"
+      ? options.filter
+      : "all";
+  const rawActivityTake =
+    mode === "grouped" || filter !== "all"
+      ? Math.max(80, Math.min(240, limit * 12))
+      : limit + 1;
+  const beforeDate =
+    before instanceof Date
+      ? before
+      : typeof before === "string" && before.trim()
+        ? new Date(before)
+        : null;
+  const validBeforeDate = beforeDate && !Number.isNaN(beforeDate.getTime()) ? beforeDate : null;
 
-  const [indexedTransferRows, giftRows] = await Promise.all([
-    loadIndexedWoloTransferActivityRows(prisma, limit + 8, { before }),
-    loadRecentWoloGiftActivityRows(prisma, limit + 8, before).catch(() => []),
+  const [indexedTransferRows, giftRows, mainnetActivityRows, pendingSettlementRows] = await Promise.all([
+    loadIndexedWoloTransferActivityRows(prisma, rawActivityTake, { before }).catch(() => []),
+    loadRecentWoloGiftActivityRows(prisma, rawActivityTake, before).catch(() => []),
+    loadWoloMainnetActivityRows(prisma, rawActivityTake).catch(() => []),
+    loadPendingSettlementActivityRows(prisma, rawActivityTake).catch(() => []),
   ]);
+  const mainnetActivityItems: Array<StakingActivityItem & { sortAt: Date }> =
+    mainnetActivityRows.map((row) => {
+      const timestamp = new Date(row.updatedAt || row.createdAt);
+      const safeTimestamp = Number.isNaN(timestamp.getTime()) ? new Date() : timestamp;
+      const timestampLabel = formatMoment(safeTimestamp);
+      const txLabel = shortHash(row.txHash);
+      const amountLabel = row.amountWolo != null ? formatActivityWolo(row.amountWolo) : undefined;
+      const addressLabel = shortAddress(row.walletAddress);
+      const contextParts = [
+        row.contextLabel,
+        txLabel ? `tx ${txLabel}` : null,
+        addressLabel ? `wallet ${addressLabel}` : null,
+      ].filter(Boolean);
+
+      return {
+        key: row.key,
+        label: labelForMainnetActivity(row),
+        detail: contextParts.join(" · "),
+        meta: timestampLabel,
+        eventType: eventTypeForMainnetActivity(row),
+        amountLabel,
+        timestampLabel,
+        occurredAt: safeTimestamp.toISOString(),
+        tone: toneForMainnetActivity(row),
+        sortAt: safeTimestamp,
+      };
+    });
+  const pendingSettlementItems: Array<StakingActivityItem & { sortAt: Date }> =
+    pendingSettlementRows.map((row) => {
+      const timestampLabel = formatMoment(row.latestAt);
+      const amountLabel = formatActivityWolo(row.amountWolo);
+
+      return {
+        key: row.key,
+        label: `${amountLabel} settlement queue: ${row.marketTitle}`,
+        detail: detailForPendingSettlement(row),
+        meta: timestampLabel,
+        eventType: "SETTLEMENT",
+        amountLabel,
+        timestampLabel,
+        occurredAt: row.latestAt.toISOString(),
+        tone: row.failureCount > 0 ? "amber" : "sky",
+        sortAt: row.latestAt,
+      };
+    });
 
   const combined = dedupeActivityRows(
     [
+      ...mainnetActivityItems,
+      ...pendingSettlementItems,
       ...indexedTransferRows.map((row) => indexedTransferToActivityItem(row)),
       ...giftRows.map((row) => giftToActivityItem(row)),
     ],
-    limit + 1
-  ).filter(isPublicStakingActivityItem);
+    rawActivityTake
+  )
+    .filter(isPublicStakingActivityItem)
+    .filter((item) => {
+      if (!validBeforeDate || !item.occurredAt) return true;
+      const occurredAt = new Date(item.occurredAt);
+      return !Number.isNaN(occurredAt.getTime()) && occurredAt < validBeforeDate;
+    });
 
-  const pageRows = combined.slice(0, limit).map((item) => ({
-    key: item.key,
-    label: item.label,
-    detail: item.detail,
-    meta: item.meta,
-    eventType: item.eventType,
-    amountLabel: item.amountLabel,
-    txFeeLabel: item.txFeeLabel,
-    timestampLabel: item.timestampLabel,
-    occurredAt: item.occurredAt,
-    tone: item.tone,
-  }));
-  const lastRow = pageRows[pageRows.length - 1] ?? null;
+  const filteredCombined = combined.filter((item) => {
+    const eventType = String(item.eventType || "").toUpperCase();
+    const text = `${item.label || ""} ${item.detail || ""}`.toLowerCase();
+
+    if (filter === "staking") {
+      return (
+        eventType === "REWARD" ||
+        eventType === "STAKE" ||
+        eventType === "UNSTAKE" ||
+        text.includes("staking reward") ||
+        text.includes("staking deposit") ||
+        text.includes("staking fee share") ||
+        text.includes("staking wallet")
+      );
+    }
+
+    if (filter === "bets") {
+      return (
+        eventType === "GROUPED BET" ||
+        eventType === "SETTLEMENT" ||
+        eventType === "PAYOUT" ||
+        eventType === "ESCROW" ||
+        text.includes("bet_") ||
+        text.includes("bet stake") ||
+        text.includes("founders_") ||
+        text.includes(" vs ")
+      );
+    }
+
+    if (filter === "transfers") {
+      return eventType === "DIRECT" || eventType === "GIFT";
+    }
+
+    return true;
+  });
+
+  const visibleRows =
+    mode === "grouped"
+      ? groupStakingBetActivityItems(filteredCombined, limit + 1)
+      : filteredCombined;
+
+  const pageRows = visibleRows.slice(0, limit).map((item) => {
+    const normalized = attachActivityTxFields(item);
+    return {
+      key: normalized.key,
+      label: normalized.label,
+      detail: normalized.detail,
+      meta: normalized.meta,
+      eventType: normalized.eventType,
+      amountLabel: normalized.amountLabel,
+      txFeeLabel: normalized.txFeeLabel,
+      timestampLabel: normalized.timestampLabel,
+      occurredAt: normalized.occurredAt,
+      txHash: normalized.txHash,
+      txUrl: normalized.txUrl,
+      children: normalized.children,
+      tone: normalized.tone,
+    };
+  });
+  const cursorRow =
+    filteredCombined
+      .slice(0, Math.max(1, rawActivityTake - 1))
+      .reverse()
+      .find((row) => row.timestampLabel !== "Current stake" && row.occurredAt) ?? null;
 
   return {
     generatedAt: new Date().toISOString(),
     rows: pageRows,
-    hasMore: combined.length > limit,
-    nextBefore: lastRow?.occurredAt ?? null,
+    hasMore: filteredCombined.length > limit,
+    nextBefore: cursorRow?.occurredAt ?? null,
   };
 }
 
