@@ -10,6 +10,8 @@ const PAGE_SIZE = 16;
 const LIVE_POLL_INTERVAL_MS = 12_000;
 
 type ActivityMode = "ledger" | "grouped";
+const STAKING_ACTIVITY_PREFS_KEY = "aoe2war:staking-activity-prefs";
+
 type ActivityFilterMode = "all" | "staking" | "bets" | "transfers";
 
 type ActivityPageResponse = {
@@ -114,6 +116,50 @@ export default function StakingActivityFeed({
   const initialRows = useMemo(() => items.slice(0, PAGE_SIZE), [items]);
   const [mode, setMode] = useState<ActivityMode>("ledger");
   const [filterMode, setFilterMode] = useState<ActivityFilterMode>("all");
+  const [activityPrefsLoaded, setActivityPrefsLoaded] = useState(false);
+
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(STAKING_ACTIVITY_PREFS_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as {
+          mode?: ActivityMode;
+          filterMode?: ActivityFilterMode;
+        };
+
+        if (parsed.mode === "ledger" || parsed.mode === "grouped") {
+          setMode(parsed.mode);
+        }
+
+        if (
+          parsed.filterMode === "all" ||
+          parsed.filterMode === "staking" ||
+          parsed.filterMode === "bets" ||
+          parsed.filterMode === "transfers"
+        ) {
+          setFilterMode(parsed.filterMode);
+        }
+      }
+    } catch {
+      // Ignore stale or invalid saved preferences.
+    } finally {
+      setActivityPrefsLoaded(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!activityPrefsLoaded) return;
+
+    try {
+      window.localStorage.setItem(
+        STAKING_ACTIVITY_PREFS_KEY,
+        JSON.stringify({ mode, filterMode })
+      );
+    } catch {
+      // Ignore private-mode/localStorage failures.
+    }
+  }, [activityPrefsLoaded, mode, filterMode]);
   const [rows, setRows] = useState(initialRows);
   const [freshKey, setFreshKey] = useState<string | null>(
     activityKey(initialRows[0] ?? { label: "", detail: "", meta: "", tone: "slate" })

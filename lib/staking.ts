@@ -1503,7 +1503,7 @@ export async function loadMainnetTransferStakingActivityPage(
   });
 
   const visibleRows =
-    mode === "grouped"
+    mode === "grouped" && filter !== "staking"
       ? groupStakingBetActivityItems(filteredCombined, limit + 1)
       : filteredCombined;
 
