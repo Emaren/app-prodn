@@ -222,7 +222,7 @@ export default function StakingActivityFeed({
         setFreshKey(
           activityKey(nextRows[0] ?? { label: "", detail: "", meta: "", tone: "slate" })
         );
-        setHasMore(Boolean(payload.hasMore || payload.nextBefore));
+        setHasMore(Boolean(payload.hasMore || payload.nextBefore || nextRows.length >= PAGE_SIZE));
         setNextBefore(payload.nextBefore || oldestActivityRowTimestamp(nextRows));
       } catch (error) {
         console.warn("Failed to refresh staking activity mode:", error);
@@ -278,7 +278,7 @@ export default function StakingActivityFeed({
           const freshRows = nextRows.filter((row) => !knownKeys.has(activityKey(row)));
 
           setRows((current) => mergeActivityRows(nextRows, current));
-          setHasMore((current) => current || Boolean(payload.hasMore));
+          setHasMore((current) => current || Boolean(payload.hasMore || payload.nextBefore || nextRows.length >= PAGE_SIZE));
 
           if (freshRows.length > 0) {
             const newestFresh = mergeActivityRows(freshRows)[0];
@@ -359,7 +359,7 @@ export default function StakingActivityFeed({
       const nextRows = Array.isArray(payload.rows) ? payload.rows : [];
 
       setRows((current) => mergeActivityRows(current, nextRows));
-      setHasMore(Boolean(payload.hasMore || payload.nextBefore));
+      setHasMore(Boolean(payload.hasMore || payload.nextBefore || nextRows.length >= PAGE_SIZE));
       setNextBefore(payload.nextBefore || oldestActivityRowTimestamp(nextRows) || nextBefore);
     } catch (error) {
       console.error("Failed to load staking activity:", error);
@@ -570,7 +570,7 @@ function activityVisual(item: StakingActivityItem) {
 
   if (isTreasuryActivity) {
     return {
-      card: "border-emerald-400/32 bg-[radial-gradient(circle_at_4%_50%,rgba(6,78,59,0.30),transparent_34%),linear-gradient(90deg,rgba(2,44,34,0.34),rgba(3,7,18,0.80))] shadow-[inset_3px_0_0_rgba(251,191,36,0.68),0_0_20px_rgba(6,78,59,0.14)] hover:border-emerald-300/42",
+      card: "border-emerald-400/30 bg-[radial-gradient(circle_at_4%_50%,rgba(6,78,59,0.30),transparent_34%),linear-gradient(90deg,rgba(2,44,34,0.34),rgba(3,7,18,0.80))] shadow-[inset_3px_0_0_rgba(251,191,36,0.68),0_0_20px_rgba(6,78,59,0.14)] hover:border-emerald-300/40",
       orb: "border-emerald-200/35 bg-emerald-950/55 text-emerald-100 shadow-[0_0_16px_rgba(6,78,59,0.35)]",
       dot: "bg-amber-300 shadow-[0_0_13px_rgba(252,211,77,0.62)]",
       label: "text-white",
@@ -665,7 +665,7 @@ function ActivityRow({
 
   return (
     <div
-      className={`max-w-full overflow-hidden rounded-[1.1rem] border p-3.5 transition hover:border-white/20 hover:bg-white/[0.055] ${
+      className={`max-w-full overflow-hidden rounded-[1.1rem] border p-3.5 transition hover:bg-white/[0.045] ${
         visual.card
       } ${isFresh ? "staking-activity-new" : ""} ${className}`}
     >
