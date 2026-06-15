@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 
 import { getPrisma } from "@/lib/prisma";
+import StakerLedgerPanel from "./StakerLedgerPanel";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -132,13 +133,6 @@ function dateLabel(value?: Date | string | null) {
   return new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric" }).format(date);
 }
 
-function timeLabel(value?: Date | string | null) {
-  if (!value) return "Unknown";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Unknown";
-  return new Intl.DateTimeFormat("en", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(date);
-}
-
 function toneCard(tone: RegistryProfile["tone"]) {
   if (tone === "gold") {
     return "border-amber-300/25 bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.18),transparent_34%),linear-gradient(180deg,rgba(15,23,42,0.96),rgba(3,7,18,0.98))]";
@@ -213,6 +207,7 @@ async function loadPosition(slug: string) {
             from staking_reward_allocations a
             join staking_reward_distributions d on d.id = a.distribution_id
             where a.user_id = $1
+              and d.distribution_date::date >= '2026-05-25'::date
             order by coalesce(a.credited_at, a.claimed_at, a.created_at, d.created_at) desc, a.id desc
             limit 18
             `,
@@ -275,31 +270,6 @@ function StatCard({
   );
 }
 
-function LedgerRow({ allocation }: { allocation: AllocationRow }) {
-  const reward = asNumber(allocation.reward_wolo);
-  const status = String(allocation.status || "reward").toLowerCase();
-  const isHeld = reward > 0 && reward < 1;
-  const isCompound = status.includes("compound");
-
-  return (
-    <div className="rounded-[1.15rem] border border-amber-300/25 bg-[radial-gradient(circle_at_left,rgba(245,158,11,0.15),transparent_34%),linear-gradient(90deg,rgba(40,25,10,0.42),rgba(3,7,18,0.88))] p-4 shadow-[inset_3px_0_0_rgba(245,158,11,0.65)]">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div className="min-w-0">
-          <div className="font-semibold text-white">
-            {isHeld ? `${reward} WOLO held reward` : isCompound ? `${compactWolo(reward)} compound event` : `${compactWolo(reward)} reward`}
-          </div>
-          <div className="mt-1 break-words text-sm leading-6 text-amber-100/70">
-            Distribution {dateLabel(allocation.distribution_date)} · {status}
-          </div>
-        </div>
-        <div className="shrink-0 rounded-full border border-white/10 bg-black/25 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300">
-          {timeLabel(allocation.occurred_at)}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default async function StakerHallPage({ params }: PageProps) {
   const { slug } = await params;
   const profile = await loadPosition(slug);
@@ -317,6 +287,8 @@ export default async function StakerHallPage({ params }: PageProps) {
   const compounded = row ? asNumber(row.compounded_rewards_wolo) : 0;
   const pending = row ? asNumber(row.pending_rewards_wolo) : 0;
   const lifetime = Math.max(row ? asNumber(row.lifetime_rewards_wolo) : 0, allocations.reduce((sum, item) => sum + asNumber(item.reward_wolo), 0));
+  const championshipTitle = registry.slug === "jim" ? "United States Champion" : registry.slug === "julio-alvarez" ? "Early Seat" : "Verified Grind";
+  const kingdomBenefit = registry.slug === "jim" ? "US Champion lane · founding staking guardian · public kingdom proof" : registry.slug === "julio-alvarez" ? "Early staker lane · scout designation · compounding path" : "Operator lane · verified wallet · public economy rail";
 
   const progressTarget = stake < 1_000 ? 1_000 : stake < 10_000 ? 10_000 : stake < 100_000 ? 100_000 : 250_000;
   const progress = Math.min(100, Math.round((stake / progressTarget) * 100));
@@ -379,11 +351,41 @@ export default async function StakerHallPage({ params }: PageProps) {
           <StatCard label="Pending" value={compactWolo(pending)} helper="Held or awaiting threshold" tone="gold" icon={<Flame className="h-4 w-4" />} />
         </section>
 
+        <section className="mt-6 grid gap-4 lg:grid-cols-2">
+          <div className="rounded-[1.55rem] border border-amber-300/25 bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.16),transparent_34%),linear-gradient(180deg,rgba(15,23,42,0.96),rgba(3,7,18,0.98))] p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-xs uppercase tracking-[0.28em] text-amber-200/60">Championships</div>
+                <h2 className="mt-2 text-2xl font-semibold text-white">{championshipTitle}</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-300">
+                  Championship and designation rows can be interspersed directly inside the personal ledger.
+                </p>
+              </div>
+              <div className="rounded-full border border-amber-300/25 bg-amber-300/10 p-3 text-amber-100">
+                <Trophy className="h-5 w-5" />
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-[1.55rem] border border-emerald-800/70 bg-[radial-gradient(circle_at_top_left,rgba(6,95,70,0.18),transparent_34%),linear-gradient(180deg,rgba(15,23,42,0.96),rgba(3,7,18,0.98))] p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-xs uppercase tracking-[0.28em] text-emerald-100/60">Kingdom Benefits</div>
+                <h2 className="mt-2 text-2xl font-semibold text-white">Public seat benefits</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-300">{kingdomBenefit}</p>
+              </div>
+              <div className="rounded-full border border-emerald-300/20 bg-emerald-500/10 p-3 text-emerald-100">
+                <ShieldCheck className="h-5 w-5" />
+              </div>
+            </div>
+          </div>
+        </section>
+
         <section className="mt-6 rounded-[1.7rem] border border-amber-300/20 bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.14),transparent_32%),linear-gradient(180deg,rgba(15,23,42,0.94),rgba(3,7,18,0.98))] p-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <div className="text-xs uppercase tracking-[0.28em] text-amber-200/60">Progression</div>
-              <h2 className="mt-2 text-2xl font-semibold text-white">Next title is already watching.</h2>
+              <h2 className="mt-2 text-2xl font-semibold text-white">Path of the seat.</h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">{registry.nextMove}</p>
             </div>
             <div className="rounded-full border border-amber-300/25 bg-amber-300/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-amber-100">
@@ -395,27 +397,9 @@ export default async function StakerHallPage({ params }: PageProps) {
           </div>
         </section>
 
-        <section className="mt-6 rounded-[1.7rem] border border-white/10 bg-[linear-gradient(180deg,rgba(10,16,29,0.94),rgba(4,7,14,0.99))] p-5">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <div className="text-xs uppercase tracking-[0.28em] text-slate-500">Personal Ledger</div>
-              <h2 className="mt-2 text-2xl font-semibold text-white">Receipts of the seat</h2>
-            </div>
-            <Link href="/staking" className="rounded-full border border-white/10 bg-white/[0.045] px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-200 transition hover:border-amber-300/35 hover:text-amber-100">
-              Full ledger
-            </Link>
-          </div>
-
-          <div className="mt-5 space-y-3">
-            {allocations.length > 0 ? allocations.map((allocation) => (
-              <LedgerRow key={allocation.id} allocation={allocation} />
-            )) : (
-              <div className="rounded-2xl border border-white/10 bg-black/20 p-5 text-sm text-slate-400">
-                This seat is live. Detailed reward rows will appear here as the staking hall records more cycles.
-              </div>
-            )}
-          </div>
-        </section>
+        <div className="mt-6">
+          <StakerLedgerPanel slug={slug} player={registry.player} />
+        </div>
       </div>
     </main>
   );
