@@ -286,12 +286,37 @@ async function loadStakingRows(userId: number | null, before: string | null, lim
     allocationsByDay.set(key, list);
   }
 
+  const eventTxByKindDay = new Map<string, string>();
+  const allocationKindDays = new Set<string>();
+
+  for (const row of allocations) {
+    if (!row.id || !row.occurred_at) continue;
+    const status = String(row.status || "").toLowerCase();
+    const kind = status.includes("compound") ? "compound" : status.includes("claim") ? "claim" : null;
+    if (!kind) continue;
+    allocationKindDays.add(`${kind}:${dayKey(row.occurred_at)}`);
+  }
+
   for (const event of events) {
     if (!event.occurred_at) continue;
     activeStakingDays.add(dayKey(event.occurred_at));
+
+    const type = String(event.type || "").toLowerCase();
+    const kind = type.includes("compound") ? "compound" : type.includes("claim") ? "claim" : null;
+    if (kind && event.tx_hash) {
+      eventTxByKindDay.set(`${kind}:${dayKey(event.occurred_at)}`, event.tx_hash);
+    }
   }
 
-  const eventRows: LedgerRow[] = events.map((event) => {
+  const visibleEvents = events.filter((event) => {
+    if (!event.occurred_at) return true;
+    const type = String(event.type || "").toLowerCase();
+    const kind = type.includes("compound") ? "compound" : type.includes("claim") ? "claim" : null;
+    if (!kind) return true;
+    return !allocationKindDays.has(`${kind}:${dayKey(event.occurred_at)}`);
+  });
+
+  const eventRows: LedgerRow[] = visibleEvents.map((event) => {
     const occurredAt = new Date(event.occurred_at || new Date()).toISOString();
     const type = String(event.type || "staking event").toLowerCase();
     const amount = asNumber(event.amount_wolo);
@@ -318,6 +343,9 @@ async function loadStakingRows(userId: number | null, before: string | null, lim
         const amount = amountFromUwolo(allocation.reward_uwolo, allocation.reward_wolo);
         const status = String(allocation.status || "reward").toLowerCase();
         const occurredAt = new Date(allocation.occurred_at || `${key}T12:10:00.000Z`).toISOString();
+        const kind = status.includes("compound") ? "compound" : status.includes("claim") ? "claim" : null;
+        const mergedTx = kind ? eventTxByKindDay.get(`${kind}:${dayKey(occurredAt)}`) : null;
+        const txLabel = mergedTx ? ` · tx ${mergedTx.slice(0, 8)}...${mergedTx.slice(-6)}` : "";
 
         dailyRows.push({
           key: `staking-allocation-${allocation.id}`,
@@ -329,10 +357,11 @@ async function loadStakingRows(userId: number | null, before: string | null, lim
               : status.includes("compound")
                 ? `${formatWolo(amount)} compound event`
                 : `${formatWolo(amount)} reward`,
-          detail: `Distribution ${formatDate(allocation.distribution_date)} · ${status}`,
+          detail: `Distribution ${formatDate(allocation.distribution_date)} · ${status}${txLabel}`,
           meta: formatTime(occurredAt),
           occurredAt,
           amountLabel: formatWolo(amount),
+          txHash: mergedTx,
         });
       }
     } else if (!activeStakingDays.has(key)) {
