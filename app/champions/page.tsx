@@ -70,11 +70,15 @@ function normalizedPlayerName(value: string) {
   return value.trim().toLowerCase();
 }
 
+function avatarForPlayerName(name: string) {
+  const fallback = PLAYER_BACKDROPS[normalizedPlayerName(name)] || SILHOUETTE_BACKDROP;
+  return managedMediaPublicUrl("avatar", slugifyManagedMediaTarget(name), fallback);
+}
+
 function backdropForTitle(title: ChampionTitleDefinition) {
   const holder = primaryHolder(title);
   if (holder) {
-    const fallback = PLAYER_BACKDROPS[normalizedPlayerName(holder.name)] || SILHOUETTE_BACKDROP;
-    return managedMediaPublicUrl("avatar", slugifyManagedMediaTarget(holder.name), fallback);
+    return avatarForPlayerName(holder.name);
   }
 
   if (title.id === "national-canada") {
@@ -100,8 +104,35 @@ function dailyBudget(titles: ChampionTitleDefinition[]) {
   }, 0);
 }
 
-function titleHref(title: ChampionTitleDefinition) {
-  return `${title.routeHref}?challenge=1`;
+function challengeHrefForTitle(title: ChampionTitleDefinition) {
+  const params = new URLSearchParams({
+    title: title.id,
+  });
+
+  if (title.country) {
+    params.set("country", title.country);
+  }
+
+  if (title.type === "national") {
+    params.set("kind", "national");
+  }
+
+  return `/challenge?${params.toString()}#schedule-game`;
+}
+
+function flagForCountry(country: ChampionTitleDefinition["country"]) {
+  switch (country) {
+    case "Canada":
+      return "🇨🇦";
+    case "USA":
+      return "🇺🇸";
+    case "Mexico":
+      return "🇲🇽";
+    case "UK":
+      return "🇬🇧";
+    default:
+      return "🌐";
+  }
 }
 
 function BeltAsset({
@@ -135,7 +166,7 @@ function BeltAsset({
           className={`pointer-events-none z-0 object-contain object-bottom opacity-70 [mask-image:linear-gradient(180deg,black_0%,black_82%,transparent_100%)] ${backdropClassName}`}
         />
       ) : null}
-      <div className={wearable ? "absolute inset-x-0 bottom-[7%] z-10 h-[42%]" : "absolute inset-0 z-10"}>
+      <div className={wearable ? "absolute inset-x-0 bottom-[-16%] z-10 h-[46%]" : "absolute inset-0 z-10"}>
         <Image
           src={assetUrl}
           alt=""
@@ -204,7 +235,7 @@ function TributePill({ title, compact = false }: { title: ChampionTitleDefinitio
 function ChallengeButton({ title, compact = false }: { title: ChampionTitleDefinition; compact?: boolean }) {
   return (
     <Link
-      href={titleHref(title)}
+      href={challengeHrefForTitle(title)}
       className={`inline-flex items-center justify-center gap-2 rounded-full border border-amber-200/18 bg-[linear-gradient(135deg,#f9d675,#d79a2f_58%,#7c4b12)] font-semibold text-slate-950 shadow-[0_14px_36px_rgba(0,0,0,0.28)] transition hover:brightness-110 ${
         compact ? "px-4 py-2 text-xs" : "px-5 py-3 text-sm"
       }`}
@@ -279,7 +310,7 @@ function ContenderRow({ row, compact = false }: { row: TitleContender; compact?:
         <div className="truncate text-xs text-slate-500">{row.meta || row.ratingLabel || "Verified contender"}</div>
       </div>
       {row.badge ? (
-        <span className="rounded-full border border-amber-200/16 bg-amber-300/10 px-2 py-0.5 text-[10px] text-amber-100">
+        <span className="rounded-full border border-amber-200/10 bg-amber-300/5 px-2 py-0.5 text-[10px] text-amber-100/62">
           {row.badge}
         </span>
       ) : (
@@ -298,11 +329,11 @@ function OpenContenderSlot({ rank, compact = false }: { rank: number; compact?: 
     >
       <div className="font-mono text-xs text-slate-500">#{rank}</div>
       <div className="min-w-0">
-        <div className="truncate text-sm font-semibold text-slate-400">Open slot</div>
-        <div className="truncate text-xs text-slate-600">Awaiting verified challenger</div>
+        <div className="truncate text-sm font-semibold text-slate-300">Open lane</div>
+        <div className="truncate text-xs text-slate-600">Win proof to enter</div>
       </div>
-      <span className="rounded-full border border-white/8 bg-white/[0.035] px-2 py-0.5 text-[10px] text-slate-500">
-        Empty
+      <span className="rounded-full border border-amber-200/10 bg-amber-300/[0.04] px-2 py-0.5 text-[10px] text-amber-100/55">
+        Claimable
       </span>
     </div>
   );
@@ -359,13 +390,69 @@ function PodiumCard({
   );
 }
 
+function TagTeamDuoAsset({ title }: { title: ChampionTitleDefinition }) {
+  const beltUrl = managedMediaPublicUrl("belt", title.id, title.assetUrl);
+  const leftHolder = title.holders[0] ?? null;
+  const rightHolder = title.holders[1] ?? null;
+  const leftAvatar = leftHolder ? avatarForPlayerName(leftHolder.name) : managedMediaPublicUrl("avatar", "silhouette", SILHOUETTE_BACKDROP);
+  const rightAvatar = rightHolder ? avatarForPlayerName(rightHolder.name) : managedMediaPublicUrl("avatar", "silhouette", SILHOUETTE_BACKDROP);
+
+  return (
+    <div className="relative mx-auto h-[24rem] w-full max-w-[35rem] overflow-visible">
+      <div className="absolute inset-x-8 bottom-4 h-px bg-gradient-to-r from-transparent via-amber-200/22 to-transparent" />
+      <div className="absolute bottom-0 left-[4%] top-0 w-[53%]">
+        <Image
+          src={leftAvatar}
+          alt=""
+          fill
+          unoptimized
+          sizes="(min-width: 1024px) 22vw, 46vw"
+          className="object-contain object-bottom opacity-72 [mask-image:linear-gradient(180deg,black_0%,black_80%,transparent_100%)]"
+        />
+        <div className="absolute inset-x-0 bottom-[-10%] h-[45%]">
+          <Image
+            src={beltUrl}
+            alt=""
+            fill
+            unoptimized
+            sizes="(min-width: 1024px) 18vw, 42vw"
+            className="object-contain drop-shadow-[0_18px_36px_rgba(0,0,0,0.58)]"
+          />
+        </div>
+      </div>
+      <div className="absolute bottom-0 right-[4%] top-0 w-[53%]">
+        <Image
+          src={rightAvatar}
+          alt=""
+          fill
+          unoptimized
+          sizes="(min-width: 1024px) 22vw, 46vw"
+          className="object-contain object-bottom opacity-62 [mask-image:linear-gradient(180deg,black_0%,black_80%,transparent_100%)]"
+          style={{ transform: "scaleX(-1)" }}
+        />
+        <div className="absolute inset-x-0 bottom-[-10%] h-[45%]">
+          <Image
+            src={beltUrl}
+            alt=""
+            fill
+            unoptimized
+            sizes="(min-width: 1024px) 18vw, 42vw"
+            className="object-contain drop-shadow-[0_18px_36px_rgba(0,0,0,0.58)]"
+          />
+        </div>
+      </div>
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-[#03070d] to-transparent" />
+    </div>
+  );
+}
+
 function TagTeamCard({ titleState }: { titleState: ChampionTitleState }) {
   const title = titleState;
   return (
     <section className="relative overflow-hidden rounded-[1.8rem] border border-slate-200/16 bg-[radial-gradient(circle_at_15%_0%,rgba(226,232,240,0.15),transparent_32%),radial-gradient(circle_at_85%_20%,rgba(251,191,36,0.12),transparent_28%),linear-gradient(135deg,rgba(8,13,22,0.96),rgba(3,7,13,0.98))] p-5 shadow-[0_30px_90px_rgba(0,0,0,0.34)] sm:p-6">
       <div className="grid gap-5 lg:grid-cols-[minmax(15rem,0.75fr)_minmax(0,1fr)_minmax(18rem,0.85fr)] lg:items-center">
         <Link href={title.routeHref} className="block">
-          <BeltAsset title={title} className="h-[23rem] max-w-[32rem]" />
+          <TagTeamDuoAsset title={title} />
         </Link>
         <div className="min-w-0">
           <div className="flex items-center gap-2 text-xs uppercase tracking-[0.32em] text-slate-400">
@@ -398,8 +485,13 @@ function NationalCard({ titleState }: { titleState: ChampionTitleState }) {
   const title = titleState;
   return (
     <article className="min-w-0 overflow-hidden rounded-[1.45rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(0,0,0,0.25))] p-4">
+      <div className="relative z-10 flex justify-center">
+        <div className="rounded-[1.35rem] border border-white/10 bg-white/[0.055] px-4 py-2 text-6xl leading-none shadow-[0_16px_40px_rgba(0,0,0,0.22)]">
+          {flagForCountry(title.country)}
+        </div>
+      </div>
       <Link href={title.routeHref} className="block">
-        <BeltAsset title={title} className="h-[19rem] max-w-[18rem]" />
+        <BeltAsset title={title} className="-mt-2 h-[18rem] max-w-[18rem]" />
       </Link>
       <div className="mt-3">
         <div className="text-[10px] uppercase tracking-[0.24em] text-slate-500">Representing Country</div>
@@ -418,21 +510,6 @@ function NationalCard({ titleState }: { titleState: ChampionTitleState }) {
         </div>
         <ContenderList title={title} compact />
       </div>
-    </article>
-  );
-}
-
-function ComingNationsCard() {
-  return (
-    <article className="min-w-0 rounded-[1.45rem] border border-dashed border-white/10 bg-white/[0.025] p-5 opacity-75">
-      <div className="flex h-28 items-center justify-center rounded-2xl border border-white/8 bg-black/18">
-        <Globe2 className="h-12 w-12 text-slate-500" />
-      </div>
-      <div className="mt-5 text-[10px] uppercase tracking-[0.24em] text-slate-500">Coming Nations</div>
-      <h3 className="mt-1 text-xl font-semibold text-white">More Beacons</h3>
-      <p className="mt-2 text-sm leading-6 text-slate-400">
-        Germany, Spain, and more national belts are ready to slot into the same Representing Country structure.
-      </p>
     </article>
   );
 }
@@ -591,7 +668,7 @@ export default async function ChampionsPage() {
           <div className="grid min-w-[min(100%,22rem)] gap-2 rounded-2xl border border-white/10 bg-black/22 p-4 sm:grid-cols-3 lg:min-w-[28rem]">
             <HeroStat label="Active" value={String(activeTitleCount)} />
             <HeroStat label="Vacant" value={String(vacantTitleCount)} />
-            <HeroStat label="Artifact pool" value={`${budget} WOLO/day`} />
+            <HeroStat label="Tribute pool" value={`${budget} WOLO/day`} />
           </div>
         </div>
       </section>
@@ -610,12 +687,13 @@ export default async function ChampionsPage() {
           eyebrow="National Champions"
           title="Representing Country decides the national target."
           body="A player representing Mexico can challenge Mexico, not USA or Canada. Country cooldown enforcement can attach to this same profile field later."
+          actionHref="/challenge?title=national&kind=national#schedule-game"
+          actionLabel="Challenge for your Nation's belt"
         />
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {nationalStates.map((title) => (
             <NationalCard key={title.id} titleState={title} />
           ))}
-          <ComingNationsCard />
         </div>
       </section>
 
@@ -694,11 +772,15 @@ function SectionHeader({
   eyebrow,
   title,
   body,
+  actionHref = "/challenge#schedule-game",
+  actionLabel = "Challenge",
 }: {
   icon: typeof Shield;
   eyebrow: string;
   title: string;
   body: string;
+  actionHref?: string;
+  actionLabel?: string;
 }) {
   return (
     <div className="flex flex-wrap items-end justify-between gap-4">
@@ -711,10 +793,10 @@ function SectionHeader({
         <p className="mt-2 text-sm leading-6 text-slate-400">{body}</p>
       </div>
       <Link
-        href="/bets"
+        href={actionHref}
         className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm text-white/85 transition hover:border-amber-200/35 hover:text-amber-100"
       >
-        Challenge through Bets
+        {actionLabel}
         <ArrowRight className="h-4 w-4" />
       </Link>
     </div>

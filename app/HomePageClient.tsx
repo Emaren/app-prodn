@@ -3,6 +3,7 @@
 import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { LobbyChat } from "@/components/lobby/LobbyChat";
 import { LobbyHero } from "@/components/lobby/LobbyHero";
 import { LiveTickerStrip } from "@/components/lobby/LiveTickerStrip";
@@ -25,6 +26,7 @@ import {
   type LobbyMessage,
   type LobbySnapshot,
 } from "@/lib/lobby";
+import { avatarUrlForName } from "@/lib/avatarAssets";
 
 const EMPTY_MESSAGES: LobbyMessage[] = [];
 
@@ -33,25 +35,22 @@ const EXTREME_WARRIORS = [
     name: "Sniper",
     role: "The Sharpshooter",
     href: "/players/by-name/Sniper",
-    avatarUrl: "/champions/players/sniper.png",
   },
   {
     name: "Julio",
+    lookupName: "Julio Alvarez",
     role: "The Conquistador",
     href: "/players/by-name/Julio%20Alvarez",
-    avatarUrl: "/champions/players/julio.png",
   },
   {
     name: "Jim",
     role: "The General",
     href: "/players/by-name/Jim",
-    avatarUrl: "/champions/players/jim.png",
   },
   {
     name: "Emaren",
     role: "The Tactician",
     href: "/players/by-name/Emaren",
-    avatarUrl: "/champions/players/emaren.png",
   },
 ] as const;
 
@@ -59,7 +58,7 @@ type HomePageClientProps = {
   initialLobby: LobbySnapshot | null;
 };
 
-function ExtremeFeaturedWarriors() {
+function AdvancedFeaturedWarriors() {
   return (
     <section className="relative overflow-hidden rounded-[2rem] border border-amber-200/10 bg-[radial-gradient(circle_at_50%_0%,rgba(251,191,36,0.14),transparent_32%),linear-gradient(135deg,rgba(7,14,27,0.84),rgba(2,6,16,0.92))] px-4 py-5 shadow-[0_28px_96px_rgba(0,0,0,0.32)] sm:px-5">
       <div className="pointer-events-none absolute inset-x-10 bottom-0 h-px bg-gradient-to-r from-transparent via-amber-200/28 to-transparent" />
@@ -81,7 +80,7 @@ function ExtremeFeaturedWarriors() {
               className="group relative min-h-[13.5rem] overflow-hidden rounded-[1.35rem] border border-amber-200/12 bg-black/28 transition hover:border-amber-200/28"
             >
               <Image
-                src={warrior.avatarUrl}
+                src={avatarUrlForName("lookupName" in warrior ? warrior.lookupName : warrior.name)}
                 alt=""
                 fill
                 unoptimized
@@ -104,6 +103,79 @@ function ExtremeFeaturedWarriors() {
         <Link
           href="/players"
           className="hidden justify-self-end rounded-full border border-amber-200/14 px-4 py-2 text-sm text-slate-300 transition hover:border-amber-200/30 hover:text-amber-100 lg:inline-flex"
+        >
+          View all warriors
+        </Link>
+      </div>
+    </section>
+  );
+}
+
+function ExtremeFeaturedWarriors() {
+  return (
+    <section className="relative overflow-hidden rounded-[2.2rem] border border-amber-200/10 bg-[radial-gradient(circle_at_50%_0%,rgba(251,191,36,0.18),transparent_30%),radial-gradient(circle_at_82%_18%,rgba(59,130,246,0.12),transparent_28%),linear-gradient(180deg,rgba(5,12,24,0.95),rgba(1,5,14,0.98))] px-5 py-6 shadow-[0_34px_120px_rgba(0,0,0,0.38)] sm:px-7 lg:px-8">
+      <div className="pointer-events-none absolute inset-x-10 bottom-0 h-px bg-gradient-to-r from-transparent via-amber-200/30 to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/45 to-transparent" />
+
+      <button
+        type="button"
+        className="absolute left-4 top-1/2 hidden h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-amber-200/12 bg-black/28 text-amber-50/75 transition hover:border-amber-200/30 hover:text-amber-50 lg:flex"
+        aria-label="Previous featured warriors"
+      >
+        <ChevronLeft className="h-5 w-5" />
+      </button>
+      <button
+        type="button"
+        className="absolute right-4 top-1/2 hidden h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-amber-200/12 bg-black/28 text-amber-50/75 transition hover:border-amber-200/30 hover:text-amber-50 lg:flex"
+        aria-label="Next featured warriors"
+      >
+        <ChevronRight className="h-5 w-5" />
+      </button>
+
+      <div className="relative z-10 grid gap-5 lg:grid-cols-[12rem_minmax(0,1fr)_12rem] lg:items-center xl:px-10">
+        <div>
+          <div className="text-[10px] uppercase tracking-[0.38em] text-amber-100/76">
+            Featured Warriors
+          </div>
+          <div className="mt-2 max-w-[13rem] text-sm leading-5 text-slate-400">
+            Elite competitors. Legendary rivalries.
+          </div>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {EXTREME_WARRIORS.map((warrior) => {
+            const avatarSrc = avatarUrlForName("lookupName" in warrior ? warrior.lookupName : warrior.name);
+            return (
+              <Link
+                key={warrior.name}
+                href={warrior.href}
+                className="group relative min-h-[15.5rem] overflow-hidden rounded-[1.35rem] border border-amber-100/24 bg-black/24 transition hover:-translate-y-0.5 hover:border-amber-200/45"
+              >
+                <Image
+                  src={avatarSrc}
+                  alt=""
+                  fill
+                  unoptimized
+                  sizes="(min-width: 1280px) 250px, (min-width: 640px) 45vw, 90vw"
+                  className="object-cover object-top opacity-92 transition duration-500 group-hover:scale-[1.025]"
+                />
+                <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_20%,rgba(2,6,23,0.18)_56%,rgba(2,6,23,0.92)_100%)]" />
+                <div className="absolute inset-x-4 bottom-4 rounded-2xl border border-amber-200/18 bg-black/58 px-4 py-3 text-center shadow-[0_12px_30px_rgba(0,0,0,0.34)] backdrop-blur">
+                  <div className="font-serif text-xl font-semibold uppercase tracking-[0.12em] text-white">
+                    {warrior.name}
+                  </div>
+                  <div className="mt-1 text-[10px] uppercase tracking-[0.22em] text-slate-300">
+                    {warrior.role}
+                  </div>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+
+        <Link
+          href="/players"
+          className="inline-flex justify-self-start rounded-full border border-amber-200/18 px-5 py-3 text-sm font-semibold text-slate-200 transition hover:border-amber-200/40 hover:text-amber-100 lg:justify-self-end"
         >
           View all warriors
         </Link>
@@ -562,7 +634,7 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
     <div className="space-y-4 overflow-x-hidden py-2 text-white sm:space-y-6 sm:py-3">
       {shouldShowShowcaseLobby ? (
         <>
-          {isExtremeLobby ? <ExtremeFeaturedWarriors /> : null}
+          {isExtremeLobby ? <ExtremeFeaturedWarriors /> : <AdvancedFeaturedWarriors />}
           <LiveTickerStrip
             ticker={liveTicker}
             themeKey={tileThemeKey}

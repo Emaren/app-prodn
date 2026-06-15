@@ -35,6 +35,8 @@ import {
   saveUserAppearancePreference,
 } from "@/lib/userAppearanceClient";
 import {
+  applyTileViewDefaultMigration,
+  markTileViewDefaultMigrationApplied,
   readStoredTileViewPreferences,
   setTileViewPreference as updateTileViewPreference,
   writeStoredTileViewPreferences,
@@ -101,7 +103,7 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
     const storedTextColor = readStoredLobbyTextColor();
     const storedTimeDisplayMode = readStoredTimeDisplayMode();
     const storedTimeClockMode = readStoredTimeClockMode();
-    const storedTileViewPreferences = readStoredTileViewPreferences();
+    const storedTileViewPreferences = applyTileViewDefaultMigration(readStoredTileViewPreferences());
     const detectedBrowserTimeZone =
       detectBrowserTimeZone() || readStoredBrowserTimeZone();
     setBrowserTimeZone(detectedBrowserTimeZone);
@@ -117,6 +119,7 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
           setTimeDisplayMode(storedTimeDisplayMode);
           setTimeClockMode(storedTimeClockMode);
           setTileViewPreferences(storedTileViewPreferences);
+          markTileViewDefaultMigrationApplied();
           setAppearanceLoaded(true);
         }
         return;
@@ -132,7 +135,8 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
         setTimeDisplayMode(preference.timeDisplayMode);
         setTimeClockMode(preference.timeClockMode);
         setBrowserTimeZone(preference.timezoneOverride || detectedBrowserTimeZone);
-        setTileViewPreferences(preference.tileViewPreferences ?? {});
+        setTileViewPreferences(applyTileViewDefaultMigration(preference.tileViewPreferences ?? {}));
+        markTileViewDefaultMigrationApplied();
       } catch (error) {
         console.warn("Failed to hydrate appearance from account:", error);
         if (cancelled) return;
@@ -143,6 +147,7 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
         setTimeDisplayMode(storedTimeDisplayMode);
         setTimeClockMode(storedTimeClockMode);
         setTileViewPreferences(storedTileViewPreferences);
+        markTileViewDefaultMigrationApplied();
       } finally {
         if (!cancelled) {
           setAppearanceLoaded(true);

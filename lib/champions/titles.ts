@@ -81,8 +81,7 @@ export type TitleEconomySection =
   | "designation";
 
 export function tributeLabel(kind: TributeKind) {
-  void kind;
-  return "Artifact Bonus";
+  return kind === "ARTIFACT_BONUS" ? "Artifact Bonus" : "Reward Tribute";
 }
 
 export function formatDailyTribute(definition: Pick<ChampionTitleDefinition, "tributeKind" | "dailyWolo">) {

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { formatLobbyMoment } from "@/components/lobby/utils";
 import {
   type CSSProperties,
@@ -22,6 +23,7 @@ import type { AiVisibilityOption } from "@/lib/aiConciergeConfig";
 import AutoGrowTextarea from "@/components/ui/AutoGrowTextarea";
 import { LOBBY_MESSAGE_MAX_CHARS } from "@/lib/lobby";
 import { LOBBY_MESSAGE_REACTIONS } from "@/lib/lobbyReactionConfig";
+import { avatarUrlForUser } from "@/lib/avatarAssets";
 
 type LobbyChatProps = {
   style?: CSSProperties;
@@ -384,6 +386,8 @@ function LobbyMessageCard({
     currentUserIsAdmin || (currentUserUid !== null && item.message.user.uid === currentUserUid);
   const aiLabel =
     displayName(item.message.user.inGameName, item.message.user.steamPersonaName) || "The AI Scribe";
+  const authorName = displayName(item.message.user.inGameName, item.message.user.steamPersonaName) || aiLabel;
+  const avatarSrc = avatarUrlForUser(item.message.user.uid, authorName);
 
   useEffect(() => {
     if (!pickerPinnedOpen || typeof document === "undefined") {
@@ -512,8 +516,20 @@ function LobbyMessageCard({
       onMouseLeave={handleDesktopHoverEnd}
     >
       <div className="flex items-center justify-between gap-3">
-        <div className="font-medium text-white">
-          {displayName(item.message.user.inGameName, item.message.user.steamPersonaName)}
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full border border-amber-200/14 bg-black/28">
+            <Image
+              src={avatarSrc}
+              alt=""
+              fill
+              unoptimized
+              sizes="40px"
+              className="object-cover object-top"
+            />
+          </span>
+          <div className="min-w-0 truncate font-medium text-white">
+            {authorName}
+          </div>
         </div>
 
         <div className="text-xs text-slate-400">

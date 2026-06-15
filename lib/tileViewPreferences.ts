@@ -1,4 +1,6 @@
 export const TILE_VIEW_STORAGE_KEY = "aoe2hdbets:tile-view-preferences";
+export const TILE_VIEW_DEFAULT_VERSION_KEY = "aoe2hdbets:tile-view-default-version";
+export const TILE_VIEW_DEFAULT_VERSION = "2026-06-15-extreme-community-lobby";
 
 export const TILE_VIEW_KEYS = [
   "community_lobby",
@@ -69,6 +71,37 @@ export function readStoredTileViewPreferences(): TileViewPreferences {
     return normalizeTileViewPreferences(value ? JSON.parse(value) : null);
   } catch {
     return {};
+  }
+}
+
+export function applyTileViewDefaultMigration(preferences: TileViewPreferences): TileViewPreferences {
+  if (typeof window === "undefined") {
+    return preferences;
+  }
+
+  try {
+    if (window.localStorage.getItem(TILE_VIEW_DEFAULT_VERSION_KEY) === TILE_VIEW_DEFAULT_VERSION) {
+      return preferences;
+    }
+  } catch {
+    return preferences;
+  }
+
+  return {
+    ...preferences,
+    community_lobby: "extreme" as const,
+  };
+}
+
+export function markTileViewDefaultMigrationApplied() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(TILE_VIEW_DEFAULT_VERSION_KEY, TILE_VIEW_DEFAULT_VERSION);
+  } catch {
+    // Ignore private-mode/localStorage failures. The runtime defaults still render.
   }
 }
 

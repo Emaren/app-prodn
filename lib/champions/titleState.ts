@@ -31,7 +31,7 @@ function toContender(entry: LobbyLeaderboardEntry, rank: number, badge?: string 
     rating,
     ratingLabel: entry.primaryRatingLabel || entry.ratingLabel || (rating ? `${rating} ELO` : null),
     meta: `${entry.wins}-${entry.losses} verified`,
-    badge: badge ?? (entry.provisional ? "Provisional" : null),
+    badge: badge ?? null,
   };
 }
 
@@ -105,7 +105,7 @@ function contendersForTitle(
   if (definition.type === "designation") {
     const contenders = withoutCurrentHolders(
       definition,
-      leaderboardEntries.map((entry, index) => toContender(entry, index + 1, "Record hunter"))
+      leaderboardEntries.map((entry, index) => toContender(entry, index + 1))
     ).slice(0, 10).map((row, index) => ({
       ...row,
       rank: index + 1,

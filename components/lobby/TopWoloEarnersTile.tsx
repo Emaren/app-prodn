@@ -11,6 +11,7 @@ import {
 } from "@/components/lobby/lobbyPresentation";
 import type { LobbySnapshot } from "@/lib/lobby";
 import type { LobbyWoloEarnersEntry, LobbyWoloEarnersMode } from "@/lib/lobby";
+import { avatarUrlForName } from "@/lib/avatarAssets";
 
 const WOLO_LOGO_SRC = "/api/media-assets/logo/footer-wolo?fallback=%2Flegacy%2Fwolo-logo-transparent.png";
 
@@ -150,16 +151,29 @@ export function TopWoloEarnersTile({
   const headlineMeta =
     entries.length > 0 ? `${entries.length} earners` : reserve ? `${reserve} reserve` : "4 earners";
   const placeholderCount = Math.max(0, VISIBLE_ROWS - entries.length);
+  const featuredBackdropSrc = avatarUrlForName(entries[0]?.name || "Emaren");
 
   return (
     <section
-      className={`flex h-full min-h-0 max-h-full flex-col overflow-hidden rounded-[1.7rem] border p-5 pt-7 transition ${
+      className={`relative flex h-full min-h-0 max-h-full flex-col overflow-hidden rounded-[1.7rem] border p-5 pt-7 transition ${
         isExtreme
           ? "border-amber-200/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.045),rgba(255,255,255,0.018))] shadow-[0_26px_88px_rgba(0,0,0,0.28)]"
           : tone.panelShell
       } ${className ?? ""}`}
     >
-      <div className="flex items-start justify-between gap-4">
+      {isExtreme ? (
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-44 overflow-hidden opacity-20">
+          <Image
+            src={featuredBackdropSrc}
+            alt=""
+            fill
+            unoptimized
+            sizes="(min-width: 1024px) 380px, 90vw"
+            className="object-cover object-top blur-[1px] [mask-image:linear-gradient(180deg,black_0%,transparent_100%)]"
+          />
+        </div>
+      ) : null}
+      <div className="relative z-10 flex items-start justify-between gap-4">
         <div className="min-w-0">
           <div className={`text-xs uppercase tracking-[0.35em] ${tone.accentText}`}>
             Top $WOLO Earners
@@ -188,7 +202,7 @@ export function TopWoloEarnersTile({
         </div>
       </div>
 
-      <div className="mt-5 flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="relative z-10 mt-5 flex min-h-0 flex-1 flex-col overflow-hidden">
         {entries.length === 0 ? (
           <div className="grid gap-2.5">
             {PLACEHOLDER_LANES.map((lane) => (
@@ -216,14 +230,30 @@ export function TopWoloEarnersTile({
                 const primaryMetric =
                   mode === "weekly" ? entry.weeklyTakeWolo : entry.allTimeTakeWolo;
                 const primaryLabel = mode === "weekly" ? "Weekly take" : "All-time take";
+                const avatarSrc = avatarUrlForName(entry.name);
+                const rowClassName = isExtreme
+                  ? "relative block overflow-hidden rounded-[1.25rem] border border-amber-200/8 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),rgba(255,255,255,0.018))] px-4 py-4 transition hover:border-amber-200/22 hover:bg-amber-300/7"
+                  : `block rounded-[1.25rem] border px-4 py-4 transition ${tone.card} ${tone.cardHover}`;
 
                 return (
                   <Link
                     key={entry.key}
                     href={entry.href}
-                    className={`block rounded-[1.25rem] border px-4 py-4 transition ${tone.card} ${tone.cardHover}`}
+                    className={rowClassName}
                   >
-                    <div className="grid gap-x-3 gap-y-2 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-start">
+                    {isExtreme ? (
+                      <div className="pointer-events-none absolute inset-y-0 right-0 w-36 overflow-hidden opacity-38 sm:w-44">
+                        <Image
+                          src={avatarSrc}
+                          alt=""
+                          fill
+                          unoptimized
+                          sizes="176px"
+                          className="object-cover object-top [mask-image:linear-gradient(90deg,transparent_0%,black_28%,black_78%,transparent_100%)]"
+                        />
+                      </div>
+                    ) : null}
+                    <div className="relative z-10 grid gap-x-3 gap-y-2 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-start">
                       <div
                         className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border text-xs font-semibold ${tone.rankBadge}`}
                       >

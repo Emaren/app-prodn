@@ -82,7 +82,7 @@ The eighth shipped slice is championship polish and menu/staking hardening:
 
 - Converted championship belts, designation items, and new player/silhouette art to real alpha-channel PNGs.
 - Layered holder portraits and the generic silhouette behind title art while keeping belts and artifacts visually primary.
-- Standardized public title payout wording to `Artifact Bonus`.
+- Split public title payout wording: belts use `Reward Tribute`; special designation artifacts use `Artifact Bonus`.
 - Enforced the holder-plus-ten-contenders model in the title state and UI, with empty slots shown as explicit challenger openings.
 - Hardened the Kingdom chip and account menu for mobile tap behavior and unclipped fixed-sheet rendering.
 - Cleaned staking reward copy so compounded rewards read as canonical receipts instead of duplicate-looking events.

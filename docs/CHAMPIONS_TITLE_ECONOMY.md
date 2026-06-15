@@ -26,11 +26,13 @@ The title config lives in `lib/champions/titles.ts`.
   Untouchable, Raid Demon, Boom Lord, Slayer King, Relic Baron, Blitz Lord,
   Wololo Lord, Iron Wall.
 
-Title copy should use `Artifact Bonus` across belts, national titles, ELO
-titles, tag titles, and special designations.
+Title copy should use `Reward Tribute` for belts, national titles, ELO
+titles, and tag titles. Special designations are artifacts and should use
+`Artifact Bonus`.
 
 Do not bring back older labels such as `Monthly Reward`, `Daily Purse`,
-`Reign Tribute`, `Holder Bonus`, `Winner Bonus`, or `Champion Payment`.
+`Holder Bonus`, `Winner Bonus`, or `Champion Payment`. Do not call a belt
+payout an `Artifact Bonus`; belts are not artifacts.
 
 ## Visual assets
 
@@ -49,6 +51,9 @@ The admin media armory at `/admin/media-assets` can override these static
 fallbacks without a code deploy. Managed assets are served through
 `/api/media-assets/[kind]/[target]` and fall back to the static files above when
 no active upload exists.
+Uploaded files are also served from `/uploads/managed-assets/[kind]/[file]`
+by a dynamic app route so production previews do not depend on a separate
+static-file deploy step.
 
 Common managed targets:
 

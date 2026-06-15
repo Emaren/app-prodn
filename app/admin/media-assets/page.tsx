@@ -174,7 +174,7 @@ export default function AdminMediaAssetsPage() {
   }
 
   return (
-    <main className="mx-auto max-w-7xl space-y-6 py-8 text-white">
+    <main className="mx-auto max-w-7xl space-y-6 px-4 py-8 text-white sm:px-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="text-xs uppercase tracking-[0.35em] text-amber-100/65">Admin Armory</div>
@@ -189,10 +189,10 @@ export default function AdminMediaAssetsPage() {
         </Link>
       </div>
 
-      <section className="grid gap-5 lg:grid-cols-[minmax(19rem,0.42fr)_minmax(0,1fr)]">
+      <section className="grid gap-5 lg:grid-cols-[minmax(19rem,0.36fr)_minmax(0,1fr)]">
         <form
           onSubmit={submitUpload}
-          className="rounded-[1.6rem] border border-amber-200/12 bg-[linear-gradient(135deg,rgba(255,255,255,0.045),rgba(255,255,255,0.018))] p-5 shadow-[0_24px_90px_rgba(0,0,0,0.28)]"
+          className="rounded-[1.6rem] border border-amber-200/12 bg-[linear-gradient(135deg,rgba(255,255,255,0.045),rgba(255,255,255,0.018))] p-5 shadow-[0_24px_90px_rgba(0,0,0,0.28)] lg:sticky lg:top-24 lg:self-start"
         >
           <div className="flex items-center gap-2 text-xs uppercase tracking-[0.28em] text-amber-100/70">
             <ImagePlus className="h-4 w-4" />
@@ -272,7 +272,7 @@ export default function AdminMediaAssetsPage() {
           </div>
         </form>
 
-        <section className="rounded-[1.6rem] border border-white/10 bg-slate-950/60 p-5">
+        <section className="rounded-[1.6rem] border border-white/10 bg-slate-950/60 p-5 sm:p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2 text-xs uppercase tracking-[0.28em] text-sky-100/60">
               <Shield className="h-4 w-4" />
@@ -300,7 +300,7 @@ export default function AdminMediaAssetsPage() {
             </div>
           ) : null}
 
-          <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <div className="mt-5 grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
             {(loading ? [] : activeAssets).map((asset) => (
               <AssetCard
                 key={asset.id}
@@ -317,7 +317,7 @@ export default function AdminMediaAssetsPage() {
         </section>
       </section>
 
-      <section className="rounded-[1.6rem] border border-white/10 bg-slate-950/50 p-5">
+      <section className="rounded-[1.6rem] border border-white/10 bg-slate-950/50 p-5 sm:p-6">
         <div className="text-xs uppercase tracking-[0.28em] text-slate-500">All uploads</div>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {assets.map((asset) => (
@@ -346,9 +346,10 @@ function AssetCard({
   onSetActive: (active: boolean) => void;
 }) {
   return (
-    <article className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.035]">
-      <div className="relative flex aspect-[1.55/1] items-center justify-center bg-black/28">
+    <article className="overflow-hidden rounded-2xl border border-white/8 bg-white/[0.03] shadow-[0_18px_54px_rgba(0,0,0,0.18)]">
+      <div className="relative flex aspect-[1.55/1] items-center justify-center bg-[linear-gradient(45deg,rgba(255,255,255,0.045)_25%,transparent_25%,transparent_75%,rgba(255,255,255,0.045)_75%),linear-gradient(45deg,rgba(255,255,255,0.045)_25%,transparent_25%,transparent_75%,rgba(255,255,255,0.045)_75%)] bg-[length:18px_18px] bg-[position:0_0,9px_9px]">
         <img src={asset.url} alt={asset.alt || asset.label} className="h-full w-full object-contain p-2" />
+        <div className="pointer-events-none absolute inset-0 bg-black/34" />
         <span
           className={`absolute left-2 top-2 inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[10px] uppercase tracking-[0.14em] ${
             asset.active

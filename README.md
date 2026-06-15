@@ -21,7 +21,7 @@ It currently owns the premium lobby/community surface, leaderboard presentation,
 - Prisma 7 (`@prisma/client` + `@prisma/adapter-pg`) for user/profile/community APIs
 - Same-origin browser API routes for replay upload, lobby snapshot, inbox/admin actions, and appearance state
 - Premium lobby presentation layer with theme circles and lobby-specific shell behavior
-- Advanced `/lobby` arena stack with the moving live ticker, Watch & Chat hero/comments rail, compact hero bet slip, compact WOLO swap tile, and the preserved Basic community lobby toggle
+- Advanced `/lobby` arena stack with the moving live ticker, Watch & Chat hero/comments rail, compact hero bet slip, compact WOLO swap tile, and the preserved Basic/Advanced/Extreme community lobby toggle
 - Claimed player profiles default to the Advanced command center; unclaimed replay-built profiles default to the classic Basic claim page, and both can toggle Basic/Advanced
 - Advanced player profiles include lazy match archive, watcher proof, form/rivalry diagnostics, resource emblems, AI Scribe/Grimer readout, stream signal, and premium `$WOLO`/staking stats
 - The public Kingdom spine includes `/kingdom`, `/champions`, `/national-champions`, and `/forum`, with the legacy `/belts`, `/nations`, and `/realm` paths redirecting into the new route names
@@ -55,7 +55,7 @@ The current first-impression path is no longer just the homepage. The real produ
 ## Championship title economy
 
 - `/champions` and `/champions/[...slug]` render the app-side title economy from `lib/champions/titles.ts` and `lib/champions/titleState.ts`.
-- Title payouts are labeled `Artifact Bonus` across belts, national titles, ELO titles, and designations.
+- Belts, tag titles, national titles, and ELO titles use `Reward Tribute`; special designation artifacts use `Artifact Bonus`.
 - Championship art assets under `public/champions` should keep real alpha transparency; holder/silhouette backplates live in `public/champions/players`.
 - `/profile` stores title eligibility settings through `represented_country` and `gender_division`.
 - `/admin` includes a disabled title-operator scaffold for future assignment, vacation, top-10, and record rails.

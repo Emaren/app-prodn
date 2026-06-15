@@ -16,6 +16,7 @@ import type { BetBoardMarket, BetBoardSnapshot, BetSide, BetWarTapeRow } from "@
 import type { LobbyMatchRow, LobbyMessage, LobbySnapshot } from "@/lib/lobby";
 import type { LiveGameSession } from "@/lib/liveSessionSnapshot";
 import type { WatchStreamPayload } from "@/lib/watchStreams";
+import { avatarUrlForName, avatarUrlForUser } from "@/lib/avatarAssets";
 
 type WatchAndChatHeroProps = {
   tournament: LobbySnapshot["tournament"];
@@ -58,15 +59,6 @@ type ReactionKey = "fire" | "sword" | "skull" | "wolo";
 
 const HERO_STAKE_OPTIONS = [10, 25, 50, 100] as const;
 const WATCH_CHAT_LOOP_URL = "/watch-loops/live-hero-loop.mp4?v=watch-chat-v1";
-const EXTREME_SILHOUETTE = "/champions/players/silhouette.png";
-const EXTREME_AVATARS: Record<string, string> = {
-  emaren: "/champions/players/emaren.png",
-  jim: "/champions/players/jim.png",
-  "julio alvarez": "/champions/players/julio.png",
-  julio: "/champions/players/julio.png",
-  sniper: "/champions/players/sniper.png",
-};
-
 const REACTIONS: Array<{
   key: ReactionKey;
   label: string;
@@ -199,10 +191,6 @@ function projectHeroReturn(stakeWolo: number, selectedPoolWolo: number, opposite
 
 function safeStakeDraft(value: string) {
   return value.replace(/[^0-9]/g, "").slice(0, 7);
-}
-
-function avatarForName(name: string | null | undefined) {
-  return EXTREME_AVATARS[(name || "").trim().toLowerCase()] || EXTREME_SILHOUETTE;
 }
 
 export function WatchAndChatHero({
@@ -802,7 +790,7 @@ function ExtremeBetLines({
       <div className="mt-3 flex items-center gap-3 rounded-2xl border border-amber-200/10 bg-black/22 px-3 py-2.5 text-sm text-slate-300">
         <span className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full border border-amber-200/18 bg-black/28">
           <Image
-            src={avatarForName(fallbackActor)}
+            src={avatarUrlForName(fallbackActor)}
             alt=""
             fill
             unoptimized
@@ -826,7 +814,7 @@ function ExtremeBetLines({
         >
           <span className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full border border-amber-200/18 bg-black/28">
             <Image
-              src={avatarForName(row.actor)}
+              src={avatarUrlForName(row.actor)}
               alt=""
               fill
               unoptimized
@@ -885,13 +873,26 @@ function CompactCommentCard({
   message: LobbyMessage;
   tone: ReturnType<typeof getLobbyPresentationTone>;
 }) {
-  const name = displayName(message.user.inGameName, message.user.steamPersonaName);
+  const name = displayName(message.user.inGameName, message.user.steamPersonaName) || "The AI Scribe";
+  const avatarSrc = avatarUrlForUser(message.user.uid, name);
   const visibleReactions = message.reactions.filter((reaction) => reaction.count > 0).slice(0, 3);
 
   return (
     <article className={`rounded-2xl border px-3.5 py-3 ${tone.subduedCard}`}>
       <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0 truncate text-sm font-semibold text-white">{name}</div>
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full border border-amber-200/14 bg-black/26">
+            <Image
+              src={avatarSrc}
+              alt=""
+              fill
+              unoptimized
+              sizes="36px"
+              className="object-cover object-top"
+            />
+          </span>
+          <div className="min-w-0 truncate text-sm font-semibold text-white">{name}</div>
+        </div>
         <time className="shrink-0 text-[11px] text-slate-500">
           {formatLobbyMoment(message.createdAt)}
         </time>

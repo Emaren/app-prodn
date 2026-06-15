@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import type { FormEvent, ReactNode } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowUpRight, Clock3, MessageSquareMore, Plus, Wallet } from "lucide-react";
 
 import ScheduledMatchCard, {
@@ -24,6 +25,11 @@ import {
   challengeFundingEscrowAddress,
   fundChallengeEscrow,
 } from "@/lib/clientChallengeFunding";
+import {
+  isRepresentedCountry,
+  REPRESENTED_COUNTRIES,
+  type RepresentedCountry,
+} from "@/lib/champions/titles";
 import type { ChallengeActivityItem, ChallengeHubSnapshot } from "@/lib/challenges";
 import type {
   ScheduledMatchColorTag,
@@ -234,6 +240,7 @@ function formatActivityCompact(activity: ChallengeActivityItem, match?: Activity
 
 export default function ChallengeWorkspace() {
   const { loading: authLoading, isAuthenticated, uid } = useUserAuth();
+  const searchParams = useSearchParams();
   const { status: walletStatus, address: connectedWalletAddress, connect: connectKeplr } = useKeplr();
   const { timeDisplayMode, setTimeDisplayMode, timeClockMode, browserTimeZone } = useLobbyAppearance();
   const scheduleFormId = "schedule-game";
@@ -251,11 +258,34 @@ export default function ChallengeWorkspace() {
   const [challengedUid, setChallengedUid] = useState("");
   const [scheduledAt, setScheduledAt] = useState("");
   const [challengeNote, setChallengeNote] = useState("");
+  const [routePrefillApplied, setRoutePrefillApplied] = useState(false);
   const [wagerAmountWolo, setWagerAmountWolo] = useState(String(CHALLENGE_DEFAULT_WAGER_WOLO));
   const [guaranteeAmountWolo, setGuaranteeAmountWolo] = useState(
     String(CHALLENGE_DEFAULT_GUARANTEE_WOLO)
   );
   const [focusedMatchId, setFocusedMatchId] = useState<number | null>(null);
+  const requestedTitle = searchParams.get("title");
+  const requestedKind = searchParams.get("kind");
+  const requestedCountry = searchParams.get("country");
+  const isNationalChallengeFlow =
+    requestedKind === "national" || requestedTitle === "national" || Boolean(requestedCountry);
+  const initialNationalCountry = isRepresentedCountry(requestedCountry) ? requestedCountry : "";
+  const [selectedNationalCountry, setSelectedNationalCountry] = useState<RepresentedCountry | "">(
+    initialNationalCountry
+  );
+  const returnTo = useMemo(() => {
+    const params = searchParams.toString();
+    return params ? `/challenge?${params}` : "/challenge";
+  }, [searchParams]);
+
+  const buildNationalChallengeNote = useCallback((country: RepresentedCountry | "") => {
+    const countryLabel = country || requestedCountry || "my nation";
+    const titleLabel = requestedTitle && requestedTitle !== "national"
+      ? requestedTitle.replace(/-/g, " ")
+      : "national belt";
+
+    return `Challenge for ${countryLabel}'s ${titleLabel}: scheduling with Emaren so the national belt can be created, played for, and awarded after verified match proof.`;
+  }, [requestedCountry, requestedTitle]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -306,6 +336,40 @@ export default function ChallengeWorkspace() {
   useEffect(() => {
     setScheduledAt(defaultScheduledAtValue());
   }, []);
+
+  useEffect(() => {
+    if (routePrefillApplied || loading || authLoading) {
+      return;
+    }
+
+    if (!isNationalChallengeFlow) {
+      setRoutePrefillApplied(true);
+      return;
+    }
+
+    if (initialNationalCountry) {
+      setSelectedNationalCountry(initialNationalCountry);
+    }
+
+    const note = buildNationalChallengeNote(initialNationalCountry);
+    setChallengeNote((current) => current || note.slice(0, CHALLENGE_NOTE_MAX_CHARS));
+    setChallengedUid((current) => {
+      if (current) return current;
+      const emaren = snapshot.candidates.find((candidate) =>
+        candidate.name.trim().toLowerCase().includes("emaren")
+      );
+      return emaren?.uid || current;
+    });
+    setRoutePrefillApplied(true);
+  }, [
+    authLoading,
+    buildNationalChallengeNote,
+    initialNationalCountry,
+    isNationalChallengeFlow,
+    loading,
+    routePrefillApplied,
+    snapshot.candidates,
+  ]);
 
   const pendingIncomingCount = useMemo(
     () =>
@@ -599,6 +663,13 @@ export default function ChallengeWorkspace() {
       return;
     }
 
+    if (isNationalChallengeFlow && !selectedNationalCountry) {
+      setError("Choose your representing country for this national belt challenge.");
+      setSaving(false);
+      setSavingPhase("idle");
+      return;
+    }
+
     try {
       const parsedWagerAmountWolo = Number.parseInt(wagerAmountWolo, 10);
       const parsedGuaranteeAmountWolo = Number.parseInt(guaranteeAmountWolo, 10);
@@ -767,7 +838,7 @@ export default function ChallengeWorkspace() {
                   Steam sign-in keeps the scheduled match tied to a real identity.
                 </div>
                 <SteamLoginButton
-                  returnTo="/challenge"
+                  returnTo={returnTo}
                   className="mt-4 rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-200"
                 />
               </div>
@@ -790,6 +861,41 @@ export default function ChallengeWorkspace() {
                     ))}
                   </select>
                 </label>
+
+                {isNationalChallengeFlow ? (
+                  <label className="block space-y-2 rounded-[1.35rem] border border-amber-300/14 bg-amber-400/[0.055] p-4">
+                    <span className="text-sm font-medium text-amber-50">Your Nation</span>
+                    <select
+                      value={selectedNationalCountry}
+                      onChange={(event) => {
+                        const nextCountry = isRepresentedCountry(event.target.value)
+                          ? event.target.value
+                          : "";
+                        setSelectedNationalCountry(nextCountry);
+                        setChallengeNote((current) => {
+                          const nextNote = buildNationalChallengeNote(nextCountry).slice(
+                            0,
+                            CHALLENGE_NOTE_MAX_CHARS
+                          );
+                          return current.length === 0 || current.startsWith("Challenge for ")
+                            ? nextNote
+                            : current;
+                        });
+                      }}
+                      className="w-full cursor-pointer rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none transition hover:border-white/20 focus:border-amber-300/50"
+                    >
+                      <option value="">Choose country</option>
+                      {REPRESENTED_COUNTRIES.map((country) => (
+                        <option key={country} value={country}>
+                          {country}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="block text-xs leading-5 text-amber-100/65">
+                      This tells Emaren which national belt to create and schedule for your title match.
+                    </span>
+                  </label>
+                ) : null}
 
                 <div className="space-y-2">
                   <div className="flex flex-wrap items-center justify-between gap-3">

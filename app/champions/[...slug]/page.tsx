@@ -63,7 +63,19 @@ function backdropForTitle(title: ChampionTitleDefinition) {
 }
 
 function challengeHref(title: ChampionTitleDefinition) {
-  return `${title.routeHref}?challenge=1`;
+  const params = new URLSearchParams({
+    title: title.id,
+  });
+
+  if (title.country) {
+    params.set("country", title.country);
+  }
+
+  if (title.type === "national") {
+    params.set("kind", "national");
+  }
+
+  return `/challenge?${params.toString()}#schedule-game`;
 }
 
 export default async function ChampionTitleDetailPage({
@@ -173,7 +185,7 @@ export default async function ChampionTitleDetailPage({
               {title.dailyWolo} WOLO/day{title.type === "tag_team" ? " each" : ""}
             </div>
             <p className="mt-3 text-sm leading-6 text-slate-400">
-              Belts, national titles, ELO ladders, and designations all show player-facing payouts as Artifact Bonus.
+              Belts, national titles, ELO ladders, and tag titles pay a Reward Tribute. Special designations pay an Artifact Bonus.
             </p>
           </Panel>
 
@@ -207,7 +219,7 @@ function ContenderRow({ row }: { row: TitleContender }) {
         <div className="truncate text-xs text-slate-500">{row.meta || row.ratingLabel || "Verified contender"}</div>
       </div>
       {row.badge ? (
-        <span className="rounded-full border border-amber-200/18 bg-amber-300/10 px-2.5 py-1 text-xs text-amber-100">
+        <span className="rounded-full border border-amber-200/10 bg-amber-300/5 px-2.5 py-1 text-xs text-amber-100/62">
           {row.badge}
         </span>
       ) : (
@@ -222,11 +234,11 @@ function OpenContenderSlot({ rank }: { rank: number }) {
     <div className="grid grid-cols-[2.5rem_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-dashed border-white/10 bg-white/[0.025] px-3 py-3">
       <div className="font-mono text-sm text-slate-500">#{rank}</div>
       <div className="min-w-0">
-        <div className="truncate font-semibold text-slate-400">Open slot</div>
-        <div className="truncate text-xs text-slate-600">Awaiting verified challenger</div>
+        <div className="truncate font-semibold text-slate-300">Open lane</div>
+        <div className="truncate text-xs text-slate-600">Win proof to enter</div>
       </div>
-      <span className="rounded-full border border-white/8 bg-white/[0.035] px-2.5 py-1 text-xs text-slate-500">
-        Empty
+      <span className="rounded-full border border-amber-200/10 bg-amber-300/[0.04] px-2.5 py-1 text-xs text-amber-100/55">
+        Claimable
       </span>
     </div>
   );
