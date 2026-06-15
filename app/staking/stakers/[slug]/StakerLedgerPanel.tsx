@@ -152,7 +152,7 @@ export default function StakerLedgerPanel({ slug, player }: { slug: string; play
           <div className="text-xs uppercase tracking-[0.28em] text-slate-500">Personal Ledger</div>
           <h2 className="mt-2 text-2xl font-semibold text-white">{`${player}'s public receipts`}</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
-            Mainnet-only from May 25 onward. Scroll inside the tile to walk back through the seat.
+            Mainnet-only from May 25 onward. Reward allocations show as canonical rows; matching compound tx details are folded into the same receipt when present.
           </p>
         </div>
         <Link

@@ -55,7 +55,8 @@ The current first-impression path is no longer just the homepage. The real produ
 ## Championship title economy
 
 - `/champions` and `/champions/[...slug]` render the app-side title economy from `lib/champions/titles.ts` and `lib/champions/titleState.ts`.
-- Title payouts are labeled `Reign Tribute`; special designations are labeled `Artifact Bonus`.
+- Title payouts are labeled `Artifact Bonus` across belts, national titles, ELO titles, and designations.
+- Championship art assets under `public/champions` should keep real alpha transparency; holder/silhouette backplates live in `public/champions/players`.
 - `/profile` stores title eligibility settings through `represented_country` and `gender_division`.
 - `/admin` includes a disabled title-operator scaffold for future assignment, vacation, top-10, and record rails.
 - This surface is presentation and app workflow only. It does not redefine WoloChain denom truth, signed movement, escrow, custody, or settlement truth.

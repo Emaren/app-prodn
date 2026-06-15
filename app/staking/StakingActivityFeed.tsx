@@ -43,6 +43,7 @@ function isStakingActivity(item: StakingActivityItem) {
     text.includes("stake deposit") ||
     text.includes("staking unstake") ||
     text.includes("compound event") ||
+    text.includes("reward compounded") ||
     text.includes("compounded") ||
     text.includes("compound")
   );
@@ -462,7 +463,7 @@ export default function StakingActivityFeed({
                     : "border-white/10 bg-white/[0.04] text-slate-400 hover:border-white/20 hover:text-white"
                 }`}
               >
-                {nextMode === "ledger" ? "Raw Ledger" : "Grouped Bets"}
+                {nextMode === "ledger" ? "Ledger" : "Grouped Bets"}
               </button>
             ))}
           </div>
@@ -573,6 +574,7 @@ function activityVisual(item: StakingActivityItem) {
     eventType === "COMPOUND" ||
     (eventType === "TX" && (text.includes("compound") || text.includes("staking event"))) ||
     text.includes("compound event") ||
+    text.includes("reward compounded") ||
     text.includes("compounded") ||
     text.includes("staking reward") ||
     text.includes("reward payout") ||

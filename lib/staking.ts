@@ -1383,12 +1383,12 @@ export async function loadMainnetTransferStakingActivityPage(
         label: isMicro
           ? `${amountLabel} staking reward held: ${player}`
           : isCompounded
-            ? `${amountLabel} compound event: ${player}`
+            ? `${amountLabel} reward compounded: ${player}`
             : `${amountLabel} staking reward payout: ${player}`,
         detail: isMicro
           ? `${player} · micro reward accrued · pending 1 WOLO payout threshold · Distribution ${distributionDate}`
           : isCompounded
-            ? `${player} · compounded reward allocation · Distribution ${distributionDate}`
+            ? `${player} · compounded reward allocation · matching tx rows are folded into this receipt · Distribution ${distributionDate}`
             : `${player} · ${status.toLowerCase()} reward allocation · Distribution ${distributionDate}`,
         meta: formatMoment(createdAt),
         eventType: "REWARD",
@@ -1410,7 +1410,8 @@ export async function loadMainnetTransferStakingActivityPage(
             eventType === "TX" &&
             (text.includes("tx compound") ||
               text.includes("compound-") ||
-              text.includes("compound event"))
+              text.includes("compound event") ||
+              text.includes("reward compounded"))
           ) {
             return false;
           }
@@ -1452,6 +1453,7 @@ export async function loadMainnetTransferStakingActivityPage(
         text.includes("staking payout") ||
         text.includes("staking fee share") ||
         text.includes("compound event") ||
+        text.includes("reward compounded") ||
         text.includes("compounded") ||
         text.includes("compound") ||
         text.includes("staking reward") ||
@@ -1477,6 +1479,7 @@ export async function loadMainnetTransferStakingActivityPage(
         text.includes("staking deposit") ||
         text.includes("staking unstake") ||
         text.includes("compound event") ||
+        text.includes("reward compounded") ||
         text.includes("compounded") ||
         text.includes("compound");
 

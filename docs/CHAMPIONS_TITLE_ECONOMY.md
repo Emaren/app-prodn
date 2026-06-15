@@ -26,19 +26,33 @@ The title config lives in `lib/champions/titles.ts`.
   Untouchable, Raid Demon, Boom Lord, Slayer King, Relic Baron, Blitz Lord,
   Wololo Lord, Iron Wall.
 
-Title copy should use:
-
-- `Reign Tribute` for belts and title holders.
-- `Artifact Bonus` for special designations.
+Title copy should use `Artifact Bonus` across belts, national titles, ELO
+titles, tag titles, and special designations.
 
 Do not bring back older labels such as `Monthly Reward`, `Daily Purse`,
-`Holder Bonus`, `Winner Bonus`, or `Champion Payment`.
+`Reign Tribute`, `Holder Bonus`, `Winner Bonus`, or `Champion Payment`.
+
+## Visual assets
+
+Champion art assets live under `public/champions`.
+
+- Belt art: `public/champions/belts`.
+- Designation art: `public/champions/designations`.
+- Holder and silhouette backplates: `public/champions/players`.
+
+These PNGs must contain a real alpha channel. Do not ship checkerboard, white,
+gray, or matte backgrounds baked into title art. The page layers holder avatars
+or the generic silhouette behind the belt art at low opacity; the belt/item
+itself remains the primary visual.
 
 ## Data and state
 
 - `lib/champions/titleState.ts` builds the current app-side title view model.
 - Real leaderboard data is used where the app already has it, especially for
-  world and ELO contender rails.
+  world, ELO, and designation contender rails.
+- Current holders are separate from contender boards. A title model is one
+  holder panel plus ten contender slots; holders must not be counted as part of
+  the top 10 list.
 - Unimplemented title holders should render as honest vacant/open states rather
   than fabricated champions.
 - `lib/champions/evaluation.ts` contains future parser/result hooks for title

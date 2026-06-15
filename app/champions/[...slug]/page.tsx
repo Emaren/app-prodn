@@ -10,6 +10,7 @@ import {
   formatDailyTribute,
   tributeLabel,
   type ChampionTitleDefinition,
+  type TitleContender,
 } from "@/lib/champions/titles";
 import { getTitleState, loadChampionTitleEconomyState } from "@/lib/champions/titleState";
 
@@ -18,6 +19,16 @@ export const dynamic = "force-dynamic";
 type ChampionDetailParams = {
   slug: string[];
 };
+
+const PLAYER_BACKDROPS: Record<string, string> = {
+  emaren: "/champions/players/emaren.png",
+  jim: "/champions/players/jim.png",
+  "julio alvarez": "/champions/players/julio.png",
+  julio: "/champions/players/julio.png",
+  sniper: "/champions/players/sniper.png",
+};
+
+const SILHOUETTE_BACKDROP = "/champions/players/silhouette.png";
 
 export async function generateMetadata({
   params,
@@ -42,6 +53,13 @@ export async function generateMetadata({
 function holderLabel(title: ChampionTitleDefinition) {
   if (title.holders.length === 0) return "Vacant";
   return title.holders.map((holder) => holder.name).join(" & ");
+}
+
+function backdropForTitle(title: ChampionTitleDefinition) {
+  const holder = title.holders[0];
+  if (holder) return PLAYER_BACKDROPS[holder.name.trim().toLowerCase()] || SILHOUETTE_BACKDROP;
+  if (title.id === "national-canada") return PLAYER_BACKDROPS.emaren;
+  return SILHOUETTE_BACKDROP;
 }
 
 function challengeHref(title: ChampionTitleDefinition) {
@@ -106,14 +124,22 @@ export default async function ChampionTitleDetailPage({
             </div>
           </div>
 
-          <div className="relative mx-auto aspect-[1.75/1] w-full max-w-[38rem]">
+          <div className="relative mx-auto aspect-[1.75/1] w-full max-w-[38rem] overflow-visible">
+            <Image
+              src={backdropForTitle(title)}
+              alt=""
+              fill
+              priority
+              sizes="(min-width: 1024px) 38vw, 92vw"
+              className="z-0 object-cover object-top opacity-28 mix-blend-screen [mask-image:linear-gradient(180deg,black_0%,black_58%,transparent_96%)]"
+            />
             <Image
               src={title.assetUrl}
               alt=""
               fill
               priority
               sizes="(min-width: 1024px) 44vw, 92vw"
-              className="object-contain drop-shadow-[0_24px_55px_rgba(0,0,0,0.62)]"
+              className="z-10 object-contain drop-shadow-[0_24px_55px_rgba(0,0,0,0.62)]"
             />
           </div>
         </div>
@@ -127,39 +153,15 @@ export default async function ChampionTitleDetailPage({
           </Panel>
 
           <Panel icon={Trophy} eyebrow="Contenders" title="Top 10">
-            {title.contenders.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] px-4 py-5 text-sm text-slate-400">
-                Awaiting verified challengers.
-              </div>
-            ) : (
-              <div className="grid gap-2">
-                {title.contenders.slice(0, 10).map((row) => (
-                  <div
-                    key={`${row.rank}-${row.name}`}
-                    className="grid grid-cols-[2.5rem_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-white/8 bg-white/[0.035] px-3 py-3"
-                  >
-                    <div className="font-mono text-sm text-amber-100">#{row.rank}</div>
-                    <div className="min-w-0">
-                      {row.href ? (
-                        <Link href={row.href} className="block truncate font-semibold text-white hover:text-amber-100">
-                          {row.name}
-                        </Link>
-                      ) : (
-                        <div className="truncate font-semibold text-white">{row.name}</div>
-                      )}
-                      <div className="truncate text-xs text-slate-500">{row.meta || row.ratingLabel || "Verified contender"}</div>
-                    </div>
-                    {row.badge ? (
-                      <span className="rounded-full border border-amber-200/18 bg-amber-300/10 px-2.5 py-1 text-xs text-amber-100">
-                        {row.badge}
-                      </span>
-                    ) : (
-                      <span className="text-sm text-slate-400">{row.rating ?? ""}</span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
+            <div className="grid gap-2">
+              {Array.from({ length: 10 }, (_, index) => title.contenders[index] ?? null).map((row, index) =>
+                row ? (
+                  <ContenderRow key={`${row.rank}-${row.name}`} row={row} />
+                ) : (
+                  <OpenContenderSlot key={`open-${index + 1}`} rank={index + 1} />
+                )
+              )}
+            </div>
           </Panel>
         </div>
 
@@ -169,7 +171,7 @@ export default async function ChampionTitleDetailPage({
               {title.dailyWolo} WOLO/day{title.type === "tag_team" ? " each" : ""}
             </div>
             <p className="mt-3 text-sm leading-6 text-slate-400">
-              Belts use Reign Tribute. Special Designation artifacts use Artifact Bonus.
+              Belts, national titles, ELO ladders, and designations all show player-facing payouts as Artifact Bonus.
             </p>
           </Panel>
 
@@ -185,6 +187,46 @@ export default async function ChampionTitleDetailPage({
         </div>
       </section>
     </main>
+  );
+}
+
+function ContenderRow({ row }: { row: TitleContender }) {
+  return (
+    <div className="grid grid-cols-[2.5rem_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-white/8 bg-white/[0.035] px-3 py-3">
+      <div className="font-mono text-sm text-amber-100">#{row.rank}</div>
+      <div className="min-w-0">
+        {row.href ? (
+          <Link href={row.href} className="block truncate font-semibold text-white hover:text-amber-100">
+            {row.name}
+          </Link>
+        ) : (
+          <div className="truncate font-semibold text-white">{row.name}</div>
+        )}
+        <div className="truncate text-xs text-slate-500">{row.meta || row.ratingLabel || "Verified contender"}</div>
+      </div>
+      {row.badge ? (
+        <span className="rounded-full border border-amber-200/18 bg-amber-300/10 px-2.5 py-1 text-xs text-amber-100">
+          {row.badge}
+        </span>
+      ) : (
+        <span className="text-sm text-slate-400">{row.rating ?? ""}</span>
+      )}
+    </div>
+  );
+}
+
+function OpenContenderSlot({ rank }: { rank: number }) {
+  return (
+    <div className="grid grid-cols-[2.5rem_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-dashed border-white/10 bg-white/[0.025] px-3 py-3">
+      <div className="font-mono text-sm text-slate-500">#{rank}</div>
+      <div className="min-w-0">
+        <div className="truncate font-semibold text-slate-400">Open slot</div>
+        <div className="truncate text-xs text-slate-600">Awaiting verified challenger</div>
+      </div>
+      <span className="rounded-full border border-white/8 bg-white/[0.035] px-2.5 py-1 text-xs text-slate-500">
+        Empty
+      </span>
+    </div>
   );
 }
 

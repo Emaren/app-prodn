@@ -142,7 +142,7 @@ export default function HeaderMenu({
         <div
           id={panelId}
           className={[
-            "fixed inset-x-2 bottom-2 top-[4.75rem] z-[140] overflow-hidden rounded-[1.85rem] border p-2 shadow-2xl sm:absolute sm:bottom-auto sm:left-auto sm:right-0 sm:top-14 sm:max-h-[min(42rem,calc(100dvh-7rem))] sm:w-[22rem] sm:max-w-[calc(100vw-1.5rem)]",
+            "fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+0.75rem)] top-[calc(env(safe-area-inset-top)+4.25rem)] z-[160] min-h-0 overflow-hidden rounded-[1.85rem] border p-2 shadow-2xl backdrop-blur-xl sm:absolute sm:bottom-auto sm:left-auto sm:right-0 sm:top-14 sm:max-h-[min(42rem,calc(100dvh-7rem))] sm:w-[22rem] sm:max-w-[calc(100vw-1.5rem)]",
             menuClassName || "border-white/10 bg-[#0b1324]",
           ]
             .filter(Boolean)

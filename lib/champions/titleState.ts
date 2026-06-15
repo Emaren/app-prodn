@@ -35,18 +35,6 @@ function toContender(entry: LobbyLeaderboardEntry, rank: number, badge?: string 
   };
 }
 
-function holderAsContenders(definition: ChampionTitleDefinition): TitleContender[] {
-  return definition.holders.slice(0, 10).map((holder, index) => ({
-    rank: index + 1,
-    name: holder.name,
-    href: holder.href,
-    rating: null,
-    ratingLabel: holder.meta ?? null,
-    meta: holder.representedCountry ? `Representing Country: ${holder.representedCountry}` : holder.meta ?? null,
-    badge: holder.invaderChampion ? "Invader Champion" : index === 0 ? "Holder" : "Holder pair",
-  }));
-}
-
 function inEloBand(definition: ChampionTitleDefinition, entry: LobbyLeaderboardEntry) {
   const rating = entryRating(entry);
   if (rating === null) return false;
@@ -55,12 +43,30 @@ function inEloBand(definition: ChampionTitleDefinition, entry: LobbyLeaderboardE
   return true;
 }
 
+function contenderKey(input: Pick<TitleContender, "href" | "name">) {
+  return (input.href || input.name).toLowerCase().trim();
+}
+
+function holderKeys(definition: ChampionTitleDefinition) {
+  return new Set(
+    definition.holders.map((holder) => contenderKey({ href: holder.href, name: holder.name }))
+  );
+}
+
+function withoutCurrentHolders(
+  definition: ChampionTitleDefinition,
+  rows: TitleContender[]
+) {
+  const keys = holderKeys(definition);
+  return rows.filter((row) => !keys.has(contenderKey(row)));
+}
+
 function mergeUniqueContenders(rows: TitleContender[]) {
   const seen = new Set<string>();
   const merged: TitleContender[] = [];
 
   for (const row of rows) {
-    const key = row.href || row.name.toLowerCase();
+    const key = contenderKey(row);
     if (seen.has(key)) continue;
     seen.add(key);
     merged.push({ ...row, rank: merged.length + 1 });
@@ -75,7 +81,10 @@ function contendersForTitle(
   leaderboardEntries: LobbyLeaderboardEntry[]
 ): { contenders: TitleContender[]; contenderStatus: "live" | "placeholder" } {
   if (definition.type === "world") {
-    const contenders = leaderboardEntries.slice(0, 10).map((entry, index) => toContender(entry, index + 1));
+    const contenders = withoutCurrentHolders(
+      definition,
+      leaderboardEntries.map((entry, index) => toContender(entry, index + 1))
+    ).slice(0, 10).map((row, index) => ({ ...row, rank: index + 1 }));
     return {
       contenders,
       contenderStatus: contenders.length > 0 ? "live" : "placeholder",
@@ -85,18 +94,23 @@ function contendersForTitle(
   if (definition.type === "elo") {
     const bandRows = leaderboardEntries
       .filter((entry) => inEloBand(definition, entry))
-      .slice(0, 10)
       .map((entry, index) => toContender(entry, index + 1));
-    const holderRows = definition.holders.map((holder, index) => ({
+    const contenders = mergeUniqueContenders(withoutCurrentHolders(definition, bandRows));
+    return {
+      contenders,
+      contenderStatus: contenders.length > 0 ? "live" : "placeholder",
+    };
+  }
+
+  if (definition.type === "designation") {
+    const contenders = withoutCurrentHolders(
+      definition,
+      leaderboardEntries.map((entry, index) => toContender(entry, index + 1, "Record hunter"))
+    ).slice(0, 10).map((row, index) => ({
+      ...row,
       rank: index + 1,
-      name: holder.name,
-      href: holder.href,
-      rating: null,
-      ratingLabel: holder.meta ?? null,
-      meta: holder.invaderChampion ? "Holding above current ELO lane" : holder.meta ?? null,
-      badge: holder.invaderChampion ? "Invader Champion" : "Holder",
+      meta: row.ratingLabel || "Verified result hunter",
     }));
-    const contenders = mergeUniqueContenders([...holderRows, ...bandRows]);
     return {
       contenders,
       contenderStatus: contenders.length > 0 ? "live" : "placeholder",
@@ -104,18 +118,16 @@ function contendersForTitle(
   }
 
   if (definition.type === "national") {
-    const holders = holderAsContenders(definition);
     return {
-      contenders: holders,
-      contenderStatus: holders.length > 0 ? "live" : "placeholder",
+      contenders: [],
+      contenderStatus: "placeholder",
     };
   }
 
   if (definition.type === "tag_team") {
-    const holders = holderAsContenders(definition);
     return {
-      contenders: holders,
-      contenderStatus: holders.length > 0 ? "live" : "placeholder",
+      contenders: [],
+      contenderStatus: "placeholder",
     };
   }
 

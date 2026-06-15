@@ -355,9 +355,9 @@ async function loadStakingRows(userId: number | null, before: string | null, lim
             amount > 0 && amount < 1
               ? `${formatWolo(amount)} held reward`
               : status.includes("compound")
-                ? `${formatWolo(amount)} compound event`
+                ? `${formatWolo(amount)} reward compounded`
                 : `${formatWolo(amount)} reward`,
-          detail: `Distribution ${formatDate(allocation.distribution_date)} · ${status}${txLabel}`,
+          detail: `Distribution ${formatDate(allocation.distribution_date)} · canonical ${status} receipt${txLabel}`,
           meta: formatTime(occurredAt),
           occurredAt,
           amountLabel: formatWolo(amount),

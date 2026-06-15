@@ -26,6 +26,7 @@ import {
   tributeLabel,
   type ChampionTitleDefinition,
   type ChampionTone,
+  type TitleContender,
 } from "@/lib/champions/titles";
 import {
   getTitleState,
@@ -50,6 +51,30 @@ const toneClasses: Record<ChampionTone, string> = {
   emerald: "border-emerald-200/24 from-emerald-300/14 text-emerald-100 shadow-emerald-950/30",
   slate: "border-slate-300/20 from-slate-300/10 text-slate-100 shadow-slate-950/30",
 };
+
+const PLAYER_BACKDROPS: Record<string, string> = {
+  emaren: "/champions/players/emaren.png",
+  jim: "/champions/players/jim.png",
+  "julio alvarez": "/champions/players/julio.png",
+  julio: "/champions/players/julio.png",
+  sniper: "/champions/players/sniper.png",
+};
+
+const SILHOUETTE_BACKDROP = "/champions/players/silhouette.png";
+
+function normalizedPlayerName(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function backdropForTitle(title: ChampionTitleDefinition) {
+  const holder = primaryHolder(title);
+  if (holder) {
+    return PLAYER_BACKDROPS[normalizedPlayerName(holder.name)] || SILHOUETTE_BACKDROP;
+  }
+
+  if (title.id === "national-canada") return PLAYER_BACKDROPS.emaren;
+  return SILHOUETTE_BACKDROP;
+}
 
 function statusLabel(title: ChampionTitleDefinition) {
   if (title.status === "held") return "Held";
@@ -76,20 +101,36 @@ function BeltAsset({
   title,
   priority = false,
   className = "",
+  backdropUrl,
+  backdropClassName = "",
 }: {
   title: ChampionTitleDefinition;
   priority?: boolean;
   className?: string;
+  backdropUrl?: string | null;
+  backdropClassName?: string;
 }) {
+  const characterUrl = backdropUrl === undefined ? backdropForTitle(title) : backdropUrl;
+
   return (
-    <div className={`relative mx-auto w-full ${className}`}>
+    <div className={`relative mx-auto w-full overflow-visible ${className}`}>
+      {characterUrl ? (
+        <Image
+          src={characterUrl}
+          alt=""
+          fill
+          priority={priority}
+          sizes="(min-width: 1280px) 340px, (min-width: 768px) 42vw, 90vw"
+          className={`pointer-events-none z-0 object-cover object-top opacity-30 mix-blend-screen [mask-image:linear-gradient(180deg,black_0%,black_58%,transparent_96%)] ${backdropClassName}`}
+        />
+      ) : null}
       <Image
         src={title.assetUrl}
         alt=""
         fill
         priority={priority}
         sizes="(min-width: 1280px) 360px, (min-width: 768px) 46vw, 92vw"
-        className="object-contain drop-shadow-[0_18px_36px_rgba(0,0,0,0.55)]"
+        className="z-10 object-contain drop-shadow-[0_18px_36px_rgba(0,0,0,0.55)]"
       />
     </div>
   );
@@ -162,55 +203,93 @@ function ChallengeButton({ title, compact = false }: { title: ChampionTitleDefin
 
 function ContenderList({
   title,
-  maxRows = 5,
+  maxRows = 10,
+  compact = false,
 }: {
   title: ChampionTitleState;
   maxRows?: number;
+  compact?: boolean;
 }) {
-  const rows = title.contenders.slice(0, maxRows);
+  const contenderRows = title.contenders.slice(0, 10);
+  const visibleCount = Math.min(Math.max(maxRows, 1), 10);
+  const slots = Array.from({ length: visibleCount }, (_, index) => contenderRows[index] ?? null);
+  const liveCount = contenderRows.length;
 
   return (
     <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-3">
       <div className="mb-2 flex items-center justify-between gap-3">
         <div className="text-[10px] uppercase tracking-[0.24em] text-slate-500">Top 10</div>
         <span className="text-[11px] text-slate-500">
-          {title.contenderStatus === "live" ? "Verified board" : "Queue forming"}
+          {liveCount > 0 ? `${liveCount}/10 live` : "Queue forming"}
         </span>
       </div>
 
-      {rows.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-white/10 bg-black/18 px-3 py-3 text-sm text-slate-400">
-          Awaiting verified challengers.
-        </div>
+      <div className={compact ? "space-y-1.5" : "space-y-2"}>
+        {slots.map((row, index) =>
+          row ? (
+            <ContenderRow key={`${title.id}-${row.rank}-${row.name}`} row={row} compact={compact} />
+          ) : (
+            <OpenContenderSlot key={`${title.id}-open-${index + 1}`} rank={index + 1} compact={compact} />
+          )
+        )}
+      </div>
+
+      {visibleCount < 10 ? (
+        <Link
+          href={title.routeHref}
+          className="mt-2 inline-flex text-xs font-semibold text-amber-100/85 transition hover:text-amber-50"
+        >
+          View all 10 contender slots
+        </Link>
+      ) : null}
+    </div>
+  );
+}
+
+function ContenderRow({ row, compact = false }: { row: TitleContender; compact?: boolean }) {
+  return (
+    <div
+      className={`grid grid-cols-[2rem_minmax(0,1fr)_auto] items-center gap-2 rounded-xl border border-white/8 bg-black/18 px-2.5 ${
+        compact ? "py-1.5" : "py-2"
+      }`}
+    >
+      <div className="font-mono text-xs text-amber-100/80">#{row.rank}</div>
+      <div className="min-w-0">
+        {row.href ? (
+          <Link href={row.href} className="block truncate text-sm font-semibold text-white hover:text-amber-100">
+            {row.name}
+          </Link>
+        ) : (
+          <div className="truncate text-sm font-semibold text-white">{row.name}</div>
+        )}
+        <div className="truncate text-xs text-slate-500">{row.meta || row.ratingLabel || "Verified contender"}</div>
+      </div>
+      {row.badge ? (
+        <span className="rounded-full border border-amber-200/16 bg-amber-300/10 px-2 py-0.5 text-[10px] text-amber-100">
+          {row.badge}
+        </span>
       ) : (
-        <div className="space-y-2">
-          {rows.map((row) => (
-            <div
-              key={`${title.id}-${row.rank}-${row.name}`}
-              className="grid grid-cols-[2rem_minmax(0,1fr)_auto] items-center gap-2 rounded-xl border border-white/8 bg-black/18 px-2.5 py-2"
-            >
-              <div className="font-mono text-xs text-amber-100/80">#{row.rank}</div>
-              <div className="min-w-0">
-                {row.href ? (
-                  <Link href={row.href} className="block truncate text-sm font-semibold text-white hover:text-amber-100">
-                    {row.name}
-                  </Link>
-                ) : (
-                  <div className="truncate text-sm font-semibold text-white">{row.name}</div>
-                )}
-                <div className="truncate text-xs text-slate-500">{row.meta || row.ratingLabel || "Verified contender"}</div>
-              </div>
-              {row.badge ? (
-                <span className="rounded-full border border-amber-200/16 bg-amber-300/10 px-2 py-0.5 text-[10px] text-amber-100">
-                  {row.badge}
-                </span>
-              ) : (
-                <span className="text-xs text-slate-500">{row.rating ?? ""}</span>
-              )}
-            </div>
-          ))}
-        </div>
+        <span className="text-xs text-slate-500">{row.rating ?? ""}</span>
       )}
+    </div>
+  );
+}
+
+function OpenContenderSlot({ rank, compact = false }: { rank: number; compact?: boolean }) {
+  return (
+    <div
+      className={`grid grid-cols-[2rem_minmax(0,1fr)_auto] items-center gap-2 rounded-xl border border-dashed border-white/10 bg-black/12 px-2.5 ${
+        compact ? "py-1.5" : "py-2"
+      }`}
+    >
+      <div className="font-mono text-xs text-slate-500">#{rank}</div>
+      <div className="min-w-0">
+        <div className="truncate text-sm font-semibold text-slate-400">Open slot</div>
+        <div className="truncate text-xs text-slate-600">Awaiting verified challenger</div>
+      </div>
+      <span className="rounded-full border border-white/8 bg-white/[0.035] px-2 py-0.5 text-[10px] text-slate-500">
+        Empty
+      </span>
     </div>
   );
 }
@@ -260,7 +339,7 @@ function PodiumCard({
           <TributePill title={title} />
           <ChallengeButton title={title} />
         </div>
-        <ContenderList title={titleState} maxRows={isCenter ? 5 : 3} />
+        <ContenderList title={titleState} compact={!isCenter} />
       </div>
     </article>
   );
@@ -294,7 +373,7 @@ function TagTeamCard({ titleState }: { titleState: ChampionTitleState }) {
           </div>
         </div>
         <div className="min-w-0">
-          <ContenderList title={title} maxRows={5} />
+          <ContenderList title={title} />
         </div>
       </div>
     </section>
@@ -323,7 +402,7 @@ function NationalCard({ titleState }: { titleState: ChampionTitleState }) {
           </span>
           <ChallengeButton title={title} compact />
         </div>
-        <ContenderList title={title} maxRows={3} />
+        <ContenderList title={title} compact />
       </div>
     </article>
   );
@@ -363,7 +442,7 @@ function EloCard({ titleState }: { titleState: ChampionTitleState }) {
           <TributePill title={title} compact />
           <ChallengeButton title={title} compact />
         </div>
-        <ContenderList title={title} maxRows={4} />
+        <ContenderList title={title} compact />
       </div>
     </article>
   );
@@ -405,7 +484,7 @@ function DesignationCard({ titleState }: { titleState: ChampionTitleState }) {
         <ChallengeButton title={title} compact />
       </div>
       <div className="mt-3">
-        <ContenderList title={title} maxRows={2} />
+        <ContenderList title={title} maxRows={4} compact />
       </div>
     </article>
   );
@@ -433,6 +512,32 @@ function RuleCard({
   );
 }
 
+function HeroRosterBackdrop() {
+  const roster = [
+    { src: PLAYER_BACKDROPS.emaren, className: "left-[2%] top-[16%] h-[86%] w-[34%] opacity-[0.18]" },
+    { src: PLAYER_BACKDROPS.jim, className: "left-[24%] top-[8%] h-[92%] w-[36%] opacity-[0.20]" },
+    { src: PLAYER_BACKDROPS.sniper, className: "left-[50%] top-[2%] h-[100%] w-[38%] opacity-[0.26]" },
+    { src: PLAYER_BACKDROPS["julio alvarez"], className: "left-[72%] top-[12%] h-[90%] w-[34%] opacity-[0.19]" },
+  ];
+
+  return (
+    <div className="pointer-events-none absolute inset-y-0 right-0 hidden w-[64%] overflow-hidden lg:block">
+      <div className="absolute inset-0 bg-gradient-to-r from-[#120d08] via-[#07111c]/30 to-transparent" />
+      {roster.map((item) => (
+        <div key={item.src} className={`absolute ${item.className}`}>
+          <Image
+            src={item.src}
+            alt=""
+            fill
+            sizes="28vw"
+            className="object-contain object-bottom mix-blend-screen [mask-image:linear-gradient(180deg,transparent_0%,black_18%,black_72%,transparent_100%)]"
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default async function ChampionsPage() {
   const state = await loadChampionTitleEconomyState(getPrisma());
   const world = getTitleState(state, podiumTitles[0]);
@@ -450,7 +555,8 @@ export default async function ChampionsPage() {
     <main className="space-y-8 overflow-x-hidden py-4 text-white sm:py-6">
       <section className="relative overflow-hidden rounded-[2rem] border border-amber-200/14 bg-[radial-gradient(circle_at_50%_0%,rgba(251,191,36,0.24),transparent_28%),radial-gradient(circle_at_10%_25%,rgba(14,165,233,0.12),transparent_24%),linear-gradient(145deg,#120d08,#07111c_54%,#02040a)] px-5 py-10 shadow-[0_34px_120px_rgba(0,0,0,0.42)] sm:px-8">
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/55 to-transparent" />
-        <div className="grid gap-7 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+        <HeroRosterBackdrop />
+        <div className="relative z-10 grid gap-7 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
           <div className="min-w-0">
             <div className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.34em] text-amber-100/74">
               <Crown className="h-4 w-4" />
@@ -460,14 +566,17 @@ export default async function ChampionsPage() {
               Championship Belts
             </h1>
             <p className="mt-4 max-w-3xl text-sm uppercase tracking-[0.22em] text-slate-300 sm:text-base">
-              Win the title. Defend the record. Make the room hunt you.
+              Win the title. Hold the artifact. Make the room hunt you.
+            </p>
+            <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-400">
+              A living title economy for belts, national beacons, ELO ladders, and stealable records.
             </p>
           </div>
 
           <div className="grid min-w-[min(100%,22rem)] gap-2 rounded-2xl border border-white/10 bg-black/22 p-4 sm:grid-cols-3 lg:min-w-[28rem]">
             <HeroStat label="Active" value={String(activeTitleCount)} />
             <HeroStat label="Vacant" value={String(vacantTitleCount)} />
-            <HeroStat label="Daily tribute" value={`${budget} WOLO`} />
+            <HeroStat label="Artifact pool" value={`${budget} WOLO/day`} />
           </div>
         </div>
       </section>

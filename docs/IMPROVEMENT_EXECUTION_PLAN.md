@@ -78,6 +78,15 @@ The seventh shipped slice is the championship title economy:
 - Added a disabled admin scaffold for future title assignment, vacation, top-10, and record/event capture work.
 - Kept the scope honest: this is app-side title presentation and workflow, not WoloChain custody, escrow, or settlement truth.
 
+The eighth shipped slice is championship polish and menu/staking hardening:
+
+- Converted championship belts, designation items, and new player/silhouette art to real alpha-channel PNGs.
+- Layered holder portraits and the generic silhouette behind title art while keeping belts and artifacts visually primary.
+- Standardized public title payout wording to `Artifact Bonus`.
+- Enforced the holder-plus-ten-contenders model in the title state and UI, with empty slots shown as explicit challenger openings.
+- Hardened the Kingdom chip and account menu for mobile tap behavior and unclipped fixed-sheet rendering.
+- Cleaned staking reward copy so compounded rewards read as canonical receipts instead of duplicate-looking events.
+
 ## Next concrete slice
 
 Continue with tournament gravity, exact postgame achievement/economy depth, and the persistent title-admin rail, unless live wallet handoff telemetry shows a fresher production issue.

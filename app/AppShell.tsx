@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Crown, Globe2, MessageSquare } from "lucide-react";
+import { Crown, Globe2, MessageSquare, X } from "lucide-react";
 import UserExperienceTracker from "@/components/analytics/UserExperienceTracker";
 import HeaderInboxControl from "@/components/contact/HeaderInboxControl";
 import HeaderMenu from "@/components/HeaderMenu";
@@ -68,10 +68,8 @@ function HeaderPillLink({
 
 function KingdomNavItem({
   className,
-  compact = false,
 }: {
   className: string;
-  compact?: boolean;
 }) {
   const [open, setOpen] = React.useState(false);
   const rootRef = React.useRef<HTMLDivElement | null>(null);
@@ -112,20 +110,31 @@ function KingdomNavItem({
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label="Open Kingdom pages"
-        onClick={() => setOpen(true)}
-        className={`relative inline-flex items-center justify-center overflow-visible rounded-full border px-2.5 py-1.5 text-xs transition xl:px-3 ${className}`}
+        onClick={() => setOpen((value) => !value)}
+        className={`relative inline-flex min-h-8 min-w-9 items-center justify-center overflow-visible rounded-full border px-2.5 py-1.5 text-xs transition xl:px-3 ${className}`}
       >
-        <span className="relative z-10">{compact ? "🏰" : "🏰 Kingdom"}</span>
+        <span className="relative z-10">🏰</span>
       </button>
 
       <div
-        className={`absolute right-0 top-full z-[110] w-[min(21rem,calc(100vw-1.5rem))] translate-y-2 opacity-0 transition duration-150 ${
+        className={`fixed inset-x-3 top-[calc(env(safe-area-inset-top)+8.25rem)] z-[150] translate-y-2 opacity-0 transition duration-150 sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:w-[min(21rem,calc(100vw-1.5rem))] ${
           open
             ? "pointer-events-auto translate-y-3 opacity-100"
             : "pointer-events-none group-hover:pointer-events-auto group-hover:translate-y-3 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:translate-y-3 group-focus-within:opacity-100"
         }`}
       >
         <div className="overflow-hidden rounded-[1.25rem] border border-amber-200/18 bg-[#07101a]/95 p-2 shadow-[0_24px_80px_rgba(0,0,0,0.48)] backdrop-blur-xl">
+          <div className="flex items-center justify-between gap-3 px-2 py-2 sm:hidden">
+            <div className="text-[11px] uppercase tracking-[0.28em] text-amber-100/70">Kingdom</div>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-slate-300"
+              aria-label="Close Kingdom menu"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
           <div className="grid gap-1">
             {KINGDOM_LINKS.map((item) => {
               const Icon = item.icon;
@@ -330,7 +339,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                   {index === 0 ? <HeaderLiveGamesLink liveGamesCount={liveGamesCount} /> : null}
                 </React.Fragment>
               ))}
-              <KingdomNavItem className={headerSkin.surface} compact />
+              <KingdomNavItem className={headerSkin.surface} />
             </nav>
 
             <div className="flex flex-col items-end gap-2 lg:justify-self-end">
