@@ -287,11 +287,17 @@ export default async function StakerHallPage({ params }: PageProps) {
   const compounded = row ? asNumber(row.compounded_rewards_wolo) : 0;
   const pending = row ? asNumber(row.pending_rewards_wolo) : 0;
   const lifetime = Math.max(row ? asNumber(row.lifetime_rewards_wolo) : 0, allocations.reduce((sum, item) => sum + asNumber(item.reward_wolo), 0));
-  const championshipTitle = registry.slug === "jim" ? "United States Champion" : registry.slug === "julio-alvarez" ? "Early Seat" : "Verified Grind";
-  const kingdomBenefit = registry.slug === "jim" ? "US Champion lane · founding staking guardian · public kingdom proof" : registry.slug === "julio-alvarez" ? "Early staker lane · scout designation · compounding path" : "Operator lane · verified wallet · public economy rail";
-
-  const progressTarget = stake < 1_000 ? 1_000 : stake < 10_000 ? 10_000 : stake < 100_000 ? 100_000 : 250_000;
-  const progress = Math.min(100, Math.round((stake / progressTarget) * 100));
+  const championshipTitle = registry.slug === "jim" ? "USA National Champion" : registry.slug === "julio-alvarez" ? "Mexico National Champion" : "Verified Grind";
+  const kingdomBenefit = registry.slug === "jim" ? "US Champion lane · founding staking guardian · public kingdom proof" : registry.slug === "julio-alvarez" ? "Mexico Champion lane · first scout · early staking proof" : "Operator lane · verified wallet · public economy rail";
+  const designationRows: Array<{ label: string; meta: string; value: string; tone: "gold" | "emerald" | "sky" }> = [
+    ...(registry.slug === "jim"
+      ? [{ label: "USA National Champion", meta: "National belt", value: "75 WOLO/mo", tone: "gold" as const }]
+      : registry.slug === "julio-alvarez"
+        ? [{ label: "Mexico National Champion", meta: "National belt", value: "75 WOLO/mo", tone: "gold" as const }]
+        : []),
+    { label: registry.title, meta: registry.lane, value: registry.badge, tone: registry.tone },
+    { label: autoCompound ? "Auto-compound" : "Manual claim", meta: "Staking mode", value: compactWolo(stake), tone: "emerald" },
+  ];
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_top,rgba(30,64,175,0.24),transparent_34%),linear-gradient(180deg,#081224,#02040a_72%)] px-4 py-8 text-white sm:px-6 lg:px-8">
@@ -381,19 +387,31 @@ export default async function StakerHallPage({ params }: PageProps) {
           </div>
         </section>
 
-        <section className="mt-6 rounded-[1.7rem] border border-amber-300/20 bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.14),transparent_32%),linear-gradient(180deg,rgba(15,23,42,0.94),rgba(3,7,18,0.98))] p-5">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <div className="text-xs uppercase tracking-[0.28em] text-amber-200/60">Progression</div>
-              <h2 className="mt-2 text-2xl font-semibold text-white">Path of the seat.</h2>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">{registry.nextMove}</p>
-            </div>
-            <div className="rounded-full border border-amber-300/25 bg-amber-300/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-amber-100">
-              {progress}% lit
+        <section className="mt-6 rounded-[1.7rem] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.94),rgba(3,7,18,0.98))] p-5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-xs uppercase tracking-[0.28em] text-slate-500">Designations Held</div>
+            <div className="rounded-full border border-amber-300/25 bg-amber-300/10 p-2 text-amber-100">
+              <Crown className="h-4 w-4" />
             </div>
           </div>
-          <div className="mt-5 h-3 overflow-hidden rounded-full border border-white/10 bg-black/35">
-            <div className="h-full rounded-full bg-[linear-gradient(90deg,rgba(245,158,11,0.8),rgba(52,211,153,0.72))]" style={{ width: `${progress}%` }} />
+
+          <div className="mt-4 grid gap-3 lg:grid-cols-3">
+            {designationRows.map((item) => (
+              <div
+                key={`${item.label}-${item.meta}`}
+                className={`rounded-2xl border p-4 ${
+                  item.tone === "gold"
+                    ? "border-amber-300/25 bg-amber-300/10"
+                    : item.tone === "emerald"
+                      ? "border-emerald-300/20 bg-emerald-500/10"
+                      : "border-sky-300/20 bg-sky-500/10"
+                }`}
+              >
+                <div className="text-[10px] uppercase tracking-[0.22em] text-slate-500">{item.meta}</div>
+                <div className="mt-2 text-lg font-semibold text-white">{item.label}</div>
+                <div className="mt-1 text-xs font-semibold uppercase tracking-[0.14em] text-slate-300">{item.value}</div>
+              </div>
+            ))}
           </div>
         </section>
 

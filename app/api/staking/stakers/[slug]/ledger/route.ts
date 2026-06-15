@@ -273,12 +273,22 @@ async function loadStakingRows(userId: number | null, before: string | null, lim
         );
 
   const allocationsByDay = new Map<string, AllocationRow[]>();
+  const activeStakingDays = new Set<string>();
+
   for (const row of allocations) {
     if (!row.distribution_date) continue;
     const key = dayKey(row.distribution_date);
     const list = allocationsByDay.get(key) || [];
-    if (row.id != null) list.push(row);
+    if (row.id != null) {
+      list.push(row);
+      activeStakingDays.add(key);
+    }
     allocationsByDay.set(key, list);
+  }
+
+  for (const event of events) {
+    if (!event.occurred_at) continue;
+    activeStakingDays.add(dayKey(event.occurred_at));
   }
 
   const eventRows: LedgerRow[] = events.map((event) => {
@@ -325,13 +335,13 @@ async function loadStakingRows(userId: number | null, before: string | null, lim
           amountLabel: formatWolo(amount),
         });
       }
-    } else {
+    } else if (!activeStakingDays.has(key)) {
       dailyRows.push({
         key: `staking-day-${key}`,
         view: "staking-day",
         tone: "slate",
-        label: `Staking day accounted for: ${key}`,
-        detail: "No user staking reward recorded · mainnet staking day preserved",
+        label: `Quiet staking day: ${key}`,
+        detail: "No staking movement recorded · mainnet day preserved",
         meta: "0 WOLO",
         occurredAt: `${key}T12:10:00.000Z`,
         amountLabel: "0 WOLO",
