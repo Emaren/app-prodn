@@ -581,11 +581,11 @@ function activityVisual(item: StakingActivityItem) {
 
   if (isWinnerPayoutActivity) {
     return {
-      card: "border-white/12 bg-white/[0.035] shadow-[inset_3px_0_0_rgba(148,163,184,0.28)]",
-      orb: "border-white/12 bg-slate-950/55 text-slate-200",
-      dot: "bg-slate-300/80 shadow-[0_0_10px_rgba(203,213,225,0.32)]",
-      label: "text-white",
-      detail: "text-slate-300/74",
+      card: "border-slate-700/80 bg-slate-950/28 shadow-[inset_3px_0_0_rgba(100,116,139,0.38)]",
+      orb: "border-slate-600/55 bg-slate-950/55 text-slate-300",
+      dot: "bg-slate-500 shadow-[0_0_9px_rgba(100,116,139,0.34)]",
+      label: "text-slate-50",
+      detail: "text-slate-300/70",
       icon: "🏆",
     };
   }
