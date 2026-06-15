@@ -568,6 +568,17 @@ function activityVisual(item: StakingActivityItem) {
     text.includes("bet stake") ||
     text.includes("awaiting verified wallet");
 
+  if (eventType === "GROUPED BET") {
+    return {
+      card: "border-slate-700/70 bg-slate-950/24 shadow-[inset_3px_0_0_rgba(100,116,139,0.30)]",
+      orb: "border-slate-600/50 bg-slate-950/55 text-slate-300",
+      dot: "bg-slate-500 shadow-[0_0_9px_rgba(100,116,139,0.30)]",
+      label: "text-slate-50",
+      detail: "text-slate-300/68",
+      icon: "•",
+    };
+  }
+
   if (isTreasuryActivity) {
     return {
       card: "border-emerald-900/80 bg-[radial-gradient(circle_at_4%_50%,rgba(6,78,59,0.24),transparent_34%),linear-gradient(90deg,rgba(2,44,34,0.30),rgba(3,7,18,0.84))] shadow-[inset_3px_0_0_rgba(251,191,36,0.64),0_0_18px_rgba(6,78,59,0.12)]",
@@ -674,7 +685,7 @@ function ActivityRow({
         onClick={() => {
           if (hasChildren) setExpanded((value) => !value);
         }}
-        className={`flex w-full min-w-0 flex-col gap-3 text-left sm:flex-row sm:items-center ${
+        className={`flex w-full min-w-0 flex-col gap-3 text-left focus:outline-none focus-visible:outline-none sm:flex-row sm:items-center ${
           hasChildren ? "cursor-pointer" : "cursor-default"
         }`}
       >
@@ -716,7 +727,7 @@ function ActivityRow({
       </button>
 
       {hasChildren && expanded ? (
-        <div className="mt-3 space-y-2 overflow-hidden border-t border-white/10 pt-3">
+        <div className="mt-3 space-y-2 overflow-hidden border-t border-slate-800/80 pt-3">
           {children.map((child, index) => (
             <ActivityRow
               key={activityKey(child) || `${item.key || item.label}-child-${index}`}
@@ -732,7 +743,7 @@ function ActivityRow({
 
 function FeedChip({ children }: { children: string }) {
   return (
-    <span className="max-w-full break-all rounded-full border border-white/10 bg-black/20 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-300">
+    <span className="max-w-full break-all rounded-full border border-slate-700/75 bg-black/20 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-300">
       {children}
     </span>
   );
