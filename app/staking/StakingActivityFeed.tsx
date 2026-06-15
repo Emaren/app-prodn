@@ -570,7 +570,7 @@ function activityVisual(item: StakingActivityItem) {
 
   if (isTreasuryActivity) {
     return {
-      card: "border-emerald-400/30 bg-[radial-gradient(circle_at_4%_50%,rgba(6,78,59,0.30),transparent_34%),linear-gradient(90deg,rgba(2,44,34,0.34),rgba(3,7,18,0.80))] shadow-[inset_3px_0_0_rgba(251,191,36,0.68),0_0_20px_rgba(6,78,59,0.14)] hover:border-emerald-300/40",
+      card: "border-emerald-900/80 bg-[radial-gradient(circle_at_4%_50%,rgba(6,78,59,0.24),transparent_34%),linear-gradient(90deg,rgba(2,44,34,0.30),rgba(3,7,18,0.84))] shadow-[inset_3px_0_0_rgba(251,191,36,0.64),0_0_18px_rgba(6,78,59,0.12)]",
       orb: "border-emerald-200/35 bg-emerald-950/55 text-emerald-100 shadow-[0_0_16px_rgba(6,78,59,0.35)]",
       dot: "bg-amber-300 shadow-[0_0_13px_rgba(252,211,77,0.62)]",
       label: "text-white",
@@ -581,7 +581,7 @@ function activityVisual(item: StakingActivityItem) {
 
   if (isWinnerPayoutActivity) {
     return {
-      card: "border-emerald-400/30 bg-[radial-gradient(circle_at_4%_50%,rgba(6,95,70,0.28),transparent_34%),linear-gradient(90deg,rgba(5,46,22,0.30),rgba(3,7,18,0.80))] shadow-[inset_3px_0_0_rgba(52,211,153,0.62),0_0_20px_rgba(6,95,70,0.13)] hover:border-emerald-300/40",
+      card: "border-emerald-800/70 bg-[radial-gradient(circle_at_4%_50%,rgba(6,95,70,0.22),transparent_34%),linear-gradient(90deg,rgba(5,46,22,0.26),rgba(3,7,18,0.84))] shadow-[inset_3px_0_0_rgba(52,211,153,0.58),0_0_18px_rgba(6,95,70,0.11)]",
       orb: "border-emerald-200/38 bg-emerald-950/48 text-emerald-100 shadow-[0_0_16px_rgba(16,185,129,0.22)]",
       dot: "bg-emerald-300 shadow-[0_0_13px_rgba(110,231,183,0.6)]",
       label: "text-white",

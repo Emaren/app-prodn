@@ -1419,23 +1419,22 @@ export async function loadMainnetTransferStakingActivityPage(
         })
       : mainnetActivityItems;
 
-  const combined = dedupeActivityRows(
-    [
-      ...compactMainnetActivityItems,
-      ...pendingSettlementItems,
-      ...stakingAllocationItems,
-      ...stakingCycleItems,
-      ...indexedTransferRows.map((row) => indexedTransferToActivityItem(row)),
-      ...giftRows.map((row) => giftToActivityItem(row)),
-    ],
-    rawActivityTake
-  )
+  const combinedSourceItems = [
+    ...compactMainnetActivityItems,
+    ...pendingSettlementItems,
+    ...stakingAllocationItems,
+    ...stakingCycleItems,
+    ...indexedTransferRows.map((row) => indexedTransferToActivityItem(row)),
+    ...giftRows.map((row) => giftToActivityItem(row)),
+  ]
     .filter(isPublicStakingActivityItem)
     .filter((item) => {
       if (!validBeforeDate || !item.occurredAt) return true;
       const occurredAt = new Date(item.occurredAt);
       return !Number.isNaN(occurredAt.getTime()) && occurredAt < validBeforeDate;
     });
+
+  const combined = dedupeActivityRows(combinedSourceItems, rawActivityTake);
 
   const filteredCombined = combined.filter((item) => {
     const eventType = String(item.eventType || "").toUpperCase();
@@ -1507,7 +1506,8 @@ export async function loadMainnetTransferStakingActivityPage(
       ? groupStakingBetActivityItems(filteredCombined, limit + 1)
       : filteredCombined;
 
-  const pageRows = visibleRows.slice(0, limit).map((item) => {
+  const pageSourceRows = visibleRows.slice(0, limit);
+  const pageRows = pageSourceRows.map((item) => {
     const normalized = attachActivityTxFields(item);
     return {
       key: normalized.key,
@@ -1526,16 +1526,20 @@ export async function loadMainnetTransferStakingActivityPage(
     };
   });
   const cursorRow =
-    filteredCombined
-      .slice(0, Math.max(1, rawActivityTake - 1))
+    [...pageSourceRows]
       .reverse()
       .find((row) => row.timestampLabel !== "Current stake" && row.occurredAt) ?? null;
+
+  const activityNextBefore = cursorRow?.occurredAt ?? null;
+  const canPageTowardMainnetStart = Boolean(
+    activityNextBefore && new Date(activityNextBefore).getTime() > mainnetDisplayStartAt.getTime()
+  );
 
   return {
     generatedAt: new Date().toISOString(),
     rows: pageRows,
-    hasMore: filteredCombined.length > limit,
-    nextBefore: cursorRow?.occurredAt ?? null,
+    hasMore: Boolean(visibleRows.length > limit || canPageTowardMainnetStart),
+    nextBefore: activityNextBefore,
   };
 }
 
