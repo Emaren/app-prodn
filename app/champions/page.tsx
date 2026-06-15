@@ -120,6 +120,7 @@ function BeltAsset({
           alt=""
           fill
           priority={priority}
+          unoptimized
           sizes="(min-width: 1280px) 340px, (min-width: 768px) 42vw, 90vw"
           className={`pointer-events-none z-0 object-cover object-top opacity-30 mix-blend-screen [mask-image:linear-gradient(180deg,black_0%,black_58%,transparent_96%)] ${backdropClassName}`}
         />
@@ -129,6 +130,7 @@ function BeltAsset({
         alt=""
         fill
         priority={priority}
+        unoptimized
         sizes="(min-width: 1280px) 360px, (min-width: 768px) 46vw, 92vw"
         className="z-10 object-contain drop-shadow-[0_18px_36px_rgba(0,0,0,0.55)]"
       />
@@ -529,6 +531,7 @@ function HeroRosterBackdrop() {
             src={item.src}
             alt=""
             fill
+            unoptimized
             sizes="28vw"
             className="object-contain object-bottom mix-blend-screen [mask-image:linear-gradient(180deg,transparent_0%,black_18%,black_72%,transparent_100%)]"
           />

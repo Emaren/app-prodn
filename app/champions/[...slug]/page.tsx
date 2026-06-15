@@ -130,6 +130,7 @@ export default async function ChampionTitleDetailPage({
               alt=""
               fill
               priority
+              unoptimized
               sizes="(min-width: 1024px) 38vw, 92vw"
               className="z-0 object-cover object-top opacity-28 mix-blend-screen [mask-image:linear-gradient(180deg,black_0%,black_58%,transparent_96%)]"
             />
@@ -138,6 +139,7 @@ export default async function ChampionTitleDetailPage({
               alt=""
               fill
               priority
+              unoptimized
               sizes="(min-width: 1024px) 44vw, 92vw"
               className="z-10 object-contain drop-shadow-[0_24px_55px_rgba(0,0,0,0.62)]"
             />
