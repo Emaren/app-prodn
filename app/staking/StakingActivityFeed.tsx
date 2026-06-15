@@ -521,22 +521,76 @@ function oldestActivityRowTimestamp(rows: StakingActivityItem[]) {
 }
 
 function activityVisual(item: StakingActivityItem) {
-  const eventType = String(item.eventType || "").toUpperCase();
+  const eventType = normalizedEventType(item);
   const text = `${item.label || ""} ${item.detail || ""}`.toLowerCase();
 
-  if (
+  const isTreasuryActivity =
+    text.includes("community treasury") ||
+    text.includes("staking treasury") ||
+    text.includes("treasury payout") ||
+    text.includes("aoe2 staking treasury");
+
+  const isWinnerPayoutActivity =
+    !isTreasuryActivity &&
+    (eventType === "PAYOUT" ||
+      text.includes("bet_payout") ||
+      text.includes("bet payout") ||
+      text.includes("winner_bounty") ||
+      text.includes("winner bounty") ||
+      text.includes("founders_win") ||
+      text.includes("founders win") ||
+      text.includes("founders_bonus") ||
+      text.includes("founders bonus") ||
+      text.includes("admin_retry_settlement"));
+
+  const isRewardActivity =
     eventType === "REWARD" ||
     eventType === "COMPOUND" ||
     (eventType === "TX" && (text.includes("compound") || text.includes("staking event"))) ||
-    (eventType === "PAYOUT" && text.includes("staking treasury")) ||
     text.includes("compound event") ||
     text.includes("compounded") ||
     text.includes("staking reward") ||
     text.includes("reward payout") ||
     text.includes("staking fee share") ||
-    text.includes("staking treasury payout") ||
-    text.includes("aoe2 staking treasury")
-  ) {
+    text.includes("micro reward") ||
+    text.includes("pending 1 wolo payout threshold");
+
+  const isCycleActivity =
+    eventType === "CYCLE" ||
+    text.includes("staking cycle checked") ||
+    text.includes("no reward distribution");
+
+  const isBetRouteActivity =
+    eventType === "SETTLEMENT" ||
+    eventType === "ESCROW" ||
+    text.includes("settlement queue") ||
+    text.includes("bet escrow") ||
+    text.includes("bet stake") ||
+    text.includes("awaiting verified wallet");
+
+  if (isTreasuryActivity) {
+    return {
+      card: "border-emerald-300/45 bg-[radial-gradient(circle_at_0%_50%,rgba(16,185,129,0.22),transparent_34%),linear-gradient(90deg,rgba(6,95,70,0.42),rgba(15,23,42,0.36))] shadow-[inset_3px_0_0_rgba(251,191,36,0.88),0_0_30px_rgba(16,185,129,0.12)]",
+      orb: "border-emerald-300/45 bg-emerald-400/16 text-emerald-100 shadow-[0_0_22px_rgba(16,185,129,0.24)]",
+      dot: "bg-amber-300 shadow-[0_0_16px_rgba(252,211,77,0.78)]",
+      label: "text-emerald-50",
+      detail: "text-emerald-100/78",
+      icon: "🏛",
+    };
+  }
+
+  if (isWinnerPayoutActivity) {
+    return {
+      card: "border-emerald-300/50 bg-[radial-gradient(circle_at_0%_50%,rgba(52,211,153,0.24),transparent_34%),linear-gradient(90deg,rgba(20,83,45,0.46),rgba(15,23,42,0.36))] shadow-[inset_3px_0_0_rgba(52,211,153,0.9),0_0_32px_rgba(52,211,153,0.16)]",
+      orb: "border-emerald-300/55 bg-emerald-400/18 text-emerald-50 shadow-[0_0_24px_rgba(52,211,153,0.3)]",
+      dot: "bg-emerald-300 shadow-[0_0_16px_rgba(110,231,183,0.84)]",
+      label: "text-emerald-50",
+      detail: "text-emerald-100/80",
+      icon: "🏆",
+    };
+  }
+
+  if (isRewardActivity) {
     return {
       card: "border-amber-300/45 bg-[radial-gradient(circle_at_0%_50%,rgba(245,158,11,0.24),transparent_34%),linear-gradient(90deg,rgba(120,72,12,0.42),rgba(15,23,42,0.36))] shadow-[inset_3px_0_0_rgba(245,158,11,0.86),0_0_30px_rgba(245,158,11,0.12)]",
       orb: "border-amber-300/45 bg-amber-400/16 text-amber-100 shadow-[0_0_22px_rgba(245,158,11,0.24)]",
@@ -547,59 +601,49 @@ function activityVisual(item: StakingActivityItem) {
     };
   }
 
-  if (eventType === "CYCLE") {
+  if (isCycleActivity) {
     return {
       card: "border-amber-900/40 bg-[linear-gradient(90deg,rgba(68,45,13,0.18),rgba(15,23,42,0.22))] shadow-[inset_3px_0_0_rgba(120,72,12,0.42)] opacity-85",
       orb: "border-amber-900/45 bg-amber-950/30 text-amber-200/70",
-      dot: "bg-amber-600 shadow-[0_0_8px_rgba(180,83,9,0.32)]",
-      label: "text-amber-100/84",
-      detail: "text-amber-100/52",
+      dot: "bg-orange-400 shadow-[0_0_12px_rgba(251,146,60,0.45)]",
+      label: "text-amber-100/90",
+      detail: "text-amber-100/62",
       icon: "◷",
     };
   }
 
-  if (eventType === "STAKE" || eventType === "UNSTAKE" || text.includes("staking deposit") || text.includes("staking wallet")) {
+  if (isBetRouteActivity) {
     return {
-      card: "border-yellow-700/40 bg-[linear-gradient(90deg,rgba(92,56,12,0.28),rgba(15,23,42,0.28))] shadow-[inset_3px_0_0_rgba(180,83,9,0.58)]",
-      orb: "border-yellow-700/45 bg-yellow-900/24 text-yellow-200",
-      dot: "bg-yellow-400 shadow-[0_0_12px_rgba(250,204,21,0.45)]",
-      label: "text-yellow-50",
-      detail: "text-yellow-100/62",
-      icon: "◎",
-    };
-  }
-
-  if (eventType === "GROUPED BET" || text.includes("bet_") || text.includes("bet stake") || text.includes("founders_") || text.includes(" vs ")) {
-    return {
-      card: "border-sky-300/20 bg-[linear-gradient(90deg,rgba(14,116,144,0.16),rgba(15,23,42,0.28))] shadow-[inset_3px_0_0_rgba(56,189,248,0.42)]",
-      orb: "border-sky-300/30 bg-sky-400/10 text-sky-100",
-      dot: "bg-sky-300 shadow-[0_0_12px_rgba(56,189,248,0.44)]",
+      card: "border-sky-300/25 bg-[linear-gradient(90deg,rgba(14,116,144,0.18),rgba(15,23,42,0.3))] shadow-[inset_3px_0_0_rgba(56,189,248,0.5),0_0_22px_rgba(56,189,248,0.08)]",
+      orb: "border-sky-300/35 bg-sky-400/12 text-sky-100 shadow-[0_0_18px_rgba(56,189,248,0.18)]",
+      dot: "bg-sky-300 shadow-[0_0_14px_rgba(125,211,252,0.7)]",
       label: "text-sky-50",
-      detail: "text-sky-100/62",
+      detail: "text-sky-100/72",
       icon: "⚔",
     };
   }
 
-  if (eventType === "GIFT") {
+  if (eventType === "DIRECT") {
     return {
-      card: "border-emerald-300/20 bg-[linear-gradient(90deg,rgba(6,95,70,0.18),rgba(15,23,42,0.28))] shadow-[inset_3px_0_0_rgba(52,211,153,0.45)]",
-      orb: "border-emerald-300/30 bg-emerald-400/10 text-emerald-100",
-      dot: "bg-emerald-300 shadow-[0_0_12px_rgba(52,211,153,0.42)]",
-      label: "text-emerald-50",
-      detail: "text-emerald-100/62",
-      icon: "✦",
+      card: "border-slate-400/25 bg-[linear-gradient(90deg,rgba(30,41,59,0.2),rgba(15,23,42,0.28))] shadow-[inset_3px_0_0_rgba(148,163,184,0.36)]",
+      orb: "border-slate-300/35 bg-slate-400/10 text-slate-100",
+      dot: "bg-slate-300 shadow-[0_0_12px_rgba(203,213,225,0.45)]",
+      label: "text-slate-50",
+      detail: "text-slate-200/72",
+      icon: "•",
     };
   }
 
   return {
-    card: "border-white/10 bg-white/[0.04]",
-    orb: "border-white/12 bg-white/[0.055] text-slate-200",
-    dot: "bg-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.38)]",
-    label: "text-white",
-    detail: "text-slate-300",
+    card: "border-slate-400/16 bg-slate-950/18",
+    orb: "border-slate-300/30 bg-slate-400/10 text-slate-100",
+    dot: "bg-slate-300/80",
+    label: "text-slate-50",
+    detail: "text-slate-300/70",
     icon: "•",
   };
 }
+
 
 function ActivityRow({
   item,
