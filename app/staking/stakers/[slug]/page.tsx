@@ -1,0 +1,422 @@
+
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import type { Metadata } from "next";
+import {
+  ArrowLeft,
+  Coins,
+  Crown,
+  Flame,
+  Landmark,
+  ShieldCheck,
+  Sparkles,
+  Swords,
+  Trophy,
+  Wallet,
+} from "lucide-react";
+
+import { getPrisma } from "@/lib/prisma";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+type PageProps = {
+  params: Promise<{ slug: string }>;
+};
+
+type RegistryProfile = {
+  slug: string;
+  player: string;
+  title: string;
+  lane: string;
+  line: string;
+  badge: string;
+  tone: "gold" | "emerald" | "sky";
+  fallbackStake: number;
+  fallbackWeight: string;
+  nextMove: string;
+};
+
+type PositionRow = {
+  user_id: number | null;
+  player: string | null;
+  wallet_address: string | null;
+  current_staked_wolo: number | string | null;
+  accumulated_weight: bigint | number | string | null;
+  created_at: Date | string | null;
+  auto_compound_rewards: boolean | null;
+  status: string | null;
+  lifetime_rewards_wolo: number | string | null;
+  claimed_rewards_wolo: number | string | null;
+  compounded_rewards_wolo: number | string | null;
+  pending_rewards_wolo: number | string | null;
+};
+
+type AllocationRow = {
+  id: number;
+  reward_wolo: number | string | null;
+  status: string | null;
+  occurred_at: Date | string | null;
+  distribution_date: Date | string | null;
+};
+
+const REGISTRY: Record<string, RegistryProfile> = {
+  jim: {
+    slug: "jim",
+    player: "Jim",
+    title: "First Guardian",
+    lane: "Crown Lane",
+    line: "The first guardian keeps the gate.",
+    badge: "Mainnet Founder",
+    tone: "gold",
+    fallbackStake: 211_300,
+    fallbackWeight: "104K",
+    nextMove: "Hold the crown through 30 active reward cycles.",
+  },
+  "julio-alvarez": {
+    slug: "julio-alvarez",
+    player: "Julio Alvarez",
+    title: "First Scout",
+    lane: "Early Seat",
+    line: "The first scout lit the road.",
+    badge: "Watcher Pioneer",
+    tone: "emerald",
+    fallbackStake: 100_300,
+    fallbackWeight: "54K",
+    nextMove: "Compound seven cycles to earn Flame Keeper.",
+  },
+  emaren: {
+    slug: "emaren",
+    player: "Emaren",
+    title: "Operator Founder",
+    lane: "Verified Grind",
+    line: "Operator founder, verified grind.",
+    badge: "Verified Wallet",
+    tone: "sky",
+    fallbackStake: 101,
+    fallbackWeight: "115",
+    nextMove: "Keep the rails alive and push the hall forward.",
+  },
+};
+
+function slugify(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function asNumber(value: unknown, fallback = 0) {
+  const parsed = typeof value === "bigint" ? Number(value) : Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function compactWolo(value: number) {
+  if (!Number.isFinite(value)) return "0 WOLO";
+  if (Math.abs(value) >= 1_000_000) return `${(value / 1_000_000).toFixed(1).replace(/\.0$/, "")}M WOLO`;
+  if (Math.abs(value) >= 1_000) return `${(value / 1_000).toFixed(value >= 100_000 ? 0 : 1).replace(/\.0$/, "")}K WOLO`;
+  return `${value.toLocaleString(undefined, { maximumFractionDigits: 6 })} WOLO`;
+}
+
+function shortAddress(address?: string | null) {
+  if (!address) return "Wallet pending";
+  return address.length > 18 ? `${address.slice(0, 10)}...${address.slice(-6)}` : address;
+}
+
+function dateLabel(value?: Date | string | null) {
+  if (!value) return "Unknown";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Unknown";
+  return new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric" }).format(date);
+}
+
+function timeLabel(value?: Date | string | null) {
+  if (!value) return "Unknown";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Unknown";
+  return new Intl.DateTimeFormat("en", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(date);
+}
+
+function toneCard(tone: RegistryProfile["tone"]) {
+  if (tone === "gold") {
+    return "border-amber-300/25 bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.18),transparent_34%),linear-gradient(180deg,rgba(15,23,42,0.96),rgba(3,7,18,0.98))]";
+  }
+  if (tone === "emerald") {
+    return "border-emerald-800/70 bg-[radial-gradient(circle_at_top_left,rgba(6,95,70,0.20),transparent_34%),linear-gradient(180deg,rgba(15,23,42,0.96),rgba(3,7,18,0.98))]";
+  }
+  return "border-sky-300/25 bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.14),transparent_34%),linear-gradient(180deg,rgba(15,23,42,0.96),rgba(3,7,18,0.98))]";
+}
+
+function toneBadge(tone: RegistryProfile["tone"]) {
+  if (tone === "gold") return "border-amber-300/30 bg-amber-300/12 text-amber-100";
+  if (tone === "emerald") return "border-emerald-300/20 bg-emerald-500/10 text-emerald-100";
+  return "border-sky-300/20 bg-sky-500/10 text-sky-100";
+}
+
+async function loadPosition(slug: string) {
+  const fallback = REGISTRY[slug];
+  if (!fallback) return null;
+
+  try {
+    const prisma = getPrisma();
+    const rows = await prisma.$queryRawUnsafe<PositionRow[]>(`
+      select
+        sp.user_id,
+        coalesce(u.in_game_name, u.steam_persona_name, u.uid::text, 'Unknown Staker') as player,
+        coalesce(sp.wallet_address, u.wallet_address) as wallet_address,
+        sp.current_staked_wolo,
+        sp.accumulated_weight,
+        sp.created_at,
+        sp.auto_compound_rewards,
+        sp.status,
+        sp.lifetime_rewards_wolo,
+        sp.claimed_rewards_wolo,
+        sp.compounded_rewards_wolo,
+        sp.pending_rewards_wolo
+      from staking_positions sp
+      left join users u on u.id = sp.user_id
+      where coalesce(sp.current_staked_wolo, 0) > 0
+      order by sp.current_staked_wolo desc, sp.created_at asc
+      limit 200
+    `);
+
+    const ranked = rows.map((row, index) => ({
+      row,
+      rank: index + 1,
+      slug: slugify(row.player || ""),
+    }));
+
+    const match = ranked.find((item) => item.slug === slug);
+    if (!match) {
+      return {
+        registry: fallback,
+        row: null,
+        rank: fallback.slug === "jim" ? 1 : fallback.slug === "julio-alvarez" ? 2 : 3,
+        totalStake: rows.reduce((sum, item) => sum + asNumber(item.current_staked_wolo), 0),
+        allocations: [] as AllocationRow[],
+      };
+    }
+
+    const allocations =
+      match.row.user_id == null
+        ? []
+        : await prisma.$queryRawUnsafe<AllocationRow[]>(
+            `
+            select
+              a.id,
+              a.reward_wolo,
+              a.status,
+              coalesce(a.credited_at, a.claimed_at, a.created_at, d.created_at) as occurred_at,
+              d.distribution_date
+            from staking_reward_allocations a
+            join staking_reward_distributions d on d.id = a.distribution_id
+            where a.user_id = $1
+            order by coalesce(a.credited_at, a.claimed_at, a.created_at, d.created_at) desc, a.id desc
+            limit 18
+            `,
+            match.row.user_id
+          );
+
+    return {
+      registry: fallback,
+      row: match.row,
+      rank: match.rank,
+      totalStake: rows.reduce((sum, item) => sum + asNumber(item.current_staked_wolo), 0),
+      allocations,
+    };
+  } catch (error) {
+    console.warn("Failed to load staker hall profile:", error);
+    return {
+      registry: fallback,
+      row: null,
+      rank: fallback.slug === "jim" ? 1 : fallback.slug === "julio-alvarez" ? 2 : 3,
+      totalStake: 311_701,
+      allocations: [] as AllocationRow[],
+    };
+  }
+}
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const profile = REGISTRY[slug];
+
+  return {
+    title: profile ? `${profile.player} · Staking Hall` : "Staker Not Found",
+    description: profile ? `${profile.player}'s WOLO staking hall profile.` : undefined,
+  };
+}
+
+function StatCard({
+  label,
+  value,
+  helper,
+  tone,
+  icon,
+}: {
+  label: string;
+  value: string;
+  helper: string;
+  tone: RegistryProfile["tone"];
+  icon: React.ReactNode;
+}) {
+  return (
+    <div className={`rounded-[1.35rem] border p-4 shadow-[0_20px_70px_rgba(2,6,23,0.25)] ${toneCard(tone)}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="text-[11px] uppercase tracking-[0.22em] text-slate-500">{label}</div>
+          <div className="mt-2 text-2xl font-semibold text-white">{value}</div>
+          <div className="mt-1 text-xs text-slate-400">{helper}</div>
+        </div>
+        <div className={`rounded-full border p-2.5 ${toneBadge(tone)}`}>{icon}</div>
+      </div>
+    </div>
+  );
+}
+
+function LedgerRow({ allocation }: { allocation: AllocationRow }) {
+  const reward = asNumber(allocation.reward_wolo);
+  const status = String(allocation.status || "reward").toLowerCase();
+  const isHeld = reward > 0 && reward < 1;
+  const isCompound = status.includes("compound");
+
+  return (
+    <div className="rounded-[1.15rem] border border-amber-300/25 bg-[radial-gradient(circle_at_left,rgba(245,158,11,0.15),transparent_34%),linear-gradient(90deg,rgba(40,25,10,0.42),rgba(3,7,18,0.88))] p-4 shadow-[inset_3px_0_0_rgba(245,158,11,0.65)]">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="min-w-0">
+          <div className="font-semibold text-white">
+            {isHeld ? `${reward} WOLO held reward` : isCompound ? `${compactWolo(reward)} compound event` : `${compactWolo(reward)} reward`}
+          </div>
+          <div className="mt-1 break-words text-sm leading-6 text-amber-100/70">
+            Distribution {dateLabel(allocation.distribution_date)} · {status}
+          </div>
+        </div>
+        <div className="shrink-0 rounded-full border border-white/10 bg-black/25 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300">
+          {timeLabel(allocation.occurred_at)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default async function StakerHallPage({ params }: PageProps) {
+  const { slug } = await params;
+  const profile = await loadPosition(slug);
+
+  if (!profile) notFound();
+
+  const { registry, row, rank, totalStake, allocations } = profile;
+  const stake = row ? asNumber(row.current_staked_wolo, registry.fallbackStake) : registry.fallbackStake;
+  const weight = row?.accumulated_weight != null ? String(row.accumulated_weight) : registry.fallbackWeight;
+  const share = totalStake > 0 ? `${((stake / totalStake) * 100).toFixed(2)}%` : "Founding";
+  const wallet = row?.wallet_address || null;
+  const joined = row?.created_at || null;
+  const autoCompound = row?.auto_compound_rewards ?? true;
+  const claimed = row ? asNumber(row.claimed_rewards_wolo) : 0;
+  const compounded = row ? asNumber(row.compounded_rewards_wolo) : 0;
+  const pending = row ? asNumber(row.pending_rewards_wolo) : 0;
+  const lifetime = Math.max(row ? asNumber(row.lifetime_rewards_wolo) : 0, allocations.reduce((sum, item) => sum + asNumber(item.reward_wolo), 0));
+
+  const progressTarget = stake < 1_000 ? 1_000 : stake < 10_000 ? 10_000 : stake < 100_000 ? 100_000 : 250_000;
+  const progress = Math.min(100, Math.round((stake / progressTarget) * 100));
+
+  return (
+    <main className="min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_top,rgba(30,64,175,0.24),transparent_34%),linear-gradient(180deg,#081224,#02040a_72%)] px-4 py-8 text-white sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-6xl">
+        <Link
+          href="/staking"
+          className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.045] px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-300 transition hover:border-amber-300/35 hover:text-amber-100"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to staking room
+        </Link>
+
+        <section className={`mt-6 rounded-[2rem] border p-6 shadow-[0_28px_110px_rgba(2,6,23,0.48)] sm:p-8 ${toneCard(registry.tone)}`}>
+          <div className="grid gap-8 lg:grid-cols-[1.35fr_0.65fr] lg:items-end">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-amber-300/25 bg-amber-300/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-amber-100">
+                <Crown className="h-3.5 w-3.5" />
+                Staking Hall · Rank #{rank}
+              </div>
+              <h1 className="mt-5 text-4xl font-black tracking-tight text-white sm:text-6xl">{registry.player}</h1>
+              <p className="mt-4 max-w-2xl text-lg leading-8 text-slate-300">{registry.line}</p>
+
+              <div className="mt-6 flex flex-wrap gap-2">
+                {[registry.title, registry.lane, registry.badge, autoCompound ? "Auto-compound" : "Manual claim"].map((badge) => (
+                  <span
+                    key={badge}
+                    className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] ${toneBadge(registry.tone)}`}
+                  >
+                    {badge}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-[1.5rem] border border-white/10 bg-black/25 p-5">
+              <div className={`inline-flex rounded-full border p-3 ${toneBadge(registry.tone)}`}>
+                {registry.slug === "jim" ? <ShieldCheck className="h-6 w-6" /> : registry.slug === "julio-alvarez" ? <Swords className="h-6 w-6" /> : <Flame className="h-6 w-6" />}
+              </div>
+              <div className="mt-4 text-[11px] uppercase tracking-[0.24em] text-slate-500">Wallet</div>
+              <div className="mt-2 break-all text-sm font-semibold text-slate-200">{shortAddress(wallet)}</div>
+              <div className="mt-4 text-[11px] uppercase tracking-[0.24em] text-slate-500">Joined the hall</div>
+              <div className="mt-2 text-sm font-semibold text-white">{dateLabel(joined)}</div>
+            </div>
+          </div>
+        </section>
+
+        <section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard label="Seat size" value={compactWolo(stake)} helper="Current stake" tone="gold" icon={<Coins className="h-4 w-4" />} />
+          <StatCard label="Weight" value={weight.toLocaleString()} helper="Reward influence" tone="sky" icon={<Sparkles className="h-4 w-4" />} />
+          <StatCard label="Hall share" value={share} helper="Of visible active stake" tone="emerald" icon={<Landmark className="h-4 w-4" />} />
+          <StatCard label="Rewards" value={compactWolo(lifetime)} helper="Lifetime visible rewards" tone="gold" icon={<Trophy className="h-4 w-4" />} />
+        </section>
+
+        <section className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <StatCard label="Compounded" value={compactWolo(compounded)} helper="Rolled into principal" tone="gold" icon={<Crown className="h-4 w-4" />} />
+          <StatCard label="Claimed" value={compactWolo(claimed)} helper="Paid out rewards" tone="emerald" icon={<Wallet className="h-4 w-4" />} />
+          <StatCard label="Pending" value={compactWolo(pending)} helper="Held or awaiting threshold" tone="gold" icon={<Flame className="h-4 w-4" />} />
+        </section>
+
+        <section className="mt-6 rounded-[1.7rem] border border-amber-300/20 bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.14),transparent_32%),linear-gradient(180deg,rgba(15,23,42,0.94),rgba(3,7,18,0.98))] p-5">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <div className="text-xs uppercase tracking-[0.28em] text-amber-200/60">Progression</div>
+              <h2 className="mt-2 text-2xl font-semibold text-white">Next title is already watching.</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">{registry.nextMove}</p>
+            </div>
+            <div className="rounded-full border border-amber-300/25 bg-amber-300/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-amber-100">
+              {progress}% lit
+            </div>
+          </div>
+          <div className="mt-5 h-3 overflow-hidden rounded-full border border-white/10 bg-black/35">
+            <div className="h-full rounded-full bg-[linear-gradient(90deg,rgba(245,158,11,0.8),rgba(52,211,153,0.72))]" style={{ width: `${progress}%` }} />
+          </div>
+        </section>
+
+        <section className="mt-6 rounded-[1.7rem] border border-white/10 bg-[linear-gradient(180deg,rgba(10,16,29,0.94),rgba(4,7,14,0.99))] p-5">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <div className="text-xs uppercase tracking-[0.28em] text-slate-500">Personal Ledger</div>
+              <h2 className="mt-2 text-2xl font-semibold text-white">Receipts of the seat</h2>
+            </div>
+            <Link href="/staking" className="rounded-full border border-white/10 bg-white/[0.045] px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-200 transition hover:border-amber-300/35 hover:text-amber-100">
+              Full ledger
+            </Link>
+          </div>
+
+          <div className="mt-5 space-y-3">
+            {allocations.length > 0 ? allocations.map((allocation) => (
+              <LedgerRow key={allocation.id} allocation={allocation} />
+            )) : (
+              <div className="rounded-2xl border border-white/10 bg-black/20 p-5 text-sm text-slate-400">
+                This seat is live. Detailed reward rows will appear here as the staking hall records more cycles.
+              </div>
+            )}
+          </div>
+        </section>
+      </div>
+    </main>
+  );
+}

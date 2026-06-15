@@ -203,6 +203,15 @@ function normalizeBoard(value: string | string[] | undefined): BoardKey {
   return raw === "earners" || raw === "rewards" ? raw : "stakers";
 }
 
+function stakerSlug(player: string) {
+  return player
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 function hrefFor(params: { period: PeriodKey; board: BoardKey }) {
   const search = new URLSearchParams();
   if (params.period !== "24h") search.set("period", params.period);
@@ -1120,32 +1129,44 @@ function CompactLeaderboardRow({
           ? "border-sky-300/20 bg-sky-500/10 text-sky-100"
           : "border-white/10 bg-white/[0.055] text-slate-200";
 
+  const href = `/staking/stakers/${stakerSlug(row.player)}`;
+
   return (
-    <div className="rounded-[1rem] border border-white/10 bg-white/[0.04] p-3 md:grid md:grid-cols-[2.5rem_1.3fr_0.9fr_1fr_0.75fr] md:items-center md:gap-2">
+    <Link
+      href={href}
+      className="group block rounded-[1rem] border border-white/10 bg-white/[0.04] p-3 transition hover:border-amber-300/30 hover:bg-white/[0.065] hover:shadow-[0_0_28px_rgba(245,158,11,0.08)] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/55 md:grid md:grid-cols-[2.5rem_1.3fr_0.9fr_1fr_0.75fr] md:items-center md:gap-2"
+      aria-label={`Open ${row.player}'s staking hall profile`}
+    >
       <div className="flex items-center justify-between gap-3 md:block">
-        <div className={`flex h-8 w-8 items-center justify-center rounded-full border text-xs font-semibold ${
-          row.tone === "gold"
-            ? "border-amber-300/25 bg-amber-300/12 text-amber-100"
-            : "border-white/10 bg-white/[0.055] text-slate-200"
-        }`}>
+        <div
+          className={`flex h-8 w-8 items-center justify-center rounded-full border text-xs font-semibold transition group-hover:scale-105 ${
+            row.tone === "gold"
+              ? "border-amber-300/25 bg-amber-300/12 text-amber-100"
+              : "border-white/10 bg-white/[0.055] text-slate-200"
+          }`}
+        >
           {rank}
         </div>
         <div className="text-xs uppercase tracking-[0.2em] text-slate-500 md:hidden">Rank</div>
       </div>
+
       <div className="mt-3 min-w-0 md:mt-0">
-        <div className="text-sm font-semibold text-white">{row.player}</div>
+        <div className="truncate text-sm font-semibold text-white group-hover:text-amber-50">{row.player}</div>
         <div className={`mt-1 inline-flex rounded-full border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] ${badgeClass}`}>
           {row.badge}
         </div>
       </div>
+
       <MobileLabel label="Staked" value={row.staked} />
       <MobileLabel label="Weight" value={row.weight} />
+
       <div className={`mt-3 rounded-full border px-2.5 py-1 text-[11px] md:mt-0 md:text-center ${badgeClass}`}>
         {row.status}
       </div>
-    </div>
+    </Link>
   );
 }
+
 
 function CommunityTreasuryTile({
   treasury,
