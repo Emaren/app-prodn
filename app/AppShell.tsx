@@ -182,6 +182,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
   const [requestCount, setRequestCount] = React.useState(0);
   const isContactPage = pathname?.startsWith("/contact-emaren");
   const isStakingPage = pathname?.startsWith("/staking");
+  const isLobbySurface = pathname === "/" || pathname?.startsWith("/lobby");
   const headerHref = isStakingPage ? "/staking" : "/lobby";
   const headerTitle = isStakingPage ? "WOLO Staking" : "Tournament Lobby";
   const headerSkin = getLobbyHeaderSkin(themeKey);
@@ -371,7 +372,9 @@ function InnerShell({ children }: { children: React.ReactNode }) {
       </header>
 
       <main
-        className={`mx-auto flex min-h-0 min-w-0 w-full max-w-6xl flex-1 flex-col px-3 py-4 pb-32 sm:px-4 lg:pb-4 ${
+        className={`mx-auto flex min-h-0 min-w-0 w-full flex-1 flex-col px-3 py-4 pb-32 sm:px-4 lg:pb-4 ${
+          isLobbySurface ? "max-w-[96rem]" : "max-w-6xl"
+        } ${
           isContactPage ? "overflow-hidden" : "overflow-x-hidden"
         }`}
       >

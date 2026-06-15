@@ -21,7 +21,7 @@ It currently owns the premium lobby/community surface, leaderboard presentation,
 - Prisma 7 (`@prisma/client` + `@prisma/adapter-pg`) for user/profile/community APIs
 - Same-origin browser API routes for replay upload, lobby snapshot, inbox/admin actions, and appearance state
 - Premium lobby presentation layer with theme circles and lobby-specific shell behavior
-- Advanced `/lobby` arena stack with the moving live ticker, Watch & Chat hero/comments rail, compact hero bet slip, compact WOLO swap tile, and the preserved Basic/Advanced/Extreme community lobby toggle
+- Advanced `/lobby` arena stack with the moving live ticker, Watch & Chat hero/comments rail, compact hero bet slip, compact WOLO swap tile, and the preserved Basic/Advanced/Extreme community lobby toggle. Extreme owns the widened lobby frame, oversized Featured Warriors stage, and side-by-side leaderboard contender hero.
 - Claimed player profiles default to the Advanced command center; unclaimed replay-built profiles default to the classic Basic claim page, and both can toggle Basic/Advanced
 - Advanced player profiles include lazy match archive, watcher proof, form/rivalry diagnostics, resource emblems, AI Scribe/Grimer readout, stream signal, and premium `$WOLO`/staking stats
 - The public Kingdom spine includes `/kingdom`, `/champions`, `/national-champions`, and `/forum`, with the legacy `/belts`, `/nations`, and `/realm` paths redirecting into the new route names
@@ -257,7 +257,7 @@ python /var/www/AoE2HDBets/api-prodn/scripts/set_admin.py --email you@example.co
 ## Current notes
 
 - `/lobby` is now a real product destination with leaderboard + tournament surface
-- `/lobby` defaults to Advanced view: a moving live ticker, Watch & Chat arena hero with comments to the right, reactions and a compact bet slip under the video, a compact WOLO / USDC swap tile, then the existing Community Lobby surface. Basic view remains available and preserves the simpler lobby-first layout with a low-glare outline toggle.
+- `/lobby` defaults to Extreme view: a moving live ticker, Watch & Chat arena hero with comments to the right, reactions and a compact bet slip under the video, a compact WOLO / USDC swap tile, then the Community Lobby surface with a widened stage, oversized Featured Warriors portraits, and the menacing side-by-side leaderboard contender hero. Basic and Advanced remain available through the toggle.
 - Admins manage custom live ticker messages from `/admin`; enabled messages are text-only, ordered by priority, and mixed with system ticker items from tournament/replay/lobby/WOLO market state.
 - `/bets` now requires real Keplr-signed WOLO stake locks on `wolo-1`; the wager is only recorded after the stake tx verifies against WoloChain REST, and app-only wager rows stay out of mainnet-facing bet, profile, staking, war-chest, and admin rails
 - `/staking` uses real Keplr stake transfers into the staking wallet, indexed mainnet `MsgSend` rows plus confirmed app staking events for public stake display, and staking-wallet-signed WoloChain transfers for unstake. User max-unstake follows confirmed tx-backed principal; the staking wallet reserve/headroom is treated as operator-funded and surfaces as an operator top-up warning when the wallet cannot cover remaining confirmed stake plus reserve after the unstake.

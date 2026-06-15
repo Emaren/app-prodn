@@ -274,19 +274,19 @@ export function LobbyHero({
 
         <section className="relative overflow-hidden rounded-[1.85rem] border border-amber-200/12 bg-[radial-gradient(circle_at_20%_0%,rgba(251,191,36,0.16),transparent_30%),radial-gradient(circle_at_86%_12%,rgba(59,130,246,0.12),transparent_28%),linear-gradient(135deg,rgba(5,11,21,0.96),rgba(1,5,14,0.98))] p-4 shadow-[0_30px_100px_rgba(0,0,0,0.34)] sm:p-5">
           <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/34 to-transparent" />
-          <div className="grid gap-5">
-            <div className="relative min-h-[21rem] overflow-hidden rounded-[1.55rem] border border-amber-200/10 bg-[radial-gradient(circle_at_48%_12%,rgba(251,191,36,0.08),transparent_28%),linear-gradient(135deg,rgba(0,0,0,0.38),rgba(2,6,23,0.42))] sm:min-h-[25rem]">
+          <div className="grid gap-5 xl:grid-cols-[minmax(19rem,0.66fr)_minmax(0,1fr)] xl:items-stretch 2xl:grid-cols-[minmax(22rem,0.72fr)_minmax(0,1fr)]">
+            <div className="relative min-h-[21rem] overflow-hidden rounded-[1.55rem] border border-amber-200/10 bg-[radial-gradient(circle_at_48%_12%,rgba(251,191,36,0.08),transparent_28%),linear-gradient(135deg,rgba(0,0,0,0.38),rgba(2,6,23,0.42))] sm:min-h-[25rem] xl:min-h-[42rem]">
               <Image
                 src={avatarUrlForName(featuredName)}
                 alt=""
                 fill
                 unoptimized
                 priority
-                sizes="(min-width: 1280px) 620px, 90vw"
-                className="object-contain object-top opacity-84 [mask-image:linear-gradient(180deg,black_0%,black_78%,transparent_100%)]"
+                sizes="(min-width: 1536px) 360px, (min-width: 1280px) 300px, 90vw"
+                className="object-contain object-top opacity-84 [mask-image:linear-gradient(180deg,black_0%,black_82%,transparent_100%)] xl:object-cover"
               />
               <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_18%,rgba(2,6,23,0.22)_56%,rgba(2,6,23,0.96)_100%)]" />
-              <div className="absolute inset-x-4 bottom-4 rounded-2xl border border-amber-200/12 bg-black/42 p-4 backdrop-blur">
+              <div className="absolute inset-x-4 bottom-4 rounded-2xl border border-amber-200/12 bg-black/42 p-4 backdrop-blur xl:inset-x-5">
                 <div className="text-[10px] uppercase tracking-[0.28em] text-amber-100/70">
                   Featured Contender
                 </div>
