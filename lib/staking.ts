@@ -1530,15 +1530,28 @@ export async function loadMainnetTransferStakingActivityPage(
       .reverse()
       .find((row) => row.timestampLabel !== "Current stake" && row.occurredAt) ?? null;
 
-  const activityNextBefore = cursorRow?.occurredAt ?? null;
+  const fallbackCursorRow =
+    [...filteredCombined]
+      .reverse()
+      .find((row) => row.timestampLabel !== "Current stake" && row.occurredAt) ?? null;
+
+  const oneDayMs = 24 * 60 * 60 * 1000;
+  const emptyPageFallbackBefore =
+    validBeforeDate && validBeforeDate.getTime() > mainnetDisplayStartAt.getTime()
+      ? new Date(Math.max(mainnetDisplayStartAt.getTime(), validBeforeDate.getTime() - oneDayMs)).toISOString()
+      : null;
+
+  const activityNextBefore =
+    cursorRow?.occurredAt ?? fallbackCursorRow?.occurredAt ?? emptyPageFallbackBefore;
+
   const canPageTowardMainnetStart = Boolean(
-    activityNextBefore && new Date(activityNextBefore).getTime() > mainnetDisplayStartAt.getTime()
+    activityNextBefore && new Date(activityNextBefore).getTime() >= mainnetDisplayStartAt.getTime()
   );
 
   return {
     generatedAt: new Date().toISOString(),
     rows: pageRows,
-    hasMore: Boolean(visibleRows.length > limit || canPageTowardMainnetStart),
+    hasMore: Boolean(visibleRows.length > limit || filteredCombined.length > limit || canPageTowardMainnetStart),
     nextBefore: activityNextBefore,
   };
 }

@@ -340,27 +340,52 @@ export default function StakingActivityFeed({
     setLoadingMore(true);
 
     try {
-      const url = new URL(loadMoreEndpoint, window.location.origin);
+      const collectedRows: StakingActivityItem[] = [];
+      let cursor: string | null = nextBefore;
+      let finalHasMore = false;
+      let finalNextBefore: string | null = nextBefore;
 
-      if (nextBefore) {
-        url.searchParams.set("before", nextBefore);
+      for (let attempt = 0; attempt < 8; attempt += 1) {
+        const url = new URL(loadMoreEndpoint, window.location.origin);
+
+        if (cursor) {
+          url.searchParams.set("before", cursor);
+        }
+
+        url.searchParams.set("limit", String(PAGE_SIZE));
+        url.searchParams.set("mode", mode);
+        url.searchParams.set("filter", filterMode);
+
+        const response = await fetch(url.toString(), { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error(`Activity request failed: ${response.status}`);
+        }
+
+        const payload = (await response.json()) as ActivityPageResponse;
+        const nextRows = Array.isArray(payload.rows) ? payload.rows : [];
+        const fallbackBefore = payload.nextBefore || oldestActivityRowTimestamp(nextRows) || cursor;
+
+        if (nextRows.length > 0) {
+          collectedRows.push(...nextRows);
+        }
+
+        finalHasMore = Boolean(payload.hasMore || payload.nextBefore || nextRows.length >= PAGE_SIZE);
+        finalNextBefore = fallbackBefore;
+
+        const madeCursorProgress = Boolean(fallbackBefore && fallbackBefore !== cursor);
+        if (nextRows.length > 0 || !finalHasMore || !madeCursorProgress) {
+          break;
+        }
+
+        cursor = fallbackBefore;
       }
 
-      url.searchParams.set("limit", String(PAGE_SIZE));
-      url.searchParams.set("mode", mode);
-      url.searchParams.set("filter", filterMode);
-
-      const response = await fetch(url.toString(), { cache: "no-store" });
-      if (!response.ok) {
-        throw new Error(`Activity request failed: ${response.status}`);
+      if (collectedRows.length > 0) {
+        setRows((current) => mergeActivityRows(current, collectedRows));
       }
 
-      const payload = (await response.json()) as ActivityPageResponse;
-      const nextRows = Array.isArray(payload.rows) ? payload.rows : [];
-
-      setRows((current) => mergeActivityRows(current, nextRows));
-      setHasMore(Boolean(payload.hasMore || payload.nextBefore || nextRows.length >= PAGE_SIZE));
-      setNextBefore(payload.nextBefore || oldestActivityRowTimestamp(nextRows) || nextBefore);
+      setHasMore(Boolean(finalHasMore && finalNextBefore));
+      setNextBefore(finalNextBefore || nextBefore);
     } catch (error) {
       console.error("Failed to load staking activity:", error);
     } finally {
@@ -488,7 +513,7 @@ export default function StakingActivityFeed({
                   type="button"
                   onClick={() => void loadMore()}
                   disabled={loadingMore}
-                  className="rounded-full border border-white/15 bg-white/[0.04] px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-200 transition hover:border-white/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                  className="rounded-full border border-slate-700/75 bg-white/[0.035] px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-200 transition hover:border-slate-500/70 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {loadingMore
                     ? "Loading..."
