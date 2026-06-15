@@ -7,6 +7,8 @@ import { fetchUserVerification, toUserApi } from "@/lib/userDto";
 import { loadPendingWoloClaimSummaryForUser } from "@/lib/pendingWoloClaims";
 import { resolveRequestUid, resolveRequestEmail } from "@/lib/requestIdentity";
 import { validateWoloAddress } from "@/lib/woloBetSettlement";
+import { allChampionTitles, type ChampionTitleDefinition } from "@/lib/champions/titles";
+import { managedMediaPublicUrl, resolveManagedMediaUrl } from "@/lib/managedMediaAssets";
 import {
   GENDER_DIVISIONS,
   REPRESENTED_COUNTRIES,
@@ -149,6 +151,68 @@ const USER_SELECT = {
   isAdmin: true,
 } as const;
 
+const AVATAR_PRESETS = [
+  { target: "silhouette", label: "Silhouette" },
+  { target: "sniper", label: "Sniper" },
+  { target: "jim", label: "Jim" },
+  { target: "julio-alvarez", label: "Julio" },
+  { target: "emaren", label: "Emaren" },
+] as const;
+
+function normalizeNameKey(value: string | null | undefined) {
+  return (value || "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function titleHeldByUser(title: ChampionTitleDefinition, userNames: Set<string>) {
+  return title.holders.some((holder) => userNames.has(normalizeNameKey(holder.name)));
+}
+
+function titleHoldingPayload(title: ChampionTitleDefinition) {
+  const assetKind = title.type === "designation" ? "artifact" : "belt";
+
+  return {
+    id: title.id,
+    type: title.type,
+    displayName: title.displayName,
+    shortName: title.shortName,
+    dailyWolo: title.dailyWolo,
+    routeHref: title.routeHref,
+    assetUrl: managedMediaPublicUrl(assetKind, title.id, title.assetUrl),
+  };
+}
+
+async function buildProfilePresentation(
+  prisma: ReturnType<typeof getPrisma>,
+  user: { uid: string; inGameName: string | null },
+  steamPersonaName: string | null
+) {
+  const userNames = new Set(
+    [user.inGameName, steamPersonaName]
+      .map(normalizeNameKey)
+      .filter(Boolean)
+  );
+  const heldTitles = allChampionTitles.filter((title) => titleHeldByUser(title, userNames));
+  const belts = heldTitles.filter((title) => title.type !== "designation").map(titleHoldingPayload);
+  const artifacts = heldTitles.filter((title) => title.type === "designation").map(titleHoldingPayload);
+  const earningWoloPerDay = heldTitles.reduce((sum, title) => sum + title.dailyWolo, 0);
+
+  return {
+    avatarUrl: await resolveManagedMediaUrl(
+      prisma,
+      "avatar",
+      `user-${user.uid}`,
+      "/champions/players/silhouette.png"
+    ),
+    avatarOptions: AVATAR_PRESETS.map((option) => ({
+      ...option,
+      url: managedMediaPublicUrl("avatar", option.target),
+    })),
+    belts,
+    artifacts,
+    earningWoloPerDay,
+  };
+}
+
 export async function GET(request: NextRequest) {
   const uid = await resolveRequestUid(request);
   if (!uid) return NextResponse.json({ detail: "No active session" }, { status: 401 });
@@ -177,8 +241,14 @@ export async function GET(request: NextRequest) {
           inGameName: refreshedUser.inGameName,
           steamPersonaName: verification.steamPersonaName ?? null,
         });
+        const presentation = await buildProfilePresentation(
+          prisma,
+          refreshedUser,
+          verification.steamPersonaName ?? null
+        );
         return NextResponse.json({
           ...toUserApi(refreshedUser, verification),
+          ...presentation,
           pendingClaimAmountWolo: claimSummary.pendingAmountWolo,
           pendingClaimCount: claimSummary.pendingCount,
           pendingClaimLatestCreatedAt: claimSummary.latestCreatedAt,
@@ -192,9 +262,15 @@ export async function GET(request: NextRequest) {
     inGameName: user.inGameName,
     steamPersonaName: verification.steamPersonaName ?? null,
   });
+  const presentation = await buildProfilePresentation(
+    prisma,
+    user,
+    verification.steamPersonaName ?? null
+  );
 
   return NextResponse.json({
     ...toUserApi(user, verification),
+    ...presentation,
     pendingClaimAmountWolo: claimSummary.pendingAmountWolo,
     pendingClaimCount: claimSummary.pendingCount,
     pendingClaimLatestCreatedAt: claimSummary.latestCreatedAt,

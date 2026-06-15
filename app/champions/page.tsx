@@ -33,6 +33,10 @@ import {
   loadChampionTitleEconomyState,
   type ChampionTitleState,
 } from "@/lib/champions/titleState";
+import {
+  managedMediaPublicUrl,
+  slugifyManagedMediaTarget,
+} from "@/lib/managedMediaAssets";
 
 export const metadata: Metadata = {
   title: "Championship Belts",
@@ -69,11 +73,14 @@ function normalizedPlayerName(value: string) {
 function backdropForTitle(title: ChampionTitleDefinition) {
   const holder = primaryHolder(title);
   if (holder) {
-    return PLAYER_BACKDROPS[normalizedPlayerName(holder.name)] || SILHOUETTE_BACKDROP;
+    const fallback = PLAYER_BACKDROPS[normalizedPlayerName(holder.name)] || SILHOUETTE_BACKDROP;
+    return managedMediaPublicUrl("avatar", slugifyManagedMediaTarget(holder.name), fallback);
   }
 
-  if (title.id === "national-canada") return PLAYER_BACKDROPS.emaren;
-  return SILHOUETTE_BACKDROP;
+  if (title.id === "national-canada") {
+    return managedMediaPublicUrl("avatar", "emaren", PLAYER_BACKDROPS.emaren);
+  }
+  return managedMediaPublicUrl("avatar", "silhouette", SILHOUETTE_BACKDROP);
 }
 
 function statusLabel(title: ChampionTitleDefinition) {
@@ -111,10 +118,13 @@ function BeltAsset({
   backdropClassName?: string;
 }) {
   const characterUrl = backdropUrl === undefined ? backdropForTitle(title) : backdropUrl;
+  const assetKind = title.type === "designation" ? "artifact" : "belt";
+  const assetUrl = managedMediaPublicUrl(assetKind, title.id, title.assetUrl);
+  const wearable = title.type !== "designation";
 
   return (
     <div className={`relative mx-auto w-full overflow-visible ${className}`}>
-      {characterUrl ? (
+      {characterUrl && wearable ? (
         <Image
           src={characterUrl}
           alt=""
@@ -122,18 +132,20 @@ function BeltAsset({
           priority={priority}
           unoptimized
           sizes="(min-width: 1280px) 340px, (min-width: 768px) 42vw, 90vw"
-          className={`pointer-events-none z-0 object-cover object-top opacity-30 mix-blend-screen [mask-image:linear-gradient(180deg,black_0%,black_58%,transparent_96%)] ${backdropClassName}`}
+          className={`pointer-events-none z-0 object-contain object-bottom opacity-70 [mask-image:linear-gradient(180deg,black_0%,black_82%,transparent_100%)] ${backdropClassName}`}
         />
       ) : null}
-      <Image
-        src={title.assetUrl}
-        alt=""
-        fill
-        priority={priority}
-        unoptimized
-        sizes="(min-width: 1280px) 360px, (min-width: 768px) 46vw, 92vw"
-        className="z-10 object-contain drop-shadow-[0_18px_36px_rgba(0,0,0,0.55)]"
-      />
+      <div className={wearable ? "absolute inset-x-0 bottom-[7%] z-10 h-[42%]" : "absolute inset-0 z-10"}>
+        <Image
+          src={assetUrl}
+          alt=""
+          fill
+          priority={priority}
+          unoptimized
+          sizes="(min-width: 1280px) 360px, (min-width: 768px) 46vw, 92vw"
+          className="object-contain drop-shadow-[0_18px_36px_rgba(0,0,0,0.55)]"
+        />
+      </div>
     </div>
   );
 }
@@ -332,7 +344,7 @@ function PodiumCard({
       </div>
 
       <Link href={title.routeHref} className="block">
-        <BeltAsset title={title} priority={isCenter} className={isCenter ? "aspect-[1.9/1] max-w-[30rem]" : "aspect-[1.85/1] max-w-[24rem]"} />
+        <BeltAsset title={title} priority={isCenter} className={isCenter ? "h-[30rem] max-w-[30rem]" : "h-[24rem] max-w-[24rem]"} />
       </Link>
 
       <div className="relative z-10 space-y-3">
@@ -353,7 +365,7 @@ function TagTeamCard({ titleState }: { titleState: ChampionTitleState }) {
     <section className="relative overflow-hidden rounded-[1.8rem] border border-slate-200/16 bg-[radial-gradient(circle_at_15%_0%,rgba(226,232,240,0.15),transparent_32%),radial-gradient(circle_at_85%_20%,rgba(251,191,36,0.12),transparent_28%),linear-gradient(135deg,rgba(8,13,22,0.96),rgba(3,7,13,0.98))] p-5 shadow-[0_30px_90px_rgba(0,0,0,0.34)] sm:p-6">
       <div className="grid gap-5 lg:grid-cols-[minmax(15rem,0.75fr)_minmax(0,1fr)_minmax(18rem,0.85fr)] lg:items-center">
         <Link href={title.routeHref} className="block">
-          <BeltAsset title={title} className="aspect-[2.25/1] max-w-[32rem]" />
+          <BeltAsset title={title} className="h-[23rem] max-w-[32rem]" />
         </Link>
         <div className="min-w-0">
           <div className="flex items-center gap-2 text-xs uppercase tracking-[0.32em] text-slate-400">
@@ -387,7 +399,7 @@ function NationalCard({ titleState }: { titleState: ChampionTitleState }) {
   return (
     <article className="min-w-0 overflow-hidden rounded-[1.45rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(0,0,0,0.25))] p-4">
       <Link href={title.routeHref} className="block">
-        <BeltAsset title={title} className="aspect-[1.9/1] max-w-[18rem]" />
+        <BeltAsset title={title} className="h-[19rem] max-w-[18rem]" />
       </Link>
       <div className="mt-3">
         <div className="text-[10px] uppercase tracking-[0.24em] text-slate-500">Representing Country</div>
@@ -436,7 +448,7 @@ function EloCard({ titleState }: { titleState: ChampionTitleState }) {
         </Link>
       </div>
       <Link href={title.routeHref} className="block">
-        <BeltAsset title={title} className="aspect-[1.75/1] max-w-[18rem]" />
+        <BeltAsset title={title} className="h-[19rem] max-w-[18rem]" />
       </Link>
       <div className="space-y-3">
         <HolderLine title={title} dense />

@@ -14,17 +14,26 @@ type OnlinePlayersPanelProps = {
   onlineUsers: LobbyOnlineUser[];
   themeKey: LobbyThemeKey;
   viewMode: LobbyViewMode;
+  surface?: "standard" | "extreme";
 };
 
 export function OnlinePlayersPanel({
   onlineUsers,
   themeKey,
   viewMode,
+  surface = "standard",
 }: OnlinePlayersPanelProps) {
   const tone = getLobbyPresentationTone(themeKey, viewMode);
+  const isExtreme = surface === "extreme";
 
   return (
-    <div className={`rounded-[1.75rem] border p-6 ${tone.panelShell}`}>
+    <div
+      className={`rounded-[1.75rem] border p-6 ${
+        isExtreme
+          ? "border-amber-200/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.045),rgba(255,255,255,0.018))] shadow-[0_26px_88px_rgba(0,0,0,0.28)]"
+          : tone.panelShell
+      }`}
+    >
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <div className={`text-xs uppercase tracking-[0.35em] ${tone.eyebrow}`}>Lobby</div>

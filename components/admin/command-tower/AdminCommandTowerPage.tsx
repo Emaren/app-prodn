@@ -262,10 +262,10 @@ export default function AdminCommandTowerPage() {
                     </div>
                   </div>
                   <div className="mt-3 text-2xl font-semibold text-white">
-                    {entry.basicPercent}% Basic / {entry.advancedPercent}% Advanced
+                    {entry.basicPercent}% Basic / {entry.advancedPercent}% Advanced / {entry.extremePercent}% Extreme
                   </div>
                   <div className="mt-2 text-xs text-slate-400">
-                    {entry.basicCount} basic · {entry.advancedCount} advanced
+                    {entry.basicCount} basic · {entry.advancedCount} advanced · {entry.extremeCount} extreme
                   </div>
                 </div>
               ))}

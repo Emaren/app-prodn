@@ -1,6 +1,7 @@
 "use client";
 
 import { formatLobbyMoment } from "@/components/lobby/utils";
+import Image from "next/image";
 import Link from "next/link";
 import type { MouseEvent } from "react";
 import SteamLoginButton from "@/components/SteamLoginButton";
@@ -12,8 +13,8 @@ import {
 } from "@/components/lobby/lobbyPresentation";
 import { StatCard } from "@/components/lobby/StatCard";
 import type { Aoe2HdPulseItem, Aoe2HdPulseSnapshot } from "@/lib/aoe2HdPulse";
-import type { LobbyMatchRow, LobbySnapshot } from "@/lib/lobby";
-import type { TileViewMode } from "@/lib/tileViewPreferences";
+import type { LobbyLeaderboardEntry, LobbyMatchRow, LobbySnapshot } from "@/lib/lobby";
+import { TILE_VIEW_MODES, type TileViewMode } from "@/lib/tileViewPreferences";
 
 type LobbyHeroProps = {
   liveConnected: boolean;
@@ -135,6 +136,52 @@ function formatSteamHdChip(pulse: Aoe2HdPulseSnapshot | null) {
   return pulse?.sourceStatus === "error" ? "Steam HD: source quiet" : "Steam HD: feed pending";
 }
 
+const EXTREME_AVATARS: Record<string, string> = {
+  emaren: "/champions/players/emaren.png",
+  jim: "/champions/players/jim.png",
+  "julio alvarez": "/champions/players/julio.png",
+  julio: "/champions/players/julio.png",
+  sniper: "/champions/players/sniper.png",
+};
+
+const EXTREME_SILHOUETTE = "/champions/players/silhouette.png";
+
+function avatarForName(name: string | null | undefined) {
+  const key = (name || "").trim().toLowerCase();
+  return EXTREME_AVATARS[key] || EXTREME_SILHOUETTE;
+}
+
+function primaryRating(entry: LobbyLeaderboardEntry) {
+  return entry.primaryRating ?? entry.steamRmRating ?? entry.elo ?? entry.arenaElo ?? null;
+}
+
+function TileModeToggle({
+  tileViewMode,
+  tone,
+  onTileViewModeChange,
+}: {
+  tileViewMode: TileViewMode;
+  tone: ReturnType<typeof getLobbyPresentationTone>;
+  onTileViewModeChange: (viewMode: TileViewMode) => void;
+}) {
+  return (
+    <div className={`flex rounded-full border p-1 text-xs ${tone.viewToggle}`}>
+      {TILE_VIEW_MODES.map((mode) => (
+        <button
+          key={mode}
+          type="button"
+          onClick={() => onTileViewModeChange(mode)}
+          className={`rounded-full px-3 py-1 capitalize transition ${
+            tileViewMode === mode ? tone.viewToggleActive : "text-slate-400 hover:text-white"
+          }`}
+        >
+          {mode}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function LobbyHero({
   liveConnected,
   authError,
@@ -184,6 +231,251 @@ export function LobbyHero({
   };
   const tone = getLobbyPresentationTone(themeKey, viewMode);
 
+  if (tileViewMode === "extreme") {
+    const featuredEntry = leaderboard.entries[0] ?? null;
+    const featuredName = featuredEntry?.name || "Sniper";
+    const featuredRating = featuredEntry ? primaryRating(featuredEntry) : null;
+    const leaderboardRows = leaderboard.entries.slice(0, 5);
+
+    return (
+      <div
+        className="space-y-5 cursor-pointer"
+        data-lobby-hero-stack="true"
+        onClick={handleTileClick}
+      >
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="text-sm uppercase tracking-[0.42em] text-amber-100/78">
+              Community Lobby
+            </div>
+            <div className="rounded-full border border-amber-200/16 bg-amber-300/10 px-3 py-1 text-xs text-amber-100">
+              Extreme
+            </div>
+            <div
+              className={`rounded-full px-3 py-1 text-xs ${
+                liveConnected
+                  ? "border border-emerald-300/26 bg-emerald-400/10 text-emerald-100"
+                  : "border border-white/8 bg-white/[0.035] text-slate-400"
+              }`}
+            >
+              {liveConnected ? "Live updates connected" : "Polling fallback"}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2" data-ignore-tile-toggle="true">
+            <div className="rounded-full border border-cyan-200/14 bg-cyan-300/8 px-3 py-1 text-xs text-cyan-50/85">
+              {formatSteamHdChip(aoe2hdPulse)}
+            </div>
+            <TileModeToggle
+              tileViewMode={tileViewMode}
+              tone={tone}
+              onTileViewModeChange={onTileViewModeChange}
+            />
+          </div>
+        </div>
+
+        {authError && (
+          <div className="max-w-2xl rounded-2xl border border-red-400/24 bg-red-500/8 px-4 py-3 text-sm text-red-100">
+            Steam sign-in failed{authDetail ? `: ${authDetail}` : "."}
+          </div>
+        )}
+
+        {lobbyError && (
+          <div className="max-w-2xl rounded-2xl border border-amber-300/18 bg-amber-300/8 px-4 py-3 text-sm text-amber-100">
+            {lobbyError}
+          </div>
+        )}
+
+        <section className="relative overflow-hidden rounded-[1.85rem] border border-amber-200/12 bg-[radial-gradient(circle_at_20%_0%,rgba(251,191,36,0.16),transparent_30%),radial-gradient(circle_at_86%_12%,rgba(59,130,246,0.12),transparent_28%),linear-gradient(135deg,rgba(5,11,21,0.96),rgba(1,5,14,0.98))] p-4 shadow-[0_30px_100px_rgba(0,0,0,0.34)] sm:p-5">
+          <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/34 to-transparent" />
+          <div className="grid gap-5 xl:grid-cols-[minmax(15rem,0.72fr)_minmax(0,1fr)] xl:items-stretch">
+            <div className="relative min-h-[24rem] overflow-hidden rounded-[1.55rem] border border-amber-200/10 bg-black/26">
+              <Image
+                src={avatarForName(featuredName)}
+                alt=""
+                fill
+                unoptimized
+                priority
+                sizes="(min-width: 1280px) 360px, 90vw"
+                className="object-cover object-top opacity-80 [mask-image:linear-gradient(180deg,black_0%,black_76%,transparent_100%)]"
+              />
+              <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_18%,rgba(2,6,23,0.22)_56%,rgba(2,6,23,0.96)_100%)]" />
+              <div className="absolute inset-x-4 bottom-4 rounded-2xl border border-amber-200/12 bg-black/42 p-4 backdrop-blur">
+                <div className="text-[10px] uppercase tracking-[0.28em] text-amber-100/70">
+                  Featured Contender
+                </div>
+                <div className="mt-1 text-2xl font-semibold text-white">{featuredName}</div>
+                <div className="mt-1 text-xs uppercase tracking-[0.2em] text-slate-400">
+                  {featuredRating ? `${featuredRating} rating` : "Board leader"}
+                </div>
+                {featuredEntry?.href ? (
+                  <Link
+                    href={featuredEntry.href}
+                    className="mt-4 inline-flex rounded-full border border-amber-200/20 px-4 py-2 text-sm font-semibold text-amber-50 transition hover:bg-amber-300/10"
+                  >
+                    Open Profile
+                  </Link>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="min-w-0 space-y-4">
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="rounded-[1.25rem] border border-amber-200/10 bg-white/[0.035] px-4 py-4">
+                  <div className="text-[10px] uppercase tracking-[0.28em] text-amber-100/55">Board</div>
+                  <div className="mt-2 text-3xl font-semibold text-white">{leaderboard.trackedPlayers}</div>
+                  <div className="mt-1 text-xs text-slate-400">tracked players</div>
+                </div>
+                <div className="rounded-[1.25rem] border border-amber-200/10 bg-white/[0.035] px-4 py-4">
+                  <div className="text-[10px] uppercase tracking-[0.28em] text-amber-100/55">Ranked</div>
+                  <div className="mt-2 text-3xl font-semibold text-white">{leaderboard.rankedPlayers}</div>
+                  <div className="mt-1 text-xs text-slate-400">minimum games met</div>
+                </div>
+                <div className="rounded-[1.25rem] border border-amber-200/10 bg-white/[0.035] px-4 py-4">
+                  <div className="text-[10px] uppercase tracking-[0.28em] text-amber-100/55">Status</div>
+                  <div className="mt-2 text-xl font-semibold text-white">{leaderboard.statusLabel}</div>
+                  <div className="mt-1 text-xs text-slate-400">current rating lane</div>
+                </div>
+              </div>
+
+              <div className="rounded-[1.55rem] border border-amber-200/10 bg-black/22 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-[0.35em] text-amber-100/60">
+                      Leaderboard
+                    </div>
+                    <div className="mt-2 text-5xl font-semibold leading-none text-white">
+                      {leaderboard.trackedPlayers}
+                    </div>
+                    <div className="mt-2 text-xs uppercase tracking-[0.28em] text-slate-400">
+                      Players on board
+                    </div>
+                  </div>
+                  <span className="rounded-full border border-emerald-300/18 bg-emerald-400/10 px-3 py-1 text-xs text-emerald-100">
+                    {leaderboard.activePlayers} online
+                  </span>
+                </div>
+
+                <div className="mt-5 space-y-2.5">
+                  {leaderboardRows.length === 0 ? (
+                    <div className="rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-4 text-sm text-slate-300">
+                      The board is warming up.
+                    </div>
+                  ) : (
+                    leaderboardRows.map((entry) => {
+                      const rating = primaryRating(entry);
+                      return (
+                        <Link
+                          key={entry.key}
+                          href={entry.href}
+                          className="group grid min-h-20 grid-cols-[2.5rem_3.4rem_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-amber-200/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.045),rgba(255,255,255,0.018))] px-3 py-2.5 transition hover:border-amber-200/26 hover:bg-amber-300/8"
+                        >
+                          <div className="flex h-9 w-9 items-center justify-center rounded-full border border-amber-200/16 bg-amber-300/10 text-sm font-semibold text-amber-50">
+                            #{entry.rank}
+                          </div>
+                          <div className="relative h-14 w-14 overflow-hidden rounded-full border border-amber-200/24 bg-black/30">
+                            <Image
+                              src={avatarForName(entry.name)}
+                              alt=""
+                              fill
+                              unoptimized
+                              sizes="56px"
+                              className="object-cover object-top"
+                            />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="truncate text-lg font-semibold text-white group-hover:text-amber-50">
+                              {entry.name}
+                            </div>
+                            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                              <span>{entry.primaryRatingSourceLabel}</span>
+                              <span>{entry.wins}-{entry.losses}</span>
+                              {entry.claimed ? <span className="text-emerald-100">claimed</span> : null}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-[10px] uppercase tracking-[0.28em] text-slate-500">
+                              Rating
+                            </div>
+                            <div className="mt-1 text-lg font-semibold text-amber-50">
+                              {rating ?? "—"}
+                            </div>
+                          </div>
+                        </Link>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              {wolo?.enabled ? (
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <StatCard
+                    label="Faucet Pool"
+                    value={formatCompactWolo(faucetPool)}
+                    subtext="Daily claim fuel."
+                    tone="emerald"
+                    themeKey={themeKey}
+                    viewMode={viewMode}
+                  />
+                  <StatCard
+                    label="Treasury"
+                    value={formatCompactWolo(treasury)}
+                    subtext="Community war chest."
+                    themeKey={themeKey}
+                    viewMode={viewMode}
+                  />
+                  <StatCard
+                    label="DEX Liquidity Reserve"
+                    value={formatCompactWolo(liquidity)}
+                    subtext="Market depth."
+                    themeKey={themeKey}
+                    viewMode={viewMode}
+                  />
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </section>
+
+        <div
+          className={
+            isAuthenticated
+              ? "grid gap-3 sm:grid-cols-2 xl:grid-cols-3"
+              : "grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_minmax(0,1fr)]"
+          }
+          data-ignore-tile-toggle="true"
+        >
+          {isAuthenticated ? (
+            <Link href="/profile" className={primaryActionClassName}>
+              Open Profile
+            </Link>
+          ) : (
+            <SteamLoginButton
+              className={`${primaryActionClassName} w-full whitespace-nowrap`}
+              label={loading ? "Loading..." : "Login with Steam"}
+              disabled={loading}
+            />
+          )}
+
+          <Link
+            href={isAuthenticated ? "/upload" : "/download"}
+            className="inline-flex min-h-14 items-center justify-center rounded-full border border-amber-200/14 px-5 text-center text-[13px] font-medium leading-tight text-white/85 transition hover:border-amber-200/32 hover:text-amber-50"
+          >
+            {isAuthenticated ? "Upload Replay" : "Download Watcher"}
+          </Link>
+
+          <Link
+            href="/rivalries"
+            className="inline-flex min-h-14 items-center justify-center rounded-full border border-amber-200/14 px-5 text-center text-[13px] font-medium leading-tight text-white/85 transition hover:border-amber-200/32 hover:text-amber-50"
+          >
+            View Rivalries
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   if (tileViewMode === "advanced") {
     const pulseItems = buildPulseItems({
       pulse: aoe2hdPulse,
@@ -222,20 +514,11 @@ export function LobbyHero({
             <div className="rounded-full border border-cyan-200/20 bg-cyan-300/10 px-3 py-1 text-xs text-cyan-50">
               {formatSteamHdChip(aoe2hdPulse)}
             </div>
-            <div className={`flex rounded-full border p-1 text-xs ${tone.viewToggle}`}>
-              {(["basic", "advanced"] as const).map((mode) => (
-                <button
-                  key={mode}
-                  type="button"
-                  onClick={() => onTileViewModeChange(mode)}
-                  className={`rounded-full px-3 py-1 capitalize transition ${
-                    tileViewMode === mode ? tone.viewToggleActive : "text-slate-400 hover:text-white"
-                  }`}
-                >
-                  {mode}
-                </button>
-              ))}
-            </div>
+            <TileModeToggle
+              tileViewMode={tileViewMode}
+              tone={tone}
+              onTileViewModeChange={onTileViewModeChange}
+            />
           </div>
         </div>
 
@@ -394,19 +677,12 @@ export function LobbyHero({
           )}
         </div>
 
-        <div className={`flex rounded-full border p-1 text-xs ${tone.viewToggle}`} data-ignore-tile-toggle="true">
-          {(["basic", "advanced"] as const).map((mode) => (
-            <button
-              key={mode}
-              type="button"
-              onClick={() => onTileViewModeChange(mode)}
-              className={`rounded-full px-3 py-1 capitalize transition ${
-                tileViewMode === mode ? tone.viewToggleActive : "text-slate-400 hover:text-white"
-              }`}
-            >
-              {mode}
-            </button>
-          ))}
+        <div data-ignore-tile-toggle="true">
+          <TileModeToggle
+            tileViewMode={tileViewMode}
+            tone={tone}
+            onTileViewModeChange={onTileViewModeChange}
+          />
         </div>
       </div>
 

@@ -30,6 +30,7 @@ type RecentMatchesPanelProps = {
   recentMatches: LobbyMatchRow[];
   themeKey: LobbyThemeKey;
   viewMode: LobbyViewMode;
+  surface?: "standard" | "extreme";
 };
 
 function mergeMatchLists(primary: LobbyMatchRow[], secondary: LobbyMatchRow[]) {
@@ -50,8 +51,10 @@ export function RecentMatchesPanel({
   recentMatches,
   themeKey,
   viewMode,
+  surface = "standard",
 }: RecentMatchesPanelProps) {
   const tone = getLobbyPresentationTone(themeKey, viewMode);
+  const isExtreme = surface === "extreme";
   const [matches, setMatches] = useState(recentMatches);
   const [hasMoreMatches, setHasMoreMatches] = useState(
     recentMatches.length >= MATCH_FEED_PAGE_SIZE
@@ -131,7 +134,13 @@ export function RecentMatchesPanel({
   const visibleMatches = matches;
 
   return (
-    <div className={`flex h-[min(76dvh,46rem)] min-h-[28rem] flex-col overflow-hidden rounded-[1.75rem] border p-5 sm:h-[min(78dvh,48rem)] sm:min-h-[30rem] sm:p-6 lg:h-[min(78dvh,50rem)] lg:min-h-[32rem] ${tone.panelShell}`}>
+    <div
+      className={`flex h-[min(76dvh,46rem)] min-h-[28rem] flex-col overflow-hidden rounded-[1.75rem] border p-5 sm:h-[min(78dvh,48rem)] sm:min-h-[30rem] sm:p-6 lg:h-[min(78dvh,50rem)] lg:min-h-[32rem] ${
+        isExtreme
+          ? "border-amber-200/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.045),rgba(255,255,255,0.018))] shadow-[0_26px_88px_rgba(0,0,0,0.28)]"
+          : tone.panelShell
+      }`}
+    >
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <div className={`text-xs uppercase tracking-[0.35em] ${tone.eyebrow}`}>

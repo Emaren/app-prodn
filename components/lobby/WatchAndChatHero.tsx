@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { Coins, ExternalLink, Flame, MessageSquareMore, Play, Skull, Swords } from "lucide-react";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
@@ -11,7 +12,7 @@ import {
   type LobbyThemeKey,
   type LobbyViewMode,
 } from "@/components/lobby/lobbyPresentation";
-import type { BetBoardMarket, BetBoardSnapshot, BetSide } from "@/lib/bets";
+import type { BetBoardMarket, BetBoardSnapshot, BetSide, BetWarTapeRow } from "@/lib/bets";
 import type { LobbyMatchRow, LobbyMessage, LobbySnapshot } from "@/lib/lobby";
 import type { LiveGameSession } from "@/lib/liveSessionSnapshot";
 import type { WatchStreamPayload } from "@/lib/watchStreams";
@@ -28,6 +29,7 @@ type WatchAndChatHeroProps = {
   onMessageBodyChange?: (value: string) => void;
   onSendMessage?: () => void;
   onLogin?: () => void;
+  variant?: "standard" | "extreme";
 };
 
 type StreamedLiveGameSession = LiveGameSession & {
@@ -56,6 +58,14 @@ type ReactionKey = "fire" | "sword" | "skull" | "wolo";
 
 const HERO_STAKE_OPTIONS = [10, 25, 50, 100] as const;
 const WATCH_CHAT_LOOP_URL = "/watch-loops/live-hero-loop.mp4?v=watch-chat-v1";
+const EXTREME_SILHOUETTE = "/champions/players/silhouette.png";
+const EXTREME_AVATARS: Record<string, string> = {
+  emaren: "/champions/players/emaren.png",
+  jim: "/champions/players/jim.png",
+  "julio alvarez": "/champions/players/julio.png",
+  julio: "/champions/players/julio.png",
+  sniper: "/champions/players/sniper.png",
+};
 
 const REACTIONS: Array<{
   key: ReactionKey;
@@ -191,6 +201,10 @@ function safeStakeDraft(value: string) {
   return value.replace(/[^0-9]/g, "").slice(0, 7);
 }
 
+function avatarForName(name: string | null | undefined) {
+  return EXTREME_AVATARS[(name || "").trim().toLowerCase()] || EXTREME_SILHOUETTE;
+}
+
 export function WatchAndChatHero({
   tournament,
   recentMatches,
@@ -203,9 +217,11 @@ export function WatchAndChatHero({
   onMessageBodyChange,
   onSendMessage,
   onLogin,
+  variant = "standard",
 }: WatchAndChatHeroProps) {
   const tone = getLobbyPresentationTone(themeKey, viewMode);
   const quickChatReady = messageBody.trim().length > 0 && !chatPending;
+  const isExtreme = variant === "extreme";
 
   function handleQuickChatSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -375,8 +391,18 @@ export function WatchAndChatHero({
   const commentMessages = messages.slice(-5);
   const heroBetMarket = betBoard?.featuredMarket ?? betBoard?.openMarkets?.[0] ?? null;
 
+  const shellClassName = isExtreme
+    ? "overflow-hidden rounded-[2rem] border border-amber-200/12 bg-[radial-gradient(circle_at_18%_0%,rgba(251,191,36,0.12),transparent_30%),radial-gradient(circle_at_92%_16%,rgba(59,130,246,0.12),transparent_26%),linear-gradient(135deg,rgba(4,11,22,0.96),rgba(1,5,14,0.98))] shadow-[0_32px_110px_rgba(0,0,0,0.38)]"
+    : `overflow-hidden rounded-[2rem] border ${tone.panelShell}`;
+  const detailPanelClassName = isExtreme
+    ? "border-t border-amber-200/10 bg-black/30"
+    : `border-t ${tone.insetPanel}`;
+  const reactionButtonClassName = isExtreme
+    ? "flex min-h-[3.3rem] flex-col items-center justify-center gap-1 rounded-2xl border border-amber-200/10 bg-white/[0.03] text-xs text-slate-200 transition hover:border-amber-200/28 hover:bg-amber-300/10 hover:text-white"
+    : "flex min-h-[3.3rem] flex-col items-center justify-center gap-1 rounded-2xl border border-white/10 bg-white/[0.04] text-xs text-slate-200 transition hover:border-amber-200/35 hover:bg-amber-300/10 hover:text-white";
+
   return (
-    <section className={`overflow-hidden rounded-[2rem] border ${tone.panelShell}`}>
+    <section className={shellClassName}>
       <div className="grid gap-0 lg:grid-cols-[minmax(0,1.45fr)_minmax(20rem,0.74fr)]">
         <div className="flex min-w-0 flex-col">
           <div className="relative aspect-video min-h-[15rem] overflow-hidden bg-black sm:min-h-[20rem] lg:min-h-[27rem]">
@@ -425,7 +451,7 @@ export function WatchAndChatHero({
             )}
           </div>
 
-          <div className={`border-t p-4 sm:p-5 ${tone.insetPanel}`}>
+          <div className={`p-4 sm:p-5 ${detailPanelClassName}`}>
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="min-w-0">
                 <div className="text-[10px] uppercase tracking-[0.34em] text-amber-100/70">
@@ -509,7 +535,7 @@ export function WatchAndChatHero({
                       [key]: current[key] + 1,
                     }))
                   }
-                  className="flex min-h-[3.3rem] flex-col items-center justify-center gap-1 rounded-2xl border border-white/10 bg-white/[0.04] text-xs text-slate-200 transition hover:border-amber-200/35 hover:bg-amber-300/10 hover:text-white"
+                  className={reactionButtonClassName}
                   title={label}
                 >
                   <Icon className="h-[1.1rem] w-[1.1rem]" aria-hidden="true" />
@@ -526,11 +552,16 @@ export function WatchAndChatHero({
               onSelectedSideChange={setSelectedBetSide}
               onStakeDraftChange={setStakeDraft}
               tone={tone}
+              variant={variant}
             />
           </div>
         </div>
 
-        <aside className="flex min-h-[22rem] flex-col border-t border-white/10 p-4 sm:p-5 lg:border-l lg:border-t-0">
+        <aside
+          className={`flex min-h-[22rem] flex-col border-t p-4 sm:p-5 lg:border-l lg:border-t-0 ${
+            isExtreme ? "border-amber-200/10 bg-black/14" : "border-white/10"
+          }`}
+        >
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
               <div className={`text-xs uppercase tracking-[0.35em] ${tone.accentText}`}>
@@ -629,6 +660,7 @@ function HeroBetSlip({
   onSelectedSideChange,
   onStakeDraftChange,
   tone,
+  variant = "standard",
 }: {
   market: BetBoardMarket | null;
   selectedWar: FeaturedWar;
@@ -637,7 +669,9 @@ function HeroBetSlip({
   onSelectedSideChange: (side: BetSide) => void;
   onStakeDraftChange: (value: string) => void;
   tone: ReturnType<typeof getLobbyPresentationTone>;
+  variant?: "standard" | "extreme";
 }) {
+  const isExtreme = variant === "extreme";
   const fallbackNames = selectedWar.players.length >= 2
     ? [selectedWar.players[0], selectedWar.players[1]]
     : ["Player 1", "Player 2"];
@@ -652,9 +686,12 @@ function HeroBetSlip({
   const betHref = market
     ? `/bets?market=${market.id}&side=${selectedSide}&stake=${stakeWolo || 25}`
     : "/bets";
+  const shellClassName = isExtreme
+    ? "mt-4 rounded-[1.45rem] border border-amber-200/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.045),rgba(255,255,255,0.018))] p-4 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.025)]"
+    : `mt-4 rounded-[1.45rem] border p-4 ${tone.subduedCard}`;
 
   return (
-    <div className={`mt-4 rounded-[1.45rem] border p-4 ${tone.subduedCard}`}>
+    <div className={shellClassName}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className={`text-[10px] uppercase tracking-[0.28em] ${tone.accentText}`}>
@@ -734,6 +771,77 @@ function HeroBetSlip({
           </Link>
         </div>
       </div>
+
+      {isExtreme ? <ExtremeBetLines market={market} selectedWar={selectedWar} /> : null}
+    </div>
+  );
+}
+
+function buildExtremeBetLine(row: BetWarTapeRow) {
+  const actor = row.actor || "A watcher";
+
+  if (row.amountWolo && row.amountWolo > 0) {
+    return `${actor} backed ${row.note || (row.side === "right" ? "the right side" : "the left side")} with ${formatCompactWolo(row.amountWolo)} WOLO`;
+  }
+
+  return `${actor} moved the book: ${row.label}`;
+}
+
+function ExtremeBetLines({
+  market,
+  selectedWar,
+}: {
+  market: BetBoardMarket | null;
+  selectedWar: FeaturedWar;
+}) {
+  const rows = (market?.warTape ?? []).slice(0, 3);
+  const fallbackActor = selectedWar.players[0] || "The room";
+
+  if (rows.length === 0) {
+    return (
+      <div className="mt-3 flex items-center gap-3 rounded-2xl border border-amber-200/10 bg-black/22 px-3 py-2.5 text-sm text-slate-300">
+        <span className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full border border-amber-200/18 bg-black/28">
+          <Image
+            src={avatarForName(fallbackActor)}
+            alt=""
+            fill
+            unoptimized
+            sizes="36px"
+            className="object-cover object-top"
+          />
+        </span>
+        <span className="min-w-0">
+          The book is waiting for the first face behind the bet.
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3 space-y-2">
+      {rows.map((row) => (
+        <div
+          key={row.id}
+          className="flex items-center gap-3 rounded-2xl border border-amber-200/10 bg-black/22 px-3 py-2.5 text-sm"
+        >
+          <span className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full border border-amber-200/18 bg-black/28">
+            <Image
+              src={avatarForName(row.actor)}
+              alt=""
+              fill
+              unoptimized
+              sizes="36px"
+              className="object-cover object-top"
+            />
+          </span>
+          <span className="min-w-0 flex-1 truncate text-slate-200">
+            {buildExtremeBetLine(row)}
+          </span>
+          <span className="hidden shrink-0 text-[10px] uppercase tracking-[0.18em] text-amber-100/58 sm:inline">
+            {row.label}
+          </span>
+        </div>
+      ))}
     </div>
   );
 }

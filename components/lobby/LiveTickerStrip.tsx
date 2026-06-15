@@ -11,10 +11,12 @@ type LiveTickerStripProps = {
   ticker: LobbySnapshot["liveTicker"] | null;
   themeKey: LobbyThemeKey;
   viewMode: LobbyViewMode;
+  surface?: "standard" | "extreme";
 };
 
-export function LiveTickerStrip({ ticker, themeKey, viewMode }: LiveTickerStripProps) {
+export function LiveTickerStrip({ ticker, themeKey, viewMode, surface = "standard" }: LiveTickerStripProps) {
   const tone = getLobbyPresentationTone(themeKey, viewMode);
+  const isExtreme = surface === "extreme";
   const items =
     ticker?.items && ticker.items.length > 0
       ? ticker.items
@@ -31,7 +33,9 @@ export function LiveTickerStrip({ ticker, themeKey, viewMode }: LiveTickerStripP
 
   return (
     <section
-      className={`overflow-hidden rounded-full border px-4 py-2.5 shadow-[0_18px_50px_rgba(2,6,23,0.25)] ${tone.panelShell}`}
+      className={`overflow-hidden rounded-full border px-4 py-2.5 shadow-[0_18px_50px_rgba(2,6,23,0.25)] ${
+        isExtreme ? "border-amber-200/10 bg-black/26" : tone.panelShell
+      }`}
       aria-label="Live ticker"
     >
       <style>{`

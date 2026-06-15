@@ -1,6 +1,8 @@
 "use client";
 
 import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
 import { LobbyChat } from "@/components/lobby/LobbyChat";
 import { LobbyHero } from "@/components/lobby/LobbyHero";
 import { LiveTickerStrip } from "@/components/lobby/LiveTickerStrip";
@@ -26,9 +28,89 @@ import {
 
 const EMPTY_MESSAGES: LobbyMessage[] = [];
 
+const EXTREME_WARRIORS = [
+  {
+    name: "Sniper",
+    role: "The Sharpshooter",
+    href: "/players/by-name/Sniper",
+    avatarUrl: "/champions/players/sniper.png",
+  },
+  {
+    name: "Julio",
+    role: "The Conquistador",
+    href: "/players/by-name/Julio%20Alvarez",
+    avatarUrl: "/champions/players/julio.png",
+  },
+  {
+    name: "Jim",
+    role: "The General",
+    href: "/players/by-name/Jim",
+    avatarUrl: "/champions/players/jim.png",
+  },
+  {
+    name: "Emaren",
+    role: "The Tactician",
+    href: "/players/by-name/Emaren",
+    avatarUrl: "/champions/players/emaren.png",
+  },
+] as const;
+
 type HomePageClientProps = {
   initialLobby: LobbySnapshot | null;
 };
+
+function ExtremeFeaturedWarriors() {
+  return (
+    <section className="relative overflow-hidden rounded-[2rem] border border-amber-200/10 bg-[radial-gradient(circle_at_50%_0%,rgba(251,191,36,0.14),transparent_32%),linear-gradient(135deg,rgba(7,14,27,0.84),rgba(2,6,16,0.92))] px-4 py-5 shadow-[0_28px_96px_rgba(0,0,0,0.32)] sm:px-5">
+      <div className="pointer-events-none absolute inset-x-10 bottom-0 h-px bg-gradient-to-r from-transparent via-amber-200/28 to-transparent" />
+      <div className="grid gap-4 lg:grid-cols-[minmax(9rem,0.42fr)_minmax(0,1fr)_minmax(8rem,0.35fr)] lg:items-center">
+        <div className="hidden lg:block">
+          <div className="text-[10px] uppercase tracking-[0.38em] text-amber-100/72">
+            Featured Warriors
+          </div>
+          <div className="mt-2 text-sm leading-5 text-slate-400">
+            Elite competitors. Legendary rivalries.
+          </div>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {EXTREME_WARRIORS.map((warrior) => (
+            <Link
+              key={warrior.name}
+              href={warrior.href}
+              className="group relative min-h-[13.5rem] overflow-hidden rounded-[1.35rem] border border-amber-200/12 bg-black/28 transition hover:border-amber-200/28"
+            >
+              <Image
+                src={warrior.avatarUrl}
+                alt=""
+                fill
+                unoptimized
+                sizes="(min-width: 1280px) 250px, (min-width: 640px) 45vw, 90vw"
+                className="object-cover object-top opacity-85 transition duration-500 group-hover:scale-[1.035]"
+              />
+              <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_24%,rgba(2,6,23,0.18)_58%,rgba(2,6,23,0.92)_100%)]" />
+              <div className="absolute inset-x-3 bottom-3 rounded-2xl border border-amber-200/12 bg-black/48 px-3 py-2.5 text-center backdrop-blur">
+                <div className="font-serif text-lg font-semibold uppercase tracking-[0.1em] text-white">
+                  {warrior.name}
+                </div>
+                <div className="mt-0.5 text-[10px] uppercase tracking-[0.18em] text-slate-300">
+                  {warrior.role}
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+
+        <Link
+          href="/players"
+          className="hidden justify-self-end rounded-full border border-amber-200/14 px-4 py-2 text-sm text-slate-300 transition hover:border-amber-200/30 hover:text-amber-100 lg:inline-flex"
+        >
+          View all warriors
+        </Link>
+      </div>
+    </section>
+  );
+}
 
 export default function HomePageClient({ initialLobby }: HomePageClientProps) {
   const { uid, isAdmin, isAuthenticated, loading, loginWithSteam, playerName, user } = useUserAuth();
@@ -146,6 +228,8 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
   const liveTicker = lobby?.liveTicker ?? null;
   const woloMarket = lobby?.woloMarket ?? null;
   const isAdvancedLobby = communityLobbyTile.viewMode === "advanced";
+  const isExtremeLobby = communityLobbyTile.viewMode === "extreme";
+  const shouldShowShowcaseLobby = isAdvancedLobby || isExtremeLobby;
 
   const chatItems = buildChatItems(messages);
   const latestChatMessageKey = useMemo(
@@ -476,12 +560,14 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
 
   return (
     <div className="space-y-4 overflow-x-hidden py-2 text-white sm:space-y-6 sm:py-3">
-      {isAdvancedLobby ? (
+      {shouldShowShowcaseLobby ? (
         <>
+          {isExtremeLobby ? <ExtremeFeaturedWarriors /> : null}
           <LiveTickerStrip
             ticker={liveTicker}
             themeKey={tileThemeKey}
             viewMode={viewMode}
+            surface={isExtremeLobby ? "extreme" : "standard"}
           />
           <WatchAndChatHero
             tournament={tournament}
@@ -489,19 +575,21 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
             messages={messages}
             themeKey={tileThemeKey}
             viewMode={viewMode}
-                        isAuthenticated={isAuthenticated}
-              messageBody={messageBody}
-              chatPending={chatPending}
-              onMessageBodyChange={setMessageBody}
-              onSendMessage={() => {
-                void handleSendMessage();
-              }}
-              onLogin={() => loginWithSteam("/")}
-/>
+            variant={isExtremeLobby ? "extreme" : "standard"}
+            isAuthenticated={isAuthenticated}
+            messageBody={messageBody}
+            chatPending={chatPending}
+            onMessageBodyChange={setMessageBody}
+            onSendMessage={() => {
+              void handleSendMessage();
+            }}
+            onLogin={() => loginWithSteam("/")}
+          />
           <WoloMarketTile
             market={woloMarket}
             themeKey={tileThemeKey}
             viewMode={viewMode}
+            surface={isExtremeLobby ? "extreme" : "standard"}
           />
         </>
       ) : null}
@@ -538,6 +626,7 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
               tournament={tournament}
               themeKey={tileThemeKey}
               viewMode={viewMode}
+              surface={isExtremeLobby ? "extreme" : "standard"}
               isAdmin={isAdmin}
               isAuthenticated={isAuthenticated}
               joinPending={joinPending}
@@ -554,6 +643,7 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
                 board={woloEarners}
                 themeKey={tileThemeKey}
                 viewMode={viewMode}
+                surface={isExtremeLobby ? "extreme" : "standard"}
                 className="h-full"
               />
             </div>
@@ -606,6 +696,7 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
             void handleModerateMessage("delete_message", messageId);
           }}
           onLogin={() => loginWithSteam("/")}
+          surface={isExtremeLobby ? "extreme" : "standard"}
         />
 
         <div ref={rightColumnRef} className="flex min-w-0 flex-col gap-6">
@@ -613,11 +704,13 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
             onlineUsers={onlineUsers}
             themeKey={tileThemeKey}
             viewMode={viewMode}
+            surface={isExtremeLobby ? "extreme" : "standard"}
           />
           <RecentMatchesPanel
             recentMatches={recentMatches}
             themeKey={tileThemeKey}
             viewMode={viewMode}
+            surface={isExtremeLobby ? "extreme" : "standard"}
           />
         </div>
       </section>

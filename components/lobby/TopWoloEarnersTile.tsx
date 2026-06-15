@@ -12,7 +12,7 @@ import {
 import type { LobbySnapshot } from "@/lib/lobby";
 import type { LobbyWoloEarnersEntry, LobbyWoloEarnersMode } from "@/lib/lobby";
 
-const WOLO_LOGO_SRC = "/legacy/wolo-logo-transparent.png";
+const WOLO_LOGO_SRC = "/api/media-assets/logo/footer-wolo?fallback=%2Flegacy%2Fwolo-logo-transparent.png";
 
 type TopWoloEarnersTileProps = {
   wolo: LobbySnapshot["wolo"];
@@ -20,6 +20,7 @@ type TopWoloEarnersTileProps = {
   themeKey: LobbyThemeKey;
   viewMode: LobbyViewMode;
   className?: string;
+  surface?: "standard" | "extreme";
 };
 
 const PLACEHOLDER_LANES = [
@@ -74,6 +75,7 @@ function WoloMarkBadge() {
         alt=""
         width={22}
         height={22}
+        unoptimized
         className="h-[22px] w-[22px] object-contain"
       />
     </div>
@@ -129,8 +131,10 @@ export function TopWoloEarnersTile({
   themeKey,
   viewMode,
   className,
+  surface = "standard",
 }: TopWoloEarnersTileProps) {
   const tone = getLobbyPresentationTone(themeKey, viewMode);
+  const isExtreme = surface === "extreme";
   const reserve = formatCompactWolo(wolo?.accounts.ecosystembounties?.wolo ?? null);
   const [mode, setMode] = useState<LobbyWoloEarnersMode>(board?.mode ?? "weekly");
   const entries = useMemo(
@@ -149,7 +153,11 @@ export function TopWoloEarnersTile({
 
   return (
     <section
-      className={`flex h-full min-h-0 max-h-full flex-col overflow-hidden rounded-[1.7rem] border p-5 pt-7 transition ${tone.panelShell} ${className ?? ""}`}
+      className={`flex h-full min-h-0 max-h-full flex-col overflow-hidden rounded-[1.7rem] border p-5 pt-7 transition ${
+        isExtreme
+          ? "border-amber-200/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.045),rgba(255,255,255,0.018))] shadow-[0_26px_88px_rgba(0,0,0,0.28)]"
+          : tone.panelShell
+      } ${className ?? ""}`}
     >
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">

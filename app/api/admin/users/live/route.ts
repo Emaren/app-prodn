@@ -290,12 +290,18 @@ export async function GET(request: NextRequest) {
       })
     );
 
-    const communityLobbyBasicCount = rows.filter(
-      (user) => getTileViewMode(user.appearance?.tileViewPreferences, "community_lobby") === "basic"
-    ).length;
-    const communityLobbyAdvancedCount = rows.length - communityLobbyBasicCount;
+    const communityLobbyModes = rows.map((user) =>
+      getTileViewMode(user.appearance?.tileViewPreferences, "community_lobby")
+    );
+    const communityLobbyBasicCount = communityLobbyModes.filter((mode) => mode === "basic").length;
+    const communityLobbyAdvancedCount = communityLobbyModes.filter((mode) => mode === "advanced").length;
+    const communityLobbyExtremeCount = communityLobbyModes.filter((mode) => mode === "extreme").length;
+    const communityLobbyBasicPercent =
+      rows.length > 0 ? Math.round((communityLobbyBasicCount / rows.length) * 100) : 0;
     const communityLobbyAdvancedPercent =
       rows.length > 0 ? Math.round((communityLobbyAdvancedCount / rows.length) * 100) : 0;
+    const communityLobbyExtremePercent =
+      rows.length > 0 ? Math.max(0, 100 - communityLobbyBasicPercent - communityLobbyAdvancedPercent) : 0;
     const scheduledPreferenceUsage = {
       favoriteCount: 0,
       bookmarkedCount: 0,
@@ -360,10 +366,17 @@ export async function GET(request: NextRequest) {
             label: "Community Lobby",
             basicCount: communityLobbyBasicCount,
             advancedCount: communityLobbyAdvancedCount,
-            basicPercent: Math.max(0, 100 - communityLobbyAdvancedPercent),
+            extremeCount: communityLobbyExtremeCount,
+            basicPercent: communityLobbyBasicPercent,
             advancedPercent: communityLobbyAdvancedPercent,
+            extremePercent: communityLobbyExtremePercent,
             preferredMode:
-              communityLobbyAdvancedCount > communityLobbyBasicCount ? "advanced" : "basic",
+              communityLobbyExtremeCount >= communityLobbyAdvancedCount &&
+              communityLobbyExtremeCount >= communityLobbyBasicCount
+                ? "extreme"
+                : communityLobbyAdvancedCount > communityLobbyBasicCount
+                  ? "advanced"
+                  : "basic",
           },
         ],
         scheduledPreferenceUsage: {

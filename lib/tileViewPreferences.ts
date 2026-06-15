@@ -6,7 +6,7 @@ export const TILE_VIEW_KEYS = [
   "wolo_overview",
 ] as const;
 
-export const TILE_VIEW_MODES = ["basic", "advanced"] as const;
+export const TILE_VIEW_MODES = ["basic", "advanced", "extreme"] as const;
 
 export type TileViewKey = (typeof TILE_VIEW_KEYS)[number];
 export type TileViewMode = (typeof TILE_VIEW_MODES)[number];
@@ -15,7 +15,7 @@ export type TileViewPreferences = Partial<Record<TileViewKey, TileViewMode>>;
 const TILE_VIEW_KEY_SET = new Set<string>(TILE_VIEW_KEYS);
 const TILE_VIEW_MODE_SET = new Set<string>(TILE_VIEW_MODES);
 const DEFAULT_TILE_VIEW_MODES: TileViewPreferences = {
-  community_lobby: "advanced",
+  community_lobby: "extreme",
 };
 
 export function isTileViewKey(value: string | null | undefined): value is TileViewKey {

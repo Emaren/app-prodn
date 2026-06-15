@@ -580,12 +580,20 @@ export default function AdminPage() {
                 This is the control point for the homepage tournament card and live bracket.
               </p>
             </div>
-            <Link
-              href="/admin/user-list"
-              className="inline-flex rounded-full border border-white/15 px-5 py-3 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
-            >
-              Open User List
-            </Link>
+            <div className="flex flex-wrap justify-end gap-2">
+              <Link
+                href="/admin/media-assets"
+                className="inline-flex rounded-full border border-amber-200/18 px-5 py-3 text-sm text-amber-100 transition hover:border-amber-200/36 hover:bg-amber-300/10"
+              >
+                Media Armory
+              </Link>
+              <Link
+                href="/admin/user-list"
+                className="inline-flex rounded-full border border-white/15 px-5 py-3 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
+              >
+                Open User List
+              </Link>
+            </div>
           </div>
 
           <form className="mt-8 space-y-5" onSubmit={(event) => void handleSubmit(event)}>

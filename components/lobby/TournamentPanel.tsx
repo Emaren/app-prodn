@@ -20,6 +20,7 @@ type TournamentPanelProps = {
   joinError: string | null;
   onJoinTournament: () => void;
   onLogin: () => void;
+  surface?: "standard" | "extreme";
 };
 
 export function TournamentPanel({
@@ -32,8 +33,10 @@ export function TournamentPanel({
   joinError,
   onJoinTournament,
   onLogin,
+  surface = "standard",
 }: TournamentPanelProps) {
   const tone = getLobbyPresentationTone(themeKey, viewMode);
+  const isExtreme = surface === "extreme";
   const destinationHref = `/tournaments/${encodeURIComponent(tournament.slug || "next-community-tournament")}`;
 
   function shouldIgnoreTileClick(target: EventTarget | null, currentTarget: EventTarget | null) {
@@ -76,7 +79,11 @@ export function TournamentPanel({
 
   return (
     <div
-      className={`flex cursor-pointer flex-col rounded-[1.75rem] border p-5 pt-6 transition ${tone.panelShell} ${tone.cardHover}`}
+      className={`flex cursor-pointer flex-col rounded-[1.75rem] border p-5 pt-6 transition ${
+        isExtreme
+          ? "border-amber-200/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.045),rgba(255,255,255,0.018))] shadow-[0_26px_88px_rgba(0,0,0,0.28)] hover:border-amber-200/24"
+          : `${tone.panelShell} ${tone.cardHover}`
+      }`}
       role="link"
       tabIndex={0}
       aria-label={`Open tournament page for ${tournament.title}`}

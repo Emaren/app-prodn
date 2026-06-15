@@ -16,9 +16,10 @@ type WoloMarketTileProps = {
   market: LobbySnapshot["woloMarket"] | null;
   themeKey: LobbyThemeKey;
   viewMode: LobbyViewMode;
+  surface?: "standard" | "extreme";
 };
 
-const WOLO_LOGO_SRC = "/legacy/wolo-logo-transparent.png";
+const WOLO_LOGO_SRC = "/api/media-assets/logo/footer-wolo?fallback=%2Flegacy%2Fwolo-logo-transparent.png";
 
 function formatUsdPrice(value: number | null) {
   if (value == null || !Number.isFinite(value)) return "Pool syncing";
@@ -34,8 +35,9 @@ function formatSwapAmount(value: number) {
   return value.toLocaleString(undefined, { minimumFractionDigits: 6, maximumFractionDigits: 6 });
 }
 
-export function WoloMarketTile({ market, themeKey, viewMode }: WoloMarketTileProps) {
+export function WoloMarketTile({ market, themeKey, viewMode, surface = "standard" }: WoloMarketTileProps) {
   const tone = getLobbyPresentationTone(themeKey, viewMode);
+  const isExtreme = surface === "extreme";
   const poolId = market?.poolId ?? "3461";
   const poolUrl = market?.poolUrl ?? "https://app.osmosis.zone/pool/3461";
   const priceUsd = market?.priceUsd ?? null;
@@ -50,7 +52,13 @@ export function WoloMarketTile({ market, themeKey, viewMode }: WoloMarketTilePro
   const toSymbol = swapMode === "woloToUsdc" ? "USDC" : "WOLO";
 
   return (
-    <section className={`overflow-hidden rounded-[2rem] border p-5 sm:p-6 ${tone.panelShell}`}>
+    <section
+      className={`overflow-hidden rounded-[2rem] border p-5 sm:p-6 ${
+        isExtreme
+          ? "border-amber-200/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.045),rgba(255,255,255,0.018))] shadow-[0_28px_96px_rgba(0,0,0,0.3)]"
+          : tone.panelShell
+      }`}
+    >
       <div className="mx-auto max-w-4xl">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className={`text-xs uppercase tracking-[0.35em] ${tone.accentText}`}>
@@ -68,6 +76,7 @@ export function WoloMarketTile({ market, themeKey, viewMode }: WoloMarketTilePro
               alt="WOLO"
               width={62}
               height={62}
+              unoptimized
               className="h-16 w-16 object-contain"
             />
           </div>

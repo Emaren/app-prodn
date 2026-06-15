@@ -42,8 +42,29 @@ Champion art assets live under `public/champions`.
 
 These PNGs must contain a real alpha channel. Do not ship checkerboard, white,
 gray, or matte backgrounds baked into title art. The page layers holder avatars
-or the generic silhouette behind the belt art at low opacity; the belt/item
-itself remains the primary visual.
+or the generic silhouette behind the belt art, then overlays the belt near waist
+height so the holder reads as wearing/holding the title.
+
+The admin media armory at `/admin/media-assets` can override these static
+fallbacks without a code deploy. Managed assets are served through
+`/api/media-assets/[kind]/[target]` and fall back to the static files above when
+no active upload exists.
+
+Common managed targets:
+
+- `kind=avatar`: `emaren`, `jim`, `julio`, `julio-alvarez`, `sniper`,
+  `silhouette`, or `user-{uid}` for uploaded profile avatars.
+- `kind=belt`: title ids from `lib/champions/titles.ts`, such as `world`,
+  `chaos`, `womens`, `tag-team`, national title ids, and ELO title ids.
+- `kind=artifact`: designation ids from `lib/champions/titles.ts`.
+- `kind=logo`: `footer-wolo`.
+
+The managed media table migration is:
+
+`prisma/migrations/20260615_103000_add_managed_media_assets/migration.sql`
+
+Run `npx prisma migrate deploy` before restarting production when shipping the
+media armory.
 
 ## Data and state
 

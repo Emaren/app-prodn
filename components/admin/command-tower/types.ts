@@ -179,8 +179,10 @@ export type AdminOverview = {
     label: string;
     basicCount: number;
     advancedCount: number;
+    extremeCount: number;
     basicPercent: number;
     advancedPercent: number;
+    extremePercent: number;
     preferredMode: TileViewMode;
   }>;
   scheduledPreferenceUsage: {

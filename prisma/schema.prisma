@@ -597,6 +597,27 @@ model UserAppearancePreference {
   @@map("user_appearance_preferences")
 }
 
+model ManagedMediaAsset {
+  id            Int      @id @default(autoincrement())
+  key           String   @unique @db.VarChar(160)
+  kind          String   @db.VarChar(32)
+  target        String?  @db.VarChar(160)
+  label         String   @db.VarChar(160)
+  url           String   @db.VarChar(500)
+  alt           String?  @db.VarChar(180)
+  mimeType      String?  @map("mime_type") @db.VarChar(100)
+  originalName  String?  @map("original_name") @db.VarChar(255)
+  sizeBytes     Int      @default(0) @map("size_bytes")
+  active        Boolean  @default(true)
+  uploadedByUid String?  @map("uploaded_by_uid") @db.VarChar(100)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  @@index([kind, target, active], map: "ix_managed_media_assets_kind_target_active")
+  @@index([createdAt], map: "ix_managed_media_assets_created_at")
+  @@map("managed_media_assets")
+}
+
 model UserActivityEvent {
   id        Int      @id @default(autoincrement())
   userId    Int      @map("user_id")

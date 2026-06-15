@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -25,6 +24,7 @@ const exploreLinks = [
   { href: "/game-stats", label: "Matches", icon: Activity },
   { href: "/tournaments/founders-cup", label: "Tournaments", icon: Trophy },
   { href: "/staking", label: "Staking", icon: Coins },
+  { href: "https://aoe2dewarwagers.com/", label: "Play DE", icon: ExternalLink },
 ];
 
 const woloLinks = [
@@ -173,12 +173,10 @@ export default function AoE2WarFooter() {
             <div>
               <div className="mb-5 flex items-center gap-4">
                 <div className="relative h-16 w-16 overflow-hidden rounded-2xl border border-amber-200/25 bg-black/45 shadow-[0_0_44px_rgba(251,191,36,0.18)]">
-                  <Image
-                    src="/legacy/wolo-logo-transparent.png"
+                  <img
+                    src="/api/media-assets/logo/footer-wolo?fallback=%2Flegacy%2Fwolo-logo-transparent.png"
                     alt="WoloChain logo"
-                    fill
-                    sizes="64px"
-                    className="object-contain p-1.5"
+                    className="h-full w-full object-contain p-1.5"
                   />
                 </div>
 

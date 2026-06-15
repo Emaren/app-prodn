@@ -18,6 +18,9 @@ import {
   Bell,
   Clock3,
   Coins,
+  Crown,
+  Gem,
+  ImagePlus,
   LogOut,
   Mail,
   Monitor,
@@ -71,6 +74,25 @@ type ProfileResponse = {
   pendingClaimAmountWolo: number;
   pendingClaimCount: number;
   pendingClaimLatestCreatedAt: string | null;
+  avatarUrl: string;
+  avatarOptions: Array<{
+    target: string;
+    label: string;
+    url: string;
+  }>;
+  belts: ProfileTitleHolding[];
+  artifacts: ProfileTitleHolding[];
+  earningWoloPerDay: number;
+};
+
+type ProfileTitleHolding = {
+  id: string;
+  type: string;
+  displayName: string;
+  shortName: string;
+  dailyWolo: number;
+  routeHref: string;
+  assetUrl: string;
 };
 
 type WatcherKeyRow = {
@@ -142,6 +164,8 @@ function ProfilePageContent() {
   const [savingEmail, setSavingEmail] = useState(false);
   const [savingTwitch, setSavingTwitch] = useState(false);
   const [savingTitleIdentity, setSavingTitleIdentity] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarSavingTarget, setAvatarSavingTarget] = useState<string | null>(null);
   const [moneyRows, setMoneyRows] = useState<WoloTransactionRow[]>([]);
   const [moneyLoading, setMoneyLoading] = useState(false);
   const [moneyHasMore, setMoneyHasMore] = useState(false);
@@ -486,6 +510,69 @@ function ProfilePageContent() {
     }
   }, [genderDivisionDraft, representedCountryDraft]);
 
+  const chooseAvatarPreset = useCallback(async (target: string) => {
+    setAvatarSavingTarget(target);
+    setStatus("");
+
+    try {
+      const response = await fetch("/api/user/avatar", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ preset: target }),
+      });
+      const payload = (await response.json().catch(() => null)) as
+        | { avatarUrl?: string; detail?: string }
+        | null;
+
+      if (!response.ok || !payload?.avatarUrl) {
+        throw new Error(payload?.detail || "Avatar update failed.");
+      }
+
+      setProfile((current) =>
+        current ? { ...current, avatarUrl: payload.avatarUrl ?? current.avatarUrl } : current
+      );
+      setStatus("Avatar updated.");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Avatar update failed.");
+    } finally {
+      setAvatarSavingTarget(null);
+    }
+  }, []);
+
+  const uploadProfileAvatar = useCallback(async (file: File | null) => {
+    if (!file) return;
+    setAvatarUploading(true);
+    setStatus("");
+
+    try {
+      const body = new FormData();
+      body.set("file", file);
+
+      const response = await fetch("/api/user/avatar", {
+        method: "POST",
+        body,
+      });
+      const payload = (await response.json().catch(() => null)) as
+        | { avatarUrl?: string; detail?: string }
+        | null;
+
+      if (!response.ok || !payload?.avatarUrl) {
+        throw new Error(payload?.detail || "Avatar upload failed.");
+      }
+
+      setProfile((current) =>
+        current ? { ...current, avatarUrl: payload.avatarUrl ?? current.avatarUrl } : current
+      );
+      setStatus("Avatar uploaded.");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Avatar upload failed.");
+    } finally {
+      setAvatarUploading(false);
+    }
+  }, []);
+
   const createWatcherKey = useCallback(
     async ({ pairToWatcher = false } = {}) => {
       setMintingWatcherKey(true);
@@ -569,36 +656,53 @@ function ProfilePageContent() {
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)] xl:items-start">
           <div className="min-w-0">
             <div className="text-xs uppercase tracking-[0.35em] text-white/45">Identity</div>
-            <div className="mt-3 flex flex-wrap items-start justify-between gap-4">
+            <div className="mt-4 grid gap-4 md:grid-cols-[12.5rem_minmax(0,1fr)] md:items-start">
+              <ProfileAvatarPanel
+                profile={profile}
+                displayName={displayName}
+                uploading={avatarUploading}
+                savingTarget={avatarSavingTarget}
+                onPreset={(target) => void chooseAvatarPreset(target)}
+                onUpload={(file) => void uploadProfileAvatar(file)}
+              />
               <div className="min-w-0">
-                <h1 className="truncate text-3xl font-semibold sm:text-4xl">{displayName}</h1>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-200">
-                    UID {truncateUid(uid)}
-                  </span>
-                  <span className="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-100">
-                    Verification level {profile?.verificationLevel ?? 0}
-                  </span>
-                  {profile?.verificationMethod ? (
-                    <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-200">
-                      {profile.verificationMethod}
-                    </span>
-                  ) : null}
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <h1 className="truncate text-3xl font-semibold sm:text-4xl">{displayName}</h1>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-200">
+                        UID {truncateUid(uid)}
+                      </span>
+                      <span className="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-100">
+                        Verification level {profile?.verificationLevel ?? 0}
+                      </span>
+                      {profile?.verificationMethod ? (
+                        <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-200">
+                          {profile.verificationMethod}
+                        </span>
+                      ) : null}
+                      <span className="rounded-full border border-amber-200/20 bg-amber-300/10 px-3 py-1 text-xs font-semibold text-amber-100">
+                        Currently Earning {profile?.earningWoloPerDay ?? 0} WOLO/day
+                      </span>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
 
-            <div className="mt-6 grid gap-4 md:grid-cols-2">
-              <IdentityCard
-                title="Competitive name"
-                value={confirmedName}
-                meta={profile?.inGameName ? "Replay-backed" : "Waiting for first confirmed replay"}
-              />
-              <IdentityCard
-                title="Steam"
-                value={profile?.steamPersonaName || "Unknown"}
-                meta={profile?.steamId ? `Steam ID ${profile.steamId}` : "Not connected"}
-              />
+                <div className="mt-6 grid gap-4 md:grid-cols-2">
+                  <IdentityCard
+                    title="Competitive name"
+                    value={confirmedName}
+                    meta={profile?.inGameName ? "Replay-backed" : "Waiting for first confirmed replay"}
+                  />
+                  <IdentityCard
+                    title="Steam"
+                    value={profile?.steamPersonaName || "Unknown"}
+                    meta={profile?.steamId ? `Steam ID ${profile.steamId}` : "Not connected"}
+                  />
+                </div>
+
+                <ProfileTitleInventory profile={profile} />
+              </div>
             </div>
 
             <div className="mt-4 rounded-[1.35rem] border border-amber-200/14 bg-[radial-gradient(circle_at_top_left,_rgba(251,191,36,0.14),_transparent_30%),linear-gradient(135deg,_rgba(18,13,8,0.72),_rgba(5,12,22,0.82))] p-4">
@@ -1290,6 +1394,141 @@ function IdentityCard({
       <div className="mt-3 text-xl font-semibold text-white break-words">{value}</div>
       <div className="mt-2 text-sm text-slate-300">{meta}</div>
     </div>
+  );
+}
+
+function ProfileAvatarPanel({
+  profile,
+  displayName,
+  uploading,
+  savingTarget,
+  onPreset,
+  onUpload,
+}: {
+  profile: ProfileResponse | null;
+  displayName: string;
+  uploading: boolean;
+  savingTarget: string | null;
+  onPreset: (target: string) => void;
+  onUpload: (file: File | null) => void;
+}) {
+  const avatarUrl = profile?.avatarUrl || "/champions/players/silhouette.png";
+  const options = profile?.avatarOptions ?? [];
+
+  return (
+    <div className="rounded-[1.5rem] border border-amber-200/12 bg-[linear-gradient(135deg,rgba(255,255,255,0.05),rgba(255,255,255,0.018))] p-4">
+      <div className="relative mx-auto aspect-[0.78/1] w-full max-w-[10.5rem] overflow-hidden rounded-[1.35rem] border border-amber-200/16 bg-black/30">
+        <img
+          src={avatarUrl}
+          alt={`${displayName} avatar`}
+          className="h-full w-full object-cover object-top"
+        />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/72 to-transparent" />
+      </div>
+
+      <div className="mt-4 grid grid-cols-5 gap-1.5">
+        {options.map((option) => (
+          <button
+            key={option.target}
+            type="button"
+            onClick={() => onPreset(option.target)}
+            disabled={uploading || Boolean(savingTarget)}
+            className="relative aspect-square overflow-hidden rounded-xl border border-white/10 bg-black/20 transition hover:border-amber-200/35 disabled:cursor-not-allowed disabled:opacity-55"
+            title={savingTarget === option.target ? "Saving..." : option.label}
+          >
+            <img src={option.url} alt="" className="h-full w-full object-cover object-top" />
+          </button>
+        ))}
+      </div>
+
+      <label className="mt-3 flex cursor-pointer items-center justify-center gap-2 rounded-full border border-amber-200/18 px-3 py-2 text-xs font-semibold text-amber-100 transition hover:bg-amber-300/10">
+        <ImagePlus className="h-4 w-4" />
+        {uploading ? "Uploading..." : "Upload Avatar"}
+        <input
+          type="file"
+          accept="image/png,image/jpeg,image/webp,image/gif"
+          className="hidden"
+          disabled={uploading}
+          onChange={(event) => {
+            const file = event.target.files?.[0] ?? null;
+            onUpload(file);
+            event.target.value = "";
+          }}
+        />
+      </label>
+    </div>
+  );
+}
+
+function ProfileTitleInventory({ profile }: { profile: ProfileResponse | null }) {
+  const belts = profile?.belts ?? [];
+  const artifacts = profile?.artifacts ?? [];
+
+  return (
+    <div className="mt-4 grid gap-3 lg:grid-cols-2">
+      <ProfileHoldingRail
+        icon={Crown}
+        title="Belts"
+        empty="No active belts yet."
+        holdings={belts}
+      />
+      <ProfileHoldingRail
+        icon={Gem}
+        title="Artifacts"
+        empty="No artifacts held yet."
+        holdings={artifacts}
+      />
+    </div>
+  );
+}
+
+function ProfileHoldingRail({
+  icon: Icon,
+  title,
+  empty,
+  holdings,
+}: {
+  icon: typeof Crown;
+  title: string;
+  empty: string;
+  holdings: ProfileTitleHolding[];
+}) {
+  return (
+    <div className="rounded-[1.35rem] border border-white/10 bg-white/[0.035] p-4">
+      <div className="flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-slate-500">
+        <Icon className="h-4 w-4" />
+        {title}
+      </div>
+      <div className="mt-3 grid gap-2">
+        {holdings.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-white/10 bg-black/16 px-3 py-4 text-sm text-slate-400">
+            {empty}
+          </div>
+        ) : (
+          holdings.map((holding) => <ProfileHoldingCard key={holding.id} holding={holding} />)
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ProfileHoldingCard({ holding }: { holding: ProfileTitleHolding }) {
+  return (
+    <Link
+      href={holding.routeHref}
+      className="grid grid-cols-[4rem_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-amber-200/10 bg-black/18 px-3 py-2.5 transition hover:border-amber-200/28 hover:bg-amber-300/8"
+    >
+      <span className="flex h-14 w-16 items-center justify-center overflow-hidden rounded-xl bg-black/20">
+        <img src={holding.assetUrl} alt="" className="max-h-full max-w-full object-contain" />
+      </span>
+      <span className="min-w-0">
+        <span className="block truncate text-sm font-semibold text-white">{holding.shortName}</span>
+        <span className="mt-0.5 block truncate text-xs text-slate-500">{holding.displayName}</span>
+      </span>
+      <span className="rounded-full border border-amber-200/16 bg-amber-300/10 px-2.5 py-1 text-[11px] font-semibold text-amber-100">
+        {holding.dailyWolo} WOLO/day
+      </span>
+    </Link>
   );
 }
 
