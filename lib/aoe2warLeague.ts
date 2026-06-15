@@ -260,17 +260,6 @@ export const championBelts: ChampionBelt[] = [
     status: "coming_soon",
     accent: "violet",
   },
-  {
-    id: "contender",
-    title: "Contender Champion",
-    division: "First ladder",
-    champion: "Vacant",
-    subtitle: "Win the climb, call the shot",
-    reignDays: null,
-    monthlyRewardWolo: 40,
-    status: "vacant",
-    accent: "green",
-  },
 ];
 
 export const eloBelts: ChampionBelt[] = [
@@ -286,8 +275,8 @@ export const eloBelts: ChampionBelt[] = [
     accent: "green",
   },
   {
-    id: "contender-elo",
-    title: "Contender",
+    id: "challenger-elo",
+    title: "Challenger",
     division: "1200-1499 ELO",
     champion: "Vacant",
     subtitle: "The climb begins",

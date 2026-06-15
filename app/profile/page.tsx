@@ -44,6 +44,12 @@ import TimeDisplayText from "@/components/time/TimeDisplayText";
 import { getLobbyHeroBackground } from "@/components/lobby/lobbyPresentation";
 import SteamLoginButton from "@/components/SteamLoginButton";
 import { useUserAuth } from "@/hooks/useUserAuth";
+import {
+  GENDER_DIVISIONS,
+  REPRESENTED_COUNTRIES,
+  type GenderDivision,
+  type RepresentedCountry,
+} from "@/lib/champions/titles";
 import type { ChallengeHubSnapshot } from "@/lib/challenges";
 import { formatDateTime as formatSiteDateTime } from "@/lib/timeDisplay";
 
@@ -54,6 +60,10 @@ type ProfileResponse = {
   verified: boolean;
   isAdmin: boolean;
   twitchStreamUrl: string | null;
+  representedCountry: RepresentedCountry | null;
+  representedCountryUpdatedAt: string | null;
+  genderDivision: GenderDivision;
+  genderDivisionUpdatedAt: string | null;
   steamId: string | null;
   steamPersonaName: string | null;
   verificationLevel: number;
@@ -127,8 +137,11 @@ function ProfilePageContent() {
   const [newWatcherKey, setNewWatcherKey] = useState<string | null>(null);
   const [emailDraft, setEmailDraft] = useState("");
   const [twitchDraft, setTwitchDraft] = useState("");
+  const [representedCountryDraft, setRepresentedCountryDraft] = useState<RepresentedCountry | "">("");
+  const [genderDivisionDraft, setGenderDivisionDraft] = useState<GenderDivision>("Man");
   const [savingEmail, setSavingEmail] = useState(false);
   const [savingTwitch, setSavingTwitch] = useState(false);
+  const [savingTitleIdentity, setSavingTitleIdentity] = useState(false);
   const [moneyRows, setMoneyRows] = useState<WoloTransactionRow[]>([]);
   const [moneyLoading, setMoneyLoading] = useState(false);
   const [moneyHasMore, setMoneyHasMore] = useState(false);
@@ -312,6 +325,14 @@ function ProfilePageContent() {
   }, [profile?.twitchStreamUrl]);
 
   useEffect(() => {
+    setRepresentedCountryDraft(profile?.representedCountry ?? "");
+  }, [profile?.representedCountry]);
+
+  useEffect(() => {
+    setGenderDivisionDraft(profile?.genderDivision ?? "Man");
+  }, [profile?.genderDivision]);
+
+  useEffect(() => {
     if (!claimName || claimSeedApplied || profile?.inGameName) return;
     setStatus(
       `Steam linked. Replay proof will lock in ${claimName} after your first confirmed upload.`
@@ -421,6 +442,49 @@ function ProfilePageContent() {
       setSavingTwitch(false);
     }
   }, [twitchDraft]);
+
+  const saveTitleIdentity = useCallback(async () => {
+    setSavingTitleIdentity(true);
+    setStatus("");
+
+    try {
+      const response = await fetch("/api/user/me", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          representedCountry: representedCountryDraft || null,
+          genderDivision: genderDivisionDraft,
+        }),
+      });
+
+      const payload = (await response.json().catch(() => null)) as
+        | (ProfileResponse & { detail?: string })
+        | null;
+
+      if (!response.ok || !payload) {
+        throw new Error(payload?.detail || "Title identity save failed.");
+      }
+
+      setProfile((current) =>
+        current
+          ? {
+              ...current,
+              representedCountry: payload.representedCountry,
+              representedCountryUpdatedAt: payload.representedCountryUpdatedAt,
+              genderDivision: payload.genderDivision,
+              genderDivisionUpdatedAt: payload.genderDivisionUpdatedAt,
+            }
+          : current
+      );
+      setStatus("Title identity saved.");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Title identity save failed.");
+    } finally {
+      setSavingTitleIdentity(false);
+    }
+  }, [genderDivisionDraft, representedCountryDraft]);
 
   const createWatcherKey = useCallback(
     async ({ pairToWatcher = false } = {}) => {
@@ -535,6 +599,90 @@ function ProfilePageContent() {
                 value={profile?.steamPersonaName || "Unknown"}
                 meta={profile?.steamId ? `Steam ID ${profile.steamId}` : "Not connected"}
               />
+            </div>
+
+            <div className="mt-4 rounded-[1.35rem] border border-amber-200/14 bg-[radial-gradient(circle_at_top_left,_rgba(251,191,36,0.14),_transparent_30%),linear-gradient(135deg,_rgba(18,13,8,0.72),_rgba(5,12,22,0.82))] p-4">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 text-xs uppercase tracking-[0.3em] text-amber-100/72">
+                    <Trophy className="h-4 w-4" />
+                    Title Identity
+                  </div>
+                  <h2 className="mt-2 text-xl font-semibold text-white">Set your title lanes.</h2>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
+                    National belts use Representing Country. Women&apos;s Champion eligibility uses Gender Division.
+                    More nations are coming.
+                  </p>
+                </div>
+                <Link
+                  href="/champions"
+                  className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm text-white/85 transition hover:border-amber-200/35 hover:text-amber-100"
+                >
+                  Champions
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+
+              <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end">
+                <label className="block space-y-2">
+                  <span className="text-sm font-medium text-slate-200">Representing Country</span>
+                  <select
+                    value={representedCountryDraft}
+                    onChange={(event) =>
+                      setRepresentedCountryDraft(event.target.value as RepresentedCountry | "")
+                    }
+                    className="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none transition focus:border-amber-300/45"
+                  >
+                    <option value="">Choose country</option>
+                    {REPRESENTED_COUNTRIES.map((country) => (
+                      <option key={country} value={country}>
+                        {country}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="block space-y-2">
+                  <span className="text-sm font-medium text-slate-200">Gender Division</span>
+                  <div className="grid grid-cols-2 gap-2 rounded-2xl border border-white/10 bg-slate-950/70 p-1">
+                    {GENDER_DIVISIONS.map((division) => {
+                      const active = genderDivisionDraft === division;
+                      return (
+                        <button
+                          key={division}
+                          type="button"
+                          onClick={() => setGenderDivisionDraft(division)}
+                          className={`rounded-xl px-4 py-2.5 text-sm font-semibold transition ${
+                            active
+                              ? "bg-amber-300 text-slate-950"
+                              : "text-slate-300 hover:bg-white/[0.06] hover:text-white"
+                          }`}
+                        >
+                          {division}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </label>
+
+                <button
+                  type="button"
+                  onClick={() => void saveTitleIdentity()}
+                  disabled={savingTitleIdentity}
+                  className="rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {savingTitleIdentity ? "Saving..." : "Save"}
+                </button>
+              </div>
+
+              <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-400">
+                <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1">
+                  Current country: {profile?.representedCountry || "Not set"}
+                </span>
+                <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1">
+                  Current division: {profile?.genderDivision || "Man"}
+                </span>
+              </div>
             </div>
 
             <div className="mt-4 space-y-4">

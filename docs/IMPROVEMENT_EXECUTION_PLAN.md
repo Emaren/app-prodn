@@ -1,6 +1,6 @@
 # AoE2HDBets Improvement Execution Plan
 
-Last updated: 2026-06-05
+Last updated: 2026-06-15
 
 ## Highest-ROI order
 
@@ -70,6 +70,14 @@ The sixth shipped slice is the profile first-impression and parser-resilience po
 - Advanced profile polish adds deeper red/green command-deck treatment, cleaner form-chart spacing, resource emblems, a premium WOLO logo rail, and an AI Scribe/Grimer readout.
 - API replay parsing now falls back to explicit header-only metadata when MGZ full-summary decoding fails, preserving watcher proof rows without inventing winners or postgame economy.
 
+The seventh shipped slice is the championship title economy:
+
+- Rebuilt `/champions` around AoE2WAR belts, tag titles, national champions, ELO titles, and special designations.
+- Added title detail routes through `/champions/[...slug]` with challenge entry points, contender rails, title rules, and history placeholders.
+- Added profile title-identity settings for represented country and gender division.
+- Added a disabled admin scaffold for future title assignment, vacation, top-10, and record/event capture work.
+- Kept the scope honest: this is app-side title presentation and workflow, not WoloChain custody, escrow, or settlement truth.
+
 ## Next concrete slice
 
-Continue with tournament gravity and exact postgame achievement/economy depth, unless live wallet handoff telemetry shows a fresher production issue.
+Continue with tournament gravity, exact postgame achievement/economy depth, and the persistent title-admin rail, unless live wallet handoff telemetry shows a fresher production issue.

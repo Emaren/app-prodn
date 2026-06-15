@@ -8,6 +8,10 @@ export type UserCoreRow = {
   verified: boolean;
   walletAddress: string | null;
   twitchStreamUrl: string | null;
+  representedCountry: string | null;
+  representedCountryUpdatedAt: Date | string | null;
+  genderDivision: string;
+  genderDivisionUpdatedAt: Date | string | null;
   lockName: boolean;
   createdAt: Date;
   token: string | null;
@@ -37,6 +41,10 @@ export type UserApi = {
   verified: boolean;
   walletAddress: string | null;
   twitchStreamUrl: string | null;
+  representedCountry: string | null;
+  representedCountryUpdatedAt: string | null;
+  genderDivision: string;
+  genderDivisionUpdatedAt: string | null;
   lockName: boolean;
   createdAt: string;
   token: string | null;
@@ -53,6 +61,14 @@ export type UserApi = {
 export function toUserApi(core: UserCoreRow, ver?: Partial<UserVerificationRow> | null): UserApi {
   const coreVerifiedAt =
     core.verifiedAt instanceof Date ? core.verifiedAt.toISOString() : core.verifiedAt ?? null;
+  const representedCountryUpdatedAt =
+    core.representedCountryUpdatedAt instanceof Date
+      ? core.representedCountryUpdatedAt.toISOString()
+      : core.representedCountryUpdatedAt ?? null;
+  const genderDivisionUpdatedAt =
+    core.genderDivisionUpdatedAt instanceof Date
+      ? core.genderDivisionUpdatedAt.toISOString()
+      : core.genderDivisionUpdatedAt ?? null;
 
   const v: UserVerificationRow = {
     steamId: ver?.steamId ?? core.steamId ?? null,
@@ -70,6 +86,10 @@ export function toUserApi(core: UserCoreRow, ver?: Partial<UserVerificationRow> 
     verified: core.verified,
     walletAddress: core.walletAddress,
     twitchStreamUrl: core.twitchStreamUrl,
+    representedCountry: core.representedCountry,
+    representedCountryUpdatedAt,
+    genderDivision: core.genderDivision || "Man",
+    genderDivisionUpdatedAt,
     lockName: core.lockName,
     createdAt: core.createdAt.toISOString(),
     token: core.token,

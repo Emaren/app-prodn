@@ -8,6 +8,7 @@ import {
   useEffect,
   useState,
 } from "react";
+import ChampionTitleAdminScaffold from "@/components/admin/ChampionTitleAdminScaffold";
 import LiveTickerAdminPanel from "@/components/admin/LiveTickerAdminPanel";
 import { useUserAuth } from "@/context/UserAuthContext";
 import {
@@ -704,6 +705,8 @@ export default function AdminPage() {
       </div>
 
       <LiveTickerAdminPanel />
+
+      <ChampionTitleAdminScaffold />
 
       <BroadcastPreviewUploadPanel
         targets={broadcastTargets}

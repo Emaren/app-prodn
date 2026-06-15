@@ -12,6 +12,7 @@ It currently owns the premium lobby/community surface, leaderboard presentation,
 - [DEPLOY.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/DEPLOY.md)
 - [PRODUCT_STATE.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/PRODUCT_STATE.md)
 - [WORKSPACE.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/WORKSPACE.md)
+- [docs/CHAMPIONS_TITLE_ECONOMY.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/docs/CHAMPIONS_TITLE_ECONOMY.md)
 - [docs/SCHEDULED_MATCH_SETTLEMENTS.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/docs/SCHEDULED_MATCH_SETTLEMENTS.md)
 
 ## Stack
@@ -24,6 +25,7 @@ It currently owns the premium lobby/community surface, leaderboard presentation,
 - Claimed player profiles default to the Advanced command center; unclaimed replay-built profiles default to the classic Basic claim page, and both can toggle Basic/Advanced
 - Advanced player profiles include lazy match archive, watcher proof, form/rivalry diagnostics, resource emblems, AI Scribe/Grimer readout, stream signal, and premium `$WOLO`/staking stats
 - The public Kingdom spine includes `/kingdom`, `/champions`, `/national-champions`, and `/forum`, with the legacy `/belts`, `/nations`, and `/realm` paths redirecting into the new route names
+- `/champions` owns the app-side championship title economy: podium belts, tag titles, national titles, ELO titles, special designations, challenge links, and detail pages
 - Lazy client islands for wallet-heavy `/wolo`, `/wallet`, and `/connect-wallet` routes so the server shell paints with a small first-load bundle
 
 ## Shipped public surfaces
@@ -49,6 +51,14 @@ Current notable product routes include:
 - admin/profile/inbox-related routes
 
 The current first-impression path is no longer just the homepage. The real product spine is now the lobby/community shell and its linked destinations.
+
+## Championship title economy
+
+- `/champions` and `/champions/[...slug]` render the app-side title economy from `lib/champions/titles.ts` and `lib/champions/titleState.ts`.
+- Title payouts are labeled `Reign Tribute`; special designations are labeled `Artifact Bonus`.
+- `/profile` stores title eligibility settings through `represented_country` and `gender_division`.
+- `/admin` includes a disabled title-operator scaffold for future assignment, vacation, top-10, and record rails.
+- This surface is presentation and app workflow only. It does not redefine WoloChain denom truth, signed movement, escrow, custody, or settlement truth.
 
 ## Local development
 
