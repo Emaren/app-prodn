@@ -910,7 +910,7 @@ export default function BetsPage() {
   const [founderComposer, setFounderComposer] = useState<FounderComposerState | null>(null);
   const [savingFounderBonus, setSavingFounderBonus] = useState(false);
   const [founderBonusError, setFounderBonusError] = useState<string | null>(null);
-  const [broadcastVisible, setBroadcastVisible] = useState(true);
+  const [broadcastVisible, setBroadcastVisible] = useState(false);
   const [pendingStakeRecoveries, setPendingStakeRecoveries] = useState<PendingStakeRecovery[]>([]);
 
   const syncPendingStakeRecoveries = useCallback(() => {
@@ -973,6 +973,11 @@ export default function BetsPage() {
 
     window.localStorage.setItem(BETS_VIEW_STORAGE_KEY, betsView);
   }, [betsView]);
+
+
+  function handleBetsViewChange(next: BetsViewMode) {
+    setBetsView(next);
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -1752,7 +1757,7 @@ export default function BetsPage() {
   }, [latestResult, spotlightMarket]);
 
   useEffect(() => {
-    setBroadcastVisible(true);
+    setBroadcastVisible(false);
   }, [broadcastSurface.key]);
 
   return (
@@ -1768,6 +1773,8 @@ export default function BetsPage() {
         previews={broadcastSurface.previews}
         visible={broadcastVisible}
         onToggle={() => setBroadcastVisible((current) => !current)}
+        viewMode={betsView}
+        onViewModeChange={handleBetsViewChange}
       />
 
       {betsView === "basic" ? (
@@ -1786,8 +1793,6 @@ export default function BetsPage() {
                     {liveCount} live
                   </span>
                 </div>
-
-                <BetsViewToggle value={betsView} onChange={setBetsView} />
               </div>
 
               <div className="mt-5">
@@ -1984,8 +1989,6 @@ export default function BetsPage() {
                     {settlementRailLabel(settlementExecutionMode)}
                   </span>
                 </div>
-
-                <BetsViewToggle value={betsView} onChange={setBetsView} />
               </div>
 
               <div className="mt-5">
@@ -2514,6 +2517,33 @@ function buildBroadcastEmbedSrc(
   return null;
 }
 
+
+function broadcastViewHasSource(view: {
+  feed: BroadcastFeed | null;
+  previewUrl: string | null;
+}) {
+  return Boolean(
+    view.previewUrl ||
+      view.feed?.playbackUrl ||
+      view.feed?.embedId ||
+      view.feed?.url
+  );
+}
+
+function broadcastViewHasNativePlayback(view: {
+  feed: BroadcastFeed | null;
+  previewUrl: string | null;
+}) {
+  const feed = view.feed;
+  return Boolean(
+    feed &&
+      (feed.provider === "aoe2war" ||
+        feed.sourceType === "browser" ||
+        feed.sourceType === "watcher_native") &&
+      feed.playbackUrl
+  );
+}
+
 function BroadcastHeroTile({
   leftName,
   rightName,
@@ -2524,6 +2554,8 @@ function BroadcastHeroTile({
   previews,
   visible,
   onToggle,
+  viewMode,
+  onViewModeChange,
 }: {
   leftName: string;
   rightName: string;
@@ -2534,6 +2566,8 @@ function BroadcastHeroTile({
   previews: BroadcastPreviewUrls;
   visible: boolean;
   onToggle: () => void;
+  viewMode: BetsViewMode;
+  onViewModeChange: (next: BetsViewMode) => void;
 }) {
   const [selectedView, setSelectedView] = useState<BroadcastViewKey>("god");
   const [playingView, setPlayingView] = useState<BroadcastViewKey | null>(null);
@@ -2572,7 +2606,15 @@ function BroadcastHeroTile({
       ],
     [feeds, leftName, leftPreviewUrl, previews.god, rightName, rightPreviewUrl]
   );
-  const activeView = views.find((view) => view.key === selectedView) || views[1];
+  const defaultView = useMemo(
+    () =>
+      views.find(broadcastViewHasNativePlayback) ||
+      (broadcastViewHasSource(views[1]) ? views[1] : null) ||
+      views.find(broadcastViewHasSource) ||
+      views[1],
+    [views]
+  );
+  const activeView = views.find((view) => view.key === selectedView) || defaultView;
   const activeViewHasEmbeddableFeed = Boolean(activeView.feed?.canEmbed && activeView.feed.embedId);
 
   useEffect(() => {
@@ -2580,9 +2622,9 @@ function BroadcastHeroTile({
   }, []);
 
   useEffect(() => {
-    setSelectedView("god");
+    setSelectedView(defaultView.key);
     setPlayingView(null);
-  }, [marketTitle, leftName, rightName]);
+  }, [defaultView.key, marketTitle, leftName, rightName]);
 
   return (
     <section
@@ -2606,10 +2648,12 @@ function BroadcastHeroTile({
           </div>
         </div>
 
-        <div className="flex min-w-0 items-start gap-2">
-          <span className="max-w-[14rem] truncate rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-slate-300 sm:max-w-[22rem]">
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          <span className="hidden max-w-[14rem] truncate rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-slate-300 sm:block sm:max-w-[22rem]">
             {marketTitle}
           </span>
+          <BetsViewToggle value={viewMode} onChange={onViewModeChange} />
+          <BroadcastVisibilityButton visible={visible} onToggle={onToggle} />
         </div>
       </div>
 
@@ -2643,7 +2687,7 @@ function BroadcastHeroTile({
             marketTitle={marketTitle}
             isPlaying={activeViewHasEmbeddableFeed || playingView === activeView.key}
             onPlay={() => setPlayingView(activeView.key)}
-            layoutToggle={<BroadcastVisibilityButton visible={visible} onToggle={onToggle} />}
+            layoutToggle={null}
           />
         </>
       ) : (
@@ -2658,7 +2702,7 @@ function BroadcastHeroTile({
             marketTitle={marketTitle}
             isPlaying={activeViewHasEmbeddableFeed || playingView === activeView.key}
             onPlay={() => setPlayingView(activeView.key)}
-            layoutToggle={<BroadcastVisibilityButton visible={visible} onToggle={onToggle} />}
+            layoutToggle={null}
           />
           <div className="grid grid-cols-3 gap-2 lg:grid-cols-1">
             {views.map((view) => (
@@ -2888,15 +2932,39 @@ function BroadcastSignalSurface({
     setLoopFailed(false);
   }, [previewUrl, isPlaying]);
 
-  if (feed?.provider === "aoe2war" || feed?.sourceType === "browser") {
+  if (
+    feed?.provider === "aoe2war" ||
+    feed?.sourceType === "browser" ||
+    feed?.sourceType === "watcher_native"
+  ) {
+    const nativePlaybackUrl = feed.id
+      ? `/api/streams/${feed.id}/rolling-webm`
+      : feed.playbackUrl;
+
     return (
-      <LiveStreamFrame
-        stream={feed}
-        title={feed.title || feed.label}
-        compact={compact}
-        fallbackLabel="Live"
-        className="absolute inset-0 h-full min-h-0 rounded-none border-0 shadow-none"
-      />
+      <div className="absolute inset-0 flex h-full min-h-0 items-center justify-center overflow-hidden rounded-none border-0 bg-black shadow-none">
+        {nativePlaybackUrl ? (
+          <video
+            key={`${feed.id || feed.playbackUrl || "native"}-${feed.latestChunkSeq ?? "live"}`}
+            className="h-full w-full object-contain"
+            src={nativePlaybackUrl}
+            poster={previewUrl || feed.thumbnailUrl || undefined}
+            muted
+            autoPlay
+            controls={!compact}
+            playsInline
+            preload="auto"
+          />
+        ) : (
+          <LiveStreamFrame
+            stream={feed}
+            title={feed.title || feed.label}
+            compact={compact}
+            fallbackLabel="Live"
+            className="absolute inset-0 h-full min-h-0 rounded-none border-0 shadow-none"
+          />
+        )}
+      </div>
     );
   }
 
