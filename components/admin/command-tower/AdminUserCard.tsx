@@ -5,12 +5,17 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   BellDot,
   Coins,
+  Crown,
+  Gem,
   Gift,
+  Medal,
   MessageSquareMore,
   ScrollText,
   Shield,
+  Sparkles,
   Swords,
   Ticket,
+  type LucideIcon,
 } from "lucide-react";
 
 import type {
@@ -30,6 +35,7 @@ import {
 import CommunityBadgePill from "@/components/contact/CommunityBadgePill";
 import TimeDisplayText from "@/components/time/TimeDisplayText";
 import { DEFAULT_BADGE_LABELS } from "@/lib/communityHonors";
+import { allChampionTitles, designationTitles } from "@/lib/champions/titles";
 import { getTileViewMode, type TileViewMode } from "@/lib/tileViewPreferences";
 
 type AdminUserCardProps = {
@@ -44,6 +50,9 @@ type AdminUserCardProps = {
   onRunCommunityAction: (uid: string, body: Record<string, unknown>) => Promise<void>;
   onDeleteUser: (uid: string) => Promise<void>;
 };
+
+type AdminBadge = AdminUserRow["badges"][number];
+type GrantableHonorKind = "belt" | "artifact" | "designation";
 
 function colorTagTone(tag: string | null) {
   switch (tag) {
@@ -71,6 +80,12 @@ function formatTileViewMode(mode: TileViewMode) {
 }
 
 type JourneySummary = AdminUserRow["journeySummary"];
+
+const BELT_HONOR_OPTIONS = allChampionTitles
+  .filter((title) => title.type !== "designation")
+  .map((title) => title.displayName);
+const ARTIFACT_HONOR_OPTIONS = designationTitles.map((title) => title.displayName);
+const DESIGNATION_HONOR_OPTIONS = designationTitles.map((title) => title.shortName);
 
 function journeyTone(label: NonNullable<JourneySummary>["engagementLabel"]) {
   switch (label) {
@@ -132,6 +147,10 @@ export default function AdminUserCard({
     personalColorTagCount
       ? `Fav ${user.scheduledMatchPreferenceStats.favoriteCount} / Saved ${user.scheduledMatchPreferenceStats.bookmarkedCount} / Tags ${personalColorTagCount}`
       : "No personal schedule tags";
+  const badgeHonors = user.badges.filter((badge) => badge.honorKind === "badge");
+  const beltHonors = user.badges.filter((badge) => badge.honorKind === "belt");
+  const artifactHonors = user.badges.filter((badge) => badge.honorKind === "artifact");
+  const designationHonors = user.badges.filter((badge) => badge.honorKind === "designation");
 
   useEffect(() => {
     const root = actionsScrollRef.current;
@@ -371,100 +390,176 @@ export default function AdminUserCard({
         <section className="rounded-2xl border border-white/8 bg-white/5 p-4">
           <div className="flex items-center justify-between gap-3">
             <div className="text-xs uppercase tracking-[0.25em] text-slate-500">Honors</div>
-            <div className="text-xs text-slate-400">{user.badges.length} badges</div>
+            <div className="text-xs text-slate-400">
+              {user.badges.length} total · {beltHonors.length} belts · {artifactHonors.length} artifacts
+            </div>
           </div>
 
-          <div className="mt-4 flex min-h-16 flex-wrap gap-2">
-            {user.badges.length > 0 ? (
-              user.badges.map((badge) => (
-                <div
-                  key={badge.id}
-                  className="rounded-2xl border border-white/8 bg-slate-900/70 px-3 py-3"
-                >
-                  <div className="flex items-center gap-2">
-                    <CommunityBadgePill label={badge.label} />
-                    <span className={`rounded-full border px-2 py-0.5 text-[11px] ${statusTone(badge.status)}`}>
-                      {badge.status}
-                    </span>
-                    {badge.displayOnProfile ? (
-                      <span className="rounded-full border border-sky-300/30 bg-sky-400/10 px-2 py-0.5 text-[11px] text-sky-100">
-                        public
-                      </span>
-                    ) : null}
-                  </div>
-                  <div className="mt-2 text-xs text-slate-400">
-                    {badge.note || "No note"} ·{" "}
-                    <AdminTime value={badge.acceptedAt || badge.createdAt} />
-                  </div>
+          <div className="mt-4 space-y-4">
+            <div className="rounded-xl border border-white/8 bg-slate-950/55 px-3 py-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-slate-500">
+                  <Medal className="h-3.5 w-3.5" />
+                  Badges
+                </div>
+                <div className="text-xs text-slate-400">{badgeHonors.length}</div>
+              </div>
+              <div className="mt-3 flex min-h-10 flex-wrap gap-2">
+                {badgeHonors.length > 0 ? (
+                  badgeHonors.map((badge) => (
+                    <HonorItem
+                      key={badge.id}
+                      honor={badge}
+                      onRemove={() => {
+                        void onRunCommunityAction(user.uid, {
+                          action: "remove_badge",
+                          badgeId: badge.id,
+                        });
+                      }}
+                    />
+                  ))
+                ) : (
+                  <div className="text-sm text-slate-400">No badges added yet.</div>
+                )}
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {DEFAULT_BADGE_LABELS.map((label) => (
                   <button
+                    key={label}
                     type="button"
                     onClick={() => {
                       void onRunCommunityAction(user.uid, {
-                        action: "remove_badge",
-                        badgeId: badge.id,
+                        action: "add_badge",
+                        label,
                       });
                     }}
-                    className="mt-2 text-xs text-red-300 transition hover:text-red-200"
-                    title="Remove badge"
+                    disabled={busyKey === `${user.uid}:add_badge`}
+                    className="rounded-full border border-white/10 bg-slate-900 px-3 py-1.5 text-xs text-slate-200 transition hover:border-white/25 hover:text-white disabled:opacity-50"
                   >
-                    Remove
+                    + {label}
                   </button>
-                </div>
-              ))
-            ) : (
-              <div className="text-sm text-slate-400">No honors added yet.</div>
-            )}
-          </div>
+                ))}
+              </div>
+              <div className="mt-3 flex gap-2">
+                <input
+                  value={draft.customBadge}
+                  onChange={(event) => onDraftChange(user.uid, { customBadge: event.target.value })}
+                  placeholder="Custom badge"
+                  className="flex-1 rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-amber-300/35"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    void onRunCommunityAction(user.uid, {
+                      action: "add_badge",
+                      label: draft.customBadge,
+                    });
+                    onDraftChange(user.uid, { customBadge: "" });
+                  }}
+                  className="rounded-xl bg-amber-300 px-3 py-2 text-sm font-semibold text-slate-950 transition hover:bg-amber-200"
+                >
+                  Add
+                </button>
+              </div>
+            </div>
 
-          <div className="mt-4 flex flex-wrap gap-2">
-            {DEFAULT_BADGE_LABELS.map((label) => (
-              <button
-                key={label}
-                type="button"
-                onClick={() => {
+            <div className="grid gap-3 xl:grid-cols-3">
+              <HonorGrantSection
+                icon={Crown}
+                title="Belts"
+                kind="belt"
+                honors={beltHonors}
+                value={draft.beltTitle}
+                note={draft.beltNote}
+                displayOnProfile={draft.beltDisplayOnProfile}
+                options={BELT_HONOR_OPTIONS}
+                busy={busyKey === `${user.uid}:grant_honor`}
+                onTitleChange={(beltTitle) => onDraftChange(user.uid, { beltTitle })}
+                onNoteChange={(beltNote) => onDraftChange(user.uid, { beltNote })}
+                onDisplayChange={(beltDisplayOnProfile) =>
+                  onDraftChange(user.uid, { beltDisplayOnProfile })
+                }
+                onGrant={() => {
                   void onRunCommunityAction(user.uid, {
-                    action: "add_badge",
-                    label,
+                    action: "grant_honor",
+                    kind: "belt",
+                    title: draft.beltTitle,
+                    note: draft.beltNote,
+                    displayOnProfile: draft.beltDisplayOnProfile,
+                  });
+                  onDraftChange(user.uid, { beltTitle: "", beltNote: "" });
+                }}
+                onRemove={(badgeId) => {
+                  void onRunCommunityAction(user.uid, {
+                    action: "remove_honor",
+                    badgeId,
                   });
                 }}
-                disabled={busyKey === `${user.uid}:add_badge`}
-                className="rounded-full border border-white/10 bg-slate-900 px-3 py-1.5 text-xs text-slate-200 transition hover:border-white/25 hover:text-white disabled:opacity-50"
-              >
-                + {label}
-              </button>
-            ))}
-          </div>
-
-          <div className="mt-4 flex gap-2">
-            <input
-              value={draft.customBadge}
-              onChange={(event) => onDraftChange(user.uid, { customBadge: event.target.value })}
-              placeholder="Custom badge"
-              className="flex-1 rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-amber-300/35"
-            />
-            <button
-              type="button"
-              onClick={() => {
-                void onRunCommunityAction(user.uid, {
-                  action: "add_badge",
-                  label: draft.customBadge,
-                });
-                onDraftChange(user.uid, { customBadge: "" });
-              }}
-              className="rounded-xl bg-amber-300 px-3 py-2 text-sm font-semibold text-slate-950 transition hover:bg-amber-200"
-            >
-              Add
-            </button>
-          </div>
-
-          <div className="mt-4 grid gap-2 sm:grid-cols-2">
-            <div className="rounded-xl border border-white/8 bg-slate-950/55 px-3 py-3">
-              <div className="text-[11px] uppercase tracking-[0.22em] text-slate-500">Belts</div>
-              <div className="mt-2 text-sm text-slate-400">Operator assignment rail pending.</div>
-            </div>
-            <div className="rounded-xl border border-white/8 bg-slate-950/55 px-3 py-3">
-              <div className="text-[11px] uppercase tracking-[0.22em] text-slate-500">Artifacts</div>
-              <div className="mt-2 text-sm text-slate-400">Operator assignment rail pending.</div>
+              />
+              <HonorGrantSection
+                icon={Gem}
+                title="Artifacts"
+                kind="artifact"
+                honors={artifactHonors}
+                value={draft.artifactTitle}
+                note={draft.artifactNote}
+                displayOnProfile={draft.artifactDisplayOnProfile}
+                options={ARTIFACT_HONOR_OPTIONS}
+                busy={busyKey === `${user.uid}:grant_honor`}
+                onTitleChange={(artifactTitle) => onDraftChange(user.uid, { artifactTitle })}
+                onNoteChange={(artifactNote) => onDraftChange(user.uid, { artifactNote })}
+                onDisplayChange={(artifactDisplayOnProfile) =>
+                  onDraftChange(user.uid, { artifactDisplayOnProfile })
+                }
+                onGrant={() => {
+                  void onRunCommunityAction(user.uid, {
+                    action: "grant_honor",
+                    kind: "artifact",
+                    title: draft.artifactTitle,
+                    note: draft.artifactNote,
+                    displayOnProfile: draft.artifactDisplayOnProfile,
+                  });
+                  onDraftChange(user.uid, { artifactTitle: "", artifactNote: "" });
+                }}
+                onRemove={(badgeId) => {
+                  void onRunCommunityAction(user.uid, {
+                    action: "remove_honor",
+                    badgeId,
+                  });
+                }}
+              />
+              <HonorGrantSection
+                icon={Sparkles}
+                title="Designations"
+                kind="designation"
+                honors={designationHonors}
+                value={draft.designationTitle}
+                note={draft.designationNote}
+                displayOnProfile={draft.designationDisplayOnProfile}
+                options={DESIGNATION_HONOR_OPTIONS}
+                busy={busyKey === `${user.uid}:grant_honor`}
+                onTitleChange={(designationTitle) => onDraftChange(user.uid, { designationTitle })}
+                onNoteChange={(designationNote) => onDraftChange(user.uid, { designationNote })}
+                onDisplayChange={(designationDisplayOnProfile) =>
+                  onDraftChange(user.uid, { designationDisplayOnProfile })
+                }
+                onGrant={() => {
+                  void onRunCommunityAction(user.uid, {
+                    action: "grant_honor",
+                    kind: "designation",
+                    title: draft.designationTitle,
+                    note: draft.designationNote,
+                    displayOnProfile: draft.designationDisplayOnProfile,
+                  });
+                  onDraftChange(user.uid, { designationTitle: "", designationNote: "" });
+                }}
+                onRemove={(badgeId) => {
+                  void onRunCommunityAction(user.uid, {
+                    action: "remove_honor",
+                    badgeId,
+                  });
+                }}
+              />
             </div>
           </div>
         </section>
@@ -959,6 +1054,144 @@ function JourneyDetailsPanel({ journey }: { journey: JourneySummary }) {
               No safe journey events in the current summary window.
             </div>
           )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function HonorItem({ honor, onRemove }: { honor: AdminBadge; onRemove: () => void }) {
+  return (
+    <div className="min-w-0 rounded-xl border border-white/8 bg-slate-900/70 px-3 py-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <CommunityBadgePill label={honor.label} />
+        <span className={`rounded-full border px-2 py-0.5 text-[11px] ${statusTone(honor.status)}`}>
+          {honor.status}
+        </span>
+        {honor.displayOnProfile ? (
+          <span className="rounded-full border border-sky-300/30 bg-sky-400/10 px-2 py-0.5 text-[11px] text-sky-100">
+            public
+          </span>
+        ) : (
+          <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-slate-400">
+            admin
+          </span>
+        )}
+      </div>
+      <div className="mt-1 break-words text-xs text-slate-400">
+        {honor.note || "No note"} · <AdminTime value={honor.acceptedAt || honor.createdAt} />
+      </div>
+      <button
+        type="button"
+        onClick={onRemove}
+        className="mt-2 text-xs text-red-300 transition hover:text-red-200"
+        title="Remove honor"
+      >
+        Remove
+      </button>
+    </div>
+  );
+}
+
+function HonorGrantSection({
+  icon: Icon,
+  title,
+  kind,
+  honors,
+  value,
+  note,
+  displayOnProfile,
+  options,
+  busy,
+  onTitleChange,
+  onNoteChange,
+  onDisplayChange,
+  onGrant,
+  onRemove,
+}: {
+  icon: LucideIcon;
+  title: string;
+  kind: GrantableHonorKind;
+  honors: AdminBadge[];
+  value: string;
+  note: string;
+  displayOnProfile: boolean;
+  options: string[];
+  busy: boolean;
+  onTitleChange: (value: string) => void;
+  onNoteChange: (value: string) => void;
+  onDisplayChange: (value: boolean) => void;
+  onGrant: () => void;
+  onRemove: (badgeId: number) => void;
+}) {
+  const singularTitle = title.endsWith("s") ? title.slice(0, -1) : title;
+  const canGrant = value.trim().length > 0 && !busy;
+
+  return (
+    <div className="min-w-0 rounded-xl border border-white/8 bg-slate-950/55 px-3 py-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-slate-500">
+          <Icon className="h-3.5 w-3.5" />
+          {title}
+        </div>
+        <div className="text-xs text-slate-400">{honors.length}</div>
+      </div>
+
+      <div className="mt-3 space-y-2">
+        {honors.length > 0 ? (
+          honors.map((honor) => (
+            <HonorItem key={honor.id} honor={honor} onRemove={() => onRemove(honor.id)} />
+          ))
+        ) : (
+          <div className="rounded-lg border border-white/8 bg-slate-900/70 px-2.5 py-2 text-xs text-slate-400">
+            No {kind} honors yet.
+          </div>
+        )}
+      </div>
+
+      <div className="mt-3 space-y-2">
+        <select
+          value=""
+          onChange={(event) => onTitleChange(event.target.value)}
+          className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none transition focus:border-amber-300/35"
+        >
+          <option value="">Choose {singularTitle.toLowerCase()}</option>
+          {options.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+        <input
+          value={value}
+          onChange={(event) => onTitleChange(event.target.value)}
+          placeholder={`${singularTitle} title`}
+          className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-amber-300/35"
+        />
+        <input
+          value={note}
+          onChange={(event) => onNoteChange(event.target.value)}
+          placeholder="Optional note"
+          className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-amber-300/35"
+        />
+        <div className="flex items-center justify-between gap-3">
+          <label className="flex items-center gap-2 text-xs text-slate-300">
+            <input
+              type="checkbox"
+              checked={displayOnProfile}
+              onChange={(event) => onDisplayChange(event.target.checked)}
+              className="h-4 w-4 rounded border-white/10 bg-slate-900 accent-amber-300"
+            />
+            Public
+          </label>
+          <button
+            type="button"
+            onClick={onGrant}
+            disabled={!canGrant}
+            className="rounded-xl bg-amber-300 px-3 py-2 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Grant
+          </button>
         </div>
       </div>
     </div>

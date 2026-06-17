@@ -6,7 +6,13 @@ This dashboard must not treat raw watcher package traffic as real users. Package
 
 `/admin/user-list` is an operator cockpit, not a plain directory. Keep the top admin navigation visible near the top, preserve exact Community Lobby mode labels (`Basic`, `Advanced`, `Extreme`), and keep Recent Actions in a fixed-height lazy-loaded pane so older activity can stream in without resizing each user card.
 
-The Honors panel owns current badge add/remove controls. Belts and Artifacts may appear as non-functional placeholders until their assignment rails become real.
+The Honors panel owns badge add/remove controls and Phase 3A typed honors. Existing `add_badge` and `remove_badge` behavior stays unchanged. Belts, Artifacts, and Designations use admin-only `grant_honor` / `remove_honor` actions and are stored in `user_badges` as accepted rows with typed labels:
+
+- `Belt: <title>`
+- `Artifact: <title>`
+- `Designation: <title>`
+
+No new DB migration was added for Phase 3A. The storage limitation is that there is no per-user managed-media foreign key yet; the admin UI offers title registry options plus free text, and public display can only use the existing badge-pill rail when `display_on_profile` is true. Phase 3B should add a real honor record or extend the existing model with `kind`, asset/media reference, status/revocation fields, audit metadata, and richer public profile rendering for belts and artifacts.
 
 ### Journey Intelligence
 

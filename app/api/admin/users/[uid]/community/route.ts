@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import {
+  buildHonorLabel,
+  loadUserCommunitySummaries,
   normalizeBadgeLabel,
   normalizeGiftKind,
+  normalizeHonorKind,
+  normalizeHonorTitle,
 } from "@/lib/communityHonors";
 import { getOrCreateConversationByUsers } from "@/lib/contactInbox";
 import { rescindPendingWoloClaim } from "@/lib/pendingWoloClaims";
@@ -54,8 +58,11 @@ export async function POST(
       giftId?: number;
       claimId?: number;
       label?: string;
+      title?: string;
       note?: string;
       kind?: string;
+      honorKind?: string;
+      displayOnProfile?: boolean;
       amount?: number | string;
     };
 
@@ -120,6 +127,93 @@ export async function POST(
         await recordUserActivity(prisma, {
           userId: target.id,
           type: "badge_removed",
+          path: "/admin/user-list",
+          label: String(payload.badgeId),
+          metadata: {
+            badgeId: payload.badgeId,
+          },
+          dedupeWithinSeconds: 0,
+        });
+        break;
+      }
+
+      case "grant_honor": {
+        const honorKind = normalizeHonorKind(payload.honorKind || payload.kind);
+        const title = normalizeHonorTitle(payload.title || payload.label || "");
+        const note = typeof payload.note === "string" ? payload.note.trim().slice(0, 160) : null;
+
+        if (honorKind === "badge") {
+          return NextResponse.json(
+            { detail: "Use add_badge for badge honors." },
+            { status: 400 }
+          );
+        }
+
+        if (!title) {
+          return NextResponse.json({ detail: "Honor title is required" }, { status: 400 });
+        }
+
+        await getOrCreateConversationByUsers(prisma, admin.id, target.id);
+
+        const label = buildHonorLabel(honorKind, title);
+        const displayOnProfile = payload.displayOnProfile !== false;
+        const now = new Date();
+        const honor = await prisma.userBadge.upsert({
+          where: {
+            userId_label: {
+              userId: target.id,
+              label,
+            },
+          },
+          update: {
+            note,
+            status: "accepted",
+            displayOnProfile,
+            acceptedAt: now,
+            createdByUserId: admin.id,
+          },
+          create: {
+            userId: target.id,
+            label,
+            note,
+            status: "accepted",
+            displayOnProfile,
+            acceptedAt: now,
+            createdByUserId: admin.id,
+          },
+        });
+
+        await recordUserActivity(prisma, {
+          userId: target.id,
+          type: `${honorKind}_honor_granted`,
+          path: "/admin/user-list",
+          label: title,
+          metadata: {
+            badgeId: honor.id,
+            honorKind,
+            displayOnProfile,
+            note,
+          },
+          dedupeWithinSeconds: 0,
+        });
+        break;
+      }
+
+      case "remove_honor": {
+        if (typeof payload.badgeId !== "number") {
+          return NextResponse.json({ detail: "Honor id is required" }, { status: 400 });
+        }
+
+        await prisma.userBadge.deleteMany({
+          where: {
+            id: payload.badgeId,
+            userId: target.id,
+          },
+        });
+
+        await recordUserActivity(prisma, {
+          userId: target.id,
+          type: "honor_removed",
           path: "/admin/user-list",
           label: String(payload.badgeId),
           metadata: {
@@ -223,7 +317,17 @@ export async function POST(
         return NextResponse.json({ detail: "Unknown action" }, { status: 400 });
     }
 
-    return NextResponse.json({ ok: true });
+    const communityMap = await loadUserCommunitySummaries(prisma, [target.id], {
+      includePending: true,
+    });
+    return NextResponse.json({
+      ok: true,
+      community: communityMap.get(target.id) ?? {
+        badges: [],
+        gifts: [],
+        giftedWolo: 0,
+      },
+    });
   } catch (error) {
     console.error("Failed to update user community settings:", error);
     return NextResponse.json({ detail: "Update failed" }, { status: 500 });

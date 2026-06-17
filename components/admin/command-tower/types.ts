@@ -8,6 +8,7 @@ import type {
 } from "@/components/admin/WoloSettlementRail";
 import type { AdminJourneySummary } from "@/lib/adminJourneyIntelligence";
 import type { WalletFrictionRailPayload } from "@/lib/adminWalletFriction";
+import type { HonorKind } from "@/lib/communityHonors";
 import type { ScheduledMatchColorTag } from "@/lib/scheduledMatchPreferences";
 import type { TileViewMode, TileViewPreferences } from "@/lib/tileViewPreferences";
 
@@ -16,6 +17,8 @@ export type FounderBonusType = "participants" | "winner";
 export type Badge = {
   id: number;
   label: string;
+  title: string;
+  honorKind: HonorKind;
   note: string | null;
   status: string;
   displayOnProfile: boolean;
@@ -347,6 +350,15 @@ export type AdminUsersRailsPayload = Pick<
 
 export type DraftState = {
   customBadge: string;
+  beltTitle: string;
+  beltNote: string;
+  beltDisplayOnProfile: boolean;
+  artifactTitle: string;
+  artifactNote: string;
+  artifactDisplayOnProfile: boolean;
+  designationTitle: string;
+  designationNote: string;
+  designationDisplayOnProfile: boolean;
   giftKind: string;
   giftAmount: string;
   giftNote: string;

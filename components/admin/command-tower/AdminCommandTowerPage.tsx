@@ -41,6 +41,15 @@ type UserSortMode = "recent" | "engagement" | "newest" | "wolo";
 
 const EMPTY_DRAFT: DraftState = {
   customBadge: "",
+  beltTitle: "",
+  beltNote: "",
+  beltDisplayOnProfile: true,
+  artifactTitle: "",
+  artifactNote: "",
+  artifactDisplayOnProfile: true,
+  designationTitle: "",
+  designationNote: "",
+  designationDisplayOnProfile: true,
   giftKind: "WOLO",
   giftAmount: "",
   giftNote: "",

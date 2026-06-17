@@ -103,7 +103,10 @@ Current strengths:
 Current strengths:
 - can inspect users
 - `/admin/user-list` has top-level operator navigation for Admin Home, Media Assets, WoloChain, and the User List / Command Tower
-- can award badges/gifts, with the badge panel now presented as Honors and future Belts/Artifacts rails marked as non-functional placeholders
+- can award badges/gifts, with the badge panel now presented as Honors
+- Honors Phase 3A can grant/remove Badges, Belts, Artifacts, and Designations from `/admin/user-list`
+- Honors Phase 3A reuses the existing `user_badges` table with typed labels such as `Belt: ...`, `Artifact: ...`, and `Designation: ...`; no new migration was added
+- public Honors display is intentionally limited to the existing profile/community badge-pill rail when an honor is public, accepted, and displayable; richer belt/artifact profile layout is Phase 3B
 - can see inbox/unread/honor state
 - can see appearance preferences, including exact Community Lobby mode labels for Basic, Advanced, and Extreme
 - can see a compact app-local Journey Summary per user, inspired by Traffic session ideas but built from AoE2WAR `UserActivityEvent` rows

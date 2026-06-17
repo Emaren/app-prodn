@@ -2,9 +2,13 @@ import type { PrismaClient } from "@/lib/generated/prisma";
 
 export const DEFAULT_BADGE_LABELS = ["OG", "Contributor", "Founder"] as const;
 
+export type HonorKind = "badge" | "belt" | "artifact" | "designation";
+
 export type CommunityBadge = {
   id: number;
   label: string;
+  title: string;
+  honorKind: HonorKind;
   note: string | null;
   status: string;
   displayOnProfile: boolean;
@@ -33,6 +37,66 @@ export function normalizeBadgeLabel(value: string) {
   return value.trim().replace(/\s+/g, " ").slice(0, 40);
 }
 
+export function normalizeHonorKind(value: string | null | undefined): HonorKind {
+  const normalized = (value || "badge").trim().toLowerCase();
+  if (normalized === "belt" || normalized === "artifact" || normalized === "designation") {
+    return normalized;
+  }
+  return "badge";
+}
+
+export function normalizeHonorTitle(value: string) {
+  return value.trim().replace(/\s+/g, " ").slice(0, 32);
+}
+
+export function parseHonorLabel(label: string): { honorKind: HonorKind; title: string } {
+  const normalized = normalizeBadgeLabel(label);
+  const match = normalized.match(/^(Belt|Artifact|Designation):\s*(.+)$/i);
+
+  if (!match) {
+    return { honorKind: "badge", title: normalized };
+  }
+
+  return {
+    honorKind: normalizeHonorKind(match[1]),
+    title: normalizeHonorTitle(match[2]),
+  };
+}
+
+export function parseCommunityHonor(label: string) {
+  return parseHonorLabel(label);
+}
+
+export function cleanHonorTitle(label: string) {
+  return parseHonorLabel(label).title;
+}
+
+export function isTypedHonor(label: string) {
+  return parseHonorLabel(label).honorKind !== "badge";
+}
+
+export function buildHonorLabel(kind: HonorKind, title: string) {
+  const normalizedKind = normalizeHonorKind(kind);
+
+  if (normalizedKind === "badge") {
+    return normalizeBadgeLabel(normalizeHonorTitle(title));
+  }
+
+  const prefix =
+    normalizedKind === "belt"
+      ? "Belt: "
+      : normalizedKind === "artifact"
+        ? "Artifact: "
+        : "Designation: ";
+  const normalizedTitle = normalizeHonorTitle(title).slice(0, 40 - prefix.length);
+
+  return normalizeBadgeLabel(`${prefix}${normalizedTitle}`);
+}
+
+export function normalizeHonorLabel(kind: HonorKind, title: string) {
+  return buildHonorLabel(kind, title);
+}
+
 export function normalizeGiftKind(value: string) {
   return value.trim().replace(/\s+/g, " ").slice(0, 40).toUpperCase();
 }
@@ -46,7 +110,17 @@ export function normalizeHonorStatus(value: string | null | undefined) {
 }
 
 export function badgeToneClassName(label: string) {
-  const key = normalizeBadgeLabel(label).toLowerCase();
+  const parsed = parseHonorLabel(label);
+  const key = parsed.title.toLowerCase();
+  if (parsed.honorKind === "belt") {
+    return "border-amber-300/30 bg-amber-400/12 text-amber-100";
+  }
+  if (parsed.honorKind === "artifact") {
+    return "border-violet-300/30 bg-violet-400/12 text-violet-100";
+  }
+  if (parsed.honorKind === "designation") {
+    return "border-emerald-300/30 bg-emerald-400/12 text-emerald-100";
+  }
   if (key === "founder") {
     return "border-amber-300/30 bg-amber-400/12 text-amber-100";
   }
@@ -97,6 +171,7 @@ export async function loadUserCommunitySummaries(
     const summary = summaryMap.get(badge.userId);
     if (!summary) continue;
     const status = normalizeHonorStatus(badge.status);
+    const parsed = parseHonorLabel(badge.label);
 
     if (!includePending && (status !== "accepted" || !badge.displayOnProfile)) {
       continue;
@@ -105,6 +180,8 @@ export async function loadUserCommunitySummaries(
     summary.badges.push({
       id: badge.id,
       label: badge.label,
+      title: parsed.title,
+      honorKind: parsed.honorKind,
       note: badge.note,
       status,
       displayOnProfile: badge.displayOnProfile,
