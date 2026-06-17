@@ -2,7 +2,17 @@
 
 import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
-import { ArrowRight, LayoutGrid, Palette, RadioTower, Sparkles } from "lucide-react";
+import {
+  ArrowRight,
+  Coins,
+  Home,
+  Images,
+  LayoutGrid,
+  Palette,
+  RadioTower,
+  Sparkles,
+  UsersRound,
+} from "lucide-react";
 
 import AdminUserCard from "@/components/admin/command-tower/AdminUserCard";
 import type { DraftState } from "@/components/admin/command-tower/types";
@@ -23,6 +33,13 @@ const EMPTY_DRAFT: DraftState = {
   giftNote: "",
   rescindNote: "",
 };
+
+const ADMIN_NAV_LINKS = [
+  { href: "/admin", label: "Admin Home", Icon: Home },
+  { href: "/admin/media-assets", label: "Media Assets", Icon: Images },
+  { href: "/admin/wolochain", label: "WoloChain", Icon: Coins },
+  { href: "/admin/user-list", label: "User List / Command Tower", Icon: UsersRound },
+] as const;
 
 function StatCard({
   label,
@@ -195,6 +212,18 @@ export default function AdminCommandTowerPage() {
             the product signals that tell you who is alive, who is drifting, and where the heat is
             building.
           </p>
+          <nav aria-label="Admin sections" className="flex flex-wrap gap-2 pt-2">
+            {ADMIN_NAV_LINKS.map(({ href, label, Icon }) => (
+              <Link
+                key={href}
+                href={href}
+                className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-slate-950/45 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:border-amber-200/40 hover:bg-amber-300/10 hover:text-amber-100"
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {label}
+              </Link>
+            ))}
+          </nav>
         </div>
       </section>
 

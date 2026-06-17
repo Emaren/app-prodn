@@ -2,6 +2,12 @@
 
 This dashboard must not treat raw watcher package traffic as real users. Package pulls are top-of-funnel request rows only.
 
+## User List / Command Tower
+
+`/admin/user-list` is an operator cockpit, not a plain directory. Keep the top admin navigation visible near the top, preserve exact Community Lobby mode labels (`Basic`, `Advanced`, `Extreme`), and keep Recent Actions in a fixed-height lazy-loaded pane so older activity can stream in without resizing each user card.
+
+The Honors panel owns current badge add/remove controls. Belts and Artifacts may appear as non-functional placeholders until their assignment rails become real.
+
 ## Watcher Package Pulls
 
 Raw hits to `/download/watcher/*`, sourced from `watcher_download_events`.
@@ -105,4 +111,3 @@ The admin rail classifies recent package pulls with conservative labels:
 - `converted_to_match`: package pull followed by a watcher-sourced `game_stats` match.
 
 Conversion labels are best-effort. Do not overstate precision in UI copy.
-

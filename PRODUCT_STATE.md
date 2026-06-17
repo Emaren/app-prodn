@@ -102,9 +102,11 @@ Current strengths:
 
 Current strengths:
 - can inspect users
-- can award badges/gifts
+- `/admin/user-list` has top-level operator navigation for Admin Home, Media Assets, WoloChain, and the User List / Command Tower
+- can award badges/gifts, with the badge panel now presented as Honors and future Belts/Artifacts rails marked as non-functional placeholders
 - can see inbox/unread/honor state
-- can see appearance preferences and recent actions
+- can see appearance preferences, including exact Community Lobby mode labels for Basic, Advanced, and Extreme
+- recent actions stay in a fixed-height pane and lazy-load older rows through an IntersectionObserver sentinel instead of a manual Next 50 button
 - operator control surface is real, not fake scaffolding
 
 ## Still unfinished

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import {
   BellDot,
   Coins,
@@ -30,7 +30,7 @@ import {
 import CommunityBadgePill from "@/components/contact/CommunityBadgePill";
 import TimeDisplayText from "@/components/time/TimeDisplayText";
 import { DEFAULT_BADGE_LABELS } from "@/lib/communityHonors";
-import { getTileViewMode } from "@/lib/tileViewPreferences";
+import { getTileViewMode, type TileViewMode } from "@/lib/tileViewPreferences";
 
 type AdminUserCardProps = {
   user: AdminUserRow;
@@ -60,6 +60,16 @@ function colorTagTone(tag: string | null) {
   }
 }
 
+const TILE_VIEW_MODE_LABELS: Record<TileViewMode, string> = {
+  basic: "Basic",
+  advanced: "Advanced",
+  extreme: "Extreme",
+};
+
+function formatTileViewMode(mode: TileViewMode) {
+  return TILE_VIEW_MODE_LABELS[mode] ?? "Basic";
+}
+
 export default function AdminUserCard({
   user,
   draft,
@@ -72,6 +82,9 @@ export default function AdminUserCard({
   onRunCommunityAction,
   onDeleteUser,
 }: AdminUserCardProps) {
+  const actionsScrollRef = useRef<HTMLDivElement | null>(null);
+  const actionsSentinelRef = useRef<HTMLDivElement | null>(null);
+  const loadingNextActionsRef = useRef(false);
   const latestPath = findLatestPageView(renderedActions);
   const communityLobbyView = getTileViewMode(
     user.appearance?.tileViewPreferences,
@@ -86,6 +99,39 @@ export default function AdminUserCard({
     personalColorTagCount
       ? `Fav ${user.scheduledMatchPreferenceStats.favoriteCount} / Saved ${user.scheduledMatchPreferenceStats.bookmarkedCount} / Tags ${personalColorTagCount}`
       : "No personal schedule tags";
+
+  useEffect(() => {
+    const root = actionsScrollRef.current;
+    const sentinel = actionsSentinelRef.current;
+
+    if (!root || !sentinel || nextOffset === null || busyKey !== null) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting) || loadingNextActionsRef.current) {
+          return;
+        }
+
+        loadingNextActionsRef.current = true;
+        void onLoadNextActions(user.uid).finally(() => {
+          loadingNextActionsRef.current = false;
+        });
+      },
+      {
+        root,
+        rootMargin: "0px 0px 160px 0px",
+        threshold: 0,
+      }
+    );
+
+    observer.observe(sentinel);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [busyKey, nextOffset, onLoadNextActions, user.uid]);
 
   return (
     <article className="rounded-[1.5rem] border border-white/10 bg-slate-950/75 p-5">
@@ -202,7 +248,7 @@ export default function AdminUserCard({
             />
             <IdentityRow
               label="Community Lobby"
-              value={communityLobbyView === "advanced" ? "Advanced" : "Basic"}
+              value={formatTileViewMode(communityLobbyView)}
             />
             <IdentityRow label="Schedule Org" value={scheduleOrgLabel} />
             <IdentityRow
@@ -257,7 +303,7 @@ export default function AdminUserCard({
               {renderedActions.length}/{activityTotal}
             </div>
           </div>
-          <div className="mt-4 max-h-[28rem] space-y-3 overflow-y-auto pr-1">
+          <div ref={actionsScrollRef} className="mt-4 h-[28rem] space-y-3 overflow-y-auto pr-1">
             {renderedActions.length > 0 ? (
               renderedActions.map((activity) => (
                 <div
@@ -275,27 +321,18 @@ export default function AdminUserCard({
                 No tracked activity yet.
               </div>
             )}
+            {nextOffset !== null ? (
+              <div ref={actionsSentinelRef} aria-hidden="true" className="h-1" />
+            ) : null}
           </div>
-          {nextOffset !== null ? (
-            <button
-              type="button"
-              onClick={() => {
-                void onLoadNextActions(user.uid);
-              }}
-              disabled={busyKey === `${user.uid}:next_actions`}
-              className="mt-3 rounded-full border border-white/10 bg-slate-900/70 px-3 py-1.5 text-xs uppercase tracking-[0.24em] text-slate-300 transition hover:border-white/25 hover:text-white disabled:opacity-50"
-            >
-              {busyKey === `${user.uid}:next_actions` ? "Loading..." : "Next 50"}
-            </button>
-          ) : null}
         </section>
       </div>
 
       <div className="mt-4 grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
         <section className="rounded-2xl border border-white/8 bg-white/5 p-4">
           <div className="flex items-center justify-between gap-3">
-            <div className="text-xs uppercase tracking-[0.25em] text-slate-500">Badges</div>
-            <div className="text-xs text-slate-400">{user.badges.length} total</div>
+            <div className="text-xs uppercase tracking-[0.25em] text-slate-500">Honors</div>
+            <div className="text-xs text-slate-400">{user.badges.length} badges</div>
           </div>
 
           <div className="mt-4 flex min-h-16 flex-wrap gap-2">
@@ -379,6 +416,17 @@ export default function AdminUserCard({
             >
               Add
             </button>
+          </div>
+
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            <div className="rounded-xl border border-white/8 bg-slate-950/55 px-3 py-3">
+              <div className="text-[11px] uppercase tracking-[0.22em] text-slate-500">Belts</div>
+              <div className="mt-2 text-sm text-slate-400">Operator assignment rail pending.</div>
+            </div>
+            <div className="rounded-xl border border-white/8 bg-slate-950/55 px-3 py-3">
+              <div className="text-[11px] uppercase tracking-[0.22em] text-slate-500">Artifacts</div>
+              <div className="mt-2 text-sm text-slate-400">Operator assignment rail pending.</div>
+            </div>
           </div>
         </section>
 
