@@ -24,6 +24,7 @@ export type AdminJourneySummary = {
   engagementLabel: "Hot" | "Active" | "Browsing" | "Dormant" | "Unknown";
   confidenceLabel: "High" | "Good" | "Limited" | "Low";
   suspiciousSignal: string | null;
+  qualityNotes: string[];
   intentSummary: string;
   eventCount: number;
   pageCount: number;
@@ -33,6 +34,17 @@ export type AdminJourneySummary = {
 
 const JOURNEY_SESSION_GAP_MS = 30 * 60 * 1000;
 const ACTIVE_GAP_CAP_SECONDS = 10 * 60;
+const IMPORTANT_ROUTE_RE =
+  /^\/($|admin\/user-list|bets|challenge|contact-emaren|lobby|live-games|players|profile|requests|staking|war-chest|watch|wolo|wolomania)/;
+const ASSET_OR_INTERNAL_PATH_RE =
+  /(^\/api\/|^\/_next\/|\.(?:avif|css|gif|ico|jpeg|jpg|js|map|png|svg|webp|woff2?)$)/i;
+const NOISE_ACTIVITY_TYPES = new Set([
+  "heartbeat",
+  "online_ping",
+  "page_ping",
+  "ping",
+  "session_ping",
+]);
 
 function metadataRecord(value: Record<string, unknown> | null | undefined) {
   return value && typeof value === "object" && !Array.isArray(value) ? value : {};
@@ -75,6 +87,34 @@ function actionLabelFor(event: UserActivityEntry) {
     return target || href || "Clicked";
   }
   return event.type.replace(/_/g, " ");
+}
+
+function isNoiseEvent(event: UserActivityEntry) {
+  const type = event.type.trim().toLowerCase();
+  const path = routePathFor(event) || "";
+  return NOISE_ACTIVITY_TYPES.has(type) || ASSET_OR_INTERNAL_PATH_RE.test(path);
+}
+
+function isMeaningfulClick(event: UserActivityEntry) {
+  if (event.type !== "click" || isNoiseEvent(event)) return false;
+  const label = actionLabelFor(event).toLowerCase();
+  return !/^(button|a|link|clicked)$/.test(label);
+}
+
+function isImportantPageView(event: UserActivityEntry) {
+  if (event.type !== "page_view" || isNoiseEvent(event)) return false;
+  const path = routePathFor(event);
+  return Boolean(path && IMPORTANT_ROUTE_RE.test(path));
+}
+
+function isNonPingUserAction(event: UserActivityEntry) {
+  if (event.type === "page_view" || event.type === "click" || isNoiseEvent(event)) return false;
+  return true;
+}
+
+function isSafeTrailEvent(event: UserActivityEntry) {
+  if (isNoiseEvent(event)) return false;
+  return event.type === "click" || event.type === "page_view" || isNonPingUserAction(event);
 }
 
 function toTrailItem(event: UserActivityEntry): AdminJourneyTrailItem {
@@ -241,6 +281,44 @@ function suspiciousSignalFor(input: {
   return null;
 }
 
+function selectLastMeaningfulEvent(sorted: UserActivityEntry[]) {
+  return (
+    sorted.find(isMeaningfulClick) ||
+    sorted.find(isImportantPageView) ||
+    sorted.find(isNonPingUserAction) ||
+    sorted.find((event) => !isNoiseEvent(event)) ||
+    sorted[0] ||
+    null
+  );
+}
+
+function qualityNotesFor(input: {
+  sessionId: string | null;
+  pathSequence: string[];
+  source: string;
+  suspiciousSignal: string | null;
+  engagementLabel: AdminJourneySummary["engagementLabel"];
+  confidenceLabel: AdminJourneySummary["confidenceLabel"];
+  pageCount: number;
+  clickCount: number;
+  eventCount: number;
+  activeSeconds: number;
+}) {
+  const notes: string[] = [];
+
+  if (input.suspiciousSignal) notes.push(input.suspiciousSignal);
+  if (!input.sessionId) notes.push("Grouped by recent activity gap");
+  if (input.confidenceLabel === "Low") notes.push("Low confidence: limited signal");
+  else if (input.confidenceLabel === "Limited") notes.push("Limited confidence");
+  if (input.pathSequence.length <= 1) notes.push("Single-route journey");
+  if (input.source === "direct") notes.push("Direct or unknown source");
+  if (input.clickCount === 0 && input.pageCount > 0) notes.push("No safe clicks captured");
+  if (input.activeSeconds <= 20 && input.eventCount <= 2) notes.push("Short active window");
+  if (input.engagementLabel === "Hot") notes.push("Recent high-signal session");
+
+  return Array.from(new Set(notes)).slice(0, 5);
+}
+
 function buildIntentSummary(input: {
   currentPath: string | null;
   previousPath: string | null;
@@ -319,21 +397,30 @@ export function buildJourneySummary(
     source: source.source,
     suspiciousSignal,
   });
-  const lastMeaningfulEvent =
-    sorted.find((event) => event.type === "click") ||
-    sorted.find((event) => event.type !== "page_view") ||
-    sorted[0] ||
-    null;
+  const lastMeaningfulEvent = selectLastMeaningfulEvent(sorted);
   const lastMeaningfulAction = lastMeaningfulEvent ? toTrailItem(lastMeaningfulEvent) : null;
+  const sessionId = sessionIdFor(sorted[0]) ?? null;
+  const qualityNotes = qualityNotesFor({
+    sessionId,
+    pathSequence,
+    source: source.source,
+    suspiciousSignal,
+    engagementLabel: scoring.engagementLabel,
+    confidenceLabel: scoring.confidenceLabel,
+    pageCount,
+    clickCount,
+    eventCount: sessionEvents.length,
+    activeSeconds,
+  });
 
   return {
-    sessionId: sessionIdFor(sorted[0]) ?? null,
+    sessionId,
     lastSeenAt: sorted[0]?.createdAt ?? null,
     currentPath,
     previousPath,
     entryPath,
     pathSequence,
-    recentActionTrail: sorted.slice(0, 5).map(toTrailItem),
+    recentActionTrail: sorted.filter(isSafeTrailEvent).slice(0, 8).map(toTrailItem),
     lastMeaningfulAction,
     source: source.source,
     referrer: source.referrer,
@@ -341,6 +428,7 @@ export function buildJourneySummary(
     engagementLabel: scoring.engagementLabel,
     confidenceLabel: scoring.confidenceLabel,
     suspiciousSignal,
+    qualityNotes,
     intentSummary: buildIntentSummary({
       currentPath,
       previousPath,

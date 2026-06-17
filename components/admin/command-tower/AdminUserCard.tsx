@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   BellDot,
   Coins,
@@ -92,6 +92,16 @@ function formatPathChain(paths: string[]) {
   return visible.length > 0 ? visible.join(" -> ") : "No tracked path yet";
 }
 
+function formatFullPathChain(paths: string[]) {
+  return paths.length > 0 ? paths.join(" -> ") : "No tracked path yet";
+}
+
+function shortSessionId(value: string | null) {
+  if (!value) return "None";
+  if (value.length <= 18) return value;
+  return `${value.slice(0, 8)}...${value.slice(-6)}`;
+}
+
 export default function AdminUserCard({
   user,
   draft,
@@ -107,6 +117,7 @@ export default function AdminUserCard({
   const actionsScrollRef = useRef<HTMLDivElement | null>(null);
   const actionsSentinelRef = useRef<HTMLDivElement | null>(null);
   const loadingNextActionsRef = useRef(false);
+  const [journeyExpanded, setJourneyExpanded] = useState(false);
   const latestPath = findLatestPageView(renderedActions);
   const communityLobbyView = getTileViewMode(
     user.appearance?.tileViewPreferences,
@@ -325,7 +336,12 @@ export default function AdminUserCard({
               {renderedActions.length}/{activityTotal}
             </div>
           </div>
-          <JourneySummaryPanel journey={user.journeySummary} />
+          <JourneySummaryPanel
+            journey={user.journeySummary}
+            expanded={journeyExpanded}
+            onToggle={() => setJourneyExpanded((current) => !current)}
+          />
+          {journeyExpanded ? <JourneyDetailsPanel journey={user.journeySummary} /> : null}
           <div ref={actionsScrollRef} className="mt-4 h-[24rem] space-y-3 overflow-y-auto pr-1">
             {renderedActions.length > 0 ? (
               renderedActions.map((activity) => (
@@ -789,7 +805,15 @@ export default function AdminUserCard({
   );
 }
 
-function JourneySummaryPanel({ journey }: { journey: JourneySummary }) {
+function JourneySummaryPanel({
+  journey,
+  expanded,
+  onToggle,
+}: {
+  journey: JourneySummary;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
   if (!journey) {
     return (
       <div className="mt-4 rounded-xl border border-white/8 bg-slate-900/70 px-3 py-3 text-sm text-slate-400">
@@ -808,9 +832,18 @@ function JourneySummaryPanel({ journey }: { journey: JourneySummary }) {
     <div className="mt-4 rounded-xl border border-white/8 bg-slate-900/70 px-3 py-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="text-[11px] uppercase tracking-[0.22em] text-slate-500">Last Journey</div>
-        <span className={`rounded-full border px-2 py-0.5 text-[11px] ${journeyTone(journey.engagementLabel)}`}>
-          {journey.engagementLabel} · {journey.confidenceLabel}
-        </span>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className={`rounded-full border px-2 py-0.5 text-[11px] ${journeyTone(journey.engagementLabel)}`}>
+            {journey.engagementLabel} · {journey.confidenceLabel}
+          </span>
+          <button
+            type="button"
+            onClick={onToggle}
+            className="rounded-full border border-white/10 px-2.5 py-1 text-[11px] font-medium text-slate-200 transition hover:border-amber-200/35 hover:text-amber-100"
+          >
+            {expanded ? "Hide journey" : "View journey"}
+          </button>
+        </div>
       </div>
 
       <div className="mt-2 text-sm text-white">{journey.intentSummary}</div>
@@ -835,6 +868,98 @@ function JourneySummaryPanel({ journey }: { journey: JourneySummary }) {
             {journey.suspiciousSignal}
           </span>
         ) : null}
+      </div>
+    </div>
+  );
+}
+
+function JourneyDetailsPanel({ journey }: { journey: JourneySummary }) {
+  if (!journey) {
+    return null;
+  }
+
+  const sourceDetail = [
+    journey.source,
+    journey.campaign ? `campaign ${journey.campaign}` : null,
+    journey.referrer ? `ref ${journey.referrer}` : null,
+  ].filter(Boolean);
+  const qualityNotes =
+    journey.qualityNotes.length > 0
+      ? journey.qualityNotes
+      : [journey.suspiciousSignal, journey.confidenceLabel].filter(Boolean);
+
+  return (
+    <div className="mt-3 rounded-xl border border-amber-200/15 bg-amber-300/5 px-3 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="text-[11px] uppercase tracking-[0.22em] text-amber-100/70">
+          Journey Details
+        </div>
+        <div className="text-[11px] text-slate-400">session {shortSessionId(journey.sessionId)}</div>
+      </div>
+
+      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+        <JourneyFact label="Route Chain" value={formatFullPathChain(journey.pathSequence)} />
+        <JourneyFact label="Last Meaningful" value={journey.lastMeaningfulAction?.label || "None"} />
+        <JourneyFact label="Entry" value={journey.entryPath || "Unknown"} />
+        <JourneyFact label="Current" value={journey.currentPath || "Unknown"} />
+        <JourneyFact label="Previous" value={journey.previousPath || "None"} />
+        <JourneyFact label="Source / UTM" value={sourceDetail.join(" · ") || "direct"} />
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-slate-300">
+        <span className={`rounded-full border px-2 py-0.5 ${journeyTone(journey.engagementLabel)}`}>
+          {journey.engagementLabel}
+        </span>
+        <span className="rounded-full border border-white/10 bg-slate-950/50 px-2 py-0.5">
+          Confidence {journey.confidenceLabel}
+        </span>
+        <span className="rounded-full border border-white/10 bg-slate-950/50 px-2 py-0.5">
+          {journey.pageCount} pages
+        </span>
+        <span className="rounded-full border border-white/10 bg-slate-950/50 px-2 py-0.5">
+          {journey.clickCount} clicks
+        </span>
+      </div>
+
+      {qualityNotes.length > 0 ? (
+        <div className="mt-3">
+          <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Reasons / Notes</div>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {qualityNotes.map((note) => (
+              <span
+                key={String(note)}
+                className="rounded-full border border-white/10 bg-slate-950/50 px-2 py-0.5 text-[11px] text-slate-300"
+              >
+                {note}
+              </span>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      <div className="mt-3">
+        <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">
+          Recent Safe Events
+        </div>
+        <div className="mt-2 space-y-2">
+          {journey.recentActionTrail.length > 0 ? (
+            journey.recentActionTrail.slice(0, 6).map((event) => (
+              <div key={event.id} className="rounded-lg border border-white/8 bg-slate-950/45 px-2.5 py-2">
+                <div className="break-words text-xs text-slate-100">
+                  {event.type.replace(/_/g, " ")} · {event.label}
+                  {event.path ? ` · ${event.path}` : ""}
+                </div>
+                <div className="mt-1 text-[11px] text-slate-500">
+                  <AdminTime value={event.createdAt} />
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="rounded-lg border border-white/8 bg-slate-950/45 px-2.5 py-2 text-xs text-slate-400">
+              No safe journey events in the current summary window.
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -107,6 +107,7 @@ Current strengths:
 - can see inbox/unread/honor state
 - can see appearance preferences, including exact Community Lobby mode labels for Basic, Advanced, and Extreme
 - can see a compact app-local Journey Summary per user, inspired by Traffic session ideas but built from AoE2WAR `UserActivityEvent` rows
+- can triage Journey Intelligence with client-side engagement filters, search, sort controls, summary counts, and an expandable per-user Journey Details panel without loading full histories upfront
 - recent actions stay in a fixed-height pane and lazy-load older rows through an IntersectionObserver sentinel instead of a manual Next 50 button
 - operator control surface is real, not fake scaffolding
 
