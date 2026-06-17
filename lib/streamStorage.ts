@@ -1,9 +1,14 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 
+// Long browser/native stream chunks must live outside the git repo.
+// Production should use AOE2_VIDEO_CAPTURE_DIR=/mnt/HC_Volume_105319120/aoe2-video-captures.
+// AOE2_STREAM_STORAGE_DIR remains supported for older deploys.
 const STREAM_STORAGE_ROOT =
   process.env.AOE2_STREAM_STORAGE_DIR ||
-  path.join(process.cwd(), "storage", "live-streams");
+  (process.env.AOE2_VIDEO_CAPTURE_DIR
+    ? path.join(process.env.AOE2_VIDEO_CAPTURE_DIR, "live")
+    : path.join(process.cwd(), "storage", "live-streams"));
 
 function safeStreamId(streamId: number | string) {
   const value = String(streamId).replace(/[^0-9]/g, "");
@@ -29,15 +34,35 @@ export function streamChunkPath(streamId: number | string, sequence: number | st
   return path.join(streamChunkDir(streamId), `${safeSequence(sequence)}.webm`);
 }
 
+export async function ensureStreamChunkDir(streamId: number | string) {
+  // Be deliberately explicit: create the root first, then the stream dir.
+  // This prevents per-stream mkdir from depending on an already-existing parent.
+  await fs.mkdir(STREAM_STORAGE_ROOT, { recursive: true });
+  const dir = streamChunkDir(streamId);
+  await fs.mkdir(dir, { recursive: true });
+  return dir;
+}
+
 export async function writeStreamChunk(
   streamId: number | string,
   sequence: number | string,
   data: Buffer
 ) {
-  const dir = streamChunkDir(streamId);
-  await fs.mkdir(dir, { recursive: true });
-  const filePath = streamChunkPath(streamId, sequence);
-  await fs.writeFile(filePath, data);
+  const dir = await ensureStreamChunkDir(streamId);
+  const filePath = path.join(dir, `${safeSequence(sequence)}.webm`);
+  try {
+    await fs.writeFile(filePath, data);
+  } catch (error) {
+    console.error("[streams] failed to write chunk", {
+      streamId: String(streamId),
+      sequence: String(sequence),
+      root: STREAM_STORAGE_ROOT,
+      dir,
+      filePath,
+      error,
+    });
+    throw error;
+  }
   return filePath;
 }
 

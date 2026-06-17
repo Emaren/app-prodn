@@ -439,22 +439,19 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
 
           <section className="rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-5 sm:p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
-              <h2 className="text-2xl font-semibold text-white">Recently Played</h2>
-              <Link
-                href="/game-stats"
-                className="rounded-full border border-white/15 px-4 py-2 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
-              >
-                All matches
-              </Link>
+              <div>
+                <div className="text-xs uppercase tracking-[0.35em] text-sky-200/70">Archive</div>
+                <h2 className="mt-2 text-2xl font-semibold text-white">Recently Played</h2>
+              </div>
             </div>
 
-            <div className="mt-5 space-y-3">
+            <div className="mt-5 max-h-[21rem] space-y-3 overflow-y-auto pr-1 [scrollbar-color:rgba(148,163,184,0.45)_transparent] [scrollbar-width:thin]">
               {snapshot.recentMatches.length === 0 ? (
                 <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-5 text-sm text-slate-300">
                   Waiting on the next completed match.
                 </div>
               ) : (
-                snapshot.recentMatches.slice(0, 4).map((match) => (
+                snapshot.recentMatches.map((match) => (
                   <Link
                     key={match.id}
                     href={`/game-stats/${match.id}`}
@@ -545,14 +542,35 @@ function LiveSessionCard({
   const eyebrowLabel = isCompleted ? "Just finished" : "Watcher live";
   const badgeLabel = isCompleted ? "Final stored" : "Live parse";
   const compactDuration = formatDurationCompact(session.durationSeconds);
+  const cardShellClass = isCompleted
+    ? `relative overflow-hidden rounded-[1.9rem] border px-5 py-5 shadow-[0_26px_90px_rgba(16,185,129,0.12)] sm:px-6 ${shellClass}`
+    : `overflow-hidden rounded-[1.5rem] border px-4 py-4 ${shellClass}`;
+  const cardBodyClass = isCompleted
+    ? "relative grid gap-4 xl:grid-cols-[minmax(0,1fr)_9rem] xl:items-start"
+    : "flex flex-wrap items-start justify-between gap-4";
+  const mediaColumnClass = isCompleted
+    ? "flex w-full flex-col gap-2 text-left xl:w-36 xl:text-right"
+    : "flex w-full flex-col gap-2 text-left sm:w-52 sm:text-right";
+  const streamPreviewClass = isCompleted
+    ? "!min-h-[4.9rem] rounded-2xl sm:!min-h-[5.35rem]"
+    : "!min-h-[6.6rem] rounded-2xl sm:!min-h-[7.2rem]";
 
   return (
-    <div className={`rounded-[1.5rem] border px-4 py-4 ${shellClass}`}>
-      <div className="flex flex-wrap items-start justify-between gap-4">
+    <div className={cardShellClass}>
+      {isCompleted ? (
+        <>
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_86%_10%,rgba(52,211,153,0.18),transparent_34%),linear-gradient(135deg,rgba(6,78,59,0.36),rgba(2,6,23,0)_58%)]" />
+          <div className="pointer-events-none absolute -right-24 -top-24 h-56 w-56 rounded-full bg-emerald-300/10 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-24 left-8 h-44 w-44 rounded-full bg-cyan-300/6 blur-3xl" />
+          <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-emerald-200/45 to-transparent" />
+        </>
+      ) : null}
+
+      <div className={cardBodyClass}>
         <div className="min-w-0 flex-1">
           <div className={`text-xs uppercase tracking-[0.3em] ${eyebrowClass}`}>{eyebrowLabel}</div>
-          <div className="mt-2 text-xl font-semibold text-white">{title}</div>
-          <div className="mt-3 flex flex-wrap gap-2">
+          <div className={isCompleted ? "mt-2 text-[1.35rem] font-semibold leading-tight text-white" : "mt-2 text-xl font-semibold text-white"}>{title}</div>
+          <div className={isCompleted ? "mt-4 grid grid-cols-2 gap-2 [&>span]:min-w-0 [&>span]:w-full [&>span]:justify-center [&>span]:truncate [&>span]:px-2 [&>span]:text-center" : "mt-3 flex flex-wrap gap-2"}>
             {session.mapName ? (
               <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-200">
                 {session.mapName}
@@ -589,21 +607,24 @@ function LiveSessionCard({
             ) : null}
             {primaryStream ? (
               <span className="rounded-full border border-red-300/25 bg-red-400/10 px-3 py-1 text-xs text-red-100">
-                Video live
+                {isCompleted ? "Video saved" : "Video live"}
               </span>
             ) : null}
           </div>
         </div>
 
-        <div className="flex w-full flex-col gap-2 text-left sm:w-44 sm:text-right">
+        <div className={mediaColumnClass}>
           {primaryStream ? (
-            <Link href={watchHref} className="block overflow-hidden rounded-2xl transition hover:scale-[1.02]">
+            <Link
+              href={watchHref}
+              className="block overflow-hidden rounded-2xl border border-white/10 bg-black/50 shadow-[0_18px_50px_rgba(0,0,0,0.28)] transition hover:scale-[1.02] hover:border-sky-200/30"
+            >
               <LiveStreamFrame
                 stream={primaryStream}
                 title={title}
                 compact
-                fallbackLabel={isCompleted ? "Replay" : "Live"}
-                className="!min-h-[5.4rem] rounded-2xl"
+                fallbackLabel={isCompleted ? "Replay" : "Battle Cam"}
+                className={streamPreviewClass}
               />
             </Link>
           ) : null}
@@ -616,7 +637,7 @@ function LiveSessionCard({
         </div>
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-3">
+      <div className={isCompleted ? "mt-5 grid grid-cols-2 gap-2 border-t border-emerald-100/10 pt-4 [&>a]:justify-center [&>a]:text-center" : "mt-4 flex flex-wrap gap-3"}>
         <Link
           href={watchHref}
           className="rounded-full bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200"

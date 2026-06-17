@@ -5,6 +5,7 @@ import type { PrismaClient } from "@/lib/generated/prisma";
 export type LiveGameSession = {
   id: number;
   sessionKey: string;
+  replayFile: string | null;
   replayHash: string;
   parseIteration: number;
   createdAt: string;
@@ -203,6 +204,7 @@ function buildSessionFromRow(
   return {
     id: row.id,
     sessionKey,
+    replayFile: row.replay_file ?? null,
     replayHash: row.replayHash,
     parseIteration: row.parse_iteration,
     createdAt: row.createdAt.toISOString(),

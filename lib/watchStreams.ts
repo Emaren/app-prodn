@@ -188,7 +188,12 @@ export function normalizeWatchStreamInput(input: {
   };
 }
 
-export function watchStreamCanEmbed(provider: string, embedId: string | null) {
+export function watchStreamCanEmbed(
+  provider: string,
+  embedId: string | null,
+  playbackUrl?: string | null
+) {
+  if (provider === "aoe2war" && playbackUrl) return true;
   return (provider === "twitch" || provider === "youtube") && Boolean(embedId);
 }
 
@@ -216,7 +221,7 @@ export function toWatchStreamPayload(row: {
   createdAt: Date;
   updatedAt: Date;
 }): WatchStreamPayload {
-  const canEmbed = watchStreamCanEmbed(row.provider, row.embedId);
+  const canEmbed = watchStreamCanEmbed(row.provider, row.embedId, row.playbackUrl ?? null);
 
   return {
     id: row.id,

@@ -264,8 +264,8 @@ function BrowserChunkPlayer({
       video.src = objectUrl;
       video.load();
       lastLoadedSeqRef.current = endSeq;
-      setSignalLabel("Catching live edge");
-      setWarming(true);
+      setSignalLabel(stream.status === "ended" ? "Saved Battle Cam" : "Catching live edge");
+      setWarming(stream.status !== "ended");
     };
 
     const poll = async () => {
@@ -292,13 +292,13 @@ function BrowserChunkPlayer({
 
         if (manifest.stale) {
           setWarming(true);
-          setSignalLabel("Waiting for streamer");
+          setSignalLabel(stream.status === "ended" ? "Saved Battle Cam" : "Waiting for streamer");
           return;
         }
 
         if (manifest.latestSeq < 0 || newestAvailableSeq < 1) {
           setWarming(true);
-          setSignalLabel("Signal warming");
+          setSignalLabel(stream.status === "ended" ? "Replay warming" : "Signal warming");
           return;
         }
 
@@ -314,8 +314,8 @@ function BrowserChunkPlayer({
           nudgeRollingEdge();
         }
       } catch {
-        setSignalLabel("Reconnecting live edge");
-        setWarming(true);
+        setSignalLabel(stream.status === "ended" ? "Saved Battle Cam" : "Reconnecting live edge");
+        setWarming(stream.status !== "ended");
       } finally {
         pollInFlight = false;
         if (pendingRefresh && !cancelled) {
@@ -334,12 +334,12 @@ function BrowserChunkPlayer({
       setWarming(false);
     };
     const handleWaiting = () => {
-      setSignalLabel("Catching live edge");
-      setWarming(true);
+      setSignalLabel(stream.status === "ended" ? "Saved Battle Cam" : "Catching live edge");
+      setWarming(stream.status !== "ended");
     };
     const handleVideoError = () => {
-      setSignalLabel("Reconnecting live edge");
-      setWarming(true);
+      setSignalLabel(stream.status === "ended" ? "Saved Battle Cam" : "Reconnecting live edge");
+      setWarming(stream.status !== "ended");
     };
 
     video.addEventListener("loadedmetadata", handleLoadedMetadata);

@@ -361,21 +361,30 @@ export function WatchAndChatHero({
     };
   }, [selectedWar?.sessionKey]);
 
-  const shouldEmbedStream = selectedWar.statusLabel === "Live";
   const streamOptions = selectedWar.primaryStream
     ? [selectedWar.primaryStream, ...streams.filter((stream) => stream.id !== selectedWar.primaryStream?.id)]
     : streams;
-  const primaryStream = shouldEmbedStream
-    ? streamOptions.find((stream) => stream.provider === "aoe2war" || stream.sourceType === "browser") ??
-      streamOptions.find((stream) => stream.isPrimary && stream.canEmbed) ??
-      streamOptions.find((stream) => stream.canEmbed) ??
-      null
-    : null;
+  const nativeStream =
+    streamOptions.find(
+      (stream) =>
+        (stream.provider === "aoe2war" || stream.sourceType === "browser") &&
+        Boolean(stream.playbackUrl)
+    ) ?? null;
+  const externalEmbeddableStream =
+    selectedWar.statusLabel === "Live"
+      ? streamOptions.find((stream) => stream.isPrimary && stream.canEmbed) ??
+        streamOptions.find((stream) => stream.canEmbed) ??
+        null
+      : null;
+  const primaryStream = nativeStream ?? externalEmbeddableStream;
   const primaryIsBrowserStream =
     primaryStream?.provider === "aoe2war" || primaryStream?.sourceType === "browser";
   const embedSrc = primaryIsBrowserStream ? null : getEmbedSrc(primaryStream, parentHost);
   const actionHref = primaryIsBrowserStream ? selectedWar.href : primaryStream?.url || selectedWar.href;
-  const fallbackVideoUrl = embedSrc || fallbackLoopFailed ? null : WATCH_CHAT_LOOP_URL;
+  const actionIsExternalStream = Boolean(primaryStream?.url && !primaryIsBrowserStream);
+  const fallbackVideoUrl = primaryStream || embedSrc || fallbackLoopFailed ? null : WATCH_CHAT_LOOP_URL;
+  const heroStreamFallbackLabel =
+    primaryStream?.status === "ended" ? "Saved Battle Cam" : selectedWar.statusLabel === "Live" ? "Live" : "Battle Cam";
   const commentMessages = messages.slice(-5);
   const heroBetMarket = betBoard?.featuredMarket ?? betBoard?.openMarkets?.[0] ?? null;
 
@@ -399,7 +408,7 @@ export function WatchAndChatHero({
                 stream={primaryStream}
                 title={selectedWar.title}
                 className="absolute inset-0 h-full min-h-0 rounded-none border-0 shadow-none"
-                fallbackLabel="Live"
+                fallbackLabel={heroStreamFallbackLabel}
               />
             ) : embedSrc ? (
               <iframe
@@ -465,12 +474,12 @@ export function WatchAndChatHero({
 
               <Link
                 href={actionHref}
-                target={primaryStream?.url ? "_blank" : undefined}
-                rel={primaryStream?.url ? "noreferrer" : undefined}
+                target={actionIsExternalStream ? "_blank" : undefined}
+                rel={actionIsExternalStream ? "noreferrer" : undefined}
                 className={`inline-flex shrink-0 items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold transition ${tone.primaryButton}`}
               >
                 Watch
-                {primaryStream?.url ? <ExternalLink className="h-4 w-4" aria-hidden="true" /> : null}
+                {actionIsExternalStream ? <ExternalLink className="h-4 w-4" aria-hidden="true" /> : null}
               </Link>
             </div>
 
