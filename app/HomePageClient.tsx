@@ -16,6 +16,7 @@ import { TopWoloEarnersTile } from "@/components/lobby/TopWoloEarnersTile";
 import { TournamentPanel } from "@/components/lobby/TournamentPanel";
 import { WatchAndChatHero } from "@/components/lobby/WatchAndChatHero";
 import { WoloMarketTile } from "@/components/lobby/WoloMarketTile";
+import { WolomaniaPromoTile } from "@/components/lobby/WolomaniaPromoTile";
 import { useTileViewPreference } from "@/components/tile-view/useTileViewPreference";
 import { buildChatItems } from "@/components/lobby/utils";
 import { useUserAuth } from "@/context/UserAuthContext";
@@ -60,7 +61,7 @@ type HomePageClientProps = {
 
 function AdvancedFeaturedWarriors() {
   return (
-    <section className="relative overflow-hidden rounded-[2rem] border border-amber-200/10 bg-[radial-gradient(circle_at_50%_0%,rgba(251,191,36,0.14),transparent_32%),linear-gradient(135deg,rgba(7,14,27,0.84),rgba(2,6,16,0.92))] px-4 py-5 shadow-[0_28px_96px_rgba(0,0,0,0.32)] sm:px-5">
+    <section className="relative px-4 py-5 sm:px-5 bg-transparent overflow-visible bg-transparent shadow-none border-0 ring-0 rounded-none overflow-visible">
       <div className="pointer-events-none absolute inset-x-10 bottom-0 h-px bg-gradient-to-r from-transparent via-amber-200/28 to-transparent" />
       <div className="grid gap-4 lg:grid-cols-[minmax(9rem,0.42fr)_minmax(0,1fr)_minmax(8rem,0.35fr)] lg:items-center">
         <div className="hidden lg:block">
@@ -77,7 +78,7 @@ function AdvancedFeaturedWarriors() {
             <Link
               key={warrior.name}
               href={warrior.href}
-              className="group relative min-h-[13.5rem] overflow-hidden rounded-[1.35rem] border border-amber-200/12 bg-black/28 transition hover:border-amber-200/28"
+              className="group relative min-h-[13.5rem] overflow-visible rounded-none border border-amber-200/12 bg-black/28 transition hover:border-amber-200/28"
             >
               <Image
                 src={avatarUrlForName("lookupName" in warrior ? warrior.lookupName : warrior.name)}
@@ -87,7 +88,7 @@ function AdvancedFeaturedWarriors() {
                 sizes="(min-width: 1280px) 250px, (min-width: 640px) 45vw, 90vw"
                 className="object-cover object-top opacity-85 transition duration-500 group-hover:scale-[1.035]"
               />
-              <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_24%,rgba(2,6,23,0.18)_58%,rgba(2,6,23,0.92)_100%)]" />
+              <div className="absolute inset-0" />
               <div className="absolute inset-x-3 bottom-3 rounded-2xl border border-amber-200/12 bg-black/48 px-3 py-2.5 text-center backdrop-blur">
                 <div className="font-serif text-lg font-semibold uppercase tracking-[0.1em] text-white">
                   {warrior.name}
@@ -113,8 +114,8 @@ function AdvancedFeaturedWarriors() {
 
 function ExtremeFeaturedWarriors() {
   return (
-    <section className="relative rounded-[2.2rem] border border-amber-200/10 bg-[radial-gradient(circle_at_50%_8%,rgba(251,191,36,0.12),transparent_31%),radial-gradient(circle_at_82%_20%,rgba(59,130,246,0.10),transparent_28%),linear-gradient(180deg,rgba(5,12,24,0.92),rgba(1,5,14,0.98))] px-5 pb-4 pt-8 shadow-[0_34px_120px_rgba(0,0,0,0.38)] sm:px-7 lg:px-8">
-      <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[2.2rem]">
+    <section className="relative rounded-none px-5 pb-4 pt-8 shadow-[0_34px_120px_rgba(0,0,0,0.38)] sm:px-7 lg:px-8">
+      <div className="pointer-events-none absolute inset-0 overflow-visible rounded-none">
         <div className="absolute inset-x-10 bottom-0 h-px bg-gradient-to-r from-transparent via-amber-200/30 to-transparent" />
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/35 to-transparent" />
         <div className="absolute inset-y-0 left-0 w-1/4 bg-gradient-to-r from-black/45 to-transparent" />
@@ -156,8 +157,8 @@ function ExtremeFeaturedWarriors() {
                 href={warrior.href}
                 className="group relative min-h-[16rem] overflow-visible transition hover:-translate-y-0.5"
               >
-                <div className="absolute inset-x-0 bottom-2 top-7 overflow-hidden rounded-[1.1rem] border border-amber-100/18 bg-[radial-gradient(circle_at_50%_0%,rgba(251,191,36,0.10),transparent_32%),linear-gradient(180deg,rgba(255,255,255,0.06),rgba(0,0,0,0.20))] shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_18px_60px_rgba(0,0,0,0.28)] transition group-hover:border-amber-200/38">
-                  <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_8%,rgba(2,6,23,0.08)_54%,rgba(2,6,23,0.88)_100%)]" />
+                <div className="absolute inset-x-0 bottom-2 top-7 overflow-visible rounded-none border border-amber-100/18 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_18px_60px_rgba(0,0,0,0.28)] transition group-hover:border-amber-200/38">
+                  <div className="absolute inset-0" />
                   <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/70 to-transparent" />
                 </div>
                 <div className="absolute inset-x-[-14%] -top-5 bottom-6 z-10 transition duration-500 group-hover:-translate-y-1 group-hover:scale-[1.025]">
@@ -654,6 +655,7 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
             viewMode={viewMode}
             surface={isExtremeLobby ? "extreme" : "standard"}
           />
+          <WolomaniaPromoTile />
           <WatchAndChatHero
             tournament={tournament}
             recentMatches={recentMatches}
