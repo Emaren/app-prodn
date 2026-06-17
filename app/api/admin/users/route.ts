@@ -4,6 +4,7 @@ import type { PrismaClient } from "@/lib/generated/prisma";
 import { loadUserCommunitySummaries } from "@/lib/communityHonors";
 import { loadInboxPayload } from "@/lib/contactInbox";
 import { requireAdmin } from "@/lib/adminSession";
+import { loadJourneySummaryMap } from "@/lib/adminJourneyIntelligence";
 import {
   loadAppearancePreferenceMap,
   loadRecentActivityMap,
@@ -269,6 +270,7 @@ export async function GET(request: NextRequest) {
       inbox,
       appearanceMap,
       activityMap,
+      journeySummaryMap,
       adminMemberships,
       activityStats,
       allClaims,
@@ -284,6 +286,7 @@ export async function GET(request: NextRequest) {
       loadInboxPayload(prisma, admin.uid, { summaryOnly: true }),
       loadAppearancePreferenceMap(prisma, userIds),
       loadRecentActivityMap(prisma, userIds, 20),
+      loadJourneySummaryMap(prisma, userIds, 40),
       prisma.directConversationParticipant.findMany({
         where: { userId: admin.id },
         include: {
@@ -911,6 +914,7 @@ export async function GET(request: NextRequest) {
           recentActions,
           recentActionsTotalCount: activitySummary.recentActionsTotalCount,
           lastActivityAt: activitySummary.lastActivityAt,
+          journeySummary: journeySummaryMap.get(entry.id) ?? null,
           pendingBadgeCount: community.badges.filter((badge) => badge.status === "pending").length,
           pendingGiftCount: community.gifts.filter((gift) => gift.status === "pending").length,
           pendingWoloClaims: pendingClaims.slice(0, 8),

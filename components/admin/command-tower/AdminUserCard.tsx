@@ -70,6 +70,28 @@ function formatTileViewMode(mode: TileViewMode) {
   return TILE_VIEW_MODE_LABELS[mode] ?? "Basic";
 }
 
+type JourneySummary = AdminUserRow["journeySummary"];
+
+function journeyTone(label: NonNullable<JourneySummary>["engagementLabel"]) {
+  switch (label) {
+    case "Hot":
+      return "border-amber-200/30 bg-amber-400/10 text-amber-100";
+    case "Active":
+      return "border-emerald-200/30 bg-emerald-400/10 text-emerald-100";
+    case "Browsing":
+      return "border-sky-200/30 bg-sky-400/10 text-sky-100";
+    case "Dormant":
+      return "border-white/10 bg-white/5 text-slate-300";
+    default:
+      return "border-slate-400/20 bg-slate-400/10 text-slate-300";
+  }
+}
+
+function formatPathChain(paths: string[]) {
+  const visible = paths.slice(-4);
+  return visible.length > 0 ? visible.join(" -> ") : "No tracked path yet";
+}
+
 export default function AdminUserCard({
   user,
   draft,
@@ -303,7 +325,8 @@ export default function AdminUserCard({
               {renderedActions.length}/{activityTotal}
             </div>
           </div>
-          <div ref={actionsScrollRef} className="mt-4 h-[28rem] space-y-3 overflow-y-auto pr-1">
+          <JourneySummaryPanel journey={user.journeySummary} />
+          <div ref={actionsScrollRef} className="mt-4 h-[24rem] space-y-3 overflow-y-auto pr-1">
             {renderedActions.length > 0 ? (
               renderedActions.map((activity) => (
                 <div
@@ -763,6 +786,66 @@ export default function AdminUserCard({
         </section>
       </div>
     </article>
+  );
+}
+
+function JourneySummaryPanel({ journey }: { journey: JourneySummary }) {
+  if (!journey) {
+    return (
+      <div className="mt-4 rounded-xl border border-white/8 bg-slate-900/70 px-3 py-3 text-sm text-slate-400">
+        No readable journey yet.
+      </div>
+    );
+  }
+
+  const sourceDetail = [
+    journey.source,
+    journey.campaign ? `campaign ${journey.campaign}` : null,
+    journey.referrer ? `ref ${journey.referrer}` : null,
+  ].filter(Boolean);
+
+  return (
+    <div className="mt-4 rounded-xl border border-white/8 bg-slate-900/70 px-3 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="text-[11px] uppercase tracking-[0.22em] text-slate-500">Last Journey</div>
+        <span className={`rounded-full border px-2 py-0.5 text-[11px] ${journeyTone(journey.engagementLabel)}`}>
+          {journey.engagementLabel} · {journey.confidenceLabel}
+        </span>
+      </div>
+
+      <div className="mt-2 text-sm text-white">{journey.intentSummary}</div>
+      <div className="mt-2 break-words text-xs text-slate-300">{formatPathChain(journey.pathSequence)}</div>
+
+      <div className="mt-3 grid gap-2 sm:grid-cols-3">
+        <JourneyFact label="Now" value={journey.currentPath || "Unknown"} />
+        <JourneyFact label="Source" value={sourceDetail.join(" · ") || "direct"} />
+        <JourneyFact
+          label="Last"
+          value={<AdminTime value={journey.lastSeenAt} emptyValue="Never" />}
+        />
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-slate-400">
+        <span>{journey.pageCount} pages</span>
+        <span>{journey.clickCount} clicks</span>
+        <span>{journey.eventCount} events</span>
+        <span>{journey.activeSeconds}s active</span>
+        {journey.suspiciousSignal ? (
+          <span className="rounded-full border border-rose-300/25 bg-rose-400/10 px-2 py-0.5 text-rose-100">
+            {journey.suspiciousSignal}
+          </span>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function JourneyFact({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="min-w-0 rounded-lg border border-white/8 bg-slate-950/45 px-2.5 py-2">
+      <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{label}</div>
+      <div className="mt-1 break-words text-xs text-slate-200">{value}</div>
+    </div>
   );
 }
 

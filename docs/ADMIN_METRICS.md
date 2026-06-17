@@ -8,6 +8,14 @@ This dashboard must not treat raw watcher package traffic as real users. Package
 
 The Honors panel owns current badge add/remove controls. Belts and Artifacts may appear as non-functional placeholders until their assignment rails become real.
 
+### Journey Intelligence
+
+Each user card has a compact Journey Summary above Recent Actions. It is Traffic-inspired but app-local: the API batches recent `UserActivityEvent` rows, groups the newest session with `journeySessionId` or a 30-minute activity gap, compresses the route chain, and labels engagement as `Hot`, `Active`, `Browsing`, `Dormant`, or `Unknown`.
+
+The browser activity endpoint records authenticated page views and safe button/link clicks only. Metadata is allowlisted to route path, previous path, same-session id, referrer host/path without query strings, UTM fields, viewport/device hints, and sanitized click target labels/hrefs. It must not capture chat bodies, form values, passwords, tokens, private keys, typed text, or arbitrary DOM metadata.
+
+Suspicion labels such as thin direct trails, fast click bursts, and probe-like paths are operator hints, not fraud truth. Raw Recent Actions remains the audit trail; Journey Summary is a fast reading layer.
+
 ## Watcher Package Pulls
 
 Raw hits to `/download/watcher/*`, sourced from `watcher_download_events`.

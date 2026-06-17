@@ -6,6 +6,7 @@ import type {
   SettlementRailRow,
   SettlementRailSummary,
 } from "@/components/admin/WoloSettlementRail";
+import type { AdminJourneySummary } from "@/lib/adminJourneyIntelligence";
 import type { WalletFrictionRailPayload } from "@/lib/adminWalletFriction";
 import type { ScheduledMatchColorTag } from "@/lib/scheduledMatchPreferences";
 import type { TileViewMode, TileViewPreferences } from "@/lib/tileViewPreferences";
@@ -146,6 +147,7 @@ export type AdminUserRow = {
   recentActions: Activity[];
   recentActionsTotalCount: number;
   lastActivityAt: string | null;
+  journeySummary: AdminJourneySummary | null;
   pendingBadgeCount: number;
   pendingGiftCount: number;
   pendingWoloClaims: ClaimRow[];
@@ -325,6 +327,7 @@ export type AdminUserLiveRow = Pick<
   | "recentActions"
   | "recentActionsTotalCount"
   | "lastActivityAt"
+  | "journeySummary"
   | "pendingBadgeCount"
   | "pendingGiftCount"
   | "pendingWoloClaimCount"

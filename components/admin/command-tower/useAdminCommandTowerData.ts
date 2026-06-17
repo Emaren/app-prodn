@@ -74,6 +74,7 @@ function mergeUsersWithLiveData(users: AdminUserRow[], liveRows: AdminUsersLiveP
       adminLastInboxReadAt: live.adminLastInboxReadAt,
       recentActionsTotalCount: live.recentActionsTotalCount,
       lastActivityAt: live.lastActivityAt,
+      journeySummary: live.journeySummary,
       pendingBadgeCount: live.pendingBadgeCount,
       pendingGiftCount: live.pendingGiftCount,
       pendingWoloClaimCount: live.pendingWoloClaimCount,
