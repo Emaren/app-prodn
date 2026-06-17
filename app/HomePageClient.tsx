@@ -157,7 +157,7 @@ function ExtremeFeaturedWarriors() {
                 href={warrior.href}
                 className="group relative min-h-[16rem] overflow-visible transition hover:-translate-y-0.5"
               >
-                <div className="absolute inset-x-0 bottom-2 top-7 overflow-visible rounded-none border border-amber-100/18 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_18px_60px_rgba(0,0,0,0.28)] transition group-hover:border-amber-200/38">
+                <div className="absolute inset-x-0 bottom-2 top-7 overflow-visible rounded-[1.35rem] border border-amber-100/12 bg-slate-950/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.045),0_18px_60px_rgba(0,0,0,0.24)] transition group-hover:border-amber-200/26">
                   <div className="absolute inset-0" />
                   <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/70 to-transparent" />
                 </div>
@@ -171,7 +171,7 @@ function ExtremeFeaturedWarriors() {
                     className="object-contain object-top drop-shadow-[0_18px_34px_rgba(0,0,0,0.56)] [mask-image:linear-gradient(180deg,black_0%,black_84%,transparent_100%)]"
                   />
                 </div>
-                <div className="absolute inset-x-5 bottom-4 z-20 rounded-xl border border-amber-200/20 bg-black/64 px-3 py-2.5 text-center shadow-[0_12px_30px_rgba(0,0,0,0.36)] backdrop-blur">
+                <div className="absolute inset-x-5 bottom-4 z-20 rounded-xl bg-black/58 px-3 py-2.5 text-center shadow-[0_12px_30px_rgba(0,0,0,0.34)] backdrop-blur">
                   <div className="font-serif text-base font-semibold uppercase tracking-[0.10em] text-white">
                     {warrior.name}
                   </div>

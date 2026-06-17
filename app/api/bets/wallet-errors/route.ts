@@ -23,6 +23,42 @@ function normalizeText(value: unknown, maxLength: number) {
   return normalized ? normalized.slice(0, maxLength) : null;
 }
 
+
+function classifyBetWalletIssue(rawError: string) {
+  const normalized = rawError.toLowerCase();
+
+  if (
+    normalized.includes("keplr extension not found") ||
+    normalized.includes("keplr is not available") ||
+    normalized.includes("keplr offline signer was not found")
+  ) {
+    return "keplr_unavailable";
+  }
+
+  if (/insufficient|not enough|balance/i.test(rawError)) {
+    return "insufficient_mainnet_balance";
+  }
+
+  if (/reject|denied|declined|cancel/i.test(rawError)) {
+    return "wallet_rejected";
+  }
+
+  return "wallet_flow_error";
+}
+
+function describeBetWalletIssue(rawError: string) {
+  switch (classifyBetWalletIssue(rawError)) {
+    case "keplr_unavailable":
+      return "Keplr is not available in this browser. No bet was placed and no WOLO moved. Open AoE2WAR in the Chrome profile where Keplr is installed, enable Keplr for aoe2war.com, then try again.";
+    case "insufficient_mainnet_balance":
+      return "Not enough mainnet WOLO is available in this wallet for that bet. No bet was placed and no WOLO moved.";
+    case "wallet_rejected":
+      return "Wallet approval was cancelled or rejected. No bet was placed and no WOLO moved.";
+    default:
+      return rawError;
+  }
+}
+
 async function requireViewer(request: NextRequest) {
   const sessionUid = await getSessionUid(request);
   if (!sessionUid) {
@@ -76,6 +112,8 @@ export async function POST(request: NextRequest) {
       normalizeText(payload.rawError, 500) ||
       "Wallet flow failed before the wager was recorded.";
     const step = normalizeText(payload.step, 80) || "wallet_preflight";
+    const walletIssue = classifyBetWalletIssue(rawError);
+    const friendlyError = describeBetWalletIssue(rawError);
 
     if (!Number.isFinite(marketId) || !side || !amountWolo) {
       return NextResponse.json(
@@ -116,6 +154,8 @@ export async function POST(request: NextRequest) {
         browserInfo: normalizeText(payload.browserInfo, 255),
         step,
         rawError,
+        walletIssue,
+        friendlyError,
         preIntent: true,
       },
       dedupeWithinSeconds: 0,

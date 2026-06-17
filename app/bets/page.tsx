@@ -1246,6 +1246,32 @@ export default function BetsPage() {
     }).catch(() => null);
   }
 
+
+  function isKeplrUnavailableError(rawError: string) {
+    const normalized = rawError.toLowerCase();
+    return (
+      normalized.includes("keplr extension not found") ||
+      normalized.includes("keplr is not available") ||
+      normalized.includes("keplr offline signer was not found")
+    );
+  }
+
+  function describeBetWalletError(rawError: string) {
+    if (isKeplrUnavailableError(rawError)) {
+      return "Keplr is not available in this browser. No bet was placed and no WOLO moved. Open AoE2WAR in the Chrome profile where Keplr is installed, enable Keplr for aoe2war.com, then try again.";
+    }
+
+    if (/insufficient|not enough|balance/i.test(rawError)) {
+      return "Not enough mainnet WOLO is available in this wallet for that bet. No bet was placed and no WOLO moved.";
+    }
+
+    if (/reject|denied|declined|cancel/i.test(rawError)) {
+      return "Wallet approval was cancelled or rejected. No bet was placed and no WOLO moved.";
+    }
+
+    return rawError;
+  }
+
   const recoverStakeIntent = useCallback(
     async (intentId: number, options?: { automatic?: boolean }) => {
       const recovery = readPendingStakeRecoveries().find((entry) => entry.intentId === intentId) || null;
@@ -1395,6 +1421,12 @@ export default function BetsPage() {
     }
 
     const keplrWindow = window as BetBrowserWindow;
+
+    if (!keplrWindow.keplr) {
+      throw new Error(
+        "Keplr is not available in this browser. No bet was placed and no WOLO moved. Open AoE2WAR in the Chrome profile where Keplr is installed, enable Keplr for aoe2war.com, then try again."
+      );
+    }
 
     if (keplrWindow.keplr?.experimentalSuggestChain) {
       try {
@@ -1610,6 +1642,7 @@ export default function BetsPage() {
     } catch (error) {
       console.error("Failed to lock wager:", error);
       const rawError = error instanceof Error ? error.message : "Could not lock the wager.";
+      const displayError = describeBetWalletError(rawError);
       if (intentId) {
         await recordStakeIntentFailure({
           intentId,
@@ -1635,7 +1668,7 @@ export default function BetsPage() {
           rawError,
         });
       }
-      toast.error(rawError);
+      toast.error(displayError);
     } finally {
       setWorkingKey(null);
       setLockWorkflow(null);
@@ -3121,7 +3154,7 @@ function MarketFeature({
       : 0;
   const statusCopy = marketWorkflow
     ? marketWorkflow.phase === "awaiting_wallet"
-      ? "Open Keplr to approve the WOLO stake."
+      ? "Open Keplr — no WOLO moves until you approve the stake."
     : marketWorkflow.phase === "confirming_chain"
         ? "Stake submitted. Waiting for chain confirmation."
         : `Escrow confirmed${marketWorkflow.stakeTxHash ? ` · ${shortTxHash(marketWorkflow.stakeTxHash)}` : ""}. Recording slip...`
