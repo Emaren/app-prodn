@@ -348,13 +348,23 @@ export default async function StakerHallPage({ params }: PageProps) {
           <StatCard label="Seat size" value={compactWolo(stake)} helper="Current stake" tone="gold" icon={<Coins className="h-4 w-4" />} />
           <StatCard label="Weight" value={weight.toLocaleString()} helper="Reward influence" tone="sky" icon={<Sparkles className="h-4 w-4" />} />
           <StatCard label="Hall share" value={share} helper="Of visible active stake" tone="emerald" icon={<Landmark className="h-4 w-4" />} />
-          <StatCard label="Rewards" value={compactWolo(lifetime)} helper="Lifetime visible rewards" tone="gold" icon={<Trophy className="h-4 w-4" />} />
+          <StatCard label="Reward Total" value={compactWolo(lifetime)} helper="All time earnings" tone="gold" icon={<Trophy className="h-4 w-4" />} />
         </section>
 
         <section className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <StatCard label="Compounded" value={compactWolo(compounded)} helper="Rolled into principal" tone="gold" icon={<Crown className="h-4 w-4" />} />
-          <StatCard label="Claimed" value={compactWolo(claimed)} helper="Paid out rewards" tone="emerald" icon={<Wallet className="h-4 w-4" />} />
-          <StatCard label="Pending" value={compactWolo(pending)} helper="Held or awaiting threshold" tone="gold" icon={<Flame className="h-4 w-4" />} />
+          <StatCard label="Auto-compounded" value={compactWolo(compounded)} helper="Inside current stake" tone="gold" icon={<Crown className="h-4 w-4" />} />
+          <StatCard label="Paid Out" value={compactWolo(claimed)} helper="All time" tone="emerald" icon={<Wallet className="h-4 w-4" />} />
+          <StatCard
+            label="Building"
+            value={
+              pending > 0 && pending < 1
+                ? `${pending.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 6 })} WOLO`
+                : compactWolo(pending)
+            }
+            helper="Below reward threshold"
+            tone="gold"
+            icon={<Flame className="h-4 w-4" />}
+          />
         </section>
 
         <section className="mt-6 grid gap-4 lg:grid-cols-2">
@@ -364,7 +374,7 @@ export default async function StakerHallPage({ params }: PageProps) {
                 <div className="text-xs uppercase tracking-[0.28em] text-amber-200/60">Championships</div>
                 <h2 className="mt-2 text-2xl font-semibold text-white">{championshipTitle}</h2>
                 <p className="mt-2 text-sm leading-6 text-slate-300">
-                  Championship and designation rows can be interspersed directly inside the personal ledger.
+                  Titles, rewards, and receipts live together here.
                 </p>
               </div>
               <div className="rounded-full border border-amber-300/25 bg-amber-300/10 p-3 text-amber-100">
@@ -416,7 +426,16 @@ export default async function StakerHallPage({ params }: PageProps) {
         </section>
 
         <div className="mt-6">
-          <StakerLedgerPanel slug={slug} player={registry.player} />
+          <StakerLedgerPanel
+          slug={slug}
+          player={registry.player}
+          rewardStats={{
+            lifetime,
+            compounded,
+            claimed,
+            pending,
+          }}
+        />
         </div>
       </div>
     </main>

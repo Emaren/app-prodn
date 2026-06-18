@@ -12,7 +12,7 @@ const LIVE_POLL_INTERVAL_MS = 12_000;
 type ActivityMode = "ledger" | "grouped";
 const STAKING_ACTIVITY_PREFS_KEY = "aoe2war:staking-activity-prefs";
 
-type ActivityFilterMode = "all" | "staking" | "bets" | "transfers";
+type ActivityFilterMode = "all" | "staking" | "compounded" | "bounties" | "bets" | "transfers";
 
 type ActivityPageResponse = {
   rows?: StakingActivityItem[];
@@ -24,9 +24,42 @@ function normalizedEventType(item: StakingActivityItem) {
   return String(item.eventType || "").toUpperCase();
 }
 
+function isBountyActivity(item: StakingActivityItem) {
+  const text = `${item.label || ""} ${item.detail || ""}`.toLowerCase();
+
+  return text.includes("bounty #") || text.includes("🏰 bounty");
+}
+
+function isCompoundedActivity(item: StakingActivityItem) {
+  const type = normalizedEventType(item);
+  const text = `${item.label || ""} ${item.detail || ""}`.toLowerCase();
+
+  return (
+    type === "COMPOUND" ||
+    text.includes("auto-compounded") ||
+    text.includes("reward compounded") ||
+    text.includes("compounded reward") ||
+    text.includes("rolled into staking principal") ||
+    text.includes("staking reward held") ||
+    text.includes("held reward") ||
+    text.includes("micro reward accrued") ||
+    text.includes("micro_accrued") ||
+    text.includes("payout threshold") ||
+    text.includes("staking reward payout") ||
+    text.includes("reward payout") ||
+    text.includes("claimed reward") ||
+    text.includes("canonical claimed") ||
+    text.includes("paid out") ||
+    text.includes("compound-")
+  );
+}
+
 function isStakingActivity(item: StakingActivityItem) {
   const type = normalizedEventType(item);
   const text = `${item.label || ""} ${item.detail || ""}`.toLowerCase();
+
+  if (isCompoundedActivity(item)) return true;
+
   return (
     type === "REWARD" ||
     type === "STAKE" ||
@@ -74,6 +107,8 @@ function isTransferActivity(item: StakingActivityItem) {
 
 function filterActivityRows(rows: StakingActivityItem[], filter: ActivityFilterMode) {
   if (filter === "staking") return rows.filter(isStakingActivity);
+  if (filter === "compounded") return rows.filter(isCompoundedActivity);
+  if (filter === "bounties") return rows.filter(isBountyActivity);
   if (filter === "bets") return rows.filter(isBetActivity);
   if (filter === "transfers") return rows.filter(isTransferActivity);
   return rows;
@@ -136,6 +171,8 @@ export default function StakingActivityFeed({
         if (
           parsed.filterMode === "all" ||
           parsed.filterMode === "staking" ||
+          parsed.filterMode === "compounded" ||
+          parsed.filterMode === "bounties" ||
           parsed.filterMode === "bets" ||
           parsed.filterMode === "transfers"
         ) {
@@ -481,7 +518,7 @@ export default function StakingActivityFeed({
           </div>
         </div>
         <div className="mb-3 flex flex-wrap gap-2">
-          {(["all", "staking", "bets", "transfers"] as ActivityFilterMode[]).map((filter) => (
+          {(["all", "staking", "compounded", "bounties", "bets", "transfers"] as ActivityFilterMode[]).map((filter) => (
             <button
               key={filter}
               type="button"
