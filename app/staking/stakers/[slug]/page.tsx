@@ -17,6 +17,7 @@ import {
 
 import { getPrisma } from "@/lib/prisma";
 import StakerLedgerPanel from "./StakerLedgerPanel";
+import CopyableWalletAddress, { WalletOwnerBalance } from "./CopyableWalletAddress";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -158,6 +159,34 @@ function shortAddress(address?: string | null) {
   if (!address) return "Wallet pending";
   return address.length > 18 ? `${address.slice(0, 10)}...${address.slice(-6)}` : address;
 }
+
+
+
+async function loadMicroCarryWolo(userId?: number | string | null) {
+  const numericUserId = Number(userId || 0);
+  if (!Number.isFinite(numericUserId) || numericUserId <= 0) return 0;
+
+  const prisma = getPrisma();
+
+  try {
+    const rows = await prisma.$queryRawUnsafe<Array<{ micro_reward_carry_uwolo: number | string | null }>>(
+      `
+        select micro_reward_carry_uwolo
+        from staking_positions
+        where user_id = $1
+        limit 1
+      `,
+      numericUserId,
+    );
+
+    return asNumber(rows[0]?.micro_reward_carry_uwolo) / 1_000_000;
+  } catch {
+    return 0;
+  }
+}
+
+
+
 
 function dateLabel(value?: Date | string | null) {
   if (!value) return "Unknown";
@@ -319,9 +348,10 @@ export default async function StakerHallPage({ params }: PageProps) {
   const claimed = row ? asNumber(row.claimed_rewards_wolo) : 0;
   const compounded = row ? asNumber(row.compounded_rewards_wolo) : 0;
   const seatSize = stake + compounded;
+  const microCarryWolo = await loadMicroCarryWolo(row?.user_id);
   const lifetime = Math.max(row ? asNumber(row.lifetime_rewards_wolo) : 0, allocations.reduce((sum, item) => sum + asNumber(item.reward_wolo), 0));
   const rawPending = row ? asNumber(row.pending_rewards_wolo) : 0;
-  const microCarry = row ? asNumber(row.micro_reward_carry_uwolo) / 1_000_000 : 0;
+  const microCarry = microCarryWolo;
   const allocationDust = allocations.reduce((sum, item) => {
     const reward = asNumber(item.reward_wolo);
     const status = String(item.status || "").toLowerCase();
@@ -393,9 +423,17 @@ export default async function StakerHallPage({ params }: PageProps) {
                 {registry.slug === "jim" ? <ShieldCheck className="h-6 w-6" /> : registry.slug === "julio-alvarez" ? <Swords className="h-6 w-6" /> : <Flame className="h-6 w-6" />}
               </div>
               <div className="mt-4 text-[11px] uppercase tracking-[0.24em] text-slate-500">Wallet</div>
-              <div className="mt-2 break-all text-sm font-semibold text-slate-200">{shortAddress(wallet)}</div>
-              <div className="mt-4 text-[11px] uppercase tracking-[0.24em] text-slate-500">Joined the hall</div>
-              <div className="mt-2 text-sm font-semibold text-white">{dateLabel(joined)}</div>
+              <CopyableWalletAddress address={wallet} label={shortAddress(wallet)} />
+              <div className="mt-4 grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Your balance</div>
+                  <WalletOwnerBalance address={wallet} />
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Joined</div>
+                  <div className="mt-1 text-sm font-semibold text-white">{dateLabel(joined)}</div>
+                </div>
+              </div>
             </div>
           </div>
         </section>

@@ -87,6 +87,36 @@ function computeRewardTrail(rows: LedgerRow[]) {
   return { compounded, building, paid, total: compounded + building + paid };
 }
 
+
+function computeBountySummary(rows: LedgerRow[]) {
+  let paidTotal = 0;
+  let paidCount = 0;
+  let unclaimedCount = 0;
+
+  for (const row of rows) {
+    const text = `${row.label || ""} ${row.detail || ""} ${row.amountLabel || ""}`.toLowerCase();
+    const isUnclaimed = text.includes("unclaimed");
+    const isPaid = text.includes("bounty paid") && !isUnclaimed;
+
+    if (isUnclaimed) {
+      unclaimedCount += 1;
+      continue;
+    }
+
+    if (isPaid) {
+      paidCount += 1;
+      paidTotal += parseWoloAmount(row.amountLabel || row.label);
+    }
+  }
+
+  return {
+    paidTotal,
+    paidCount,
+    unclaimedCount,
+    totalCount: paidCount + unclaimedCount,
+  };
+}
+
 function pillClass(active: boolean) {
   return active
     ? "border-amber-300/40 bg-amber-300/12 text-amber-100"
@@ -239,6 +269,8 @@ export default function StakerLedgerPanel({
     }
   }
 
+  const bountySummary = view === "bounties" ? computeBountySummary(rows) : null;
+
   return (
     <section className="rounded-[1.7rem] border border-white/10 bg-[linear-gradient(180deg,rgba(10,16,29,0.94),rgba(4,7,14,0.99))] p-5 shadow-[0_24px_90px_rgba(2,6,23,0.32)]">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -303,6 +335,28 @@ export default function StakerLedgerPanel({
             );
           })()}
       </div>
+
+      {view === "bounties" && bountySummary ? (
+        <div className="mt-4 rounded-[1.25rem] border border-emerald-300/20 bg-[radial-gradient(circle_at_left,rgba(16,185,129,0.13),transparent_34%),linear-gradient(90deg,rgba(5,24,18,0.72),rgba(3,7,18,0.78))] p-4">
+          <div className="grid gap-3 md:grid-cols-3">
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-emerald-200/75">Total bounties paid out</div>
+              <div className="mt-1 text-lg font-semibold text-white">{formatCompactWolo(bountySummary.paidTotal)}</div>
+              <div className="mt-1 text-xs text-slate-400">Numbered bounty rail</div>
+            </div>
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Paid bounties</div>
+              <div className="mt-1 text-lg font-semibold text-emerald-100">{bountySummary.paidCount}</div>
+              <div className="mt-1 text-xs text-slate-400">on-chain receipts</div>
+            </div>
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Unclaimed</div>
+              <div className="mt-1 text-lg font-semibold text-amber-100">{bountySummary.unclaimedCount}</div>
+              <div className="mt-1 text-xs text-slate-400">reserved gifts</div>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <div
         className="mt-5 max-h-[46rem] space-y-3 overflow-y-auto pr-1"
