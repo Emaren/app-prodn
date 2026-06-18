@@ -40,7 +40,7 @@ export type StakingPeriodKey = "24h" | "7d" | "30d" | "all";
 export type StakingBoardKey = "stakers" | "earners" | "rewards";
 export type StakingActionType = "STAKE" | "UNSTAKE" | "CLAIM" | "ADJUSTMENT";
 export type StakingActivityMode = "ledger" | "grouped";
-export type StakingActivityFilter = "all" | "staking" | "bets" | "transfers";
+export type StakingActivityFilter = "all" | "staking" | "compounded" | "bounties" | "bets" | "transfers";
 
 export type StakingActivityItem = {
   key?: string;
@@ -612,18 +612,20 @@ function giftToActivityItem(
   const timestampLabel = formatMoment(safeTimestamp);
   const player = displayPlayerName(row.user);
   const amountLabel = row.amount != null ? formatActivityWolo(row.amount) : undefined;
-  const statusLabel = row.status === "accepted" ? "Accepted app gift" : "Claimable app gift";
+  const isBounty = (row.note || "").toLowerCase().includes("bounty");
+  const statusLabel = row.status === "accepted" ? "Accepted" : isBounty ? "Unclaimed" : "Claimable";
+  const noun = isBounty ? "bounty" : "gift";
 
   return {
     key: `gift-${row.id}`,
-    label: `${amountLabel ?? row.kind} gift: ${player}`,
+    label: `${amountLabel ?? row.kind} ${noun}: ${player}`,
     detail: [statusLabel, row.note?.trim() || null].filter(Boolean).join(" · "),
     meta: timestampLabel,
-    eventType: "GIFT",
+    eventType: isBounty ? "BOUNTY" : "GIFT",
     amountLabel,
     timestampLabel,
     occurredAt: safeTimestamp.toISOString(),
-    tone: row.status === "accepted" ? "emerald" : "sky",
+    tone: row.status === "accepted" ? "emerald" : isBounty ? "amber" : "sky",
     sortAt: safeTimestamp,
   };
 }
@@ -1164,7 +1166,7 @@ export async function loadMainnetTransferStakingActivityPage(
   const before = options.before ?? null;
   const mode: StakingActivityMode = options.mode === "grouped" ? "grouped" : "ledger";
   const filter: StakingActivityFilter =
-    options.filter === "staking" || options.filter === "bets" || options.filter === "transfers"
+    options.filter === "staking" || options.filter === "compounded" || options.filter === "bounties" || options.filter === "bets" || options.filter === "transfers"
       ? options.filter
       : "all";
   const rawActivityTake =
@@ -1180,7 +1182,7 @@ export async function loadMainnetTransferStakingActivityPage(
   const validBeforeDate = beforeDate && !Number.isNaN(beforeDate.getTime()) ? beforeDate : null;
 
   const mainnetDisplayStartAt = getWoloMainnetDisplayStartAt();
-  const includeStakingLedgerRows = filter === "all" || filter === "staking";
+  const includeStakingLedgerRows = filter === "all" || filter === "staking" || filter === "compounded";
 
   const [indexedTransferRows, giftRows, mainnetActivityRows, pendingSettlementRows, stakingCycleRows, stakingAllocationRows] = await Promise.all([
     loadIndexedWoloTransferActivityRows(prisma, rawActivityTake, { before }).catch(() => []),
@@ -1383,12 +1385,12 @@ export async function loadMainnetTransferStakingActivityPage(
         label: isMicro
           ? `${amountLabel} staking reward held: ${player}`
           : isCompounded
-            ? `${amountLabel} reward compounded: ${player}`
+            ? `${amountLabel} auto-compounded reward: ${player}`
             : `${amountLabel} staking reward payout: ${player}`,
         detail: isMicro
           ? `${player} · micro reward accrued · pending 1 WOLO payout threshold · Distribution ${distributionDate}`
           : isCompounded
-            ? `${player} · compounded reward allocation · matching tx rows are folded into this receipt · Distribution ${distributionDate}`
+            ? `${player} · rolled into staking principal · canonical compounded receipt · Distribution ${distributionDate}`
             : `${player} · ${status.toLowerCase()} reward allocation · Distribution ${distributionDate}`,
         meta: formatMoment(createdAt),
         eventType: "REWARD",
@@ -1440,6 +1442,31 @@ export async function loadMainnetTransferStakingActivityPage(
   const filteredCombined = combined.filter((item) => {
     const eventType = String(item.eventType || "").toUpperCase();
     const text = `${item.label || ""} ${item.detail || ""}`.toLowerCase();
+
+    if (filter === "bounties") {
+      return text.includes("bounty #") || text.includes("🏰 bounty");
+    }
+
+    if (filter === "compounded") {
+      return (
+        eventType === "COMPOUND" ||
+        text.includes("auto-compounded") ||
+        text.includes("reward compounded") ||
+        text.includes("compounded reward") ||
+        text.includes("rolled into staking principal") ||
+        text.includes("staking reward held") ||
+        text.includes("held reward") ||
+        text.includes("micro reward accrued") ||
+        text.includes("micro_accrued") ||
+        text.includes("payout threshold") ||
+        text.includes("staking reward payout") ||
+        text.includes("reward payout") ||
+        text.includes("claimed reward") ||
+        text.includes("canonical claimed") ||
+        text.includes("paid out") ||
+        text.includes("compound-")
+      );
+    }
 
     if (filter === "staking") {
       return (
@@ -1505,7 +1532,7 @@ export async function loadMainnetTransferStakingActivityPage(
   });
 
   const visibleRows =
-    mode === "grouped" && filter !== "staking"
+    mode === "grouped" && filter !== "staking" && filter !== "compounded"
       ? groupStakingBetActivityItems(filteredCombined, limit + 1)
       : filteredCombined;
 

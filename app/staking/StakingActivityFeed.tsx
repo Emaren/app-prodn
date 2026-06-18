@@ -12,7 +12,7 @@ const LIVE_POLL_INTERVAL_MS = 12_000;
 type ActivityMode = "ledger" | "grouped";
 const STAKING_ACTIVITY_PREFS_KEY = "aoe2war:staking-activity-prefs";
 
-type ActivityFilterMode = "all" | "staking" | "bets" | "transfers";
+type ActivityFilterMode = "all" | "staking" | "compounded" | "bounties" | "bets" | "transfers";
 
 type ActivityPageResponse = {
   rows?: StakingActivityItem[];
@@ -24,9 +24,42 @@ function normalizedEventType(item: StakingActivityItem) {
   return String(item.eventType || "").toUpperCase();
 }
 
+function isBountyActivity(item: StakingActivityItem) {
+  const text = `${item.label || ""} ${item.detail || ""}`.toLowerCase();
+
+  return text.includes("bounty #") || text.includes("🏰 bounty");
+}
+
+function isCompoundedActivity(item: StakingActivityItem) {
+  const type = normalizedEventType(item);
+  const text = `${item.label || ""} ${item.detail || ""}`.toLowerCase();
+
+  return (
+    type === "COMPOUND" ||
+    text.includes("auto-compounded") ||
+    text.includes("reward compounded") ||
+    text.includes("compounded reward") ||
+    text.includes("rolled into staking principal") ||
+    text.includes("staking reward held") ||
+    text.includes("held reward") ||
+    text.includes("micro reward accrued") ||
+    text.includes("micro_accrued") ||
+    text.includes("payout threshold") ||
+    text.includes("staking reward payout") ||
+    text.includes("reward payout") ||
+    text.includes("claimed reward") ||
+    text.includes("canonical claimed") ||
+    text.includes("paid out") ||
+    text.includes("compound-")
+  );
+}
+
 function isStakingActivity(item: StakingActivityItem) {
   const type = normalizedEventType(item);
   const text = `${item.label || ""} ${item.detail || ""}`.toLowerCase();
+
+  if (isCompoundedActivity(item)) return true;
+
   return (
     type === "REWARD" ||
     type === "STAKE" ||
@@ -72,8 +105,53 @@ function isTransferActivity(item: StakingActivityItem) {
   return type === "DIRECT" || type === "GIFT";
 }
 
+
+function parseBountyWoloAmount(value?: string | null) {
+  if (!value) return 0;
+
+  const match = value.replace(/,/g, "").match(/([0-9]+(?:\.[0-9]+)?)/);
+  return match ? Number(match[1]) || 0 : 0;
+}
+
+function computePublicBountySummary(
+  rows: Array<{ label?: string; detail?: string; amountLabel?: string | null; eventType?: string | null }>,
+) {
+  let paidTotal = 0;
+  let paidCount = 0;
+  let unclaimedCount = 0;
+
+  for (const row of rows) {
+    const text = `${row.label || ""} ${row.detail || ""} ${row.amountLabel || ""}`.toLowerCase();
+    const isUnclaimed = text.includes("unclaimed");
+    const isPaid = text.includes("bounty paid") && !isUnclaimed;
+
+    if (isUnclaimed) {
+      unclaimedCount += 1;
+      continue;
+    }
+
+    if (isPaid) {
+      paidCount += 1;
+      paidTotal += parseBountyWoloAmount(row.amountLabel || row.label);
+    }
+  }
+
+  return {
+    paidTotal,
+    paidCount,
+    unclaimedCount,
+    totalCount: paidCount + unclaimedCount,
+  };
+}
+
+function formatBountySummaryWolo(value: number) {
+  return `${value.toLocaleString(undefined, { maximumFractionDigits: 2 })} WOLO`;
+}
+
 function filterActivityRows(rows: StakingActivityItem[], filter: ActivityFilterMode) {
   if (filter === "staking") return rows.filter(isStakingActivity);
+  if (filter === "compounded") return rows.filter(isCompoundedActivity);
+  if (filter === "bounties") return rows.filter(isBountyActivity);
   if (filter === "bets") return rows.filter(isBetActivity);
   if (filter === "transfers") return rows.filter(isTransferActivity);
   return rows;
@@ -136,6 +214,8 @@ export default function StakingActivityFeed({
         if (
           parsed.filterMode === "all" ||
           parsed.filterMode === "staking" ||
+          parsed.filterMode === "compounded" ||
+          parsed.filterMode === "bounties" ||
           parsed.filterMode === "bets" ||
           parsed.filterMode === "transfers"
         ) {
@@ -434,12 +514,35 @@ export default function StakingActivityFeed({
   }, [hasMore, loadMore, loadMoreEndpoint]);
 
   const visibleRows = loadMoreEndpoint ? rows : filterActivityRows(rows, filterMode);
+  const bountySummary = filterMode === "bounties" ? computePublicBountySummary(visibleRows) : null;
 
   return (
     <div className="space-y-2.5 overflow-hidden">
       {note ? (
         <div className="rounded-[1rem] border border-cyan-300/14 bg-cyan-400/[0.055] px-3.5 py-3 text-xs leading-5 text-cyan-50/80">
           {note}
+        </div>
+      ) : null}
+
+      {filterMode === "bounties" && bountySummary ? (
+        <div className="mb-4 rounded-[1.25rem] border border-emerald-300/20 bg-[radial-gradient(circle_at_left,rgba(16,185,129,0.13),transparent_34%),linear-gradient(90deg,rgba(5,24,18,0.72),rgba(3,7,18,0.78))] p-4">
+          <div className="grid gap-3 md:grid-cols-3">
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-emerald-200/75">Total bounties paid out</div>
+              <div className="mt-1 text-lg font-semibold text-white">{formatBountySummaryWolo(bountySummary.paidTotal)}</div>
+              <div className="mt-1 text-xs text-slate-400">Numbered public bounty rail</div>
+            </div>
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Paid bounties</div>
+              <div className="mt-1 text-lg font-semibold text-emerald-100">{bountySummary.paidCount}</div>
+              <div className="mt-1 text-xs text-slate-400">on-chain receipts</div>
+            </div>
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Unclaimed</div>
+              <div className="mt-1 text-lg font-semibold text-amber-100">{bountySummary.unclaimedCount}</div>
+              <div className="mt-1 text-xs text-slate-400">reserved gifts</div>
+            </div>
+          </div>
         </div>
       ) : null}
 
@@ -481,7 +584,7 @@ export default function StakingActivityFeed({
           </div>
         </div>
         <div className="mb-3 flex flex-wrap gap-2">
-          {(["all", "staking", "bets", "transfers"] as ActivityFilterMode[]).map((filter) => (
+          {(["all", "staking", "compounded", "bounties", "bets", "transfers"] as ActivityFilterMode[]).map((filter) => (
             <button
               key={filter}
               type="button"

@@ -12,7 +12,7 @@ type RouteContext = {
   params: Promise<{ slug: string }>;
 };
 
-type LedgerView = "all" | "staking" | "championships" | "bets" | "grouped-bets";
+type LedgerView = "all" | "staking" | "compounded" | "championships" | "bounties" | "bets" | "grouped-bets";
 
 type UserRow = {
   user_id: number | null;
@@ -51,6 +51,18 @@ type GiftRow = {
   kind: string | null;
   amount: number | string | null;
   note: string | null;
+  status: string | null;
+  occurred_at: Date | string | null;
+};
+
+type BountyLedgerRow = {
+  source_type: "transfer" | "gift";
+  id: number;
+  tx_hash: string | null;
+  transfer_index: number | null;
+  recipient_address: string | null;
+  amount_wolo: number | string | null;
+  memo: string | null;
   status: string | null;
   occurred_at: Date | string | null;
 };
@@ -349,15 +361,17 @@ async function loadStakingRows(userId: number | null, before: string | null, lim
 
         dailyRows.push({
           key: `staking-allocation-${allocation.id}`,
-          view: "staking",
+          view: status.includes("compound") ? "compounded" : "staking",
           tone: status.includes("compound") || amount < 1 ? "gold" : "emerald",
           label:
             amount > 0 && amount < 1
               ? `${formatWolo(amount)} held reward`
               : status.includes("compound")
-                ? `${formatWolo(amount)} reward compounded`
+                ? `${formatWolo(amount)} auto-compounded reward`
                 : `${formatWolo(amount)} reward`,
-          detail: `Distribution ${formatDate(allocation.distribution_date)} · canonical ${status} receipt${txLabel}`,
+          detail: status.includes("compound")
+            ? `Rolled into principal · Distribution ${formatDate(allocation.distribution_date)} · canonical compounded receipt${txLabel}`
+            : `Distribution ${formatDate(allocation.distribution_date)} · canonical ${status} receipt${txLabel}`,
           meta: formatTime(occurredAt),
           occurredAt,
           amountLabel: formatWolo(amount),
@@ -563,13 +577,149 @@ async function loadBetRows(userId: number | null, grouped: boolean) {
   });
 }
 
+
+
+
+function shortClaimTx(value?: string | null) {
+  if (!value) return null;
+  return value.length > 18 ? `${value.slice(0, 8)}...${value.slice(-6)}` : value;
+}
+
+const ECOSYSTEM_BOUNTIES_WALLET = "wolo1dmj5dnm7g9hmj005yzy5e5xcygudyt7wxzpxjq";
+
+async function loadBountyRows(userId: number | null): Promise<LedgerRow[]> {
+  const prisma = getPrisma();
+
+  try {
+    const rows = await prisma.$queryRawUnsafe<BountyLedgerRow[]>(
+      `
+      with target_user as (
+        select id, wallet_address
+        from users
+        where id = $1::int
+      ),
+      paid_transfers as (
+        select
+          'transfer'::text as source_type,
+          t.id,
+          t.tx_hash,
+          t.transfer_index,
+          t.recipient_address,
+          t.amount_wolo_display as amount_wolo,
+          t.memo,
+          'paid'::text as status,
+          coalesce(t.timestamp, t.created_at) as occurred_at
+        from wolo_indexed_transfers t
+        where lower(t.sender_address) = lower($2)
+          and lower(coalesce(t.memo, '')) like '%bounty #%' 
+      ),
+      unclaimed_gifts as (
+        select
+          'gift'::text as source_type,
+          g.id,
+          null::text as tx_hash,
+          null::int as transfer_index,
+          u.wallet_address as recipient_address,
+          g.amount::numeric as amount_wolo,
+          g.note as memo,
+          g.status,
+          g.created_at as occurred_at
+        from user_gifts g
+        join users u on u.id = g.user_id
+        where g.kind = 'WOLO'
+          and g.amount > 0
+          and lower(coalesce(g.note, '')) like '%bounty #%'
+          and lower(coalesce(g.status, '')) in ('pending', 'accepted')
+          and coalesce(g.display_on_profile, false) = true
+      )
+      select *
+      from (
+        select * from paid_transfers
+        union all
+        select * from unclaimed_gifts
+      ) rows
+      order by occurred_at desc, id desc
+      limit 120
+      `,
+      userId,
+      ECOSYSTEM_BOUNTIES_WALLET
+    );
+
+    return rows.map((row) => {
+      const amount = asNumber(row.amount_wolo);
+      const tx = shortClaimTx(row.tx_hash);
+      const memo = row.memo?.trim() || "Bounty";
+      const isGift = row.source_type === "gift";
+      const status = String(row.status || "").toLowerCase();
+      const statusLabel = isGift && status !== "accepted" ? "unclaimed" : "paid";
+
+      return {
+        key: `bounty-${row.source_type}-${row.id}-${row.transfer_index ?? 0}`,
+        view: "bounties",
+        tone: isGift && status !== "accepted" ? "gold" : "emerald",
+        label: `${formatWolo(amount)} bounty ${statusLabel}`,
+        detail: `${memo}${tx ? ` · tx ${tx}` : ""}`,
+        meta: formatTime(row.occurred_at),
+        occurredAt: new Date(row.occurred_at || Date.now()).toISOString(),
+        amountLabel: formatWolo(amount),
+        txHash: row.tx_hash,
+      };
+    });
+  } catch (error) {
+    console.error("[staking/stakers/ledger] failed to load bounty rows", error);
+    return [];
+  }
+}
+
+function insertQuietRewardDays<T extends { key: string; occurredAt: string; view: string; tone: string; label: string; detail: string; meta?: string; amountLabel?: string }>(rows: T[]): T[] {
+  if (!rows.length) return rows;
+
+  const groups = new Map<string, T[]>();
+  for (const row of rows) {
+    const day = row.occurredAt.slice(0, 10);
+    const bucket = groups.get(day);
+    if (bucket) bucket.push(row);
+    else groups.set(day, [row]);
+  }
+
+  const orderedDays = [...groups.keys()].sort((a, b) => b.localeCompare(a));
+  if (!orderedDays.length) return rows;
+
+  const latest = new Date(`${orderedDays[0]}T00:00:00.000Z`);
+  const oldest = new Date(`${orderedDays[orderedDays.length - 1]}T00:00:00.000Z`);
+
+  const out: T[] = [];
+  for (let d = new Date(latest); d >= oldest; d.setUTCDate(d.getUTCDate() - 1)) {
+    const key = d.toISOString().slice(0, 10);
+    const dayRows = groups.get(key);
+    if (dayRows?.length) {
+      out.push(...dayRows);
+    } else {
+      out.push({
+        key: `quiet-reward-day-${key}`,
+        view: "staking-day",
+        tone: "gold",
+        label: `Quiet reward day · ${key}`,
+        detail: "No claim, payout, or compound movement recorded.",
+        meta: "",
+        occurredAt: `${key}T12:00:00.000Z`,
+        amountLabel: "0 WOLO",
+      } as T);
+    }
+  }
+
+  return out;
+}
+
 export async function GET(request: Request, context: RouteContext) {
   const { slug } = await context.params;
   const url = new URL(request.url);
   const viewParam = url.searchParams.get("view") || "all";
   const view: LedgerView =
     viewParam === "staking" ||
+    viewParam === "compounded" ||
     viewParam === "championships" ||
+    viewParam === "bounties" ||
     viewParam === "bets" ||
     viewParam === "grouped-bets" ||
     viewParam === "all"
@@ -585,9 +735,10 @@ export async function GET(request: Request, context: RouteContext) {
 
   const user = await resolveUser(slug);
 
-  const [staking, championships, bets, groupedBets] = await Promise.all([
-    view === "all" || view === "staking" ? loadStakingRows(user?.user_id ?? null, before, limitDays) : Promise.resolve({ rows: [], hasMore: false, nextBefore: null }),
+  const [staking, championships, bounties, bets, groupedBets] = await Promise.all([
+    view === "all" || view === "staking" || view === "compounded" ? loadStakingRows(user?.user_id ?? null, before, limitDays) : Promise.resolve({ rows: [], hasMore: false, nextBefore: null }),
     view === "all" || view === "championships" ? loadChampionshipRows(slug, user?.user_id ?? null) : Promise.resolve([]),
+    view === "all" || view === "bounties" ? loadBountyRows(user?.user_id ?? null) : Promise.resolve([]),
     view === "all" || view === "bets" ? loadBetRows(user?.user_id ?? null, false) : Promise.resolve([]),
     view === "grouped-bets" ? loadBetRows(user?.user_id ?? null, true) : Promise.resolve([]),
   ]);
@@ -595,8 +746,30 @@ export async function GET(request: Request, context: RouteContext) {
   const rows =
     view === "staking"
       ? staking.rows
+      : view === "compounded"
+        ? insertQuietRewardDays(
+            staking.rows.filter((row) => {
+              const text = `${row.label} ${row.detail} ${row.txHash || ""}`.toLowerCase();
+              return (
+                row.view === "compounded" ||
+                text.includes("auto-compounded") ||
+                text.includes("compound") ||
+                text.includes("rolled into principal") ||
+                text.includes("held reward") ||
+                text.includes("micro_accrued") ||
+                text.includes("micro reward") ||
+                text.includes("payout threshold") ||
+                text.includes("reward payout") ||
+                text.includes("paid out") ||
+                text.includes("claimed reward") ||
+                text.includes("canonical claimed")
+              );
+            })
+          )
       : view === "championships"
         ? championships
+      : view === "bounties"
+        ? bounties
         : view === "bets"
           ? bets
           : view === "grouped-bets"
@@ -611,13 +784,31 @@ export async function GET(request: Request, context: RouteContext) {
     player: REGISTRY[slug].player,
     view,
     rows,
-    hasMore: view === "all" || view === "staking" ? staking.hasMore : false,
-    nextBefore: view === "all" || view === "staking" ? staking.nextBefore : null,
+    hasMore: view === "all" || view === "staking" || view === "compounded" ? staking.hasMore : false,
+    nextBefore: view === "all" || view === "staking" || view === "compounded" ? staking.nextBefore : null,
     counts: {
       staking: staking.rows.length,
       championships: championships.length,
+      bounties: bounties.length,
       bets: bets.length,
       groupedBets: groupedBets.length,
+      compounded: staking.rows.filter((row) => {
+        const text = `${row.label} ${row.detail} ${row.txHash || ""}`.toLowerCase();
+        return (
+          row.view === "compounded" ||
+          text.includes("auto-compounded") ||
+          text.includes("compound") ||
+          text.includes("rolled into principal") ||
+          text.includes("held reward") ||
+          text.includes("micro_accrued") ||
+          text.includes("micro reward") ||
+          text.includes("payout threshold") ||
+          text.includes("reward payout") ||
+          text.includes("paid out") ||
+          text.includes("claimed reward") ||
+          text.includes("canonical claimed")
+        );
+      }).length,
     },
   });
 }

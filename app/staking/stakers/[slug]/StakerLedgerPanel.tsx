@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Crown, Loader2, ScrollText, Shield, Swords, Trophy } from "lucide-react";
 
-type LedgerView = "all" | "staking" | "championships" | "bets" | "grouped-bets";
+type LedgerView = "all" | "staking" | "compounded" | "championships" | "bounties" | "bets" | "grouped-bets";
 
 type LedgerRow = {
   key: string;
@@ -19,10 +19,14 @@ type LedgerRow = {
   txHash?: string | null;
 };
 
+const STAKER_LEDGER_VIEW_PREFS_KEY = "aoe2war:staker-ledger-view";
+
 const VIEWS: Array<{ key: LedgerView; label: string }> = [
   { key: "all", label: "All" },
   { key: "staking", label: "Staking" },
+  { key: "compounded", label: "Compounded" },
   { key: "championships", label: "Championships" },
+  { key: "bounties", label: "Bounties" },
   { key: "bets", label: "Bets" },
   { key: "grouped-bets", label: "Grouped Bets" },
 ];
@@ -41,11 +45,76 @@ function toneClass(tone: LedgerRow["tone"]) {
 }
 
 function iconFor(row: LedgerRow) {
-  if (row.view === "championships") return <Trophy className="h-4 w-4" />;
+  if (row.view === "championships" || row.view === "bounties") return <Trophy className="h-4 w-4" />;
   if (row.view === "bets" || row.view === "grouped-bets") return <Swords className="h-4 w-4" />;
+  if (row.view === "compounded") return <Crown className="h-4 w-4" />;
   if (row.view === "staking-day") return <ScrollText className="h-4 w-4" />;
   if (row.tone === "emerald") return <Shield className="h-4 w-4" />;
   return <Crown className="h-4 w-4" />;
+}
+
+function formatCompactWolo(value: number) {
+  if (!Number.isFinite(value)) return "0 WOLO";
+  if (Math.abs(value) >= 1_000_000) return `${(value / 1_000_000).toFixed(1).replace(/\.0$/, "")}M WOLO`;
+  if (Math.abs(value) >= 1_000) return `${(value / 1_000).toFixed(value >= 100_000 ? 0 : 1).replace(/\.0$/, "")}K WOLO`;
+  return `${value.toLocaleString(undefined, { maximumFractionDigits: 6 })} WOLO`;
+}
+
+function parseWoloAmount(label?: string) {
+  if (!label) return 0;
+  const parsed = Number(label.replace(/,/g, "").match(/-?\d+(?:\.\d+)?/)?.[0] || 0);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function computeRewardTrail(rows: LedgerRow[]) {
+  let compounded = 0;
+  let building = 0;
+  let paid = 0;
+
+  for (const row of rows) {
+    const text = `${row.label} ${row.detail}`.toLowerCase();
+    const amount = parseWoloAmount(row.amountLabel || row.label);
+
+    if (text.includes("held reward") || text.includes("micro_accrued") || text.includes("payout threshold")) {
+      building += amount;
+    } else if (text.includes("paid out") || text.includes("claimed") || text.includes("reward payout")) {
+      paid += amount;
+    } else if (text.includes("compound") || text.includes("rolled into principal")) {
+      compounded += amount;
+    }
+  }
+
+  return { compounded, building, paid, total: compounded + building + paid };
+}
+
+
+function computeBountySummary(rows: LedgerRow[]) {
+  let paidTotal = 0;
+  let paidCount = 0;
+  let unclaimedCount = 0;
+
+  for (const row of rows) {
+    const text = `${row.label || ""} ${row.detail || ""} ${row.amountLabel || ""}`.toLowerCase();
+    const isUnclaimed = text.includes("unclaimed");
+    const isPaid = text.includes("bounty paid") && !isUnclaimed;
+
+    if (isUnclaimed) {
+      unclaimedCount += 1;
+      continue;
+    }
+
+    if (isPaid) {
+      paidCount += 1;
+      paidTotal += parseWoloAmount(row.amountLabel || row.label);
+    }
+  }
+
+  return {
+    paidTotal,
+    paidCount,
+    unclaimedCount,
+    totalCount: paidCount + unclaimedCount,
+  };
 }
 
 function pillClass(active: boolean) {
@@ -55,6 +124,20 @@ function pillClass(active: boolean) {
 }
 
 function LedgerCard({ row }: { row: LedgerRow }) {
+  if (row.view === "staking-day") {
+    const dayLabel = row.label.replace("Quiet reward day · ", "");
+
+    return (
+      <div className="flex items-center gap-3 py-2">
+        <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/[0.07] to-white/[0.025]" />
+        <div className="px-2 text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-600">
+          {dayLabel}
+        </div>
+        <div className="hidden h-px flex-1 bg-gradient-to-l from-transparent via-white/[0.07] to-white/[0.025] sm:block" />
+      </div>
+    );
+  }
+
   return (
     <div className={`rounded-[1.15rem] border p-4 ${toneClass(row.tone)}`}>
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -82,20 +165,60 @@ function LedgerCard({ row }: { row: LedgerRow }) {
   );
 }
 
-export default function StakerLedgerPanel({ slug, player }: { slug: string; player: string }) {
+export default function StakerLedgerPanel({
+  slug,
+  player,
+  rewardStats,
+}: {
+  slug: string;
+  player: string;
+  rewardStats?: {
+    lifetime: number;
+    compounded: number;
+    claimed: number;
+    pending: number;
+  };
+}) {
   const [view, setView] = useState<LedgerView>("all");
+  const [viewPreferenceReady, setViewPreferenceReady] = useState(false);
+
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      setViewPreferenceReady(true);
+      return;
+    }
+
+    const scopedKey = `${STAKER_LEDGER_VIEW_PREFS_KEY}:${slug}`;
+    const saved = window.localStorage.getItem(scopedKey) || window.localStorage.getItem(STAKER_LEDGER_VIEW_PREFS_KEY);
+
+    if (saved && VIEWS.some((option) => option.key === saved)) {
+      setView(saved as LedgerView);
+      window.localStorage.setItem(scopedKey, saved);
+    }
+
+    setViewPreferenceReady(true);
+  }, [slug]);
+
+  useEffect(() => {
+    if (!viewPreferenceReady || typeof window === "undefined") return;
+    window.localStorage.setItem(`${STAKER_LEDGER_VIEW_PREFS_KEY}:${slug}`, view);
+  }, [slug, view, viewPreferenceReady]);
+
   const [rows, setRows] = useState<LedgerRow[]>([]);
   const [nextBefore, setNextBefore] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
   const loadingRef = useRef(false);
+  const requestSeqRef = useRef(0);
 
   const loadRows = useCallback(
     async ({ reset = false }: { reset?: boolean } = {}) => {
-      if (loadingRef.current) return;
+      if (loadingRef.current && !reset) return;
 
       loadingRef.current = true;
       setLoading(true);
+      const requestId = ++requestSeqRef.current;
 
       try {
         const url = new URL(`/api/staking/stakers/${slug}/ledger`, window.location.origin);
@@ -105,6 +228,7 @@ export default function StakerLedgerPanel({ slug, player }: { slug: string; play
 
         const response = await fetch(url.toString(), { cache: "no-store" });
         const payload = await response.json();
+        if (requestId !== requestSeqRef.current) return;
 
         const nextRows: LedgerRow[] = Array.isArray(payload.rows) ? (payload.rows as LedgerRow[]) : [];
 
@@ -145,6 +269,8 @@ export default function StakerLedgerPanel({ slug, player }: { slug: string; play
     }
   }
 
+  const bountySummary = view === "bounties" ? computeBountySummary(rows) : null;
+
   return (
     <section className="rounded-[1.7rem] border border-white/10 bg-[linear-gradient(180deg,rgba(10,16,29,0.94),rgba(4,7,14,0.99))] p-5 shadow-[0_24px_90px_rgba(2,6,23,0.32)]">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -175,6 +301,62 @@ export default function StakerLedgerPanel({ slug, player }: { slug: string; play
           </button>
         ))}
       </div>
+
+      <div className="mt-4 rounded-[1.25rem] border border-amber-300/20 bg-[radial-gradient(circle_at_left,rgba(245,158,11,0.13),transparent_36%),linear-gradient(90deg,rgba(30,20,8,0.62),rgba(3,7,18,0.72))] p-4">
+          {(() => {
+            const visibleTrail = computeRewardTrail(rows);
+            const trail = rewardStats
+              ? {
+                  total: rewardStats.lifetime,
+                  compounded: rewardStats.compounded,
+                  paid: rewardStats.claimed,
+                  building: rewardStats.pending,
+                }
+              : visibleTrail;
+
+            return (
+              <div className="grid gap-3 md:grid-cols-3">
+                <div>
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-amber-200/70">Reward growth</div>
+                  <div className="mt-1 text-lg font-semibold text-white">{formatCompactWolo(trail.total)}</div>
+                  <div className="mt-1 text-xs text-slate-400">Claim now</div>
+                </div>
+                <div>
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Inside stake</div>
+                  <div className="mt-1 text-lg font-semibold text-amber-100">{formatCompactWolo(trail.compounded)}</div>
+                  <div className="mt-1 text-xs text-slate-400">auto-compounding</div>
+                </div>
+                <div>
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Paid out</div>
+                  <div className="mt-1 text-lg font-semibold text-emerald-100">{formatCompactWolo(trail.paid)}</div>
+                  <div className="mt-1 text-xs text-slate-400">all time</div>
+                </div>
+              </div>
+            );
+          })()}
+      </div>
+
+      {view === "bounties" && bountySummary ? (
+        <div className="mt-4 rounded-[1.25rem] border border-emerald-300/20 bg-[radial-gradient(circle_at_left,rgba(16,185,129,0.13),transparent_34%),linear-gradient(90deg,rgba(5,24,18,0.72),rgba(3,7,18,0.78))] p-4">
+          <div className="grid gap-3 md:grid-cols-3">
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-emerald-200/75">Total bounties paid out</div>
+              <div className="mt-1 text-lg font-semibold text-white">{formatCompactWolo(bountySummary.paidTotal)}</div>
+              <div className="mt-1 text-xs text-slate-400">Numbered bounty rail</div>
+            </div>
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Paid bounties</div>
+              <div className="mt-1 text-lg font-semibold text-emerald-100">{bountySummary.paidCount}</div>
+              <div className="mt-1 text-xs text-slate-400">on-chain receipts</div>
+            </div>
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Unclaimed</div>
+              <div className="mt-1 text-lg font-semibold text-amber-100">{bountySummary.unclaimedCount}</div>
+              <div className="mt-1 text-xs text-slate-400">reserved gifts</div>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <div
         className="mt-5 max-h-[46rem] space-y-3 overflow-y-auto pr-1"

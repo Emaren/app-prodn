@@ -17,6 +17,7 @@ import {
 
 import { getPrisma } from "@/lib/prisma";
 import StakerLedgerPanel from "./StakerLedgerPanel";
+import CopyableWalletAddress, { WalletOwnerBalance } from "./CopyableWalletAddress";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -51,6 +52,7 @@ type PositionRow = {
   claimed_rewards_wolo: number | string | null;
   compounded_rewards_wolo: number | string | null;
   pending_rewards_wolo: number | string | null;
+  micro_reward_carry_uwolo: number | string | null;
 };
 
 type AllocationRow = {
@@ -121,10 +123,70 @@ function compactWolo(value: number) {
   return `${value.toLocaleString(undefined, { maximumFractionDigits: 6 })} WOLO`;
 }
 
+function preciseWolo(value: number, decimals = 2) {
+  if (!Number.isFinite(value)) return `${(0).toFixed(decimals)} WOLO`;
+
+  return `${value.toLocaleString(undefined, {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  })} WOLO`;
+}
+
+function compactWeight(value: number | string | null | undefined) {
+  const numericValue = Number(value || 0);
+
+  if (!Number.isFinite(numericValue) || numericValue <= 0) return "0";
+
+  const abs = Math.abs(numericValue);
+
+  if (abs >= 1_000_000_000) {
+    return `${(numericValue / 1_000_000_000).toLocaleString(undefined, { maximumFractionDigits: 1 })}B`;
+  }
+
+  if (abs >= 1_000_000) {
+    return `${(numericValue / 1_000_000).toLocaleString(undefined, { maximumFractionDigits: 1 })}M`;
+  }
+
+  if (abs >= 1_000) {
+    return `${(numericValue / 1_000).toLocaleString(undefined, { maximumFractionDigits: 1 })}K`;
+  }
+
+  return numericValue.toLocaleString(undefined, { maximumFractionDigits: 0 });
+}
+
+
 function shortAddress(address?: string | null) {
   if (!address) return "Wallet pending";
   return address.length > 18 ? `${address.slice(0, 10)}...${address.slice(-6)}` : address;
 }
+
+
+
+async function loadMicroCarryWolo(userId?: number | string | null) {
+  const numericUserId = Number(userId || 0);
+  if (!Number.isFinite(numericUserId) || numericUserId <= 0) return 0;
+
+  const prisma = getPrisma();
+
+  try {
+    const rows = await prisma.$queryRawUnsafe<Array<{ micro_reward_carry_uwolo: number | string | null }>>(
+      `
+        select micro_reward_carry_uwolo
+        from staking_positions
+        where user_id = $1
+        limit 1
+      `,
+      numericUserId,
+    );
+
+    return asNumber(rows[0]?.micro_reward_carry_uwolo) / 1_000_000;
+  } catch {
+    return 0;
+  }
+}
+
+
+
 
 function dateLabel(value?: Date | string | null) {
   if (!value) return "Unknown";
@@ -285,8 +347,32 @@ export default async function StakerHallPage({ params }: PageProps) {
   const autoCompound = row?.auto_compound_rewards ?? true;
   const claimed = row ? asNumber(row.claimed_rewards_wolo) : 0;
   const compounded = row ? asNumber(row.compounded_rewards_wolo) : 0;
-  const pending = row ? asNumber(row.pending_rewards_wolo) : 0;
+  const seatSize = stake + compounded;
+  const microCarryWolo = await loadMicroCarryWolo(row?.user_id);
   const lifetime = Math.max(row ? asNumber(row.lifetime_rewards_wolo) : 0, allocations.reduce((sum, item) => sum + asNumber(item.reward_wolo), 0));
+  const rawPending = row ? asNumber(row.pending_rewards_wolo) : 0;
+  const microCarry = microCarryWolo;
+  const allocationDust = allocations.reduce((sum, item) => {
+    const reward = asNumber(item.reward_wolo);
+    const status = String(item.status || "").toLowerCase();
+
+    if (reward > 0 && reward < 1 && (status.includes("micro") || status.includes("held") || status.includes("pending"))) {
+      return sum + reward;
+    }
+
+    return sum;
+  }, 0);
+  const derivedPending = Math.max(0, lifetime - claimed - compounded);
+  const pending =
+    rawPending > 0
+      ? rawPending
+      : microCarry > 0.000001
+        ? microCarry
+        : allocationDust > 0.000001
+          ? allocationDust
+          : derivedPending > 0.000001
+            ? derivedPending
+            : 0;
   const championshipTitle = registry.slug === "jim" ? "USA National Champion" : registry.slug === "julio-alvarez" ? "Mexico National Champion" : "Verified Grind";
   const kingdomBenefit = registry.slug === "jim" ? "US Champion lane · founding staking guardian · public kingdom proof" : registry.slug === "julio-alvarez" ? "Mexico Champion lane · first scout · early staking proof" : "Operator lane · verified wallet · public economy rail";
   const designationRows: Array<{ label: string; meta: string; value: string; tone: "gold" | "emerald" | "sky" }> = [
@@ -296,7 +382,7 @@ export default async function StakerHallPage({ params }: PageProps) {
         ? [{ label: "Mexico National Champion", meta: "National belt", value: "75 WOLO/mo", tone: "gold" as const }]
         : []),
     { label: registry.title, meta: registry.lane, value: registry.badge, tone: registry.tone },
-    { label: autoCompound ? "Auto-compound" : "Manual claim", meta: "Staking mode", value: compactWolo(stake), tone: "emerald" },
+    { label: autoCompound ? "Auto-compound" : "Manual claim", meta: "Staking mode", value: compactWolo(seatSize), tone: "emerald" },
   ];
 
   return (
@@ -337,24 +423,42 @@ export default async function StakerHallPage({ params }: PageProps) {
                 {registry.slug === "jim" ? <ShieldCheck className="h-6 w-6" /> : registry.slug === "julio-alvarez" ? <Swords className="h-6 w-6" /> : <Flame className="h-6 w-6" />}
               </div>
               <div className="mt-4 text-[11px] uppercase tracking-[0.24em] text-slate-500">Wallet</div>
-              <div className="mt-2 break-all text-sm font-semibold text-slate-200">{shortAddress(wallet)}</div>
-              <div className="mt-4 text-[11px] uppercase tracking-[0.24em] text-slate-500">Joined the hall</div>
-              <div className="mt-2 text-sm font-semibold text-white">{dateLabel(joined)}</div>
+              <CopyableWalletAddress address={wallet} label={shortAddress(wallet)} />
+              <div className="mt-4 grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Your balance</div>
+                  <WalletOwnerBalance address={wallet} />
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Joined</div>
+                  <div className="mt-1 text-sm font-semibold text-white">{dateLabel(joined)}</div>
+                </div>
+              </div>
             </div>
           </div>
         </section>
 
         <section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard label="Seat size" value={compactWolo(stake)} helper="Current stake" tone="gold" icon={<Coins className="h-4 w-4" />} />
-          <StatCard label="Weight" value={weight.toLocaleString()} helper="Reward influence" tone="sky" icon={<Sparkles className="h-4 w-4" />} />
+          <StatCard label="Seat size" value={preciseWolo(seatSize, 2)} helper="Principal + rewards" tone="gold" icon={<Coins className="h-4 w-4" />} />
+          <StatCard label="Weight" value={compactWeight(weight)} helper="Accounting weight" tone="sky" icon={<Sparkles className="h-4 w-4" />} />
           <StatCard label="Hall share" value={share} helper="Of visible active stake" tone="emerald" icon={<Landmark className="h-4 w-4" />} />
-          <StatCard label="Rewards" value={compactWolo(lifetime)} helper="Lifetime visible rewards" tone="gold" icon={<Trophy className="h-4 w-4" />} />
+          <StatCard label="Reward Total" value={compactWolo(lifetime)} helper="All time earnings" tone="gold" icon={<Trophy className="h-4 w-4" />} />
         </section>
 
         <section className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <StatCard label="Compounded" value={compactWolo(compounded)} helper="Rolled into principal" tone="gold" icon={<Crown className="h-4 w-4" />} />
-          <StatCard label="Claimed" value={compactWolo(claimed)} helper="Paid out rewards" tone="emerald" icon={<Wallet className="h-4 w-4" />} />
-          <StatCard label="Pending" value={compactWolo(pending)} helper="Held or awaiting threshold" tone="gold" icon={<Flame className="h-4 w-4" />} />
+          <StatCard label="Auto-compounded" value={compactWolo(compounded)} helper="Included in seat size" tone="gold" icon={<Crown className="h-4 w-4" />} />
+          <StatCard label="Paid Out" value={compactWolo(claimed)} helper="All time" tone="emerald" icon={<Wallet className="h-4 w-4" />} />
+          <StatCard
+            label="Building"
+            value={
+              pending > 0 && pending < 1
+                ? `${pending.toLocaleString(undefined, { maximumFractionDigits: 6 })} WOLO`
+                : compactWolo(pending)
+            }
+            helper={pending > 0 && pending < 1 ? "Dust under threshold" : "Below reward threshold"}
+            icon={<Flame className="h-4 w-4" />}
+            tone="gold"
+          />
         </section>
 
         <section className="mt-6 grid gap-4 lg:grid-cols-2">
@@ -364,7 +468,7 @@ export default async function StakerHallPage({ params }: PageProps) {
                 <div className="text-xs uppercase tracking-[0.28em] text-amber-200/60">Championships</div>
                 <h2 className="mt-2 text-2xl font-semibold text-white">{championshipTitle}</h2>
                 <p className="mt-2 text-sm leading-6 text-slate-300">
-                  Championship and designation rows can be interspersed directly inside the personal ledger.
+                  Titles, rewards, and receipts live together here.
                 </p>
               </div>
               <div className="rounded-full border border-amber-300/25 bg-amber-300/10 p-3 text-amber-100">
@@ -416,7 +520,16 @@ export default async function StakerHallPage({ params }: PageProps) {
         </section>
 
         <div className="mt-6">
-          <StakerLedgerPanel slug={slug} player={registry.player} />
+          <StakerLedgerPanel
+          slug={slug}
+          player={registry.player}
+          rewardStats={{
+            lifetime,
+            compounded,
+            claimed,
+            pending,
+          }}
+        />
         </div>
       </div>
     </main>
