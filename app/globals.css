@@ -68,6 +68,16 @@ button:disabled,
     cursor: not-allowed;
 }
 
+.aoe2-nav-scroll {
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    mask-image: linear-gradient(to right, transparent 0, black 0.8rem, black calc(100% - 1.5rem), transparent 100%);
+}
+
+.aoe2-nav-scroll::-webkit-scrollbar {
+    display: none;
+}
+
 /* Tournament admin: keep Starts At datetime fields readable. */
 input[type="datetime-local"],
 input[name="startsAt"],

@@ -57,6 +57,15 @@ journalctl -u aoe2hdbets-web.service -n 40 --no-pager
 
 ## Recent deployment notes
 
+### 2026-06-18 premium AOE2WAR navigation shell
+
+- Replaced the global theme-circle row with the AOE2WAR wordmark; the logo links to `/`, while theme and tile appearance controls remain on `/profile`.
+- Added route-aware page headings across the shared shell.
+- Added `/kingdom` to the castle dropdown and made the desktop menu hover/focus traversable without requiring a click to hold it open.
+- Moved mobile castle and account surfaces into document-level sheets so blurred header stacking contexts cannot clip them.
+- Refined the mobile top command rail and bottom quick-command navigation.
+- No database migration is required for this release.
+
 ### 2026-05-30 Advanced lobby arena and live ticker
 
 - Added `live_ticker_messages` for admin-managed text ticker messages.

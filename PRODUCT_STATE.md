@@ -19,7 +19,14 @@ The app is no longer just a replay/stat shell. It now has a real public product 
 ### Community Lobby / homepage spine
 
 Current strengths:
-- premium dark/gold/blue theme system with 7 theme circles
+- premium dark/gold/blue theme system, with appearance controls kept on `/profile` instead of crowding the global navbar
+- AOE2WAR wordmark is now the global home link
+- every major route has a page-specific header title for orientation
+- desktop navigation is a compact premium command bar with active-route treatment
+- mobile navigation uses a single-row horizontal command rail plus a polished bottom quick-command bar
+- `/kingdom` is included in the castle menu alongside Champions, Nations, and Forum
+- the castle menu opens by hover/focus on desktop and as an unclipped touch sheet on mobile
+- the account menu renders as an unclipped, viewport-bounded command deck on desktop and mobile
 - `/lobby` now feels like a real destination, not filler
 - `/lobby` now defaults to Advanced view with a moving live ticker, Watch & Chat arena hero with comments on the right, reactions plus a compact bet slip below the video, a compact WOLO swap tile, and the existing Community Lobby pushed below the arena stack
 - Basic view remains available behind the lobby toggle and keeps the simpler leaderboard/tournament/war-chest-first layout intact

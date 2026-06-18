@@ -112,8 +112,19 @@ Lobby and premium shell behavior currently flow through:
 - `components/lobby/lobbyPresentation.ts`
 - `components/lobby/LobbyAppearanceContext.tsx`
 - `app/AppShell.tsx`
+- `components/HeaderMenu.tsx`
+- `components/pwa/MobileFloatingNav.tsx`
 
-Theme circles affect the overall shell, header, and major lobby surfaces.
+Appearance preferences still affect the overall shell, header, and major lobby surfaces, but the theme controls themselves live on `/profile` rather than consuming global navigation space.
+
+The global header is the shared route-orientation layer:
+- the AOE2WAR logo always returns to `/`
+- each major route resolves to a page-specific header title
+- primary destinations stay in the compact command row
+- the castle menu owns `/kingdom`, `/champions`, `/national-champions`, and `/forum`
+- desktop castle navigation opens on hover/focus without requiring a locking click
+- mobile castle and account menus render through document-level sheets so header blur/stacking contexts cannot clip them
+- the account menu is scrollable and viewport-bounded on both desktop and mobile
 
 The shipped product now depends much more heavily on lobby-specific presentation consistency than before. Visual hierarchy in the lobby matters because it now carries leaderboard, tournament, and live-product credibility in one place.
 

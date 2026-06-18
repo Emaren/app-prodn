@@ -1,14 +1,15 @@
 "use client";
 
 import React from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Crown, Globe2, MessageSquare, X } from "lucide-react";
+import { Castle, Crown, Globe2, MessageSquare, X } from "lucide-react";
+import { createPortal } from "react-dom";
 import UserExperienceTracker from "@/components/analytics/UserExperienceTracker";
 import HeaderInboxControl from "@/components/contact/HeaderInboxControl";
 import HeaderMenu from "@/components/HeaderMenu";
 import SteamLoginButton from "@/components/SteamLoginButton";
-import { LobbyThemePicker } from "@/components/lobby/LobbyAppearanceControls";
 import {
   getLobbyHeaderSkin,
   getLobbyPresentationTone,
@@ -38,20 +39,64 @@ const HEADER_LINKS: ReadonlyArray<{
 ];
 
 const KINGDOM_LINKS = [
+  { href: "/kingdom", label: "Kingdom", icon: Castle, body: "The realm, crowns, and league map" },
   { href: "/champions", label: "Champions", icon: Crown, body: "Belts, reigns, title rules" },
   { href: "/national-champions", label: "Nations", icon: Globe2, body: "Beacon map and national bounties" },
   { href: "/forum", label: "Forum", icon: MessageSquare, body: "War Room threads and community" },
 ] as const;
 
+const PAGE_HEADINGS: ReadonlyArray<{ prefix: string; title: string }> = [
+  { prefix: "/admin", title: "Operator Command" },
+  { prefix: "/staking/stakers", title: "Staking Hall" },
+  { prefix: "/staking", title: "WOLO Staking" },
+  { prefix: "/national-champions", title: "National Champions" },
+  { prefix: "/champions", title: "Championship Belts" },
+  { prefix: "/kingdom", title: "The Kingdom" },
+  { prefix: "/forum", title: "War Room Forum" },
+  { prefix: "/live-games", title: "Live Games" },
+  { prefix: "/game-stats", title: "Battle Archive" },
+  { prefix: "/matchups", title: "Rivalry Matchup" },
+  { prefix: "/rivalries", title: "Rivalries" },
+  { prefix: "/players", title: "Player Registry" },
+  { prefix: "/tournaments", title: "Tournament Grounds" },
+  { prefix: "/watch", title: "Watch Arena" },
+  { prefix: "/challenge", title: "Challenge Hall" },
+  { prefix: "/bets", title: "Betting Hall" },
+  { prefix: "/war-chest", title: "War Chest" },
+  { prefix: "/wolochain", title: "WoloChain" },
+  { prefix: "/wolo", title: "WOLO Economy" },
+  { prefix: "/wallet", title: "WOLO Wallet" },
+  { prefix: "/profile", title: "Player Profile" },
+  { prefix: "/requests", title: "Match Requests" },
+  { prefix: "/contact-emaren", title: "Command Inbox" },
+  { prefix: "/download", title: "Download Watcher" },
+  { prefix: "/upload", title: "Upload Replay" },
+  { prefix: "/app", title: "Today’s War Room" },
+  { prefix: "/lobby", title: "Tournament Lobby" },
+];
+
+function getPageHeading(pathname: string | null) {
+  if (!pathname || pathname === "/") return "Tournament Lobby";
+  return PAGE_HEADINGS.find(
+    (entry) => pathname === entry.prefix || pathname.startsWith(`${entry.prefix}/`)
+  )?.title ?? "AoE2WAR";
+}
+
+function isRouteActive(pathname: string | null, href: string) {
+  return pathname === href || Boolean(pathname?.startsWith(`${href}/`));
+}
+
 function HeaderPillLink({
   href,
   label,
   className,
+  active,
   requestCount,
 }: {
   href: string;
   label: string;
   className: string;
+  active?: boolean;
   requestCount?: number;
 }) {
   const displayLabel = href === "/requests" ? `${requestCount ?? 0} Requests` : label;
@@ -59,7 +104,12 @@ function HeaderPillLink({
   return (
     <Link
       href={href}
-      className={`relative inline-flex items-center justify-center overflow-visible rounded-full border px-2.5 py-1.5 text-xs transition xl:px-3 ${className}`}
+      aria-current={active ? "page" : undefined}
+      className={`relative inline-flex min-h-9 shrink-0 items-center justify-center overflow-visible rounded-full border px-3 py-1.5 text-[11px] font-semibold tracking-[0.01em] transition duration-200 xl:px-3.5 ${
+        active
+          ? "border-amber-200/35 bg-amber-300/12 text-amber-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_0_24px_rgba(251,191,36,0.08)]"
+          : className
+      }`}
     >
       <span className="relative z-10">{displayLabel}</span>
     </Link>
@@ -68,17 +118,48 @@ function HeaderPillLink({
 
 function KingdomNavItem({
   className,
+  active,
 }: {
   className: string;
+  active?: boolean;
 }) {
   const [open, setOpen] = React.useState(false);
+  const [portalReady, setPortalReady] = React.useState(false);
   const rootRef = React.useRef<HTMLDivElement | null>(null);
+  const panelRef = React.useRef<HTMLDivElement | null>(null);
+  const closeTimerRef = React.useRef<number | null>(null);
+
+  const clearCloseTimer = React.useCallback(() => {
+    if (closeTimerRef.current !== null) {
+      window.clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+  }, []);
+
+  const openMenu = React.useCallback(() => {
+    clearCloseTimer();
+    setOpen(true);
+  }, [clearCloseTimer]);
+
+  const scheduleClose = React.useCallback(() => {
+    clearCloseTimer();
+    closeTimerRef.current = window.setTimeout(() => setOpen(false), 130);
+  }, [clearCloseTimer]);
+
+  React.useEffect(() => {
+    setPortalReady(true);
+    return clearCloseTimer;
+  }, [clearCloseTimer]);
 
   React.useEffect(() => {
     if (!open) return;
 
     function handlePointerDown(event: PointerEvent) {
-      if (!rootRef.current?.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (
+        !rootRef.current?.contains(target) &&
+        !panelRef.current?.contains(target)
+      ) {
         setOpen(false);
       }
     }
@@ -101,73 +182,137 @@ function KingdomNavItem({
     <div
       ref={rootRef}
       className="group relative inline-flex"
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
-      onFocusCapture={() => setOpen(true)}
+      onMouseEnter={openMenu}
+      onMouseLeave={scheduleClose}
+      onFocusCapture={openMenu}
     >
       <button
         type="button"
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label="Open Kingdom pages"
-        onClick={() => setOpen((value) => !value)}
-        className={`relative inline-flex min-h-8 min-w-9 items-center justify-center overflow-visible rounded-full border px-2.5 py-1.5 text-xs transition xl:px-3 ${className}`}
+        onClick={() => {
+          if (window.matchMedia("(max-width: 639px), (hover: none)").matches) {
+            setOpen((value) => !value);
+          }
+        }}
+        className={`relative inline-flex min-h-9 min-w-10 shrink-0 items-center justify-center overflow-visible rounded-full border px-3 py-1.5 text-xs transition duration-200 ${
+          active
+            ? "border-amber-200/40 bg-amber-300/12 shadow-[0_0_24px_rgba(251,191,36,0.1)]"
+            : className
+        }`}
       >
         <span className="relative z-10">🏰</span>
       </button>
 
       <div
-        className={`fixed inset-x-3 top-[calc(env(safe-area-inset-top)+8.25rem)] z-[150] translate-y-2 opacity-0 transition duration-150 sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:w-[min(21rem,calc(100vw-1.5rem))] ${
+        className={`absolute left-1/2 top-full z-[220] hidden w-[22rem] -translate-x-1/2 pt-3 transition duration-150 sm:block ${
           open
-            ? "pointer-events-auto translate-y-3 opacity-100"
-            : "pointer-events-none group-hover:pointer-events-auto group-hover:translate-y-3 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:translate-y-3 group-focus-within:opacity-100"
+            ? "pointer-events-auto translate-y-0 opacity-100"
+            : "pointer-events-none -translate-y-1 opacity-0"
         }`}
+        onMouseEnter={openMenu}
+        onMouseLeave={scheduleClose}
       >
-        <div className="overflow-hidden rounded-[1.25rem] border border-amber-200/18 bg-[#07101a]/95 p-2 shadow-[0_24px_80px_rgba(0,0,0,0.48)] backdrop-blur-xl">
-          <div className="flex items-center justify-between gap-3 px-2 py-2 sm:hidden">
-            <div className="text-[11px] uppercase tracking-[0.28em] text-amber-100/70">Kingdom</div>
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-slate-300"
-              aria-label="Close Kingdom menu"
+        <KingdomMenuPanel onNavigate={() => setOpen(false)} />
+      </div>
+
+      {portalReady && open
+        ? createPortal(
+            <div className="fixed inset-0 z-[240] sm:hidden">
+              <button
+                type="button"
+                className="absolute inset-0 bg-[#02060f]/78 backdrop-blur-[3px]"
+                onClick={() => setOpen(false)}
+                aria-label="Close Kingdom menu"
+              />
+              <div
+                ref={panelRef}
+                className="absolute inset-x-3 top-[calc(env(safe-area-inset-top)+0.75rem)] max-h-[calc(100dvh-env(safe-area-inset-top)-1.5rem)] overflow-y-auto rounded-[1.65rem] border border-amber-200/18 bg-[#07101a]/98 p-3 shadow-[0_34px_110px_rgba(0,0,0,0.7)] backdrop-blur-2xl"
+              >
+                <div className="mb-2 flex items-center justify-between gap-3 px-2 py-2">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-[0.34em] text-amber-100/55">
+                      AoE2WAR
+                    </div>
+                    <div className="mt-1 text-lg font-semibold text-white">The Kingdom</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setOpen(false)}
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-slate-300"
+                    aria-label="Close Kingdom menu"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                <KingdomMenuPanel onNavigate={() => setOpen(false)} mobile />
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
+    </div>
+  );
+}
+
+function KingdomMenuPanel({
+  onNavigate,
+  mobile = false,
+}: {
+  onNavigate: () => void;
+  mobile?: boolean;
+}) {
+  return (
+    <div
+      className={`overflow-hidden rounded-[1.35rem] border border-amber-200/14 bg-[linear-gradient(145deg,rgba(13,25,42,0.98),rgba(5,12,22,0.98))] p-2 shadow-[0_24px_80px_rgba(0,0,0,0.48)] ${
+        mobile ? "border-white/8 shadow-none" : "backdrop-blur-xl"
+      }`}
+      role="menu"
+      aria-label="Kingdom pages"
+    >
+      <div className="grid gap-1">
+        {KINGDOM_LINKS.map((item) => {
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              role="menuitem"
+              onClick={onNavigate}
+              className="group/item flex items-center gap-3 rounded-[1rem] px-3 py-3 text-left transition hover:bg-white/[0.07]"
             >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-          <div className="grid gap-1">
-            {KINGDOM_LINKS.map((item) => {
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  role="menuitem"
-                  onClick={() => setOpen(false)}
-                  className="flex items-center gap-3 rounded-[1rem] px-3 py-2.5 text-left transition hover:bg-white/[0.06]"
-                >
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-amber-100">
-                    <Icon className="h-4 w-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-sm font-semibold text-slate-100">{item.label}</div>
-                    <div className="mt-0.5 truncate text-xs text-slate-500">{item.body}</div>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        </div>
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-amber-200/12 bg-amber-300/[0.06] text-amber-100 transition group-hover/item:border-amber-200/25 group-hover/item:bg-amber-300/10">
+                <Icon className="h-4 w-4" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-sm font-semibold text-slate-100">{item.label}</div>
+                <div className="mt-0.5 text-xs text-slate-500">{item.body}</div>
+              </div>
+            </Link>
+          );
+        })}
       </div>
     </div>
   );
 }
 
-function HeaderLiveGamesLink({ liveGamesCount }: { liveGamesCount: number }) {
+function HeaderLiveGamesLink({
+  liveGamesCount,
+  active,
+}: {
+  liveGamesCount: number;
+  active?: boolean;
+}) {
   return (
     <Link
       href="/live-games"
-      className="rounded-full border border-red-400/25 bg-red-500/10 px-3 py-1.5 text-xs text-red-100 transition hover:border-red-300/40 hover:bg-red-500/15"
+      aria-current={active ? "page" : undefined}
+      className={`inline-flex min-h-9 shrink-0 items-center rounded-full border px-3 py-1.5 text-[11px] font-semibold transition duration-200 ${
+        active
+          ? "border-red-300/45 bg-red-500/18 text-red-50 shadow-[0_0_24px_rgba(248,113,113,0.1)]"
+          : "border-red-400/25 bg-red-500/10 text-red-100 hover:border-red-300/40 hover:bg-red-500/15"
+      }`}
     >
       {liveGamesCount} Live Games🔥
     </Link>
@@ -177,14 +322,12 @@ function HeaderLiveGamesLink({ liveGamesCount }: { liveGamesCount: number }) {
 function InnerShell({ children }: { children: React.ReactNode }) {
   const { uid, playerName, isAdmin } = useUserAuth();
   const pathname = usePathname();
-  const { themeKey, setThemeKey, viewMode, textColor, pageStyle } = useLobbyAppearance();
+  const { themeKey, viewMode, textColor, pageStyle } = useLobbyAppearance();
   const [liveGamesCount, setLiveGamesCount] = React.useState(0);
   const [requestCount, setRequestCount] = React.useState(0);
   const isContactPage = pathname?.startsWith("/contact-emaren");
-  const isStakingPage = pathname?.startsWith("/staking");
   const isLobbySurface = pathname === "/" || pathname?.startsWith("/lobby");
-  const headerHref = isStakingPage ? "/staking" : "/lobby";
-  const headerTitle = isStakingPage ? "WOLO Staking" : "Tournament Lobby";
+  const headerTitle = getPageHeading(pathname);
   const headerSkin = getLobbyHeaderSkin(themeKey);
   const headerTone = React.useMemo(
     () => getLobbyPresentationTone(themeKey, viewMode),
@@ -241,73 +384,88 @@ function InnerShell({ children }: { children: React.ReactNode }) {
     >
       <UserExperienceTracker />
       <header
-        className={`relative z-[90] border-b px-3 pb-4 pt-[calc(env(safe-area-inset-top)+1rem)] backdrop-blur-xl transition-[background-color,border-color] duration-500 sm:px-4 lg:py-4 ${headerSkin.shell}`}
+        className={`sticky top-0 z-[180] overflow-visible border-b px-3 pb-3 pt-[calc(env(safe-area-inset-top)+0.7rem)] backdrop-blur-2xl transition-[background-color,border-color] duration-500 sm:px-4 lg:py-3 ${headerSkin.shell}`}
       >
-        <div className="mx-auto w-full max-w-6xl overflow-visible">
-          <div className="space-y-4 lg:hidden">
-            <div className="flex min-w-0 items-start justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                <Link href={headerHref} className="inline-block min-w-0">
-                  <div className={`text-[11px] uppercase tracking-[0.35em] transition ${headerTone.eyebrow}`}>
-                    AoE2HD Bets
-                  </div>
-                  <h1 className="text-2xl font-semibold leading-tight text-white transition hover:text-amber-100">
-                    {headerTitle}
-                  </h1>
-                </Link>
-              </div>
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div className="absolute -left-16 -top-20 h-44 w-72 rounded-full bg-amber-300/[0.055] blur-3xl" />
+          <div className="absolute -right-20 -top-20 h-44 w-72 rounded-full bg-sky-300/[0.065] blur-3xl" />
+          <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-amber-100/25 to-transparent" />
+        </div>
 
-              <div className="flex min-w-0 max-w-[48%] shrink-0 flex-col items-end gap-2">
-                {uid ? (
-                  <div className="flex items-center justify-end gap-2">
-                    <HeaderInboxControl buttonClassName={headerSkin.surface} />
-                    <HeaderMenu
-                      playerName={playerName}
-                      uid={uid}
-                      liveGamesCount={liveGamesCount}
-                      requestCount={requestCount}
-                      buttonClassName={headerSkin.surface}
-                      menuClassName={headerSkin.popover}
-                      linkClassName={headerSkin.menuItem}
-                      logoutClassName={headerSkin.logout}
-                    />
-                  </div>
-                ) : (
-                  <SteamLoginButton
-                    label="Steam Sign In"
-                    className="inline-flex max-w-full min-w-0 items-center justify-center truncate rounded-full bg-amber-300 px-3 py-2 text-xs font-semibold text-slate-950 shadow-[0_10px_30px_rgba(251,191,36,0.18)] transition hover:bg-amber-200 sm:min-w-[10.5rem] sm:px-4 sm:py-2.5 sm:text-sm"
-                  />
-                )}
+        <div className="relative mx-auto w-full max-w-[90rem] overflow-visible">
+          <div className="lg:hidden">
+            <div className="flex min-w-0 items-center justify-between gap-3">
+              <Link
+                href="/"
+                className="group relative flex shrink-0 items-center rounded-xl px-1 py-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-200/40"
+                aria-label="AOE2WAR home"
+              >
+                <Image
+                  src="/brand/aoe2war-logo.png"
+                  alt="AOE2WAR"
+                  width={972}
+                  height={155}
+                  priority
+                  className="h-auto w-[8.25rem] drop-shadow-[0_5px_18px_rgba(251,191,36,0.16)] transition duration-200 group-hover:brightness-110 min-[430px]:w-[9.25rem]"
+                />
+              </Link>
 
-                <LobbyThemePicker
-                  themeKey={themeKey}
-                  onThemeChange={setThemeKey}
-                  tone={headerTone}
-                  size="sm"
-                  className="justify-end self-end"
-                  trackClassName="justify-end gap-2.5"
+              <div className="flex min-w-0 shrink-0 items-center justify-end gap-2">
+                {uid ? <HeaderInboxControl buttonClassName={`${headerSkin.surface} h-10 w-10`} /> : null}
+                <HeaderMenu
+                  playerName={playerName}
+                  uid={uid}
+                  liveGamesCount={liveGamesCount}
+                  requestCount={requestCount}
+                  buttonClassName={`${headerSkin.surface} min-h-10 px-3 py-2`}
+                  menuClassName={headerSkin.popover}
+                  linkClassName={headerSkin.menuItem}
+                  logoutClassName={headerSkin.logout}
                 />
               </div>
             </div>
 
-            <nav className="w-full overflow-visible pb-1 pt-2">
-              <div className="flex flex-wrap items-center gap-2 pr-1">
+            <div className="mt-3 flex min-w-0 items-end justify-between gap-3 border-t border-white/[0.065] pt-3">
+              <div className="min-w-0">
+                <div className={`text-[9px] font-semibold uppercase tracking-[0.34em] ${headerTone.eyebrow}`}>
+                  Current page
+                </div>
+                <h1 className="mt-0.5 truncate text-lg font-semibold leading-tight text-white">
+                  {headerTitle}
+                </h1>
+              </div>
+              <div className="shrink-0 rounded-full border border-amber-200/12 bg-amber-300/[0.055] px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.22em] text-amber-100/65">
+                AoE2 HD
+              </div>
+            </div>
+
+            <nav className="aoe2-nav-scroll -mx-3 mt-3 overflow-x-auto px-3 pb-0.5 sm:-mx-4 sm:px-4">
+              <div className="flex min-w-max items-center gap-2 pr-4">
+                <KingdomNavItem
+                  className={headerSkin.surface}
+                  active={KINGDOM_LINKS.some((link) => isRouteActive(pathname, link.href))}
+                />
                 {HEADER_LINKS.map((link, index) => (
                   <React.Fragment key={link.href}>
                     <HeaderPillLink
                       href={link.href}
                       label={link.label}
                       className={headerSkin.surface}
+                      active={isRouteActive(pathname, link.href)}
                       requestCount={link.countKey === "requests" ? requestCount : undefined}
                     />
-                    {index === 0 ? <HeaderLiveGamesLink liveGamesCount={liveGamesCount} /> : null}
+                    {index === 0 ? (
+                      <HeaderLiveGamesLink
+                        liveGamesCount={liveGamesCount}
+                        active={isRouteActive(pathname, "/live-games")}
+                      />
+                    ) : null}
                   </React.Fragment>
                 ))}
-                <KingdomNavItem className={headerSkin.surface} />
                 {isAdmin ? (
                   <Link
                     href="/admin/user-list"
-                    className="rounded-full border border-emerald-300/25 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-100 transition hover:border-emerald-200/40 hover:bg-emerald-500/15"
+                    className="inline-flex min-h-9 shrink-0 items-center rounded-full border border-emerald-300/25 bg-emerald-500/10 px-3 py-1.5 text-[11px] font-semibold text-emerald-100 transition hover:border-emerald-200/40 hover:bg-emerald-500/15"
                   >
                     Admin
                   </Link>
@@ -316,56 +474,77 @@ function InnerShell({ children }: { children: React.ReactNode }) {
             </nav>
           </div>
 
-          <div className="hidden lg:grid lg:grid-cols-[minmax(9rem,1fr)_minmax(0,44rem)_minmax(9rem,1fr)] lg:items-center lg:gap-3 xl:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
-            <div className="min-w-0">
-              <Link href={headerHref} className="inline-block min-w-0">
-                <div className={`text-xs uppercase tracking-[0.35em] transition ${headerTone.eyebrow}`}>
-                  AoE2HD Bets
+          <div className="hidden lg:grid lg:grid-cols-[minmax(12rem,0.85fr)_minmax(0,2fr)_auto] lg:items-center lg:gap-4">
+            <div className="flex min-w-0 items-center gap-2 xl:gap-3">
+              <Link
+                href="/"
+                className="group relative flex shrink-0 items-center rounded-xl px-1 py-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-200/40"
+                aria-label="AOE2WAR home"
+              >
+                <Image
+                  src="/brand/aoe2war-logo.png"
+                  alt="AOE2WAR"
+                  width={972}
+                  height={155}
+                  priority
+                  className="h-auto w-[6.5rem] drop-shadow-[0_5px_18px_rgba(251,191,36,0.16)] transition duration-200 group-hover:brightness-110 xl:w-[8.7rem]"
+                />
+              </Link>
+              <div className="min-w-0 border-l border-white/10 pl-2.5 xl:pl-3">
+                <div className={`whitespace-nowrap text-[8px] font-semibold uppercase tracking-[0.24em] xl:text-[9px] xl:tracking-[0.3em] ${headerTone.eyebrow}`}>
+                  Current page
                 </div>
-                <h1 className="text-xl font-semibold text-white transition hover:text-amber-100">
+                <h1 className="mt-0.5 truncate text-sm font-semibold text-white xl:text-base">
                   {headerTitle}
                 </h1>
-              </Link>
+              </div>
             </div>
 
-            <nav className="flex max-w-full flex-wrap items-center justify-center gap-1.5 overflow-visible pb-1 pt-2 lg:justify-self-center lg:pb-0 xl:gap-2">
+            <nav className="flex max-w-full items-center justify-center gap-1.5 overflow-visible lg:justify-self-center xl:gap-2">
               {HEADER_LINKS.map((link, index) => (
                 <React.Fragment key={link.href}>
                   <HeaderPillLink
                     href={link.href}
                     label={link.label}
                     className={headerSkin.surface}
+                    active={isRouteActive(pathname, link.href)}
                     requestCount={link.countKey === "requests" ? requestCount : undefined}
                   />
-                  {index === 0 ? <HeaderLiveGamesLink liveGamesCount={liveGamesCount} /> : null}
+                  {index === 0 ? (
+                    <HeaderLiveGamesLink
+                      liveGamesCount={liveGamesCount}
+                      active={isRouteActive(pathname, "/live-games")}
+                    />
+                  ) : null}
                 </React.Fragment>
               ))}
-              <KingdomNavItem className={headerSkin.surface} />
+              <KingdomNavItem
+                className={headerSkin.surface}
+                active={KINGDOM_LINKS.some((link) => isRouteActive(pathname, link.href))}
+              />
             </nav>
 
-            <div className="flex flex-col items-end gap-2 lg:justify-self-end">
-              <div className="flex items-center justify-end gap-3">
-                {uid ? <HeaderInboxControl buttonClassName={headerSkin.surface} /> : null}
-                <HeaderMenu
-                  playerName={playerName}
-                  uid={uid}
-                  liveGamesCount={liveGamesCount}
-                  requestCount={requestCount}
-                  buttonClassName={headerSkin.surface}
-                  menuClassName={headerSkin.popover}
-                  linkClassName={headerSkin.menuItem}
-                  logoutClassName={headerSkin.logout}
+            <div className="flex items-center justify-end gap-2 lg:justify-self-end">
+              {uid ? (
+                <>
+                  <HeaderInboxControl buttonClassName={`${headerSkin.surface} h-10 w-10`} />
+                  <HeaderMenu
+                    playerName={playerName}
+                    uid={uid}
+                    liveGamesCount={liveGamesCount}
+                    requestCount={requestCount}
+                    buttonClassName={`${headerSkin.surface} min-h-10 px-3 py-2`}
+                    menuClassName={headerSkin.popover}
+                    linkClassName={headerSkin.menuItem}
+                    logoutClassName={headerSkin.logout}
+                  />
+                </>
+              ) : (
+                <SteamLoginButton
+                  label="Steam Sign In"
+                  className="inline-flex min-h-10 items-center justify-center rounded-full bg-amber-300 px-4 py-2 text-xs font-semibold text-slate-950 shadow-[0_10px_30px_rgba(251,191,36,0.18)] transition hover:bg-amber-200"
                 />
-              </div>
-
-              <LobbyThemePicker
-                themeKey={themeKey}
-                onThemeChange={setThemeKey}
-                tone={headerTone}
-                size="sm"
-                className="justify-end self-end"
-                trackClassName="justify-end gap-2.5"
-              />
+              )}
             </div>
           </div>
         </div>

@@ -1,13 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useRef, useState, type ReactNode, useId } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
+import { createPortal } from "react-dom";
 import {
   BarChart3,
   BadgeDollarSign,
   Castle,
-  Coins,
   ChevronDown,
+  Coins,
   Crown,
   Download,
   Globe2,
@@ -23,7 +32,6 @@ import {
   X,
 } from "lucide-react";
 
-import { useClickOutside } from "@/hooks/useClickOutside";
 import { useUserAuth } from "@/context/UserAuthContext";
 import SteamLoginButton from "@/components/SteamLoginButton";
 
@@ -47,6 +55,12 @@ type MenuEntry = {
   featured?: boolean;
 };
 
+type MenuPosition = {
+  top: number;
+  right: number;
+  maxHeight: number;
+};
+
 export default function HeaderMenu({
   playerName,
   uid,
@@ -58,11 +72,13 @@ export default function HeaderMenu({
   logoutClassName,
 }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
+  const [portalReady, setPortalReady] = useState(false);
+  const [desktop, setDesktop] = useState(false);
+  const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const panelId = useId();
   const { logout, isAdmin } = useUserAuth();
-
-  useClickOutside(menuRef as React.RefObject<HTMLElement>, () => setMenuOpen(false));
 
   const menuEntries = useMemo<MenuEntry[]>(
     () => [
@@ -97,200 +113,266 @@ export default function HeaderMenu({
       { href: "/upload", label: "Upload Replay", icon: Upload },
       { href: "/game-stats", label: "Game Stats", icon: BarChart3 },
       { href: "/download", label: "Download Watcher", icon: Download },
-      ],
+    ],
     [liveGamesCount, requestCount]
   );
 
-  const primaryMobileEntries = menuEntries.filter((entry) => entry.featured && (!entry.adminOnly || isAdmin));
-  const secondaryMobileEntries = menuEntries.filter(
-    (entry) => !entry.featured && (!entry.adminOnly || isAdmin)
-  );
-  const desktopEntries = menuEntries.filter((entry) => !entry.adminOnly || isAdmin);
+  const visibleEntries = menuEntries.filter((entry) => !entry.adminOnly || isAdmin);
+  const primaryEntries = visibleEntries.filter((entry) => entry.featured);
+  const secondaryEntries = visibleEntries.filter((entry) => !entry.featured);
+
+  const updateMenuPosition = useCallback(() => {
+    if (!triggerRef.current || window.innerWidth < 640) {
+      setMenuPosition(null);
+      return;
+    }
+
+    const rect = triggerRef.current.getBoundingClientRect();
+    const top = Math.min(rect.bottom + 10, window.innerHeight - 160);
+    setMenuPosition({
+      top,
+      right: Math.max(12, window.innerWidth - rect.right),
+      maxHeight: Math.max(220, window.innerHeight - top - 12),
+    });
+  }, []);
+
+  useEffect(() => {
+    setPortalReady(true);
+    const mediaQuery = window.matchMedia("(min-width: 640px)");
+    const syncDesktop = () => setDesktop(mediaQuery.matches);
+    syncDesktop();
+    mediaQuery.addEventListener("change", syncDesktop);
+    return () => mediaQuery.removeEventListener("change", syncDesktop);
+  }, []);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    const frame = window.requestAnimationFrame(updateMenuPosition);
+
+    function handlePointerDown(event: PointerEvent) {
+      const target = event.target as Node;
+      if (
+        !triggerRef.current?.contains(target) &&
+        !panelRef.current?.contains(target)
+      ) {
+        setMenuOpen(false);
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setMenuOpen(false);
+        triggerRef.current?.focus();
+      }
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("resize", updateMenuPosition);
+    window.addEventListener("scroll", updateMenuPosition, true);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("resize", updateMenuPosition);
+      window.removeEventListener("scroll", updateMenuPosition, true);
+    };
+  }, [menuOpen, updateMenuPosition]);
+
+  useEffect(() => {
+    if (!menuOpen || desktop) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [desktop, menuOpen]);
 
   if (!uid) {
     return (
-      <div className="flex w-full">
+      <div className="flex min-w-0">
         <SteamLoginButton
           label="Steam Sign In"
-          className="inline-flex w-full items-center justify-center rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 sm:w-auto sm:px-4 sm:py-2"
+          className="inline-flex min-h-10 max-w-full items-center justify-center truncate rounded-full bg-amber-300 px-4 py-2 text-xs font-semibold text-slate-950 shadow-[0_10px_30px_rgba(251,191,36,0.16)] transition hover:bg-amber-200 sm:text-sm"
         />
       </div>
     );
   }
 
+  const panelStyle: CSSProperties | undefined =
+    desktop && menuPosition
+      ? {
+          top: menuPosition.top,
+          right: menuPosition.right,
+          maxHeight: menuPosition.maxHeight,
+        }
+      : undefined;
+
   return (
-    <div className="relative flex items-center gap-2" ref={menuRef}>
+    <div className="relative flex min-w-0 items-center gap-2">
       <button
+        ref={triggerRef}
         type="button"
         className={[
-          "flex min-w-0 items-center gap-2 rounded-full border px-4 py-2 text-sm text-white transition",
+          "flex min-w-0 items-center gap-2 rounded-full border px-4 py-2 text-sm text-white transition duration-200",
           buttonClassName || "border-white/15 bg-white/5 hover:border-white/30 hover:bg-white/10",
         ]
           .filter(Boolean)
           .join(" ")}
         onClick={() => setMenuOpen((open) => !open)}
-        aria-expanded={menuOpen ? "true" : "false"}
+        aria-expanded={menuOpen}
         aria-haspopup="dialog"
         aria-controls={panelId}
       >
-        <UserCircle className="h-5 w-5" />
-        <span className="max-w-[8.5rem] truncate sm:max-w-none">{playerName || "Account"}</span>
-        <ChevronDown className="h-4 w-4 opacity-70" />
+        <UserCircle className="h-5 w-5 shrink-0" />
+        <span className="max-w-[5.4rem] truncate min-[430px]:max-w-[7.5rem] sm:max-w-[9rem]">
+          {playerName || "Account"}
+        </span>
+        <ChevronDown
+          className={`h-4 w-4 shrink-0 opacity-70 transition ${menuOpen ? "rotate-180" : ""}`}
+        />
       </button>
 
-      {menuOpen ? (
-        <div
-          id={panelId}
-          className={[
-            "fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+0.75rem)] top-[calc(env(safe-area-inset-top)+4.25rem)] z-[160] min-h-0 overflow-hidden rounded-[1.85rem] border p-2 shadow-2xl backdrop-blur-xl sm:absolute sm:bottom-auto sm:left-auto sm:right-0 sm:top-14 sm:max-h-[min(42rem,calc(100dvh-7rem))] sm:w-[22rem] sm:max-w-[calc(100vw-1.5rem)]",
-            menuClassName || "border-white/10 bg-[#0b1324]",
-          ]
-            .filter(Boolean)
-            .join(" ")}
-          role="dialog"
-          aria-modal="false"
-          aria-label="Account menu"
-        >
-          <div className="flex h-full flex-col sm:hidden">
-            <div className="rounded-[1.45rem] border border-white/10 bg-white/[0.035] p-4">
-              <div className="flex items-center justify-between gap-3">
-                <div className="text-[11px] uppercase tracking-[0.32em] text-slate-400">Command Deck</div>
-                <button
-                  type="button"
-                  onClick={() => setMenuOpen(false)}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-slate-300 transition hover:border-white/20 hover:text-white"
-                  aria-label="Close menu"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-              <div className="mt-3 flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="truncate text-xl font-semibold text-white">{playerName || "Account"}</div>
-                  <div className="mt-1 text-sm text-slate-400">
-                    {isAdmin ? "Admin routes, community, stats, and tools." : "Community, stats, watcher, and tools."}
-                  </div>
-                </div>
-                <div className="rounded-full border border-emerald-300/25 bg-emerald-500/10 px-3 py-1 text-[11px] font-medium text-emerald-100">
-                  {isAdmin ? "Admin" : "Live"}
-                </div>
-              </div>
-            </div>
+      {portalReady && menuOpen
+        ? createPortal(
+            <>
+              <button
+                type="button"
+                aria-label="Close account menu"
+                onClick={() => setMenuOpen(false)}
+                className="fixed inset-0 z-[250] bg-[#02060f]/80 backdrop-blur-[3px] sm:hidden"
+              />
 
-            <div className="mt-3 flex-1 overflow-y-auto pr-1">
-              <div className="grid grid-cols-2 gap-2">
-                {primaryMobileEntries.map((entry) => (
-                  <MobileMenuTile key={entry.href} entry={entry} onNavigate={() => setMenuOpen(false)} />
-                ))}
-              </div>
-
-              <div className="mt-4 rounded-[1.45rem] border border-white/10 bg-white/[0.035] p-3">
-                <div className="px-1 text-[11px] uppercase tracking-[0.32em] text-slate-400">All Routes</div>
-                <div className="mt-3 grid grid-cols-2 gap-2">
-                  {secondaryMobileEntries.map((entry) => (
-                    <MobileMenuTile
-                      key={entry.href}
-                      entry={entry}
-                      compact
-                      onNavigate={() => setMenuOpen(false)}
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              className={[
-                "mt-3 w-full rounded-[1.35rem] px-4 py-3 text-left text-sm transition",
-                logoutClassName ||
-                  "border border-red-400/20 bg-red-500/10 text-red-200 hover:bg-red-500/16 hover:text-red-100",
-              ]
-                .filter(Boolean)
-                .join(" ")}
-              onClick={async () => {
-                setMenuOpen(false);
-                await logout();
-              }}
-            >
-              Sign out
-            </button>
-          </div>
-
-          <div className="hidden sm:block">
-            {desktopEntries.map((entry) => (
-              <MenuLink
-                key={entry.href}
-                href={entry.href}
-                linkClassName={linkClassName}
-                onNavigate={() => setMenuOpen(false)}
+              <div
+                ref={panelRef}
+                id={panelId}
+                style={panelStyle}
+                className={[
+                  "fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+0.75rem)] top-[calc(env(safe-area-inset-top)+0.75rem)] z-[260] min-h-0 overflow-hidden rounded-[1.85rem] border p-2 shadow-[0_34px_120px_rgba(0,0,0,0.72)] backdrop-blur-2xl sm:inset-x-auto sm:bottom-auto sm:top-auto sm:w-[30rem] sm:max-w-[calc(100vw-1.5rem)]",
+                  menuClassName || "border-white/10 bg-[#0b1324]/98",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+                role="dialog"
+                aria-modal={!desktop}
+                aria-label="Account menu"
               >
-                <span>{entry.label}</span>
-                {entry.badge ? (
-                  <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-slate-300">
-                    {entry.badge}
-                  </span>
-                ) : null}
-              </MenuLink>
-            ))}
+                <div className="flex h-full min-h-0 flex-col">
+                  <div className="rounded-[1.45rem] border border-white/10 bg-[linear-gradient(145deg,rgba(255,255,255,0.065),rgba(255,255,255,0.025))] p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="text-[10px] font-semibold uppercase tracking-[0.34em] text-amber-100/55">
+                        Command Deck
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setMenuOpen(false)}
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-slate-300 transition hover:border-white/20 hover:text-white"
+                        aria-label="Close menu"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                    <div className="mt-3 flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="truncate text-xl font-semibold text-white">
+                          {playerName || "Account"}
+                        </div>
+                        <div className="mt-1 text-sm leading-5 text-slate-400">
+                          {isAdmin
+                            ? "Operator routes, community, stats, and tools."
+                            : "Community, stats, watcher, and tools."}
+                        </div>
+                      </div>
+                      <div className="shrink-0 rounded-full border border-emerald-300/25 bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-100">
+                        {isAdmin ? "Admin" : "Online"}
+                      </div>
+                    </div>
+                  </div>
 
-            <button
-              type="button"
-              className={[
-                "mt-2 w-full rounded-xl px-3 py-2 text-left text-sm transition",
-                logoutClassName || "text-red-300 hover:bg-red-500/10 hover:text-red-200",
-              ]
-                .filter(Boolean)
-                .join(" ")}
-              onClick={async () => {
-                setMenuOpen(false);
-                await logout();
-              }}
-            >
-              Sign out
-            </button>
-          </div>
-        </div>
-      ) : null}
+                  <div className="mt-3 min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
+                    <MenuSection label="Command routes">
+                      {primaryEntries.map((entry) => (
+                        <MenuTile
+                          key={entry.href}
+                          entry={entry}
+                          linkClassName={linkClassName}
+                          onNavigate={() => setMenuOpen(false)}
+                        />
+                      ))}
+                    </MenuSection>
+
+                    <div className="mt-3 rounded-[1.45rem] border border-white/10 bg-white/[0.025] p-3">
+                      <div className="px-1 text-[10px] font-semibold uppercase tracking-[0.32em] text-slate-500">
+                        The full realm
+                      </div>
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        {secondaryEntries.map((entry) => (
+                          <MenuTile
+                            key={entry.href}
+                            entry={entry}
+                            compact
+                            linkClassName={linkClassName}
+                            onNavigate={() => setMenuOpen(false)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    className={[
+                      "mt-3 w-full rounded-[1.25rem] border border-red-400/15 bg-red-500/[0.07] px-4 py-3 text-left text-sm font-medium text-red-200 transition hover:border-red-300/25 hover:bg-red-500/12 hover:text-red-100",
+                      logoutClassName,
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                    onClick={async () => {
+                      setMenuOpen(false);
+                      await logout();
+                    }}
+                  >
+                    Sign out
+                  </button>
+                </div>
+              </div>
+            </>,
+            document.body
+          )
+        : null}
     </div>
   );
 }
 
-function MenuLink({
-  href,
+function MenuSection({
+  label,
   children,
-  linkClassName,
-  onNavigate,
 }: {
-  href: string;
-  children: ReactNode;
-  linkClassName?: string;
-  onNavigate: () => void;
+  label: string;
+  children: React.ReactNode;
 }) {
   return (
-    <Link
-      href={href}
-      className={[
-        "flex items-center justify-between gap-3 rounded-xl px-3 py-2 text-sm transition",
-        linkClassName || "text-white/85 hover:bg-white/8 hover:text-white",
-      ]
-        .filter(Boolean)
-        .join(" ")}
-      onClick={onNavigate}
-    >
-      {children}
-    </Link>
+    <section>
+      <div className="px-1 text-[10px] font-semibold uppercase tracking-[0.32em] text-slate-500">
+        {label}
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-2">{children}</div>
+    </section>
   );
 }
 
-function MobileMenuTile({
+function MenuTile({
   entry,
   onNavigate,
   compact = false,
+  linkClassName,
 }: {
   entry: MenuEntry;
   onNavigate: () => void;
   compact?: boolean;
+  linkClassName?: string;
 }) {
   const Icon = entry.icon;
 
@@ -298,10 +380,17 @@ function MobileMenuTile({
     <Link
       href={entry.href}
       onClick={onNavigate}
-      className={`rounded-[1.25rem] border border-white/10 bg-white/[0.045] px-3 py-3 transition hover:border-white/20 hover:bg-white/[0.08] ${compact ? "min-h-[4.6rem]" : "min-h-[5.6rem]"}`}
+      className={[
+        `group/tile rounded-[1.15rem] border border-white/10 bg-white/[0.04] px-3 py-3 transition duration-200 hover:border-amber-200/20 hover:bg-amber-300/[0.065] ${
+          compact ? "min-h-[4.75rem]" : "min-h-[5.7rem]"
+        }`,
+        linkClassName,
+      ]
+        .filter(Boolean)
+        .join(" ")}
     >
       <div className="flex items-start justify-between gap-3">
-        <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-2 text-slate-100">
+        <div className="rounded-xl border border-white/10 bg-slate-950/45 p-2 text-slate-100 transition group-hover/tile:border-amber-200/20 group-hover/tile:text-amber-100">
           <Icon className="h-4 w-4" />
         </div>
         {entry.badge ? (
@@ -310,7 +399,9 @@ function MobileMenuTile({
           </div>
         ) : null}
       </div>
-      <div className={`mt-3 font-medium text-white ${compact ? "text-sm" : "text-[15px]"}`}>{entry.label}</div>
+      <div className={`mt-3 font-medium text-white ${compact ? "text-sm" : "text-[15px]"}`}>
+        {entry.label}
+      </div>
     </Link>
   );
 }
