@@ -51,6 +51,7 @@ type PositionRow = {
   claimed_rewards_wolo: number | string | null;
   compounded_rewards_wolo: number | string | null;
   pending_rewards_wolo: number | string | null;
+  micro_reward_carry_uwolo: number | string | null;
 };
 
 type AllocationRow = {
@@ -120,6 +121,38 @@ function compactWolo(value: number) {
   if (Math.abs(value) >= 1_000) return `${(value / 1_000).toFixed(value >= 100_000 ? 0 : 1).replace(/\.0$/, "")}K WOLO`;
   return `${value.toLocaleString(undefined, { maximumFractionDigits: 6 })} WOLO`;
 }
+
+function preciseWolo(value: number, decimals = 2) {
+  if (!Number.isFinite(value)) return `${(0).toFixed(decimals)} WOLO`;
+
+  return `${value.toLocaleString(undefined, {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  })} WOLO`;
+}
+
+function compactWeight(value: number | string | null | undefined) {
+  const numericValue = Number(value || 0);
+
+  if (!Number.isFinite(numericValue) || numericValue <= 0) return "0";
+
+  const abs = Math.abs(numericValue);
+
+  if (abs >= 1_000_000_000) {
+    return `${(numericValue / 1_000_000_000).toLocaleString(undefined, { maximumFractionDigits: 1 })}B`;
+  }
+
+  if (abs >= 1_000_000) {
+    return `${(numericValue / 1_000_000).toLocaleString(undefined, { maximumFractionDigits: 1 })}M`;
+  }
+
+  if (abs >= 1_000) {
+    return `${(numericValue / 1_000).toLocaleString(undefined, { maximumFractionDigits: 1 })}K`;
+  }
+
+  return numericValue.toLocaleString(undefined, { maximumFractionDigits: 0 });
+}
+
 
 function shortAddress(address?: string | null) {
   if (!address) return "Wallet pending";
@@ -285,8 +318,31 @@ export default async function StakerHallPage({ params }: PageProps) {
   const autoCompound = row?.auto_compound_rewards ?? true;
   const claimed = row ? asNumber(row.claimed_rewards_wolo) : 0;
   const compounded = row ? asNumber(row.compounded_rewards_wolo) : 0;
-  const pending = row ? asNumber(row.pending_rewards_wolo) : 0;
+  const seatSize = stake + compounded;
   const lifetime = Math.max(row ? asNumber(row.lifetime_rewards_wolo) : 0, allocations.reduce((sum, item) => sum + asNumber(item.reward_wolo), 0));
+  const rawPending = row ? asNumber(row.pending_rewards_wolo) : 0;
+  const microCarry = row ? asNumber(row.micro_reward_carry_uwolo) / 1_000_000 : 0;
+  const allocationDust = allocations.reduce((sum, item) => {
+    const reward = asNumber(item.reward_wolo);
+    const status = String(item.status || "").toLowerCase();
+
+    if (reward > 0 && reward < 1 && (status.includes("micro") || status.includes("held") || status.includes("pending"))) {
+      return sum + reward;
+    }
+
+    return sum;
+  }, 0);
+  const derivedPending = Math.max(0, lifetime - claimed - compounded);
+  const pending =
+    rawPending > 0
+      ? rawPending
+      : microCarry > 0.000001
+        ? microCarry
+        : allocationDust > 0.000001
+          ? allocationDust
+          : derivedPending > 0.000001
+            ? derivedPending
+            : 0;
   const championshipTitle = registry.slug === "jim" ? "USA National Champion" : registry.slug === "julio-alvarez" ? "Mexico National Champion" : "Verified Grind";
   const kingdomBenefit = registry.slug === "jim" ? "US Champion lane · founding staking guardian · public kingdom proof" : registry.slug === "julio-alvarez" ? "Mexico Champion lane · first scout · early staking proof" : "Operator lane · verified wallet · public economy rail";
   const designationRows: Array<{ label: string; meta: string; value: string; tone: "gold" | "emerald" | "sky" }> = [
@@ -296,7 +352,7 @@ export default async function StakerHallPage({ params }: PageProps) {
         ? [{ label: "Mexico National Champion", meta: "National belt", value: "75 WOLO/mo", tone: "gold" as const }]
         : []),
     { label: registry.title, meta: registry.lane, value: registry.badge, tone: registry.tone },
-    { label: autoCompound ? "Auto-compound" : "Manual claim", meta: "Staking mode", value: compactWolo(stake), tone: "emerald" },
+    { label: autoCompound ? "Auto-compound" : "Manual claim", meta: "Staking mode", value: compactWolo(seatSize), tone: "emerald" },
   ];
 
   return (
@@ -345,25 +401,25 @@ export default async function StakerHallPage({ params }: PageProps) {
         </section>
 
         <section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard label="Seat size" value={compactWolo(stake)} helper="Current stake" tone="gold" icon={<Coins className="h-4 w-4" />} />
-          <StatCard label="Weight" value={weight.toLocaleString()} helper="Reward influence" tone="sky" icon={<Sparkles className="h-4 w-4" />} />
+          <StatCard label="Seat size" value={preciseWolo(seatSize, 2)} helper="Principal + rewards" tone="gold" icon={<Coins className="h-4 w-4" />} />
+          <StatCard label="Weight" value={compactWeight(weight)} helper="Accounting weight" tone="sky" icon={<Sparkles className="h-4 w-4" />} />
           <StatCard label="Hall share" value={share} helper="Of visible active stake" tone="emerald" icon={<Landmark className="h-4 w-4" />} />
           <StatCard label="Reward Total" value={compactWolo(lifetime)} helper="All time earnings" tone="gold" icon={<Trophy className="h-4 w-4" />} />
         </section>
 
         <section className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <StatCard label="Auto-compounded" value={compactWolo(compounded)} helper="Inside current stake" tone="gold" icon={<Crown className="h-4 w-4" />} />
+          <StatCard label="Auto-compounded" value={compactWolo(compounded)} helper="Included in seat size" tone="gold" icon={<Crown className="h-4 w-4" />} />
           <StatCard label="Paid Out" value={compactWolo(claimed)} helper="All time" tone="emerald" icon={<Wallet className="h-4 w-4" />} />
           <StatCard
             label="Building"
             value={
               pending > 0 && pending < 1
-                ? `${pending.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 6 })} WOLO`
+                ? `${pending.toLocaleString(undefined, { maximumFractionDigits: 6 })} WOLO`
                 : compactWolo(pending)
             }
-            helper="Below reward threshold"
-            tone="gold"
+            helper={pending > 0 && pending < 1 ? "Dust under threshold" : "Below reward threshold"}
             icon={<Flame className="h-4 w-4" />}
+            tone="gold"
           />
         </section>
 

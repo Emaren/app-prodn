@@ -149,25 +149,31 @@ export default function StakerLedgerPanel({
     pending: number;
   };
 }) {
-  const [view, setView] = useState<LedgerView>(() => {
-    if (typeof window === "undefined") return "all";
+  const [view, setView] = useState<LedgerView>("all");
+  const [viewPreferenceReady, setViewPreferenceReady] = useState(false);
+
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      setViewPreferenceReady(true);
+      return;
+    }
 
     const scopedKey = `${STAKER_LEDGER_VIEW_PREFS_KEY}:${slug}`;
     const saved = window.localStorage.getItem(scopedKey) || window.localStorage.getItem(STAKER_LEDGER_VIEW_PREFS_KEY);
 
     if (saved && VIEWS.some((option) => option.key === saved)) {
+      setView(saved as LedgerView);
       window.localStorage.setItem(scopedKey, saved);
-      return saved as LedgerView;
     }
 
-    return "all";
-  });
-
+    setViewPreferenceReady(true);
+  }, [slug]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (!viewPreferenceReady || typeof window === "undefined") return;
     window.localStorage.setItem(`${STAKER_LEDGER_VIEW_PREFS_KEY}:${slug}`, view);
-  }, [slug, view]);
+  }, [slug, view, viewPreferenceReady]);
 
   const [rows, setRows] = useState<LedgerRow[]>([]);
   const [nextBefore, setNextBefore] = useState<string | null>(null);
