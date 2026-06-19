@@ -153,7 +153,7 @@ export function TopWoloEarnersTile({
   const placeholderCount = Math.max(0, VISIBLE_ROWS - entries.length);
   const featuredBackdropSrc = avatarUrlForName(entries[0]?.name || "Emaren");
   const viewportHeightClassName = isExtreme
-    ? "h-[min(72dvh,42rem)] min-h-[30rem] max-h-[42rem] lg:h-full lg:min-h-0 lg:max-h-full"
+    ? "h-[min(72dvh,42rem)] min-h-[30rem] max-h-[42rem] lg:h-[76rem] lg:min-h-[76rem] lg:max-h-[76rem]"
     : "h-full min-h-0 max-h-full";
 
   return (

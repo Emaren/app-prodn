@@ -706,7 +706,7 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
 
           <div
             className={`grid min-h-0 min-w-0 overflow-hidden gap-3.5 lg:grid-rows-[auto_minmax(0,1fr)] lg:self-start lg:pt-4 ${
-              isExtremeLobby ? "lg:min-h-[82rem]" : ""
+              isExtremeLobby ? "lg:min-h-[92rem]" : ""
             }`}
             style={heroRailStyle}
           >
@@ -727,7 +727,7 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
 
             <div
               className={`h-full min-h-0 overflow-hidden ${
-                isExtremeLobby ? "lg:min-h-[64rem]" : ""
+                isExtremeLobby ? "lg:h-[76rem] lg:min-h-[76rem] lg:max-h-[76rem]" : ""
               }`}
             >
               <TopWoloEarnersTile
