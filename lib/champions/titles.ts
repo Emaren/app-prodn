@@ -69,6 +69,13 @@ export type ChampionTitleDefinition = {
   genderDivision?: GenderDivision;
   eloMin?: number;
   eloMax?: number;
+  trophyId?: string;
+  trophyStatus?: string;
+  currentBountyWolo?: number;
+  bountyGrowthWolo?: number;
+  chainStatus?: string;
+  guardianHeld?: boolean;
+  holderSince?: string | null;
   detailLore: string;
   historyPlaceholder: string;
 };

@@ -10,6 +10,10 @@ import { validateWoloAddress } from "@/lib/woloBetSettlement";
 import { allChampionTitles, type ChampionTitleDefinition } from "@/lib/champions/titles";
 import { managedMediaPublicUrl, resolveManagedMediaUrl } from "@/lib/managedMediaAssets";
 import {
+  loadUserTrophyHoldings,
+  recordNationalityChange,
+} from "@/lib/trophies/service";
+import {
   GENDER_DIVISIONS,
   REPRESENTED_COUNTRIES,
   type GenderDivision,
@@ -183,18 +187,37 @@ function titleHoldingPayload(title: ChampionTitleDefinition) {
 
 async function buildProfilePresentation(
   prisma: ReturnType<typeof getPrisma>,
-  user: { uid: string; inGameName: string | null },
+  user: { id: number; uid: string; inGameName: string | null },
   steamPersonaName: string | null
 ) {
-  const userNames = new Set(
-    [user.inGameName, steamPersonaName]
-      .map(normalizeNameKey)
-      .filter(Boolean)
-  );
-  const heldTitles = allChampionTitles.filter((title) => titleHeldByUser(title, userNames));
-  const belts = heldTitles.filter((title) => title.type !== "designation").map(titleHoldingPayload);
-  const artifacts = heldTitles.filter((title) => title.type === "designation").map(titleHoldingPayload);
-  const earningWoloPerDay = heldTitles.reduce((sum, title) => sum + title.dailyWolo, 0);
+  let holdings = await loadUserTrophyHoldings(prisma, user.id).catch((error) => {
+    console.warn("Trophy profile holdings unavailable; using static title fallback:", error);
+    return [];
+  });
+  if (holdings.length === 0) {
+    const userNames = new Set(
+      [user.inGameName, steamPersonaName]
+        .map(normalizeNameKey)
+        .filter(Boolean)
+    );
+    holdings = allChampionTitles
+      .filter((title) => titleHeldByUser(title, userNames))
+      .map((title) => ({
+        ...titleHoldingPayload(title),
+        kind: title.type === "designation" ? "artifact" : "belt",
+        family: title.type,
+        bountyGrowthWolo: title.dailyWolo,
+        currentBountyWolo: 0,
+        holderSince: null,
+        status: "held",
+        chainStatus: "app_only",
+        nftId: null,
+        eligibleNationality: title.country ?? null,
+      }));
+  }
+  const belts = holdings.filter((title) => title.kind !== "artifact");
+  const artifacts = holdings.filter((title) => title.kind === "artifact");
+  const earningWoloPerDay = holdings.reduce((sum, title) => sum + title.dailyWolo, 0);
 
   return {
     avatarUrl: await resolveManagedMediaUrl(
@@ -573,6 +596,15 @@ export async function POST(request: NextRequest) {
         WHERE uid = ${uid}
       `;
 
+      if (wantsRepresentedCountryUpdate) {
+        await recordNationalityChange(prisma, {
+          userId: updated.id,
+          previousCountry: existing.representedCountry,
+          nextCountry: updated.representedCountry,
+          initiatedBy: "user",
+        });
+      }
+
       return NextResponse.json(
         toUserApi(updated, {
           ...verification,
@@ -613,6 +645,15 @@ export async function POST(request: NextRequest) {
       },
       select: USER_SELECT,
     });
+
+    if (wantsRepresentedCountryUpdate) {
+      await recordNationalityChange(prisma, {
+        userId: updated.id,
+        previousCountry: existing.representedCountry,
+        nextCountry: updated.representedCountry,
+        initiatedBy: "user",
+      });
+    }
 
     return NextResponse.json(toUserApi(updated, await fetchUserVerification(prisma, updated.uid)));
   } catch (err) {

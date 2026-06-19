@@ -1,10 +1,11 @@
 # Championship Title Economy
 
-Last updated: 2026-06-15
+Last updated: 2026-06-19
 
 AoE2HDBets owns the app-side championship presentation, eligibility settings,
-challenge entry points, and operator scaffolding for titles. This is not a
-chain custody layer, NFT layer, or WoloChain source of truth.
+challenge entry points, Trophy Command workflow, and app-side custody ledger.
+This is not WoloChain custody truth. NFT and chain actions remain explicit
+operator intents until a future Warbound chain module exists.
 
 ## Public routes
 
@@ -74,6 +75,11 @@ media armory.
 ## Data and state
 
 - `lib/champions/titleState.ts` builds the current app-side title view model.
+- `lib/trophies/service.ts` owns seeded trophy definitions, projected bounty
+  display, holder eligibility, profile holdings, and nationality-change audit.
+- `lib/trophies/actions.ts` owns operator mutations, economics versioning,
+  challenge verification, dry-run settlement, payout retry, and NFT intent
+  logging.
 - Real leaderboard data is used where the app already has it, especially for
   world, ELO, and designation contender rails.
 - Current holders are separate from contender boards. A title model is one
@@ -81,9 +87,46 @@ media armory.
   the top 10 list.
 - Unimplemented title holders should render as honest vacant/open states rather
   than fabricated champions.
-- `lib/champions/evaluation.ts` contains future parser/result hooks for title
-  transfers and artifact awards. The current ship does not automatically mutate
-  persistent title state.
+- Public `/challenge` requests for seeded titles create both the existing
+  `ScheduledMatch` and a linked `TrophyChallenge`. The challenger must satisfy
+  the configured national/ELO rule and must schedule against the current holder
+  or Commissioner Guardian.
+- Watcher/replay evidence remains the verification boundary. A linked challenge
+  is not settled merely because it was scheduled or funded.
+
+## Persistent War Trophy foundation
+
+The migration is:
+
+`prisma/migrations/20260619_210000_add_war_trophy_foundation/migration.sql`
+
+It creates:
+
+- `trophies`
+- `trophy_economics_versions`
+- `trophy_challenges`
+- `trophy_events`
+- `trophy_payouts`
+- `trophy_settings`
+
+Initial app-side custody seeds:
+
+- Canada Champion: Emaren
+- USA Champion: Jim
+- Mexico Champion: Julio Alvarez
+- UK Champion: Sniper
+- Elite Championship: Commissioner Guardian custody with Emaren
+
+Seed names remain visible even when a matching app user does not exist. In that
+case the display custody is retained while the user relation and wallet address
+remain null.
+
+The public registry is `GET /api/trophies`. NFT-shaped metadata is available at
+`GET /api/trophies/[trophyId]/metadata`.
+
+Projected bounty is display math: stored bounty plus whole elapsed days times
+the configured bounty growth. It is not a chain balance and must not be called
+paid or escrowed.
 
 ## Profile eligibility settings
 
@@ -102,12 +145,30 @@ The `/profile` Title Identity panel saves these settings through
 
 ## Admin state
 
-`/admin` includes an operator scaffold for future title assignment, vacation,
-top-10 ranking, and record/event capture work.
+`/admin/trophies` is the persistent War Trophy command center. Its operator
+tabs are:
 
-The scaffold is intentionally non-persistent for this slice. It should stay
-visibly disabled until the backing storage/API rail exists. Do not imply that a
-disabled admin form has changed title custody or WoloChain state.
+- Overview
+- Belts
+- Artifacts
+- Challenges
+- Payouts
+- Chain Events
+- Settings
+- Audit Log
+
+Operators can create/edit definitions, assign holders or the Commissioner
+Guardian, record explicit eligibility overrides, version economics, attach
+replays, select verified winners, dry-run settlement, inspect/retry payout
+failures, edit Representing Country with a forfeiture audit, and log NFT
+mint/reassign/retire/burn intents.
+
+`dry_run_only` defaults to `true`, `app_only_fallback_enabled` defaults to
+`true`, and `chain_backed_trophies_enabled` defaults to `false`.
+
+Changing a national belt holder's Representing Country does not silently move
+or vacate the belt. It raises `forfeiture_needed` and records
+`NATIONAL_ELIGIBILITY_FORFEITURE_NEEDED` for explicit operator resolution.
 
 ## Ownership boundary
 
@@ -121,6 +182,7 @@ AoE2HDBets must not redefine:
 - Signed wallet movement.
 - Bet-time escrow or chain custody.
 - Any settlement state that conflicts with WoloChain or the settlement rail.
+- NFT ownership merely because an app-side mint/reassignment intent exists.
 
 If a future title claim spends, locks, or settles real WOLO, that path must use
 the existing signed wallet and settlement verification rules before copy calls

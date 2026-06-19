@@ -63,8 +63,19 @@ const EMPTY_SNAPSHOT: ChallengeHubSnapshot = {
 
 type ChallengeCreateSnapshot = ChallengeHubSnapshot & {
   createdChallengeId?: number | null;
+  linkedTrophyChallengeId?: number | null;
   detail?: string;
   duplicateWarning?: string | null;
+};
+
+type PublicTrophyTarget = {
+  trophyId: string;
+  championTitleId: string | null;
+  displayName: string;
+  currentHolder: string | null;
+  guardianHolder: string | null;
+  eligibleNationality: string | null;
+  status: string;
 };
 
 const ACTIVE_RUNWAY_STATES: string[] = [
@@ -259,6 +270,8 @@ export default function ChallengeWorkspace() {
   const [scheduledAt, setScheduledAt] = useState("");
   const [challengeNote, setChallengeNote] = useState("");
   const [routePrefillApplied, setRoutePrefillApplied] = useState(false);
+  const [trophyTarget, setTrophyTarget] = useState<PublicTrophyTarget | null>(null);
+  const [trophyTargetLoading, setTrophyTargetLoading] = useState(Boolean(searchParams.get("title")));
   const [wagerAmountWolo, setWagerAmountWolo] = useState(String(CHALLENGE_DEFAULT_WAGER_WOLO));
   const [guaranteeAmountWolo, setGuaranteeAmountWolo] = useState(
     String(CHALLENGE_DEFAULT_GUARANTEE_WOLO)
@@ -285,6 +298,41 @@ export default function ChallengeWorkspace() {
       : "national belt";
 
     return `Challenge for ${countryLabel}'s ${titleLabel}: scheduling with Emaren so the national belt can be created, played for, and awarded after verified match proof.`;
+  }, [requestedCountry, requestedTitle]);
+
+  useEffect(() => {
+    if (!requestedTitle) {
+      setTrophyTarget(null);
+      setTrophyTargetLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setTrophyTargetLoading(true);
+    const loadTarget = async () => {
+      try {
+        const response = await fetch("/api/trophies", { cache: "no-store" });
+        const payload = (await response.json().catch(() => ({}))) as {
+          trophies?: PublicTrophyTarget[];
+        };
+        const target =
+          payload.trophies?.find((trophy) => {
+            if (requestedTitle === "national" && requestedCountry) {
+              return trophy.eligibleNationality === requestedCountry;
+            }
+            return trophy.championTitleId === requestedTitle || trophy.trophyId === requestedTitle;
+          }) ?? null;
+        if (!cancelled) setTrophyTarget(target);
+      } catch {
+        if (!cancelled) setTrophyTarget(null);
+      } finally {
+        if (!cancelled) setTrophyTargetLoading(false);
+      }
+    };
+    void loadTarget();
+    return () => {
+      cancelled = true;
+    };
   }, [requestedCountry, requestedTitle]);
 
   useEffect(() => {
@@ -338,11 +386,11 @@ export default function ChallengeWorkspace() {
   }, []);
 
   useEffect(() => {
-    if (routePrefillApplied || loading || authLoading) {
+    if (routePrefillApplied || loading || authLoading || trophyTargetLoading) {
       return;
     }
 
-    if (!isNationalChallengeFlow) {
+    if (!isNationalChallengeFlow && !trophyTarget) {
       setRoutePrefillApplied(true);
       return;
     }
@@ -351,14 +399,20 @@ export default function ChallengeWorkspace() {
       setSelectedNationalCountry(initialNationalCountry);
     }
 
-    const note = buildNationalChallengeNote(initialNationalCountry);
+    const note = trophyTarget
+      ? `Challenge for ${trophyTarget.displayName}: scheduled against ${trophyTarget.currentHolder || trophyTarget.guardianHolder || "the current custodian"} and settled only after verified watcher or replay proof.`
+      : buildNationalChallengeNote(initialNationalCountry);
     setChallengeNote((current) => current || note.slice(0, CHALLENGE_NOTE_MAX_CHARS));
     setChallengedUid((current) => {
       if (current) return current;
-      const emaren = snapshot.candidates.find((candidate) =>
-        candidate.name.trim().toLowerCase().includes("emaren")
-      );
-      return emaren?.uid || current;
+      const targetName = trophyTarget?.currentHolder || trophyTarget?.guardianHolder;
+      if (!targetName) return current;
+      const normalizedTarget = targetName.trim().toLowerCase();
+      const target = snapshot.candidates.find((candidate) => {
+        const candidateName = candidate.name.trim().toLowerCase();
+        return candidateName === normalizedTarget || candidateName.includes(normalizedTarget);
+      });
+      return target?.uid || current;
     });
     setRoutePrefillApplied(true);
   }, [
@@ -369,6 +423,8 @@ export default function ChallengeWorkspace() {
     loading,
     routePrefillApplied,
     snapshot.candidates,
+    trophyTarget,
+    trophyTargetLoading,
   ]);
 
   const pendingIncomingCount = useMemo(
@@ -684,6 +740,8 @@ export default function ChallengeWorkspace() {
           challengeNote,
           wagerAmountWolo: parsedWagerAmountWolo,
           guaranteeAmountWolo: parsedGuaranteeAmountWolo,
+          trophyTitleId: requestedTitle || null,
+          trophyCountry: selectedNationalCountry || requestedCountry || null,
         }),
       });
 
@@ -734,7 +792,9 @@ export default function ChallengeWorkspace() {
       setNotice(
         duplicateWarning
           ? `${duplicateWarning} Challenge funded. Opponent can accept + fund.`
-          : "Challenge funded. Opponent can accept + fund."
+          : payload.linkedTrophyChallengeId
+            ? `${trophyTarget?.displayName || "Trophy"} challenge funded and linked to the proof rail.`
+            : "Challenge funded. Opponent can accept + fund."
       );
       setChallengedUid("");
       setChallengeNote("");

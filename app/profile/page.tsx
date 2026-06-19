@@ -88,11 +88,20 @@ type ProfileResponse = {
 type ProfileTitleHolding = {
   id: string;
   type: string;
+  kind: string;
+  family: string;
   displayName: string;
   shortName: string;
   dailyWolo: number;
+  bountyGrowthWolo: number;
+  currentBountyWolo: number;
   routeHref: string;
   assetUrl: string;
+  holderSince: string | null;
+  status: string;
+  chainStatus: string;
+  nftId: string | null;
+  eligibleNationality: string | null;
 };
 
 type WatcherKeyRow = {
@@ -1463,22 +1472,85 @@ function ProfileAvatarPanel({
 function ProfileTitleInventory({ profile }: { profile: ProfileResponse | null }) {
   const belts = profile?.belts ?? [];
   const artifacts = profile?.artifacts ?? [];
+  const featuredBelt = belts[0] ?? null;
 
   return (
-    <div className="mt-4 grid min-w-0 gap-3 lg:grid-cols-2">
-      <ProfileHoldingRail
-        icon={Crown}
-        title="Belts"
-        empty="No active belts yet."
-        holdings={belts}
-      />
-      <ProfileHoldingRail
-        icon={Gem}
-        title="Artifacts"
-        empty="No artifacts held yet."
-        holdings={artifacts}
-      />
+    <div className="mt-4 min-w-0 space-y-3">
+      {featuredBelt && profile ? (
+        <ProfileChampionShowcase holding={featuredBelt} avatarUrl={profile.avatarUrl} />
+      ) : null}
+      <div className="grid min-w-0 gap-3 lg:grid-cols-2">
+        <ProfileHoldingRail
+          icon={Crown}
+          title="Belts"
+          empty={featuredBelt ? "Featured championship shown above." : "No active belts yet."}
+          holdings={featuredBelt ? belts.slice(1) : belts}
+        />
+        <ProfileHoldingRail
+          icon={Gem}
+          title="Artifacts"
+          empty="No artifacts held yet."
+          holdings={artifacts}
+        />
+      </div>
     </div>
+  );
+}
+
+function ProfileChampionShowcase({
+  holding,
+  avatarUrl,
+}: {
+  holding: ProfileTitleHolding;
+  avatarUrl: string;
+}) {
+  return (
+    <Link
+      href={holding.routeHref}
+      className="group relative block min-h-[25rem] overflow-hidden rounded-[1.7rem] border border-amber-200/18 bg-[radial-gradient(circle_at_50%_8%,rgba(251,191,36,0.16),transparent_28%),linear-gradient(145deg,rgba(21,16,10,0.96),rgba(4,10,19,0.98))] p-4 shadow-[0_28px_80px_rgba(0,0,0,0.34)] sm:min-h-[28rem]"
+    >
+      <div className="absolute inset-x-3 top-3 z-30 flex justify-center">
+        <div className="rounded-full border border-amber-100/28 bg-black/72 px-4 py-2 text-center shadow-[0_12px_36px_rgba(0,0,0,0.48)] backdrop-blur">
+          <div className="text-[8px] font-black uppercase tracking-[0.27em] text-amber-200/70">
+            Estimated dethrone reward
+          </div>
+          <div className="mt-0.5 text-lg font-black text-amber-50">
+            {holding.currentBountyWolo.toLocaleString()} WOLO
+          </div>
+          <div className="text-[9px] font-semibold uppercase tracking-[0.18em] text-amber-200/58">
+            +{holding.bountyGrowthWolo} WOLO/day
+          </div>
+        </div>
+      </div>
+
+      <div className="absolute inset-x-[18%] top-14 h-[17rem] sm:top-12 sm:h-[20rem]">
+        <img
+          src={avatarUrl}
+          alt=""
+          className="h-full w-full object-contain object-top opacity-95 drop-shadow-[0_20px_45px_rgba(0,0,0,0.72)] [mask-image:linear-gradient(180deg,black_0%,black_65%,transparent_100%)]"
+        />
+      </div>
+      <div className="absolute inset-x-[8%] bottom-[4.8rem] z-20 h-40 sm:h-48">
+        <img
+          src={holding.assetUrl}
+          alt={holding.displayName}
+          className="h-full w-full object-contain drop-shadow-[0_22px_44px_rgba(0,0,0,0.85)] transition duration-500 group-hover:scale-[1.025]"
+        />
+      </div>
+
+      <div className="absolute inset-x-4 bottom-4 z-30 flex items-end justify-between gap-3 rounded-2xl border border-amber-200/12 bg-black/62 p-3 backdrop-blur">
+        <div className="min-w-0">
+          <div className="truncate text-lg font-semibold text-white">{holding.displayName}</div>
+          <div className="mt-1 flex flex-wrap gap-2 text-[10px] uppercase tracking-[0.16em] text-slate-400">
+            <span>{holding.dailyWolo} WOLO/day tribute</span>
+            <span>{holding.chainStatus === "app_only" ? "App custody" : holding.chainStatus}</span>
+          </div>
+        </div>
+        <div className="shrink-0 rounded-full border border-amber-200/18 bg-amber-300/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-amber-100">
+          Champion
+        </div>
+      </div>
+    </Link>
   );
 }
 

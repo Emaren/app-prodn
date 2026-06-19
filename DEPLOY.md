@@ -57,6 +57,24 @@ journalctl -u aoe2hdbets-web.service -n 40 --no-pager
 
 ## Recent deployment notes
 
+### 2026-06-19 War Trophy foundation
+
+- Added persistent Trophy, economics-version, challenge, payout, event, and
+  settings tables.
+- Added `/admin/trophies` with holder/Guardian custody, belt/artifact
+  definitions, explicit nationality-forfeiture review, replay verification,
+  dry-run settlement, payout retry, chain-intent diagnostics, and audit tabs.
+- Seeded Canada/USA/Mexico/UK national belts plus the Elite Guardian-held belt.
+- Public Champions and Profile surfaces now read live app-side custody and show
+  projected dethrone bounties.
+- Seeded-title challenge links create a linked TrophyChallenge beside the
+  existing scheduled match and validate holder/Guardian targeting plus
+  nationality/ELO eligibility.
+- Deployment requires `npx prisma migrate deploy` before the production build
+  and restart.
+- Chain-backed trophy mode remains disabled. NFT operations are logged intents,
+  not WoloChain ownership changes.
+
 ### 2026-06-19 lobby view-width and mobile rail pass
 
 - Restored mode-owned lobby widths: Basic `65rem`, Advanced `75rem`, and default Extreme `96rem`.
@@ -207,8 +225,11 @@ curl -I https://aoe2war.com/
 curl -I https://aoe2war.com/lobby
 curl -I https://aoe2war.com/live-games
 curl -I https://aoe2war.com/challenge
+curl -I https://aoe2war.com/champions
 curl -I https://aoe2war.com/players
 curl -I https://aoe2war.com/contact-emaren
+curl -s https://aoe2war.com/api/trophies | jq '{count: (.trophies | length), trophies: [.trophies[] | {trophyId, status, currentHolder, guardianHolder, chainStatus}]}'
+curl -s https://aoe2war.com/api/trophies/canada_champion_belt/metadata | jq '{name, external_url, attributes}'
 curl -s https://aoe2war.com/api/lobby | jq '.leaderboard.trackedPlayers, (.leaderboard.entries | length)'
 curl -s https://aoe2war.com/api/lobby | jq '{ticker: (.liveTicker.items | length), market: .woloMarket.poolId}'
 curl -s https://aoe2war.com/api/bets | jq '.wolo | { betEscrowMode, onchainEscrowEnabled, onchainEscrowRequired, betEscrowAddress }'

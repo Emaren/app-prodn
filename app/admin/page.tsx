@@ -8,7 +8,6 @@ import {
   useEffect,
   useState,
 } from "react";
-import ChampionTitleAdminScaffold from "@/components/admin/ChampionTitleAdminScaffold";
 import LiveTickerAdminPanel from "@/components/admin/LiveTickerAdminPanel";
 import { useUserAuth } from "@/context/UserAuthContext";
 import {
@@ -582,6 +581,12 @@ export default function AdminPage() {
             </div>
             <div className="flex flex-wrap justify-end gap-2">
               <Link
+                href="/admin/trophies"
+                className="inline-flex rounded-full border border-amber-200/18 px-5 py-3 text-sm text-amber-100 transition hover:border-amber-200/36 hover:bg-amber-300/10"
+              >
+                Trophy Command
+              </Link>
+              <Link
                 href="/admin/media-assets"
                 className="inline-flex rounded-full border border-amber-200/18 px-5 py-3 text-sm text-amber-100 transition hover:border-amber-200/36 hover:bg-amber-300/10"
               >
@@ -714,7 +719,19 @@ export default function AdminPage() {
 
       <LiveTickerAdminPanel />
 
-      <ChampionTitleAdminScaffold />
+      <section className="rounded-[2rem] border border-amber-200/14 bg-[radial-gradient(circle_at_top_left,_rgba(251,191,36,0.14),_transparent_30%),linear-gradient(135deg,_rgba(15,23,42,0.78),_rgba(2,6,23,0.94))] p-6 sm:p-8">
+        <div className="text-xs uppercase tracking-[0.35em] text-amber-100/70">War Trophy system</div>
+        <h2 className="mt-2 text-2xl font-semibold text-white">The scaffold became a real command center.</h2>
+        <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
+          Holder custody, Guardian activation fights, eligibility, economics versions, watcher proof, payouts, NFT intent diagnostics, settings, and audit history now live on their own operator route.
+        </p>
+        <Link
+          href="/admin/trophies"
+          className="mt-5 inline-flex items-center gap-2 rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200"
+        >
+          Open Trophy Command
+        </Link>
+      </section>
 
       <BroadcastPreviewUploadPanel
         targets={broadcastTargets}

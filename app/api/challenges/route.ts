@@ -17,6 +17,11 @@ import {
 import { postChallengeInboxNotice } from "@/lib/contactInbox";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
+import {
+  ensureTrophySeedData,
+  loadTrophyUsers,
+  seededTrophyKeyForChallenge,
+} from "@/lib/trophies/service";
 import { recordUserActivity } from "@/lib/userExperience";
 
 export const runtime = "nodejs";
@@ -30,6 +35,8 @@ const VIEWER_SELECT = {
   uid: true,
   inGameName: true,
   steamPersonaName: true,
+  walletAddress: true,
+  representedCountry: true,
 } as const;
 
 function playerName(user: {
@@ -158,6 +165,8 @@ export async function POST(request: NextRequest) {
       challengeNote?: string;
       wagerAmountWolo?: string | number | null;
       guaranteeAmountWolo?: string | number | null;
+      trophyTitleId?: string | null;
+      trophyCountry?: string | null;
     };
 
     const challengedUid =
@@ -169,6 +178,10 @@ export async function POST(request: NextRequest) {
     const guaranteeAmountWolo =
       normalizeChallengeWoloAmount(payload.guaranteeAmountWolo) ??
       CHALLENGE_DEFAULT_GUARANTEE_WOLO;
+    const trophyKey = seededTrophyKeyForChallenge(
+      typeof payload.trophyTitleId === "string" ? payload.trophyTitleId : null,
+      typeof payload.trophyCountry === "string" ? payload.trophyCountry : null
+    );
 
     if (!challengedUid) {
       return NextResponse.json({ detail: "Pick a player to challenge." }, { status: 400 });
@@ -199,6 +212,8 @@ export async function POST(request: NextRequest) {
         uid: true,
         inGameName: true,
         steamPersonaName: true,
+        walletAddress: true,
+        representedCountry: true,
       },
     });
 
@@ -215,7 +230,71 @@ export async function POST(request: NextRequest) {
     const challengedName = playerName(challenged);
     const challengeLabel = buildChallengeLabel({ challengerName, challengedName });
     const totalFundingWolo = wagerAmountWolo + guaranteeAmountWolo;
+    let targetTrophy:
+      | Awaited<ReturnType<typeof prisma.trophy.findUnique>>
+      | null = null;
+    let challengerRating: number | null = null;
+
+    if (trophyKey) {
+      await ensureTrophySeedData(prisma);
+      targetTrophy = await prisma.trophy.findUnique({ where: { trophyId: trophyKey } });
+      if (!targetTrophy) {
+        return NextResponse.json({ detail: "That trophy target is unavailable." }, { status: 404 });
+      }
+
+      const expectedDefenderId =
+        targetTrophy.currentHolderUserId ?? targetTrophy.guardianHolderUserId;
+      if (
+        !expectedDefenderId &&
+        ["held", "active", "guardian_held"].includes(targetTrophy.status)
+      ) {
+        return NextResponse.json(
+          {
+            detail: `${targetTrophy.displayName} custody is not linked to an app identity yet. An admin must link the holder or Guardian before scheduling its title fight.`,
+          },
+          { status: 409 }
+        );
+      }
+      if (expectedDefenderId && expectedDefenderId !== challenged.id) {
+        const targetName =
+          targetTrophy.currentHolderDisplayName ||
+          targetTrophy.guardianHolderDisplayName ||
+          "the current custodian";
+        return NextResponse.json(
+          { detail: `${targetTrophy.displayName} must be scheduled against ${targetName}.` },
+          { status: 400 }
+        );
+      }
+
+      if (targetTrophy.family === "national") {
+        if (viewer.representedCountry !== targetTrophy.eligibleNationality) {
+          return NextResponse.json(
+            {
+              detail: `Set Representing Country to ${targetTrophy.eligibleNationality} before challenging for this belt.`,
+            },
+            { status: 400 }
+          );
+        }
+      } else if (targetTrophy.family === "elo") {
+        const trophyUsers = await loadTrophyUsers(prisma);
+        challengerRating =
+          trophyUsers.find((user) => user.id === viewer.id)?.rating ?? null;
+        const meetsMaximum =
+          targetTrophy.eloBandMax === null ||
+          (challengerRating !== null && challengerRating <= targetTrophy.eloBandMax);
+        if (challengerRating === null || !meetsMaximum) {
+          return NextResponse.json(
+            {
+              detail: `${targetTrophy.displayName} requires replay-backed ELO at or below ${targetTrophy.eloBandMax ?? "the open upper bound"}. Lower-rated upward invaders are eligible.`,
+            },
+            { status: 400 }
+          );
+        }
+      }
+    }
+
     let createdChallengeId: number | null = null;
+    let linkedTrophyChallengeId: number | null = null;
 
     await prisma.$transaction(async (tx) => {
       const createdMatch = await tx.scheduledMatch.create({
@@ -230,6 +309,60 @@ export async function POST(request: NextRequest) {
         },
       });
       createdChallengeId = createdMatch.id;
+
+      if (targetTrophy) {
+        const linkedTrophyChallenge = await tx.trophyChallenge.create({
+          data: {
+            trophyId: targetTrophy.id,
+            challengeKind:
+              targetTrophy.status === "guardian_held"
+                ? "guardian_activation"
+                : targetTrophy.family,
+            challengerUserId: viewer.id,
+            defenderUserId: targetTrophy.currentHolderUserId,
+            guardianUserId: targetTrophy.guardianHolderUserId,
+            challengerWoloAddress: viewer.walletAddress,
+            defenderWoloAddress:
+              targetTrophy.currentHolderWoloAddress ||
+              targetTrophy.guardianHolderWoloAddress,
+            expectedPlayerNames: [challengerName, challengedName],
+            requiredNationality: targetTrophy.eligibleNationality,
+            requiredEloMin: targetTrophy.eloBandMin,
+            requiredEloMax: targetTrophy.eloBandMax,
+            eligibilitySnapshot: {
+              eligible: true,
+              challengerCountry: viewer.representedCountry,
+              challengerRating,
+              capturedAt: new Date().toISOString(),
+              source: "public_challenge_flow",
+            },
+            status: "proposed",
+            scheduledMatchId: createdMatch.id,
+            settlementStatus: "not_started",
+          },
+        });
+        linkedTrophyChallengeId = linkedTrophyChallenge.id;
+
+        await tx.trophyEvent.create({
+          data: {
+            trophyId: targetTrophy.id,
+            eventType: "CHALLENGE_CREATED",
+            actorUserId: viewer.id,
+            actorRole: "challenger",
+            initiatedBy: "user",
+            toHolderUserId:
+              targetTrophy.currentHolderUserId ??
+              targetTrophy.guardianHolderUserId,
+            challengeId: linkedTrophyChallenge.id,
+            status: "recorded",
+            rawRequest: {
+              scheduledMatchId: createdMatch.id,
+              trophyTitleId: payload.trophyTitleId || null,
+              trophyCountry: payload.trophyCountry || null,
+            },
+          },
+        });
+      }
 
       await tx.scheduledMatchActivity.create({
         data: {
@@ -248,6 +381,8 @@ export async function POST(request: NextRequest) {
             wagerAmountWolo,
             guaranteeAmountWolo,
             totalFundingWolo,
+            trophyId: targetTrophy?.trophyId ?? null,
+            trophyChallengeId: linkedTrophyChallengeId,
           },
         },
       });
@@ -280,6 +415,8 @@ export async function POST(request: NextRequest) {
           wagerAmountWolo,
           guaranteeAmountWolo,
           totalFundingWolo,
+          trophyId: targetTrophy?.trophyId ?? null,
+          trophyChallengeId: linkedTrophyChallengeId,
         },
         dedupeWithinSeconds: 5,
       });
@@ -298,6 +435,8 @@ export async function POST(request: NextRequest) {
           wagerAmountWolo,
           guaranteeAmountWolo,
           totalFundingWolo,
+          trophyId: targetTrophy?.trophyId ?? null,
+          trophyChallengeId: linkedTrophyChallengeId,
         },
         dedupeWithinSeconds: 5,
       });
@@ -307,6 +446,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       ...refreshed,
       createdChallengeId,
+      linkedTrophyChallengeId,
       duplicateWarning,
     });
   } catch (error) {

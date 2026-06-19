@@ -3,9 +3,15 @@ import type { LobbyLeaderboardEntry } from "@/lib/lobby";
 import { loadLobbyLeaderboard } from "@/lib/lobbyLeaderboard";
 import {
   allChampionTitles,
+  type ChampionHolder,
   type ChampionTitleDefinition,
   type TitleContender,
 } from "@/lib/champions/titles";
+import {
+  loadPublicTrophies,
+  projectedTrophyBounty,
+  seededTrophyDefinition,
+} from "@/lib/trophies/service";
 
 export type ChampionTitleState = ChampionTitleDefinition & {
   contenders: TitleContender[];
@@ -142,6 +148,7 @@ export async function loadChampionTitleEconomyState(
 ): Promise<ChampionTitleEconomyState> {
   let leaderboardEntries: LobbyLeaderboardEntry[] = [];
   let leaderboardAvailable = false;
+  const liveDefinitionMap = new Map<string, ChampionTitleDefinition>();
 
   try {
     const leaderboard = await loadLobbyLeaderboard(prisma, {
@@ -154,11 +161,69 @@ export async function loadChampionTitleEconomyState(
     console.warn("Champion contender leaderboard unavailable:", error);
   }
 
+  try {
+    const trophies = await loadPublicTrophies(prisma);
+    for (const trophy of trophies) {
+      const seed = seededTrophyDefinition(trophy.trophyId);
+      if (!seed) continue;
+      const definition = seed.definition;
+      const activeHolder = trophy.currentHolder;
+      const guardianHolder = trophy.guardianHolder;
+      const holderName =
+        trophy.currentHolderDisplayName ||
+        activeHolder?.inGameName ||
+        activeHolder?.steamPersonaName ||
+        trophy.guardianHolderDisplayName ||
+        guardianHolder?.inGameName ||
+        guardianHolder?.steamPersonaName ||
+        null;
+      const holderUid = activeHolder?.uid || guardianHolder?.uid || null;
+      const holders: ChampionHolder[] = holderName
+        ? [
+            {
+              name: holderName,
+              href: holderUid ? `/players/${encodeURIComponent(holderUid)}` : undefined,
+              meta:
+                trophy.status === "guardian_held"
+                  ? "Commissioner Guardian · activation fight open"
+                  : trophy.eligibleNationality || "Current title holder",
+              representedCountry:
+                trophy.eligibleNationality &&
+                ["Canada", "USA", "Mexico", "UK"].includes(trophy.eligibleNationality)
+                  ? (trophy.eligibleNationality as ChampionHolder["representedCountry"])
+                  : undefined,
+            },
+          ]
+        : [];
+      liveDefinitionMap.set(definition.id, {
+        ...definition,
+        dailyWolo: trophy.tributeAmountWolo,
+        status:
+          trophy.status === "held" || trophy.status === "active" || trophy.status === "guardian_held"
+            ? "held"
+            : "vacant",
+        holders,
+        trophyId: trophy.trophyId,
+        trophyStatus: trophy.status,
+        currentBountyWolo: projectedTrophyBounty(trophy),
+        bountyGrowthWolo: trophy.bountyGrowthWolo,
+        chainStatus: trophy.chainStatus,
+        guardianHeld: trophy.status === "guardian_held",
+        holderSince: trophy.holderSince?.toISOString() ?? null,
+      });
+    }
+  } catch (error) {
+    console.warn("Live Trophy registry unavailable; using title definitions:", error);
+  }
+
   return {
-    titles: allChampionTitles.map((definition) => ({
-      ...definition,
-      ...contendersForTitle(definition, leaderboardEntries),
-    })),
+    titles: allChampionTitles.map((definition) => {
+      const liveDefinition = liveDefinitionMap.get(definition.id) ?? definition;
+      return {
+        ...liveDefinition,
+        ...contendersForTitle(liveDefinition, leaderboardEntries),
+      };
+    }),
     leaderboardAvailable,
     generatedAt: new Date().toISOString(),
   };
