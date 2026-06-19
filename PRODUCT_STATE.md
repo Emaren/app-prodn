@@ -28,8 +28,11 @@ Current strengths:
 - the castle menu opens by hover/focus on desktop and as an unclipped touch sheet on mobile
 - the account menu renders as an unclipped, viewport-bounded command deck on desktop and mobile
 - `/lobby` now feels like a real destination, not filler
-- `/lobby` now defaults to Advanced view with a moving live ticker, Watch & Chat arena hero with comments on the right, reactions plus a compact bet slip below the video, a compact WOLO swap tile, and the existing Community Lobby pushed below the arena stack
+- `/lobby` now defaults to Extreme view for the full-width power-user layout; Advanced keeps the richer arena composition at a controlled medium width, while Basic restores the original focused/skinny body
+- the mode width contract is Basic `65rem`, Advanced `75rem`, and Extreme `96rem`
+- Extreme leaderboard and War Chest lists scroll inside their own frames; the desktop War Chest previews roughly nine rows and the mobile tile stays viewport-bounded
 - Basic view remains available behind the lobby toggle and keeps the simpler leaderboard/tournament/war-chest-first layout intact
+- the lobby has one primary upper video/event stage; the redundant mid-page broadcast theater was removed so the leaderboard/War Chest section flows directly into chat and online players
 - admin-created text ticker messages are managed from `/admin` and combine with system ticker items from tournament, replay, lobby, and WOLO market state
 - the Advanced Watch & Chat hero prefers real live-game/session data, then recent completed sessions, then the latest verified replay or next tournament state; its embedded bet slip reads `/api/bets` and hands wager locking to `/bets`
 - leaderboard is shipped into the lobby surface

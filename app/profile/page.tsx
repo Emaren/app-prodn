@@ -651,8 +651,8 @@ function ProfilePageContent() {
   const latestWatcherKey = watcherKeys[0] ?? null;
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 py-8 text-white">
-      <section className="rounded-[2rem] border border-white/10 bg-slate-950/70 p-6 sm:p-8">
+    <div className="mx-auto w-full min-w-0 max-w-5xl space-y-6 py-8 text-white">
+      <section className="min-w-0 overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/70 p-5 sm:p-8">
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)] xl:items-start">
           <div className="min-w-0">
             <div className="text-xs uppercase tracking-[0.35em] text-white/45">Identity</div>
@@ -1465,7 +1465,7 @@ function ProfileTitleInventory({ profile }: { profile: ProfileResponse | null })
   const artifacts = profile?.artifacts ?? [];
 
   return (
-    <div className="mt-4 grid gap-3 lg:grid-cols-2">
+    <div className="mt-4 grid min-w-0 gap-3 lg:grid-cols-2">
       <ProfileHoldingRail
         icon={Crown}
         title="Belts"
@@ -1494,7 +1494,7 @@ function ProfileHoldingRail({
   holdings: ProfileTitleHolding[];
 }) {
   return (
-    <div className="rounded-[1.35rem] border border-white/10 bg-white/[0.035] p-4">
+    <div className="min-w-0 overflow-hidden rounded-[1.35rem] border border-white/10 bg-white/[0.035] p-4">
       <div className="flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-slate-500">
         <Icon className="h-4 w-4" />
         {title}
@@ -1516,16 +1516,16 @@ function ProfileHoldingCard({ holding }: { holding: ProfileTitleHolding }) {
   return (
     <Link
       href={holding.routeHref}
-      className="grid grid-cols-[4rem_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-amber-200/10 bg-black/18 px-3 py-2.5 transition hover:border-amber-200/28 hover:bg-amber-300/8"
+      className="grid min-w-0 grid-cols-[3.5rem_minmax(0,1fr)] items-center gap-3 rounded-2xl border border-amber-200/10 bg-black/18 px-3 py-2.5 transition hover:border-amber-200/28 hover:bg-amber-300/8 sm:grid-cols-[4rem_minmax(0,1fr)_auto]"
     >
-      <span className="flex h-14 w-16 items-center justify-center overflow-hidden rounded-xl bg-black/20">
+      <span className="row-span-2 flex h-14 w-14 items-center justify-center overflow-hidden rounded-xl bg-black/20 sm:row-span-1 sm:w-16">
         <img src={holding.assetUrl} alt="" className="max-h-full max-w-full object-contain" />
       </span>
       <span className="min-w-0">
         <span className="block truncate text-sm font-semibold text-white">{holding.shortName}</span>
         <span className="mt-0.5 block truncate text-xs text-slate-500">{holding.displayName}</span>
       </span>
-      <span className="rounded-full border border-amber-200/16 bg-amber-300/10 px-2.5 py-1 text-[11px] font-semibold text-amber-100">
+      <span className="col-start-2 justify-self-start rounded-full border border-amber-200/16 bg-amber-300/10 px-2.5 py-1 text-[11px] font-semibold text-amber-100 sm:col-start-3 sm:row-start-1 sm:justify-self-end">
         {holding.dailyWolo} WOLO/day
       </span>
     </Link>

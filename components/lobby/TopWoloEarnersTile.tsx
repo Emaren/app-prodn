@@ -152,10 +152,13 @@ export function TopWoloEarnersTile({
     entries.length > 0 ? `${entries.length} earners` : reserve ? `${reserve} reserve` : "4 earners";
   const placeholderCount = Math.max(0, VISIBLE_ROWS - entries.length);
   const featuredBackdropSrc = avatarUrlForName(entries[0]?.name || "Emaren");
+  const viewportHeightClassName = isExtreme
+    ? "h-[min(72dvh,42rem)] min-h-[30rem] max-h-[42rem] lg:h-full lg:min-h-0 lg:max-h-full"
+    : "h-full min-h-0 max-h-full";
 
   return (
     <section
-      className={`relative flex h-full min-h-0 max-h-full flex-col overflow-hidden rounded-[1.7rem] border p-5 pt-7 transition ${
+      className={`relative flex flex-col overflow-hidden rounded-[1.7rem] border p-4 pt-5 transition sm:p-5 sm:pt-7 ${viewportHeightClassName} ${
         isExtreme
           ? "border-amber-200/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.045),rgba(255,255,255,0.018))] shadow-[0_26px_88px_rgba(0,0,0,0.28)]"
           : tone.panelShell
@@ -184,7 +187,7 @@ export function TopWoloEarnersTile({
             aria-label="Open War Chest"
           >
             <WoloMarkBadge />
-            <h3 className="text-[1.65rem] font-semibold text-white">WAR CHEST</h3>
+            <h3 className="text-xl font-semibold text-white sm:text-[1.65rem]">WAR CHEST</h3>
           </Link>
         </div>
 
@@ -232,7 +235,7 @@ export function TopWoloEarnersTile({
                 const primaryLabel = mode === "weekly" ? "Weekly take" : "All-time take";
                 const avatarSrc = avatarUrlForName(entry.name);
                 const rowClassName = isExtreme
-                  ? "relative block overflow-hidden rounded-[1.25rem] border border-amber-200/8 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),rgba(255,255,255,0.018))] px-4 py-4 transition hover:border-amber-200/22 hover:bg-amber-300/7"
+                  ? "relative block overflow-hidden rounded-[1.25rem] border border-amber-200/8 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),rgba(255,255,255,0.018))] px-3 py-3 transition hover:border-amber-200/22 hover:bg-amber-300/7 sm:px-4 sm:py-4"
                   : `block rounded-[1.25rem] border px-4 py-4 transition ${tone.card} ${tone.cardHover}`;
 
                 return (
@@ -242,7 +245,7 @@ export function TopWoloEarnersTile({
                     className={rowClassName}
                   >
                     {isExtreme ? (
-                      <div className="pointer-events-none absolute inset-y-0 right-0 w-36 overflow-hidden opacity-38 sm:w-44">
+                      <div className="pointer-events-none absolute inset-y-0 right-0 w-24 overflow-hidden opacity-30 sm:w-44 sm:opacity-38">
                         <Image
                           src={avatarSrc}
                           alt=""
@@ -253,7 +256,7 @@ export function TopWoloEarnersTile({
                         />
                       </div>
                     ) : null}
-                    <div className="relative z-10 grid gap-x-3 gap-y-2 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-start">
+                    <div className="relative z-10 grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-2 sm:grid-cols-[auto_minmax(0,1fr)_auto]">
                       <div
                         className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border text-xs font-semibold ${tone.rankBadge}`}
                       >
@@ -276,7 +279,7 @@ export function TopWoloEarnersTile({
                         </div>
                       </div>
 
-                      <div className="sm:min-w-[5.5rem] sm:pt-0.5 sm:text-right">
+                      <div className="col-start-2 sm:col-start-auto sm:min-w-[5.5rem] sm:pt-0.5 sm:text-right">
                         <div className="text-[10px] uppercase tracking-[0.28em] text-slate-400">
                           {primaryLabel}
                         </div>
@@ -285,13 +288,13 @@ export function TopWoloEarnersTile({
                         </div>
                       </div>
 
-                      <div className="sm:col-span-2 sm:col-start-2">
+                      <div className="col-start-2 min-w-0 sm:col-span-2 sm:col-start-2">
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-300">
-                          <span className="whitespace-nowrap">
+                          <span className="break-words sm:whitespace-nowrap">
                             <span className="font-medium text-slate-200">Settled</span> {formatWolo(entry.settledWolo)} WOLO
                           </span>
                           <span className="hidden h-1 w-1 rounded-full bg-white/15 sm:inline-block" />
-                          <span className="whitespace-nowrap">
+                          <span className="break-words sm:whitespace-nowrap">
                             <span className="font-medium text-slate-200">Wagered</span> {formatWolo(entry.wageredWolo)} WOLO
                           </span>
                         </div>

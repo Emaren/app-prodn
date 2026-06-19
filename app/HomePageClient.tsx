@@ -9,7 +9,6 @@ import { LobbyHero } from "@/components/lobby/LobbyHero";
 import { LiveTickerStrip } from "@/components/lobby/LiveTickerStrip";
 import { getLobbyHeroBackground } from "@/components/lobby/lobbyPresentation";
 import { useLobbyAppearance } from "@/components/lobby/LobbyAppearanceContext";
-import LiveBroadcastSpotlight from "@/components/streaming/LiveBroadcastSpotlight";
 import { OnlinePlayersPanel } from "@/components/lobby/OnlinePlayersPanel";
 import { RecentMatchesPanel } from "@/components/lobby/RecentMatchesPanel";
 import { TopWoloEarnersTile } from "@/components/lobby/TopWoloEarnersTile";
@@ -706,7 +705,9 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
           />
 
           <div
-            className="grid min-h-0 min-w-0 overflow-hidden gap-3.5 lg:grid-rows-[auto_minmax(0,1fr)] lg:self-start lg:pt-4"
+            className={`grid min-h-0 min-w-0 overflow-hidden gap-3.5 lg:grid-rows-[auto_minmax(0,1fr)] lg:self-start lg:pt-4 ${
+              isExtremeLobby ? "lg:min-h-[82rem]" : ""
+            }`}
             style={heroRailStyle}
           >
             <TournamentPanel
@@ -724,7 +725,11 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
               onLogin={() => loginWithSteam("/")}
             />
 
-            <div className="h-full min-h-0 overflow-hidden">
+            <div
+              className={`h-full min-h-0 overflow-hidden ${
+                isExtremeLobby ? "lg:min-h-[64rem]" : ""
+              }`}
+            >
               <TopWoloEarnersTile
                 wolo={wolo}
                 board={woloEarners}
@@ -737,8 +742,6 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
           </div>
         </div>
       </section>
-
-      <LiveBroadcastSpotlight />
 
       <section id="lobby-chat" className="grid scroll-mt-24 gap-6 lg:grid-cols-[1.15fr_0.85fr] lg:items-start">
         <LobbyChat

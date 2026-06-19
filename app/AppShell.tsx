@@ -21,6 +21,7 @@ import {
 import { GlobalInstallAppPrompt } from "@/components/pwa/InstallAppPrompt";
 import MobileFloatingNav from "@/components/pwa/MobileFloatingNav";
 import AoE2WarFooter from "@/components/pwa/AoE2WarFooter";
+import { getTileViewMode } from "@/lib/tileViewPreferences";
 import { Toaster } from "sonner";
 import { Providers } from "./Providers";
 import { UserAuthProvider, useUserAuth } from "@/context/UserAuthContext";
@@ -322,11 +323,22 @@ function HeaderLiveGamesLink({
 function InnerShell({ children }: { children: React.ReactNode }) {
   const { uid, playerName, isAdmin } = useUserAuth();
   const pathname = usePathname();
-  const { themeKey, viewMode, textColor, pageStyle } = useLobbyAppearance();
+  const { themeKey, viewMode, textColor, pageStyle, tileViewPreferences } =
+    useLobbyAppearance();
   const [liveGamesCount, setLiveGamesCount] = React.useState(0);
   const [requestCount, setRequestCount] = React.useState(0);
   const isContactPage = pathname?.startsWith("/contact-emaren");
   const isLobbySurface = pathname === "/" || pathname?.startsWith("/lobby");
+  const communityLobbyViewMode = getTileViewMode(
+    tileViewPreferences,
+    "community_lobby"
+  );
+  const lobbyShellMaxWidth =
+    communityLobbyViewMode === "extreme"
+      ? "max-w-[96rem]"
+      : communityLobbyViewMode === "advanced"
+        ? "max-w-[75rem]"
+        : "max-w-[65rem]";
   const headerTitle = getPageHeading(pathname);
   const headerSkin = getLobbyHeaderSkin(themeKey);
   const headerTone = React.useMemo(
@@ -551,8 +563,8 @@ function InnerShell({ children }: { children: React.ReactNode }) {
       </header>
 
       <main
-        className={`mx-auto flex min-h-0 min-w-0 w-full flex-1 flex-col px-3 py-4 pb-32 sm:px-4 lg:pb-4 ${
-          isLobbySurface ? "max-w-[96rem]" : "max-w-6xl"
+        className={`mx-auto flex min-h-0 min-w-0 w-full flex-1 flex-col px-3 py-4 pb-32 transition-[max-width] duration-300 sm:px-4 lg:pb-4 ${
+          isLobbySurface ? lobbyShellMaxWidth : "max-w-6xl"
         } ${
           isContactPage ? "overflow-hidden" : "overflow-x-hidden"
         }`}

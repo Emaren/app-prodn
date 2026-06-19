@@ -77,7 +77,83 @@ export function WolomaniaPromoTile() {
       <Link
         href="/wolomania"
         aria-label="Open Wolomania I"
-        className="group relative block min-h-[44rem] overflow-hidden rounded-[2.35rem] bg-[radial-gradient(circle_at_50%_10%,rgba(251,191,36,0.25),transparent_30%),radial-gradient(circle_at_8%_48%,rgba(127,29,29,0.44),transparent_34%),radial-gradient(circle_at_92%_48%,rgba(30,64,175,0.30),transparent_34%),linear-gradient(135deg,#120704_0%,#05070d_48%,#071225_100%)] sm:min-h-[48rem] xl:min-h-[51rem]"
+        className="group relative block overflow-hidden rounded-[2.35rem] bg-[radial-gradient(circle_at_50%_8%,rgba(251,191,36,0.24),transparent_28%),radial-gradient(circle_at_5%_45%,rgba(127,29,29,0.48),transparent_38%),radial-gradient(circle_at_95%_45%,rgba(30,64,175,0.35),transparent_38%),linear-gradient(160deg,#150704_0%,#05070d_52%,#071225_100%)] p-5 pb-6 sm:hidden"
+      >
+        <div className="pointer-events-none absolute inset-0 opacity-[0.09] [background-image:linear-gradient(rgba(255,255,255,.18)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.18)_1px,transparent_1px)] [background-size:34px_34px]" />
+
+        <div className="relative z-10">
+          <div className="flex justify-center">
+            <span className="inline-flex items-center gap-2 rounded-full border border-amber-200/28 bg-black/62 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.22em] text-amber-100 backdrop-blur">
+              <Flame className="h-3.5 w-3.5 text-amber-300" />
+              July 10 · First Chapter
+            </span>
+          </div>
+
+          <div className="mt-4 text-center">
+            <div className="inline-flex items-center gap-2 rounded-full border border-amber-200/20 bg-black/48 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.2em] text-amber-200">
+              <Crown className="h-3.5 w-3.5" />
+              World Championship Event
+            </div>
+            <h2 className="mt-4 font-serif text-[clamp(3.4rem,16vw,4.8rem)] font-black uppercase leading-[0.78] tracking-[-0.045em] text-amber-100 drop-shadow-[0_7px_0_rgba(0,0,0,0.72)]">
+              Wolomania I
+            </h2>
+          </div>
+
+          <div className="relative mt-5 h-[19rem] overflow-hidden rounded-[1.6rem] border border-amber-200/14 bg-black/18">
+            <PromoImage
+              asset={ASSETS.jim}
+              alt="Jim"
+              className="absolute -bottom-4 -left-10 h-[94%] w-[70%] object-contain object-bottom drop-shadow-[0_24px_50px_rgba(0,0,0,0.85)] [mask-image:linear-gradient(to_bottom,black_0%,black_82%,transparent_100%)]"
+            />
+            <PromoImage
+              asset={ASSETS.julio}
+              alt="Julio Alvarez"
+              className="absolute -bottom-4 -right-10 h-[94%] w-[70%] object-contain object-bottom drop-shadow-[0_24px_50px_rgba(0,0,0,0.85)] [mask-image:linear-gradient(to_bottom,black_0%,black_82%,transparent_100%)]"
+            />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black via-black/65 to-transparent" />
+            <PromoImage
+              asset={ASSETS.belt}
+              alt="AoE2WAR championship belt"
+              className="absolute left-1/2 top-[57%] z-20 h-32 w-[92%] -translate-x-1/2 -translate-y-1/2 object-contain drop-shadow-[0_24px_55px_rgba(0,0,0,0.9)] transition duration-500 group-hover:scale-[1.025]"
+            />
+            <div className="absolute inset-x-4 bottom-4 z-30 grid grid-cols-2 gap-5 text-center">
+              <div>
+                <div className="text-xl font-black uppercase text-white">Jim</div>
+                <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.16em] text-stone-300">
+                  🇺🇸 United States
+                </div>
+              </div>
+              <div>
+                <div className="text-xl font-black uppercase text-white">Julio</div>
+                <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.16em] text-stone-300">
+                  🇲🇽 Mexico
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            {facts.map(([label, Icon]) => (
+              <span
+                key={label}
+                className="inline-flex min-w-0 items-center justify-center gap-2 rounded-xl border border-amber-200/14 bg-white/[0.045] px-2 py-2.5 text-center text-[9px] font-black uppercase tracking-[0.1em] text-stone-100"
+              >
+                <Icon className="h-3.5 w-3.5 shrink-0 text-amber-300" />
+                {label}
+              </span>
+            ))}
+          </div>
+
+          <span className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-b from-amber-200 to-amber-500 px-5 py-3.5 text-xs font-black uppercase tracking-[0.16em] text-black shadow-[0_18px_55px_rgba(251,191,36,0.25)]">
+            Enter Wolomania <Play className="h-4 w-4 fill-black" />
+          </span>
+        </div>
+      </Link>
+
+      <Link
+        href="/wolomania"
+        aria-label="Open Wolomania I"
+        className="group relative hidden min-h-[48rem] overflow-hidden rounded-[2.35rem] bg-[radial-gradient(circle_at_50%_10%,rgba(251,191,36,0.25),transparent_30%),radial-gradient(circle_at_8%_48%,rgba(127,29,29,0.44),transparent_34%),radial-gradient(circle_at_92%_48%,rgba(30,64,175,0.30),transparent_34%),linear-gradient(135deg,#120704_0%,#05070d_48%,#071225_100%)] sm:block xl:min-h-[51rem]"
       >
         <div className="pointer-events-none absolute inset-0 opacity-[0.10] [background-image:linear-gradient(rgba(255,255,255,.18)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.18)_1px,transparent_1px)] [background-size:42px_42px]" />
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(120,20,20,0.30),transparent_25%,transparent_75%,rgba(20,55,150,0.28)),linear-gradient(180deg,rgba(0,0,0,0.02)_0%,rgba(0,0,0,0.24)_52%,rgba(0,0,0,0.97)_100%)]" />

@@ -57,6 +57,15 @@ journalctl -u aoe2hdbets-web.service -n 40 --no-pager
 
 ## Recent deployment notes
 
+### 2026-06-19 lobby view-width and mobile rail pass
+
+- Restored mode-owned lobby widths: Basic `65rem`, Advanced `75rem`, and default Extreme `96rem`.
+- Kept Extreme as the full-width power-user composition while making its leaderboard and War Chest internally scrollable.
+- Increased the Extreme desktop War Chest rail to preview roughly nine earners and constrained the mobile War Chest to a viewport-sized scroll frame.
+- Rebuilt the Wolomania lobby promo for narrow screens and hardened mobile wrapping on the installed app WOLO ledger and profile holding cards.
+- Removed the redundant mid-page lobby broadcast theater and its dead component; `/watch` and shared stream/player components remain unchanged.
+- No database migration is required for this release.
+
 ### 2026-06-18 premium AOE2WAR navigation shell
 
 - Replaced the global theme-circle row with the AOE2WAR wordmark; the logo links to `/`, while theme and tile appearance controls remain on `/profile`.

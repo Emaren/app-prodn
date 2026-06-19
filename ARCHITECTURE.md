@@ -128,6 +128,17 @@ The global header is the shared route-orientation layer:
 
 The shipped product now depends much more heavily on lobby-specific presentation consistency than before. Visual hierarchy in the lobby matters because it now carries leaderboard, tournament, and live-product credibility in one place.
 
+The Community Lobby’s Basic, Advanced, and Extreme modes also own the lobby canvas width:
+- Basic: `65rem` maximum for the original focused/skinny body
+- Advanced: `75rem` maximum for the richer arena composition
+- Extreme: `96rem` maximum for the near-full-width power-user layout
+
+These widths are resolved in `app/AppShell.tsx` from the `community_lobby` tile preference. Do not apply Extreme’s width globally to all three modes.
+
+Lobby media composition has one primary video/event stage in the upper showcase flow. The old secondary `LiveBroadcastSpotlight` theater between the leaderboard/War Chest section and chat was removed; stream/player ownership remains with `/watch`, live-game surfaces, and the upper Watch & Chat hero.
+
+In Extreme mode, the leaderboard and War Chest are bounded internal scroll regions. The desktop War Chest rail is deliberately tall enough to preview roughly nine rows, while mobile constrains it to the viewport and scrolls its entries inside the tile.
+
 ## Current product data model
 
 ### Lobby snapshot

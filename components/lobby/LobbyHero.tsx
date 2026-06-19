@@ -221,7 +221,7 @@ export function LobbyHero({
     const featuredEntry = leaderboard.entries[0] ?? null;
     const featuredName = featuredEntry?.name || "Sniper";
     const featuredRating = featuredEntry ? primaryRating(featuredEntry) : null;
-    const leaderboardRows = leaderboard.entries.slice(0, 5);
+    const leaderboardRows = leaderboard.entries;
 
     return (
       <div
@@ -342,7 +342,7 @@ export function LobbyHero({
                   </span>
                 </div>
 
-                <div className="mt-5 space-y-2.5">
+                <div className="mt-5 max-h-[46rem] space-y-2.5 overflow-y-auto overscroll-contain pr-1">
                   {leaderboardRows.length === 0 ? (
                     <div className="rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-4 text-sm text-slate-300">
                       The board is warming up.

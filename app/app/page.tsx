@@ -419,15 +419,15 @@ export default function InstalledAppPage() {
             </div>
             <div className="mt-5 rounded-[10px] border border-white/10 bg-white/[0.03] p-4">
               {recentTransaction ? (
-                <div className="flex items-center justify-between gap-3 text-sm">
+                <div className="grid min-w-0 gap-3 text-sm sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
                   <div className="min-w-0">
-                    <div className="truncate font-semibold text-white">{recentTransaction.label}</div>
-                    <div className="mt-1 text-xs uppercase tracking-[0.18em] text-slate-500">
+                    <div className="break-words font-semibold text-white sm:truncate">{recentTransaction.label}</div>
+                    <div className="mt-1 break-words text-[10px] uppercase leading-5 tracking-[0.14em] text-slate-500 sm:text-xs sm:tracking-[0.18em]">
                       {formatLocalDate(recentTransaction.occurredAt)} · {recentTransaction.status}
                     </div>
                   </div>
                   <div
-                    className={`shrink-0 font-semibold ${
+                    className={`justify-self-start font-semibold sm:justify-self-end ${
                       recentTransaction.direction === "in" ? "text-emerald-200" : "text-amber-100"
                     }`}
                   >
