@@ -653,7 +653,7 @@ export async function loadLobbyLeaderboard(
   return {
     title: "Season Leaderboard",
     statusLabel: selectedEntries.some(hasSteamRmRating)
-      ? "Steam RM + Site Elo"
+      ? "Steam RM"
       : eligibleEntries.length > 0
         ? "Site Elo"
         : "Need games",

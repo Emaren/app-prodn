@@ -278,7 +278,7 @@ export function getFallbackTournament(viewerJoined = false): LobbyTournament {
 export function getFallbackLeaderboard(): LobbyLeaderboardSummary {
   return {
     title: "Season Leaderboard",
-    statusLabel: "Site Elo",
+    statusLabel: "Rating",
     entries: [],
     activePlayers: 0,
     matchesToday: 0,
