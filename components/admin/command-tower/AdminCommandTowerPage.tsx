@@ -5,6 +5,7 @@ import { useCallback, useMemo, useState } from "react";
 import {
   AlertTriangle,
   ArrowRight,
+  CalendarRange,
   Coins,
   Crown,
   Filter,
@@ -59,6 +60,7 @@ const EMPTY_DRAFT: DraftState = {
 
 const ADMIN_NAV_LINKS = [
   { href: "/admin", label: "Admin Home", Icon: Home },
+  { href: "/admin/events", label: "Event Studio", Icon: CalendarRange },
   { href: "/admin/trophies", label: "Trophy Command", Icon: Crown },
   { href: "/admin/media-assets", label: "Media Assets", Icon: Images },
   { href: "/admin/wolochain", label: "WoloChain", Icon: Coins },

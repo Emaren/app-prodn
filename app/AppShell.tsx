@@ -47,6 +47,7 @@ const KINGDOM_LINKS = [
 ] as const;
 
 const PAGE_HEADINGS: ReadonlyArray<{ prefix: string; title: string }> = [
+  { prefix: "/admin/events", title: "Event Studio" },
   { prefix: "/admin", title: "Operator Command" },
   { prefix: "/staking/stakers", title: "Staking Hall" },
   { prefix: "/staking", title: "WOLO Staking" },

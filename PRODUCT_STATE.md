@@ -33,6 +33,10 @@ Current strengths:
 - Extreme leaderboard and War Chest lists scroll inside their own frames; the desktop War Chest previews roughly nine rows and the mobile tile stays viewport-bounded
 - Basic view remains available behind the lobby toggle and keeps the simpler leaderboard/tournament/war-chest-first layout intact
 - the lobby has one primary upper video/event stage; the redundant mid-page broadcast theater was removed so the leaderboard/War Chest section flows directly into chat and online players
+- the premium Wolomania Jim / Julio / Commissioner / championship-belt composition is now the reusable public `EventTile` on `/` and `/lobby`
+- `/admin/events` is the operator Event Studio for creating, editing, duplicating, previewing, publishing, unpublishing, archiving, and activating that single main-stage tile
+- the shipped Wolomania composition is both the seeded active event and the permanent code fallback, so a missing migration, unavailable database, or lack of an active published row cannot remove the production event stage
+- Event Studio controls event copy, timing, badges, CTA, linked app users/trophy, warrior and Commissioner art, belt/artifact art, optional backgrounds, and theme values; it does not yet implement Commissioner Overrides or Featured Warriors stat rotation
 - admin-created text ticker messages are managed from `/admin` and combine with system ticker items from tournament, replay, lobby, and WOLO market state
 - the Advanced Watch & Chat hero prefers real live-game/session data, then recent completed sessions, then the latest verified replay or next tournament state; its embedded bet slip reads `/api/bets` and hands wager locking to `/bets`
 - leaderboard is shipped into the lobby surface
@@ -112,6 +116,7 @@ Current strengths:
 
 Current strengths:
 - can inspect users
+- `/admin/events` owns the lobby/home Event Studio and uses the exact public EventTile component for desktop and mobile previews
 - `/admin/user-list` has top-level operator navigation for Admin Home, Media Assets, WoloChain, and the User List / Command Tower
 - can award badges/gifts, with the badge panel now presented as Honors
 - Honors Phase 3A can grant/remove Badges, Belts, Artifacts, and Designations from `/admin/user-list`

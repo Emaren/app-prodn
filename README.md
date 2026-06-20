@@ -27,6 +27,7 @@ It currently owns the premium lobby/community surface, leaderboard presentation,
 - The public Kingdom spine includes `/kingdom`, `/champions`, `/national-champions`, and `/forum`, with the legacy `/belts`, `/nations`, and `/realm` paths redirecting into the new route names
 - `/champions` owns the app-side championship title economy: podium belts, tag titles, national titles, ELO titles, special designations, live custody/bounty overlays, challenge links, and detail pages
 - `/admin/trophies` is the persistent War Trophy command center for definitions, holder/Guardian custody, challenges, replay proof, dry-run settlement, payouts, NFT intents, settings, and audit history
+- `/admin/events` is the Event Studio for the one active published cinematic EventTile shared by `/` and `/lobby`; the current Wolomania Jim / Julio / Commissioner / belt composition remains the seeded default and hard production fallback
 - Lazy client islands for wallet-heavy `/wolo`, `/wallet`, and `/connect-wallet` routes so the server shell paints with a small first-load bundle
 
 ## Shipped public surfaces
@@ -62,6 +63,7 @@ The current first-impression path is no longer just the homepage. The real produ
 - Seeded national and Elite trophies persist through Prisma and overlay the public Champions and profile surfaces; projected bounty remains app display math.
 - Public seeded-title challenges create a linked `TrophyChallenge` beside the normal scheduled match and require holder/Guardian targeting plus nationality/ELO eligibility.
 - `/admin/trophies` provides persistent custody, versioned economics, proof, dry-run settlement, payout, chain-intent, settings, and audit rails.
+- `/admin/events` manages event identity, timing, badges, CTA, linked users/trophy, warrior/Commissioner art, belt/artifact art, optional backgrounds, and theme values. App Pass A intentionally leaves Featured Warriors and Commissioner override/stat-rotation systems unchanged.
 - The current source is app-side custody. It does not redefine WoloChain denom truth, signed movement, escrow, NFT ownership, or chain settlement truth.
 
 ## Local development

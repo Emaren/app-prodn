@@ -57,6 +57,15 @@ journalctl -u aoe2hdbets-web.service -n 40 --no-pager
 
 ## Recent deployment notes
 
+### 2026-06-20 Lobby Event Studio App Pass A
+
+- Added persistent `event_tiles` content and `/admin/events` operator controls for the single cinematic tile shared by `/` and `/lobby`.
+- Seeded the currently shipped Wolomania Jim / Julio / Commissioner / championship-belt composition as the active published event without replacing its real warrior or artifact art.
+- The public routes fall back to that same hardcoded Wolomania composition if no active published row exists or EventTile persistence is unavailable.
+- Event Studio supports create, edit, duplicate, publish, activate, unpublish, archive, safe internal/HTTPS media paths, and exact desktop/mobile public-component previews.
+- Featured Warriors, Commissioner Overrides, Featured Warriors stat rotation, and chain behavior are unchanged in this pass.
+- Deployment requires `npx prisma migrate deploy` before the production build and restart.
+
 ### 2026-06-19 War Trophy foundation
 
 - Added persistent Trophy, economics-version, challenge, payout, event, and

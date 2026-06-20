@@ -79,6 +79,9 @@ model User {
   trophyChallengesGuarded        TrophyChallenge[]                @relation("TrophyChallengeGuardian")
   trophyChallengesWon            TrophyChallenge[]                @relation("TrophyChallengeWinner")
   trophySettingsChanged          TrophySetting[]                  @relation("TrophySettingChangedBy")
+  eventTilesAsPlayerOne          EventTile[]                       @relation("EventTilePlayerOne")
+  eventTilesAsPlayerTwo          EventTile[]                       @relation("EventTilePlayerTwo")
+  eventTilesAsCommissioner       EventTile[]                       @relation("EventTileCommissioner")
 
   @@map("users")
 }
@@ -388,6 +391,7 @@ model Trophy {
   events          TrophyEvent[]
   payouts         TrophyPayout[]
   challenges      TrophyChallenge[]
+  eventTiles      EventTile[]
 
   @@index([kind, status], map: "ix_trophies_kind_status")
   @@index([family, status], map: "ix_trophies_family_status")
@@ -544,6 +548,67 @@ model TrophySetting {
 
   @@index([changedByUserId], map: "ix_trophy_settings_changed_by")
   @@map("trophy_settings")
+}
+
+model EventTile {
+  id                         Int       @id @default(autoincrement())
+  eventTileId                String    @unique(map: "uq_event_tiles_event_tile_id") @map("event_tile_id") @db.VarChar(100)
+  slug                       String    @unique(map: "uq_event_tiles_slug") @db.VarChar(120)
+  status                     String    @default("draft") @db.VarChar(24)
+  priority                   Int       @default(0)
+  isPublished                Boolean   @default(false) @map("is_published")
+  isActive                   Boolean   @default(false) @map("is_active")
+  name                       String    @db.VarChar(160)
+  eyebrow                    String?   @db.VarChar(160)
+  title                      String    @db.VarChar(180)
+  subtitle                   String?   @db.VarChar(220)
+  description                String?   @db.Text
+  chapterLabel               String?   @map("chapter_label") @db.VarChar(160)
+  dateLabel                  String?   @map("date_label") @db.VarChar(160)
+  eventStartsAt              DateTime? @map("event_starts_at") @db.Timestamp(6)
+  eventEndsAt                DateTime? @map("event_ends_at") @db.Timestamp(6)
+  payoutBadgeText            String?   @map("payout_badge_text") @db.VarChar(120)
+  featuredBadgeText          String?   @map("featured_badge_text") @db.VarChar(120)
+  ctaLabel                   String?   @map("cta_label") @db.VarChar(120)
+  ctaUrl                     String?   @map("cta_url") @db.VarChar(500)
+  matchFormat                String?   @map("match_format") @db.VarChar(120)
+  rulesSummary               String?   @map("rules_summary") @db.VarChar(255)
+  tournamentName             String?   @map("tournament_name") @db.VarChar(180)
+  linkedTrophyId             Int?      @map("linked_trophy_id")
+  playerOneUserId            Int?      @map("player_one_user_id")
+  playerOneName              String?   @map("player_one_name") @db.VarChar(120)
+  playerOneAvatarUrl         String?   @map("player_one_avatar_url") @db.VarChar(500)
+  playerTwoUserId            Int?      @map("player_two_user_id")
+  playerTwoName              String?   @map("player_two_name") @db.VarChar(120)
+  playerTwoAvatarUrl         String?   @map("player_two_avatar_url") @db.VarChar(500)
+  commissionerUserId         Int?      @map("commissioner_user_id")
+  commissionerName           String?   @map("commissioner_name") @db.VarChar(120)
+  commissionerAvatarUrl      String?   @map("commissioner_avatar_url") @db.VarChar(500)
+  beltImageUrl               String?   @map("belt_image_url") @db.VarChar(500)
+  backgroundImageUrl         String?   @map("background_image_url") @db.VarChar(500)
+  mobileBackgroundImageUrl   String?   @map("mobile_background_image_url") @db.VarChar(500)
+  gradientFrom               String    @default("#150704") @map("gradient_from") @db.VarChar(24)
+  gradientVia                String    @default("#05070d") @map("gradient_via") @db.VarChar(24)
+  gradientTo                 String    @default("#071225") @map("gradient_to") @db.VarChar(24)
+  overlayOpacity             Float     @default(0.24) @map("overlay_opacity")
+  vignetteOpacity            Float     @default(0.82) @map("vignette_opacity")
+  theme                      String    @default("royal") @db.VarChar(40)
+  createdAt                  DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt                  DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+  publishedAt                DateTime? @map("published_at") @db.Timestamp(6)
+
+  linkedTrophy Trophy? @relation(fields: [linkedTrophyId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  playerOne User? @relation("EventTilePlayerOne", fields: [playerOneUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  playerTwo User? @relation("EventTilePlayerTwo", fields: [playerTwoUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  commissioner User? @relation("EventTileCommissioner", fields: [commissionerUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([isPublished, isActive, priority], map: "ix_event_tiles_published_active_priority")
+  @@index([status, updatedAt], map: "ix_event_tiles_status_updated")
+  @@index([linkedTrophyId], map: "ix_event_tiles_linked_trophy")
+  @@index([playerOneUserId], map: "ix_event_tiles_player_one")
+  @@index([playerTwoUserId], map: "ix_event_tiles_player_two")
+  @@index([commissionerUserId], map: "ix_event_tiles_commissioner")
+  @@map("event_tiles")
 }
 
 model ChatRoom {

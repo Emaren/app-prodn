@@ -20,6 +20,7 @@ import { useTileViewPreference } from "@/components/tile-view/useTileViewPrefere
 import { buildChatItems } from "@/components/lobby/utils";
 import { useUserAuth } from "@/context/UserAuthContext";
 import { type AiVisibilityOption } from "@/lib/aiConciergeConfig";
+import type { EventTileView } from "@/lib/events/types";
 import {
   getFallbackLeaderboard,
   getFallbackTournament,
@@ -56,6 +57,7 @@ const EXTREME_WARRIORS = [
 
 type HomePageClientProps = {
   initialLobby: LobbySnapshot | null;
+  initialEventTile: EventTileView;
 };
 
 function AdvancedFeaturedWarriors() {
@@ -194,7 +196,10 @@ function ExtremeFeaturedWarriors() {
   );
 }
 
-export default function HomePageClient({ initialLobby }: HomePageClientProps) {
+export default function HomePageClient({
+  initialLobby,
+  initialEventTile,
+}: HomePageClientProps) {
   const { uid, isAdmin, isAuthenticated, loading, loginWithSteam, playerName, user } = useUserAuth();
   const { themeKey, tileThemeKey, viewMode, setViewMode } = useLobbyAppearance();
   const communityLobbyTile = useTileViewPreference("community_lobby");
@@ -654,7 +659,7 @@ export default function HomePageClient({ initialLobby }: HomePageClientProps) {
             viewMode={viewMode}
             surface={isExtremeLobby ? "extreme" : "standard"}
           />
-          <WolomaniaPromoTile />
+          <WolomaniaPromoTile eventTile={initialEventTile} />
           <WatchAndChatHero
             tournament={tournament}
             recentMatches={recentMatches}
