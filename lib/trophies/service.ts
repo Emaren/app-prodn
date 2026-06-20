@@ -160,13 +160,119 @@ async function findSeedUser(
   );
 }
 
-export function projectedTrophyBounty(trophy: Pick<Trophy, "currentBountyWolo" | "bountyGrowthWolo" | "holderSince" | "status">) {
+const TROPHY_DAY_MS = 86_400_000;
+
+function utcDayStart(input = new Date()) {
+  return new Date(Date.UTC(input.getUTCFullYear(), input.getUTCMonth(), input.getUTCDate()));
+}
+
+function utcDayKey(input = new Date()) {
+  return utcDayStart(input).toISOString().slice(0, 10);
+}
+
+function elapsedTrophyDays(holderSince: Date | null, now = new Date()) {
+  if (!holderSince) return 0;
+  const start = utcDayStart(holderSince).getTime();
+  const current = utcDayStart(now).getTime();
+  return Math.max(0, Math.floor((current - start) / TROPHY_DAY_MS));
+}
+
+function trophyTributeMemo(trophy: Pick<Trophy, "displayName" | "trophyId">, holderName: string, dayKey: string) {
+  return `AoE2WAR ${trophy.displayName} Tribute — ${holderName} holds the belt. Daily title payout for ${dayKey}.`;
+}
+
+export function projectedTrophyBounty(
+  trophy: Pick<Trophy, "currentBountyWolo" | "bountyGrowthWolo" | "holderSince" | "status">
+) {
   if (!trophy.holderSince || !["held", "active", "guardian_held"].includes(trophy.status)) {
     return trophy.currentBountyWolo;
   }
-  const elapsedMs = Math.max(0, Date.now() - trophy.holderSince.getTime());
-  const elapsedDays = Math.floor(elapsedMs / 86_400_000);
-  return trophy.currentBountyWolo + elapsedDays * trophy.bountyGrowthWolo;
+  return trophy.currentBountyWolo + elapsedTrophyDays(trophy.holderSince) * trophy.bountyGrowthWolo;
+}
+
+export async function ensureDailyTrophyTributePayouts(prisma: PrismaClient, now = new Date()) {
+  const dayStart = utcDayStart(now);
+  const dayEnd = new Date(dayStart.getTime() + TROPHY_DAY_MS);
+  const dayKey = utcDayKey(now);
+
+  const trophies = await prisma.trophy.findMany({
+    where: {
+      status: { in: ["held", "active"] },
+      payoutFrequency: "daily",
+      tributeAmountWolo: { gt: 0 },
+      holderSince: { not: null },
+    },
+  });
+
+  for (const trophy of trophies) {
+    if (!trophy.holderSince || utcDayStart(trophy.holderSince).getTime() >= dayStart.getTime()) {
+      continue;
+    }
+
+    const recipientUserId = trophy.currentHolderUserId;
+    const recipientDisplayName = trophy.currentHolderDisplayName;
+    const recipientWoloAddress = trophy.currentHolderWoloAddress;
+
+    if (!recipientUserId && !recipientDisplayName && !recipientWoloAddress) continue;
+    if (!recipientWoloAddress) continue;
+
+    const existing = await prisma.trophyPayout.findFirst({
+      where: {
+        trophyId: trophy.id,
+        payoutKind: "daily_tribute",
+        scheduledFor: {
+          gte: dayStart,
+          lt: dayEnd,
+        },
+      },
+      select: { id: true },
+    });
+
+    if (existing) continue;
+
+    const holderName = recipientDisplayName || recipientWoloAddress;
+    const memo = trophyTributeMemo(trophy, holderName, dayKey);
+
+    const payout = await prisma.trophyPayout.create({
+      data: {
+        trophyId: trophy.id,
+        recipientUserId,
+        recipientDisplayName,
+        recipientWoloAddress,
+        amountWolo: trophy.tributeAmountWolo,
+        payoutKind: "daily_tribute",
+        status: "dry_run",
+        scheduledFor: dayStart,
+        rawRequest: {
+          dayKey,
+          memo,
+          trophyId: trophy.trophyId,
+          trophyName: trophy.displayName,
+          chainStatus: trophy.chainStatus,
+          holderSince: trophy.holderSince.toISOString(),
+          executionMode: "dry_run_until_trophy_settlement_enabled",
+        },
+      },
+    });
+
+    await prisma.trophyEvent.create({
+      data: {
+        trophyId: trophy.id,
+        eventType: "DAILY_TRIBUTE_PAYOUT_QUEUED",
+        actorRole: "system",
+        initiatedBy: "system",
+        toHolderUserId: recipientUserId,
+        toWoloAddress: recipientWoloAddress,
+        amountWolo: trophy.tributeAmountWolo,
+        status: "dry_run",
+        rawRequest: {
+          payoutId: payout.id,
+          dayKey,
+          memo,
+        },
+      },
+    });
+  }
 }
 
 export async function ensureTrophySeedData(prisma: PrismaClient) {
@@ -337,6 +443,7 @@ export async function loadTrophyCommandSnapshot(
   prisma: PrismaClient
 ): Promise<TrophyCommandSnapshot> {
   await ensureTrophySeedData(prisma);
+  await ensureDailyTrophyTributePayouts(prisma);
   const ratings = await loadRatings(prisma);
   const [trophies, challenges, payouts, events, settings, users, replays] = await Promise.all([
     prisma.trophy.findMany({
