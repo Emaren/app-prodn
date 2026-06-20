@@ -416,60 +416,29 @@ function PodiumCard({
 }
 
 function TagTeamDuoAsset({ title }: { title: ChampionTitleDefinition }) {
-  const beltUrl = managedMediaPublicUrl("belt", title.id, title.assetUrl);
-  const leftHolder = title.holders[0] ?? null;
-  const rightHolder = title.holders[1] ?? null;
-  const leftAvatar = leftHolder ? avatarForPlayerName(leftHolder.name) : managedMediaPublicUrl("avatar", "silhouette", SILHOUETTE_BACKDROP);
-  const rightAvatar = rightHolder ? avatarForPlayerName(rightHolder.name) : managedMediaPublicUrl("avatar", "silhouette", SILHOUETTE_BACKDROP);
+  const tagTeamAsset = managedMediaPublicUrl(
+    "belt",
+    "tag-team",
+    "/champions/players/tagteam_champ.png",
+  );
 
   return (
-    <div className="relative mx-auto h-[18rem] w-full max-w-[34rem] overflow-visible sm:h-[20rem] lg:h-[21rem]">
-      <div className="absolute inset-x-8 bottom-4 h-px bg-gradient-to-r from-transparent via-amber-200/22 to-transparent" />
-      <div className="absolute bottom-0 left-[4%] top-0 w-[53%]">
-        <Image
-          src={leftAvatar}
-          alt=""
-          fill
-          unoptimized
-          sizes="(min-width: 1024px) 22vw, 46vw"
-          className="object-contain object-bottom opacity-72 [mask-image:linear-gradient(180deg,black_0%,black_80%,transparent_100%)]"
-        />
-        <div className="absolute inset-x-0 bottom-[-10%] h-[45%]">
-          <Image
-            src={beltUrl}
-            alt=""
-            fill
-            unoptimized
-            sizes="(min-width: 1024px) 18vw, 42vw"
-            className="object-contain drop-shadow-[0_18px_36px_rgba(0,0,0,0.58)]"
-          />
-        </div>
-      </div>
-      <div className="absolute bottom-0 right-[4%] top-0 w-[53%]">
-        <Image
-          src={rightAvatar}
-          alt=""
-          fill
-          unoptimized
-          sizes="(min-width: 1024px) 22vw, 46vw"
-          className="object-contain object-bottom opacity-62 [mask-image:linear-gradient(180deg,black_0%,black_80%,transparent_100%)]"
-          style={{ transform: "scaleX(-1)" }}
-        />
-        <div className="absolute inset-x-0 bottom-[-10%] h-[45%]">
-          <Image
-            src={beltUrl}
-            alt=""
-            fill
-            unoptimized
-            sizes="(min-width: 1024px) 18vw, 42vw"
-            className="object-contain drop-shadow-[0_18px_36px_rgba(0,0,0,0.58)]"
-          />
-        </div>
-      </div>
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-[#03070d] to-transparent" />
+    <div className="relative mx-auto h-[17rem] w-full max-w-[36rem] overflow-visible sm:h-[19rem] lg:h-[20rem]">
+      <div className="absolute inset-x-8 bottom-3 h-px bg-gradient-to-r from-transparent via-amber-200/24 to-transparent" />
+      <Image
+        src={tagTeamAsset}
+        alt={`${title.displayName} artwork`}
+        fill
+        sizes="(max-width: 768px) 92vw, 36rem"
+        className="object-contain object-bottom drop-shadow-[0_30px_42px_rgba(0,0,0,0.58)]"
+        priority={false}
+      />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#050910] via-[#050910]/35 to-transparent" />
     </div>
   );
 }
+
+
 
 function TagTeamCard({ titleState }: { titleState: ChampionTitleState }) {
   const title = titleState;

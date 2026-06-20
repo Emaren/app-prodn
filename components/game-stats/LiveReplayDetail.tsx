@@ -75,7 +75,7 @@ function describeAchievementSignal(snapshot: LiveReplayDetailSnapshot) {
 
 function shouldWarmBattleMatrix(
   durationSeconds: number | null,
-  historyRows: number,
+  _historyRows: number,
   hasBattleMatrixSignal: boolean
 ) {
   if (!hasBattleMatrixSignal) {
@@ -86,7 +86,9 @@ function shouldWarmBattleMatrix(
     return true;
   }
 
-  return historyRows < 2;
+  // One mature watcher-live row is enough to show EAPM lanes.
+  // Scores may still be dark, but EAPM should not be hidden behind warmup.
+  return false;
 }
 
 function displayBattleReasonTag(
