@@ -36,7 +36,11 @@ import {
 type PreviewMode = "desktop" | "mobile";
 
 const inputClass =
-  "w-full min-w-0 rounded-xl border border-white/10 bg-slate-950/82 px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-amber-200/35";
+  "block w-full !min-w-0 max-w-full rounded-xl border border-white/[0.12] bg-[#050914] px-3 py-2.5 text-sm text-slate-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] outline-none [color-scheme:dark] placeholder:text-slate-600 selection:bg-amber-300/25 selection:text-white focus:border-amber-200/45 focus:bg-[#080e1c] focus:ring-2 focus:ring-amber-300/10 disabled:cursor-not-allowed disabled:opacity-50";
+
+const selectClass = `${inputClass} pr-9`;
+
+const dateInputClass = `${inputClass} min-h-11 text-[13px] sm:text-sm`;
 
 const ADMIN_LINKS = [
   { href: "/admin", label: "Admin Home", Icon: Home },
@@ -55,12 +59,12 @@ function Field({
   children: ReactNode;
 }) {
   return (
-    <label className="block min-w-0 space-y-1.5">
-      <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+    <label className="block min-w-0 max-w-full space-y-1.5">
+      <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
         {label}
       </span>
       {children}
-      {hint ? <span className="block text-[11px] leading-4 text-slate-600">{hint}</span> : null}
+      {hint ? <span className="block text-[11px] leading-4 text-slate-500">{hint}</span> : null}
     </label>
   );
 }
@@ -77,17 +81,17 @@ function Button({
   tone?: "neutral" | "gold" | "danger" | "green";
 }) {
   const toneClass = {
-    neutral: "border-white/10 bg-white/[0.045] text-slate-200 hover:border-white/22",
-    gold: "border-amber-200/22 bg-amber-300/12 text-amber-100 hover:bg-amber-300/18",
-    danger: "border-rose-300/22 bg-rose-400/10 text-rose-100 hover:bg-rose-400/16",
-    green: "border-emerald-300/22 bg-emerald-400/10 text-emerald-100 hover:bg-emerald-400/16",
+    neutral: "border-white/[0.12] bg-[#0b1220] text-slate-200 hover:border-white/25 hover:bg-[#101a2b]",
+    gold: "border-amber-200/25 bg-amber-300/[0.13] text-amber-100 hover:bg-amber-300/[0.2]",
+    danger: "border-rose-300/25 bg-rose-400/[0.11] text-rose-100 hover:bg-rose-400/[0.17]",
+    green: "border-emerald-300/25 bg-emerald-400/[0.11] text-emerald-100 hover:bg-emerald-400/[0.17]",
   }[tone];
   return (
     <button
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className={`inline-flex items-center justify-center gap-2 rounded-full border px-3.5 py-2 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-45 ${toneClass}`}
+      className={`inline-flex min-h-9 items-center justify-center gap-2 rounded-full border px-3.5 py-2 text-xs font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition disabled:cursor-not-allowed disabled:opacity-45 ${toneClass}`}
     >
       {children}
     </button>
@@ -174,7 +178,7 @@ function applySelectedUser(
 }
 
 export default function EventStudio() {
-  const { isAuthenticated, isAdmin } = useUserAuth();
+  const { isAuthenticated, isAdmin, loading: authLoading } = useUserAuth();
   const [snapshot, setSnapshot] = useState<EventStudioSnapshot | null>(null);
   const [draft, setDraft] = useState<EventTileView>(() => blankEvent());
   const [previewMode, setPreviewMode] = useState<PreviewMode>("desktop");
@@ -184,6 +188,7 @@ export default function EventStudio() {
   const [notice, setNotice] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    if (authLoading) return;
     if (!isAuthenticated || !isAdmin) {
       setLoading(false);
       return;
@@ -210,7 +215,7 @@ export default function EventStudio() {
     } finally {
       setLoading(false);
     }
-  }, [isAdmin, isAuthenticated]);
+  }, [authLoading, isAdmin, isAuthenticated]);
 
   useEffect(() => {
     void load();
@@ -259,6 +264,16 @@ export default function EventStudio() {
 
   const missing = useMemo(() => publishMissing(draft), [draft]);
 
+  if (authLoading) {
+    return (
+      <div className="mx-auto max-w-3xl py-10 text-white">
+        <div className="flex min-h-44 items-center justify-center rounded-[2rem] border border-white/10 bg-[#030712] p-8">
+          <Loader2 className="h-7 w-7 animate-spin text-amber-100" aria-label="Loading admin session" />
+        </div>
+      </div>
+    );
+  }
+
   if (!isAuthenticated || !isAdmin) {
     return (
       <div className="mx-auto max-w-3xl py-10 text-white">
@@ -274,11 +289,14 @@ export default function EventStudio() {
   }
 
   return (
-    <div className="mx-auto w-full min-w-0 max-w-[96rem] space-y-5 overflow-x-hidden py-6 text-white">
-      <section className="overflow-hidden rounded-[2rem] border border-amber-200/16 bg-[radial-gradient(circle_at_15%_0%,rgba(251,191,36,0.18),transparent_30%),radial-gradient(circle_at_88%_15%,rgba(59,130,246,0.12),transparent_30%),linear-gradient(145deg,#120d08,#07111c_56%,#02040a)] p-5 shadow-[0_36px_120px_rgba(0,0,0,0.42)] sm:p-7">
+    <div
+      data-testid="event-studio"
+      className="mx-auto w-full min-w-0 max-w-[96rem] space-y-5 overflow-x-hidden py-6 text-white"
+    >
+      <section className="overflow-hidden rounded-[2rem] border border-amber-200/[0.16] bg-[radial-gradient(circle_at_15%_0%,rgba(251,191,36,0.18),transparent_30%),radial-gradient(circle_at_88%_15%,rgba(59,130,246,0.12),transparent_30%),linear-gradient(145deg,#120d08,#07111c_56%,#02040a)] p-5 shadow-[0_36px_120px_rgba(0,0,0,0.42)] sm:p-7">
         <div className="flex flex-wrap items-start justify-between gap-5">
           <div>
-            <div className="flex items-center gap-2 text-xs uppercase tracking-[0.35em] text-amber-100/72">
+            <div className="flex items-center gap-2 text-xs uppercase tracking-[0.35em] text-amber-100/[0.72]">
               <CalendarRange className="h-4 w-4" />
               AoE2WAR Lobby Event Studio
             </div>
@@ -301,7 +319,7 @@ export default function EventStudio() {
               href={href}
               className={`inline-flex shrink-0 items-center gap-2 rounded-full border px-3 py-2 text-xs transition ${
                 href === "/admin/events"
-                  ? "border-amber-200/28 bg-amber-300/12 text-amber-100"
+                  ? "border-amber-200/[0.28] bg-amber-300/[0.12] text-amber-100"
                   : "border-white/10 bg-white/[0.04] text-slate-300 hover:border-white/20"
               }`}
             >
@@ -351,7 +369,7 @@ export default function EventStudio() {
                   className={`w-full rounded-2xl border p-4 text-left transition ${
                     draft.id === event.id
                       ? "border-amber-200/30 bg-amber-300/10"
-                      : "border-white/8 bg-black/22 hover:border-white/18"
+                      : "border-white/[0.08] bg-[#050914] hover:border-white/[0.18]"
                   }`}
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -373,10 +391,10 @@ export default function EventStudio() {
           </aside>
 
           <main className="min-w-0 space-y-5">
-            <section className="rounded-[1.8rem] border border-white/10 bg-black/24 p-4 sm:p-6">
+            <section className="min-w-0 overflow-hidden rounded-[1.8rem] border border-white/10 bg-[#030712] p-4 shadow-[0_24px_80px_rgba(0,0,0,0.28)] sm:p-6">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
-                  <div className="text-xs uppercase tracking-[0.3em] text-amber-100/65">
+                  <div className="text-xs uppercase tracking-[0.3em] text-amber-100/[0.65]">
                     Event definition
                   </div>
                   <h2 className="mt-2 text-2xl font-semibold">
@@ -464,8 +482,8 @@ export default function EventStudio() {
 
               <div className={`mt-4 rounded-2xl border px-4 py-3 text-sm ${
                 missing.length
-                  ? "border-amber-200/16 bg-amber-300/8 text-amber-50/80"
-                  : "border-emerald-300/18 bg-emerald-400/8 text-emerald-100"
+                  ? "border-amber-200/[0.16] bg-amber-300/[0.08] text-amber-50/[0.8]"
+                  : "border-emerald-300/[0.18] bg-emerald-400/[0.08] text-emerald-100"
               }`}>
                 <div className="flex items-center gap-2 font-semibold">
                   {missing.length ? <AlertTriangle className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
@@ -480,7 +498,7 @@ export default function EventStudio() {
 
               <div className="mt-6 space-y-6">
                 <EditorSection title="Identity and hierarchy" icon={Crown}>
-                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                     <Field label="Event tile id">
                       <input className={inputClass} value={draft.eventTileId} onChange={(event) => setDraft((current) => ({ ...current, eventTileId: event.target.value }))} placeholder="wolomania-ii" />
                     </Field>
@@ -488,7 +506,7 @@ export default function EventStudio() {
                       <input className={inputClass} value={draft.slug} onChange={(event) => setDraft((current) => ({ ...current, slug: event.target.value }))} placeholder="wolomania-ii" />
                     </Field>
                     <Field label="Status">
-                      <select className={inputClass} value={draft.status} onChange={(event) => setDraft((current) => ({ ...current, status: event.target.value as EventTileStatus }))}>
+                      <select className={selectClass} value={draft.status} onChange={(event) => setDraft((current) => ({ ...current, status: event.target.value as EventTileStatus }))}>
                         {EVENT_TILE_STATUSES.map((status) => <option key={status}>{status}</option>)}
                       </select>
                     </Field>
@@ -516,7 +534,7 @@ export default function EventStudio() {
                 </EditorSection>
 
                 <EditorSection title="Timing, badges, and conversion" icon={CalendarRange}>
-                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  <div className="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                     <Field label="Chapter label">
                       <input className={inputClass} value={draft.chapterLabel} onChange={(event) => setDraft((current) => ({ ...current, chapterLabel: event.target.value }))} />
                     </Field>
@@ -524,10 +542,10 @@ export default function EventStudio() {
                       <input className={inputClass} value={draft.dateLabel} onChange={(event) => setDraft((current) => ({ ...current, dateLabel: event.target.value }))} />
                     </Field>
                     <Field label="Starts at">
-                      <input className={inputClass} type="datetime-local" value={toDateTimeLocal(draft.eventStartsAt)} onChange={(event) => setDraft((current) => ({ ...current, eventStartsAt: event.target.value || null }))} />
+                      <input className={dateInputClass} type="datetime-local" value={toDateTimeLocal(draft.eventStartsAt)} onChange={(event) => setDraft((current) => ({ ...current, eventStartsAt: event.target.value || null }))} />
                     </Field>
                     <Field label="Ends at">
-                      <input className={inputClass} type="datetime-local" value={toDateTimeLocal(draft.eventEndsAt)} onChange={(event) => setDraft((current) => ({ ...current, eventEndsAt: event.target.value || null }))} />
+                      <input className={dateInputClass} type="datetime-local" value={toDateTimeLocal(draft.eventEndsAt)} onChange={(event) => setDraft((current) => ({ ...current, eventEndsAt: event.target.value || null }))} />
                     </Field>
                     <Field label="Payout badge">
                       <input className={inputClass} value={draft.payoutBadgeText} onChange={(event) => setDraft((current) => ({ ...current, payoutBadgeText: event.target.value }))} />
@@ -551,7 +569,7 @@ export default function EventStudio() {
                       <input className={inputClass} value={draft.tournamentName} onChange={(event) => setDraft((current) => ({ ...current, tournamentName: event.target.value }))} />
                     </Field>
                     <Field label="Linked trophy">
-                      <select className={inputClass} value={draft.linkedTrophyId || ""} onChange={(event) => setDraft((current) => ({ ...current, linkedTrophyId: Number(event.target.value) || null }))}>
+                      <select className={selectClass} value={draft.linkedTrophyId || ""} onChange={(event) => setDraft((current) => ({ ...current, linkedTrophyId: Number(event.target.value) || null }))}>
                         <option value="">No linked trophy</option>
                         {snapshot.trophies.map((trophy) => (
                           <option key={trophy.id} value={trophy.id}>{trophy.displayName} · {trophy.status}</option>
@@ -632,10 +650,10 @@ export default function EventStudio() {
               </div>
             </section>
 
-            <section className="min-w-0 rounded-[1.8rem] border border-white/10 bg-black/24 p-4 sm:p-6">
+            <section className="min-w-0 overflow-hidden rounded-[1.8rem] border border-white/10 bg-[#030712] p-4 shadow-[0_24px_80px_rgba(0,0,0,0.28)] sm:p-6">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
-                  <div className="flex items-center gap-2 text-xs uppercase tracking-[0.3em] text-amber-100/65">
+                  <div className="flex items-center gap-2 text-xs uppercase tracking-[0.3em] text-amber-100/[0.65]">
                     <Eye className="h-4 w-4" />
                     Live composition preview
                   </div>
@@ -675,9 +693,9 @@ function EditorSection({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-[1.4rem] border border-white/8 bg-white/[0.025] p-4">
+    <section className="min-w-0 overflow-hidden rounded-[1.4rem] border border-white/[0.08] bg-white/[0.025] p-4">
       <div className="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
-        <Icon className="h-4 w-4 text-amber-200/70" />
+        <Icon className="h-4 w-4 text-amber-200/[0.7]" />
         {title}
       </div>
       {children}
@@ -705,11 +723,11 @@ function PersonEditor({
   onAvatarChange: (value: string) => void;
 }) {
   return (
-    <div className="min-w-0 rounded-2xl border border-white/8 bg-black/20 p-3">
-      <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-amber-100/65">{label}</div>
+    <div className="min-w-0 rounded-2xl border border-white/[0.08] bg-[#050914] p-3">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-amber-100/[0.65]">{label}</div>
       <div className="mt-3 space-y-3">
         <Field label="App identity">
-          <select className={inputClass} value={userId || ""} onChange={(event) => onUserChange(users.find((user) => user.id === Number(event.target.value)))}>
+          <select className={selectClass} value={userId || ""} onChange={(event) => onUserChange(users.find((user) => user.id === Number(event.target.value)))}>
             <option value="">Manual / unlinked</option>
             {users.map((user) => (
               <option key={user.id} value={user.id}>{user.name} · {user.representedCountry || "No country"}</option>
@@ -738,8 +756,8 @@ function ColorField({
 }) {
   return (
     <Field label={label}>
-      <div className="flex gap-2">
-        <input type="color" value={value} onChange={(event) => onChange(event.target.value)} className="h-10 w-12 shrink-0 rounded-lg border border-white/10 bg-transparent p-1" />
+      <div className="flex min-w-0 gap-2">
+        <input type="color" value={value} onChange={(event) => onChange(event.target.value)} className="h-10 w-12 shrink-0 rounded-lg border border-white/10 bg-[#050914] p-1 [color-scheme:dark]" />
         <input className={inputClass} value={value} onChange={(event) => onChange(event.target.value)} />
       </div>
     </Field>
