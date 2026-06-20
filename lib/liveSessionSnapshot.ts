@@ -41,6 +41,7 @@ export type LiveGameSession = {
 
 const LIVE_SESSION_FRESHNESS_MS = 12 * 60 * 1000;
 export const LIVE_SESSION_LINGER_MS = 15 * 60 * 1000;
+const RECENT_COMPLETED_SESSION_MS = 2 * 60 * 60 * 1000;
 const SUPERSEDED_PARSE_REASON = "superseded_by_later_upload";
 const UNPARSED_FINAL_PARSE_REASON = "watcher_final_unparsed";
 
@@ -101,6 +102,29 @@ function readKeyEvents(value: unknown): Record<string, unknown> {
   }
 
   return {};
+}
+
+function isCompletedLiveCompatRow(
+  row: Pick<SessionRow, "parse_source" | "parse_reason" | "key_events" | "winner">
+) {
+  if (row.parse_source !== "watcher_live") {
+    return false;
+  }
+
+  const keyEvents = readKeyEvents(row.key_events);
+  const parseReason = String(row.parse_reason || "").toLowerCase();
+  const completionSource =
+    typeof keyEvents.completion_source === "string"
+      ? keyEvents.completion_source.trim()
+      : "";
+
+  return (
+    keyEvents.completed === true ||
+    Boolean(completionSource) ||
+    parseReason.includes("final") ||
+    parseReason.includes("resignation") ||
+    Boolean(row.winner && row.winner !== "Unknown")
+  );
 }
 
 function parseMapName(value: unknown) {
@@ -244,9 +268,10 @@ export async function loadLiveSessionSnapshot(prisma: PrismaClient): Promise<{
   recentlyCompletedSessions: LiveGameSession[];
 }> {
   const freshnessCutoff = new Date(Date.now() - LIVE_SESSION_FRESHNESS_MS);
-  const lingerCutoff = Date.now() - LIVE_SESSION_LINGER_MS;
+  const lingerCutoff = Date.now() - RECENT_COMPLETED_SESSION_MS;
+  const completedCompatCutoff = new Date(lingerCutoff);
 
-  const [activeRows, finalRows] = await Promise.all([
+  const [activeRows, finalRows, completedLiveRows] = await Promise.all([
     prisma.gameStats.findMany({
       where: {
         is_final: false,
@@ -345,8 +370,69 @@ export async function loadLiveSessionSnapshot(prisma: PrismaClient): Promise<{
           },
         },
       },
+    }),,
+
+    prisma.gameStats.findMany({
+      where: {
+        is_final: false,
+        parse_source: "watcher_live",
+        parse_iteration: {
+          gt: 0,
+        },
+        OR: [
+          {
+            timestamp: {
+              gte: completedCompatCutoff,
+            },
+          },
+          {
+            createdAt: {
+              gte: completedCompatCutoff,
+            },
+          },
+        ],
+        NOT: {
+          parse_reason: {
+            in: [SUPERSEDED_PARSE_REASON, UNPARSED_FINAL_PARSE_REASON],
+          },
+        },
+      },
+      orderBy: [{ createdAt: "desc" }, { parse_iteration: "desc" }, { id: "desc" }],
+      take: 96,
+      select: {
+        id: true,
+        replayHash: true,
+        replay_file: true,
+        original_filename: true,
+        parse_iteration: true,
+        createdAt: true,
+        timestamp: true,
+        played_on: true,
+        map: true,
+        game_duration: true,
+        winner: true,
+        players: true,
+        key_events: true,
+        disconnect_detected: true,
+        parse_reason: true,
+        parse_source: true,
+        user: {
+          select: {
+            uid: true,
+            inGameName: true,
+            steamPersonaName: true,
+          },
+        },
+      },
     }),
   ]);
+
+  const completedRows: SessionRow[] = [
+    ...finalRows.map((row) => row as SessionRow),
+    ...(completedLiveRows ?? [])
+      .filter(isCompletedLiveCompatRow)
+      .map((row) => row as SessionRow),
+  ];
 
   const latestLiveBySession = new Map<string, (typeof activeRows)[number]>();
   const liveRowsBySession = new Map<string, (typeof activeRows)>();
@@ -369,9 +455,9 @@ export async function loadLiveSessionSnapshot(prisma: PrismaClient): Promise<{
     }
   }
 
-  const latestFinalBySession = new Map<string, (typeof finalRows)[number]>();
-  const finalRowsBySession = new Map<string, (typeof finalRows)>();
-  for (const row of finalRows) {
+  const latestFinalBySession = new Map<string, SessionRow>();
+  const finalRowsBySession = new Map<string, SessionRow[]>();
+  for (const row of completedRows) {
     const sessionKey = normalizeSessionKey(row);
     const rows = finalRowsBySession.get(sessionKey) ?? [];
     rows.push(row);
