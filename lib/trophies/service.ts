@@ -1,3 +1,4 @@
+import { executeFounderWoloPayout } from "@/lib/woloBetSettlement";
 import type { Prisma, PrismaClient, Trophy } from "@/lib/generated/prisma";
 import { loadLobbyLeaderboard } from "@/lib/lobbyLeaderboard";
 import {
@@ -273,6 +274,192 @@ export async function ensureDailyTrophyTributePayouts(prisma: PrismaClient, now 
       },
     });
   }
+}
+
+export async function executePendingTrophyTributePayouts(
+  prisma: PrismaClient,
+  options: { payoutId?: number | null; limit?: number } = {}
+) {
+  const now = new Date();
+  const take = Math.max(1, Math.min(options.limit ?? 10, 25));
+
+  const payouts = await prisma.trophyPayout.findMany({
+    where: {
+      payoutKind: "daily_tribute",
+      status: { in: ["dry_run", "pending", "failed"] },
+      txHash: null,
+      recipientWoloAddress: { not: null },
+      amountWolo: { gt: 0 },
+      scheduledFor: { lte: now },
+      ...(options.payoutId ? { id: options.payoutId } : {}),
+    },
+    include: { trophy: true },
+    orderBy: [{ scheduledFor: "asc" }, { id: "asc" }],
+    take,
+  });
+
+  const results: Array<{
+    payoutId: number;
+    trophyId: string;
+    recipient: string | null;
+    amountWolo: number;
+    status: "paid" | "skipped" | "failed";
+    txHash: string | null;
+    detail: string | null;
+  }> = [];
+
+  for (const payout of payouts) {
+    const toAddress = payout.recipientWoloAddress?.trim();
+    if (!toAddress) {
+      results.push({
+        payoutId: payout.id,
+        trophyId: payout.trophy.trophyId,
+        recipient: payout.recipientDisplayName,
+        amountWolo: payout.amountWolo,
+        status: "skipped",
+        txHash: null,
+        detail: "Missing recipient WOLO address.",
+      });
+      continue;
+    }
+
+    const rawRequest =
+      payout.rawRequest && typeof payout.rawRequest === "object" && !Array.isArray(payout.rawRequest)
+        ? (payout.rawRequest as Record<string, unknown>)
+        : {};
+    const memo =
+      typeof rawRequest.memo === "string" && rawRequest.memo.trim()
+        ? rawRequest.memo.trim()
+        : trophyTributeMemo(
+            payout.trophy,
+            payout.recipientDisplayName || toAddress,
+            payout.scheduledFor?.toISOString().slice(0, 10) || utcDayKey(now)
+          );
+
+    try {
+      const execution = await executeFounderWoloPayout({
+        requestId: `trophy-tribute-${payout.id}`,
+        toAddress,
+        amountWolo: payout.amountWolo,
+        memo,
+      });
+
+      if (!execution?.txHash) {
+        throw new Error("Founder Rewards payout returned no transaction hash.");
+      }
+
+      const paidAt = new Date();
+
+      await prisma.trophyPayout.update({
+        where: { id: payout.id },
+        data: {
+          status: "paid",
+          paidAt,
+          txHash: execution.txHash,
+          errorState: null,
+          rawResponse: {
+            ok: true,
+            rail: "founder_rewards_settlement",
+            txHash: execution.txHash,
+            proofUrl: execution.proofUrl ?? null,
+            toAddress: execution.toAddress,
+            amountWolo: execution.amountWolo,
+            requestId: execution.requestId ?? `trophy-tribute-${payout.id}`,
+            executedAt: paidAt.toISOString(),
+          },
+        },
+      });
+
+      await prisma.trophyEvent.create({
+        data: {
+          trophyId: payout.trophyId,
+          eventType: "DAILY_TRIBUTE_PAYOUT_PAID",
+          actorRole: "system",
+          initiatedBy: "system",
+          toHolderUserId: payout.recipientUserId,
+          toWoloAddress: toAddress,
+          amountWolo: payout.amountWolo,
+          chainTxHash: execution.txHash,
+          status: "paid",
+          rawRequest: {
+            payoutId: payout.id,
+            memo,
+            rail: "founder_rewards_settlement",
+          },
+          rawResponse: {
+            txHash: execution.txHash,
+            proofUrl: execution.proofUrl ?? null,
+          },
+        },
+      });
+
+      results.push({
+        payoutId: payout.id,
+        trophyId: payout.trophy.trophyId,
+        recipient: payout.recipientDisplayName,
+        amountWolo: payout.amountWolo,
+        status: "paid",
+        txHash: execution.txHash,
+        detail: execution.proofUrl ?? null,
+      });
+    } catch (error) {
+      const detail =
+        error instanceof Error ? error.message : "Trophy tribute payout execution failed.";
+
+      await prisma.trophyPayout.update({
+        where: { id: payout.id },
+        data: {
+          status: "failed",
+          errorState: detail.slice(0, 500),
+          retryCount: { increment: 1 },
+          rawResponse: {
+            ok: false,
+            rail: "founder_rewards_settlement",
+            detail,
+            failedAt: new Date().toISOString(),
+          },
+        },
+      });
+
+      await prisma.trophyEvent.create({
+        data: {
+          trophyId: payout.trophyId,
+          eventType: "DAILY_TRIBUTE_PAYOUT_FAILED",
+          actorRole: "system",
+          initiatedBy: "system",
+          toHolderUserId: payout.recipientUserId,
+          toWoloAddress: toAddress,
+          amountWolo: payout.amountWolo,
+          status: "failed",
+          errorMessage: detail.slice(0, 500),
+          rawRequest: {
+            payoutId: payout.id,
+            memo,
+            rail: "founder_rewards_settlement",
+          },
+        },
+      });
+
+      results.push({
+        payoutId: payout.id,
+        trophyId: payout.trophy.trophyId,
+        recipient: payout.recipientDisplayName,
+        amountWolo: payout.amountWolo,
+        status: "failed",
+        txHash: null,
+        detail,
+      });
+    }
+  }
+
+  return {
+    ok: results.every((row) => row.status !== "failed"),
+    scanned: payouts.length,
+    paid: results.filter((row) => row.status === "paid").length,
+    failed: results.filter((row) => row.status === "failed").length,
+    skipped: results.filter((row) => row.status === "skipped").length,
+    results,
+  };
 }
 
 export async function ensureTrophySeedData(prisma: PrismaClient) {
