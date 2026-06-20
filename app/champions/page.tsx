@@ -559,6 +559,7 @@ function NationalCard({ titleState }: { titleState: ChampionTitleState }) {
           </span>
           <ChallengeButton title={title} compact />
         </div>
+        <LastTributeProof title={title} compact />
         <ContenderList title={title} compact />
       </div>
     </article>
