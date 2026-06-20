@@ -83,7 +83,8 @@ export function LeaderboardPanel({
     () => leaderboard.trackedPlayers > countRankedLeaderboardEntries(leaderboard.entries)
   );
   const entriesRef = useRef(entries);
-  const leaderboardSentinelRef = useRef<HTMLDivElement | null>(null);
+  const leaderboardPanelRef = useRef<HTMLDivElement | null>(null);
+  const leaderboardSentinelRef = useRef<HTMLButtonElement | null>(null);
   const loadingRef = useRef(false);
   const nextOffsetRef = useRef(countRankedLeaderboardEntries(leaderboard.entries));
   const hasMoreRef = useRef(
@@ -186,12 +187,50 @@ export function LeaderboardPanel({
     };
   }, [hasMore, loadMoreLeaderboardEntries]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!hasMore) return;
+
+    let ticking = false;
+
+    const checkPageScroll = () => {
+      ticking = false;
+      const node = leaderboardPanelRef.current;
+      if (!node || loadingRef.current || !hasMoreRef.current) return;
+
+      const rect = node.getBoundingClientRect();
+      const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+      const nearPanelBottom = rect.bottom - viewportHeight < 900;
+
+      if (nearPanelBottom) {
+        void loadMoreLeaderboardEntries();
+      }
+    };
+
+    const handleScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      window.requestAnimationFrame(checkPageScroll);
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("resize", handleScroll);
+
+    handleScroll();
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", handleScroll);
+    };
+  }, [hasMore, loadMoreLeaderboardEntries]);
+
   const leaderboardScrollClassName = isExtreme
     ? "mt-6 h-[min(78vh,76rem)] min-h-[52rem] space-y-3 overflow-y-auto pr-2 sm:h-[min(80vh,82rem)] lg:h-[72rem] lg:max-h-[72rem] xl:h-[80rem] xl:max-h-[80rem]"
     : "mt-6 max-h-[62vh] space-y-3 overflow-y-auto pr-2 sm:max-h-[66vh] lg:max-h-[58rem] xl:max-h-[66rem]";
 
   return (
     <div
+      ref={leaderboardPanelRef}
       data-lobby-leaderboard-panel="true"
       className={`relative rounded-[1.85rem] border p-5 transition-all duration-300 sm:p-6 ${tone.panelShell}`}
     >
@@ -352,12 +391,17 @@ export function LeaderboardPanel({
         )}
 
         {hasMore ? (
-          <div
+          <button
             ref={leaderboardSentinelRef}
-            className="flex items-center justify-center rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-4 text-xs font-semibold uppercase tracking-[0.24em] text-slate-400"
+            type="button"
+            onClick={() => {
+              void loadMoreLeaderboardEntries();
+            }}
+            disabled={isLoadingMore}
+            className="flex w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4 text-xs font-semibold uppercase tracking-[0.24em] text-slate-300 transition hover:border-amber-200/30 hover:bg-amber-300/10 hover:text-amber-100 disabled:cursor-wait disabled:opacity-70"
           >
-            {isLoadingMore ? "Loading more warriors..." : "Scroll for more warriors"}
-          </div>
+            {isLoadingMore ? "Loading more warriors..." : "Load more warriors"}
+          </button>
         ) : null}
       </div>
 

@@ -119,11 +119,17 @@ function ExtremeLobbyStatCards({ leaderboard }: { leaderboard: LobbySnapshot["le
       label: "Active Players",
       value: leaderboard.activePlayers,
       detail: "Online right now.",
+      className:
+        "border-emerald-200/40 bg-[linear-gradient(135deg,rgba(16,185,129,0.14),rgba(15,23,42,0.5))] shadow-[inset_0_1px_0_rgba(255,255,255,0.055),0_18px_55px_rgba(0,0,0,0.18)]",
+      labelClassName: "text-emerald-100/72",
     },
     {
       label: "Matches Today",
       value: leaderboard.matchesToday,
       detail: "Final games on the board.",
+      className:
+        "border-white/14 bg-slate-950/44 shadow-[inset_0_1px_0_rgba(255,255,255,0.045),0_18px_55px_rgba(0,0,0,0.18)]",
+      labelClassName: "text-slate-300/70",
     },
   ];
 
@@ -132,9 +138,9 @@ function ExtremeLobbyStatCards({ leaderboard }: { leaderboard: LobbySnapshot["le
       {stats.map((stat) => (
         <div
           key={stat.label}
-          className="rounded-[1.55rem] border border-white/10 bg-slate-950/42 px-5 py-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.045),0_18px_55px_rgba(0,0,0,0.18)]"
+          className={`rounded-[1.55rem] border px-5 py-6 ${stat.className}`}
         >
-          <div className="text-[11px] uppercase tracking-[0.34em] text-amber-100/60">
+          <div className={`text-[11px] uppercase tracking-[0.34em] ${stat.labelClassName}`}>
             {stat.label}
           </div>
           <div className="mt-5 text-5xl font-semibold tracking-tight text-white tabular-nums">
