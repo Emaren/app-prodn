@@ -731,7 +731,42 @@ function extractTwitchChannel(value: string | null | undefined) {
 
 async function loadCandidateFinalGames(prisma: PrismaClient): Promise<PlayerProfileGameRow[]> {
   return prisma.gameStats.findMany({
-    where: { is_final: true },
+    where: {
+      OR: [
+        { is_final: true },
+        {
+          is_final: false,
+          parse_source: "watcher_live",
+          parse_iteration: {
+            gt: 0,
+          },
+          OR: [
+            {
+              parse_reason: {
+                contains: "final",
+                mode: "insensitive",
+              },
+            },
+            {
+              parse_reason: {
+                contains: "resignation",
+                mode: "insensitive",
+              },
+            },
+            {
+              winner: {
+                notIn: ["", "Unknown"],
+              },
+            },
+          ],
+        },
+      ],
+      NOT: {
+        parse_reason: {
+          in: ["superseded_by_later_upload", "watcher_final_unparsed"],
+        },
+      },
+    },
     orderBy: [{ played_on: "desc" }, { timestamp: "desc" }, { createdAt: "desc" }, { id: "desc" }],
     take: PROFILE_MATCH_SCAN_LIMIT,
     select: {
