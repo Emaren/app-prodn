@@ -85,6 +85,7 @@ export function LeaderboardPanel({
   const entriesRef = useRef(entries);
   const leaderboardPanelRef = useRef<HTMLDivElement | null>(null);
   const leaderboardSentinelRef = useRef<HTMLButtonElement | null>(null);
+  const preloadAllRef = useRef(false);
   const loadingRef = useRef(false);
   const nextOffsetRef = useRef(countRankedLeaderboardEntries(leaderboard.entries));
   const hasMoreRef = useRef(
@@ -229,8 +230,51 @@ export function LeaderboardPanel({
     };
   }, [canLoadMore, loadMoreLeaderboardEntries]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (preloadAllRef.current) return;
+    if (leaderboard.trackedPlayers <= countRankedLeaderboardEntries(entriesRef.current)) return;
+
+    preloadAllRef.current = true;
+    let cancelled = false;
+    let timer: number | null = null;
+
+    const sleep = (ms: number) =>
+      new Promise<void>((resolve) => {
+        timer = window.setTimeout(resolve, ms);
+      });
+
+    const preloadAllLeaderboardPages = async () => {
+      await sleep(450);
+
+      for (let page = 0; page < 12; page += 1) {
+        if (cancelled) return;
+
+        const before = countRankedLeaderboardEntries(entriesRef.current);
+        if (before >= leaderboard.trackedPlayers) return;
+
+        await loadMoreLeaderboardEntries();
+        await sleep(320);
+
+        const after = countRankedLeaderboardEntries(entriesRef.current);
+        if (after <= before && !loadingRef.current) {
+          await sleep(700);
+        }
+      }
+    };
+
+    void preloadAllLeaderboardPages();
+
+    return () => {
+      cancelled = true;
+      if (timer !== null) {
+        window.clearTimeout(timer);
+      }
+    };
+  }, [leaderboard.trackedPlayers, loadMoreLeaderboardEntries]);
+
   const leaderboardScrollClassName = isExtreme
-    ? "mt-6 h-[min(78vh,76rem)] min-h-[52rem] space-y-3 overflow-y-auto pr-2 sm:h-[min(80vh,82rem)] lg:h-[72rem] lg:max-h-[72rem] xl:h-[80rem] xl:max-h-[80rem]"
+    ? "mt-6 h-[min(84vh,84rem)] min-h-[58rem] space-y-3 overflow-y-auto pr-2 sm:h-[min(86vh,88rem)] lg:h-[78rem] lg:max-h-[78rem] xl:h-[86rem] xl:max-h-[86rem]"
     : "mt-6 max-h-[62vh] space-y-3 overflow-y-auto pr-2 sm:max-h-[66vh] lg:max-h-[58rem] xl:max-h-[66rem]";
 
   return (

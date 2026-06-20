@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 import { formatLobbyMoment } from "@/components/lobby/utils";
 import Image from "next/image";
 import Link from "next/link";
@@ -16,6 +18,19 @@ import type { Aoe2HdPulseItem, Aoe2HdPulseSnapshot } from "@/lib/aoe2HdPulse";
 import type { LobbyLeaderboardEntry, LobbyMatchRow, LobbySnapshot } from "@/lib/lobby";
 import { avatarUrlForName } from "@/lib/avatarAssets";
 import { TILE_VIEW_MODES, type TileViewMode } from "@/lib/tileViewPreferences";
+
+type WoloMoved24hSnapshot = {
+  totalWolo: number;
+  transferCount: number;
+};
+
+function formatCompactStatNumber(value: number) {
+  if (!Number.isFinite(value) || value <= 0) return "0";
+  return new Intl.NumberFormat("en-US", {
+    maximumFractionDigits: value >= 1000 ? 1 : 0,
+    notation: value >= 10000 ? "compact" : "standard",
+  }).format(value);
+}
 
 type LobbyHeroProps = {
   liveConnected: boolean;
@@ -216,7 +231,44 @@ export function LobbyHero({
     onToggleTileViewMode();
   };
   const tone = getLobbyPresentationTone(themeKey, viewMode);
+  const [woloMoved24h, setWoloMoved24h] = useState<WoloMoved24hSnapshot>({
+    totalWolo: 0,
+    transferCount: 0,
+  });
   const showExtremeStats = tileViewMode === "extreme";
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadWoloMoved24h() {
+      try {
+        const response = await fetch("/api/wolo/moved24h", { cache: "no-store" });
+        if (!response.ok) return;
+
+        const payload = (await response.json()) as Partial<WoloMoved24hSnapshot>;
+        if (cancelled) return;
+
+        setWoloMoved24h({
+          totalWolo:
+            typeof payload.totalWolo === "number" && Number.isFinite(payload.totalWolo)
+              ? payload.totalWolo
+              : 0,
+          transferCount:
+            typeof payload.transferCount === "number" && Number.isFinite(payload.transferCount)
+              ? payload.transferCount
+              : 0,
+        });
+      } catch (error) {
+        console.warn("Failed to load 24h WOLO movement:", error);
+      }
+    }
+
+    void loadWoloMoved24h();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
 
   if (tileViewMode === "extreme") {
     const featuredEntry = leaderboard.entries[0] ?? null;
@@ -426,28 +478,41 @@ export function LobbyHero({
         </section>
 
         {showExtremeStats ? (
-          <div data-ignore-tile-toggle="true" className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-[1.55rem] border border-emerald-200/40 bg-[linear-gradient(135deg,rgba(16,185,129,0.14),rgba(15,23,42,0.5))] px-5 py-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.055),0_18px_55px_rgba(0,0,0,0.18)]">
+          <div data-ignore-tile-toggle="true" className="grid gap-4 sm:grid-cols-3">
+            <div className="rounded-[1.55rem] border border-emerald-200/40 bg-[linear-gradient(135deg,rgba(16,185,129,0.14),rgba(15,23,42,0.5))] px-5 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.055),0_18px_55px_rgba(0,0,0,0.18)]">
               <div className="text-[11px] uppercase tracking-[0.34em] text-emerald-100/72">
                 Active Players
               </div>
-              <div className="mt-5 text-5xl font-semibold tracking-tight text-white tabular-nums">
+              <div className="mt-4 text-4xl font-semibold tracking-tight text-white tabular-nums">
                 {leaderboard.activePlayers}
               </div>
-              <div className="mt-5 text-lg font-medium text-slate-300">Online right now.</div>
+              <div className="mt-4 text-sm font-medium text-slate-300">Online now.</div>
             </div>
 
-            <div className="rounded-[1.55rem] border border-white/14 bg-slate-950/44 px-5 py-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.045),0_18px_55px_rgba(0,0,0,0.18)]">
+            <div className="rounded-[1.55rem] border border-white/14 bg-slate-950/44 px-5 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.045),0_18px_55px_rgba(0,0,0,0.18)]">
               <div className="text-[11px] uppercase tracking-[0.34em] text-slate-300/70">
                 Matches Today
               </div>
-              <div className="mt-5 text-5xl font-semibold tracking-tight text-white tabular-nums">
+              <div className="mt-4 text-4xl font-semibold tracking-tight text-white tabular-nums">
                 {leaderboard.matchesToday}
               </div>
-              <div className="mt-5 text-lg font-medium text-slate-300">Final games on the board.</div>
+              <div className="mt-4 text-sm font-medium text-slate-300">Final games.</div>
+            </div>
+
+            <div className="rounded-[1.55rem] border border-amber-200/35 bg-[linear-gradient(135deg,rgba(251,191,36,0.13),rgba(15,23,42,0.48))] px-5 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.055),0_18px_55px_rgba(0,0,0,0.18)]">
+              <div className="text-[11px] uppercase tracking-[0.28em] text-amber-100/75">
+                WOLO Moved · 24h
+              </div>
+              <div className="mt-4 text-4xl font-semibold tracking-tight text-white tabular-nums">
+                {formatCompactStatNumber(woloMoved24h.totalWolo)}
+              </div>
+              <div className="mt-4 text-sm font-medium text-slate-300">
+                {formatCompactStatNumber(woloMoved24h.transferCount)} transfers.
+              </div>
             </div>
           </div>
         ) : null}
+
 
         <div
           className={
