@@ -1,5 +1,9 @@
 import type { Prisma, PrismaClient } from "@/lib/generated/prisma";
-import { projectedTrophyBounty, recordNationalityChange } from "@/lib/trophies/service";
+import {
+  executePendingTrophyTributePayouts,
+  projectedTrophyBounty,
+  recordNationalityChange,
+} from "@/lib/trophies/service";
 
 export class TrophyActionError extends Error {
   status: number;
@@ -799,6 +803,25 @@ async function updatePayout(
   const payout = await prisma.trophyPayout.findUnique({ where: { id: payoutId } });
   if (!payout) throw new TrophyActionError("Payout not found.", 404);
   const operation = stringValue(payload.operation, 24);
+
+  if (operation === "execute") {
+    const result = await executePendingTrophyTributePayouts(prisma, {
+      payoutId: payout.id,
+      limit: 1,
+    });
+
+    if (result.scanned < 1) {
+      throw new TrophyActionError("No executable trophy payout found. It may already be paid, cancelled, or not due yet.", 409);
+    }
+
+    const failed = result.results.find((row) => row.status === "failed");
+    if (failed) {
+      throw new TrophyActionError(failed.detail || "Trophy payout execution failed.", 409);
+    }
+
+    return;
+  }
+
   const status =
     operation === "retry"
       ? "retrying"
