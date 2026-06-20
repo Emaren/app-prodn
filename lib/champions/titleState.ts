@@ -246,6 +246,7 @@ export async function loadChampionTitleEconomyState(
       const lastTribute = lastTributeByTrophyId.get(trophy.id) ?? null;
       liveDefinitionMap.set(definition.id, {
         ...definition,
+        assetUrl: trophy.nftImageUri?.trim() || definition.assetUrl,
         dailyWolo: trophy.tributeAmountWolo,
         status:
           trophy.status === "held" || trophy.status === "active" || trophy.status === "guardian_held"
