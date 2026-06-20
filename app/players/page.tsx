@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import CommunityBadgePill from "@/components/contact/CommunityBadgePill";
 import SteamLinkedBadge from "@/components/SteamLinkedBadge";
 import { getPrisma } from "@/lib/prisma";
+import { loadLobbyLeaderboard } from "@/lib/lobbyLeaderboard";
 import {
   loadPublicPlayerDirectory,
   type PublicPlayerDirectoryEntry,
@@ -13,7 +14,15 @@ export const dynamic = "force-dynamic";
 
 export default async function PlayersDirectoryPage() {
   const prisma = getPrisma();
-  const directory = await loadPublicPlayerDirectory(prisma);
+  const [directory, lobbyLeaderboard] = await Promise.all([
+    loadPublicPlayerDirectory(prisma),
+    loadLobbyLeaderboard(prisma),
+  ]);
+  const boardCount = Math.max(directory.allEntries.length, lobbyLeaderboard.trackedPlayers);
+  const claimableCount = Math.max(
+    directory.replayEntries.length,
+    boardCount - directory.claimedEntries.length
+  );
 
   return (
     <main className="space-y-5 py-5 text-white sm:space-y-6 sm:py-6">
@@ -24,7 +33,7 @@ export default async function PlayersDirectoryPage() {
               Player Board
             </div>
             <h1 className="max-w-3xl text-4xl font-semibold leading-[1.02] text-white sm:text-5xl">
-              {directory.allEntries.length} warriors on board.
+              {boardCount} warriors on board.
             </h1>
 
             <div className="flex flex-wrap gap-2">
@@ -32,7 +41,7 @@ export default async function PlayersDirectoryPage() {
               <HeroPill live>
                 {directory.activeClaimed.length} Live Now
               </HeroPill>
-              <HeroPill>{directory.replayEntries.length} Claimable</HeroPill>
+              <HeroPill>{claimableCount} Claimable</HeroPill>
             </div>
 
             <div className="flex flex-wrap gap-3">
@@ -52,7 +61,7 @@ export default async function PlayersDirectoryPage() {
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <StatCard label="On Board" value={String(directory.allEntries.length)} />
+            <StatCard label="On Board" value={String(boardCount)} />
             <StatCard label="Claimed" value={String(directory.claimedEntries.length)} />
             <StatCard
               label="Live Now"
@@ -60,7 +69,7 @@ export default async function PlayersDirectoryPage() {
               live
               helper="Realtime site activity"
             />
-            <StatCard label="Claimable" value={String(directory.replayEntries.length)} />
+            <StatCard label="Claimable" value={String(claimableCount)} />
           </div>
         </div>
       </section>

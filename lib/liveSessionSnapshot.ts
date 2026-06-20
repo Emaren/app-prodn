@@ -41,7 +41,7 @@ export type LiveGameSession = {
 
 const LIVE_SESSION_FRESHNESS_MS = 12 * 60 * 1000;
 export const LIVE_SESSION_LINGER_MS = 15 * 60 * 1000;
-const RECENT_COMPLETED_SESSION_MS = 2 * 60 * 60 * 1000;
+const RECENT_COMPLETED_SESSION_MS = 14 * 24 * 60 * 60 * 1000;
 const SUPERSEDED_PARSE_REASON = "superseded_by_later_upload";
 const UNPARSED_FINAL_PARSE_REASON = "watcher_final_unparsed";
 

@@ -207,6 +207,41 @@ export default async function WatchIndexPage({
   );
 }
 
+function readWatchKeyEvents(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+  return value as Record<string, unknown>;
+}
+
+function isCompletedWatcherLiveGame(game: {
+  is_final?: boolean | null;
+  parse_source?: string | null;
+  parse_reason?: string | null;
+  parse_iteration?: number | null;
+  winner?: string | null;
+  key_events?: unknown;
+}) {
+  if (game.is_final || game.parse_source !== "watcher_live") {
+    return false;
+  }
+
+  const parseReason = String(game.parse_reason || "").toLowerCase();
+  const keyEvents = readWatchKeyEvents(game.key_events);
+  const completionSource =
+    typeof keyEvents.completion_source === "string"
+      ? keyEvents.completion_source.trim()
+      : "";
+
+  return (
+    keyEvents.completed === true ||
+    Boolean(completionSource) ||
+    parseReason.includes("final") ||
+    parseReason.includes("resignation") ||
+    Boolean(game.winner && game.winner !== "Unknown")
+  );
+}
+
 async function loadWatchIndexSnapshot() {
   const prisma = getPrisma();
 
@@ -254,7 +289,7 @@ async function loadWatchIndexSnapshot() {
     const playerNames = players.map((player) => displayPlayerName(player)).filter(Boolean);
     const attachedStreams = streamsBySession.get(sessionKey) || [];
     const primaryStream = attachedStreams.find((stream) => stream.isPrimary) || attachedStreams[0] || null;
-    const isFinal = Boolean(game.is_final);
+    const isFinal = Boolean(game.is_final) || isCompletedWatcherLiveGame(game);
     const media = mediaRegistry[sessionKey] || mediaRegistry[String(game.id)] || {};
     const broadcastPreviewUrls = buildBetBroadcastPreviewUrls(sessionKey, broadcastPreviewsByKey);
     const broadcastLoopUrl =
