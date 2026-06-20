@@ -370,7 +370,7 @@ export async function loadLiveSessionSnapshot(prisma: PrismaClient): Promise<{
           },
         },
       },
-    }),,
+    }),
 
     prisma.gameStats.findMany({
       where: {
