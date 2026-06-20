@@ -2506,6 +2506,53 @@ async function loadOpenMarkets(prisma: PrismaClient) {
   });
 }
 
+function buildSessionSettledResult(session: LiveGameSession): BetSettledResult {
+  return {
+    id: session.id,
+    title: buildSessionMarketTitle(session),
+    eventLabel: buildSessionEventLabel(session),
+    winner: session.winner || "Unknown",
+    mapName: session.mapName || "Unknown Map",
+    totalPotWolo: 0,
+    payoutWolo: 0,
+    settledAt: session.completedAt || session.updatedAt || session.createdAt,
+    href: `/game-stats/live/${encodeURIComponent(session.sessionKey)}`,
+    linkedSessionKey: session.sessionKey,
+    broadcastFeeds: EMPTY_BROADCAST_FEEDS,
+    broadcastPreviewUrls: { ...EMPTY_BET_BROADCAST_PREVIEW_URLS },
+    founderBonuses: [],
+  };
+}
+
+function settledResultSurfaceKey(result: BetSettledResult) {
+  const sessionKey = normalizeName(result.linkedSessionKey);
+  if (sessionKey) return `session:${sessionKey.toLowerCase()}`;
+  return `match:${normalizeSettledMatchKey(result.title, result.mapName)}`;
+}
+
+function mergeSettledResultsWithSessions(
+  sessionResults: BetSettledResult[],
+  marketResults: BetSettledResult[]
+) {
+  const merged: BetSettledResult[] = [];
+  const seen = new Set<string>();
+
+  for (const result of [...sessionResults, ...marketResults]) {
+    const key = settledResultSurfaceKey(result);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(result);
+  }
+
+  return merged
+    .sort((left, right) => {
+      const leftTime = new Date(left.settledAt || 0).getTime();
+      const rightTime = new Date(right.settledAt || 0).getTime();
+      return rightTime - leftTime;
+    })
+    .slice(0, 4);
+}
+
 async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettledResult[]> {
   const [settledMarketsRaw, sessionSnapshot] = await Promise.all([
     prisma.betMarket.findMany({
@@ -2596,8 +2643,7 @@ async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettle
     ])
   );
 
-  if (settledMarkets.length > 0) {
-    return settledMarkets.map((market) => {
+  const marketResults = settledMarkets.map((market) => {
       const winner = market.winnerSide === "right" ? market.rightLabel : market.leftLabel;
       const countableWagers = market.wagers.filter(
         (wager) => wager.status !== "void" && isCountableBetWager(wager)
@@ -2650,6 +2696,11 @@ async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettle
         })),
       } satisfies BetSettledResult;
     });
+
+  const sessionResults = sessionSnapshot.recentlyCompletedSessions.map(buildSessionSettledResult);
+  const mergedSettledResults = mergeSettledResultsWithSessions(sessionResults, marketResults);
+  if (mergedSettledResults.length > 0) {
+    return mergedSettledResults;
   }
 
   if (isWoloMainnet()) {

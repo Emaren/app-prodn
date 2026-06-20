@@ -4,8 +4,10 @@ import { getEmptyAoe2HdPulseSnapshot, loadAoe2HdPulseSnapshot } from "@/lib/aoe2
 import { getBackendUpstreamBase } from "@/lib/backendUpstream";
 import { getFeaturedTournament, getLobbyMessages } from "@/lib/communityStore";
 import { loadLobbyLeaderboard } from "@/lib/lobbyLeaderboard";
+import { mergeCompletedSessionsIntoLobbyMatches } from "@/lib/liveCompletedMatchSurface";
 import { loadLobbyWoloEarnersBoard } from "@/lib/lobbyWoloEarners";
 import { getFallbackLiveTickerSnapshot, loadLiveTickerSnapshot } from "@/lib/liveTicker";
+import { loadLiveSessionSnapshot } from "@/lib/liveSessionSnapshot";
 import {
   LOBBY_ROOM_SLUG,
   getFallbackLeaderboard,
@@ -92,7 +94,15 @@ export async function loadLobbySnapshot(
     }
     const tournament = await getFeaturedTournament(prisma, viewerUid);
 
-    const [tournamentMessages, onlineUsers, recentMatches, leaderboard, woloEarners, aoe2hdPulse] = await Promise.all([
+    const [
+      tournamentMessages,
+      onlineUsers,
+      baseRecentMatches,
+      leaderboard,
+      woloEarners,
+      aoe2hdPulse,
+      liveSessionSnapshot,
+    ] = await Promise.all([
       getLobbyMessages(prisma, tournament.roomSlug, 60, {
         uid: viewerUid,
         guestSessionId: guestReactionSessionId,
@@ -102,7 +112,13 @@ export async function loadLobbySnapshot(
       loadLobbyLeaderboard(prisma),
       loadLobbyWoloEarnersBoard(prisma, { mode: "weekly" }),
       loadAoe2HdPulseSnapshot(),
+      loadLiveSessionSnapshot(prisma),
     ]);
+    const recentMatches = mergeCompletedSessionsIntoLobbyMatches(
+      baseRecentMatches,
+      liveSessionSnapshot.recentlyCompletedSessions,
+      LOBBY_RECENT_MATCH_INITIAL_LIMIT
+    );
     const liveTicker = await loadLiveTickerSnapshot(prisma, {
       tournament,
       leaderboard,
