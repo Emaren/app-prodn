@@ -34,21 +34,21 @@ type LastTributeProof = {
 
 type CountryAwareLeaderboardEntry = LobbyLeaderboardEntry & {
   representedCountry?: string | null;
+  genderDivision?: string | null;
 };
 
 function identityKey(value: string | null | undefined) {
   return value?.trim().toLowerCase() || null;
 }
 
-function putCountryKey(
-  countryByKey: Map<string, string>,
+function putProfileKey(
+  profileByKey: Map<string, { representedCountry: string | null; genderDivision: string | null }>,
   value: string | null | undefined,
-  country: string | null | undefined
+  profile: { representedCountry: string | null; genderDivision: string | null }
 ) {
   const key = identityKey(value);
-  const cleanCountry = country?.trim();
-  if (key && cleanCountry && !countryByKey.has(key)) {
-    countryByKey.set(key, cleanCountry);
+  if (key && !profileByKey.has(key)) {
+    profileByKey.set(key, profile);
   }
 }
 
@@ -76,13 +76,13 @@ function leaderboardEntryKeys(entry: LobbyLeaderboardEntry) {
   return [...keys];
 }
 
-function representedCountryForEntry(
+function profileForEntry(
   entry: LobbyLeaderboardEntry,
-  countryByKey: Map<string, string>
+  profileByKey: Map<string, { representedCountry: string | null; genderDivision: string | null }>
 ) {
   for (const key of leaderboardEntryKeys(entry)) {
-    const country = countryByKey.get(key);
-    if (country) return country;
+    const profile = profileByKey.get(key);
+    if (profile) return profile;
   }
   return null;
 }
@@ -177,6 +177,18 @@ function contendersForTitle(
     };
   }
 
+  if (definition.type === "womens") {
+    const womensRows = leaderboardEntries
+      .filter((entry) => entry.genderDivision === "Woman")
+      .map((entry, index) => toContender(entry, index + 1, "Women's division"));
+
+    const contenders = mergeUniqueContenders(withoutCurrentHolders(definition, womensRows));
+    return {
+      contenders,
+      contenderStatus: contenders.length > 0 ? "live" : "placeholder",
+    };
+  }
+
   if (definition.type === "designation") {
     const contenders = withoutCurrentHolders(
       definition,
@@ -248,27 +260,41 @@ export async function loadChampionTitleEconomyState(
   if (leaderboardEntries.length > 0) {
     try {
       const users = await prisma.user.findMany({
-        where: { representedCountry: { not: null } },
+        where: {
+          OR: [
+            { representedCountry: { not: null } },
+            { genderDivision: "Woman" },
+          ],
+        },
         select: {
           uid: true,
           inGameName: true,
           steamPersonaName: true,
           representedCountry: true,
+          genderDivision: true,
         },
         take: 1000,
       });
-      const countryByKey = new Map<string, string>();
+      const profileByKey = new Map<string, { representedCountry: string | null; genderDivision: string | null }>();
 
       for (const user of users) {
-        putCountryKey(countryByKey, user.uid, user.representedCountry);
-        putCountryKey(countryByKey, user.inGameName, user.representedCountry);
-        putCountryKey(countryByKey, user.steamPersonaName, user.representedCountry);
+        const profile = {
+          representedCountry: user.representedCountry,
+          genderDivision: user.genderDivision || "Man",
+        };
+        putProfileKey(profileByKey, user.uid, profile);
+        putProfileKey(profileByKey, user.inGameName, profile);
+        putProfileKey(profileByKey, user.steamPersonaName, profile);
       }
 
-      leaderboardEntries = leaderboardEntries.map((entry) => ({
-        ...entry,
-        representedCountry: representedCountryForEntry(entry, countryByKey),
-      }));
+      leaderboardEntries = leaderboardEntries.map((entry) => {
+        const profile = profileForEntry(entry, profileByKey);
+        return {
+          ...entry,
+          representedCountry: profile?.representedCountry ?? null,
+          genderDivision: profile?.genderDivision ?? null,
+        };
+      });
     } catch (error) {
       console.warn("Champion represented-country enrichment unavailable:", error);
     }
