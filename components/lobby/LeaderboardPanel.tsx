@@ -274,14 +274,18 @@ export function LeaderboardPanel({
   }, [leaderboard.trackedPlayers, loadMoreLeaderboardEntries]);
 
   const leaderboardScrollClassName = isExtreme
-    ? "mt-6 h-[min(122vh,122rem)] min-h-[92rem] space-y-3 overflow-y-auto pr-2 sm:h-[min(124vh,126rem)] lg:h-[116rem] lg:max-h-[116rem] xl:h-[126rem] xl:max-h-[126rem]"
+    ? "mt-6 min-h-0 flex-1 space-y-3 overflow-y-auto pr-2"
     : "mt-6 max-h-[62vh] space-y-3 overflow-y-auto pr-2 sm:max-h-[66vh] lg:max-h-[58rem] xl:max-h-[66rem]";
+
+  const leaderboardPanelShellClassName = isExtreme
+    ? `relative flex min-h-[112rem] flex-col rounded-[1.85rem] border p-5 transition-all duration-300 sm:p-6 lg:min-h-[118rem] xl:min-h-[126rem] ${tone.panelShell}`
+    : `relative rounded-[1.85rem] border p-5 transition-all duration-300 sm:p-6 ${tone.panelShell}`;
 
   return (
     <div
       ref={leaderboardPanelRef}
       data-lobby-leaderboard-panel="true"
-      className={`relative rounded-[1.85rem] border p-5 transition-all duration-300 sm:p-6 ${tone.panelShell}`}
+      className={leaderboardPanelShellClassName}
     >
       <div className="flex flex-col gap-5">
         <div className="min-w-0">
