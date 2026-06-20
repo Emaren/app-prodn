@@ -32,6 +32,61 @@ type LastTributeProof = {
   recipientDisplayName: string | null;
 };
 
+type CountryAwareLeaderboardEntry = LobbyLeaderboardEntry & {
+  representedCountry?: string | null;
+};
+
+function identityKey(value: string | null | undefined) {
+  return value?.trim().toLowerCase() || null;
+}
+
+function putCountryKey(
+  countryByKey: Map<string, string>,
+  value: string | null | undefined,
+  country: string | null | undefined
+) {
+  const key = identityKey(value);
+  const cleanCountry = country?.trim();
+  if (key && cleanCountry && !countryByKey.has(key)) {
+    countryByKey.set(key, cleanCountry);
+  }
+}
+
+function leaderboardEntryKeys(entry: LobbyLeaderboardEntry) {
+  const keys = new Set<string>();
+  const nameKey = identityKey(entry.name);
+  if (nameKey) keys.add(nameKey);
+
+  const href = entry.href || "";
+  for (const part of href.split("/")) {
+    try {
+      const decoded = decodeURIComponent(part);
+      const key = identityKey(decoded);
+      if (key && key !== "players" && key !== "by-name") {
+        keys.add(key);
+      }
+    } catch {
+      const key = identityKey(part);
+      if (key && key !== "players" && key !== "by-name") {
+        keys.add(key);
+      }
+    }
+  }
+
+  return [...keys];
+}
+
+function representedCountryForEntry(
+  entry: LobbyLeaderboardEntry,
+  countryByKey: Map<string, string>
+) {
+  for (const key of leaderboardEntryKeys(entry)) {
+    const country = countryByKey.get(key);
+    if (country) return country;
+  }
+  return null;
+}
+
 function nextTributeDayKey(value: Date | null | undefined) {
   const base = value && !Number.isNaN(value.getTime()) ? value : new Date();
   const next = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth(), base.getUTCDate() + 1));
@@ -98,7 +153,7 @@ function mergeUniqueContenders(rows: TitleContender[]) {
 
 function contendersForTitle(
   definition: ChampionTitleDefinition,
-  leaderboardEntries: LobbyLeaderboardEntry[]
+  leaderboardEntries: CountryAwareLeaderboardEntry[]
 ): { contenders: TitleContender[]; contenderStatus: "live" | "placeholder" } {
   if (definition.type === "world") {
     const contenders = withoutCurrentHolders(
@@ -138,9 +193,23 @@ function contendersForTitle(
   }
 
   if (definition.type === "national") {
+    const country = definition.country?.toLowerCase().trim();
+    const nationalRows = country
+      ? leaderboardEntries
+          .filter((entry) => entry.representedCountry?.toLowerCase().trim() === country)
+          .map((entry, index) =>
+            toContender(
+              entry,
+              index + 1,
+              entry.representedCountry ? `${entry.representedCountry} eligible` : null
+            )
+          )
+      : [];
+
+    const contenders = mergeUniqueContenders(withoutCurrentHolders(definition, nationalRows));
     return {
-      contenders: [],
-      contenderStatus: "placeholder",
+      contenders,
+      contenderStatus: contenders.length > 0 ? "live" : "placeholder",
     };
   }
 
@@ -160,7 +229,7 @@ function contendersForTitle(
 export async function loadChampionTitleEconomyState(
   prisma: PrismaClient
 ): Promise<ChampionTitleEconomyState> {
-  let leaderboardEntries: LobbyLeaderboardEntry[] = [];
+  let leaderboardEntries: CountryAwareLeaderboardEntry[] = [];
   let leaderboardAvailable = false;
   const liveDefinitionMap = new Map<string, ChampionTitleDefinition>();
   const lastTributeByTrophyId = new Map<number, LastTributeProof>();
@@ -174,6 +243,35 @@ export async function loadChampionTitleEconomyState(
     leaderboardAvailable = true;
   } catch (error) {
     console.warn("Champion contender leaderboard unavailable:", error);
+  }
+
+  if (leaderboardEntries.length > 0) {
+    try {
+      const users = await prisma.user.findMany({
+        where: { representedCountry: { not: null } },
+        select: {
+          uid: true,
+          inGameName: true,
+          steamPersonaName: true,
+          representedCountry: true,
+        },
+        take: 1000,
+      });
+      const countryByKey = new Map<string, string>();
+
+      for (const user of users) {
+        putCountryKey(countryByKey, user.uid, user.representedCountry);
+        putCountryKey(countryByKey, user.inGameName, user.representedCountry);
+        putCountryKey(countryByKey, user.steamPersonaName, user.representedCountry);
+      }
+
+      leaderboardEntries = leaderboardEntries.map((entry) => ({
+        ...entry,
+        representedCountry: representedCountryForEntry(entry, countryByKey),
+      }));
+    } catch (error) {
+      console.warn("Champion represented-country enrichment unavailable:", error);
+    }
   }
 
   try {

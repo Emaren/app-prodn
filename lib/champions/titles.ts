@@ -198,7 +198,7 @@ export const nationalTitles: ChampionTitleDefinition[] = [
     id: "national-canada",
     slug: "canada",
     type: "national",
-    displayName: "Canada Champion",
+    displayName: "Canadian Champion",
     shortName: "Canada",
     eyebrow: "Representing Country",
     assetUrl: "/champions/belts/canada.png",
@@ -212,7 +212,7 @@ export const nationalTitles: ChampionTitleDefinition[] = [
     eligibility: "Only players representing Canada can hold or challenge this national belt.",
     rule: "Set Representing Country to Canada, then win the verified national challenge.",
     challengeCopy: "Challenge for Canada",
-    detailLore: "National belts follow Representing Country. Canada is ready for its first beacon holder.",
+    detailLore: "National belts follow Representing Country. The Canadian Champion is the proof-backed beacon for Canada.",
     historyPlaceholder: "Canada's title ledger is awaiting its first verified champion.",
   },
   {

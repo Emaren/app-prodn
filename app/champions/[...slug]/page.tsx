@@ -20,23 +20,6 @@ type ChampionDetailParams = {
   slug: string[];
 };
 
-const PLAYER_BACKDROPS: Record<string, string> = {
-  emaren: "/champions/players/emaren.png",
-  jim: "/champions/players/jim.png",
-  "julio alvarez": "/champions/players/julio.png",
-  julio: "/champions/players/julio.png",
-  sniper: "/champions/players/sniper.png",
-};
-
-const SILHOUETTE_BACKDROP = "/champions/players/silhouette.png";
-const FEMALE_SILHOUETTE_BACKDROP = "/champions/players/female_silhouette.png";
-
-function isWomensTitle(title: ChampionTitleDefinition) {
-  const id = title.id.toLowerCase();
-  const slug = title.slug.toLowerCase();
-  return id.includes("women") || slug.includes("women") || title.type === "womens";
-}
-
 export async function generateMetadata({
   params,
 }: {
@@ -60,14 +43,6 @@ export async function generateMetadata({
 function holderLabel(title: ChampionTitleDefinition) {
   if (title.holders.length === 0) return "Vacant";
   return title.holders.map((holder) => holder.name).join(" & ");
-}
-
-function backdropForTitle(title: ChampionTitleDefinition) {
-  const holder = title.holders[0];
-  if (holder) return PLAYER_BACKDROPS[holder.name.trim().toLowerCase()] || SILHOUETTE_BACKDROP;
-  if (title.id === "national-canada") return PLAYER_BACKDROPS.emaren;
-  if (isWomensTitle(title)) return FEMALE_SILHOUETTE_BACKDROP;
-  return SILHOUETTE_BACKDROP;
 }
 
 function challengeHref(title: ChampionTitleDefinition) {
@@ -171,22 +146,13 @@ export default async function ChampionTitleDetailPage({
 
           <div className="relative mx-auto aspect-[1.75/1] w-full max-w-[38rem] overflow-visible">
             <Image
-              src={backdropForTitle(title)}
-              alt=""
-              fill
-              priority
-              unoptimized
-              sizes="(min-width: 1024px) 38vw, 92vw"
-              className="z-0 object-cover object-top opacity-28 mix-blend-screen [mask-image:linear-gradient(180deg,black_0%,black_58%,transparent_96%)]"
-            />
-            <Image
               src={title.assetUrl}
               alt=""
               fill
               priority
               unoptimized
               sizes="(min-width: 1024px) 44vw, 92vw"
-              className="z-10 object-contain drop-shadow-[0_24px_55px_rgba(0,0,0,0.62)]"
+              className="object-contain drop-shadow-[0_24px_55px_rgba(0,0,0,0.62)]"
             />
           </div>
         </div>
