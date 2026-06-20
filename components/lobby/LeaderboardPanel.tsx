@@ -274,7 +274,7 @@ export function LeaderboardPanel({
   }, [leaderboard.trackedPlayers, loadMoreLeaderboardEntries]);
 
   const leaderboardScrollClassName = isExtreme
-    ? "mt-6 h-[min(84vh,84rem)] min-h-[58rem] space-y-3 overflow-y-auto pr-2 sm:h-[min(86vh,88rem)] lg:h-[78rem] lg:max-h-[78rem] xl:h-[86rem] xl:max-h-[86rem]"
+    ? "mt-6 h-[min(94vh,96rem)] min-h-[68rem] space-y-3 overflow-y-auto pr-2 sm:h-[min(96vh,100rem)] lg:h-[90rem] lg:max-h-[90rem] xl:h-[98rem] xl:max-h-[98rem]"
     : "mt-6 max-h-[62vh] space-y-3 overflow-y-auto pr-2 sm:max-h-[66vh] lg:max-h-[58rem] xl:max-h-[66rem]";
 
   return (

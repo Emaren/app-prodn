@@ -682,7 +682,7 @@ export function LobbyHero({
             themeKey={themeKey}
             viewMode={viewMode}
             onViewModeChange={onViewModeChange}
-            surface="standard"
+            surface={showExtremeStats ? "extreme" : "standard"}
           />
         </div>
 
