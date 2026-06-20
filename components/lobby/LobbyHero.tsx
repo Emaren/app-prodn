@@ -216,6 +216,7 @@ export function LobbyHero({
     onToggleTileViewMode();
   };
   const tone = getLobbyPresentationTone(themeKey, viewMode);
+  const showExtremeStats = tileViewMode === "extreme";
 
   if (tileViewMode === "extreme") {
     const featuredEntry = leaderboard.entries[0] ?? null;
@@ -423,6 +424,30 @@ export function LobbyHero({
             </div>
           </div>
         </section>
+
+        {showExtremeStats ? (
+          <div data-ignore-tile-toggle="true" className="grid gap-4 sm:grid-cols-2">
+            <div className="rounded-[1.55rem] border border-emerald-200/40 bg-[linear-gradient(135deg,rgba(16,185,129,0.14),rgba(15,23,42,0.5))] px-5 py-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.055),0_18px_55px_rgba(0,0,0,0.18)]">
+              <div className="text-[11px] uppercase tracking-[0.34em] text-emerald-100/72">
+                Active Players
+              </div>
+              <div className="mt-5 text-5xl font-semibold tracking-tight text-white tabular-nums">
+                {leaderboard.activePlayers}
+              </div>
+              <div className="mt-5 text-lg font-medium text-slate-300">Online right now.</div>
+            </div>
+
+            <div className="rounded-[1.55rem] border border-white/14 bg-slate-950/44 px-5 py-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.045),0_18px_55px_rgba(0,0,0,0.18)]">
+              <div className="text-[11px] uppercase tracking-[0.34em] text-slate-300/70">
+                Matches Today
+              </div>
+              <div className="mt-5 text-5xl font-semibold tracking-tight text-white tabular-nums">
+                {leaderboard.matchesToday}
+              </div>
+              <div className="mt-5 text-lg font-medium text-slate-300">Final games on the board.</div>
+            </div>
+          </div>
+        ) : null}
 
         <div
           className={

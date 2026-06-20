@@ -104,14 +104,19 @@ export function LeaderboardPanel({
     entriesRef.current = entries;
   }, [entries]);
 
+  const visibleRankedEntryCount = countRankedLeaderboardEntries(entries);
+  const canLoadMore = hasMore || visibleRankedEntryCount < leaderboard.trackedPlayers;
+
   const loadMoreLeaderboardEntries = useCallback(async () => {
-    if (loadingRef.current || !hasMoreRef.current) return;
+    const visibleOffset = countRankedLeaderboardEntries(entriesRef.current);
+    if (loadingRef.current) return;
+    if (!hasMoreRef.current && visibleOffset >= leaderboard.trackedPlayers) return;
 
     loadingRef.current = true;
     setIsLoadingMore(true);
 
     try {
-      const offset = nextOffsetRef.current;
+      const offset = Math.max(nextOffsetRef.current, visibleOffset);
       const response = await fetch(
         `/api/lobby/leaderboard?offset=${offset}&limit=${LEADERBOARD_PAGE_SIZE}`,
         { cache: "no-store" }
@@ -145,7 +150,7 @@ export function LeaderboardPanel({
       loadingRef.current = false;
       setIsLoadingMore(false);
     }
-  }, []);
+  }, [leaderboard.trackedPlayers]);
 
   const handleLeaderboardScroll = useCallback(
     (event: UIEvent<HTMLDivElement>) => {
@@ -162,7 +167,7 @@ export function LeaderboardPanel({
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (!hasMore) return;
+    if (!canLoadMore) return;
 
     const node = leaderboardSentinelRef.current;
     if (!node) return;
@@ -185,11 +190,11 @@ export function LeaderboardPanel({
     return () => {
       observer.disconnect();
     };
-  }, [hasMore, loadMoreLeaderboardEntries]);
+  }, [canLoadMore, loadMoreLeaderboardEntries]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (!hasMore) return;
+    if (!canLoadMore) return;
 
     let ticking = false;
 
@@ -222,7 +227,7 @@ export function LeaderboardPanel({
       window.removeEventListener("scroll", handleScroll);
       window.removeEventListener("resize", handleScroll);
     };
-  }, [hasMore, loadMoreLeaderboardEntries]);
+  }, [canLoadMore, loadMoreLeaderboardEntries]);
 
   const leaderboardScrollClassName = isExtreme
     ? "mt-6 h-[min(78vh,76rem)] min-h-[52rem] space-y-3 overflow-y-auto pr-2 sm:h-[min(80vh,82rem)] lg:h-[72rem] lg:max-h-[72rem] xl:h-[80rem] xl:max-h-[80rem]"
@@ -389,21 +394,21 @@ export function LeaderboardPanel({
             </Link>
           ))
         )}
-
-        {hasMore ? (
-          <button
-            ref={leaderboardSentinelRef}
-            type="button"
-            onClick={() => {
-              void loadMoreLeaderboardEntries();
-            }}
-            disabled={isLoadingMore}
-            className="flex w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4 text-xs font-semibold uppercase tracking-[0.24em] text-slate-300 transition hover:border-amber-200/30 hover:bg-amber-300/10 hover:text-amber-100 disabled:cursor-wait disabled:opacity-70"
-          >
-            {isLoadingMore ? "Loading more warriors..." : "Load more warriors"}
-          </button>
-        ) : null}
       </div>
+
+      {canLoadMore ? (
+        <button
+          ref={leaderboardSentinelRef}
+          type="button"
+          onClick={() => {
+            void loadMoreLeaderboardEntries();
+          }}
+          disabled={isLoadingMore}
+          className="mt-5 flex w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4 text-xs font-semibold uppercase tracking-[0.24em] text-slate-300 transition hover:border-amber-200/30 hover:bg-amber-300/10 hover:text-amber-100 disabled:cursor-wait disabled:opacity-70"
+        >
+          {isLoadingMore ? "Loading more warriors..." : "Load more warriors"}
+        </button>
+      ) : null}
 
       <div className={`mt-5 flex flex-wrap items-center justify-end gap-3 border-t pt-4 ${tone.divider}`}>
         <Link
