@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
 import { useKeplr } from "@/hooks/use-keplr";
@@ -286,6 +286,329 @@ function TxRecoveryLookup() {
   );
 }
 
+
+type WalletTransferRow = {
+  id: number;
+  txHash: string;
+  height: string;
+  timestamp: string;
+  direction: "incoming" | "outgoing";
+  senderAddress: string;
+  senderLabel: string | null;
+  recipientAddress: string;
+  recipientLabel: string | null;
+  amountWolo: number;
+  memo: string | null;
+  source: string;
+};
+
+type WalletTrophyRow = {
+  id: number;
+  trophyId: string;
+  displayName: string;
+  kind: string;
+  family: string;
+  tier: string | null;
+  status: string;
+  currentHolderDisplayName: string | null;
+  currentHolderWoloAddress: string | null;
+  tributeAmountWolo: number;
+  currentBountyWolo: number;
+  bountyGrowthWolo: number;
+  nftClassId: string | null;
+  nftId: string | null;
+  metadataUri: string | null;
+  imageUri: string | null;
+  chainStatus: string;
+  chainOwnerAddress: string | null;
+  holderSince: string | null;
+};
+
+type WalletDashboardApiResponse = {
+  ok?: boolean;
+  detail?: string;
+  transfers?: WalletTransferRow[];
+  trophies?: WalletTrophyRow[];
+};
+
+function shortHash(value: string) {
+  return value.length > 16 ? `${value.slice(0, 8)}…${value.slice(-6)}` : value;
+}
+
+function shortAddress(value: string | null | undefined) {
+  if (!value) return "Unknown";
+  return value.length > 18 ? `${value.slice(0, 10)}…${value.slice(-6)}` : value;
+}
+
+function formatWalletDate(value: string | null | undefined) {
+  if (!value) return "Unknown time";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Unknown time";
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function formatWoloAmount(value: number) {
+  return `${new Intl.NumberFormat("en-US", {
+    maximumFractionDigits: value >= 10_000 ? 1 : value >= 1 ? 2 : 6,
+    minimumFractionDigits: 0,
+    notation: value >= 100_000 ? "compact" : "standard",
+  }).format(value)} WOLO`;
+}
+
+function WalletChainPortfolio({
+  address,
+  connected,
+}: {
+  address: string;
+  connected: boolean;
+}) {
+  const [transfers, setTransfers] = useState<WalletTransferRow[]>([]);
+  const [trophies, setTrophies] = useState<WalletTrophyRow[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [detail, setDetail] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!connected || !address) {
+      setTransfers([]);
+      setTrophies([]);
+      setDetail(null);
+      setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadWalletDashboard() {
+      setLoading(true);
+      setDetail(null);
+
+      try {
+        const response = await fetch(
+          `/api/wolo/wallet-dashboard?address=${encodeURIComponent(address)}&limit=25`,
+          { cache: "no-store" }
+        );
+        const payload = (await response.json().catch(() => ({}))) as WalletDashboardApiResponse;
+
+        if (!response.ok || payload.ok === false) {
+          throw new Error(payload.detail || "Wallet activity unavailable.");
+        }
+
+        if (!cancelled) {
+          setTransfers(Array.isArray(payload.transfers) ? payload.transfers : []);
+          setTrophies(Array.isArray(payload.trophies) ? payload.trophies : []);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setDetail(error instanceof Error ? error.message : "Wallet activity unavailable.");
+          setTransfers([]);
+          setTrophies([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void loadWalletDashboard();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [address, connected]);
+
+  return (
+    <section className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(20rem,0.8fr)]">
+      <div className="rounded-3xl border border-white/10 bg-slate-950/70 p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-xs uppercase tracking-[0.28em] text-slate-500">
+              WoloChain Activity
+            </p>
+            <h2 className="mt-2 text-xl font-semibold text-white">Recent wallet history</h2>
+            <p className="mt-1 text-sm leading-6 text-slate-400">
+              This is AoE2WAR&apos;s indexed mainnet history for your connected address.
+            </p>
+          </div>
+          {loading ? (
+            <span className="rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 py-1 text-xs font-semibold text-cyan-100">
+              Loading
+            </span>
+          ) : null}
+        </div>
+
+        {!connected ? (
+          <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-4 text-sm text-slate-400">
+            Connect Keplr to see indexed WOLO transfers.
+          </div>
+        ) : detail ? (
+          <div className="mt-4 rounded-2xl border border-amber-300/20 bg-amber-400/10 px-4 py-4 text-sm text-amber-100">
+            {detail}
+          </div>
+        ) : transfers.length === 0 && !loading ? (
+          <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-4 text-sm text-slate-400">
+            No indexed transfers found for this wallet yet.
+          </div>
+        ) : (
+          <div className="mt-4 space-y-3">
+            {transfers.map((row) => {
+              const counterparty =
+                row.direction === "incoming"
+                  ? row.senderLabel || shortAddress(row.senderAddress)
+                  : row.recipientLabel || shortAddress(row.recipientAddress);
+              const txHref = `/api/wolo/tx/${encodeURIComponent(row.txHash)}`;
+
+              return (
+                <article
+                  key={`${row.txHash}:${row.id}`}
+                  className="rounded-2xl border border-white/10 bg-white/[0.035] p-4"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span
+                          className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] ${
+                            row.direction === "incoming"
+                              ? "border-emerald-300/25 bg-emerald-400/10 text-emerald-100"
+                              : "border-sky-300/25 bg-sky-400/10 text-sky-100"
+                          }`}
+                        >
+                          {row.direction === "incoming" ? "Received" : "Sent"}
+                        </span>
+                        <span className="text-xs text-slate-500">
+                          {formatWalletDate(row.timestamp)} · height {row.height}
+                        </span>
+                      </div>
+
+                      <div className="mt-2 text-lg font-semibold text-white">
+                        {row.direction === "incoming" ? "+" : "-"}
+                        {formatWoloAmount(row.amountWolo)}
+                      </div>
+
+                      <div className="mt-1 text-sm text-slate-400">
+                        {row.direction === "incoming" ? "From" : "To"}{" "}
+                        <span className="text-slate-200">{counterparty}</span>
+                      </div>
+
+                      {row.memo ? (
+                        <div className="mt-2 break-words rounded-xl border border-white/8 bg-black/20 px-3 py-2 font-mono text-xs leading-5 text-slate-300">
+                          {row.memo}
+                        </div>
+                      ) : null}
+                    </div>
+
+                    <Link
+                      href={txHref}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="shrink-0 rounded-full border border-amber-200/18 bg-amber-300/10 px-3 py-2 font-mono text-xs font-semibold text-amber-100 transition hover:border-amber-200/40 hover:bg-amber-300/15"
+                    >
+                      {shortHash(row.txHash)}
+                    </Link>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <div className="rounded-3xl border border-amber-200/14 bg-[radial-gradient(circle_at_50%_0%,rgba(251,191,36,0.13),transparent_34%),rgba(15,23,42,0.78)] p-5">
+        <p className="text-xs uppercase tracking-[0.28em] text-amber-100/65">
+          Championship Assets
+        </p>
+        <h2 className="mt-2 text-xl font-semibold text-white">Belts held by this wallet</h2>
+        <p className="mt-1 text-sm leading-6 text-slate-400">
+          App custody is authoritative until WoloChain trophy ownership is enabled.
+        </p>
+
+        {!connected ? (
+          <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-4 text-sm text-slate-400">
+            Connect Keplr to see championship assets.
+          </div>
+        ) : trophies.length === 0 && !loading ? (
+          <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-4 text-sm text-slate-400">
+            No belts or artifacts are assigned to this wallet yet.
+          </div>
+        ) : (
+          <div className="mt-4 space-y-3">
+            {trophies.map((trophy) => (
+              <article
+                key={trophy.id}
+                className="overflow-hidden rounded-2xl border border-amber-200/14 bg-black/24"
+              >
+                {trophy.imageUri ? (
+                  <div className="flex h-40 items-center justify-center border-b border-white/8 bg-[radial-gradient(circle_at_50%_10%,rgba(251,191,36,0.16),transparent_44%)] p-4">
+                    <img
+                      src={trophy.imageUri}
+                      alt={trophy.displayName}
+                      className="h-full w-full object-contain drop-shadow-[0_18px_38px_rgba(0,0,0,0.65)]"
+                    />
+                  </div>
+                ) : null}
+
+                <div className="p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <div className="text-lg font-semibold text-white">{trophy.displayName}</div>
+                      <div className="mt-1 text-xs uppercase tracking-[0.18em] text-slate-500">
+                        {trophy.family} · {trophy.kind}
+                      </div>
+                    </div>
+                    <span className="rounded-full border border-amber-200/20 bg-amber-300/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-100">
+                      {trophy.chainStatus === "app_only" ? "App custody" : trophy.chainStatus}
+                    </span>
+                  </div>
+
+                  <div className="mt-3 grid gap-2 text-sm text-slate-300">
+                    <div>
+                      <strong className="text-white">{trophy.tributeAmountWolo} WOLO/day</strong>{" "}
+                      title tribute
+                    </div>
+                    <div>
+                      <strong className="text-white">
+                        {trophy.currentBountyWolo.toLocaleString()} WOLO
+                      </strong>{" "}
+                      estimated dethrone reward
+                    </div>
+                    {trophy.holderSince ? (
+                      <div>Held since {formatWalletDate(trophy.holderSince)}</div>
+                    ) : null}
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {trophy.metadataUri ? (
+                      <Link
+                        href={trophy.metadataUri}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="rounded-full border border-white/12 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:border-amber-200/35 hover:text-amber-100"
+                      >
+                        Metadata
+                      </Link>
+                    ) : null}
+                    <Link
+                      href="/champions/nations/canada"
+                      className="rounded-full border border-amber-200/18 bg-amber-300/10 px-3 py-2 text-xs font-semibold text-amber-100 transition hover:border-amber-200/40 hover:bg-amber-300/15"
+                    >
+                      View belt
+                    </Link>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
 export default function WalletDashboardClient() {
   const { address, status, connect, disconnect } = useKeplr();
   const { data: rawBalance, isLoading, refetch } = useWoloBalance(address);
@@ -424,6 +747,8 @@ export default function WalletDashboardClient() {
           </div>
         ) : null}
       </section>
+
+      <WalletChainPortfolio address={connected ? address : ""} connected={connected} />
 
       <TxRecoveryLookup />
 
