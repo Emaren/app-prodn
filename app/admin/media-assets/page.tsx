@@ -45,8 +45,14 @@ const TARGET_HINTS: Record<string, string[]> = {
     "designation-comeback-king",
     "designation-siege-lord",
     "designation-silent-killer",
+    "designation-untouchable",
     "designation-raid-demon",
     "designation-boom-lord",
+    "designation-slayer-king",
+    "designation-relic-baron",
+    "designation-blitz-lord",
+    "designation-wololo-lord",
+    "designation-iron-wall",
   ],
   logo: ["footer-wolo"],
   background: ["lobby-extreme", "champions-hero"],
@@ -73,7 +79,8 @@ export default function AdminMediaAssetsPage() {
   const [error, setError] = useState<string | null>(null);
 
   const hints = TARGET_HINTS[kind] ?? [];
-  const activeAssets = useMemo(() => assets.filter((asset) => asset.active), [assets]);
+  const selectedAssets = useMemo(() => assets.filter((asset) => asset.kind === kind), [assets, kind]);
+  const activeAssets = useMemo(() => selectedAssets.filter((asset) => asset.active), [selectedAssets]);
 
   async function loadAssets() {
     setLoading(true);
@@ -174,7 +181,7 @@ export default function AdminMediaAssetsPage() {
   }
 
   return (
-    <main className="mx-auto max-w-7xl space-y-6 px-4 py-8 text-white sm:px-6">
+    <main className="mx-auto max-w-[94rem] space-y-6 px-4 py-8 text-white sm:px-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="text-xs uppercase tracking-[0.35em] text-amber-100/65">Admin Armory</div>
@@ -189,10 +196,10 @@ export default function AdminMediaAssetsPage() {
         </Link>
       </div>
 
-      <section className="grid gap-5 lg:grid-cols-[minmax(19rem,0.36fr)_minmax(0,1fr)]">
+      <section className="grid gap-6 xl:grid-cols-[minmax(18rem,20rem)_minmax(0,1fr)] xl:items-start">
         <form
           onSubmit={submitUpload}
-          className="rounded-[1.6rem] border border-amber-200/12 bg-[linear-gradient(135deg,rgba(255,255,255,0.045),rgba(255,255,255,0.018))] p-5 shadow-[0_24px_90px_rgba(0,0,0,0.28)] lg:sticky lg:top-24 lg:self-start"
+          className="min-w-0 overflow-hidden rounded-[1.6rem] border border-amber-200/12 bg-[linear-gradient(135deg,rgba(255,255,255,0.045),rgba(255,255,255,0.018))] p-5 shadow-[0_24px_90px_rgba(0,0,0,0.28)] xl:sticky xl:top-24 xl:self-start"
         >
           <div className="flex items-center gap-2 text-xs uppercase tracking-[0.28em] text-amber-100/70">
             <ImagePlus className="h-4 w-4" />
@@ -204,7 +211,10 @@ export default function AdminMediaAssetsPage() {
               <span className="text-sm font-semibold text-slate-200">Kind</span>
               <select
                 value={kind}
-                onChange={(event) => setKind(event.target.value as (typeof KIND_OPTIONS)[number])}
+                onChange={(event) => {
+                  setKind(event.target.value as (typeof KIND_OPTIONS)[number]);
+                  setTarget("");
+                }}
                 className="rounded-2xl border border-white/10 bg-slate-950/80 px-4 py-3 text-sm text-white outline-none focus:border-amber-300/40"
               >
                 {KIND_OPTIONS.map((option) => (
@@ -225,13 +235,14 @@ export default function AdminMediaAssetsPage() {
               />
             </label>
 
-            <div className="flex flex-wrap gap-2">
+            <div className="flex max-h-32 flex-wrap gap-2 overflow-y-auto rounded-2xl border border-white/6 bg-black/10 p-2 pr-1">
               {hints.map((hint) => (
                 <button
                   key={hint}
                   type="button"
                   onClick={() => setTarget(hint)}
-                  className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1 text-xs text-slate-300 transition hover:border-amber-200/30 hover:text-amber-100"
+                  title={hint}
+                  className="max-w-full truncate rounded-full border border-white/10 bg-white/[0.035] px-2.5 py-1 text-[11px] text-slate-300 transition hover:border-amber-200/30 hover:text-amber-100"
                 >
                   {hint}
                 </button>
@@ -265,18 +276,18 @@ export default function AdminMediaAssetsPage() {
             <button
               type="submit"
               disabled={saving}
-              className="rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-60"
+              className="w-full rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {saving ? "Uploading..." : "Upload + Activate"}
             </button>
           </div>
         </form>
 
-        <section className="rounded-[1.6rem] border border-white/10 bg-slate-950/60 p-5 sm:p-6">
+        <section className="min-w-0 rounded-[1.6rem] border border-white/10 bg-slate-950/60 p-5 sm:p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2 text-xs uppercase tracking-[0.28em] text-sky-100/60">
               <Shield className="h-4 w-4" />
-              Active swaps
+              <span>Active {kind} swaps</span>
             </div>
             <button
               type="button"
@@ -300,7 +311,7 @@ export default function AdminMediaAssetsPage() {
             </div>
           ) : null}
 
-          <div className="mt-5 grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
+          <div className="mt-5 grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(13.5rem,1fr))]">
             {(loading ? [] : activeAssets).map((asset) => (
               <AssetCard
                 key={asset.id}
@@ -310,7 +321,7 @@ export default function AdminMediaAssetsPage() {
             ))}
             {!loading && activeAssets.length === 0 ? (
               <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-5 text-sm text-slate-300">
-                No active managed assets yet.
+                No active {kind} assets yet.
               </div>
             ) : null}
           </div>
@@ -318,16 +329,16 @@ export default function AdminMediaAssetsPage() {
       </section>
 
       <section className="rounded-[1.6rem] border border-white/10 bg-slate-950/50 p-5 sm:p-6">
-        <div className="text-xs uppercase tracking-[0.28em] text-slate-500">All uploads</div>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {assets.map((asset) => (
+        <div className="text-xs uppercase tracking-[0.28em] text-slate-500">All {kind} uploads</div>
+        <div className="mt-4 grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(13.5rem,1fr))]">
+          {selectedAssets.map((asset) => (
             <AssetCard
               key={asset.id}
               asset={asset}
               onSetActive={(nextActive) => void setAssetActive(asset, nextActive)}
             />
           ))}
-          {!loading && assets.length === 0 ? (
+          {!loading && selectedAssets.length === 0 ? (
             <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-5 text-sm text-slate-300">
               No uploads yet.
             </div>
@@ -346,9 +357,9 @@ function AssetCard({
   onSetActive: (active: boolean) => void;
 }) {
   return (
-    <article className="overflow-hidden rounded-2xl border border-white/8 bg-white/[0.03] shadow-[0_18px_54px_rgba(0,0,0,0.18)]">
-      <div className="relative flex aspect-[1.55/1] items-center justify-center bg-[linear-gradient(45deg,rgba(255,255,255,0.045)_25%,transparent_25%,transparent_75%,rgba(255,255,255,0.045)_75%),linear-gradient(45deg,rgba(255,255,255,0.045)_25%,transparent_25%,transparent_75%,rgba(255,255,255,0.045)_75%)] bg-[length:18px_18px] bg-[position:0_0,9px_9px]">
-        <img src={asset.url} alt={asset.alt || asset.label} className="h-full w-full object-contain p-2" />
+    <article className="min-w-0 overflow-hidden rounded-2xl border border-white/8 bg-white/[0.03] shadow-[0_18px_54px_rgba(0,0,0,0.18)]">
+      <div className="relative flex aspect-[1.5/1] items-center justify-center bg-[linear-gradient(45deg,rgba(255,255,255,0.045)_25%,transparent_25%,transparent_75%,rgba(255,255,255,0.045)_75%),linear-gradient(45deg,rgba(255,255,255,0.045)_25%,transparent_25%,transparent_75%,rgba(255,255,255,0.045)_75%)] bg-[length:18px_18px] bg-[position:0_0,9px_9px]">
+        <img src={asset.url} alt={asset.alt || asset.label} className="h-full w-full object-contain p-3" />
         <div className="pointer-events-none absolute inset-0 bg-black/34" />
         <span
           className={`absolute left-2 top-2 inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[10px] uppercase tracking-[0.14em] ${
