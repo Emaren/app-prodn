@@ -162,6 +162,17 @@ export type TrophyCommandSnapshot = {
     totalDailyBountyGrowth: number;
     estimatedYearlyExposure: number;
     trophyRewardsWalletStatus: string;
+    trophyRewardsWalletDetail: string;
+    trophyRewardsWalletAddress: string | null;
+    trophyRewardsWalletBalanceWolo: number | null;
+    trophyRewardsWalletChainId: string | null;
+    trophyTributeDueNow: number;
+    trophyTributePaidToday: number;
+    trophyTributeFailed: number;
+    trophyTributeLastTxHash: string | null;
+    trophyTributeLastPaidAt: string | null;
+    trophyTributeLastRecipient: string | null;
+    trophyTributeNextUtcDay: string;
     eligibilityConflicts: number;
   };
   trophies: TrophyRow[];

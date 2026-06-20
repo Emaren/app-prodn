@@ -462,14 +462,47 @@ function Overview({ snapshot }: { snapshot: TrophyCommandSnapshot }) {
         <div className="rounded-[1.7rem] border border-amber-200/14 bg-[linear-gradient(145deg,rgba(251,191,36,0.10),rgba(0,0,0,0.28))] p-5">
           <div className="flex items-center gap-2 text-xs uppercase tracking-[0.28em] text-amber-100/70">
             <WalletCards className="h-4 w-4" />
-            Trophy Rewards wallet
+            Tribute Engine
           </div>
           <div className="mt-4 text-xl font-semibold text-white">
             {overview.trophyRewardsWalletStatus}
           </div>
+          <div className="mt-2 text-2xl font-black text-amber-100">
+            {overview.trophyRewardsWalletBalanceWolo !== null
+              ? `${overview.trophyRewardsWalletBalanceWolo.toLocaleString(undefined, { maximumFractionDigits: 6 })} WOLO`
+              : "Balance unavailable"}
+          </div>
           <p className="mt-3 text-sm leading-6 text-slate-400">
-            Bounties are displayed as estimated rewards until a funded custody rail exists. App-only rows never pretend to be escrow.
+            {overview.trophyRewardsWalletDetail}
           </p>
+          <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
+            <div className="rounded-2xl border border-white/10 bg-black/24 p-3">
+              <div className="uppercase tracking-[0.18em] text-slate-500">Due now</div>
+              <div className="mt-1 text-lg font-bold text-white">{overview.trophyTributeDueNow}</div>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-black/24 p-3">
+              <div className="uppercase tracking-[0.18em] text-slate-500">Paid today</div>
+              <div className="mt-1 text-lg font-bold text-white">{overview.trophyTributePaidToday}</div>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-black/24 p-3">
+              <div className="uppercase tracking-[0.18em] text-slate-500">Failed</div>
+              <div className="mt-1 text-lg font-bold text-white">{overview.trophyTributeFailed}</div>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-black/24 p-3">
+              <div className="uppercase tracking-[0.18em] text-slate-500">Next UTC day</div>
+              <div className="mt-1 text-lg font-bold text-white">{overview.trophyTributeNextUtcDay}</div>
+            </div>
+          </div>
+          {overview.trophyTributeLastTxHash ? (
+            <div className="mt-4 rounded-2xl border border-emerald-300/15 bg-emerald-400/10 p-3 text-xs text-emerald-100">
+              Last tribute: {overview.trophyTributeLastRecipient || "holder"} · {shortAddress(overview.trophyTributeLastTxHash)}
+            </div>
+          ) : null}
+          {overview.trophyRewardsWalletAddress ? (
+            <div className="mt-3 text-[11px] text-slate-500">
+              Wallet: {shortAddress(overview.trophyRewardsWalletAddress)}
+            </div>
+          ) : null}
         </div>
       </section>
 

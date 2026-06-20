@@ -101,6 +101,85 @@ const DEFAULT_SETTINGS: Array<{ key: string; value: Prisma.InputJsonValue; reaso
   },
 ];
 
+type FounderRewardsHealth = {
+  ok: boolean;
+  status: string;
+  detail: string;
+  chainId: string | null;
+  payoutAddress: string | null;
+  payoutBalanceWolo: number | null;
+};
+
+function numberFromHealth(value: unknown) {
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number.parseFloat(value.trim());
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+async function loadFounderRewardsHealth(): Promise<FounderRewardsHealth> {
+  const baseUrl = process.env.WOLO_FOUNDER_SETTLEMENT_URL?.trim().replace(/\/+$/, "") || "";
+  const token = process.env.WOLO_FOUNDER_SETTLEMENT_AUTH_TOKEN?.trim() || "";
+
+  if (!baseUrl) {
+    return {
+      ok: false,
+      status: "Not configured",
+      detail: "Founder Rewards settlement URL is missing.",
+      chainId: null,
+      payoutAddress: null,
+      payoutBalanceWolo: null,
+    };
+  }
+
+  try {
+    const response = await fetch(`${baseUrl}/settlement/v1/health`, {
+      cache: "no-store",
+      headers: token ? { authorization: `Bearer ${token}` } : {},
+    });
+    const payload = (await response.json().catch(() => null)) as Record<string, unknown> | null;
+
+    if (!response.ok || !payload) {
+      return {
+        ok: false,
+        status: "Health unavailable",
+        detail: `Founder Rewards health returned HTTP ${response.status}.`,
+        chainId: null,
+        payoutAddress: null,
+        payoutBalanceWolo: null,
+      };
+    }
+
+    const ok = Boolean(payload.ok);
+    const chainId = typeof payload.chain_id === "string" ? payload.chain_id : null;
+    const payoutAddress =
+      typeof payload.payout_address === "string" ? payload.payout_address : null;
+    const payoutBalanceWolo = numberFromHealth(payload.payout_balance_wolo);
+
+    return {
+      ok,
+      status: ok ? "Founder Rewards live" : "Founder Rewards blocked",
+      detail: ok
+        ? "Mainnet trophy tribute payouts execute through the Founder Rewards settlement service."
+        : String(payload.detail || payload.failure_code || "Founder Rewards health is not ok."),
+      chainId,
+      payoutAddress,
+      payoutBalanceWolo,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      status: "Health unreachable",
+      detail: error instanceof Error ? error.message : "Founder Rewards health check failed.",
+      chainId: null,
+      payoutAddress: null,
+      payoutBalanceWolo: null,
+    };
+  }
+}
+
 function normalizeName(value: string | null | undefined) {
   return (value || "").trim().toLowerCase().replace(/\s+/g, " ");
 }
@@ -802,6 +881,36 @@ export async function loadTrophyCommandSnapshot(
     .filter((trophy) => ["held", "active", "guardian_held"].includes(trophy.status))
     .reduce((sum, trophy) => sum + trophy.bountyGrowthWolo, 0);
 
+  const now = new Date();
+  const todayStart = utcDayStart(now);
+  const tomorrowStart = new Date(todayStart.getTime() + TROPHY_DAY_MS);
+  const tributePayouts = payouts.filter((payout) => payout.payoutKind === "daily_tribute");
+  const trophyTributeDueNow = tributePayouts.filter(
+    (payout) =>
+      ["pending", "dry_run", "retrying", "failed"].includes(payout.status) &&
+      !payout.txHash &&
+      (!payout.scheduledFor || payout.scheduledFor <= now)
+  ).length;
+  const trophyTributePaidToday = tributePayouts.filter(
+    (payout) =>
+      payout.status === "paid" &&
+      Boolean(payout.txHash) &&
+      Boolean(payout.paidAt) &&
+      payout.paidAt! >= todayStart
+  ).length;
+  const trophyTributeFailed = tributePayouts.filter(
+    (payout) => payout.status === "failed"
+  ).length;
+  const lastTributePayout =
+    tributePayouts
+      .filter((payout) => payout.status === "paid" && payout.txHash)
+      .sort(
+        (left, right) =>
+          (right.paidAt?.getTime() ?? right.updatedAt.getTime()) -
+          (left.paidAt?.getTime() ?? left.updatedAt.getTime())
+      )[0] ?? null;
+  const founderRewardsHealth = await loadFounderRewardsHealth();
+
   return {
     overview: {
       activeTrophies: trophyRows.filter((trophy) => ["held", "active"].includes(trophy.status)).length,
@@ -823,9 +932,20 @@ export async function loadTrophyCommandSnapshot(
       totalDailyTribute,
       totalDailyBountyGrowth,
       estimatedYearlyExposure: (totalDailyTribute + totalDailyBountyGrowth) * 365,
-      trophyRewardsWalletStatus: process.env.WOLO_TROPHY_REWARDS_ADDRESS
-        ? "Configured · chain balance integration pending"
-        : "Not configured · app-only dry-run",
+      trophyRewardsWalletStatus: `${founderRewardsHealth.status}${founderRewardsHealth.chainId ? ` · ${founderRewardsHealth.chainId}` : ""}`,
+      trophyRewardsWalletDetail: founderRewardsHealth.detail,
+      trophyRewardsWalletAddress: founderRewardsHealth.payoutAddress,
+      trophyRewardsWalletBalanceWolo: founderRewardsHealth.payoutBalanceWolo,
+      trophyRewardsWalletChainId: founderRewardsHealth.chainId,
+      trophyTributeDueNow,
+      trophyTributePaidToday,
+      trophyTributeFailed,
+      trophyTributeLastTxHash: lastTributePayout?.txHash ?? null,
+      trophyTributeLastPaidAt: lastTributePayout?.paidAt?.toISOString() ?? null,
+      trophyTributeLastRecipient:
+        lastTributePayout?.recipientDisplayName ||
+        (lastTributePayout?.recipient ? userName(lastTributePayout.recipient) : null),
+      trophyTributeNextUtcDay: utcDayKey(tomorrowStart),
       eligibilityConflicts: trophyRows.filter(
         (trophy) => trophy.forfeitureNeeded || trophy.currentHolderEligible === false
       ).length,
