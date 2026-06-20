@@ -18,6 +18,9 @@ const BASE_ARENA_ELO = 1500;
 const ARENA_ELO_K_FACTOR = 32;
 const LEADERBOARD_GAME_WINDOW = 5000;
 
+const SUPERSEDED_PARSE_REASON = "superseded_by_later_upload";
+const UNPARSED_FINAL_PARSE_REASON = "watcher_final_unparsed";
+
 export type LoadLobbyLeaderboardOptions = {
   offset?: number;
   limit?: number;
@@ -461,6 +464,75 @@ function sortCandidateGamesByPlayedAtDesc(
   return right.id - left.id;
 }
 
+function discoveredPlayerKey(name: string | null | undefined) {
+  return String(name ?? "").trim().toLowerCase();
+}
+
+function buildDiscoveredLeaderboardEntries(
+  preparedGames: PreparedLeaderboardGame[],
+  existingNames: Set<string>
+) {
+  const discovered = new Map<string, EnrichedLeaderboardEntry>();
+
+  for (const game of preparedGames) {
+    for (const player of game.players) {
+      const name = String(player.name || "").trim();
+      if (!name) continue;
+
+      const normalizedName = discoveredPlayerKey(name);
+      const key = `discovered:${normalizedName}`;
+      if (existingNames.has(normalizedName) || discovered.has(key)) continue;
+
+      const ratingSnapshot =
+        typeof player.rate_snapshot === "number"
+          ? player.rate_snapshot
+          : null;
+
+      const steamRmRating =
+        ratingSnapshot ??
+        (typeof player.steam_rm_rating === "number" ? player.steam_rm_rating : null);
+
+      const steamDmRating =
+        ratingSnapshot ??
+        (typeof player.steam_dm_rating === "number" ? player.steam_dm_rating : null);
+
+      discovered.set(key, {
+        key,
+        name,
+        href: `/players/by-name/${encodeURIComponent(name)}`,
+        profileHref: `/players/by-name/${encodeURIComponent(name)}`,
+        inGameName: name,
+        steamPersonaName: name,
+        aliases: [name],
+        claimed: false,
+        verified: false,
+        verificationLevel: 0,
+        isOnline: false,
+        lastSeen: null,
+        lastSeenAt: null,
+        avatarUrl: null,
+        uid: null,
+        steamId: typeof player.steam_id === "string" ? player.steam_id : null,
+        steamRmRating,
+        steamDmRating,
+        totalMatches: 1,
+        wins: game.winner === name ? 1 : 0,
+        losses: game.winner && game.winner !== name ? 1 : 0,
+        unknowns: game.winner ? 0 : 1,
+        currentStreak: game.winner === name ? 1 : game.winner ? -1 : 0,
+        lastPlayedAt: Number.isFinite(game.playedAtMs)
+          ? new Date(game.playedAtMs).toISOString()
+          : null,
+        pendingWoloClaimAmount: 0,
+        pendingWoloClaimCount: 0,
+        lastSteamSyncAt: null,
+      } as unknown as EnrichedLeaderboardEntry);
+    }
+  }
+
+  return Array.from(discovered.values());
+}
+
 export async function loadLobbyLeaderboard(
   prisma: PrismaClient,
   options: LoadLobbyLeaderboardOptions = {}
@@ -471,7 +543,48 @@ export async function loadLobbyLeaderboard(
   const [directory, rawLeaderboardGames] = await Promise.all([
     loadPublicPlayerDirectory(prisma),
     prisma.gameStats.findMany({
-      where: { is_final: true },
+      where: {
+        OR: [
+          { is_final: true },
+          {
+            is_final: false,
+            parse_source: "watcher_live",
+            parse_iteration: {
+              gt: 0,
+            },
+            OR: [
+              {
+                parse_reason: {
+                  contains: "final",
+                  mode: "insensitive",
+                },
+              },
+              {
+                parse_reason: {
+                  contains: "resignation",
+                  mode: "insensitive",
+                },
+              },
+              {
+                winner: {
+                  notIn: ["", "Unknown"],
+                },
+              },
+              {
+                key_events: {
+                  path: ["completed"],
+                  equals: true,
+                },
+              },
+            ],
+          },
+        ],
+        NOT: {
+          parse_reason: {
+            in: [SUPERSEDED_PARSE_REASON, UNPARSED_FINAL_PARSE_REASON],
+          },
+        },
+      },
       orderBy: [{ timestamp: "desc" }, { createdAt: "desc" }, { id: "desc" }],
       take: LEADERBOARD_GAME_WINDOW,
       select: {
@@ -485,6 +598,8 @@ export async function loadLobbyLeaderboard(
         replayHash: true,
         timestamp: true,
         winner: true,
+        parse_reason: true,
+        parse_source: true,
       },
     }),
   ]);
@@ -511,6 +626,18 @@ export async function loadLobbyLeaderboard(
   const candidates = directory.allEntries
     .filter((entry) => entry.totalMatches > 0 || entry.claimed)
     .map(buildEnrichedEntry);
+
+  const candidateNames = new Set(
+    candidates.flatMap((entry) => [
+      entry.name,
+      entry.inGameName,
+      entry.steamPersonaName,
+      ...entry.aliases,
+    ]).map(discoveredPlayerKey).filter(Boolean)
+  );
+  for (const discoveredEntry of buildDiscoveredLeaderboardEntries(preparedGames, candidateNames)) {
+    candidates.push(discoveredEntry);
+  }
 
   const pendingSummaries = await loadPendingWoloClaimSummariesByName(
     prisma,
