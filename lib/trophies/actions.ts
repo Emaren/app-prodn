@@ -804,6 +804,10 @@ async function updatePayout(
   if (!payout) throw new TrophyActionError("Payout not found.", 404);
   const operation = stringValue(payload.operation, 24);
 
+  if ((payout.status === "paid" || payout.txHash?.trim()) && operation !== "execute") {
+    throw new TrophyActionError("Paid or tx-backed trophy payouts cannot be changed from the admin rail.", 409);
+  }
+
   if (operation === "execute") {
     const result = await executePendingTrophyTributePayouts(prisma, {
       payoutId: payout.id,
