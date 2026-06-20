@@ -475,7 +475,7 @@ function TagTeamCard({ titleState }: { titleState: ChampionTitleState }) {
   const title = titleState;
 
   return (
-    <section className="relative overflow-hidden rounded-[1.8rem] border border-slate-200/16 bg-[radial-gradient(circle_at_15%_0%,rgba(226,232,240,0.15),transparent_32%),radial-gradient(circle_at_85%_20%,rgba(251,191,36,0.12),transparent_28%),linear-gradient(135deg,rgba(8,13,22,0.96),rgba(3,7,13,0.98))] p-5 shadow-[0_30px_90px_rgba(0,0,0,0.34)] sm:p-6">
+    <section className="relative overflow-hidden rounded-[1.8rem] border border-slate-200/16 bg-[radial-gradient(circle_at_15%_0%,rgba(226,232,240,0.15),transparent_32%),radial-gradient(circle_at_85%_20%,rgba(251,191,36,0.12),transparent_28%),linear-gradient(135deg,rgba(8,13,22,0.98),rgba(3,7,13,0.99))] p-5 shadow-[0_30px_90px_rgba(0,0,0,0.34)] sm:p-6">
       <div className="grid gap-7 lg:grid-cols-[minmax(0,1.25fr)_minmax(18rem,0.78fr)] lg:items-stretch">
         <div className="min-w-0">
           <Link href={title.routeHref} className="block">
@@ -515,40 +515,9 @@ function TagTeamCard({ titleState }: { titleState: ChampionTitleState }) {
       </div>
     </section>
   );
-}: { titleState: ChampionTitleState }) {
-  const title = titleState;
-  return (
-    <section className="relative overflow-hidden rounded-[1.8rem] border border-slate-200/16 bg-[radial-gradient(circle_at_15%_0%,rgba(226,232,240,0.15),transparent_32%),radial-gradient(circle_at_85%_20%,rgba(251,191,36,0.12),transparent_28%),linear-gradient(135deg,rgba(8,13,22,0.96),rgba(3,7,13,0.98))] p-5 shadow-[0_30px_90px_rgba(0,0,0,0.34)] sm:p-6">
-      <div className="grid gap-5 lg:grid-cols-[minmax(15rem,0.75fr)_minmax(0,1fr)_minmax(18rem,0.85fr)] lg:items-center">
-        <Link href={title.routeHref} className="block">
-          <TagTeamDuoAsset title={title} />
-        </Link>
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 text-xs uppercase tracking-[0.32em] text-slate-400">
-            <Users className="h-4 w-4 text-slate-200" />
-            Tag Team Title
-          </div>
-          <Link href={title.routeHref}>
-            <h2 className="mt-3 font-serif text-3xl font-semibold text-amber-50 sm:text-4xl">
-              {title.displayName}
-            </h2>
-          </Link>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">{title.rule}</p>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <HolderLine title={title} dense />
-            <TributePill title={title} />
-          </div>
-          <div className="mt-4">
-            <ChallengeButton title={title} />
-          </div>
-        </div>
-        <div className="min-w-0">
-          <ContenderList title={title} />
-        </div>
-      </div>
-    </section>
-  );
 }
+
+
 
 function NationalCard({ titleState }: { titleState: ChampionTitleState }) {
   const title = titleState;
