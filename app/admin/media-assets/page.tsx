@@ -196,10 +196,10 @@ export default function AdminMediaAssetsPage() {
         </Link>
       </div>
 
-      <section className="grid gap-6 xl:grid-cols-[minmax(18rem,20rem)_minmax(0,1fr)] xl:items-start">
+      <section className="grid gap-6 xl:grid-cols-[minmax(22rem,25rem)_minmax(0,1fr)] xl:items-start">
         <form
           onSubmit={submitUpload}
-          className="min-w-0 overflow-hidden rounded-[1.6rem] border border-amber-200/12 bg-[linear-gradient(135deg,rgba(255,255,255,0.045),rgba(255,255,255,0.018))] p-5 shadow-[0_24px_90px_rgba(0,0,0,0.28)] xl:sticky xl:top-24 xl:self-start"
+          className="min-w-0 overflow-visible rounded-[1.6rem] border border-amber-200/12 bg-[linear-gradient(135deg,rgba(255,255,255,0.045),rgba(255,255,255,0.018))] p-5 shadow-[0_24px_90px_rgba(0,0,0,0.28)] xl:sticky xl:top-24 xl:self-start"
         >
           <div className="flex items-center gap-2 text-xs uppercase tracking-[0.28em] text-amber-100/70">
             <ImagePlus className="h-4 w-4" />
@@ -235,14 +235,14 @@ export default function AdminMediaAssetsPage() {
               />
             </label>
 
-            <div className="flex max-h-32 flex-wrap gap-2 overflow-y-auto rounded-2xl border border-white/6 bg-black/10 p-2 pr-1">
+            <div className="flex flex-wrap gap-2 rounded-2xl border border-white/6 bg-black/10 p-2">
               {hints.map((hint) => (
                 <button
                   key={hint}
                   type="button"
                   onClick={() => setTarget(hint)}
                   title={hint}
-                  className="max-w-full truncate rounded-full border border-white/10 bg-white/[0.035] px-2.5 py-1 text-[11px] text-slate-300 transition hover:border-amber-200/30 hover:text-amber-100"
+                  className="rounded-full border border-white/10 bg-white/[0.035] px-2.5 py-1 text-[11px] text-slate-300 transition hover:border-amber-200/30 hover:text-amber-100"
                 >
                   {hint}
                 </button>
