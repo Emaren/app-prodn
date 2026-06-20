@@ -75,10 +75,21 @@ export type EventStudioTrophy = {
   status: string;
 };
 
+export type EventStudioMediaAsset = {
+  id: number;
+  kind: string;
+  target: string | null;
+  label: string;
+  url: string;
+  active: boolean;
+  updatedAt: string;
+};
+
 export type EventStudioSnapshot = {
   events: EventTileView[];
   users: EventStudioUser[];
   trophies: EventStudioTrophy[];
+  mediaAssets: EventStudioMediaAsset[];
   activeEventId: number | null;
   generatedAt: string;
 };

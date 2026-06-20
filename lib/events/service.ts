@@ -132,7 +132,7 @@ export async function loadActiveEventTile(prisma: PrismaClient): Promise<EventTi
 export async function loadEventStudioSnapshot(
   prisma: PrismaClient
 ): Promise<EventStudioSnapshot> {
-  const [events, users, trophies] = await Promise.all([
+  const [events, users, trophies, mediaAssets] = await Promise.all([
     prisma.eventTile.findMany({
       include: EVENT_INCLUDE,
       orderBy: [
@@ -159,6 +159,23 @@ export async function loadEventStudioSnapshot(
       orderBy: [{ family: "asc" }, { displayName: "asc" }],
       take: 200,
     }),
+    prisma.managedMediaAsset.findMany({
+      where: {
+        active: true,
+        kind: { in: ["avatar", "belt", "artifact", "background", "logo", "other"] },
+      },
+      select: {
+        id: true,
+        kind: true,
+        target: true,
+        label: true,
+        url: true,
+        active: true,
+        updatedAt: true,
+      },
+      orderBy: [{ kind: "asc" }, { target: "asc" }, { updatedAt: "desc" }, { id: "desc" }],
+      take: 240,
+    }),
   ]);
 
   return {
@@ -175,6 +192,15 @@ export async function loadEventStudioSnapshot(
       ),
     })),
     trophies,
+    mediaAssets: mediaAssets.map((asset) => ({
+      id: asset.id,
+      kind: asset.kind,
+      target: asset.target,
+      label: asset.label,
+      url: asset.url,
+      active: asset.active,
+      updatedAt: asset.updatedAt.toISOString(),
+    })),
     activeEventId: events.find((event) => event.isActive && event.isPublished)?.id ?? null,
     generatedAt: new Date().toISOString(),
   };
