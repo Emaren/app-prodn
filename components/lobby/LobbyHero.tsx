@@ -781,6 +781,7 @@ export function LobbyHero({
         themeKey={themeKey}
         viewMode={viewMode}
         onViewModeChange={onViewModeChange}
+            surface={showExtremeStats ? "extreme" : "standard"}
       />
 
       <div className="grid gap-4 sm:grid-cols-2">
