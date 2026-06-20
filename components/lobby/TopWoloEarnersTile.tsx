@@ -166,9 +166,10 @@ export function TopWoloEarnersTile({
         isExtreme
           ? {
               backgroundImage:
-                "linear-gradient(135deg, rgba(2,6,23,0.82), rgba(15,23,42,0.7)), url('/lobby/war-chest-bg.png')",
-              backgroundPosition: "center",
-              backgroundSize: "cover",
+                "linear-gradient(180deg, rgba(2,6,23,0.10), rgba(2,6,23,0.92)), url('/lobby/war-chest-bg.png')",
+              backgroundSize: "100% 100%, 100% 12rem",
+              backgroundPosition: "center, top center",
+              backgroundRepeat: "no-repeat",
             }
           : undefined
       }
