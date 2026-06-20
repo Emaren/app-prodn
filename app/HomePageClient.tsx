@@ -113,6 +113,40 @@ function AdvancedFeaturedWarriors() {
   );
 }
 
+function ExtremeLobbyStatCards({ leaderboard }: { leaderboard: LobbySnapshot["leaderboard"] }) {
+  const stats = [
+    {
+      label: "Active Players",
+      value: leaderboard.activePlayers,
+      detail: "Online right now.",
+    },
+    {
+      label: "Matches Today",
+      value: leaderboard.matchesToday,
+      detail: "Final games on the board.",
+    },
+  ];
+
+  return (
+    <div className="grid gap-4 sm:grid-cols-2">
+      {stats.map((stat) => (
+        <div
+          key={stat.label}
+          className="rounded-[1.55rem] border border-white/10 bg-slate-950/42 px-5 py-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.045),0_18px_55px_rgba(0,0,0,0.18)]"
+        >
+          <div className="text-[11px] uppercase tracking-[0.34em] text-amber-100/60">
+            {stat.label}
+          </div>
+          <div className="mt-5 text-5xl font-semibold tracking-tight text-white tabular-nums">
+            {stat.value}
+          </div>
+          <div className="mt-5 text-lg font-medium text-slate-300">{stat.detail}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function ExtremeFeaturedWarriors() {
   return (
     <section className="relative rounded-none px-5 pb-4 pt-8 shadow-[0_34px_120px_rgba(0,0,0,0.38)] sm:px-7 lg:px-8">
@@ -690,7 +724,8 @@ export default function HomePageClient({
         style={heroStyle}
       >
         <div className={lobbyHeroGridClassName}>
-          <LobbyHero
+          <div data-lobby-hero-stack="true" className={isExtremeLobby ? "flex min-w-0 flex-col gap-5" : "min-w-0"}>
+            <LobbyHero
             liveConnected={liveConnected}
             authError={authError}
             authDetail={authDetail}
@@ -709,9 +744,12 @@ export default function HomePageClient({
             onToggleTileViewMode={communityLobbyTile.toggleViewMode}
           />
 
+            {isExtremeLobby ? <ExtremeLobbyStatCards leaderboard={leaderboard} /> : null}
+          </div>
+
           <div
             className={`grid min-h-0 min-w-0 overflow-hidden gap-3.5 lg:grid-rows-[auto_minmax(0,1fr)] lg:self-start lg:pt-4 ${
-              isExtremeLobby ? "lg:min-h-[92rem]" : ""
+              isExtremeLobby ? "lg:min-h-[96rem]" : ""
             }`}
             style={heroRailStyle}
           >
@@ -732,7 +770,7 @@ export default function HomePageClient({
 
             <div
               className={`h-full min-h-0 overflow-hidden ${
-                isExtremeLobby ? "lg:h-[76rem] lg:min-h-[76rem] lg:max-h-[76rem]" : ""
+                isExtremeLobby ? "lg:h-[80rem] lg:min-h-[80rem] lg:max-h-[80rem]" : ""
               }`}
             >
               <TopWoloEarnersTile

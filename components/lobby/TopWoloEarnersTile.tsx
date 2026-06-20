@@ -151,7 +151,6 @@ export function TopWoloEarnersTile({
   const headlineMeta =
     entries.length > 0 ? `${entries.length} earners` : reserve ? `${reserve} reserve` : "4 earners";
   const placeholderCount = Math.max(0, VISIBLE_ROWS - entries.length);
-  const featuredBackdropSrc = avatarUrlForName(entries[0]?.name || "Emaren");
   const viewportHeightClassName = isExtreme
     ? "h-[min(72dvh,42rem)] min-h-[30rem] max-h-[42rem] lg:h-[76rem] lg:min-h-[76rem] lg:max-h-[76rem]"
     : "h-full min-h-0 max-h-full";
@@ -160,22 +159,20 @@ export function TopWoloEarnersTile({
     <section
       className={`relative flex flex-col overflow-hidden rounded-[1.7rem] border p-4 pt-5 transition sm:p-5 sm:pt-7 ${viewportHeightClassName} ${
         isExtreme
-          ? "border-amber-200/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.045),rgba(255,255,255,0.018))] shadow-[0_26px_88px_rgba(0,0,0,0.28)]"
+          ? "border-amber-200/10 bg-slate-950/74 shadow-[0_26px_88px_rgba(0,0,0,0.28)]"
           : tone.panelShell
       } ${className ?? ""}`}
+      style={
+        isExtreme
+          ? {
+              backgroundImage:
+                "linear-gradient(135deg, rgba(2,6,23,0.82), rgba(15,23,42,0.7)), url('/lobby/war-chest-bg.png')",
+              backgroundPosition: "center",
+              backgroundSize: "cover",
+            }
+          : undefined
+      }
     >
-      {isExtreme ? (
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-44 overflow-hidden opacity-20">
-          <Image
-            src={featuredBackdropSrc}
-            alt=""
-            fill
-            unoptimized
-            sizes="(min-width: 1024px) 380px, 90vw"
-            className="object-cover object-top blur-[1px] [mask-image:linear-gradient(180deg,black_0%,transparent_100%)]"
-          />
-        </div>
-      ) : null}
       <div className="relative z-10 flex items-start justify-between gap-4">
         <div className="min-w-0">
           <div className={`text-xs uppercase tracking-[0.35em] ${tone.accentText}`}>
@@ -245,7 +242,7 @@ export function TopWoloEarnersTile({
                     className={rowClassName}
                   >
                     {isExtreme ? (
-                      <div className="pointer-events-none absolute inset-y-0 right-0 w-24 overflow-hidden opacity-30 sm:w-44 sm:opacity-38">
+                      <div className="pointer-events-none absolute inset-y-0 right-0 w-28 overflow-hidden opacity-78 sm:w-48 sm:opacity-90">
                         <Image
                           src={avatarSrc}
                           alt=""

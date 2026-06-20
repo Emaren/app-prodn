@@ -225,7 +225,7 @@ export function LeaderboardPanel({
         </div>
       </div>
 
-      <div className="mt-6 max-h-[58vh] space-y-3 overflow-y-auto pr-2 sm:max-h-[62vh] lg:max-h-[46rem]" aria-busy={isLoadingMore} onScroll={handleLeaderboardScroll}>
+      <div className="mt-6 max-h-[62vh] space-y-3 overflow-y-auto pr-2 sm:max-h-[66vh] lg:max-h-[58rem] xl:max-h-[66rem]" aria-busy={isLoadingMore} onScroll={handleLeaderboardScroll}>
         {entries.length === 0 ? (
           <div className="rounded-2xl border border-white/8 bg-white/5 px-4 py-5 text-sm leading-6 text-slate-300">
             Need more final games.

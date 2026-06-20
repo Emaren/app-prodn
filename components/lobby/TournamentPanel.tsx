@@ -79,9 +79,9 @@ export function TournamentPanel({
 
   return (
     <div
-      className={`flex cursor-pointer flex-col rounded-[1.75rem] border p-5 pt-6 transition ${
+      className={`relative flex cursor-pointer flex-col overflow-hidden rounded-[1.75rem] border bg-cover bg-center p-5 pt-6 transition ${
         isExtreme
-          ? "border-amber-200/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.045),rgba(255,255,255,0.018))] shadow-[0_26px_88px_rgba(0,0,0,0.28)] hover:border-amber-200/24"
+          ? "border-amber-200/10 bg-slate-950/74 shadow-[0_26px_88px_rgba(0,0,0,0.28)] hover:border-amber-200/24"
           : `${tone.panelShell} ${tone.cardHover}`
       }`}
       role="link"
@@ -89,6 +89,16 @@ export function TournamentPanel({
       aria-label={`Open tournament page for ${tournament.title}`}
       onClick={handleTileClick}
       onKeyDown={handleTileKeyDown}
+      style={
+        isExtreme
+          ? {
+              backgroundImage:
+                "linear-gradient(135deg, rgba(2,6,23,0.78), rgba(15,23,42,0.68)), url('/lobby/tournament-bg.png')",
+              backgroundPosition: "center",
+              backgroundSize: "cover",
+            }
+          : undefined
+      }
     >
       <div className="flex items-start justify-between gap-4">
         <div className={`text-xs uppercase tracking-[0.35em] ${tone.accentText}`}>
