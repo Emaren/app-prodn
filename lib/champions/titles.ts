@@ -76,6 +76,11 @@ export type ChampionTitleDefinition = {
   chainStatus?: string;
   guardianHeld?: boolean;
   holderSince?: string | null;
+  lastTributeTxHash?: string | null;
+  lastTributePaidAt?: string | null;
+  lastTributeAmountWolo?: number | null;
+  lastTributeRecipient?: string | null;
+  nextTributeDay?: string | null;
   detailLore: string;
   historyPlaceholder: string;
 };

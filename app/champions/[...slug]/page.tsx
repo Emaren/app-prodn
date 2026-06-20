@@ -86,6 +86,25 @@ function challengeHref(title: ChampionTitleDefinition) {
   return `/challenge?${params.toString()}#schedule-game`;
 }
 
+function txProofHref(txHash: string) {
+  return `/api/wolo/tx/${encodeURIComponent(txHash)}`;
+}
+
+function shortTxHash(txHash: string) {
+  return `${txHash.slice(0, 8)}…${txHash.slice(-6)}`;
+}
+
+function formatShortDate(value: string | null | undefined) {
+  if (!value) return null;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.toLocaleDateString("en-CA", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+}
+
 export default async function ChampionTitleDetailPage({
   params,
 }: {
@@ -125,6 +144,12 @@ export default async function ChampionTitleDetailPage({
             <div className="mt-5 flex flex-wrap gap-2">
               <Signal label="Holder" value={holderLabel(title)} />
               <Signal label={tributeLabel(title.tributeKind)} value={formatDailyTribute(title).split(": ")[1]} />
+              {title.lastTributeTxHash ? (
+                <Signal
+                  label="Last tribute"
+                  value={`${(title.lastTributeAmountWolo ?? title.dailyWolo).toLocaleString()} WOLO paid`}
+                />
+              ) : null}
               {title.currentRecord ? <Signal label="Current Record" value={title.currentRecord} /> : null}
             </div>
             <div className="mt-6 flex flex-wrap gap-3">
@@ -196,6 +221,26 @@ export default async function ChampionTitleDetailPage({
               Belts, national titles, ELO ladders, and tag titles pay a Reward Tribute. Special designations pay an Artifact Bonus.
             </p>
           </Panel>
+
+          {title.lastTributeTxHash ? (
+            <Panel icon={History} eyebrow="Mainnet Proof" title="Last tribute paid">
+              <div className="text-2xl font-semibold text-emerald-100">
+                {(title.lastTributeAmountWolo ?? title.dailyWolo).toLocaleString()} WOLO
+                {title.lastTributeRecipient ? ` → ${title.lastTributeRecipient}` : ""}
+              </div>
+              <p className="mt-2 text-sm leading-6 text-slate-400">
+                Paid {formatShortDate(title.lastTributePaidAt) || "on-chain"} through the AoE2WAR Founder Rewards settlement rail.
+                {title.nextTributeDay ? ` Next scheduled UTC tribute day: ${title.nextTributeDay}.` : ""}
+              </p>
+              <Link
+                href={txProofHref(title.lastTributeTxHash)}
+                className="mt-4 inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-400/10 px-4 py-2 text-sm font-semibold text-emerald-100 transition hover:border-emerald-200/40 hover:bg-emerald-400/15"
+              >
+                View tx {shortTxHash(title.lastTributeTxHash)}
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Panel>
+          ) : null}
 
           <Panel icon={History} eyebrow="History" title="Reign ledger">
             <p className="text-sm leading-6 text-slate-300">{title.historyPlaceholder}</p>

@@ -240,6 +240,49 @@ function HolderLine({ title, dense = false }: { title: ChampionTitleDefinition; 
   );
 }
 
+function txProofHref(txHash: string) {
+  return `/api/wolo/tx/${encodeURIComponent(txHash)}`;
+}
+
+function shortTxHash(txHash: string) {
+  return `${txHash.slice(0, 8)}…${txHash.slice(-6)}`;
+}
+
+function formatShortDate(value: string | null | undefined) {
+  if (!value) return null;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.toLocaleDateString("en-CA", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+function LastTributeProof({ title, compact = false }: { title: ChampionTitleDefinition; compact?: boolean }) {
+  if (!title.lastTributeTxHash) return null;
+
+  const amount = title.lastTributeAmountWolo ?? title.dailyWolo;
+  const paidAt = formatShortDate(title.lastTributePaidAt);
+
+  return (
+    <Link
+      href={txProofHref(title.lastTributeTxHash)}
+      className={`mt-2 block rounded-xl border border-emerald-300/15 bg-emerald-400/10 text-emerald-100 transition hover:border-emerald-200/35 hover:bg-emerald-400/15 ${
+        compact ? "px-2.5 py-2 text-[10px]" : "px-3 py-2 text-xs"
+      }`}
+    >
+      <span className="block uppercase tracking-[0.2em] text-emerald-100/65">Last tribute paid</span>
+      <span className="mt-0.5 block font-semibold">
+        {amount.toLocaleString()} WOLO{title.lastTributeRecipient ? ` → ${title.lastTributeRecipient}` : ""}
+      </span>
+      <span className="mt-0.5 block font-mono text-emerald-100/70">
+        tx {shortTxHash(title.lastTributeTxHash)}{paidAt ? ` · ${paidAt} UTC` : ""}
+      </span>
+    </Link>
+  );
+}
+
 function TributePill({ title, compact = false }: { title: ChampionTitleDefinition; compact?: boolean }) {
   return (
     <div
@@ -253,6 +296,7 @@ function TributePill({ title, compact = false }: { title: ChampionTitleDefinitio
       <div className="mt-1 text-sm font-semibold text-amber-50">
         {title.type === "tag_team" ? `${title.dailyWolo} WOLO/day each` : `${title.dailyWolo} WOLO/day`}
       </div>
+      <LastTributeProof title={title} compact={compact} />
     </div>
   );
 }

@@ -24,6 +24,20 @@ export type ChampionTitleEconomyState = {
   generatedAt: string;
 };
 
+type LastTributeProof = {
+  txHash: string;
+  paidAt: Date | null;
+  scheduledFor: Date | null;
+  amountWolo: number;
+  recipientDisplayName: string | null;
+};
+
+function nextTributeDayKey(value: Date | null | undefined) {
+  const base = value && !Number.isNaN(value.getTime()) ? value : new Date();
+  const next = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth(), base.getUTCDate() + 1));
+  return next.toISOString().slice(0, 10);
+}
+
 function entryRating(entry: LobbyLeaderboardEntry) {
   return entry.primaryRating ?? entry.steamRmRating ?? entry.elo ?? entry.arenaElo ?? null;
 }
@@ -149,6 +163,7 @@ export async function loadChampionTitleEconomyState(
   let leaderboardEntries: LobbyLeaderboardEntry[] = [];
   let leaderboardAvailable = false;
   const liveDefinitionMap = new Map<string, ChampionTitleDefinition>();
+  const lastTributeByTrophyId = new Map<number, LastTributeProof>();
 
   try {
     const leaderboard = await loadLobbyLeaderboard(prisma, {
@@ -163,6 +178,39 @@ export async function loadChampionTitleEconomyState(
 
   try {
     const trophies = await loadPublicTrophies(prisma);
+    const trophyIds = trophies.map((trophy) => trophy.id);
+    const paidTributes = trophyIds.length
+      ? await prisma.trophyPayout.findMany({
+          where: {
+            trophyId: { in: trophyIds },
+            payoutKind: "daily_tribute",
+            status: "paid",
+            txHash: { not: null },
+          },
+          select: {
+            trophyId: true,
+            txHash: true,
+            paidAt: true,
+            scheduledFor: true,
+            amountWolo: true,
+            recipientDisplayName: true,
+          },
+          orderBy: [{ paidAt: "desc" }, { id: "desc" }],
+          take: Math.max(25, trophyIds.length * 3),
+        })
+      : [];
+
+    for (const payout of paidTributes) {
+      if (!payout.txHash || lastTributeByTrophyId.has(payout.trophyId)) continue;
+      lastTributeByTrophyId.set(payout.trophyId, {
+        txHash: payout.txHash,
+        paidAt: payout.paidAt,
+        scheduledFor: payout.scheduledFor,
+        amountWolo: payout.amountWolo,
+        recipientDisplayName: payout.recipientDisplayName,
+      });
+    }
+
     for (const trophy of trophies) {
       const seed = seededTrophyDefinition(trophy.trophyId);
       if (!seed) continue;
@@ -195,6 +243,7 @@ export async function loadChampionTitleEconomyState(
             },
           ]
         : [];
+      const lastTribute = lastTributeByTrophyId.get(trophy.id) ?? null;
       liveDefinitionMap.set(definition.id, {
         ...definition,
         dailyWolo: trophy.tributeAmountWolo,
@@ -210,6 +259,13 @@ export async function loadChampionTitleEconomyState(
         chainStatus: trophy.chainStatus,
         guardianHeld: trophy.status === "guardian_held",
         holderSince: trophy.holderSince?.toISOString() ?? null,
+        lastTributeTxHash: lastTribute?.txHash ?? null,
+        lastTributePaidAt: lastTribute?.paidAt?.toISOString() ?? null,
+        lastTributeAmountWolo: lastTribute?.amountWolo ?? null,
+        lastTributeRecipient: lastTribute?.recipientDisplayName ?? holderName,
+        nextTributeDay: lastTribute
+          ? nextTributeDayKey(lastTribute.scheduledFor || lastTribute.paidAt)
+          : null,
       });
     }
   } catch (error) {
