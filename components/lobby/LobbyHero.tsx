@@ -592,6 +592,7 @@ export function LobbyHero({
             themeKey={themeKey}
             viewMode={viewMode}
             onViewModeChange={onViewModeChange}
+            surface="standard"
           />
         </div>
 

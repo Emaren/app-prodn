@@ -19,6 +19,7 @@ type LeaderboardPanelProps = {
   themeKey: LobbyThemeKey;
   viewMode: LobbyViewMode;
   onViewModeChange: (viewMode: LobbyViewMode) => void;
+  surface?: "standard" | "extreme";
 };
 
 const LEADERBOARD_PAGE_SIZE = 80;
@@ -72,11 +73,17 @@ export function LeaderboardPanel({
   themeKey,
   viewMode,
   onViewModeChange,
+  surface = "standard",
 }: LeaderboardPanelProps) {
   const tone = getLobbyPresentationTone(themeKey, viewMode);
+  const isExtreme = surface === "extreme";
   const [entries, setEntries] = useState(leaderboard.entries);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(
+    () => leaderboard.trackedPlayers > countRankedLeaderboardEntries(leaderboard.entries)
+  );
   const entriesRef = useRef(entries);
+  const leaderboardSentinelRef = useRef<HTMLDivElement | null>(null);
   const loadingRef = useRef(false);
   const nextOffsetRef = useRef(countRankedLeaderboardEntries(leaderboard.entries));
   const hasMoreRef = useRef(
@@ -87,7 +94,9 @@ export function LeaderboardPanel({
     const rankedEntryCount = countRankedLeaderboardEntries(leaderboard.entries);
     setEntries((current) => mergeLeaderboardEntries(leaderboard.entries, current));
     nextOffsetRef.current = Math.max(nextOffsetRef.current, rankedEntryCount);
-    hasMoreRef.current = leaderboard.trackedPlayers > nextOffsetRef.current;
+    const nextHasMore = leaderboard.trackedPlayers > nextOffsetRef.current;
+    hasMoreRef.current = nextHasMore;
+    setHasMore(nextHasMore);
   }, [leaderboard.entries, leaderboard.trackedPlayers]);
 
   useEffect(() => {
@@ -109,6 +118,7 @@ export function LeaderboardPanel({
 
       if (!response.ok) {
         hasMoreRef.current = false;
+        setHasMore(false);
         return;
       }
 
@@ -120,13 +130,16 @@ export function LeaderboardPanel({
       const fallbackNextOffset = offset + nextEntries.length;
       nextOffsetRef.current =
         typeof payload.nextOffset === "number" ? payload.nextOffset : fallbackNextOffset;
-      hasMoreRef.current =
+      const nextHasMore =
         typeof payload.hasMore === "boolean"
           ? payload.hasMore
           : countRankedLeaderboardEntries(nextEntries) >= LEADERBOARD_PAGE_SIZE;
+      hasMoreRef.current = nextHasMore;
+      setHasMore(nextHasMore);
     } catch (error) {
       console.warn("Failed to load more lobby leaderboard entries:", error);
       hasMoreRef.current = false;
+      setHasMore(false);
     } finally {
       loadingRef.current = false;
       setIsLoadingMore(false);
@@ -145,6 +158,37 @@ export function LeaderboardPanel({
     },
     [loadMoreLeaderboardEntries]
   );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!hasMore) return;
+
+    const node = leaderboardSentinelRef.current;
+    if (!node) return;
+
+    const observer = new IntersectionObserver(
+      (items) => {
+        if (items.some((item) => item.isIntersecting)) {
+          void loadMoreLeaderboardEntries();
+        }
+      },
+      {
+        root: null,
+        rootMargin: "900px 0px",
+        threshold: 0.01,
+      }
+    );
+
+    observer.observe(node);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [hasMore, loadMoreLeaderboardEntries]);
+
+  const leaderboardScrollClassName = isExtreme
+    ? "mt-6 h-[min(78vh,76rem)] min-h-[52rem] space-y-3 overflow-y-auto pr-2 sm:h-[min(80vh,82rem)] lg:h-[72rem] lg:max-h-[72rem] xl:h-[80rem] xl:max-h-[80rem]"
+    : "mt-6 max-h-[62vh] space-y-3 overflow-y-auto pr-2 sm:max-h-[66vh] lg:max-h-[58rem] xl:max-h-[66rem]";
 
   return (
     <div
@@ -225,7 +269,7 @@ export function LeaderboardPanel({
         </div>
       </div>
 
-      <div className="mt-6 max-h-[62vh] space-y-3 overflow-y-auto pr-2 sm:max-h-[66vh] lg:max-h-[58rem] xl:max-h-[66rem]" aria-busy={isLoadingMore} onScroll={handleLeaderboardScroll}>
+      <div className={leaderboardScrollClassName} aria-busy={isLoadingMore} onScroll={handleLeaderboardScroll}>
         {entries.length === 0 ? (
           <div className="rounded-2xl border border-white/8 bg-white/5 px-4 py-5 text-sm leading-6 text-slate-300">
             Need more final games.
@@ -306,6 +350,15 @@ export function LeaderboardPanel({
             </Link>
           ))
         )}
+
+        {hasMore ? (
+          <div
+            ref={leaderboardSentinelRef}
+            className="flex items-center justify-center rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-4 text-xs font-semibold uppercase tracking-[0.24em] text-slate-400"
+          >
+            {isLoadingMore ? "Loading more warriors..." : "Scroll for more warriors"}
+          </div>
+        ) : null}
       </div>
 
       <div className={`mt-5 flex flex-wrap items-center justify-end gap-3 border-t pt-4 ${tone.divider}`}>
