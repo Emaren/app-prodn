@@ -1,5 +1,6 @@
 "use client";
 
+import type { EventStudioMediaAsset } from "@/lib/events/types";
 import Link from "next/link";
 import {
   AlertTriangle,
@@ -584,6 +585,7 @@ export default function EventStudio() {
                     <PersonEditor
                       label="Player One"
                       users={snapshot.users}
+                      mediaAssets={snapshot.mediaAssets}
                       userId={draft.playerOneUserId}
                       name={draft.playerOneName}
                       avatarUrl={draft.playerOneAvatarUrl}
@@ -594,6 +596,7 @@ export default function EventStudio() {
                     <PersonEditor
                       label="Player Two"
                       users={snapshot.users}
+                      mediaAssets={snapshot.mediaAssets}
                       userId={draft.playerTwoUserId}
                       name={draft.playerTwoName}
                       avatarUrl={draft.playerTwoAvatarUrl}
@@ -604,6 +607,7 @@ export default function EventStudio() {
                     <PersonEditor
                       label="Commissioner"
                       users={snapshot.users}
+                      mediaAssets={snapshot.mediaAssets}
                       userId={draft.commissionerUserId}
                       name={draft.commissionerName}
                       avatarUrl={draft.commissionerAvatarUrl}
@@ -616,15 +620,30 @@ export default function EventStudio() {
 
                 <EditorSection title="Stage art and theme" icon={Images}>
                   <div className="grid gap-3 sm:grid-cols-2">
-                    <Field label="Championship belt / artifact image" hint="Use Media Armory paths or safe https:// URLs.">
-                      <input className={inputClass} value={draft.beltImageUrl} onChange={(event) => setDraft((current) => ({ ...current, beltImageUrl: event.target.value }))} />
-                    </Field>
-                    <Field label="Desktop background image">
-                      <input className={inputClass} value={draft.backgroundImageUrl} onChange={(event) => setDraft((current) => ({ ...current, backgroundImageUrl: event.target.value }))} placeholder="/uploads/managed-assets/background/..." />
-                    </Field>
-                    <Field label="Mobile background image">
-                      <input className={inputClass} value={draft.mobileBackgroundImageUrl} onChange={(event) => setDraft((current) => ({ ...current, mobileBackgroundImageUrl: event.target.value }))} placeholder="/uploads/managed-assets/background/..." />
-                    </Field>
+                    <MediaField
+                      label="Championship belt / artifact image"
+                      hint="Use Media Armory paths or safe https:// URLs."
+                      value={draft.beltImageUrl}
+                      assets={snapshot.mediaAssets}
+                      kinds={["belt", "artifact", "logo", "other"]}
+                      onChange={(value) => setDraft((current) => ({ ...current, beltImageUrl: value }))}
+                    />
+                    <MediaField
+                      label="Desktop background image"
+                      value={draft.backgroundImageUrl}
+                      assets={snapshot.mediaAssets}
+                      kinds={["background", "other"]}
+                      placeholder="/uploads/managed-assets/background/..."
+                      onChange={(value) => setDraft((current) => ({ ...current, backgroundImageUrl: value }))}
+                    />
+                    <MediaField
+                      label="Mobile background image"
+                      value={draft.mobileBackgroundImageUrl}
+                      assets={snapshot.mediaAssets}
+                      kinds={["background", "other"]}
+                      placeholder="/uploads/managed-assets/background/..."
+                      onChange={(value) => setDraft((current) => ({ ...current, mobileBackgroundImageUrl: value }))}
+                    />
                     <Field label="Theme key">
                       <input className={inputClass} value={draft.theme} onChange={(event) => setDraft((current) => ({ ...current, theme: event.target.value }))} />
                     </Field>
@@ -706,6 +725,7 @@ function EditorSection({
 function PersonEditor({
   label,
   users,
+  mediaAssets,
   userId,
   name,
   avatarUrl,
@@ -715,6 +735,7 @@ function PersonEditor({
 }: {
   label: string;
   users: EventStudioUser[];
+  mediaAssets: EventStudioMediaAsset[];
   userId: number | null;
   name: string;
   avatarUrl: string;
@@ -737,11 +758,73 @@ function PersonEditor({
         <Field label="Display name">
           <input className={inputClass} value={name} onChange={(event) => onNameChange(event.target.value)} />
         </Field>
-        <Field label="Avatar URL / path">
-          <input className={inputClass} value={avatarUrl} onChange={(event) => onAvatarChange(event.target.value)} />
-        </Field>
+        <MediaField
+          label="Avatar URL / path"
+          value={avatarUrl}
+          assets={mediaAssets}
+          kinds={["avatar"]}
+          onChange={onAvatarChange}
+        />
       </div>
     </div>
+  );
+}
+
+function MediaField({
+  label,
+  hint,
+  value,
+  assets,
+  kinds,
+  placeholder,
+  onChange,
+}: {
+  label: string;
+  hint?: string;
+  value: string;
+  assets: EventStudioMediaAsset[];
+  kinds: string[];
+  placeholder?: string;
+  onChange: (value: string) => void;
+}) {
+  const choices = assets
+    .filter((asset) => asset.active && kinds.includes(asset.kind) && asset.url)
+    .slice(0, 18);
+
+  return (
+    <Field label={label} hint={hint}>
+      <div className="space-y-2">
+        <input
+          className={inputClass}
+          value={value}
+          placeholder={placeholder}
+          onChange={(event) => onChange(event.target.value)}
+        />
+        {choices.length > 0 ? (
+          <div className="flex flex-wrap gap-2 rounded-2xl border border-white/6 bg-black/10 p-2">
+            {choices.map((asset) => (
+              <button
+                key={asset.id}
+                type="button"
+                onClick={() => onChange(asset.url)}
+                title={asset.url}
+                className={`rounded-full border px-2.5 py-1 text-[11px] transition ${
+                  value === asset.url
+                    ? "border-amber-200/45 bg-amber-300/15 text-amber-100"
+                    : "border-white/10 bg-white/[0.035] text-slate-300 hover:border-amber-200/30 hover:text-amber-100"
+                }`}
+              >
+                {asset.label || asset.target || asset.url}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-white/10 bg-black/10 px-3 py-2 text-[11px] text-slate-500">
+            No active Media Armory assets for {kinds.join(", ")}.
+          </div>
+        )}
+      </div>
+    </Field>
   );
 }
 
