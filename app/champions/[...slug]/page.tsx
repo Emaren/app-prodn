@@ -29,6 +29,13 @@ const PLAYER_BACKDROPS: Record<string, string> = {
 };
 
 const SILHOUETTE_BACKDROP = "/champions/players/silhouette.png";
+const FEMALE_SILHOUETTE_BACKDROP = "/champions/players/female_silhouette.png";
+
+function isWomensTitle(title: ChampionTitleDefinition) {
+  const id = title.id.toLowerCase();
+  const slug = title.slug.toLowerCase();
+  return id.includes("women") || slug.includes("women") || title.type === "womens";
+}
 
 export async function generateMetadata({
   params,
@@ -59,6 +66,7 @@ function backdropForTitle(title: ChampionTitleDefinition) {
   const holder = title.holders[0];
   if (holder) return PLAYER_BACKDROPS[holder.name.trim().toLowerCase()] || SILHOUETTE_BACKDROP;
   if (title.id === "national-canada") return PLAYER_BACKDROPS.emaren;
+  if (isWomensTitle(title)) return FEMALE_SILHOUETTE_BACKDROP;
   return SILHOUETTE_BACKDROP;
 }
 
