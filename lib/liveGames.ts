@@ -602,7 +602,7 @@ type LiveGamesSnapshotCacheEntry = {
 };
 
 const LIVE_GAMES_SNAPSHOT_CACHE_TTL_MS = 8000;
-const LIVE_GAMES_SNAPSHOT_STALE_TTL_MS = 30000;
+const LIVE_GAMES_SNAPSHOT_STALE_TTL_MS = 10 * 60 * 1000;
 let liveGamesSnapshotCache: LiveGamesSnapshotCacheEntry | null = null;
 
 export async function loadLiveGamesSnapshot(prisma: PrismaClient): Promise<LiveGamesSnapshot> {

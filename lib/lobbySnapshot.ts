@@ -171,7 +171,7 @@ type LobbySnapshotCacheEntry = {
 };
 
 const LOBBY_SNAPSHOT_CACHE_TTL_MS = 15000;
-const LOBBY_SNAPSHOT_STALE_TTL_MS = 60000;
+const LOBBY_SNAPSHOT_STALE_TTL_MS = 10 * 60 * 1000;
 const lobbySnapshotCache = new Map<string, LobbySnapshotCacheEntry>();
 
 export async function loadLobbySnapshot(

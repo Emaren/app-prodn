@@ -31,6 +31,33 @@ module.exports = {
 
     return [
       {
+        source: "/uploads/managed-assets/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=86400, stale-while-revalidate=604800",
+          },
+          {
+            key: "X-AoE2WAR-Public-Cache",
+            value: "AOE2WAR_MANAGED_UPLOAD_CACHE",
+          },
+        ],
+      },
+      {
+        source: "/watch-loops/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=86400, stale-while-revalidate=604800",
+          },
+          {
+            key: "X-AoE2WAR-Public-Cache",
+            value: "AOE2WAR_WATCH_LOOP_CACHE",
+          },
+        ],
+      },
+
+      {
         source: "/brand/:path*",
         headers: [imageCacheHeader, { key: "X-AoE2WAR-Public-Cache", value: "AOE2WAR_PUBLIC_IMAGE_CACHE" }],
       },
