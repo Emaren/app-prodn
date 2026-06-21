@@ -176,11 +176,19 @@ function timelineTone(row: TimelineRow) {
 }
 
 function railDot(row: TimelineRow) {
-  if (row.tone === "emerald") return "bg-emerald-300 shadow-emerald-300/40";
-  if (row.tone === "amber") return "bg-amber-300 shadow-amber-300/40";
-  if (row.tone === "sky") return "bg-sky-300 shadow-sky-300/40";
-  if (row.tone === "rose") return "bg-rose-300 shadow-rose-300/40";
-  return "bg-slate-400 shadow-slate-400/30";
+  if (row.tone === "emerald") {
+    return "bg-gradient-to-br from-emerald-200 via-emerald-500 to-emerald-950 text-white shadow-[0_0_24px_rgba(16,185,129,0.45)] ring-1 ring-emerald-100/30";
+  }
+  if (row.tone === "amber") {
+    return "bg-gradient-to-br from-amber-200 via-amber-500 to-amber-950 text-white shadow-[0_0_24px_rgba(245,158,11,0.45)] ring-1 ring-amber-100/30";
+  }
+  if (row.tone === "sky") {
+    return "bg-gradient-to-br from-sky-200 via-sky-500 to-sky-950 text-white shadow-[0_0_24px_rgba(14,165,233,0.45)] ring-1 ring-sky-100/30";
+  }
+  if (row.tone === "rose") {
+    return "bg-gradient-to-br from-rose-200 via-rose-500 to-rose-950 text-white shadow-[0_0_24px_rgba(244,63,94,0.45)] ring-1 ring-rose-100/30";
+  }
+  return "bg-gradient-to-br from-slate-200 via-slate-500 to-slate-950 text-white shadow-[0_0_20px_rgba(148,163,184,0.35)] ring-1 ring-slate-100/25";
 }
 
 function viewHref(marketId: number, view: ViewMode, sort: SortMode) {
@@ -523,7 +531,6 @@ export default async function BetMarketDetailPage({ params, searchParams }: Page
               <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
                 <div>
                   <div className="text-[11px] uppercase tracking-[0.42em] text-slate-500">Battle Book</div>
-                  <h2 className="mt-2 text-3xl font-black text-white">Side pressure and settlement shape.</h2>
                 </div>
                 <div className="text-xs text-slate-500">
                   {imbalanceSide ? `${formatWolo(openImbalanceWolo)} WOLO open on ${imbalanceSide}` : "Balanced book"}
@@ -550,9 +557,6 @@ export default async function BetMarketDetailPage({ params, searchParams }: Page
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <div className="text-[11px] uppercase tracking-[0.42em] text-slate-500">Chain Timeline</div>
-                  <h2 className="mt-2 text-3xl font-black text-white">
-                    {order === "newest" ? "Newest action first." : "Oldest action first."}
-                  </h2>
                 </div>
 
                 <Link
@@ -612,7 +616,6 @@ export default async function BetMarketDetailPage({ params, searchParams }: Page
 
             <section className="rounded-[2rem] border border-amber-300/15 bg-amber-300/[0.045] p-5">
               <div className="text-[11px] uppercase tracking-[0.42em] text-amber-200/70">Liquidity Logic</div>
-              <h2 className="mt-2 text-2xl font-black text-white">Human-first. AI-backed.</h2>
               <p className="mt-3 text-sm leading-6 text-slate-300">
                 Human action gets priority. AI liquidity should fill unmatched exposure at lock when enabled.
                 Refunds stay refunds. Founder Bonuses stay separate from the betting pot.
@@ -760,7 +763,7 @@ function AdvancedTimelineRow({ row, index, market }: { row: TimelineRow; index: 
   return (
     <div className="grid grid-cols-[34px_1fr] gap-3">
       <div className="flex flex-col items-center">
-        <div className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-black text-slate-950 shadow-lg ${railDot(row)}`}>
+        <div className={`flex h-9 w-9 items-center justify-center rounded-full text-[13px] font-black shadow-xl ${railDot(row)}`}>
           {index + 1}
         </div>
         <div className="mt-2 h-full min-h-10 w-px bg-white/10" />
