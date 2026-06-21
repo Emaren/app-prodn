@@ -22,7 +22,7 @@ import {
 
 const EVENT_TIMESTAMP = new Date("2026-07-10T20:00:00Z").getTime();
 
-const OFFICIAL_POSTER = "/uploads/managed-assets/wolomania/wolomania.png";
+const OFFICIAL_POSTER = "/uploads/managed-assets/wolomania/wolomania.webp";
 
 const ASSETS = {
   belt: {
@@ -30,15 +30,15 @@ const ASSETS = {
     fallback: "/uploads/managed-assets/belt/world-1781561316794-0a26a86e.png",
   },
   emaren: {
-    src: "/uploads/managed-assets/wolomania/emaren_warrior_2.png",
+    src: "/uploads/managed-assets/wolomania/emaren_warrior_2.webp",
     fallback: "/uploads/managed-assets/avatar/emaren-1781569822986-d51b50eb.png",
   },
   jim: {
-    src: "/uploads/managed-assets/wolomania/jim_warrior.png",
+    src: "/uploads/managed-assets/wolomania/jim_warrior.webp",
     fallback: "/uploads/managed-assets/avatar/jim-1781560436622-52fb61a1.png",
   },
   julio: {
-    src: "/uploads/managed-assets/wolomania/julio_warrior.png",
+    src: "/uploads/managed-assets/wolomania/julio_warrior.webp",
     fallback: "/uploads/managed-assets/avatar/julio-alvarez-1781569866259-256b2ad7.png",
   },
 };
