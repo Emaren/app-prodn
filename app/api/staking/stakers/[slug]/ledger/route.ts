@@ -365,7 +365,7 @@ async function loadStakingRows(userId: number | null, before: string | null, lim
           tone: status.includes("compound") || amount < 1 ? "gold" : "emerald",
           label:
             amount > 0 && amount < 1
-              ? `${formatWolo(amount)} held reward`
+              ? `${formatWolo(amount)} held micro reward`
               : status.includes("compound")
                 ? `${formatWolo(amount)} auto-compounded reward`
                 : `${formatWolo(amount)} reward`,
@@ -383,11 +383,10 @@ async function loadStakingRows(userId: number | null, before: string | null, lim
         key: `staking-day-${key}`,
         view: "staking-day",
         tone: "slate",
-        label: `Quiet staking day: ${key}`,
+        label: `Quiet staking day · ${key}`,
         detail: "No staking movement recorded · mainnet day preserved",
-        meta: "0 WOLO",
+        meta: "Quiet day",
         occurredAt: `${key}T12:10:00.000Z`,
-        amountLabel: "0 WOLO",
       });
     }
   }
@@ -698,12 +697,11 @@ function insertQuietRewardDays<T extends { key: string; occurredAt: string; view
       out.push({
         key: `quiet-reward-day-${key}`,
         view: "staking-day",
-        tone: "gold",
+        tone: "slate",
         label: `Quiet reward day · ${key}`,
         detail: "No claim, payout, or compound movement recorded.",
-        meta: "",
+        meta: "Quiet day",
         occurredAt: `${key}T12:00:00.000Z`,
-        amountLabel: "0 WOLO",
       } as T);
     }
   }
@@ -755,7 +753,7 @@ export async function GET(request: Request, context: RouteContext) {
                 text.includes("auto-compounded") ||
                 text.includes("compound") ||
                 text.includes("rolled into principal") ||
-                text.includes("held reward") ||
+                text.includes("held micro reward") ||
                 text.includes("micro_accrued") ||
                 text.includes("micro reward") ||
                 text.includes("payout threshold") ||
@@ -774,7 +772,7 @@ export async function GET(request: Request, context: RouteContext) {
           ? bets
           : view === "grouped-bets"
             ? groupedBets
-            : [...staking.rows, ...championships, ...bets].sort(
+            : [...staking.rows, ...championships, ...bounties, ...bets].sort(
                 (left, right) => new Date(right.occurredAt).getTime() - new Date(left.occurredAt).getTime()
               );
 
@@ -799,7 +797,7 @@ export async function GET(request: Request, context: RouteContext) {
           text.includes("auto-compounded") ||
           text.includes("compound") ||
           text.includes("rolled into principal") ||
-          text.includes("held reward") ||
+          text.includes("held micro reward") ||
           text.includes("micro_accrued") ||
           text.includes("micro reward") ||
           text.includes("payout threshold") ||

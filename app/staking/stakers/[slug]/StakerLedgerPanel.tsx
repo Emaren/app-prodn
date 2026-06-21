@@ -54,10 +54,24 @@ function iconFor(row: LedgerRow) {
 }
 
 function formatCompactWolo(value: number) {
-  if (!Number.isFinite(value)) return "0 WOLO";
-  if (Math.abs(value) >= 1_000_000) return `${(value / 1_000_000).toFixed(1).replace(/\.0$/, "")}M WOLO`;
-  if (Math.abs(value) >= 1_000) return `${(value / 1_000).toFixed(value >= 100_000 ? 0 : 1).replace(/\.0$/, "")}K WOLO`;
-  return `${value.toLocaleString(undefined, { maximumFractionDigits: 6 })} WOLO`;
+  if (!Number.isFinite(value)) return "--";
+  if (value > 0 && value < 0.000001) return "<0.000001 WOLO";
+  return `${new Intl.NumberFormat("en-US", {
+    maximumFractionDigits: value > 0 && value < 1 ? 6 : 2,
+    minimumFractionDigits: 0,
+  }).format(value)} WOLO`;
+}
+
+function formatLedgerDayLabel(value?: string | null) {
+  if (!value) return "Quiet staking day";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value.slice(0, 10);
+  return new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(parsed);
 }
 
 function parseWoloAmount(label?: string) {
@@ -125,15 +139,13 @@ function pillClass(active: boolean) {
 
 function LedgerCard({ row }: { row: LedgerRow }) {
   if (row.view === "staking-day") {
-    const dayLabel = row.label.replace("Quiet reward day · ", "");
-
     return (
-      <div className="flex items-center gap-3 py-2">
-        <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/[0.07] to-white/[0.025]" />
-        <div className="px-2 text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-600">
-          {dayLabel}
+      <div className="flex items-center gap-3 py-3">
+        <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-600/22 to-slate-700/10" />
+        <div className="rounded-full border border-slate-600/35 bg-slate-900/72 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-400 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]">
+          {formatLedgerDayLabel(row.occurredAt)}
         </div>
-        <div className="hidden h-px flex-1 bg-gradient-to-l from-transparent via-white/[0.07] to-white/[0.025] sm:block" />
+        <div className="hidden h-px flex-1 bg-gradient-to-l from-transparent via-slate-600/22 to-slate-700/10 sm:block" />
       </div>
     );
   }
@@ -319,12 +331,12 @@ export default function StakerLedgerPanel({
                 <div>
                   <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-amber-200/70">Reward growth</div>
                   <div className="mt-1 text-lg font-semibold text-white">{formatCompactWolo(trail.total)}</div>
-                  <div className="mt-1 text-xs text-slate-400">Claim now</div>
+                  <div className="mt-1 text-xs text-slate-400">lifetime credited</div>
                 </div>
                 <div>
                   <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Inside stake</div>
                   <div className="mt-1 text-lg font-semibold text-amber-100">{formatCompactWolo(trail.compounded)}</div>
-                  <div className="mt-1 text-xs text-slate-400">auto-compounding</div>
+                  <div className="mt-1 text-xs text-slate-400">rolled into stake</div>
                 </div>
                 <div>
                   <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Paid out</div>

@@ -10,7 +10,7 @@ const PAGE_SIZE = 16;
 const LIVE_POLL_INTERVAL_MS = 12_000;
 
 type ActivityMode = "ledger" | "grouped";
-const STAKING_ACTIVITY_PREFS_KEY = "aoe2war:staking-activity-prefs";
+const STAKING_ACTIVITY_PREFS_KEY = "aoe2war:staking-activity-prefs:ledger-all-v1";
 
 type ActivityFilterMode = "all" | "staking" | "compounded" | "bounties" | "bets" | "transfers";
 
@@ -183,6 +183,99 @@ function mergeActivityRows(
   return merged.sort((left, right) => activityTimestamp(right) - activityTimestamp(left));
 }
 
+function activityDayKey(item: StakingActivityItem | null | undefined) {
+  if (!item?.occurredAt) return "unknown";
+  const parsed = new Date(item.occurredAt);
+  if (Number.isNaN(parsed.getTime())) return item.occurredAt.slice(0, 10) || "unknown";
+  return parsed.toISOString().slice(0, 10);
+}
+
+function formatActivityDayLabel(value?: string | null) {
+  if (!value) return "Recent activity";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value.slice(0, 10);
+  return new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(parsed);
+}
+
+function ActivityDateDivider({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-3 py-2.5">
+      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-600/24 to-slate-700/10" />
+      <div className="rounded-full border border-slate-600/35 bg-slate-900/72 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-400 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]">
+        {label}
+      </div>
+      <div className="hidden h-px flex-1 bg-gradient-to-l from-transparent via-slate-600/24 to-slate-700/10 sm:block" />
+    </div>
+  );
+}
+
+function extractLedgerBetTitle(group: StakingActivityItem[]) {
+  for (const item of group) {
+    const text = `${item.label || ""} ${item.detail || ""}`;
+    const match = text.match(/([^·:|]+?\s+vs\s+[^·:|]+)/i);
+
+    if (match?.[1]) {
+      return match[1].replace(/\s+/g, " ").trim();
+    }
+  }
+
+  return "WoloChain bet rail";
+}
+
+function collapseLedgerBetRows(rows: StakingActivityItem[], enabled: boolean) {
+  if (!enabled) return rows;
+
+  const collapsed: StakingActivityItem[] = [];
+  let group: StakingActivityItem[] = [];
+
+  const flushGroup = () => {
+    if (group.length === 0) return;
+
+    if (group.length === 1) {
+      collapsed.push(group[0]);
+      group = [];
+      return;
+    }
+
+    const first = group[0];
+    const title = extractLedgerBetTitle(group);
+
+    collapsed.push({
+      key: `ledger-bet-group-${activityKey(first)}-${group.length}`,
+      label: `${title} · bet rail collapsed`,
+      detail: `${group.length.toLocaleString()} WoloChain bet rows · click to inspect settlement, escrow, payout, and founder-transfer receipts`,
+      meta: first.meta,
+      eventType: "GROUPED BET",
+      timestampLabel: first.timestampLabel || first.meta,
+      occurredAt: first.occurredAt,
+      tone: "sky",
+      children: group,
+    });
+
+    group = [];
+  };
+
+  for (const row of rows) {
+    if (isBetActivity(row)) {
+      group.push(row);
+      continue;
+    }
+
+    flushGroup();
+    collapsed.push(row);
+  }
+
+  flushGroup();
+
+  return collapsed;
+}
+
+
 export default function StakingActivityFeed({
   items,
   note,
@@ -207,19 +300,27 @@ export default function StakingActivityFeed({
           filterMode?: ActivityFilterMode;
         };
 
-        if (parsed.mode === "ledger" || parsed.mode === "grouped") {
-          setMode(parsed.mode);
-        }
-
-        if (
+        const nextFilter =
           parsed.filterMode === "all" ||
           parsed.filterMode === "staking" ||
           parsed.filterMode === "compounded" ||
           parsed.filterMode === "bounties" ||
           parsed.filterMode === "bets" ||
           parsed.filterMode === "transfers"
-        ) {
-          setFilterMode(parsed.filterMode);
+            ? parsed.filterMode
+            : undefined;
+
+        const nextMode =
+          parsed.mode === "ledger" || parsed.mode === "grouped"
+            ? parsed.mode
+            : undefined;
+
+        if (nextFilter === "bounties") {
+          setMode("ledger");
+          setFilterMode("bounties");
+        } else {
+          if (nextMode) setMode(nextMode);
+          if (nextFilter) setFilterMode(nextFilter);
         }
       }
     } catch {
@@ -410,6 +511,12 @@ export default function StakingActivityFeed({
     return () => window.removeEventListener("staking:activity", handleActivity);
   }, []);
 
+  useEffect(() => {
+    if (filterMode === "bounties" && mode !== "ledger") {
+      setMode("ledger");
+    }
+  }, [filterMode, mode]);
+
   const loadMore = useCallback(async () => {
     if (!loadMoreEndpoint || !hasMore || loadingMoreRef.current) return;
 
@@ -514,7 +621,11 @@ export default function StakingActivityFeed({
   }, [hasMore, loadMore, loadMoreEndpoint]);
 
   const visibleRows = loadMoreEndpoint ? rows : filterActivityRows(rows, filterMode);
-  const bountySummary = filterMode === "bounties" ? computePublicBountySummary(visibleRows) : null;
+  const displayRows = useMemo(
+    () => collapseLedgerBetRows(visibleRows, mode === "ledger" && filterMode === "all"),
+    [filterMode, mode, visibleRows]
+  );
+  const bountySummary = filterMode === "bounties" ? computePublicBountySummary(displayRows) : null;
 
   return (
     <div className="space-y-2.5 overflow-hidden">
@@ -546,7 +657,7 @@ export default function StakingActivityFeed({
         </div>
       ) : null}
 
-      {visibleRows.length === 0 ? (
+      {displayRows.length === 0 ? (
         <div className="rounded-[1.1rem] border border-white/10 bg-white/[0.04] p-3.5 text-sm text-slate-300">
           No mainnet activity rows are visible yet.
         </div>
@@ -577,7 +688,7 @@ export default function StakingActivityFeed({
                 ? mode === "ledger"
                   ? "Scroll for older ledger rows"
                   : "Scroll for older grouped bets"
-                : visibleRows.length > 0
+                : displayRows.length > 0
                   ? "At mainnet start"
                   : "No rows"}
             </span>
@@ -605,9 +716,18 @@ export default function StakingActivityFeed({
           aria-busy={loadingMore ? "true" : "false"}
           className="max-h-[34rem] space-y-2.5 overflow-x-hidden overflow-y-auto overscroll-contain pr-1 [scrollbar-gutter:stable]"
         >
-          {visibleRows.map((item) => {
+          {displayRows.map((item, index) => {
             const key = activityKey(item);
-            return <ActivityRow key={key} item={item} isFresh={key === freshKey} />;
+            const currentDay = activityDayKey(item);
+            const previousDay = activityDayKey(displayRows[index - 1]);
+            const showDivider = index === 0 || currentDay !== previousDay;
+
+            return (
+              <div key={key} className="space-y-2.5">
+                {showDivider ? <ActivityDateDivider label={formatActivityDayLabel(item.occurredAt)} /> : null}
+                <ActivityRow item={item} isFresh={key === freshKey} />
+              </div>
+            );
           })}
 
           {loadMoreEndpoint ? (
@@ -625,7 +745,7 @@ export default function StakingActivityFeed({
                       ? "Load older ledger rows"
                       : "Load older grouped bets"}
                 </button>
-              ) : visibleRows.length > 0 ? (
+              ) : displayRows.length > 0 ? (
                 <div className="text-xs uppercase tracking-[0.18em] text-slate-500">
                   Beginning of staking ledger
                 </div>

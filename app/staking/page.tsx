@@ -230,7 +230,7 @@ function formatWolo(
   options: { compact?: boolean; decimals?: number } = {}
 ) {
   if (value == null) return "--";
-  const compact = options.compact ?? value >= 10000;
+  const compact = options.compact ?? false;
   const decimals =
     options.decimals ??
     (compact ? 1 : Number.isInteger(value) ? 0 : value < 1000 ? 2 : 1);
@@ -486,8 +486,8 @@ function mapLeaderboardRow(row: StakingLeaderboardRow): BoardRow {
   return {
     player: row.player,
     badge: row.badge,
-    staked: row.stakedWolo > 0 ? formatWolo(row.stakedWolo) : "--",
-    rewards: row.rewardsWolo > 0 ? formatWolo(row.rewardsWolo) : "--",
+    staked: row.stakedWolo > 0 ? formatWolo(row.stakedWolo, { compact: false, decimals: 6 }) : "--",
+    rewards: row.rewardsWolo > 0 ? formatWolo(row.rewardsWolo, { compact: false, decimals: 6 }) : "--",
     weight: formatPublicStakingWeight(row.stakingWeight),
     status: row.status,
     tone: row.tone,
