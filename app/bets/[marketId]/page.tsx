@@ -223,7 +223,7 @@ function PremiumMatchTitle({ title }: { title: string }) {
 
   if (!names.right) {
     return (
-      <h1 className="mt-5 max-w-4xl text-[clamp(2.6rem,5.7vw,4.8rem)] font-semibold leading-[0.96] tracking-[-0.065em] text-slate-50/95">
+      <h1 className="mt-5 max-w-5xl bg-gradient-to-b from-white via-slate-100 to-slate-500 bg-clip-text text-[clamp(3rem,6.8vw,5.9rem)] font-extrabold leading-[0.88] tracking-[-0.075em] text-transparent drop-shadow-[0_18px_34px_rgba(0,0,0,0.55)]">
         {title}
       </h1>
     );
@@ -231,21 +231,24 @@ function PremiumMatchTitle({ title }: { title: string }) {
 
   return (
     <div className="mt-6 max-w-5xl">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <span className="text-[clamp(2.75rem,5.8vw,5rem)] font-semibold leading-[0.95] tracking-[-0.07em] text-slate-50/95">
+      <div className="flex flex-wrap items-end gap-x-5 gap-y-2">
+        <span className="bg-gradient-to-b from-white via-slate-100 to-slate-500 bg-clip-text text-[clamp(3rem,6.8vw,5.9rem)] font-extrabold leading-[0.88] tracking-[-0.075em] text-transparent drop-shadow-[0_18px_34px_rgba(0,0,0,0.55)]">
           {names.left}
         </span>
 
-        <span className="rounded-full border border-white/10 bg-white/[0.045] px-3 py-1 text-[10px] font-black uppercase tracking-[0.32em] text-amber-100/55">
+        <span className="mb-3 rounded-full border border-amber-200/20 bg-amber-200/[0.06] px-3 py-1 text-[10px] font-black uppercase tracking-[0.34em] text-amber-100/65 shadow-[0_0_24px_rgba(245,158,11,0.13)]">
           vs
         </span>
 
-        <span className="text-[clamp(2.75rem,5.8vw,5rem)] font-semibold leading-[0.95] tracking-[-0.07em] text-slate-300/95">
+        <span className="bg-gradient-to-b from-slate-50 via-slate-200 to-slate-600 bg-clip-text text-[clamp(3rem,6.8vw,5.9rem)] font-extrabold leading-[0.88] tracking-[-0.075em] text-transparent drop-shadow-[0_18px_34px_rgba(0,0,0,0.55)]">
           {names.right}
         </span>
       </div>
 
-      <div className="mt-4 h-px max-w-3xl bg-gradient-to-r from-amber-200/25 via-white/10 to-sky-200/20" />
+      <div className="mt-4 flex items-center gap-3">
+        <div className="h-px w-24 bg-amber-200/30" />
+        <div className="h-px flex-1 bg-gradient-to-r from-white/18 via-white/8 to-transparent" />
+      </div>
     </div>
   );
 }
