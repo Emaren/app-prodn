@@ -289,6 +289,7 @@ export default function StakingActivityFeed({
   const [mode, setMode] = useState<ActivityMode>("ledger");
   const [filterMode, setFilterMode] = useState<ActivityFilterMode>("all");
   const [activityPrefsLoaded, setActivityPrefsLoaded] = useState(false);
+  const lastTrackedStakingViewRef = useRef<string | null>(null);
 
 
   useEffect(() => {
@@ -342,6 +343,40 @@ export default function StakingActivityFeed({
       // Ignore private-mode/localStorage failures.
     }
   }, [activityPrefsLoaded, mode, filterMode]);
+  useEffect(() => {
+    if (!activityPrefsLoaded) return;
+
+    const viewKey = `${mode}:${filterMode}`;
+    if (lastTrackedStakingViewRef.current === viewKey) return;
+    lastTrackedStakingViewRef.current = viewKey;
+
+    const modeLabel = mode === "ledger" ? "Ledger" : "Grouped Bets";
+    const filterLabel =
+      filterMode === "all"
+        ? "All"
+        : filterMode === "compounded"
+          ? "Compounded"
+          : filterMode.charAt(0).toUpperCase() + filterMode.slice(1);
+
+    const payload = {
+      type: "staking_view_selected",
+      path: "/staking",
+      label: `${modeLabel} / ${filterLabel}`,
+      metadata: {
+        mode,
+        filterMode,
+        betsCollapsed: mode === "ledger" && filterMode === "all",
+      },
+    };
+
+    void fetch("/api/user/activity", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      keepalive: true,
+    }).catch(() => undefined);
+  }, [activityPrefsLoaded, filterMode, mode]);
+
   const [rows, setRows] = useState(initialRows);
   const [freshKey, setFreshKey] = useState<string | null>(
     activityKey(initialRows[0] ?? { label: "", detail: "", meta: "", tone: "slate" })

@@ -111,6 +111,10 @@ function formatFullPathChain(paths: string[]) {
   return paths.length > 0 ? paths.join(" -> ") : "No tracked path yet";
 }
 
+function findLatestStakingViewSelection(actions: Activity[]) {
+  return actions.find((activity) => activity.type === "staking_view_selected") ?? null;
+}
+
 function shortSessionId(value: string | null) {
   if (!value) return "None";
   if (value.length <= 18) return value;
@@ -134,6 +138,7 @@ export default function AdminUserCard({
   const loadingNextActionsRef = useRef(false);
   const [journeyExpanded, setJourneyExpanded] = useState(false);
   const latestPath = findLatestPageView(renderedActions);
+  const latestStakingViewSelection = findLatestStakingViewSelection(renderedActions);
   const communityLobbyView = getTileViewMode(
     user.appearance?.tileViewPreferences,
     "community_lobby"
@@ -306,6 +311,21 @@ export default function AdminUserCard({
             <IdentityRow
               label="Theme Updated"
               value={<AdminTime value={user.appearance?.updatedAt ?? null} emptyValue="Never" />}
+            />
+            <IdentityRow
+              label="Staking View"
+              value={
+                latestStakingViewSelection ? (
+                  <span>
+                    <span className="block text-white">{latestStakingViewSelection.label || "Staking view selected"}</span>
+                    <span className="mt-1 block text-[11px] text-slate-500">
+                      <AdminTime value={latestStakingViewSelection.createdAt} />
+                    </span>
+                  </span>
+                ) : (
+                  "No staking view yet"
+                )
+              }
             />
             <IdentityRow label="Last Route" value={latestPath || "No tracked page yet"} />
             <IdentityRow label="Last Activity" value={<AdminTime value={user.lastActivityAt} emptyValue="Never" />} />
