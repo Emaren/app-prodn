@@ -36,7 +36,7 @@ import {
 } from "@/lib/scheduledMatchPreferences";
 import { formatDateTime } from "@/lib/timeDisplay";
 
-const WOLO_LOGO_SRC = "/legacy/wolo-logo-transparent.png";
+const WOLO_LOGO_SRC = "/legacy/wolo-logo-transparent.webp";
 
 export type ScheduledMatchCardActionKind =
   | "accept"

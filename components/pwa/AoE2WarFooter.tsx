@@ -174,7 +174,7 @@ export default function AoE2WarFooter() {
               <div className="mb-5 flex items-center gap-4">
                 <div className="relative h-16 w-16 overflow-hidden rounded-2xl border border-amber-200/25 bg-black/45 shadow-[0_0_44px_rgba(251,191,36,0.18)]">
                   <img
-                    src="/api/media-assets/logo/footer-wolo?fallback=%2Flegacy%2Fwolo-logo-transparent.png"
+                    src="/api/media-assets/logo/footer-wolo?fallback=%2Flegacy%2Fwolo-logo-transparent.webp"
                     alt="WoloChain logo"
                     className="h-full w-full object-contain p-1.5"
                   />

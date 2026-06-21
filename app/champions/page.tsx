@@ -57,15 +57,15 @@ const toneClasses: Record<ChampionTone, string> = {
 };
 
 const PLAYER_BACKDROPS: Record<string, string> = {
-  emaren: "/champions/players/emaren.png",
-  jim: "/champions/players/jim.png",
-  "julio alvarez": "/champions/players/julio.png",
-  julio: "/champions/players/julio.png",
-  sniper: "/champions/players/sniper.png",
+  emaren: "/champions/players/emaren.webp",
+  jim: "/champions/players/jim.webp",
+  "julio alvarez": "/champions/players/julio.webp",
+  julio: "/champions/players/julio.webp",
+  sniper: "/champions/players/sniper.webp",
 };
 
-const SILHOUETTE_BACKDROP = "/champions/players/silhouette.png";
-const FEMALE_SILHOUETTE_BACKDROP = "/champions/players/female_silhouette.png";
+const SILHOUETTE_BACKDROP = "/champions/players/silhouette.webp";
+const FEMALE_SILHOUETTE_BACKDROP = "/champions/players/female_silhouette.webp";
 
 function isWomensTitle(title: ChampionTitleDefinition) {
   const id = title.id.toLowerCase();

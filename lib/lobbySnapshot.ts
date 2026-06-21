@@ -22,7 +22,7 @@ import { reconcileTournamentMatchProofs } from "@/lib/tournamentProofReconciler"
 import { loadWoloDevSnapshot } from "@/lib/woloDevSnapshot";
 import { loadWoloMarketSnapshot } from "@/lib/woloMarket";
 
-const LOBBY_RECENT_MATCH_INITIAL_LIMIT = 24;
+const LOBBY_RECENT_MATCH_INITIAL_LIMIT = 12;
 
 async function loadRecentMatches(): Promise<LobbyMatchRow[]> {
   try {
@@ -77,7 +77,7 @@ async function loadOnlineUsers(prisma: PrismaClient): Promise<LobbyOnlineUser[]>
   }
 }
 
-export async function loadLobbySnapshot(
+async function loadLobbySnapshotFresh(
   prisma: PrismaClient,
   viewerUid?: string | null,
   guestReactionSessionId?: string | null
@@ -103,13 +103,13 @@ export async function loadLobbySnapshot(
       aoe2hdPulse,
       liveSessionSnapshot,
     ] = await Promise.all([
-      getLobbyMessages(prisma, tournament.roomSlug, 60, {
+      getLobbyMessages(prisma, tournament.roomSlug, 24, {
         uid: viewerUid,
         guestSessionId: guestReactionSessionId,
       }),
       loadOnlineUsers(prisma),
       loadRecentMatches(),
-      loadLobbyLeaderboard(prisma, { limit: 600, includePendingClaimed: false }),
+      loadLobbyLeaderboard(prisma, { limit: 24, includePendingClaimed: false }),
       loadLobbyWoloEarnersBoard(prisma, { mode: "weekly" }),
       loadAoe2HdPulseSnapshot(),
       loadLiveSessionSnapshot(prisma),
@@ -129,7 +129,7 @@ export async function loadLobbySnapshot(
     const messages =
       tournamentMessages.length > 0 || tournament.roomSlug === LOBBY_ROOM_SLUG
         ? tournamentMessages
-        : await getLobbyMessages(prisma, LOBBY_ROOM_SLUG, 60, {
+        : await getLobbyMessages(prisma, LOBBY_ROOM_SLUG, 24, {
             uid: viewerUid,
             guestSessionId: guestReactionSessionId,
           });
@@ -162,4 +162,75 @@ export async function loadLobbySnapshot(
       woloMarket,
     };
   }
+}
+type LobbySnapshotCacheEntry = {
+  expiresAt: number;
+  staleUntil: number;
+  refreshing: boolean;
+  value: Awaited<ReturnType<typeof loadLobbySnapshotFresh>>;
+};
+
+const LOBBY_SNAPSHOT_CACHE_TTL_MS = 15000;
+const LOBBY_SNAPSHOT_STALE_TTL_MS = 60000;
+const lobbySnapshotCache = new Map<string, LobbySnapshotCacheEntry>();
+
+export async function loadLobbySnapshot(
+  prisma: Parameters<typeof loadLobbySnapshotFresh>[0],
+  viewerUid: Parameters<typeof loadLobbySnapshotFresh>[1],
+  guestReactionSessionId: Parameters<typeof loadLobbySnapshotFresh>[2]
+) {
+  const now = Date.now();
+  const cacheKey = `${viewerUid || "anon"}:${guestReactionSessionId || "no-guest"}`;
+  const cached = lobbySnapshotCache.get(cacheKey);
+
+  if (cached && cached.expiresAt > now) {
+    return cached.value;
+  }
+
+  if (cached && cached.staleUntil > now) {
+    if (!cached.refreshing) {
+      cached.refreshing = true;
+
+      void loadLobbySnapshotFresh(prisma, viewerUid, guestReactionSessionId)
+        .then((value) => {
+          const refreshedAt = Date.now();
+
+          lobbySnapshotCache.set(cacheKey, {
+            expiresAt: refreshedAt + LOBBY_SNAPSHOT_CACHE_TTL_MS,
+            staleUntil: refreshedAt + LOBBY_SNAPSHOT_STALE_TTL_MS,
+            refreshing: false,
+            value,
+          });
+        })
+        .catch((error) => {
+          console.error("Failed to refresh lobby snapshot cache:", error);
+          const current = lobbySnapshotCache.get(cacheKey);
+
+          if (current) {
+            current.refreshing = false;
+          }
+        });
+    }
+
+    return cached.value;
+  }
+
+  const value = await loadLobbySnapshotFresh(prisma, viewerUid, guestReactionSessionId);
+
+  lobbySnapshotCache.set(cacheKey, {
+    expiresAt: now + LOBBY_SNAPSHOT_CACHE_TTL_MS,
+    staleUntil: now + LOBBY_SNAPSHOT_STALE_TTL_MS,
+    refreshing: false,
+    value,
+  });
+
+  if (lobbySnapshotCache.size > 128) {
+    for (const [key, entry] of lobbySnapshotCache) {
+      if (entry.staleUntil <= now || lobbySnapshotCache.size > 96) {
+        lobbySnapshotCache.delete(key);
+      }
+    }
+  }
+
+  return value;
 }

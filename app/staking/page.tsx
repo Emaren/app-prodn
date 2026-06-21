@@ -64,7 +64,7 @@ export const metadata: Metadata = {
   },
 };
 
-const WOLO_LOGO_SRC = "/legacy/wolo-logo-transparent.png";
+const WOLO_LOGO_SRC = "/legacy/wolo-logo-transparent.webp";
 
 type PeriodKey = "24h" | "7d" | "30d" | "all";
 type BoardKey = "stakers" | "earners" | "rewards";

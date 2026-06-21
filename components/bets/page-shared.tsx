@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 
-const WOLO_LOGO_SRC = "/legacy/wolo-logo-transparent.png";
+const WOLO_LOGO_SRC = "/legacy/wolo-logo-transparent.webp";
 const STAKE_OPTIONS = [10, 25, 50, 100] as const;
 
 export type BetSide = "left" | "right";

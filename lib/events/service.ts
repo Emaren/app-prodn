@@ -188,7 +188,7 @@ export async function loadEventStudioSnapshot(
       avatarUrl: managedMediaPublicUrl(
         "avatar",
         user.inGameName || user.steamPersonaName || user.uid,
-        "/champions/players/silhouette.png"
+        "/champions/players/silhouette.webp"
       ),
     })),
     trophies,

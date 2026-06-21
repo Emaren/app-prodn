@@ -224,7 +224,7 @@ async function buildProfilePresentation(
       prisma,
       "avatar",
       `user-${user.uid}`,
-      "/champions/players/silhouette.png"
+      "/champions/players/silhouette.webp"
     ),
     avatarOptions: AVATAR_PRESETS.map((option) => ({
       ...option,

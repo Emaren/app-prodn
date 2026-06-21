@@ -18,6 +18,7 @@ import {
   isSafeEventMediaUrl,
   type EventTileView,
 } from "@/lib/events/types";
+import { countryRegionLabel } from "@/lib/countryRegionFlags";
 
 const ASSET_FALLBACKS = {
   belt: "/uploads/managed-assets/belt/world-1781561316794-0a26a86e.png",
@@ -117,15 +118,7 @@ function backgroundStyle(
 }
 
 function countryLabel(country: string | null) {
-  const flags: Record<string, string> = {
-    Canada: "🇨🇦",
-    USA: "🇺🇸",
-    Mexico: "🇲🇽",
-    UK: "🇬🇧",
-  };
-  if (!country) return "AoE2WAR";
-  const display = country === "USA" ? "United States" : country;
-  return `${flags[country] || "🌐"} ${display}`;
+  return countryRegionLabel(country);
 }
 
 function eventTimeLabel(value: string | null) {
@@ -380,7 +373,7 @@ function DesktopEventTile({
         src={eventTile.playerTwoAvatarUrl}
         fallback={ASSET_FALLBACKS.playerTwo}
         alt={eventTile.playerTwoName}
-        className="absolute bottom-[1.5rem] right-[5%] z-30 h-[65%] w-[34%] object-contain object-bottom opacity-98 drop-shadow-[0_24px_60px_rgba(0,0,0,0.82)] [mask-image:linear-gradient(to_bottom,black_0%,black_80%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_bottom,black_0%,black_80%,transparent_100%)] sm:h-[69%]"
+        className="absolute bottom-[1.5rem] right-[5%] z-30 h-[65%] w-[34%] object-contain object-bottom opacity-100 brightness-110 contrast-110 drop-shadow-[0_24px_60px_rgba(0,0,0,0.82)] [mask-image:linear-gradient(to_bottom,black_0%,black_84%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_bottom,black_0%,black_84%,transparent_100%)] sm:h-[69%]"
       />
       <PromoImage
         src={eventTile.commissionerAvatarUrl}

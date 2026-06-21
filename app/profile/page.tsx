@@ -1421,7 +1421,7 @@ function ProfileAvatarPanel({
   onPreset: (target: string) => void;
   onUpload: (file: File | null) => void;
 }) {
-  const avatarUrl = profile?.avatarUrl || "/champions/players/silhouette.png";
+  const avatarUrl = profile?.avatarUrl || "/champions/players/silhouette.webp";
   const options = profile?.avatarOptions ?? [];
 
   return (

@@ -19,7 +19,7 @@ type WoloMarketTileProps = {
   surface?: "standard" | "extreme";
 };
 
-const WOLO_LOGO_SRC = "/api/media-assets/logo/footer-wolo?fallback=%2Flegacy%2Fwolo-logo-transparent.png";
+const WOLO_LOGO_SRC = "/api/media-assets/logo/footer-wolo?fallback=%2Flegacy%2Fwolo-logo-transparent.webp";
 
 function formatUsdPrice(value: number | null) {
   if (value == null || !Number.isFinite(value)) return "Pool syncing";

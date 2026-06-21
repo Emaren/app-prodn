@@ -13,7 +13,7 @@ import type { LobbySnapshot } from "@/lib/lobby";
 import type { LobbyWoloEarnersEntry, LobbyWoloEarnersMode } from "@/lib/lobby";
 import { avatarUrlForName } from "@/lib/avatarAssets";
 
-const WOLO_LOGO_SRC = "/api/media-assets/logo/footer-wolo?fallback=%2Flegacy%2Fwolo-logo-transparent.png";
+const WOLO_LOGO_SRC = "/api/media-assets/logo/footer-wolo?fallback=%2Flegacy%2Fwolo-logo-transparent.webp";
 
 type TopWoloEarnersTileProps = {
   wolo: LobbySnapshot["wolo"];
@@ -166,7 +166,7 @@ export function TopWoloEarnersTile({
         isExtreme
           ? {
               backgroundImage:
-                "linear-gradient(180deg, rgba(2,6,23,0.10), rgba(2,6,23,0.92)), url('/lobby/war-chest-bg.png')",
+                "linear-gradient(180deg, rgba(2,6,23,0.10), rgba(2,6,23,0.92)), url('/lobby/war-chest-bg.webp')",
               backgroundSize: "100% 100%, 100% 12rem",
               backgroundPosition: "center, top center",
               backgroundRepeat: "no-repeat",

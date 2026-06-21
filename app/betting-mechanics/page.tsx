@@ -91,7 +91,7 @@ export default function BettingMechanicsPage() {
 
           <div className="flex items-center gap-4 rounded-[1.4rem] border border-amber-300/18 bg-slate-950/40 px-5 py-4">
             <Image
-              src="/legacy/wolo-logo-transparent.png"
+              src="/legacy/wolo-logo-transparent.webp"
               alt="WOLO"
               width={56}
               height={56}

@@ -1,10 +1,10 @@
 const STATIC_AVATAR_FALLBACKS: Record<string, string> = {
-  emaren: "/champions/players/emaren.png",
-  jim: "/champions/players/jim.png",
-  julio: "/champions/players/julio.png",
-  "julio-alvarez": "/champions/players/julio.png",
-  sniper: "/champions/players/sniper.png",
-  silhouette: "/champions/players/silhouette.png",
+  emaren: "/champions/players/emaren.webp",
+  jim: "/champions/players/jim.webp",
+  julio: "/champions/players/julio.webp",
+  "julio-alvarez": "/champions/players/julio.webp",
+  sniper: "/champions/players/sniper.webp",
+  silhouette: "/champions/players/silhouette.webp",
 };
 
 const NAME_TARGETS: Record<string, string> = {

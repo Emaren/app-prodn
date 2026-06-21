@@ -414,7 +414,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                 aria-label="AOE2WAR home"
               >
                 <Image
-                  src="/brand/aoe2war-logo.png"
+                  src="/brand/aoe2war-logo.webp"
                   alt="AOE2WAR"
                   width={972}
                   height={155}
@@ -495,7 +495,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                 aria-label="AOE2WAR home"
               >
                 <Image
-                  src="/brand/aoe2war-logo.png"
+                  src="/brand/aoe2war-logo.webp"
                   alt="AOE2WAR"
                   width={972}
                   height={155}

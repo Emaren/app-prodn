@@ -20,13 +20,14 @@ const IMAGE_EXTENSIONS: Record<string, string> = {
 };
 
 const STATIC_FALLBACKS: Record<string, string> = {
-  "logo:footer-wolo": "/legacy/wolo-logo-transparent.png",
-  "avatar:emaren": "/champions/players/emaren.png",
-  "avatar:jim": "/champions/players/jim.png",
-  "avatar:julio": "/champions/players/julio.png",
-  "avatar:julio-alvarez": "/champions/players/julio.png",
-  "avatar:sniper": "/champions/players/sniper.png",
-  "avatar:silhouette": "/champions/players/silhouette.png",
+  "logo:footer-wolo": "/legacy/wolo-logo-transparent.webp",
+  "avatar:emaren": "/champions/players/emaren.webp",
+  "avatar:jim": "/champions/players/jim.webp",
+  "avatar:julio": "/champions/players/julio.webp",
+  "avatar:julio-alvarez": "/champions/players/julio.webp",
+  "avatar:sniper": "/champions/players/sniper.webp",
+  "avatar:silhouette": "/champions/players/silhouette.webp",
+  "avatar:female-silhouette": "/champions/players/female_silhouette.webp",
 };
 
 for (const title of allChampionTitles) {
@@ -124,8 +125,33 @@ function extensionForUpload(mimeType: string | null, originalName: string | null
   return ext && ["png", "jpg", "jpeg", "webp", "gif"].includes(ext) ? (ext === "jpeg" ? "jpg" : ext) : null;
 }
 
+function cleanBasePath(value: string | null | undefined) {
+  const cleaned = String(value || "").trim();
+
+  if (!cleaned || !cleaned.startsWith("/") || cleaned.startsWith("//")) {
+    return "/uploads/managed-assets";
+  }
+
+  return cleaned.replace(/\/+$/, "") || "/uploads/managed-assets";
+}
+
+function managedMediaUploadRoot() {
+  const configured = String(process.env.MANAGED_MEDIA_UPLOAD_DIR || "").trim();
+
+  if (configured) {
+    return path.resolve(configured);
+  }
+
+  return path.join(process.cwd(), "public", "uploads", "managed-assets");
+}
+
+function managedMediaUploadDir(kind: ManagedMediaKind) {
+  return path.join(managedMediaUploadRoot(), kind);
+}
+
 function publicUploadUrl(kind: ManagedMediaKind, filename: string) {
-  return `/uploads/managed-assets/${kind}/${filename}`;
+  const basePath = cleanBasePath(process.env.MANAGED_MEDIA_PUBLIC_BASE_PATH);
+  return `${basePath}/${kind}/${filename}`;
 }
 
 export async function saveManagedMediaUpload({
@@ -166,7 +192,7 @@ export async function saveManagedMediaUpload({
 
   const targetPart = normalizedTarget || slugifyManagedMediaTarget(normalizedLabel) || "asset";
   const filename = `${targetPart}-${Date.now()}-${randomUUID().slice(0, 8)}.${extension}`;
-  const uploadDir = path.join(process.cwd(), "public", "uploads", "managed-assets", normalizedKind);
+  const uploadDir = managedMediaUploadDir(normalizedKind);
   const buffer = Buffer.from(await file.arrayBuffer());
 
   await mkdir(uploadDir, { recursive: true });

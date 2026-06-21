@@ -93,7 +93,7 @@ export function TournamentPanel({
         isExtreme
           ? {
               backgroundImage:
-                "linear-gradient(180deg, rgba(2,6,23,0.90), rgba(2,6,23,0.24)), url('/lobby/tournament-bg.png')",
+                "linear-gradient(180deg, rgba(2,6,23,0.90), rgba(2,6,23,0.24)), url('/lobby/tournament-bg.webp')",
               backgroundSize: "100% 100%, 100% 46%",
               backgroundPosition: "center, bottom center",
               backgroundRepeat: "no-repeat",

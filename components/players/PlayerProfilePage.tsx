@@ -22,7 +22,7 @@ type PlayerProfilePageProps = {
 };
 
 const RESOURCE_LABELS: Array<keyof PlayerResourceStats["totals"]> = ["wood", "food", "gold", "stone"];
-const WOLO_LOGO_SRC = "/legacy/wolo-logo-transparent.png";
+const WOLO_LOGO_SRC = "/legacy/wolo-logo-transparent.webp";
 const RESOURCE_META: Record<keyof PlayerResourceStats["totals"], { label: string; icon: string; accent: string }> = {
   wood: { label: "Wood", icon: "🪵", accent: "from-emerald-400 to-lime-200" },
   food: { label: "Food", icon: "🥩", accent: "from-red-400 to-amber-200" },
