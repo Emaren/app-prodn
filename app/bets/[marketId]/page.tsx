@@ -82,7 +82,7 @@ type ClaimRow = {
 
 type TimelineRow = {
   key: string;
-  kind: "intent" | "wager" | "bonus" | "claim";
+  kind: "intent" | "wager" | "bonus" | "claim" | "result";
   actor: string;
   title: string;
   detail: string;
@@ -154,7 +154,7 @@ function isCountableWager(status: string) {
 
 function statusTone(status: string) {
   const normalized = status.toLowerCase();
-  if (normalized === "won" || normalized === "claimed" || normalized === "executed") {
+  if (normalized === "won" || normalized === "claimed" || normalized === "executed" || normalized === "settled") {
     return "border-emerald-300/30 bg-emerald-300/10 text-emerald-100";
   }
   if (normalized === "lost") return "border-rose-300/30 bg-rose-300/10 text-rose-100";
@@ -363,6 +363,10 @@ export default async function BetMarketDetailPage({ params, searchParams }: Page
   const imbalanceSide =
     leftBookWolo > rightBookWolo ? market.leftLabel : rightBookWolo > leftBookWolo ? market.rightLabel : null;
 
+  const winnerName = market.winnerSide === "right" ? market.rightLabel : market.leftLabel;
+  const leftWon = market.winnerSide === "left";
+  const rightWon = market.winnerSide === "right";
+
   const timeline: TimelineRow[] = [
     ...intents.map((intent) => ({
       key: `intent-${intent.id}`,
@@ -400,6 +404,23 @@ export default async function BetMarketDetailPage({ params, searchParams }: Page
               ? ("sky" as const)
               : ("slate" as const),
     })),
+    ...(market.settledAt && market.winnerSide
+      ? [
+          {
+            key: "result-winner",
+            kind: "result" as const,
+            actor: winnerName,
+            title: `${winnerName} won`,
+            detail: `${market.title} settled`,
+            amountWolo: visibleBookWolo,
+            side: market.winnerSide,
+            status: "settled",
+            txHash: null,
+            timestamp: market.settledAt,
+            tone: "emerald" as const,
+          },
+        ]
+      : []),
     ...bonuses.map((bonus) => ({
       key: `bonus-${bonus.id}`,
       kind: "bonus" as const,
@@ -433,9 +454,6 @@ export default async function BetMarketDetailPage({ params, searchParams }: Page
   );
 
   const replayHref = gameHref(market);
-  const winnerName = market.winnerSide === "right" ? market.rightLabel : market.leftLabel;
-  const leftWon = market.winnerSide === "left";
-  const rightWon = market.winnerSide === "right";
 
   if (view === "basic") {
     return (
@@ -561,9 +579,11 @@ export default async function BetMarketDetailPage({ params, searchParams }: Page
 
                 <Link
                   href={viewHref(market.id, view, order === "newest" ? "oldest" : "newest")}
-                  className="rounded-full border border-white/10 bg-white/[0.05] px-4 py-2 text-xs font-black text-slate-200 transition hover:border-amber-200/40 hover:text-white"
+                  aria-label={order === "newest" ? "Switch to oldest first" : "Switch to newest first"}
+                  title={order === "newest" ? "Switch to oldest first" : "Switch to newest first"}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-sm font-black text-slate-200 transition hover:border-amber-200/40 hover:text-white"
                 >
-                  ⇅ {order === "newest" ? "Newest top" : "Oldest top"}
+                  ⇅
                 </Link>
               </div>
 
@@ -666,9 +686,11 @@ function BookTopBar({
 
         <Link
           href={viewHref(market.id, view, order === "newest" ? "oldest" : "newest")}
-          className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-black text-slate-200 hover:border-sky-200/40"
+          aria-label={order === "newest" ? "Switch to oldest first" : "Switch to newest first"}
+          title={order === "newest" ? "Switch to oldest first" : "Switch to newest first"}
+          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-sm font-black text-slate-200 hover:border-sky-200/40"
         >
-          ⇅ {order === "newest" ? "Newest top" : "Oldest top"}
+          ⇅
         </Link>
       </div>
 
@@ -736,7 +758,7 @@ function AdvancedSidePanel({ label, name, amount, won }: { label: string; name: 
           ) : null}
         </div>
         <div className="mt-3 text-2xl font-black text-white">{name}</div>
-        <div className="mt-5 text-4xl font-black tracking-[-0.05em] text-white">{formatWolo(amount)}</div>
+        <div className={`text-4xl font-black tracking-[-0.05em] text-white transition ${won ? "mt-5" : "mt-8 translate-y-2 opacity-90"}`}>{formatWolo(amount)}</div>
         <div className="mt-1 text-xs uppercase tracking-[0.28em] text-slate-500">WOLO exposure</div>
       </div>
     </div>
@@ -744,6 +766,16 @@ function AdvancedSidePanel({ label, name, amount, won }: { label: string; name: 
 }
 
 function CompactTimelineRow({ row }: { row: TimelineRow }) {
+  if (row.kind === "result") {
+    return (
+      <div className="rounded-2xl border border-emerald-300/25 bg-emerald-300/[0.07] p-4">
+        <div className="text-[10px] uppercase tracking-[0.35em] text-emerald-100/60">Result</div>
+        <div className="mt-1 text-lg font-black text-white">{row.title}</div>
+        <div className="mt-1 text-xs text-emerald-100/60">{formatDate(row.timestamp)}</div>
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-2xl border border-white/10 bg-slate-950/45 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -760,6 +792,35 @@ function CompactTimelineRow({ row }: { row: TimelineRow }) {
 }
 
 function AdvancedTimelineRow({ row, index, market }: { row: TimelineRow; index: number; market: MarketRow }) {
+  if (row.kind === "result") {
+    return (
+      <div className="grid grid-cols-[34px_1fr] gap-3">
+        <div className="flex flex-col items-center">
+          <div className={`flex h-9 w-9 items-center justify-center rounded-full text-[13px] font-black shadow-xl ${railDot(row)}`}>
+            ⚔
+          </div>
+          <div className="mt-2 h-full min-h-8 w-px bg-white/10" />
+        </div>
+
+        <div className="relative overflow-hidden rounded-[1.35rem] border border-emerald-300/25 bg-emerald-300/[0.07] px-5 py-4 shadow-[0_0_30px_rgba(16,185,129,0.08)]">
+          <div className="absolute right-[-60px] top-[-80px] h-40 w-40 rounded-full bg-emerald-200/10 blur-2xl" />
+          <div className="relative flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div className="text-[10px] uppercase tracking-[0.35em] text-emerald-100/60">
+                Result
+              </div>
+              <div className="mt-1 text-2xl font-black text-white">{row.title}</div>
+              <div className="mt-1 text-xs text-emerald-100/60">{formatDate(row.timestamp)}</div>
+            </div>
+            <span className="rounded-full border border-emerald-100/25 bg-emerald-100/10 px-3 py-1 text-xs font-black text-emerald-50">
+              won
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="grid grid-cols-[34px_1fr] gap-3">
       <div className="flex flex-col items-center">
