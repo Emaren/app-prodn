@@ -223,26 +223,33 @@ function PremiumMatchTitle({ title }: { title: string }) {
 
   if (!names.right) {
     return (
-      <h1 className="mt-5 max-w-4xl text-[clamp(2.85rem,7vw,5.8rem)] font-medium leading-[0.92] tracking-[-0.085em] text-slate-50/95">
+      <h1 className="mt-6 max-w-5xl text-[clamp(3.2rem,8vw,7rem)] font-black leading-[0.82] tracking-[-0.095em] text-slate-50/95 drop-shadow-[0_16px_28px_rgba(0,0,0,0.45)]">
         {title}
       </h1>
     );
   }
 
   return (
-    <div className="mt-5 max-w-5xl">
-      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-2">
-        <span className="text-[clamp(2.85rem,7vw,5.8rem)] font-medium leading-[0.92] tracking-[-0.085em] text-slate-50/95">
-          {names.left}
-        </span>
+    <div className="relative mt-7 max-w-5xl pb-4">
+      <div className="pointer-events-none absolute left-[-2%] top-[34%] h-px w-[96%] rotate-[-3deg] bg-gradient-to-r from-transparent via-amber-200/25 to-transparent" />
+      <div className="pointer-events-none absolute left-[12%] top-[63%] h-px w-[86%] rotate-[2deg] bg-gradient-to-r from-transparent via-sky-200/18 to-transparent" />
 
-        <span className="relative -top-2 rounded-full border border-amber-200/15 bg-amber-200/[0.055] px-3 py-1 text-[10px] font-black uppercase tracking-[0.32em] text-amber-100/60 shadow-[0_0_20px_rgba(245,158,11,0.10)]">
-          vs
-        </span>
+      <div className="relative">
+        <div className="flex items-end gap-4">
+          <span className="text-[clamp(3.4rem,8.4vw,7.4rem)] font-black leading-[0.78] tracking-[-0.105em] text-slate-50/95 drop-shadow-[0_18px_30px_rgba(0,0,0,0.5)]">
+            {names.left}
+          </span>
 
-        <span className="text-[clamp(2.85rem,7vw,5.8rem)] font-medium leading-[0.92] tracking-[-0.085em] text-slate-50/90">
-          {names.right}
-        </span>
+          <span className="mb-3 rounded-full border border-amber-200/20 bg-black/30 px-3 py-1 text-[10px] font-black uppercase tracking-[0.34em] text-amber-100/70 shadow-[0_0_24px_rgba(245,158,11,0.12)]">
+            vs
+          </span>
+        </div>
+
+        <div className="mt-3 flex justify-end">
+          <span className="text-right text-[clamp(3.4rem,8.4vw,7.4rem)] font-black leading-[0.78] tracking-[-0.105em] text-slate-300/95 drop-shadow-[0_18px_30px_rgba(0,0,0,0.5)]">
+            {names.right}
+          </span>
+        </div>
       </div>
     </div>
   );
