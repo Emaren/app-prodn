@@ -19,6 +19,7 @@ import {
   type EventTileView,
 } from "@/lib/events/types";
 import { countryRegionLabel } from "@/lib/countryRegionFlags";
+import { thumbnailUrlForAvatarAsset } from "@/lib/avatarAssets";
 
 const ASSET_FALLBACKS = {
   belt: "/uploads/managed-assets/belt/world-1781561316794-0a26a86e.png",
@@ -254,13 +255,13 @@ function MobileEventTile({
 
         <div className="relative mt-5 h-[19rem] overflow-hidden rounded-[1.6rem] border border-amber-200/14 bg-black/18">
           <PromoImage
-            src={eventTile.playerOneAvatarUrl}
+            src={thumbnailUrlForAvatarAsset(eventTile.playerOneAvatarUrl)}
             fallback={ASSET_FALLBACKS.playerOne}
             alt={eventTile.playerOneName}
             className="absolute -bottom-4 -left-10 h-[94%] w-[70%] object-contain object-bottom drop-shadow-[0_24px_50px_rgba(0,0,0,0.85)] [mask-image:linear-gradient(to_bottom,black_0%,black_82%,transparent_100%)]"
           />
           <PromoImage
-            src={eventTile.playerTwoAvatarUrl}
+            src={thumbnailUrlForAvatarAsset(eventTile.playerTwoAvatarUrl)}
             fallback={ASSET_FALLBACKS.playerTwo}
             alt={eventTile.playerTwoName}
             className="absolute -bottom-4 -right-10 h-[94%] w-[70%] object-contain object-bottom drop-shadow-[0_24px_50px_rgba(0,0,0,0.85)] [mask-image:linear-gradient(to_bottom,black_0%,black_82%,transparent_100%)]"
@@ -364,19 +365,19 @@ function DesktopEventTile({
       </div>
 
       <PromoImage
-        src={eventTile.playerOneAvatarUrl}
+        src={thumbnailUrlForAvatarAsset(eventTile.playerOneAvatarUrl)}
         fallback={ASSET_FALLBACKS.playerOne}
         alt={eventTile.playerOneName}
         className="absolute bottom-[1.5rem] left-[5%] z-30 h-[64%] w-[33%] object-contain object-bottom opacity-98 drop-shadow-[0_24px_60px_rgba(0,0,0,0.82)] [mask-image:linear-gradient(to_bottom,black_0%,black_80%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_bottom,black_0%,black_80%,transparent_100%)] sm:h-[68%]"
       />
       <PromoImage
-        src={eventTile.playerTwoAvatarUrl}
+        src={thumbnailUrlForAvatarAsset(eventTile.playerTwoAvatarUrl)}
         fallback={ASSET_FALLBACKS.playerTwo}
         alt={eventTile.playerTwoName}
         className="absolute bottom-[1.5rem] right-[5%] z-30 h-[65%] w-[34%] object-contain object-bottom opacity-100 brightness-110 contrast-110 drop-shadow-[0_24px_60px_rgba(0,0,0,0.82)] [mask-image:linear-gradient(to_bottom,black_0%,black_84%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_bottom,black_0%,black_84%,transparent_100%)] sm:h-[69%]"
       />
       <PromoImage
-        src={eventTile.commissionerAvatarUrl}
+        src={thumbnailUrlForAvatarAsset(eventTile.commissionerAvatarUrl)}
         fallback={ASSET_FALLBACKS.commissioner}
         alt={eventTile.commissionerName}
         className="absolute bottom-[15.35rem] left-[39%] z-[24] h-[38%] w-[17%] -translate-x-1/2 -rotate-2 object-contain object-bottom opacity-76 drop-shadow-[0_24px_70px_rgba(0,0,0,0.95)] [mask-image:linear-gradient(to_bottom,black_0%,black_50%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_bottom,black_0%,black_50%,transparent_100%)]"

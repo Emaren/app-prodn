@@ -16,7 +16,7 @@ import type { BetBoardMarket, BetBoardSnapshot, BetSide, BetWarTapeRow } from "@
 import type { LobbyMatchRow, LobbyMessage, LobbySnapshot } from "@/lib/lobby";
 import type { LiveGameSession } from "@/lib/liveSessionSnapshot";
 import type { WatchStreamPayload } from "@/lib/watchStreams";
-import { avatarUrlForName, avatarUrlForUser } from "@/lib/avatarAssets";
+import { avatarThumbUrlForName, avatarThumbUrlForUser } from "@/lib/avatarAssets";
 
 type WatchAndChatHeroProps = {
   tournament: LobbySnapshot["tournament"];
@@ -799,7 +799,7 @@ function ExtremeBetLines({
       <div className="mt-3 flex items-center gap-3 rounded-2xl border border-amber-200/10 bg-black/22 px-3 py-2.5 text-sm text-slate-300">
         <span className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full border border-amber-200/18 bg-black/28">
           <Image
-            src={avatarUrlForName(fallbackActor)}
+            src={avatarThumbUrlForName(fallbackActor)}
             alt=""
             fill
             unoptimized
@@ -823,7 +823,7 @@ function ExtremeBetLines({
         >
           <span className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full border border-amber-200/18 bg-black/28">
             <Image
-              src={avatarUrlForName(row.actor)}
+              src={avatarThumbUrlForName(row.actor)}
               alt=""
               fill
               unoptimized
@@ -883,7 +883,7 @@ function CompactCommentCard({
   tone: ReturnType<typeof getLobbyPresentationTone>;
 }) {
   const name = displayName(message.user.inGameName, message.user.steamPersonaName) || "The AI Scribe";
-  const avatarSrc = avatarUrlForUser(message.user.uid, name);
+  const avatarSrc = avatarThumbUrlForUser(message.user.uid, name);
   const visibleReactions = message.reactions.filter((reaction) => reaction.count > 0).slice(0, 3);
 
   return (

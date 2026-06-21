@@ -27,7 +27,7 @@ import {
   type LobbyMessage,
   type LobbySnapshot,
 } from "@/lib/lobby";
-import { avatarUrlForName } from "@/lib/avatarAssets";
+import { avatarCardUrlForName } from "@/lib/avatarAssets";
 
 const EMPTY_MESSAGES: LobbyMessage[] = [];
 
@@ -82,7 +82,7 @@ function AdvancedFeaturedWarriors() {
               className="group relative min-h-[13.5rem] overflow-visible rounded-none border border-amber-200/12 bg-black/28 transition hover:border-amber-200/28"
             >
               <Image
-                src={avatarUrlForName("lookupName" in warrior ? warrior.lookupName : warrior.name)}
+                src={avatarCardUrlForName("lookupName" in warrior ? warrior.lookupName : warrior.name)}
                 alt=""
                 fill
                 unoptimized
@@ -151,7 +151,7 @@ function ExtremeFeaturedWarriors() {
 
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 xl:gap-4">
           {EXTREME_WARRIORS.map((warrior) => {
-            const avatarSrc = avatarUrlForName("lookupName" in warrior ? warrior.lookupName : warrior.name);
+            const avatarSrc = avatarCardUrlForName("lookupName" in warrior ? warrior.lookupName : warrior.name);
             return (
               <Link
                 key={warrior.name}

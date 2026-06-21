@@ -5,10 +5,10 @@ const urls = [
   "/api/lobby",
   "/api/live-games",
   "/api/media-assets/logo/footer-wolo?fallback=%2Flegacy%2Fwolo-logo-transparent.webp",
-  "/api/media-assets/avatar/user-u-510b020f19b5450793c95e05de791cc7?fallback=%2Fchampions%2Fplayers%2Fsilhouette.webp",
+  "/api/media-assets/avatar/user-u-510b020f19b5450793c95e05de791cc7?fallback=%2Fchampions%2Fplayers%2Fsilhouette.webp&size=thumb",
   "/brand/aoe2war-logo.webp",
   "/lobby/war-chest-bg.webp",
-  "/champions/players/silhouette.webp",
+  "/champions/players/silhouette.thumb.webp",
 ];
 
 function sleep(ms) {

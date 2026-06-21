@@ -77,6 +77,48 @@ function webpSidecarName(fileName: string) {
   return `${fileName.slice(0, -ext.length)}.webp`;
 }
 
+function thumbnailSidecarName(fileName: string) {
+  const ext = path.extname(fileName);
+
+  if (!ext || ext.toLowerCase() === ".svg") {
+    return "";
+  }
+
+  return `${fileName.slice(0, -ext.length)}.thumb.webp`;
+}
+
+function cardSidecarName(fileName: string) {
+  const ext = path.extname(fileName);
+
+  if (!ext || ext.toLowerCase() === ".svg") {
+    return "";
+  }
+
+  return `${fileName.slice(0, -ext.length)}.card.webp`;
+}
+
+function requestedAvatarVariant(request: NextRequest) {
+  const size = request.nextUrl.searchParams.get("size") || request.nextUrl.searchParams.get("variant");
+
+  if (size === "thumb" || size === "thumbnail" || size === "avatar") {
+    return "thumb";
+  }
+
+  if (size === "card" || size === "portrait") {
+    return "card";
+  }
+
+  return "";
+}
+
+function wantsAvatarThumb(request: NextRequest) {
+  return requestedAvatarVariant(request) === "thumb";
+}
+
+function wantsAvatarCard(request: NextRequest) {
+  return requestedAvatarVariant(request) === "card";
+}
+
 function redirectToInternalAsset(url: string) {
   return new NextResponse(null, {
     status: 307,
@@ -143,6 +185,8 @@ async function serveManagedUploadDirect(request: NextRequest, url: string) {
 
   const accept = request.headers.get("accept") || "";
   const wantsWebp = accept.includes("image/webp");
+  const thumbSidecar = wantsAvatarThumb(request) ? thumbnailSidecarName(parts.file) : "";
+  const cardSidecar = wantsAvatarCard(request) ? cardSidecarName(parts.file) : "";
   const sidecar = wantsWebp ? webpSidecarName(parts.file) : "";
   const root = uploadRoot();
 
@@ -151,7 +195,25 @@ async function serveManagedUploadDirect(request: NextRequest, url: string) {
     path.join("uploads", "managed-assets", parts.kind, parts.file),
   ];
 
-  const candidates: Array<{ filePath: string; variant: "webp-sidecar" | "original" }> = [];
+  const candidates: Array<{ filePath: string; variant: "card-sidecar" | "thumb-sidecar" | "webp-sidecar" | "original" }> = [];
+
+  if (cardSidecar) {
+    for (const relative of relativeOriginals) {
+      candidates.push({
+        filePath: path.join(root, path.dirname(relative), cardSidecar),
+        variant: "card-sidecar",
+      });
+    }
+  }
+
+  if (thumbSidecar) {
+    for (const relative of relativeOriginals) {
+      candidates.push({
+        filePath: path.join(root, path.dirname(relative), thumbSidecar),
+        variant: "thumb-sidecar",
+      });
+    }
+  }
 
   if (sidecar) {
     for (const relative of relativeOriginals) {
@@ -209,11 +271,25 @@ async function servePublicAssetDirect(request: NextRequest, url: string) {
   }
 
   const ext = path.extname(original);
+  const thumbSidecar = wantsAvatarThumb(request) && ext && ext.toLowerCase() !== ".svg"
+    ? `${original.slice(0, -ext.length)}.thumb.webp`
+    : "";
+  const cardSidecar = wantsAvatarCard(request) && ext && ext.toLowerCase() !== ".svg"
+    ? `${original.slice(0, -ext.length)}.card.webp`
+    : "";
   const sidecar = wantsWebp && ext && ext.toLowerCase() !== ".webp"
     ? `${original.slice(0, -ext.length)}.webp`
     : "";
 
-  const candidates: Array<{ filePath: string; variant: "public-webp-sidecar" | "public-original" }> = [];
+  const candidates: Array<{ filePath: string; variant: "public-card-sidecar" | "public-thumb-sidecar" | "public-webp-sidecar" | "public-original" }> = [];
+
+  if (cardSidecar) {
+    candidates.push({ filePath: cardSidecar, variant: "public-card-sidecar" });
+  }
+
+  if (thumbSidecar) {
+    candidates.push({ filePath: thumbSidecar, variant: "public-thumb-sidecar" });
+  }
 
   if (sidecar) {
     candidates.push({ filePath: sidecar, variant: "public-webp-sidecar" });

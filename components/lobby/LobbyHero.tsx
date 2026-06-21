@@ -16,7 +16,7 @@ import {
 import { StatCard } from "@/components/lobby/StatCard";
 import type { Aoe2HdPulseItem, Aoe2HdPulseSnapshot } from "@/lib/aoe2HdPulse";
 import type { LobbyLeaderboardEntry, LobbyMatchRow, LobbySnapshot } from "@/lib/lobby";
-import { avatarUrlForName } from "@/lib/avatarAssets";
+import { avatarThumbUrlForName } from "@/lib/avatarAssets";
 import { TILE_VIEW_MODES, type TileViewMode } from "@/lib/tileViewPreferences";
 
 type WoloMoved24hSnapshot = {
@@ -330,7 +330,7 @@ export function LobbyHero({
           <div className="grid gap-5 xl:grid-cols-[minmax(19rem,0.66fr)_minmax(0,1fr)] xl:items-stretch 2xl:grid-cols-[minmax(22rem,0.72fr)_minmax(0,1fr)]">
             <div className="relative min-h-[21rem] overflow-hidden rounded-[1.55rem] border border-amber-200/10 bg-[radial-gradient(circle_at_48%_12%,rgba(251,191,36,0.08),transparent_28%),linear-gradient(135deg,rgba(0,0,0,0.38),rgba(2,6,23,0.42))] sm:min-h-[25rem] xl:min-h-[42rem]">
               <Image
-                src={avatarUrlForName(featuredName)}
+                src={avatarThumbUrlForName(featuredName)}
                 alt=""
                 fill
                 unoptimized
@@ -414,7 +414,7 @@ export function LobbyHero({
                           </div>
                           <div className="relative h-14 w-14 overflow-hidden rounded-full border border-amber-200/24 bg-black/30">
                             <Image
-                              src={avatarUrlForName(entry.name)}
+                              src={avatarThumbUrlForName(entry.name)}
                               alt=""
                               fill
                               unoptimized

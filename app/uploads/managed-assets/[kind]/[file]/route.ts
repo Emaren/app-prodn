@@ -61,6 +61,48 @@ function webpSidecarName(fileName: string) {
   return `${fileName.slice(0, -ext.length)}.webp`;
 }
 
+function thumbnailSidecarName(fileName: string) {
+  const ext = path.extname(fileName);
+
+  if (!ext || ext.toLowerCase() === ".svg") {
+    return "";
+  }
+
+  return `${fileName.slice(0, -ext.length)}.thumb.webp`;
+}
+
+function cardSidecarName(fileName: string) {
+  const ext = path.extname(fileName);
+
+  if (!ext || ext.toLowerCase() === ".svg") {
+    return "";
+  }
+
+  return `${fileName.slice(0, -ext.length)}.card.webp`;
+}
+
+function requestedAvatarVariant(request: NextRequest) {
+  const size = request.nextUrl.searchParams.get("size") || request.nextUrl.searchParams.get("variant");
+
+  if (size === "thumb" || size === "thumbnail" || size === "avatar") {
+    return "thumb";
+  }
+
+  if (size === "card" || size === "portrait") {
+    return "card";
+  }
+
+  return "";
+}
+
+function wantsAvatarThumb(request: NextRequest) {
+  return requestedAvatarVariant(request) === "thumb";
+}
+
+function wantsAvatarCard(request: NextRequest) {
+  return requestedAvatarVariant(request) === "card";
+}
+
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ kind: string; file: string }> }
@@ -77,6 +119,8 @@ export async function GET(
   const root = uploadRoot();
   const accept = request.headers.get("accept") || "";
   const wantsWebp = accept.includes("image/webp");
+  const thumbSidecar = wantsAvatarThumb(request) ? thumbnailSidecarName(file) : "";
+  const cardSidecar = wantsAvatarCard(request) ? cardSidecarName(file) : "";
   const sidecar = wantsWebp ? webpSidecarName(file) : "";
 
   const relativeOriginals = [
@@ -84,13 +128,31 @@ export async function GET(
     path.join("uploads", "managed-assets", kind, file),
   ];
 
-  const candidates: Array<{ filePath: string; negotiated: boolean }> = [];
+  const candidates: Array<{ filePath: string; variant: "card-sidecar" | "thumb-sidecar" | "webp-sidecar" | "original" }> = [];
+
+  if (cardSidecar) {
+    for (const relative of relativeOriginals) {
+      candidates.push({
+        filePath: path.join(root, path.dirname(relative), cardSidecar),
+        variant: "card-sidecar",
+      });
+    }
+  }
+
+  if (thumbSidecar) {
+    for (const relative of relativeOriginals) {
+      candidates.push({
+        filePath: path.join(root, path.dirname(relative), thumbSidecar),
+        variant: "thumb-sidecar",
+      });
+    }
+  }
 
   if (sidecar) {
     for (const relative of relativeOriginals) {
       candidates.push({
         filePath: path.join(root, path.dirname(relative), sidecar),
-        negotiated: true,
+        variant: "webp-sidecar",
       });
     }
   }
@@ -98,7 +160,7 @@ export async function GET(
   for (const relative of relativeOriginals) {
     candidates.push({
       filePath: path.join(root, relative),
-      negotiated: false,
+      variant: "original",
     });
   }
 
@@ -116,7 +178,7 @@ export async function GET(
         "Content-Type": contentTypeFor(candidate.filePath),
         "Last-Modified": hit.stat.mtime.toUTCString(),
         "Vary": "Accept",
-        "X-AoE2WAR-Image-Variant": candidate.negotiated ? "webp-sidecar" : "original",
+        "X-AoE2WAR-Image-Variant": candidate.variant,
       },
     });
   }

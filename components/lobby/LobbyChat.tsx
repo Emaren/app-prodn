@@ -23,7 +23,7 @@ import type { AiVisibilityOption } from "@/lib/aiConciergeConfig";
 import AutoGrowTextarea from "@/components/ui/AutoGrowTextarea";
 import { LOBBY_MESSAGE_MAX_CHARS } from "@/lib/lobby";
 import { LOBBY_MESSAGE_REACTIONS } from "@/lib/lobbyReactionConfig";
-import { avatarUrlForUser } from "@/lib/avatarAssets";
+import { avatarThumbUrlForUser } from "@/lib/avatarAssets";
 
 type LobbyChatProps = {
   style?: CSSProperties;
@@ -387,7 +387,7 @@ function LobbyMessageCard({
   const aiLabel =
     displayName(item.message.user.inGameName, item.message.user.steamPersonaName) || "The AI Scribe";
   const authorName = displayName(item.message.user.inGameName, item.message.user.steamPersonaName) || aiLabel;
-  const avatarSrc = avatarUrlForUser(item.message.user.uid, authorName);
+  const avatarSrc = avatarThumbUrlForUser(item.message.user.uid, authorName);
 
   useEffect(() => {
     if (!pickerPinnedOpen || typeof document === "undefined") {
