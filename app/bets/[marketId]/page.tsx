@@ -222,15 +222,19 @@ function matchTitleSizeClass(left: string, right: string) {
   const total = left.length + right.length;
   const longest = Math.max(left.length, right.length);
 
-  if (total > 42 || longest > 23) {
-    return "text-[clamp(1.75rem,3.25vw,3.65rem)]";
+  if (total > 48 || longest > 26) {
+    return "text-[clamp(1.35rem,2.35vw,2.85rem)]";
+  }
+
+  if (total > 40 || longest > 22) {
+    return "text-[clamp(1.6rem,2.85vw,3.35rem)]";
   }
 
   if (total > 32 || longest > 18) {
-    return "text-[clamp(2.05rem,4vw,4.3rem)]";
+    return "text-[clamp(1.95rem,3.55vw,4.05rem)]";
   }
 
-  return "text-[clamp(2.55rem,5.3vw,5.25rem)]";
+  return "text-[clamp(2.35rem,4.75vw,4.85rem)]";
 }
 
 function PremiumMatchTitle({ title }: { title: string }) {
@@ -238,7 +242,7 @@ function PremiumMatchTitle({ title }: { title: string }) {
 
   if (!names.right) {
     return (
-      <h1 className="mt-5 max-w-full truncate bg-gradient-to-b from-white via-slate-100 to-slate-500 bg-clip-text text-[clamp(2.35rem,5vw,5.05rem)] font-extrabold leading-[0.88] tracking-[-0.075em] text-transparent drop-shadow-[0_18px_34px_rgba(0,0,0,0.55)]">
+      <h1 className="mt-6 max-w-full overflow-visible bg-gradient-to-b from-white via-slate-100 to-slate-500 bg-clip-text text-[clamp(2.35rem,4.75vw,4.85rem)] font-extrabold leading-[0.9] tracking-[-0.07em] text-transparent drop-shadow-[0_16px_30px_rgba(0,0,0,0.5)]">
         {title}
       </h1>
     );
@@ -247,28 +251,28 @@ function PremiumMatchTitle({ title }: { title: string }) {
   const sizeClass = matchTitleSizeClass(names.left, names.right);
 
   return (
-    <div className="mt-6 max-w-full overflow-hidden pr-2">
-      <div className="flex min-w-0 max-w-full items-end gap-x-3 whitespace-nowrap">
+    <div className="mt-7 max-w-full overflow-visible px-1 pb-1">
+      <div className="flex min-w-0 max-w-full items-end gap-x-4 whitespace-nowrap overflow-visible">
         <span
           title={names.left}
-          className={`${sizeClass} min-w-0 max-w-[45%] shrink truncate bg-gradient-to-b from-white via-slate-100 to-slate-500 bg-clip-text font-extrabold leading-[0.88] tracking-[-0.075em] text-transparent drop-shadow-[0_18px_34px_rgba(0,0,0,0.55)]`}
+          className={`${sizeClass} shrink-0 overflow-visible bg-gradient-to-b from-white via-slate-100 to-slate-500 bg-clip-text pr-1 font-extrabold leading-[0.9] tracking-[-0.07em] text-transparent drop-shadow-[0_16px_30px_rgba(0,0,0,0.5)]`}
         >
           {names.left}
         </span>
 
-        <span className="mb-[0.62em] shrink-0 rounded-full border border-amber-200/20 bg-amber-200/[0.06] px-3 py-1 text-[10px] font-black uppercase tracking-[0.34em] text-amber-100/65 shadow-[0_0_24px_rgba(245,158,11,0.13)]">
+        <span className="mb-[0.56em] shrink-0 rounded-full border border-amber-200/20 bg-amber-200/[0.06] px-3 py-1 text-[10px] font-black uppercase tracking-[0.34em] text-amber-100/65 shadow-[0_0_24px_rgba(245,158,11,0.13)]">
           vs
         </span>
 
         <span
           title={names.right}
-          className={`${sizeClass} min-w-0 max-w-[45%] shrink truncate bg-gradient-to-b from-slate-50 via-slate-200 to-slate-600 bg-clip-text font-extrabold leading-[0.88] tracking-[-0.075em] text-transparent drop-shadow-[0_18px_34px_rgba(0,0,0,0.55)]`}
+          className={`${sizeClass} shrink-0 overflow-visible bg-gradient-to-b from-slate-50 via-slate-200 to-slate-600 bg-clip-text pr-2 font-extrabold leading-[0.9] tracking-[-0.07em] text-transparent drop-shadow-[0_16px_30px_rgba(0,0,0,0.5)]`}
         >
           {names.right}
         </span>
       </div>
 
-      <div className="mt-4 flex items-center gap-3">
+      <div className="mt-5 flex max-w-[88%] items-center gap-3">
         <div className="h-px w-24 bg-amber-200/30" />
         <div className="h-px flex-1 bg-gradient-to-r from-white/18 via-white/8 to-transparent" />
       </div>
@@ -580,11 +584,11 @@ export default async function BetMarketDetailPage({ params, searchParams }: Page
       <section className="relative mx-auto flex w-full max-w-7xl flex-col gap-6 px-5 py-8 sm:px-8 lg:px-10">
         <BookTopBar market={market} view={view} order={order} replayHref={replayHref} />
 
-        <section className="relative overflow-hidden rounded-[2.25rem] border border-white/10 bg-white/[0.04] p-6 shadow-2xl shadow-black/40 sm:p-8">
+        <section className="relative overflow-hidden rounded-[2.25rem] border border-white/10 bg-white/[0.04] p-7 shadow-2xl shadow-black/40 sm:p-10">
           <div className="absolute right-[-80px] top-[-120px] h-80 w-80 rounded-full border border-amber-300/20 bg-amber-300/[0.04]" />
           <div className="absolute bottom-[-120px] left-[30%] h-72 w-72 rounded-full border border-sky-300/20 bg-sky-300/[0.035]" />
 
-          <div className="relative grid gap-8 lg:grid-cols-[minmax(0,1fr)_240px] lg:items-end">
+          <div className="relative grid gap-8 lg:grid-cols-[minmax(0,1fr)_220px] lg:items-end">
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded-full border border-amber-300/20 bg-amber-300/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.35em] text-amber-100">
