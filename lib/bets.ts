@@ -2695,13 +2695,7 @@ async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettle
       );
       const linkedSessionKey =
         market.linkedSessionKey?.trim() || market.scheduledMatch?.linkedSessionKey?.trim() || null;
-      const href =
-        buildBetMarketHref({
-          linkedGameStatsId: market.linkedGameStatsId ?? null,
-          linkedSessionKey,
-        }) ||
-        matchedSession?.href ||
-        null;
+      const href = `/bets/${market.id}`;
 
       return {
         id: market.id,
