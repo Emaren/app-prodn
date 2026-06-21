@@ -147,7 +147,7 @@ export const FALLBACK_EVENT_TILE: EventTileView = {
   commissionerUserId: null,
   commissionerName: "Emaren",
   commissionerAvatarUrl: "/uploads/managed-assets/wolomania/emaren_warrior_2.png",
-  beltImageUrl: "/uploads/managed-assets/wolomania/aoe2war_champ.png",
+  beltImageUrl: "/uploads/managed-assets/wolomania/aoe2war_champ.webp",
   backgroundImageUrl: "",
   mobileBackgroundImageUrl: "",
   gradientFrom: "#150704",

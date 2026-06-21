@@ -26,7 +26,7 @@ const OFFICIAL_POSTER = "/uploads/managed-assets/wolomania/wolomania.png";
 
 const ASSETS = {
   belt: {
-    src: "/uploads/managed-assets/wolomania/aoe2war_champ.png",
+    src: "/uploads/managed-assets/wolomania/aoe2war_champ.webp",
     fallback: "/uploads/managed-assets/belt/world-1781561316794-0a26a86e.png",
   },
   emaren: {
