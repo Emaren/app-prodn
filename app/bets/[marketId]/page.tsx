@@ -223,34 +223,29 @@ function PremiumMatchTitle({ title }: { title: string }) {
 
   if (!names.right) {
     return (
-      <h1 className="mt-6 max-w-5xl text-[clamp(3.2rem,8vw,7rem)] font-black leading-[0.82] tracking-[-0.095em] text-slate-50/95 drop-shadow-[0_16px_28px_rgba(0,0,0,0.45)]">
+      <h1 className="mt-5 max-w-4xl text-[clamp(2.6rem,5.7vw,4.8rem)] font-semibold leading-[0.96] tracking-[-0.065em] text-slate-50/95">
         {title}
       </h1>
     );
   }
 
   return (
-    <div className="relative mt-7 max-w-5xl pb-4">
-      <div className="pointer-events-none absolute left-[-2%] top-[34%] h-px w-[96%] rotate-[-3deg] bg-gradient-to-r from-transparent via-amber-200/25 to-transparent" />
-      <div className="pointer-events-none absolute left-[12%] top-[63%] h-px w-[86%] rotate-[2deg] bg-gradient-to-r from-transparent via-sky-200/18 to-transparent" />
+    <div className="mt-6 max-w-5xl">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <span className="text-[clamp(2.75rem,5.8vw,5rem)] font-semibold leading-[0.95] tracking-[-0.07em] text-slate-50/95">
+          {names.left}
+        </span>
 
-      <div className="relative">
-        <div className="flex items-end gap-4">
-          <span className="text-[clamp(3.4rem,8.4vw,7.4rem)] font-black leading-[0.78] tracking-[-0.105em] text-slate-50/95 drop-shadow-[0_18px_30px_rgba(0,0,0,0.5)]">
-            {names.left}
-          </span>
+        <span className="rounded-full border border-white/10 bg-white/[0.045] px-3 py-1 text-[10px] font-black uppercase tracking-[0.32em] text-amber-100/55">
+          vs
+        </span>
 
-          <span className="mb-3 rounded-full border border-amber-200/20 bg-black/30 px-3 py-1 text-[10px] font-black uppercase tracking-[0.34em] text-amber-100/70 shadow-[0_0_24px_rgba(245,158,11,0.12)]">
-            vs
-          </span>
-        </div>
-
-        <div className="mt-3 flex justify-end">
-          <span className="text-right text-[clamp(3.4rem,8.4vw,7.4rem)] font-black leading-[0.78] tracking-[-0.105em] text-slate-300/95 drop-shadow-[0_18px_30px_rgba(0,0,0,0.5)]">
-            {names.right}
-          </span>
-        </div>
+        <span className="text-[clamp(2.75rem,5.8vw,5rem)] font-semibold leading-[0.95] tracking-[-0.07em] text-slate-300/95">
+          {names.right}
+        </span>
       </div>
+
+      <div className="mt-4 h-px max-w-3xl bg-gradient-to-r from-amber-200/25 via-white/10 to-sky-200/20" />
     </div>
   );
 }
