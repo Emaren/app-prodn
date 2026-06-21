@@ -2537,7 +2537,7 @@ function mergeSettledResultsWithSessions(
   const merged: BetSettledResult[] = [];
   const seen = new Set<string>();
 
-  for (const result of [...sessionResults, ...marketResults]) {
+  for (const result of [...marketResults, ...sessionResults]) {
     const key = settledResultSurfaceKey(result);
     if (seen.has(key)) continue;
     seen.add(key);
@@ -2592,6 +2592,12 @@ async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettle
             },
           },
         },
+        stakeIntents: {
+          select: {
+            amountWolo: true,
+            status: true,
+          },
+        },
       },
     }),
     loadLiveSessionSnapshot(prisma),
@@ -2627,11 +2633,34 @@ async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettle
   const settledMarkets = [...settledMarketBySurfaceKey.values()]
     .filter((market) => {
       if (!isWoloMainnet()) return true;
-      return market.wagers.some(
-        (wager) => wager.status !== "void" && isCountableBetWager(wager)
+      return (
+        market.wagers.some((wager) => isCountableBetWager(wager)) ||
+        market.stakeIntents.some((intent) => isBetStakeIntentCountableStatus(intent.status))
       );
     })
     .slice(0, 4);
+
+  const settledMarketIds = settledMarkets.map((market) => market.id);
+  const claimTotals =
+    settledMarketIds.length > 0
+      ? await prisma.pendingWoloClaim.groupBy({
+          by: ["sourceMarketId"],
+          where: {
+            sourceMarketId: { in: settledMarketIds },
+            rescindedAt: null,
+          },
+          _sum: {
+            amountWolo: true,
+          },
+        })
+      : [];
+
+  const claimTotalByMarketId = new Map<number, number>();
+  for (const row of claimTotals) {
+    if (typeof row.sourceMarketId === "number") {
+      claimTotalByMarketId.set(row.sourceMarketId, row._sum.amountWolo ?? 0);
+    }
+  }
 
   const sessionHrefByMatchKey = new Map(
     sessionSnapshot.recentlyCompletedSessions.map((session) => [
@@ -2645,20 +2674,21 @@ async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettle
 
   const marketResults = settledMarkets.map((market) => {
       const winner = market.winnerSide === "right" ? market.rightLabel : market.leftLabel;
-      const countableWagers = market.wagers.filter(
-        (wager) => wager.status !== "void" && isCountableBetWager(wager)
-      );
-      const totalPotWolo =
-        market.seedLeftWolo +
-        market.seedRightWolo +
-        countableWagers.reduce((sum, wager) => sum + wager.amountWolo, 0);
+      const countableWagers = market.wagers.filter((wager) => isCountableBetWager(wager));
+      const wageredWolo = countableWagers.reduce((sum, wager) => sum + wager.amountWolo, 0);
+      const intentWolo = market.stakeIntents
+        .filter((intent) => isBetStakeIntentCountableStatus(intent.status))
+        .reduce((sum, intent) => sum + intent.amountWolo, 0);
+      const claimWolo = claimTotalByMarketId.get(market.id) ?? 0;
+      const seededWolo = market.seedLeftWolo + market.seedRightWolo;
+      const totalPotWolo = Math.max(seededWolo + wageredWolo, intentWolo, claimWolo);
       const settledPayoutTotal = market.wagers
-        .filter((wager) => wager.status === "won")
+        .filter((wager) => ["won", "void"].includes(wager.status))
         .reduce((sum, wager) => sum + (wager.payoutWolo ?? 0), 0);
       const payoutWolo =
         settledPayoutTotal > 0
-          ? settledPayoutTotal
-          : totalPotWolo;
+          ? Math.max(settledPayoutTotal, claimWolo)
+          : Math.max(totalPotWolo, claimWolo);
       const mapName = readMarketMapLabel(market.eventLabel);
       const matchedSession = sessionHrefByMatchKey.get(
         normalizeSettledMatchKey(market.title, mapName)
