@@ -203,6 +203,63 @@ function gameHref(market: MarketRow) {
   return null;
 }
 
+function splitMatchTitle(title: string) {
+  const parts = title.split(/\s+vs\s+/i).map((part) => part.trim()).filter(Boolean);
+  if (parts.length >= 2) {
+    return {
+      left: parts[0],
+      right: parts.slice(1).join(" vs "),
+    };
+  }
+
+  return {
+    left: title,
+    right: "",
+  };
+}
+
+function PremiumMatchTitle({ title }: { title: string }) {
+  const names = splitMatchTitle(title);
+
+  if (!names.right) {
+    return (
+      <h1 className="mt-5 max-w-4xl text-5xl font-semibold tracking-[-0.06em] text-slate-50 sm:text-6xl lg:text-7xl">
+        {title}
+      </h1>
+    );
+  }
+
+  return (
+    <div className="mt-6 max-w-5xl">
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:items-end">
+        <div className="rounded-[1.35rem] border border-white/10 bg-white/[0.035] px-5 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+          <div className="text-[10px] uppercase tracking-[0.42em] text-amber-200/45">
+            Left
+          </div>
+          <div className="mt-2 text-[clamp(2.35rem,6vw,4.9rem)] font-semibold leading-[0.92] tracking-[-0.07em] text-slate-50">
+            {names.left}
+          </div>
+        </div>
+
+        <div className="flex items-center justify-center lg:pb-5">
+          <div className="rounded-full border border-amber-200/20 bg-amber-200/[0.07] px-4 py-2 text-[10px] font-black uppercase tracking-[0.35em] text-amber-100/70 shadow-[0_0_24px_rgba(245,158,11,0.12)]">
+            vs
+          </div>
+        </div>
+
+        <div className="rounded-[1.35rem] border border-white/10 bg-white/[0.035] px-5 py-4 text-right shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+          <div className="text-[10px] uppercase tracking-[0.42em] text-sky-200/45">
+            Right
+          </div>
+          <div className="mt-2 text-[clamp(2.35rem,6vw,4.9rem)] font-semibold leading-[0.92] tracking-[-0.07em] text-slate-50">
+            {names.right}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default async function BetMarketDetailPage({ params, searchParams }: PageProps) {
   const { marketId } = await params;
   const resolvedSearchParams = searchParams ? await searchParams : {};
@@ -467,7 +524,7 @@ export default async function BetMarketDetailPage({ params, searchParams }: Page
                 <div className="text-[11px] uppercase tracking-[0.45em] text-amber-300/75">
                   Bet Book #{market.id}
                 </div>
-                <h1 className="mt-3 text-4xl font-black tracking-tight text-white sm:text-5xl">
+                <h1 className="mt-3 text-4xl font-semibold tracking-[-0.04em] text-slate-50 sm:text-5xl">
                   {market.title}
                 </h1>
                 <p className="mt-3 text-sm text-slate-400">
@@ -522,9 +579,7 @@ export default async function BetMarketDetailPage({ params, searchParams }: Page
                 </span>
               </div>
 
-              <h1 className="mt-5 max-w-4xl text-5xl font-black tracking-[-0.06em] text-white sm:text-6xl lg:text-7xl">
-                {market.title}
-              </h1>
+              <PremiumMatchTitle title={market.title} />
 
               <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-300">
                 {market.eventLabel || "AoE2WAR book"} · winner: {winnerName}
