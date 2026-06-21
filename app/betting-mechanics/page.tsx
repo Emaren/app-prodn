@@ -1,145 +1,204 @@
-const mechanics = [
-  {
-    eyebrow: "Stream",
-    title: "Every streamed match gets a book.",
-    body: "If a game is streamed to AoE2WAR, it enters the WOLO rail. No dead matches. No empty board.",
-  },
-  {
-    eyebrow: "AI Liquidity",
-    title: "Tony or Phil opens action.",
-    body: "One AI betting agent places a small 1 WOLO liquidity bet. Random pick. Simple spark. Real book.",
-  },
-  {
-    eyebrow: "One-sided Bets",
-    title: "Your action can clear.",
-    body: "If a human bets one side, an AI agent can take the other side so the wager settles cleanly.",
-  },
-  {
-    eyebrow: "Founder Bonus",
-    title: "Players always get added to the economy.",
-    body: "Every streamed match gets a Founder Bonus, split across the players and surfaced through pending wallet notifications.",
-  },
-] as const;
+import Image from "next/image";
+import Link from "next/link";
+import {
+  Bell,
+  CheckCircle2,
+  Coins,
+  Radio,
+  ShieldCheck,
+  Swords,
+  Trophy,
+  Wallet,
+} from "lucide-react";
 
-const founderBonusRows = [
-  { match: "1v1 / 2 players", bonus: "4 WOLO", split: "2 WOLO each" },
-  { match: "2v2 / 4 players", bonus: "4 WOLO", split: "1 WOLO each" },
-  { match: "3v3 / 6 players", bonus: "6 WOLO", split: "1 WOLO each" },
-  { match: "4v4 / 8 players", bonus: "8 WOLO", split: "1 WOLO each" },
-] as const;
+const rules = [
+  {
+    icon: <Coins className="h-5 w-5" />,
+    title: "Wager",
+    value: "Winner takes both wagers.",
+  },
+  {
+    icon: <ShieldCheck className="h-5 w-5" />,
+    title: "Guarantee",
+    value: "Show-up bond. Returned when both play.",
+  },
+  {
+    icon: <Wallet className="h-5 w-5" />,
+    title: "Escrow",
+    value: "Both players sign Wager + Guarantee.",
+  },
+  {
+    icon: <Bell className="h-5 w-5" />,
+    title: "Check-in",
+    value: "Window opens 10 minutes before start.",
+  },
+  {
+    icon: <Radio className="h-5 w-5" />,
+    title: "Watcher",
+    value: "One watcher links the played game.",
+  },
+  {
+    icon: <Trophy className="h-5 w-5" />,
+    title: "Fee",
+    value: "2% on completed wager wins. Split 50/50.",
+  },
+];
 
 const outcomes = [
-  ["Both sides bet", "Wagers settle normally."],
-  ["One human bets", "Tony or Phil can take the other side."],
-  ["Two humans match", "Human action takes priority."],
-  ["Pure PvP wanted", "AI Bettor Off / Directed Bet is the clean path."],
-  ["Void or refund", "Shown as refund. Never dressed up as a win."],
-  ["Decimal split", "Allowed. WOLO is precise."],
-] as const;
+  {
+    title: "Both play",
+    rows: ["Winner gets the pot minus the 2% fee.", "Guarantees return."],
+  },
+  {
+    title: "One no-show",
+    rows: ["Wagers return.", "Showing player gets both guarantees."],
+  },
+  {
+    title: "Double no-show",
+    rows: ["Wagers return.", "Guarantees go to Community Treasury."],
+  },
+];
+
+export const metadata = {
+  title: "Betting Mechanics | AoE2HDBets",
+};
 
 export default function BettingMechanicsPage() {
   return (
-    <main className="min-h-screen bg-[#07111f] text-slate-100">
-      <section className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-5 py-10 sm:px-8 lg:px-10">
-        <div className="rounded-[2rem] border border-white/10 bg-white/[0.035] p-6 shadow-2xl shadow-black/30 sm:p-8">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+    <main className="mx-auto max-w-6xl space-y-6 py-8 text-white">
+      <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(251,191,36,0.16),_transparent_28%),radial-gradient(circle_at_bottom_right,_rgba(16,185,129,0.12),_transparent_24%),linear-gradient(135deg,_#101828,_#0f172a_50%,_#020617)] p-6 sm:p-8">
+        <div className="grid gap-6 md:grid-cols-[1fr_auto] md:items-center">
+          <div>
+            <div className="flex items-center gap-2 text-xs uppercase tracking-[0.36em] text-amber-100/75">
+              <Swords className="h-4 w-4" />
+              Betting mechanics
+            </div>
+            <h1 className="mt-3 text-4xl font-semibold leading-tight sm:text-5xl">
+              Wager. Guarantee. Play.
+            </h1>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <span className="rounded-full border border-emerald-300/25 bg-emerald-400/10 px-3 py-1 text-xs text-emerald-100">
+                Wallet funded
+              </span>
+              <span className="rounded-full border border-amber-300/25 bg-amber-400/10 px-3 py-1 text-xs text-amber-100">
+                10 min check-in
+              </span>
+              <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-xs text-slate-200">
+                2% fee · 50/50 split
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4 rounded-[1.4rem] border border-amber-300/18 bg-slate-950/40 px-5 py-4">
+            <Image
+              src="/legacy/wolo-logo-transparent.webp"
+              alt="WOLO"
+              width={56}
+              height={56}
+              className="h-14 w-14 object-contain"
+            />
             <div>
-              <div className="text-[11px] uppercase tracking-[0.45em] text-amber-300/80">
-                Betting Mechanics
+              <div className="text-xs uppercase tracking-[0.24em] text-amber-100/70">Total lock</div>
+              <div className="mt-1 text-xl font-semibold">Wager + Guarantee</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {rules.map((rule) => (
+          <div
+            key={rule.title}
+            className="rounded-[1.25rem] border border-white/10 bg-slate-950/70 p-5"
+          >
+            <div className="flex items-center gap-3">
+              <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-amber-300/18 bg-amber-300/10 text-amber-100">
+                {rule.icon}
+              </span>
+              <div>
+                <div className="text-sm font-semibold text-white">{rule.title}</div>
+                <div className="mt-1 text-sm text-slate-300">{rule.value}</div>
               </div>
-              <h1 className="mt-3 max-w-3xl text-4xl font-black tracking-tight text-white sm:text-5xl">
-                Every streamed game has action.
-              </h1>
-              <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-300 sm:text-base">
-                AI liquidity keeps books moving until human bettors take the other side.
-                Founder Bonuses keep players connected to the WOLO economy.
+            </div>
+          </div>
+        ))}
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-3">
+        {outcomes.map((outcome) => (
+          <div
+            key={outcome.title}
+            className="rounded-[1.35rem] border border-white/10 bg-white/[0.04] p-5"
+          >
+            <div className="text-lg font-semibold text-white">{outcome.title}</div>
+            <div className="mt-4 space-y-2">
+              {outcome.rows.map((row) => (
+                <div key={row} className="flex items-center gap-2 text-sm text-slate-300">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-200" />
+                  {row}
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </section>
+
+      <div className="flex flex-wrap gap-3">
+        <Link
+          href="/challenge"
+          className="rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200"
+        >
+          Schedule Match
+        </Link>
+        <Link
+          href="/bets"
+          className="rounded-full border border-white/15 px-5 py-3 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
+        >
+          Bet Rail
+        </Link>
+      </div>
+    
+        <section className="mt-6 rounded-[1.5rem] border border-white/10 bg-white/[0.035] p-4 sm:p-5">
+          <div className="text-[10px] uppercase tracking-[0.38em] text-amber-200/70">
+            AI Liquidity Rail
+          </div>
+
+          <div className="mt-3 grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-2xl border border-white/10 bg-slate-950/45 p-4">
+              <div className="text-sm font-black text-white">Tony or Phil opens.</div>
+              <p className="mt-2 text-xs leading-5 text-slate-400">
+                Every streamed match can get a random 1 WOLO AI liquidity bet.
               </p>
             </div>
 
-            <div className="rounded-2xl border border-amber-300/25 bg-amber-300/10 px-5 py-4 text-right">
-              <div className="text-[10px] uppercase tracking-[0.35em] text-amber-200/80">
-                Default Rail
-              </div>
-              <div className="mt-1 text-2xl font-black text-white">Stream → Book → Settle</div>
+            <div className="rounded-2xl border border-white/10 bg-slate-950/45 p-4">
+              <div className="text-sm font-black text-white">One-sided action clears.</div>
+              <p className="mt-2 text-xs leading-5 text-slate-400">
+                If a human bets one side, an AI bettor can take the other.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-slate-950/45 p-4">
+              <div className="text-sm font-black text-white">Founder Bonus always fires.</div>
+              <p className="mt-2 text-xs leading-5 text-slate-400">
+                4 WOLO for 1v1/2v2, 6 for 3v3, 8 for 4v4. Split precisely.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-slate-950/45 p-4">
+              <div className="text-sm font-black text-white">Refunds are refunds.</div>
+              <p className="mt-2 text-xs leading-5 text-slate-400">
+                Voids return stake and display as refunds, never fake wins.
+              </p>
             </div>
           </div>
 
-          <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {mechanics.map((item) => (
-              <article
-                key={item.title}
-                className="rounded-2xl border border-white/10 bg-slate-950/45 p-4"
-              >
-                <div className="text-[10px] uppercase tracking-[0.35em] text-amber-300/70">
-                  {item.eyebrow}
-                </div>
-                <h2 className="mt-2 text-base font-black text-white">{item.title}</h2>
-                <p className="mt-2 text-sm leading-5 text-slate-400">{item.body}</p>
-              </article>
-            ))}
-          </div>
-        </div>
-
-        <div className="grid gap-5 lg:grid-cols-[1fr_0.9fr]">
-          <section className="rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-5">
-            <div className="text-[11px] uppercase tracking-[0.4em] text-slate-500">
-              How it works
-            </div>
-            <h2 className="mt-2 text-2xl font-black text-white">Wager. Guarantee. Play.</h2>
-
-            <div className="mt-5 grid gap-3">
-              {outcomes.map(([label, value]) => (
-                <div
-                  key={label}
-                  className="flex flex-col gap-1 rounded-2xl border border-white/10 bg-slate-950/45 p-4 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <div className="text-sm font-bold text-white">{label}</div>
-                  <div className="text-sm text-slate-400 sm:text-right">{value}</div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="rounded-[1.5rem] border border-emerald-300/15 bg-emerald-300/[0.04] p-5">
-            <div className="text-[11px] uppercase tracking-[0.4em] text-emerald-200/70">
-              Founder Bonus
-            </div>
-            <h2 className="mt-2 text-2xl font-black text-white">Every match pays the players.</h2>
-            <p className="mt-3 text-sm leading-6 text-slate-300">
-              Bonuses split across the players. If the split needs decimals, good.
-              WOLO was built for precise rails.
-            </p>
-
-            <div className="mt-5 overflow-hidden rounded-2xl border border-white/10">
-              {founderBonusRows.map((row) => (
-                <div
-                  key={row.match}
-                  className="grid grid-cols-[1fr_auto] gap-3 border-b border-white/10 bg-slate-950/45 px-4 py-3 last:border-b-0"
-                >
-                  <div>
-                    <div className="text-sm font-bold text-white">{row.match}</div>
-                    <div className="mt-1 text-xs text-slate-500">{row.split}</div>
-                  </div>
-                  <div className="self-center rounded-full border border-emerald-200/25 bg-emerald-200/10 px-3 py-1 text-sm font-black text-emerald-100">
-                    {row.bonus}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        </div>
-
-        <section className="rounded-[1.5rem] border border-sky-300/15 bg-sky-300/[0.04] p-5">
-          <div className="text-[11px] uppercase tracking-[0.4em] text-sky-200/70">
-            Coming Rail
-          </div>
-          <h2 className="mt-2 text-2xl font-black text-white">Human-directed betting.</h2>
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
-            Post your action for another human to take, or turn AI assistance off for a pure
-            player-vs-player book. Until then, Tony and Phil keep the market alive.
+          <p className="mt-4 text-xs leading-5 text-slate-500">
+            Human-directed books come next: post your action, let another human take it,
+            or turn AI assistance off for pure player-vs-player betting.
           </p>
         </section>
-      </section>
-    </main>
+
+      </main>
   );
 }
