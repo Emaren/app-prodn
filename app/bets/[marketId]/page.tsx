@@ -223,38 +223,26 @@ function PremiumMatchTitle({ title }: { title: string }) {
 
   if (!names.right) {
     return (
-      <h1 className="mt-5 max-w-4xl text-5xl font-semibold tracking-[-0.06em] text-slate-50 sm:text-6xl lg:text-7xl">
+      <h1 className="mt-5 max-w-4xl text-[clamp(2.85rem,7vw,5.8rem)] font-medium leading-[0.92] tracking-[-0.085em] text-slate-50/95">
         {title}
       </h1>
     );
   }
 
   return (
-    <div className="mt-6 max-w-5xl">
-      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:items-end">
-        <div className="rounded-[1.35rem] border border-white/10 bg-white/[0.035] px-5 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
-          <div className="text-[10px] uppercase tracking-[0.42em] text-amber-200/45">
-            Left
-          </div>
-          <div className="mt-2 text-[clamp(2.35rem,6vw,4.9rem)] font-semibold leading-[0.92] tracking-[-0.07em] text-slate-50">
-            {names.left}
-          </div>
-        </div>
+    <div className="mt-5 max-w-5xl">
+      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-2">
+        <span className="text-[clamp(2.85rem,7vw,5.8rem)] font-medium leading-[0.92] tracking-[-0.085em] text-slate-50/95">
+          {names.left}
+        </span>
 
-        <div className="flex items-center justify-center lg:pb-5">
-          <div className="rounded-full border border-amber-200/20 bg-amber-200/[0.07] px-4 py-2 text-[10px] font-black uppercase tracking-[0.35em] text-amber-100/70 shadow-[0_0_24px_rgba(245,158,11,0.12)]">
-            vs
-          </div>
-        </div>
+        <span className="relative -top-2 rounded-full border border-amber-200/15 bg-amber-200/[0.055] px-3 py-1 text-[10px] font-black uppercase tracking-[0.32em] text-amber-100/60 shadow-[0_0_20px_rgba(245,158,11,0.10)]">
+          vs
+        </span>
 
-        <div className="rounded-[1.35rem] border border-white/10 bg-white/[0.035] px-5 py-4 text-right shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
-          <div className="text-[10px] uppercase tracking-[0.42em] text-sky-200/45">
-            Right
-          </div>
-          <div className="mt-2 text-[clamp(2.35rem,6vw,4.9rem)] font-semibold leading-[0.92] tracking-[-0.07em] text-slate-50">
-            {names.right}
-          </div>
-        </div>
+        <span className="text-[clamp(2.85rem,7vw,5.8rem)] font-medium leading-[0.92] tracking-[-0.085em] text-slate-50/90">
+          {names.right}
+        </span>
       </div>
     </div>
   );
