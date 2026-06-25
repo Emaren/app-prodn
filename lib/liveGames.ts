@@ -18,6 +18,7 @@ const BROWSER_STREAM_STALE_MS = 120_000;
 const BROWSER_STREAM_ARCHIVE_MS = 6 * 60 * 60 * 1000;
 const EXTERNAL_STREAM_STALE_MS = 20 * 60 * 1000;
 const LIVE_GAMES_RECENT_MATCH_LIMIT = 24;
+const LIVE_GAMES_RECENT_OUTCOME_LIMIT = 5;
 
 export type LiveGamesSummary = {
   liveCount: number;
@@ -96,12 +97,12 @@ async function loadLiveGamesSnapshotFresh(prisma: PrismaClient): Promise<LiveGam
     .filter((match) => !recentlyCompletedKeys.has(normalizeSessionKey(match)))
     .slice(0, LIVE_GAMES_RECENT_MATCH_LIMIT);
 
-  const fallbackRecentOutcomeMatch = filteredRecentMatches[0] ?? null;
+  const fallbackRecentOutcomeMatches = filteredRecentMatches.slice(0, LIVE_GAMES_RECENT_OUTCOME_LIMIT);
 
   const sessionKeys = [
     ...filteredActiveSessions.flatMap(sessionStreamKeys),
     ...filteredCompletedSessions.flatMap(sessionStreamKeys),
-    ...(fallbackRecentOutcomeMatch ? recentMatchStreamKeys(fallbackRecentOutcomeMatch) : []),
+    ...fallbackRecentOutcomeMatches.flatMap(recentMatchStreamKeys),
   ];
   const streamsBySession = await loadStreamsBySession(prisma, sessionKeys);
   const streamedActiveSessionBase = attachStreams(filteredActiveSessions, streamsBySession);
@@ -134,13 +135,14 @@ async function loadLiveGamesSnapshotFresh(prisma: PrismaClient): Promise<LiveGam
     (session) => !sessionHasLiveNativeStream(session) && !activeSessionKeys.has(session.sessionKey)
   );
 
-  const fallbackRecentOutcomeSessions =
-    streamedCompletedSessions.length === 0 && fallbackRecentOutcomeMatch
-      ? compactNullable([buildRecentOutcomeSession(fallbackRecentOutcomeMatch, streamsBySession)])
-      : [];
+  const fallbackRecentOutcomeSessions = compactNullable(
+    fallbackRecentOutcomeMatches.map((match) => buildRecentOutcomeSession(match, streamsBySession))
+  );
 
-  const displayedCompletedSessions =
-    streamedCompletedSessions.length > 0 ? streamedCompletedSessions : fallbackRecentOutcomeSessions;
+  const displayedCompletedSessions = dedupeStreamedSessions([
+    ...streamedCompletedSessions,
+    ...fallbackRecentOutcomeSessions,
+  ]).slice(0, LIVE_GAMES_RECENT_OUTCOME_LIMIT);
 
   const displayedCompletedKeys = new Set(
     displayedCompletedSessions.map((session) => session.sessionKey)
