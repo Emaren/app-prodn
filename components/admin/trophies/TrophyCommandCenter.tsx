@@ -1316,7 +1316,7 @@ function TrophySettings({
         <div className="text-xs uppercase tracking-[0.3em] text-slate-500">Feature and safety gates</div>
         <h2 className="mt-2 text-2xl font-semibold">Trophy system settings</h2>
       </div>
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
         {[
           {
             key: "chain_backed_trophies_enabled",
@@ -1332,6 +1332,11 @@ function TrophySettings({
             key: "dry_run_only",
             label: "Dry-run-only mode",
             body: "Blocks final settlement while letting operators inspect every resulting action.",
+          },
+          {
+            key: "trophy_tribute_auto_execute",
+            label: "Auto-execute belt tributes",
+            body: "When enabled, daily belt tribute payouts execute automatically after being queued. When disabled, payouts remain queued for manual review.",
           },
         ].map((setting) => {
           const enabled = boolSetting(setting.key);

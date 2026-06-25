@@ -1,4 +1,5 @@
 "use client";
+
 /* eslint-disable @next/next/no-img-element */
 
 import Link from "next/link";
@@ -23,6 +24,8 @@ import type {
   ContactInboxPayload,
   ContactInboxSummary,
 } from "@/components/contact/types";
+
+const TYPING_HUD_MODE_STORAGE_KEY = "aoe2war:typing-hud-mode";
 
 type ContactInboxPanelProps = {
   data: ContactInboxPayload | null;
@@ -781,12 +784,12 @@ function TextMessageBubble({
                       onClick={() => handleReactionPick(emoji)}
                       aria-pressed={isActive}
                       disabled={reactingMessageId === message.messageId}
-                      className={`flex h-10 items-center justify-center rounded-full border px-3 transition ${
-                        isTextReaction ? "min-w-[3.25rem] text-[13px] font-semibold" : "min-w-10 text-base"
+                      className={`inline-flex h-7 items-center justify-center rounded-full border px-2 transition duration-150 ${
+                        isTextReaction ? "min-w-[2.3rem] text-[10px] font-semibold tracking-[0.04em]" : "min-w-7 text-[13px]"
                       } ${
                         isActive
-                          ? "border-amber-300/30 bg-amber-400/16 text-amber-50 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.12)]"
-                          : "border-white/10 bg-white/[0.045] text-slate-200 hover:border-white/18 hover:bg-white/[0.1] hover:text-white"
+                          ? "border-amber-200/35 bg-amber-300/18 text-amber-50 shadow-[0_0_16px_rgba(251,191,36,0.12),inset_0_0_0_1px_rgba(251,191,36,0.12)]"
+                          : "border-white/9 bg-white/[0.055] text-slate-200 hover:border-amber-200/22 hover:bg-white/[0.09] hover:text-white"
                       } disabled:cursor-not-allowed disabled:opacity-60`}
                     >
                       <span>{emoji}</span>
@@ -798,7 +801,7 @@ function TextMessageBubble({
                   <button
                     type="button"
                     onClick={handleEditMessage}
-                    className="inline-flex h-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.045] px-3 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-200 transition hover:border-white/18 hover:bg-white/[0.1] hover:text-white"
+                    className="inline-flex h-7 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] px-2 text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-300 transition hover:border-white/18 hover:bg-white/[0.09] hover:text-white"
                   >
                     Edit
                   </button>
@@ -808,7 +811,7 @@ function TextMessageBubble({
                   <button
                     type="button"
                     onClick={handleDeleteMessage}
-                    className="inline-flex h-10 items-center justify-center rounded-full border border-rose-300/22 bg-rose-500/10 px-3 text-[11px] font-medium uppercase tracking-[0.16em] text-rose-50 transition hover:border-rose-200/30 hover:bg-rose-500/16"
+                    className="inline-flex h-7 items-center justify-center rounded-full border border-rose-300/20 bg-rose-500/8 px-2 text-[9px] font-semibold uppercase tracking-[0.16em] text-rose-100 transition hover:border-rose-200/30 hover:bg-rose-500/14"
                   >
                     Delete
                   </button>
@@ -820,21 +823,22 @@ function TextMessageBubble({
 
         {message.reactions.length > 0 ? (
           <div
-            className={`mt-3 flex flex-wrap gap-2 px-1 ${isViewer ? "justify-end" : "justify-start"}`}
+            className={`mt-2 flex flex-wrap gap-1.5 px-1 ${isViewer ? "justify-end" : "justify-start"}`}
           >
             {message.reactions.map((reaction) => (
               <button
                 key={`${message.messageId}-${reaction.emoji}-summary`}
                 type="button"
                 onClick={() => onToggleReaction?.(message.messageId, reaction.emoji)}
-                className={`inline-flex min-w-[3rem] items-center justify-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-medium transition ${
+                className={`inline-flex min-w-[2.65rem] items-center justify-center gap-1 rounded-full border px-2 py-1 text-[10px] font-semibold leading-none transition duration-150 ${
                   reaction.viewerReacted
-                    ? "border-amber-300/20 bg-amber-400/12 text-amber-100"
-                    : "border-white/10 bg-[#0c1524] text-slate-300 hover:border-white/18 hover:text-white"
+                    ? "border-amber-200/32 bg-amber-300/15 text-amber-50 shadow-[0_0_14px_rgba(251,191,36,0.10)]"
+                    : "border-white/10 bg-white/[0.045] text-slate-300 hover:border-white/18 hover:bg-white/[0.075] hover:text-white"
                 }`}
+                title={reaction.viewerReacted ? "Remove your reaction" : "React"}
               >
-                <span>{reaction.emoji}</span>
-                <span>{reaction.count}</span>
+                <span className="text-[12px] leading-none">{reaction.emoji}</span>
+                <span className="text-[9px] leading-none text-current/75">{reaction.count}</span>
               </button>
             ))}
           </div>
@@ -962,15 +966,33 @@ export default function ContactInboxPanel({
   const activeTargetUid = data?.activeTargetUid ?? null;
   const timelineViewportRef = useRef<HTMLDivElement | null>(null);
   const timelineBottomRef = useRef<HTMLDivElement | null>(null);
+  const [showTimelineJump, setShowTimelineJump] = useState(false);
+  const [typingHudMode, setTypingHudMode] = useState<"steady" | "pulse">("steady");
+  const [ownTypingPulse, setOwnTypingPulse] = useState(false);
+  const ownTypingPulseTimerRef = useRef<number | null>(null);
+  const lastBodyForTypingPulseRef = useRef(body);
   const hasConversationChoices = (data?.summaries.length ?? 0) > 1;
   const showConversationRail = Boolean(mode === "page" && hasConversationChoices);
   const showConversationChips = !showConversationRail && hasConversationChoices;
   const unreadCount = data?.totalUnreadCount ?? 0;
   const heading = counterpart?.displayName || (data?.viewer.isAdmin ? "Private inbox" : "Private Thread");
+  const premiumTypingHud = typingHudMode === "pulse";
   const typingLabel =
     data?.conversation?.counterpartTyping && counterpart
       ? `${counterpart.displayName} is typing…`
       : null;
+  const ownTypingSteadyLabel =
+    body.trim().length > 0 && !data?.unavailableReason
+      ? `${data?.viewer.displayName || "You"} is typing…`
+      : null;
+  const ownTypingPulseLabel =
+    ownTypingPulse && body.trim().length > 0 && !data?.unavailableReason
+      ? `${data?.viewer.displayName || "You"} is typing…`
+      : null;
+  const streamTypingLabel = premiumTypingHud ? null : typingLabel;
+  const centerTypingLabel = premiumTypingHud
+    ? typingLabel || ownTypingPulseLabel
+    : ownTypingSteadyLabel;
   const timelineRows = useMemo(() => buildTimelineRows(data?.messages ?? []), [data?.messages]);
   const latestTimelineKey = timelineRows[timelineRows.length - 1]?.key ?? "empty";
   const shellClassName =
@@ -988,6 +1010,102 @@ export default function ContactInboxPanel({
       ? "bg-white/[0.055] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]"
       : "bg-[#0a1220] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]";
 
+  function pulseOwnTypingHud() {
+    if (typeof window === "undefined") return;
+    if (typingHudMode !== "pulse") return;
+
+    setOwnTypingPulse(true);
+
+    if (ownTypingPulseTimerRef.current) {
+      window.clearTimeout(ownTypingPulseTimerRef.current);
+    }
+
+    ownTypingPulseTimerRef.current = window.setTimeout(() => {
+      setOwnTypingPulse(false);
+      ownTypingPulseTimerRef.current = null;
+    }, 1150);
+  }
+
+  function toggleTypingHudMode() {
+    setTypingHudMode((current) => {
+      const next = current === "pulse" ? "steady" : "pulse";
+
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(TYPING_HUD_MODE_STORAGE_KEY, next);
+      }
+
+      if (next === "steady") {
+        setOwnTypingPulse(false);
+      } else if (body.trim()) {
+        window.setTimeout(() => pulseOwnTypingHud(), 0);
+      }
+
+      return next;
+    });
+  }
+
+  function updateTimelineJumpButton() {
+    const viewport = timelineViewportRef.current;
+    if (!viewport) return;
+
+    const distanceFromBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
+    const shouldShow = distanceFromBottom > 140;
+
+    setShowTimelineJump((current) => (current === shouldShow ? current : shouldShow));
+  }
+
+  function scrollTimelineToBottom(behavior: ScrollBehavior = "smooth") {
+    const viewport = timelineViewportRef.current;
+
+    timelineBottomRef.current?.scrollIntoView({ block: "end", behavior });
+
+    if (viewport) {
+      viewport.scrollTo({
+        top: viewport.scrollHeight,
+        behavior,
+      });
+    }
+
+    setShowTimelineJump(false);
+  }
+
+  function handleTimelineScroll() {
+    updateTimelineJumpButton();
+  }
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const saved = window.localStorage.getItem(TYPING_HUD_MODE_STORAGE_KEY);
+    if (saved === "steady" || saved === "pulse") {
+      setTypingHudMode(saved);
+    }
+
+    return () => {
+      if (ownTypingPulseTimerRef.current) {
+        window.clearTimeout(ownTypingPulseTimerRef.current);
+        ownTypingPulseTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typingHudMode !== "pulse") {
+      lastBodyForTypingPulseRef.current = body;
+      return;
+    }
+
+    if (body !== lastBodyForTypingPulseRef.current) {
+      lastBodyForTypingPulseRef.current = body;
+
+      if (body.trim()) {
+        pulseOwnTypingHud();
+      } else {
+        setOwnTypingPulse(false);
+      }
+    }
+  }, [body, typingHudMode]);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (!timelineRows.length) return;
@@ -1002,6 +1120,7 @@ export default function ContactInboxPanel({
         top: viewport.scrollHeight,
         behavior: "auto",
       });
+      setShowTimelineJump(false);
     };
 
     const timeout = window.setTimeout(() => {
@@ -1020,7 +1139,7 @@ export default function ContactInboxPanel({
       window.cancelAnimationFrame(frame);
       window.cancelAnimationFrame(secondFrame);
     };
-  }, [activeTargetUid, latestTimelineKey, loading, timelineRows.length]);
+  }, [activeTargetUid, latestTimelineKey, loading]);
 
   return (
     <div
@@ -1123,18 +1242,12 @@ export default function ContactInboxPanel({
             </div>
           ) : null}
 
-          <div
-            ref={timelineViewportRef}
-            className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3 sm:px-4 sm:py-4"
-          >
-            {typingLabel ? (
-              <div className="mb-3 flex justify-center">
-                <div className="rounded-full bg-white/[0.05] px-3 py-2 text-xs text-slate-300 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]">
-                  {typingLabel}
-                </div>
-              </div>
-            ) : null}
-
+          <div className="relative min-h-0 flex-1">
+            <div
+              ref={timelineViewportRef}
+              onScroll={handleTimelineScroll}
+              className="h-full min-h-0 overflow-y-auto overscroll-contain px-3 py-3 sm:px-4 sm:py-4"
+            >
             {loading ? (
               <div className="rounded-[1.35rem] bg-white/[0.045] px-4 py-5 text-sm text-slate-300 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]">
                 Loading the private line...
@@ -1178,10 +1291,68 @@ export default function ContactInboxPanel({
                     />
                   )
                 )}
+                {streamTypingLabel ? (
+                  <div className="mt-1 flex justify-start px-1">
+                    <div className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.18em] text-emerald-100/62">
+                      <span className="flex items-center gap-1">
+                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-300/70 shadow-[0_0_10px_rgba(110,231,183,0.42)]" />
+                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-300/45 [animation-delay:120ms]" />
+                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-300/25 [animation-delay:240ms]" />
+                      </span>
+                      <span>{streamTypingLabel}</span>
+                    </div>
+                  </div>
+                ) : null}
                 <div ref={timelineBottomRef} className="h-px w-full" />
               </div>
             )}
+            </div>
+
+            {showTimelineJump ? (
+              <button
+                type="button"
+                onClick={() => scrollTimelineToBottom("smooth")}
+                className="absolute bottom-4 left-1/2 z-20 inline-flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full border border-emerald-200/18 bg-[#07111f]/88 text-sm font-black text-emerald-100/82 shadow-[0_12px_32px_rgba(0,0,0,0.30),inset_0_0_0_1px_rgba(110,231,183,0.08)] backdrop-blur-md transition hover:border-emerald-200/30 hover:bg-[#0b1828] hover:text-emerald-50"
+                aria-label="Scroll to latest message"
+              >
+                <span aria-hidden="true">↓</span>
+              </button>
+            ) : null}
+
+            <button
+              type="button"
+              onClick={toggleTypingHudMode}
+              className={`absolute bottom-4 left-4 z-30 inline-flex h-4 w-4 items-center justify-center rounded-full border transition hover:scale-110 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-200/25 ${
+                premiumTypingHud
+                  ? "border-emerald-200/20 bg-emerald-300/[0.075] shadow-[0_0_14px_rgba(110,231,183,0.18)]"
+                  : "border-white/12 bg-white/[0.055] shadow-[0_0_10px_rgba(148,163,184,0.10)]"
+              }`}
+              aria-label="Toggle typing display"
+              aria-pressed={premiumTypingHud}
+            >
+              <span
+                className={`h-1.5 w-1.5 rounded-full transition ${
+                  premiumTypingHud
+                    ? "bg-emerald-200/90 shadow-[0_0_12px_rgba(110,231,183,0.55)]"
+                    : "bg-slate-300/45 shadow-[0_0_8px_rgba(148,163,184,0.22)]"
+                }`}
+                aria-hidden="true"
+              />
+            </button>
           </div>
+
+          {centerTypingLabel ? (
+            <div className="pointer-events-none flex shrink-0 justify-center px-3 pb-2 pt-1 sm:px-4">
+              <div className="inline-flex max-w-full items-center justify-center gap-2 text-center text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-100/70">
+                <span className="flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-300/80 shadow-[0_0_10px_rgba(110,231,183,0.45)]" />
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-300/50 [animation-delay:120ms]" />
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-300/30 [animation-delay:240ms]" />
+                </span>
+                <span className="truncate">{centerTypingLabel}</span>
+              </div>
+            </div>
+          ) : null}
 
           <div className={`shrink-0 border-t px-3 py-3 sm:px-4 sm:py-4 ${chromeClassName} ${composerClassName}`}>
             {richComposer ? (

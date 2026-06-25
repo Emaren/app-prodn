@@ -92,6 +92,11 @@ export const WOLO_MAINNET_WALLET_ALIASES = [
     role: "player",
   },
   {
+    label: "Emaren #2",
+    address: "wolo1yyuu097eppte7qya48r3dth86smdl3sjyxg284",
+    role: "player",
+  },
+  {
     label: "Module: bonded_tokens_pool",
     address: "wolo1fl48vsnmsdzcv85q5d2q4z5ajdha8yu3aqv4s2",
     role: "validator",

@@ -85,6 +85,11 @@ const DEFAULT_SETTINGS: Array<{ key: string; value: Prisma.InputJsonValue; reaso
     reason: "Trophy payout and chain settlement actions default to dry-run.",
   },
   {
+    key: "trophy_tribute_auto_execute",
+    value: false,
+    reason: "Daily belt tribute payouts remain manual until an operator enables auto execution.",
+  },
+  {
     key: "nationality_change_cooldown_days",
     value: 30,
     reason: "Placeholder cooldown for represented-country changes.",

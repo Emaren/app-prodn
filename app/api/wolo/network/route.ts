@@ -159,6 +159,7 @@ export async function GET(request: NextRequest) {
           role: row.role,
           amountUwolo: row.amountUwolo,
           amountWolo: row.amountWolo,
+          amountWoloFormatted: row.amountWoloFormatted,
           isModule: row.isModule,
           isRetired: row.isRetired,
           isUserFacing: row.isUserFacing,

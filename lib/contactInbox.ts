@@ -1077,7 +1077,7 @@ async function loadConversationMessages(
     include: {
       messages: {
         orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-        take: 80,
+        take: 250,
         select: {
         id: true,
         senderUserId: true,

@@ -5,11 +5,15 @@ import {
   WOLO_MAINNET_WALLET_ALIASES,
   WOLO_MAINNET_WALLET_ALIAS_BY_ADDRESS,
 } from "@/lib/woloMainnetWallets";
+import { WOLO_MAINNET_NETWORK_ACCOUNTS } from "@/lib/woloMainnetNetworkAccounts";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const UWOLO_DECIMALS = 6;
+const NO_STORE_HEADERS = {
+  "Cache-Control": "no-store, max-age=0",
+};
 
 type DenomOwner = {
   address?: unknown;
@@ -29,8 +33,15 @@ type HolderRow = {
   rank: number;
   alias: string;
   address: string;
-  balanceWolo: string;
-  balanceWoloFormatted: string;
+  role: string;
+  use: string | null;
+  balanceWolo: string | null;
+  balanceWoloFormatted: string | null;
+  exactBalanceWolo: string;
+  balanceHidden: boolean;
+  isKnown: boolean;
+  isKnownUser: boolean;
+  isInfrastructure: boolean;
 };
 
 function normalizeAmount(value: unknown): string {
@@ -94,6 +105,34 @@ function getRestUrl() {
     process.env.WOLO_SETTLEMENT_REST_URL ||
     "https://rest-mainnet.aoe2war.com"
   ).replace(/\/+$/, "");
+}
+
+const networkByAddress = new Map(
+  WOLO_MAINNET_NETWORK_ACCOUNTS.map((account) => [account.address.toLowerCase(), account])
+);
+
+const walletRoleByAddress = new Map(
+  WOLO_MAINNET_WALLET_ALIASES.map((wallet) => [wallet.address.toLowerCase(), wallet.role])
+);
+
+function classifyHolder(address: string) {
+  const lower = address.toLowerCase();
+  const networkAccount = networkByAddress.get(lower);
+  const walletRole = walletRoleByAddress.get(lower);
+  const role = networkAccount?.role || walletRole || "holder";
+  const use = networkAccount?.use ?? null;
+  const isKnown = Boolean(networkAccount || walletRole || WOLO_MAINNET_WALLET_ALIAS_BY_ADDRESS[lower]);
+  const isKnownUser = role === "user" || role === "player" || use === "USER";
+  const isInfrastructure = isKnown && !isKnownUser;
+
+  return {
+    role,
+    use,
+    isKnown,
+    isKnownUser,
+    isInfrastructure,
+    balanceHidden: isKnownUser,
+  };
 }
 
 async function loadAliases() {
@@ -186,12 +225,13 @@ async function loadDenomOwners(restUrl: string, denom: string) {
 
 function renderTable(holders: HolderRow[], totalUwolo: string) {
   const lines = [
-    `${"ALIAS".padEnd(30)} ${"ADDRESS".padEnd(48)} ${"WOLO".padStart(18)}`,
-    "-".repeat(100),
-    ...holders.map((holder) =>
-      `${holder.alias.padEnd(30)} ${holder.address.padEnd(48)} ${holder.balanceWoloFormatted.padStart(18)}`
-    ),
-    "-".repeat(100),
+    `${"ALIAS".padEnd(34)} ${"ADDRESS".padEnd(48)} ${"WOLO".padStart(18)} ROLE`,
+    "-".repeat(116),
+    ...holders.map((holder) => {
+      const displayBalance = holder.balanceHidden ? "" : holder.balanceWoloFormatted || "0.000000";
+      return `${holder.alias.padEnd(34)} ${holder.address.padEnd(48)} ${displayBalance.padStart(18)} ${holder.role}`;
+    }),
+    "-".repeat(116),
     `${holders.length} wallets`,
     `${formatWolo(totalUwolo, true)} WOLO total`,
   ];
@@ -214,19 +254,44 @@ export async function GET(request: NextRequest) {
     const zeroBalanceAliases = WOLO_MAINNET_WALLET_ALIASES.filter(
       (wallet) => !seenOwnerAddresses.has(wallet.address.toLowerCase())
     );
+
     const holders = [
-      ...owners.map((owner) => ({
-        alias: aliases[owner.address] || "Unaliased",
-        address: owner.address,
-        balanceWolo: formatWolo(owner.amountUwolo),
-        balanceWoloFormatted: formatWolo(owner.amountUwolo, true),
-      })),
-      ...zeroBalanceAliases.map((wallet) => ({
-        alias: aliases[wallet.address] || wallet.label,
-        address: wallet.address,
-        balanceWolo: formatWolo("0"),
-        balanceWoloFormatted: formatWolo("0", true),
-      })),
+      ...owners.map((owner) => {
+        const classification = classifyHolder(owner.address);
+        const exactBalanceWolo = formatWolo(owner.amountUwolo, true);
+
+        return {
+          alias: aliases[owner.address.toLowerCase()] || "Unaliased holder",
+          address: owner.address,
+          role: classification.role,
+          use: classification.use,
+          balanceWolo: classification.balanceHidden ? null : formatWolo(owner.amountUwolo),
+          balanceWoloFormatted: classification.balanceHidden ? null : exactBalanceWolo,
+          exactBalanceWolo,
+          balanceHidden: classification.balanceHidden,
+          isKnown: classification.isKnown,
+          isKnownUser: classification.isKnownUser,
+          isInfrastructure: classification.isInfrastructure,
+        };
+      }),
+      ...zeroBalanceAliases.map((wallet) => {
+        const classification = classifyHolder(wallet.address);
+        const exactBalanceWolo = formatWolo("0", true);
+
+        return {
+          alias: aliases[wallet.address.toLowerCase()] || wallet.label,
+          address: wallet.address,
+          role: classification.role,
+          use: classification.use,
+          balanceWolo: classification.balanceHidden ? null : formatWolo("0"),
+          balanceWoloFormatted: classification.balanceHidden ? null : exactBalanceWolo,
+          exactBalanceWolo,
+          balanceHidden: classification.balanceHidden,
+          isKnown: true,
+          isKnownUser: classification.isKnownUser,
+          isInfrastructure: classification.isInfrastructure,
+        };
+      }),
     ].map((holder, index) => ({
       ...holder,
       rank: index + 1,
@@ -237,7 +302,7 @@ export async function GET(request: NextRequest) {
     if (format === "table" || format === "text" || format === "txt") {
       return new NextResponse(renderTable(holders, totalUwolo), {
         headers: {
-          "Cache-Control": "no-store, max-age=0",
+          ...NO_STORE_HEADERS,
           "Content-Type": "text/plain; charset=utf-8",
         },
       });
@@ -254,9 +319,7 @@ export async function GET(request: NextRequest) {
         holders,
       },
       {
-        headers: {
-          "Cache-Control": "no-store, max-age=0",
-        },
+        headers: NO_STORE_HEADERS,
       }
     );
   } catch (error) {
@@ -266,7 +329,7 @@ export async function GET(request: NextRequest) {
       {
         detail: "Wolo holders unavailable.",
       },
-      { status: 500 }
+      { status: 500, headers: NO_STORE_HEADERS }
     );
   }
 }

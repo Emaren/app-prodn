@@ -355,35 +355,18 @@ export const specialDesignations = [
 
 export const nationalBeacons: NationalBeacon[] = [
   {
-    id: "uk",
-    country: "United Kingdom",
-    champion: "Sniper",
-    bountyWolo: 125,
-    tenureDays: 22,
-    tier: "world",
-    x: 45,
-    y: 34,
-  },
-  {
-    id: "mexico",
-    country: "Mexico",
-    champion: "Julio Alvarez",
-    bountyWolo: 92,
-    tenureDays: 14,
+    id: "canada",
+    country: "Canada",
+    champion: "Emaren",
+    bountyWolo: 10,
+    tenureDays: 1,
     tier: "lit",
     x: 22,
-    y: 58,
+    y: 35,
   },
-  {
-    id: "us",
-    country: "United States",
-    champion: "Jim",
-    bountyWolo: 64,
-    tenureDays: 12,
-    tier: "lit",
-    x: 24,
-    y: 45,
-  },
+  { id: "us", country: "United States", champion: null, bountyWolo: 10, tenureDays: 0, tier: "vacant", x: 24, y: 47 },
+  { id: "mexico", country: "Mexico", champion: null, bountyWolo: 10, tenureDays: 0, tier: "vacant", x: 22, y: 60 },
+  { id: "uk", country: "United Kingdom", champion: null, bountyWolo: 10, tenureDays: 0, tier: "vacant", x: 45, y: 36 },
   { id: "brazil", country: "Brazil", champion: null, bountyWolo: 10, tenureDays: 0, tier: "vacant", x: 37, y: 74 },
   { id: "spain", country: "Spain", champion: null, bountyWolo: 10, tenureDays: 0, tier: "vacant", x: 48, y: 48 },
   { id: "germany", country: "Germany", champion: null, bountyWolo: 10, tenureDays: 0, tier: "vacant", x: 52, y: 38 },
@@ -394,6 +377,7 @@ export const nationalBeacons: NationalBeacon[] = [
   { id: "australia", country: "Australia", champion: null, bountyWolo: 10, tenureDays: 0, tier: "vacant", x: 83, y: 78 },
   { id: "south-africa", country: "South Africa", champion: null, bountyWolo: 10, tenureDays: 0, tier: "vacant", x: 56, y: 82 },
 ];
+
 
 export const forumChannels = [
   { label: "Champion Corner", count: 3 },

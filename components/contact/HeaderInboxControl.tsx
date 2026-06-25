@@ -69,6 +69,8 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
   const [reactingMessageId, setReactingMessageId] = useState<number | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const selectedTargetUidRef = useRef<string | null>(null);
+  const typingTimerRef = useRef<number | null>(null);
+  const typingActiveRef = useRef(false);
 
   useClickOutside(panelRef as React.RefObject<HTMLElement>, () => setOpen(false));
 
@@ -154,6 +156,18 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
     };
   }, [open, refreshPanel, uid]);
 
+  useEffect(() => {
+    return () => {
+      if (typingTimerRef.current) {
+        window.clearTimeout(typingTimerRef.current);
+        typingTimerRef.current = null;
+      }
+      if (typingActiveRef.current) {
+        void sendTypingState(false);
+      }
+    };
+  }, []);
+
   const unreadCount = summary?.totalUnreadCount ?? 0;
   const openPageHref = useMemo(() => {
     if (!selectedTargetUid) return "/contact-emaren";
@@ -215,6 +229,51 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
     [refreshPanel]
   );
 
+
+  async function sendTypingState(isTyping: boolean) {
+    const targetUid = selectedTargetUidRef.current;
+    if (!uid || !targetUid) return;
+
+    try {
+      await fetch("/api/contact-emaren", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action: "set_typing",
+          targetUid,
+          isTyping,
+        }),
+      });
+      typingActiveRef.current = isTyping;
+    } catch (typingError) {
+      console.warn("Nav typing state failed:", typingError);
+    }
+  }
+
+  function scheduleTypingState(nextBody: string) {
+    if (typingTimerRef.current) {
+      window.clearTimeout(typingTimerRef.current);
+      typingTimerRef.current = null;
+    }
+
+    if (!nextBody.trim()) {
+      if (typingActiveRef.current) {
+        void sendTypingState(false);
+      }
+      return;
+    }
+
+    if (!typingActiveRef.current) {
+      void sendTypingState(true);
+    }
+
+    typingTimerRef.current = window.setTimeout(() => {
+      void sendTypingState(false);
+    }, 2200);
+  }
+
   if (!uid) {
     return null;
   }
@@ -271,7 +330,10 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
                 body={body}
                 sendPending={sendPending}
                 mode="popover"
-                onBodyChange={setBody}
+                onBodyChange={(value) => {
+                  setBody(value);
+                  scheduleTypingState(value);
+                }}
                 onInboxAction={async (action) => {
                   setError(null);
                   try {
@@ -335,6 +397,7 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
                     }
 
                     setBody("");
+                    void sendTypingState(false);
                     applyInboxPayload(payload as ContactInboxPayload);
                   } catch (sendError) {
                     setError(sendError instanceof Error ? sendError.message : "Message failed.");

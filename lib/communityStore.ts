@@ -299,7 +299,7 @@ export async function getLobbyMessages(
   const messages = await prisma.chatMessage.findMany({
     where: { roomId: room.id },
     orderBy: { createdAt: "desc" },
-    take: Math.max(1, Math.min(limit, 100)),
+    take: Math.max(1, Math.min(limit, 500)),
     include: {
       user: {
         select: {

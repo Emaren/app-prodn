@@ -24,6 +24,15 @@ const NAME_TARGETS: Record<string, string> = {
   sniper: "sniper",
   "the ai scribe": "sniper",
   grimer: "emaren",
+
+  myth: "myth",
+  ra: "ra",
+  "bdb pigman": "bdb-pigman",
+  "[bdb]pigman": "bdb-pigman",
+  pigman: "pigman",
+  "dil pascana": "dil-pascana",
+  "dil_pascana": "dil-pascana",
+  "dil-pascana": "dil-pascana",
 };
 
 function normalizeName(value: string | null | undefined) {
@@ -105,6 +114,12 @@ const MANAGED_NAME_AVATAR_TARGETS = new Set([
   "julio",
   "julio-alvarez",
   "sniper",
+
+  "myth",
+  "ra",
+  "bdb-pigman",
+  "pigman",
+  "dil-pascana",
 ]);
 
 export function avatarUrlForName(name: string | null | undefined) {

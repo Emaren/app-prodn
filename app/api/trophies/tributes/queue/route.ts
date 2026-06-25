@@ -4,6 +4,7 @@ import { getPrisma } from "@/lib/prisma";
 import {
   ensureDailyTrophyTributePayouts,
   ensureTrophySeedData,
+  executePendingTrophyTributePayouts,
 } from "@/lib/trophies/service";
 
 export const runtime = "nodejs";
@@ -95,17 +96,36 @@ export async function POST(request: NextRequest) {
     );
     const failedToday = todayRows.filter((row) => row.status === "failed");
 
+    const autoExecuteSetting = await prisma.trophySetting.findUnique({
+      where: { key: "trophy_tribute_auto_execute" },
+      select: { value: true },
+    });
+    const trophyTributeAutoExecute = autoExecuteSetting?.value === true;
+    const autoExecution = trophyTributeAutoExecute
+      ? await executePendingTrophyTributePayouts(prisma, { limit: 25 })
+      : null;
+
     return NextResponse.json({
       ok: true,
       queuedAt: new Date().toISOString(),
       queueDate: dayStart.toISOString().slice(0, 10),
-      mode: "queue_only_no_auto_pay",
+      mode: trophyTributeAutoExecute ? "queue_and_auto_execute" : "queue_only_manual",
       beforeTodayRows,
       afterTodayRows: todayRows.length,
       createdTodayRows: Math.max(0, todayRows.length - beforeTodayRows),
       dueNowCount: dueNow.length,
       paidTodayCount: paidToday.length,
       failedTodayCount: failedToday.length,
+      autoExecute: trophyTributeAutoExecute,
+      executionSummary: autoExecution
+        ? {
+            scanned: autoExecution.scanned,
+            paid: autoExecution.paid,
+            failed: autoExecution.failed,
+            skipped: autoExecution.skipped,
+            results: autoExecution.results,
+          }
+        : null,
       rows: todayRows.map((row) => ({
         id: row.id,
         trophyId: row.trophy.trophyId,

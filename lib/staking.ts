@@ -1326,17 +1326,20 @@ export async function loadMainnetTransferStakingActivityPage(
           ? BigInt(Math.max(0, Math.round(Number(distribution.stakerPoolWolo || 0) * 1_000_000)))
           : BigInt(String(rawStakerPoolUwolo));
 
-      const amountLabel =
+      const storedDustWolo =
         stakerPoolUwolo > BigInt(0)
-          ? stakerPoolUwolo < BigInt(1_000_000)
-            ? `${(Number(stakerPoolUwolo) / 1_000_000).toFixed(6).replace(/0+$/, "").replace(/\.$/, "")} WOLO`
-            : formatActivityWoloAmount(Number(stakerPoolUwolo / BigInt(1_000_000)))
-          : "No pool";
+          ? Number(stakerPoolUwolo) / 1_000_000
+          : Number(distribution.stakerPoolWolo || 0);
+
+      const modeledDustWolo = settledVolumeWolo > 0 ? settledVolumeWolo * 0.01 : 0;
+      const dustWolo = Math.max(storedDustWolo, modeledDustWolo);
+      const dustLabel = dustWolo > 0 ? formatActivityWoloAmount(dustWolo) : "0 WOLO";
+      const amountLabel = dustWolo > 0 ? dustLabel : "No pool";
 
       const distributionDetail =
-        stakerPoolUwolo > BigInt(0)
-          ? `${amountLabel} staking pool · precise chain pool · ${settledLabel} · ${volumeLabel}`
-          : `No reward distribution · ${settledLabel} · ${volumeLabel}`;
+        dustWolo > 0
+          ? `Current dust: ${dustLabel} · below 1 WOLO payout threshold · no payout this cycle · ${settledLabel} · ${volumeLabel}`
+          : `Current dust: 0 WOLO · no payout this cycle · ${settledLabel} · ${volumeLabel}`;
 
       return {
         key: `staking-cycle-${distribution.id}`,
@@ -2046,7 +2049,22 @@ export async function createConfirmedStakingEvent(
     where: { txHash: normalizedTxHash },
   });
   if (existing) {
-    return existing;
+    const sameUser = existing.userId === input.userId;
+    const sameType = existing.type === input.type;
+    const sameAmount = existing.amountWolo === input.amountWolo;
+    const sameWallet =
+      !input.walletAddress ||
+      !existing.walletAddress ||
+      existing.walletAddress.toLowerCase() === input.walletAddress.toLowerCase();
+
+    if (sameUser && sameType && sameAmount && sameWallet) {
+      return existing;
+    }
+
+    throw new StakingActionError(
+      "That transaction hash is already attached to a different staking record.",
+      409
+    );
   }
 
   return prisma.$transaction(async (tx) => {

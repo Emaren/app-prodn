@@ -5,9 +5,21 @@ import { getSessionUid } from "@/lib/session";
 import { createConfirmedStakingEvent, StakingActionError } from "@/lib/staking";
 import { validateWoloAddress, verifyWoloTransfer } from "@/lib/woloBetSettlement";
 import { getWoloStakingRuntime } from "@/lib/woloStakingRuntime";
+import { WOLO_MAINNET_NETWORK_ACCOUNTS } from "@/lib/woloMainnetNetworkAccounts";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+function isKnownOperatorStakingSource(address: string) {
+  const lower = address.trim().toLowerCase();
+  const account = WOLO_MAINNET_NETWORK_ACCOUNTS.find(
+    (candidate) => candidate.address.toLowerCase() === lower
+  );
+
+  if (!account) return false;
+
+  return account.use !== "USER" && account.use !== "PUBLIC_RECEIVE_OK";
+}
 
 function normalizeWholeWolo(value: unknown) {
   if (typeof value === "number" && Number.isInteger(value)) return value;
@@ -72,6 +84,13 @@ export async function POST(request: NextRequest) {
     const addressError = validateWoloAddress(walletAddress);
     if (addressError) {
       return NextResponse.json({ detail: addressError }, { status: 400 });
+    }
+
+    if (isKnownOperatorStakingSource(walletAddress)) {
+      return NextResponse.json(
+        { detail: "That transaction is an operator reserve transfer, not a user stake." },
+        { status: 409 }
+      );
     }
 
     const verification = await verifyWoloTransfer({

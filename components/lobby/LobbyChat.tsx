@@ -11,6 +11,7 @@ import {
   useRef,
   useState,
 } from "react";
+
 import {
   getLobbyPresentationTone,
   type LobbyThemeKey,
@@ -24,6 +25,8 @@ import AutoGrowTextarea from "@/components/ui/AutoGrowTextarea";
 import { LOBBY_MESSAGE_MAX_CHARS } from "@/lib/lobby";
 import { LOBBY_MESSAGE_REACTIONS } from "@/lib/lobbyReactionConfig";
 import { avatarThumbUrlForUser } from "@/lib/avatarAssets";
+
+const TYPING_HUD_MODE_STORAGE_KEY = "aoe2war:typing-hud-mode";
 
 type LobbyChatProps = {
   style?: CSSProperties;
@@ -100,18 +103,121 @@ export function LobbyChat(props: LobbyChatProps) {
 
   const tone = getLobbyPresentationTone(themeKey, viewMode);
   const isExtreme = surface === "extreme";
+  const [showChatJump, setShowChatJump] = useState(false);
+  const [typingHudMode, setTypingHudMode] = useState<"steady" | "pulse">("steady");
+  const [ownTypingPulse, setOwnTypingPulse] = useState(false);
+  const ownTypingPulseTimerRef = useRef<number | null>(null);
+  const lastMessageBodyForTypingPulseRef = useRef(messageBody);
+
+  function pulseOwnTypingHud() {
+    if (typeof window === "undefined") return;
+    if (typingHudMode !== "pulse") return;
+
+    setOwnTypingPulse(true);
+
+    if (ownTypingPulseTimerRef.current) {
+      window.clearTimeout(ownTypingPulseTimerRef.current);
+    }
+
+    ownTypingPulseTimerRef.current = window.setTimeout(() => {
+      setOwnTypingPulse(false);
+      ownTypingPulseTimerRef.current = null;
+    }, 1150);
+  }
+
+  function toggleTypingHudMode() {
+    setTypingHudMode((current) => {
+      const next = current === "pulse" ? "steady" : "pulse";
+
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(TYPING_HUD_MODE_STORAGE_KEY, next);
+      }
+
+      if (next === "steady") {
+        setOwnTypingPulse(false);
+      } else if (messageBody.trim()) {
+        window.setTimeout(() => pulseOwnTypingHud(), 0);
+      }
+
+      return next;
+    });
+  }
+
+  function updateChatJumpButton() {
+    const viewport = chatScrollRef.current;
+    if (!viewport) return;
+
+    const distanceFromBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
+    const shouldShow = distanceFromBottom > 140;
+
+    setShowChatJump((current) => (current === shouldShow ? current : shouldShow));
+  }
+
+  function scrollChatToBottom(behavior: ScrollBehavior = "smooth") {
+    const viewport = chatScrollRef.current;
+    if (!viewport) return;
+
+    viewport.scrollTo({
+      top: viewport.scrollHeight,
+      behavior,
+    });
+
+    setShowChatJump(false);
+  }
+
+  function handleChatScroll() {
+    updateChatJumpButton();
+  }
 
   const viewerName =
     playerName || displayName(currentUserInGameName, currentUserSteamPersonaName) || "You";
 
+  const premiumTypingHud = typingHudMode === "pulse";
+  const ownTypingSteadyLabel =
+    messageBody.trim().length > 0 ? `${viewerName} is typing…` : null;
+  const ownTypingPulseLabel =
+    ownTypingPulse && messageBody.trim().length > 0 ? `${viewerName} is typing…` : null;
   const typingLabel =
     chatPending
       ? aiEnabled && (aiScribeEnabled || aiGrimerEnabled)
-        ? `${aiScribeEnabled ? "The AI Scribe" : "Grimer"} is typing...`
-        : "The lobby is typing..."
-      : messageBody.trim().length > 0
-        ? `${viewerName} is typing...`
-        : null;
+        ? `${aiScribeEnabled ? "The AI Scribe" : "Grimer"} is typing…`
+        : "The lobby is typing…"
+      : premiumTypingHud
+        ? ownTypingPulseLabel
+        : ownTypingSteadyLabel;
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const saved = window.localStorage.getItem(TYPING_HUD_MODE_STORAGE_KEY);
+    if (saved === "steady" || saved === "pulse") {
+      setTypingHudMode(saved);
+    }
+
+    return () => {
+      if (ownTypingPulseTimerRef.current) {
+        window.clearTimeout(ownTypingPulseTimerRef.current);
+        ownTypingPulseTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typingHudMode !== "pulse") {
+      lastMessageBodyForTypingPulseRef.current = messageBody;
+      return;
+    }
+
+    if (messageBody !== lastMessageBodyForTypingPulseRef.current) {
+      lastMessageBodyForTypingPulseRef.current = messageBody;
+
+      if (messageBody.trim()) {
+        pulseOwnTypingHud();
+      } else {
+        setOwnTypingPulse(false);
+      }
+    }
+  }, [messageBody, typingHudMode]);
 
   return (
     <div
@@ -137,9 +243,9 @@ export function LobbyChat(props: LobbyChatProps) {
 
       <div className="mt-4 flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-x-hidden">
         <div
-          className={`flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-[1.5rem] border p-3 sm:p-4 ${tone.insetPanel}`}
+          className={`relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-[1.5rem] border p-3 sm:p-4 ${tone.insetPanel}`}
         >
-          <div ref={chatScrollRef} className="min-h-0 min-w-0 flex-1 space-y-2 overflow-x-hidden overflow-y-auto pb-12 pr-1">
+          <div ref={chatScrollRef} onScroll={handleChatScroll} className="min-h-0 min-w-0 flex-1 space-y-2 overflow-x-hidden overflow-y-auto pb-12 pr-1">
             {chatItems.length === 0 ? (
               <div className={`rounded-xl border px-4 py-5 text-sm text-slate-300 ${tone.subduedCard}`}>
                 No messages yet. The first tournament chatter starts here.
@@ -167,10 +273,46 @@ export function LobbyChat(props: LobbyChatProps) {
             )}
           </div>
 
+          {showChatJump ? (
+            <button
+              type="button"
+              onClick={() => scrollChatToBottom("smooth")}
+              className="absolute bottom-4 left-1/2 z-20 inline-flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full border border-emerald-200/18 bg-[#07111f]/88 text-sm font-black text-emerald-100/82 shadow-[0_12px_32px_rgba(0,0,0,0.30),inset_0_0_0_1px_rgba(110,231,183,0.08)] backdrop-blur-md transition hover:border-emerald-200/30 hover:bg-[#0b1828] hover:text-emerald-50"
+              aria-label="Scroll to latest lobby message"
+            >
+              <span aria-hidden="true">↓</span>
+            </button>
+          ) : null}
+
+          <button
+            type="button"
+            onClick={toggleTypingHudMode}
+            className={`absolute bottom-5 left-5 z-20 inline-flex h-5 w-5 items-center justify-center rounded-full opacity-45 transition hover:opacity-80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-200/25 ${
+              premiumTypingHud ? "bg-emerald-300/[0.055]" : "bg-white/[0.025]"
+            }`}
+            aria-label="Toggle typing display"
+            aria-pressed={premiumTypingHud}
+          >
+            <span
+              className={`h-1.5 w-1.5 rounded-full transition ${
+                premiumTypingHud
+                  ? "bg-emerald-200/80 shadow-[0_0_12px_rgba(110,231,183,0.45)]"
+                  : "bg-slate-400/28 shadow-[0_0_8px_rgba(148,163,184,0.16)]"
+              }`}
+              aria-hidden="true"
+            />
+          </button>
+
           {typingLabel ? (
-            <div className="mt-2 flex items-center gap-2 px-1 text-xs text-slate-400">
-              <span className="flex h-1.5 w-1.5 rounded-full bg-emerald-300/80" />
-              <span>{typingLabel}</span>
+            <div className="pointer-events-none mt-2 flex shrink-0 justify-center px-1 text-center">
+              <div className="inline-flex max-w-full items-center justify-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-100/70">
+                <span className="flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-300/80 shadow-[0_0_10px_rgba(110,231,183,0.45)]" />
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-300/50 [animation-delay:120ms]" />
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-300/30 [animation-delay:240ms]" />
+                </span>
+                <span className="truncate">{typingLabel}</span>
+              </div>
             </div>
           ) : null}
         </div>

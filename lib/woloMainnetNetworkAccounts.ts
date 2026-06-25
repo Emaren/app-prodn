@@ -158,6 +158,12 @@ export const WOLO_MAINNET_NETWORK_ACCOUNTS = [
     role: "user",
   },
   {
+    label: "Emaren #2",
+    address: "wolo1yyuu097eppte7qya48r3dth86smdl3sjyxg284",
+    use: "USER",
+    role: "user",
+  },
+  {
     label: "Module: bonded_tokens_pool",
     address: "wolo1fl48vsnmsdzcv85q5d2q4z5ajdha8yu3aqv4s2",
     use: "MODULE_DO_NOT_USE",

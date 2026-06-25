@@ -157,7 +157,7 @@ export function TopWoloEarnersTile({
 
   return (
     <section
-      className={`relative flex flex-col overflow-hidden rounded-[1.7rem] border p-4 pt-5 transition sm:p-5 sm:pt-7 ${viewportHeightClassName} ${
+      className={`relative flex flex-col overflow-hidden rounded-[1.7rem] border p-4 pt-5 transition sm:p-5 sm:pt-7 ${isExtreme ? "isolate " : ""}${viewportHeightClassName} ${
         isExtreme
           ? "border-amber-200/10 bg-slate-950/74 shadow-[0_26px_88px_rgba(0,0,0,0.28)]"
           : tone.panelShell
@@ -166,14 +166,31 @@ export function TopWoloEarnersTile({
         isExtreme
           ? {
               backgroundImage:
-                "linear-gradient(180deg, rgba(2,6,23,0.10), rgba(2,6,23,0.92)), url('/lobby/war-chest-bg.webp')",
-              backgroundSize: "100% 100%, 100% 12rem",
-              backgroundPosition: "center, top center",
+                "linear-gradient(180deg, rgba(2,6,23,0.96) 0%, rgba(2,6,23,0.99) 54%, rgba(2,6,23,1) 100%)",
+              backgroundSize: "100% 100%",
+              backgroundPosition: "center",
               backgroundRepeat: "no-repeat",
             }
           : undefined
       }
     >
+      {isExtreme ? (
+        <div
+          data-war-chest-top-bg
+          className="pointer-events-none absolute inset-x-0 top-0 z-0 h-[7.6rem] opacity-55"
+          style={{
+            backgroundImage:
+              "linear-gradient(180deg, rgba(2,6,23,0.12) 0%, rgba(2,6,23,0.42) 38%, rgba(2,6,23,0.86) 68%, rgba(2,6,23,1) 100%), url('/lobby/war-chest-bg.webp')",
+            backgroundSize: "100% 100%, 100% 12.5rem",
+            backgroundPosition: "top center, top center",
+            backgroundRepeat: "no-repeat",
+            WebkitMaskImage:
+              "linear-gradient(180deg, black 0%, black 36%, rgba(0,0,0,0.28) 66%, transparent 100%)",
+            maskImage:
+              "linear-gradient(180deg, black 0%, black 36%, rgba(0,0,0,0.28) 66%, transparent 100%)",
+          }}
+        />
+      ) : null}
       <div className="relative z-10 flex items-start justify-between gap-4">
         <div className="min-w-0">
           <div className={`text-xs uppercase tracking-[0.35em] ${tone.accentText}`}>

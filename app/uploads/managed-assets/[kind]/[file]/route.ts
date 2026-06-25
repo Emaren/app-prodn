@@ -1,186 +1,68 @@
-import { promises as fs } from "fs";
+import { readFile } from "fs/promises";
 import path from "path";
-import { NextRequest, NextResponse } from "next/server";
+
+import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const DEFAULT_UPLOAD_ROOT = "/mnt/HC_Volume_105319120/aoe2-managed-assets";
+const SAFE_KIND_PATTERN = /^[a-z0-9_-]{1,32}$/i;
+const SAFE_FILE_PATTERN = /^[a-z0-9][a-z0-9._-]{0,220}$/i;
 
-const MIME_TYPES: Record<string, string> = {
-  ".avif": "image/avif",
-  ".gif": "image/gif",
-  ".jpeg": "image/jpeg",
-  ".jpg": "image/jpeg",
-  ".png": "image/png",
-  ".svg": "image/svg+xml",
-  ".webp": "image/webp",
-};
-
-function uploadRoot() {
-  return process.env.MANAGED_MEDIA_UPLOAD_DIR || DEFAULT_UPLOAD_ROOT;
+function contentTypeFor(filename: string) {
+  const extension = path.extname(filename).toLowerCase();
+  if (extension === ".png") return "image/png";
+  if (extension === ".jpg" || extension === ".jpeg") return "image/jpeg";
+  if (extension === ".webp") return "image/webp";
+  if (extension === ".gif") return "image/gif";
+  return "application/octet-stream";
 }
 
-function safeSegment(value: string) {
-  const cleaned = String(value || "").trim();
+function uploadRoots() {
+  const configured = String(process.env.MANAGED_MEDIA_UPLOAD_DIR || "").trim();
 
-  if (!cleaned || cleaned.includes("/") || cleaned.includes("\\") || cleaned.includes("..")) {
-    return "";
-  }
-
-  return cleaned;
+  return [
+    configured || null,
+    path.join(process.cwd(), "public", "uploads", "managed-assets"),
+  ].filter(Boolean) as string[];
 }
 
-function contentTypeFor(filePath: string) {
-  return MIME_TYPES[path.extname(filePath).toLowerCase()] || "application/octet-stream";
-}
+function safeFilePath(baseDir: string, kind: string, file: string) {
+  const filePath = path.join(baseDir, kind, file);
+  const relativePath = path.relative(baseDir, filePath);
 
-async function readIfExists(filePath: string) {
-  try {
-    const stat = await fs.stat(filePath);
-
-    if (!stat.isFile()) {
-      return null;
-    }
-
-    const data = await fs.readFile(filePath);
-
-    return { data, stat };
-  } catch {
+  if (relativePath.startsWith("..") || path.isAbsolute(relativePath)) {
     return null;
   }
-}
 
-function webpSidecarName(fileName: string) {
-  const ext = path.extname(fileName);
-
-  if (!ext || ext.toLowerCase() === ".webp") {
-    return "";
-  }
-
-  return `${fileName.slice(0, -ext.length)}.webp`;
-}
-
-function thumbnailSidecarName(fileName: string) {
-  const ext = path.extname(fileName);
-
-  if (!ext || ext.toLowerCase() === ".svg") {
-    return "";
-  }
-
-  return `${fileName.slice(0, -ext.length)}.thumb.webp`;
-}
-
-function cardSidecarName(fileName: string) {
-  const ext = path.extname(fileName);
-
-  if (!ext || ext.toLowerCase() === ".svg") {
-    return "";
-  }
-
-  return `${fileName.slice(0, -ext.length)}.card.webp`;
-}
-
-function requestedAvatarVariant(request: NextRequest) {
-  const size = request.nextUrl.searchParams.get("size") || request.nextUrl.searchParams.get("variant");
-
-  if (size === "thumb" || size === "thumbnail" || size === "avatar") {
-    return "thumb";
-  }
-
-  if (size === "card" || size === "portrait") {
-    return "card";
-  }
-
-  return "";
-}
-
-function wantsAvatarThumb(request: NextRequest) {
-  return requestedAvatarVariant(request) === "thumb";
-}
-
-function wantsAvatarCard(request: NextRequest) {
-  return requestedAvatarVariant(request) === "card";
+  return filePath;
 }
 
 export async function GET(
-  request: NextRequest,
-  context: { params: Promise<{ kind: string; file: string }> }
+  _request: Request,
+  { params }: { params: Promise<{ kind: string; file: string }> }
 ) {
-  const { kind: rawKind, file: rawFile } = await context.params;
+  const { kind, file } = await params;
 
-  const kind = safeSegment(rawKind);
-  const file = safeSegment(rawFile);
-
-  if (!kind || !file) {
+  if (!SAFE_KIND_PATTERN.test(kind) || !SAFE_FILE_PATTERN.test(file)) {
     return new NextResponse("Not found", { status: 404 });
   }
 
-  const root = uploadRoot();
-  const accept = request.headers.get("accept") || "";
-  const wantsWebp = accept.includes("image/webp");
-  const thumbSidecar = wantsAvatarThumb(request) ? thumbnailSidecarName(file) : "";
-  const cardSidecar = wantsAvatarCard(request) ? cardSidecarName(file) : "";
-  const sidecar = wantsWebp ? webpSidecarName(file) : "";
+  for (const baseDir of uploadRoots()) {
+    const filePath = safeFilePath(baseDir, kind, file);
+    if (!filePath) continue;
 
-  const relativeOriginals = [
-    path.join(kind, file),
-    path.join("uploads", "managed-assets", kind, file),
-  ];
-
-  const candidates: Array<{ filePath: string; variant: "card-sidecar" | "thumb-sidecar" | "webp-sidecar" | "original" }> = [];
-
-  if (cardSidecar) {
-    for (const relative of relativeOriginals) {
-      candidates.push({
-        filePath: path.join(root, path.dirname(relative), cardSidecar),
-        variant: "card-sidecar",
+    try {
+      const buffer = await readFile(filePath);
+      return new NextResponse(new Uint8Array(buffer), {
+        headers: {
+          "Cache-Control": "public, max-age=31536000, immutable",
+          "Content-Type": contentTypeFor(file),
+        },
       });
+    } catch {
+      // Try next root.
     }
-  }
-
-  if (thumbSidecar) {
-    for (const relative of relativeOriginals) {
-      candidates.push({
-        filePath: path.join(root, path.dirname(relative), thumbSidecar),
-        variant: "thumb-sidecar",
-      });
-    }
-  }
-
-  if (sidecar) {
-    for (const relative of relativeOriginals) {
-      candidates.push({
-        filePath: path.join(root, path.dirname(relative), sidecar),
-        variant: "webp-sidecar",
-      });
-    }
-  }
-
-  for (const relative of relativeOriginals) {
-    candidates.push({
-      filePath: path.join(root, relative),
-      variant: "original",
-    });
-  }
-
-  for (const candidate of candidates) {
-    const hit = await readIfExists(candidate.filePath);
-
-    if (!hit) {
-      continue;
-    }
-
-    return new NextResponse(hit.data, {
-      headers: {
-        "Cache-Control": "public, max-age=31536000, immutable",
-        "Content-Length": String(hit.data.length),
-        "Content-Type": contentTypeFor(candidate.filePath),
-        "Last-Modified": hit.stat.mtime.toUTCString(),
-        "Vary": "Accept",
-        "X-AoE2WAR-Image-Variant": candidate.variant,
-      },
-    });
   }
 
   return new NextResponse("Not found", { status: 404 });

@@ -41,7 +41,7 @@ function PromoImage({ src, fallback, alt, className }: PromoImageProps) {
       src={src || fallback}
       alt={alt}
       className={className}
-      loading="lazy"
+      loading="eager" decoding="sync"
       onError={(event) => {
         const image = event.currentTarget;
         if (image.dataset.fallbackUsed === "1") {
@@ -258,13 +258,13 @@ function MobileEventTile({
             src={thumbnailUrlForAvatarAsset(eventTile.playerOneAvatarUrl)}
             fallback={ASSET_FALLBACKS.playerOne}
             alt={eventTile.playerOneName}
-            className="absolute -bottom-4 -left-10 h-[94%] w-[70%] object-contain object-bottom drop-shadow-[0_24px_50px_rgba(0,0,0,0.85)] [mask-image:linear-gradient(to_bottom,black_0%,black_82%,transparent_100%)]"
+            className="absolute -bottom-4 -left-10 h-[94%] w-[70%] object-contain object-bottom drop-shadow-[0_24px_50px_rgba(0,0,0,0.85)]"
           />
           <PromoImage
             src={thumbnailUrlForAvatarAsset(eventTile.playerTwoAvatarUrl)}
             fallback={ASSET_FALLBACKS.playerTwo}
             alt={eventTile.playerTwoName}
-            className="absolute -bottom-4 -right-10 h-[94%] w-[70%] object-contain object-bottom drop-shadow-[0_24px_50px_rgba(0,0,0,0.85)] [mask-image:linear-gradient(to_bottom,black_0%,black_82%,transparent_100%)]"
+            className="absolute -bottom-4 -right-10 h-[94%] w-[70%] object-contain object-bottom drop-shadow-[0_24px_50px_rgba(0,0,0,0.85)]"
           />
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black via-black/65 to-transparent" />
           <PromoImage
@@ -365,22 +365,22 @@ function DesktopEventTile({
       </div>
 
       <PromoImage
-        src={thumbnailUrlForAvatarAsset(eventTile.playerOneAvatarUrl)}
+        src={eventTile.playerOneAvatarUrl || ASSET_FALLBACKS.playerOne}
         fallback={ASSET_FALLBACKS.playerOne}
         alt={eventTile.playerOneName}
-        className="absolute bottom-[1.5rem] left-[5%] z-30 h-[64%] w-[33%] object-contain object-bottom opacity-98 drop-shadow-[0_24px_60px_rgba(0,0,0,0.82)] [mask-image:linear-gradient(to_bottom,black_0%,black_80%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_bottom,black_0%,black_80%,transparent_100%)] sm:h-[68%]"
+        className="absolute bottom-[1.5rem] left-[5%] z-30 h-[64%] w-[33%] object-contain object-bottom opacity-100 drop-shadow-[0_24px_60px_rgba(0,0,0,0.82)] sm:h-[68%]"
       />
       <PromoImage
-        src={thumbnailUrlForAvatarAsset(eventTile.playerTwoAvatarUrl)}
+        src={eventTile.playerTwoAvatarUrl || ASSET_FALLBACKS.playerTwo}
         fallback={ASSET_FALLBACKS.playerTwo}
         alt={eventTile.playerTwoName}
-        className="absolute bottom-[1.5rem] right-[5%] z-30 h-[65%] w-[34%] object-contain object-bottom opacity-100 brightness-110 contrast-110 drop-shadow-[0_24px_60px_rgba(0,0,0,0.82)] [mask-image:linear-gradient(to_bottom,black_0%,black_84%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_bottom,black_0%,black_84%,transparent_100%)] sm:h-[69%]"
+        className="absolute bottom-[1.5rem] right-[5%] z-30 h-[65%] w-[34%] object-contain object-bottom opacity-100 drop-shadow-[0_24px_60px_rgba(0,0,0,0.82)] sm:h-[69%]"
       />
       <PromoImage
         src={thumbnailUrlForAvatarAsset(eventTile.commissionerAvatarUrl)}
         fallback={ASSET_FALLBACKS.commissioner}
         alt={eventTile.commissionerName}
-        className="absolute bottom-[15.35rem] left-[39%] z-[24] h-[38%] w-[17%] -translate-x-1/2 -rotate-2 object-contain object-bottom opacity-76 drop-shadow-[0_24px_70px_rgba(0,0,0,0.95)] [mask-image:linear-gradient(to_bottom,black_0%,black_50%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_bottom,black_0%,black_50%,transparent_100%)]"
+        className="absolute bottom-[15.35rem] left-[39%] z-[24] h-[38%] w-[17%] -translate-x-1/2 -rotate-2 object-contain object-bottom opacity-76 drop-shadow-[0_24px_70px_rgba(0,0,0,0.95)]"
       />
       <div className="pointer-events-none absolute left-[39%] top-[47.6%] z-[80] -translate-x-1/2 text-center">
         <div className="relative isolate inline-block text-[10px] font-black uppercase tracking-[0.32em] text-amber-300 [text-shadow:0_2px_10px_rgba(0,0,0,0.98),0_0_20px_rgba(0,0,0,0.72),0_0_10px_rgba(251,191,36,0.30)] before:pointer-events-none before:absolute before:inset-[-0.16em_-0.36em] before:-z-10 before:rounded-[0.45rem] before:bg-black/42 before:blur-[7px] before:content-[''] drop-shadow-[0_0_14px_rgba(251,191,36,0.42)]">
