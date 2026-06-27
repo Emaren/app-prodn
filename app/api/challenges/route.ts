@@ -79,6 +79,7 @@ function buildChallengeInviteMessage({
   challengeNote,
   wagerAmountWolo,
   guaranteeAmountWolo,
+  titleStakeNames,
 }: {
   challengerName: string;
   challengedName: string;
@@ -86,6 +87,7 @@ function buildChallengeInviteMessage({
   challengeNote: string | null;
   wagerAmountWolo: number;
   guaranteeAmountWolo: number;
+  titleStakeNames: string[];
 }) {
   const totalFundingWolo = wagerAmountWolo + guaranteeAmountWolo;
   const lines = [
@@ -98,6 +100,11 @@ function buildChallengeInviteMessage({
     `Funding: ${formatWolo(totalFundingWolo)} WOLO each`,
     "Status: Awaiting terms acceptance",
   ];
+
+  if (titleStakeNames.length > 0) {
+    lines.push(`Title Stakes: ${titleStakeNames.join(", ")}`);
+    lines.push("Title Rule: Eligible app-side titles move only after verified watcher or replay proof.");
+  }
 
   if (challengeNote) {
     lines.push(`Note: ${challengeNote}`);
@@ -291,10 +298,120 @@ export async function POST(request: NextRequest) {
           );
         }
       }
+
+      const existingTitleDefense = await prisma.trophyChallenge.findFirst({
+        where: {
+          trophyId: targetTrophy.id,
+          scheduledMatchId: { not: null },
+          status: {
+            notIn: ["cancelled", "canceled", "disputed", "settled"],
+          },
+        },
+        select: { id: true, scheduledMatchId: true },
+      });
+      if (existingTitleDefense) {
+        return NextResponse.json(
+          {
+            detail: `${targetTrophy.displayName} is already attached to active challenge #${existingTitleDefense.scheduledMatchId}.`,
+          },
+          { status: 409 }
+        );
+      }
+    }
+
+    const titleStakePlans: Array<{
+      trophy: NonNullable<typeof targetTrophy>;
+      challenger: typeof viewer | typeof challenged;
+      opponent: typeof viewer | typeof challenged;
+      challengerRating: number | null;
+      automatic: boolean;
+    }> = [];
+
+    if (targetTrophy) {
+      titleStakePlans.push({
+        trophy: targetTrophy,
+        challenger: viewer,
+        opponent: challenged,
+        challengerRating,
+        automatic: false,
+      });
+    } else {
+      const participantIds = [viewer.id, challenged.id];
+      const heldTitles = await prisma.trophy.findMany({
+        where: {
+          OR: [
+            { currentHolderUserId: { in: participantIds } },
+            { guardianHolderUserId: { in: participantIds } },
+          ],
+        },
+        orderBy: [{ kind: "asc" }, { displayName: "asc" }],
+      });
+      const trophyUsers = heldTitles.some((trophy) => trophy.family === "elo")
+        ? await loadTrophyUsers(prisma)
+        : [];
+      const activeTitleChallenges =
+        heldTitles.length > 0
+          ? await prisma.trophyChallenge.findMany({
+              where: {
+                trophyId: { in: heldTitles.map((trophy) => trophy.id) },
+                scheduledMatchId: { not: null },
+                status: {
+                  notIn: ["cancelled", "canceled", "disputed", "settled"],
+                },
+              },
+              select: { trophyId: true },
+            })
+          : [];
+      const busyTitleIds = new Set(
+        activeTitleChallenges.map((challenge) => challenge.trophyId)
+      );
+      const ratingByUserId = new Map(
+        trophyUsers.map((user) => [user.id, user.rating] as const)
+      );
+
+      for (const trophy of heldTitles) {
+        if (busyTitleIds.has(trophy.id)) continue;
+        const custodianId =
+          trophy.currentHolderUserId ?? trophy.guardianHolderUserId;
+        const automaticChallenger =
+          custodianId === challenged.id
+            ? viewer
+            : custodianId === viewer.id
+              ? challenged
+              : null;
+        const automaticOpponent =
+          custodianId === challenged.id
+            ? challenged
+            : custodianId === viewer.id
+              ? viewer
+              : null;
+        if (!automaticChallenger || !automaticOpponent) continue;
+
+        const automaticRating =
+          ratingByUserId.get(automaticChallenger.id) ?? null;
+        const eligible =
+          trophy.family === "national"
+            ? automaticChallenger.representedCountry === trophy.eligibleNationality
+            : trophy.family === "elo"
+              ? automaticRating !== null &&
+                (trophy.eloBandMax === null || automaticRating <= trophy.eloBandMax)
+              : true;
+        if (!eligible) continue;
+
+        titleStakePlans.push({
+          trophy,
+          challenger: automaticChallenger,
+          opponent: automaticOpponent,
+          challengerRating: automaticRating,
+          automatic: true,
+        });
+      }
     }
 
     let createdChallengeId: number | null = null;
     let linkedTrophyChallengeId: number | null = null;
+    const linkedTrophyChallengeIds: number[] = [];
+    const titleStakeNames = titleStakePlans.map((plan) => plan.trophy.displayName);
 
     await prisma.$transaction(async (tx) => {
       const createdMatch = await tx.scheduledMatch.create({
@@ -310,55 +427,65 @@ export async function POST(request: NextRequest) {
       });
       createdChallengeId = createdMatch.id;
 
-      if (targetTrophy) {
+      for (const titleStake of titleStakePlans) {
+        const title = titleStake.trophy;
         const linkedTrophyChallenge = await tx.trophyChallenge.create({
           data: {
-            trophyId: targetTrophy.id,
+            trophyId: title.id,
             challengeKind:
-              targetTrophy.status === "guardian_held"
+              title.status === "guardian_held" ||
+              (!title.currentHolderUserId && title.guardianHolderUserId)
                 ? "guardian_activation"
-                : targetTrophy.family,
-            challengerUserId: viewer.id,
-            defenderUserId: targetTrophy.currentHolderUserId,
-            guardianUserId: targetTrophy.guardianHolderUserId,
-            challengerWoloAddress: viewer.walletAddress,
+                : title.family,
+            challengerUserId: titleStake.challenger.id,
+            defenderUserId: title.currentHolderUserId,
+            guardianUserId: title.guardianHolderUserId,
+            challengerWoloAddress: titleStake.challenger.walletAddress,
             defenderWoloAddress:
-              targetTrophy.currentHolderWoloAddress ||
-              targetTrophy.guardianHolderWoloAddress,
-            expectedPlayerNames: [challengerName, challengedName],
-            requiredNationality: targetTrophy.eligibleNationality,
-            requiredEloMin: targetTrophy.eloBandMin,
-            requiredEloMax: targetTrophy.eloBandMax,
+              title.currentHolderWoloAddress ||
+              title.guardianHolderWoloAddress,
+            expectedPlayerNames: [
+              playerName(titleStake.challenger),
+              playerName(titleStake.opponent),
+            ],
+            requiredNationality: title.eligibleNationality,
+            requiredEloMin: title.eloBandMin,
+            requiredEloMax: title.eloBandMax,
             eligibilitySnapshot: {
               eligible: true,
-              challengerCountry: viewer.representedCountry,
-              challengerRating,
+              challengerCountry: titleStake.challenger.representedCountry,
+              challengerRating: titleStake.challengerRating,
               capturedAt: new Date().toISOString(),
-              source: "public_challenge_flow",
+              source: titleStake.automatic
+                ? "scheduled_match_auto_stakes"
+                : "public_challenge_flow",
             },
             status: "proposed",
             scheduledMatchId: createdMatch.id,
             settlementStatus: "not_started",
           },
         });
-        linkedTrophyChallengeId = linkedTrophyChallenge.id;
+        linkedTrophyChallengeIds.push(linkedTrophyChallenge.id);
+        linkedTrophyChallengeId ??= linkedTrophyChallenge.id;
 
         await tx.trophyEvent.create({
           data: {
-            trophyId: targetTrophy.id,
+            trophyId: title.id,
             eventType: "CHALLENGE_CREATED",
             actorUserId: viewer.id,
-            actorRole: "challenger",
-            initiatedBy: "user",
+            actorRole:
+              titleStake.challenger.id === viewer.id ? "challenger" : "system",
+            initiatedBy: titleStake.automatic ? "system" : "user",
             toHolderUserId:
-              targetTrophy.currentHolderUserId ??
-              targetTrophy.guardianHolderUserId,
+              title.currentHolderUserId ??
+              title.guardianHolderUserId,
             challengeId: linkedTrophyChallenge.id,
             status: "recorded",
             rawRequest: {
               scheduledMatchId: createdMatch.id,
               trophyTitleId: payload.trophyTitleId || null,
               trophyCountry: payload.trophyCountry || null,
+              automatic: titleStake.automatic,
             },
           },
         });
@@ -381,8 +508,8 @@ export async function POST(request: NextRequest) {
             wagerAmountWolo,
             guaranteeAmountWolo,
             totalFundingWolo,
-            trophyId: targetTrophy?.trophyId ?? null,
-            trophyChallengeId: linkedTrophyChallengeId,
+            trophyIds: titleStakePlans.map((plan) => plan.trophy.trophyId),
+            trophyChallengeIds: linkedTrophyChallengeIds,
           },
         },
       });
@@ -398,6 +525,7 @@ export async function POST(request: NextRequest) {
           challengeNote,
           wagerAmountWolo,
           guaranteeAmountWolo,
+          titleStakeNames,
         }),
       });
 
@@ -415,8 +543,8 @@ export async function POST(request: NextRequest) {
           wagerAmountWolo,
           guaranteeAmountWolo,
           totalFundingWolo,
-          trophyId: targetTrophy?.trophyId ?? null,
-          trophyChallengeId: linkedTrophyChallengeId,
+          trophyIds: titleStakePlans.map((plan) => plan.trophy.trophyId),
+          trophyChallengeIds: linkedTrophyChallengeIds,
         },
         dedupeWithinSeconds: 5,
       });
@@ -435,8 +563,8 @@ export async function POST(request: NextRequest) {
           wagerAmountWolo,
           guaranteeAmountWolo,
           totalFundingWolo,
-          trophyId: targetTrophy?.trophyId ?? null,
-          trophyChallengeId: linkedTrophyChallengeId,
+          trophyIds: titleStakePlans.map((plan) => plan.trophy.trophyId),
+          trophyChallengeIds: linkedTrophyChallengeIds,
         },
         dedupeWithinSeconds: 5,
       });
@@ -447,6 +575,8 @@ export async function POST(request: NextRequest) {
       ...refreshed,
       createdChallengeId,
       linkedTrophyChallengeId,
+      linkedTrophyChallengeIds,
+      titleStakeNames,
       duplicateWarning,
     });
   } catch (error) {

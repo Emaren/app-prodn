@@ -3,7 +3,17 @@
 /* eslint-disable @next/next/no-img-element */
 
 import Link from "next/link";
-import { MessageCirclePlus, Mic, Paperclip } from "lucide-react";
+import {
+  ArrowRight,
+  CalendarClock,
+  Coins,
+  MessageCirclePlus,
+  Mic,
+  Paperclip,
+  ShieldCheck,
+  Swords,
+  Trophy,
+} from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
@@ -198,36 +208,99 @@ function ChallengeSystemMessageLine({
   compactNotice: NonNullable<ReturnType<typeof challengeNoticeTone>>;
 }) {
   const summary = compactNotice.summary;
-  const parts = [
-    summary.compactHeadline,
-    summary.matchup,
-    summary.fundingLabel,
-    summary.statusLabel,
-    summary.note ? "note attached" : null,
-  ].filter(Boolean);
+  const isInvite = summary.state === "scheduled" || summary.state === "rescheduled";
 
   return (
     <div className="flex justify-center">
       <div
         title={message.body}
-        className={`max-w-full rounded-full border px-3 py-1.5 text-[11px] font-medium ${compactNotice.shell}`}
+        className={`w-full max-w-2xl overflow-hidden rounded-[1.4rem] border ${compactNotice.shell}`}
       >
-        <div className="truncate whitespace-nowrap">
-          {parts.slice(0, 2).join(" · ")}
-          {summary.scheduledAtIso ? (
-            <>
-              {" · "}
-              <TimeDisplayText
-                value={summary.scheduledAtIso}
-                includeZone={false}
-                className="text-inherit"
-                bubbleClassName="w-max max-w-[18rem] text-center"
-              />
-            </>
-          ) : summary.scheduledLabel ? (
-            ` · ${summary.scheduledLabel}`
+        <div className="relative overflow-hidden px-4 py-4 sm:px-5">
+          {isInvite ? (
+            <div className="pointer-events-none absolute -right-8 -top-12 h-36 w-36 rounded-full bg-amber-200/10 blur-2xl" />
           ) : null}
-          {parts.length > 2 ? ` · ${parts.slice(2).join(" · ")}` : ""}
+
+          <div className="relative flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.24em] text-current opacity-70">
+                <Swords className="h-3.5 w-3.5" />
+                {summary.compactHeadline}
+              </div>
+              <div className="mt-1.5 truncate text-base font-black text-white sm:text-lg">
+                {summary.matchup || "Scheduled challenge"}
+              </div>
+            </div>
+            {summary.challengeId ? (
+              <div className="shrink-0 rounded-full border border-current/15 bg-black/15 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.15em]">
+                #{summary.challengeId}
+              </div>
+            ) : null}
+          </div>
+
+          <div className="relative mt-3 grid gap-2 sm:grid-cols-2">
+            <div className="rounded-xl border border-current/10 bg-black/15 px-3 py-2.5">
+              <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.16em] opacity-65">
+                <CalendarClock className="h-3.5 w-3.5" />
+                Battle time
+              </div>
+              <div className="mt-1 text-sm font-semibold text-white">
+                {summary.scheduledAtIso ? (
+                  <TimeDisplayText
+                    value={summary.scheduledAtIso}
+                    includeZone
+                    className="text-white"
+                    bubbleClassName="w-max max-w-[18rem] text-center"
+                  />
+                ) : (
+                  summary.scheduledLabel || "Timing pending"
+                )}
+              </div>
+            </div>
+            <div className="rounded-xl border border-current/10 bg-black/15 px-3 py-2.5">
+              <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.16em] opacity-65">
+                <Coins className="h-3.5 w-3.5" />
+                Escrow each
+              </div>
+              <div className="mt-1 truncate text-sm font-semibold text-white">
+                {summary.fundingLabel || "Funding update"}
+              </div>
+            </div>
+          </div>
+
+          {summary.titleStakesLabel ? (
+            <div className="relative mt-2 rounded-xl border border-amber-100/20 bg-amber-100/10 px-3 py-2.5">
+              <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.16em] text-amber-50/70">
+                <Trophy className="h-3.5 w-3.5" />
+                Titles on the table
+              </div>
+              <div className="mt-1 text-sm font-semibold text-white">
+                {summary.titleStakesLabel}
+              </div>
+            </div>
+          ) : null}
+
+          {summary.note ? (
+            <div className="relative mt-2 rounded-xl border border-current/10 bg-black/10 px-3 py-2.5 text-sm italic leading-5 text-white/85">
+              “{summary.note}”
+            </div>
+          ) : null}
+
+          <div className="relative mt-3 flex flex-wrap items-center justify-between gap-2">
+            <div className="inline-flex items-center gap-2 text-[11px] font-medium">
+              <ShieldCheck className="h-3.5 w-3.5" />
+              {summary.statusLabel || "Protected by verified challenge rules"}
+            </div>
+            {summary.challengeId ? (
+              <Link
+                href={`/challenge?focus=${summary.challengeId}`}
+                className="inline-flex items-center gap-1.5 rounded-full border border-current/20 bg-black/15 px-3 py-1.5 text-[11px] font-semibold text-white transition hover:bg-black/25"
+              >
+                Open challenge
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            ) : null}
+          </div>
         </div>
       </div>
     </div>

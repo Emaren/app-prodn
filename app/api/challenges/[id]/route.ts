@@ -19,6 +19,7 @@ import { postChallengeInboxNotice } from "@/lib/contactInbox";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 import { recordUserActivity } from "@/lib/userExperience";
+import { verifyChallengeFundingTransfer } from "@/lib/woloBetSettlement";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -465,6 +466,15 @@ export async function PATCH(
             cancelledAt: null,
           },
         });
+        await tx.trophyChallenge.updateMany({
+          where: {
+            scheduledMatchId: challengeId,
+            status: { notIn: ["settled", "cancelled", "canceled", "disputed"] },
+          },
+          data: {
+            status: "accepted",
+          },
+        });
 
         await recordChallengeActivity(tx, {
           scheduledMatchId: challengeId,
@@ -553,6 +563,16 @@ export async function PATCH(
             declinedAt,
           },
         });
+        await tx.trophyChallenge.updateMany({
+          where: {
+            scheduledMatchId: challengeId,
+            status: { notIn: ["settled", "cancelled", "canceled", "disputed"] },
+          },
+          data: {
+            status: "cancelled",
+            settlementStatus: "cancelled",
+          },
+        });
 
         await recordChallengeActivity(tx, {
           scheduledMatchId: challengeId,
@@ -636,6 +656,16 @@ export async function PATCH(
           data: {
             status: "canceled",
             cancelledAt,
+          },
+        });
+        await tx.trophyChallenge.updateMany({
+          where: {
+            scheduledMatchId: challengeId,
+            status: { notIn: ["settled", "cancelled", "canceled", "disputed"] },
+          },
+          data: {
+            status: "cancelled",
+            settlementStatus: "cancelled",
           },
         });
 
@@ -874,8 +904,8 @@ export async function PATCH(
     }
 
     if (payload.action === "fund") {
-      const fundingTxHash = payload.fundingTxHash?.trim() ?? "";
-      const fundingWalletAddress = payload.fundingWalletAddress?.trim() || null;
+      const fundingTxHash = payload.fundingTxHash?.trim().toUpperCase() ?? "";
+      const fundingWalletAddress = payload.fundingWalletAddress?.trim() || "";
 
       if (!viewerIsChallenger && !viewerIsChallenged) {
         return NextResponse.json({ detail: "Only match participants can record funding." }, { status: 403 });
@@ -896,6 +926,13 @@ export async function PATCH(
         return NextResponse.json({ detail: "Add the signed funding tx hash." }, { status: 400 });
       }
 
+      if (!fundingWalletAddress) {
+        return NextResponse.json(
+          { detail: "The signed funding wallet address is required." },
+          { status: 400 }
+        );
+      }
+
       if (scheduledMatch.scheduledAt.getTime() <= Date.now()) {
         return NextResponse.json({ detail: "Funding closed when the scheduled start locked." }, { status: 409 });
       }
@@ -908,16 +945,59 @@ export async function PATCH(
         return NextResponse.json({ detail: "Opponent funding is already on file." }, { status: 409 });
       }
 
+      const existingFundingProof = await prisma.scheduledMatch.findFirst({
+        where: {
+          id: { not: challengeId },
+          OR: [
+            { challengerFundingTxHash: fundingTxHash },
+            { challengedFundingTxHash: fundingTxHash },
+          ],
+        },
+        select: { id: true },
+      });
+      if (existingFundingProof) {
+        return NextResponse.json(
+          {
+            detail: `That funding tx is already attached to challenge #${existingFundingProof.id}.`,
+          },
+          { status: 409 }
+        );
+      }
+
+      const fundingVerification = await verifyChallengeFundingTransfer({
+        challengeId,
+        txHash: fundingTxHash,
+        fromAddress: fundingWalletAddress,
+        participantSide: viewerIsChallenger ? "left" : "right",
+        wagerAmountWolo: scheduledMatch.wagerAmountWolo,
+        guaranteeAmountWolo: scheduledMatch.guaranteeAmountWolo,
+      });
+      if (!fundingVerification.verified) {
+        return NextResponse.json(
+          {
+            detail:
+              fundingVerification.detail ||
+              "WoloChain could not verify this challenge escrow deposit.",
+          },
+          { status: 409 }
+        );
+      }
+
+      const verifiedFundingTxHash = fundingVerification.txHash || fundingTxHash;
       const fundedAt = new Date();
       const nextShape = {
         ...scheduledMatch,
         challengerFundedAt: viewerIsChallenger ? fundedAt : scheduledMatch.challengerFundedAt,
-        challengerFundingTxHash: viewerIsChallenger ? fundingTxHash : scheduledMatch.challengerFundingTxHash,
+        challengerFundingTxHash: viewerIsChallenger
+          ? verifiedFundingTxHash
+          : scheduledMatch.challengerFundingTxHash,
         challengerFundingWalletAddress: viewerIsChallenger
           ? fundingWalletAddress
           : scheduledMatch.challengerFundingWalletAddress,
         challengedFundedAt: viewerIsChallenged ? fundedAt : scheduledMatch.challengedFundedAt,
-        challengedFundingTxHash: viewerIsChallenged ? fundingTxHash : scheduledMatch.challengedFundingTxHash,
+        challengedFundingTxHash: viewerIsChallenged
+          ? verifiedFundingTxHash
+          : scheduledMatch.challengedFundingTxHash,
         challengedFundingWalletAddress: viewerIsChallenged
           ? fundingWalletAddress
           : scheduledMatch.challengedFundingWalletAddress,
@@ -933,10 +1013,10 @@ export async function PATCH(
           data: {
             status: nextSurface.persistedStatus,
             challengerFundedAt: viewerIsChallenger ? fundedAt : undefined,
-            challengerFundingTxHash: viewerIsChallenger ? fundingTxHash : undefined,
+            challengerFundingTxHash: viewerIsChallenger ? verifiedFundingTxHash : undefined,
             challengerFundingWalletAddress: viewerIsChallenger ? fundingWalletAddress : undefined,
             challengedFundedAt: viewerIsChallenged ? fundedAt : undefined,
-            challengedFundingTxHash: viewerIsChallenged ? fundingTxHash : undefined,
+            challengedFundingTxHash: viewerIsChallenged ? verifiedFundingTxHash : undefined,
             challengedFundingWalletAddress: viewerIsChallenged ? fundingWalletAddress : undefined,
           },
         });
@@ -947,9 +1027,11 @@ export async function PATCH(
           eventType: viewerIsChallenger ? "creator_funded" : "opponent_funded",
           detail: `${playerName(viewer)} locked ${formatWolo(fundingTotal)} WOLO.`,
           metadata: {
-            fundingTxHash,
+            fundingTxHash: verifiedFundingTxHash,
             fundingWalletAddress,
             totalFundingWolo: fundingTotal,
+            proofUrl: fundingVerification.proofUrl ?? null,
+            verifiedBy: "wolochain",
           },
           createdAt: fundedAt,
         });
@@ -979,7 +1061,7 @@ export async function PATCH(
             actorUid: viewer.uid,
             role: viewerRole,
             totalFundingWolo: fundingTotal,
-            fundingTxHash,
+            fundingTxHash: verifiedFundingTxHash,
           },
         });
 
@@ -993,7 +1075,7 @@ export async function PATCH(
             actorUid: viewer.uid,
             role: viewerRole === "challenger" ? "challenged" : viewerRole === "challenged" ? "challenger" : "admin",
             totalFundingWolo: fundingTotal,
-            fundingTxHash,
+            fundingTxHash: verifiedFundingTxHash,
           },
         });
       });

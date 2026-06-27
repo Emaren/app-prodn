@@ -15,6 +15,7 @@ import {
   SlidersHorizontal,
   Star,
   Swords,
+  Trophy,
   Wallet,
   Wrench,
   XCircle,
@@ -27,7 +28,6 @@ import { useKeplr } from "@/hooks/use-keplr";
 import { CHALLENGE_NOTE_MAX_CHARS } from "@/lib/challengeConfig";
 import type { ScheduledMatchTile } from "@/lib/challenges";
 import {
-  challengeFundingEscrowAddress,
   fundChallengeEscrow,
 } from "@/lib/clientChallengeFunding";
 import {
@@ -826,7 +826,7 @@ export default function ScheduledMatchCard({
     setFundingError(null);
     setActionError(null);
 
-    if (!challengeFundingEscrowAddress()) {
+    if (!match.fundingRail.configured || !match.fundingRail.escrowAddress) {
       setFundingWorkflow("failed");
       setFundingError("Challenge escrow is not exposed to the browser.");
       revealAdvanced();
@@ -840,7 +840,10 @@ export default function ScheduledMatchCard({
       setFundingWorkflow("confirming_chain");
       const result = await fundChallengeEscrow({
         challengeId: match.id,
-        amountWolo: match.terms.totalFundingWolo,
+        wagerAmountWolo: match.terms.wagerAmountWolo,
+        guaranteeAmountWolo: match.terms.guaranteeAmountWolo,
+        participantSide: viewerIsChallenger ? "left" : "right",
+        escrowAddress: match.fundingRail.escrowAddress,
         fallbackWalletAddress: walletAddress,
       });
 
@@ -872,7 +875,7 @@ export default function ScheduledMatchCard({
       return;
     }
 
-    if (!challengeFundingEscrowAddress()) {
+    if (!match.fundingRail.configured || !match.fundingRail.escrowAddress) {
       setFundingError("Challenge escrow is not exposed to the browser.");
       revealAdvanced();
       return;
@@ -889,7 +892,10 @@ export default function ScheduledMatchCard({
       setFundingWorkflow("confirming_chain");
       const result = await fundChallengeEscrow({
         challengeId: match.id,
-        amountWolo: match.terms.totalFundingWolo,
+        wagerAmountWolo: match.terms.wagerAmountWolo,
+        guaranteeAmountWolo: match.terms.guaranteeAmountWolo,
+        participantSide: "right",
+        escrowAddress: match.fundingRail.escrowAddress,
         fallbackWalletAddress: walletAddress,
       });
 
@@ -1103,6 +1109,46 @@ export default function ScheduledMatchCard({
           strong
         />
       </div>
+
+      {match.titleStakes.length > 0 ? (
+        <div className={`${compact ? "mt-3" : "mt-4"} rounded-[1rem] border border-amber-200/18 bg-[linear-gradient(135deg,rgba(251,191,36,0.12),rgba(120,53,15,0.05))] p-3`}>
+          <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-amber-100/70">
+            <Trophy className="h-3.5 w-3.5" />
+            Automatic title stakes
+          </div>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {match.titleStakes.map((titleStake) => (
+              <div
+                key={titleStake.challengeId}
+                className="inline-flex min-w-0 items-center gap-2 rounded-full border border-amber-100/15 bg-black/20 py-1.5 pl-1.5 pr-3"
+              >
+                {titleStake.imageUrl ? (
+                  <span className="relative h-7 w-9 shrink-0 overflow-hidden rounded-full bg-black/25">
+                    <Image
+                      src={titleStake.imageUrl}
+                      alt=""
+                      fill
+                      unoptimized
+                      sizes="36px"
+                      className="object-contain"
+                    />
+                  </span>
+                ) : (
+                  <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-300/10 text-amber-100">
+                    <Trophy className="h-3.5 w-3.5" />
+                  </span>
+                )}
+                <span className="max-w-52 truncate text-xs font-semibold text-amber-50">
+                  {titleStake.displayName}
+                </span>
+              </div>
+            ))}
+          </div>
+          <div className="mt-2 text-[11px] leading-5 text-amber-100/60">
+            Belts move automatically after verified match proof. Artifact records still require their metric proof.
+          </div>
+        </div>
+      ) : null}
 
       <div className={`${compact ? "mt-3 gap-2" : "mt-4 gap-3"} grid sm:grid-cols-2`}>
         <StatusDot

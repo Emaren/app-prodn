@@ -11,6 +11,7 @@ import {
   toUwoLoAmount,
   woloChainConfig,
 } from "@/lib/woloChain";
+import { buildChallengeFundingMemo } from "@/lib/challengeFundingMemo";
 
 type ChallengeFundingWindow = Window & {
   keplr?: {
@@ -119,12 +120,17 @@ export function challengeFundingEscrowAddress() {
 
 export async function fundChallengeEscrow(input: {
   challengeId: number;
-  amountWolo: number;
+  wagerAmountWolo: number;
+  guaranteeAmountWolo: number;
+  participantSide: "left" | "right";
+  escrowAddress?: string | null;
   fallbackWalletAddress?: string | null;
 }) {
-  if (!WOLO_CHALLENGE_ESCROW_ADDRESS) {
+  const escrowAddress =
+    input.escrowAddress?.trim() || challengeFundingEscrowAddress();
+  if (!escrowAddress) {
     throw new Error(
-      "Challenge escrow is not configured in the browser. Use manual rescue or expose NEXT_PUBLIC_WOLO_CHALLENGE_ESCROW_ADDRESS."
+      "Challenge escrow is not configured. Refresh once; if it remains unavailable, the funding rail needs operator attention."
     );
   }
 
@@ -167,12 +173,15 @@ export async function fundChallengeEscrow(input: {
       }
     );
 
+    const totalFundingWolo = input.wagerAmountWolo + input.guaranteeAmountWolo;
+    const memo = buildChallengeFundingMemo(input);
+
     const result = await client.sendTokens(
       signerResolution.signerAddress,
-      WOLO_CHALLENGE_ESCROW_ADDRESS,
-      [{ amount: toUwoLoAmount(input.amountWolo), denom: WOLO_BASE_DENOM }],
+      escrowAddress,
+      [{ amount: toUwoLoAmount(totalFundingWolo), denom: WOLO_BASE_DENOM }],
       "auto",
-      `AoE2HDBets challenge funding · challenge ${input.challengeId}`
+      memo
     );
 
     return {

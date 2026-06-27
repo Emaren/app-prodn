@@ -1,6 +1,6 @@
 # Championship Title Economy
 
-Last updated: 2026-06-19
+Last updated: 2026-06-27
 
 AoE2HDBets owns the app-side championship presentation, eligibility settings,
 challenge entry points, Trophy Command workflow, and app-side custody ledger.
@@ -91,6 +91,15 @@ media armory.
   `ScheduledMatch` and a linked `TrophyChallenge`. The challenger must satisfy
   the configured national/ELO rule and must schedule against the current holder
   or Commissioner Guardian.
+- Normal `/challenge` requests now inspect both participants automatically. Any
+  eligible, currently held belt or artifact that is not already committed to an
+  active title defense is attached as a `TrophyChallenge`; users do not manually
+  pick registry ids in the scheduling form.
+- A verified watcher/replay result automatically settles `app_only` belts in the
+  app custody ledger. Stale challenges are blocked if title custody changed before
+  their result settled. Chain-backed titles remain explicit chain intents.
+- Artifacts remain metric-bound. Replay proof is attached automatically, but the
+  artifact does not move until its record/metric rule is verified.
 - Watcher/replay evidence remains the verification boundary. A linked challenge
   is not settled merely because it was scheduled or funded.
 

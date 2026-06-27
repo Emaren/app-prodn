@@ -36,9 +36,10 @@ export const WOLO_BET_ESCROW_ADDRESS =
   "";
 
 export const WOLO_CHALLENGE_ESCROW_ADDRESS =
-  process.env.NEXT_PUBLIC_WOLO_CHALLENGE_ESCROW_ADDRESS?.trim() ||
+  WOLO_BET_ESCROW_ADDRESS ||
   process.env.WOLO_CHALLENGE_ESCROW_ADDRESS?.trim() ||
-  WOLO_BET_ESCROW_ADDRESS;
+  process.env.NEXT_PUBLIC_WOLO_CHALLENGE_ESCROW_ADDRESS?.trim() ||
+  "";
 
 export type WoloBetEscrowMode = "disabled" | "optional" | "required";
 

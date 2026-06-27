@@ -58,6 +58,7 @@ The current first-impression path is no longer just the homepage. The real produ
 
 - `/champions` and `/champions/[...slug]` render the app-side title economy from `lib/champions/titles.ts` and `lib/champions/titleState.ts`.
 - Belts, tag titles, national titles, and ELO titles use `Reward Tribute`; special designation artifacts use `Artifact Bonus`.
+- `/challenge` defaults to the Extreme smart composer, with Basic and Advanced alternatives. Eligible title stakes are discovered automatically, challenge deposits use the structured WoloChain memo contract, and the API records funding only after WoloChain verifies the signed escrow transfer.
 - Championship art assets under `public/champions` should keep real alpha transparency; holder/silhouette backplates live in `public/champions/players`.
 - `/profile` stores title eligibility settings through `represented_country` and `gender_division`.
 - Seeded national and Elite trophies persist through Prisma and overlay the public Champions and profile surfaces; projected bounty remains app display math.

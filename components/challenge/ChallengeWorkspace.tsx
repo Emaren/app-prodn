@@ -1,10 +1,25 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { FormEvent, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowUpRight, Clock3, MessageSquareMore, Plus, Wallet } from "lucide-react";
+import {
+  ArrowUpRight,
+  CalendarClock,
+  Clock3,
+  Crown,
+  Gem,
+  MessageSquareMore,
+  Plus,
+  ShieldCheck,
+  Sparkles,
+  Swords,
+  Trophy,
+  Wallet,
+  Zap,
+} from "lucide-react";
 
 import ScheduledMatchCard, {
   type ScheduledMatchCardActionKind,
@@ -22,7 +37,6 @@ import {
   CHALLENGE_NOTE_MAX_CHARS,
 } from "@/lib/challengeConfig";
 import {
-  challengeFundingEscrowAddress,
   fundChallengeEscrow,
 } from "@/lib/clientChallengeFunding";
 import {
@@ -57,6 +71,12 @@ const EMPTY_SNAPSHOT: ChallengeHubSnapshot = {
     noShows: 0,
     total: 0,
   },
+  fundingRail: {
+    chainId: "wolo-1",
+    escrowAddress: null,
+    configured: false,
+    proofMode: "wolochain_challenge_v1",
+  },
   serverNow: new Date(0).toISOString(),
   updatedAt: new Date(0).toISOString(),
 };
@@ -64,6 +84,8 @@ const EMPTY_SNAPSHOT: ChallengeHubSnapshot = {
 type ChallengeCreateSnapshot = ChallengeHubSnapshot & {
   createdChallengeId?: number | null;
   linkedTrophyChallengeId?: number | null;
+  linkedTrophyChallengeIds?: number[];
+  titleStakeNames?: string[];
   detail?: string;
   duplicateWarning?: string | null;
 };
@@ -76,7 +98,16 @@ type PublicTrophyTarget = {
   guardianHolder: string | null;
   eligibleNationality: string | null;
   status: string;
+  kind: string;
+  family: string;
+  currentHolderUid: string | null;
+  guardianHolderUid: string | null;
+  currentBountyWolo: number;
+  tributeAmountWolo: number;
+  imageUri: string | null;
 };
+
+type ScheduleMode = "basic" | "advanced" | "extreme";
 
 const ACTIVE_RUNWAY_STATES: string[] = [
   "proposed",
@@ -269,8 +300,10 @@ export default function ChallengeWorkspace() {
   const [challengedUid, setChallengedUid] = useState("");
   const [scheduledAt, setScheduledAt] = useState("");
   const [challengeNote, setChallengeNote] = useState("");
+  const [scheduleMode, setScheduleMode] = useState<ScheduleMode>("extreme");
   const [routePrefillApplied, setRoutePrefillApplied] = useState(false);
   const [trophyTarget, setTrophyTarget] = useState<PublicTrophyTarget | null>(null);
+  const [trophies, setTrophies] = useState<PublicTrophyTarget[]>([]);
   const [trophyTargetLoading, setTrophyTargetLoading] = useState(Boolean(searchParams.get("title")));
   const [wagerAmountWolo, setWagerAmountWolo] = useState(String(CHALLENGE_DEFAULT_WAGER_WOLO));
   const [guaranteeAmountWolo, setGuaranteeAmountWolo] = useState(
@@ -280,6 +313,7 @@ export default function ChallengeWorkspace() {
   const requestedTitle = searchParams.get("title");
   const requestedKind = searchParams.get("kind");
   const requestedCountry = searchParams.get("country");
+  const requestedFocusId = Number.parseInt(searchParams.get("focus") || "", 10);
   const isNationalChallengeFlow =
     requestedKind === "national" || requestedTitle === "national" || Boolean(requestedCountry);
   const initialNationalCountry = isRepresentedCountry(requestedCountry) ? requestedCountry : "";
@@ -301,30 +335,32 @@ export default function ChallengeWorkspace() {
   }, [requestedCountry, requestedTitle]);
 
   useEffect(() => {
-    if (!requestedTitle) {
-      setTrophyTarget(null);
-      setTrophyTargetLoading(false);
-      return;
-    }
-
     let cancelled = false;
-    setTrophyTargetLoading(true);
+    setTrophyTargetLoading(Boolean(requestedTitle));
     const loadTarget = async () => {
       try {
         const response = await fetch("/api/trophies", { cache: "no-store" });
         const payload = (await response.json().catch(() => ({}))) as {
           trophies?: PublicTrophyTarget[];
         };
-        const target =
-          payload.trophies?.find((trophy) => {
-            if (requestedTitle === "national" && requestedCountry) {
-              return trophy.eligibleNationality === requestedCountry;
-            }
-            return trophy.championTitleId === requestedTitle || trophy.trophyId === requestedTitle;
-          }) ?? null;
-        if (!cancelled) setTrophyTarget(target);
+        const nextTrophies = payload.trophies ?? [];
+        const target = requestedTitle
+          ? nextTrophies.find((trophy) => {
+              if (requestedTitle === "national" && requestedCountry) {
+                return trophy.eligibleNationality === requestedCountry;
+              }
+              return trophy.championTitleId === requestedTitle || trophy.trophyId === requestedTitle;
+            }) ?? null
+          : null;
+        if (!cancelled) {
+          setTrophies(nextTrophies);
+          setTrophyTarget(target);
+        }
       } catch {
-        if (!cancelled) setTrophyTarget(null);
+        if (!cancelled) {
+          setTrophies([]);
+          setTrophyTarget(null);
+        }
       } finally {
         if (!cancelled) setTrophyTargetLoading(false);
       }
@@ -526,7 +562,23 @@ export default function ChallengeWorkspace() {
       (Number.parseInt(wagerAmountWolo, 10) || 0) + (Number.parseInt(guaranteeAmountWolo, 10) || 0),
     [guaranteeAmountWolo, wagerAmountWolo]
   );
-  const challengeEscrowReady = Boolean(challengeFundingEscrowAddress());
+  const challengeEscrowReady = snapshot.fundingRail.configured;
+  const selectedOpponent = useMemo(
+    () => snapshot.candidates.find((candidate) => candidate.uid === challengedUid) ?? null,
+    [challengedUid, snapshot.candidates]
+  );
+  const automaticTitleStakes = useMemo(() => {
+    if (!challengedUid || !uid) return trophyTarget ? [trophyTarget] : [];
+    const participantUids = new Set([uid, challengedUid]);
+    const titleRows = trophies.filter((trophy) =>
+      participantUids.has(trophy.currentHolderUid || "") ||
+      participantUids.has(trophy.guardianHolderUid || "")
+    );
+    if (trophyTarget && !titleRows.some((trophy) => trophy.trophyId === trophyTarget.trophyId)) {
+      titleRows.unshift(trophyTarget);
+    }
+    return titleRows;
+  }, [challengedUid, trophies, trophyTarget, uid]);
   const createButtonLabel = !challengeEscrowReady
     ? "Escrow Not Wired"
     : savingPhase === "connecting"
@@ -558,15 +610,42 @@ export default function ChallengeWorkspace() {
       return;
     }
 
+    if (
+      Number.isFinite(requestedFocusId) &&
+      activeRunwayMatches.some((match) => match.id === requestedFocusId)
+    ) {
+      setFocusedMatchId(requestedFocusId);
+      return;
+    }
+
     setFocusedMatchId((current) =>
       current && activeRunwayMatches.some((match) => match.id === current)
         ? current
         : activeRunwayMatches[0].id
     );
-  }, [activeRunwayMatches]);
+  }, [activeRunwayMatches, requestedFocusId]);
 
   function toggleSiteTimePreference() {
     setTimeDisplayMode(timeDisplayMode === "local" ? "utc" : "local");
+  }
+
+  function setQuickSchedule(minutesFromNow: number) {
+    const next = new Date(Date.now() + minutesFromNow * 60_000);
+    next.setSeconds(0, 0);
+    const roundedMinutes = Math.ceil(next.getMinutes() / 15) * 15;
+    if (roundedMinutes >= 60) {
+      next.setHours(next.getHours() + 1, 0, 0, 0);
+    } else {
+      next.setMinutes(roundedMinutes, 0, 0);
+    }
+    setScheduledAt(toLocalDateTimeValue(next));
+  }
+
+  function applyChallengeLine(line: string) {
+    const opponentName = selectedOpponent?.name || "warrior";
+    setChallengeNote(
+      line.replaceAll("{opponent}", opponentName).slice(0, CHALLENGE_NOTE_MAX_CHARS)
+    );
   }
 
   async function updateMatch(
@@ -691,7 +770,7 @@ export default function ChallengeWorkspace() {
     setError(null);
     setNotice(null);
 
-    if (!challengeFundingEscrowAddress()) {
+    if (!snapshot.fundingRail.configured || !snapshot.fundingRail.escrowAddress) {
       setError("Challenge escrow is not configured yet.");
       setSaving(false);
       setSavingPhase("idle");
@@ -763,7 +842,10 @@ export default function ChallengeWorkspace() {
       setSavingPhase("funding");
       const fundingResult = await fundChallengeEscrow({
         challengeId: createdChallengeId,
-        amountWolo: parsedWagerAmountWolo + parsedGuaranteeAmountWolo,
+        wagerAmountWolo: parsedWagerAmountWolo,
+        guaranteeAmountWolo: parsedGuaranteeAmountWolo,
+        participantSide: "left",
+        escrowAddress: snapshot.fundingRail.escrowAddress,
         fallbackWalletAddress: connectedWalletAddress,
       });
 
@@ -793,7 +875,7 @@ export default function ChallengeWorkspace() {
         duplicateWarning
           ? `${duplicateWarning} Challenge funded. Opponent can accept + fund.`
           : payload.linkedTrophyChallengeId
-            ? `${trophyTarget?.displayName || "Trophy"} challenge funded and linked to the proof rail.`
+            ? `${payload.titleStakeNames?.join(", ") || trophyTarget?.displayName || "Title"} attached and funding verified.`
             : "Challenge funded. Opponent can accept + fund."
       );
       setChallengedUid("");
@@ -871,193 +953,374 @@ export default function ChallengeWorkspace() {
         </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[0.88fr_1.12fr]">
+      <section className="grid gap-6 xl:grid-cols-[1.18fr_0.82fr]">
         <section className="space-y-6">
           <section
             id={scheduleFormId}
-            className="rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-5 sm:p-6"
+            className="relative overflow-hidden rounded-[2rem] border border-amber-200/16 bg-[radial-gradient(circle_at_8%_0%,rgba(251,191,36,0.16),transparent_32%),radial-gradient(circle_at_95%_90%,rgba(34,211,238,0.10),transparent_28%),linear-gradient(160deg,rgba(12,19,34,0.98),rgba(2,6,23,0.98))] p-5 shadow-[0_32px_80px_rgba(0,0,0,0.28)] sm:p-7"
           >
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="min-w-0">
-                <div className="text-xs uppercase tracking-[0.35em] text-amber-200/70">New Match</div>
-                <h2 className="mt-2 text-2xl font-semibold text-white">Challenge + Fund</h2>
-              </div>
-              <div className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-slate-300">
-                Wallet escrow
-              </div>
-            </div>
-
-            {authLoading || loading ? (
-              <div className="mt-5 rounded-2xl border border-white/10 bg-white/5 px-4 py-5 text-sm text-slate-300">
-                Loading challenge hub...
-              </div>
-            ) : !isAuthenticated ? (
-              <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-white/5 p-5">
-                <div className="text-lg font-semibold text-white">Sign in to challenge another player.</div>
-                <div className="mt-2 text-sm text-slate-300">
-                  Steam sign-in keeps the scheduled match tied to a real identity.
+            <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full border border-amber-200/10 bg-amber-300/[0.035]" />
+            <div className="relative">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 text-xs uppercase tracking-[0.32em] text-amber-200/70">
+                    <Swords className="h-4 w-4" />
+                    New match
+                  </div>
+                  <h2 className="mt-2 text-3xl font-black tracking-tight text-white sm:text-4xl">
+                    Make it a date.
+                  </h2>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
+                    Pick your rival. Pick the hour. Keplr locks your side and sends a challenge they will actually want to open.
+                  </p>
                 </div>
-                <SteamLoginButton
-                  returnTo={returnTo}
-                  className="mt-4 rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-200"
-                />
+                <div
+                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] ${
+                    challengeEscrowReady
+                      ? "border-emerald-300/25 bg-emerald-400/10 text-emerald-100"
+                      : "border-rose-300/25 bg-rose-400/10 text-rose-100"
+                  }`}
+                >
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  {challengeEscrowReady ? "Verified escrow live" : "Escrow unavailable"}
+                </div>
               </div>
-            ) : (
-              <form onSubmit={submitChallenge} className="mt-5 space-y-4">
-                <label className="block space-y-2">
-                  <span className="text-sm text-slate-300">Challenge Player</span>
-                  <select
-                    value={challengedUid}
-                    onChange={(event) => setChallengedUid(event.target.value)}
-                    className="w-full cursor-pointer rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none transition hover:border-white/20 focus:border-amber-300/50"
-                  >
-                    <option value="">Choose a warrior</option>
-                    {snapshot.candidates.map((candidate) => (
-                      <option key={candidate.uid} value={candidate.uid}>
-                        {candidate.name}
-                        {candidate.isOnline ? " · Online" : ""}
-                        {candidate.verified ? " · Verified" : ""}
-                      </option>
-                    ))}
-                  </select>
-                </label>
 
-                {isNationalChallengeFlow ? (
-                  <label className="block space-y-2 rounded-[1.35rem] border border-amber-300/14 bg-amber-400/[0.055] p-4">
-                    <span className="text-sm font-medium text-amber-50">Your Nation</span>
-                    <select
-                      value={selectedNationalCountry}
-                      onChange={(event) => {
-                        const nextCountry = isRepresentedCountry(event.target.value)
-                          ? event.target.value
-                          : "";
-                        setSelectedNationalCountry(nextCountry);
-                        setChallengeNote((current) => {
-                          const nextNote = buildNationalChallengeNote(nextCountry).slice(
-                            0,
-                            CHALLENGE_NOTE_MAX_CHARS
-                          );
-                          return current.length === 0 || current.startsWith("Challenge for ")
-                            ? nextNote
-                            : current;
-                        });
-                      }}
-                      className="w-full cursor-pointer rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none transition hover:border-white/20 focus:border-amber-300/50"
+              <div className="mt-6 grid grid-cols-3 gap-1 rounded-[1.2rem] border border-white/10 bg-black/25 p-1.5">
+                {([
+                  ["basic", "Basic", "Fast"],
+                  ["advanced", "Advanced", "Control"],
+                  ["extreme", "Extreme", "Smart + fun"],
+                ] as const).map(([mode, label, helper]) => {
+                  const active = scheduleMode === mode;
+                  return (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setScheduleMode(mode)}
+                      className={`rounded-[0.9rem] px-2 py-2.5 text-center transition sm:px-4 ${
+                        active
+                          ? "bg-[linear-gradient(135deg,rgba(251,191,36,0.24),rgba(245,158,11,0.10))] text-white shadow-[inset_0_0_0_1px_rgba(253,230,138,0.24)]"
+                          : "text-slate-400 hover:bg-white/[0.05] hover:text-white"
+                      }`}
                     >
-                      <option value="">Choose country</option>
-                      {REPRESENTED_COUNTRIES.map((country) => (
-                        <option key={country} value={country}>
-                          {country}
+                      <span className="block text-xs font-bold sm:text-sm">{label}</span>
+                      <span className="mt-0.5 hidden text-[10px] uppercase tracking-[0.15em] opacity-60 sm:block">
+                        {helper}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {authLoading || loading ? (
+                <div className="mt-5 rounded-2xl border border-white/10 bg-white/5 px-4 py-5 text-sm text-slate-300">
+                  Loading the challenge board...
+                </div>
+              ) : !isAuthenticated ? (
+                <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-white/5 p-5">
+                  <div className="text-lg font-semibold text-white">Sign in. Pick a rival. Ring the bell.</div>
+                  <div className="mt-2 text-sm text-slate-300">
+                    Steam keeps every challenge attached to a real player and a real result.
+                  </div>
+                  <SteamLoginButton
+                    returnTo={returnTo}
+                    className="mt-4 rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-200"
+                  />
+                </div>
+              ) : (
+                <form onSubmit={submitChallenge} className="mt-6 space-y-5">
+                  <section className="rounded-[1.4rem] border border-white/10 bg-black/20 p-4 sm:p-5">
+                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
+                      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-amber-300 text-[11px] font-black text-slate-950">1</span>
+                      Choose your rival
+                    </div>
+                    <select
+                      value={challengedUid}
+                      onChange={(event) => setChallengedUid(event.target.value)}
+                      className="mt-3 w-full cursor-pointer rounded-2xl border border-white/12 bg-slate-950 px-4 py-3.5 text-base font-semibold text-white outline-none transition hover:border-white/25 focus:border-amber-300/55"
+                    >
+                      <option value="">Choose a warrior</option>
+                      {snapshot.candidates.map((candidate) => (
+                        <option key={candidate.uid} value={candidate.uid}>
+                          {candidate.name}
+                          {candidate.isOnline ? " · Online" : ""}
+                          {candidate.verified ? " · Verified" : ""}
                         </option>
                       ))}
                     </select>
-                    <span className="block text-xs leading-5 text-amber-100/65">
-                      This tells Emaren which national belt to create and schedule for your title match.
-                    </span>
-                  </label>
-                ) : null}
+                    {scheduleMode === "extreme" ? (
+                      <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+                        {snapshot.candidates.slice(0, 8).map((candidate) => {
+                          const active = candidate.uid === challengedUid;
+                          return (
+                            <button
+                              key={`rival-${candidate.uid}`}
+                              type="button"
+                              onClick={() => setChallengedUid(candidate.uid)}
+                              className={`shrink-0 rounded-full border px-3 py-2 text-xs font-semibold transition ${
+                                active
+                                  ? "border-amber-200/35 bg-amber-300/16 text-amber-50"
+                                  : "border-white/10 bg-white/[0.04] text-slate-300 hover:border-white/25 hover:text-white"
+                              }`}
+                            >
+                              <span className={`mr-2 inline-block h-2 w-2 rounded-full ${candidate.isOnline ? "bg-emerald-300" : "bg-slate-600"}`} />
+                              {candidate.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : null}
 
-                <div className="space-y-2">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <span className="block text-sm text-slate-200">Start Time</span>
+                    {isNationalChallengeFlow ? (
+                      <label className="mt-4 block rounded-[1.1rem] border border-amber-300/16 bg-amber-400/[0.06] p-3">
+                        <span className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-100/70">Your nation</span>
+                        <select
+                          value={selectedNationalCountry}
+                          onChange={(event) => {
+                            const nextCountry = isRepresentedCountry(event.target.value)
+                              ? event.target.value
+                              : "";
+                            setSelectedNationalCountry(nextCountry);
+                            setChallengeNote((current) => {
+                              const nextNote = buildNationalChallengeNote(nextCountry).slice(0, CHALLENGE_NOTE_MAX_CHARS);
+                              return current.length === 0 || current.startsWith("Challenge for ") ? nextNote : current;
+                            });
+                          }}
+                          className="mt-2 w-full cursor-pointer rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-white outline-none focus:border-amber-300/50"
+                        >
+                          <option value="">Choose country</option>
+                          {REPRESENTED_COUNTRIES.map((country) => (
+                            <option key={country} value={country}>{country}</option>
+                          ))}
+                        </select>
+                      </label>
+                    ) : null}
+                  </section>
+
+                  <section className="rounded-[1.4rem] border border-white/10 bg-black/20 p-4 sm:p-5">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
+                        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-amber-300 text-[11px] font-black text-slate-950">2</span>
+                        Pick the hour
+                      </div>
+                      <button type="button" onClick={toggleSiteTimePreference} className="text-[11px] text-slate-400 transition hover:text-white">
+                        {timeDisplayMode === "local" ? "Show UTC sitewide" : "Show local sitewide"}
+                      </button>
+                    </div>
+                    <div className="mt-3 grid grid-cols-4 gap-2">
+                      {[
+                        ["30 min", 30],
+                        ["1 hour", 60],
+                        ["2 hours", 120],
+                        ["Tomorrow", 24 * 60],
+                      ].map(([label, minutes]) => (
+                        <button
+                          key={String(label)}
+                          type="button"
+                          onClick={() => setQuickSchedule(Number(minutes))}
+                          className="rounded-xl border border-white/10 bg-white/[0.045] px-2 py-2.5 text-xs font-semibold text-slate-200 transition hover:border-amber-200/30 hover:bg-amber-300/10 hover:text-white"
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                    <input
+                      type="datetime-local"
+                      value={scheduledAt}
+                      onChange={(event) => setScheduledAt(event.target.value)}
+                      className="mt-3 w-full rounded-2xl border border-white/12 bg-slate-950 px-4 py-3 text-white outline-none focus:border-amber-300/50"
+                    />
+                    <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                      <CalendarClock className="h-4 w-4 text-cyan-200/70" />
+                      <span className="font-semibold text-white">{schedulePreviewLocal === "—" ? "Pick a start time" : schedulePreviewLocal}</span>
+                      <span className="text-slate-600">·</span>
+                      <span>{schedulePreviewUtc === "—" ? "UTC pending" : `UTC ${schedulePreviewUtcCompact}`}</span>
+                    </div>
+                  </section>
+
+                  <section className="rounded-[1.4rem] border border-white/10 bg-black/20 p-4 sm:p-5">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
+                        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-amber-300 text-[11px] font-black text-slate-950">3</span>
+                        Set the stakes
+                      </div>
+                      <div className="text-sm font-black text-amber-100">{totalFundingPreview.toLocaleString()} WOLO each</div>
+                    </div>
+                    {scheduleMode !== "basic" ? (
+                      <>
+                        <div className="mt-3 grid grid-cols-3 gap-2">
+                          {[
+                            ["Friendly", 10, 5],
+                            ["Ranked", 25, 10],
+                            ["Grudge", 100, 25],
+                          ].map(([label, wager, guarantee]) => {
+                            const active = wagerAmountWolo === String(wager) && guaranteeAmountWolo === String(guarantee);
+                            return (
+                              <button
+                                key={String(label)}
+                                type="button"
+                                onClick={() => {
+                                  setWagerAmountWolo(String(wager));
+                                  setGuaranteeAmountWolo(String(guarantee));
+                                }}
+                                className={`rounded-xl border px-2 py-2.5 text-xs font-semibold transition ${
+                                  active
+                                    ? "border-amber-200/30 bg-amber-300/14 text-amber-50"
+                                    : "border-white/10 bg-white/[0.04] text-slate-300 hover:border-white/20 hover:text-white"
+                                }`}
+                              >
+                                {label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                          <label>
+                            <span className="text-xs text-slate-400">Winner&apos;s wager</span>
+                            <input type="number" min={1} step={1} value={wagerAmountWolo} onChange={(event) => setWagerAmountWolo(event.target.value)} className="mt-1.5 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-white outline-none focus:border-amber-300/50" />
+                          </label>
+                          <label>
+                            <span className="text-xs text-slate-400">Show-up guarantee</span>
+                            <input type="number" min={1} step={1} value={guaranteeAmountWolo} onChange={(event) => setGuaranteeAmountWolo(event.target.value)} className="mt-1.5 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-white outline-none focus:border-amber-300/50" />
+                          </label>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="mt-3 text-xs leading-5 text-slate-400">
+                        Smart default: {wagerAmountWolo} wager + {guaranteeAmountWolo} guarantee. You can tune both in Advanced.
+                      </div>
+                    )}
+                  </section>
+
+                  {scheduleMode === "extreme" ? (
+                    <section className="overflow-hidden rounded-[1.4rem] border border-amber-200/18 bg-[linear-gradient(135deg,rgba(120,53,15,0.18),rgba(15,23,42,0.48))] p-4 sm:p-5">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-amber-100/70">
+                            <Crown className="h-4 w-4" />
+                            Automatic title stakes
+                          </div>
+                          <div className="mt-1 text-sm text-slate-300">The rules engine puts eligible belts and artifacts on the table for you.</div>
+                        </div>
+                        <Sparkles className="h-5 w-5 shrink-0 text-amber-200" />
+                      </div>
+                      {automaticTitleStakes.length > 0 ? (
+                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                          {automaticTitleStakes.map((title) => (
+                            <div key={title.trophyId} className="flex min-w-0 items-center gap-3 rounded-[1rem] border border-amber-100/15 bg-black/20 p-3">
+                              <div className="relative h-14 w-20 shrink-0">
+                                {title.imageUri ? (
+                                  <Image src={title.imageUri} alt="" fill unoptimized sizes="80px" className="object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.45)]" />
+                                ) : (
+                                  <Trophy className="mx-auto h-10 w-10 text-amber-200/70" />
+                                )}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="truncate text-sm font-bold text-white">{title.displayName}</div>
+                                <div className="mt-1 text-[11px] text-amber-100/65">
+                                  {title.kind === "artifact" ? "Metric proof required" : "Moves on verified win"}
+                                  {title.currentBountyWolo > 0 ? ` · ${title.currentBountyWolo.toLocaleString()} WOLO bounty` : ""}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="mt-4 flex items-center gap-3 rounded-[1rem] border border-white/10 bg-black/15 p-3 text-sm text-slate-300">
+                          <Gem className="h-5 w-5 text-violet-200/70" />
+                          No eligible title detected yet. This one is for WOLO, pride, and the permanent record.
+                        </div>
+                      )}
+                    </section>
+                  ) : null}
+
+                  {scheduleMode !== "basic" ? (
+                    <section className="rounded-[1.4rem] border border-white/10 bg-black/20 p-4 sm:p-5">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Make the callout</div>
+                        <MessageSquareMore className="h-4 w-4 text-cyan-200/70" />
+                      </div>
+                      {scheduleMode === "extreme" ? (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {[
+                            "You. Me. One clean set. Winner owns the room.",
+                            "Bo3? No excuses. Let the replay settle it.",
+                            "{opponent}, the board needs our names on it.",
+                          ].map((line) => (
+                            <button key={line} type="button" onClick={() => applyChallengeLine(line)} className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[11px] text-slate-300 transition hover:border-cyan-200/25 hover:text-white">
+                              {line.replace("{opponent}", selectedOpponent?.name || "Rival")}
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
+                      <AutoGrowTextarea
+                        value={challengeNote}
+                        onChange={(event) => setChallengeNote(event.target.value.slice(0, CHALLENGE_NOTE_MAX_CHARS))}
+                        maxRows={4}
+                        maxLength={CHALLENGE_NOTE_MAX_CHARS}
+                        className="mt-3 w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm leading-6 text-white outline-none focus:border-amber-300/50"
+                        placeholder="Bo3 on Yucatan in an hour? Let's put it on the board."
+                      />
+                      <div className="mt-1.5 text-right text-[10px] uppercase tracking-[0.16em] text-slate-500">{challengeNote.length}/{CHALLENGE_NOTE_MAX_CHARS}</div>
+                    </section>
+                  ) : null}
+
+                  {scheduleMode === "extreme" ? (
+                    <section className="rounded-[1.5rem] border border-amber-200/20 bg-[radial-gradient(circle_at_80%_0%,rgba(251,191,36,0.16),transparent_38%),linear-gradient(135deg,rgba(30,41,59,0.88),rgba(2,6,23,0.92))] p-4 sm:p-5">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-amber-100/65">Their invitation preview</div>
+                        <Zap className="h-4 w-4 text-amber-200" />
+                      </div>
+                      <div className="mt-4 flex items-center justify-center gap-3 sm:gap-5">
+                        <div className="text-center">
+                          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-amber-200/20 bg-amber-300/10 text-lg font-black text-amber-50">YOU</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-[10px] uppercase tracking-[0.28em] text-amber-100/55">Challenge</div>
+                          <Swords className="mx-auto mt-1 h-7 w-7 text-amber-200" />
+                        </div>
+                        <div className="text-center">
+                          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-cyan-200/20 bg-cyan-300/10 text-lg font-black text-cyan-50">
+                            {(selectedOpponent?.name || "?").slice(0, 2).toUpperCase()}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-4 text-center text-xl font-black text-white">
+                        You vs {selectedOpponent?.name || "Choose a rival"}
+                      </div>
+                      <div className="mt-2 flex flex-wrap justify-center gap-2 text-[11px] text-slate-300">
+                        <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1">{schedulePreviewLocal}</span>
+                        <span className="rounded-full border border-amber-200/15 bg-amber-300/10 px-3 py-1 text-amber-50">{totalFundingPreview.toLocaleString()} WOLO each</span>
+                        {automaticTitleStakes.length > 0 ? <span className="rounded-full border border-violet-200/15 bg-violet-300/10 px-3 py-1 text-violet-50">{automaticTitleStakes.length} title {automaticTitleStakes.length === 1 ? "stake" : "stakes"}</span> : null}
+                      </div>
+                      {challengeNote ? <div className="mx-auto mt-3 max-w-lg text-center text-sm italic leading-6 text-slate-300">“{challengeNote}”</div> : null}
+                    </section>
+                  ) : null}
+
+                  {error ? <div className="rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">{error}</div> : null}
+                  {notice ? <div className="rounded-2xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">{notice}</div> : null}
+
+                  <div className="rounded-[1.35rem] border border-emerald-300/16 bg-emerald-400/[0.055] p-3 sm:flex sm:items-center sm:justify-between sm:gap-4">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-300/12 text-emerald-100"><ShieldCheck className="h-5 w-5" /></span>
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-emerald-50">One signature. Real chain proof.</div>
+                        <div className="mt-0.5 truncate text-[11px] text-emerald-100/55">{snapshot.fundingRail.chainId} · structured challenge deposit · replay-verified result</div>
+                      </div>
+                    </div>
                     <button
-                      type="button"
-                      onClick={toggleSiteTimePreference}
-                      className="text-[11px] text-slate-400 transition hover:text-white"
+                      type="submit"
+                      disabled={saving || !challengeEscrowReady || !challengedUid}
+                      className="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-[linear-gradient(135deg,#fde68a,#fbbf24)] px-5 py-3 text-sm font-black text-slate-950 shadow-[0_14px_34px_rgba(251,191,36,0.22)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50 sm:mt-0 sm:w-auto"
                     >
-                      {timeDisplayMode === "local" ? "Use UTC sitewide" : "Use Local sitewide"}
+                      {walletStatus !== "connected" ? <Wallet className="h-4 w-4" /> : saving ? <Sparkles className="h-4 w-4" /> : <Swords className="h-4 w-4" />}
+                      {createButtonLabel}
                     </button>
                   </div>
-                  <input
-                    type="datetime-local"
-                    value={scheduledAt}
-                    onChange={(event) => setScheduledAt(event.target.value)}
-                    className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-amber-300/50"
-                  />
-                  <div className="rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-slate-300">
-                    <div className="text-base font-medium text-white sm:text-lg">
-                      {schedulePreviewLocal === "—" ? "Pick a start time." : schedulePreviewLocal}
-                    </div>
-                    <div className="mt-2 text-xs text-slate-400">
-                      {schedulePreviewUtc === "—"
-                        ? "UTC anchor appears here."
-                        : `UTC ${schedulePreviewUtcCompact}`}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <label className="block space-y-2">
-                    <span className="text-sm text-slate-300">Wolo Wager</span>
-                    <input
-                      type="number"
-                      min={1}
-                      step={1}
-                      value={wagerAmountWolo}
-                      onChange={(event) => setWagerAmountWolo(event.target.value)}
-                      className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-amber-300/50"
-                    />
-                  </label>
-                  <label className="block space-y-2">
-                    <span className="text-sm text-slate-300">Match Guarantee</span>
-                    <input
-                      type="number"
-                      min={1}
-                      step={1}
-                      value={guaranteeAmountWolo}
-                      onChange={(event) => setGuaranteeAmountWolo(event.target.value)}
-                      className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-amber-300/50"
-                    />
-                  </label>
-                  <div className="rounded-[1.35rem] border border-amber-300/18 bg-amber-400/10 px-4 py-4">
-                    <div className="text-[11px] uppercase tracking-[0.2em] text-amber-100/70">
-                      Funding each
-                    </div>
-                    <div className="mt-2 text-lg font-semibold text-white">
-                      {totalFundingPreview.toLocaleString()} WOLO
-                    </div>
-                  </div>
-                </div>
-
-                <label className="block space-y-2">
-                  <span className="text-sm text-slate-300">Message</span>
-                  <AutoGrowTextarea
-                    value={challengeNote}
-                    onChange={(event) =>
-                      setChallengeNote(event.target.value.slice(0, CHALLENGE_NOTE_MAX_CHARS))
-                    }
-                    maxRows={4}
-                    maxLength={CHALLENGE_NOTE_MAX_CHARS}
-                    className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm leading-6 text-white outline-none focus:border-amber-300/50"
-                    placeholder="Bo3 on Yucatan in an hour? Let's put it on the board."
-                  />
-                  <div className="text-right text-[11px] uppercase tracking-[0.18em] text-slate-500">
-                    {challengeNote.length}/{CHALLENGE_NOTE_MAX_CHARS}
-                  </div>
-                </label>
-
-                {error ? (
-                  <div className="rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
-                    {error}
-                  </div>
-                ) : null}
-
-                {notice ? (
-                  <div className="rounded-2xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
-                    {notice}
-                  </div>
-                ) : null}
-
-                <button
-                  type="submit"
-                  disabled={saving || !challengeEscrowReady}
-                  className="inline-flex items-center gap-2 rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {walletStatus !== "connected" ? <Wallet className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                  {createButtonLabel}
-                </button>
-              </form>
-            )}
+                </form>
+              )}
+            </div>
           </section>
 
           {focusedMatch ? (

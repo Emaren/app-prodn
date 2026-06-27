@@ -14,6 +14,10 @@ import {
   normalizeScheduledMatchViewerPreference,
   type ScheduledMatchViewerPreference,
 } from "@/lib/scheduledMatchPreferences";
+import {
+  WOLO_CHAIN_ID,
+  WOLO_CHALLENGE_ESCROW_ADDRESS,
+} from "@/lib/woloChain";
 
 const CHALLENGE_ONLINE_WINDOW_MS = 2 * 60 * 1000;
 const CHALLENGE_LOOKAHEAD_MS = 7 * 24 * 60 * 60 * 1000;
@@ -24,6 +28,7 @@ const SESSION_MATCH_LOOKBACK_MS = 45 * 60 * 1000;
 const SESSION_MATCH_LOOKAHEAD_MS = 8 * 60 * 60 * 1000;
 const CHALLENGE_LEDGER_LOOKBACK_MS = 45 * 24 * 60 * 60 * 1000;
 const CHALLENGE_ACTIVITY_LIMIT = 40;
+const TROPHY_DAY_MS = 24 * 60 * 60 * 1000;
 const ACTIVE_SCHEDULED_STATUSES = [
   "pending",
   "accepted",
@@ -38,6 +43,22 @@ const ACTIVE_SCHEDULED_STATUSES = [
   "live_confirmed",
 ] as const;
 
+function projectedChallengeTrophyBounty(trophy: {
+  currentBountyWolo: number;
+  bountyGrowthWolo: number;
+  holderSince: Date | null;
+  status: string;
+}) {
+  if (!trophy.holderSince || !["held", "active", "guardian_held"].includes(trophy.status)) {
+    return trophy.currentBountyWolo;
+  }
+  const elapsedDays = Math.max(
+    0,
+    Math.floor((Date.now() - trophy.holderSince.getTime()) / TROPHY_DAY_MS)
+  );
+  return trophy.currentBountyWolo + elapsedDays * trophy.bountyGrowthWolo;
+}
+
 type ChallengeUserRow = {
   id: number;
   uid: string;
@@ -46,6 +67,7 @@ type ChallengeUserRow = {
   verified: boolean;
   verificationLevel: number;
   lastSeen: Date | null;
+  walletAddress: string | null;
 };
 
 type ScheduledMatchRow = {
@@ -77,6 +99,19 @@ type ScheduledMatchRow = {
   challengeNote: string | null;
   challenger: ChallengeUserRow;
   challenged: ChallengeUserRow;
+  trophyChallenges: Array<{
+    id: number;
+    status: string;
+    settlementStatus: string;
+    trophy: {
+      trophyId: string;
+      displayName: string;
+      kind: string;
+      family: string;
+      nftImageUri: string | null;
+      chainStatus: string;
+    };
+  }>;
 };
 
 type ComparableSession = {
@@ -127,6 +162,25 @@ export type ScheduledMatchTile = {
   linkedMapName: string | null;
   linkedWinner: string | null;
   durationSeconds: number | null;
+  fundingRail: ChallengeFundingRailSurface;
+  titleStakes: Array<{
+    challengeId: number;
+    trophyId: string;
+    displayName: string;
+    kind: string;
+    family: string;
+    imageUrl: string | null;
+    status: string;
+    settlementStatus: string;
+    chainStatus: string;
+  }>;
+};
+
+export type ChallengeFundingRailSurface = {
+  chainId: string;
+  escrowAddress: string | null;
+  configured: boolean;
+  proofMode: "wolochain_challenge_v1";
 };
 
 export type ChallengeActivityItem = {
@@ -172,9 +226,20 @@ export type ChallengeHubSnapshot = {
   historyMatches: ScheduledMatchTile[];
   activities: ChallengeActivityItem[];
   record: ChallengeRecordSummary;
+  fundingRail: ChallengeFundingRailSurface;
   serverNow: string;
   updatedAt: string;
 };
+
+function buildChallengeFundingRailSurface(): ChallengeFundingRailSurface {
+  const escrowAddress = WOLO_CHALLENGE_ESCROW_ADDRESS?.trim() || null;
+  return {
+    chainId: WOLO_CHAIN_ID,
+    escrowAddress,
+    configured: Boolean(escrowAddress),
+    proofMode: "wolochain_challenge_v1",
+  };
+}
 
 const CHALLENGE_PLAYER_SELECT = {
   id: true,
@@ -184,6 +249,7 @@ const CHALLENGE_PLAYER_SELECT = {
   verified: true,
   verificationLevel: true,
   lastSeen: true,
+  walletAddress: true,
 } as const;
 
 const SCHEDULED_MATCH_SELECT = {
@@ -218,6 +284,26 @@ const SCHEDULED_MATCH_SELECT = {
   },
   challenged: {
     select: CHALLENGE_PLAYER_SELECT,
+  },
+  trophyChallenges: {
+    select: {
+      id: true,
+      status: true,
+      settlementStatus: true,
+      trophy: {
+        select: {
+          trophyId: true,
+          displayName: true,
+          kind: true,
+          family: true,
+          nftImageUri: true,
+          chainStatus: true,
+        },
+      },
+    },
+    orderBy: {
+      id: "asc",
+    },
   },
 } as const;
 
@@ -758,6 +844,18 @@ function buildScheduledMatchTile(
     linkedMapName: linkedSession?.mapName ?? row.linkedMapName ?? null,
     linkedWinner: linkedSession?.winner ?? row.linkedWinner ?? null,
     durationSeconds: linkedSession?.durationSeconds ?? row.linkedDurationSeconds ?? null,
+    fundingRail: buildChallengeFundingRailSurface(),
+    titleStakes: row.trophyChallenges.map((challenge) => ({
+      challengeId: challenge.id,
+      trophyId: challenge.trophy.trophyId,
+      displayName: challenge.trophy.displayName,
+      kind: challenge.trophy.kind,
+      family: challenge.trophy.family,
+      imageUrl: challenge.trophy.nftImageUri,
+      status: challenge.status,
+      settlementStatus: challenge.settlementStatus,
+      chainStatus: challenge.trophy.chainStatus,
+    })),
   };
 }
 
@@ -820,6 +918,190 @@ async function recordAutoScheduledMatchActivity(
       createdAt: input.createdAt,
     },
   });
+}
+
+async function settleVerifiedScheduledMatchTitleStakes(
+  prisma: PrismaClient,
+  row: ScheduledMatchRow,
+  session: ComparableSession,
+  completedAt: Date
+) {
+  const winnerKey = normalizeNameKey(session.winner);
+  if (!winnerKey) return;
+
+  const winner = playerAliases(row.challenger).includes(winnerKey)
+    ? row.challenger
+    : playerAliases(row.challenged).includes(winnerKey)
+      ? row.challenged
+      : null;
+  if (!winner) return;
+
+  const titleChallenges = await prisma.trophyChallenge.findMany({
+    where: {
+      scheduledMatchId: row.id,
+      winnerUserId: null,
+      status: {
+        notIn: ["cancelled", "canceled", "disputed", "settled"],
+      },
+    },
+    include: {
+      trophy: true,
+    },
+  });
+
+  for (const titleChallenge of titleChallenges) {
+    const currentCustodianId =
+      titleChallenge.trophy.currentHolderUserId ??
+      titleChallenge.trophy.guardianHolderUserId;
+    const expectedCustodianIds = new Set(
+      [titleChallenge.defenderUserId, titleChallenge.guardianUserId].filter(
+        (value): value is number => typeof value === "number"
+      )
+    );
+    if (currentCustodianId && !expectedCustodianIds.has(currentCustodianId)) {
+      await prisma.trophyChallenge.update({
+        where: { id: titleChallenge.id },
+        data: {
+          status: "disputed",
+          settlementStatus: "stale_custody_blocked",
+          errorState:
+            "Title custody changed before this scheduled result settled. Operator review required.",
+        },
+      });
+      continue;
+    }
+
+    const challengerWon = titleChallenge.challengerUserId === winner.id;
+    const isArtifact = titleChallenge.trophy.kind === "artifact";
+    const appOnly = titleChallenge.trophy.chainStatus === "app_only";
+    const challengeStatus = isArtifact
+      ? "replay_uploaded"
+      : appOnly
+        ? "settled"
+        : challengerWon
+          ? "verified_challenger_win"
+          : "verified_defender_win";
+    const settlementStatus = isArtifact
+      ? "artifact_proof_review"
+      : appOnly
+        ? "app_only_auto_settled"
+        : "chain_intent_required";
+    const dethroneBountyWolo =
+      challengerWon && !isArtifact
+        ? projectedChallengeTrophyBounty(titleChallenge.trophy)
+        : 0;
+
+    await prisma.$transaction(async (tx) => {
+      const claimedSettlement = await tx.trophyChallenge.updateMany({
+        where: {
+          id: titleChallenge.id,
+          winnerUserId: null,
+        },
+        data: {
+          winnerUserId: winner.id,
+          replayId: session.id,
+          gameId: session.id,
+          watcherSessionId: session.sessionKey,
+          status: challengeStatus,
+          settlementStatus,
+          verificationSummary: isArtifact
+            ? `Replay #${session.id} attached automatically. Artifact metric proof still requires review before custody moves.`
+            : `Scheduled match #${row.id} matched replay #${session.id}; ${challengePlayerName(winner)} verified as winner.`,
+          errorState: null,
+        },
+      });
+      if (claimedSettlement.count === 0) return;
+
+      if (challengerWon && appOnly && !isArtifact) {
+        await tx.trophy.update({
+          where: { id: titleChallenge.trophyId },
+          data: {
+            currentHolderUserId: winner.id,
+            currentHolderDisplayName: challengePlayerName(winner),
+            currentHolderWoloAddress: winner.walletAddress,
+            status: "held",
+            currentBountyWolo: 0,
+            holderSince: completedAt,
+            forfeitureNeeded: false,
+            eligibilityNote: "Transferred automatically after verified scheduled-match proof.",
+          },
+        });
+      }
+
+      await tx.trophyEvent.create({
+        data: {
+          trophyId: titleChallenge.trophyId,
+          eventType: "REPLAY_VERIFIED",
+          actorRole: "system",
+          initiatedBy: "system",
+          fromHolderUserId:
+            titleChallenge.trophy.currentHolderUserId ??
+            titleChallenge.trophy.guardianHolderUserId,
+          toHolderUserId: winner.id,
+          gameId: session.id,
+          replayId: session.id,
+          challengeId: titleChallenge.id,
+          status: isArtifact ? "attention_required" : "recorded",
+          rawResponse: {
+            scheduledMatchId: row.id,
+            watcherSessionId: session.sessionKey,
+            winner: session.winner,
+            challengerWon,
+            settlementStatus,
+          },
+        },
+      });
+
+      if (!isArtifact && appOnly) {
+        await tx.trophyEvent.create({
+          data: {
+            trophyId: titleChallenge.trophyId,
+            eventType: challengerWon
+              ? "CHALLENGE_SETTLED_HOLDER_CHANGED"
+              : "CHALLENGE_SETTLED_DEFENSE",
+            actorRole: "system",
+            initiatedBy: "system",
+            fromHolderUserId:
+              titleChallenge.trophy.currentHolderUserId ??
+              titleChallenge.trophy.guardianHolderUserId,
+            toHolderUserId: challengerWon
+              ? winner.id
+              : titleChallenge.trophy.currentHolderUserId ??
+                titleChallenge.trophy.guardianHolderUserId,
+            gameId: session.id,
+            replayId: session.id,
+            challengeId: titleChallenge.id,
+            status: "recorded",
+            rawResponse: {
+              mode: "app_only",
+              automatic: true,
+              scheduledMatchId: row.id,
+            },
+          },
+        });
+      }
+
+      if (challengerWon && dethroneBountyWolo > 0) {
+        await tx.trophyPayout.create({
+          data: {
+            trophyId: titleChallenge.trophyId,
+            recipientUserId: winner.id,
+            recipientDisplayName: challengePlayerName(winner),
+            recipientWoloAddress: winner.walletAddress,
+            amountWolo: dethroneBountyWolo,
+            payoutKind: "dethrone_bounty",
+            status: "pending",
+            rawRequest: {
+              challengeId: titleChallenge.id,
+              scheduledMatchId: row.id,
+              settlementMode: appOnly ? "app_only_auto" : "chain_intent",
+              fundingTruth: "Operator payout remains required.",
+            },
+          },
+        });
+      }
+    });
+  }
 }
 
 async function persistScheduledMatchResults(
@@ -909,6 +1191,20 @@ async function persistScheduledMatchResults(
               mapName: completedSession.mapName ?? null,
             },
           });
+        }
+
+        try {
+          await settleVerifiedScheduledMatchTitleStakes(
+            prisma,
+            row,
+            completedSession,
+            completedAt
+          );
+        } catch (error) {
+          console.error(
+            `Failed to settle title stakes for scheduled match #${row.id}:`,
+            error
+          );
         }
 
         updatedRows.push(nextRow);
@@ -1538,6 +1834,7 @@ export async function loadChallengeHubSnapshot(
       historyMatches: [],
       activities: [],
       record: emptyChallengeRecord(),
+      fundingRail: buildChallengeFundingRailSurface(),
       serverNow: nowIso,
       updatedAt: nowIso,
     };
@@ -1556,6 +1853,7 @@ export async function loadChallengeHubSnapshot(
       historyMatches: [],
       activities: [],
       record: emptyChallengeRecord(),
+      fundingRail: buildChallengeFundingRailSurface(),
       serverNow: nowIso,
       updatedAt: nowIso,
     };
@@ -1639,6 +1937,7 @@ export async function loadChallengeHubSnapshot(
     historyMatches: historyMatches.map(attachPreference),
     activities,
     record,
+    fundingRail: buildChallengeFundingRailSurface(),
     serverNow: nowIso,
     updatedAt: nowIso,
   };

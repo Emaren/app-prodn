@@ -20,6 +20,8 @@ export type ChallengeInboxNotice = {
   scheduledAtIso: string | null;
   fundingLabel: string | null;
   statusLabel: string | null;
+  titleStakesLabel: string | null;
+  titleRuleLabel: string | null;
   note: string | null;
   compactLine: string;
 };
@@ -172,6 +174,8 @@ export function summarizeChallengeInboxMessage(
     coerceServerScheduledLabelToIso(scheduledLabel);
   const fundingLabel = readPrefixedLine(lines, ["Funding:"]);
   const statusLabel = readPrefixedLine(lines, ["Status:"]);
+  const titleStakesLabel = readPrefixedLine(lines, ["Title Stakes:"]);
+  const titleRuleLabel = readPrefixedLine(lines, ["Title Rule:"]);
   const note = readPrefixedLine(lines, ["Note:"]);
   const challengeId = parseChallengeId(readPrefixedLine(lines, ["Challenge ID:", "Match ID:"]));
 
@@ -181,6 +185,8 @@ export function summarizeChallengeInboxMessage(
     scheduledLabel,
     fundingLabel,
     statusLabel,
+    titleStakesLabel,
+    titleRuleLabel,
     note ? "note attached" : null,
   ];
 
@@ -193,6 +199,8 @@ export function summarizeChallengeInboxMessage(
     scheduledAtIso,
     fundingLabel,
     statusLabel,
+    titleStakesLabel,
+    titleRuleLabel,
     note,
     compactLine: compactParts.filter(Boolean).join(" · "),
   };

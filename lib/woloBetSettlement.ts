@@ -7,6 +7,7 @@ import { GasPrice, SigningStargateClient } from "@cosmjs/stargate";
 import {
   WOLO_ADDRESS_PREFIX,
   WOLO_BASE_DENOM,
+  WOLO_CHALLENGE_ESCROW_ADDRESS,
   WOLO_DEFAULT_GAS_PRICE,
   WOLO_MAINNET_CHAIN_ID,
   WOLO_REST_URL,
@@ -364,6 +365,40 @@ type SettlementEscrowRecentPayload = {
     canonical_tx_lookup_internal?: string;
     canonical_tx_lookup_public?: string;
   }>;
+};
+
+type SettlementChallengeFundingVerifyPayload = {
+  ok?: boolean;
+  failure_code?: string;
+  detail?: string;
+  funding?: {
+    ok?: boolean;
+    deposit_found?: boolean;
+    funding_tx_hash?: string;
+    sender?: string;
+    escrow_address?: string;
+    source_app?: string;
+    settlement_run_id?: string;
+    challenge_id?: string;
+    participant_side?: string;
+    total_funded_uwolo?: string;
+    wager_uwolo?: string;
+    guarantee_uwolo?: string;
+    canonical_tx_lookup_preferred?: string;
+    canonical_tx_lookup_public?: string;
+    canonical_tx_lookup_internal?: string;
+    canonical_tx_lookup?: string;
+  };
+  lookup?: {
+    found?: boolean;
+    tx_success?: boolean;
+    matched_expected?: boolean;
+    tx_hash?: string;
+    canonical_tx_lookup_preferred?: string;
+    canonical_tx_lookup_public?: string;
+    canonical_tx_lookup_internal?: string;
+    canonical_tx_lookup?: string;
+  };
 };
 
 function normalizeAddress(value: string | null | undefined) {
@@ -1910,6 +1945,101 @@ export async function verifyStakeTransfer(input: {
     proofUrl: buildWoloRestTxLookupUrl(normalizedTxHash),
     txFeeWolo: txNetworkFeeWolo(payload),
   };
+}
+
+export async function verifyChallengeFundingTransfer(input: {
+  challengeId: number;
+  txHash: string;
+  fromAddress: string;
+  participantSide: "left" | "right";
+  wagerAmountWolo: number;
+  guaranteeAmountWolo: number;
+}): Promise<StakeVerificationResult> {
+  const normalizedTxHash = normalizeTxHash(input.txHash);
+  const escrowAddress = normalizeAddress(WOLO_CHALLENGE_ESCROW_ADDRESS);
+  const normalizedSender = normalizeAddress(input.fromAddress);
+  const totalFundingWolo = input.wagerAmountWolo + input.guaranteeAmountWolo;
+
+  if (!normalizedTxHash) {
+    return { verified: false, detail: "Challenge funding tx hash is invalid." };
+  }
+
+  if (!escrowAddress) {
+    return { verified: false, detail: "Challenge escrow address is not configured." };
+  }
+
+  const senderError = validateWoloAddress(normalizedSender);
+  if (senderError) {
+    return { verified: false, detail: senderError };
+  }
+
+  if (WOLO_SETTLEMENT_URL) {
+    const settlementRunId = `aoe2hdbets:challenge-${input.challengeId}:v1`;
+    let response: Response | null = null;
+    let payload: SettlementChallengeFundingVerifyPayload | null = null;
+
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      response = await fetch(
+        buildSettlementServiceUrl(
+          `/settlement/v1/challenges/funding/txs/${normalizedTxHash}`,
+          {
+            expected_sender: normalizedSender,
+            source_app: "aoe2hdbets",
+            settlement_run_id: settlementRunId,
+            challenge_id: String(input.challengeId),
+            participant_side: input.participantSide,
+            expected_amount_uwolo: toUwoLoAmount(totalFundingWolo),
+            wager_uwolo: toUwoLoAmount(input.wagerAmountWolo),
+            guarantee_uwolo: toUwoLoAmount(input.guaranteeAmountWolo),
+          }
+        ),
+        { cache: "no-store" }
+      ).catch(() => null);
+      payload = response
+        ? ((await response.json().catch(() => null)) as SettlementChallengeFundingVerifyPayload | null)
+        : null;
+
+      if (response && response.status !== 404) break;
+      if (attempt < 5) await sleep(700 + attempt * 350);
+    }
+
+    const funding = payload?.funding;
+    const lookup = payload?.lookup;
+    const proofUrl = selectPreferredProofUrl(funding || lookup || {});
+    const verified = Boolean(
+      response?.ok &&
+        payload?.ok &&
+        funding?.ok &&
+        funding.deposit_found &&
+        lookup?.found &&
+        lookup.tx_success &&
+        lookup.matched_expected &&
+        normalizeAddress(funding.sender) === normalizedSender &&
+        normalizeAddress(funding.escrow_address) === escrowAddress
+    );
+
+    return {
+      verified,
+      detail:
+        payload?.detail?.trim() ||
+        payload?.failure_code?.trim() ||
+        (verified
+          ? "Challenge funding verified by WoloChain."
+          : "WoloChain could not verify this structured challenge deposit."),
+      txHash:
+        funding?.funding_tx_hash?.trim() ||
+        lookup?.tx_hash?.trim() ||
+        normalizedTxHash,
+      proofUrl,
+    };
+  }
+
+  return verifyWoloTransfer({
+    txHash: normalizedTxHash,
+    fromAddress: normalizedSender,
+    toAddress: escrowAddress,
+    expectedAmountWolo: totalFundingWolo,
+  });
 }
 
 export async function verifyWoloTransfer(input: {
