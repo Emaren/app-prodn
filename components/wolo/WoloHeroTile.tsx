@@ -31,55 +31,45 @@ function WoloHeroWordmark() {
       >
         <defs>
           <linearGradient id="woloFinalLogoGoldFace" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="#fffbd8" />
-            <stop offset="8%" stopColor="#fff0a2" />
-            <stop offset="18%" stopColor="#f6d657" />
-            <stop offset="32%" stopColor="#e0b31e" />
-            <stop offset="49%" stopColor="#c7890c" />
-            <stop offset="66%" stopColor="#8a5007" />
-            <stop offset="82%" stopColor="#3b1a04" />
-            <stop offset="100%" stopColor="#0b0301" />
+            <stop offset="0%" stopColor="#fff9ce" />
+            <stop offset="9%" stopColor="#ffe982" />
+            <stop offset="22%" stopColor="#f4cd3d" />
+            <stop offset="38%" stopColor="#dca716" />
+            <stop offset="56%" stopColor="#b97708" />
+            <stop offset="73%" stopColor="#744006" />
+            <stop offset="89%" stopColor="#2d1103" />
+            <stop offset="100%" stopColor="#070200" />
           </linearGradient>
 
           <linearGradient id="woloFinalLogoGoldEdge" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="#fff0a1" />
-            <stop offset="28%" stopColor="#d89d15" />
-            <stop offset="68%" stopColor="#633005" />
-            <stop offset="100%" stopColor="#100400" />
+            <stop offset="0%" stopColor="#fff0a0" />
+            <stop offset="32%" stopColor="#d89b11" />
+            <stop offset="70%" stopColor="#5b2a04" />
+            <stop offset="100%" stopColor="#0c0300" />
           </linearGradient>
 
           <linearGradient id="woloFinalTopSteelGloss" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.92" />
-            <stop offset="8%" stopColor="#eeeedf" stopOpacity="0.56" />
-            <stop offset="18%" stopColor="#d0cec1" stopOpacity="0.26" />
-            <stop offset="31%" stopColor="#ffffff" stopOpacity="0" />
+            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.62" />
+            <stop offset="8%" stopColor="#eeeeE3" stopOpacity="0.36" />
+            <stop offset="17%" stopColor="#cbc9bd" stopOpacity="0.13" />
+            <stop offset="29%" stopColor="#ffffff" stopOpacity="0" />
             <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
           </linearGradient>
 
           <linearGradient id="woloFinalBottomBlackBite" x1="0" x2="0" y1="0" y2="1">
             <stop offset="0%" stopColor="#000000" stopOpacity="0" />
-            <stop offset="50%" stopColor="#000000" stopOpacity="0" />
-            <stop offset="70%" stopColor="#000000" stopOpacity="0.20" />
-            <stop offset="88%" stopColor="#000000" stopOpacity="0.48" />
-            <stop offset="100%" stopColor="#000000" stopOpacity="0.76" />
+            <stop offset="54%" stopColor="#000000" stopOpacity="0" />
+            <stop offset="76%" stopColor="#000000" stopOpacity="0.22" />
+            <stop offset="91%" stopColor="#000000" stopOpacity="0.50" />
+            <stop offset="100%" stopColor="#000000" stopOpacity="0.72" />
           </linearGradient>
 
           <linearGradient id="woloFinalLogoWarmLift" x1="0" x2="1" y1="0" y2="0">
-            <stop offset="0%" stopColor="#7b4106" stopOpacity="0.08" />
-            <stop offset="18%" stopColor="#ffe173" stopOpacity="0.18" />
-            <stop offset="47%" stopColor="#fff4bc" stopOpacity="0.12" />
-            <stop offset="74%" stopColor="#d6a115" stopOpacity="0.13" />
-            <stop offset="100%" stopColor="#5c2a04" stopOpacity="0.10" />
-          </linearGradient>
-
-          <linearGradient id="woloFinalKnifeShine" x1="0" x2="1" y1="0" y2="0">
-            <stop offset="0%" stopColor="#ffffff" stopOpacity="0" />
-            <stop offset="22%" stopColor="#ffffff" stopOpacity="0" />
-            <stop offset="38%" stopColor="#ffffff" stopOpacity="0.22" />
-            <stop offset="48%" stopColor="#e4e3d8" stopOpacity="0.30" />
-            <stop offset="58%" stopColor="#fff5bf" stopOpacity="0.14" />
-            <stop offset="72%" stopColor="#ffffff" stopOpacity="0" />
-            <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+            <stop offset="0%" stopColor="#704006" stopOpacity="0.07" />
+            <stop offset="20%" stopColor="#ffe06b" stopOpacity="0.13" />
+            <stop offset="48%" stopColor="#fff1a7" stopOpacity="0.06" />
+            <stop offset="76%" stopColor="#cf9512" stopOpacity="0.11" />
+            <stop offset="100%" stopColor="#4a2203" stopOpacity="0.08" />
           </linearGradient>
 
           <filter
@@ -91,11 +81,10 @@ function WoloHeroWordmark() {
             colorInterpolationFilters="sRGB"
           >
             <feDropShadow dx="0" dy="2" stdDeviation="1.1" floodColor="#000000" floodOpacity="0.94" />
-            <feDropShadow dx="0" dy="7" stdDeviation="3.4" floodColor="#000000" floodOpacity="0.52" />
-            <feDropShadow dx="0" dy="14" stdDeviation="7.5" floodColor="#000000" floodOpacity="0.32" />
-            <feDropShadow dx="0" dy="0" stdDeviation="3.6" floodColor="#e3b51f" floodOpacity="0.16" />
+            <feDropShadow dx="0" dy="7" stdDeviation="3.6" floodColor="#000000" floodOpacity="0.55" />
+            <feDropShadow dx="0" dy="14" stdDeviation="7.5" floodColor="#000000" floodOpacity="0.34" />
+            <feDropShadow dx="0" dy="0" stdDeviation="3.2" floodColor="#dca313" floodOpacity="0.13" />
           </filter>
-
         </defs>
 
         <g filter="url(#woloFinalWordmarkShadow)">
@@ -124,7 +113,7 @@ function WoloHeroWordmark() {
           <text
             {...textProps}
             fill="url(#woloFinalLogoWarmLift)"
-            opacity="0.74"
+            opacity="0.58"
           >
             WOLO
           </text>
@@ -132,7 +121,7 @@ function WoloHeroWordmark() {
           <text
             {...textProps}
             fill="url(#woloFinalTopSteelGloss)"
-            opacity="0.92"
+            opacity="0.84"
           >
             WOLO
           </text>
@@ -140,15 +129,7 @@ function WoloHeroWordmark() {
           <text
             {...textProps}
             fill="url(#woloFinalBottomBlackBite)"
-            opacity="0.94"
-          >
-            WOLO
-          </text>
-
-          <text
-            {...textProps}
-            fill="url(#woloFinalKnifeShine)"
-            opacity="0.46"
+            opacity="0.88"
           >
             WOLO
           </text>
@@ -156,8 +137,8 @@ function WoloHeroWordmark() {
           <text
             {...textProps}
             fill="none"
-            stroke="rgba(255,241,171,0.22)"
-            strokeWidth="0.75"
+            stroke="rgba(255,239,156,0.20)"
+            strokeWidth="0.72"
             strokeLinejoin="round"
           >
             WOLO
@@ -166,7 +147,7 @@ function WoloHeroWordmark() {
           <text
             {...textProps}
             fill="none"
-            stroke="rgba(0,0,0,0.58)"
+            stroke="rgba(0,0,0,0.56)"
             strokeWidth="0.7"
             strokeLinejoin="round"
             transform="translate(0 2)"
