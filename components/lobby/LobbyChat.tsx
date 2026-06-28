@@ -24,7 +24,6 @@ import { displayName } from "@/components/lobby/utils";
 import type { AiVisibilityOption } from "@/lib/aiConciergeConfig";
 import AutoGrowTextarea from "@/components/ui/AutoGrowTextarea";
 import { LOBBY_MESSAGE_MAX_CHARS } from "@/lib/lobby";
-import { LOBBY_MESSAGE_REACTIONS } from "@/lib/lobbyReactionConfig";
 import { avatarThumbUrlForUser } from "@/lib/avatarAssets";
 
 const TYPING_HUD_MODE_STORAGE_KEY = "aoe2war:typing-hud-mode";
@@ -714,6 +713,16 @@ function AiVoicePill({
   );
 }
 
+const APPLE_STYLE_LOBBY_QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
+
+const APPLE_STYLE_LOBBY_MORE_REACTIONS = [
+  "🔥", "👀", "🐐", "💀", "⚔️", "🏆", "👑", "✨",
+  "👏", "🤯", "🥶", "😎", "😭", "🤣", "😈", "🫡",
+  "🤝", "💪", "🙌", "🎯", "🧠", "🗿", "🚀", "💰",
+  "📜", "🏰", "🛡️", "🪓", "🐺", "🦅", "🍻", "🧙",
+  "🪄", "⚡", "🌎", "🫶",
+];
+
 function LobbyMessageCard({
   item,
   tone,
@@ -738,6 +747,7 @@ function LobbyMessageCard({
   onDeleteMessage: (messageId: number) => void;
 }) {
   const [reactionDockOpen, setReactionDockOpen] = useState(false);
+  const [reactionMoreOpen, setReactionMoreOpen] = useState(false);
   const cardRef = useRef<HTMLDivElement | null>(null);
   const isAi = item.message.user.isAi;
   const canManageMessage =
@@ -772,9 +782,16 @@ function LobbyMessageCard({
     };
   }, [reactionDockOpen]);
 
+  useEffect(() => {
+    if (!reactionDockOpen) {
+      setReactionMoreOpen(false);
+    }
+  }, [reactionDockOpen]);
+
   function handleReactionToggle(event: MouseEvent<HTMLButtonElement>, emoji: string) {
     event.stopPropagation();
     onToggleReaction(item.message.id, emoji);
+    setReactionMoreOpen(false);
     setReactionDockOpen(false);
   }
 
@@ -903,28 +920,78 @@ function LobbyMessageCard({
         aria-label="Message reactions"
         aria-hidden={!reactionDockOpen}
       >
-        <div className="grid grid-cols-7 gap-1.5">
-          {LOBBY_MESSAGE_REACTIONS.map((emoji) => {
-            const existing = item.message.reactions.find((reaction) => reaction.emoji === emoji);
-            const isActive = Boolean(existing?.viewerReacted);
+        <div className="rounded-full border border-white/[0.035] bg-white/[0.045] p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]">
+          <div className="flex items-center gap-1">
+            {APPLE_STYLE_LOBBY_QUICK_REACTIONS.map((emoji) => {
+              const existing = item.message.reactions.find((reaction) => reaction.emoji === emoji);
+              const isActive = Boolean(existing?.viewerReacted);
 
-            return (
-              <button
-                key={`${item.message.id}-${emoji}`}
-                type="button"
-                onClick={(event) => handleReactionToggle(event, emoji)}
-                aria-pressed={isActive}
-                disabled={reactingMessageId === item.message.id}
-                className={`flex h-10 min-w-0 items-center justify-center rounded-full border text-[17px] transition ${
-                  isActive
-                    ? "border-transparent bg-amber-400/18 text-amber-50 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.04)]"
-                    : "border-transparent bg-white/[0.04] text-slate-200 hover:border-transparent hover:bg-white/[0.095] hover:text-white"
-                } disabled:cursor-not-allowed disabled:opacity-60`}
-              >
-                <span>{emoji}</span>
-              </button>
-            );
-          })}
+              return (
+                <button
+                  key={`${item.message.id}-${emoji}-quick`}
+                  type="button"
+                  onClick={(event) => handleReactionToggle(event, emoji)}
+                  aria-pressed={isActive}
+                  disabled={reactingMessageId === item.message.id}
+                  className={`flex h-10 w-10 items-center justify-center rounded-full text-[18px] transition ${
+                    isActive
+                      ? "bg-amber-400/18 text-amber-50 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.04)]"
+                      : "bg-transparent text-slate-200 hover:bg-white/[0.09] hover:text-white"
+                  } disabled:cursor-not-allowed disabled:opacity-60`}
+                >
+                  <span>{emoji}</span>
+                </button>
+              );
+            })}
+
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                setReactionMoreOpen((current) => !current);
+              }}
+              aria-label={reactionMoreOpen ? "Hide more reactions" : "Show more reactions"}
+              aria-expanded={reactionMoreOpen}
+              disabled={reactingMessageId === item.message.id}
+              className={`flex h-10 w-10 items-center justify-center rounded-full text-[15px] font-black tracking-[-0.16em] transition ${
+                reactionMoreOpen
+                  ? "bg-white/[0.12] text-white"
+                  : "bg-transparent text-slate-300 hover:bg-white/[0.09] hover:text-white"
+              } disabled:cursor-not-allowed disabled:opacity-60`}
+            >
+              <span aria-hidden="true">•••</span>
+            </button>
+          </div>
+        </div>
+
+        <div
+          className={`overflow-hidden transition-all duration-200 ${
+            reactionMoreOpen ? "mt-2 max-h-64 opacity-100" : "max-h-0 opacity-0"
+          }`}
+        >
+          <div className="grid grid-cols-8 gap-1 rounded-[1rem] border border-white/[0.035] bg-white/[0.035] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.025)]">
+            {APPLE_STYLE_LOBBY_MORE_REACTIONS.map((emoji) => {
+              const existing = item.message.reactions.find((reaction) => reaction.emoji === emoji);
+              const isActive = Boolean(existing?.viewerReacted);
+
+              return (
+                <button
+                  key={`${item.message.id}-${emoji}-more`}
+                  type="button"
+                  onClick={(event) => handleReactionToggle(event, emoji)}
+                  aria-pressed={isActive}
+                  disabled={reactingMessageId === item.message.id}
+                  className={`flex h-8 w-8 items-center justify-center rounded-full text-[16px] transition ${
+                    isActive
+                      ? "bg-amber-400/18 text-amber-50 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.04)]"
+                      : "bg-transparent text-slate-200 hover:bg-white/[0.09] hover:text-white"
+                  } disabled:cursor-not-allowed disabled:opacity-60`}
+                >
+                  <span>{emoji}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {canManageMessage ? (
