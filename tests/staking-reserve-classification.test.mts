@@ -7,6 +7,7 @@ import {
   resolveStakingReserveTargetUWolo,
 } from "../lib/stakingReservePolicy.ts";
 import {
+  canInspectOperationalReserveActivity,
   classifyStakingTransferMemo,
   stakingTransferLedgerPresentation,
 } from "../lib/stakingTransferClassification.ts";
@@ -94,6 +95,37 @@ test("reserve top-ups remain visible as admin operational funding", () => {
   assert.equal(presentation.eventType, "RESERVE");
   assert.equal(presentation.label, "10,000 WOLO operating reserve funding");
   assert.equal(presentation.detailPrefix, "Admin operational funding");
+});
+
+test("reserve activity is hidden publicly and requires the admin reserve view", () => {
+  assert.equal(
+    canInspectOperationalReserveActivity({
+      isAdmin: false,
+      selectedFilter: "all",
+    }),
+    false
+  );
+  assert.equal(
+    canInspectOperationalReserveActivity({
+      isAdmin: false,
+      selectedFilter: "reserve",
+    }),
+    false
+  );
+  assert.equal(
+    canInspectOperationalReserveActivity({
+      isAdmin: true,
+      selectedFilter: "all",
+    }),
+    false
+  );
+  assert.equal(
+    canInspectOperationalReserveActivity({
+      isAdmin: true,
+      selectedFilter: "reserve",
+    }),
+    true
+  );
 });
 
 test("an unrecognized user cannot evade stake liability with a reserve memo", () => {

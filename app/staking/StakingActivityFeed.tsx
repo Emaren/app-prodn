@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { useUserAuth } from "@/context/UserAuthContext";
 import type { StakingActivityItem } from "@/lib/staking";
 
 type ActivityFeedEvent = CustomEvent<{ item?: StakingActivityItem }>;
@@ -13,7 +14,15 @@ const LIVE_POLL_INTERVAL_MS = 12_000;
 type ActivityMode = "ledger" | "grouped";
 const STAKING_ACTIVITY_PREFS_KEY = "aoe2war:staking-activity-prefs:ledger-all-v1";
 
-type ActivityFilterMode = "all" | "belts" | "staking" | "compounded" | "bounties" | "bets" | "transfers" | "reserve";
+type ActivityFilterMode =
+  | "all"
+  | "belts"
+  | "staking"
+  | "compounded"
+  | "bounties"
+  | "bets"
+  | "transfers"
+  | "reserve";
 type BeltPayoutFilterMode = "all" | "tributes" | "bounties";
 
 type ActivityPageResponse = {
@@ -127,8 +136,6 @@ function isTransferActivity(item: StakingActivityItem) {
   const type = normalizedEventType(item);
   return type === "DIRECT" || type === "GIFT";
 }
-
-
 
 function isBeltTributePayoutActivity(item: StakingActivityItem) {
   const haystack = `${item.label || ""} ${item.detail || ""} ${item.meta || ""} ${item.eventType || ""}`.toLowerCase();
@@ -374,6 +381,7 @@ export default function StakingActivityFeed({
   note?: string;
   loadMoreEndpoint?: string;
 }) {
+  const { isAdmin } = useUserAuth();
   const initialRows = useMemo(() => items.slice(0, PAGE_SIZE), [items]);
   const [mode, setMode] = useState<ActivityMode>("ledger");
   const [filterMode, setFilterMode] = useState<ActivityFilterMode>("all");
@@ -400,7 +408,7 @@ export default function StakingActivityFeed({
           parsed.filterMode === "bounties" ||
           parsed.filterMode === "bets" ||
           parsed.filterMode === "transfers" ||
-          parsed.filterMode === "reserve"
+          (isAdmin && parsed.filterMode === "reserve")
             ? parsed.filterMode
             : undefined;
 
@@ -409,9 +417,9 @@ export default function StakingActivityFeed({
             ? parsed.mode
             : undefined;
 
-        if (nextFilter === "bounties") {
+        if (nextFilter === "bounties" || nextFilter === "reserve") {
           setMode("ledger");
-          setFilterMode("bounties");
+          setFilterMode(nextFilter);
         } else {
           if (nextMode) setMode(nextMode);
           if (nextFilter) setFilterMode(nextFilter);
@@ -422,7 +430,13 @@ export default function StakingActivityFeed({
     } finally {
       setActivityPrefsLoaded(true);
     }
-  }, []);
+  }, [isAdmin]);
+
+  useEffect(() => {
+    if (!isAdmin && filterMode === "reserve") {
+      setFilterMode("all");
+    }
+  }, [filterMode, isAdmin]);
 
   useEffect(() => {
     if (!activityPrefsLoaded) return;
@@ -640,7 +654,10 @@ export default function StakingActivityFeed({
   }, []);
 
   useEffect(() => {
-    if (filterMode === "bounties" && mode !== "ledger") {
+    if (
+      (filterMode === "bounties" || filterMode === "reserve") &&
+      mode !== "ledger"
+    ) {
       setMode("ledger");
     }
   }, [filterMode, mode]);
@@ -758,6 +775,19 @@ export default function StakingActivityFeed({
     [filterMode, mode, visibleRows]
   );
   const bountySummary = filterMode === "bounties" ? computePublicBountySummary(displayRows) : null;
+  const activityFilters = useMemo<ActivityFilterMode[]>(
+    () => [
+      "all",
+      "belts",
+      "staking",
+      "compounded",
+      "bounties",
+      "bets",
+      "transfers",
+      ...(isAdmin ? (["reserve"] as const) : []),
+    ],
+    [isAdmin]
+  );
 
   return (
     <div className="space-y-2.5 overflow-hidden">
@@ -827,7 +857,7 @@ export default function StakingActivityFeed({
           </div>
         </div>
         <div className="mb-3 flex flex-wrap gap-2">
-          {(["all", "belts", "staking", "compounded", "bounties", "bets", "transfers", "reserve"] as ActivityFilterMode[]).map((filter) => (
+          {activityFilters.map((filter) => (
             <button
               key={filter}
               type="button"
@@ -841,7 +871,7 @@ export default function StakingActivityFeed({
                   : "border-transparent bg-white/[0.03] text-slate-400 hover:border-white/20 hover:text-slate-200"
               }`}
             >
-              {filter}
+              {filter === "reserve" ? "reserve/admin" : filter}
             </button>
           ))}
         </div>

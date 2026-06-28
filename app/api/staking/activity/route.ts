@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getPrisma } from "@/lib/prisma";
+import { getSessionUid } from "@/lib/session";
 import { loadMainnetTransferStakingActivityPage } from "@/lib/staking";
+import { canInspectOperationalReserveActivity } from "@/lib/stakingTransferClassification";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -133,10 +135,31 @@ async function loadPublicNumberedBounties(limit: number) {
   });
 }
 
+async function requestIsAdmin(request: NextRequest) {
+  const uid = await getSessionUid(request);
+  if (!uid) return false;
+  const user = await getPrisma().user.findUnique({
+    where: { uid },
+    select: { isAdmin: true },
+  });
+  return Boolean(user?.isAdmin);
+}
+
 
 export async function GET(request: NextRequest) {
   try {
     const filterParam = request.nextUrl.searchParams.get("filter");
+    const reserveViewAllowed = canInspectOperationalReserveActivity({
+      isAdmin: filterParam === "reserve" ? await requestIsAdmin(request) : false,
+      selectedFilter: filterParam,
+    });
+    if (filterParam === "reserve" && !reserveViewAllowed) {
+      return NextResponse.json(
+        { rows: [], hasMore: false, nextBefore: null },
+        { headers: NO_STORE_HEADERS }
+      );
+    }
+
     if (filterParam === "bounties" && request.nextUrl.searchParams.get("mode") !== "grouped") {
       const limitParam = Number(request.nextUrl.searchParams.get("limit") || 20);
       const safeLimit = Number.isFinite(limitParam) ? Math.max(1, Math.min(120, Math.trunc(limitParam))) : 20;
@@ -155,9 +178,12 @@ export async function GET(request: NextRequest) {
       before: parseBefore(request.nextUrl.searchParams.get("before")),
       mode: request.nextUrl.searchParams.get("mode") === "grouped" ? "grouped" : "ledger",
       filter:
-        filterParam === "staking" || filterParam === "compounded" || filterParam === "bounties" || filterParam === "bets" || filterParam === "transfers"
+        reserveViewAllowed
+          ? "reserve"
+          : filterParam === "staking" || filterParam === "compounded" || filterParam === "bounties" || filterParam === "bets" || filterParam === "transfers"
           ? filterParam
           : "all",
+      includeReserveActivity: reserveViewAllowed,
     });
 
     return NextResponse.json(payload, { headers: NO_STORE_HEADERS });

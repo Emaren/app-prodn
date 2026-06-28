@@ -41,7 +41,14 @@ export type StakingPeriodKey = "24h" | "7d" | "30d" | "all";
 export type StakingBoardKey = "stakers" | "earners" | "rewards";
 export type StakingActionType = "STAKE" | "UNSTAKE" | "CLAIM" | "ADJUSTMENT";
 export type StakingActivityMode = "ledger" | "grouped";
-export type StakingActivityFilter = "all" | "staking" | "compounded" | "bounties" | "bets" | "transfers";
+export type StakingActivityFilter =
+  | "all"
+  | "staking"
+  | "compounded"
+  | "bounties"
+  | "bets"
+  | "transfers"
+  | "reserve";
 
 export type StakingActivityItem = {
   key?: string;
@@ -476,7 +483,6 @@ export function isPublicStakingActivityItem(item: StakingActivityItem) {
       item.eventType === "PAYOUT" ||
       item.eventType === "SETTLEMENT" ||
       item.eventType === "DIRECT" ||
-      item.eventType === "RESERVE" ||
       item.eventType === "GIFT" ||
       (item.key?.startsWith("tx-") ?? false) ||
       /\btx\s+[0-9a-f]{8}/i.test(item.detail))
@@ -1170,13 +1176,14 @@ export async function loadMainnetTransferStakingActivityPage(
     limit?: number | null;
     mode?: StakingActivityMode | null;
     filter?: StakingActivityFilter | null;
+    includeReserveActivity?: boolean;
   } = {}
 ): Promise<StakingActivityPage> {
   const limit = Math.max(1, Math.min(options.limit ?? 16, 40));
   const before = options.before ?? null;
   const mode: StakingActivityMode = options.mode === "grouped" ? "grouped" : "ledger";
   const filter: StakingActivityFilter =
-    options.filter === "staking" || options.filter === "compounded" || options.filter === "bounties" || options.filter === "bets" || options.filter === "transfers"
+    options.filter === "staking" || options.filter === "compounded" || options.filter === "bounties" || options.filter === "bets" || options.filter === "transfers" || options.filter === "reserve"
       ? options.filter
       : "all";
   const rawActivityTake =
@@ -1449,7 +1456,11 @@ export async function loadMainnetTransferStakingActivityPage(
     ...indexedTransferRows.map((row) => indexedTransferToActivityItem(row)),
     ...giftRows.map((row) => giftToActivityItem(row)),
   ]
-    .filter(isPublicStakingActivityItem)
+    .filter((item) =>
+      isPublicStakingActivityItem(item) ||
+      (options.includeReserveActivity &&
+        String(item.eventType || "").toUpperCase() === "RESERVE")
+    )
     .filter((item) => {
       if (!validBeforeDate || !item.occurredAt) return true;
       const occurredAt = new Date(item.occurredAt);
@@ -1553,11 +1564,18 @@ export async function loadMainnetTransferStakingActivityPage(
       );
     }
 
+    if (filter === "reserve") {
+      return eventType === "RESERVE";
+    }
+
     return true;
   });
 
   const visibleRows =
-    mode === "grouped" && filter !== "staking" && filter !== "compounded"
+    mode === "grouped" &&
+    filter !== "staking" &&
+    filter !== "compounded" &&
+    filter !== "reserve"
       ? groupStakingBetActivityItems(filteredCombined, limit + 1)
       : filteredCombined;
 

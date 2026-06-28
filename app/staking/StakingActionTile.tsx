@@ -94,6 +94,7 @@ export default function StakingActionTile() {
   const [autoCompoundBusy, setAutoCompoundBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [lastCheckedAt, setLastCheckedAt] = useState<string | null>(null);
+  const [reserveDetailsOpen, setReserveDetailsOpen] = useState(false);
 
   const currentStakedWolo = stakingState?.position.currentStakedWolo ?? 0;
   const autoCompoundRewards = stakingState?.position.autoCompoundRewards ?? true;
@@ -567,29 +568,62 @@ export default function StakingActionTile() {
         </div>
       ) : null}
       {isAdmin && stakingConfig?.operatorFunding ? (
-        <div
-          className={`mt-2 rounded-[0.85rem] border px-3 py-2 text-xs leading-5 ${
+        <div className="mt-2">
+          <button
+            type="button"
+            aria-expanded={reserveDetailsOpen}
+            aria-controls="staking-admin-reserve-details"
+            onClick={() => setReserveDetailsOpen((current) => !current)}
+            className={`flex w-full items-center gap-2 rounded-full border px-3 py-1.5 text-left text-[10px] font-semibold uppercase tracking-[0.14em] transition ${
             operationalReserveHealthy
-              ? "border-emerald-300/20 bg-emerald-300/10 text-emerald-100"
-              : "border-amber-300/20 bg-amber-300/10 text-amber-100"
+                ? "border-emerald-300/18 bg-emerald-300/[0.065] text-emerald-100/85 hover:bg-emerald-300/10"
+                : "border-amber-300/24 bg-amber-300/10 text-amber-100 hover:bg-amber-300/15"
           }`}
-        >
-          <div className="font-semibold">
-            Admin: operating reserve{" "}
-            {operationalReserveHealthy ? "healthy." : "needs funding."}
-          </div>
-          <div className="mt-1 opacity-80">{STAKING_WALLET_TOP_UP_HELP}</div>
-          <div className="mt-2 grid gap-1 opacity-75 sm:grid-cols-2">
-            <div>Wallet: {stakingConfig?.stakingWalletAddress || "not configured"}</div>
-            <div>Current balance: {formatWholeWolo(stakingWalletBalanceWolo)}</div>
-            <div>Confirmed stake liability: {formatWholeWolo(totalConfirmedStakedWolo)}</div>
-            <div>Required balance: {formatWholeWolo(requiredStakingWalletBalanceWolo)}</div>
-            <div>Reserve headroom: {formatWholeWolo(operatingReserveWolo)}</div>
-            <div>Reserve target: {formatWholeWolo(reserveTargetWolo)}</div>
-            <div>Gap: {formatWholeWolo(operatorTopUpNeededWolo)}</div>
-            <div>Recommended top-up: {formatWholeWolo(recommendedTopUpWolo)}</div>
-            <div>Last checked: {lastCheckedLabel}</div>
-          </div>
+          >
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${
+                operationalReserveHealthy
+                  ? "bg-emerald-300"
+                  : "bg-amber-300"
+              }`}
+            />
+            <span>Admin reserve</span>
+            <span className="normal-case tracking-normal opacity-75">
+              {operationalReserveHealthy ? "Healthy" : "Needs funding"}
+            </span>
+            <span className="ml-auto hidden normal-case tracking-normal opacity-65 sm:inline">
+              {formatWholeWolo(operatingReserveWolo)} /{" "}
+              {formatWholeWolo(reserveTargetWolo)}
+            </span>
+            <ArrowRight
+              className={`h-3 w-3 transition ${
+                reserveDetailsOpen ? "rotate-90" : ""
+              }`}
+            />
+          </button>
+          {reserveDetailsOpen ? (
+            <div
+              id="staking-admin-reserve-details"
+              className={`mt-1 rounded-[0.85rem] border px-3 py-2 text-xs leading-5 ${
+                operationalReserveHealthy
+                  ? "border-emerald-300/16 bg-emerald-300/[0.055] text-emerald-50"
+                  : "border-amber-300/20 bg-amber-300/10 text-amber-50"
+              }`}
+            >
+              <div className="opacity-80">{STAKING_WALLET_TOP_UP_HELP}</div>
+              <div className="mt-2 grid gap-1 opacity-75 sm:grid-cols-2">
+                <div>Wallet: {stakingConfig?.stakingWalletAddress || "not configured"}</div>
+                <div>Current balance: {formatWholeWolo(stakingWalletBalanceWolo)}</div>
+                <div>Confirmed stake liability: {formatWholeWolo(totalConfirmedStakedWolo)}</div>
+                <div>Required balance: {formatWholeWolo(requiredStakingWalletBalanceWolo)}</div>
+                <div>Reserve headroom: {formatWholeWolo(operatingReserveWolo)}</div>
+                <div>Reserve target: {formatWholeWolo(reserveTargetWolo)}</div>
+                <div>Gap: {formatWholeWolo(operatorTopUpNeededWolo)}</div>
+                <div>Recommended top-up: {formatWholeWolo(recommendedTopUpWolo)}</div>
+                <div>Last checked: {lastCheckedLabel}</div>
+              </div>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </section>

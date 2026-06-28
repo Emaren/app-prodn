@@ -107,3 +107,10 @@ export function stakingTransferLedgerPresentation(
     tone: "emerald",
   } as const;
 }
+
+export function canInspectOperationalReserveActivity(input: {
+  isAdmin: boolean;
+  selectedFilter: string | null | undefined;
+}) {
+  return input.isAdmin && input.selectedFilter === "reserve";
+}

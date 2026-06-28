@@ -66,9 +66,10 @@ The staking wallet chain balance contains two different kinds of funds:
 
 Only confirmed user stake contributes to staking principal, staking weight,
 auto-compound principal, withdrawable liability, leaderboard order, or staker
-status-room totals. Operational reserve funding remains visible in the public
-ledger as `RESERVE` / `Admin operational funding`, but it is excluded from
-those calculations.
+status-room totals. Operational reserve funding remains visible in the indexed
+audit trail as `RESERVE` / `Admin operational funding`, but it is
+excluded from those calculations and from the default public staking feed.
+Admins can inspect it explicitly through the `Reserve/Admin` activity filter.
 
 Use one of these canonical memos for a direct operational top-up:
 
