@@ -304,7 +304,7 @@ export default function WoloHeroTile() {
                     filter: "drop-shadow(0 10px 26px rgba(0,0,0,0.28))",
                   }}
                 >
-                  WOLO
+                  <span className="wolo-premium-wordmark-shell"><span className="wolo-premium-wordmark" data-text="WOLO">WOLO</span></span>
                 </div>
                 <div className="mt-1 text-[0.72rem] uppercase tracking-[0.46em] text-white/82">
                   WoloChain settlement rail
