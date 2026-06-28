@@ -1192,7 +1192,7 @@ return (
         </div>
       </section>
 
-      <section id="lobby-chat" className="grid scroll-mt-24 items-stretch gap-6 lg:grid-cols-[1.15fr_0.85fr] lg:items-stretch">
+      <section id="lobby-chat" className="grid scroll-mt-24 gap-6 lg:grid-cols-[1.15fr_0.85fr] lg:items-start">
         <LobbyChat
           style={chatCardStyle}
           themeKey={tileThemeKey}
