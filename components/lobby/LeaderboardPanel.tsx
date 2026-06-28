@@ -449,6 +449,10 @@ export function LeaderboardPanel({
         </div>
       </div>
 
+      <div className="mt-3 rounded-xl border border-amber-300/25 bg-amber-300/10 px-3 py-2 text-[0.62rem] font-black uppercase tracking-[0.18em] text-amber-100">
+        Debug board rows: {countRankedLeaderboardEntries(entries)} / {leaderboard.trackedPlayers}
+      </div>
+
       <div
         ref={leaderboardScrollRef}
         className={leaderboardScrollClassName}
