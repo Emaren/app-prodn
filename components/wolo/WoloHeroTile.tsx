@@ -7,152 +7,176 @@ import { useEffect, useMemo, useState } from "react";
 import WoloMarketPulseTile from "@/components/wolo/WoloMarketPulseTile";
 
 function WoloHeroWordmark() {
+  const textProps = {
+    x: 18,
+    y: 122,
+    fontFamily: "'Arial Black', Impact, Haettenschweiler, system-ui, sans-serif",
+    fontSize: 132,
+    fontWeight: 900,
+    letterSpacing: -2,
+    textLength: 690,
+    lengthAdjust: "spacingAndGlyphs" as const,
+  };
+
   return (
     <span
       aria-label="WOLO"
-      className="block w-[clamp(18rem,30vw,32rem)] max-w-full"
+      className="block w-[clamp(21rem,34vw,38rem)] max-w-full"
     >
       <svg
         aria-hidden="true"
-        viewBox="0 0 760 158"
+        viewBox="0 0 760 168"
         role="img"
         className="block h-auto w-full overflow-visible"
       >
         <defs>
-          <linearGradient id="woloHeroGoldFace" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="#fff9d8" />
-            <stop offset="8%" stopColor="#fff2b8" />
-            <stop offset="18%" stopColor="#ffd86a" />
-            <stop offset="34%" stopColor="#f0ac22" />
-            <stop offset="51%" stopColor="#b66509" />
-            <stop offset="70%" stopColor="#5a2403" />
-            <stop offset="86%" stopColor="#180500" />
-            <stop offset="100%" stopColor="#040100" />
+          <linearGradient id="woloVaultGoldFace" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor="#fff7c6" />
+            <stop offset="8%" stopColor="#ffe88e" />
+            <stop offset="18%" stopColor="#f9c43c" />
+            <stop offset="31%" stopColor="#dc8e13" />
+            <stop offset="45%" stopColor="#a95708" />
+            <stop offset="61%" stopColor="#652803" />
+            <stop offset="78%" stopColor="#241006" />
+            <stop offset="100%" stopColor="#050201" />
           </linearGradient>
 
-          <linearGradient id="woloHeroGoldStroke" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="#fff2a8" />
-            <stop offset="45%" stopColor="#d99016" />
-            <stop offset="100%" stopColor="#4a1b02" />
+          <linearGradient id="woloVaultGoldEdge" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor="#fff1a6" />
+            <stop offset="30%" stopColor="#e3a826" />
+            <stop offset="64%" stopColor="#6d2d04" />
+            <stop offset="100%" stopColor="#120500" />
           </linearGradient>
 
-          <linearGradient id="woloHeroTopGloss" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.98" />
-            <stop offset="10%" stopColor="#fffbe7" stopOpacity="0.7" />
-            <stop offset="24%" stopColor="#ffffff" stopOpacity="0.18" />
-            <stop offset="38%" stopColor="#ffffff" stopOpacity="0.0" />
-            <stop offset="100%" stopColor="#ffffff" stopOpacity="0.0" />
+          <linearGradient id="woloVaultInnerGlow" x1="0" x2="1" y1="0" y2="0">
+            <stop offset="0%" stopColor="#7b3606" stopOpacity="0.16" />
+            <stop offset="22%" stopColor="#ffd76a" stopOpacity="0.36" />
+            <stop offset="50%" stopColor="#fff4bd" stopOpacity="0.20" />
+            <stop offset="78%" stopColor="#b85d08" stopOpacity="0.22" />
+            <stop offset="100%" stopColor="#321004" stopOpacity="0.18" />
           </linearGradient>
 
-          <linearGradient id="woloHeroDiagonalGlare" x1="0" x2="1" y1="0" y2="0">
+          <linearGradient id="woloVaultTopSheen" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.78" />
+            <stop offset="9%" stopColor="#fff9da" stopOpacity="0.48" />
+            <stop offset="21%" stopColor="#ffffff" stopOpacity="0.08" />
+            <stop offset="35%" stopColor="#ffffff" stopOpacity="0" />
+            <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+          </linearGradient>
+
+          <linearGradient id="woloVaultLowerHeat" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor="#000000" stopOpacity="0" />
+            <stop offset="48%" stopColor="#000000" stopOpacity="0" />
+            <stop offset="76%" stopColor="#000000" stopOpacity="0.28" />
+            <stop offset="100%" stopColor="#000000" stopOpacity="0.78" />
+          </linearGradient>
+
+          <linearGradient id="woloVaultKnifeShine" x1="0" x2="1" y1="0" y2="0">
             <stop offset="0%" stopColor="#ffffff" stopOpacity="0" />
-            <stop offset="34%" stopColor="#ffffff" stopOpacity="0" />
-            <stop offset="47%" stopColor="#ffffff" stopOpacity="0.65" />
-            <stop offset="55%" stopColor="#f6f3e7" stopOpacity="0.38" />
-            <stop offset="64%" stopColor="#ffffff" stopOpacity="0" />
+            <stop offset="28%" stopColor="#ffffff" stopOpacity="0" />
+            <stop offset="43%" stopColor="#ffffff" stopOpacity="0.34" />
+            <stop offset="50%" stopColor="#f5f1de" stopOpacity="0.22" />
+            <stop offset="62%" stopColor="#ffffff" stopOpacity="0" />
             <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
           </linearGradient>
 
           <filter
-            id="woloHeroWordmarkShadow"
-            x="-20%"
-            y="-45%"
-            width="160%"
-            height="220%"
+            id="woloVaultShadow"
+            x="-18%"
+            y="-50%"
+            width="150%"
+            height="230%"
             colorInterpolationFilters="sRGB"
           >
-            <feDropShadow dx="0" dy="4" stdDeviation="1.8" floodColor="#000000" floodOpacity="0.82" />
-            <feDropShadow dx="0" dy="13" stdDeviation="8" floodColor="#000000" floodOpacity="0.52" />
-            <feDropShadow dx="0" dy="0" stdDeviation="7" floodColor="#f0a51e" floodOpacity="0.23" />
+            <feDropShadow dx="0" dy="3" stdDeviation="1.1" floodColor="#000000" floodOpacity="0.95" />
+            <feDropShadow dx="0" dy="9" stdDeviation="4.5" floodColor="#000000" floodOpacity="0.62" />
+            <feDropShadow dx="0" dy="18" stdDeviation="12" floodColor="#000000" floodOpacity="0.44" />
+            <feDropShadow dx="0" dy="0" stdDeviation="6" floodColor="#e08a0e" floodOpacity="0.20" />
           </filter>
 
-          <mask id="woloHeroWordmarkMask">
-            <rect width="760" height="158" fill="black" />
-            <g transform="translate(0 0) scale(1.16 1)">
-              <text
-                x="0"
-                y="112"
-                fill="white"
-                fontFamily="'Arial Black', Impact, Haettenschweiler, system-ui, sans-serif"
-                fontSize="120"
-                fontWeight="900"
-                letterSpacing="1.5"
-              >
-                WOLO
-              </text>
-            </g>
+          <mask id="woloVaultTextMask">
+            <rect width="760" height="168" fill="black" />
+            <text {...textProps} fill="white">WOLO</text>
           </mask>
         </defs>
 
-        <g filter="url(#woloHeroWordmarkShadow)">
-          <g transform="translate(0 0) scale(1.16 1)">
-            <text
-              x="0"
-              y="112"
-              fill="#120400"
-              stroke="#2a0d00"
-              strokeWidth="11"
-              strokeLinejoin="round"
-              fontFamily="'Arial Black', Impact, Haettenschweiler, system-ui, sans-serif"
-              fontSize="120"
-              fontWeight="900"
-              letterSpacing="1.5"
-            >
-              WOLO
-            </text>
+        <g filter="url(#woloVaultShadow)">
+          <text
+            {...textProps}
+            fill="#120500"
+            stroke="#060201"
+            strokeWidth="15"
+            strokeLinejoin="round"
+            paintOrder="stroke fill"
+          >
+            WOLO
+          </text>
 
-            <text
-              x="0"
-              y="112"
-              fill="url(#woloHeroGoldFace)"
-              stroke="url(#woloHeroGoldStroke)"
-              strokeWidth="1.8"
-              strokeLinejoin="round"
-              fontFamily="'Arial Black', Impact, Haettenschweiler, system-ui, sans-serif"
-              fontSize="120"
-              fontWeight="900"
-              letterSpacing="1.5"
-            >
-              WOLO
-            </text>
+          <text
+            {...textProps}
+            fill="url(#woloVaultGoldFace)"
+            stroke="url(#woloVaultGoldEdge)"
+            strokeWidth="3.2"
+            strokeLinejoin="round"
+            paintOrder="stroke fill"
+          >
+            WOLO
+          </text>
 
-            <text
-              x="0"
-              y="112"
-              fill="url(#woloHeroTopGloss)"
-              fontFamily="'Arial Black', Impact, Haettenschweiler, system-ui, sans-serif"
-              fontSize="120"
-              fontWeight="900"
-              letterSpacing="1.5"
-            >
-              WOLO
-            </text>
+          <text
+            {...textProps}
+            fill="url(#woloVaultInnerGlow)"
+            opacity="0.62"
+          >
+            WOLO
+          </text>
 
-            <text
-              x="0"
-              y="112"
-              fill="none"
-              stroke="rgba(255,245,210,0.42)"
-              strokeWidth="0.9"
-              fontFamily="'Arial Black', Impact, Haettenschweiler, system-ui, sans-serif"
-              fontSize="120"
-              fontWeight="900"
-              letterSpacing="1.5"
-            >
-              WOLO
-            </text>
-          </g>
+          <text
+            {...textProps}
+            fill="url(#woloVaultTopSheen)"
+          >
+            WOLO
+          </text>
+
+          <text
+            {...textProps}
+            fill="url(#woloVaultLowerHeat)"
+            opacity="0.92"
+          >
+            WOLO
+          </text>
 
           <rect
-            x="-60"
-            y="26"
-            width="860"
-            height="42"
-            fill="url(#woloHeroDiagonalGlare)"
-            mask="url(#woloHeroWordmarkMask)"
-            transform="skewX(-18)"
-            opacity="0.9"
+            x="-80"
+            y="30"
+            width="900"
+            height="34"
+            fill="url(#woloVaultKnifeShine)"
+            mask="url(#woloVaultTextMask)"
+            transform="skewX(-17)"
+            opacity="0.58"
           />
+
+          <text
+            {...textProps}
+            fill="none"
+            stroke="rgba(255,236,154,0.30)"
+            strokeWidth="1.1"
+            strokeLinejoin="round"
+          >
+            WOLO
+          </text>
+
+          <text
+            {...textProps}
+            fill="none"
+            stroke="rgba(0,0,0,0.58)"
+            strokeWidth="0.8"
+            strokeLinejoin="round"
+            transform="translate(0 3)"
+          >
+            WOLO
+          </text>
         </g>
       </svg>
     </span>
