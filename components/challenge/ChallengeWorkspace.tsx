@@ -967,10 +967,7 @@ export default function ChallengeWorkspace() {
                     <Swords className="h-4 w-4" />
                     New match
                   </div>
-                  <h2 className="mt-2 text-3xl font-black tracking-tight text-white sm:text-4xl">
-                    Make it a date.
-                  </h2>
-                  <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
+<p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
                     Pick your rival. Pick the hour. Keplr locks your side and sends a challenge they will actually want to open.
                   </p>
                 </div>
