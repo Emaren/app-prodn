@@ -971,7 +971,22 @@ function sanitizeActivityCopy(value?: string | null) {
     .replace(/settled/gi, "settled");
 }
 
+const BELT_PAYOUT_CARD_BG = "/champions/payout-cards/bp_gold.png";
+
 const BELT_ACTIVITY_ASSETS = [
+  {
+    terms: [
+      "aoe2war chaos champion tribute",
+      "chaos champion tribute",
+      "chaos championship tribute",
+      "chaos champion",
+      "chaos championship",
+      "chaos",
+    ],
+    src: "/champions/belts/chaos.png",
+    alt: "Chaos Champion belt",
+    badge: "Chaos Champion",
+  },
   {
     terms: ["chaos champion tribute", "chaos champion", "chaos"],
     src: "/uploads/managed-assets/belt/chaos-1781548010810-37d46c34.png",
@@ -1265,9 +1280,9 @@ function ActivityRow({
     const beltFlag = beltAsset.badge.toLowerCase().includes("canadian") ? "🇨🇦" : "🏆";
 
     const beltCardClassName = [
-      "relative max-w-full overflow-hidden rounded-[1.08rem] border border-transparent",
+      "relative max-w-full overflow-hidden rounded-[1.22rem] border border-amber-200/22 bg-slate-950/70",
       "bg-[radial-gradient(115%_135%_at_5%_48%,rgba(255,220,135,0.22)_0%,rgba(189,121,30,0.15)_24%,transparent_53%),radial-gradient(115%_135%_at_96%_52%,rgba(245,178,72,0.24)_0%,rgba(156,92,24,0.15)_25%,transparent_54%),radial-gradient(70%_125%_at_50%_-8%,rgba(255,244,214,0.095)_0%,rgba(255,244,214,0.035)_24%,transparent_48%),linear-gradient(96deg,rgba(48,32,16,0.94)_0%,rgba(17,17,24,0.955)_29%,rgba(5,10,24,0.99)_50%,rgba(17,17,24,0.955)_71%,rgba(48,32,16,0.94)_100%)]",
-      "px-4 py-[1.12rem]",
+      "px-4 py-[1.18rem] sm:px-5",
       "shadow-[inset_0_0_0_1px_rgba(222,176,76,0.13),inset_0_1px_0_rgba(255,246,218,0.045),0_14px_34px_rgba(0,0,0,0.25),0_0_30px_rgba(242,189,79,0.065)]",
       "before:pointer-events-none before:absolute before:inset-0 before:bg-[linear-gradient(112deg,transparent_0%,rgba(255,247,220,0.045)_40%,rgba(255,247,220,0.020)_53%,transparent_68%)]",
       "after:pointer-events-none after:absolute after:inset-x-5 after:top-0 after:h-px after:bg-[linear-gradient(90deg,transparent,rgba(255,231,173,0.20),transparent)]",
@@ -1278,17 +1293,23 @@ function ActivityRow({
     return (
       <div
         className={beltCardClassName}
+      
+        style={{
+          backgroundImage: `linear-gradient(90deg, rgba(3,7,18,0.20), rgba(3,7,18,0.08) 42%, rgba(3,7,18,0.00) 72%), url("${BELT_PAYOUT_CARD_BG}")`,
+          backgroundPosition: "center",
+          backgroundSize: "cover",
+        }}
       >
         <button
           type="button"
           onClick={() => {
             if (hasChildren) setExpanded((value) => !value);
           }}
-          className={`relative min-h-[8.1rem] w-full text-left focus:outline-none focus-visible:outline-none ${
+          className={`relative min-h-[9.15rem] w-full text-left focus:outline-none focus-visible:outline-none ${
             hasChildren ? "cursor-pointer" : "cursor-default"
           }`}
         >
-          <div className="absolute right-0 top-0 z-40 flex max-w-[52%] flex-wrap items-center justify-end gap-2">
+          <div className="absolute right-0 top-0 z-40 flex max-w-[54%] flex-wrap items-center justify-end gap-2">
             <FeedChip>{displayTypeLabel}</FeedChip>
             {amountLabel ? <FeedChip>{displayAmountLabel}</FeedChip> : null}
             <FeedChip>{displayTimestampLabel}</FeedChip>
@@ -1306,18 +1327,18 @@ function ActivityRow({
             ) : null}
           </div>
 
-          <div className="pointer-events-none absolute bottom-[-0.1rem] right-[-1.35rem] top-[1.6rem] z-30 flex w-[35%] items-center justify-center">
+          <div className="pointer-events-none absolute bottom-[0.68rem] right-[1.05rem] top-[2.05rem] z-30 flex w-[37%] items-center justify-center sm:right-[2.45rem] sm:w-[31%]">
             <Image
               src={beltAsset.src}
               alt={beltAsset.alt}
               width={900}
               height={420}
               unoptimized
-              className="h-auto max-h-[6.85rem] w-auto max-w-full object-contain opacity-[0.96] drop-shadow-[0_20px_38px_rgba(0,0,0,0.70)]"
+              className="h-auto max-h-[7.15rem] w-auto max-w-full translate-y-1 object-contain opacity-[0.98] drop-shadow-[0_22px_40px_rgba(0,0,0,0.76)]"
             />
           </div>
 
-          <div className="relative z-20 flex min-h-[8.1rem] max-w-[66%] flex-col justify-start pr-5 pt-2.5">
+          <div className="relative z-20 flex min-h-[9.15rem] max-w-[64%] flex-col justify-start pr-5 pt-2.5">
             <div className="flex min-w-0 items-start gap-3">
               <div className="relative mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-transparent bg-black/14 shadow-[inset_0_0_0_1px_rgba(111,87,37,0.24),inset_0_1px_0_rgba(255,255,255,0.050),0_0_18px_rgba(251,191,36,0.08)]">
                 <Image
