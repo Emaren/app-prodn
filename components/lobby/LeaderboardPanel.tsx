@@ -22,7 +22,7 @@ type LeaderboardPanelProps = {
   surface?: "standard" | "extreme";
 };
 
-const LEADERBOARD_PAGE_SIZE = 160;
+const LEADERBOARD_PAGE_SIZE = 600;
 
 type LeaderboardPageResponse = {
   ok?: boolean;
@@ -86,6 +86,7 @@ export function LeaderboardPanel({
   const leaderboardPanelRef = useRef<HTMLDivElement | null>(null);
   const leaderboardScrollRef = useRef<HTMLDivElement | null>(null);
   const leaderboardSentinelRef = useRef<HTMLButtonElement | null>(null);
+  const leaderboardHydrationStartedRef = useRef(false);
   const preloadAllRef = useRef(false);
   const loadingRef = useRef(false);
   const nextOffsetRef = useRef(countRankedLeaderboardEntries(leaderboard.entries));
@@ -141,7 +142,7 @@ export function LeaderboardPanel({
       const nextHasMore =
         typeof payload.hasMore === "boolean"
           ? payload.hasMore
-          : countRankedLeaderboardEntries(nextEntries) >= LEADERBOARD_PAGE_SIZE;
+          : countRankedLeaderboardEntries(nextEntries) > 0;
       hasMoreRef.current = nextHasMore;
       setHasMore(nextHasMore);
     } catch (error) {
@@ -306,6 +307,67 @@ export function LeaderboardPanel({
   const leaderboardPanelShellClassName = isExtreme
     ? `relative flex min-h-[112rem] flex-col rounded-[1.85rem] border p-5 transition-all duration-300 sm:p-6 lg:min-h-[118rem] xl:min-h-[126rem] ${tone.panelShell}`
     : `relative rounded-[1.85rem] border p-5 transition-all duration-300 sm:p-6 ${tone.panelShell}`;
+
+  useEffect(() => {
+    if (leaderboardHydrationStartedRef.current) return;
+
+    const firstOffset = countRankedLeaderboardEntries(entries);
+    if (firstOffset <= 0) return;
+
+    leaderboardHydrationStartedRef.current = true;
+
+    let cancelled = false;
+
+    async function hydrateFullLeaderboard() {
+      let offset = firstOffset;
+
+      for (let attempt = 0; attempt < 4; attempt += 1) {
+        if (cancelled) return;
+
+        try {
+          const response = await fetch(
+            `/api/lobby/leaderboard?offset=${offset}&limit=${LEADERBOARD_PAGE_SIZE}`,
+            { cache: "no-store" }
+          );
+
+          const payload = (await response.json().catch(() => ({}))) as {
+            entries?: LobbyLeaderboardSummary["entries"];
+          };
+
+          const nextEntries = Array.isArray(payload.entries) ? payload.entries : [];
+          const nextRankedCount = countRankedLeaderboardEntries(nextEntries);
+
+          if (!response.ok || nextRankedCount === 0) {
+            hasMoreRef.current = false;
+            setHasMore(false);
+            return;
+          }
+
+          setEntries((current) => {
+            const merged = mergeLeaderboardEntries(current, nextEntries);
+            entriesRef.current = merged;
+            nextOffsetRef.current = countRankedLeaderboardEntries(merged);
+            return merged;
+          });
+          hasMoreRef.current = true;
+          setHasMore(true);
+
+          offset += nextRankedCount;
+
+          await new Promise((resolve) => window.setTimeout(resolve, 90));
+        } catch {
+          return;
+        }
+      }
+    }
+
+    void hydrateFullLeaderboard();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [entries]);
+
 
   return (
     <div
