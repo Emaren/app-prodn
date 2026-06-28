@@ -284,8 +284,7 @@ export async function getLobbyMessages(
   viewer?: {
     uid?: string | null;
     guestSessionId?: string | null;
-  },
-  options?: { beforeId?: number | null }
+  }
 ): Promise<LobbyMessage[]> {
   const room =
     roomSlug === LOBBY_ROOM_SLUG
@@ -297,19 +296,10 @@ export async function getLobbyMessages(
 
   if (!room) return [];
 
-  const safeMessageLimit = Math.max(1, Math.min(limit, 500));
-  const beforeId =
-    typeof options?.beforeId === "number" && Number.isFinite(options.beforeId) && options.beforeId > 0
-      ? Math.floor(options.beforeId)
-      : null;
-
   const messages = await prisma.chatMessage.findMany({
-    where: {
-      roomId: room.id,
-      ...(beforeId ? { id: { lt: beforeId } } : {}),
-    },
+    where: { roomId: room.id },
     orderBy: { createdAt: "desc" },
-    take: safeMessageLimit,
+    take: Math.max(1, Math.min(limit, 500)),
     include: {
       user: {
         select: {
