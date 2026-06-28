@@ -1271,7 +1271,14 @@ function ActivityRow({
       .replace(/(AoE2WAR (?:Canadian Championship|Chaos Champion|USA Champion|Mexico Champion|UK Champion|World Champion|Elite Champion|Veteran Champion|Legend Champion|Rising Champion|Challenger Champion) Tribute)\s*[—-]\s*.*$/i, "$1")
       .replace(/Daily title payout for\s*$/i, "Daily title payout");
 
-    const beltFlag = beltAsset.badge.toLowerCase().includes("canadian") ? "🇨🇦" : "🏆";
+    const isCanadianBelt = beltAsset.badge.toLowerCase().includes("canadian");
+    const beltFlag = isCanadianBelt ? "🇨🇦" : "🏆";
+    const beltStageClassName = isCanadianBelt
+      ? "pointer-events-none absolute bottom-[0.18rem] right-[1.85rem] top-[2.02rem] z-30 flex w-[34%] items-end justify-center sm:right-[6.75rem] sm:w-[27.5%]"
+      : "pointer-events-none absolute bottom-[0.22rem] right-[1.92rem] top-[2.1rem] z-30 flex w-[34%] items-end justify-center sm:right-[6.85rem] sm:w-[27.25%]";
+    const beltImageClassName = isCanadianBelt
+      ? "h-auto max-h-[6.9rem] w-auto max-w-full translate-y-[0.72rem] object-contain opacity-[0.99] drop-shadow-[0_24px_42px_rgba(0,0,0,0.82)] sm:max-h-[7.05rem]"
+      : "h-auto max-h-[6.75rem] w-auto max-w-full translate-y-[0.64rem] object-contain opacity-[0.99] drop-shadow-[0_24px_42px_rgba(0,0,0,0.82)] sm:max-h-[6.95rem]";
     const beltContextLines = beltDetail
       .split(/\s*[·•]\s*/g)
       .map((part) => part.trim())
@@ -1294,8 +1301,9 @@ function ActivityRow({
       
         style={{
           backgroundImage: `linear-gradient(90deg, rgba(3,7,18,0.34), rgba(3,7,18,0.16) 42%, rgba(3,7,18,0.00) 70%), url("${BELT_PAYOUT_CARD_BG}")`,
-          backgroundPosition: "center center",
-          backgroundSize: "101.35% 103.25%",
+          backgroundPosition: "49.2% 26%",
+          backgroundSize: "102.15% 105.45%",
+          backgroundRepeat: "no-repeat",
         }}
       >
         <button
@@ -1325,14 +1333,14 @@ function ActivityRow({
             ) : null}
           </div>
 
-          <div className="pointer-events-none absolute bottom-[0.48rem] right-[2.05rem] top-[2.18rem] z-30 flex w-[33%] items-end justify-center sm:right-[6.95rem] sm:w-[27%]">
+          <div className={beltStageClassName}>
             <Image
               src={beltAsset.src}
               alt={beltAsset.alt}
               width={900}
               height={420}
               unoptimized
-              className="h-auto max-h-[6.45rem] w-auto max-w-full translate-y-[0.38rem] object-contain opacity-[0.99] drop-shadow-[0_24px_42px_rgba(0,0,0,0.82)] sm:max-h-[6.7rem]"
+              className={beltImageClassName}
             />
           </div>
 
