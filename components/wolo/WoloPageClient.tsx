@@ -16,6 +16,8 @@ import { useChainId } from "@/hooks/useChainId";
 import { useKeplr } from "@/hooks/use-keplr";
 import { useWoloBalance } from "@/hooks/useWoloBalance";
 
+const WOLOCHAIN_VALOPERS_EXPLORER_URL = "https://wolochain.valopers.com/";
+
 const KEPLR_DOWNLOAD_URL = "https://www.keplr.app/get";
 const HERO_VIEW_KEY = "wolo-hero-view";
 const WOLO_EXPLORER_BASE_URL = "https://aoe2war.com";
@@ -273,7 +275,7 @@ export default function WoloPage() {
                   Get Keplr
                 </a>
                 <a
-                  href={pingPubUrl}
+                  href={WOLOCHAIN_VALOPERS_EXPLORER_URL}
                   target="_blank"
                   rel="noreferrer"
                   className={WOLO_PROD_SECONDARY_ACTION_CLASSNAME}
@@ -929,7 +931,7 @@ function WoloHeroActionDock({
         </a>
         {showPingPub && pingPubUrl ? (
           <a
-            href={pingPubUrl}
+            href={WOLOCHAIN_VALOPERS_EXPLORER_URL}
             target="_blank"
             rel="noreferrer"
             className={WOLO_PREMIUM_PING_ACTION_CLASSNAME}
