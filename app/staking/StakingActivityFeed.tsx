@@ -974,7 +974,7 @@ function sanitizeActivityCopy(value?: string | null) {
 const BELT_ACTIVITY_ASSETS = [
   {
     terms: ["chaos champion tribute", "chaos champion", "chaos"],
-    src: "/champions/belts/chaos.png",
+    src: "/uploads/managed-assets/belt/chaos-1781548010810-37d46c34.png",
     alt: "Chaos Champion belt",
     badge: "Chaos Champion",
   },
