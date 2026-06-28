@@ -1239,7 +1239,7 @@ export default function ChallengeWorkspace() {
                         <div className="mt-3 flex flex-wrap gap-2">
                           {[
                             "You. Me. One clean set. Winner owns the room.",
-                            "Set the field. Name the hour. Fight.",
+                            "Name the battlefield. Set the hour. Let war decide.",
                             "{opponent}, the board needs our names on it.",
                           ].map((line) => (
                             <button key={line} type="button" onClick={() => applyChallengeLine(line)} className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[11px] text-slate-300 transition hover:border-cyan-200/25 hover:text-white">
@@ -1254,7 +1254,7 @@ export default function ChallengeWorkspace() {
                         maxRows={4}
                         maxLength={CHALLENGE_NOTE_MAX_CHARS}
                         className="mt-3 w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm leading-6 text-white outline-none focus:border-amber-300/50"
-                        placeholder="Set the field. Name the hour. Fight."
+                        placeholder="Name the battlefield. Set the hour. Let war decide."
                       />
                       <div className="mt-1.5 text-right text-[10px] uppercase tracking-[0.16em] text-slate-500">{challengeNote.length}/{CHALLENGE_NOTE_MAX_CHARS}</div>
                     </section>
@@ -1271,7 +1271,8 @@ export default function ChallengeWorkspace() {
                           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-amber-200/20 bg-amber-300/10 text-lg font-black text-amber-50">YOU</div>
                         </div>
                         <div className="text-center">
-<Swords className="mx-auto mt-1 h-7 w-7 text-amber-200" />
+                          <div className="text-[10px] uppercase tracking-[0.28em] text-amber-100/55">Challenge</div>
+                          <Swords className="mx-auto mt-1 h-7 w-7 text-amber-200" />
                         </div>
                         <div className="text-center">
                           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-cyan-200/20 bg-cyan-300/10 text-lg font-black text-cyan-50">
@@ -1280,28 +1281,18 @@ export default function ChallengeWorkspace() {
                         </div>
                       </div>
 
-                        <div className="mx-auto mt-7 grid w-full max-w-[34rem] grid-cols-[minmax(0,1fr)_5.5rem_minmax(0,1fr)] items-start text-center sm:max-w-[40rem] sm:grid-cols-[minmax(0,1fr)_7rem_minmax(0,1fr)]">
-                          <div className="min-w-0">
-                            <div className="truncate text-xl font-black leading-tight text-white sm:text-2xl">
-                              You
-                            </div>
+                        <div className="mx-auto mt-4 grid w-full max-w-[34rem] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 text-2xl font-black leading-tight text-white">
+                          <div className="min-w-0 truncate text-right">
+                            You
                           </div>
-
-                          <div className="min-w-0">
-                            <div className="text-xl font-black uppercase tracking-[0.35em] text-amber-100 sm:text-2xl">
-                              VS
-                            </div>
+                          <div className="px-1 text-center text-amber-100">
+                            vs
                           </div>
-
-                          <div className="min-w-0">
-                            <div className="truncate text-xl font-black leading-tight text-white sm:text-2xl">
-                              {selectedOpponent?.name || "Choose a rival"}
-                            </div>
+                          <div className="min-w-0 truncate text-left">
+                            {selectedOpponent?.name || "Choose a rival"}
                           </div>
                         </div>
-
-                        <div className="mx-auto mt-6 max-w-2xl text-center text-xl font-black tracking-[0.18em] text-amber-200/80 sm:text-2xl">Set the field. Name the hour. Fight.</div>
-<div className="mt-2 flex flex-wrap justify-center gap-2 text-[11px] text-slate-300">
+                      <div className="mt-2 flex flex-wrap justify-center gap-2 text-[11px] text-slate-300">
                         <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1">{schedulePreviewLocal}</span>
                         <span className="rounded-full border border-amber-200/15 bg-amber-300/10 px-3 py-1 text-amber-50">{totalFundingPreview.toLocaleString()} WOLO each</span>
                         {automaticTitleStakes.length > 0 ? <span className="rounded-full border border-violet-200/15 bg-violet-300/10 px-3 py-1 text-violet-50">{automaticTitleStakes.length} title {automaticTitleStakes.length === 1 ? "stake" : "stakes"}</span> : null}
