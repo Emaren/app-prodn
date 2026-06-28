@@ -217,27 +217,26 @@ input[type="datetime-local"] {
   background:
     linear-gradient(
       180deg,
-      #fffdf0 0%,
-      #fff1a8 8%,
-      #f7c936 20%,
-      #d48810 38%,
-      #7a3d05 60%,
-      #1b0d02 81%,
-      #000000 100%
+      #fff2a8 0%,
+      #f1c94b 13%,
+      #d18a14 29%,
+      #a85c08 47%,
+      #5b2802 66%,
+      #1a0b01 84%,
+      #050301 100%
     );
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
   text-shadow:
-    0 -1px 0 rgba(255, 249, 214, 0.72),
-    0 1px 0 rgba(85, 41, 0, 0.95),
-    0 5px 0 rgba(0, 0, 0, 0.42),
-    0 13px 26px rgba(0, 0, 0, 0.78),
-    0 0 22px rgba(255, 179, 39, 0.34),
-    0 0 58px rgba(221, 130, 14, 0.22);
+    0 -1px 0 rgba(255, 227, 116, 0.38),
+    0 1px 0 rgba(43, 17, 0, 0.94),
+    0 4px 0 rgba(0, 0, 0, 0.30),
+    0 12px 20px rgba(0, 0, 0, 0.62),
+    0 0 18px rgba(199, 112, 12, 0.22);
   filter:
-    drop-shadow(0 3px 0 rgba(42, 20, 0, 0.95))
-    drop-shadow(0 16px 26px rgba(0, 0, 0, 0.72));
+    drop-shadow(0 2px 0 rgba(26, 10, 0, 0.82))
+    drop-shadow(0 12px 20px rgba(0, 0, 0, 0.54));
 }
 
 .wolo-premium-wordmark::before {
@@ -250,41 +249,39 @@ input[type="datetime-local"] {
   background:
     linear-gradient(
       180deg,
-      rgba(255, 255, 255, 1) 0%,
-      rgba(245, 245, 238, 0.82) 9%,
-      rgba(214, 214, 204, 0.34) 18%,
-      rgba(255, 255, 255, 0.02) 36%,
-      rgba(0, 0, 0, 0) 44%
+      rgba(255, 247, 201, 0.42) 0%,
+      rgba(255, 255, 255, 0.18) 10%,
+      rgba(207, 207, 194, 0.08) 19%,
+      rgba(255, 255, 255, 0) 34%
     );
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  mix-blend-mode: screen;
 }
 
 .wolo-premium-wordmark::after {
   content: "";
   position: absolute;
-  left: -1%;
-  right: -1%;
-  top: 8%;
-  height: 30%;
+  left: 3%;
+  right: 4%;
+  top: 12%;
+  height: 14%;
   z-index: 2;
   pointer-events: none;
   border-radius: 999px;
   background:
     linear-gradient(
-      103deg,
+      102deg,
       transparent 0%,
-      rgba(255, 255, 255, 0.03) 21%,
-      rgba(255, 255, 255, 0.72) 42%,
-      rgba(204, 206, 198, 0.35) 55%,
-      rgba(255, 228, 126, 0.10) 66%,
+      rgba(255, 255, 255, 0.00) 24%,
+      rgba(248, 245, 224, 0.30) 43%,
+      rgba(165, 165, 154, 0.13) 55%,
+      rgba(255, 215, 92, 0.08) 66%,
       transparent 82%
     );
   transform: skewX(-18deg);
-  opacity: 0.86;
-  filter: blur(0.25px);
+  opacity: 0.52;
+  filter: blur(0.45px);
 }
 
 .wolo-premium-wordmark-shell {
@@ -296,13 +293,13 @@ input[type="datetime-local"] {
 .wolo-premium-wordmark-shell::after {
   content: "";
   position: absolute;
-  left: 5%;
-  right: 5%;
-  bottom: -0.08em;
-  height: 0.16em;
+  left: 9%;
+  right: 9%;
+  bottom: -0.06em;
+  height: 0.12em;
   border-radius: 999px;
-  background: radial-gradient(ellipse at center, rgba(255, 189, 51, 0.32), transparent 70%);
-  filter: blur(8px);
+  background: radial-gradient(ellipse at center, rgba(190, 103, 8, 0.30), transparent 72%);
+  filter: blur(7px);
   pointer-events: none;
 }
 
