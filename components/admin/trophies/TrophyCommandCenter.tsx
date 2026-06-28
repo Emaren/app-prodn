@@ -63,6 +63,55 @@ const ADMIN_NAV = [
   { href: "/admin/user-list", label: "User Command", Icon: UsersRound },
 ] as const;
 
+
+const CHAMPION_BELT_PRESETS = [
+  {
+    trophyKey: "world_champion",
+    displayName: "World Champion",
+    family: "champion",
+    tier: "World",
+    tributeAmountWolo: "0",
+    bountyGrowthWolo: "0",
+    note: "Top throne. The biggest room in the war hall.",
+  },
+  {
+    trophyKey: "chaos_champion",
+    displayName: "Chaos Champion",
+    family: "champion",
+    tier: "Chaos",
+    tributeAmountWolo: "0",
+    bountyGrowthWolo: "0",
+    note: "Wild crown. For the player who makes the board dangerous.",
+  },
+  {
+    trophyKey: "womens_champion",
+    displayName: "Women’s Champion",
+    family: "champion",
+    tier: "Women",
+    tributeAmountWolo: "0",
+    bountyGrowthWolo: "0",
+    note: "Dedicated champion lane. Prestige first, payouts optional.",
+  },
+  {
+    trophyKey: "deathmatch_champion",
+    displayName: "Deathmatch Champion",
+    family: "champion",
+    tier: "DM",
+    tributeAmountWolo: "0",
+    bountyGrowthWolo: "0",
+    note: "DM throne. Fast starts, brutal answers, no excuses.",
+  },
+  {
+    trophyKey: "random_map_champion",
+    displayName: "Random Map Champion",
+    family: "champion",
+    tier: "RM",
+    tributeAmountWolo: "0",
+    bountyGrowthWolo: "0",
+    note: "RM throne. Economy, timing, scouting, execution.",
+  },
+] as const;
+
 const CHAIN_EVENT_TYPES = new Set([
   "NFT_MINT_REQUESTED",
   "NFT_MINT_CONFIRMED",
@@ -528,11 +577,27 @@ function TrophyDefinitions({
 }) {
   const [trophyKey, setTrophyKey] = useState("");
   const [displayName, setDisplayName] = useState("");
-  const [family, setFamily] = useState<"national" | "elo">("national");
+  const [family, setFamily] = useState<"national" | "elo" | "champion">("national");
   const [eligibleNationality, setEligibleNationality] = useState("Canada");
   const [eloBandMin, setEloBandMin] = useState("");
   const [eloBandMax, setEloBandMax] = useState("");
   const [dailyWolo, setDailyWolo] = useState("1");
+
+
+  const existingTrophyKeys = useMemo(
+    () => new Set(trophies.map((trophy) => trophy.trophyId)),
+    [trophies]
+  );
+
+  function loadChampionPreset(preset: (typeof CHAMPION_BELT_PRESETS)[number]) {
+    setTrophyKey(preset.trophyKey);
+    setDisplayName(preset.displayName);
+    setFamily("champion");
+    setEligibleNationality("");
+    setEloBandMin("");
+    setEloBandMax("");
+    setDailyWolo(preset.tributeAmountWolo);
+  }
 
   return (
     <section className="space-y-4">
@@ -543,6 +608,59 @@ function TrophyDefinitions({
           Holder assignment enforces eligibility unless an admin override is explicitly recorded. Guardian custody never changes the Guardian&apos;s nationality.
         </p>
       </div>
+
+      <div className="rounded-[1.5rem] border border-amber-200/16 bg-[radial-gradient(circle_at_18%_0%,rgba(251,191,36,0.14),transparent_32%),linear-gradient(135deg,rgba(15,23,42,0.62),rgba(2,6,23,0.92))] p-5">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 text-xs uppercase tracking-[0.3em] text-amber-100/70">
+              <Crown className="h-4 w-4" />
+              Champs
+            </div>
+            <h3 className="mt-2 text-xl font-semibold text-white">Create champion belts</h3>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
+              World, Chaos, Women’s, DM, and RM belts live here. Create them once, then assign holders from the belt card below.
+            </p>
+          </div>
+          <div className="rounded-full border border-amber-200/16 bg-amber-300/10 px-3 py-1 text-xs font-semibold text-amber-100">
+            Canon belt lane
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+          {CHAMPION_BELT_PRESETS.map((preset) => {
+            const exists = existingTrophyKeys.has(preset.trophyKey);
+
+            return (
+              <button
+                key={preset.trophyKey}
+                type="button"
+                onClick={() => loadChampionPreset(preset)}
+                className={`rounded-2xl border p-4 text-left transition ${
+                  exists
+                    ? "border-emerald-300/18 bg-emerald-400/8"
+                    : "border-white/10 bg-white/[0.04] hover:border-amber-200/26 hover:bg-amber-300/8"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-sm font-black text-white">{preset.displayName}</div>
+                  <span className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] ${
+                    exists
+                      ? "border-emerald-300/20 text-emerald-100"
+                      : "border-amber-200/18 text-amber-100"
+                  }`}>
+                    {exists ? "created" : "preset"}
+                  </span>
+                </div>
+                <div className="mt-2 text-[10px] uppercase tracking-[0.22em] text-slate-500">
+                  {preset.tier} · Champion
+                </div>
+                <p className="mt-2 text-xs leading-5 text-slate-400">{preset.note}</p>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       <div className="rounded-[1.5rem] border border-amber-200/12 bg-amber-300/[0.035] p-5">
         <div className="text-xs uppercase tracking-[0.3em] text-amber-100/65">Definition foundry</div>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-7">
@@ -553,7 +671,8 @@ function TrophyDefinitions({
             <input className={inputClass} value={displayName} onChange={(event) => setDisplayName(event.target.value)} placeholder="Legend Championship" />
           </Field>
           <Field label="Family">
-            <select className={inputClass} value={family} onChange={(event) => setFamily(event.target.value as "national" | "elo")}>
+            <select className={inputClass} value={family} onChange={(event) => setFamily(event.target.value as "national" | "elo" | "champion")}>
+              <option value="champion">Champion</option>
               <option value="national">National</option>
               <option value="elo">ELO</option>
             </select>
@@ -561,10 +680,10 @@ function TrophyDefinitions({
           {family === "national" ? (
             <Field label="Eligible nationality">
               <select className={inputClass} value={eligibleNationality} onChange={(event) => setEligibleNationality(event.target.value)}>
-                {["Canada", "USA", "Mexico", "UK"].map((country) => <option key={country}>{country}</option>)}
+                {["Canada", "USA", "Mexico", "UK", "Hong Kong"].map((country) => <option key={country}>{country}</option>)}
               </select>
             </Field>
-          ) : (
+          ) : family === "elo" ? (
             <>
               <Field label="ELO minimum">
                 <input className={inputClass} inputMode="numeric" value={eloBandMin} onChange={(event) => setEloBandMin(event.target.value)} />
@@ -573,6 +692,10 @@ function TrophyDefinitions({
                 <input className={inputClass} inputMode="numeric" value={eloBandMax} onChange={(event) => setEloBandMax(event.target.value)} />
               </Field>
             </>
+          ) : (
+            <Field label="Champion lane">
+              <input className={inputClass} value="Open challenge belt" readOnly />
+            </Field>
           )}
           <Field label="Tribute / bounty day">
             <input className={inputClass} inputMode="numeric" value={dailyWolo} onChange={(event) => setDailyWolo(event.target.value)} />
@@ -589,7 +712,7 @@ function TrophyDefinitions({
                     displayName,
                     kind: "belt",
                     family,
-                    tier: family === "national" ? "National" : "ELO",
+                    tier: family === "national" ? "National" : family === "elo" ? "ELO" : "Champion",
                     eligibleNationality: family === "national" ? eligibleNationality : null,
                     eloBandMin: family === "elo" ? eloBandMin : null,
                     eloBandMax: family === "elo" ? eloBandMax : null,
