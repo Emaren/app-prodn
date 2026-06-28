@@ -29,7 +29,10 @@ import {
   type WoloIndexedTransferActivityRow,
 } from "@/lib/woloMainnetTransfers";
 import { getWoloMainnetDisplayStartAt, isWoloMainnet } from "@/lib/woloChain";
-import { stakingTransferLedgerPresentation } from "@/lib/stakingTransferClassification";
+import {
+  canExposePublicStakingActivityEvent,
+  stakingTransferLedgerPresentation,
+} from "@/lib/stakingTransferClassification";
 
 export {
   BETTING_FEE_RATE_BPS,
@@ -477,7 +480,7 @@ function shortAddress(value: string | null | undefined) {
 
 export function isPublicStakingActivityItem(item: StakingActivityItem) {
   return (
-    item.eventType !== "FAUCET" &&
+    canExposePublicStakingActivityEvent(item.eventType) &&
     (item.eventType === "CYCLE" ||
       item.eventType === "REWARD" ||
       item.eventType === "PAYOUT" ||

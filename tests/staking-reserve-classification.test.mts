@@ -7,6 +7,7 @@ import {
   resolveStakingReserveTargetUWolo,
 } from "../lib/stakingReservePolicy.ts";
 import {
+  canExposePublicStakingActivityEvent,
   canInspectOperationalReserveActivity,
   classifyStakingTransferMemo,
   stakingTransferLedgerPresentation,
@@ -98,6 +99,9 @@ test("reserve top-ups remain visible as admin operational funding", () => {
 });
 
 test("reserve activity is hidden publicly and requires the admin reserve view", () => {
+  assert.equal(canExposePublicStakingActivityEvent("RESERVE"), false);
+  assert.equal(canExposePublicStakingActivityEvent("reserve"), false);
+  assert.equal(canExposePublicStakingActivityEvent("DIRECT"), true);
   assert.equal(
     canInspectOperationalReserveActivity({
       isAdmin: false,

@@ -114,3 +114,8 @@ export function canInspectOperationalReserveActivity(input: {
 }) {
   return input.isAdmin && input.selectedFilter === "reserve";
 }
+
+export function canExposePublicStakingActivityEvent(eventType?: string | null) {
+  const normalizedEventType = String(eventType || "").trim().toUpperCase();
+  return normalizedEventType !== "FAUCET" && normalizedEventType !== "RESERVE";
+}
