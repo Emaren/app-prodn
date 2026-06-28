@@ -840,41 +840,83 @@ return () => {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const syncChatHeightToRightColumn = () => {
+    let frame = 0;
+    let observer: ResizeObserver | null = null;
+
+    const measureChatHeight = () => {
       if (window.innerWidth < 1024) {
         setChatCardHeight(null);
         return;
       }
 
       const rightHeight = rightColumnRef.current?.getBoundingClientRect().height ?? 0;
-      if (rightHeight > 0) {
-        setChatCardHeight(Math.ceil(rightHeight));
-      }
+      const nextHeight = rightHeight > 0 ? Math.ceil(rightHeight) : null;
+
+      setChatCardHeight((current) => (current === nextHeight ? current : nextHeight));
     };
 
-    syncChatHeightToRightColumn();
+    const scheduleMeasure = () => {
+      if (frame) {
+        window.cancelAnimationFrame(frame);
+      }
+
+      frame = window.requestAnimationFrame(() => {
+        frame = 0;
+        measureChatHeight();
+      });
+    };
+
+    const attachObserver = () => {
+      if (observer || typeof ResizeObserver === "undefined" || !rightColumnRef.current) {
+        return;
+      }
+
+      observer = new ResizeObserver(() => {
+        scheduleMeasure();
+      });
+
+      observer.observe(rightColumnRef.current);
+    };
+
+    const settleTimers = [0, 50, 150, 300, 700, 1200].map((delay) =>
+      window.setTimeout(() => {
+        attachObserver();
+        scheduleMeasure();
+      }, delay)
+    );
 
     const handleResize = () => {
-      syncChatHeightToRightColumn();
+      attachObserver();
+      scheduleMeasure();
     };
 
     window.addEventListener("resize", handleResize);
+    window.addEventListener("load", handleResize);
 
-    if (typeof ResizeObserver === "undefined" || !rightColumnRef.current) {
-      return () => {
-        window.removeEventListener("resize", handleResize);
-      };
+    if (document.fonts?.ready) {
+      document.fonts.ready
+        .then(() => {
+          attachObserver();
+          scheduleMeasure();
+        })
+        .catch(() => {});
     }
 
-    const observer = new ResizeObserver(() => {
-      syncChatHeightToRightColumn();
-    });
-
-    observer.observe(rightColumnRef.current);
+    attachObserver();
+    scheduleMeasure();
 
     return () => {
-      observer.disconnect();
+      if (frame) {
+        window.cancelAnimationFrame(frame);
+      }
+
+      for (const timer of settleTimers) {
+        window.clearTimeout(timer);
+      }
+
+      observer?.disconnect();
       window.removeEventListener("resize", handleResize);
+      window.removeEventListener("load", handleResize);
     };
   }, []);
 
