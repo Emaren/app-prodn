@@ -662,6 +662,8 @@ const { uid, isAdmin, isAuthenticated, loading, loginWithSteam, playerName, user
   const rightColumnRef = useRef<HTMLDivElement | null>(null);
   const chatHistoryPendingRef = useRef(false);
   const chatHistoryExhaustedRef = useRef(false);
+  const chatInitialBottomScrollDoneRef = useRef(false);
+  const lastNewestChatMessageIdRef = useRef<number | null>(null);
 
   const loadLobby = useCallback(async () => {
     try {
@@ -773,14 +775,7 @@ return () => {
   const shouldShowShowcaseLobby = isAdvancedLobby || isExtremeLobby;
 
   const chatItems = buildChatItems(messages);
-  const latestChatMessageKey = useMemo(
-    () =>
-      messages.length > 0
-        ? `${messages[messages.length - 1]?.id ?? "last"}:${messages[messages.length - 1]?.createdAt ?? ""}`
-        : "empty",
-    [messages]
-  );
-
+  
   const chatRoomTitle =
     messages.length > 0 && messages[0]?.roomSlug === tournament.roomSlug && !tournament.isFallback
       ? `${tournament.title} Chat`
@@ -792,6 +787,15 @@ return () => {
 
     node.scrollTo({ top: node.scrollHeight, behavior });
   }, []);
+
+  const isChatNearBottom = useCallback((threshold = 360) => {
+    const node = chatScrollRef.current;
+    if (!node) return true;
+
+    const distanceFromBottom = node.scrollHeight - node.scrollTop - node.clientHeight;
+    return distanceFromBottom <= threshold;
+  }, []);
+
 
   const loadOlderChatMessages = useCallback(async () => {
     if (chatHistoryPendingRef.current || chatHistoryExhaustedRef.current) return;
@@ -841,7 +845,7 @@ return () => {
         chatHistoryExhaustedRef.current = true;
       }
 
-      window.requestAnimationFrame(() => {
+      const restoreChatScrollPosition = () => {
         const nextViewport = chatScrollRef.current;
         if (!nextViewport) return;
 
@@ -849,7 +853,13 @@ return () => {
           0,
           nextViewport.scrollHeight - previousScrollHeight + previousScrollTop
         );
+      };
+
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(restoreChatScrollPosition);
       });
+      window.setTimeout(restoreChatScrollPosition, 90);
+      window.setTimeout(restoreChatScrollPosition, 240);
     } catch (error) {
       console.warn("Failed to load older lobby messages:", error);
     } finally {
@@ -859,30 +869,43 @@ return () => {
 
   useEffect(() => {
     chatHistoryExhaustedRef.current = false;
+    chatHistoryPendingRef.current = false;
+    chatInitialBottomScrollDoneRef.current = false;
+    lastNewestChatMessageIdRef.current = null;
   }, [tournament.roomSlug]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (chatItems.length === 0) return;
+    const newestMessageId = messages[messages.length - 1]?.id ?? null;
+    const previousNewestMessageId = lastNewestChatMessageIdRef.current;
 
-    let secondFrame = 0;
-    const timeout = window.setTimeout(() => {
-      scrollChatToBottom();
-    }, 140);
+    lastNewestChatMessageIdRef.current = newestMessageId;
 
-    const frame = window.requestAnimationFrame(() => {
-      scrollChatToBottom();
-      secondFrame = window.requestAnimationFrame(() => {
-        scrollChatToBottom();
+    if (!newestMessageId) return;
+
+    if (!chatInitialBottomScrollDoneRef.current) {
+      chatInitialBottomScrollDoneRef.current = true;
+      window.requestAnimationFrame(() => {
+        scrollChatToBottom("auto");
       });
-    });
+      return;
+    }
 
-    return () => {
-      window.clearTimeout(timeout);
-      window.cancelAnimationFrame(frame);
-      window.cancelAnimationFrame(secondFrame);
-    };
-  }, [chatCardHeight, latestChatMessageKey, chatItems.length, scrollChatToBottom]);
+    // Older history prepends and reaction-only changes do not change the newest id.
+    // Do not move the user's viewport for those.
+    if (previousNewestMessageId === newestMessageId) {
+      return;
+    }
+
+    // A genuinely newer chat message arrived. Only follow it if the user was
+    // already near the live edge.
+    if (!isChatNearBottom(520)) {
+      return;
+    }
+
+    window.requestAnimationFrame(() => {
+      scrollChatToBottom("smooth");
+    });
+  }, [messages, isChatNearBottom, scrollChatToBottom]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
