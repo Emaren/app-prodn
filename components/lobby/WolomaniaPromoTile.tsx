@@ -255,13 +255,13 @@ function MobileEventTile({
 
         <div className="relative mt-5 h-[19rem] overflow-hidden rounded-[1.6rem] border border-amber-200/14 bg-black/18">
           <PromoImage
-            src={thumbnailUrlForAvatarAsset(eventTile.playerOneAvatarUrl)}
+            src={eventTile.playerOneAvatarUrl || ASSET_FALLBACKS.playerOne}
             fallback={ASSET_FALLBACKS.playerOne}
             alt={eventTile.playerOneName}
             className="absolute -bottom-4 -left-10 h-[94%] w-[70%] object-contain object-bottom drop-shadow-[0_24px_50px_rgba(0,0,0,0.85)]"
           />
           <PromoImage
-            src={thumbnailUrlForAvatarAsset(eventTile.playerTwoAvatarUrl)}
+            src={eventTile.playerTwoAvatarUrl || ASSET_FALLBACKS.playerTwo}
             fallback={ASSET_FALLBACKS.playerTwo}
             alt={eventTile.playerTwoName}
             className="absolute -bottom-4 -right-10 h-[94%] w-[70%] object-contain object-bottom drop-shadow-[0_24px_50px_rgba(0,0,0,0.85)]"
