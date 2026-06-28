@@ -64,6 +64,42 @@ function readRoomSlug(body: Record<string, unknown>) {
     : LOBBY_ROOM_SLUG;
 }
 
+function readPositiveQueryInteger(value: string | null, fallback: number, max: number) {
+  if (!value) return fallback;
+
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+
+  return Math.min(parsed, max);
+}
+
+function readQueryRoomSlug(request: NextRequest) {
+  const value = request.nextUrl.searchParams.get("roomSlug");
+  return value && value.trim().length > 0 ? value.trim() : LOBBY_ROOM_SLUG;
+}
+
+export async function GET(request: NextRequest) {
+  const prisma = getPrisma();
+  const roomSlug = readQueryRoomSlug(request);
+  const beforeId = readPositiveQueryInteger(
+    request.nextUrl.searchParams.get("beforeId"),
+    0,
+    2147483647
+  );
+  const limit = readPositiveQueryInteger(request.nextUrl.searchParams.get("limit"), 40, 120);
+
+  const messages = await getLobbyMessages(prisma, roomSlug, limit, undefined, {
+    beforeId: beforeId || null,
+  });
+
+  return NextResponse.json({
+    ok: true,
+    messages,
+    hasMore: messages.length >= limit,
+  });
+}
+
+
 async function resolveChatRoom(
   prisma: ReturnType<typeof getPrisma>,
   roomSlug: string

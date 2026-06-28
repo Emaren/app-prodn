@@ -67,6 +67,42 @@ function uniqueChatAliases(...values: Array<string | null | undefined>) {
   return aliases;
 }
 
+const CHAT_AUDIENCE_PRESETS: ChatAudienceMember[] = [
+  {
+    uid: "preset:emaren",
+    name: "Emaren",
+    aliases: uniqueChatAliases("Emaren"),
+    avatarSrc: avatarThumbUrlForUser("preset:emaren", "Emaren"),
+    latestAt: "1970-01-01T00:00:00.000Z",
+    messageCount: 0,
+  },
+  {
+    uid: "preset:sniper",
+    name: "Sniper",
+    aliases: uniqueChatAliases("Sniper"),
+    avatarSrc: avatarThumbUrlForUser("preset:sniper", "Sniper"),
+    latestAt: "1970-01-01T00:00:00.000Z",
+    messageCount: 0,
+  },
+  {
+    uid: "preset:jim",
+    name: "Jim",
+    aliases: uniqueChatAliases("Jim"),
+    avatarSrc: avatarThumbUrlForUser("preset:jim", "Jim"),
+    latestAt: "1970-01-01T00:00:00.000Z",
+    messageCount: 0,
+  },
+  {
+    uid: "preset:zodiac",
+    name: "Zodiac",
+    aliases: uniqueChatAliases("Zodiac"),
+    avatarSrc: avatarThumbUrlForUser("preset:zodiac", "Zodiac"),
+    latestAt: "1970-01-01T00:00:00.000Z",
+    messageCount: 0,
+  },
+];
+
+
 type LobbyChatProps = {
   style?: CSSProperties;
   themeKey: LobbyThemeKey;
@@ -75,6 +111,7 @@ type LobbyChatProps = {
   messagesCount: number;
   chatItems: ChatRenderItem[];
   chatScrollRef: RefObject<HTMLDivElement | null>;
+  onLoadOlderMessages?: () => void;
   chatError: string | null;
   chatNotice: string | null;
   isAuthenticated: boolean;
@@ -112,6 +149,7 @@ export function LobbyChat(props: LobbyChatProps) {
     messagesCount,
     chatItems,
     chatScrollRef,
+    onLoadOlderMessages,
     chatError,
     chatNotice,
     isAuthenticated,
@@ -142,6 +180,7 @@ export function LobbyChat(props: LobbyChatProps) {
   const tone = getLobbyPresentationTone(themeKey, viewMode);
   const isExtreme = surface === "extreme";
   const [showChatJump, setShowChatJump] = useState(false);
+  const lastChatViewportScrollTopRef = useRef(0);
   const [selectedChatAudienceUids, setSelectedChatAudienceUids] = useState<string[]>([]);
   const [chatFilterDockVisible, setChatFilterDockVisible] = useState(false);
   const [typingHudMode, setTypingHudMode] = useState<"steady" | "pulse">("steady");
@@ -189,7 +228,24 @@ export function LobbyChat(props: LobbyChatProps) {
       });
     }
 
+    for (const preset of CHAT_AUDIENCE_PRESETS) {
+      const existing = Array.from(audience.values()).find((member) =>
+        member.aliases.some((alias) => preset.aliases.includes(alias))
+      );
+
+      if (!existing) {
+        audience.set(preset.uid, preset);
+      }
+    }
+
     return Array.from(audience.values()).sort((left, right) => {
+      const leftPreset = left.uid.startsWith("preset:");
+      const rightPreset = right.uid.startsWith("preset:");
+
+      if (leftPreset !== rightPreset) {
+        return leftPreset ? 1 : -1;
+      }
+
       const latestDelta = new Date(right.latestAt).getTime() - new Date(left.latestAt).getTime();
       return latestDelta !== 0 ? latestDelta : left.name.localeCompare(right.name);
     });
@@ -199,7 +255,9 @@ export function LobbyChat(props: LobbyChatProps) {
     if (selectedChatAudienceUids.length === 0) return;
 
     const available = new Set(chatAudience.map((member) => member.uid));
-    setSelectedChatAudienceUids((current) => current.filter((uid) => available.has(uid)));
+    setSelectedChatAudienceUids((current) =>
+      current.filter((uid) => available.has(uid) || uid.startsWith("preset:"))
+    );
   }, [chatAudience, selectedChatAudienceUids.length]);
 
   const selectedChatAudience = useMemo(
@@ -223,7 +281,19 @@ export function LobbyChat(props: LobbyChatProps) {
 
       const body = normalizedChatToken(item.message.body);
       const authorUid = item.message.user.uid;
-      const authoredBySelected = authorUid ? selectedUids.has(authorUid) : false;
+      const authorName =
+        displayName(item.message.user.inGameName, item.message.user.steamPersonaName) || "";
+      const authorAliases = uniqueChatAliases(
+        authorName,
+        item.message.user.inGameName,
+        item.message.user.steamPersonaName,
+        authorUid
+      );
+
+      const authoredBySelected =
+        (authorUid ? selectedUids.has(authorUid) : false) ||
+        selectedAliases.some((alias) => authorAliases.includes(alias));
+
       const mentionsSelected = selectedAliases.some(
         (alias) => alias.length >= 3 && body.includes(alias)
       );
@@ -325,6 +395,19 @@ export function LobbyChat(props: LobbyChatProps) {
   }
 
   function handleChatScroll() {
+    const viewport = chatScrollRef.current;
+
+    if (viewport) {
+      const currentTop = viewport.scrollTop;
+      const wasUserScrollingUp = currentTop < lastChatViewportScrollTopRef.current;
+
+      if (wasUserScrollingUp && currentTop <= 96) {
+        onLoadOlderMessages?.();
+      }
+
+      lastChatViewportScrollTopRef.current = currentTop;
+    }
+
     updateChatJumpButton();
   }
 
