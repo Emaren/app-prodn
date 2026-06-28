@@ -650,30 +650,10 @@ function PremiumWalletAddressPanel({ address }: { address?: string }) {
   return (
     <div
       data-no-toggle="true"
-      className="rounded-[1.45rem] border border-white/8 bg-[#0d1420] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]"
+      className="rounded-[1.35rem] border border-white/8 bg-[#0d1420] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]"
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="text-[11px] uppercase tracking-[0.26em] text-slate-400">
-          Address
-        </div>
-
-        {cleanAddress ? (
-          <button
-            type="button"
-            onClick={() => {
-              void handleCopy();
-            }}
-            aria-label={copied ? "Address copied" : "Copy wallet address"}
-            title={copied ? "Copied" : "Copy wallet address"}
-            className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition ${
-              copied
-                ? "border-emerald-300/45 bg-emerald-400/12 text-emerald-100"
-                : "border-white/12 bg-white/5 text-slate-300 hover:border-cyan-300/35 hover:bg-cyan-400/10 hover:text-white"
-            }`}
-          >
-            {copied ? <Check aria-hidden="true" className="h-3.5 w-3.5" /> : <Copy aria-hidden="true" className="h-3.5 w-3.5" />}
-          </button>
-        ) : null}
+      <div className="text-[10px] uppercase tracking-[0.24em] text-slate-400">
+        Address
       </div>
 
       <button
@@ -684,19 +664,33 @@ function PremiumWalletAddressPanel({ address }: { address?: string }) {
         disabled={!cleanAddress}
         aria-label={cleanAddress ? "Copy wallet address" : "Wallet address not connected"}
         title={cleanAddress || "Wallet address not connected"}
-        className={`mt-3 flex min-h-[3.35rem] w-full min-w-0 rounded-[1.1rem] border border-white/10 bg-black/20 px-4 py-3.5 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.025)] ${
+        className={`mt-2 flex min-h-[2.75rem] w-full min-w-0 items-center gap-2 rounded-[1rem] border border-white/10 bg-black/20 px-3 py-2 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.025)] ${
           cleanAddress
             ? "cursor-pointer transition hover:border-cyan-300/30 hover:bg-cyan-400/[0.08]"
             : "cursor-not-allowed"
         }`}
       >
-        <span className="min-w-0 break-all font-mono text-[11px] font-semibold leading-5 text-white sm:text-[11.5px] lg:text-[12px]">
+        <span className="min-w-0 flex-1 break-all font-mono text-[11px] font-semibold leading-5 text-white sm:break-normal sm:text-[11.5px] lg:text-[12px]">
           {displayAddress}
         </span>
+
+        {cleanAddress ? (
+          <span
+            aria-hidden="true"
+            className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition ${
+              copied
+                ? "border-emerald-300/45 bg-emerald-400/12 text-emerald-100"
+                : "border-white/12 bg-white/5 text-slate-300"
+            }`}
+          >
+            {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+          </span>
+        ) : null}
       </button>
     </div>
   );
 }
+
 
 function PremiumWalletPanel({
   label,
