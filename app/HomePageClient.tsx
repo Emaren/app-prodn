@@ -613,6 +613,21 @@ function ExtremeFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] }) 
   );
 }
 
+function mergeLobbyMessagesById(...messageGroups: LobbyMessage[][]) {
+  const byId = new Map<number, LobbyMessage>();
+
+  for (const group of messageGroups) {
+    for (const message of group) {
+      byId.set(message.id, message);
+    }
+  }
+
+  return Array.from(byId.values()).sort((left, right) => {
+    const timeDelta = new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime();
+    return timeDelta !== 0 ? timeDelta : left.id - right.id;
+  });
+}
+
 export default function HomePageClient({
 
 
@@ -645,6 +660,8 @@ const { uid, isAdmin, isAuthenticated, loading, loginWithSteam, playerName, user
 
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
   const rightColumnRef = useRef<HTMLDivElement | null>(null);
+  const chatHistoryPendingRef = useRef(false);
+  const chatHistoryExhaustedRef = useRef(false);
 
   const loadLobby = useCallback(async () => {
     try {
@@ -654,7 +671,14 @@ const { uid, isAdmin, isAuthenticated, loading, loginWithSteam, playerName, user
       }
 
       const payload = (await response.json()) as LobbySnapshot;
-      setLobby(payload);
+      setLobby((current) =>
+        current
+          ? {
+              ...payload,
+              messages: mergeLobbyMessagesById(current.messages, payload.messages),
+            }
+          : payload
+      );
       setLobbyError(null);
     } catch (error) {
       console.warn("Failed to load lobby:", error);
@@ -684,7 +708,14 @@ return () => {
     const handleSnapshot = (event: MessageEvent<string>) => {
       try {
         const snapshot = JSON.parse(event.data) as LobbySnapshot;
-        setLobby(snapshot);
+        setLobby((current) =>
+          current
+            ? {
+                ...snapshot,
+                messages: mergeLobbyMessagesById(current.messages, snapshot.messages),
+              }
+            : snapshot
+        );
         setLobbyError(null);
         setLiveConnected(true);
       } catch (error) {
@@ -762,6 +793,71 @@ return () => {
     node.scrollTo({ top: node.scrollHeight, behavior });
   }, []);
 
+  const loadOlderChatMessages = useCallback(async () => {
+    if (chatHistoryPendingRef.current || chatHistoryExhaustedRef.current) return;
+
+    const oldestMessage = messages[0];
+    if (!oldestMessage?.id) return;
+
+    const viewport = chatScrollRef.current;
+    const previousScrollHeight = viewport?.scrollHeight ?? 0;
+    const previousScrollTop = viewport?.scrollTop ?? 0;
+
+    chatHistoryPendingRef.current = true;
+
+    try {
+      const params = new URLSearchParams({
+        roomSlug: tournament.roomSlug,
+        beforeId: String(oldestMessage.id),
+        limit: "40",
+      });
+
+      const response = await fetch(`/api/lobby/chat?${params.toString()}`, {
+        cache: "no-store",
+      });
+
+      const payload = (await response.json().catch(() => ({}))) as
+        | { messages?: LobbyMessage[] }
+        | Record<string, unknown>;
+
+      if (!response.ok) {
+        return;
+      }
+
+      const olderMessages = Array.isArray(payload.messages) ? payload.messages : [];
+
+      if (olderMessages.length === 0) {
+        chatHistoryExhaustedRef.current = true;
+        return;
+      }
+
+      setLobby((current) =>
+        current
+          ? {
+              ...current,
+              messages: mergeLobbyMessagesById(olderMessages, current.messages),
+            }
+          : current
+      );
+
+      window.requestAnimationFrame(() => {
+        const nextViewport = chatScrollRef.current;
+        if (!nextViewport) return;
+
+        const nextScrollHeight = nextViewport.scrollHeight;
+        nextViewport.scrollTop = Math.max(0, nextScrollHeight - previousScrollHeight + previousScrollTop);
+      });
+    } catch (error) {
+      console.warn("Failed to load older lobby messages:", error);
+    } finally {
+      chatHistoryPendingRef.current = false;
+    }
+  }, [messages, tournament.roomSlug]);
+
+  useEffect(() => {
+    chatHistoryExhaustedRef.current = false;
+  }, [tournament.roomSlug]);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (chatItems.length === 0) return;
@@ -783,7 +879,7 @@ return () => {
       window.cancelAnimationFrame(frame);
       window.cancelAnimationFrame(secondFrame);
     };
-  }, [chatCardHeight, latestChatMessageKey, chatItems.length, scrollChatToBottom]);
+  }, [chatCardHeight, latestChatMessageKey, scrollChatToBottom]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -840,41 +936,65 @@ return () => {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
+    let frame = 0;
+
     const syncChatHeightToRightColumn = () => {
-      if (window.innerWidth < 1024) {
-        setChatCardHeight(null);
-        return;
+      if (frame) {
+        window.cancelAnimationFrame(frame);
       }
 
-      const rightHeight = rightColumnRef.current?.getBoundingClientRect().height ?? 0;
-      if (rightHeight > 0) {
-        setChatCardHeight(Math.ceil(rightHeight));
-      }
+      frame = window.requestAnimationFrame(() => {
+        frame = 0;
+
+        if (window.innerWidth < 1024) {
+          setChatCardHeight(null);
+          return;
+        }
+
+        const rightHeight = rightColumnRef.current?.getBoundingClientRect().height ?? 0;
+        const nextHeight = rightHeight > 0 ? Math.ceil(rightHeight) : null;
+
+        setChatCardHeight((current) => (current === nextHeight ? current : nextHeight));
+      });
     };
 
     syncChatHeightToRightColumn();
+
+    const timers = [80, 240, 600, 1200].map((delay) =>
+      window.setTimeout(syncChatHeightToRightColumn, delay)
+    );
 
     const handleResize = () => {
       syncChatHeightToRightColumn();
     };
 
     window.addEventListener("resize", handleResize);
+    window.addEventListener("load", syncChatHeightToRightColumn);
 
-    if (typeof ResizeObserver === "undefined" || !rightColumnRef.current) {
-      return () => {
-        window.removeEventListener("resize", handleResize);
-      };
+    const observedRightColumn = rightColumnRef.current;
+    const observer =
+      typeof ResizeObserver !== "undefined" && observedRightColumn
+        ? new ResizeObserver(() => {
+            syncChatHeightToRightColumn();
+          })
+        : null;
+
+    if (observer && observedRightColumn) {
+      observer.observe(observedRightColumn);
     }
 
-    const observer = new ResizeObserver(() => {
-      syncChatHeightToRightColumn();
-    });
-
-    observer.observe(rightColumnRef.current);
-
     return () => {
-      observer.disconnect();
+      if (frame) {
+        window.cancelAnimationFrame(frame);
+      }
+
+      for (const timer of timers) {
+        window.clearTimeout(timer);
+      }
+
+      observer?.disconnect();
       window.removeEventListener("resize", handleResize);
+      window.removeEventListener("load", syncChatHeightToRightColumn);
     };
   }, []);
 
@@ -1201,6 +1321,9 @@ return (
           messagesCount={messages.length}
           chatItems={chatItems}
           chatScrollRef={chatScrollRef}
+          onLoadOlderMessages={() => {
+            void loadOlderChatMessages();
+          }}
           chatError={chatError}
           chatNotice={chatNotice}
           isAuthenticated={isAuthenticated}
