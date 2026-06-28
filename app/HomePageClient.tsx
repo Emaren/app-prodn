@@ -781,11 +781,24 @@ return () => {
       ? `${tournament.title} Chat`
       : "Live Chat";
 
-  const scrollChatToBottom = useCallback((behavior: ScrollBehavior = "auto") => {
-    const node = chatScrollRef.current;
-    if (!node) return;
+  const settleChatToBottom = useCallback((behavior: ScrollBehavior = "auto") => {
+    const run = () => {
+      const node = chatScrollRef.current;
+      if (!node) return;
 
-    node.scrollTo({ top: node.scrollHeight, behavior });
+      node.scrollTo({ top: node.scrollHeight, behavior });
+    };
+
+    window.requestAnimationFrame(() => {
+      run();
+      window.requestAnimationFrame(run);
+    });
+
+    window.setTimeout(run, 80);
+    window.setTimeout(run, 180);
+    window.setTimeout(run, 360);
+    window.setTimeout(run, 720);
+    window.setTimeout(run, 1200);
   }, []);
 
   const isChatNearBottom = useCallback((threshold = 360) => {
@@ -884,9 +897,7 @@ return () => {
 
     if (!chatInitialBottomScrollDoneRef.current) {
       chatInitialBottomScrollDoneRef.current = true;
-      window.requestAnimationFrame(() => {
-        scrollChatToBottom("auto");
-      });
+      settleChatToBottom("auto");
       return;
     }
 
@@ -902,10 +913,8 @@ return () => {
       return;
     }
 
-    window.requestAnimationFrame(() => {
-      scrollChatToBottom("smooth");
-    });
-  }, [messages, isChatNearBottom, scrollChatToBottom]);
+    settleChatToBottom("smooth");
+  }, [messages, isChatNearBottom, settleChatToBottom]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
