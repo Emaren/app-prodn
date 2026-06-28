@@ -22,6 +22,7 @@ import {
   DIRECT_MESSAGE_TYPING_WINDOW_MS,
 } from "@/lib/contactInboxConfig";
 import { recordUserActivity } from "@/lib/userExperience";
+import { isPublicZodiacTrainingContactUid } from "@/lib/zodiacTraining";
 
 export type InboxCounterpart = {
   uid: string;
@@ -1339,7 +1340,11 @@ export async function resolveInboxTargetForViewer(
     return null;
   }
 
-  if (viewer.isAdmin || targetUser.isAdmin) {
+  if (
+    viewer.isAdmin ||
+    targetUser.isAdmin ||
+    isPublicZodiacTrainingContactUid(targetUser.uid)
+  ) {
     return targetUser;
   }
 

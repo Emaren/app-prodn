@@ -63,6 +63,7 @@ const PAGE_HEADINGS: ReadonlyArray<{ prefix: string; title: string }> = [
   { prefix: "/tournaments", title: "Tournament Grounds" },
   { prefix: "/watch", title: "Watch Arena" },
   { prefix: "/challenge", title: "Challenge Hall" },
+  { prefix: "/zodiac", title: "Apprentice Under Zodiac" },
   { prefix: "/bets", title: "Betting Hall" },
   { prefix: "/war-chest", title: "War Chest" },
   { prefix: "/wolochain", title: "WoloChain" },
