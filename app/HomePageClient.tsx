@@ -78,7 +78,7 @@ const FEATURED_WARRIOR_FALLBACKS: FeaturedWarrior[] = [
     lookupName: "Jim",
     role: "The General",
     href: "/players/by-name/Jim",
-    imageUrl: avatarCardUrlForUser("u_06c16d39d25c476fac2c86fee7b4d189", "Zodiac"),
+    imageUrl: "/featured-warriors/thumbs/jim-1781560436622-52fb61a1-thumb.webp",
   },
   {
     key: "premium:emaren",
