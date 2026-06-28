@@ -1274,11 +1274,11 @@ function ActivityRow({
     const isCanadianBelt = beltAsset.badge.toLowerCase().includes("canadian");
     const beltFlag = isCanadianBelt ? "🇨🇦" : "🏆";
     const beltStageClassName = isCanadianBelt
-      ? "pointer-events-none absolute bottom-[2.18rem] right-[0.58rem] top-[0.82rem] z-30 flex w-[33.25%] items-end justify-center sm:right-[5.55rem] sm:w-[26.8%]"
-      : "pointer-events-none absolute bottom-[2.26rem] right-[0.66rem] top-[0.86rem] z-30 flex w-[33.15%] items-end justify-center sm:right-[5.65rem] sm:w-[26.65%]";
+      ? "pointer-events-none absolute bottom-[1.34rem] right-[0.98rem] top-[1.18rem] z-30 flex w-[33.25%] items-end justify-center sm:right-[5.95rem] sm:w-[26.8%]"
+      : "pointer-events-none absolute bottom-[1.42rem] right-[1.06rem] top-[1.2rem] z-30 flex w-[33.15%] items-end justify-center sm:right-[6.05rem] sm:w-[26.65%]";
     const beltImageClassName = isCanadianBelt
-      ? "h-auto max-h-[6.55rem] w-auto max-w-full translate-y-[0.12rem] object-contain opacity-[0.99] drop-shadow-[0_24px_42px_rgba(0,0,0,0.82)] sm:max-h-[6.72rem]"
-      : "h-auto max-h-[6.42rem] w-auto max-w-full translate-y-[0.08rem] object-contain opacity-[0.99] drop-shadow-[0_24px_42px_rgba(0,0,0,0.82)] sm:max-h-[6.62rem]";
+      ? "h-auto max-h-[6.55rem] w-auto max-w-full translate-y-[0.44rem] object-contain opacity-[0.99] drop-shadow-[0_24px_42px_rgba(0,0,0,0.82)] sm:max-h-[6.72rem]"
+      : "h-auto max-h-[6.42rem] w-auto max-w-full translate-y-[0.38rem] object-contain opacity-[0.99] drop-shadow-[0_24px_42px_rgba(0,0,0,0.82)] sm:max-h-[6.62rem]";
     const beltContextLines = beltDetail
       .split(/\s*[·•]\s*/g)
       .map((part) => part.trim())
