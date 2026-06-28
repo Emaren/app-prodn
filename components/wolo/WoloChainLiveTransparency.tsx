@@ -22,6 +22,7 @@ type WoloHolderAliasable = {
   balance?: string | number | null;
 };
 
+const WOLO_KNOWN_NETWORK_WALLET_COUNT = 33;
 const WOLO_PLAYER_HOLDER_ALIAS_BY_ADDRESS: Record<string, { label: string; hideBalance: boolean }> = {
   wolo1xamdfayrjy8eauyy65uuvkepuvvcdtqlq6q39k: { label: "Zodiac", hideBalance: true },
   wolo198ajhn5atpw65u6z89z5hwfer2vx90u4ydxe7z: { label: "Ra 𓁛𓇳", hideBalance: true },
@@ -361,7 +362,7 @@ export default function WoloChainLiveTransparency() {
           </div>
 
           <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-slate-200">
-            {holders ? `${holders.count} wallets` : "Loading"}
+            {holders ? `${WOLO_KNOWN_NETWORK_WALLET_COUNT} known wallets` : "Loading"}
           </div>
         </div>
 
