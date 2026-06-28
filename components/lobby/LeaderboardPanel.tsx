@@ -22,7 +22,7 @@ type LeaderboardPanelProps = {
   surface?: "standard" | "extreme";
 };
 
-const LEADERBOARD_PAGE_SIZE = 80;
+const LEADERBOARD_PAGE_SIZE = 160;
 
 type LeaderboardPageResponse = {
   ok?: boolean;
@@ -247,14 +247,14 @@ export function LeaderboardPanel({
     const preloadAllLeaderboardPages = async () => {
       await sleep(450);
 
-      for (let page = 0; page < 12; page += 1) {
+      for (let page = 0; page < 24; page += 1) {
         if (cancelled) return;
 
         const before = countRankedLeaderboardEntries(entriesRef.current);
         if (before >= leaderboard.trackedPlayers) return;
 
         await loadMoreLeaderboardEntries();
-        await sleep(320);
+        await sleep(180);
 
         const after = countRankedLeaderboardEntries(entriesRef.current);
         if (after <= before && !loadingRef.current) {
@@ -274,8 +274,8 @@ export function LeaderboardPanel({
   }, [leaderboard.trackedPlayers, loadMoreLeaderboardEntries]);
 
   const leaderboardScrollClassName = isExtreme
-    ? "mt-6 min-h-0 flex-1 space-y-3 overflow-y-auto pr-2"
-    : "mt-6 max-h-[62vh] space-y-3 overflow-y-auto pr-2 sm:max-h-[66vh] lg:max-h-[58rem] xl:max-h-[66rem]";
+    ? "mt-6 h-[min(78dvh,56rem)] min-h-0 space-y-3 overflow-y-auto overscroll-contain pr-2 [scrollbar-width:thin]"
+    : "mt-6 h-[min(68dvh,44rem)] min-h-0 space-y-3 overflow-y-auto overscroll-contain pr-2 [scrollbar-width:thin] sm:h-[min(70dvh,48rem)] lg:h-[min(74dvh,54rem)]";
 
   const leaderboardPanelShellClassName = isExtreme
     ? `relative flex min-h-[112rem] flex-col rounded-[1.85rem] border p-5 transition-all duration-300 sm:p-6 lg:min-h-[118rem] xl:min-h-[126rem] ${tone.panelShell}`
