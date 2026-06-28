@@ -1,61 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-type WoloHolderAliasable = {
-  address?: string | null;
-  label?: string | null;
-  name?: string | null;
-  holder?: string | null;
-  displayName?: string | null;
-  hideBalance?: boolean;
-  exactBalanceWolo?: string | null;
-  balanceWoloFormatted?: string | null;
-  balanceHidden?: boolean;
-  role?: string | null;
-  alias?: string | null;
-  amountUwolo?: string | number | null;
-  amountWolo?: string | number | null;
-  amountWoloFormatted?: string | null;
-  balanceUwolo?: string | number | null;
-  balanceWolo?: string | number | null;
-  balanceFormatted?: string | null;
-  balance?: string | number | null;
-};
-
-const WOLO_KNOWN_NETWORK_WALLET_COUNT = 33;
-const WOLO_PLAYER_HOLDER_ALIAS_BY_ADDRESS: Record<string, { label: string; hideBalance: boolean }> = {
-  wolo1xamdfayrjy8eauyy65uuvkepuvvcdtqlq6q39k: { label: "Zodiac", hideBalance: true },
-  wolo198ajhn5atpw65u6z89z5hwfer2vx90u4ydxe7z: { label: "Ra 𓁛𓇳", hideBalance: true },
-  wolo1ntal93v8c5wryq2d9puhks8l25zedhepyv8n5k: { label: "[BDB]Pigman", hideBalance: true },
-};
-
-function decorateWoloPlayerHolderForDisplay<T extends WoloHolderAliasable>(holder: T): T {
-  const alias = WOLO_PLAYER_HOLDER_ALIAS_BY_ADDRESS[String(holder.address ?? "").toLowerCase()];
-
-  if (!alias) {
-    return holder;
-  }
-
-  return {
-    ...holder,
-    alias: alias.label,
-    label: alias.label,
-    name: alias.label,
-    holder: alias.label,
-    displayName: alias.label,
-    hideBalance: alias.hideBalance,
-    balanceHidden: alias.hideBalance,
-    amountUwolo: alias.hideBalance ? null : holder.amountUwolo,
-    amountWolo: alias.hideBalance ? null : holder.amountWolo,
-    amountWoloFormatted: alias.hideBalance ? null : holder.amountWoloFormatted,
-    balanceUwolo: alias.hideBalance ? null : holder.balanceUwolo,
-    balanceWolo: alias.hideBalance ? null : holder.balanceWolo,
-    balanceWoloFormatted: alias.hideBalance ? null : holder.balanceWoloFormatted,
-    balanceFormatted: alias.hideBalance ? null : holder.balanceFormatted,
-    exactBalanceWolo: alias.hideBalance ? "" : holder.exactBalanceWolo,
-    balance: alias.hideBalance ? null : holder.balance,
-  } as T;
-}
 
 type NetworkAccount = {
   label: string;
@@ -89,6 +34,178 @@ type Holder = {
   isInfrastructure: boolean;
   avatarUrl?: string | null;
 };
+
+type WoloNetworkAccountForHolderDisplay = {
+  label?: string | null;
+  address?: string | null;
+  use?: string | null;
+  role?: string | null;
+  amountUwolo?: string | number | null;
+  amountWolo?: string | number | null;
+  amountWoloFormatted?: string | null;
+  balanceUwolo?: string | number | null;
+  balanceWolo?: string | number | null;
+  balanceWoloFormatted?: string | null;
+};
+
+function getWoloNetworkRowsForHolderDisplay(payload: unknown): WoloNetworkAccountForHolderDisplay[] {
+  const isDisplayRow = (value: unknown): value is WoloNetworkAccountForHolderDisplay => {
+    if (typeof value !== "object" || value === null) {
+      return false;
+    }
+
+    const record = value as Record<string, unknown>;
+
+    return typeof record.address === "string" && (
+      typeof record.label === "string" ||
+      typeof record.use === "string" ||
+      typeof record.amountWolo === "string" ||
+      typeof record.amountWoloFormatted === "string" ||
+      typeof record.balanceWolo === "string" ||
+      typeof record.balanceWoloFormatted === "string"
+    );
+  };
+
+  const fromArray = (value: unknown[]): WoloNetworkAccountForHolderDisplay[] => {
+    const directRows = value.filter(isDisplayRow);
+
+    if (directRows.length > 0) {
+      return directRows;
+    }
+
+    for (const item of value) {
+      const nestedRows = collectRows(item, 1);
+
+      if (nestedRows.length > 0) {
+        return nestedRows;
+      }
+    }
+
+    return [];
+  };
+
+  const collectRows = (value: unknown, depth = 0): WoloNetworkAccountForHolderDisplay[] => {
+    if (depth > 4) {
+      return [];
+    }
+
+    if (Array.isArray(value)) {
+      return fromArray(value);
+    }
+
+    if (typeof value !== "object" || value === null) {
+      return [];
+    }
+
+    const record = value as Record<string, unknown>;
+    const preferredKeys = ["accounts", "rows", "holders", "wallets", "knownAccounts", "networkAccounts"];
+
+    for (const key of preferredKeys) {
+      const maybeRows = collectRows(record[key], depth + 1);
+
+      if (maybeRows.length > 0) {
+        return maybeRows;
+      }
+    }
+
+    for (const value of Object.values(record)) {
+      const maybeRows = collectRows(value, depth + 1);
+
+      if (maybeRows.length > 0) {
+        return maybeRows;
+      }
+    }
+
+    return [];
+  };
+
+  return collectRows(payload);
+}
+
+function parseWoloNumber(value: unknown): number {
+  const numeric = Number(String(value ?? "0").replace(/,/g, ""));
+
+  return Number.isFinite(numeric) ? numeric : 0;
+}
+
+function formatCompactWoloForHolder(value: unknown): string {
+  const numeric = parseWoloNumber(value);
+
+  if (numeric >= 1_000_000) {
+    const millions = numeric / 1_000_000;
+    return `${millions % 1 === 0 ? millions.toFixed(0) : millions.toFixed(1)}M WOLO`;
+  }
+
+  if (numeric >= 1_000) {
+    const thousands = numeric / 1_000;
+    return `${thousands % 1 === 0 ? thousands.toFixed(0) : thousands.toFixed(1)}K WOLO`;
+  }
+
+  if (numeric === 0) {
+    return "0 WOLO";
+  }
+
+  return `${numeric.toLocaleString(undefined, {
+    maximumFractionDigits: numeric < 1 ? 6 : 2,
+  })} WOLO`;
+}
+
+function buildKnownWoloHoldersPayload(networkPayload: unknown): HoldersPayload {
+  const rows = getWoloNetworkRowsForHolderDisplay(networkPayload);
+
+  const holders = rows.map((row, index) => {
+    const address = String(row.address ?? "");
+    const use = String(row.use ?? "");
+    const role = String(row.role ?? "");
+    const label = String(row.label ?? "Unaliased holder");
+    const amountWolo = row.amountWolo ?? row.balanceWolo ?? row.amountWoloFormatted ?? row.balanceWoloFormatted ?? "0";
+    const exactBalanceWolo = typeof row.amountWolo === "string" || typeof row.amountWolo === "number"
+      ? Number(row.amountWolo).toLocaleString(undefined, {
+          minimumFractionDigits: 6,
+          maximumFractionDigits: 6,
+        })
+      : String(row.amountWoloFormatted ?? row.balanceWoloFormatted ?? "0.000000");
+
+    const isUserFacing =
+      role === "user" ||
+      use === "USER" ||
+      use === "PLAYER_DO_NOT_SHOW_BALANCE";
+
+    const isInfrastructure =
+      role === "infrastructure" ||
+      use.includes("TREASURY") ||
+      use.includes("RESERVE") ||
+      use.includes("ESCROW") ||
+      use.includes("SIGNER") ||
+      use.includes("MODULE") ||
+      use.includes("RELAYER") ||
+      use.includes("FAUCET") ||
+      use.includes("VALIDATOR");
+
+    return {
+      alias: label,
+      address,
+      role,
+      use,
+      balanceWolo: isUserFacing ? null : amountWolo,
+      balanceWoloFormatted: isUserFacing ? null : formatCompactWoloForHolder(amountWolo),
+      exactBalanceWolo: isUserFacing ? "" : exactBalanceWolo,
+      balanceHidden: isUserFacing,
+      isKnown: true,
+      isKnownUser: isUserFacing,
+      isInfrastructure,
+      rank: index + 1,
+    };
+  });
+
+  return {
+    count: holders.length,
+    holders,
+    totalIndexedWolo: "100,000,000",
+    totalWoloFormatted: "100,000,000 WOLO",
+    updatedAt: new Date().toISOString(),
+  } as HoldersPayload;
+}
 
 type HoldersPayload = {
   updatedAt: string;
@@ -216,20 +333,14 @@ export default function WoloChainLiveTransparency() {
     try {
       setError(null);
 
-      const [networkResponse, holdersResponse] = await Promise.all([
-        fetch("/api/wolo/network", { cache: "no-store" }),
-        fetch("/api/wolo/holders", { cache: "no-store" }),
-      ]);
+      const networkResponse = await fetch("/api/wolo/network", { cache: "no-store" });
 
       if (!networkResponse.ok) throw new Error("Wolo network map unavailable.");
-      if (!holdersResponse.ok) throw new Error("Wolo holders unavailable.");
 
-      setNetwork((await networkResponse.json()) as NetworkPayload);
-      const holdersPayload = (await holdersResponse.json()) as HoldersPayload;
-      setHolders({
-        ...holdersPayload,
-        holders: holdersPayload.holders.map(decorateWoloPlayerHolderForDisplay),
-      });
+      const networkPayload = await networkResponse.json();
+
+      setNetwork(networkPayload as NetworkPayload);
+      setHolders(buildKnownWoloHoldersPayload(networkPayload));
     } catch (refreshError) {
       setError(refreshError instanceof Error ? refreshError.message : "Live WoloChain data unavailable.");
     }
@@ -358,11 +469,11 @@ export default function WoloChainLiveTransparency() {
         <div className="relative z-10 flex flex-wrap items-center justify-between gap-4">
           <div>
             <div className="text-[11px] uppercase tracking-[0.34em] text-white/45">WOLO holders</div>
-            <div className="mt-2 text-sm text-slate-500">{holders ? `${holders.count} Live chain addresses on the WoloChain network.` : "Live chain addresses on the WoloChain network."}</div>
+            <div className="mt-2 text-sm text-slate-500">{holders ? `${holders.count} known addresses on the WoloChain network.` : "Known addresses on the WoloChain network."}</div>
           </div>
 
           <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-slate-200">
-            {holders ? `${WOLO_KNOWN_NETWORK_WALLET_COUNT} known wallets` : "Loading"}
+            {holders ? `${holders.count} known wallets` : "Loading"}
           </div>
         </div>
 
