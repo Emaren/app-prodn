@@ -10,122 +10,148 @@ function WoloHeroWordmark() {
   return (
     <span
       aria-label="WOLO"
-      className="block w-[clamp(14rem,22vw,24rem)] max-w-full"
+      className="block w-[clamp(18rem,30vw,32rem)] max-w-full"
     >
       <svg
         aria-hidden="true"
-        viewBox="0 0 520 132"
+        viewBox="0 0 760 158"
         role="img"
         className="block h-auto w-full overflow-visible"
       >
         <defs>
           <linearGradient id="woloHeroGoldFace" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="#fff8c7" />
-            <stop offset="9%" stopColor="#fff0a2" />
-            <stop offset="22%" stopColor="#f6c642" />
-            <stop offset="39%" stopColor="#d99016" />
-            <stop offset="57%" stopColor="#9b4c06" />
-            <stop offset="76%" stopColor="#3a1602" />
-            <stop offset="100%" stopColor="#050200" />
+            <stop offset="0%" stopColor="#fff9d8" />
+            <stop offset="8%" stopColor="#fff2b8" />
+            <stop offset="18%" stopColor="#ffd86a" />
+            <stop offset="34%" stopColor="#f0ac22" />
+            <stop offset="51%" stopColor="#b66509" />
+            <stop offset="70%" stopColor="#5a2403" />
+            <stop offset="86%" stopColor="#180500" />
+            <stop offset="100%" stopColor="#040100" />
           </linearGradient>
 
-          <linearGradient id="woloHeroTopShine" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.90" />
-            <stop offset="16%" stopColor="#f7f1d6" stopOpacity="0.48" />
-            <stop offset="34%" stopColor="#ffffff" stopOpacity="0.00" />
-            <stop offset="100%" stopColor="#ffffff" stopOpacity="0.00" />
+          <linearGradient id="woloHeroGoldStroke" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor="#fff2a8" />
+            <stop offset="45%" stopColor="#d99016" />
+            <stop offset="100%" stopColor="#4a1b02" />
           </linearGradient>
 
-          <linearGradient id="woloHeroSlashGlare" x1="0" x2="1" y1="0" y2="0">
+          <linearGradient id="woloHeroTopGloss" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.98" />
+            <stop offset="10%" stopColor="#fffbe7" stopOpacity="0.7" />
+            <stop offset="24%" stopColor="#ffffff" stopOpacity="0.18" />
+            <stop offset="38%" stopColor="#ffffff" stopOpacity="0.0" />
+            <stop offset="100%" stopColor="#ffffff" stopOpacity="0.0" />
+          </linearGradient>
+
+          <linearGradient id="woloHeroDiagonalGlare" x1="0" x2="1" y1="0" y2="0">
             <stop offset="0%" stopColor="#ffffff" stopOpacity="0" />
-            <stop offset="37%" stopColor="#ffffff" stopOpacity="0" />
-            <stop offset="48%" stopColor="#fffdf1" stopOpacity="0.54" />
-            <stop offset="57%" stopColor="#c9c9bd" stopOpacity="0.18" />
-            <stop offset="72%" stopColor="#ffffff" stopOpacity="0" />
+            <stop offset="34%" stopColor="#ffffff" stopOpacity="0" />
+            <stop offset="47%" stopColor="#ffffff" stopOpacity="0.65" />
+            <stop offset="55%" stopColor="#f6f3e7" stopOpacity="0.38" />
+            <stop offset="64%" stopColor="#ffffff" stopOpacity="0" />
             <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
           </linearGradient>
 
           <filter
-            id="woloHeroWordShadow"
+            id="woloHeroWordmarkShadow"
             x="-20%"
             y="-45%"
-            width="140%"
-            height="190%"
+            width="160%"
+            height="220%"
             colorInterpolationFilters="sRGB"
           >
-            <feDropShadow dx="0" dy="4" stdDeviation="1.2" floodColor="#000000" floodOpacity="0.72" />
-            <feDropShadow dx="0" dy="16" stdDeviation="9" floodColor="#000000" floodOpacity="0.54" />
-            <feDropShadow dx="0" dy="0" stdDeviation="8" floodColor="#d88610" floodOpacity="0.18" />
+            <feDropShadow dx="0" dy="4" stdDeviation="1.8" floodColor="#000000" floodOpacity="0.82" />
+            <feDropShadow dx="0" dy="13" stdDeviation="8" floodColor="#000000" floodOpacity="0.52" />
+            <feDropShadow dx="0" dy="0" stdDeviation="7" floodColor="#f0a51e" floodOpacity="0.23" />
           </filter>
 
-          <mask id="woloHeroTextMask">
-            <rect width="520" height="132" fill="black" />
-            <text
-              x="0"
-              y="94"
-              fill="white"
-              fontFamily="Impact, Haettenschweiler, 'Arial Black', system-ui, sans-serif"
-              fontSize="104"
-              fontWeight="900"
-              letterSpacing="2"
-            >
-              WOLO
-            </text>
+          <mask id="woloHeroWordmarkMask">
+            <rect width="760" height="158" fill="black" />
+            <g transform="translate(0 0) scale(1.16 1)">
+              <text
+                x="0"
+                y="112"
+                fill="white"
+                fontFamily="'Arial Black', Impact, Haettenschweiler, system-ui, sans-serif"
+                fontSize="120"
+                fontWeight="900"
+                letterSpacing="1.5"
+              >
+                WOLO
+              </text>
+            </g>
           </mask>
         </defs>
 
-        <g filter="url(#woloHeroWordShadow)">
-          <text
-            x="0"
-            y="94"
-            fill="#140700"
-            stroke="#2a1000"
-            strokeWidth="9"
-            strokeLinejoin="round"
-            fontFamily="Impact, Haettenschweiler, 'Arial Black', system-ui, sans-serif"
-            fontSize="104"
-            fontWeight="900"
-            letterSpacing="2"
-          >
-            WOLO
-          </text>
+        <g filter="url(#woloHeroWordmarkShadow)">
+          <g transform="translate(0 0) scale(1.16 1)">
+            <text
+              x="0"
+              y="112"
+              fill="#120400"
+              stroke="#2a0d00"
+              strokeWidth="11"
+              strokeLinejoin="round"
+              fontFamily="'Arial Black', Impact, Haettenschweiler, system-ui, sans-serif"
+              fontSize="120"
+              fontWeight="900"
+              letterSpacing="1.5"
+            >
+              WOLO
+            </text>
 
-          <text
-            x="0"
-            y="94"
-            fill="url(#woloHeroGoldFace)"
-            stroke="#f2bd35"
-            strokeWidth="1.15"
-            strokeLinejoin="round"
-            fontFamily="Impact, Haettenschweiler, 'Arial Black', system-ui, sans-serif"
-            fontSize="104"
-            fontWeight="900"
-            letterSpacing="2"
-          >
-            WOLO
-          </text>
+            <text
+              x="0"
+              y="112"
+              fill="url(#woloHeroGoldFace)"
+              stroke="url(#woloHeroGoldStroke)"
+              strokeWidth="1.8"
+              strokeLinejoin="round"
+              fontFamily="'Arial Black', Impact, Haettenschweiler, system-ui, sans-serif"
+              fontSize="120"
+              fontWeight="900"
+              letterSpacing="1.5"
+            >
+              WOLO
+            </text>
 
-          <text
-            x="0"
-            y="94"
-            fill="url(#woloHeroTopShine)"
-            fontFamily="Impact, Haettenschweiler, 'Arial Black', system-ui, sans-serif"
-            fontSize="104"
-            fontWeight="900"
-            letterSpacing="2"
-          >
-            WOLO
-          </text>
+            <text
+              x="0"
+              y="112"
+              fill="url(#woloHeroTopGloss)"
+              fontFamily="'Arial Black', Impact, Haettenschweiler, system-ui, sans-serif"
+              fontSize="120"
+              fontWeight="900"
+              letterSpacing="1.5"
+            >
+              WOLO
+            </text>
+
+            <text
+              x="0"
+              y="112"
+              fill="none"
+              stroke="rgba(255,245,210,0.42)"
+              strokeWidth="0.9"
+              fontFamily="'Arial Black', Impact, Haettenschweiler, system-ui, sans-serif"
+              fontSize="120"
+              fontWeight="900"
+              letterSpacing="1.5"
+            >
+              WOLO
+            </text>
+          </g>
 
           <rect
-            x="-70"
-            y="20"
-            width="690"
-            height="38"
-            fill="url(#woloHeroSlashGlare)"
-            mask="url(#woloHeroTextMask)"
-            transform="skewX(-17)"
-            opacity="0.88"
+            x="-60"
+            y="26"
+            width="860"
+            height="42"
+            fill="url(#woloHeroDiagonalGlare)"
+            mask="url(#woloHeroWordmarkMask)"
+            transform="skewX(-18)"
+            opacity="0.9"
           />
         </g>
       </svg>
