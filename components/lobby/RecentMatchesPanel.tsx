@@ -2,7 +2,7 @@
 
 import { formatLobbyMoment } from "@/components/lobby/utils";
 import Link from "next/link";
-import { type ReactNode, type UIEvent, useCallback, useEffect, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import {
   getLobbyPresentationTone,
   type LobbyThemeKey,
@@ -46,7 +46,6 @@ function mergeMatchLists(primary: LobbyMatchRow[], secondary: LobbyMatchRow[]) {
   return merged;
 }
 
-
 export function RecentMatchesPanel({
   recentMatches,
   themeKey,
@@ -55,17 +54,24 @@ export function RecentMatchesPanel({
 }: RecentMatchesPanelProps) {
   const tone = getLobbyPresentationTone(themeKey, viewMode);
   const isExtreme = surface === "extreme";
+
   const [matches, setMatches] = useState(recentMatches);
   const [hasMoreMatches, setHasMoreMatches] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+
   const matchesRef = useRef(matches);
   const loadingRef = useRef(false);
+  const hasMoreRef = useRef(true);
   const matchFeedScrollRef = useRef<HTMLDivElement | null>(null);
-  const hasMoreRef = useRef(hasMoreMatches);
+  const matchFeedSentinelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setMatches((current) => mergeMatchLists(recentMatches, current));
-    setHasMoreMatches(true);
+
+    if (recentMatches.length > 0) {
+      hasMoreRef.current = true;
+      setHasMoreMatches(true);
+    }
   }, [recentMatches]);
 
   useEffect(() => {
@@ -77,7 +83,7 @@ export function RecentMatchesPanel({
   }, [hasMoreMatches]);
 
   const loadMoreMatches = useCallback(async () => {
-    if (loadingRef.current) return;
+    if (loadingRef.current || !hasMoreRef.current) return;
 
     loadingRef.current = true;
     setIsLoadingMore(true);
@@ -98,6 +104,12 @@ export function RecentMatchesPanel({
       const payload = (await response.json()) as RecentMatchesResponse;
       const nextMatches = Array.isArray(payload.matches) ? payload.matches : [];
 
+      if (nextMatches.length === 0) {
+        hasMoreRef.current = false;
+        setHasMoreMatches(false);
+        return;
+      }
+
       setMatches((current) => mergeMatchLists(current, nextMatches));
 
       const nextHasMore =
@@ -117,52 +129,71 @@ export function RecentMatchesPanel({
     }
   }, []);
 
-  const handleMatchFeedScroll = useCallback(
-    (event: UIEvent<HTMLDivElement>) => {
-      const target = event.currentTarget;
-      const distanceFromBottom =
-        target.scrollHeight - target.scrollTop - target.clientHeight;
-
-      if (distanceFromBottom < 420) {
-        void loadMoreMatches();
-      }
-    },
-    [loadMoreMatches]
-  );
-
-  const visibleMatches = matches;
-
-  function maybeFillMatchFeedHistory() {
+  const maybeLoadMoreMatches = useCallback(() => {
     if (loadingRef.current || !hasMoreRef.current) return;
 
     const viewport = matchFeedScrollRef.current;
     if (!viewport) return;
 
-    const needsMoreRows = viewport.scrollHeight <= viewport.clientHeight + 48;
-    const nearBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight <= 160;
+    const distanceFromBottom =
+      viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
+
+    const needsMoreRows = viewport.scrollHeight <= viewport.clientHeight + 24;
+    const nearBottom = distanceFromBottom <= 320;
 
     if (needsMoreRows || nearBottom) {
       void loadMoreMatches();
     }
-  }
+  }, [loadMoreMatches]);
 
   useEffect(() => {
     if (!hasMoreMatches || isLoadingMore) return;
 
-    const frame = window.requestAnimationFrame(maybeFillMatchFeedHistory);
-    const settleTimer = window.setTimeout(maybeFillMatchFeedHistory, 180);
-    const lateTimer = window.setTimeout(maybeFillMatchFeedHistory, 520);
+    const frame = window.requestAnimationFrame(maybeLoadMoreMatches);
+    const settleTimer = window.setTimeout(maybeLoadMoreMatches, 180);
+    const lateTimer = window.setTimeout(maybeLoadMoreMatches, 520);
 
     return () => {
       window.cancelAnimationFrame(frame);
       window.clearTimeout(settleTimer);
       window.clearTimeout(lateTimer);
     };
-  }, [matches.length, hasMoreMatches, isLoadingMore, loadMoreMatches]);
+  }, [matches.length, hasMoreMatches, isLoadingMore, maybeLoadMoreMatches]);
+
+  useEffect(() => {
+    const root = matchFeedScrollRef.current;
+    const target = matchFeedSentinelRef.current;
+
+    if (!root || !target || !hasMoreMatches || isLoadingMore) return;
+
+    if (typeof IntersectionObserver === "undefined") {
+      maybeLoadMoreMatches();
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          void loadMoreMatches();
+        }
+      },
+      {
+        root,
+        rootMargin: "280px 0px",
+        threshold: 0.01,
+      }
+    );
+
+    observer.observe(target);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [matches.length, hasMoreMatches, isLoadingMore, loadMoreMatches, maybeLoadMoreMatches]);
 
   return (
     <div
-      className={`flex h-[min(76dvh,46rem)] min-h-[28rem] flex-col overflow-hidden rounded-[1.75rem] border p-5 sm:h-[min(78dvh,48rem)] sm:min-h-[30rem] sm:p-6 lg:h-[min(78dvh,50rem)] lg:min-h-[32rem] ${
+      className={`flex max-h-[min(76dvh,50rem)] flex-col overflow-hidden rounded-[1.75rem] border p-5 sm:p-6 ${
         isExtreme
           ? "border-amber-200/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.045),rgba(255,255,255,0.018))] shadow-[0_26px_88px_rgba(0,0,0,0.28)]"
           : tone.panelShell
@@ -177,18 +208,22 @@ export function RecentMatchesPanel({
             Recent Parsed Games
           </h3>
         </div>
-
       </div>
 
-      <div ref={matchFeedScrollRef} className="mt-5 h-[min(52dvh,32rem)] min-h-0 max-h-[min(52dvh,32rem)] overflow-y-auto overscroll-contain pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-busy={isLoadingMore} onScroll={handleMatchFeedScroll}>
+      <div
+        ref={matchFeedScrollRef}
+        className="mt-5 min-h-0 max-h-[min(52dvh,32rem)] overflow-y-auto overscroll-contain pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        aria-busy={isLoadingMore}
+        onScroll={maybeLoadMoreMatches}
+      >
         <div className="space-y-3">
-          {visibleMatches.length === 0 ? (
+          {matches.length === 0 ? (
             <p className={`rounded-2xl border px-4 py-5 text-sm text-slate-300 ${tone.card}`}>
               Parsed matches will show here as soon as the watcher uploads them.
             </p>
           ) : (
             <>
-              {visibleMatches.map((match) => (
+              {matches.map((match) => (
                 <MatchCard
                   key={match.id}
                   match={match}
@@ -197,6 +232,9 @@ export function RecentMatchesPanel({
                 />
               ))}
 
+              {hasMoreMatches ? (
+                <div ref={matchFeedSentinelRef} className="h-px" aria-hidden="true" />
+              ) : null}
             </>
           )}
         </div>
@@ -247,11 +285,11 @@ function MatchCard({
         </div>
       </div>
 
-      {playedAt && (
+      {playedAt ? (
         <div className="mt-3 text-xs text-slate-400">
           {formatLobbyMoment(playedAt)}
         </div>
-      )}
+      ) : null}
     </Link>
   );
 }
