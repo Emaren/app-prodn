@@ -2,7 +2,7 @@
 
 import { formatLobbyMoment } from "@/components/lobby/utils";
 import Link from "next/link";
-import { type UIEvent, useCallback, useEffect, useRef, useState } from "react";
+import { type UIEvent, type WheelEvent, useCallback, useEffect, useRef, useState } from "react";
 
 import SteamLinkedBadge from "@/components/SteamLinkedBadge";
 import {
@@ -84,6 +84,7 @@ export function LeaderboardPanel({
   );
   const entriesRef = useRef(entries);
   const leaderboardPanelRef = useRef<HTMLDivElement | null>(null);
+  const leaderboardScrollRef = useRef<HTMLDivElement | null>(null);
   const leaderboardSentinelRef = useRef<HTMLButtonElement | null>(null);
   const preloadAllRef = useRef(false);
   const loadingRef = useRef(false);
@@ -166,12 +167,37 @@ export function LeaderboardPanel({
     [loadMoreLeaderboardEntries]
   );
 
+  const handleLeaderboardWheel = useCallback(
+    (event: WheelEvent<HTMLDivElement>) => {
+      const target = event.currentTarget;
+
+      if (target.scrollHeight <= target.clientHeight) return;
+
+      const maxScrollTop = Math.max(0, target.scrollHeight - target.clientHeight);
+      const nextScrollTop = Math.max(0, Math.min(maxScrollTop, target.scrollTop + event.deltaY));
+
+      if (nextScrollTop !== target.scrollTop) {
+        event.preventDefault();
+        event.stopPropagation();
+        target.scrollTop = nextScrollTop;
+      }
+
+      const distanceFromBottom = target.scrollHeight - target.scrollTop - target.clientHeight;
+
+      if (distanceFromBottom < 640) {
+        void loadMoreLeaderboardEntries();
+      }
+    },
+    [loadMoreLeaderboardEntries]
+  );
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (!canLoadMore) return;
 
     const node = leaderboardSentinelRef.current;
-    if (!node) return;
+    const root = leaderboardScrollRef.current;
+    if (!node || !root) return;
 
     const observer = new IntersectionObserver(
       (items) => {
@@ -180,7 +206,7 @@ export function LeaderboardPanel({
         }
       },
       {
-        root: null,
+        root,
         rootMargin: "900px 0px",
         threshold: 0.01,
       }
@@ -274,8 +300,8 @@ export function LeaderboardPanel({
   }, [leaderboard.trackedPlayers, loadMoreLeaderboardEntries]);
 
   const leaderboardScrollClassName = isExtreme
-    ? "mt-6 h-[min(78dvh,56rem)] min-h-0 space-y-3 overflow-y-auto overscroll-contain pr-2 [scrollbar-width:thin]"
-    : "mt-6 h-[min(68dvh,44rem)] min-h-0 space-y-3 overflow-y-auto overscroll-contain pr-2 [scrollbar-width:thin] sm:h-[min(70dvh,48rem)] lg:h-[min(74dvh,54rem)]";
+    ? "mt-6 h-[min(78dvh,56rem)] min-h-0 space-y-3 overflow-y-auto overscroll-contain pr-2 [scrollbar-width:thin] [-webkit-overflow-scrolling:touch] [touch-action:pan-y]"
+    : "mt-6 h-[min(68dvh,44rem)] min-h-0 space-y-3 overflow-y-auto overscroll-contain pr-2 [scrollbar-width:thin] [-webkit-overflow-scrolling:touch] [touch-action:pan-y] sm:h-[min(70dvh,48rem)] lg:h-[min(74dvh,54rem)]";
 
   const leaderboardPanelShellClassName = isExtreme
     ? `relative flex min-h-[112rem] flex-col rounded-[1.85rem] border p-5 transition-all duration-300 sm:p-6 lg:min-h-[118rem] xl:min-h-[126rem] ${tone.panelShell}`
@@ -361,7 +387,13 @@ export function LeaderboardPanel({
         </div>
       </div>
 
-      <div className={leaderboardScrollClassName} aria-busy={isLoadingMore} onScroll={handleLeaderboardScroll}>
+      <div
+        ref={leaderboardScrollRef}
+        className={leaderboardScrollClassName}
+        aria-busy={isLoadingMore}
+        onScroll={handleLeaderboardScroll}
+        onWheel={handleLeaderboardWheel}
+      >
         {entries.length === 0 ? (
           <div className="rounded-2xl border border-white/8 bg-white/5 px-4 py-5 text-sm leading-6 text-slate-300">
             Need more final games.
@@ -442,21 +474,21 @@ export function LeaderboardPanel({
             </Link>
           ))
         )}
-      </div>
-
-      {canLoadMore ? (
-        <button
-          ref={leaderboardSentinelRef}
-          type="button"
-          onClick={() => {
+        {canLoadMore ? (
+          <button
+            ref={leaderboardSentinelRef}
+            type="button"
+            onClick={() => {
             void loadMoreLeaderboardEntries();
           }}
-          disabled={isLoadingMore}
-          className="mt-5 flex w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4 text-xs font-semibold uppercase tracking-[0.24em] text-slate-300 transition hover:border-amber-200/30 hover:bg-amber-300/10 hover:text-amber-100 disabled:cursor-wait disabled:opacity-70"
-        >
+            disabled={isLoadingMore}
+            className="mt-5 flex w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4 text-xs font-semibold uppercase tracking-[0.24em] text-slate-300 transition hover:border-amber-200/30 hover:bg-amber-300/10 hover:text-amber-100 disabled:cursor-wait disabled:opacity-70"
+          >
           {isLoadingMore ? "Loading more warriors..." : "Load more warriors"}
-        </button>
-      ) : null}
+          </button>
+        ) : null}
+
+      </div>
 
       <div className={`mt-5 flex flex-wrap items-center justify-end gap-3 border-t pt-4 ${tone.divider}`}>
         <Link
