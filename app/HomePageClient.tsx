@@ -1052,7 +1052,7 @@ return () => {
 
   const chatCardStyle: CSSProperties | undefined =
     chatCardHeight && typeof window !== "undefined" && window.innerWidth >= 1024
-      ? { height: `${chatCardHeight}px`, minHeight: `${chatCardHeight}px` }
+      ? { height: `${chatCardHeight}px`, minHeight: `${chatCardHeight}px`, maxHeight: `${chatCardHeight}px`, overflow: "hidden" }
       : undefined;
   const heroRailStyle: CSSProperties | undefined =
     heroRailHeight && typeof window !== "undefined" && window.innerWidth >= 1024

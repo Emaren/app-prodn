@@ -104,8 +104,6 @@ export function LobbyChat(props: LobbyChatProps) {
   const tone = getLobbyPresentationTone(themeKey, viewMode);
   const isExtreme = surface === "extreme";
   const [showChatJump, setShowChatJump] = useState(false);
-  const chatAutoBottomReadyRef = useRef(false);
-  const chatUserDetachedFromBottomRef = useRef(false);
   const [typingHudMode, setTypingHudMode] = useState<"steady" | "pulse">("steady");
   const [ownTypingPulse, setOwnTypingPulse] = useState(false);
   const ownTypingPulseTimerRef = useRef<number | null>(null);
@@ -145,13 +143,6 @@ export function LobbyChat(props: LobbyChatProps) {
     });
   }
 
-  function isChatNearBottom(threshold = 180) {
-    const node = chatScrollRef.current;
-    if (!node) return true;
-
-    const distanceFromBottom = node.scrollHeight - node.scrollTop - node.clientHeight;
-    return distanceFromBottom <= threshold;
-  }
 
   function updateChatJumpButton() {
     const viewport = chatScrollRef.current;
@@ -176,46 +167,8 @@ export function LobbyChat(props: LobbyChatProps) {
   }
 
   function handleChatScroll() {
-    if (chatAutoBottomReadyRef.current) {
-      chatUserDetachedFromBottomRef.current = !isChatNearBottom(220);
-    }
-
     updateChatJumpButton();
   }
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const node = chatScrollRef.current;
-    if (!node || chatItems.length === 0) return;
-
-    const shouldStickToBottom =
-      !chatAutoBottomReadyRef.current ||
-      !chatUserDetachedFromBottomRef.current ||
-      isChatNearBottom(280);
-
-    if (!shouldStickToBottom) return;
-
-    const scrollToLatest = () => {
-      const currentNode = chatScrollRef.current;
-      if (!currentNode) return;
-
-      currentNode.scrollTop = currentNode.scrollHeight;
-      chatAutoBottomReadyRef.current = true;
-      chatUserDetachedFromBottomRef.current = false;
-      updateChatJumpButton();
-    };
-
-    const frame = window.requestAnimationFrame(scrollToLatest);
-    const settleTimer = window.setTimeout(scrollToLatest, 80);
-    const lateTimer = window.setTimeout(scrollToLatest, 260);
-
-    return () => {
-      window.cancelAnimationFrame(frame);
-      window.clearTimeout(settleTimer);
-      window.clearTimeout(lateTimer);
-    };
-  }, [chatItems, chatScrollRef]);
 
 
 
@@ -271,7 +224,7 @@ export function LobbyChat(props: LobbyChatProps) {
 
   return (
     <div
-      className={`flex h-[min(76dvh,46rem)] min-h-[28rem] w-full min-w-0 max-w-full flex-col overflow-hidden rounded-[1.75rem] border p-4 sm:h-[min(78dvh,48rem)] sm:min-h-[30rem] sm:p-5 lg:h-full lg:min-h-full lg:p-6 ${
+      className={`flex h-[min(76dvh,46rem)] min-h-[28rem] w-full min-w-0 max-w-full flex-col overflow-hidden rounded-[1.75rem] border p-4 sm:h-[min(78dvh,48rem)] sm:min-h-[30rem] sm:p-5 lg:h-full lg:min-h-0 lg:max-h-full lg:p-6 ${
         isExtreme
           ? "border-amber-200/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.045),rgba(255,255,255,0.018))] shadow-[0_26px_88px_rgba(0,0,0,0.28)]"
           : tone.panelShell
@@ -295,7 +248,7 @@ export function LobbyChat(props: LobbyChatProps) {
         <div
           className={`relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-[1.5rem] border p-3 sm:p-4 ${tone.insetPanel}`}
         >
-          <div ref={chatScrollRef} onScroll={handleChatScroll} className="min-h-0 min-w-0 flex-1 space-y-2 overflow-x-hidden overflow-y-auto pb-12 pr-1">
+          <div ref={chatScrollRef} onScroll={handleChatScroll} className="min-h-0 min-w-0 flex-1 overscroll-contain space-y-2 overflow-x-hidden overflow-y-auto pb-12 pr-1">
             {chatItems.length === 0 ? (
               <div className={`rounded-xl border px-4 py-5 text-sm text-slate-300 ${tone.subduedCard}`}>
                 No messages yet. The first tournament chatter starts here.
