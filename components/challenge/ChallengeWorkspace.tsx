@@ -1261,43 +1261,48 @@ export default function ChallengeWorkspace() {
                   ) : null}
 
                   {scheduleMode === "extreme" ? (
+
                     <section className="rounded-[1.5rem] border border-amber-200/20 bg-[radial-gradient(circle_at_80%_0%,rgba(251,191,36,0.16),transparent_38%),linear-gradient(135deg,rgba(30,41,59,0.88),rgba(2,6,23,0.92))] p-4 sm:p-5">
                       <div className="flex items-center justify-between gap-3">
                         <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-amber-100/65">Their invitation preview</div>
                         <Zap className="h-4 w-4 text-amber-200" />
                       </div>
-                      <div className="mt-4 flex items-center justify-center gap-3 sm:gap-5">
-                        <div className="text-center">
-                          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-amber-200/20 bg-amber-300/10 text-lg font-black text-amber-50">YOU</div>
+
+                      <div className="mx-auto mt-4 grid w-fit grid-cols-[5.25rem_5.25rem_11.5rem] items-start justify-center gap-4 text-center sm:grid-cols-[5.75rem_5.75rem_13rem] sm:gap-5">
+                        <div className="flex min-w-0 flex-col items-center">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-full border border-amber-200/20 bg-amber-300/10 text-lg font-black text-amber-50">
+                            YOU
+                          </div>
+                          <div className="mt-3 w-full truncate text-xl font-black leading-none text-white">
+                            You
+                          </div>
                         </div>
-                        <div className="text-center">
-                          <div className="text-[10px] uppercase tracking-[0.28em] text-amber-100/55">Challenge</div>
-                          <Swords className="mx-auto mt-1 h-7 w-7 text-amber-200" />
+
+                        <div className="flex min-w-0 flex-col items-center">
+                          <div className="h-4 text-[10px] uppercase tracking-[0.28em] text-amber-100/55">
+                            Challenge
+                          </div>
+                          <Swords className="mt-1 h-7 w-7 text-amber-200" />
+                          <div className="mt-3 w-full truncate text-xl font-black lowercase leading-none text-amber-100">
+                            vs
+                          </div>
                         </div>
-                        <div className="text-center">
-                          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-cyan-200/20 bg-cyan-300/10 text-lg font-black text-cyan-50">
+
+                        <div className="flex min-w-0 flex-col items-center">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-full border border-cyan-200/20 bg-cyan-300/10 text-lg font-black text-cyan-50">
                             {(selectedOpponent?.name || "?").slice(0, 2).toUpperCase()}
+                          </div>
+                          <div className="mt-3 w-full truncate text-xl font-black leading-none text-white">
+                            {selectedOpponent?.name || "Choose a rival"}
                           </div>
                         </div>
                       </div>
 
-                        <div className="mx-auto mt-4 grid w-fit grid-cols-[5.5rem_5.5rem_13rem] items-center justify-center gap-5 text-center text-2xl font-black leading-tight text-white sm:grid-cols-[6.5rem_6.5rem_15rem] sm:gap-6">
-                          <div className="min-w-0 truncate">
-                            You
-                          </div>
-                          <div className="min-w-0 truncate text-amber-100">
-                            vs
-                          </div>
-                          <div className="min-w-0 truncate">
-                            {selectedOpponent?.name || "Choose a rival"}
-                          </div>
-                        </div>
-                      <div className="mt-2 flex flex-wrap justify-center gap-2 text-[11px] text-slate-300">
+                      <div className="mt-3 flex flex-wrap justify-center gap-2 text-[11px] text-slate-300">
                         <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1">{schedulePreviewLocal}</span>
                         <span className="rounded-full border border-amber-200/15 bg-amber-300/10 px-3 py-1 text-amber-50">{totalFundingPreview.toLocaleString()} WOLO each</span>
                         {automaticTitleStakes.length > 0 ? <span className="rounded-full border border-violet-200/15 bg-violet-300/10 px-3 py-1 text-violet-50">{automaticTitleStakes.length} title {automaticTitleStakes.length === 1 ? "stake" : "stakes"}</span> : null}
                       </div>
-                      {challengeNote ? <div className="mx-auto mt-3 max-w-lg text-center text-sm italic leading-6 text-slate-300">“{challengeNote}”</div> : null}
                     </section>
                   ) : null}
 
