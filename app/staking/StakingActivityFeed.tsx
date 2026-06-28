@@ -1274,18 +1274,18 @@ function ActivityRow({
     const isCanadianBelt = beltAsset.badge.toLowerCase().includes("canadian");
     const beltFlag = isCanadianBelt ? "🇨🇦" : "🏆";
     const beltStageClassName = isCanadianBelt
-      ? "pointer-events-none absolute bottom-[0.18rem] right-[1.85rem] top-[2.02rem] z-30 flex w-[34%] items-end justify-center sm:right-[6.75rem] sm:w-[27.5%]"
-      : "pointer-events-none absolute bottom-[0.22rem] right-[1.92rem] top-[2.1rem] z-30 flex w-[34%] items-end justify-center sm:right-[6.85rem] sm:w-[27.25%]";
+      ? "pointer-events-none absolute bottom-[2.18rem] right-[0.58rem] top-[0.82rem] z-30 flex w-[33.25%] items-end justify-center sm:right-[5.55rem] sm:w-[26.8%]"
+      : "pointer-events-none absolute bottom-[2.26rem] right-[0.66rem] top-[0.86rem] z-30 flex w-[33.15%] items-end justify-center sm:right-[5.65rem] sm:w-[26.65%]";
     const beltImageClassName = isCanadianBelt
-      ? "h-auto max-h-[6.9rem] w-auto max-w-full translate-y-[0.72rem] object-contain opacity-[0.99] drop-shadow-[0_24px_42px_rgba(0,0,0,0.82)] sm:max-h-[7.05rem]"
-      : "h-auto max-h-[6.75rem] w-auto max-w-full translate-y-[0.64rem] object-contain opacity-[0.99] drop-shadow-[0_24px_42px_rgba(0,0,0,0.82)] sm:max-h-[6.95rem]";
+      ? "h-auto max-h-[6.55rem] w-auto max-w-full translate-y-[0.12rem] object-contain opacity-[0.99] drop-shadow-[0_24px_42px_rgba(0,0,0,0.82)] sm:max-h-[6.72rem]"
+      : "h-auto max-h-[6.42rem] w-auto max-w-full translate-y-[0.08rem] object-contain opacity-[0.99] drop-shadow-[0_24px_42px_rgba(0,0,0,0.82)] sm:max-h-[6.62rem]";
     const beltContextLines = beltDetail
       .split(/\s*[·•]\s*/g)
       .map((part) => part.trim())
       .filter(Boolean);
 
     const beltCardClassName = [
-      "relative max-w-full overflow-hidden rounded-[1.22rem] border border-transparent bg-slate-950/70",
+      "relative max-w-full overflow-hidden rounded-[1.18rem] border-0 bg-slate-950/70",
       "bg-[radial-gradient(115%_135%_at_5%_48%,rgba(255,220,135,0.22)_0%,rgba(189,121,30,0.15)_24%,transparent_53%),radial-gradient(115%_135%_at_96%_52%,rgba(245,178,72,0.24)_0%,rgba(156,92,24,0.15)_25%,transparent_54%),radial-gradient(70%_125%_at_50%_-8%,rgba(255,244,214,0.095)_0%,rgba(255,244,214,0.035)_24%,transparent_48%),linear-gradient(96deg,rgba(48,32,16,0.94)_0%,rgba(17,17,24,0.955)_29%,rgba(5,10,24,0.99)_50%,rgba(17,17,24,0.955)_71%,rgba(48,32,16,0.94)_100%)]",
       "px-4 py-[1.18rem] sm:px-5",
       "shadow-[0_14px_34px_rgba(0,0,0,0.25),0_0_30px_rgba(242,189,79,0.045)]",
@@ -1301,8 +1301,8 @@ function ActivityRow({
       
         style={{
           backgroundImage: `linear-gradient(90deg, rgba(3,7,18,0.34), rgba(3,7,18,0.16) 42%, rgba(3,7,18,0.00) 70%), url("${BELT_PAYOUT_CARD_BG}")`,
-          backgroundPosition: "49.2% 26%",
-          backgroundSize: "102.15% 105.45%",
+          backgroundPosition: "49.55% 39%",
+          backgroundSize: "100.95% 102.35%",
           backgroundRepeat: "no-repeat",
         }}
       >
