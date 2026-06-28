@@ -865,8 +865,8 @@ function LobbyMessageCard({
                   disabled={reactingMessageId === item.message.id}
                   className={`inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-full border px-3 text-[13px] font-semibold transition ${
                     reaction.viewerReacted
-                      ? "border-amber-200/14 bg-amber-400/14 text-amber-50 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.08)]"
-                      : "border-white/[0.055] bg-[#0b1423]/86 text-slate-300 hover:border-white/[0.11] hover:bg-white/[0.06] hover:text-white"
+                      ? "border-transparent bg-amber-400/14 text-amber-50 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.035)]"
+                      : "border-transparent bg-white/[0.035] text-slate-300 hover:border-transparent hover:bg-white/[0.075] hover:text-white"
                   } disabled:cursor-not-allowed disabled:opacity-60`}
                 >
                   <span>{reaction.emoji}</span>
@@ -885,8 +885,8 @@ function LobbyMessageCard({
           disabled={isBusy}
           className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-base font-semibold transition ${
             reactionDockOpen
-              ? "border-amber-200/18 bg-amber-400/16 text-amber-50 shadow-[0_0_22px_rgba(251,191,36,0.14)]"
-              : "border-white/[0.055] bg-[#0b1423]/90 text-slate-300 hover:border-white/[0.11] hover:bg-white/[0.07] hover:text-white"
+              ? "border-transparent bg-amber-400/16 text-amber-50 shadow-[0_0_18px_rgba(251,191,36,0.10)]"
+              : "border-transparent bg-white/[0.035] text-slate-300 hover:border-transparent hover:bg-white/[0.075] hover:text-white"
           } disabled:cursor-not-allowed disabled:opacity-60`}
         >
           <span aria-hidden="true">{reactionDockOpen ? "×" : "+"}</span>
@@ -894,7 +894,7 @@ function LobbyMessageCard({
       </div>
 
       <div
-        className={`absolute inset-x-3 bottom-14 z-30 origin-bottom rounded-[1.15rem] border border-amber-100/[0.07] bg-[#07111f]/96 p-2.5 shadow-[0_22px_58px_rgba(0,0,0,0.48),inset_0_0_0_1px_rgba(255,255,255,0.035)] backdrop-blur-xl transition duration-150 ${
+        className={`absolute inset-x-3 bottom-14 z-30 origin-bottom rounded-[1.15rem] border border-white/[0.035] bg-[#07111f]/96 p-2.5 shadow-[0_22px_58px_rgba(0,0,0,0.48),inset_0_0_0_1px_rgba(255,255,255,0.035)] backdrop-blur-xl transition duration-150 ${
           reactionDockOpen
             ? "pointer-events-auto translate-y-0 scale-100 opacity-100"
             : "pointer-events-none translate-y-1 scale-[0.98] opacity-0"
@@ -917,8 +917,8 @@ function LobbyMessageCard({
                 disabled={reactingMessageId === item.message.id}
                 className={`flex h-10 min-w-0 items-center justify-center rounded-full border text-[17px] transition ${
                   isActive
-                    ? "border-amber-200/18 bg-amber-400/18 text-amber-50 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.12)]"
-                    : "border-white/[0.055] bg-white/[0.045] text-slate-200 hover:border-white/[0.11] hover:bg-white/[0.1] hover:text-white"
+                    ? "border-transparent bg-amber-400/18 text-amber-50 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.04)]"
+                    : "border-transparent bg-white/[0.04] text-slate-200 hover:border-transparent hover:bg-white/[0.095] hover:text-white"
                 } disabled:cursor-not-allowed disabled:opacity-60`}
               >
                 <span>{emoji}</span>
