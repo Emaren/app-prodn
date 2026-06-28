@@ -1268,7 +1268,7 @@ export default function ChallengeWorkspace() {
                         <Zap className="h-4 w-4 text-amber-200" />
                       </div>
 
-                      <div className="mx-auto mt-4 grid w-fit grid-cols-[5.25rem_5.25rem_11.5rem] items-start justify-center gap-4 text-center sm:grid-cols-[5.75rem_5.75rem_13rem] sm:gap-5">
+                      <div className="mx-auto mt-4 grid w-full max-w-[30rem] grid-cols-3 items-start text-center sm:max-w-[34rem]">
                         <div className="flex min-w-0 flex-col items-center">
                           <div className="flex h-12 w-12 items-center justify-center rounded-full border border-amber-200/20 bg-amber-300/10 text-lg font-black text-amber-50">
                             YOU
