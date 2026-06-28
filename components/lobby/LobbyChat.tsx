@@ -517,11 +517,7 @@ function LobbyMessageCard({
   onEditMessage: (messageId: number, body: string) => void;
   onDeleteMessage: (messageId: number) => void;
 }) {
-  const [pickerPinnedOpen, setPickerPinnedOpen] = useState(false);
-  const [pickerHovered, setPickerHovered] = useState(false);
-  const holdTimerRef = useRef<number | null>(null);
-  const hoverCloseTimerRef = useRef<number | null>(null);
-  const longPressTriggeredRef = useRef(false);
+  const [reactionDockOpen, setReactionDockOpen] = useState(false);
   const cardRef = useRef<HTMLDivElement | null>(null);
   const isAi = item.message.user.isAi;
   const canManageMessage =
@@ -530,132 +526,63 @@ function LobbyMessageCard({
     displayName(item.message.user.inGameName, item.message.user.steamPersonaName) || "The AI Scribe";
   const authorName = displayName(item.message.user.inGameName, item.message.user.steamPersonaName) || aiLabel;
   const avatarSrc = avatarThumbUrlForUser(item.message.user.uid, authorName);
+  const isBusy = reactingMessageId === item.message.id || moderatingMessageId === item.message.id;
 
   useEffect(() => {
-    if (!pickerPinnedOpen || typeof document === "undefined") {
-      return;
-    }
+    if (!reactionDockOpen || typeof document === "undefined") return;
 
     const handlePointerDown = (event: PointerEvent) => {
       if (!cardRef.current?.contains(event.target as Node)) {
-        setPickerPinnedOpen(false);
+        setReactionDockOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setReactionDockOpen(false);
       }
     };
 
     document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
     return () => {
       document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [pickerPinnedOpen]);
-
-  useEffect(() => {
-    return () => {
-      clearHoldTimer();
-      clearHoverCloseTimer();
-    };
-  }, []);
-
-  function clearHoldTimer() {
-    if (holdTimerRef.current) {
-      window.clearTimeout(holdTimerRef.current);
-      holdTimerRef.current = null;
-    }
-  }
-
-  function clearHoverCloseTimer() {
-    if (hoverCloseTimerRef.current) {
-      window.clearTimeout(hoverCloseTimerRef.current);
-      hoverCloseTimerRef.current = null;
-    }
-  }
-
-  function prefersHover() {
-    return (
-      typeof window !== "undefined" &&
-      window.matchMedia("(hover: hover) and (pointer: fine)").matches
-    );
-  }
-
-  function beginLongPress(pointerType: string) {
-    if (pointerType === "mouse") return;
-    longPressTriggeredRef.current = false;
-    clearHoldTimer();
-    holdTimerRef.current = window.setTimeout(() => {
-      longPressTriggeredRef.current = true;
-      setPickerPinnedOpen(true);
-    }, 360);
-  }
-
-  function handleCardTap() {
-    if (prefersHover()) {
-      return;
-    }
-    if (longPressTriggeredRef.current) {
-      longPressTriggeredRef.current = false;
-      return;
-    }
-    setPickerPinnedOpen((current) => !current);
-  }
-
-  function handleDesktopHoverStart() {
-    if (!prefersHover()) return;
-    clearHoverCloseTimer();
-    setPickerHovered(true);
-  }
-
-  function handleDesktopHoverEnd() {
-    if (!prefersHover()) return;
-    clearHoverCloseTimer();
-    hoverCloseTimerRef.current = window.setTimeout(() => {
-      setPickerHovered(false);
-    }, 140);
-  }
+  }, [reactionDockOpen]);
 
   function handleReactionToggle(event: MouseEvent<HTMLButtonElement>, emoji: string) {
     event.stopPropagation();
     onToggleReaction(item.message.id, emoji);
-    setPickerPinnedOpen(false);
+    setReactionDockOpen(false);
   }
 
-  function handleReactionHandleClick(event: MouseEvent<HTMLButtonElement>) {
+  function handleReactionDockToggle(event: MouseEvent<HTMLButtonElement>) {
     event.stopPropagation();
-    clearHoverCloseTimer();
-    setPickerPinnedOpen((current) => !current);
+    setReactionDockOpen((current) => !current);
   }
 
   function handleEditClick(event: MouseEvent<HTMLButtonElement>) {
     event.stopPropagation();
     const nextBody = window.prompt("Edit lobby message", item.message.body);
-    if (nextBody === null) {
-      return;
-    }
+    if (nextBody === null) return;
     onEditMessage(item.message.id, nextBody);
-    setPickerPinnedOpen(false);
+    setReactionDockOpen(false);
   }
 
   function handleDeleteClick(event: MouseEvent<HTMLButtonElement>) {
     event.stopPropagation();
     const confirmed = window.confirm("Delete this lobby message?");
-    if (!confirmed) {
-      return;
-    }
+    if (!confirmed) return;
     onDeleteMessage(item.message.id);
-    setPickerPinnedOpen(false);
+    setReactionDockOpen(false);
   }
-
-  const pickerVisible = pickerPinnedOpen || pickerHovered;
 
   return (
     <div
       ref={cardRef}
-      className={`group relative overflow-hidden rounded-xl border px-4 py-4 ${tone.subduedCard}`}
-      onClick={handleCardTap}
-      onPointerDown={(event) => beginLongPress(event.pointerType)}
-      onPointerUp={clearHoldTimer}
-      onPointerCancel={clearHoldTimer}
-      onPointerLeave={clearHoldTimer}
-      onMouseEnter={handleDesktopHoverStart}
-      onMouseLeave={handleDesktopHoverEnd}
+      className={`relative rounded-xl border px-4 py-4 ${tone.subduedCard}`}
     >
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
@@ -674,7 +601,7 @@ function LobbyMessageCard({
           </div>
         </div>
 
-        <div className="text-xs text-slate-400">
+        <div className="shrink-0 text-xs text-slate-400">
           {formatLobbyMoment(item.message.createdAt)}
         </div>
       </div>
@@ -695,99 +622,117 @@ function LobbyMessageCard({
         ) : null}
       </div>
 
-      <p className="mt-3 text-sm leading-6 text-slate-200">{item.message.body}</p>
+      <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-slate-200">
+        {item.message.body}
+      </p>
 
-      <div className="mt-4 flex min-w-0 max-w-full flex-wrap items-center gap-2 overflow-x-hidden">
-        {item.message.reactions.map((reaction) => {
-          const tooltip =
-            isAuthenticated && (reaction.users.length > 0 || reaction.anonymousCount > 0)
-              ? formatReactionTooltip(reaction)
-              : undefined;
-
-          return (
-            <button
-              key={`${item.message.id}-${reaction.emoji}-summary`}
-              type="button"
-              onClick={(event) => handleReactionToggle(event, reaction.emoji)}
-              title={tooltip}
-              aria-pressed={reaction.viewerReacted}
-              disabled={reactingMessageId === item.message.id}
-              className={`inline-flex min-h-10 min-w-[3.55rem] items-center justify-center gap-1.5 rounded-full border px-4 py-2 text-[13px] font-medium transition ${
-                reaction.viewerReacted
-                  ? "border-amber-300/20 bg-amber-400/12 text-amber-100"
-                  : "border-white/10 bg-[#0c1524] text-slate-300 hover:border-white/18 hover:text-white"
-              } disabled:cursor-not-allowed disabled:opacity-60`}
-            >
-              <span>{reaction.emoji}</span>
-              <span>{reaction.count}</span>
-            </button>
-          );
-        })}
-
-        <button
-          type="button"
-          onClick={handleReactionHandleClick}
-          aria-label={pickerVisible ? "Hide reactions" : "Show reactions"}
-          aria-expanded={pickerVisible}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-[#0c1524] text-base text-slate-300 transition hover:border-white/18 hover:text-white"
-        >
-          +
-        </button>
-      </div>
-
-        <div
-          className={`mt-3 max-w-full overflow-hidden transition-all duration-150 ${
-            pickerVisible ? "max-h-64 opacity-100" : "max-h-0 opacity-0"
-          }`}
-          onMouseEnter={handleDesktopHoverStart}
-          onMouseLeave={handleDesktopHoverEnd}
-        >
-          <div className="flex w-full min-w-0 max-w-full flex-wrap items-center gap-2 overflow-x-hidden rounded-2xl border border-white/10 bg-[#091321] p-2 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.025)]">
-            {LOBBY_MESSAGE_REACTIONS.map((emoji) => {
-              const existing = item.message.reactions.find((reaction) => reaction.emoji === emoji);
-              const isActive = Boolean(existing?.viewerReacted);
+      <div className="mt-4 flex min-w-0 items-center gap-2">
+        <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto pb-0.5 pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {item.message.reactions.length > 0 ? (
+            item.message.reactions.map((reaction) => {
+              const tooltip =
+                isAuthenticated && (reaction.users.length > 0 || reaction.anonymousCount > 0)
+                  ? formatReactionTooltip(reaction)
+                  : undefined;
 
               return (
                 <button
-                  key={`${item.message.id}-${emoji}`}
+                  key={`${item.message.id}-${reaction.emoji}-summary`}
                   type="button"
-                  onClick={(event) => handleReactionToggle(event, emoji)}
-                  aria-pressed={isActive}
+                  onClick={(event) => handleReactionToggle(event, reaction.emoji)}
+                  title={tooltip}
+                  aria-pressed={reaction.viewerReacted}
                   disabled={reactingMessageId === item.message.id}
-                  className={`flex h-11 min-w-11 items-center justify-center rounded-full border px-3.5 text-[17px] transition ${
-                    isActive
-                      ? "border-amber-300/30 bg-amber-400/16 text-amber-50 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.12)]"
-                      : "border-white/10 bg-white/[0.045] text-slate-200 hover:border-white/18 hover:bg-white/[0.1] hover:text-white"
+                  className={`inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-full border px-3 text-[13px] font-semibold transition ${
+                    reaction.viewerReacted
+                      ? "border-amber-300/24 bg-amber-400/14 text-amber-50 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.08)]"
+                      : "border-white/10 bg-[#0b1423]/86 text-slate-300 hover:border-white/18 hover:bg-white/[0.06] hover:text-white"
                   } disabled:cursor-not-allowed disabled:opacity-60`}
                 >
-                  <span>{emoji}</span>
+                  <span>{reaction.emoji}</span>
+                  <span>{reaction.count}</span>
                 </button>
               );
-            })}
-
-            {canManageMessage ? (
-              <button
-                type="button"
-                onClick={handleEditClick}
-                disabled={moderatingMessageId === item.message.id}
-                className="inline-flex h-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.045] px-3 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-200 transition hover:border-white/18 hover:bg-white/[0.1] hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                Edit
-              </button>
-            ) : null}
-
-            {canManageMessage ? (
-              <button
-                type="button"
-                onClick={handleDeleteClick}
-                disabled={moderatingMessageId === item.message.id}
-                className="inline-flex h-10 items-center justify-center rounded-full border border-rose-300/22 bg-rose-500/10 px-3 text-[11px] font-medium uppercase tracking-[0.16em] text-rose-50 transition hover:border-rose-200/30 hover:bg-rose-500/16 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                Delete
-              </button>
-            ) : null}
-          </div>
+            })
+          ) : (
+            <span className="inline-flex h-9 shrink-0 items-center rounded-full border border-white/8 bg-[#0b1423]/55 px-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+              React
+            </span>
+          )}
         </div>
+
+        <button
+          type="button"
+          onClick={handleReactionDockToggle}
+          aria-label={reactionDockOpen ? "Close reaction dock" : "Open reaction dock"}
+          aria-expanded={reactionDockOpen}
+          disabled={isBusy}
+          className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-base font-semibold transition ${
+            reactionDockOpen
+              ? "border-amber-300/32 bg-amber-400/16 text-amber-50 shadow-[0_0_22px_rgba(251,191,36,0.14)]"
+              : "border-white/10 bg-[#0b1423]/90 text-slate-300 hover:border-white/18 hover:bg-white/[0.07] hover:text-white"
+          } disabled:cursor-not-allowed disabled:opacity-60`}
+        >
+          <span aria-hidden="true">{reactionDockOpen ? "×" : "+"}</span>
+        </button>
+      </div>
+
+      <div
+        className={`absolute inset-x-3 bottom-14 z-30 origin-bottom rounded-[1.15rem] border border-amber-100/12 bg-[#07111f]/96 p-2.5 shadow-[0_22px_58px_rgba(0,0,0,0.48),inset_0_0_0_1px_rgba(255,255,255,0.035)] backdrop-blur-xl transition duration-150 ${
+          reactionDockOpen
+            ? "pointer-events-auto translate-y-0 scale-100 opacity-100"
+            : "pointer-events-none translate-y-1 scale-[0.98] opacity-0"
+        }`}
+        role="dialog"
+        aria-label="Message reactions"
+        aria-hidden={!reactionDockOpen}
+      >
+        <div className="grid grid-cols-7 gap-1.5">
+          {LOBBY_MESSAGE_REACTIONS.map((emoji) => {
+            const existing = item.message.reactions.find((reaction) => reaction.emoji === emoji);
+            const isActive = Boolean(existing?.viewerReacted);
+
+            return (
+              <button
+                key={`${item.message.id}-${emoji}`}
+                type="button"
+                onClick={(event) => handleReactionToggle(event, emoji)}
+                aria-pressed={isActive}
+                disabled={reactingMessageId === item.message.id}
+                className={`flex h-10 min-w-0 items-center justify-center rounded-full border text-[17px] transition ${
+                  isActive
+                    ? "border-amber-300/34 bg-amber-400/18 text-amber-50 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.12)]"
+                    : "border-white/10 bg-white/[0.045] text-slate-200 hover:border-white/18 hover:bg-white/[0.1] hover:text-white"
+                } disabled:cursor-not-allowed disabled:opacity-60`}
+              >
+                <span>{emoji}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {canManageMessage ? (
+          <div className="mt-2 grid grid-cols-2 gap-1.5">
+            <button
+              type="button"
+              onClick={handleEditClick}
+              disabled={moderatingMessageId === item.message.id}
+              className="inline-flex h-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.045] px-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-200 transition hover:border-white/18 hover:bg-white/[0.1] hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Edit
+            </button>
+
+            <button
+              type="button"
+              onClick={handleDeleteClick}
+              disabled={moderatingMessageId === item.message.id}
+              className="inline-flex h-9 items-center justify-center rounded-full border border-rose-300/22 bg-rose-500/10 px-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-rose-50 transition hover:border-rose-200/30 hover:bg-rose-500/16 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Delete
+            </button>
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }
