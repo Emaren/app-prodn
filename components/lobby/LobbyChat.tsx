@@ -221,7 +221,7 @@ export function LobbyChat(props: LobbyChatProps) {
 
   return (
     <div
-      className={`flex h-[min(76dvh,46rem)] min-h-[28rem] w-full min-w-0 max-w-full flex-col overflow-hidden rounded-[1.75rem] border p-4 sm:h-[min(78dvh,48rem)] sm:min-h-[30rem] sm:p-5 lg:h-[min(78dvh,50rem)] lg:min-h-[32rem] lg:p-6 ${
+      className={`flex h-[min(76dvh,46rem)] min-h-[28rem] w-full min-w-0 max-w-full flex-col overflow-hidden rounded-[1.75rem] border p-4 sm:h-[min(78dvh,48rem)] sm:min-h-[30rem] sm:p-5 lg:h-full lg:min-h-full lg:p-6 ${
         isExtreme
           ? "border-amber-200/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.045),rgba(255,255,255,0.018))] shadow-[0_26px_88px_rgba(0,0,0,0.28)]"
           : tone.panelShell
@@ -654,11 +654,7 @@ function LobbyMessageCard({
                 </button>
               );
             })
-          ) : (
-            <span className="inline-flex h-9 shrink-0 items-center rounded-full border border-white/8 bg-[#0b1423]/55 px-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-              React
-            </span>
-          )}
+          ) : null}
         </div>
 
         <button
