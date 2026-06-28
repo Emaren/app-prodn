@@ -1281,14 +1281,14 @@ export default function ChallengeWorkspace() {
                         </div>
                       </div>
 
-                        <div className="mx-auto mt-4 grid w-full max-w-[34rem] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 text-2xl font-black leading-tight text-white">
-                          <div className="min-w-0 truncate text-right">
+                        <div className="mx-auto mt-4 grid w-fit grid-cols-[5.5rem_5.5rem_13rem] items-center justify-center gap-5 text-center text-2xl font-black leading-tight text-white sm:grid-cols-[6.5rem_6.5rem_15rem] sm:gap-6">
+                          <div className="min-w-0 truncate">
                             You
                           </div>
-                          <div className="px-1 text-center text-amber-100">
+                          <div className="min-w-0 truncate text-amber-100">
                             vs
                           </div>
-                          <div className="min-w-0 truncate text-left">
+                          <div className="min-w-0 truncate">
                             {selectedOpponent?.name || "Choose a rival"}
                           </div>
                         </div>
