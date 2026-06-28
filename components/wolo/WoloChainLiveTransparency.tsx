@@ -1,6 +1,51 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+type WoloHolderAliasable = {
+  address?: string | null;
+  label?: string | null;
+  name?: string | null;
+  holder?: string | null;
+  displayName?: string | null;
+  hideBalance?: boolean;
+  amountUwolo?: string | number | null;
+  amountWolo?: string | number | null;
+  amountWoloFormatted?: string | null;
+  balanceUwolo?: string | number | null;
+  balanceWolo?: string | number | null;
+  balanceFormatted?: string | null;
+  balance?: string | number | null;
+};
+
+const WOLO_PLAYER_HOLDER_ALIAS_BY_ADDRESS: Record<string, { label: string; hideBalance: boolean }> = {
+  wolo1xamdfayrjy8eauyy65uuvkepuvvcdtqlq6q39k: { label: "Zodiac", hideBalance: true },
+  wolo198ajhn5atpw65u6z89z5hwfer2vx90u4ydxe7z: { label: "Ra 𓁛𓇳", hideBalance: true },
+  wolo1ntal93v8c5wryq2d9puhks8l25zedhepyv8n5k: { label: "[BDB]Pigman", hideBalance: true },
+};
+
+function decorateWoloPlayerHolderForDisplay<T extends WoloHolderAliasable>(holder: T): T {
+  const alias = WOLO_PLAYER_HOLDER_ALIAS_BY_ADDRESS[String(holder.address ?? "").toLowerCase()];
+
+  if (!alias) {
+    return holder;
+  }
+
+  return {
+    ...holder,
+    label: alias.label,
+    name: alias.label,
+    holder: alias.label,
+    displayName: alias.label,
+    hideBalance: alias.hideBalance,
+    amountUwolo: alias.hideBalance ? null : holder.amountUwolo,
+    amountWolo: alias.hideBalance ? null : holder.amountWolo,
+    amountWoloFormatted: alias.hideBalance ? null : holder.amountWoloFormatted,
+    balanceUwolo: alias.hideBalance ? null : holder.balanceUwolo,
+    balanceWolo: alias.hideBalance ? null : holder.balanceWolo,
+    balanceFormatted: alias.hideBalance ? null : holder.balanceFormatted,
+    balance: alias.hideBalance ? null : holder.balance,
+  } as T;
+}
 
 type NetworkAccount = {
   label: string;
@@ -170,7 +215,11 @@ export default function WoloChainLiveTransparency() {
       if (!holdersResponse.ok) throw new Error("Wolo holders unavailable.");
 
       setNetwork((await networkResponse.json()) as NetworkPayload);
-      setHolders((await holdersResponse.json()) as HoldersPayload);
+      const holdersPayload = (await holdersResponse.json()) as HoldersPayload;
+      setHolders({
+        ...holdersPayload,
+        holders: holdersPayload.holders.map(decorateWoloPlayerHolderForDisplay),
+      });
     } catch (refreshError) {
       setError(refreshError instanceof Error ? refreshError.message : "Live WoloChain data unavailable.");
     }
