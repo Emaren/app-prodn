@@ -967,10 +967,7 @@ export default function ChallengeWorkspace() {
                     <Swords className="h-4 w-4" />
                     New match
                   </div>
-<p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
-                    Pick your rival. Pick the hour. Keplr locks your side and sends a challenge they will actually want to open.
-                  </p>
-                </div>
+</div>
                 <div
                   className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] ${
                     challengeEscrowReady
@@ -979,7 +976,7 @@ export default function ChallengeWorkspace() {
                   }`}
                 >
                   <ShieldCheck className="h-3.5 w-3.5" />
-                  {challengeEscrowReady ? "Verified escrow live" : "Escrow unavailable"}
+                  {challengeEscrowReady ? "" : "Escrow unavailable"}
                 </div>
               </div>
 
@@ -1242,7 +1239,7 @@ export default function ChallengeWorkspace() {
                         <div className="mt-3 flex flex-wrap gap-2">
                           {[
                             "You. Me. One clean set. Winner owns the room.",
-                            "Bo3? No excuses. Let the replay settle it.",
+                            "Name the battlefield. Set the hour. Let war decide.",
                             "{opponent}, the board needs our names on it.",
                           ].map((line) => (
                             <button key={line} type="button" onClick={() => applyChallengeLine(line)} className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[11px] text-slate-300 transition hover:border-cyan-200/25 hover:text-white">
@@ -1257,7 +1254,7 @@ export default function ChallengeWorkspace() {
                         maxRows={4}
                         maxLength={CHALLENGE_NOTE_MAX_CHARS}
                         className="mt-3 w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm leading-6 text-white outline-none focus:border-amber-300/50"
-                        placeholder="Bo3 on Yucatan in an hour? Let's put it on the board."
+                        placeholder="Name the battlefield. Set the hour. Let war decide."
                       />
                       <div className="mt-1.5 text-right text-[10px] uppercase tracking-[0.16em] text-slate-500">{challengeNote.length}/{CHALLENGE_NOTE_MAX_CHARS}</div>
                     </section>
