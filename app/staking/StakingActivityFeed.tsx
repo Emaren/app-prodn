@@ -973,6 +973,12 @@ function sanitizeActivityCopy(value?: string | null) {
 
 const BELT_ACTIVITY_ASSETS = [
   {
+    terms: ["chaos champion tribute", "chaos champion", "chaos"],
+    src: "/champions/belts/chaos.png",
+    alt: "Chaos Champion belt",
+    badge: "Chaos Champion",
+  },
+  {
     terms: ["canada champion tribute", "canadian champion", "canada champion", "canada"],
     src: "/api/media-assets/belt/national-canada?fallback=/champions/belts/canada.png",
     alt: "Canadian Championship belt",
@@ -1245,14 +1251,15 @@ function ActivityRow({
   const displayTimestampLabel = sanitizeActivityCopy(item.timestampLabel || item.meta);
 
   if (beltAsset) {
+    const beltTitle = beltAsset.badge;
     const beltHeadline = amountLabel
-      ? `${displayAmountLabel} Canadian Championship title payout`
-      : displayLabel.replace(/direct transfer/gi, "Canadian Championship title payout");
+      ? `${displayAmountLabel} ${beltTitle} title payout`
+      : displayLabel.replace(/direct transfer/gi, `${beltTitle} title payout`);
 
     const beltDetail = displayDetail
       .replace(/Founder Rewards\s*->\s*/gi, "Founder Rewards → ")
       .replace(/AoE2WAR\s+(?:Canada Champion|Canadian Champion|Champion of Canada|Canadian Championship)\s+Tribute/gi, "AoE2WAR Canadian Championship Tribute")
-      .replace(/(AoE2WAR Canadian Championship Tribute)\s*[—-]\s*.*$/i, "$1")
+      .replace(/(AoE2WAR (?:Canadian Championship|Chaos Champion|USA Champion|Mexico Champion|UK Champion|World Champion|Elite Champion|Veteran Champion|Legend Champion|Rising Champion|Challenger Champion) Tribute)\s*[—-]\s*.*$/i, "$1")
       .replace(/Daily title payout for\s*$/i, "Daily title payout");
 
     const beltFlag = beltAsset.badge.toLowerCase().includes("canadian") ? "🇨🇦" : "🏆";
