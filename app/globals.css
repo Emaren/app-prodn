@@ -214,47 +214,46 @@ input[type="datetime-local"] {
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  border-color: rgba(255, 219, 92, 0.46) !important;
+  border-color: rgba(255, 214, 83, 0.44) !important;
   color: #120700 !important;
   background:
     linear-gradient(
       180deg,
-      #fff8cf 0%,
-      #ffe982 10%,
-      #dca716 31%,
-      #b97708 53%,
-      #744006 76%,
-      #2d1103 92%,
-      #080201 100%
+      #ffe982 0%,
+      #e7bd32 15%,
+      #d29a12 34%,
+      #b97708 54%,
+      #8a5007 74%,
+      #3b1a04 100%
     ) !important;
   box-shadow:
-    inset 0 1px 0 rgba(255, 250, 216, 0.56),
-    inset 0 -8px 15px rgba(11, 3, 0, 0.38),
-    0 7px 14px rgba(0, 0, 0, 0.34),
-    0 0 18px rgba(220, 167, 22, 0.11) !important;
+    inset 0 1px 0 rgba(255, 238, 155, 0.34),
+    inset 0 -7px 13px rgba(24, 8, 0, 0.22),
+    0 7px 14px rgba(0, 0, 0, 0.32),
+    0 0 16px rgba(220, 167, 22, 0.10) !important;
   text-shadow:
-    0 1px 0 rgba(255, 236, 151, 0.28),
-    0 -1px 0 rgba(47, 18, 0, 0.28);
+    0 1px 0 rgba(255, 230, 128, 0.22),
+    0 -1px 0 rgba(47, 18, 0, 0.22);
 }
 
 :is(a, button, [role="button"]):has(img[alt="WOLO Wallet"])::before,
 .wolo-wallet-cta::before {
   content: "";
   position: absolute;
-  left: 10%;
-  right: 10%;
-  top: 7%;
-  height: 34%;
+  left: 12%;
+  right: 12%;
+  top: 9%;
+  height: 26%;
   z-index: 0;
   border-radius: 999px;
   background:
     linear-gradient(
       180deg,
-      rgba(255, 255, 255, 0.34) 0%,
-      rgba(238, 236, 220, 0.17) 46%,
+      rgba(255, 244, 190, 0.22) 0%,
+      rgba(218, 216, 198, 0.10) 48%,
       rgba(255, 255, 255, 0) 100%
     );
-  opacity: 0.62;
+  opacity: 0.54;
   pointer-events: none;
 }
 
@@ -263,14 +262,14 @@ input[type="datetime-local"] {
   content: "";
   position: absolute;
   inset: auto 0 0 0;
-  height: 46%;
+  height: 38%;
   z-index: 0;
   background:
     linear-gradient(
       180deg,
       rgba(0, 0, 0, 0) 0%,
-      rgba(43, 15, 0, 0.18) 48%,
-      rgba(0, 0, 0, 0.45) 100%
+      rgba(43, 15, 0, 0.08) 50%,
+      rgba(0, 0, 0, 0.20) 100%
     );
   pointer-events: none;
 }
@@ -285,21 +284,21 @@ input[type="datetime-local"] {
 .wolo-wallet-cta-logo,
 .wolo-wallet-cta img,
 .wolo-wallet-cta svg {
-  transform: translateY(-2px) scale(1.045);
+  transform: translateY(-2px) scale(1.04);
   filter:
-    drop-shadow(0 2px 2px rgba(0, 0, 0, 0.38))
-    drop-shadow(0 0 5px rgba(255, 221, 86, 0.14));
+    drop-shadow(0 2px 2px rgba(0, 0, 0, 0.34))
+    drop-shadow(0 0 5px rgba(255, 221, 86, 0.12));
 }
 
 :is(a, button, [role="button"]):has(img[alt="WOLO Wallet"]):hover,
 .wolo-wallet-cta:hover {
-  border-color: rgba(255, 232, 132, 0.66) !important;
-  filter: brightness(1.045) saturate(1.02);
+  border-color: rgba(255, 226, 112, 0.62) !important;
+  filter: brightness(1.035) saturate(1.02);
   box-shadow:
-    inset 0 1px 0 rgba(255, 250, 216, 0.66),
-    inset 0 -8px 15px rgba(11, 3, 0, 0.34),
-    0 9px 18px rgba(0, 0, 0, 0.38),
-    0 0 22px rgba(220, 167, 22, 0.16) !important;
+    inset 0 1px 0 rgba(255, 238, 155, 0.42),
+    inset 0 -7px 13px rgba(24, 8, 0, 0.18),
+    0 9px 18px rgba(0, 0, 0, 0.36),
+    0 0 20px rgba(220, 167, 22, 0.14) !important;
 }
 /* End AoE2WAR / WoloChain premium WOLO Wallet CTA */
 
