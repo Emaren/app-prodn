@@ -104,6 +104,8 @@ export function LobbyChat(props: LobbyChatProps) {
   const tone = getLobbyPresentationTone(themeKey, viewMode);
   const isExtreme = surface === "extreme";
   const [showChatJump, setShowChatJump] = useState(false);
+  const chatAutoBottomReadyRef = useRef(false);
+  const chatUserDetachedFromBottomRef = useRef(false);
   const [typingHudMode, setTypingHudMode] = useState<"steady" | "pulse">("steady");
   const [ownTypingPulse, setOwnTypingPulse] = useState(false);
   const ownTypingPulseTimerRef = useRef<number | null>(null);
@@ -143,6 +145,14 @@ export function LobbyChat(props: LobbyChatProps) {
     });
   }
 
+  function isChatNearBottom(threshold = 180) {
+    const node = chatScrollRef.current;
+    if (!node) return true;
+
+    const distanceFromBottom = node.scrollHeight - node.scrollTop - node.clientHeight;
+    return distanceFromBottom <= threshold;
+  }
+
   function updateChatJumpButton() {
     const viewport = chatScrollRef.current;
     if (!viewport) return;
@@ -166,8 +176,48 @@ export function LobbyChat(props: LobbyChatProps) {
   }
 
   function handleChatScroll() {
+    if (chatAutoBottomReadyRef.current) {
+      chatUserDetachedFromBottomRef.current = !isChatNearBottom(220);
+    }
+
     updateChatJumpButton();
   }
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const node = chatScrollRef.current;
+    if (!node || chatItems.length === 0) return;
+
+    const shouldStickToBottom =
+      !chatAutoBottomReadyRef.current ||
+      !chatUserDetachedFromBottomRef.current ||
+      isChatNearBottom(280);
+
+    if (!shouldStickToBottom) return;
+
+    const scrollToLatest = () => {
+      const currentNode = chatScrollRef.current;
+      if (!currentNode) return;
+
+      currentNode.scrollTop = currentNode.scrollHeight;
+      chatAutoBottomReadyRef.current = true;
+      chatUserDetachedFromBottomRef.current = false;
+      updateChatJumpButton();
+    };
+
+    const frame = window.requestAnimationFrame(scrollToLatest);
+    const settleTimer = window.setTimeout(scrollToLatest, 80);
+    const lateTimer = window.setTimeout(scrollToLatest, 260);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(settleTimer);
+      window.clearTimeout(lateTimer);
+    };
+  }, [chatItems, chatScrollRef]);
+
+
 
   const viewerName =
     playerName || displayName(currentUserInGameName, currentUserSteamPersonaName) || "You";
