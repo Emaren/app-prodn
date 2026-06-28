@@ -16,7 +16,7 @@ import {
 import { StatCard } from "@/components/lobby/StatCard";
 import type { Aoe2HdPulseItem, Aoe2HdPulseSnapshot } from "@/lib/aoe2HdPulse";
 import type { LobbyLeaderboardEntry, LobbyMatchRow, LobbySnapshot } from "@/lib/lobby";
-import { avatarThumbUrlForName } from "@/lib/avatarAssets";
+import { avatarThumbUrlForName, avatarThumbUrlForUser } from "@/lib/avatarAssets";
 import { TILE_VIEW_MODES, type TileViewMode } from "@/lib/tileViewPreferences";
 
 type WoloMoved24hSnapshot = {
@@ -414,7 +414,7 @@ export function LobbyHero({
                           </div>
                           <div className="relative h-14 w-14 overflow-hidden rounded-full border border-amber-200/24 bg-black/30">
                             <Image
-                              src={avatarThumbUrlForName(entry.name)}
+                              src={avatarThumbUrlForUser(entry.uid, entry.name)}
                               alt=""
                               fill
                               unoptimized

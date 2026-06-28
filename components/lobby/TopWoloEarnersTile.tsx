@@ -11,7 +11,7 @@ import {
 } from "@/components/lobby/lobbyPresentation";
 import type { LobbySnapshot } from "@/lib/lobby";
 import type { LobbyWoloEarnersEntry, LobbyWoloEarnersMode } from "@/lib/lobby";
-import { avatarThumbUrlForName } from "@/lib/avatarAssets";
+import { avatarThumbUrlForUser } from "@/lib/avatarAssets";
 
 const WOLO_LOGO_SRC = "/api/media-assets/logo/footer-wolo?fallback=%2Flegacy%2Fwolo-logo-transparent.webp";
 
@@ -248,7 +248,7 @@ export function TopWoloEarnersTile({
                 const primaryMetric =
                   mode === "weekly" ? entry.weeklyTakeWolo : entry.allTimeTakeWolo;
                 const primaryLabel = mode === "weekly" ? "Weekly take" : "All-time take";
-                const avatarSrc = avatarThumbUrlForName(entry.name);
+                const avatarSrc = avatarThumbUrlForUser(entry.uid, entry.name);
                 const rowClassName = isExtreme
                   ? "relative block overflow-hidden rounded-[1.25rem] border border-amber-200/8 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),rgba(255,255,255,0.018))] px-3 py-3 transition hover:border-amber-200/22 hover:bg-amber-300/7 sm:px-4 sm:py-4"
                   : `block rounded-[1.25rem] border px-4 py-4 transition ${tone.card} ${tone.cardHover}`;

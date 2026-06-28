@@ -134,6 +134,7 @@ export type LobbyLeaderboardEntry = {
   rank: number;
   key: string;
   name: string;
+  uid: string | null;
   href: string;
   elo: number | null;
   arenaElo: number | null;
@@ -193,6 +194,7 @@ export type LobbyWoloEarnersEntry = {
   rank: number;
   key: string;
   name: string;
+  uid: string | null;
   href: string;
   claimed: boolean;
   verified: boolean;

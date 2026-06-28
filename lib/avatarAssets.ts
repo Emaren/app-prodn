@@ -42,6 +42,14 @@ function normalizeName(value: string | null | undefined) {
     .replace(/\s+/g, " ");
 }
 
+
+const ZODIAC_UID_AVATAR_TARGET = "user-u-06c16d39d25c476fac2c86fee7b4d189";
+
+function managedAvatarTargetOverrideForName(name: string | null | undefined) {
+  const normalized = String(name ?? "").trim().toLowerCase();
+  return normalized === "zodiac" ? ZODIAC_UID_AVATAR_TARGET : null;
+}
+
 export function slugifyAvatarTarget(value: string | null | undefined) {
   return normalizeName(value)
     .replace(/&/g, " and ")
@@ -123,6 +131,12 @@ const MANAGED_NAME_AVATAR_TARGETS = new Set([
 ]);
 
 export function avatarUrlForName(name: string | null | undefined) {
+
+  const managedOverrideTarget = managedAvatarTargetOverrideForName(name);
+  if (managedOverrideTarget) {
+    return managedAvatarUrl(managedOverrideTarget, avatarFallbackForName(name));
+  }
+
   const normalized = normalizeLeaderboardAvatarTarget(name);
 
   if (!normalized || !MANAGED_NAME_AVATAR_TARGETS.has(normalized)) {
@@ -133,6 +147,12 @@ export function avatarUrlForName(name: string | null | undefined) {
 }
 
 export function avatarThumbUrlForName(name: string | null | undefined) {
+
+  const managedThumbOverrideTarget = managedAvatarTargetOverrideForName(name);
+  if (managedThumbOverrideTarget) {
+    return managedAvatarUrl(managedThumbOverrideTarget, avatarFallbackForName(name), { size: "thumb" });
+  }
+
   const normalized = normalizeLeaderboardAvatarTarget(name);
 
   if (!normalized || !MANAGED_NAME_AVATAR_TARGETS.has(normalized)) {
@@ -143,6 +163,12 @@ export function avatarThumbUrlForName(name: string | null | undefined) {
 }
 
 export function avatarCardUrlForName(name: string | null | undefined) {
+
+  const managedCardOverrideTarget = managedAvatarTargetOverrideForName(name);
+  if (managedCardOverrideTarget) {
+    return managedAvatarUrl(managedCardOverrideTarget, avatarFallbackForName(name), { size: "card" });
+  }
+
   const normalized = normalizeLeaderboardAvatarTarget(name);
 
   if (!normalized || !MANAGED_NAME_AVATAR_TARGETS.has(normalized)) {
@@ -150,6 +176,15 @@ export function avatarCardUrlForName(name: string | null | undefined) {
   }
 
   return managedAvatarUrl(normalized, avatarFallbackForName(normalized), { size: "card" });
+}
+
+export function avatarCardUrlForUser(uid: string | null | undefined, name: string | null | undefined) {
+  const normalizedUid = slugifyAvatarTarget(uid);
+  if (!normalizedUid) {
+    return avatarCardUrlForName(name);
+  }
+
+  return managedAvatarUrl(`user-${normalizedUid}`, avatarFallbackForName(name), { size: "card" });
 }
 
 export function avatarUrlForUser(uid: string | null | undefined, name: string | null | undefined) {

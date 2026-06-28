@@ -28,9 +28,10 @@ import {
   type LobbyMessage,
   type LobbySnapshot,
 } from "@/lib/lobby";
-import { avatarUrlForName } from "@/lib/avatarAssets";
+import { avatarCardUrlForUser, avatarUrlForName } from "@/lib/avatarAssets";
 
 const EMPTY_MESSAGES: LobbyMessage[] = [];
+const ZODIAC_UID = "u_06c16d39d25c476fac2c86fee7b4d189";
 
 const FEATURED_WARRIOR_SLOT_COUNT = 4;
 const FEATURED_WARRIOR_ROTATE_MS = 5200;
@@ -90,6 +91,15 @@ const FEATURED_WARRIOR_FALLBACKS: FeaturedWarrior[] = [
 ];
 
 const FEATURED_WARRIOR_PREMIUM_POOL: FeaturedWarrior[] = [
+
+  {
+    key: "premium:zodiac",
+    name: "Zodiac",
+    lookupName: "Zodiac",
+    role: "Chaos Champion",
+    href: `/players/${encodeURIComponent(ZODIAC_UID)}`,
+    imageUrl: avatarCardUrlForUser(ZODIAC_UID, "Zodiac"),
+  },
   ...FEATURED_WARRIOR_FALLBACKS,
   {
     key: "premium:bdbpigman",
@@ -225,6 +235,8 @@ function usePrefersReducedMotion() {
 const FEATURED_WARRIOR_MIN_REAL_AVATARS = 3;
 
 const FEATURED_WARRIOR_REAL_AVATAR_KEYS = new Set([
+  "premium:zodiac",
+  "zodiac",
   "dil-pascana",
   "premium:sniper",
   "premium:julio",
@@ -326,6 +338,7 @@ function deterministicFeaturedWarriorOpening(pool: FeaturedWarrior[]) {
   }
 
   const preferredKeys = [
+    "premium:zodiac",
     "dil-pascana",
     "premium:sniper",
     "premium:julio-alvarez",

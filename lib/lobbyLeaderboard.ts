@@ -411,6 +411,7 @@ function toLobbyLeaderboardEntry(
     rank,
     key: entry.key,
     name: entry.name,
+    uid: "uid" in entry ? ((entry as { uid?: string | null }).uid ?? null) : null,
     href: entry.href,
     elo: Math.round(entry.arenaElo),
     arenaElo: Math.round(entry.arenaElo),
