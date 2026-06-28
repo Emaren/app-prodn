@@ -8,6 +8,7 @@ import {
   type ReactNode,
   type RefObject,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -27,6 +28,45 @@ import { LOBBY_MESSAGE_REACTIONS } from "@/lib/lobbyReactionConfig";
 import { avatarThumbUrlForUser } from "@/lib/avatarAssets";
 
 const TYPING_HUD_MODE_STORAGE_KEY = "aoe2war:typing-hud-mode";
+
+type ChatAudienceMember = {
+  uid: string;
+  name: string;
+  aliases: string[];
+  avatarSrc: string;
+  latestAt: string;
+  messageCount: number;
+};
+
+function normalizedChatToken(value: string | null | undefined) {
+  return (value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_\[\]\-\s]+/g, " ")
+    .replace(/\s+/g, " ");
+}
+
+function uniqueChatAliases(...values: Array<string | null | undefined>) {
+  const seen = new Set<string>();
+  const aliases: string[] = [];
+
+  for (const value of values) {
+    const normalized = normalizedChatToken(value);
+    if (!normalized || normalized.length < 2 || seen.has(normalized)) continue;
+
+    seen.add(normalized);
+    aliases.push(normalized);
+
+    for (const part of normalized.split(" ")) {
+      if (part.length >= 3 && !seen.has(part)) {
+        seen.add(part);
+        aliases.push(part);
+      }
+    }
+  }
+
+  return aliases;
+}
 
 type LobbyChatProps = {
   style?: CSSProperties;
@@ -70,7 +110,6 @@ export function LobbyChat(props: LobbyChatProps) {
     style,
     themeKey,
     viewMode,
-    chatRoomTitle,
     messagesCount,
     chatItems,
     chatScrollRef,
@@ -104,10 +143,114 @@ export function LobbyChat(props: LobbyChatProps) {
   const tone = getLobbyPresentationTone(themeKey, viewMode);
   const isExtreme = surface === "extreme";
   const [showChatJump, setShowChatJump] = useState(false);
+  const [selectedChatAudienceUids, setSelectedChatAudienceUids] = useState<string[]>([]);
   const [typingHudMode, setTypingHudMode] = useState<"steady" | "pulse">("steady");
   const [ownTypingPulse, setOwnTypingPulse] = useState(false);
   const ownTypingPulseTimerRef = useRef<number | null>(null);
   const lastMessageBodyForTypingPulseRef = useRef(messageBody);
+
+  const chatAudience = useMemo(() => {
+    const audience = new Map<string, ChatAudienceMember>();
+
+    for (const item of chatItems) {
+      if (item.type !== "message") continue;
+      if (item.message.user.isAi) continue;
+
+      const uid = item.message.user.uid;
+      if (!uid) continue;
+
+      const name =
+        displayName(item.message.user.inGameName, item.message.user.steamPersonaName) || "Player";
+      const aliases = uniqueChatAliases(
+        name,
+        item.message.user.inGameName,
+        item.message.user.steamPersonaName,
+        uid
+      );
+
+      const existing = audience.get(uid);
+      if (existing) {
+        existing.messageCount += 1;
+
+        if (new Date(item.message.createdAt).getTime() > new Date(existing.latestAt).getTime()) {
+          existing.latestAt = item.message.createdAt;
+        }
+
+        continue;
+      }
+
+      audience.set(uid, {
+        uid,
+        name,
+        aliases,
+        avatarSrc: avatarThumbUrlForUser(uid, name),
+        latestAt: item.message.createdAt,
+        messageCount: 1,
+      });
+    }
+
+    return Array.from(audience.values()).sort((left, right) => {
+      const latestDelta = new Date(right.latestAt).getTime() - new Date(left.latestAt).getTime();
+      return latestDelta !== 0 ? latestDelta : left.name.localeCompare(right.name);
+    });
+  }, [chatItems]);
+
+  useEffect(() => {
+    if (selectedChatAudienceUids.length === 0) return;
+
+    const available = new Set(chatAudience.map((member) => member.uid));
+    setSelectedChatAudienceUids((current) => current.filter((uid) => available.has(uid)));
+  }, [chatAudience, selectedChatAudienceUids.length]);
+
+  const selectedChatAudience = useMemo(
+    () => chatAudience.filter((member) => selectedChatAudienceUids.includes(member.uid)),
+    [chatAudience, selectedChatAudienceUids]
+  );
+
+  const filteredChatItems = useMemo(() => {
+    if (selectedChatAudience.length === 0) return chatItems;
+
+    const selectedUids = new Set(selectedChatAudience.map((member) => member.uid));
+    const selectedAliases = selectedChatAudience.flatMap((member) => member.aliases);
+    const filtered: ChatRenderItem[] = [];
+    let pendingDivider: Extract<ChatRenderItem, { type: "divider" }> | null = null;
+
+    for (const item of chatItems) {
+      if (item.type === "divider") {
+        pendingDivider = item;
+        continue;
+      }
+
+      const body = normalizedChatToken(item.message.body);
+      const authorUid = item.message.user.uid;
+      const authoredBySelected = authorUid ? selectedUids.has(authorUid) : false;
+      const mentionsSelected = selectedAliases.some(
+        (alias) => alias.length >= 3 && body.includes(alias)
+      );
+
+      if (!authoredBySelected && !mentionsSelected) {
+        continue;
+      }
+
+      if (pendingDivider) {
+        filtered.push(pendingDivider);
+        pendingDivider = null;
+      }
+
+      filtered.push(item);
+    }
+
+    return filtered;
+  }, [chatItems, selectedChatAudience]);
+
+  const displayedMessagesCount = filteredChatItems.filter((item) => item.type === "message").length;
+
+  function toggleChatAudienceUid(uid: string) {
+    setSelectedChatAudienceUids((current) =>
+      current.includes(uid) ? current.filter((existing) => existing !== uid) : [...current, uid]
+    );
+  }
+
 
   function pulseOwnTypingHud() {
     if (typeof window === "undefined") return;
@@ -234,13 +377,58 @@ export function LobbyChat(props: LobbyChatProps) {
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0 flex-1">
           <div className={`text-xs uppercase tracking-[0.35em] ${tone.eyebrow}`}>Chat</div>
-          <h3 className="mt-1.5 min-w-0 truncate whitespace-nowrap text-[clamp(1.35rem,4.8vw,2rem)] font-semibold leading-tight text-white">
-            {chatRoomTitle}
-          </h3>
+          <div className="mt-2 flex min-h-10 min-w-0 items-center gap-2 overflow-x-auto pb-0.5 pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {chatAudience.map((member) => {
+              const selected = selectedChatAudienceUids.includes(member.uid);
+
+              return (
+                <button
+                  key={member.uid}
+                  type="button"
+                  onClick={() => toggleChatAudienceUid(member.uid)}
+                  aria-pressed={selected}
+                  title={selected ? `Remove ${member.name} filter` : `Filter ${member.name}`}
+                  className={`relative h-10 w-10 shrink-0 rounded-full transition ${
+                    selected
+                      ? "scale-105 shadow-[0_0_0_1px_rgba(251,191,36,0.55),0_0_22px_rgba(251,191,36,0.18)]"
+                      : "opacity-78 shadow-[0_0_0_1px_rgba(255,255,255,0.10)] hover:opacity-100 hover:shadow-[0_0_0_1px_rgba(255,255,255,0.18)]"
+                  }`}
+                >
+                  <span className="absolute inset-0 overflow-hidden rounded-full bg-black/30">
+                    <Image
+                      src={member.avatarSrc}
+                      alt={member.name}
+                      fill
+                      unoptimized
+                      sizes="40px"
+                      className="object-cover object-top"
+                    />
+                  </span>
+                  <span
+                    className={`absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border border-[#07111f] ${
+                      selected ? "bg-amber-300" : "bg-emerald-300/70"
+                    }`}
+                    aria-hidden="true"
+                  />
+                </button>
+              );
+            })}
+
+            {selectedChatAudienceUids.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => setSelectedChatAudienceUids([])}
+                aria-label="Clear chat filters"
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/[0.06] bg-white/[0.035] text-sm font-semibold text-slate-300 transition hover:bg-white/[0.08] hover:text-white"
+              >
+                ×
+              </button>
+            ) : null}
+          </div>
         </div>
 
-        <div className={`shrink-0 rounded-full border px-3 py-1 text-xs ${tone.neutralPill}`}>
-          {messagesCount} recent
+        <div className={`shrink-0 rounded-full border border-white/[0.06] px-3 py-1 text-xs ${tone.neutralPill}`}>
+          {selectedChatAudienceUids.length > 0 ? `${displayedMessagesCount} shown` : `${messagesCount} recent`}
         </div>
       </div>
 
@@ -249,12 +437,12 @@ export function LobbyChat(props: LobbyChatProps) {
           className={`relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-[1.5rem] border p-3 sm:p-4 ${tone.insetPanel}`}
         >
           <div ref={chatScrollRef} onScroll={handleChatScroll} className="min-h-0 min-w-0 flex-1 overscroll-contain space-y-2 overflow-x-hidden overflow-y-auto pb-12 pr-1">
-            {chatItems.length === 0 ? (
+            {filteredChatItems.length === 0 ? (
               <div className={`rounded-xl border px-4 py-5 text-sm text-slate-300 ${tone.subduedCard}`}>
                 No messages yet. The first tournament chatter starts here.
               </div>
             ) : (
-              chatItems.map((item) =>
+              filteredChatItems.map((item) =>
                 item.type === "divider" ? (
                   <ChatDateDivider key={item.key} label={item.label} dividerClassName={tone.divider} />
                 ) : (
@@ -648,8 +836,8 @@ function LobbyMessageCard({
                   disabled={reactingMessageId === item.message.id}
                   className={`inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-full border px-3 text-[13px] font-semibold transition ${
                     reaction.viewerReacted
-                      ? "border-amber-300/24 bg-amber-400/14 text-amber-50 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.08)]"
-                      : "border-white/10 bg-[#0b1423]/86 text-slate-300 hover:border-white/18 hover:bg-white/[0.06] hover:text-white"
+                      ? "border-amber-200/14 bg-amber-400/14 text-amber-50 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.08)]"
+                      : "border-white/[0.055] bg-[#0b1423]/86 text-slate-300 hover:border-white/[0.11] hover:bg-white/[0.06] hover:text-white"
                   } disabled:cursor-not-allowed disabled:opacity-60`}
                 >
                   <span>{reaction.emoji}</span>
@@ -668,8 +856,8 @@ function LobbyMessageCard({
           disabled={isBusy}
           className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-base font-semibold transition ${
             reactionDockOpen
-              ? "border-amber-300/32 bg-amber-400/16 text-amber-50 shadow-[0_0_22px_rgba(251,191,36,0.14)]"
-              : "border-white/10 bg-[#0b1423]/90 text-slate-300 hover:border-white/18 hover:bg-white/[0.07] hover:text-white"
+              ? "border-amber-200/18 bg-amber-400/16 text-amber-50 shadow-[0_0_22px_rgba(251,191,36,0.14)]"
+              : "border-white/[0.055] bg-[#0b1423]/90 text-slate-300 hover:border-white/[0.11] hover:bg-white/[0.07] hover:text-white"
           } disabled:cursor-not-allowed disabled:opacity-60`}
         >
           <span aria-hidden="true">{reactionDockOpen ? "×" : "+"}</span>
@@ -677,7 +865,7 @@ function LobbyMessageCard({
       </div>
 
       <div
-        className={`absolute inset-x-3 bottom-14 z-30 origin-bottom rounded-[1.15rem] border border-amber-100/12 bg-[#07111f]/96 p-2.5 shadow-[0_22px_58px_rgba(0,0,0,0.48),inset_0_0_0_1px_rgba(255,255,255,0.035)] backdrop-blur-xl transition duration-150 ${
+        className={`absolute inset-x-3 bottom-14 z-30 origin-bottom rounded-[1.15rem] border border-amber-100/[0.07] bg-[#07111f]/96 p-2.5 shadow-[0_22px_58px_rgba(0,0,0,0.48),inset_0_0_0_1px_rgba(255,255,255,0.035)] backdrop-blur-xl transition duration-150 ${
           reactionDockOpen
             ? "pointer-events-auto translate-y-0 scale-100 opacity-100"
             : "pointer-events-none translate-y-1 scale-[0.98] opacity-0"
@@ -700,8 +888,8 @@ function LobbyMessageCard({
                 disabled={reactingMessageId === item.message.id}
                 className={`flex h-10 min-w-0 items-center justify-center rounded-full border text-[17px] transition ${
                   isActive
-                    ? "border-amber-300/34 bg-amber-400/18 text-amber-50 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.12)]"
-                    : "border-white/10 bg-white/[0.045] text-slate-200 hover:border-white/18 hover:bg-white/[0.1] hover:text-white"
+                    ? "border-amber-200/18 bg-amber-400/18 text-amber-50 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.12)]"
+                    : "border-white/[0.055] bg-white/[0.045] text-slate-200 hover:border-white/[0.11] hover:bg-white/[0.1] hover:text-white"
                 } disabled:cursor-not-allowed disabled:opacity-60`}
               >
                 <span>{emoji}</span>
@@ -716,7 +904,7 @@ function LobbyMessageCard({
               type="button"
               onClick={handleEditClick}
               disabled={moderatingMessageId === item.message.id}
-              className="inline-flex h-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.045] px-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-200 transition hover:border-white/18 hover:bg-white/[0.1] hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex h-9 items-center justify-center rounded-full border border-white/[0.055] bg-white/[0.045] px-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-200 transition hover:border-white/[0.11] hover:bg-white/[0.1] hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
             >
               Edit
             </button>
@@ -725,7 +913,7 @@ function LobbyMessageCard({
               type="button"
               onClick={handleDeleteClick}
               disabled={moderatingMessageId === item.message.id}
-              className="inline-flex h-9 items-center justify-center rounded-full border border-rose-300/22 bg-rose-500/10 px-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-rose-50 transition hover:border-rose-200/30 hover:bg-rose-500/16 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex h-9 items-center justify-center rounded-full border border-rose-300/14 bg-rose-500/10 px-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-rose-50 transition hover:border-rose-200/20 hover:bg-rose-500/16 disabled:cursor-not-allowed disabled:opacity-60"
             >
               Delete
             </button>

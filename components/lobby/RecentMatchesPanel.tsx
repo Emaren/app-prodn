@@ -153,7 +153,7 @@ export function RecentMatchesPanel({
 
       </div>
 
-      <div className="mt-5 min-h-0 flex-1 overflow-y-auto pr-1" aria-busy={isLoadingMore} onScroll={handleMatchFeedScroll}>
+      <div className="mt-5 min-h-0 flex-1 max-h-[min(58dvh,34rem)] overflow-y-auto overscroll-contain pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-busy={isLoadingMore} onScroll={handleMatchFeedScroll}>
         <div className="space-y-3">
           {visibleMatches.length === 0 ? (
             <p className={`rounded-2xl border px-4 py-5 text-sm text-slate-300 ${tone.card}`}>
