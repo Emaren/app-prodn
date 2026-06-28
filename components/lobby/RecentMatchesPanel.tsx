@@ -56,9 +56,7 @@ export function RecentMatchesPanel({
   const tone = getLobbyPresentationTone(themeKey, viewMode);
   const isExtreme = surface === "extreme";
   const [matches, setMatches] = useState(recentMatches);
-  const [hasMoreMatches, setHasMoreMatches] = useState(
-    recentMatches.length >= MATCH_FEED_PAGE_SIZE
-  );
+  const [hasMoreMatches, setHasMoreMatches] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const matchesRef = useRef(matches);
   const loadingRef = useRef(false);
@@ -67,7 +65,7 @@ export function RecentMatchesPanel({
 
   useEffect(() => {
     setMatches((current) => mergeMatchLists(recentMatches, current));
-    setHasMoreMatches(recentMatches.length >= MATCH_FEED_PAGE_SIZE);
+    setHasMoreMatches(true);
   }, [recentMatches]);
 
   useEffect(() => {
@@ -79,7 +77,7 @@ export function RecentMatchesPanel({
   }, [hasMoreMatches]);
 
   const loadMoreMatches = useCallback(async () => {
-    if (loadingRef.current || !hasMoreRef.current) return;
+    if (loadingRef.current) return;
 
     loadingRef.current = true;
     setIsLoadingMore(true);
@@ -182,7 +180,7 @@ export function RecentMatchesPanel({
 
       </div>
 
-      <div ref={matchFeedScrollRef} className="mt-5 min-h-0 flex-1 max-h-[min(58dvh,34rem)] overflow-y-auto overscroll-contain pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-busy={isLoadingMore} onScroll={handleMatchFeedScroll}>
+      <div ref={matchFeedScrollRef} className="mt-5 h-[min(52dvh,32rem)] min-h-0 max-h-[min(52dvh,32rem)] overflow-y-auto overscroll-contain pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-busy={isLoadingMore} onScroll={handleMatchFeedScroll}>
         <div className="space-y-3">
           {visibleMatches.length === 0 ? (
             <p className={`rounded-2xl border px-4 py-5 text-sm text-slate-300 ${tone.card}`}>

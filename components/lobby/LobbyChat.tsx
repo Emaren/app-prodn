@@ -144,6 +144,7 @@ export function LobbyChat(props: LobbyChatProps) {
   const isExtreme = surface === "extreme";
   const [showChatJump, setShowChatJump] = useState(false);
   const [selectedChatAudienceUids, setSelectedChatAudienceUids] = useState<string[]>([]);
+  const [chatFilterDockVisible, setChatFilterDockVisible] = useState(false);
   const [typingHudMode, setTypingHudMode] = useState<"steady" | "pulse">("steady");
   const [ownTypingPulse, setOwnTypingPulse] = useState(false);
   const ownTypingPulseTimerRef = useRef<number | null>(null);
@@ -249,6 +250,21 @@ export function LobbyChat(props: LobbyChatProps) {
     setSelectedChatAudienceUids((current) =>
       current.includes(uid) ? current.filter((existing) => existing !== uid) : [...current, uid]
     );
+  }
+
+  function handleChatShellClick(event: MouseEvent<HTMLDivElement>) {
+    const target = event.target as HTMLElement | null;
+    if (!target) return;
+
+    if (
+      target.closest(
+        '[data-chat-viewscreen="true"], [data-chat-input-zone="true"], button, a, input, textarea, select, [role="dialog"]'
+      )
+    ) {
+      return;
+    }
+
+    setChatFilterDockVisible((current) => !current);
   }
 
 
@@ -367,6 +383,7 @@ export function LobbyChat(props: LobbyChatProps) {
 
   return (
     <div
+      onClick={handleChatShellClick}
       className={`flex h-[min(76dvh,46rem)] min-h-[28rem] w-full min-w-0 max-w-full flex-col overflow-hidden rounded-[1.75rem] border p-4 sm:h-[min(78dvh,48rem)] sm:min-h-[30rem] sm:p-5 lg:h-full lg:min-h-0 lg:max-h-full lg:p-6 ${
         isExtreme
           ? "border-amber-200/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.045),rgba(255,255,255,0.018))] shadow-[0_26px_88px_rgba(0,0,0,0.28)]"
@@ -384,14 +401,10 @@ export function LobbyChat(props: LobbyChatProps) {
         </div>
       </div>
 
-      {chatAudience.length > 0 ? (
-        <div className="mt-4 rounded-2xl border border-white/[0.055] bg-[#081322]/62 px-3.5 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]">
+      {chatFilterDockVisible && chatAudience.length > 0 ? (
+        <div className="mt-4 rounded-2xl border border-white/[0.055] bg-[#081322]/52 px-3.5 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]">
           <div className="flex items-center justify-between gap-3">
-            <div className={`text-[10px] uppercase tracking-[0.28em] ${tone.eyebrow}`}>
-              Filter
-            </div>
-
-            {selectedChatAudienceUids.length > 0 ? (
+                        {selectedChatAudienceUids.length > 0 ? (
               <button
                 type="button"
                 onClick={() => setSelectedChatAudienceUids([])}
