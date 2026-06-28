@@ -13,6 +13,7 @@ export type WoloMainnetNetworkAccountUse =
   | "STAKING_OPERATIONAL_NOT_GENERAL_RECEIVE"
   | "RELAYER_GAS_DO_NOT_USE"
   | "USER"
+  | "PLAYER_DO_NOT_SHOW_BALANCE"
   | "MODULE_DO_NOT_USE";
 
 export type WoloMainnetNetworkAccountRole =
@@ -164,6 +165,24 @@ export const WOLO_MAINNET_NETWORK_ACCOUNTS = [
     role: "user",
   },
   {
+    label: "Zodiac",
+    address: "wolo1xamdfayrjy8eauyy65uuvkepuvvcdtqlq6q39k",
+    use: "PLAYER_DO_NOT_SHOW_BALANCE",
+    role: "user",
+  },
+  {
+    label: "Ra 𓁛𓇳",
+    address: "wolo198ajhn5atpw65u6z89z5hwfer2vx90u4ydxe7z",
+    use: "PLAYER_DO_NOT_SHOW_BALANCE",
+    role: "user",
+  },
+  {
+    label: "[BDB]Pigman",
+    address: "wolo1ntal93v8c5wryq2d9puhks8l25zedhepyv8n5k",
+    use: "PLAYER_DO_NOT_SHOW_BALANCE",
+    role: "user",
+  },
+  {
     label: "Module: bonded_tokens_pool",
     address: "wolo1fl48vsnmsdzcv85q5d2q4z5ajdha8yu3aqv4s2",
     use: "MODULE_DO_NOT_USE",
@@ -232,7 +251,8 @@ export function isWoloNetworkUserFacingAccount(account: WoloMainnetNetworkAccoun
     account.use === "PUBLIC_RECEIVE_OK" ||
     account.use === "BOUNTIES_PUBLIC_OK" ||
     account.use === "BET_DEPOSIT_ADDRESS_IF_MANUAL" ||
-    account.use === "USER"
+    account.use === "USER" ||
+    account.use === "PLAYER_DO_NOT_SHOW_BALANCE"
   );
 }
 
