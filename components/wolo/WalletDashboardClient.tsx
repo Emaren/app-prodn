@@ -116,8 +116,17 @@ function WalletAddressLine({ address }: { address?: string }) {
 
   return (
     <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3">
-      <div className="flex items-center justify-between gap-3">
-        <strong className="text-white">Address</strong>
+      <div className="text-[11px] uppercase tracking-[0.28em] text-slate-500">
+        Address
+      </div>
+
+      <div className="mt-2 flex min-w-0 items-center gap-2 rounded-2xl border border-white/8 bg-black/20 px-3 py-2">
+        <div
+          title={address || value}
+          className="min-w-0 flex-1 select-all break-all font-mono text-[12px] font-semibold leading-5 text-slate-100 sm:break-normal sm:text-[13px]"
+        >
+          {value}
+        </div>
 
         {address ? (
           <button
@@ -127,7 +136,7 @@ function WalletAddressLine({ address }: { address?: string }) {
             }}
             aria-label={copied ? "Address copied" : "Copy wallet address"}
             title={copied ? "Copied" : "Copy wallet address"}
-            className={`inline-flex h-10 w-10 items-center justify-center rounded-full border transition ${
+            className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition ${
               copied
                 ? "border-emerald-300/45 bg-emerald-400/12 text-emerald-100"
                 : "border-white/12 bg-white/5 text-white/85 hover:border-emerald-300/35 hover:bg-emerald-400/10 hover:text-emerald-100"
@@ -136,10 +145,6 @@ function WalletAddressLine({ address }: { address?: string }) {
             <WalletCopyIcon copied={copied} />
           </button>
         ) : null}
-      </div>
-
-      <div className="mt-2 select-all break-all font-mono text-[13px] leading-6 text-slate-100">
-        {value}
       </div>
     </div>
   );
