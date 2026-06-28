@@ -1294,8 +1294,8 @@ function ActivityRow({
       
         style={{
           backgroundImage: `linear-gradient(90deg, rgba(3,7,18,0.34), rgba(3,7,18,0.16) 42%, rgba(3,7,18,0.00) 70%), url("${BELT_PAYOUT_CARD_BG}")`,
-          backgroundPosition: "center",
-          backgroundSize: "100% 100%",
+          backgroundPosition: "center center",
+          backgroundSize: "101.35% 103.25%",
         }}
       >
         <button
@@ -1325,14 +1325,14 @@ function ActivityRow({
             ) : null}
           </div>
 
-          <div className="pointer-events-none absolute bottom-[1.02rem] right-[2.05rem] top-[2.12rem] z-30 flex w-[33%] items-end justify-center sm:right-[7.05rem] sm:w-[27%]">
+          <div className="pointer-events-none absolute bottom-[0.48rem] right-[2.05rem] top-[2.18rem] z-30 flex w-[33%] items-end justify-center sm:right-[6.95rem] sm:w-[27%]">
             <Image
               src={beltAsset.src}
               alt={beltAsset.alt}
               width={900}
               height={420}
               unoptimized
-              className="h-auto max-h-[6.35rem] w-auto max-w-full translate-y-[0.08rem] object-contain opacity-[0.99] drop-shadow-[0_22px_38px_rgba(0,0,0,0.82)] sm:max-h-[6.6rem]"
+              className="h-auto max-h-[6.45rem] w-auto max-w-full translate-y-[0.38rem] object-contain opacity-[0.99] drop-shadow-[0_24px_42px_rgba(0,0,0,0.82)] sm:max-h-[6.7rem]"
             />
           </div>
 
