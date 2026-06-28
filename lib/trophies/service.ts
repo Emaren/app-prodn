@@ -407,7 +407,7 @@ export async function executePendingTrophyTributePayouts(
   const payouts = await prisma.trophyPayout.findMany({
     where: {
       payoutKind: "daily_tribute",
-      status: { in: ["dry_run", "pending", "failed"] },
+      status: { in: ["dry_run", "pending", "retrying", "failed"] },
       txHash: null,
       recipientWoloAddress: { not: null },
       amountWolo: { gt: 0 },
