@@ -207,3 +207,73 @@ input[type="datetime-local"] {
   background: rgba(148, 163, 184, 0.18);
   filter: blur(8px);
 }
+
+/* AoE2WAR / WoloChain premium metallic hero wordmark */
+.wolo-premium-wordmark {
+  position: relative;
+  display: inline-block;
+  color: transparent;
+  background:
+    linear-gradient(
+      180deg,
+      #fff8cf 0%,
+      #f7df76 13%,
+      #d99a1f 34%,
+      #9c5b08 58%,
+      #2b1704 82%,
+      #050505 100%
+    );
+  -webkit-background-clip: text;
+  background-clip: text;
+  text-shadow:
+    0 1px 0 rgba(255, 246, 190, 0.58),
+    0 8px 18px rgba(0, 0, 0, 0.58),
+    0 0 26px rgba(214, 145, 25, 0.32),
+    0 0 54px rgba(255, 190, 54, 0.13);
+  filter: drop-shadow(0 14px 22px rgba(0, 0, 0, 0.55));
+}
+
+.wolo-premium-wordmark::before {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  color: transparent;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.92) 0%,
+      rgba(244, 244, 235, 0.58) 10%,
+      rgba(255, 246, 177, 0.14) 25%,
+      rgba(255, 255, 255, 0) 42%
+    );
+  -webkit-background-clip: text;
+  background-clip: text;
+  mix-blend-mode: screen;
+}
+
+.wolo-premium-wordmark::after {
+  content: "";
+  position: absolute;
+  left: 2%;
+  right: 2%;
+  top: 13%;
+  height: 24%;
+  z-index: 2;
+  pointer-events: none;
+  border-radius: 999px;
+  background:
+    linear-gradient(
+      100deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.03) 18%,
+      rgba(255, 255, 255, 0.48) 43%,
+      rgba(236, 236, 218, 0.21) 56%,
+      transparent 78%
+    );
+  transform: skewX(-16deg);
+  opacity: 0.68;
+  filter: blur(0.35px);
+}
+
