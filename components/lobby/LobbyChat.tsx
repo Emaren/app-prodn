@@ -377,7 +377,32 @@ export function LobbyChat(props: LobbyChatProps) {
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0 flex-1">
           <div className={`text-xs uppercase tracking-[0.35em] ${tone.eyebrow}`}>Chat</div>
-          <div className="mt-2 flex min-h-10 min-w-0 items-center gap-2 overflow-x-auto pb-0.5 pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        </div>
+
+        <div className={`shrink-0 rounded-full border border-white/[0.06] px-3 py-1 text-xs ${tone.neutralPill}`}>
+          {selectedChatAudienceUids.length > 0 ? `${displayedMessagesCount} shown` : `${messagesCount} recent`}
+        </div>
+      </div>
+
+      {chatAudience.length > 0 ? (
+        <div className="mt-4 rounded-2xl border border-white/[0.055] bg-[#081322]/62 px-3.5 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]">
+          <div className="flex items-center justify-between gap-3">
+            <div className={`text-[10px] uppercase tracking-[0.28em] ${tone.eyebrow}`}>
+              Filter
+            </div>
+
+            {selectedChatAudienceUids.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => setSelectedChatAudienceUids([])}
+                className="rounded-full border border-white/[0.06] bg-white/[0.035] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300 transition hover:bg-white/[0.08] hover:text-white"
+              >
+                Clear
+              </button>
+            ) : null}
+          </div>
+
+          <div className="mt-2.5 flex min-w-0 items-center gap-2 overflow-x-auto pb-0.5 pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {chatAudience.map((member) => {
               const selected = selectedChatAudienceUids.includes(member.uid);
 
@@ -388,24 +413,29 @@ export function LobbyChat(props: LobbyChatProps) {
                   onClick={() => toggleChatAudienceUid(member.uid)}
                   aria-pressed={selected}
                   title={selected ? `Remove ${member.name} filter` : `Filter ${member.name}`}
-                  className={`relative h-10 w-10 shrink-0 rounded-full transition ${
+                  className={`group relative flex h-11 shrink-0 items-center gap-2 rounded-full border py-1 pl-1 pr-3 transition ${
                     selected
-                      ? "scale-105 shadow-[0_0_0_1px_rgba(251,191,36,0.55),0_0_22px_rgba(251,191,36,0.18)]"
-                      : "opacity-78 shadow-[0_0_0_1px_rgba(255,255,255,0.10)] hover:opacity-100 hover:shadow-[0_0_0_1px_rgba(255,255,255,0.18)]"
+                      ? "border-amber-200/26 bg-amber-400/12 text-amber-50 shadow-[0_0_24px_rgba(251,191,36,0.12)]"
+                      : "border-white/[0.055] bg-white/[0.035] text-slate-300 hover:border-white/[0.11] hover:bg-white/[0.07] hover:text-white"
                   }`}
                 >
-                  <span className="absolute inset-0 overflow-hidden rounded-full bg-black/30">
+                  <span className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full bg-black/30 shadow-[0_0_0_1px_rgba(255,255,255,0.10)]">
                     <Image
                       src={member.avatarSrc}
                       alt={member.name}
                       fill
                       unoptimized
-                      sizes="40px"
+                      sizes="36px"
                       className="object-cover object-top"
                     />
                   </span>
+
+                  <span className="max-w-[7.5rem] truncate text-[11px] font-semibold tracking-[0.08em]">
+                    {member.name}
+                  </span>
+
                   <span
-                    className={`absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border border-[#07111f] ${
+                    className={`absolute right-1.5 top-1.5 h-2 w-2 rounded-full ${
                       selected ? "bg-amber-300" : "bg-emerald-300/70"
                     }`}
                     aria-hidden="true"
@@ -413,24 +443,10 @@ export function LobbyChat(props: LobbyChatProps) {
                 </button>
               );
             })}
-
-            {selectedChatAudienceUids.length > 0 ? (
-              <button
-                type="button"
-                onClick={() => setSelectedChatAudienceUids([])}
-                aria-label="Clear chat filters"
-                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/[0.06] bg-white/[0.035] text-sm font-semibold text-slate-300 transition hover:bg-white/[0.08] hover:text-white"
-              >
-                ×
-              </button>
-            ) : null}
           </div>
         </div>
+      ) : null}
 
-        <div className={`shrink-0 rounded-full border border-white/[0.06] px-3 py-1 text-xs ${tone.neutralPill}`}>
-          {selectedChatAudienceUids.length > 0 ? `${displayedMessagesCount} shown` : `${messagesCount} recent`}
-        </div>
-      </div>
 
       <div className="mt-4 flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-x-hidden">
         <div

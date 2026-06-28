@@ -62,6 +62,7 @@ export function RecentMatchesPanel({
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const matchesRef = useRef(matches);
   const loadingRef = useRef(false);
+  const matchFeedScrollRef = useRef<HTMLDivElement | null>(null);
   const hasMoreRef = useRef(hasMoreMatches);
 
   useEffect(() => {
@@ -133,6 +134,34 @@ export function RecentMatchesPanel({
 
   const visibleMatches = matches;
 
+  function maybeFillMatchFeedHistory() {
+    if (loadingRef.current || !hasMoreRef.current) return;
+
+    const viewport = matchFeedScrollRef.current;
+    if (!viewport) return;
+
+    const needsMoreRows = viewport.scrollHeight <= viewport.clientHeight + 48;
+    const nearBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight <= 160;
+
+    if (needsMoreRows || nearBottom) {
+      void loadMoreMatches();
+    }
+  }
+
+  useEffect(() => {
+    if (!hasMoreMatches || isLoadingMore) return;
+
+    const frame = window.requestAnimationFrame(maybeFillMatchFeedHistory);
+    const settleTimer = window.setTimeout(maybeFillMatchFeedHistory, 180);
+    const lateTimer = window.setTimeout(maybeFillMatchFeedHistory, 520);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(settleTimer);
+      window.clearTimeout(lateTimer);
+    };
+  }, [matches.length, hasMoreMatches, isLoadingMore, loadMoreMatches]);
+
   return (
     <div
       className={`flex h-[min(76dvh,46rem)] min-h-[28rem] flex-col overflow-hidden rounded-[1.75rem] border p-5 sm:h-[min(78dvh,48rem)] sm:min-h-[30rem] sm:p-6 lg:h-[min(78dvh,50rem)] lg:min-h-[32rem] ${
@@ -153,7 +182,7 @@ export function RecentMatchesPanel({
 
       </div>
 
-      <div className="mt-5 min-h-0 flex-1 max-h-[min(58dvh,34rem)] overflow-y-auto overscroll-contain pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-busy={isLoadingMore} onScroll={handleMatchFeedScroll}>
+      <div ref={matchFeedScrollRef} className="mt-5 min-h-0 flex-1 max-h-[min(58dvh,34rem)] overflow-y-auto overscroll-contain pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-busy={isLoadingMore} onScroll={handleMatchFeedScroll}>
         <div className="space-y-3">
           {visibleMatches.length === 0 ? (
             <p className={`rounded-2xl border px-4 py-5 text-sm text-slate-300 ${tone.card}`}>
