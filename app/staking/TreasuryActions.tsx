@@ -104,20 +104,20 @@ export default function TreasuryActions({
   }
 
   return (
-    <div className="rounded-[1rem] border border-white/10 bg-black/15 px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]">
-      <div className="grid gap-2 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center">
-        <div className="text-[10px] uppercase tracking-[0.24em] text-slate-500">
-          Address
-        </div>
+    <div className="rounded-[1rem] border border-white/10 bg-black/15 px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]">
+      <div className="text-[9px] uppercase tracking-[0.22em] text-slate-500">
+        Address
+      </div>
 
+      <div className="mt-1.5 flex min-w-0 items-center gap-1.5">
         <div
           title={cleanAddress || displayAddress}
-          className="min-w-0 select-all break-all font-mono text-[12px] font-semibold leading-5 text-slate-100 sm:break-normal sm:text-[13px]"
+          className="min-w-0 flex-1 select-all break-all font-mono text-[10.5px] font-semibold leading-4 text-slate-100 sm:text-[11px]"
         >
           {displayAddress}
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex shrink-0 items-center gap-1">
           <button
             type="button"
             onClick={() => {
@@ -126,7 +126,7 @@ export default function TreasuryActions({
             disabled={!cleanAddress}
             aria-label={copied ? `${label} address copied` : `Copy ${label} address`}
             title={copied ? "Copied" : "Copy address"}
-            className={`inline-flex h-9 w-9 items-center justify-center rounded-full border transition disabled:cursor-not-allowed disabled:opacity-45 ${
+            className={`inline-flex h-8 w-8 items-center justify-center rounded-full border transition disabled:cursor-not-allowed disabled:opacity-45 ${
               copied
                 ? "border-emerald-300/45 bg-emerald-400/12 text-emerald-100"
                 : "border-white/12 bg-white/5 text-white/85 hover:border-emerald-300/35 hover:bg-emerald-400/10 hover:text-emerald-100"
@@ -141,7 +141,7 @@ export default function TreasuryActions({
             rel="noreferrer"
             aria-label={`Open ${label} in WoloChain explorer`}
             title="Open Explorer"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-emerald-300/20 bg-emerald-400/10 text-emerald-100 transition hover:border-emerald-200/45 hover:bg-emerald-400/15"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-emerald-300/20 bg-emerald-400/10 text-emerald-100 transition hover:border-emerald-200/45 hover:bg-emerald-400/15"
           >
             <ExplorerIcon />
           </a>
