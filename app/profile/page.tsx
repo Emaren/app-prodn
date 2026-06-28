@@ -210,7 +210,7 @@ function ProfilePageContent() {
   const [watcherPairRequestStarted, setWatcherPairRequestStarted] = useState(false);
   const [claimingWolo, setClaimingWolo] = useState(false);
   const [status, setStatus] = useState("");
-  const [profileViewMode, setProfileViewMode] = useState<ProfileViewMode>("basic");
+  const [profileViewMode, setProfileViewMode] = useState<ProfileViewMode>("extreme");
   const [claimSeedApplied, setClaimSeedApplied] = useState(false);
   const {
     themeKey,
@@ -691,10 +691,12 @@ function ProfilePageContent() {
   const canUseApprenticeshipAdmin =
     Boolean((profile as { isAdmin?: boolean } | null)?.isAdmin) || isApprenticeshipAdminName(profileHandle) || isApprenticeshipAdminName(displayName);
   const profileModeLabel =
-    profileViewMode === "basic" ? "Clean profile" : profileViewMode === "advanced" ? "Advanced deck" : "Extreme command";
+    profileViewMode === "basic" ? "Basic profile" : profileViewMode === "advanced" ? "Advanced profile" : "Extreme profile";
+  const profileDeckMode: "basic" | "advanced" = profileViewMode === "basic" ? "basic" : "advanced";
+  const isBasicProfileView = profileDeckMode === "basic";
 
   return (
-    <div className="mx-auto w-full min-w-0 max-w-7xl space-y-6 py-8 text-white">
+    <div className={`mx-auto w-full min-w-0 space-y-6 py-8 text-white ${isBasicProfileView ? "max-w-5xl" : "max-w-7xl"}`}>
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-[1.5rem] border border-white/10 bg-slate-950/58 px-4 py-3 shadow-[0_18px_60px_rgba(0,0,0,0.22)] backdrop-blur sm:px-5">
         <div className="min-w-0">
           <div className="text-[10px] uppercase tracking-[0.32em] text-slate-500">Profile view</div>
@@ -704,13 +706,14 @@ function ProfilePageContent() {
       </div>
 
       <section className="min-w-0 overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/70 p-5 sm:p-8">
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.08fr)_minmax(22rem,0.74fr)] xl:items-start">
+        <div className={`grid gap-6 xl:items-start ${isBasicProfileView ? "xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]" : "xl:grid-cols-[minmax(0,1.08fr)_minmax(22rem,0.74fr)]"}`}>
           <div className="min-w-0">
             <div className="text-xs uppercase tracking-[0.35em] text-white/45">Identity</div>
-            <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(17rem,22rem)_minmax(0,1fr)] lg:items-start">
+            <div className={`mt-4 grid gap-4 ${isBasicProfileView ? "md:grid-cols-[12.5rem_minmax(0,1fr)] md:items-start" : "lg:grid-cols-[minmax(17rem,22rem)_minmax(0,1fr)] lg:items-start"}`}>
               <ProfileAvatarPanel
                 profile={profile}
                 displayName={displayName}
+                viewMode={profileDeckMode}
                 uploading={avatarUploading}
                 savingTarget={avatarSavingTarget}
                 onPreset={(target) => void chooseAvatarPreset(target)}
@@ -946,23 +949,51 @@ function ProfilePageContent() {
               <ShieldCheck className="h-4 w-4" />
               Watcher
             </div>
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              <ProfileIconAction
-                icon={Link2}
-                label={mintingWatcherKey ? "Pairing" : "Pair"}
-                onClick={() => void createWatcherKey({ pairToWatcher: true })}
-                disabled={mintingWatcherKey}
-                primary
-              />
-              <ProfileIconAction
-                icon={KeyRound}
-                label="Mint"
-                onClick={() => void createWatcherKey()}
-                disabled={mintingWatcherKey}
-              />
-              <ProfileIconAction icon={Download} label="App" href="/download" />
-              <ProfileIconAction icon={Upload} label="Replay" href="/upload" />
-            </div>
+            {isBasicProfileView ? (
+              <>
+                <h2 className="mt-3 text-2xl font-semibold">Pair fast. Play clean.</h2>
+                <p className="mt-3 text-sm leading-6 text-slate-300">
+                  Mint a fresh key, hand it to the desktop app, and keep replay proof flowing.
+                </p>
+
+                <div className="mt-5 flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    onClick={() => void createWatcherKey({ pairToWatcher: true })}
+                    disabled={mintingWatcherKey}
+                    className="rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-70"
+                  >
+                    {mintingWatcherKey ? "Pairing..." : "Pair Watcher"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void createWatcherKey()}
+                    disabled={mintingWatcherKey}
+                    className="rounded-full border border-white/15 px-5 py-3 text-sm text-white/85 transition hover:border-white/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-70"
+                  >
+                    Mint Key
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <ProfileIconAction
+                  icon={Link2}
+                  label={mintingWatcherKey ? "Pairing" : "Pair"}
+                  onClick={() => void createWatcherKey({ pairToWatcher: true })}
+                  disabled={mintingWatcherKey}
+                  primary
+                />
+                <ProfileIconAction
+                  icon={KeyRound}
+                  label="Mint"
+                  onClick={() => void createWatcherKey()}
+                  disabled={mintingWatcherKey}
+                />
+                <ProfileIconAction icon={Download} label="App" href="/download" />
+                <ProfileIconAction icon={Upload} label="Replay" href="/upload" />
+              </div>
+            )}
 
             {watcherPairIntent ? (
               <div className="mt-4 rounded-2xl border border-emerald-300/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100">
@@ -1002,25 +1033,27 @@ function ProfilePageContent() {
               </div>
             )}
 
-            <div className="mt-5 flex flex-wrap gap-3">
-              <Link
-                href="/download"
-                className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
-              >
-                Download Watcher
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-              <Link
-                href="/upload"
-                className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
-              >
-                Upload Replay
-                <Upload className="h-4 w-4" />
-              </Link>
-            </div>
+            {isBasicProfileView ? (
+              <div className="mt-5 flex flex-wrap gap-3">
+                <Link
+                  href="/download"
+                  className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
+                >
+                  Download Watcher
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+                <Link
+                  href="/upload"
+                  className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
+                >
+                  Upload Replay
+                  <Upload className="h-4 w-4" />
+                </Link>
+              </div>
+            ) : null}
             </div>
 
-            {canUseApprenticeshipAdmin ? (
+            {!isBasicProfileView && canUseApprenticeshipAdmin ? (
               <ApprenticeshipAdminTile currentAvatarUrl={profile?.avatarUrl || "/champions/players/silhouette.webp"} />
             ) : null}
           </div>
@@ -1579,6 +1612,7 @@ function ApprenticeshipAdminTile({ currentAvatarUrl }: { currentAvatarUrl: strin
 function ProfileAvatarPanel({
   profile,
   displayName,
+  viewMode,
   uploading,
   savingTarget,
   onPreset,
@@ -1586,6 +1620,7 @@ function ProfileAvatarPanel({
 }: {
   profile: ProfileResponse | null;
   displayName: string;
+  viewMode: "basic" | "advanced";
   uploading: boolean;
   savingTarget: string | null;
   onPreset: (target: string) => void;
@@ -1594,6 +1629,52 @@ function ProfileAvatarPanel({
   const avatarUrl = profile?.avatarUrl || "/champions/players/silhouette.webp";
   const options = profile?.avatarOptions ?? [];
   const visibleOptions = options.slice(0, 8);
+
+  if (viewMode === "basic") {
+    return (
+      <div className="rounded-[1.5rem] border border-amber-200/12 bg-[linear-gradient(135deg,rgba(255,255,255,0.05),rgba(255,255,255,0.018))] p-4">
+        <div className="relative mx-auto aspect-[0.78/1] w-full max-w-[10.5rem] overflow-hidden rounded-[1.35rem] border border-amber-200/16 bg-black/30">
+          <img
+            src={avatarUrl}
+            alt={`${displayName} avatar`}
+            className="h-full w-full object-cover object-top"
+          />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/72 to-transparent" />
+        </div>
+
+        <div className="mt-4 grid grid-cols-5 gap-1.5">
+          {options.map((option) => (
+            <button
+              key={option.target}
+              type="button"
+              onClick={() => onPreset(option.target)}
+              disabled={uploading || Boolean(savingTarget)}
+              className="relative aspect-square overflow-hidden rounded-xl border border-white/10 bg-black/20 transition hover:border-amber-200/35 disabled:cursor-not-allowed disabled:opacity-55"
+              title={savingTarget === option.target ? "Saving..." : option.label}
+            >
+              <img src={option.url} alt="" className="h-full w-full object-cover object-top" />
+            </button>
+          ))}
+        </div>
+
+        <label className="mt-3 flex cursor-pointer items-center justify-center gap-2 rounded-full border border-amber-200/18 px-3 py-2 text-xs font-semibold text-amber-100 transition hover:bg-amber-300/10">
+          <ImagePlus className="h-4 w-4" />
+          {uploading ? "Uploading..." : "Upload Avatar"}
+          <input
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            className="hidden"
+            disabled={uploading}
+            onChange={(event) => {
+              const file = event.target.files?.[0] ?? null;
+              onUpload(file);
+              event.target.value = "";
+            }}
+          />
+        </label>
+      </div>
+    );
+  }
 
   return (
     <div className="overflow-hidden rounded-[1.65rem] border border-amber-200/18 bg-[radial-gradient(circle_at_50%_0%,rgba(251,191,36,0.14),transparent_34%),linear-gradient(145deg,rgba(255,255,255,0.055),rgba(255,255,255,0.018))] p-4 shadow-[0_24px_70px_rgba(0,0,0,0.25)]">
