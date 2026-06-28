@@ -13,7 +13,7 @@ const LIVE_POLL_INTERVAL_MS = 12_000;
 type ActivityMode = "ledger" | "grouped";
 const STAKING_ACTIVITY_PREFS_KEY = "aoe2war:staking-activity-prefs:ledger-all-v1";
 
-type ActivityFilterMode = "all" | "belts" | "staking" | "compounded" | "bounties" | "bets" | "transfers";
+type ActivityFilterMode = "all" | "belts" | "staking" | "compounded" | "bounties" | "bets" | "transfers" | "reserve";
 type BeltPayoutFilterMode = "all" | "tributes" | "bounties";
 
 type ActivityPageResponse = {
@@ -24,6 +24,22 @@ type ActivityPageResponse = {
 
 function normalizedEventType(item: StakingActivityItem) {
   return String(item.eventType || "").toUpperCase();
+}
+
+function isReserveActivity(item: StakingActivityItem) {
+  const eventType = normalizedEventType(item);
+  const text = sanitizeActivityCopy(
+    `${item.label || ""} ${item.detail || ""} ${item.meta || ""} ${item.amountLabel || ""}`
+  ).toLowerCase();
+
+  return (
+    eventType === "RESERVE" ||
+    text.includes("operating reserve") ||
+    text.includes("reserve funding") ||
+    text.includes("wallet-reserve") ||
+    text.includes("operating-reserve") ||
+    text.includes("staking-wallet-operating-reserve")
+  );
 }
 
 function isBountyActivity(item: StakingActivityItem) {
@@ -217,13 +233,17 @@ function formatBountySummaryWolo(value: number) {
 }
 
 function filterActivityRows(rows: StakingActivityItem[], filter: ActivityFilterMode) {
-  if (filter === "belts") return rows.filter(isBeltActivity);
-  if (filter === "staking") return rows.filter(isStakingActivity);
-  if (filter === "compounded") return rows.filter(isCompoundedActivity);
-  if (filter === "bounties") return rows.filter(isBountyActivity);
-  if (filter === "bets") return rows.filter(isBetActivity);
-  if (filter === "transfers") return rows.filter(isTransferActivity);
-  return rows;
+  if (filter === "reserve") return rows.filter(isReserveActivity);
+
+  const publicRows = rows.filter((row) => !isReserveActivity(row));
+
+  if (filter === "belts") return publicRows.filter(isBeltActivity);
+  if (filter === "staking") return publicRows.filter(isStakingActivity);
+  if (filter === "compounded") return publicRows.filter(isCompoundedActivity);
+  if (filter === "bounties") return publicRows.filter(isBountyActivity);
+  if (filter === "bets") return publicRows.filter(isBetActivity);
+  if (filter === "transfers") return publicRows.filter(isTransferActivity);
+  return publicRows;
 }
 
 function activityKey(item: StakingActivityItem) {
@@ -379,7 +399,8 @@ export default function StakingActivityFeed({
           parsed.filterMode === "compounded" ||
           parsed.filterMode === "bounties" ||
           parsed.filterMode === "bets" ||
-          parsed.filterMode === "transfers"
+          parsed.filterMode === "transfers" ||
+          parsed.filterMode === "reserve"
             ? parsed.filterMode
             : undefined;
 
@@ -727,7 +748,7 @@ export default function StakingActivityFeed({
     return () => observer.disconnect();
   }, [hasMore, loadMore, loadMoreEndpoint]);
 
-  const baseVisibleRows = loadMoreEndpoint ? rows : filterActivityRows(rows, filterMode);
+  const baseVisibleRows = filterActivityRows(rows, filterMode);
   const visibleRows =
     filterMode === "belts"
       ? filterBeltActivityRows(baseVisibleRows, beltPayoutFilterMode)
@@ -806,7 +827,7 @@ export default function StakingActivityFeed({
           </div>
         </div>
         <div className="mb-3 flex flex-wrap gap-2">
-          {(["all", "belts", "staking", "compounded", "bounties", "bets", "transfers"] as ActivityFilterMode[]).map((filter) => (
+          {(["all", "belts", "staking", "compounded", "bounties", "bets", "transfers", "reserve"] as ActivityFilterMode[]).map((filter) => (
             <button
               key={filter}
               type="button"
