@@ -354,6 +354,7 @@ export async function loadChampionTitleEconomyState(
         ? [
             {
               name: holderName,
+              uid: holderUid ?? undefined,
               href: holderUid ? `/players/${encodeURIComponent(holderUid)}` : undefined,
               meta:
                 trophy.status === "guardian_held"

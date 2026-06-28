@@ -29,6 +29,7 @@ export type ChampionTone =
 
 export type ChampionHolder = {
   name: string;
+  uid?: string;
   href?: string;
   meta?: string;
   representedCountry?: RepresentedCountry;

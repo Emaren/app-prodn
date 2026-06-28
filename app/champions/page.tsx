@@ -82,10 +82,26 @@ function avatarForPlayerName(name: string) {
   return managedMediaPublicUrl("avatar", slugifyManagedMediaTarget(name), fallback);
 }
 
+
+function avatarForHolder(holder: ChampionTitleDefinition["holders"][number]) {
+  const fallback = PLAYER_BACKDROPS[normalizedPlayerName(holder.name)] || SILHOUETTE_BACKDROP;
+  const uid = holder.uid || (
+    holder.href?.startsWith("/players/")
+      ? decodeURIComponent(holder.href.slice("/players/".length))
+      : null
+  );
+
+  if (uid) {
+    return managedMediaPublicUrl("avatar", `user-${uid}`, fallback);
+  }
+
+  return avatarForPlayerName(holder.name);
+}
+
 function backdropForTitle(title: ChampionTitleDefinition) {
   const holder = primaryHolder(title);
   if (holder) {
-    return avatarForPlayerName(holder.name);
+    return avatarForHolder(holder);
   }
 
   if (title.id === "national-canada") {
