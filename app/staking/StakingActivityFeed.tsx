@@ -983,17 +983,11 @@ const BELT_ACTIVITY_ASSETS = [
       "chaos championship",
       "chaos",
     ],
-    src: "/champions/belts/chaos.png",
-    alt: "Chaos Champion belt",
-    badge: "Chaos Champion",
-  },
-  {
-    terms: ["chaos champion tribute", "chaos champion", "chaos"],
     src: "/uploads/managed-assets/belt/chaos-1781548010810-37d46c34.png",
     alt: "Chaos Champion belt",
     badge: "Chaos Champion",
   },
-  {
+{
     terms: ["canada champion tribute", "canadian champion", "canada champion", "canada"],
     src: "/api/media-assets/belt/national-canada?fallback=/champions/belts/canada.png",
     alt: "Canadian Championship belt",
@@ -1295,9 +1289,9 @@ function ActivityRow({
         className={beltCardClassName}
       
         style={{
-          backgroundImage: `linear-gradient(90deg, rgba(3,7,18,0.20), rgba(3,7,18,0.08) 42%, rgba(3,7,18,0.00) 72%), url("${BELT_PAYOUT_CARD_BG}")`,
+          backgroundImage: `linear-gradient(90deg, rgba(3,7,18,0.34), rgba(3,7,18,0.16) 42%, rgba(3,7,18,0.00) 70%), url("${BELT_PAYOUT_CARD_BG}")`,
           backgroundPosition: "center",
-          backgroundSize: "cover",
+          backgroundSize: "100% 100%",
         }}
       >
         <button
@@ -1305,11 +1299,11 @@ function ActivityRow({
           onClick={() => {
             if (hasChildren) setExpanded((value) => !value);
           }}
-          className={`relative min-h-[9.15rem] w-full text-left focus:outline-none focus-visible:outline-none ${
+          className={`relative min-h-[10.625rem] w-full text-left focus:outline-none focus-visible:outline-none ${
             hasChildren ? "cursor-pointer" : "cursor-default"
           }`}
         >
-          <div className="absolute right-0 top-0 z-40 flex max-w-[54%] flex-wrap items-center justify-end gap-2">
+          <div className="absolute right-3 top-0 z-40 flex max-w-[48%] flex-wrap items-center justify-end gap-2">
             <FeedChip>{displayTypeLabel}</FeedChip>
             {amountLabel ? <FeedChip>{displayAmountLabel}</FeedChip> : null}
             <FeedChip>{displayTimestampLabel}</FeedChip>
@@ -1327,18 +1321,18 @@ function ActivityRow({
             ) : null}
           </div>
 
-          <div className="pointer-events-none absolute bottom-[0.68rem] right-[1.05rem] top-[2.05rem] z-30 flex w-[37%] items-center justify-center sm:right-[2.45rem] sm:w-[31%]">
+          <div className="pointer-events-none absolute bottom-[0.78rem] right-[1.25rem] top-[2.45rem] z-30 flex w-[35%] items-center justify-center sm:right-[3.15rem] sm:w-[29%]">
             <Image
               src={beltAsset.src}
               alt={beltAsset.alt}
               width={900}
               height={420}
               unoptimized
-              className="h-auto max-h-[7.15rem] w-auto max-w-full translate-y-1 object-contain opacity-[0.98] drop-shadow-[0_22px_40px_rgba(0,0,0,0.76)]"
+              className="h-auto max-h-[7.25rem] w-auto max-w-full translate-y-2 object-contain opacity-[0.99] drop-shadow-[0_26px_46px_rgba(0,0,0,0.84)]"
             />
           </div>
 
-          <div className="relative z-20 flex min-h-[9.15rem] max-w-[64%] flex-col justify-start pr-5 pt-2.5">
+          <div className="relative z-20 flex min-h-[10.625rem] max-w-[58%] flex-col justify-start pr-5 pt-2.5">
             <div className="flex min-w-0 items-start gap-3">
               <div className="relative mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-transparent bg-black/14 shadow-[inset_0_0_0_1px_rgba(111,87,37,0.24),inset_0_1px_0_rgba(255,255,255,0.050),0_0_18px_rgba(251,191,36,0.08)]">
                 <Image
