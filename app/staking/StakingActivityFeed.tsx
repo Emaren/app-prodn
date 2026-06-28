@@ -1278,13 +1278,13 @@ function ActivityRow({
       .filter(Boolean);
 
     const beltCardClassName = [
-      "relative max-w-full overflow-hidden rounded-[1.22rem] border border-[#8f6f2d]/70 bg-slate-950/70",
+      "relative max-w-full overflow-hidden rounded-[1.22rem] border border-transparent bg-slate-950/70",
       "bg-[radial-gradient(115%_135%_at_5%_48%,rgba(255,220,135,0.22)_0%,rgba(189,121,30,0.15)_24%,transparent_53%),radial-gradient(115%_135%_at_96%_52%,rgba(245,178,72,0.24)_0%,rgba(156,92,24,0.15)_25%,transparent_54%),radial-gradient(70%_125%_at_50%_-8%,rgba(255,244,214,0.095)_0%,rgba(255,244,214,0.035)_24%,transparent_48%),linear-gradient(96deg,rgba(48,32,16,0.94)_0%,rgba(17,17,24,0.955)_29%,rgba(5,10,24,0.99)_50%,rgba(17,17,24,0.955)_71%,rgba(48,32,16,0.94)_100%)]",
       "px-4 py-[1.18rem] sm:px-5",
-      "shadow-[inset_0_0_0_1px_rgba(222,176,76,0.13),inset_0_1px_0_rgba(255,246,218,0.045),0_14px_34px_rgba(0,0,0,0.25),0_0_30px_rgba(242,189,79,0.065)]",
+      "shadow-[0_14px_34px_rgba(0,0,0,0.25),0_0_30px_rgba(242,189,79,0.045)]",
       "before:pointer-events-none before:absolute before:inset-0 before:bg-[linear-gradient(112deg,transparent_0%,rgba(255,247,220,0.045)_40%,rgba(255,247,220,0.020)_53%,transparent_68%)]",
-      "after:pointer-events-none after:absolute after:inset-x-5 after:top-0 after:h-px after:bg-[linear-gradient(90deg,transparent,rgba(255,231,173,0.20),transparent)]",
-      "transition hover:shadow-[inset_0_0_0_1px_rgba(236,194,95,0.18),inset_0_1px_0_rgba(255,246,218,0.055),0_14px_34px_rgba(0,0,0,0.25),0_0_34px_rgba(242,189,79,0.085)]",
+      "after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:ring-0",
+      "transition hover:shadow-[0_14px_34px_rgba(0,0,0,0.25),0_0_34px_rgba(242,189,79,0.065)]",
       className,
     ].filter(Boolean).join(" ");
 
@@ -1296,7 +1296,6 @@ function ActivityRow({
           backgroundImage: `linear-gradient(90deg, rgba(3,7,18,0.34), rgba(3,7,18,0.16) 42%, rgba(3,7,18,0.00) 70%), url("${BELT_PAYOUT_CARD_BG}")`,
           backgroundPosition: "center",
           backgroundSize: "100% 100%",
-          backgroundClip: "padding-box",
         }}
       >
         <button
@@ -1326,14 +1325,14 @@ function ActivityRow({
             ) : null}
           </div>
 
-          <div className="pointer-events-none absolute bottom-[0.04rem] right-[2.05rem] top-[2.58rem] z-30 flex w-[33%] items-end justify-center sm:right-[7.15rem] sm:w-[27%]">
+          <div className="pointer-events-none absolute bottom-[1.02rem] right-[2.05rem] top-[2.12rem] z-30 flex w-[33%] items-end justify-center sm:right-[7.05rem] sm:w-[27%]">
             <Image
               src={beltAsset.src}
               alt={beltAsset.alt}
               width={900}
               height={420}
               unoptimized
-              className="h-auto max-h-[6.1rem] w-auto max-w-full translate-y-[0.38rem] object-contain opacity-[0.99] drop-shadow-[0_22px_38px_rgba(0,0,0,0.82)] sm:max-h-[6.35rem]"
+              className="h-auto max-h-[6.35rem] w-auto max-w-full translate-y-[0.08rem] object-contain opacity-[0.99] drop-shadow-[0_22px_38px_rgba(0,0,0,0.82)] sm:max-h-[6.6rem]"
             />
           </div>
 
