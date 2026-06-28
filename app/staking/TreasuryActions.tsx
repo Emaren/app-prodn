@@ -89,7 +89,6 @@ function ExplorerIcon() {
 export default function TreasuryActions({
   address,
   addressLabel,
-  proofUrl: _proofUrl,
   label,
 }: TreasuryActionsProps) {
   const [copied, setCopied] = useState(false);
