@@ -18,7 +18,7 @@ import type {
 type TrophySeed = {
   trophyId: string;
   definition: ChampionTitleDefinition;
-  family: "national" | "elo";
+  family: "national" | "elo" | "champion";
   tier: string;
   holderName?: string;
   guardianName?: string;
@@ -67,6 +67,43 @@ const SEEDS: TrophySeed[] = [
     status: "guardian_held",
   },
 ];
+
+
+const CHAMPION_TROPHY_ID_ALIASES: Record<string, string> = {
+  world_champion: "world",
+  chaos_champion: "chaos",
+  womens_champion: "womens",
+  women_champion: "womens",
+};
+
+function championDefinitionForTrophyId(trophyId: string) {
+  const normalized = trophyId.trim().toLowerCase();
+  const aliasedTitleId = CHAMPION_TROPHY_ID_ALIASES[normalized] ?? normalized;
+  return allChampionTitles.find((title) => title.id === aliasedTitleId) ?? null;
+}
+
+function syntheticChampionSeed(trophyId: string): TrophySeed | null {
+  const normalized = trophyId.trim().toLowerCase();
+  const definition = championDefinitionForTrophyId(normalized);
+
+  if (!definition) return null;
+
+  const isKnownChampionAlias =
+    Boolean(CHAMPION_TROPHY_ID_ALIASES[normalized]) ||
+    definition.type === "world" ||
+    definition.type === "chaos" ||
+    definition.type === "womens";
+
+  if (!isKnownChampionAlias) return null;
+
+  return {
+    trophyId,
+    definition,
+    family: "champion",
+    tier: "Champion",
+    status: "vacant",
+  };
+}
 
 const DEFAULT_SETTINGS: Array<{ key: string; value: Prisma.InputJsonValue; reason: string }> = [
   {
@@ -678,7 +715,12 @@ function holderEligible(
 
 function trophyDefinitionForRow(trophyId: string) {
   const seed = SEEDS.find((item) => item.trophyId === trophyId);
-  return seed?.definition ?? allChampionTitles.find((title) => title.id === trophyId) ?? null;
+  return (
+    seed?.definition ??
+    championDefinitionForTrophyId(trophyId) ??
+    allChampionTitles.find((title) => title.id === trophyId) ??
+    null
+  );
 }
 
 export async function loadTrophyUsers(prisma: PrismaClient): Promise<TrophyUserOption[]> {
@@ -1197,8 +1239,8 @@ export async function recordNationalityChange(
   }
 }
 
-export function seededTrophyDefinition(trophyId: string) {
-  return SEEDS.find((seed) => seed.trophyId === trophyId) ?? null;
+export function seededTrophyDefinition(trophyId: string): TrophySeed | null {
+  return SEEDS.find((seed) => seed.trophyId === trophyId) ?? syntheticChampionSeed(trophyId);
 }
 
 export function seededTrophyKeyForChallenge(
