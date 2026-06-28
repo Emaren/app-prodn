@@ -8,6 +8,11 @@ type WoloHolderAliasable = {
   holder?: string | null;
   displayName?: string | null;
   hideBalance?: boolean;
+  exactBalanceWolo?: string | null;
+  balanceWoloFormatted?: string | null;
+  balanceHidden?: boolean;
+  role?: string | null;
+  alias?: string | null;
   amountUwolo?: string | number | null;
   amountWolo?: string | number | null;
   amountWoloFormatted?: string | null;
@@ -32,17 +37,21 @@ function decorateWoloPlayerHolderForDisplay<T extends WoloHolderAliasable>(holde
 
   return {
     ...holder,
+    alias: alias.label,
     label: alias.label,
     name: alias.label,
     holder: alias.label,
     displayName: alias.label,
     hideBalance: alias.hideBalance,
+    balanceHidden: alias.hideBalance,
     amountUwolo: alias.hideBalance ? null : holder.amountUwolo,
     amountWolo: alias.hideBalance ? null : holder.amountWolo,
     amountWoloFormatted: alias.hideBalance ? null : holder.amountWoloFormatted,
     balanceUwolo: alias.hideBalance ? null : holder.balanceUwolo,
     balanceWolo: alias.hideBalance ? null : holder.balanceWolo,
+    balanceWoloFormatted: alias.hideBalance ? null : holder.balanceWoloFormatted,
     balanceFormatted: alias.hideBalance ? null : holder.balanceFormatted,
+    exactBalanceWolo: alias.hideBalance ? "" : holder.exactBalanceWolo,
     balance: alias.hideBalance ? null : holder.balance,
   } as T;
 }

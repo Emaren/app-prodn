@@ -96,7 +96,7 @@ function sortNetworkRows(rows: WoloNetworkAccountRow[]) {
 }
 
 async function buildNetworkRow(account: WoloMainnetNetworkAccount): Promise<WoloNetworkAccountRow> {
-  const hideBalance = account.use === "PLAYER_DO_NOT_SHOW_BALANCE";
+  const hideBalance = false;
   const amountUwolo = hideBalance ? "0" : normalizeAmount(await fetchWoloBalanceAmount(account.address));
 
   return {
@@ -119,7 +119,7 @@ function renderTable(rows: WoloNetworkAccountRow[], totalUwolo: string) {
     `${"LABEL".padEnd(42)} ${"ADDRESS".padEnd(48)} ${"WOLO".padStart(18)} USE`,
     "-".repeat(128),
     ...rows.map((row) => {
-      const amountText = row.hideBalance ? "" : row.amountWoloFormatted;
+      const amountText = row.amountWoloFormatted;
 
       return `${row.label.padEnd(42)} ${row.address.padEnd(48)} ${amountText.padStart(18)} ${row.use}`;
     }),
@@ -161,9 +161,9 @@ export async function GET(request: NextRequest) {
           address: row.address,
           use: row.use,
           role: row.role,
-          amountUwolo: row.hideBalance ? null : row.amountUwolo,
-          amountWolo: row.hideBalance ? null : row.amountWolo,
-          amountWoloFormatted: row.hideBalance ? null : row.amountWoloFormatted,
+          amountUwolo: row.amountUwolo,
+          amountWolo: row.amountWolo,
+          amountWoloFormatted: row.amountWoloFormatted,
           hideBalance: row.hideBalance,
           isModule: row.isModule,
           isRetired: row.isRetired,
