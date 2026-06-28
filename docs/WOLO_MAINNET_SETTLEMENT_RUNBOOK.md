@@ -54,8 +54,61 @@ The app keeps health diagnostics split by audience:
 - Staking reserve warnings are about the staking custody wallet and unstake
   rail, not the Bet Payout signer. Public copy should say `Staking wallet
   reserve top-up needed.` Admin copy can include the staking wallet address,
-  current balance, required balance, gap, recommended top-up, and last checked
-  time.
+  current balance, confirmed liability, required balance, actual reserve
+  headroom, reserve target, gap, and last checked time.
+
+## Staking custody liability versus operating reserve
+
+The staking wallet chain balance contains two different kinds of funds:
+
+- confirmed user stake, including deposits made through the site Stake button;
+- operator funding held only to keep unstake execution liquid.
+
+Only confirmed user stake contributes to staking principal, staking weight,
+auto-compound principal, withdrawable liability, leaderboard order, or staker
+status-room totals. Operational reserve funding remains visible in the public
+ledger as `RESERVE` / `Admin operational funding`, but it is excluded from
+those calculations.
+
+Use one of these canonical memos for a direct operational top-up:
+
+```text
+staking-wallet-reserve-top-up:<amount>wolo:<YYYYMMDD>
+staking-wallet-operating-reserve-top-up:<amount>wolo:<YYYYMMDD>
+```
+
+The memo must come from a known operator/network account. A normal user cannot
+escape staking liability by copying a reserve memo.
+
+Do not use the site Stake button to repair the operating reserve. The Stake
+button intentionally writes `AoE2HDBets staking deposit`; that is real stake
+and remains a user liability even if an operator wallet signed it.
+
+The production operating reserve target is:
+
+```text
+max(10,000 WOLO, configured unstake/settlement fee headroom)
+```
+
+The app derives the operator figures as:
+
+```text
+confirmed liability = memo-filtered mainnet staking positions
+actual reserve headroom = staking wallet chain balance - confirmed liability
+required balance = confirmed liability + reserve target
+healthy = chain balance >= required balance
+```
+
+Verify the live calculation without an admin session:
+
+```bash
+curl -sS https://aoe2war.com/api/staking/config | jq '.operatorFunding'
+```
+
+Repeated transfer-index scans are safe: the transaction hash/index remains
+the unique storage key, and the memo classifier is reapplied on every liability
+derivation. Existing reserve transfers therefore reclassify without deleting
+or hiding their indexed ledger rows.
 
 ## App payout behavior
 

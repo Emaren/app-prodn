@@ -29,6 +29,7 @@ import {
   type WoloIndexedTransferActivityRow,
 } from "@/lib/woloMainnetTransfers";
 import { getWoloMainnetDisplayStartAt, isWoloMainnet } from "@/lib/woloChain";
+import { stakingTransferLedgerPresentation } from "@/lib/stakingTransferClassification";
 
 export {
   BETTING_FEE_RATE_BPS,
@@ -475,30 +476,35 @@ export function isPublicStakingActivityItem(item: StakingActivityItem) {
       item.eventType === "PAYOUT" ||
       item.eventType === "SETTLEMENT" ||
       item.eventType === "DIRECT" ||
+      item.eventType === "RESERVE" ||
       item.eventType === "GIFT" ||
       (item.key?.startsWith("tx-") ?? false) ||
       /\btx\s+[0-9a-f]{8}/i.test(item.detail))
   );
 }
 
-function indexedTransferToActivityItem(
+export function indexedTransferToActivityItem(
   row: WoloIndexedTransferActivityRow,
   now = new Date()
 ): StakingActivityItem & { sortAt: Date } {
   const timestamp = new Date(row.timestamp);
   const safeTimestamp = Number.isNaN(timestamp.getTime()) ? now : timestamp;
   const timestampLabel = formatMoment(safeTimestamp);
+  const presentation = stakingTransferLedgerPresentation(
+    row.classification,
+    row.amountLabel
+  );
 
   return {
     key: row.key,
-    label: labelForIndexedTransfer(row),
+    label: presentation.label,
     detail: detailForIndexedTransfer(row),
     meta: timestampLabel,
-    eventType: "DIRECT",
+    eventType: presentation.eventType,
     amountLabel: row.amountLabel,
     timestampLabel,
     occurredAt: safeTimestamp.toISOString(),
-    tone: "emerald",
+    tone: presentation.tone,
     sortAt: safeTimestamp,
   };
 }
@@ -526,15 +532,19 @@ function labelForMainnetActivity(row: WoloMainnetActivityRow) {
   return `${amount} ${row.actionLabel.toLowerCase()}: ${actor}`;
 }
 
-function labelForIndexedTransfer(row: WoloIndexedTransferActivityRow) {
-  return `${row.amountLabel} direct transfer`;
-}
-
 function detailForIndexedTransfer(row: WoloIndexedTransferActivityRow) {
   const sender = row.senderLabel || shortAddress(row.senderAddress) || "wallet";
   const recipient = row.recipientLabel || shortAddress(row.recipientAddress) || "wallet";
   const txLabel = shortHash(row.txHash);
-  const parts = [`${sender} -> ${recipient}`, txLabel ? `tx ${txLabel}` : null];
+  const presentation = stakingTransferLedgerPresentation(
+    row.classification,
+    row.amountLabel
+  );
+  const parts = [
+    presentation.detailPrefix,
+    `${sender} -> ${recipient}`,
+    txLabel ? `tx ${txLabel}` : null,
+  ];
   if (row.memo) parts.push(`memo ${row.memo.slice(0, 80)}`);
   return parts.filter(Boolean).join(" · ");
 }
@@ -1482,6 +1492,7 @@ export async function loadMainnetTransferStakingActivityPage(
         eventType === "REWARD" ||
         eventType === "STAKE" ||
         eventType === "UNSTAKE" ||
+        eventType === "RESERVE" ||
         eventType === "CYCLE" ||
         eventType === "COMPOUND" ||
         (eventType === "TX" && (text.includes("compound") || text.includes("staking event"))) ||
@@ -1504,6 +1515,7 @@ export async function loadMainnetTransferStakingActivityPage(
         eventType === "REWARD" ||
         eventType === "STAKE" ||
         eventType === "UNSTAKE" ||
+        eventType === "RESERVE" ||
         eventType === "CYCLE" ||
         eventType === "COMPOUND" ||
         (eventType === "TX" && (text.includes("compound") || text.includes("staking event"))) ||
@@ -1534,7 +1546,11 @@ export async function loadMainnetTransferStakingActivityPage(
     }
 
     if (filter === "transfers") {
-      return eventType === "DIRECT" || eventType === "GIFT";
+      return (
+        eventType === "DIRECT" ||
+        eventType === "RESERVE" ||
+        eventType === "GIFT"
+      );
     }
 
     return true;

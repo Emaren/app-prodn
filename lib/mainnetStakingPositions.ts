@@ -10,6 +10,9 @@ import {
   WOLO_MAINNET_CHAIN_ID,
   buildWoloAddressBook,
 } from "@/lib/woloMainnetTransfers";
+import {
+  WOLO_STAKING_RESERVE_OPERATOR_ADDRESSES,
+} from "@/lib/woloMainnetNetworkAccounts";
 import { getWoloMainnetDisplayStartAt } from "@/lib/woloChain";
 import { getWoloStakingRuntime } from "@/lib/woloStakingRuntime";
 
@@ -127,6 +130,8 @@ export async function loadMainnetStakingPositions(
       senderLabel: sender?.label ?? null,
       recipientUserId: recipient?.userId ?? null,
       recipientLabel: recipient?.label ?? null,
+      memo: row.memo,
+      eventType: row.eventType,
     };
   });
   const eventTransfers: MainnetStakingTransferInput[] = events.map((event) => {
@@ -152,6 +157,8 @@ export async function loadMainnetStakingPositions(
     mainnetStartAt,
     asOf,
     weightStartAt,
+    operationalReserveSourceAddresses:
+      WOLO_STAKING_RESERVE_OPERATOR_ADDRESSES,
   });
 }
 

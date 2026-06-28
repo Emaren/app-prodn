@@ -4,6 +4,13 @@ import {
   WOLO_MAINNET_FAUCET_HOT_WALLET_ADDRESS,
   WOLO_MAINNET_WALLET_ALIASES,
 } from "./woloMainnetWallets.ts";
+import {
+  classifyStakingTransferWithOperationalGuard,
+  type StakingTransferClassification,
+} from "./stakingTransferClassification.ts";
+import {
+  WOLO_STAKING_RESERVE_OPERATOR_ADDRESSES,
+} from "./woloMainnetNetworkAccounts.ts";
 
 export const WOLO_MAINNET_CHAIN_ID = "wolo-1";
 export const WOLO_MAINNET_BASE_DENOM = "uwolo";
@@ -118,6 +125,7 @@ export type WoloIndexedTransferActivityRow = {
   amountWolo: number;
   amountLabel: string;
   memo: string | null;
+  classification: StakingTransferClassification;
   source: string;
 };
 
@@ -361,6 +369,7 @@ function parseBankSendTx(tx: ChainTxResponse): IndexedWoloTransfer[] {
   }
 
   const transfers: IndexedWoloTransfer[] = [];
+  const memo = tx.tx?.body?.memo?.trim() || null;
   for (const [messageIndex, message] of messages.entries()) {
     if (message["@type"] !== "/cosmos.bank.v1beta1.MsgSend") continue;
 
@@ -368,6 +377,12 @@ function parseBankSendTx(tx: ChainTxResponse): IndexedWoloTransfer[] {
     const recipientAddress = normalizeAddress(message.to_address);
     const amountUwolo = parseUwoloAmount(message);
     if (!senderAddress || !recipientAddress || !amountUwolo) continue;
+    const classification = classifyStakingTransferWithOperationalGuard({
+      memo,
+      senderAddress,
+      operationalSourceAddresses:
+        WOLO_STAKING_RESERVE_OPERATOR_ADDRESSES,
+    });
 
     transfers.push({
       chainId: WOLO_MAINNET_CHAIN_ID,
@@ -380,9 +395,12 @@ function parseBankSendTx(tx: ChainTxResponse): IndexedWoloTransfer[] {
       amountUwolo,
       amountWoloDisplay: amountUwoloToDisplayString(amountUwolo),
       denom: WOLO_MAINNET_BASE_DENOM,
-      memo: tx.tx?.body?.memo?.trim() || null,
+      memo,
       rawType: message["@type"],
-      eventType: "direct_bank_send",
+      eventType:
+        classification === "operational_reserve"
+          ? "staking_reserve_top_up"
+          : "direct_bank_send",
       source: WOLO_INDEXED_TRANSFER_SOURCE,
     });
   }
@@ -825,6 +843,12 @@ export async function loadIndexedWoloTransferActivityRows(
       amountWolo: Number.isFinite(amountWolo) ? amountWolo : 0,
       amountLabel: amountLabelFromDisplay(Number.isFinite(amountWolo) ? amountWolo : 0),
       memo: row.memo,
+      classification: classifyStakingTransferWithOperationalGuard({
+        memo: row.memo,
+        senderAddress,
+        operationalSourceAddresses:
+          WOLO_STAKING_RESERVE_OPERATOR_ADDRESSES,
+      }),
       source: row.source,
     };
   });
@@ -874,6 +898,12 @@ export async function loadWoloIndexedTransferDashboard(
       amountWolo: Number.isFinite(amountWolo) ? amountWolo : 0,
       amountLabel: amountLabelFromDisplay(Number.isFinite(amountWolo) ? amountWolo : 0),
       memo: row.memo,
+      classification: classifyStakingTransferWithOperationalGuard({
+        memo: row.memo,
+        senderAddress,
+        operationalSourceAddresses:
+          WOLO_STAKING_RESERVE_OPERATOR_ADDRESSES,
+      }),
       source: row.source,
     };
   });
@@ -886,6 +916,7 @@ export async function loadWoloIndexedTransferDashboard(
     notes: [
       "Indexed from WoloChain mainnet REST tx search.",
       "Backfill is capped and read-only; it stores successful /cosmos.bank.v1beta1.MsgSend transfers only.",
+      "Explicit staking reserve top-up memos remain visible as operational funding and are excluded from staking liability.",
     ],
   };
 }

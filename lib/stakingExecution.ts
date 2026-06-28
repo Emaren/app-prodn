@@ -1,15 +1,21 @@
 import type { PrismaClient } from "@/lib/generated/prisma";
 import { loadMainnetStakingPositions } from "@/lib/mainnetStakingPositions";
-import { isWoloMainnet, WOLO_COIN_DECIMALS } from "@/lib/woloChain";
+import { isWoloMainnet } from "@/lib/woloChain";
 import { fetchWoloBalanceAmount } from "@/lib/woloRuntime";
 import { getWoloStakingRuntime } from "@/lib/woloStakingRuntime";
+import {
+  calculateStakingReservePolicy,
+  MIN_STAKING_OPERATING_RESERVE_WOLO,
+  resolveStakingReserveTargetUWolo,
+  STAKING_UWOLO_PER_WOLO,
+} from "@/lib/stakingReservePolicy";
 
-const UWOLO_PER_WOLO = BigInt(10) ** BigInt(WOLO_COIN_DECIMALS);
-const DEFAULT_UNSTAKE_HEADROOM_UWOLO = BigInt(10_000_000);
+const UWOLO_PER_WOLO = STAKING_UWOLO_PER_WOLO;
+export { MIN_STAKING_OPERATING_RESERVE_WOLO };
 export const STAKING_WALLET_TOP_UP_DETAIL =
   "Staking wallet reserve top-up needed.";
 export const STAKING_WALLET_TOP_UP_HELP =
-  "This wallet backs app-side staking withdrawals. It needs enough WOLO to cover pending unstake capacity plus fee headroom.";
+  "This wallet backs app-side staking withdrawals. Its chain balance must cover confirmed staking liability plus the 10,000 WOLO operating reserve target.";
 
 type StakingExecutionLimits = {
   maxUnstakeWolo: number;
@@ -18,6 +24,10 @@ type StakingExecutionLimits = {
   stakingWalletBalanceWolo: number | null;
   stakingWalletBalanceUWolo: string | null;
   stakingWalletReserveHeadroomWolo: number;
+  stakingWalletOperatingReserveWolo: number | null;
+  stakingWalletReserveTargetWolo: number;
+  stakingWalletReserveSurplusWolo: number | null;
+  operationalReserveHealthy: boolean | null;
   unstakeHeadroomWolo: number;
   unstakeHeadroomUWolo: string;
   requiredStakingWalletBalanceWolo: number;
@@ -43,18 +53,11 @@ export type UnstakeReserveCheck = {
 };
 
 function readHeadroomUWolo() {
-  const raw =
+  return resolveStakingReserveTargetUWolo(
     process.env.WOLO_STAKING_UNSTAKE_HEADROOM_UWOLO?.trim() ||
-    process.env.WOLO_SETTLEMENT_FEE_HEADROOM_UWOLO?.trim() ||
-    "";
-  if (!raw) return DEFAULT_UNSTAKE_HEADROOM_UWOLO;
-
-  try {
-    const parsed = BigInt(raw);
-    return parsed > BigInt(0) ? parsed : DEFAULT_UNSTAKE_HEADROOM_UWOLO;
-  } catch {
-    return DEFAULT_UNSTAKE_HEADROOM_UWOLO;
-  }
+      process.env.WOLO_SETTLEMENT_FEE_HEADROOM_UWOLO?.trim() ||
+      ""
+  );
 }
 
 function woloFromUWolo(value: bigint) {
@@ -109,16 +112,13 @@ export async function loadStakingExecutionLimits(
     }
   }
 
-  const requiredStakingWalletBalanceUWolo =
-    wholeWoloToUWolo(totalConfirmedStakedWolo) + headroomUWolo;
+  const reservePolicy = calculateStakingReservePolicy({
+    stakingWalletBalanceUWolo,
+    totalConfirmedStakedWolo,
+    reserveTargetUWolo: headroomUWolo,
+  });
   const walletUnderfunded =
-    stakingWalletBalanceUWolo == null
-      ? false
-      : stakingWalletBalanceUWolo < requiredStakingWalletBalanceUWolo;
-  const operatorTopUpNeededUWolo =
-    stakingWalletBalanceUWolo == null || !walletUnderfunded
-      ? BigInt(0)
-      : requiredStakingWalletBalanceUWolo - stakingWalletBalanceUWolo;
+    reservePolicy.operationalReserveHealthy === false;
   const currentUnstakeReserveCheck = buildUnstakeReserveCheck({
     requestedUnstakeWolo: currentStake,
     userConfirmedStakeWolo: currentStake,
@@ -136,10 +136,26 @@ export async function loadStakingExecutionLimits(
     stakingWalletBalanceUWolo:
       stakingWalletBalanceUWolo == null ? null : stakingWalletBalanceUWolo.toString(),
     stakingWalletReserveHeadroomWolo: woloFromUWolo(headroomUWolo),
+    stakingWalletOperatingReserveWolo:
+      reservePolicy.operatingReserveUWolo == null
+        ? null
+        : woloFromUWolo(reservePolicy.operatingReserveUWolo),
+    stakingWalletReserveTargetWolo: woloFromUWolo(
+      reservePolicy.reserveTargetUWolo
+    ),
+    stakingWalletReserveSurplusWolo:
+      reservePolicy.reserveSurplusUWolo == null
+        ? null
+        : woloFromUWolo(reservePolicy.reserveSurplusUWolo),
+    operationalReserveHealthy: reservePolicy.operationalReserveHealthy,
     unstakeHeadroomWolo: woloFromUWolo(headroomUWolo),
     unstakeHeadroomUWolo: headroomUWolo.toString(),
-    requiredStakingWalletBalanceWolo: woloFromUWolo(requiredStakingWalletBalanceUWolo),
-    operatorTopUpNeededWolo: woloFromUWolo(operatorTopUpNeededUWolo),
+    requiredStakingWalletBalanceWolo: woloFromUWolo(
+      reservePolicy.requiredBalanceUWolo
+    ),
+    operatorTopUpNeededWolo: woloFromUWolo(
+      reservePolicy.operatorTopUpNeededUWolo
+    ),
     walletUnderfunded,
     currentUnstakeExecutable: currentUnstakeReserveCheck.executable,
     currentUnstakeReserveCheck,

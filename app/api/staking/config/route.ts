@@ -12,9 +12,9 @@ export async function GET() {
   try {
     const funding = await loadStakingExecutionLimits(getPrisma(), 0);
     const visibleStakingWalletReserveWolo =
-      funding.stakingWalletBalanceWolo == null
+      funding.stakingWalletOperatingReserveWolo == null
         ? null
-        : Math.max(0, funding.stakingWalletBalanceWolo - funding.totalConfirmedStakedWolo);
+        : Math.max(0, funding.stakingWalletOperatingReserveWolo);
     return NextResponse.json({
       ...runtimeConfig,
       stakingWalletReserveHeadroomWolo: funding.stakingWalletReserveHeadroomWolo,
@@ -22,10 +22,17 @@ export async function GET() {
         stakingWalletBalanceWolo: funding.stakingWalletBalanceWolo,
         totalConfirmedStakedWolo: funding.totalConfirmedStakedWolo,
         visibleStakingWalletReserveWolo,
+        stakingWalletOperatingReserveWolo:
+          funding.stakingWalletOperatingReserveWolo,
+        stakingWalletReserveTargetWolo:
+          funding.stakingWalletReserveTargetWolo,
+        stakingWalletReserveSurplusWolo:
+          funding.stakingWalletReserveSurplusWolo,
         requiredStakingWalletBalanceWolo: funding.requiredStakingWalletBalanceWolo,
         stakingWalletReserveHeadroomWolo: funding.stakingWalletReserveHeadroomWolo,
         operatorTopUpNeededWolo: funding.operatorTopUpNeededWolo,
         walletUnderfunded: funding.walletUnderfunded,
+        operationalReserveHealthy: funding.operationalReserveHealthy,
         warning: funding.operatorWarning,
       },
     });

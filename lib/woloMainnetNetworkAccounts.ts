@@ -235,3 +235,22 @@ export function isWoloNetworkUserFacingAccount(account: WoloMainnetNetworkAccoun
     account.use === "USER"
   );
 }
+
+export function isWoloStakingReserveOperatorAccount(
+  account: WoloMainnetNetworkAccount
+) {
+  return (
+    account.use !== "USER" &&
+    account.role !== "user" &&
+    account.role !== "module" &&
+    account.role !== "staking" &&
+    account.role !== "escrow" &&
+    account.role !== "relayer" &&
+    account.use !== "RETIRED_DO_NOT_USE"
+  );
+}
+
+export const WOLO_STAKING_RESERVE_OPERATOR_ADDRESSES =
+  WOLO_MAINNET_NETWORK_ACCOUNTS.filter(
+    isWoloStakingReserveOperatorAccount
+  ).map((account) => account.address.toLowerCase());

@@ -1,3 +1,7 @@
+import {
+  classifyStakingWalletInboundTransfer,
+} from "./stakingTransferClassification.ts";
+
 export type MainnetStakingTransferInput = {
   txHash: string;
   timestamp: Date | string;
@@ -8,6 +12,8 @@ export type MainnetStakingTransferInput = {
   senderLabel?: string | null;
   recipientUserId?: number | null;
   recipientLabel?: string | null;
+  memo?: string | null;
+  eventType?: string | null;
 };
 
 export type DerivedMainnetStakingPosition = {
@@ -53,7 +59,24 @@ function transferResolutionScore(transfer: MainnetStakingTransferInput) {
   if (transfer.recipientUserId) score += 4;
   if (transfer.senderLabel?.trim()) score += 1;
   if (transfer.recipientLabel?.trim()) score += 1;
+  if (transfer.memo?.trim()) score += 2;
+  if (transfer.eventType?.trim()) score += 1;
   return score;
+}
+
+function mergeTransferResolution(
+  left: MainnetStakingTransferInput,
+  right: MainnetStakingTransferInput
+) {
+  const preferred =
+    transferResolutionScore(right) > transferResolutionScore(left) ? right : left;
+  const fallback = preferred === right ? left : right;
+  return {
+    ...preferred,
+    memo: preferred.memo?.trim() || fallback.memo?.trim() || null,
+    eventType:
+      preferred.eventType?.trim() || fallback.eventType?.trim() || null,
+  } satisfies MainnetStakingTransferInput;
 }
 
 export function deriveMainnetStakingPositionsFromTransfers(
@@ -63,6 +86,7 @@ export function deriveMainnetStakingPositionsFromTransfers(
     mainnetStartAt: Date | string;
     asOf?: Date | string;
     weightStartAt?: Date | string;
+    operationalReserveSourceAddresses?: readonly string[];
   }
 ): DerivedMainnetStakingPosition[] {
   const stakingWalletAddress = normalizeAddress(options.stakingWalletAddress);
@@ -100,8 +124,16 @@ export function deriveMainnetStakingPositionsFromTransfers(
       continue;
     }
     const existing = transfersByTxHash.get(txKey);
-    if (!existing || transferResolutionScore(item.transfer) > transferResolutionScore(existing.transfer)) {
+    if (!existing) {
       transfersByTxHash.set(txKey, item);
+    } else {
+      transfersByTxHash.set(txKey, {
+        transfer: mergeTransferResolution(existing.transfer, item.transfer),
+        timestamp:
+          item.timestamp.getTime() < existing.timestamp.getTime()
+            ? item.timestamp
+            : existing.timestamp,
+      });
     }
   }
 
@@ -115,7 +147,18 @@ export function deriveMainnetStakingPositionsFromTransfers(
     const amountWolo = Number.isFinite(transfer.amountWolo) ? transfer.amountWolo : 0;
     if (amountWolo <= 0) continue;
 
-    const isStake = recipientAddress === stakingWalletAddress && transfer.senderUserId;
+    const classification = classifyStakingWalletInboundTransfer({
+      memo: transfer.memo,
+      senderAddress,
+      recipientAddress,
+      stakingWalletAddress,
+      operationalSourceAddresses:
+        options.operationalReserveSourceAddresses,
+    });
+    const isStake =
+      recipientAddress === stakingWalletAddress &&
+      Boolean(transfer.senderUserId) &&
+      classification !== "operational_reserve";
     const isUnstake = senderAddress === stakingWalletAddress && transfer.recipientUserId;
     if (!isStake && !isUnstake) continue;
 

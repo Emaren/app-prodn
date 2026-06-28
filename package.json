@@ -13,6 +13,7 @@
     "start": "next start --hostname 127.0.0.1 --port 3030",
     "lint": "next lint",
     "test:mainnet-staking": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/mainnet-staking-visibility.test.mts tests/mainnet-settlement-activity.test.mts tests/wolo-market.test.mts",
+    "test:staking-reserve": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/staking-reserve-classification.test.mts",
     "test:challenge": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/challenge-flow.test.mts",
     "watcher:sync": "node scripts/sync-watcher-release.mjs",
     "staking:rewards:run": "node scripts/run-staking-reward-distribution.mjs",
