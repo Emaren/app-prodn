@@ -859,7 +859,14 @@ function PremiumClassicLiveSessionCard({
     ? "border-emerald-400/25 bg-emerald-500/12 text-emerald-50"
     : "border-fuchsia-400/25 bg-fuchsia-500/12 text-fuchsia-50";
   const eyebrowClass = isCompleted ? "text-emerald-100/80" : "text-fuchsia-100/80";
-  const eyebrowLabel = isCompleted ? "Just finished" : "Watcher live";
+  const isUploadedReplay = Boolean(
+    session.originalFilename || session.uploader || session.uploaders?.length
+  );
+  const eyebrowLabel = isCompleted
+    ? isUploadedReplay
+      ? "Just uploaded"
+      : "Just finished"
+    : "Watcher live";
   const badgeLabel = isCompleted ? "Final stored" : "Live parse";
   const compactDuration = formatDurationCompact(session.durationSeconds);
   const cardShellClass = isCompleted
@@ -1040,7 +1047,14 @@ function ClassicLiveSessionCard({
       ? session.players.map((player) => player.name).join(" vs ")
       : session.originalFilename || "Game in progress";
 
-  const eyebrowLabel = isCompleted ? "Just finished" : "Watcher live";
+  const isUploadedReplay = Boolean(
+    session.originalFilename || session.uploader || session.uploaders?.length
+  );
+  const eyebrowLabel = isCompleted
+    ? isUploadedReplay
+      ? "Just uploaded"
+      : "Just finished"
+    : "Watcher live";
   const badgeLabel = isCompleted ? "Final stored" : "Live parse";
   const compactDuration = formatDurationCompact(session.durationSeconds);
 
