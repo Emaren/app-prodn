@@ -638,7 +638,10 @@ function ClassicBoard({
   viewMode,
 }: BoardViewProps & { viewMode: "basic" | "advanced" }) {
   const advanced = viewMode === "advanced";
-  const recentOutcomeCount = recentScheduledMatches.length + recentlyCompletedSessions.length;
+  const featuredCompletedSessions = recentlyCompletedSessions.slice(0, 3);
+  const archivedCompletedSessions = advanced ? recentlyCompletedSessions.slice(3) : [];
+  const archiveItemCount = archivedCompletedSessions.length + snapshot.recentMatches.length;
+  const recentOutcomeCount = recentScheduledMatches.length + featuredCompletedSessions.length;
   const sectionStatusLabel = liveItemsCount > 0 ? `${liveItemsCount} active` : "Awaiting battle";
 
   return (
@@ -738,7 +741,7 @@ function ClassicBoard({
             ) : (
               <>
                 {recentScheduledMatches.map((match) => renderScheduledMatch(match, { compact: true }))}
-                {recentlyCompletedSessions.map((session) =>
+                {featuredCompletedSessions.map((session) =>
                   advanced ? (
                     <PremiumClassicLiveSessionCard key={`completed-${session.id}`} session={session} />
                   ) : (
@@ -758,43 +761,72 @@ function ClassicBoard({
                 <h2 className="mt-2 text-2xl font-semibold text-white">Recently Played</h2>
               </div>
               <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-                Scroll history
+                {archiveItemCount} filed
               </div>
             </div>
 
             <div className="mt-5 max-h-[34rem] space-y-3 overflow-y-auto pr-1 [scrollbar-color:rgba(148,163,184,0.45)_transparent] [scrollbar-width:thin]">
-              {snapshot.recentMatches.length === 0 ? (
+              {archiveItemCount === 0 ? (
                 <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-5 text-sm text-slate-300">
                   Waiting on the next completed match.
                 </div>
               ) : (
-                snapshot.recentMatches.map((match) => (
-                  <Link
-                    key={match.id}
-                    href={`/game-stats/${match.id}`}
-                    className="block rounded-2xl border border-white/10 bg-white/5 px-4 py-4 transition hover:border-white/20 hover:bg-white/7"
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="min-w-0">
-                        <div className="text-sm font-semibold text-white">
-                          {Array.isArray(match.players)
-                            ? match.players.map((player) => player.name).filter(Boolean).join(" vs ")
-                            : "Replay-backed result"}
+                <>
+                  {archivedCompletedSessions.map((session) => (
+                    <Link
+                      key={`archive-upload-${session.id}`}
+                      href={`/game-stats/live/${encodeURIComponent(session.sessionKey)}`}
+                      className="block rounded-2xl border border-white/10 bg-white/5 px-4 py-4 transition hover:border-white/20 hover:bg-white/7"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0">
+                          <div className="text-sm font-semibold text-white">
+                            {session.players.length > 0
+                              ? session.players.map((player) => player.name).filter(Boolean).join(" vs ")
+                              : session.originalFilename || "Uploaded replay"}
+                          </div>
+                          <div className="mt-1 text-sm text-slate-300">
+                            {session.mapName || "Uploaded replay"}
+                          </div>
+                          <div className="mt-2 text-[10px] font-semibold uppercase tracking-[0.24em] text-emerald-200/75">
+                            Newly uploaded
+                          </div>
                         </div>
-                        <div className="mt-1 text-sm text-slate-300">
-                          {typeof match.map === "string"
-                            ? match.map
-                            : match.map && typeof match.map === "object" && "name" in match.map
-                              ? String(match.map.name || "Unknown map")
-                              : "Unknown map"}
+                        <div className="shrink-0 text-right text-xs text-slate-400">
+                          {formatUpdatedTime(session.completedAt || session.updatedAt, mounted)}
                         </div>
                       </div>
-                      <div className="text-right text-xs text-slate-400">
-                        {formatTime(match.played_on || match.timestamp, mounted)}
+                    </Link>
+                  ))}
+
+                  {snapshot.recentMatches.map((match) => (
+                    <Link
+                      key={match.id}
+                      href={`/game-stats/${match.id}`}
+                      className="block rounded-2xl border border-white/10 bg-white/5 px-4 py-4 transition hover:border-white/20 hover:bg-white/7"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0">
+                          <div className="text-sm font-semibold text-white">
+                            {Array.isArray(match.players)
+                              ? match.players.map((player) => player.name).filter(Boolean).join(" vs ")
+                              : "Replay-backed result"}
+                          </div>
+                          <div className="mt-1 text-sm text-slate-300">
+                            {typeof match.map === "string"
+                              ? match.map
+                              : match.map && typeof match.map === "object" && "name" in match.map
+                                ? String(match.map.name || "Unknown map")
+                                : "Unknown map"}
+                          </div>
+                        </div>
+                        <div className="shrink-0 text-right text-xs text-slate-400">
+                          {formatTime(match.played_on || match.timestamp, mounted)}
+                        </div>
                       </div>
-                    </div>
-                  </Link>
-                ))
+                    </Link>
+                  ))}
+                </>
               )}
             </div>
           </section>
@@ -875,7 +907,7 @@ function PremiumClassicLiveSessionCard({
         </>
       )}
 
-      <div className="relative grid gap-5 lg:grid-cols-[minmax(0,1fr)_13rem] lg:items-start">
+      <div className="relative grid gap-5 sm:grid-cols-[minmax(0,1fr)_9.75rem] sm:items-start">
         <div className="min-w-0">
           <div className={`text-xs uppercase tracking-[0.34em] ${eyebrowClass}`}>
             {eyebrowLabel}
@@ -892,7 +924,7 @@ function PremiumClassicLiveSessionCard({
             aria-label={`Watch ${title}`}
           >
             <video
-              className="h-[5.4rem] w-full object-cover opacity-92 transition duration-500 group-hover:scale-[1.04] group-hover:opacity-100 sm:h-[6rem]"
+              className="h-[4.6rem] w-full object-cover opacity-92 transition duration-500 group-hover:scale-[1.04] group-hover:opacity-100 sm:h-[5.1rem]"
               src={ADVANCED_SESSION_LOOP_VIDEO_URL}
               autoPlay
               muted
@@ -903,12 +935,12 @@ function PremiumClassicLiveSessionCard({
             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_35%_20%,rgba(125,211,252,0.12),transparent_34%),linear-gradient(180deg,transparent,rgba(2,6,23,0.22))]" />
           </Link>
 
-          <div className="mt-3 flex items-center justify-end gap-3">
-            <span className={`inline-flex min-w-[7.8rem] items-center justify-center rounded-full border px-3 py-1 text-xs font-semibold ${statusClass}`}>
+          <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+            <span className={`inline-flex min-w-0 items-center justify-center rounded-full border px-3 py-1 text-[11px] font-semibold leading-none ${statusClass}`}>
               {statusLabel}
             </span>
             {compactDuration ? (
-              <span className="text-xs text-slate-300">{compactDuration}</span>
+              <span className="shrink-0 whitespace-nowrap text-right text-xs text-slate-300">{compactDuration}</span>
             ) : null}
           </div>
         </div>
