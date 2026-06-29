@@ -627,6 +627,8 @@ type BoardViewProps = {
 };
 
 
+
+
 function ClassicBoard({
   snapshot,
   mounted,
@@ -863,12 +865,9 @@ function ClassicBoard({
                           <div className="mt-1 text-sm text-slate-300">
                             {session.mapName || "Uploaded replay"}
                           </div>
-                          <div className="mt-2 text-[10px] font-semibold uppercase tracking-[0.24em] text-emerald-200/75">
-                            Newly uploaded
-                          </div>
                         </div>
                         <div className="shrink-0 text-right text-xs text-slate-400">
-                          {formatUpdatedTime(session.completedAt || session.updatedAt, mounted)}
+                          {formatTime(session.completedAt || session.updatedAt, mounted)}
                         </div>
                       </div>
                     </Link>
