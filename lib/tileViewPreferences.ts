@@ -91,7 +91,7 @@ export function applyTileViewDefaultMigration(preferences: TileViewPreferences):
 
   return {
     ...preferences,
-    live_games: "extreme" as const,
+    live_games: "advanced" as const,
   };
 }
 
