@@ -455,7 +455,7 @@ function LiveBoardHeader({
       className={`relative overflow-hidden border border-white/10 ${
         isExtreme
           ? "rounded-[2.25rem] bg-[radial-gradient(circle_at_10%_15%,rgba(248,113,113,0.18),transparent_27%),radial-gradient(circle_at_88%_5%,rgba(251,191,36,0.13),transparent_30%),linear-gradient(135deg,#111827,#07101f_52%,#020617)] px-5 py-6 shadow-[0_32px_120px_rgba(0,0,0,0.3)] sm:px-7 sm:py-7 lg:px-9"
-          : "rounded-[1.9rem] bg-[radial-gradient(circle_at_top_left,rgba(248,113,113,0.12),transparent_22%),radial-gradient(circle_at_bottom_right,rgba(251,191,36,0.10),transparent_24%),linear-gradient(135deg,#101828,#0f172a_45%,#020617)] p-5 sm:rounded-[2rem] sm:p-6"
+          : "rounded-[1.9rem] bg-[radial-gradient(circle_at_top_left,rgba(248,113,113,0.12),transparent_22%),radial-gradient(circle_at_bottom_right,rgba(251,191,36,0.10),transparent_24%),linear-gradient(135deg,#101828,#0f172a_45%,#020617)] p-5 sm:rounded-[1.8rem] sm:p-6"
       }`}
     >
       {isExtreme ? (
@@ -565,7 +565,7 @@ function LiveGamesViewToggle({
               active
                 ? mode === "extreme"
                   ? "bg-gradient-to-r from-amber-300 to-orange-300 text-slate-950 shadow-[0_8px_24px_rgba(251,191,36,0.18)]"
-                  : "bg-white text-slate-950 shadow-[0_8px_22px_rgba(255,255,255,0.10)]"
+                  : "border-sky-300/35 bg-sky-300/10 text-sky-100 shadow-[0_8px_22px_rgba(255,255,255,0.10)]"
                 : "text-slate-400 hover:bg-white/5 hover:text-white"
             }`}
           >
