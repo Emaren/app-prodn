@@ -15,11 +15,11 @@ function cleanText(value: unknown, max = 120) {
   return String(value || "").trim().replace(/\s+/g, " ").slice(0, max);
 }
 
-function userAvatarTarget(uid: string) {
-  const target = normalizeManagedMediaTarget(`user-${uid}`);
+function userAvatarPoolTarget(uid: string) {
+  const target = normalizeManagedMediaTarget(`user-${uid}-pool`);
 
   if (!target) {
-    throw new Error("Could not build user avatar target.");
+    throw new Error("Could not build user avatar pool target.");
   }
 
   return target;
@@ -82,19 +82,37 @@ export async function POST(request: NextRequest) {
     }
 
     const displayName = user.inGameName || user.steamPersonaName || user.email || user.uid;
-    const target = userAvatarTarget(user.uid);
+    const target = userAvatarPoolTarget(user.uid);
 
     const assignedAsset = await gate.prisma.$transaction(async (tx) => {
-      await tx.managedMediaAsset.updateMany({
+      const currentSelectedAvatar = await tx.managedMediaAsset.findFirst({
         where: {
           kind: "avatar",
           target,
           active: true,
         },
-        data: {
-          active: false,
-        },
+        select: { id: true },
       });
+
+      const existingAssignment = await tx.managedMediaAsset.findFirst({
+        where: {
+          kind: "avatar",
+          target,
+          url: sourceAsset.url,
+        },
+        orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+      });
+
+      if (existingAssignment) {
+        if (!currentSelectedAvatar && !existingAssignment.active) {
+          return tx.managedMediaAsset.update({
+            where: { id: existingAssignment.id },
+            data: { active: true },
+          });
+        }
+
+        return existingAssignment;
+      }
 
       return tx.managedMediaAsset.create({
         data: {
@@ -107,7 +125,7 @@ export async function POST(request: NextRequest) {
           mimeType: sourceAsset.mimeType,
           originalName: sourceAsset.originalName,
           sizeBytes: sourceAsset.sizeBytes,
-          active: true,
+          active: !currentSelectedAvatar,
           uploadedByUid: gate.user.uid,
         },
       });

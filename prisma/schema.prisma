@@ -593,6 +593,7 @@ model EventTile {
   overlayOpacity             Float     @default(0.24) @map("overlay_opacity")
   vignetteOpacity            Float     @default(0.82) @map("vignette_opacity")
   theme                      String    @default("royal") @db.VarChar(40)
+  styleConfig                Json?     @map("style_config")
   createdAt                  DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt                  DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
   publishedAt                DateTime? @map("published_at") @db.Timestamp(6)

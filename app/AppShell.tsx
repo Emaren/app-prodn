@@ -331,6 +331,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
   const [requestCount, setRequestCount] = React.useState(0);
   const isContactPage = pathname?.startsWith("/contact-emaren");
   const isLobbySurface = pathname === "/" || pathname?.startsWith("/lobby");
+  const isMediaManagerSurface = pathname?.startsWith("/admin/media-assets");
   const communityLobbyViewMode = getTileViewMode(
     tileViewPreferences,
     "community_lobby"
@@ -565,10 +566,12 @@ function InnerShell({ children }: { children: React.ReactNode }) {
       </header>
 
       <main
-        className={`mx-auto flex min-h-0 min-w-0 w-full flex-1 flex-col px-3 py-4 pb-32 transition-[max-width] duration-300 sm:px-4 lg:pb-4 ${
-          isLobbySurface ? lobbyShellMaxWidth : "max-w-6xl"
+        className={`mx-auto flex min-h-0 min-w-0 w-full flex-1 flex-col py-4 pb-32 transition-[max-width] duration-300 lg:pb-4 ${
+          isMediaManagerSurface
+            ? "max-w-none px-3 sm:px-4 2xl:px-6"
+            : `px-3 sm:px-4 ${isLobbySurface ? lobbyShellMaxWidth : "max-w-6xl"}`
         } ${
-          isContactPage ? "overflow-hidden" : "overflow-x-hidden"
+          isContactPage ? "overflow-hidden" : isMediaManagerSurface ? "overflow-x-visible" : "overflow-x-hidden"
         }`}
       >
         <GlobalInstallAppPrompt />

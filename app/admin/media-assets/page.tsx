@@ -5,11 +5,11 @@ import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   CheckCircle2,
-  Globe2,
   ImagePlus,
   RefreshCw,
-  Shield,
+  Search,
   Trash2,
+  UploadCloud,
   UserRound,
   XCircle,
 } from "lucide-react";
@@ -54,388 +54,159 @@ type AdminMediaUser = {
 };
 
 const KIND_OPTIONS = ["avatar", "belt", "artifact", "logo", "background", "other"] as const;
+type MediaKind = (typeof KIND_OPTIONS)[number];
 
-const TARGET_HINTS: Record<string, string[]> = {
-  avatar: ["sniper", "jim", "julio-alvarez", "emaren", "silhouette"],
-  belt: ["world", "chaos", "womens", "tag-team", "national-usa", "national-mexico", "national-uk", "national-canada"],
-  artifact: ["designation-giant-killer", "designation-comeback-king", "designation-siege-lord", "designation-silent-killer"],
-  logo: ["footer-wolo"],
-  background: ["lobby-extreme", "champions-hero"],
-  other: ["promo"],
+const CATEGORY_LABELS: Record<MediaKind, string> = {
+  avatar: "Avatars",
+  belt: "Belts",
+  artifact: "Artifacts",
+  logo: "Logos",
+  background: "Backgrounds",
+  other: "Other",
 };
 
-const COUNTRY_OPTIONS = [
-  "Afghanistan",
-  "Albania",
-  "Algeria",
-  "American Samoa",
-  "Andorra",
-  "Angola",
-  "Antigua and Barbuda",
-  "Argentina",
-  "Armenia",
-  "Aruba",
-  "Australia",
-  "Austria",
-  "Azerbaijan",
-  "Bahamas",
-  "Bahrain",
-  "Bangladesh",
-  "Barbados",
-  "Belarus",
-  "Belgium",
-  "Belize",
-  "Benin",
-  "Bermuda",
-  "Bhutan",
-  "Bolivia",
-  "Bosnia and Herzegovina",
-  "Botswana",
-  "Brazil",
-  "British Virgin Islands",
-  "Brunei",
-  "Bulgaria",
-  "Burkina Faso",
-  "Burundi",
-  "Cabo Verde",
-  "Cambodia",
-  "Cameroon",
-  "Canada",
-  "Cayman Islands",
-  "Central African Republic",
-  "Chad",
-  "Chile",
-  "China",
-  "Colombia",
-  "Comoros",
-  "Congo",
-  "Costa Rica",
-  "Cote d'Ivoire",
-  "Croatia",
-  "Cuba",
-  "Curacao",
-  "Cyprus",
-  "Czech Republic",
-  "Democratic Republic of the Congo",
-  "Denmark",
-  "Djibouti",
-  "Dominica",
-  "Dominican Republic",
-  "Ecuador",
-  "Egypt",
-  "El Salvador",
-  "England",
-  "Equatorial Guinea",
-  "Eritrea",
-  "Estonia",
-  "Eswatini",
-  "Ethiopia",
-  "Faroe Islands",
-  "Fiji",
-  "Finland",
-  "France",
-  "French Polynesia",
-  "Gabon",
-  "Gambia",
-  "Georgia",
-  "Germany",
-  "Ghana",
-  "Greece",
-  "Greenland",
-  "Grenada",
-  "Guam",
-  "Guatemala",
-  "Guinea",
-  "Guinea-Bissau",
-  "Guyana",
-  "Haiti",
-  "Honduras",
-  "Hong Kong",
-  "Hungary",
-  "Iceland",
-  "India",
-  "Indonesia",
-  "Iran",
-  "Iraq",
-  "Ireland",
-  "Israel",
-  "Italy",
-  "Jamaica",
-  "Japan",
-  "Jordan",
-  "Kazakhstan",
-  "Kenya",
-  "Kiribati",
-  "Kosovo",
-  "Kuwait",
-  "Kyrgyzstan",
-  "Laos",
-  "Latvia",
-  "Lebanon",
-  "Lesotho",
-  "Liberia",
-  "Libya",
-  "Liechtenstein",
-  "Lithuania",
-  "Luxembourg",
-  "Macau",
-  "Madagascar",
-  "Malawi",
-  "Malaysia",
-  "Maldives",
-  "Mali",
-  "Malta",
-  "Marshall Islands",
-  "Mauritania",
-  "Mauritius",
-  "Mexico",
-  "Micronesia",
-  "Moldova",
-  "Monaco",
-  "Mongolia",
-  "Montenegro",
-  "Morocco",
-  "Mozambique",
-  "Myanmar",
-  "Namibia",
-  "Nauru",
-  "Nepal",
-  "Netherlands",
-  "New Caledonia",
-  "New Zealand",
-  "Nicaragua",
-  "Niger",
-  "Nigeria",
-  "North Korea",
-  "North Macedonia",
-  "Northern Ireland",
-  "Norway",
-  "Oman",
-  "Pakistan",
-  "Palau",
-  "Palestine",
-  "Panama",
-  "Papua New Guinea",
-  "Paraguay",
-  "Peru",
-  "Philippines",
-  "Poland",
-  "Portugal",
-  "Puerto Rico",
-  "Qatar",
-  "Romania",
-  "Russia",
-  "Rwanda",
-  "Saint Kitts and Nevis",
-  "Saint Lucia",
-  "Saint Vincent and the Grenadines",
-  "Samoa",
-  "San Marino",
-  "Sao Tome and Principe",
-  "Saudi Arabia",
-  "Scotland",
-  "Senegal",
-  "Serbia",
-  "Seychelles",
-  "Sierra Leone",
-  "Singapore",
-  "Sint Maarten",
-  "Slovakia",
-  "Slovenia",
-  "Solomon Islands",
-  "Somalia",
-  "South Africa",
-  "South Korea",
-  "South Sudan",
-  "Spain",
-  "Sri Lanka",
-  "Sudan",
-  "Suriname",
-  "Sweden",
-  "Switzerland",
-  "Syria",
-  "Taiwan",
-  "Tajikistan",
-  "Tanzania",
-  "Thailand",
-  "Timor-Leste",
-  "Togo",
-  "Tonga",
-  "Trinidad and Tobago",
-  "Tunisia",
-  "Turkey",
-  "Turkmenistan",
-  "Tuvalu",
-  "US Virgin Islands",
-  "Uganda",
-  "Ukraine",
-  "United Arab Emirates",
-  "United Kingdom",
-  "United States",
-  "Uruguay",
-  "Uzbekistan",
-  "Vanuatu",
-  "Vatican City",
-  "Venezuela",
-  "Vietnam",
-  "Wales",
-  "Yemen",
-  "Zambia",
-  "Zimbabwe",
-] as const;
+function cleanFilenameLabel(fileName: string) {
+  return fileName.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function isUserTarget(target: string | null | undefined) {
+  return Boolean(target?.startsWith("user-"));
+}
+
+function normalizeMediaTarget(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 120);
+}
+
+function poolTargetFor(uid: string) {
+  return normalizeMediaTarget(`user-${uid}-pool`);
+}
+
+function currentTargetFor(uid: string) {
+  return normalizeMediaTarget(`user-${uid}`);
+}
+
+function assetBelongsToUser(asset: ManagedMediaAsset, uid: string) {
+  return asset.target === poolTargetFor(uid);
+}
+
+function targetBadge(asset: ManagedMediaAsset, uid: string) {
+  if (asset.target === poolTargetFor(uid)) return "assigned";
+  if (asset.target === currentTargetFor(uid)) return "current";
+  return asset.target || "global";
+}
 
 function formatSize(bytes: number) {
   if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  const units = ["B", "KB", "MB", "GB"];
+  let size = bytes;
+  let unit = 0;
+
+  while (size >= 1024 && unit < units.length - 1) {
+    size /= 1024;
+    unit += 1;
+  }
+
+  return `${size >= 10 || unit === 0 ? size.toFixed(0) : size.toFixed(1)} ${units[unit]}`;
 }
 
-type AssetStatusFilter = "active" | "inactive" | "all";
-
-type AssetGroup = {
-  groupKey: string;
-  targetKey: string;
-  targetLabel: string;
-  assets: ManagedMediaAsset[];
-  active: ManagedMediaAsset[];
-  inactive: ManagedMediaAsset[];
-  latest: ManagedMediaAsset;
-};
-
-function normalizeAssetSearch(value: string | null | undefined) {
-  return String(value || "").trim().toLowerCase();
-}
-
-function assetTargetKey(asset: Pick<ManagedMediaAsset, "target">) {
-  return asset.target || "__untargeted__";
-}
-
-function assetTargetLabel(target: string | null | undefined) {
-  return target || "untargeted";
-}
-
-function assetSearchBlob(asset: ManagedMediaAsset) {
-  return [asset.label, asset.kind, asset.target, asset.alt, asset.originalName, asset.url, String(asset.id)]
-    .filter(Boolean)
+function searchBlob(asset: ManagedMediaAsset) {
+  return [
+    asset.label,
+    asset.kind,
+    asset.target || "",
+    asset.originalName || "",
+    asset.alt || "",
+    asset.url,
+  ]
     .join(" ")
     .toLowerCase();
 }
 
-function buildAssetGroups(rows: ManagedMediaAsset[]) {
-  const groups = new Map<string, AssetGroup>();
+function userSubline(user: AdminMediaUser) {
+  const parts = [
+    user.uid ? "registered" : "tracked",
+    user.representedCountry || "",
+    typeof user.totalMatches === "number" ? `${user.totalMatches} matches` : "",
+  ].filter(Boolean);
 
-  for (const asset of rows) {
-    const targetKey = assetTargetKey(asset);
-    const groupKey = `${asset.kind}:${targetKey}`;
-    const existing = groups.get(groupKey);
-
-    if (existing) {
-      existing.assets.push(asset);
-      if (asset.active) existing.active.push(asset);
-      else existing.inactive.push(asset);
-
-      if (new Date(asset.updatedAt).getTime() > new Date(existing.latest.updatedAt).getTime()) {
-        existing.latest = asset;
-      }
-
-      continue;
-    }
-
-    groups.set(groupKey, {
-      groupKey,
-      targetKey,
-      targetLabel: assetTargetLabel(asset.target),
-      assets: [asset],
-      active: asset.active ? [asset] : [],
-      inactive: asset.active ? [] : [asset],
-      latest: asset,
-    });
-  }
-
-  return Array.from(groups.values()).sort((left, right) => {
-    const duplicateDelta = right.assets.length - left.assets.length;
-    if (duplicateDelta !== 0) return duplicateDelta;
-    return left.targetLabel.localeCompare(right.targetLabel);
-  });
+  return parts.join(" · ");
 }
 
 export default function AdminMediaAssetsPage() {
   const [assets, setAssets] = useState<ManagedMediaAsset[]>([]);
-  const [kind, setKind] = useState<(typeof KIND_OPTIONS)[number]>("avatar");
-  const [target, setTarget] = useState("");
-  const [label, setLabel] = useState("");
-  const [alt, setAlt] = useState("");
-  const [file, setFile] = useState<File | null>(null);
+  const [users, setUsers] = useState<AdminMediaUser[]>([]);
 
-  const [loading, setLoading] = useState(true);
+  const [category, setCategory] = useState<MediaKind>("avatar");
+  const [assetQuery, setAssetQuery] = useState("");
+  const [userQuery, setUserQuery] = useState("");
+  const [selectedUserUid, setSelectedUserUid] = useState("");
+  const [selectedAssetIds, setSelectedAssetIds] = useState<number[]>([]);
+
+  const [files, setFiles] = useState<File[]>([]);
+  const [uploadLabel, setUploadLabel] = useState("");
+
+  const [loadingAssets, setLoadingAssets] = useState(true);
+  const [loadingUsers, setLoadingUsers] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [assigning, setAssigning] = useState(false);
+  const [materializingUserKey, setMaterializingUserKey] = useState<string | null>(null);
+  const [busyAssetId, setBusyAssetId] = useState<number | null>(null);
+
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const [userQuery, setUserQuery] = useState("");
-  const [users, setUsers] = useState<AdminMediaUser[]>([]);
-  const [usersLoading, setUsersLoading] = useState(false);
-  const [selectedUserUid, setSelectedUserUid] = useState("");
-  const [materializingUserKey, setMaterializingUserKey] = useState<string | null>(null);
-
-  const [profileDisplayName, setProfileDisplayName] = useState("");
-  const [profileCountry, setProfileCountry] = useState("");
-  const [profileGenderDivision, setProfileGenderDivision] = useState("Man");
-  const [profileSaving, setProfileSaving] = useState(false);
-
-  const [directAvatarFile, setDirectAvatarFile] = useState<File | null>(null);
-  const [directAvatarUploading, setDirectAvatarUploading] = useState(false);
-
-  const [assetSearch, setAssetSearch] = useState("");
-  const [assetStatusFilter, setAssetStatusFilter] = useState<AssetStatusFilter>("active");
-  const [assetTargetFilter, setAssetTargetFilter] = useState("");
-  const [selectedAssetIds, setSelectedAssetIds] = useState<number[]>([]);
-  const [bulkDeleting, setBulkDeleting] = useState(false);
-
-  const hints = TARGET_HINTS[kind] ?? [];
-  const selectedAssets = useMemo(() => assets.filter((asset) => asset.kind === kind), [assets, kind]);
-  const activeAssets = useMemo(() => selectedAssets.filter((asset) => asset.active), [selectedAssets]);
-  const assetGroups = useMemo(() => buildAssetGroups(selectedAssets), [selectedAssets]);
-  const duplicateGroups = useMemo(
-    () => assetGroups.filter((group) => group.assets.length > 1 || group.inactive.length > 0),
-    [assetGroups]
-  );
-  const targetOptions = useMemo(() => assetGroups.map((group) => group.targetKey), [assetGroups]);
-  const filteredAssets = useMemo(() => {
-    const search = normalizeAssetSearch(assetSearch);
-
-    return selectedAssets.filter((asset) => {
-      if (assetStatusFilter === "active" && !asset.active) return false;
-      if (assetStatusFilter === "inactive" && asset.active) return false;
-      if (assetTargetFilter && assetTargetKey(asset) !== assetTargetFilter) return false;
-      if (search && !assetSearchBlob(asset).includes(search)) return false;
-      return true;
-    });
-  }, [assetSearch, assetStatusFilter, assetTargetFilter, selectedAssets]);
-  const selectedAssetRows = useMemo(
-    () => assets.filter((asset) => selectedAssetIds.includes(asset.id)),
-    [assets, selectedAssetIds]
-  );
-  const selectedInactiveAssetCount = selectedAssetRows.filter((asset) => !asset.active).length;
   const selectedUser = useMemo(
     () => users.find((user) => user.uid === selectedUserUid) || null,
-    [users, selectedUserUid]
+    [selectedUserUid, users]
   );
 
-  const countryOptions = useMemo(() => {
-    const current = profileCountry.trim();
-    const base = [...COUNTRY_OPTIONS];
+  const globalAssets = useMemo(
+    () => assets.filter((asset) => asset.kind === category && !isUserTarget(asset.target)),
+    [assets, category]
+  );
 
-    if (current && !base.includes(current as (typeof COUNTRY_OPTIONS)[number])) {
-      return [current, ...base];
-    }
+  const visibleAssets = useMemo(() => {
+    const query = assetQuery.trim().toLowerCase();
 
-    return base;
-  }, [profileCountry]);
+    if (!query) return globalAssets;
+
+    return globalAssets.filter((asset) => searchBlob(asset).includes(query));
+  }, [assetQuery, globalAssets]);
+
+  const selectedAssets = useMemo(
+    () => globalAssets.filter((asset) => selectedAssetIds.includes(asset.id)),
+    [globalAssets, selectedAssetIds]
+  );
+
+  const selectedUserAssignments = useMemo(() => {
+    if (!selectedUserUid) return [];
+    return assets.filter((asset) => assetBelongsToUser(asset, selectedUserUid));
+  }, [assets, selectedUserUid]);
+
+  const selectedUserAssignmentsForCategory = useMemo(
+    () => selectedUserAssignments.filter((asset) => asset.kind === category),
+    [category, selectedUserAssignments]
+  );
+
+  const categoryStats = useMemo(() => {
+    return KIND_OPTIONS.map((kind) => ({
+      kind,
+      global: assets.filter((asset) => asset.kind === kind && !isUserTarget(asset.target)).length,
+      assigned: selectedUserAssignments.filter((asset) => asset.kind === kind).length,
+    }));
+  }, [assets, selectedUserAssignments]);
+
+  const totalAssignedForSelectedUser = selectedUserAssignments.length;
+  const totalUploadBytes = files.reduce((sum, file) => sum + file.size, 0);
+  const allVisibleSelected = visibleAssets.length > 0 && visibleAssets.every((asset) => selectedAssetIds.includes(asset.id));
 
   async function loadAssets() {
-    setLoading(true);
+    setLoadingAssets(true);
     setError(null);
 
     try {
@@ -446,33 +217,27 @@ export default function AdminMediaAssetsPage() {
       };
 
       if (!response.ok) {
-        throw new Error(payload.detail || "Could not load media assets.");
+        throw new Error(payload.detail || "Could not load assets.");
       }
 
-      const nextAssets = Array.isArray(payload.assets) ? payload.assets : [];
-      setAssets(nextAssets);
-      setSelectedAssetIds((current) => current.filter((id) => nextAssets.some((asset) => asset.id === id)));
+      setAssets(Array.isArray(payload.assets) ? payload.assets : []);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Could not load media assets.");
+      setError(loadError instanceof Error ? loadError.message : "Could not load assets.");
     } finally {
-      setLoading(false);
+      setLoadingAssets(false);
     }
   }
 
   async function loadUsers(query = userQuery) {
-    setUsersLoading(true);
+    setLoadingUsers(true);
 
     try {
       const params = new URLSearchParams();
-
-      if (query.trim()) {
-        params.set("q", query.trim());
-      }
+      if (query.trim()) params.set("q", query.trim());
 
       const response = await fetch(`/api/admin/media-assets/users?${params.toString()}`, {
         cache: "no-store",
       });
-
       const payload = (await response.json().catch(() => ({}))) as {
         users?: AdminMediaUser[];
         detail?: string;
@@ -486,7 +251,80 @@ export default function AdminMediaAssetsPage() {
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Could not load warriors.");
     } finally {
-      setUsersLoading(false);
+      setLoadingUsers(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadAssets();
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void loadUsers(userQuery);
+    }, 200);
+
+    return () => window.clearTimeout(timer);
+  }, [userQuery]);
+
+  function chooseFiles(event: ChangeEvent<HTMLInputElement>) {
+    const nextFiles = Array.from(event.target.files || []);
+    setFiles(nextFiles);
+
+    if (nextFiles.length === 1 && !uploadLabel.trim()) {
+      setUploadLabel(cleanFilenameLabel(nextFiles[0].name));
+    }
+  }
+
+  async function submitUpload(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (files.length === 0) {
+      setError("Choose one or more image files first.");
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+    setNotice(null);
+
+    try {
+      let uploaded = 0;
+
+      for (const file of files) {
+        const cleanName = cleanFilenameLabel(file.name) || file.name;
+        const body = new FormData();
+
+        body.set("kind", category);
+        body.set("target", "");
+        body.set("label", files.length === 1 ? uploadLabel || cleanName : cleanName);
+        body.set("alt", files.length === 1 ? uploadLabel || cleanName : cleanName);
+        body.set("file", file);
+
+        const response = await fetch("/api/admin/media-assets", {
+          method: "POST",
+          body,
+        });
+
+        const payload = (await response.json().catch(() => ({}))) as {
+          detail?: string;
+        };
+
+        if (!response.ok) {
+          throw new Error(payload.detail || `Upload failed for ${file.name}.`);
+        }
+
+        uploaded += 1;
+      }
+
+      setFiles([]);
+      setUploadLabel("");
+      setNotice(`${uploaded} ${CATEGORY_LABELS[category].toLowerCase()} uploaded.`);
+      await loadAssets();
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : "Upload failed.");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -529,181 +367,72 @@ export default function AdminMediaAssetsPage() {
     }
   }
 
-  useEffect(() => {
-    void loadAssets();
-  }, []);
+  function toggleAsset(assetId: number) {
+    setSelectedAssetIds((current) =>
+      current.includes(assetId) ? current.filter((id) => id !== assetId) : [...current, assetId]
+    );
+  }
 
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      void loadUsers(userQuery);
-    }, 220);
-
-    return () => window.clearTimeout(timer);
-  }, [userQuery]);
-
-  useEffect(() => {
-    if (!selectedUser) {
-      setProfileDisplayName("");
-      setProfileCountry("");
-      setProfileGenderDivision("Man");
+  function toggleVisibleAssets() {
+    if (allVisibleSelected) {
+      setSelectedAssetIds((current) => current.filter((id) => !visibleAssets.some((asset) => asset.id === id)));
       return;
     }
 
-    setProfileDisplayName(selectedUser.displayName || "");
-    setProfileCountry(selectedUser.representedCountry || "");
-    setProfileGenderDivision(selectedUser.genderDivision || "Man");
-  }, [selectedUser]);
-
-  function chooseFile(event: ChangeEvent<HTMLInputElement>) {
-    const nextFile = event.target.files?.[0] ?? null;
-
-    setFile(nextFile);
-
-    if (nextFile && !label.trim()) {
-      setLabel(nextFile.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " "));
-    }
+    setSelectedAssetIds((current) => Array.from(new Set([...current, ...visibleAssets.map((asset) => asset.id)])));
   }
 
-  function chooseDirectAvatarFile(event: ChangeEvent<HTMLInputElement>) {
-    setDirectAvatarFile(event.target.files?.[0] ?? null);
-  }
-
-  async function submitUpload(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    if (!file) {
-      setError("Choose an image file first.");
-      return;
-    }
-
-    setSaving(true);
-    setError(null);
-    setNotice(null);
-
-    try {
-      const body = new FormData();
-      body.set("kind", kind);
-      body.set("target", target);
-      body.set("label", label || target || file.name);
-      body.set("alt", alt);
-      body.set("file", file);
-
-      const response = await fetch("/api/admin/media-assets", {
-        method: "POST",
-        body,
-      });
-
-      const payload = (await response.json().catch(() => ({}))) as {
-        detail?: string;
-      };
-
-      if (!response.ok) {
-        throw new Error(payload.detail || "Upload failed.");
-      }
-
-      setFile(null);
-      setLabel("");
-      setAlt("");
-      setNotice("Global asset uploaded.");
-      await loadAssets();
-    } catch (uploadError) {
-      setError(uploadError instanceof Error ? uploadError.message : "Upload failed.");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function saveSelectedUserProfile() {
+  async function assignSelectedAssets() {
     if (!selectedUserUid) {
       setError("Choose a warrior first.");
       return;
     }
 
-    setProfileSaving(true);
+    if (selectedAssets.length === 0) {
+      setError("Select one or more assets first.");
+      return;
+    }
+
+    setAssigning(true);
     setError(null);
     setNotice(null);
 
     try {
-      const response = await fetch("/api/admin/media-assets/user-profile", {
+      const response = await fetch("/api/admin/media-assets/assign-user-assets", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           uid: selectedUserUid,
-          displayName: profileDisplayName,
-          representedCountry: profileCountry,
-          genderDivision: profileGenderDivision,
+          assetIds: selectedAssets.map((asset) => asset.id),
         }),
       });
 
       const payload = (await response.json().catch(() => ({}))) as {
+        assignedCount?: number;
         detail?: string;
+        user?: { displayName?: string };
       };
 
       if (!response.ok) {
-        throw new Error(payload.detail || "Could not save warrior identity.");
+        throw new Error(payload.detail || "Could not assign assets.");
       }
 
-      setNotice("Warrior identity saved.");
-      await loadUsers();
-    } catch (profileError) {
-      setError(profileError instanceof Error ? profileError.message : "Could not save warrior identity.");
+      setSelectedAssetIds([]);
+      setNotice(
+        `${payload.assignedCount || selectedAssets.length} asset${(payload.assignedCount || selectedAssets.length) === 1 ? "" : "s"} assigned to ${
+          payload.user?.displayName || selectedUser?.displayName || "warrior"
+        }.`
+      );
+      await Promise.all([loadAssets(), loadUsers(userQuery)]);
+    } catch (assignError) {
+      setError(assignError instanceof Error ? assignError.message : "Could not assign assets.");
     } finally {
-      setProfileSaving(false);
-    }
-  }
-
-  async function uploadAvatarDirectlyToUser() {
-    if (!selectedUserUid) {
-      setError("Choose a warrior first.");
-      return;
-    }
-
-    if (!directAvatarFile) {
-      setError("Choose an avatar image first.");
-      return;
-    }
-
-    const displayName = profileDisplayName || selectedUser?.displayName || selectedUserUid;
-
-    setDirectAvatarUploading(true);
-    setError(null);
-    setNotice(null);
-
-    try {
-      const body = new FormData();
-      body.set("kind", "avatar");
-      body.set("target", "user-" + selectedUserUid);
-      body.set("label", displayName + " avatar");
-      body.set("alt", displayName + " avatar");
-      body.set("file", directAvatarFile);
-
-      const response = await fetch("/api/admin/media-assets", {
-        method: "POST",
-        body,
-      });
-
-      const payload = (await response.json().catch(() => ({}))) as {
-        detail?: string;
-      };
-
-      if (!response.ok) {
-        throw new Error(payload.detail || "Upload failed.");
-      }
-
-      setDirectAvatarFile(null);
-      setAssetStatusFilter("active");
-      setAssetTargetFilter("user-" + selectedUserUid);
-      setAssetSearch("");
-      setNotice("Avatar uploaded for " + displayName + ". Previous avatars for this warrior were deactivated, not deleted.");
-      await Promise.all([loadAssets(), loadUsers()]);
-    } catch (uploadError) {
-      setError(uploadError instanceof Error ? uploadError.message : "Upload failed.");
-    } finally {
-      setDirectAvatarUploading(false);
+      setAssigning(false);
     }
   }
 
   async function setAssetActive(asset: ManagedMediaAsset, active: boolean) {
+    setBusyAssetId(asset.id);
     setError(null);
     setNotice(null);
 
@@ -726,16 +455,17 @@ export default function AdminMediaAssetsPage() {
       await loadAssets();
     } catch (updateError) {
       setError(updateError instanceof Error ? updateError.message : "Asset update failed.");
+    } finally {
+      setBusyAssetId(null);
     }
   }
 
   async function deleteAsset(asset: ManagedMediaAsset) {
     const confirmed = window.confirm(`Delete "${asset.label}"?`);
 
-    if (!confirmed) {
-      return;
-    }
+    if (!confirmed) return;
 
+    setBusyAssetId(asset.id);
     setError(null);
     setNotice(null);
 
@@ -754,106 +484,53 @@ export default function AdminMediaAssetsPage() {
         throw new Error(payload.detail || "Delete failed.");
       }
 
+      setSelectedAssetIds((current) => current.filter((id) => id !== asset.id));
       setNotice(
         payload.keptFileBecauseStillReferenced
-          ? `${asset.label} deleted. File kept because another row still references it.`
-          : `${asset.label} deleted${payload.removedFile ? " and file removed" : ""}.`
+          ? `${asset.label} removed. File kept because another asset still uses it.`
+          : `${asset.label} removed${payload.removedFile ? " and file deleted" : ""}.`
       );
-
       await loadAssets();
     } catch (deleteError) {
       setError(deleteError instanceof Error ? deleteError.message : "Delete failed.");
-    }
-  }
-
-
-  function toggleAssetSelection(assetId: number) {
-    setSelectedAssetIds((current) =>
-      current.includes(assetId) ? current.filter((id) => id !== assetId) : [...current, assetId]
-    );
-  }
-
-  function selectFilteredAssets() {
-    setSelectedAssetIds(filteredAssets.map((asset) => asset.id));
-  }
-
-  function focusAssetGroup(group: AssetGroup) {
-    setAssetTargetFilter(group.targetKey);
-    setAssetStatusFilter("all");
-    setAssetSearch("");
-  }
-
-  async function deleteAssetsBatch(rows: ManagedMediaAsset[], message: string) {
-    if (rows.length === 0) return;
-
-    const confirmed = window.confirm(message);
-    if (!confirmed) return;
-
-    setBulkDeleting(true);
-    setError(null);
-    setNotice(null);
-
-    let deleted = 0;
-
-    try {
-      for (const asset of rows) {
-        const response = await fetch(`/api/admin/media-assets/${asset.id}`, {
-          method: "DELETE",
-        });
-
-        if (response.ok) {
-          deleted += 1;
-          continue;
-        }
-
-        const payload = (await response.json().catch(() => ({}))) as { detail?: string };
-        throw new Error(payload.detail || `Delete failed for ${asset.label}.`);
-      }
-
-      setSelectedAssetIds([]);
-      setNotice(`Deleted ${deleted} media asset${deleted === 1 ? "" : "s"}.`);
-      await loadAssets();
-    } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : "Bulk delete failed.");
     } finally {
-      setBulkDeleting(false);
+      setBusyAssetId(null);
     }
-  }
-
-  async function deleteSelectedAssets() {
-    await deleteAssetsBatch(
-      selectedAssetRows,
-      `Delete ${selectedAssetRows.length} selected media asset${selectedAssetRows.length === 1 ? "" : "s"}?`
-    );
-  }
-
-  async function deleteInactiveForGroup(group: AssetGroup) {
-    await deleteAssetsBatch(
-      group.inactive,
-      `Delete ${group.inactive.length} inactive upload${group.inactive.length === 1 ? "" : "s"} for ${group.targetLabel}? The active row will be kept.`
-    );
   }
 
   return (
-    <main className="mx-auto max-w-[96rem] space-y-6 px-4 py-8 text-white sm:px-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
+    <main className="min-h-screen w-full max-w-none text-white">
+      <header className="mb-5 flex flex-wrap items-end justify-between gap-4 rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.18),transparent_30%),radial-gradient(circle_at_top_right,rgba(56,189,248,0.12),transparent_32%),linear-gradient(135deg,rgba(15,23,42,0.96),rgba(2,6,23,0.90))] px-6 py-5 shadow-[0_32px_110px_rgba(0,0,0,0.34)]">
         <div>
-          <div className="text-xs uppercase tracking-[0.35em] text-amber-100/65">Admin Armory</div>
-          <h1 className="mt-2 text-3xl font-semibold">Media assets</h1>
+          <div className="text-xs uppercase tracking-[0.34em] text-amber-100/65">Admin Armory</div>
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Media Manager</h1>
+          <p className="mt-2 max-w-3xl text-sm text-slate-400">
+            Upload assets once. Select assets. Assign them to warriors. See every assigned asset by category.
+          </p>
         </div>
 
-        <Link
-          href="/admin"
-          className="inline-flex items-center gap-2 rounded-full border border-white/12 px-4 py-2 text-sm text-slate-200 transition hover:border-amber-200/35 hover:text-amber-100"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Admin
-        </Link>
-      </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => void Promise.all([loadAssets(), loadUsers(userQuery)])}
+            className="inline-flex items-center gap-2 rounded-full border border-white/12 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-amber-200/35 hover:text-amber-100"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Refresh
+          </button>
+          <Link
+            href="/admin"
+            className="inline-flex items-center gap-2 rounded-full border border-white/12 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-amber-200/35 hover:text-amber-100"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Admin
+          </Link>
+        </div>
+      </header>
 
       {(notice || error) && (
         <section
-          className={`rounded-2xl border px-4 py-3 text-sm ${
+          className={`mb-5 rounded-2xl border px-4 py-3 text-sm ${
             error
               ? "border-red-300/18 bg-red-400/10 text-red-100"
               : "border-emerald-300/18 bg-emerald-400/10 text-emerald-100"
@@ -863,35 +540,117 @@ export default function AdminMediaAssetsPage() {
         </section>
       )}
 
-      <section className="grid min-w-0 gap-6 xl:grid-cols-[24rem_minmax(0,1fr)] xl:items-start">
-        <aside className="min-w-0 space-y-4 xl:sticky xl:top-24">
-          <section className="overflow-hidden rounded-[1.35rem] border border-sky-200/14 bg-[linear-gradient(135deg,rgba(56,189,248,0.10),rgba(255,255,255,0.025))] p-4 shadow-[0_24px_90px_rgba(0,0,0,0.24)]">
-            <div className="flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-sky-100/75">
-              <UserRound className="h-4 w-4" />
-              Warrior Identity
+      <nav className="mb-5 grid gap-2 sm:grid-cols-3 xl:grid-cols-6">
+        {categoryStats.map((stat) => (
+          <button
+            key={stat.kind}
+            type="button"
+            onClick={() => {
+              setCategory(stat.kind);
+              setSelectedAssetIds([]);
+              setAssetQuery("");
+            }}
+            className={`rounded-[1.15rem] border px-4 py-3 text-left transition ${
+              category === stat.kind
+                ? "border-amber-200/45 bg-amber-300/12 text-amber-50 shadow-[0_18px_45px_rgba(251,191,36,0.08)]"
+                : "border-white/10 bg-white/[0.035] text-slate-300 hover:border-white/20 hover:bg-white/[0.055]"
+            }`}
+          >
+            <div className="text-sm font-semibold">{CATEGORY_LABELS[stat.kind]}</div>
+            <div className="mt-1 text-xs text-slate-500">
+              {stat.global} library · {stat.assigned} assigned
+            </div>
+          </button>
+        ))}
+      </nav>
+
+      <section className="grid w-full min-w-0 gap-5 xl:grid-cols-[21rem_minmax(0,1fr)_30rem] min-[1700px]:grid-cols-[23rem_minmax(0,1fr)_34rem]">
+        <aside className="grid min-w-0 gap-5 xl:content-start">
+          <form
+            onSubmit={submitUpload}
+            className="rounded-[1.65rem] border border-amber-200/14 bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.12),transparent_42%),linear-gradient(135deg,rgba(255,255,255,0.05),rgba(255,255,255,0.018))] p-4 shadow-[0_26px_90px_rgba(0,0,0,0.26)]"
+          >
+            <div className="flex items-center gap-2 text-xs uppercase tracking-[0.22em] text-amber-100/75">
+              <UploadCloud className="h-4 w-4" />
+              Upload to library
             </div>
 
-            <div className="mt-4 grid min-w-0 gap-3">
-              <label className="grid min-w-0 gap-2">
-                <span className="text-sm font-semibold text-slate-200">Search warriors</span>
+            <div className="mt-4 grid gap-3">
+              <div className="rounded-2xl border border-white/10 bg-black/18 px-3 py-3">
+                <div className="text-xs text-slate-400">Category</div>
+                <div className="mt-1 text-lg font-semibold text-white">{CATEGORY_LABELS[category]}</div>
+              </div>
+
+              <label className="grid gap-2">
+                <span className="text-sm font-semibold text-slate-200">Optional label</span>
                 <input
-                  value={userQuery}
-                  onChange={(event) => setUserQuery(event.target.value)}
-                  placeholder="name, email, uid, wallet..."
-                  className="min-w-0 rounded-2xl border border-white/10 bg-slate-950/80 px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-600 focus:border-sky-300/40"
+                  value={uploadLabel}
+                  onChange={(event) => setUploadLabel(event.target.value)}
+                  placeholder="Leave blank to use file names"
+                  className="rounded-2xl border border-white/10 bg-slate-950/80 px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-600 focus:border-amber-300/40"
                 />
               </label>
 
-              <div className="max-h-64 min-w-0 overflow-y-auto overflow-x-hidden rounded-2xl border border-white/10 bg-black/22 p-2">
-                {usersLoading ? (
-                  <div className="px-3 py-4 text-sm text-slate-400">Loading warriors...</div>
-                ) : null}
+              <label className="grid gap-2 rounded-2xl border border-dashed border-amber-200/22 bg-black/24 px-3 py-5">
+                <span className="inline-flex items-center gap-2 text-sm font-semibold text-slate-200">
+                  <ImagePlus className="h-4 w-4" />
+                  Files
+                </span>
+                <input
+                  type="file"
+                  multiple
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  onChange={chooseFiles}
+                />
+                <span className="text-xs text-slate-500">
+                  {files.length > 0
+                    ? `${files.length} file${files.length === 1 ? "" : "s"} · ${formatSize(totalUploadBytes)}`
+                    : "PNG, JPG, WEBP, or GIF. Upload once, assign many times."}
+                </span>
+              </label>
 
-                {!usersLoading && users.length === 0 ? (
-                  <div className="px-3 py-4 text-sm text-slate-400">No matching warriors found. Search by leaderboard name, Steam name, uid, wallet, or nationality.</div>
-                ) : null}
+              <button
+                type="submit"
+                disabled={saving || files.length === 0}
+                className="rounded-full bg-amber-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {saving ? "Uploading..." : `Upload ${files.length || ""} asset${files.length === 1 ? "" : "s"}`}
+              </button>
+            </div>
+          </form>
 
-                {users.map((user) => (
+          <section className="rounded-[1.65rem] border border-sky-200/14 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.12),transparent_42%),linear-gradient(135deg,rgba(255,255,255,0.05),rgba(255,255,255,0.018))] p-4 shadow-[0_26px_90px_rgba(0,0,0,0.26)]">
+            <div className="flex items-center gap-2 text-xs uppercase tracking-[0.22em] text-sky-100/75">
+              <UserRound className="h-4 w-4" />
+              Warrior
+            </div>
+
+            <label className="mt-4 grid gap-2">
+              <span className="text-sm font-semibold text-slate-200">Search</span>
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                <input
+                  value={userQuery}
+                  onChange={(event) => setUserQuery(event.target.value)}
+                  placeholder="Julio, Sniper, wallet, uid..."
+                  className="w-full rounded-2xl border border-white/10 bg-slate-950/80 py-2.5 pl-9 pr-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-sky-300/40"
+                />
+              </div>
+            </label>
+
+            <div className="mt-3 max-h-[32rem] overflow-y-auto rounded-2xl border border-white/10 bg-black/20 p-2">
+              {loadingUsers ? <div className="px-3 py-4 text-sm text-slate-400">Loading warriors...</div> : null}
+
+              {!loadingUsers && users.length === 0 ? (
+                <div className="px-3 py-4 text-sm text-slate-400">No warriors found.</div>
+              ) : null}
+
+              {users.map((user) => {
+                const assignedCount = user.uid
+                  ? assets.filter((asset) => assetBelongsToUser(asset, user.uid as string)).length
+                  : 0;
+
+                return (
                   <button
                     key={user.key}
                     type="button"
@@ -907,369 +666,168 @@ export default function AdminMediaAssetsPage() {
                     <img
                       src={user.avatarPreviewUrl}
                       alt={`${user.displayName} avatar`}
-                      className="h-9 w-9 flex-none rounded-xl border border-white/10 object-cover"
+                      className="h-10 w-10 flex-none rounded-xl border border-white/10 object-cover"
                     />
-
-                    <span className="min-w-0 flex-1 overflow-hidden">
+                    <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-semibold text-white">{user.displayName}</span>
-                      <span className="block truncate text-[11px] text-slate-500">
-                        {user.uid || "tracked player"}
-                        {typeof user.totalMatches === "number" ? ` · ${user.totalMatches} match${user.totalMatches === 1 ? "" : "es"}` : ""}
+                      <span className="block truncate text-[11px] text-slate-500">{userSubline(user)}</span>
+                    </span>
+                    {assignedCount > 0 ? (
+                      <span className="rounded-full border border-emerald-300/18 bg-emerald-400/10 px-2 py-0.5 text-[11px] text-emerald-100">
+                        {assignedCount}
                       </span>
-                    </span>
+                    ) : null}
                   </button>
-                ))}
-              </div>
-
-              {selectedUser ? (
-                <div className="grid min-w-0 gap-3 rounded-2xl border border-white/10 bg-black/18 p-3">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <img
-                      src={selectedUser.avatarPreviewUrl}
-                      alt={`${selectedUser.displayName} avatar`}
-                      className="h-14 w-14 flex-none rounded-2xl border border-sky-200/18 object-cover"
-                    />
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-semibold text-white">{selectedUser.displayName}</div>
-                      <div className="mt-1 truncate text-xs text-slate-500">
-                        {selectedUser.representedCountry || "No country / region"} · {selectedUser.genderDivision || "Man"}
-                      </div>
-                    </div>
-                  </div>
-
-                  <label className="grid min-w-0 gap-1.5">
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-                      Display name
-                    </span>
-                    <input
-                      value={profileDisplayName}
-                      onChange={(event) => setProfileDisplayName(event.target.value)}
-                      className="min-w-0 rounded-xl border border-white/10 bg-slate-950/80 px-3 py-2 text-sm text-white outline-none focus:border-sky-300/40"
-                    />
-                  </label>
-
-                  <label className="grid min-w-0 gap-1.5">
-                    <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-                      <Globe2 className="h-3.5 w-3.5" />
-                      Nationality
-                    </span>
-                                        <select
-                      value={profileCountry}
-                      onChange={(event) => setProfileCountry(event.target.value)}
-                      className="min-w-0 rounded-xl border border-white/10 bg-slate-950/80 px-3 py-2 text-sm text-white outline-none focus:border-sky-300/40"
-                    >
-                      <option value="">No country / region</option>
-                      {countryOptions.map((country) => (
-                        <option key={country} value={country}>
-                          {country}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label className="grid min-w-0 gap-1.5">
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-                      Gender division
-                    </span>
-                    <select
-                      value={profileGenderDivision}
-                      onChange={(event) => setProfileGenderDivision(event.target.value)}
-                      className="min-w-0 rounded-xl border border-white/10 bg-slate-950/80 px-3 py-2 text-sm text-white outline-none focus:border-sky-300/40"
-                    >
-                      <option value="Man">Man</option>
-                      <option value="Woman">Woman</option>
-                    </select>
-                  </label>
-
-                  <button
-                    type="button"
-                    onClick={() => void saveSelectedUserProfile()}
-                    disabled={profileSaving}
-                    className="w-full rounded-full border border-sky-200/20 px-4 py-2.5 text-sm font-semibold text-sky-100 transition hover:bg-sky-300/10 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {profileSaving ? "Saving..." : "Save identity"}
-                  </button>
-
-                  <label className="grid min-w-0 gap-2 rounded-2xl border border-dashed border-sky-200/18 bg-black/22 px-3 py-3">
-                    <span className="text-sm font-semibold text-slate-200">Avatar</span>
-                    <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={chooseDirectAvatarFile} />
-                    <span className="truncate text-xs text-slate-500">
-                      {directAvatarFile
-                        ? `${directAvatarFile.name} · ${formatSize(directAvatarFile.size)}`
-                        : "Upload directly to this warrior."}
-                    </span>
-                  </label>
-
-                  <button
-                    type="button"
-                    onClick={() => void uploadAvatarDirectlyToUser()}
-                    disabled={directAvatarUploading || !directAvatarFile}
-                    className="w-full rounded-full bg-sky-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {directAvatarUploading ? "Uploading..." : "Upload avatar"}
-                  </button>
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-4 text-sm text-slate-400">
-                  Select a warrior to edit nationality, gender division, and avatar.
-                </div>
-              )}
+                );
+              })}
             </div>
           </section>
-
-          <form
-            onSubmit={submitUpload}
-            className="overflow-hidden rounded-[1.35rem] border border-amber-200/12 bg-[linear-gradient(135deg,rgba(255,255,255,0.045),rgba(255,255,255,0.018))] p-4 shadow-[0_24px_90px_rgba(0,0,0,0.24)]"
-          >
-            <div className="flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-amber-100/70">
-              <ImagePlus className="h-4 w-4" />
-              Global Media
-            </div>
-
-            <div className="mt-4 grid min-w-0 gap-3">
-              <label className="grid min-w-0 gap-2">
-                <span className="text-sm font-semibold text-slate-200">Kind</span>
-                <select
-                  value={kind}
-                  onChange={(event) => {
-                    setKind(event.target.value as (typeof KIND_OPTIONS)[number]);
-                    setTarget("");
-                  }}
-                  className="min-w-0 rounded-2xl border border-white/10 bg-slate-950/80 px-3 py-2.5 text-sm text-white outline-none focus:border-amber-300/40"
-                >
-                  {KIND_OPTIONS.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="grid min-w-0 gap-2">
-                <span className="text-sm font-semibold text-slate-200">Target</span>
-                <input
-                  value={target}
-                  onChange={(event) => setTarget(event.target.value)}
-                  placeholder="sniper, world, footer-wolo..."
-                  className="min-w-0 rounded-2xl border border-white/10 bg-slate-950/80 px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-600 focus:border-amber-300/40"
-                />
-              </label>
-
-              <div className="flex min-w-0 flex-wrap gap-1.5 rounded-2xl border border-white/6 bg-black/10 p-2">
-                {hints.map((hint) => (
-                  <button
-                    key={hint}
-                    type="button"
-                    onClick={() => setTarget(hint)}
-                    title={hint}
-                    className="max-w-full truncate rounded-full border border-white/10 bg-white/[0.035] px-2.5 py-1 text-[11px] text-slate-300 transition hover:border-amber-200/30 hover:text-amber-100"
-                  >
-                    {hint}
-                  </button>
-                ))}
-              </div>
-
-              <label className="grid min-w-0 gap-2">
-                <span className="text-sm font-semibold text-slate-200">Label</span>
-                <input
-                  value={label}
-                  onChange={(event) => setLabel(event.target.value)}
-                  className="min-w-0 rounded-2xl border border-white/10 bg-slate-950/80 px-3 py-2.5 text-sm text-white outline-none focus:border-amber-300/40"
-                />
-              </label>
-
-              <label className="grid min-w-0 gap-2">
-                <span className="text-sm font-semibold text-slate-200">Alt text</span>
-                <input
-                  value={alt}
-                  onChange={(event) => setAlt(event.target.value)}
-                  className="min-w-0 rounded-2xl border border-white/10 bg-slate-950/80 px-3 py-2.5 text-sm text-white outline-none focus:border-amber-300/40"
-                />
-              </label>
-
-              <label className="grid min-w-0 gap-2 rounded-2xl border border-dashed border-amber-200/18 bg-black/20 px-3 py-4">
-                <span className="text-sm font-semibold text-slate-200">Image file</span>
-                <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={chooseFile} />
-                <span className="truncate text-xs text-slate-500">
-                  {file ? `${file.name} · ${formatSize(file.size)}` : "For belts, logos, backgrounds, and global art."}
-                </span>
-              </label>
-
-              <button
-                type="submit"
-                disabled={saving}
-                className="w-full rounded-full bg-amber-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {saving ? "Uploading..." : "Upload global asset"}
-              </button>
-            </div>
-          </form>
         </aside>
 
-        <section className="min-w-0 overflow-hidden rounded-[1.35rem] border border-white/10 bg-slate-950/60 p-4 sm:p-5">
+        <section className="min-w-0 rounded-[1.75rem] border border-white/10 bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.06),transparent_44%),rgba(2,6,23,0.68)] p-4 shadow-[0_30px_110px_rgba(0,0,0,0.28)] sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-sky-100/60">
-              <Shield className="h-4 w-4" />
-              <span>Active {kind} assets</span>
+            <div>
+              <div className="text-xs uppercase tracking-[0.22em] text-slate-500">Asset library</div>
+              <h2 className="mt-1 text-2xl font-semibold text-white">{CATEGORY_LABELS[category]}</h2>
+              <p className="mt-1 text-sm text-slate-400">
+                {globalAssets.length} global asset{globalAssets.length === 1 ? "" : "s"} · {selectedAssets.length} selected
+              </p>
             </div>
 
-            <button
-              type="button"
-              onClick={() => void loadAssets()}
-              disabled={loading}
-              className="inline-flex items-center gap-2 rounded-full border border-white/12 px-3 py-1.5 text-xs text-slate-300 transition hover:border-sky-200/30 hover:text-sky-100 disabled:opacity-60"
-            >
-              <RefreshCw className="h-3.5 w-3.5" />
-              Refresh
-            </button>
-          </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={toggleVisibleAssets}
+                disabled={visibleAssets.length === 0}
+                className="rounded-full border border-white/12 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:border-sky-200/30 hover:text-sky-100 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {allVisibleSelected ? "Clear visible" : "Select visible"}
+              </button>
 
-          <div className="mt-5 grid min-w-0 gap-3 [grid-template-columns:repeat(auto-fill,minmax(13rem,1fr))]">
-            {(loading ? [] : activeAssets).map((asset) => (
-              <AssetCard
-                key={asset.id}
-                asset={asset}
-                onSetActive={(nextActive) => void setAssetActive(asset, nextActive)}
-                onDelete={() => void deleteAsset(asset)}
-              />
-            ))}
-
-            {!loading && activeAssets.length === 0 ? (
-              <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-5 text-sm text-slate-300">
-                No active {kind} assets yet.
-              </div>
-            ) : null}
-          </div>
-        </section>
-      </section>
-
-      <section className="min-w-0 overflow-hidden rounded-[1.35rem] border border-white/10 bg-slate-950/50 p-4 sm:p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <div className="text-xs uppercase tracking-[0.24em] text-slate-500">Media library</div>
-            <div className="mt-1 text-sm text-slate-400">
-              {selectedAssets.length} {kind} row{selectedAssets.length === 1 ? "" : "s"} · {activeAssets.length} active · {selectedAssets.length - activeAssets.length} inactive
-            </div>
-          </div>
-
-          {selectedAssetIds.length > 0 ? (
-            <div className="flex flex-wrap items-center gap-2 rounded-full border border-white/10 bg-white/[0.035] px-2 py-1">
-              <span className="px-2 text-xs text-slate-300">
-                {selectedAssetIds.length} selected{selectedInactiveAssetCount > 0 ? ` · ${selectedInactiveAssetCount} inactive` : ""}
-              </span>
               <button
                 type="button"
                 onClick={() => setSelectedAssetIds([])}
-                className="rounded-full border border-white/10 px-2.5 py-1 text-xs text-slate-300 transition hover:bg-white/[0.06] hover:text-white"
+                disabled={selectedAssets.length === 0 || assigning}
+                className="rounded-full border border-white/12 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:border-white/24 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Clear
               </button>
+
               <button
                 type="button"
-                onClick={() => void deleteSelectedAssets()}
-                disabled={bulkDeleting}
-                className="rounded-full border border-red-300/20 px-2.5 py-1 text-xs font-semibold text-red-100 transition hover:bg-red-400/10 disabled:opacity-60"
+                onClick={() => void assignSelectedAssets()}
+                disabled={!selectedUserUid || selectedAssets.length === 0 || assigning}
+                className="rounded-full bg-sky-300 px-3 py-2 text-xs font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Delete
+                {assigning ? "Assigning..." : "Assign selected"}
               </button>
             </div>
-          ) : null}
-        </div>
+          </div>
 
-        <div className="mt-4 grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1fr)_11rem_14rem_auto]">
-          <input
-            value={assetSearch}
-            onChange={(event) => setAssetSearch(event.target.value)}
-            placeholder="Search label, target, filename, url..."
-            className="min-w-0 rounded-2xl border border-white/10 bg-slate-950/80 px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-600 focus:border-sky-300/40"
-          />
-
-          <select
-            value={assetStatusFilter}
-            onChange={(event) => setAssetStatusFilter(event.target.value as AssetStatusFilter)}
-            className="min-w-0 rounded-2xl border border-white/10 bg-slate-950/80 px-3 py-2.5 text-sm text-white outline-none focus:border-sky-300/40"
-          >
-            <option value="active">Active only</option>
-            <option value="inactive">Inactive only</option>
-            <option value="all">All rows</option>
-          </select>
-
-          <select
-            value={assetTargetFilter}
-            onChange={(event) => setAssetTargetFilter(event.target.value)}
-            className="min-w-0 rounded-2xl border border-white/10 bg-slate-950/80 px-3 py-2.5 text-sm text-white outline-none focus:border-sky-300/40"
-          >
-            <option value="">All targets</option>
-            {targetOptions.map((option) => (
-              <option key={option} value={option}>
-                {option === "__untargeted__" ? "untargeted" : option}
-              </option>
-            ))}
-          </select>
-
-          <button
-            type="button"
-            onClick={selectFilteredAssets}
-            disabled={filteredAssets.length === 0}
-            className="rounded-full border border-white/10 px-3 py-2 text-xs font-semibold text-slate-300 transition hover:border-sky-200/30 hover:text-sky-100 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Select visible
-          </button>
-        </div>
-
-        {duplicateGroups.length > 0 ? (
-          <div className="mt-4 grid min-w-0 gap-2 rounded-2xl border border-amber-200/12 bg-amber-300/[0.035] p-3">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-amber-100/65">
-              Target stacks
+          <div className="mt-4 flex flex-wrap items-center gap-3 rounded-2xl border border-white/10 bg-black/18 px-3 py-3">
+            <div className="relative min-w-[16rem] flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+              <input
+                value={assetQuery}
+                onChange={(event) => setAssetQuery(event.target.value)}
+                placeholder={`Search ${CATEGORY_LABELS[category].toLowerCase()}...`}
+                className="w-full rounded-2xl border border-white/10 bg-slate-950/80 py-2.5 pl-9 pr-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-sky-300/40"
+              />
             </div>
-            <div className="flex min-w-0 flex-wrap gap-2">
-              {duplicateGroups.slice(0, 16).map((group) => (
-                <div
-                  key={group.groupKey}
-                  className="flex min-w-0 max-w-full items-center gap-2 rounded-full border border-white/10 bg-black/20 px-2 py-1"
-                >
-                  <button
-                    type="button"
-                    onClick={() => focusAssetGroup(group)}
-                    className="max-w-[13rem] truncate px-1 text-xs font-semibold text-amber-50 transition hover:text-white"
-                    title={group.targetLabel}
-                  >
-                    {group.targetLabel} · {group.assets.length}
-                  </button>
-                  {group.inactive.length > 0 ? (
-                    <button
-                      type="button"
-                      onClick={() => void deleteInactiveForGroup(group)}
-                      disabled={bulkDeleting}
-                      className="rounded-full border border-red-300/14 px-2 py-0.5 text-[10px] font-semibold text-red-100 transition hover:bg-red-400/10 disabled:opacity-50"
-                    >
-                      prune {group.inactive.length}
-                    </button>
-                  ) : null}
-                </div>
-              ))}
+
+            <div className="text-xs text-slate-400">
+              Target: <span className="font-semibold text-slate-200">{selectedUser?.displayName || "choose warrior"}</span>
             </div>
           </div>
-        ) : null}
 
-        <div className="mt-4 grid min-w-0 gap-3 [grid-template-columns:repeat(auto-fill,minmax(13rem,1fr))]">
-          {filteredAssets.map((asset) => (
-            <AssetCard
-              key={asset.id}
-              asset={asset}
-              selected={selectedAssetIds.includes(asset.id)}
-              onToggleSelect={() => toggleAssetSelection(asset.id)}
-              onSetActive={(nextActive) => void setAssetActive(asset, nextActive)}
-              onDelete={() => void deleteAsset(asset)}
-            />
-          ))}
+          <div className="mt-5 grid min-w-0 gap-4 [grid-template-columns:repeat(auto-fill,minmax(13.75rem,1fr))] min-[1700px]:[grid-template-columns:repeat(auto-fill,minmax(15.5rem,1fr))]">
+            {loadingAssets ? (
+              <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-5 text-sm text-slate-300">
+                Loading assets...
+              </div>
+            ) : null}
 
-          {!loading && filteredAssets.length === 0 ? (
-            <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-5 text-sm text-slate-300">
-              No {assetStatusFilter === "active" ? "active" : assetStatusFilter === "inactive" ? "inactive" : "matching"} {kind} uploads.
+            {!loadingAssets && visibleAssets.length === 0 ? (
+              <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-5 text-sm text-slate-300">
+                No {CATEGORY_LABELS[category].toLowerCase()} found.
+              </div>
+            ) : null}
+
+            {visibleAssets.map((asset) => (
+              <AssetCard
+                key={asset.id}
+                asset={asset}
+                selected={selectedAssetIds.includes(asset.id)}
+                busy={busyAssetId === asset.id}
+                onToggleSelected={() => toggleAsset(asset.id)}
+                onSetActive={(active) => void setAssetActive(asset, active)}
+                onDelete={() => void deleteAsset(asset)}
+              />
+            ))}
+          </div>
+        </section>
+
+        <aside className="min-w-0 rounded-[1.75rem] border border-white/10 bg-[radial-gradient(circle_at_top_right,rgba(251,191,36,0.08),transparent_38%),rgba(2,6,23,0.70)] p-4 shadow-[0_30px_110px_rgba(0,0,0,0.28)] sm:p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="text-xs uppercase tracking-[0.22em] text-slate-500">Assigned assets</div>
+              <h2 className="mt-1 text-2xl font-semibold text-white">{selectedUser?.displayName || "No warrior selected"}</h2>
+              <p className="mt-1 text-sm text-slate-400">
+                {selectedUser ? `${totalAssignedForSelectedUser} total assigned` : "Choose a warrior to see their media pool."}
+              </p>
+            </div>
+
+            {selectedUser ? (
+              <img
+                src={selectedUser.avatarPreviewUrl}
+                alt={`${selectedUser.displayName} avatar`}
+                className="h-14 w-14 flex-none rounded-2xl border border-sky-200/18 object-cover"
+              />
+            ) : null}
+          </div>
+
+          <div className="mt-4 grid gap-3">
+            {KIND_OPTIONS.map((kind) => {
+              const rows = selectedUserAssignments.filter((asset) => asset.kind === kind);
+
+              return (
+                <section key={kind} className="rounded-2xl border border-white/10 bg-black/18 p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-sm font-semibold text-white">{CATEGORY_LABELS[kind]}</div>
+                    <div className="rounded-full border border-white/10 px-2 py-0.5 text-[11px] text-slate-400">
+                      {rows.length}
+                    </div>
+                  </div>
+
+                  {rows.length > 0 ? (
+                    <div className="mt-3 grid grid-cols-2 gap-2 min-[1800px]:grid-cols-3">
+                      {rows.map((asset) => (
+                        <AssignedAssetTile
+                          key={asset.id}
+                          asset={asset}
+                          targetLabel={selectedUserUid ? targetBadge(asset, selectedUserUid) : "assigned"}
+                          busy={busyAssetId === asset.id}
+                          onUse={() => void setAssetActive(asset, true)}
+                          onDelete={() => void deleteAsset(asset)}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="mt-3 rounded-xl border border-white/8 bg-white/[0.025] px-3 py-3 text-xs text-slate-500">
+                      No {CATEGORY_LABELS[kind].toLowerCase()} assigned.
+                    </div>
+                  )}
+                </section>
+              );
+            })}
+          </div>
+
+          {selectedUser && selectedUserAssignmentsForCategory.length === 0 && selectedAssets.length > 0 ? (
+            <div className="mt-4 rounded-2xl border border-sky-200/12 bg-sky-300/[0.045] px-3 py-3 text-xs text-slate-300">
+              You have {selectedAssets.length} selected {CATEGORY_LABELS[category].toLowerCase()} ready to assign to {selectedUser.displayName}.
             </div>
           ) : null}
-        </div>
+        </aside>
       </section>
     </main>
   );
@@ -1277,64 +835,64 @@ export default function AdminMediaAssetsPage() {
 
 function AssetCard({
   asset,
-  selected = false,
-  onToggleSelect,
+  selected,
+  busy,
+  onToggleSelected,
   onSetActive,
   onDelete,
 }: {
   asset: ManagedMediaAsset;
-  selected?: boolean;
-  onToggleSelect?: () => void;
+  selected: boolean;
+  busy: boolean;
+  onToggleSelected: () => void;
   onSetActive: (active: boolean) => void;
   onDelete: () => void;
 }) {
   return (
     <article
-      className={`min-w-0 overflow-hidden rounded-2xl border bg-white/[0.03] shadow-[0_18px_54px_rgba(0,0,0,0.18)] transition ${
-        selected ? "border-sky-200/42 ring-1 ring-sky-200/30" : "border-white/8"
+      className={`group min-w-0 overflow-hidden rounded-[1.35rem] border bg-white/[0.04] shadow-[0_20px_62px_rgba(0,0,0,0.22)] transition ${
+        selected ? "border-sky-200/50 ring-1 ring-sky-200/30" : "border-white/8 hover:border-white/16"
       }`}
     >
-      <div className="relative flex aspect-[1.45/1] items-center justify-center bg-[linear-gradient(45deg,rgba(255,255,255,0.045)_25%,transparent_25%,transparent_75%,rgba(255,255,255,0.045)_75%),linear-gradient(45deg,rgba(255,255,255,0.045)_25%,transparent_25%,transparent_75%,rgba(255,255,255,0.045)_75%)] bg-[length:18px_18px] bg-[position:0_0,9px_9px]">
-        <img src={asset.url} alt={asset.alt || asset.label} className="h-full w-full object-contain p-2.5" />
-        <div className="pointer-events-none absolute inset-0 bg-black/25" />
+      <button
+        type="button"
+        onClick={onToggleSelected}
+        className="relative flex aspect-[1.22/1] w-full items-center justify-center bg-[linear-gradient(45deg,rgba(255,255,255,0.045)_25%,transparent_25%,transparent_75%,rgba(255,255,255,0.045)_75%),linear-gradient(45deg,rgba(255,255,255,0.045)_25%,transparent_25%,transparent_75%,rgba(255,255,255,0.045)_75%)] bg-[length:18px_18px] bg-[position:0_0,9px_9px]"
+      >
+        <img src={asset.url} alt={asset.alt || asset.label} className="h-full w-full object-contain p-3" />
+        <div className="pointer-events-none absolute inset-0 bg-black/18" />
         <span
-          className={`absolute left-2 top-2 inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[10px] uppercase tracking-[0.14em] ${
+          className={`absolute left-2 top-2 inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[10px] uppercase tracking-[0.12em] ${
             asset.active
               ? "border-emerald-300/24 bg-emerald-400/12 text-emerald-100"
-              : "border-white/10 bg-black/36 text-slate-400"
+              : "border-white/10 bg-black/40 text-slate-400"
           }`}
         >
           {asset.active ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
           {asset.active ? "Active" : "Inactive"}
         </span>
-      </div>
+        <span
+          className={`absolute right-2 top-2 rounded-full border px-2 py-1 text-[10px] font-semibold ${
+            selected
+              ? "border-sky-200/40 bg-sky-300/20 text-sky-50"
+              : "border-white/10 bg-black/40 text-slate-300"
+          }`}
+        >
+          {selected ? "Selected" : "Select"}
+        </span>
+      </button>
 
-      <div className="min-w-0 p-2.5">
+      <div className="min-w-0 p-3">
         <div className="truncate text-sm font-semibold text-white">{asset.label}</div>
-        <div className="mt-1 truncate text-xs text-slate-500">
-          {asset.kind}
-          {asset.target ? ` / ${asset.target}` : ""} · {formatSize(asset.sizeBytes)}
-        </div>
+        <div className="mt-1 truncate text-xs text-slate-500">{asset.originalName || asset.url}</div>
+        <div className="mt-1 text-xs text-slate-500">{formatSize(asset.sizeBytes)}</div>
 
-        <div className="mt-2.5 flex flex-wrap gap-1.5">
-          {onToggleSelect ? (
-            <button
-              type="button"
-              onClick={onToggleSelect}
-              className={`rounded-full border px-2.5 py-1.5 text-xs font-semibold transition ${
-                selected
-                  ? "border-sky-200/30 bg-sky-300/12 text-sky-100"
-                  : "border-white/10 text-slate-300 hover:border-sky-200/24 hover:text-sky-100"
-              }`}
-            >
-              {selected ? "Selected" : "Select"}
-            </button>
-          ) : null}
-
+        <div className="mt-3 flex flex-wrap gap-1.5">
           <button
             type="button"
             onClick={() => onSetActive(!asset.active)}
-            className="rounded-full border border-amber-200/16 px-2.5 py-1.5 text-xs font-semibold text-amber-100 transition hover:bg-amber-300/10"
+            disabled={busy}
+            className="rounded-full border border-amber-200/16 px-2.5 py-1.5 text-xs font-semibold text-amber-100 transition hover:bg-amber-300/10 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {asset.active ? "Deactivate" : "Activate"}
           </button>
@@ -1342,22 +900,68 @@ function AssetCard({
           <button
             type="button"
             onClick={onDelete}
-            className="inline-flex items-center gap-1 rounded-full border border-red-300/18 px-2.5 py-1.5 text-xs font-semibold text-red-100 transition hover:bg-red-400/10"
+            disabled={busy}
+            className="inline-flex items-center gap-1 rounded-full border border-red-300/18 px-2.5 py-1.5 text-xs font-semibold text-red-100 transition hover:bg-red-400/10 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Trash2 className="h-3.5 w-3.5" />
             Delete
           </button>
-
-          <a
-            href={asset.url}
-            target="_blank"
-            rel="noreferrer"
-            className="rounded-full border border-white/10 px-2.5 py-1.5 text-xs text-slate-300 transition hover:border-white/24 hover:text-white"
-          >
-            Open
-          </a>
         </div>
       </div>
     </article>
+  );
+}
+
+function AssignedAssetTile({
+  asset,
+  targetLabel,
+  busy,
+  onUse,
+  onDelete,
+}: {
+  asset: ManagedMediaAsset;
+  targetLabel: string;
+  busy: boolean;
+  onUse: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <div className="min-w-0 overflow-hidden rounded-xl border border-white/10 bg-white/[0.035]">
+      <div className="relative flex aspect-square items-center justify-center bg-black/20">
+        <img src={asset.url} alt={asset.alt || asset.label} className="h-full w-full object-contain p-1.5" />
+        {asset.active ? (
+          <span className="absolute left-1.5 top-1.5 rounded-full border border-emerald-300/24 bg-emerald-400/16 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.1em] text-emerald-100">
+            Active
+          </span>
+        ) : null}
+      </div>
+
+      <div className="p-2">
+        <div className="truncate text-xs font-semibold text-white">{asset.label}</div>
+        <div className="mt-0.5 truncate text-[10px] text-slate-500">{targetLabel}</div>
+
+        <div className="mt-2 flex flex-wrap gap-1">
+          {!asset.active ? (
+            <button
+              type="button"
+              onClick={onUse}
+              disabled={busy}
+              className="rounded-full border border-sky-200/18 px-2 py-1 text-[10px] font-semibold text-sky-100 transition hover:bg-sky-300/10 disabled:opacity-50"
+            >
+              Use
+            </button>
+          ) : null}
+
+          <button
+            type="button"
+            onClick={onDelete}
+            disabled={busy}
+            className="rounded-full border border-red-300/18 px-2 py-1 text-[10px] font-semibold text-red-100 transition hover:bg-red-400/10 disabled:opacity-50"
+          >
+            Remove
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

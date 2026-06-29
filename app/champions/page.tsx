@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 
 import { getPrisma } from "@/lib/prisma";
+import { avatarUrlForName, avatarUrlForUser } from "@/lib/avatarAssets";
 import {
   designationTitles,
   eloTitles,
@@ -35,7 +36,6 @@ import {
 } from "@/lib/champions/titleState";
 import {
   managedMediaPublicUrl,
-  slugifyManagedMediaTarget,
 } from "@/lib/managedMediaAssets";
 
 export const metadata: Metadata = {
@@ -77,22 +77,44 @@ function normalizedPlayerName(value: string) {
   return value.trim().toLowerCase();
 }
 
+const KNOWN_PLAYER_UIDS: Record<string, string> = {
+  "dil_pascana": "u_17816384361f4c8a8d57c6934265100b",
+  "dil pascana": "u_17816384361f4c8a8d57c6934265100b",
+  "jim": "u_0df73bdbb64646c19e4a9bfd225b3285",
+  "julio": "u_79ce46af3d504ceca718e5fda83e3502",
+  "julio alvarez": "u_79ce46af3d504ceca718e5fda83e3502",
+  "sniper": "u_1301e0492fdf4a229d941940413497e1",
+  "zodiac": "u_06c16d39d25c476fac2c86fee7b4d189",
+};
+
+function knownPlayerUidForName(name: string) {
+  return KNOWN_PLAYER_UIDS[normalizedPlayerName(name)] || null;
+}
+
+function uidFromPlayerHref(href: string | null | undefined) {
+  if (!href?.startsWith("/players/") || href.startsWith("/players/by-name/")) {
+    return null;
+  }
+
+  return decodeURIComponent(href.slice("/players/".length));
+}
+
 function avatarForPlayerName(name: string) {
-  const fallback = PLAYER_BACKDROPS[normalizedPlayerName(name)] || SILHOUETTE_BACKDROP;
-  return managedMediaPublicUrl("avatar", slugifyManagedMediaTarget(name), fallback);
+  const uid = knownPlayerUidForName(name);
+
+  if (uid) {
+    return avatarUrlForUser(uid, name);
+  }
+
+  return avatarUrlForName(name);
 }
 
 
 function avatarForHolder(holder: ChampionTitleDefinition["holders"][number]) {
-  const fallback = PLAYER_BACKDROPS[normalizedPlayerName(holder.name)] || SILHOUETTE_BACKDROP;
-  const uid = holder.uid || (
-    holder.href?.startsWith("/players/")
-      ? decodeURIComponent(holder.href.slice("/players/".length))
-      : null
-  );
+  const uid = holder.uid || uidFromPlayerHref(holder.href) || knownPlayerUidForName(holder.name);
 
   if (uid) {
-    return managedMediaPublicUrl("avatar", `user-${uid}`, fallback);
+    return avatarUrlForUser(uid, holder.name);
   }
 
   return avatarForPlayerName(holder.name);

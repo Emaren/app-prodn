@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import {
-  mediaFallbackUrl,
+  normalizeManagedMediaTarget,
   saveManagedMediaReference,
   saveManagedMediaUpload,
 } from "@/lib/managedMediaAssets";
@@ -15,10 +15,25 @@ const NO_STORE_HEADERS = {
   "Cache-Control": "no-store, max-age=0",
 };
 
-const PRESET_AVATARS = new Set(["emaren", "jim", "julio", "julio-alvarez", "sniper", "silhouette"]);
 
 function userAvatarTarget(uid: string) {
-  return `user-${uid}`;
+  const target = normalizeManagedMediaTarget(`user-${uid}`);
+
+  if (!target) {
+    throw new Error("Could not build user avatar target.");
+  }
+
+  return target;
+}
+
+function userAvatarPoolTarget(uid: string) {
+  const target = normalizeManagedMediaTarget(`user-${uid}-pool`);
+
+  if (!target) {
+    throw new Error("Could not build user avatar pool target.");
+  }
+
+  return target;
 }
 
 async function requireViewer(request: NextRequest) {
@@ -98,38 +113,63 @@ export async function PATCH(request: NextRequest) {
 
   try {
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
-    const preset = String(body.preset || "").trim().toLowerCase();
-    if (!PRESET_AVATARS.has(preset)) {
+    const requestedPreset = String(body.preset || "").trim();
+    const assetChoice = requestedPreset.match(/^asset:(\d+)$/i);
+    const assetId = Number(body.assetId ?? assetChoice?.[1]);
+    const target = userAvatarPoolTarget(gate.user.uid);
+
+    if (Number.isInteger(assetId) && assetId > 0) {
+      const asset = await gate.prisma.managedMediaAsset.findFirst({
+        where: {
+          id: assetId,
+          kind: "avatar",
+          target,
+        },
+      });
+
+      if (!asset) {
+        return NextResponse.json(
+          { detail: "That avatar is not assigned to your profile." },
+          { status: 404, headers: NO_STORE_HEADERS }
+        );
+      }
+
+      await gate.prisma.$transaction([
+        gate.prisma.managedMediaAsset.updateMany({
+          where: { kind: "avatar", target, active: true, id: { not: asset.id } },
+          data: { active: false },
+        }),
+        gate.prisma.managedMediaAsset.update({
+          where: { id: asset.id },
+          data: { active: true },
+        }),
+      ]);
+
+      const label =
+        gate.user.inGameName ||
+        gate.user.steamPersonaName ||
+        "Profile avatar";
+
+      const selectedAsset = await saveManagedMediaReference({
+        prisma: gate.prisma,
+        kind: "avatar",
+        target: userAvatarTarget(gate.user.uid),
+        url: asset.url,
+        label: `${label} selected avatar`,
+        alt: asset.alt || `${label} avatar`,
+        uploadedByUid: gate.user.uid,
+      });
+
       return NextResponse.json(
-        { detail: "Choose a valid avatar preset." },
-        { status: 400, headers: NO_STORE_HEADERS }
+        { avatarUrl: selectedAsset.url, asset: { ...asset, active: true } },
+        { headers: NO_STORE_HEADERS }
       );
     }
 
-    const avatarUrl = mediaFallbackUrl("avatar", preset);
-    if (!avatarUrl) {
-      return NextResponse.json(
-        { detail: "Avatar preset unavailable." },
-        { status: 400, headers: NO_STORE_HEADERS }
-      );
-    }
-
-    const label =
-      gate.user.inGameName ||
-      gate.user.steamPersonaName ||
-      "Profile avatar";
-
-    const asset = await saveManagedMediaReference({
-      prisma: gate.prisma,
-      kind: "avatar",
-      target: userAvatarTarget(gate.user.uid),
-      url: avatarUrl,
-      label: `${label} avatar`,
-      alt: `${label} avatar`,
-      uploadedByUid: gate.user.uid,
-    });
-
-    return NextResponse.json({ avatarUrl: asset.url, asset }, { headers: NO_STORE_HEADERS });
+    return NextResponse.json(
+      { detail: "Choose one of the avatars assigned to your profile." },
+      { status: 400, headers: NO_STORE_HEADERS }
+    );
   } catch (error) {
     return NextResponse.json(
       {

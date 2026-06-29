@@ -90,9 +90,11 @@ export function managedAvatarUrl(
     ? fallback
     : STATIC_AVATAR_FALLBACKS.silhouette;
 
-  const url = `/api/media-assets/avatar/${encodeURIComponent(normalizedTarget)}?fallback=${encodeURIComponent(
+  let url = `/api/media-assets/avatar/${encodeURIComponent(normalizedTarget)}?fallback=${encodeURIComponent(
     safeFallback
   )}`;
+
+  url = appendQueryParam(url, "v", "20260629a");
 
   if (options?.size === "thumb") {
     return appendQueryParam(url, "size", "thumb");
@@ -184,7 +186,8 @@ export function avatarCardUrlForUser(uid: string | null | undefined, name: strin
     return avatarCardUrlForName(name);
   }
 
-  return managedAvatarUrl(`user-${normalizedUid}`, avatarFallbackForName(name), { size: "card" });
+  const fallback = managedAvatarUrl(`user-${normalizedUid}`, avatarFallbackForName(name), { size: "card" });
+  return managedAvatarUrl(`user-${normalizedUid}-pool`, fallback, { size: "card" });
 }
 
 export function avatarUrlForUser(uid: string | null | undefined, name: string | null | undefined) {
@@ -193,7 +196,8 @@ export function avatarUrlForUser(uid: string | null | undefined, name: string | 
     return avatarUrlForName(name);
   }
 
-  return managedAvatarUrl(`user-${normalizedUid}`, avatarFallbackForName(name));
+  const fallback = managedAvatarUrl(`user-${normalizedUid}`, avatarFallbackForName(name));
+  return managedAvatarUrl(`user-${normalizedUid}-pool`, fallback);
 }
 
 export function avatarThumbUrlForUser(uid: string | null | undefined, name: string | null | undefined) {
@@ -202,7 +206,8 @@ export function avatarThumbUrlForUser(uid: string | null | undefined, name: stri
     return avatarThumbUrlForName(name);
   }
 
-  return managedAvatarUrl(`user-${normalizedUid}`, avatarFallbackForName(name), { size: "thumb" });
+  const fallback = managedAvatarUrl(`user-${normalizedUid}`, avatarFallbackForName(name), { size: "thumb" });
+  return managedAvatarUrl(`user-${normalizedUid}-pool`, fallback, { size: "thumb" });
 }
 
 export function thumbnailUrlForAvatarAsset(url: string | null | undefined) {
