@@ -15,6 +15,7 @@ import {
 
 import {
   FALLBACK_EVENT_TILE,
+  DEFAULT_EVENT_TILE_STYLE_CONFIG,
   isSafeEventMediaUrl,
   type EventTileView,
 } from "@/lib/events/types";
@@ -175,6 +176,45 @@ function eventFacts(eventTile: EventTileView) {
   ] as const;
 }
 
+
+function tileStyleConfig(eventTile: EventTileView) {
+  return eventTile.styleConfig || DEFAULT_EVENT_TILE_STYLE_CONFIG;
+}
+
+function titleTextStyle(eventTile: EventTileView, mobile: boolean): CSSProperties {
+  const style = tileStyleConfig(eventTile);
+  return {
+    color: style.titleColor,
+    fontFamily: style.titleFontFamily,
+    fontSize: mobile ? style.titleMobileSize : style.titleDesktopSize,
+    fontStyle: style.titleStyle,
+    fontWeight: style.titleWeight,
+    letterSpacing: style.titleLetterSpacing,
+    lineHeight: style.titleLineHeight,
+    textAlign: style.titleAlign,
+    textTransform: style.titleTransform,
+  };
+}
+
+function desktopTitleBlockStyle(eventTile: EventTileView): CSSProperties {
+  const style = tileStyleConfig(eventTile);
+  return {
+    top: `${style.titleDesktopTop}%`,
+    left: `${style.titleDesktopLeft}%`,
+    width: `${style.titleDesktopWidth}%`,
+    transform: `translateX(-50%) rotate(${style.titleRotate}deg)`,
+    textAlign: style.titleAlign,
+  };
+}
+
+function mobileTitleBlockStyle(eventTile: EventTileView): CSSProperties {
+  const style = tileStyleConfig(eventTile);
+  return {
+    transform: `translateY(${style.titleMobileNudge}px) rotate(${style.titleRotate}deg)`,
+    textAlign: style.titleAlign,
+  };
+}
+
 function displayTitle(eventTile: EventTileView) {
   return [eventTile.title, eventTile.subtitle].filter(Boolean).join(" ");
 }
@@ -243,12 +283,15 @@ function MobileEventTile({
           </span>
         </div>
 
-        <div className="mt-4 text-center">
+        <div className="mt-4 text-center" style={mobileTitleBlockStyle(eventTile)}>
           <div className="inline-flex items-center gap-2 rounded-full border border-amber-200/20 bg-black/48 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.2em] text-amber-200">
             <Crown className="h-3.5 w-3.5" />
             {eventTile.eyebrow}
           </div>
-          <h2 className="mt-4 break-words font-serif text-[clamp(3.4rem,16vw,4.8rem)] font-black uppercase leading-[0.78] tracking-[-0.045em] text-amber-100 drop-shadow-[0_7px_0_rgba(0,0,0,0.72)]">
+          <h2
+            className="mt-4 break-words font-serif font-black uppercase text-amber-100 drop-shadow-[0_7px_0_rgba(0,0,0,0.72)]"
+            style={titleTextStyle(eventTile, true)}
+          >
             {displayTitle(eventTile)}
           </h2>
         </div>
@@ -354,12 +397,15 @@ function DesktopEventTile({
         </div>
       ) : null}
 
-      <div className="absolute inset-x-4 top-14 z-40 text-center sm:top-16">
+      <div className="absolute z-40 text-center" style={desktopTitleBlockStyle(eventTile)}>
         <div className="mx-auto mb-3 inline-flex items-center gap-2 rounded-full border border-amber-200/20 bg-black/62 px-4 py-1.5 text-[10px] font-black uppercase tracking-[0.28em] text-amber-200">
           <Crown className="h-3.5 w-3.5" />
           {eventTile.eyebrow}
         </div>
-        <h2 className="mx-auto w-full break-words text-center font-serif text-[clamp(4.1rem,9.2vw,10rem)] font-black uppercase leading-[0.78] tracking-[-0.045em] text-amber-100 drop-shadow-[0_8px_0_rgba(0,0,0,0.72)]">
+        <h2
+          className="mx-auto w-full break-words text-center font-serif font-black uppercase text-amber-100 drop-shadow-[0_8px_0_rgba(0,0,0,0.72)]"
+          style={titleTextStyle(eventTile, false)}
+        >
           {displayTitle(eventTile)}
         </h2>
       </div>

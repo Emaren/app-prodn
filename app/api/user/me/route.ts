@@ -8,7 +8,11 @@ import { loadPendingWoloClaimSummaryForUser } from "@/lib/pendingWoloClaims";
 import { resolveRequestUid, resolveRequestEmail } from "@/lib/requestIdentity";
 import { validateWoloAddress } from "@/lib/woloBetSettlement";
 import { allChampionTitles, type ChampionTitleDefinition } from "@/lib/champions/titles";
-import { managedMediaPublicUrl, resolveManagedMediaUrl } from "@/lib/managedMediaAssets";
+import {
+  managedMediaPublicUrl,
+  normalizeManagedMediaTarget,
+  resolveManagedMediaUrl,
+} from "@/lib/managedMediaAssets";
 import {
   loadUserTrophyHoldings,
   recordNationalityChange,
@@ -155,13 +159,6 @@ const USER_SELECT = {
   isAdmin: true,
 } as const;
 
-const AVATAR_PRESETS = [
-  { target: "silhouette", label: "Silhouette" },
-  { target: "sniper", label: "Sniper" },
-  { target: "jim", label: "Jim" },
-  { target: "julio-alvarez", label: "Julio" },
-  { target: "emaren", label: "Emaren" },
-] as const;
 
 function normalizeNameKey(value: string | null | undefined) {
   return (value || "").trim().toLowerCase().replace(/\s+/g, " ");
@@ -219,16 +216,27 @@ async function buildProfilePresentation(
   const artifacts = holdings.filter((title) => title.kind === "artifact");
   const earningWoloPerDay = holdings.reduce((sum, title) => sum + title.dailyWolo, 0);
 
+  const selectedAvatarTarget = normalizeManagedMediaTarget(`user-${user.uid}`) || `user-${user.uid}`;
+  const avatarPoolTarget = normalizeManagedMediaTarget(`user-${user.uid}-pool`) || `user-${user.uid}-pool`;
+  const assignedAvatarAssets = await prisma.managedMediaAsset.findMany({
+    where: {
+      kind: "avatar",
+      target: avatarPoolTarget,
+    },
+    orderBy: [{ active: "desc" }, { updatedAt: "desc" }, { id: "desc" }],
+  });
+  const selectedAvatar = assignedAvatarAssets.find((asset) => asset.active) || null;
+  const fallbackAvatar = "/champions/players/silhouette.webp";
+
   return {
-    avatarUrl: await resolveManagedMediaUrl(
-      prisma,
-      "avatar",
-      `user-${user.uid}`,
-      "/champions/players/silhouette.webp"
-    ),
-    avatarOptions: AVATAR_PRESETS.map((option) => ({
-      ...option,
-      url: managedMediaPublicUrl("avatar", option.target),
+    avatarUrl:
+      selectedAvatar?.url ||
+      (await resolveManagedMediaUrl(prisma, "avatar", selectedAvatarTarget, fallbackAvatar)),
+    avatarOptions: assignedAvatarAssets.map((asset) => ({
+      target: `asset:${asset.id}`,
+      label: asset.label,
+      url: asset.url,
+      active: asset.active,
     })),
     belts,
     artifacts,

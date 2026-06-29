@@ -20,6 +20,7 @@ import {
   Shield,
   Smartphone,
   Sparkles,
+  Type,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
@@ -28,6 +29,7 @@ import { useUserAuth } from "@/context/UserAuthContext";
 import {
   EVENT_TILE_STATUSES,
   FALLBACK_EVENT_TILE,
+  DEFAULT_EVENT_TILE_STYLE_CONFIG,
   type EventStudioSnapshot,
   type EventStudioUser,
   type EventTileStatus,
@@ -178,6 +180,26 @@ function applySelectedUser(
   };
 }
 
+
+function applyStylePatch(
+  current: EventTileView,
+  patch: Partial<EventTileView["styleConfig"]>
+): EventTileView {
+  return {
+    ...current,
+    styleConfig: {
+      ...DEFAULT_EVENT_TILE_STYLE_CONFIG,
+      ...(current.styleConfig || DEFAULT_EVENT_TILE_STYLE_CONFIG),
+      ...patch,
+    },
+  };
+}
+
+function numericStyleValue(value: string, fallback: number) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
 export default function EventStudio() {
   const { isAuthenticated, isAdmin, loading: authLoading } = useUserAuth();
   const [snapshot, setSnapshot] = useState<EventStudioSnapshot | null>(null);
@@ -264,6 +286,7 @@ export default function EventStudio() {
   );
 
   const missing = useMemo(() => publishMissing(draft), [draft]);
+  const styleConfig = draft.styleConfig || DEFAULT_EVENT_TILE_STYLE_CONFIG;
 
   if (authLoading) {
     return (
@@ -534,6 +557,157 @@ export default function EventStudio() {
                   </div>
                 </EditorSection>
 
+
+                <EditorSection title="Featured Event title style" icon={Type}>
+                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                    <Field label="Font family / type" hint="CSS font stack. Example: Georgia, serif">
+                      <input
+                        className={inputClass}
+                        value={styleConfig.titleFontFamily}
+                        onChange={(event) => setDraft((current) => applyStylePatch(current, { titleFontFamily: event.target.value }))}
+                        placeholder='Georgia, "Times New Roman", serif'
+                      />
+                    </Field>
+                    <Field label="Title color">
+                      <input
+                        className={inputClass}
+                        type="color"
+                        value={styleConfig.titleColor}
+                        onChange={(event) => setDraft((current) => applyStylePatch(current, { titleColor: event.target.value }))}
+                      />
+                    </Field>
+                    <Field label="Desktop size">
+                      <input
+                        className={inputClass}
+                        value={styleConfig.titleDesktopSize}
+                        onChange={(event) => setDraft((current) => applyStylePatch(current, { titleDesktopSize: event.target.value }))}
+                        placeholder="clamp(4.1rem,9.2vw,10rem)"
+                      />
+                    </Field>
+                    <Field label="Mobile size">
+                      <input
+                        className={inputClass}
+                        value={styleConfig.titleMobileSize}
+                        onChange={(event) => setDraft((current) => applyStylePatch(current, { titleMobileSize: event.target.value }))}
+                        placeholder="clamp(3.4rem,16vw,4.8rem)"
+                      />
+                    </Field>
+                    <Field label="Weight">
+                      <select
+                        className={selectClass}
+                        value={styleConfig.titleWeight}
+                        onChange={(event) => setDraft((current) => applyStylePatch(current, { titleWeight: Number(event.target.value) }))}
+                      >
+                        {[300, 400, 500, 600, 700, 800, 900, 1000].map((weight) => (
+                          <option key={weight} value={weight}>{weight}</option>
+                        ))}
+                      </select>
+                    </Field>
+                    <Field label="Style">
+                      <select
+                        className={selectClass}
+                        value={styleConfig.titleStyle}
+                        onChange={(event) => setDraft((current) => applyStylePatch(current, { titleStyle: event.target.value as EventTileView["styleConfig"]["titleStyle"] }))}
+                      >
+                        <option value="normal">normal</option>
+                        <option value="italic">italic</option>
+                      </select>
+                    </Field>
+                    <Field label="Transform">
+                      <select
+                        className={selectClass}
+                        value={styleConfig.titleTransform}
+                        onChange={(event) => setDraft((current) => applyStylePatch(current, { titleTransform: event.target.value as EventTileView["styleConfig"]["titleTransform"] }))}
+                      >
+                        <option value="uppercase">uppercase</option>
+                        <option value="none">none</option>
+                        <option value="capitalize">capitalize</option>
+                      </select>
+                    </Field>
+                    <Field label="Text align">
+                      <select
+                        className={selectClass}
+                        value={styleConfig.titleAlign}
+                        onChange={(event) => setDraft((current) => applyStylePatch(current, { titleAlign: event.target.value as EventTileView["styleConfig"]["titleAlign"] }))}
+                      >
+                        <option value="left">left</option>
+                        <option value="center">center</option>
+                        <option value="right">right</option>
+                      </select>
+                    </Field>
+                    <Field label="Letter spacing">
+                      <input
+                        className={inputClass}
+                        value={styleConfig.titleLetterSpacing}
+                        onChange={(event) => setDraft((current) => applyStylePatch(current, { titleLetterSpacing: event.target.value }))}
+                        placeholder="-0.045em"
+                      />
+                    </Field>
+                    <Field label="Line height">
+                      <input
+                        className={inputClass}
+                        value={styleConfig.titleLineHeight}
+                        onChange={(event) => setDraft((current) => applyStylePatch(current, { titleLineHeight: event.target.value }))}
+                        placeholder="0.78"
+                      />
+                    </Field>
+                    <Field label="Desktop top %" hint="Moves the full title block up/down.">
+                      <input
+                        className={inputClass}
+                        type="number"
+                        step="0.1"
+                        value={styleConfig.titleDesktopTop}
+                        onChange={(event) => setDraft((current) => applyStylePatch(current, { titleDesktopTop: numericStyleValue(event.target.value, styleConfig.titleDesktopTop) }))}
+                      />
+                    </Field>
+                    <Field label="Desktop left %" hint="50 keeps it centered.">
+                      <input
+                        className={inputClass}
+                        type="number"
+                        step="0.1"
+                        value={styleConfig.titleDesktopLeft}
+                        onChange={(event) => setDraft((current) => applyStylePatch(current, { titleDesktopLeft: numericStyleValue(event.target.value, styleConfig.titleDesktopLeft) }))}
+                      />
+                    </Field>
+                    <Field label="Desktop width %">
+                      <input
+                        className={inputClass}
+                        type="number"
+                        step="0.5"
+                        value={styleConfig.titleDesktopWidth}
+                        onChange={(event) => setDraft((current) => applyStylePatch(current, { titleDesktopWidth: numericStyleValue(event.target.value, styleConfig.titleDesktopWidth) }))}
+                      />
+                    </Field>
+                    <Field label="Mobile title nudge px" hint="Negative moves up. Positive moves down.">
+                      <input
+                        className={inputClass}
+                        type="number"
+                        step="1"
+                        value={styleConfig.titleMobileNudge}
+                        onChange={(event) => setDraft((current) => applyStylePatch(current, { titleMobileNudge: numericStyleValue(event.target.value, styleConfig.titleMobileNudge) }))}
+                      />
+                    </Field>
+                    <Field label="Rotate degrees">
+                      <input
+                        className={inputClass}
+                        type="number"
+                        step="0.25"
+                        value={styleConfig.titleRotate}
+                        onChange={(event) => setDraft((current) => applyStylePatch(current, { titleRotate: numericStyleValue(event.target.value, styleConfig.titleRotate) }))}
+                      />
+                    </Field>
+                    <div className="flex items-end">
+                      <button
+                        type="button"
+                        className="min-h-11 w-full rounded-xl border border-amber-200/20 bg-amber-300/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-amber-100 transition hover:bg-amber-300/16"
+                        onClick={() => setDraft((current) => ({ ...current, styleConfig: DEFAULT_EVENT_TILE_STYLE_CONFIG }))}
+                      >
+                        Reset title style
+                      </button>
+                    </div>
+                  </div>
+                </EditorSection>
+
                 <EditorSection title="Timing, badges, and conversion" icon={CalendarRange}>
                   <div className="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                     <Field label="Chapter label">
@@ -770,6 +944,18 @@ function PersonEditor({
   );
 }
 
+function mediaAssetSearchText(asset: EventStudioMediaAsset) {
+  return [asset.label, asset.target, asset.kind, asset.url]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
+
+function mediaAssetThumbStyle(url: string) {
+  const safeUrl = url.replace(/"/g, "%22");
+  return { backgroundImage: `url("${safeUrl}")` };
+}
+
 function MediaField({
   label,
   hint,
@@ -787,9 +973,28 @@ function MediaField({
   placeholder?: string;
   onChange: (value: string) => void;
 }) {
-  const choices = assets
-    .filter((asset) => asset.active && kinds.includes(asset.kind) && asset.url)
-    .slice(0, 18);
+  const [query, setQuery] = useState("");
+  const kindKey = kinds.join("|");
+  const normalizedQuery = query.trim().toLowerCase();
+
+  const allChoices = useMemo(() => {
+    const allowedKinds = new Set(kindKey.split("|").filter(Boolean));
+    return assets
+      .filter((asset) => asset.active && allowedKinds.has(asset.kind) && asset.url)
+      .sort((a, b) => {
+        if (a.url === value) return -1;
+        if (b.url === value) return 1;
+        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+      });
+  }, [assets, kindKey, value]);
+
+  const choices = useMemo(() => {
+    if (!normalizedQuery) return allChoices;
+    return allChoices.filter((asset) => mediaAssetSearchText(asset).includes(normalizedQuery));
+  }, [allChoices, normalizedQuery]);
+
+  const selectedAsset = allChoices.find((asset) => asset.url === value);
+  const countLabel = `${allChoices.length} ${allChoices.length === 1 ? "asset" : "assets"}`;
 
   return (
     <Field label={label} hint={hint}>
@@ -800,23 +1005,95 @@ function MediaField({
           placeholder={placeholder}
           onChange={(event) => onChange(event.target.value)}
         />
-        {choices.length > 0 ? (
-          <div className="flex flex-wrap gap-2 rounded-2xl border border-white/6 bg-black/10 p-2">
-            {choices.map((asset) => (
-              <button
-                key={asset.id}
-                type="button"
-                onClick={() => onChange(asset.url)}
-                title={asset.url}
-                className={`rounded-full border px-2.5 py-1 text-[11px] transition ${
-                  value === asset.url
-                    ? "border-amber-200/45 bg-amber-300/15 text-amber-100"
-                    : "border-white/10 bg-white/[0.035] text-slate-300 hover:border-amber-200/30 hover:text-amber-100"
-                }`}
-              >
-                {asset.label || asset.target || asset.url}
-              </button>
-            ))}
+
+        {selectedAsset ? (
+          <div className="flex items-center gap-3 rounded-2xl border border-amber-200/25 bg-amber-300/[0.08] p-2">
+            <div
+              className="h-14 w-14 shrink-0 rounded-xl border border-amber-100/20 bg-slate-950 bg-cover bg-center"
+              style={mediaAssetThumbStyle(selectedAsset.url)}
+              aria-hidden="true"
+            />
+            <div className="min-w-0">
+              <div className="truncate text-xs font-semibold text-amber-100">
+                {selectedAsset.label || selectedAsset.target || selectedAsset.url}
+              </div>
+              <div className="mt-1 truncate text-[10px] uppercase tracking-[0.14em] text-amber-100/55">
+                Selected {selectedAsset.kind}{selectedAsset.target ? ` · ${selectedAsset.target}` : ""}
+              </div>
+            </div>
+          </div>
+        ) : value ? (
+          <div className="rounded-2xl border border-sky-200/15 bg-sky-400/[0.06] px-3 py-2 text-[11px] text-sky-100/75">
+            Custom path entered. Pick an asset below to replace it.
+          </div>
+        ) : null}
+
+        {allChoices.length > 0 ? (
+          <div className="rounded-2xl border border-white/6 bg-black/10 p-2">
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <input
+                className="min-h-9 flex-1 rounded-xl border border-white/[0.1] bg-[#030712] px-3 py-2 text-xs text-slate-100 outline-none placeholder:text-slate-600 focus:border-amber-200/35"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder={`Search ${countLabel}...`}
+              />
+              {query ? (
+                <button
+                  type="button"
+                  onClick={() => setQuery("")}
+                  className="rounded-full border border-white/10 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400 transition hover:border-white/25 hover:text-white"
+                >
+                  Clear
+                </button>
+              ) : null}
+              <span className="rounded-full border border-white/10 bg-white/[0.035] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                {choices.length}/{allChoices.length}
+              </span>
+            </div>
+
+            {choices.length > 0 ? (
+              <div className="grid max-h-72 gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
+                {choices.map((asset) => {
+                  const selected = value === asset.url;
+                  return (
+                    <button
+                      key={asset.id}
+                      type="button"
+                      onClick={() => onChange(asset.url)}
+                      title={asset.url}
+                      className={`group flex min-w-0 items-center gap-2 rounded-2xl border p-2 text-left transition ${
+                        selected
+                          ? "border-amber-200/55 bg-amber-300/15 text-amber-100"
+                          : "border-white/10 bg-white/[0.035] text-slate-300 hover:border-amber-200/30 hover:bg-white/[0.055] hover:text-amber-100"
+                      }`}
+                    >
+                      <span
+                        className="h-12 w-12 shrink-0 rounded-xl border border-white/10 bg-slate-950 bg-cover bg-center"
+                        style={mediaAssetThumbStyle(asset.url)}
+                        aria-hidden="true"
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-xs font-semibold">
+                          {asset.label || asset.target || asset.url}
+                        </span>
+                        <span className="mt-0.5 block truncate text-[10px] text-slate-500 group-hover:text-amber-100/65">
+                          {asset.target || asset.kind}
+                        </span>
+                      </span>
+                      {selected ? (
+                        <span className="shrink-0 rounded-full border border-amber-100/30 px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.12em]">
+                          Active
+                        </span>
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="rounded-xl border border-dashed border-white/10 bg-black/10 px-3 py-3 text-[11px] text-slate-500">
+                No matching assets. Clear the search or upload one in Media Armory.
+              </div>
+            )}
           </div>
         ) : (
           <div className="rounded-2xl border border-dashed border-white/10 bg-black/10 px-3 py-2 text-[11px] text-slate-500">

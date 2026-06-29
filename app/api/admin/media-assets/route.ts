@@ -4,6 +4,8 @@ import { requireAdmin } from "@/lib/adminSession";
 import {
   activateManagedMediaAsset,
   MANAGED_MEDIA_KINDS,
+  normalizeManagedMediaKind,
+  normalizeManagedMediaTarget,
   saveManagedMediaUpload,
 } from "@/lib/managedMediaAssets";
 
@@ -16,13 +18,17 @@ const NO_STORE_HEADERS = {
 
 export async function GET(request: NextRequest) {
   const gate = await requireAdmin(request);
+
   if ("error" in gate) {
     return gate.error;
   }
 
   const assets = await gate.prisma.managedMediaAsset.findMany({
-    orderBy: [{ active: "desc" }, { updatedAt: "desc" }, { id: "desc" }],
-    take: 240,
+    orderBy: [
+      { active: "desc" },
+      { updatedAt: "desc" },
+      { id: "desc" },
+    ],
   });
 
   return NextResponse.json(
@@ -30,7 +36,11 @@ export async function GET(request: NextRequest) {
       assets,
       kinds: MANAGED_MEDIA_KINDS,
     },
-    { headers: NO_STORE_HEADERS }
+    {
+      headers: {
+        "Cache-Control": "no-store, max-age=0",
+      },
+    }
   );
 }
 
@@ -51,14 +61,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const normalizedKind = normalizeManagedMediaKind(formData.get("kind"));
+    const normalizedTarget = normalizeManagedMediaTarget(formData.get("target"));
+    const isUserAvatarPoolUpload =
+      normalizedKind === "avatar" && Boolean(normalizedTarget?.startsWith("user-"));
+
+    const existingSelectedUserAvatar = isUserAvatarPoolUpload
+      ? await gate.prisma.managedMediaAsset.findFirst({
+          where: { kind: "avatar", target: normalizedTarget, active: true },
+          select: { id: true },
+        })
+      : null;
+
     const asset = await saveManagedMediaUpload({
       prisma: gate.prisma,
       file,
-      kind: formData.get("kind"),
-      target: formData.get("target"),
+      kind: normalizedKind,
+      target: normalizedTarget,
       label: formData.get("label"),
       alt: formData.get("alt"),
       uploadedByUid: gate.user.uid,
+      active: isUserAvatarPoolUpload ? !existingSelectedUserAvatar : true,
+      replaceActive: !isUserAvatarPoolUpload,
     });
 
     return NextResponse.json({ asset }, { status: 201, headers: NO_STORE_HEADERS });

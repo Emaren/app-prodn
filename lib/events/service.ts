@@ -5,7 +5,7 @@ import type {
   EventTileStatus,
   EventTileView,
 } from "@/lib/events/types";
-import { FALLBACK_EVENT_TILE } from "@/lib/events/types";
+import { FALLBACK_EVENT_TILE, normalizeEventTileStyleConfig } from "@/lib/events/types";
 
 type EventWithRelations = EventTile & {
   linkedTrophy: { displayName: string } | null;
@@ -98,6 +98,7 @@ export function serializeEventTile(event: EventWithRelations): EventTileView {
     overlayOpacity: event.overlayOpacity,
     vignetteOpacity: event.vignetteOpacity,
     theme: event.theme,
+    styleConfig: normalizeEventTileStyleConfig(event.styleConfig),
     createdAt: event.createdAt.toISOString(),
     updatedAt: event.updatedAt.toISOString(),
     publishedAt: event.publishedAt?.toISOString() ?? null,
@@ -174,7 +175,7 @@ export async function loadEventStudioSnapshot(
         updatedAt: true,
       },
       orderBy: [{ kind: "asc" }, { target: "asc" }, { updatedAt: "desc" }, { id: "desc" }],
-      take: 240,
+      take: 1000,
     }),
   ]);
 

@@ -13,6 +13,7 @@ import {
   type TitleContender,
 } from "@/lib/champions/titles";
 import { getTitleState, loadChampionTitleEconomyState } from "@/lib/champions/titleState";
+import { managedMediaPublicUrl } from "@/lib/managedMediaAssets";
 
 export const dynamic = "force-dynamic";
 
@@ -94,6 +95,8 @@ export default async function ChampionTitleDetailPage({
 
   const economy = await loadChampionTitleEconomyState(getPrisma());
   const title = getTitleState(economy, definition);
+  const titleAssetKind = title.type === "designation" ? "artifact" : "belt";
+  const titleAssetUrl = managedMediaPublicUrl(titleAssetKind, title.id, title.assetUrl);
 
   return (
     <main className="space-y-6 overflow-x-hidden py-5 text-white sm:py-7">
@@ -146,7 +149,7 @@ export default async function ChampionTitleDetailPage({
 
           <div className="relative mx-auto aspect-[1.75/1] w-full max-w-[38rem] overflow-visible">
             <Image
-              src={title.assetUrl}
+              src={titleAssetUrl}
               alt=""
               fill
               priority

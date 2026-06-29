@@ -32,6 +32,14 @@ import { avatarCardUrlForUser, avatarUrlForName } from "@/lib/avatarAssets";
 
 const EMPTY_MESSAGES: LobbyMessage[] = [];
 const ZODIAC_UID = "u_06c16d39d25c476fac2c86fee7b4d189";
+const DIL_PASCANA_UID = "u_17816384361f4c8a8d57c6934265100b";
+const SNIPER_UID = "u_1301e0492fdf4a229d941940413497e1";
+const JULIO_ALVAREZ_UID = "u_79ce46af3d504ceca718e5fda83e3502";
+const JIM_UID = "u_0df73bdbb64646c19e4a9bfd225b3285";
+const RA_UID = "u_510b020f19b5450793c95e05de791cc7";
+const BDB_PIGMAN_UID = "u_a0923530e82d43ceb3f6926c004748dc";
+const DELTAFORCE_UID = "u_f206dd9c3c1c40799b43a3faf7af986e";
+const SLADK0ESHKA_UID = "u_73b78fcddb90417180495c1468937049";
 
 const FEATURED_WARRIOR_SLOT_COUNT = 4;
 const FEATURED_WARRIOR_ROTATE_MS = 5200;
@@ -54,7 +62,7 @@ const FEATURED_WARRIOR_FALLBACKS: FeaturedWarrior[] = [
     lookupName: "Dil_Pascana",
     role: "The Specialist",
     href: "/players/by-name/Dil_Pascana",
-    imageUrl: "/featured-warriors/thumbs/user-u-17816384361f4c8a8d57c6934265100b-1782240257384-64388f3d-thumb.webp",
+    imageUrl: avatarCardUrlForUser(DIL_PASCANA_UID, "Dil_Pascana"),
   },
   {
     key: "premium:sniper",
@@ -62,7 +70,7 @@ const FEATURED_WARRIOR_FALLBACKS: FeaturedWarrior[] = [
     lookupName: "Sniper",
     role: "The Sharpshooter",
     href: "/players/by-name/Sniper",
-    imageUrl: "/featured-warriors/thumbs/sniper-1781562832558-257d25a4-thumb.webp",
+    imageUrl: avatarCardUrlForUser(SNIPER_UID, "Sniper"),
   },
   {
     key: "premium:julio-alvarez",
@@ -70,7 +78,7 @@ const FEATURED_WARRIOR_FALLBACKS: FeaturedWarrior[] = [
     lookupName: "Julio Alvarez",
     role: "The Conquistador",
     href: "/players/by-name/Julio%20Alvarez",
-    imageUrl: "/featured-warriors/thumbs/julio-alvarez-1781569866259-256b2ad7-thumb.webp",
+    imageUrl: avatarCardUrlForUser(JULIO_ALVAREZ_UID, "Julio Alvarez"),
   },
   {
     key: "premium:jim",
@@ -78,7 +86,7 @@ const FEATURED_WARRIOR_FALLBACKS: FeaturedWarrior[] = [
     lookupName: "Jim",
     role: "The General",
     href: "/players/by-name/Jim",
-    imageUrl: "/featured-warriors/thumbs/jim-1781560436622-52fb61a1-thumb.webp",
+    imageUrl: avatarCardUrlForUser(JIM_UID, "Jim"),
   },
   {
     key: "premium:emaren",
@@ -107,7 +115,7 @@ const FEATURED_WARRIOR_PREMIUM_POOL: FeaturedWarrior[] = [
     lookupName: "[BDB]Pigman",
     role: "Featured Contender",
     href: "/players/by-name/%5BBDB%5DPigman",
-    imageUrl: "/featured-warriors/thumbs/bdbpigman-warrior-1782002565561-d8e58ddb-thumb.webp",
+    imageUrl: avatarCardUrlForUser(BDB_PIGMAN_UID, "[BDB]Pigman"),
   },
   {
     key: "premium:ra",
@@ -115,7 +123,7 @@ const FEATURED_WARRIOR_PREMIUM_POOL: FeaturedWarrior[] = [
     lookupName: "- Ra 𓁛𓇳",
     role: "Featured Contender",
     href: "/players/by-name/- %20Ra%20%F0%93%81%9B%F0%93%87%B3",
-    imageUrl: "/featured-warriors/thumbs/user-u-510b020f19b5450793c95e05de791cc7-1782003774595-b1f6eb26-thumb.webp",
+    imageUrl: avatarCardUrlForUser(RA_UID, "- Ra 𓁛𓇳"),
   },
   {
     key: "premium:moose",
@@ -131,7 +139,7 @@ const FEATURED_WARRIOR_PREMIUM_POOL: FeaturedWarrior[] = [
     lookupName: "Deltaforce",
     role: "Featured Warrior",
     href: "/players/by-name/Deltaforce",
-    imageUrl: "/featured-warriors/thumbs/deltaforce-warrior-1782002519289-c30963fb-thumb.webp",
+    imageUrl: avatarCardUrlForUser(DELTAFORCE_UID, "Deltaforce"),
   },
   {
     key: "premium:sladk0eshka",
@@ -139,7 +147,7 @@ const FEATURED_WARRIOR_PREMIUM_POOL: FeaturedWarrior[] = [
     lookupName: "Sladk0Eshka",
     role: "Featured Warrior",
     href: "/players/by-name/Sladk0Eshka",
-    imageUrl: "/featured-warriors/thumbs/sladk0eshka-warrior-1782002438579-ed41604f-thumb.webp",
+    imageUrl: avatarCardUrlForUser(SLADK0ESHKA_UID, "Sladk0Eshka"),
   },
   {
     key: "premium:grimer",
@@ -475,6 +483,10 @@ type HomePageClientProps = {
   initialEventTile: EventTileView;
 };
 
+function isManagedMediaResolverUrl(url: string | null | undefined) {
+  return String(url ?? "").startsWith("/api/media-assets/");
+}
+
 function AdvancedFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] }) {
   const [paused, setPaused] = useState(false);
   const { visibleWarriors, fadingSlot } = useRotatingFeaturedWarriors(warriors, paused);
@@ -509,6 +521,7 @@ function AdvancedFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] })
                 src={warrior.imageUrl ?? avatarUrlForName(warrior.lookupName)}
                 alt=""
                 fill
+                unoptimized={isManagedMediaResolverUrl(warrior.imageUrl ?? avatarUrlForName(warrior.lookupName))}
                 sizes="(min-width: 1280px) 250px, (min-width: 640px) 45vw, 90vw"
                 className={`object-contain object-top transition duration-700 group-hover:scale-[1.01] opacity-85`}
               />
@@ -585,6 +598,7 @@ function ExtremeFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] }) 
                     src={avatarSrc}
                     alt=""
                     fill
+                    unoptimized={isManagedMediaResolverUrl(avatarSrc)}
                     sizes="(min-width: 1280px) 280px, (min-width: 640px) 45vw, 90vw"
                     className="object-contain object-center drop-shadow-[0_18px_34px_rgba(0,0,0,0.56)] [mask-image:linear-gradient(180deg,black_0%,black_88%,transparent_100%)]"
                   />

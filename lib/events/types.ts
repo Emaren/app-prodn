@@ -8,6 +8,98 @@ export const EVENT_TILE_STATUSES = [
 
 export type EventTileStatus = (typeof EVENT_TILE_STATUSES)[number];
 
+export type EventTileTitleTransform = "uppercase" | "none" | "capitalize";
+export type EventTileTitleStyle = "normal" | "italic";
+export type EventTileTitleAlign = "left" | "center" | "right";
+
+export type EventTileStyleConfig = {
+  titleFontFamily: string;
+  titleColor: string;
+  titleDesktopSize: string;
+  titleMobileSize: string;
+  titleWeight: number;
+  titleStyle: EventTileTitleStyle;
+  titleTransform: EventTileTitleTransform;
+  titleLetterSpacing: string;
+  titleLineHeight: string;
+  titleDesktopTop: number;
+  titleDesktopLeft: number;
+  titleDesktopWidth: number;
+  titleMobileNudge: number;
+  titleAlign: EventTileTitleAlign;
+  titleRotate: number;
+};
+
+export const DEFAULT_EVENT_TILE_STYLE_CONFIG: EventTileStyleConfig = {
+  titleFontFamily: 'Georgia, "Times New Roman", serif',
+  titleColor: "#fef3c7",
+  titleDesktopSize: "clamp(4.1rem,9.2vw,10rem)",
+  titleMobileSize: "clamp(3.4rem,16vw,4.8rem)",
+  titleWeight: 900,
+  titleStyle: "normal",
+  titleTransform: "uppercase",
+  titleLetterSpacing: "-0.045em",
+  titleLineHeight: "0.78",
+  titleDesktopTop: 8.4,
+  titleDesktopLeft: 50,
+  titleDesktopWidth: 96,
+  titleMobileNudge: 0,
+  titleAlign: "center",
+  titleRotate: 0,
+};
+
+function eventStyleObject(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function eventStyleString(value: unknown, fallback: string, max = 120) {
+  const parsed = typeof value === "string" ? value.trim().slice(0, max) : "";
+  if (!parsed) return fallback;
+  if (/[;{}<>]/.test(parsed)) return fallback;
+  return parsed;
+}
+
+function eventStyleColor(value: unknown, fallback: string) {
+  const parsed = typeof value === "string" ? value.trim() : "";
+  return /^#[0-9a-f]{6}$/i.test(parsed) ? parsed : fallback;
+}
+
+function eventStyleNumber(value: unknown, fallback: number, min: number, max: number) {
+  const parsed = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(max, Math.max(min, parsed));
+}
+
+function eventStyleChoice<T extends string>(value: unknown, fallback: T, allowed: readonly T[]) {
+  return allowed.includes(value as T) ? (value as T) : fallback;
+}
+
+export function normalizeEventTileStyleConfig(value: unknown): EventTileStyleConfig {
+  const raw = eventStyleObject(value);
+  const defaults = DEFAULT_EVENT_TILE_STYLE_CONFIG;
+
+  return {
+    titleFontFamily: eventStyleString(raw.titleFontFamily, defaults.titleFontFamily, 160),
+    titleColor: eventStyleColor(raw.titleColor, defaults.titleColor),
+    titleDesktopSize: eventStyleString(raw.titleDesktopSize, defaults.titleDesktopSize, 80),
+    titleMobileSize: eventStyleString(raw.titleMobileSize, defaults.titleMobileSize, 80),
+    titleWeight: Math.round(eventStyleNumber(raw.titleWeight, defaults.titleWeight, 100, 1000)),
+    titleStyle: eventStyleChoice(raw.titleStyle, defaults.titleStyle, ["normal", "italic"] as const),
+    titleTransform: eventStyleChoice(raw.titleTransform, defaults.titleTransform, ["uppercase", "none", "capitalize"] as const),
+    titleLetterSpacing: eventStyleString(raw.titleLetterSpacing, defaults.titleLetterSpacing, 40),
+    titleLineHeight: eventStyleString(raw.titleLineHeight, defaults.titleLineHeight, 40),
+    titleDesktopTop: eventStyleNumber(raw.titleDesktopTop, defaults.titleDesktopTop, 0, 100),
+    titleDesktopLeft: eventStyleNumber(raw.titleDesktopLeft, defaults.titleDesktopLeft, 0, 100),
+    titleDesktopWidth: eventStyleNumber(raw.titleDesktopWidth, defaults.titleDesktopWidth, 25, 100),
+    titleMobileNudge: eventStyleNumber(raw.titleMobileNudge, defaults.titleMobileNudge, -160, 160),
+    titleAlign: eventStyleChoice(raw.titleAlign, defaults.titleAlign, ["left", "center", "right"] as const),
+    titleRotate: eventStyleNumber(raw.titleRotate, defaults.titleRotate, -18, 18),
+  };
+}
+
+
 export type EventTileView = {
   id: number | null;
   eventTileId: string;
@@ -54,6 +146,7 @@ export type EventTileView = {
   overlayOpacity: number;
   vignetteOpacity: number;
   theme: string;
+  styleConfig: EventTileStyleConfig;
   createdAt: string | null;
   updatedAt: string | null;
   publishedAt: string | null;
@@ -156,6 +249,7 @@ export const FALLBACK_EVENT_TILE: EventTileView = {
   overlayOpacity: 0.24,
   vignetteOpacity: 0.82,
   theme: "royal",
+  styleConfig: DEFAULT_EVENT_TILE_STYLE_CONFIG,
   createdAt: null,
   updatedAt: null,
   publishedAt: null,

@@ -124,7 +124,7 @@ function redirectToInternalAsset(url: string) {
     status: 307,
     headers: {
       Location: url.startsWith("/") && !url.startsWith("//") ? url : "/",
-      "Cache-Control": "public, max-age=300",
+      "Cache-Control": "no-store, max-age=0, must-revalidate",
     },
   });
 }
@@ -240,7 +240,7 @@ async function serveManagedUploadDirect(request: NextRequest, url: string) {
 
     return new NextResponse(hit.data, {
       headers: {
-        "Cache-Control": "public, max-age=31536000, immutable",
+        "Cache-Control": "no-store, max-age=0, must-revalidate",
         "Content-Length": String(hit.data.length),
         "Content-Type": contentTypeFor(candidate.filePath),
         "Last-Modified": hit.stat.mtime.toUTCString(),
@@ -306,7 +306,7 @@ async function servePublicAssetDirect(request: NextRequest, url: string) {
 
     return new NextResponse(hit.data, {
       headers: {
-        "Cache-Control": "public, max-age=86400, stale-while-revalidate=604800",
+        "Cache-Control": "no-store, max-age=0, must-revalidate",
         "Content-Length": String(hit.data.length),
         "Content-Type": contentTypeFor(candidate.filePath),
         "Last-Modified": hit.stat.mtime.toUTCString(),

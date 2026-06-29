@@ -806,7 +806,7 @@ function TrophyControlCard({
           </div>
         </div>
         <div className="rounded-2xl border border-white/8 bg-black/18 p-3">
-          <div className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Guardian / Chain owner</div>
+          <div className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Guardian custody</div>
           <div className="mt-2 font-semibold">{trophy.guardianHolderDisplayName || "No Guardian"}</div>
           <div className="mt-1 text-xs text-slate-500">{shortAddress(trophy.chainOwnerAddress)}</div>
           <div className="mt-2 text-xs text-slate-400">
@@ -832,7 +832,7 @@ function TrophyControlCard({
             ))}
           </select>
         </Field>
-        <Field label="Assign Commissioner Guardian">
+        <Field label="Assign Guardian">
           <select className={inputClass} value={guardianUserId} onChange={(event) => setGuardianUserId(event.target.value)}>
             <option value="">Choose Guardian</option>
             {users.map((user) => (
@@ -875,6 +875,17 @@ function TrophyControlCard({
           }
         >
           Assign Guardian
+        </Button>
+        <Button
+          disabled={busy || (!trophy.guardianHolderUserId && !trophy.guardianHolderDisplayName)}
+          onClick={() =>
+            void onAction(
+              { action: "clear_guardian", trophyId: trophy.id },
+              `${trophy.displayName} Guardian cleared.`
+            )
+          }
+        >
+          Clear Guardian
         </Button>
         <Button
           disabled={busy}

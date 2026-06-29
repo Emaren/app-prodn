@@ -27,6 +27,7 @@ type Holder = {
   address: string;
   role: string;
   use: string | null;
+  balanceWolo: string | number | null;
   balanceWoloFormatted: string | null;
   exactBalanceWolo: string;
   balanceHidden: boolean;
@@ -231,17 +232,21 @@ const protocolPurposeByLabel: Record<string, string> = {
   "Emaren #2": "Secondary Emaren wallet.",
 };
 
-function compactWolo(value: string | null | undefined) {
-  if (!value) return "";
-  const parsed = Number(value.replace(/,/g, ""));
-  if (!Number.isFinite(parsed)) return `${value} WOLO`;
+function compactWolo(value: string | number | null | undefined) {
+  if (value === null || value === undefined || value === "") return "";
+
+  const raw = String(value).replace(/\s*WOLO\s*$/i, "").trim();
+  const parsed = Number(raw.replace(/,/g, ""));
+
+  if (!Number.isFinite(parsed)) return `${raw} WOLO`;
   if (parsed >= 1_000_000) return `${(parsed / 1_000_000).toFixed(3).replace(/\.?0+$/, "")}M WOLO`;
   if (parsed >= 1_000) return `${(parsed / 1_000).toFixed(2).replace(/\.?0+$/, "")}K WOLO`;
+
   return `${parsed.toLocaleString(undefined, { maximumFractionDigits: 6 })} WOLO`;
 }
 
 function wholeWolo(value: string | null | undefined) {
-  const raw = value || "100,000,000.000000";
+  const raw = (value || "100,000,000.000000").replace(/\s*WOLO\s*$/i, "").trim();
   return raw.replace(/\.0+$/, "");
 }
 
@@ -256,9 +261,17 @@ function roleLabel(role: string, use?: string | null) {
 }
 
 function protocolAccounts(accounts: NetworkAccount[]) {
-  return accounts.filter(
-    (account) => !account.isRetired && !account.isModule && account.use !== "USER"
-  );
+  return accounts.filter((account) => {
+    const use = account.use || "";
+    const role = account.role || "";
+    const isUserFacing =
+      use === "USER" ||
+      use === "PLAYER_DO_NOT_SHOW_BALANCE" ||
+      role === "user" ||
+      role === "player";
+
+    return !account.isRetired && !account.isModule && !isUserFacing;
+  });
 }
 
 function WalletAddress({
@@ -463,7 +476,7 @@ export default function WoloChainLiveTransparency() {
         <img
           src="/legacy/wolo-logo-transparent.png"
           alt=""
-          className="pointer-events-none absolute -left-16 -top-24 h-[46rem] w-[46rem] object-contain opacity-[0.135] blur-[0.08px]"
+          className="pointer-events-none absolute -bottom-24 -right-20 h-[46rem] w-[46rem] object-contain opacity-[0.135] blur-[0.08px]"
         />
 
         <div className="relative z-10 flex flex-wrap items-center justify-between gap-4">
@@ -509,8 +522,8 @@ export default function WoloChainLiveTransparency() {
                 <div className="text-center">
                   {holder.balanceHidden ? null : (
                     <>
-                      <div className="whitespace-nowrap font-semibold text-white">{compactWolo(holder.balanceWoloFormatted)}</div>
-                      <div className="mt-1 whitespace-nowrap font-mono text-[10px] text-slate-500">{holder.balanceWoloFormatted}</div>
+                      <div className="whitespace-nowrap font-semibold text-white">{compactWolo(holder.balanceWolo)}</div>
+                      <div className="mt-1 whitespace-nowrap font-mono text-[10px] text-slate-500">{holder.exactBalanceWolo}</div>
                     </>
                   )}
                 </div>

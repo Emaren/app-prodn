@@ -162,6 +162,8 @@ export async function saveManagedMediaUpload({
   label,
   alt,
   uploadedByUid,
+  active = true,
+  replaceActive = true,
 }: {
   prisma: PrismaClient;
   file: File;
@@ -170,6 +172,8 @@ export async function saveManagedMediaUpload({
   label: unknown;
   alt?: unknown;
   uploadedByUid?: string | null;
+  active?: boolean;
+  replaceActive?: boolean;
 }) {
   const normalizedKind = normalizeManagedMediaKind(kind);
   const normalizedTarget = normalizeManagedMediaTarget(target);
@@ -198,7 +202,7 @@ export async function saveManagedMediaUpload({
   await mkdir(uploadDir, { recursive: true });
   await writeFile(path.join(uploadDir, filename), buffer);
 
-  if (normalizedTarget) {
+  if (normalizedTarget && replaceActive) {
     await prisma.managedMediaAsset.updateMany({
       where: {
         kind: normalizedKind,
@@ -222,7 +226,7 @@ export async function saveManagedMediaUpload({
       mimeType,
       originalName,
       sizeBytes: file.size,
-      active: true,
+      active,
       uploadedByUid: uploadedByUid ?? null,
     },
   });

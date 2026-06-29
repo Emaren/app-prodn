@@ -2,6 +2,7 @@ import type { PrismaClient } from "@/lib/generated/prisma";
 import {
   EVENT_TILE_STATUSES,
   isSafeEventMediaUrl,
+  normalizeEventTileStyleConfig,
   type EventTileStatus,
 } from "@/lib/events/types";
 
@@ -200,6 +201,7 @@ async function saveEvent(prisma: PrismaClient, payload: Payload) {
     overlayOpacity: Math.min(1, Math.max(0, floatValue(payload.overlayOpacity, 0.24))),
     vignetteOpacity: Math.min(1, Math.max(0, floatValue(payload.vignetteOpacity, 0.82))),
     theme: text(payload.theme, 40) || "royal",
+    styleConfig: normalizeEventTileStyleConfig(payload.styleConfig),
   };
 
   try {
@@ -275,6 +277,7 @@ async function duplicateEvent(prisma: PrismaClient, payload: Payload) {
       overlayOpacity: event.overlayOpacity,
       vignetteOpacity: event.vignetteOpacity,
       theme: event.theme,
+      styleConfig: normalizeEventTileStyleConfig(event.styleConfig),
       publishedAt: null,
     },
   });
