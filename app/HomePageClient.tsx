@@ -96,7 +96,7 @@ const FEATURED_WARRIOR_FALLBACKS: FeaturedWarrior[] = [
     lookupName: "Emaren",
     role: "The Tactician",
     href: "/players/by-name/Emaren",
-    imageUrl: avatarCardUrlForName("Emaren"),
+    imageUrl: avatarCardUrlForUser("u_626ea6497a984dabbc2338ef54c5d333", "Emaren"),
   },
 ];
 
@@ -218,28 +218,6 @@ function buildFeaturedWarriorPool(entries: LobbyLeaderboardEntry[]) {
 
   return warriors;
 }
-
-function usePrefersReducedMotion() {
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
-      return;
-    }
-
-    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const syncPreference = () => setPrefersReducedMotion(mediaQuery.matches);
-
-    syncPreference();
-    mediaQuery.addEventListener("change", syncPreference);
-
-    return () => mediaQuery.removeEventListener("change", syncPreference);
-  }, []);
-
-  return prefersReducedMotion;
-}
-
-
 
 
 const FEATURED_WARRIOR_MIN_REAL_AVATARS = 3;
@@ -484,14 +462,24 @@ function preloadFeaturedWarriorImages(pool: FeaturedWarrior[]) {
   }
 }
 
+
 function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
-  const prefersReducedMotion = usePrefersReducedMotion();
+  const openingLineup = useMemo(() => deterministicFeaturedWarriorOpening(pool), [pool]);
+  const [visibleWarriors, setVisibleWarriors] = useState(openingLineup);
   const [featuredWarriorsMounted, setFeaturedWarriorsMounted] = useState(false);
-  const [visibleWarriors, setVisibleWarriors] = useState(() => deterministicFeaturedWarriorOpening(FEATURED_WARRIOR_FALLBACKS));
   const [fadingSlot, setFadingSlot] = useState<number | null>(null);
+
+  const visibleWarriorsRef = useRef<FeaturedWarrior[]>(openingLineup);
   const lastChangedSlotRef = useRef<number | null>(null);
   const slotBagRef = useRef<number[]>([]);
   const lastWarriorBySlotRef = useRef<Record<number, string | null>>({});
+  const transitionInFlightRef = useRef(false);
+  const fadeTimerRef = useRef<number | null>(null);
+  const revealTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    visibleWarriorsRef.current = visibleWarriors;
+  }, [visibleWarriors]);
 
   useEffect(() => {
     setFeaturedWarriorsMounted(true);
@@ -509,9 +497,12 @@ function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
     const randomized = randomFeaturedWarriorOpening(pool);
     void decodeFeaturedWarriorLineup(randomized).then(() => {
       if (disposed) return;
+
       randomized.forEach((warrior, index) => {
         lastWarriorBySlotRef.current[index] = warrior.key;
       });
+
+      visibleWarriorsRef.current = randomized;
       setVisibleWarriors(randomized);
     });
 
@@ -521,80 +512,115 @@ function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
   }, [featuredWarriorsMounted, pool]);
 
   useEffect(() => {
-    if (!featuredWarriorsMounted || paused || prefersReducedMotion || pool.length <= FEATURED_WARRIOR_SLOT_COUNT) {
+    if (paused || pool.length <= FEATURED_WARRIOR_SLOT_COUNT) {
       return;
     }
 
-    let replaceTimer: number | null = null;
-    let revealTimer: number | null = null;
+    let disposed = false;
 
-    const shuffledSlots = () => {
-      const slots = Array.from({ length: FEATURED_WARRIOR_SLOT_COUNT }, (_, index) => index).filter(
-        (slot) => slot !== lastChangedSlotRef.current
-      );
-
-      for (let i = slots.length - 1; i > 0; i -= 1) {
-        const j = Math.floor(Math.random() * (i + 1));
-        const tmp = slots[i];
-        slots[i] = slots[j];
-        slots[j] = tmp;
+    const clearFadeTimers = () => {
+      if (fadeTimerRef.current !== null) {
+        window.clearTimeout(fadeTimerRef.current);
+        fadeTimerRef.current = null;
       }
 
-      return slots;
+      if (revealTimerRef.current !== null) {
+        window.clearTimeout(revealTimerRef.current);
+        revealTimerRef.current = null;
+      }
+    };
+
+    const finishTransition = () => {
+      if (disposed) return;
+
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          if (disposed) return;
+          setFadingSlot(null);
+          transitionInFlightRef.current = false;
+        });
+      });
     };
 
     const rotate = () => {
-      if (slotBagRef.current.length === 0) {
-        slotBagRef.current = shuffledSlots();
+      if (transitionInFlightRef.current) {
+        return;
       }
 
-      const nextSlot = slotBagRef.current.shift();
-      const slot = typeof nextSlot === "number" ? nextSlot : 0;
+      const current = visibleWarriorsRef.current;
+      if (current.length < FEATURED_WARRIOR_SLOT_COUNT) {
+        return;
+      }
+
+      if (slotBagRef.current.length === 0) {
+        slotBagRef.current = Array.from({ length: FEATURED_WARRIOR_SLOT_COUNT }, (_, index) => index).filter(
+          (slot) => slot !== lastChangedSlotRef.current
+        );
+      }
+
+      const bagIndex = Math.floor(Math.random() * slotBagRef.current.length);
+      const [slot] = slotBagRef.current.splice(bagIndex, 1);
       lastChangedSlotRef.current = slot;
 
-      setFadingSlot(slot);
+      const outgoing = current[slot];
+      const outgoingName = outgoing?.name;
+      const previousSlotKey = lastWarriorBySlotRef.current[slot];
+      const currentNames = new Set(current.map((warrior) => warrior.name));
 
-      replaceTimer = window.setTimeout(() => {
-        setVisibleWarriors((current) => {
-          const currentNames = new Set(current.map((warrior) => warrior.name));
-          const outgoingName = current[slot]?.name;
+      const outsideCurrent = pool.filter(
+        (warrior) => !currentNames.has(warrior.name) && warrior.key !== previousSlotKey
+      );
+      const fallbackPool = pool.filter(
+        (warrior) => warrior.name !== outgoingName && warrior.key !== previousSlotKey
+      );
+      const baseCandidatePool = outsideCurrent.length > 0 ? outsideCurrent : fallbackPool;
+      const realCandidatePool = baseCandidatePool.filter(featuredWarriorHasRealAvatar);
+      const candidatePool = realCandidatePool.length > 0 ? realCandidatePool : baseCandidatePool;
+      const nextWarrior = candidatePool[Math.floor(Math.random() * candidatePool.length)];
 
-          const previousSlotKey = lastWarriorBySlotRef.current[slot];
-          const outsideCurrent = pool.filter(
-            (warrior) => !currentNames.has(warrior.name) && warrior.key !== previousSlotKey
-          );
-          const fallbackPool = pool.filter(
-            (warrior) => warrior.name !== outgoingName && warrior.key !== previousSlotKey
-          );
-          const baseCandidatePool = outsideCurrent.length > 0 ? outsideCurrent : fallbackPool;
-          const safeCandidatePool = baseCandidatePool.filter((candidate) => {
-            const preview = [...current];
-            preview[slot] = candidate;
-            return featuredWarriorLineupHasRealFloor(preview);
+      if (!nextWarrior || nextWarrior.key === outgoing?.key) {
+        return;
+      }
+
+      transitionInFlightRef.current = true;
+
+      void decodeFeaturedWarriorImage(featuredWarriorImageSrc(nextWarrior)).then(() => {
+        if (disposed) {
+          transitionInFlightRef.current = false;
+          return;
+        }
+
+        clearFadeTimers();
+        setFadingSlot(slot);
+
+        fadeTimerRef.current = window.setTimeout(() => {
+          setVisibleWarriors((latest) => {
+            const next = [...latest];
+            next[slot] = nextWarrior;
+            lastWarriorBySlotRef.current[slot] = nextWarrior.key;
+
+            const finalLineup = featuredWarriorLineupHasRealFloor(next)
+              ? next
+              : selectFeaturedWarriorLineup(pool, next);
+
+            visibleWarriorsRef.current = finalLineup;
+            return finalLineup;
           });
-          const candidatePool = safeCandidatePool.length > 0 ? safeCandidatePool : baseCandidatePool;
 
-          const nextWarrior = candidatePool[Math.floor(Math.random() * candidatePool.length)] ?? current[slot];
-          const next = [...current];
-          next[slot] = nextWarrior;
-          lastWarriorBySlotRef.current[slot] = nextWarrior.key;
-          return featuredWarriorLineupHasRealFloor(next) ? next : selectFeaturedWarriorLineup(pool, next);
-        });
-
-        revealTimer = window.setTimeout(() => {
-          setFadingSlot(null);
-        }, 24);
-      }, FEATURED_WARRIOR_FADE_MS);
+          revealTimerRef.current = window.setTimeout(finishTransition, 72);
+        }, FEATURED_WARRIOR_FADE_MS);
+      });
     };
 
     const interval = window.setInterval(rotate, FEATURED_WARRIOR_ROTATE_MS);
 
     return () => {
+      disposed = true;
       window.clearInterval(interval);
-      if (replaceTimer !== null) window.clearTimeout(replaceTimer);
-      if (revealTimer !== null) window.clearTimeout(revealTimer);
+      clearFadeTimers();
+      transitionInFlightRef.current = false;
     };
-  }, [featuredWarriorsMounted, paused, pool, prefersReducedMotion]);
+  }, [paused, pool, featuredWarriorsMounted]);
 
   return { visibleWarriors, fadingSlot };
 }
@@ -631,7 +657,7 @@ function AdvancedFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] })
             <Link
               key={index}
               href={warrior.href}
-                className={`block group relative min-h-[16rem] overflow-visible will-change-[opacity,transform] transition-all ease-out hover:-translate-y-0.5 ${fadingSlot === index ? "opacity-0 scale-[0.992]" : "opacity-100 scale-100"}`}
+                className={`block group relative min-h-[16rem] overflow-visible transform-gpu will-change-[opacity] transition-opacity ease-in-out hover:-translate-y-0.5 ${fadingSlot === index ? "opacity-0" : "opacity-100"}`}
                 style={{ transitionDuration: `${FEATURED_WARRIOR_FADE_MS}ms` }}
             >
               <Image
@@ -718,7 +744,7 @@ function ExtremeFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] }) 
               <Link
                 key={index}
                 href={warrior.href}
-                className={`block group relative min-h-[16rem] overflow-visible will-change-[opacity,transform] transition-all ease-out hover:-translate-y-0.5 ${fadingSlot === index ? "opacity-0 scale-[0.992]" : "opacity-100 scale-100"}`}
+                className={`block group relative min-h-[16rem] overflow-visible transform-gpu will-change-[opacity] transition-opacity ease-in-out hover:-translate-y-0.5 ${fadingSlot === index ? "opacity-0" : "opacity-100"}`}
                 style={{ transitionDuration: `${FEATURED_WARRIOR_FADE_MS}ms` }}
               >
                 <div className="absolute inset-x-0 bottom-2 top-7 overflow-hidden rounded-[1.35rem] border border-amber-100/12 bg-slate-950/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.045),0_18px_60px_rgba(0,0,0,0.24)] transition group-hover:border-amber-200/26">
