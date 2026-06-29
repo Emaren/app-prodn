@@ -50,6 +50,7 @@ type FeaturedWarrior = {
   name: string;
   lookupName: string;
   role: string;
+  premiumSubtitle?: string;
   href: string;
   imageUrl?: string;
   isPlaceholder?: boolean;
@@ -77,6 +78,7 @@ const FEATURED_WARRIOR_FALLBACKS: FeaturedWarrior[] = [
     name: "Julio",
     lookupName: "Julio Alvarez",
     role: "The Conquistador",
+    premiumSubtitle: "ELO ᛫ RECORD ᛫ STREAK",
     href: "/players/by-name/Julio%20Alvarez",
     imageUrl: avatarCardUrlForUser(JULIO_ALVAREZ_UID, "Julio Alvarez"),
   },
@@ -153,7 +155,7 @@ const FEATURED_WARRIOR_PREMIUM_POOL: FeaturedWarrior[] = [
     key: "premium:grimer",
     name: "Grimer",
     lookupName: "Grimer",
-    role: "Featured Warrior",
+    role: "AI Advisor",
     href: "/players/by-name/Grimer",
     imageUrl: avatarCardUrlForName("Grimer"),
   },
@@ -649,9 +651,7 @@ function AdvancedFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] })
                 <div className="mx-auto max-w-full overflow-hidden text-balance break-words font-serif text-[clamp(0.78rem,1.02vw,1.05rem)] font-semibold uppercase leading-[1.05] tracking-[0.075em] text-white [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
                   {warrior.name}
                 </div>
-                <div className="mt-0.5 text-[10px] uppercase tracking-[0.18em] text-slate-300">
-                  {warrior.role}
-                </div>
+                <FeaturedWarriorSubtitle warrior={warrior} />
               </div>
             </Link>
           ))}
@@ -665,6 +665,21 @@ function AdvancedFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] })
         </Link>
       </div>
     </section>
+  );
+}
+
+
+function FeaturedWarriorSubtitle({ warrior }: { warrior: FeaturedWarrior }) {
+  if (warrior.premiumSubtitle) {
+    return (
+      <div className="mt-1 inline-flex max-w-full items-center justify-center rounded-full border border-amber-200/20 bg-gradient-to-r from-amber-300/[0.11] via-yellow-100/[0.08] to-amber-300/[0.11] px-2.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.155em] text-amber-100/95 shadow-[0_0_18px_rgba(251,191,36,0.13)]">
+        {warrior.premiumSubtitle}
+      </div>
+    );
+  }
+
+  return (
+    <FeaturedWarriorSubtitle warrior={warrior} />
   );
 }
 
