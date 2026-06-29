@@ -19,6 +19,7 @@ const BROWSER_STREAM_ARCHIVE_MS = 6 * 60 * 60 * 1000;
 const EXTERNAL_STREAM_STALE_MS = 20 * 60 * 1000;
 const LIVE_GAMES_RECENT_MATCH_LIMIT = 24;
 const LIVE_GAMES_RECENT_OUTCOME_LIMIT = 3;
+const LIVE_GAMES_COMPLETED_SESSION_DEPTH = 6;
 
 export type LiveGamesSummary = {
   liveCount: number;
@@ -142,7 +143,7 @@ async function loadLiveGamesSnapshotFresh(prisma: PrismaClient): Promise<LiveGam
   const displayedCompletedSessions = dedupeStreamedSessions([
     ...streamedCompletedSessions,
     ...fallbackRecentOutcomeSessions,
-  ]).slice(0, LIVE_GAMES_RECENT_OUTCOME_LIMIT);
+  ]).slice(0, LIVE_GAMES_COMPLETED_SESSION_DEPTH);
 
   const displayedCompletedKeys = new Set(
     displayedCompletedSessions.map((session) => session.sessionKey)

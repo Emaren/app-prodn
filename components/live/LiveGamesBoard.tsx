@@ -513,7 +513,7 @@ function LiveBoardHeader({
             />
             <Link
               href="/challenge"
-              className="inline-flex min-h-10 items-center gap-2 rounded-full bg-amber-300 px-4 py-2 text-sm font-bold text-slate-950 shadow-[0_10px_28px_rgba(251,191,36,0.16)] transition hover:-translate-y-0.5 hover:bg-amber-200"
+              className="inline-flex min-h-9 items-center gap-2 rounded-full bg-amber-300 px-3.5 py-1.5 text-xs font-bold text-slate-950 shadow-[0_10px_28px_rgba(251,191,36,0.16)] transition hover:-translate-y-0.5 hover:bg-amber-200"
             >
               <Swords className="h-4 w-4" />
               Schedule
@@ -529,7 +529,7 @@ function LiveBoardHeader({
             ) : (
               <Link
                 href="/lobby"
-                className="inline-flex min-h-10 items-center rounded-full border border-white/15 px-4 py-2 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
+                className="inline-flex min-h-9 items-center rounded-full border border-white/15 px-3.5 py-1.5 text-xs text-white/85 transition hover:border-white/30 hover:text-white"
               >
                 Lobby
               </Link>
