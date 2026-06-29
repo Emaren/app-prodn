@@ -56,6 +56,8 @@ The current public spine is no longer just a homepage plus a few leaf pages. The
 
 Live replay detail presentation is currently owned by `components/game-stats/LiveReplayDetail.tsx`. The Battle Matrix defaults to a two-column versus layout, with a header layout toggle that can switch to one full-width player lane per row. Inside each lane, keep the activity rail stacked above the pulse strip and metric labels wrap-safe so EAPM/history chips stay readable instead of squeezing into fixed-width micro-columns or overlapping their values.
 
+Live-board presentation is owned by `components/live/LiveGamesBoard.tsx`, with snapshot assembly and stream selection in `lib/liveGames.ts`. `/live-games` has its own persisted Basic / Advanced / Extreme preference under the `live_games` tile key. Extreme is the default and expands the app shell to `96rem`; Advanced uses `75rem`; Basic preserves the focused `65rem` board. The just-finished spotlight is capped at three outcomes so upload batches move into Recently Played instead of filling the live rail. An external stream may be the primary card feed when it is explicitly primary on a live session or its player label matches a participant. Completed cards require participant attribution for external footage; an unlabeled Twitch/YouTube row must never fall through as another player's saved match video.
+
 ### Same-origin API routes
 
 Key browser-facing routes include:

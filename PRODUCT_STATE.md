@@ -55,6 +55,11 @@ Current strengths:
 - live uploads are working end-to-end in real usage
 - recent good test replay parsed cleanly and displayed correctly
 - live board can show just-finished matches in a believable way
+- `/live-games` now has persisted Basic, Advanced, and Extreme views, with Extreme as the default full-width battlefield surface; Basic preserves the original two-column board and Advanced keeps that structure with richer replay cards
+- the Extreme board makes Playing Now, On Deck, the latest three finals, and Recently Played separate first-class rails, with direct Schedule and Upload Replay calls to action instead of leaving a giant dead live column
+- just-finished outcomes are capped at three in the snapshot and page composition, so a batch of old uploads rolls into the archive instead of making the green results rail dominate for days
+- finished-game cards use graphic battle thumbnails rather than tiny embedded players, keep metadata chips wrap-safe, and only expose a video action when the selected stream is truly attributable
+- unlabeled, non-primary external streams no longer fall through as the default match feed; AoE2WAR-native footage, explicitly primary feeds, and participant-labeled feeds remain eligible
 - Recent Match Feed now uses one canonical `played_at` ordering/display path, so old saved-game reparses do not jump above newer actual matches
 - final replay storage no longer has the old obviously broken feel on a normal valid game
 - recent match surfaces feel more connected to the actual product state

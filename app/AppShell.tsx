@@ -335,10 +335,15 @@ function InnerShell({ children }: { children: React.ReactNode }) {
     tileViewPreferences,
     "community_lobby"
   );
-  const lobbyShellMaxWidth =
-    communityLobbyViewMode === "extreme"
+  const liveGamesViewMode = getTileViewMode(tileViewPreferences, "live_games");
+  const isLiveGamesSurface = pathname?.startsWith("/live-games");
+  const activeSurfaceViewMode = isLiveGamesSurface
+    ? liveGamesViewMode
+    : communityLobbyViewMode;
+  const immersiveShellMaxWidth =
+    activeSurfaceViewMode === "extreme"
       ? "max-w-[96rem]"
-      : communityLobbyViewMode === "advanced"
+      : activeSurfaceViewMode === "advanced"
         ? "max-w-[75rem]"
         : "max-w-[65rem]";
   const headerTitle = getPageHeading(pathname);
@@ -566,7 +571,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
 
       <main
         className={`mx-auto flex min-h-0 min-w-0 w-full flex-1 flex-col px-3 py-4 pb-32 transition-[max-width] duration-300 sm:px-4 lg:pb-4 ${
-          isLobbySurface ? lobbyShellMaxWidth : "max-w-6xl"
+          isLobbySurface || isLiveGamesSurface ? immersiveShellMaxWidth : "max-w-6xl"
         } ${
           isContactPage ? "overflow-hidden" : "overflow-x-hidden"
         }`}

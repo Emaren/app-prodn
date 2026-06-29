@@ -18,7 +18,7 @@ const BROWSER_STREAM_STALE_MS = 120_000;
 const BROWSER_STREAM_ARCHIVE_MS = 6 * 60 * 60 * 1000;
 const EXTERNAL_STREAM_STALE_MS = 20 * 60 * 1000;
 const LIVE_GAMES_RECENT_MATCH_LIMIT = 24;
-const LIVE_GAMES_RECENT_OUTCOME_LIMIT = 5;
+const LIVE_GAMES_RECENT_OUTCOME_LIMIT = 3;
 
 export type LiveGamesSummary = {
   liveCount: number;
@@ -363,6 +363,7 @@ function buildRecentOutcomeSession(
 ): StreamedLiveGameSession | null {
   const sessionKey = normalizeSessionKey(match);
   if (!sessionKey) return null;
+  const players = extractRecentMatchPlayers(match);
 
   const streamsById = new Map<number, WatchStreamPayload>();
   for (const key of recentMatchStreamKeys(match)) {
@@ -372,11 +373,10 @@ function buildRecentOutcomeSession(
   }
 
   const streams = Array.from(streamsById.values()).sort(compareStreamsForPrimary);
-  const primaryStream =
-    streams.find((stream) => stream.provider === "aoe2war" && stream.chunkCount > 0) ||
-    streams.find((stream) => stream.isPrimary) ||
-    streams[0] ||
-    null;
+  const primaryStream = selectPrimarySessionStream(streams, {
+    players,
+    state: "completed",
+  });
 
   const id = readMatchNumber(match, "id", "game_stats_id", "gameStatsId") ?? -1;
   const playedAt =
@@ -401,7 +401,7 @@ function buildRecentOutcomeSession(
     disconnectDetected: false,
     winner: readMatchText(match, "winner", "winner_name", "winnerName") || null,
     state: "completed",
-    players: extractRecentMatchPlayers(match),
+    players,
     uploaders: [],
     watcherCount: 1,
     parseRows: 1,
@@ -567,6 +567,58 @@ function compareStreamsForPrimary(left: WatchStreamPayload, right: WatchStreamPa
   return rightSeen - leftSeen;
 }
 
+function normalizeStreamIdentity(value: string | null | undefined) {
+  return String(value ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
+}
+
+function streamMatchesSessionPlayer(
+  stream: WatchStreamPayload,
+  session: Pick<LiveGameSession, "players">
+) {
+  const playerLabel = normalizeStreamIdentity(stream.playerLabel);
+  if (!playerLabel) return false;
+
+  return session.players.some((player) => {
+    const playerName = normalizeStreamIdentity(player.name);
+    return Boolean(
+      playerName &&
+        (playerName === playerLabel ||
+          playerName.includes(playerLabel) ||
+          playerLabel.includes(playerName))
+    );
+  });
+}
+
+function selectPrimarySessionStream(
+  streams: WatchStreamPayload[],
+  session: Pick<LiveGameSession, "players" | "state">
+) {
+  return (
+    streams.find(
+      (stream) =>
+        stream.provider === "aoe2war" &&
+        stream.status !== "ended" &&
+        stream.chunkCount > 0
+    ) ||
+    streams.find(
+      (stream) => stream.provider === "aoe2war" && stream.status !== "ended"
+    ) ||
+    streams.find(
+      (stream) =>
+        stream.provider === "aoe2war" &&
+        stream.status === "ended" &&
+        stream.chunkCount > 0
+    ) ||
+    (session.state === "live"
+      ? streams.find((stream) => stream.isPrimary)
+      : undefined) ||
+    streams.find((stream) => streamMatchesSessionPlayer(stream, session)) ||
+    null
+  );
+}
+
 function attachStreams(
   sessions: LiveGameSession[],
   streamsBySession: Map<string, WatchStreamPayload[]>
@@ -581,13 +633,7 @@ function attachStreams(
     }
 
     const streams = Array.from(streamsById.values()).sort(compareStreamsForPrimary);
-    const primaryStream =
-      streams.find((stream) => stream.provider === "aoe2war" && stream.status !== "ended" && stream.chunkCount > 0) ||
-      streams.find((stream) => stream.provider === "aoe2war" && stream.status !== "ended") ||
-      streams.find((stream) => stream.provider === "aoe2war" && stream.status === "ended") ||
-      streams.find((stream) => stream.isPrimary) ||
-      streams[0] ||
-      null;
+    const primaryStream = selectPrimarySessionStream(streams, session);
 
     return {
       ...session,
