@@ -42,8 +42,8 @@ const DELTAFORCE_UID = "u_f206dd9c3c1c40799b43a3faf7af986e";
 const SLADK0ESHKA_UID = "u_73b78fcddb90417180495c1468937049";
 
 const FEATURED_WARRIOR_SLOT_COUNT = 4;
-const FEATURED_WARRIOR_ROTATE_MS = 2800;
-const FEATURED_WARRIOR_FADE_MS = 180;
+const FEATURED_WARRIOR_ROTATE_MS = 5200;
+const FEATURED_WARRIOR_FADE_MS = 320;
 
 type FeaturedWarrior = {
   key: string;
@@ -383,6 +383,52 @@ function featuredWarriorImageSrc(warrior: FeaturedWarrior) {
   return warrior.imageUrl ?? avatarUrlForName(warrior.lookupName);
 }
 
+function decodeFeaturedWarriorImage(src: string) {
+  if (typeof window === "undefined" || !src) {
+    return Promise.resolve();
+  }
+
+  return new Promise<void>((resolve) => {
+    const image = new window.Image();
+    image.decoding = "async";
+    image.loading = "eager";
+    (image as HTMLImageElement & { fetchPriority?: "high" | "low" | "auto" }).fetchPriority = "high";
+
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      if (typeof image.decode === "function") {
+        image.decode().catch(() => undefined).finally(resolve);
+      } else {
+        resolve();
+      }
+    };
+
+    const timeout = window.setTimeout(finish, 2200);
+    image.onload = () => {
+      window.clearTimeout(timeout);
+      finish();
+    };
+    image.onerror = () => {
+      window.clearTimeout(timeout);
+      finish();
+    };
+    image.src = src;
+
+    if (image.complete) {
+      window.clearTimeout(timeout);
+      finish();
+    }
+  });
+}
+
+function decodeFeaturedWarriorLineup(lineup: FeaturedWarrior[]) {
+  return Promise.all(lineup.map((warrior) => decodeFeaturedWarriorImage(featuredWarriorImageSrc(warrior)))).then(
+    () => undefined
+  );
+}
+
 function shuffleFeaturedWarriors(pool: FeaturedWarrior[]) {
   const shuffled = [...pool];
 
@@ -432,10 +478,7 @@ function preloadFeaturedWarriorImages(pool: FeaturedWarrior[]) {
     .filter(Boolean);
 
   for (const url of urls) {
-    const image = new window.Image();
-    image.decoding = "async";
-    image.loading = "eager";
-    image.src = url;
+    void decodeFeaturedWarriorImage(url);
   }
 }
 
@@ -451,14 +494,6 @@ function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
   useEffect(() => {
     setFeaturedWarriorsMounted(true);
     preloadFeaturedWarriorImages(pool);
-
-    setVisibleWarriors((current) => {
-      const randomized = randomFeaturedWarriorOpening(pool, current);
-      randomized.forEach((warrior, index) => {
-        lastWarriorBySlotRef.current[index] = warrior.key;
-      });
-      return randomized;
-    });
   }, [pool]);
 
   useEffect(() => {
@@ -466,15 +501,21 @@ function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
       return;
     }
 
+    let disposed = false;
     preloadFeaturedWarriorImages(pool);
 
-    setVisibleWarriors((current) => {
-      const randomized = randomFeaturedWarriorOpening(pool, current);
+    const randomized = randomFeaturedWarriorOpening(pool);
+    void decodeFeaturedWarriorLineup(randomized).then(() => {
+      if (disposed) return;
       randomized.forEach((warrior, index) => {
         lastWarriorBySlotRef.current[index] = warrior.key;
       });
-      return randomized;
+      setVisibleWarriors(randomized);
     });
+
+    return () => {
+      disposed = true;
+    };
   }, [featuredWarriorsMounted, pool]);
 
   useEffect(() => {
