@@ -662,7 +662,7 @@ function ClassicBoard({
             <>
               {liveScheduledMatches.map((match) => renderScheduledMatch(match, { detail: true }))}
               {snapshot.activeSessions.map((session) => (
-                <ClassicLiveSessionCard key={`session-${session.id}`} session={session} mounted={mounted} />
+                <ClassicLiveSessionCard key={`session-${session.id}`} session={session} mounted={mounted} premium={advanced} />
               ))}
               {snapshot.liveMatches.map((match) => (
                 <ClassicTournamentLiveMatchCard
@@ -670,6 +670,7 @@ function ClassicBoard({
                   match={match}
                   emphasis="live"
                   mounted={mounted}
+                  premium={advanced}
                 />
               ))}
             </>
@@ -703,6 +704,7 @@ function ClassicBoard({
                     emphasis="ready"
                     compact
                     mounted={mounted}
+                  premium={advanced}
                   />
                 ))}
                 {acceptedScheduledMatches.map((match) => renderScheduledMatch(match, { compact: true }))}
@@ -732,7 +734,7 @@ function ClassicBoard({
               <>
                 {recentScheduledMatches.map((match) => renderScheduledMatch(match, { compact: true }))}
                 {recentlyCompletedSessions.map((session) => (
-                  <ClassicLiveSessionCard key={`completed-${session.id}`} session={session} mounted={mounted} />
+                  <ClassicLiveSessionCard key={`completed-${session.id}`} session={session} mounted={mounted} premium={advanced} />
                 ))}
               </>
             )}
@@ -793,12 +795,15 @@ function ClassicBoard({
 }
 
 
+
 function ClassicLiveSessionCard({
   session,
   mounted,
+  premium = false,
 }: {
   session: LiveGamesSnapshot["activeSessions"][number];
   mounted: boolean;
+  premium?: boolean;
 }) {
   const isCompleted = session.state === "completed";
   const gameHref = `/game-stats/live/${encodeURIComponent(session.sessionKey)}`;
@@ -835,24 +840,158 @@ function ClassicLiveSessionCard({
       ? session.players.map((player) => player.name).join(" vs ")
       : session.originalFilename || "Game in progress";
 
+  const eyebrowLabel = isCompleted ? "Just finished" : "Watcher live";
+  const badgeLabel = isCompleted ? "Final stored" : "Live parse";
+  const compactDuration = formatDurationCompact(session.durationSeconds);
+
+  const chips = (
+    <>
+      {session.mapName ? (
+        <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-200">
+          {session.mapName}
+        </span>
+      ) : null}
+
+      <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-200">
+        Parse #{session.parseIteration}
+      </span>
+
+      {session.parseRows > 1 ? (
+        <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+          {session.parseRows} stored rows
+        </span>
+      ) : null}
+
+      <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+        Updated {formatUpdatedTime(session.completedAt || session.updatedAt, mounted)}
+      </span>
+
+      <span
+        className={`rounded-full border px-3 py-1 text-xs ${
+          isCompleted
+            ? "border-emerald-300/25 bg-emerald-400/10 text-emerald-100"
+            : "border-fuchsia-300/25 bg-fuchsia-400/10 text-fuchsia-100"
+        }`}
+      >
+        {coverageLabel}
+      </span>
+
+      {visibleUploaders.map((uploader) => (
+        <span key={uploader.uid} className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+          {uploader.displayName}
+        </span>
+      ))}
+
+      {hiddenUploaderCount > 0 ? (
+        <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+          +{hiddenUploaderCount} more
+        </span>
+      ) : null}
+
+      {isCompleted && session.winner && session.winner !== "Unknown" ? (
+        <span className="rounded-full border border-emerald-300/25 bg-emerald-400/10 px-3 py-1 text-xs text-emerald-100">
+          Winner {session.winner}
+        </span>
+      ) : null}
+
+      {primaryStream ? (
+        <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+          {isCompleted ? "Video saved" : "Video live"}
+        </span>
+      ) : null}
+    </>
+  );
+
+  const actions = (
+    <>
+      <Link
+        href={watchHref}
+        className="rounded-full bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200"
+      >
+        Watch Theatre
+      </Link>
+
+      <Link
+        href={gameHref}
+        className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-slate-200"
+      >
+        {isCompleted ? "Open Final Stats" : "Watch Live Stats"}
+      </Link>
+
+      <Link
+        href="/lobby"
+        className="rounded-full border border-white/15 px-4 py-2 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
+      >
+        Open Lobby
+      </Link>
+
+      <Link
+        href="/bets"
+        className="rounded-full border border-amber-300/30 bg-amber-400/10 px-4 py-2 text-sm text-amber-100 transition hover:bg-amber-400/15"
+      >
+        Bet Rail
+      </Link>
+    </>
+  );
+
+  if (premium) {
+    const premiumShellClass = isCompleted
+      ? "relative overflow-hidden rounded-[1.9rem] border border-emerald-300/25 bg-[radial-gradient(circle_at_88%_8%,rgba(52,211,153,0.20),transparent_34%),radial-gradient(circle_at_8%_100%,rgba(45,212,191,0.10),transparent_38%),linear-gradient(135deg,rgba(6,78,59,0.56),rgba(2,6,23,0.92)_62%)] px-5 py-5 shadow-[0_26px_90px_rgba(16,185,129,0.13)]"
+      : "relative overflow-hidden rounded-[1.9rem] border border-fuchsia-300/25 bg-[radial-gradient(circle_at_86%_8%,rgba(217,70,239,0.22),transparent_34%),radial-gradient(circle_at_10%_100%,rgba(129,140,248,0.12),transparent_40%),linear-gradient(135deg,rgba(88,28,135,0.52),rgba(2,6,23,0.92)_62%)] px-5 py-5 shadow-[0_26px_90px_rgba(168,85,247,0.13)]";
+
+    const premiumEyebrowClass = isCompleted ? "text-emerald-100/80" : "text-fuchsia-100/80";
+    const premiumBadgeClass = isCompleted
+      ? "border-emerald-200/25 bg-emerald-300/12 text-emerald-50"
+      : "border-fuchsia-200/25 bg-fuchsia-300/12 text-fuchsia-50";
+
+    return (
+      <div className={premiumShellClass}>
+        <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-white/45 to-transparent" />
+        <div className="pointer-events-none absolute -right-24 -top-24 h-56 w-56 rounded-full bg-white/10 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-24 left-8 h-44 w-44 rounded-full bg-cyan-300/8 blur-3xl" />
+
+        <div className="relative">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              <div className={`text-xs uppercase tracking-[0.34em] ${premiumEyebrowClass}`}>
+                {eyebrowLabel}
+              </div>
+              <div className="mt-2 text-[1.35rem] font-semibold leading-tight text-white">
+                {title}
+              </div>
+            </div>
+
+            <div className="shrink-0 space-y-2 text-right">
+              <div className={`rounded-full border px-3 py-1 text-xs font-semibold ${premiumBadgeClass}`}>
+                {badgeLabel}
+              </div>
+              {compactDuration ? (
+                <div className="text-xs text-slate-200">{compactDuration}</div>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            {chips}
+          </div>
+
+          <div className="mt-5 flex flex-wrap gap-3 border-t border-white/10 pt-4">
+            {actions}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const shellClass = isCompleted
     ? "border-emerald-400/20 bg-emerald-500/10"
     : "border-fuchsia-400/20 bg-fuchsia-500/10";
 
   const eyebrowClass = isCompleted ? "text-emerald-100/75" : "text-fuchsia-100/75";
-  const eyebrowLabel = isCompleted ? "Just finished" : "Watcher live";
-
-  const coverageClass =
-    isCompleted
-      ? "border-emerald-300/25 bg-emerald-400/10 text-emerald-100"
-      : "border-fuchsia-300/25 bg-fuchsia-400/10 text-fuchsia-100";
 
   const badgeClass = isCompleted
     ? "border-emerald-300/25 bg-emerald-400/10 text-emerald-100"
     : "border-fuchsia-300/25 bg-fuchsia-400/10 text-fuchsia-100";
-
-  const badgeLabel = isCompleted ? "Final stored" : "Live parse";
-  const compactDuration = formatDurationCompact(session.durationSeconds);
 
   return (
     <div className={`rounded-[1.5rem] border px-4 py-4 ${shellClass}`}>
@@ -865,53 +1004,7 @@ function ClassicLiveSessionCard({
           </div>
 
           <div className="mt-3 flex flex-wrap gap-2">
-            {session.mapName ? (
-              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-200">
-                {session.mapName}
-              </span>
-            ) : null}
-
-            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-200">
-              Parse #{session.parseIteration}
-            </span>
-
-            {session.parseRows > 1 ? (
-              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-                {session.parseRows} stored rows
-              </span>
-            ) : null}
-
-            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-              Updated {formatUpdatedTime(session.completedAt || session.updatedAt, mounted)}
-            </span>
-
-            <span className={`rounded-full border px-3 py-1 text-xs ${coverageClass}`}>
-              {coverageLabel}
-            </span>
-
-            {visibleUploaders.map((uploader) => (
-              <span key={uploader.uid} className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-                {uploader.displayName}
-              </span>
-            ))}
-
-            {hiddenUploaderCount > 0 ? (
-              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-                +{hiddenUploaderCount} more
-              </span>
-            ) : null}
-
-            {isCompleted && session.winner && session.winner !== "Unknown" ? (
-              <span className="rounded-full border border-emerald-300/25 bg-emerald-400/10 px-3 py-1 text-xs text-emerald-100">
-                Winner {session.winner}
-              </span>
-            ) : null}
-
-            {primaryStream ? (
-              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-                {isCompleted ? "Video saved" : "Video live"}
-              </span>
-            ) : null}
+            {chips}
           </div>
         </div>
 
@@ -926,54 +1019,95 @@ function ClassicLiveSessionCard({
       </div>
 
       <div className="mt-4 flex flex-wrap gap-3">
-        <Link
-          href={watchHref}
-          className="rounded-full bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200"
-        >
-          Watch Theatre
-        </Link>
-
-        <Link
-          href={gameHref}
-          className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-slate-200"
-        >
-          {isCompleted ? "Open Final Stats" : "Watch Live Stats"}
-        </Link>
-
-        <Link
-          href="/lobby"
-          className="rounded-full border border-white/15 px-4 py-2 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
-        >
-          Open Lobby
-        </Link>
-
-        <Link
-          href="/bets"
-          className="rounded-full border border-amber-300/30 bg-amber-400/10 px-4 py-2 text-sm text-amber-100 transition hover:bg-amber-400/15"
-        >
-          Bet Rail
-        </Link>
+        {actions}
       </div>
     </div>
   );
 }
+
 
 function ClassicTournamentLiveMatchCard({
   match,
   emphasis,
   mounted,
   compact = false,
+  premium = false,
 }: {
   match: LiveGamesSnapshot["liveMatches"][number];
   emphasis: "live" | "ready";
   mounted: boolean;
   compact?: boolean;
+  premium?: boolean;
 }) {
+  const actionHref = match.proof ? `/game-stats/${match.proof.gameStatsId}` : "/lobby";
+  const isLive = emphasis === "live";
+  const statusLabel = getTournamentMatchStatusLabel(match.status as never);
+  const title = `${playerLabel(match.playerOne)} vs ${playerLabel(match.playerTwo)}`;
+
+  if (premium) {
+    const shellClass = isLive
+      ? "relative overflow-hidden rounded-[1.75rem] border border-fuchsia-300/25 bg-[radial-gradient(circle_at_85%_10%,rgba(217,70,239,0.22),transparent_32%),linear-gradient(135deg,rgba(88,28,135,0.46),rgba(2,6,23,0.92)_64%)] px-5 py-5 shadow-[0_24px_80px_rgba(168,85,247,0.12)]"
+      : "relative overflow-hidden rounded-[1.75rem] border border-amber-300/25 bg-[radial-gradient(circle_at_85%_10%,rgba(251,191,36,0.18),transparent_32%),linear-gradient(135deg,rgba(120,53,15,0.42),rgba(2,6,23,0.92)_64%)] px-5 py-5 shadow-[0_24px_80px_rgba(245,158,11,0.10)]";
+
+    const eyebrowClass = isLive ? "text-fuchsia-100/80" : "text-amber-100/80";
+    const badgeClass = isLive
+      ? "border-fuchsia-200/25 bg-fuchsia-300/12 text-fuchsia-50"
+      : "border-amber-200/25 bg-amber-300/12 text-amber-50";
+
+    return (
+      <div className={shellClass}>
+        <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-white/45 to-transparent" />
+        <div className="pointer-events-none absolute -right-24 -top-24 h-52 w-52 rounded-full bg-white/10 blur-3xl" />
+
+        <div className="relative">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="min-w-0">
+              <div className={`text-xs uppercase tracking-[0.32em] ${eyebrowClass}`}>
+                {match.label || `Round ${match.round} Match ${match.position}`}
+              </div>
+              <div className="mt-2 text-xl font-semibold leading-tight text-white">
+                {title}
+              </div>
+              <div className="mt-2 text-sm text-slate-300">
+                {match.proof?.mapName || "Map lock incoming"} · {formatTime(match.proof?.playedOn || match.scheduledAt, mounted)}
+              </div>
+            </div>
+
+            <div className="space-y-2 text-right">
+              <div className={`rounded-full border px-3 py-1 text-xs font-semibold ${badgeClass}`}>
+                {statusLabel}
+              </div>
+              {match.proof?.winner ? (
+                <div className="text-xs uppercase tracking-[0.24em] text-emerald-200/80">
+                  Winner {match.proof.winner}
+                </div>
+              ) : null}
+            </div>
+          </div>
+
+          <div className={`mt-4 flex flex-wrap gap-3 ${compact ? "" : "pt-1"}`}>
+            <Link
+              href={actionHref}
+              className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-slate-200"
+            >
+              {match.proof ? "Watch Proof" : "Open Lobby"}
+            </Link>
+            <Link
+              href="/bets"
+              className="rounded-full border border-amber-300/30 bg-amber-400/10 px-4 py-2 text-sm text-amber-100 transition hover:bg-amber-400/15"
+            >
+              Bet Rail
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const accentClass =
     emphasis === "live"
-      ? "border-red-400/20 bg-red-500/10"
+      ? "border-fuchsia-400/20 bg-fuchsia-500/10"
       : "border-amber-300/20 bg-amber-400/10";
-  const actionHref = match.proof ? `/game-stats/${match.proof.gameStatsId}` : "/lobby";
 
   return (
     <div className={`rounded-[1.5rem] border px-4 py-4 ${accentClass}`}>
@@ -983,7 +1117,7 @@ function ClassicTournamentLiveMatchCard({
             {match.label || `Round ${match.round} Match ${match.position}`}
           </div>
           <div className="mt-2 text-xl font-semibold text-white">
-            {playerLabel(match.playerOne)} vs {playerLabel(match.playerTwo)}
+            {title}
           </div>
           <div className="mt-2 text-sm text-slate-300">
             {match.proof?.mapName || "Map lock incoming"} · {formatTime(match.proof?.playedOn || match.scheduledAt, mounted)}
@@ -992,7 +1126,7 @@ function ClassicTournamentLiveMatchCard({
 
         <div className="space-y-2 text-right">
           <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white">
-            {getTournamentMatchStatusLabel(match.status as never)}
+            {statusLabel}
           </div>
           {match.proof?.winner ? (
             <div className="text-xs uppercase tracking-[0.24em] text-emerald-200/80">
@@ -1019,7 +1153,6 @@ function ClassicTournamentLiveMatchCard({
     </div>
   );
 }
-
 
 function ExtremeBoard({
   snapshot,
