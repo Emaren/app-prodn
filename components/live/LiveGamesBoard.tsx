@@ -669,7 +669,7 @@ function ClassicBoard({
                 advanced ? (
                   <PremiumClassicLiveSessionCard key={`session-${session.id}`} session={session} />
                 ) : (
-                  <ClassicLiveSessionCard key={`session-${session.id}`} session={session} mounted={mounted} />
+                  <ClassicLiveSessionCard key={`session-${session.id}`} session={session} />
                 )
               )}
               {snapshot.liveMatches.map((match) => (
@@ -745,7 +745,7 @@ function ClassicBoard({
                   advanced ? (
                     <PremiumClassicLiveSessionCard key={`completed-${session.id}`} session={session} />
                   ) : (
-                    <ClassicLiveSessionCard key={`completed-${session.id}`} session={session} mounted={mounted} />
+                    <ClassicLiveSessionCard key={`completed-${session.id}`} session={session} />
                   )
                 )}
               </>
@@ -884,7 +884,7 @@ function PremiumClassicLiveSessionCard({
       : null;
 
   const metaParts = [
-    aoe2warGameNumber ? `Game #${aoe2warGameNumber}` : null,
+    aoe2warGameNumber ? `#${aoe2warGameNumber}` : null,
     durationLabel || null,
   ].filter(Boolean) as string[];
 
@@ -1000,239 +1000,124 @@ function PremiumClassicLiveSessionCard({
 }
 
 
+
 function ClassicLiveSessionCard({
   session,
-  mounted,
-  premium = false,
 }: {
   session: LiveGamesSnapshot["activeSessions"][number];
-  mounted: boolean;
-  premium?: boolean;
 }) {
+  const sessionAny = session as Record<string, unknown>;
   const isCompleted = session.state === "completed";
   const gameHref = `/game-stats/live/${encodeURIComponent(session.sessionKey)}`;
-  const watchHref = `/watch/${encodeURIComponent(session.sessionKey)}`;
-  const primaryStream = session.primaryStream ?? session.streams?.[0] ?? null;
-  const uploaders =
-    session.uploaders?.length > 0
-      ? session.uploaders
-      : session.uploader
-        ? [
-            {
-              uid: session.uploader.uid,
-              displayName: session.uploader.displayName,
-              parseRows: session.parseRows || 1,
-              lastSeenAt: session.updatedAt,
-            },
-          ]
-        : [];
-  const watcherCount = session.watcherCount || uploaders.length;
-  const visibleUploaders = uploaders.slice(0, 3);
-  const hiddenUploaderCount = Math.max(0, uploaders.length - visibleUploaders.length);
-
-  const coverageLabel =
-    watcherCount >= 3
-      ? `${watcherCount} watcher stack`
-      : watcherCount === 2
-        ? "Dual watcher coverage"
-        : watcherCount === 1
-          ? "Single watcher source"
-          : "Watcher source pending";
+  const isUploadedReplay = Boolean(
+    session.originalFilename || session.uploader || session.uploaders?.length
+  );
 
   const title =
     session.players.length > 0
       ? session.players.map((player) => player.name).join(" vs ")
       : session.originalFilename || "Game in progress";
 
-  const isUploadedReplay = Boolean(
-    session.originalFilename || session.uploader || session.uploaders?.length
-  );
   const eyebrowLabel = isCompleted
     ? isUploadedReplay
       ? "Just uploaded"
       : "Just finished"
     : "Watcher live";
-  const badgeLabel = isCompleted ? "Final stored" : "Live parse";
-  const compactDuration = formatDurationCompact(session.durationSeconds);
 
-  const chips = (
-    <>
-      {session.mapName ? (
-        <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-200">
-          {session.mapName}
-        </span>
-      ) : null}
+  const statusLabel = isCompleted ? "Final stored" : "Live parse";
+  const durationLabel = formatDurationCompact(session.durationSeconds);
 
-      <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-200">
-        Parse #{session.parseIteration}
-      </span>
+  const rawGameNumber =
+    sessionAny["aoe2warGameId"] ??
+    sessionAny["gameNumber"] ??
+    sessionAny["sourceGameId"] ??
+    sessionAny["gameId"] ??
+    sessionAny["matchId"] ??
+    sessionAny["id"];
 
-      {session.parseRows > 1 ? (
-        <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-          {session.parseRows} stored rows
-        </span>
-      ) : null}
+  const aoe2warGameNumber =
+    typeof rawGameNumber === "number" || typeof rawGameNumber === "string"
+      ? String(rawGameNumber)
+      : null;
 
-      <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-        Updated {formatUpdatedTime(session.completedAt || session.updatedAt, mounted)}
-      </span>
+  const metaParts = [
+    aoe2warGameNumber ? `#${aoe2warGameNumber}` : null,
+    durationLabel || null,
+  ].filter(Boolean) as string[];
 
-      <span
-        className={`rounded-full border px-3 py-1 text-xs ${
-          isCompleted
-            ? "border-emerald-300/25 bg-emerald-400/10 text-emerald-100"
-            : "border-fuchsia-300/25 bg-fuchsia-400/10 text-fuchsia-100"
-        }`}
-      >
-        {coverageLabel}
-      </span>
-
-      {visibleUploaders.map((uploader) => (
-        <span key={uploader.uid} className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-          {uploader.displayName}
-        </span>
-      ))}
-
-      {hiddenUploaderCount > 0 ? (
-        <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-          +{hiddenUploaderCount} more
-        </span>
-      ) : null}
-
-      {isCompleted && session.winner && session.winner !== "Unknown" ? (
-        <span className="rounded-full border border-emerald-300/25 bg-emerald-400/10 px-3 py-1 text-xs text-emerald-100">
-          Winner {session.winner}
-        </span>
-      ) : null}
-
-      {primaryStream ? (
-        <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-          {isCompleted ? "Video saved" : "Video live"}
-        </span>
-      ) : null}
-    </>
-  );
-
-  const actions = (
-    <>
-      <Link
-        href={watchHref}
-        className="rounded-full bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200"
-      >
-        Watch Theatre
-      </Link>
-
-      <Link
-        href={gameHref}
-        className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-slate-200"
-      >
-        {isCompleted ? "Open Final Stats" : "Watch Live Stats"}
-      </Link>
-
-      <Link
-        href="/lobby"
-        className="rounded-full border border-white/15 px-4 py-2 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
-      >
-        Open Lobby
-      </Link>
-
-      <Link
-        href="/bets"
-        className="rounded-full border border-amber-300/30 bg-amber-400/10 px-4 py-2 text-sm text-amber-100 transition hover:bg-amber-400/15"
-      >
-        Bet Rail
-      </Link>
-    </>
-  );
-
-  if (premium) {
-    const premiumShellClass = isCompleted
-      ? "relative overflow-hidden rounded-[1.9rem] border border-emerald-300/25 bg-[radial-gradient(circle_at_88%_8%,rgba(52,211,153,0.20),transparent_34%),radial-gradient(circle_at_8%_100%,rgba(45,212,191,0.10),transparent_38%),linear-gradient(135deg,rgba(6,78,59,0.56),rgba(2,6,23,0.92)_62%)] px-5 py-5 shadow-[0_26px_90px_rgba(16,185,129,0.13)]"
-      : "relative overflow-hidden rounded-[1.9rem] border border-fuchsia-300/25 bg-[radial-gradient(circle_at_86%_8%,rgba(217,70,239,0.22),transparent_34%),radial-gradient(circle_at_10%_100%,rgba(129,140,248,0.12),transparent_40%),linear-gradient(135deg,rgba(88,28,135,0.52),rgba(2,6,23,0.92)_62%)] px-5 py-5 shadow-[0_26px_90px_rgba(168,85,247,0.13)]";
-
-    const premiumEyebrowClass = isCompleted ? "text-emerald-100/80" : "text-fuchsia-100/80";
-    const premiumBadgeClass = isCompleted
-      ? "border-emerald-200/25 bg-emerald-300/12 text-emerald-50"
-      : "border-fuchsia-200/25 bg-fuchsia-300/12 text-fuchsia-50";
-
-    return (
-      <div className={premiumShellClass}>
-        <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-white/45 to-transparent" />
-        <div className="pointer-events-none absolute -right-24 -top-24 h-56 w-56 rounded-full bg-white/10 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-24 left-8 h-44 w-44 rounded-full bg-cyan-300/8 blur-3xl" />
-
-        <div className="relative">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="min-w-0 flex-1">
-              <div className={`text-xs uppercase tracking-[0.34em] ${premiumEyebrowClass}`}>
-                {eyebrowLabel}
-              </div>
-              <div className="mt-2 text-[1.35rem] font-semibold leading-tight text-white">
-                {title}
-              </div>
-            </div>
-
-            <div className="shrink-0 space-y-2 text-right">
-              <div className={`rounded-full border px-3 py-1 text-xs font-semibold ${premiumBadgeClass}`}>
-                {badgeLabel}
-              </div>
-              {compactDuration ? (
-                <div className="text-xs text-slate-200">{compactDuration}</div>
-              ) : null}
-            </div>
-          </div>
-
-          <div className="mt-4 flex flex-wrap gap-2">
-            {chips}
-          </div>
-
-          <div className="mt-5 flex flex-wrap gap-3 border-t border-white/10 pt-4">
-            {actions}
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const winnerName =
+    typeof session.winner === "string" && session.winner.trim().length > 0
+      ? session.winner.trim()
+      : null;
 
   const shellClass = isCompleted
     ? "border-emerald-400/20 bg-emerald-500/10"
     : "border-fuchsia-400/20 bg-fuchsia-500/10";
 
   const eyebrowClass = isCompleted ? "text-emerald-100/75" : "text-fuchsia-100/75";
-
-  const badgeClass = isCompleted
+  const titleClass =
+    "mt-2 text-xl font-semibold leading-tight tracking-[-0.012em] text-slate-50/95 [text-shadow:0_1px_10px_rgba(2,6,23,0.18)]";
+  const metaClass = isCompleted ? "text-emerald-100/58" : "text-fuchsia-100/58";
+  const statusClass = isCompleted
     ? "border-emerald-300/25 bg-emerald-400/10 text-emerald-100"
     : "border-fuchsia-300/25 bg-fuchsia-400/10 text-fuchsia-100";
+  const winnerClass = isCompleted ? "text-emerald-100/58" : "text-fuchsia-100/58";
+  const winnerNameClass = isCompleted ? "text-emerald-50/86" : "text-fuchsia-50/86";
+
+  const goToStats = () => {
+    window.location.href = gameHref;
+  };
 
   return (
-    <div className={`rounded-[1.5rem] border px-4 py-4 ${shellClass}`}>
-      <div className="flex flex-wrap items-start justify-between gap-4">
+    <article
+      role="link"
+      tabIndex={0}
+      onClick={goToStats}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          goToStats();
+        }
+      }}
+      className={`cursor-pointer rounded-[1.5rem] border px-4 py-4 transition duration-200 hover:-translate-y-0.5 hover:border-white/20 ${shellClass}`}
+      aria-label={`Open final stats for ${title}`}
+    >
+      <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
-          <div className={`text-xs uppercase tracking-[0.3em] ${eyebrowClass}`}>{eyebrowLabel}</div>
-
-          <div className="mt-2 text-xl font-semibold text-white">
-            {title}
+          <div className={`text-xs uppercase tracking-[0.3em] ${eyebrowClass}`}>
+            {eyebrowLabel}
           </div>
 
-          <div className="mt-3 flex flex-wrap gap-2">
-            {chips}
-          </div>
-        </div>
+          <div className={titleClass}>{title}</div>
 
-        <div className="shrink-0 space-y-2 text-right">
-          <div className={`rounded-full border px-3 py-1 text-xs ${badgeClass}`}>
-            {badgeLabel}
-          </div>
-          {compactDuration ? (
-            <div className="text-xs text-slate-300">{compactDuration}</div>
+          {metaParts.length ? (
+            <div className={`mt-2 text-[11px] font-medium uppercase tracking-[0.2em] ${metaClass}`}>
+              {metaParts.join(" · ")}
+            </div>
           ) : null}
         </div>
+
+        <div className="shrink-0">
+          <span
+            className={`inline-flex h-7 min-w-[7.8rem] items-center justify-center rounded-full border px-3 text-[11px] font-semibold leading-none ${statusClass}`}
+          >
+            {statusLabel}
+          </span>
+        </div>
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-3">
-        {actions}
+      <div className="mt-5 flex items-end justify-between gap-4">
+        <div className="min-w-0">
+          {winnerName ? (
+            <div className={`text-[11px] font-medium uppercase tracking-[0.2em] ${winnerClass}`}>
+              Winner <span className={`ml-1 ${winnerNameClass}`}>{winnerName}</span>
+            </div>
+          ) : (
+            <div className="h-[14px]" />
+          )}
+        </div>
       </div>
-    </div>
+    </article>
   );
 }
 
