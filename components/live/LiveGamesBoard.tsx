@@ -841,6 +841,7 @@ function ClassicBoard({
 
 
 
+
 function PremiumClassicLiveSessionCard({
   session,
 }: {
@@ -864,6 +865,10 @@ function PremiumClassicLiveSessionCard({
     : "Watcher live";
   const statusLabel = isCompleted ? "Final stored" : "Live parse";
   const compactDuration = formatDurationCompact(session.durationSeconds);
+  const winnerName =
+    typeof session.winner === "string" && session.winner.trim().length > 0
+      ? session.winner.trim()
+      : null;
 
   const shellClass = isCompleted
     ? "relative overflow-hidden rounded-[1.9rem] border border-emerald-400/20 bg-emerald-500/10 px-5 py-5 shadow-[0_26px_90px_rgba(16,185,129,0.12)] sm:px-6"
@@ -873,6 +878,9 @@ function PremiumClassicLiveSessionCard({
   const statusClass = isCompleted
     ? "border-emerald-300/25 bg-emerald-500/12 text-emerald-50"
     : "border-fuchsia-300/25 bg-fuchsia-500/12 text-fuchsia-50";
+
+  const winnerClass = isCompleted ? "text-emerald-100/65" : "text-fuchsia-100/65";
+  const winnerNameClass = isCompleted ? "text-emerald-50/90" : "text-fuchsia-50/90";
 
   const goToStats = () => {
     window.location.href = gameHref;
@@ -907,7 +915,7 @@ function PremiumClassicLiveSessionCard({
         </>
       )}
 
-      <div className="relative grid gap-5 sm:grid-cols-[minmax(0,1fr)_9.75rem] sm:items-start">
+      <div className="relative grid gap-5 sm:grid-cols-[minmax(0,1fr)_10rem] sm:items-start">
         <div className="min-w-0">
           <div className={`text-xs uppercase tracking-[0.34em] ${eyebrowClass}`}>
             {eyebrowLabel}
@@ -917,14 +925,14 @@ function PremiumClassicLiveSessionCard({
           </div>
         </div>
 
-        <div className="relative z-20" onClick={(event) => event.stopPropagation()}>
+        <div className="relative z-20 sm:justify-self-end" onClick={(event) => event.stopPropagation()}>
           <Link
             href={watchHref}
             className="group block overflow-hidden rounded-2xl border border-white/10 bg-black/55 shadow-[0_18px_50px_rgba(0,0,0,0.28)] transition hover:scale-[1.02] hover:border-sky-200/30"
             aria-label={`Watch ${title}`}
           >
             <video
-              className="h-[4.6rem] w-full object-cover opacity-92 transition duration-500 group-hover:scale-[1.04] group-hover:opacity-100 sm:h-[5.1rem]"
+              className="h-[4.8rem] w-full object-cover opacity-92 transition duration-500 group-hover:scale-[1.04] group-hover:opacity-100 sm:h-[5.2rem]"
               src={ADVANCED_SESSION_LOOP_VIDEO_URL}
               autoPlay
               muted
@@ -934,13 +942,29 @@ function PremiumClassicLiveSessionCard({
             />
             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_35%_20%,rgba(125,211,252,0.12),transparent_34%),linear-gradient(180deg,transparent,rgba(2,6,23,0.22))]" />
           </Link>
+        </div>
 
-          <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
-            <span className={`inline-flex min-w-0 items-center justify-center rounded-full border px-3 py-1 text-[11px] font-semibold leading-none ${statusClass}`}>
+        <div className="col-span-full mt-1 flex items-end justify-between gap-4">
+          <div className="min-w-0">
+            {winnerName ? (
+              <div className={`text-[11px] font-medium uppercase tracking-[0.22em] ${winnerClass}`}>
+                Winner <span className={`ml-1 ${winnerNameClass}`}>{winnerName}</span>
+              </div>
+            ) : (
+              <div className="h-[14px]" />
+            )}
+          </div>
+
+          <div className="flex shrink-0 items-center gap-3">
+            <span
+              className={`inline-flex h-8 min-w-[8.8rem] items-center justify-center rounded-full border px-4 text-[11px] font-semibold leading-none ${statusClass}`}
+            >
               {statusLabel}
             </span>
             {compactDuration ? (
-              <span className="shrink-0 whitespace-nowrap text-right text-xs text-slate-300">{compactDuration}</span>
+              <span className="w-[3.9rem] shrink-0 text-right text-xs text-slate-300">
+                {compactDuration}
+              </span>
             ) : null}
           </div>
         </div>
