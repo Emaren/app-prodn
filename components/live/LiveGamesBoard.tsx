@@ -435,7 +435,7 @@ const liveItemsCount =
       ) : null}
 
       {viewMode === "extreme" ? (
-        <ExtremeBoard {...boardProps} />
+        <ExtremeBoard {...boardProps} viewMode={viewMode} onViewModeChange={liveGamesTile.setViewMode} />
       ) : (
         <ClassicBoard {...boardProps} viewMode={viewMode} onViewModeChange={liveGamesTile.setViewMode} />
       )}
@@ -1355,10 +1355,19 @@ function ExtremeBoard({
   recentScheduledMatches,
   recentlyCompletedSessions,
   renderScheduledMatch,
-}: BoardViewProps) {
+  viewMode,
+  onViewModeChange,
+}: BoardViewProps & {
+  viewMode: TileViewMode;
+  onViewModeChange: (viewMode: TileViewMode) => void;
+}) {
   return (
     <div className="space-y-6">
       <section className="relative overflow-hidden rounded-[2.15rem] border border-white/10 bg-[radial-gradient(circle_at_20%_0%,rgba(239,68,68,0.10),transparent_30%),linear-gradient(145deg,rgba(2,6,23,0.96),rgba(9,17,32,0.94))] p-4 shadow-[0_30px_100px_rgba(0,0,0,0.26)] sm:p-6">
+
+      <div className="mb-4 flex justify-center sm:justify-end">
+        <LiveGamesViewToggle viewMode={viewMode} onViewModeChange={onViewModeChange} />
+      </div>
         <div className="pointer-events-none absolute inset-x-16 top-0 h-px bg-gradient-to-r from-transparent via-red-200/35 to-transparent" />
         <div className="relative grid gap-5 xl:grid-cols-12">
           <div className="min-w-0 xl:col-span-8">
