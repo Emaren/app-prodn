@@ -956,12 +956,6 @@ function PremiumClassicLiveSessionCard({
               preload="metadata"
             />
             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_35%_20%,rgba(125,211,252,0.16),transparent_34%),linear-gradient(180deg,transparent,rgba(2,6,23,0.32))]" />
-            <div className="pointer-events-none absolute left-2 top-2 rounded-full border border-white/15 bg-black/55 px-2 py-1 text-[9px] font-black uppercase tracking-[0.18em] text-white/85">
-              AoE2WAR loop
-            </div>
-            <div className="pointer-events-none absolute bottom-2 right-2 rounded-full border border-emerald-200/20 bg-emerald-400/10 px-2 py-1 text-[9px] font-black uppercase tracking-[0.16em] text-emerald-100">
-              Preview
-            </div>
           </Link>
           <div className={`rounded-full border px-3 py-1 text-xs ${badgeClass}`}>
             {badgeLabel}
