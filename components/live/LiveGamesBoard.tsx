@@ -291,11 +291,8 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
     0,
     MAX_VISIBLE_OUTCOMES
   );
-  const recentlyCompletedSessions = snapshot.recentlyCompletedSessions.slice(
-    0,
-    Math.max(0, MAX_VISIBLE_OUTCOMES - recentScheduledMatches.length)
-  );
-  const liveItemsCount =
+  const recentlyCompletedSessions = snapshot.recentlyCompletedSessions;
+const liveItemsCount =
     liveScheduledMatches.length +
     snapshot.activeSessions.length +
     snapshot.liveMatches.length;
@@ -423,7 +420,6 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
         viewMode={viewMode}
         liveItemsCount={liveItemsCount}
         onDeckCount={onDeckCount}
-        onViewModeChange={liveGamesTile.setViewMode}
       />
 
       {boardError ? (
@@ -441,7 +437,7 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
       {viewMode === "extreme" ? (
         <ExtremeBoard {...boardProps} />
       ) : (
-        <ClassicBoard {...boardProps} viewMode={viewMode} />
+        <ClassicBoard {...boardProps} viewMode={viewMode} onViewModeChange={liveGamesTile.setViewMode} />
       )}
     </main>
   );
@@ -453,14 +449,12 @@ function LiveBoardHeader({
   viewMode,
   liveItemsCount,
   onDeckCount,
-  onViewModeChange,
 }: {
   snapshot: LiveGamesSnapshot;
   mounted: boolean;
   viewMode: TileViewMode;
   liveItemsCount: number;
   onDeckCount: number;
-  onViewModeChange: (viewMode: TileViewMode) => void;
 }) {
   const isExtreme = viewMode === "extreme";
 
@@ -505,12 +499,7 @@ function LiveBoardHeader({
         </div>
 
         <div className="flex flex-col gap-3 xl:items-end">
-          <LiveGamesViewToggle
-            viewMode={viewMode}
-            onViewModeChange={onViewModeChange}
-          />
-
-          <div className="flex flex-wrap items-center gap-2">
+<div className="flex flex-wrap items-center gap-2">
             <StatusPill
               tone="red"
               icon={isExtreme ? <Radio className="h-3.5 w-3.5" /> : undefined}
@@ -650,7 +639,11 @@ function ClassicBoard({
   onDeckCount,
   renderScheduledMatch,
   viewMode,
-}: BoardViewProps & { viewMode: "basic" | "advanced" }) {
+  onViewModeChange,
+}: BoardViewProps & {
+  viewMode: "basic" | "advanced";
+  onViewModeChange: (viewMode: TileViewMode) => void;
+}) {
   const advanced = viewMode === "advanced";
   const featuredCompletedSessions = recentlyCompletedSessions.slice(0, 3);
   const archivedCompletedSessions = advanced ? recentlyCompletedSessions.slice(3) : [];
@@ -729,6 +722,10 @@ function ClassicBoard({
           <div>
             <div className="text-xs uppercase tracking-[0.35em] text-red-200/70">Now Playing</div>
             <h2 className="mt-2 text-3xl font-semibold text-white">Playing now</h2>
+          </div>
+
+          <div className="order-last flex w-full justify-center pt-2 sm:order-none sm:w-auto sm:flex-1 sm:pt-0">
+            <LiveGamesViewToggle viewMode={viewMode} onViewModeChange={onViewModeChange} />
           </div>
           <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
             {sectionStatusLabel}
