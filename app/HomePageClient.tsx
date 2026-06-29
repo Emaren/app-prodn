@@ -28,7 +28,7 @@ import {
   type LobbyMessage,
   type LobbySnapshot,
 } from "@/lib/lobby";
-import { avatarCardUrlForUser, avatarUrlForName } from "@/lib/avatarAssets";
+import { avatarCardUrlForName, avatarCardUrlForUser, avatarUrlForName } from "@/lib/avatarAssets";
 
 const EMPTY_MESSAGES: LobbyMessage[] = [];
 const ZODIAC_UID = "u_06c16d39d25c476fac2c86fee7b4d189";
@@ -42,8 +42,8 @@ const DELTAFORCE_UID = "u_f206dd9c3c1c40799b43a3faf7af986e";
 const SLADK0ESHKA_UID = "u_73b78fcddb90417180495c1468937049";
 
 const FEATURED_WARRIOR_SLOT_COUNT = 4;
-const FEATURED_WARRIOR_ROTATE_MS = 5200;
-const FEATURED_WARRIOR_FADE_MS = 320;
+const FEATURED_WARRIOR_ROTATE_MS = 2800;
+const FEATURED_WARRIOR_FADE_MS = 180;
 
 type FeaturedWarrior = {
   key: string;
@@ -94,7 +94,7 @@ const FEATURED_WARRIOR_FALLBACKS: FeaturedWarrior[] = [
     lookupName: "Emaren",
     role: "The Tactician",
     href: "/players/by-name/Emaren",
-    imageUrl: "/featured-warriors/thumbs/emaren-1781569822986-d51b50eb-thumb.webp",
+    imageUrl: avatarCardUrlForName("Emaren"),
   },
 ];
 
@@ -155,7 +155,7 @@ const FEATURED_WARRIOR_PREMIUM_POOL: FeaturedWarrior[] = [
     lookupName: "Grimer",
     role: "Featured Warrior",
     href: "/players/by-name/Grimer",
-    imageUrl: "/featured-warriors/thumbs/grimer-1782001909186-43c9cb68-thumb.webp",
+    imageUrl: avatarCardUrlForName("Grimer"),
   },
 ];
 
@@ -378,6 +378,67 @@ function deterministicFeaturedWarriorOpening(pool: FeaturedWarrior[]) {
   return selected.slice(0, FEATURED_WARRIOR_SLOT_COUNT);
 }
 
+
+function featuredWarriorImageSrc(warrior: FeaturedWarrior) {
+  return warrior.imageUrl ?? avatarUrlForName(warrior.lookupName);
+}
+
+function shuffleFeaturedWarriors(pool: FeaturedWarrior[]) {
+  const shuffled = [...pool];
+
+  if (typeof window !== "undefined" && window.crypto?.getRandomValues) {
+    const randomValues = new Uint32Array(shuffled.length || 1);
+    window.crypto.getRandomValues(randomValues);
+
+    for (let i = shuffled.length - 1; i > 0; i -= 1) {
+      const j = randomValues[i] % (i + 1);
+      const tmp = shuffled[i];
+      shuffled[i] = shuffled[j];
+      shuffled[j] = tmp;
+    }
+
+    return shuffled;
+  }
+
+  for (let i = shuffled.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = shuffled[i];
+    shuffled[i] = shuffled[j];
+    shuffled[j] = tmp;
+  }
+
+  return shuffled;
+}
+
+function randomFeaturedWarriorOpening(pool: FeaturedWarrior[], current: FeaturedWarrior[] = []) {
+  const combined = dedupeFeaturedWarriors([...pool, ...FEATURED_WARRIOR_PREMIUM_POOL, ...FEATURED_WARRIOR_FALLBACKS]);
+  const real = shuffleFeaturedWarriors(combined.filter(featuredWarriorHasRealAvatar));
+  const placeholders = shuffleFeaturedWarriors(combined.filter((warrior) => !featuredWarriorHasRealAvatar(warrior)));
+  const currentKeys = new Set(current.map((warrior) => warrior.key));
+
+  const freshReal = real.filter((warrior) => !currentKeys.has(warrior.key));
+  const selected = selectFeaturedWarriorLineup([...freshReal, ...real, ...placeholders], current);
+
+  return selected.length >= FEATURED_WARRIOR_SLOT_COUNT
+    ? selected
+    : deterministicFeaturedWarriorOpening(combined);
+}
+
+function preloadFeaturedWarriorImages(pool: FeaturedWarrior[]) {
+  if (typeof window === "undefined") return;
+
+  const urls = dedupeFeaturedWarriors([...pool, ...FEATURED_WARRIOR_PREMIUM_POOL, ...FEATURED_WARRIOR_FALLBACKS])
+    .map(featuredWarriorImageSrc)
+    .filter(Boolean);
+
+  for (const url of urls) {
+    const image = new window.Image();
+    image.decoding = "async";
+    image.loading = "eager";
+    image.src = url;
+  }
+}
+
 function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
   const prefersReducedMotion = usePrefersReducedMotion();
   const [featuredWarriorsMounted, setFeaturedWarriorsMounted] = useState(false);
@@ -385,25 +446,36 @@ function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
   const [fadingSlot, setFadingSlot] = useState<number | null>(null);
   const lastChangedSlotRef = useRef<number | null>(null);
   const slotBagRef = useRef<number[]>([]);
+  const lastWarriorBySlotRef = useRef<Record<number, string | null>>({});
 
   useEffect(() => {
     setFeaturedWarriorsMounted(true);
-  }, []);
+    preloadFeaturedWarriorImages(pool);
+
+    setVisibleWarriors((current) => {
+      const randomized = randomFeaturedWarriorOpening(pool, current);
+      randomized.forEach((warrior, index) => {
+        lastWarriorBySlotRef.current[index] = warrior.key;
+      });
+      return randomized;
+    });
+  }, [pool]);
 
   useEffect(() => {
     if (!featuredWarriorsMounted) {
       return;
     }
 
+    preloadFeaturedWarriorImages(pool);
+
     setVisibleWarriors((current) => {
-      const stillValid = current.filter((warrior) =>
-        pool.some((candidate) => candidate.name === warrior.name)
-      );
-      const usedNames = new Set(stillValid.map((warrior) => warrior.name));
-      const fill = pool.filter((warrior) => !usedNames.has(warrior.name));
-      return selectFeaturedWarriorLineup([...stillValid, ...fill, ...pool], current);
+      const randomized = randomFeaturedWarriorOpening(pool, current);
+      randomized.forEach((warrior, index) => {
+        lastWarriorBySlotRef.current[index] = warrior.key;
+      });
+      return randomized;
     });
-  }, [pool]);
+  }, [featuredWarriorsMounted, pool]);
 
   useEffect(() => {
     if (!featuredWarriorsMounted || paused || prefersReducedMotion || pool.length <= FEATURED_WARRIOR_SLOT_COUNT) {
@@ -444,8 +516,13 @@ function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
           const currentNames = new Set(current.map((warrior) => warrior.name));
           const outgoingName = current[slot]?.name;
 
-          const outsideCurrent = pool.filter((warrior) => !currentNames.has(warrior.name));
-          const fallbackPool = pool.filter((warrior) => warrior.name !== outgoingName);
+          const previousSlotKey = lastWarriorBySlotRef.current[slot];
+          const outsideCurrent = pool.filter(
+            (warrior) => !currentNames.has(warrior.name) && warrior.key !== previousSlotKey
+          );
+          const fallbackPool = pool.filter(
+            (warrior) => warrior.name !== outgoingName && warrior.key !== previousSlotKey
+          );
           const baseCandidatePool = outsideCurrent.length > 0 ? outsideCurrent : fallbackPool;
           const safeCandidatePool = baseCandidatePool.filter((candidate) => {
             const preview = [...current];
@@ -457,12 +534,13 @@ function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
           const nextWarrior = candidatePool[Math.floor(Math.random() * candidatePool.length)] ?? current[slot];
           const next = [...current];
           next[slot] = nextWarrior;
+          lastWarriorBySlotRef.current[slot] = nextWarrior.key;
           return featuredWarriorLineupHasRealFloor(next) ? next : selectFeaturedWarriorLineup(pool, next);
         });
 
         revealTimer = window.setTimeout(() => {
           setFadingSlot(null);
-        }, 90);
+        }, 24);
       }, FEATURED_WARRIOR_FADE_MS);
     };
 
@@ -483,9 +561,6 @@ type HomePageClientProps = {
   initialEventTile: EventTileView;
 };
 
-function isManagedMediaResolverUrl(url: string | null | undefined) {
-  return String(url ?? "").startsWith("/api/media-assets/");
-}
 
 function AdvancedFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] }) {
   const [paused, setPaused] = useState(false);
@@ -513,17 +588,19 @@ function AdvancedFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] })
             <Link
               key={index}
               href={warrior.href}
-                className={`block group relative min-h-[16rem] overflow-visible transition-all ease-out hover:-translate-y-0.5 ${fadingSlot === index ? "opacity-0 scale-[0.985]" : "opacity-100 scale-100"}`}
+                className={`block group relative min-h-[16rem] overflow-visible will-change-[opacity,transform] transition-all ease-out hover:-translate-y-0.5 ${fadingSlot === index ? "opacity-0 scale-[0.992]" : "opacity-100 scale-100"}`}
                 style={{ transitionDuration: `${FEATURED_WARRIOR_FADE_MS}ms` }}
             >
               <Image
                 key={warrior.imageUrl ?? warrior.lookupName}
-                src={warrior.imageUrl ?? avatarUrlForName(warrior.lookupName)}
+                src={featuredWarriorImageSrc(warrior)}
                 alt=""
                 fill
-                unoptimized={isManagedMediaResolverUrl(warrior.imageUrl ?? avatarUrlForName(warrior.lookupName))}
                 sizes="(min-width: 1280px) 250px, (min-width: 640px) 45vw, 90vw"
-                className={`object-contain object-top transition duration-700 group-hover:scale-[1.01] opacity-85`}
+                priority={index < FEATURED_WARRIOR_SLOT_COUNT}
+                quality={100}
+                unoptimized
+                className={`object-contain object-top transition duration-500 ease-out group-hover:scale-[1.01] opacity-90`}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/52 via-black/8 to-transparent" />
               <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-[radial-gradient(circle_at_50%_100%,rgba(251,191,36,0.11),transparent_64%)]" />
@@ -580,12 +657,12 @@ function ExtremeFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] }) 
 
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 xl:gap-4">
           {visibleWarriors.map((warrior, index) => {
-            const avatarSrc = warrior.imageUrl ?? avatarUrlForName(warrior.lookupName);
+            const avatarSrc = featuredWarriorImageSrc(warrior);
             return (
               <Link
                 key={index}
                 href={warrior.href}
-                className={`block group relative min-h-[16rem] overflow-visible transition-all ease-out hover:-translate-y-0.5 ${fadingSlot === index ? "opacity-0 scale-[0.985]" : "opacity-100 scale-100"}`}
+                className={`block group relative min-h-[16rem] overflow-visible will-change-[opacity,transform] transition-all ease-out hover:-translate-y-0.5 ${fadingSlot === index ? "opacity-0 scale-[0.992]" : "opacity-100 scale-100"}`}
                 style={{ transitionDuration: `${FEATURED_WARRIOR_FADE_MS}ms` }}
               >
                 <div className="absolute inset-x-0 bottom-2 top-7 overflow-hidden rounded-[1.35rem] border border-amber-100/12 bg-slate-950/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.045),0_18px_60px_rgba(0,0,0,0.24)] transition group-hover:border-amber-200/26">
@@ -598,9 +675,11 @@ function ExtremeFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] }) 
                     src={avatarSrc}
                     alt=""
                     fill
-                    unoptimized={isManagedMediaResolverUrl(avatarSrc)}
                     sizes="(min-width: 1280px) 280px, (min-width: 640px) 45vw, 90vw"
-                    className="object-contain object-center drop-shadow-[0_18px_34px_rgba(0,0,0,0.56)] [mask-image:linear-gradient(180deg,black_0%,black_88%,transparent_100%)]"
+                    priority={index < FEATURED_WARRIOR_SLOT_COUNT}
+                    quality={100}
+                    unoptimized
+                    className="object-contain object-center drop-shadow-[0_18px_34px_rgba(0,0,0,0.56)] transition duration-500 ease-out [mask-image:linear-gradient(180deg,black_0%,black_88%,transparent_100%)]"
                   />
                 </div>
                 <div className="absolute inset-x-4 bottom-4 z-20 rounded-xl bg-black/58 px-2.5 py-2.5 text-center shadow-[0_12px_30px_rgba(0,0,0,0.34)] backdrop-blur">
