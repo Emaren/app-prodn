@@ -513,23 +513,23 @@ function LiveBoardHeader({
           <div className="flex flex-wrap items-center gap-2">
             <StatusPill
               tone="red"
-              icon={<Radio className="h-3.5 w-3.5" />}
+              icon={isExtreme ? <Radio className="h-3.5 w-3.5" /> : undefined}
               label={`${liveItemsCount} live`}
             />
             <StatusPill
               tone="amber"
-              icon={<CalendarClock className="h-3.5 w-3.5" />}
+              icon={isExtreme ? <CalendarClock className="h-3.5 w-3.5" /> : undefined}
               label={`${onDeckCount} ready`}
             />
             <StatusPill
-              icon={<Clock3 className="h-3.5 w-3.5" />}
+              icon={isExtreme ? <Clock3 className="h-3.5 w-3.5" /> : undefined}
               label={formatUpdatedTime(snapshot.updatedAt, mounted)}
             />
             <Link
               href="/challenge"
               className="inline-flex min-h-10 items-center gap-2 rounded-full bg-amber-300 px-4 py-2 text-sm font-bold text-slate-950 shadow-[0_10px_28px_rgba(251,191,36,0.16)] transition hover:-translate-y-0.5 hover:bg-amber-200"
             >
-              <Swords className="h-4 w-4" />
+              {isExtreme ? <Swords className="h-4 w-4" /> : null}
               Schedule New Game
             </Link>
             {isExtreme ? (
@@ -564,7 +564,7 @@ function LiveGamesViewToggle({
 }) {
   return (
     <div
-      className="inline-flex w-fit items-center rounded-full border border-white/8 bg-black/15 p-0.5 shadow-inner shadow-black/20 backdrop-blur"
+      className="inline-flex w-fit items-center rounded-full border border-white/[0.055] bg-slate-950/30 p-0.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.035),0_10px_34px_rgba(2,6,23,0.18)] backdrop-blur"
       aria-label="Live Games view"
     >
       {TILE_VIEW_MODES.map((mode) => {
@@ -578,9 +578,9 @@ function LiveGamesViewToggle({
             className={`inline-flex min-h-7 items-center gap-1.5 rounded-full px-2.5 text-[10px] font-semibold capitalize transition sm:px-3 ${
               active
                 ? mode === "extreme"
-                  ? "bg-gradient-to-r from-amber-300 to-orange-300 text-slate-950 shadow-[0_8px_24px_rgba(251,191,36,0.18)]"
+                  ? "bg-amber-300/12 text-amber-100 shadow-[inset_0_1px_0_rgba(251,191,36,0.12)]"
                   : "bg-white/[0.055] text-slate-100 shadow-none"
-                : "text-slate-400 hover:bg-white/5 hover:text-white"
+                : "text-slate-500 hover:bg-white/[0.035] hover:text-slate-200"
             }`}
           >
             {mode === "extreme" ? <Sparkles className="h-3 w-3" /> : null}
