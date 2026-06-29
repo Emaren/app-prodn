@@ -842,17 +842,20 @@ function ClassicBoard({
 
 
 
+
 function PremiumClassicLiveSessionCard({
   session,
 }: {
   session: LiveGamesSnapshot["activeSessions"][number];
 }) {
+  const sessionAny = session as Record<string, unknown>;
   const isCompleted = session.state === "completed";
   const gameHref = `/game-stats/live/${encodeURIComponent(session.sessionKey)}`;
   const watchHref = `/watch/${encodeURIComponent(session.sessionKey)}`;
   const isUploadedReplay = Boolean(
     session.originalFilename || session.uploader || session.uploaders?.length
   );
+
   const title =
     session.players.length > 0
       ? session.players.map((player) => player.name).join(" vs ")
@@ -863,8 +866,28 @@ function PremiumClassicLiveSessionCard({
       ? "Just uploaded"
       : "Just finished"
     : "Watcher live";
+
   const statusLabel = isCompleted ? "Final stored" : "Live parse";
-  const compactDuration = formatDurationCompact(session.durationSeconds);
+  const durationLabel = formatDurationCompact(session.durationSeconds);
+
+  const rawGameNumber =
+    sessionAny["aoe2warGameId"] ??
+    sessionAny["gameNumber"] ??
+    sessionAny["sourceGameId"] ??
+    sessionAny["gameId"] ??
+    sessionAny["matchId"] ??
+    sessionAny["id"];
+
+  const aoe2warGameNumber =
+    typeof rawGameNumber === "number" || typeof rawGameNumber === "string"
+      ? String(rawGameNumber)
+      : null;
+
+  const metaParts = [
+    aoe2warGameNumber ? `Game #${aoe2warGameNumber}` : null,
+    durationLabel || null,
+  ].filter(Boolean) as string[];
+
   const winnerName =
     typeof session.winner === "string" && session.winner.trim().length > 0
       ? session.winner.trim()
@@ -874,12 +897,15 @@ function PremiumClassicLiveSessionCard({
     ? "relative overflow-hidden rounded-[1.9rem] border border-emerald-400/20 bg-emerald-500/10 px-5 py-5 shadow-[0_26px_90px_rgba(16,185,129,0.12)] sm:px-6"
     : "relative overflow-hidden rounded-[1.9rem] border border-fuchsia-400/20 bg-fuchsia-500/10 px-5 py-5 shadow-[0_26px_90px_rgba(168,85,247,0.12)] sm:px-6";
 
-  const eyebrowClass = isCompleted ? "text-emerald-100/80" : "text-fuchsia-100/80";
+  const eyebrowClass = isCompleted ? "text-emerald-100/78" : "text-fuchsia-100/78";
+  const titleClass = isCompleted
+    ? "mt-3 text-[1.26rem] font-semibold leading-[1.08] tracking-[-0.018em] text-slate-50/96 [text-shadow:0_1px_12px_rgba(2,6,23,0.24)] sm:text-[1.4rem]"
+    : "mt-3 text-[1.26rem] font-semibold leading-[1.08] tracking-[-0.018em] text-slate-50/96 [text-shadow:0_1px_12px_rgba(2,6,23,0.24)] sm:text-[1.4rem]";
+  const metaClass = isCompleted ? "text-emerald-100/62" : "text-fuchsia-100/62";
   const statusClass = isCompleted
     ? "border-emerald-300/25 bg-emerald-500/12 text-emerald-50"
     : "border-fuchsia-300/25 bg-fuchsia-500/12 text-fuchsia-50";
-
-  const winnerClass = isCompleted ? "text-emerald-100/65" : "text-fuchsia-100/65";
+  const winnerClass = isCompleted ? "text-emerald-100/62" : "text-fuchsia-100/62";
   const winnerNameClass = isCompleted ? "text-emerald-50/90" : "text-fuchsia-50/90";
 
   const goToStats = () => {
@@ -920,9 +946,14 @@ function PremiumClassicLiveSessionCard({
           <div className={`text-xs uppercase tracking-[0.34em] ${eyebrowClass}`}>
             {eyebrowLabel}
           </div>
-          <div className="mt-3 text-[1.45rem] font-semibold leading-tight text-white sm:text-[1.6rem]">
-            {title}
-          </div>
+
+          <div className={titleClass}>{title}</div>
+
+          {metaParts.length ? (
+            <div className={`mt-2 text-[11px] font-medium uppercase tracking-[0.22em] ${metaClass}`}>
+              {metaParts.join(" · ")}
+            </div>
+          ) : null}
         </div>
 
         <div className="relative z-20 sm:justify-self-end" onClick={(event) => event.stopPropagation()}>
@@ -955,17 +986,12 @@ function PremiumClassicLiveSessionCard({
             )}
           </div>
 
-          <div className="flex shrink-0 items-center gap-3">
+          <div className="flex shrink-0 items-center">
             <span
               className={`inline-flex h-8 min-w-[8.8rem] items-center justify-center rounded-full border px-4 text-[11px] font-semibold leading-none ${statusClass}`}
             >
               {statusLabel}
             </span>
-            {compactDuration ? (
-              <span className="w-[3.9rem] shrink-0 text-right text-xs text-slate-300">
-                {compactDuration}
-              </span>
-            ) : null}
           </div>
         </div>
       </div>
