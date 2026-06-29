@@ -830,8 +830,7 @@ function ClassicBoard({
           </div>
         </section>
 
-        {advanced ? (
-          <section className="rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-5 sm:p-6">
+        <section className="rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-5 sm:p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <div className="text-xs uppercase tracking-[0.35em] text-sky-200/70">Archive</div>
@@ -921,8 +920,7 @@ function ClassicBoard({
                 </>
               )}
             </div>
-          </section>
-        ) : null}
+        </section>
       </div>
     </section>
   );
