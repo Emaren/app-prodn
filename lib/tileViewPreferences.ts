@@ -1,6 +1,6 @@
 export const TILE_VIEW_STORAGE_KEY = "aoe2hdbets:tile-view-preferences";
 export const TILE_VIEW_DEFAULT_VERSION_KEY = "aoe2hdbets:tile-view-default-version";
-export const TILE_VIEW_DEFAULT_VERSION = "2026-06-29-extreme-live-games";
+export const TILE_VIEW_DEFAULT_VERSION = "advanced-live-games-20260629";
 
 export const TILE_VIEW_KEYS = [
   "community_lobby",
@@ -19,7 +19,7 @@ const TILE_VIEW_KEY_SET = new Set<string>(TILE_VIEW_KEYS);
 const TILE_VIEW_MODE_SET = new Set<string>(TILE_VIEW_MODES);
 const DEFAULT_TILE_VIEW_MODES: TileViewPreferences = {
   community_lobby: "extreme",
-  live_games: "extreme",
+  live_games: "advanced",
 };
 
 export function isTileViewKey(value: string | null | undefined): value is TileViewKey {

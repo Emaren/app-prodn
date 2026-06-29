@@ -22,6 +22,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import type { UIEvent } from "react";
 
 import ScheduledMatchCard, {
   type ScheduledMatchCardActionKind,
@@ -203,6 +204,19 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
   const { uid } = useUserAuth();
   const liveGamesTile = useTileViewPreference("live_games");
   const viewMode = liveGamesTile.viewMode;
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const migrationKey = "aoe2war-live-games-default-advanced-20260629";
+    if (window.localStorage.getItem(migrationKey) === "1") return;
+
+    if (viewMode !== "advanced") {
+      liveGamesTile.setViewMode("advanced");
+    }
+
+    window.localStorage.setItem(migrationKey, "1");
+  }, [liveGamesTile, viewMode]);
   const [snapshot, setSnapshot] = useState(initialSnapshot);
   const [mounted, setMounted] = useState(false);
   const [actionState, setActionState] = useState<ScheduledMatchCardActionState>({
@@ -505,7 +519,7 @@ function LiveBoardHeader({
             <StatusPill
               tone="amber"
               icon={<CalendarClock className="h-3.5 w-3.5" />}
-              label={`${onDeckCount} on deck`}
+              label={`${onDeckCount} ready`}
             />
             <StatusPill
               icon={<Clock3 className="h-3.5 w-3.5" />}
@@ -513,10 +527,10 @@ function LiveBoardHeader({
             />
             <Link
               href="/challenge"
-              className="inline-flex min-h-9 items-center gap-2 rounded-full bg-amber-300 px-3.5 py-1.5 text-xs font-bold text-slate-950 shadow-[0_10px_28px_rgba(251,191,36,0.16)] transition hover:-translate-y-0.5 hover:bg-amber-200"
+              className="inline-flex min-h-10 items-center gap-2 rounded-full bg-amber-300 px-4 py-2 text-sm font-bold text-slate-950 shadow-[0_10px_28px_rgba(251,191,36,0.16)] transition hover:-translate-y-0.5 hover:bg-amber-200"
             >
               <Swords className="h-4 w-4" />
-              Schedule
+              Schedule New Game
             </Link>
             {isExtreme ? (
               <Link
@@ -529,7 +543,7 @@ function LiveBoardHeader({
             ) : (
               <Link
                 href="/lobby"
-                className="inline-flex min-h-9 items-center rounded-full border border-white/15 px-3.5 py-1.5 text-xs text-white/85 transition hover:border-white/30 hover:text-white"
+                className="inline-flex min-h-10 items-center rounded-full border border-white/15 px-4 py-2 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
               >
                 Lobby
               </Link>
@@ -550,7 +564,7 @@ function LiveGamesViewToggle({
 }) {
   return (
     <div
-      className="inline-flex w-fit items-center rounded-full border border-white/10 bg-black/20 p-1 shadow-inner shadow-black/20 backdrop-blur"
+      className="inline-flex w-fit items-center rounded-full border border-white/8 bg-black/15 p-0.5 shadow-inner shadow-black/20 backdrop-blur"
       aria-label="Live Games view"
     >
       {TILE_VIEW_MODES.map((mode) => {
@@ -561,11 +575,11 @@ function LiveGamesViewToggle({
             type="button"
             onClick={() => onViewModeChange(mode)}
             aria-pressed={active}
-            className={`inline-flex min-h-8 items-center gap-1.5 rounded-full px-3 text-[11px] font-semibold capitalize transition sm:px-4 ${
+            className={`inline-flex min-h-7 items-center gap-1.5 rounded-full px-2.5 text-[10px] font-semibold capitalize transition sm:px-3 ${
               active
                 ? mode === "extreme"
                   ? "bg-gradient-to-r from-amber-300 to-orange-300 text-slate-950 shadow-[0_8px_24px_rgba(251,191,36,0.18)]"
-                  : "border-sky-300/35 bg-sky-300/10 text-sky-100 shadow-[0_8px_22px_rgba(255,255,255,0.10)]"
+                  : "bg-white/[0.055] text-slate-100 shadow-none"
                 : "text-slate-400 hover:bg-white/5 hover:text-white"
             }`}
           >
@@ -640,7 +654,71 @@ function ClassicBoard({
   const advanced = viewMode === "advanced";
   const featuredCompletedSessions = recentlyCompletedSessions.slice(0, 3);
   const archivedCompletedSessions = advanced ? recentlyCompletedSessions.slice(3) : [];
-  const archiveItemCount = archivedCompletedSessions.length + snapshot.recentMatches.length;
+
+  const [archiveMatches, setArchiveMatches] = useState<LiveGamesSnapshot["recentMatches"]>(snapshot.recentMatches);
+  const [archiveOffset, setArchiveOffset] = useState(snapshot.recentMatches.length);
+  const [archiveLoading, setArchiveLoading] = useState(false);
+  const [archiveHasMore, setArchiveHasMore] = useState(snapshot.recentMatches.length >= 12);
+
+  useEffect(() => {
+    setArchiveMatches(snapshot.recentMatches);
+    setArchiveOffset(snapshot.recentMatches.length);
+    setArchiveHasMore(snapshot.recentMatches.length >= 12);
+  }, [snapshot.recentMatches]);
+
+  const loadMoreArchiveMatches = useCallback(async () => {
+    if (!advanced || archiveLoading || !archiveHasMore) return;
+
+    setArchiveLoading(true);
+
+    try {
+      const response = await fetch(`/api/game_stats?limit=12&offset=${archiveOffset}`, {
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        setArchiveHasMore(false);
+        return;
+      }
+
+      const payload = await response.json();
+      const nextMatches = Array.isArray(payload)
+        ? (payload as LiveGamesSnapshot["recentMatches"])
+        : Array.isArray(payload?.matches)
+          ? (payload.matches as LiveGamesSnapshot["recentMatches"])
+          : [];
+
+      setArchiveMatches((current) => {
+        const seen = new Set(current.map((match) => String(match.id)));
+        const unique = nextMatches.filter((match) => !seen.has(String(match.id)));
+        return [...current, ...unique];
+      });
+
+      setArchiveOffset((current) => current + nextMatches.length);
+
+      if (nextMatches.length < 12) {
+        setArchiveHasMore(false);
+      }
+    } catch {
+      setArchiveHasMore(false);
+    } finally {
+      setArchiveLoading(false);
+    }
+  }, [advanced, archiveHasMore, archiveLoading, archiveOffset]);
+
+  const handleArchiveScroll = useCallback(
+    (event: UIEvent<HTMLDivElement>) => {
+      const target = event.currentTarget;
+      const distanceFromBottom = target.scrollHeight - target.scrollTop - target.clientHeight;
+
+      if (distanceFromBottom < 220) {
+        void loadMoreArchiveMatches();
+      }
+    },
+    [loadMoreArchiveMatches]
+  );
+
+  const archiveItemCount = archivedCompletedSessions.length + archiveMatches.length;
   const recentOutcomeCount = recentScheduledMatches.length + featuredCompletedSessions.length;
   const sectionStatusLabel = liveItemsCount > 0 ? `${liveItemsCount} active` : "Awaiting battle";
 
@@ -765,7 +843,7 @@ function ClassicBoard({
               </div>
             </div>
 
-            <div className="mt-5 max-h-[34rem] space-y-3 overflow-y-auto pr-1 [scrollbar-color:rgba(148,163,184,0.45)_transparent] [scrollbar-width:thin]">
+            <div onScroll={handleArchiveScroll} className="mt-5 max-h-[34rem] space-y-3 overflow-y-auto scroll-smooth overscroll-contain pr-1 [scrollbar-color:rgba(148,163,184,0.45)_transparent] [scrollbar-width:thin]">
               {archiveItemCount === 0 ? (
                 <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-5 text-sm text-slate-300">
                   Waiting on the next completed match.
@@ -799,7 +877,7 @@ function ClassicBoard({
                     </Link>
                   ))}
 
-                  {snapshot.recentMatches.map((match) => (
+                  {archiveMatches.map((match) => (
                     <Link
                       key={match.id}
                       href={`/game-stats/${match.id}`}
@@ -826,6 +904,24 @@ function ClassicBoard({
                       </div>
                     </Link>
                   ))}
+
+                  {archiveLoading ? (
+                    <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3 text-center text-xs uppercase tracking-[0.24em] text-slate-400">
+                      Loading history…
+                    </div>
+                  ) : archiveHasMore ? (
+                    <button
+                      type="button"
+                      onClick={() => void loadMoreArchiveMatches()}
+                      className="w-full rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3 text-center text-xs uppercase tracking-[0.24em] text-slate-400 transition hover:border-white/20 hover:text-white"
+                    >
+                      Scroll for more
+                    </button>
+                  ) : archiveMatches.length > 0 ? (
+                    <div className="rounded-2xl border border-white/8 bg-white/[0.025] px-4 py-3 text-center text-[10px] uppercase tracking-[0.24em] text-slate-500">
+                      End of loaded history
+                    </div>
+                  ) : null}
                 </>
               )}
             </div>
@@ -1530,7 +1626,7 @@ function QuietBattlefield({ compact = false }: { compact?: boolean }) {
             className="inline-flex min-h-10 items-center gap-2 rounded-full bg-red-300 px-4 py-2 text-sm font-bold text-slate-950 transition hover:bg-red-200"
           >
             <Swords className="h-4 w-4" />
-            Schedule
+            Schedule New Game
           </Link>
           <Link
             href="/upload"
