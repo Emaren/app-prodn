@@ -1046,7 +1046,7 @@ function PremiumClassicLiveSessionCard({
           <div className={titleClass}>{title}</div>
 
           {metaParts.length ? (
-            <div className={`mt-2 text-[11px] font-medium uppercase tracking-[0.22em] ${metaClass}`}>
+            <div className={`mt-2 text-[11px] font-semibold normal-case tracking-[0.015em] ${metaClass}`}>
               {metaParts.join(" · ")}
             </div>
           ) : null}
@@ -1187,7 +1187,7 @@ function ClassicLiveSessionCard({
           <div className={titleClass}>{title}</div>
 
           {metaParts.length ? (
-            <div className={`mt-2 text-[11px] font-medium uppercase tracking-[0.2em] ${metaClass}`}>
+            <div className={`mt-2 text-[11px] font-semibold normal-case tracking-[0.015em] ${metaClass}`}>
               {metaParts.join(" · ")}
             </div>
           ) : null}
