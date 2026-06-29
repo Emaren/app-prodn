@@ -44,8 +44,8 @@ const KINGDOM_LINKS = [
   { href: "/champions", label: "Champions", icon: Crown, body: "Belts, reigns, title rules" },
   { href: "/national-champions", label: "Nations", icon: Globe2, body: "Beacon map and national bounties" },
   { href: "/clans", label: "Clans", icon: UsersRound, body: "Teams, houses, and clan halls" },
-  { href: "/market", label: "Market", icon: Store, body: "Trade hall, bounties, and WOLO rails" },
   { href: "/academy", label: "Academy", icon: GraduationCap, body: "Lessons, build orders, replay study" },
+  { href: "/market", label: "Market", icon: Store, body: "Trade hall, bounties, and WOLO rails" },
   { href: "/forum", label: "Forum", icon: MessageSquare, body: "War Room threads and community" },
 ] as const;
 
@@ -56,8 +56,8 @@ const PAGE_HEADINGS: ReadonlyArray<{ prefix: string; title: string }> = [
   { prefix: "/staking", title: "WOLO Staking" },
   { prefix: "/national-champions", title: "National Champions" },
   { prefix: "/clans", title: "Clans" },
-  { prefix: "/market", title: "Market" },
   { prefix: "/academy", title: "Academy" },
+  { prefix: "/market", title: "Market" },
   { prefix: "/champions", title: "Championship Belts" },
   { prefix: "/kingdom", title: "The Kingdom" },
   { prefix: "/forum", title: "War Room Forum" },
