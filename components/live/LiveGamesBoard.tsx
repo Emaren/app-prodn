@@ -758,11 +758,11 @@ function ClassicBoard({
                 <h2 className="mt-2 text-2xl font-semibold text-white">Recently Played</h2>
               </div>
               <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-                {snapshot.recentMatches.length} replays
+                Scroll history
               </div>
             </div>
 
-            <div className="mt-5 max-h-[21rem] space-y-3 overflow-y-auto pr-1 [scrollbar-color:rgba(148,163,184,0.45)_transparent] [scrollbar-width:thin]">
+            <div className="mt-5 max-h-[34rem] space-y-3 overflow-y-auto pr-1 [scrollbar-color:rgba(148,163,184,0.45)_transparent] [scrollbar-width:thin]">
               {snapshot.recentMatches.length === 0 ? (
                 <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-5 text-sm text-slate-300">
                   Waiting on the next completed match.
@@ -776,19 +776,20 @@ function ClassicBoard({
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
-                        <div className="truncate text-sm font-semibold text-white">
-                          {recentMatchTitle(match)}
+                        <div className="text-sm font-semibold text-white">
+                          {Array.isArray(match.players)
+                            ? match.players.map((player) => player.name).filter(Boolean).join(" vs ")
+                            : "Replay-backed result"}
                         </div>
-                        <div className="mt-1 truncate text-sm text-slate-300">
-                          {recentMatchMap(match)}
+                        <div className="mt-1 text-sm text-slate-300">
+                          {typeof match.map === "string"
+                            ? match.map
+                            : match.map && typeof match.map === "object" && "name" in match.map
+                              ? String(match.map.name || "Unknown map")
+                              : "Unknown map"}
                         </div>
-                        {recentMatchWinner(match) ? (
-                          <div className="mt-1 text-xs uppercase tracking-[0.18em] text-emerald-200/80">
-                            Winner {recentMatchWinner(match)}
-                          </div>
-                        ) : null}
                       </div>
-                      <div className="shrink-0 text-right text-xs text-slate-400">
+                      <div className="text-right text-xs text-slate-400">
                         {formatTime(match.played_on || match.timestamp, mounted)}
                       </div>
                     </div>
