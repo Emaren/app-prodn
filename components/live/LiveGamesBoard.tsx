@@ -37,7 +37,6 @@ import {
   type TileViewMode,
 } from "@/lib/tileViewPreferences";
 import type { WatchStreamPayload } from "@/lib/watchStreams";
-import LiveStreamFrame from "@/components/streaming/LiveStreamFrame";
 
 type LiveGamesBoardProps = {
   initialSnapshot: LiveGamesSnapshot;
@@ -49,6 +48,7 @@ type RecentMatch = LiveGamesSnapshot["recentMatches"][number];
 const LIVE_GAMES_POLL_INTERVAL_MS = 5_000;
 const MAX_VISIBLE_OUTCOMES = 3;
 const MAX_EXTREME_ARCHIVE_MATCHES = 9;
+const ADVANCED_SESSION_LOOP_VIDEO_URL = "/watch-loops/live-hero-loop.mp4";
 
 const RESOLVED_SCHEDULED_STATES = new Set([
   "completed",
@@ -934,20 +934,28 @@ function PremiumClassicLiveSessionCard({
         </div>
 
         <div className={mediaColumnClass}>
-          {primaryStream ? (
-            <Link
-              href={watchHref}
-              className="block overflow-hidden rounded-2xl border border-white/10 bg-black/50 shadow-[0_18px_50px_rgba(0,0,0,0.28)] transition hover:scale-[1.02] hover:border-sky-200/30"
-            >
-              <LiveStreamFrame
-                stream={primaryStream}
-                title={title}
-                compact
-                fallbackLabel={isCompleted ? "Replay" : "Battle Cam"}
-                className={streamPreviewClass}
-              />
-            </Link>
-          ) : null}
+          <Link
+            href={primaryStream ? watchHref : gameHref}
+            className="group relative block overflow-hidden rounded-2xl border border-white/10 bg-black/55 shadow-[0_18px_50px_rgba(0,0,0,0.28)] transition hover:scale-[1.02] hover:border-sky-200/30"
+            aria-label={`Open ${title}`}
+          >
+            <video
+              className={`${streamPreviewClass} h-full w-full object-cover opacity-90 transition duration-500 group-hover:scale-[1.04] group-hover:opacity-100`}
+              src={ADVANCED_SESSION_LOOP_VIDEO_URL}
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="metadata"
+            />
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_35%_20%,rgba(125,211,252,0.16),transparent_34%),linear-gradient(180deg,transparent,rgba(2,6,23,0.32))]" />
+            <div className="pointer-events-none absolute left-2 top-2 rounded-full border border-white/15 bg-black/55 px-2 py-1 text-[9px] font-black uppercase tracking-[0.18em] text-white/85">
+              AoE2WAR loop
+            </div>
+            <div className="pointer-events-none absolute bottom-2 right-2 rounded-full border border-emerald-200/20 bg-emerald-400/10 px-2 py-1 text-[9px] font-black uppercase tracking-[0.16em] text-emerald-100">
+              Preview
+            </div>
+          </Link>
           <div className={`rounded-full border px-3 py-1 text-xs ${badgeClass}`}>
             {badgeLabel}
           </div>
