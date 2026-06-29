@@ -867,7 +867,7 @@ function ClassicBoard({
                           </div>
                         </div>
                         <div className="shrink-0 text-right text-xs text-slate-400">
-                          {formatTime(session.completedAt || session.updatedAt, mounted)}
+                          {formatTime(session.playedOn || session.completedAt || session.updatedAt, mounted)}
                         </div>
                       </div>
                     </Link>
