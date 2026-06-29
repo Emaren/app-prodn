@@ -37,6 +37,7 @@ import {
   type TileViewMode,
 } from "@/lib/tileViewPreferences";
 import type { WatchStreamPayload } from "@/lib/watchStreams";
+import LiveStreamFrame from "@/components/streaming/LiveStreamFrame";
 
 type LiveGamesBoardProps = {
   initialSnapshot: LiveGamesSnapshot;
@@ -661,9 +662,13 @@ function ClassicBoard({
           ) : (
             <>
               {liveScheduledMatches.map((match) => renderScheduledMatch(match, { detail: true }))}
-              {snapshot.activeSessions.map((session) => (
-                <ClassicLiveSessionCard key={`session-${session.id}`} session={session} mounted={mounted} premium={advanced} />
-              ))}
+              {snapshot.activeSessions.map((session) =>
+                advanced ? (
+                  <PremiumClassicLiveSessionCard key={`session-${session.id}`} session={session} mounted={mounted} />
+                ) : (
+                  <ClassicLiveSessionCard key={`session-${session.id}`} session={session} mounted={mounted} />
+                )
+              )}
               {snapshot.liveMatches.map((match) => (
                 <ClassicTournamentLiveMatchCard
                   key={`match-${match.id}`}
@@ -733,9 +738,13 @@ function ClassicBoard({
             ) : (
               <>
                 {recentScheduledMatches.map((match) => renderScheduledMatch(match, { compact: true }))}
-                {recentlyCompletedSessions.map((session) => (
-                  <ClassicLiveSessionCard key={`completed-${session.id}`} session={session} mounted={mounted} premium={advanced} />
-                ))}
+                {recentlyCompletedSessions.map((session) =>
+                  advanced ? (
+                    <PremiumClassicLiveSessionCard key={`completed-${session.id}`} session={session} mounted={mounted} />
+                  ) : (
+                    <ClassicLiveSessionCard key={`completed-${session.id}`} session={session} mounted={mounted} />
+                  )
+                )}
               </>
             )}
           </div>
@@ -794,6 +803,189 @@ function ClassicBoard({
   );
 }
 
+
+
+
+
+function PremiumClassicLiveSessionCard({
+  session,
+  mounted,
+}: {
+  session: LiveGamesSnapshot["activeSessions"][number];
+  mounted: boolean;
+}) {
+  const isCompleted = session.state === "completed";
+  const gameHref = `/game-stats/live/${encodeURIComponent(session.sessionKey)}`;
+  const watchHref = `/watch/${encodeURIComponent(session.sessionKey)}`;
+  const primaryStream = session.primaryStream ?? session.streams?.[0] ?? null;
+  const uploaders =
+    session.uploaders?.length > 0
+      ? session.uploaders
+      : session.uploader
+        ? [
+            {
+              uid: session.uploader.uid,
+              displayName: session.uploader.displayName,
+              parseRows: session.parseRows || 1,
+              lastSeenAt: session.updatedAt,
+            },
+          ]
+        : [];
+  const watcherCount = session.watcherCount || uploaders.length;
+  const visibleUploaders = uploaders.slice(0, 3);
+  const hiddenUploaderCount = Math.max(0, uploaders.length - visibleUploaders.length);
+  const coverageLabel =
+    watcherCount >= 3
+      ? `${watcherCount} watcher stack`
+      : watcherCount === 2
+        ? "Dual watcher coverage"
+        : watcherCount === 1
+          ? "Single watcher source"
+          : "Watcher source pending";
+  const coverageClass =
+    watcherCount >= 3
+      ? "border-sky-300/25 bg-sky-400/10 text-sky-100"
+      : watcherCount === 2
+        ? "border-amber-300/25 bg-amber-400/10 text-amber-100"
+        : "border-white/10 bg-white/5 text-slate-300";
+  const title =
+    session.players.length > 0
+      ? session.players.map((player) => player.name).join(" vs ")
+      : session.originalFilename || "Game in progress";
+  const shellClass = isCompleted
+    ? "border-emerald-400/20 bg-emerald-500/10"
+    : "border-fuchsia-400/20 bg-fuchsia-500/10";
+  const badgeClass = isCompleted
+    ? "border-emerald-400/25 bg-emerald-500/12 text-emerald-50"
+    : "border-fuchsia-400/25 bg-fuchsia-500/12 text-fuchsia-50";
+  const eyebrowClass = isCompleted ? "text-emerald-100/80" : "text-fuchsia-100/80";
+  const eyebrowLabel = isCompleted ? "Just finished" : "Watcher live";
+  const badgeLabel = isCompleted ? "Final stored" : "Live parse";
+  const compactDuration = formatDurationCompact(session.durationSeconds);
+  const cardShellClass = isCompleted
+    ? `relative overflow-hidden rounded-[1.9rem] border px-5 py-5 shadow-[0_26px_90px_rgba(16,185,129,0.12)] sm:px-6 ${shellClass}`
+    : `overflow-hidden rounded-[1.5rem] border px-4 py-4 ${shellClass}`;
+  const cardBodyClass = isCompleted
+    ? "relative grid gap-5 xl:grid-cols-[minmax(0,1fr)_11.75rem] xl:items-start"
+    : "flex flex-wrap items-start justify-between gap-4";
+  const mediaColumnClass = isCompleted
+    ? "flex w-full flex-col gap-2 text-left xl:w-auto xl:text-right"
+    : "flex w-full flex-col gap-2 text-left sm:w-52 sm:text-right";
+  const streamPreviewClass = isCompleted
+    ? "!min-h-[6.25rem] rounded-2xl sm:!min-h-[6.8rem]"
+    : "!min-h-[6.6rem] rounded-2xl sm:!min-h-[7.2rem]";
+
+  return (
+    <div className={cardShellClass}>
+      {isCompleted ? (
+        <>
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_86%_10%,rgba(52,211,153,0.18),transparent_34%),linear-gradient(135deg,rgba(6,78,59,0.36),rgba(2,6,23,0)_58%)]" />
+          <div className="pointer-events-none absolute -right-24 -top-24 h-56 w-56 rounded-full bg-emerald-300/10 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-24 left-8 h-44 w-44 rounded-full bg-cyan-300/6 blur-3xl" />
+          <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-emerald-200/45 to-transparent" />
+        </>
+      ) : null}
+
+      <div className={cardBodyClass}>
+        <div className="min-w-0 flex-1">
+          <div className={`text-xs uppercase tracking-[0.3em] ${eyebrowClass}`}>{eyebrowLabel}</div>
+          <div className="mt-2 text-xl font-semibold text-white">{title}</div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {session.mapName ? (
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-200">
+                {session.mapName}
+              </span>
+            ) : null}
+            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-200">
+              Parse #{session.parseIteration}
+            </span>
+            {session.parseRows > 1 ? (
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+                {session.parseRows} stored rows
+              </span>
+            ) : null}
+            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+              Updated {formatUpdatedTime(session.completedAt || session.updatedAt, mounted)}
+            </span>
+            <span className={`rounded-full border px-3 py-1 text-xs ${coverageClass}`}>
+              {coverageLabel}
+            </span>
+            {visibleUploaders.map((uploader) => (
+              <span key={uploader.uid} className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+                {uploader.displayName}
+              </span>
+            ))}
+            {hiddenUploaderCount > 0 ? (
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+                +{hiddenUploaderCount} more
+              </span>
+            ) : null}
+            {isCompleted && session.winner && session.winner !== "Unknown" ? (
+              <span className="rounded-full border border-emerald-300/25 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-100">
+                Winner {session.winner}
+              </span>
+            ) : null}
+            {primaryStream ? (
+              <span className="rounded-full border border-red-300/25 bg-red-400/10 px-3 py-1 text-xs text-red-100">
+                {isCompleted ? "Video saved" : "Video live"}
+              </span>
+            ) : null}
+          </div>
+        </div>
+
+        <div className={mediaColumnClass}>
+          {primaryStream ? (
+            <Link
+              href={watchHref}
+              className="block overflow-hidden rounded-2xl border border-white/10 bg-black/50 shadow-[0_18px_50px_rgba(0,0,0,0.28)] transition hover:scale-[1.02] hover:border-sky-200/30"
+            >
+              <LiveStreamFrame
+                stream={primaryStream}
+                title={title}
+                compact
+                fallbackLabel={isCompleted ? "Replay" : "Battle Cam"}
+                className={streamPreviewClass}
+              />
+            </Link>
+          ) : null}
+          <div className={`rounded-full border px-3 py-1 text-xs ${badgeClass}`}>
+            {badgeLabel}
+          </div>
+          {compactDuration ? (
+            <div className="text-xs text-slate-300">{compactDuration}</div>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-3">
+        <Link
+          href={watchHref}
+          className="rounded-full bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200"
+        >
+          Watch Theatre
+        </Link>
+        <Link
+          href={gameHref}
+          className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-slate-200"
+        >
+          {isCompleted ? "Open Final Stats" : "Watch Live Stats"}
+        </Link>
+        <Link
+          href="/lobby"
+          className="rounded-full border border-white/15 px-4 py-2 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
+        >
+          Open Lobby
+        </Link>
+        <Link
+          href="/bets"
+          className="rounded-full border border-amber-300/30 bg-amber-400/10 px-4 py-2 text-sm text-amber-100 transition hover:bg-amber-400/15"
+        >
+          Bet Rail
+        </Link>
+      </div>
+    </div>
+  );
+}
 
 
 function ClassicLiveSessionCard({
