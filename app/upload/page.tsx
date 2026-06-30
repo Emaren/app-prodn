@@ -126,7 +126,7 @@ export default function UploadReplay() {
         <div className="text-xs uppercase tracking-[0.35em] text-white/45">Replay Upload</div>
         <h1 className="mt-3 text-3xl font-semibold">Upload a replay manually</h1>
         <p className="mt-4 text-sm leading-6 text-slate-300">
-          Upload one replay as before, or import an old-school ZIP pack of renamed wars. The watcher is still best for live proof; this vault keeps old battles useful.
+          Supported: .zip, .aoe2record, .aoe2mpgame, .mgz, .mgx, .mgl. The watcher is still best for live proof; this vault keeps old battles useful.
         </p>
 
         <input
