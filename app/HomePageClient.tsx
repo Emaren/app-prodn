@@ -45,7 +45,8 @@ const MOOSE_UID = "aoe2hd-moose";
 
 const FEATURED_WARRIOR_SLOT_COUNT = 4;
 const FEATURED_WARRIOR_ROTATE_MS = 5200;
-const FEATURED_WARRIOR_FADE_MS = 320;
+const FEATURED_WARRIOR_FADE_MS = 680;
+const FEATURED_WARRIOR_HOLD_MS = 140;
 
 type FeaturedWarrior = {
   key: string;
@@ -431,46 +432,6 @@ function decodeFeaturedWarriorLineup(lineup: FeaturedWarrior[]) {
   );
 }
 
-function shuffleFeaturedWarriors(pool: FeaturedWarrior[]) {
-  const shuffled = [...pool];
-
-  if (typeof window !== "undefined" && window.crypto?.getRandomValues) {
-    const randomValues = new Uint32Array(shuffled.length || 1);
-    window.crypto.getRandomValues(randomValues);
-
-    for (let i = shuffled.length - 1; i > 0; i -= 1) {
-      const j = randomValues[i] % (i + 1);
-      const tmp = shuffled[i];
-      shuffled[i] = shuffled[j];
-      shuffled[j] = tmp;
-    }
-
-    return shuffled;
-  }
-
-  for (let i = shuffled.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    const tmp = shuffled[i];
-    shuffled[i] = shuffled[j];
-    shuffled[j] = tmp;
-  }
-
-  return shuffled;
-}
-
-function randomFeaturedWarriorOpening(pool: FeaturedWarrior[], current: FeaturedWarrior[] = []) {
-  const combined = dedupeFeaturedWarriors([...pool, ...FEATURED_WARRIOR_PREMIUM_POOL, ...FEATURED_WARRIOR_FALLBACKS]);
-  const real = shuffleFeaturedWarriors(combined.filter(featuredWarriorHasRealAvatar));
-  const placeholders = shuffleFeaturedWarriors(combined.filter((warrior) => !featuredWarriorHasRealAvatar(warrior)));
-  const currentKeys = new Set(current.map((warrior) => warrior.key));
-
-  const freshReal = real.filter((warrior) => !currentKeys.has(warrior.key));
-  const selected = selectFeaturedWarriorLineup([...freshReal, ...real, ...placeholders], current);
-
-  return selected.length >= FEATURED_WARRIOR_SLOT_COUNT
-    ? selected
-    : deterministicFeaturedWarriorOpening(combined);
-}
 
 function preloadFeaturedWarriorImages(pool: FeaturedWarrior[]) {
   if (typeof window === "undefined") return;
@@ -485,10 +446,10 @@ function preloadFeaturedWarriorImages(pool: FeaturedWarrior[]) {
 }
 
 
+
 function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
   const openingLineup = useMemo(() => deterministicFeaturedWarriorOpening(pool), [pool]);
   const [visibleWarriors, setVisibleWarriors] = useState(openingLineup);
-  const [featuredWarriorsMounted, setFeaturedWarriorsMounted] = useState(false);
   const [featuredWarriorsReady, setFeaturedWarriorsReady] = useState(false);
   const [fadingSlot, setFadingSlot] = useState<number | null>(null);
 
@@ -497,49 +458,64 @@ function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
   const slotBagRef = useRef<number[]>([]);
   const lastWarriorBySlotRef = useRef<Record<number, string | null>>({});
   const transitionInFlightRef = useRef(false);
-  const fadeTimerRef = useRef<number | null>(null);
-  const revealTimerRef = useRef<number | null>(null);
+  const timerRefs = useRef<number[]>([]);
+
+  const clearTimers = () => {
+    for (const timer of timerRefs.current) {
+      window.clearTimeout(timer);
+    }
+    timerRefs.current = [];
+  };
+
+  const scheduleTimer = (callback: () => void, delay: number) => {
+    const timer = window.setTimeout(() => {
+      timerRefs.current = timerRefs.current.filter((value) => value !== timer);
+      callback();
+    }, delay);
+
+    timerRefs.current.push(timer);
+    return timer;
+  };
 
   useEffect(() => {
     visibleWarriorsRef.current = visibleWarriors;
   }, [visibleWarriors]);
 
   useEffect(() => {
-    setFeaturedWarriorsMounted(true);
-    setFeaturedWarriorsReady(false);
-    preloadFeaturedWarriorImages(pool);
-  }, [pool]);
-
-  useEffect(() => {
-    if (!featuredWarriorsMounted) {
-      return;
-    }
-
     let disposed = false;
+
+    clearTimers();
+    transitionInFlightRef.current = false;
+    setFadingSlot(null);
+    setFeaturedWarriorsReady(false);
+
+    const startingLineup = deterministicFeaturedWarriorOpening(pool);
+    startingLineup.forEach((warrior, index) => {
+      lastWarriorBySlotRef.current[index] = warrior.key;
+    });
+
+    visibleWarriorsRef.current = startingLineup;
+    setVisibleWarriors(startingLineup);
     preloadFeaturedWarriorImages(pool);
 
-    const randomized = randomFeaturedWarriorOpening(pool);
-    void decodeFeaturedWarriorLineup(randomized).then(() => {
+    void decodeFeaturedWarriorLineup(startingLineup).then(() => {
       if (disposed) return;
-
-      randomized.forEach((warrior, index) => {
-        lastWarriorBySlotRef.current[index] = warrior.key;
-      });
-
-      visibleWarriorsRef.current = randomized;
-      setVisibleWarriors(randomized);
 
       window.requestAnimationFrame(() => {
         window.requestAnimationFrame(() => {
-          if (!disposed) setFeaturedWarriorsReady(true);
+          if (!disposed) {
+            setFeaturedWarriorsReady(true);
+          }
         });
       });
     });
 
     return () => {
       disposed = true;
+      clearTimers();
+      transitionInFlightRef.current = false;
     };
-  }, [featuredWarriorsMounted, pool]);
+  }, [pool]);
 
   useEffect(() => {
     if (paused || !featuredWarriorsReady || pool.length <= FEATURED_WARRIOR_SLOT_COUNT) {
@@ -548,38 +524,10 @@ function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
 
     let disposed = false;
 
-    const clearFadeTimers = () => {
-      if (fadeTimerRef.current !== null) {
-        window.clearTimeout(fadeTimerRef.current);
-        fadeTimerRef.current = null;
-      }
-
-      if (revealTimerRef.current !== null) {
-        window.clearTimeout(revealTimerRef.current);
-        revealTimerRef.current = null;
-      }
-    };
-
-    const finishTransition = () => {
-      if (disposed) return;
-
-      window.requestAnimationFrame(() => {
-        window.requestAnimationFrame(() => {
-          if (disposed) return;
-          setFadingSlot(null);
-          transitionInFlightRef.current = false;
-        });
-      });
-    };
-
-    const rotate = () => {
-      if (transitionInFlightRef.current) {
-        return;
-      }
-
+    const chooseNextWarrior = () => {
       const current = visibleWarriorsRef.current;
       if (current.length < FEATURED_WARRIOR_SLOT_COUNT) {
-        return;
+        return null;
       }
 
       if (slotBagRef.current.length === 0) {
@@ -609,9 +557,23 @@ function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
       const nextWarrior = candidatePool[Math.floor(Math.random() * candidatePool.length)];
 
       if (!nextWarrior || nextWarrior.key === outgoing?.key) {
+        return null;
+      }
+
+      return { slot, nextWarrior };
+    };
+
+    const rotate = () => {
+      if (disposed || transitionInFlightRef.current) {
         return;
       }
 
+      const choice = chooseNextWarrior();
+      if (!choice) {
+        return;
+      }
+
+      const { slot, nextWarrior } = choice;
       transitionInFlightRef.current = true;
 
       void decodeFeaturedWarriorImage(featuredWarriorImageSrc(nextWarrior)).then(() => {
@@ -620,25 +582,48 @@ function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
           return;
         }
 
-        clearFadeTimers();
         setFadingSlot(slot);
 
-        fadeTimerRef.current = window.setTimeout(() => {
-          setVisibleWarriors((latest) => {
-            const next = [...latest];
-            next[slot] = nextWarrior;
-            lastWarriorBySlotRef.current[slot] = nextWarrior.key;
+        window.requestAnimationFrame(() => {
+          window.requestAnimationFrame(() => {
+            if (disposed) {
+              transitionInFlightRef.current = false;
+              return;
+            }
 
-            const finalLineup = featuredWarriorLineupHasRealFloor(next)
-              ? next
-              : selectFeaturedWarriorLineup(pool, next);
+            scheduleTimer(() => {
+              setVisibleWarriors((latest) => {
+                const next = [...latest];
+                next[slot] = nextWarrior;
+                lastWarriorBySlotRef.current[slot] = nextWarrior.key;
 
-            visibleWarriorsRef.current = finalLineup;
-            return finalLineup;
+                const finalLineup = featuredWarriorLineupHasRealFloor(next)
+                  ? next
+                  : selectFeaturedWarriorLineup(pool, next);
+
+                visibleWarriorsRef.current = finalLineup;
+                return finalLineup;
+              });
+
+              scheduleTimer(() => {
+                window.requestAnimationFrame(() => {
+                  window.requestAnimationFrame(() => {
+                    if (disposed) {
+                      transitionInFlightRef.current = false;
+                      return;
+                    }
+
+                    setFadingSlot(null);
+
+                    scheduleTimer(() => {
+                      transitionInFlightRef.current = false;
+                    }, FEATURED_WARRIOR_FADE_MS + 80);
+                  });
+                });
+              }, FEATURED_WARRIOR_HOLD_MS);
+            }, FEATURED_WARRIOR_FADE_MS + 80);
           });
-
-          revealTimerRef.current = window.setTimeout(finishTransition, 72);
-        }, FEATURED_WARRIOR_FADE_MS);
+        });
       });
     };
 
@@ -647,10 +632,10 @@ function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
     return () => {
       disposed = true;
       window.clearInterval(interval);
-      clearFadeTimers();
+      clearTimers();
       transitionInFlightRef.current = false;
     };
-  }, [paused, pool, featuredWarriorsMounted, featuredWarriorsReady]);
+  }, [paused, pool, featuredWarriorsReady]);
 
   return { visibleWarriors, fadingSlot };
 }
@@ -686,7 +671,7 @@ function AdvancedFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] })
             <Link
               key={index}
               href={warrior.href}
-              className={`block group relative min-h-[16rem] overflow-visible transform-gpu will-change-[opacity] transition-opacity ease-in-out hover:-translate-y-0.5 ${fadingSlot === index ? "opacity-0" : "opacity-100"}`}
+              className={`block group relative min-h-[16rem] overflow-visible transform-gpu will-change-[opacity,filter] transition-[opacity,filter] ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 ${fadingSlot === index ? "opacity-0 blur-[1px]" : "opacity-100 blur-0"}`}
               style={{ transitionDuration: `${FEATURED_WARRIOR_FADE_MS}ms` }}
             >
               <Image
@@ -787,7 +772,7 @@ function ExtremeFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] }) 
               <Link
                 key={index}
                 href={warrior.href}
-                className={`block group relative min-h-[16rem] overflow-visible transform-gpu will-change-[opacity] transition-opacity ease-in-out hover:-translate-y-0.5 ${fadingSlot === index ? "opacity-0" : "opacity-100"}`}
+                className={`block group relative min-h-[16rem] overflow-visible transform-gpu will-change-[opacity,filter] transition-[opacity,filter] ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 ${fadingSlot === index ? "opacity-0 blur-[1px]" : "opacity-100 blur-0"}`}
                 style={{ transitionDuration: `${FEATURED_WARRIOR_FADE_MS}ms` }}
               >
                 <div className="absolute inset-x-0 bottom-2 top-7 overflow-hidden rounded-[1.35rem] border border-amber-100/12 bg-slate-950/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.045),0_18px_60px_rgba(0,0,0,0.24)] transition group-hover:border-amber-200/26">
