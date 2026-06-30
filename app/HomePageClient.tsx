@@ -44,9 +44,11 @@ const GRIMER_UID = "aoe2hd_ai_grimer";
 const MOOSE_UID = "aoe2hd-moose";
 
 const FEATURED_WARRIOR_SLOT_COUNT = 4;
-const FEATURED_WARRIOR_ROTATE_MS = 4600;
-const FEATURED_WARRIOR_FADE_MS = 720;
-const FEATURED_WARRIOR_HOLD_MS = 180;
+const FEATURED_WARRIOR_ROTATE_MS = 3800;
+const FEATURED_WARRIOR_FIRST_ROTATE_MS = 6200;
+const FEATURED_WARRIOR_FADE_MS = 300;
+const FEATURED_WARRIOR_HOLD_MS = 60;
+const FEATURED_WARRIOR_WARMUP_LIMIT = 12;
 
 const JULIO_FEATURED_SUBTITLE_LINES = [
   {
@@ -274,6 +276,10 @@ const FEATURED_WARRIOR_REAL_AVATAR_KEYS = new Set([
   "premium:emaren",
   "premium:moose",
   "premium:grimer",
+  "premium:bdbpigman",
+  "premium:sladk0eshka",
+  "bdbpigman",
+  "sladk0eshka",
   "sniper",
   "julio",
   "julio-alvarez",
@@ -286,11 +292,37 @@ const FEATURED_WARRIOR_REAL_AVATAR_KEYS = new Set([
   "grimer",
 ]);
 
+const FEATURED_WARRIOR_SPECTACLE_KEYS = new Set([
+  "premium:zodiac",
+  "zodiac",
+  "dil-pascana",
+  "premium:sniper",
+  "sniper",
+  "premium:julio",
+  "premium:julio-alvarez",
+  "julio",
+  "julio-alvarez",
+  "premium:jim",
+  "jim",
+  "premium:ra",
+  "ra",
+  "premium:bdbpigman",
+  "bdbpigman",
+  "bdb-pigman",
+  "pigman",
+  "premium:emaren",
+  "emaren",
+  "premium:moose",
+  "moose",
+]);
+
+
 function featuredWarriorHasRealAvatar(warrior: FeaturedWarrior) {
   const directImage = warrior.imageUrl || "";
 
   if (
     directImage &&
+    !directImage.startsWith("/api/media-assets/avatar/") &&
     !directImage.includes("no-avatar") &&
     !directImage.includes("silhouette") &&
     !directImage.includes("placeholder")
@@ -300,10 +332,25 @@ function featuredWarriorHasRealAvatar(warrior: FeaturedWarrior) {
 
   return Boolean(
     FEATURED_WARRIOR_REAL_AVATAR_KEYS.has(warrior.key) ||
+      FEATURED_WARRIOR_REAL_AVATAR_KEYS.has(normalizeFeaturedWarriorKey(warrior.key)) ||
       FEATURED_WARRIOR_REAL_AVATAR_KEYS.has(normalizeFeaturedWarriorKey(warrior.name)) ||
       FEATURED_WARRIOR_REAL_AVATAR_KEYS.has(normalizeFeaturedWarriorKey(warrior.lookupName))
   );
 }
+
+function featuredWarriorIsSpectacleReady(warrior: FeaturedWarrior) {
+  if (!featuredWarriorHasRealAvatar(warrior)) {
+    return false;
+  }
+
+  return Boolean(
+    FEATURED_WARRIOR_SPECTACLE_KEYS.has(warrior.key) ||
+      FEATURED_WARRIOR_SPECTACLE_KEYS.has(normalizeFeaturedWarriorKey(warrior.key)) ||
+      FEATURED_WARRIOR_SPECTACLE_KEYS.has(normalizeFeaturedWarriorKey(warrior.name)) ||
+      FEATURED_WARRIOR_SPECTACLE_KEYS.has(normalizeFeaturedWarriorKey(warrior.lookupName))
+  );
+}
+
 
 function dedupeFeaturedWarriors(pool: FeaturedWarrior[]) {
   const seen = new Set<string>();
@@ -361,31 +408,40 @@ function deterministicFeaturedWarriorOpening(pool: FeaturedWarrior[]) {
   return selected.slice(0, FEATURED_WARRIOR_SLOT_COUNT);
 }
 
-function randomFeaturedWarriorOpening(pool: FeaturedWarrior[]) {
-  const realAvatarPool = pool.filter(featuredWarriorHasRealAvatar);
-  const source = realAvatarPool.length >= FEATURED_WARRIOR_SLOT_COUNT ? realAvatarPool : pool;
-  const candidates = [...source];
+function shuffleFeaturedWarriors(pool: FeaturedWarrior[]) {
+  const candidates = [...pool];
 
   for (let index = candidates.length - 1; index > 0; index -= 1) {
     const swapIndex = Math.floor(Math.random() * (index + 1));
     const current = candidates[index];
     const swap = candidates[swapIndex];
 
-    if (!current || !swap) {
-      continue;
-    }
+    if (!current || !swap) continue;
 
     candidates[index] = swap;
     candidates[swapIndex] = current;
   }
 
-  const lineup = candidates.slice(0, FEATURED_WARRIOR_SLOT_COUNT);
+  return candidates;
+}
 
-  if (lineup.length >= FEATURED_WARRIOR_SLOT_COUNT) {
-    return lineup;
+function randomFeaturedWarriorOpening(pool: FeaturedWarrior[]) {
+  const uniquePool = dedupeFeaturedWarriors([...pool, ...FEATURED_WARRIOR_PREMIUM_POOL, ...FEATURED_WARRIOR_FALLBACKS]);
+  const spectaclePool = shuffleFeaturedWarriors(uniquePool.filter(featuredWarriorIsSpectacleReady));
+  const selected: FeaturedWarrior[] = [];
+
+  for (const warrior of spectaclePool) {
+    if (selected.length >= FEATURED_WARRIOR_SLOT_COUNT) break;
+    selected.push(warrior);
   }
 
-  return deterministicFeaturedWarriorOpening(pool);
+  if (selected.length >= FEATURED_WARRIOR_SLOT_COUNT) {
+    return selected.slice(0, FEATURED_WARRIOR_SLOT_COUNT);
+  }
+
+  return deterministicFeaturedWarriorOpening(uniquePool)
+    .filter(featuredWarriorIsSpectacleReady)
+    .slice(0, FEATURED_WARRIOR_SLOT_COUNT);
 }
 
 
@@ -412,12 +468,20 @@ function featuredWarriorImageSrc(warrior: FeaturedWarrior) {
   return warrior.imageUrl ?? avatarUrlForName(warrior.lookupName);
 }
 
+const featuredWarriorDecodeCache = new Map<string, Promise<void>>();
+const featuredWarriorHeadHintCache = new Set<string>();
+
 function decodeFeaturedWarriorImage(src: string) {
   if (typeof window === "undefined" || !src) {
     return Promise.resolve();
   }
 
-  return new Promise<void>((resolve) => {
+  const cached = featuredWarriorDecodeCache.get(src);
+  if (cached) {
+    return cached;
+  }
+
+  const promise = new Promise<void>((resolve) => {
     const image = new window.Image();
     image.decoding = "async";
     image.loading = "eager";
@@ -427,6 +491,7 @@ function decodeFeaturedWarriorImage(src: string) {
     const finish = () => {
       if (done) return;
       done = true;
+
       if (typeof image.decode === "function") {
         image.decode().catch(() => undefined).finally(resolve);
       } else {
@@ -434,15 +499,18 @@ function decodeFeaturedWarriorImage(src: string) {
       }
     };
 
-    const timeout = window.setTimeout(finish, 2200);
+    const timeout = window.setTimeout(finish, 2800);
+
     image.onload = () => {
       window.clearTimeout(timeout);
       finish();
     };
+
     image.onerror = () => {
       window.clearTimeout(timeout);
       finish();
     };
+
     image.src = src;
 
     if (image.complete) {
@@ -450,6 +518,9 @@ function decodeFeaturedWarriorImage(src: string) {
       finish();
     }
   });
+
+  featuredWarriorDecodeCache.set(src, promise);
+  return promise;
 }
 
 function decodeFeaturedWarriorLineup(lineup: FeaturedWarrior[]) {
@@ -459,18 +530,55 @@ function decodeFeaturedWarriorLineup(lineup: FeaturedWarrior[]) {
 }
 
 
-function preloadFeaturedWarriorImages(pool: FeaturedWarrior[]) {
+function featuredWarriorWarmupUrls(pool: FeaturedWarrior[], priorityLineup: FeaturedWarrior[] = []) {
+  const candidates = dedupeFeaturedWarriors([
+    ...priorityLineup,
+    ...pool,
+    ...FEATURED_WARRIOR_PREMIUM_POOL,
+    ...FEATURED_WARRIOR_FALLBACKS,
+  ]);
+
+  const spectacle = candidates.filter(featuredWarriorIsSpectacleReady);
+  const fallback = candidates.filter((warrior) => !featuredWarriorIsSpectacleReady(warrior));
+
+  return Array.from(
+    new Set(
+      [...spectacle, ...fallback]
+        .map(featuredWarriorImageSrc)
+        .filter((url): url is string => Boolean(url))
+    )
+  ).slice(0, FEATURED_WARRIOR_WARMUP_LIMIT);
+}
+
+function installFeaturedWarriorResourceHints(urls: string[]) {
+  if (typeof document === "undefined") return;
+
+  urls.forEach((url, index) => {
+    if (!url || featuredWarriorHeadHintCache.has(url)) return;
+
+    const link = document.createElement("link");
+    link.rel = index < FEATURED_WARRIOR_SLOT_COUNT ? "preload" : "prefetch";
+    link.as = "image";
+    link.href = url;
+    link.setAttribute("fetchpriority", index < FEATURED_WARRIOR_SLOT_COUNT ? "high" : "low");
+    link.setAttribute("data-aoe2war-featured-warrior", "warmup");
+
+    featuredWarriorHeadHintCache.add(url);
+    document.head.appendChild(link);
+  });
+}
+
+function preloadFeaturedWarriorImages(pool: FeaturedWarrior[], priorityLineup: FeaturedWarrior[] = []) {
   if (typeof window === "undefined") return;
 
-  const urls = dedupeFeaturedWarriors([...pool, ...FEATURED_WARRIOR_PREMIUM_POOL, ...FEATURED_WARRIOR_FALLBACKS])
-    .map(featuredWarriorImageSrc)
-    .filter(Boolean);
+  const urls = featuredWarriorWarmupUrls(pool, priorityLineup);
+
+  installFeaturedWarriorResourceHints(urls);
 
   for (const url of urls) {
     void decodeFeaturedWarriorImage(url);
   }
 }
-
 
 
 
@@ -489,7 +597,6 @@ function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
   const visibleWarriorsRef = useRef<FeaturedWarrior[]>(openingLineup);
   const lastChangedSlotRef = useRef<number | null>(null);
   const lastWarriorBySlotRef = useRef<Record<number, string | null>>({});
-  const slotCursorRef = useRef(0);
   const transitionInFlightRef = useRef(false);
   const timersRef = useRef<number[]>([]);
 
@@ -531,9 +638,9 @@ function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
       lastWarriorBySlotRef.current[index] = warrior.key;
     });
 
+    preloadFeaturedWarriorImages(poolRef.current, initialLineup);
     visibleWarriorsRef.current = initialLineup;
     setVisibleWarriors(initialLineup);
-    preloadFeaturedWarriorImages(poolRef.current);
 
     void decodeFeaturedWarriorLineup(initialLineup).then(() => {
       if (disposed) return;
@@ -561,14 +668,14 @@ function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
 
     const pickSlot = () => {
       const slots = Array.from({ length: FEATURED_WARRIOR_SLOT_COUNT }, (_, index) => index);
-      const ordered = slots.filter((slot) => slot !== lastChangedSlotRef.current);
+      const eligibleSlots = slots.filter((slot) => slot !== lastChangedSlotRef.current);
+      const slot = eligibleSlots[Math.floor(Math.random() * eligibleSlots.length)] ?? 0;
 
-      const slot = ordered[slotCursorRef.current % ordered.length] ?? 0;
-      slotCursorRef.current += 1;
       lastChangedSlotRef.current = slot;
 
       return slot;
     };
+
 
     const pickNextWarrior = (slot: number) => {
       const current = visibleWarriorsRef.current;
@@ -586,8 +693,7 @@ function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
       );
 
       const candidates = freshCandidates.length > 0 ? freshCandidates : fallbackCandidates;
-      const realCandidates = candidates.filter(featuredWarriorHasRealAvatar);
-      const finalCandidates = realCandidates.length > 0 ? realCandidates : candidates;
+      const finalCandidates = candidates.filter(featuredWarriorIsSpectacleReady);
 
       if (finalCandidates.length === 0) {
         return null;
@@ -658,7 +764,7 @@ function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
       });
     };
 
-    later(rotateOnce, FEATURED_WARRIOR_ROTATE_MS);
+    later(rotateOnce, FEATURED_WARRIOR_FIRST_ROTATE_MS);
 
     return () => {
       disposed = true;
@@ -696,9 +802,9 @@ function AdvancedFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] })
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {visibleWarriors.map((warrior, index) => (
             <Link
-              key={index}
+              key={`${index}:${warrior.key}`}
               href={warrior.href}
-              className={`block group relative min-h-[16rem] overflow-visible transform-gpu will-change-[opacity,filter] transition-[opacity,filter] ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 ${!featuredWarriorsReady ? "opacity-0 blur-sm" : fadingSlot === index ? "opacity-0 blur-sm" : "opacity-100 blur-0"}`}
+              className={`block group relative min-h-[16rem] overflow-visible transform-gpu will-change-[opacity] transition-opacity ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 [backface-visibility:hidden] ${!featuredWarriorsReady ? "opacity-0" : fadingSlot === index ? "opacity-0" : "opacity-100"}`}
               style={{ transitionDuration: `${FEATURED_WARRIOR_FADE_MS}ms` }}
             >
               <Image
@@ -796,9 +902,9 @@ function ExtremeFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] }) 
             const avatarSrc = featuredWarriorImageSrc(warrior);
             return (
               <Link
-                key={index}
+                key={`${index}:${warrior.key}`}
                 href={warrior.href}
-                className={`block group relative min-h-[16rem] overflow-visible transform-gpu will-change-[opacity,filter] transition-[opacity,filter] ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 ${!featuredWarriorsReady ? "opacity-0 blur-sm" : fadingSlot === index ? "opacity-0 blur-sm" : "opacity-100 blur-0"}`}
+                className={`block group relative min-h-[16rem] overflow-visible transform-gpu will-change-[opacity] transition-opacity ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 [backface-visibility:hidden] ${!featuredWarriorsReady ? "opacity-0" : fadingSlot === index ? "opacity-0" : "opacity-100"}`}
                 style={{ transitionDuration: `${FEATURED_WARRIOR_FADE_MS}ms` }}
               >
                 <div className="absolute inset-x-0 bottom-2 top-7 overflow-hidden rounded-[1.35rem] border border-amber-100/12 bg-slate-950/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.045),0_18px_60px_rgba(0,0,0,0.24)] transition group-hover:border-amber-200/26">

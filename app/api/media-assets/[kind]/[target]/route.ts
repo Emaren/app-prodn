@@ -20,6 +20,8 @@ const MIME_TYPES: Record<string, string> = {
   ".webp": "image/webp",
 };
 
+const IMAGE_RESPONSE_CACHE_CONTROL = "public, max-age=86400, stale-while-revalidate=604800";
+
 const PUBLIC_DIRECT_PREFIXES = [
   "/brand/",
   "/champions/",
@@ -124,7 +126,7 @@ function redirectToInternalAsset(url: string) {
     status: 307,
     headers: {
       Location: url.startsWith("/") && !url.startsWith("//") ? url : "/",
-      "Cache-Control": "no-store, max-age=0, must-revalidate",
+      "Cache-Control": IMAGE_RESPONSE_CACHE_CONTROL,
     },
   });
 }
@@ -240,7 +242,7 @@ async function serveManagedUploadDirect(request: NextRequest, url: string) {
 
     return new NextResponse(hit.data, {
       headers: {
-        "Cache-Control": "no-store, max-age=0, must-revalidate",
+        "Cache-Control": IMAGE_RESPONSE_CACHE_CONTROL,
         "Content-Length": String(hit.data.length),
         "Content-Type": contentTypeFor(candidate.filePath),
         "Last-Modified": hit.stat.mtime.toUTCString(),
@@ -306,7 +308,7 @@ async function servePublicAssetDirect(request: NextRequest, url: string) {
 
     return new NextResponse(hit.data, {
       headers: {
-        "Cache-Control": "no-store, max-age=0, must-revalidate",
+        "Cache-Control": IMAGE_RESPONSE_CACHE_CONTROL,
         "Content-Length": String(hit.data.length),
         "Content-Type": contentTypeFor(candidate.filePath),
         "Last-Modified": hit.stat.mtime.toUTCString(),

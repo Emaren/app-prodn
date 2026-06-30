@@ -94,7 +94,7 @@ export function managedAvatarUrl(
     safeFallback
   )}`;
 
-  url = appendQueryParam(url, "v", "20260629a");
+  url = appendQueryParam(url, "v", "20260630a");
 
   if (options?.size === "thumb") {
     return appendQueryParam(url, "size", "thumb");
