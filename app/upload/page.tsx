@@ -124,7 +124,7 @@ export default function UploadReplay() {
     <div className="mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-5xl flex-col justify-start px-4 pt-24 pb-16 text-white md:pt-28 md:pb-20">
       <div className="mx-auto w-full max-w-3xl rounded-[2rem] border border-white/10 bg-slate-950/70 p-8">
         <div className="text-xs uppercase tracking-[0.35em] text-white/45">Replay Upload</div>
-        <h1 className="mt-3 text-3xl font-semibold">Upload a replay manually</h1>
+        <h1 className="mt-3 text-[1.7rem] font-medium tracking-[-0.02em] text-slate-100 sm:text-3xl">Replay Vault</h1>
         <p className="mt-4 text-sm leading-6 text-slate-300">
           .zip, .aoe2record, .aoe2mpgame, .mgz, .mgx, .mgl.
           <br />
