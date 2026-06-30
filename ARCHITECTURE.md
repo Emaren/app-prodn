@@ -47,6 +47,8 @@ Important public surfaces include:
 - `app/rivalries/page.tsx`
 - `app/clans/page.tsx`
 - `app/clans/[slug]/page.tsx`
+- `app/academy/page.tsx`
+- `app/zodiac/page.tsx`
 - `app/contact-emaren/page.tsx`
 - `app/requests/page.tsx`
 - `app/war-chest/page.tsx`
@@ -65,6 +67,7 @@ Live-board presentation is owned by `components/live/LiveGamesBoard.tsx`, with s
 Key browser-facing routes include:
 - `app/api/lobby/route.ts`
 - `app/api/clans/[slug]/route.ts`
+- `app/api/academy/zodiac/lesson/route.ts`
 - `app/api/lobby/stream/route.ts`
 - `app/api/bets/route.ts`
 - `app/api/bets/wager/route.ts`
@@ -224,6 +227,19 @@ users, or active clan members. `chat_audience_policy` is the clan-admin ceiling;
 tightening it hides previously stored broader posts without rewriting them.
 Site admins may manage the founding hall. Do not move this visibility policy
 into lobby chat, which remains a public-room product.
+
+### Academy / advisor payments
+
+`/academy` is the public strategy and advisor directory. Zodiac is the first
+advisor and `/zodiac` remains his replay-backed detail page.
+
+The first lesson is priced at 100 WOLO. The browser signs a direct `wolo-1`
+`MsgSend` from the student to the advisor’s linked `User.walletAddress`.
+`POST /api/academy/zodiac/lesson` verifies the exact sender, recipient, and
+amount through WoloChain REST, plus the structured
+`AoE2WAR Academy · Zodiac · first lesson` memo, before writing an
+`academy_lesson_payment` receipt to `UserActivityEvent`. Do not label a
+reservation paid until that verification succeeds.
 
 ### Appearance / theme state
 

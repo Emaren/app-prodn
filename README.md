@@ -26,6 +26,7 @@ It currently owns the premium lobby/community surface, leaderboard presentation,
 - Advanced player profiles include lazy match archive, watcher proof, form/rivalry diagnostics, resource emblems, AI Scribe/Grimer readout, stream signal, and premium `$WOLO`/staking stats
 - The public Kingdom spine includes `/kingdom`, `/champions`, `/national-champions`, `/clans`, and `/forum`, with the legacy `/belts`, `/nations`, and `/realm` paths redirecting into the new route names
 - `/clans` launches with the Mystikal Clan hall and an equal-weight add-your-clan invitation; `/clans/[slug]` owns clan identity, roster, and audience-aware chat
+- `/academy` is the premium strategy front gate, launching with Zodiac as the founding advisor; `/zodiac` owns his replay-backed counsel page and verified 100 WOLO first-lesson checkout
 - `/champions` owns the app-side championship title economy: podium belts, tag titles, national titles, ELO titles, special designations, live custody/bounty overlays, challenge links, and detail pages
 - `/admin/trophies` is the persistent War Trophy command center for definitions, holder/Guardian custody, challenges, replay proof, dry-run settlement, payouts, NFT intents, settings, and audit history
 - `/admin/events` is the Event Studio for the one active published cinematic EventTile shared by `/` and `/lobby`; the current Wolomania Jim / Julio / Commissioner / belt composition remains the seeded default and hard production fallback
@@ -42,6 +43,8 @@ Current notable product routes include:
 - `/champions`
 - `/national-champions`
 - `/clans`
+- `/academy`
+- `/zodiac`
 - `/forum`
 - `/live-games`
 - `/players`

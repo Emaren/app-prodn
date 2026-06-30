@@ -12,6 +12,7 @@ export type ZodiacTrainingConfig = {
   dmGuideUrl: string | null;
   trainingAvailability: string;
   coachingPriceWolo: number | null;
+  firstLessonMemo: string;
   steamGroupUrl: string | null;
   featuredReplayIds: number[];
   primaryCtaMode: ZodiacTrainingPrimaryCtaMode;
@@ -25,14 +26,15 @@ export const ZODIAC_TRAINING_CONFIG: ZodiacTrainingConfig = {
   route: "/zodiac",
   userId: 124585,
   userUid: "u_06c16d39d25c476fac2c86fee7b4d189",
-  headline: "Apprentice Under Zodiac",
+  headline: "Train Under Zodiac",
   subtitle: "Deathmatch is jazz. Learn the rhythm from one of HD’s old-war killers.",
   introBody:
     "A beginner-safe gate into Deathmatch: learn the civ answer, upload a real game, review the war, then return sharper.",
   dmGuideBody: null,
   dmGuideUrl: null,
-  trainingAvailability: "Recruiting new Deathmatch players",
-  coachingPriceWolo: null,
+  trainingAvailability: "Accepting new apprentices",
+  coachingPriceWolo: 100,
+  firstLessonMemo: "AoE2WAR Academy · Zodiac · first lesson",
   steamGroupUrl: null,
   featuredReplayIds: [],
   primaryCtaMode: "direct_message",

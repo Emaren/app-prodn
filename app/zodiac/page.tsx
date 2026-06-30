@@ -13,14 +13,14 @@ import {
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Apprentice Under Zodiac",
+  title: "Train Under Zodiac",
   description:
     "Learn AoE2 HD Deathmatch with Zodiac. Upload a replay, request a review, study civ answers, and enter the Challenge Hall.",
   alternates: {
     canonical: "/zodiac",
   },
   openGraph: {
-    title: "Apprentice Under Zodiac",
+    title: "Train Under Zodiac",
     description:
       "Deathmatch is jazz. Learn the rhythm from one of HD’s old-war killers.",
     url: "/zodiac",
@@ -44,12 +44,32 @@ async function loadZodiacProfile() {
   }
 }
 
+async function loadZodiacWalletAddress() {
+  try {
+    const advisor = await getPrisma().user.findUnique({
+      where: { uid: ZODIAC_TRAINING_CONFIG.userUid },
+      select: { walletAddress: true },
+    });
+    return advisor?.walletAddress?.trim() || null;
+  } catch (error) {
+    console.warn(
+      `Zodiac advisor wallet unavailable: ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    );
+    return null;
+  }
+}
+
 export default async function ZodiacPage() {
   if (!ZODIAC_TRAINING_CONFIG.enabled) {
     notFound();
   }
 
-  const profile = await loadZodiacProfile();
+  const [profile, advisorWalletAddress] = await Promise.all([
+    loadZodiacProfile(),
+    loadZodiacWalletAddress(),
+  ]);
   const mentorName = profile?.displayName || "Zodiac";
   const profileHref =
     profile?.href || `/players/${ZODIAC_TRAINING_CONFIG.userUid}`;
@@ -72,6 +92,7 @@ export default async function ZodiacPage() {
       profileHref={profileHref}
       featuredMatches={featuredMatches}
       totalMatches={profile?.matchFeed.totalMatches || 0}
+      advisorWalletAddress={advisorWalletAddress}
     />
   );
 }

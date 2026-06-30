@@ -7,22 +7,27 @@ import {
   ZODIAC_TRAINING_CONFIG,
 } from "../lib/zodiacTraining.ts";
 
-test("Zodiac training page exposes the intended public route and safe v1 defaults", () => {
+test("Zodiac is the enabled founding Academy advisor", () => {
   assert.equal(ZODIAC_TRAINING_CONFIG.enabled, true);
   assert.equal(ZODIAC_TRAINING_CONFIG.route, "/zodiac");
   assert.equal(ZODIAC_TRAINING_CONFIG.userId, 124585);
   assert.equal(ZODIAC_TRAINING_CONFIG.primaryCtaMode, "direct_message");
   assert.equal(ZODIAC_TRAINING_CONFIG.publicContactEnabled, true);
-  assert.equal(ZODIAC_TRAINING_CONFIG.coachingPriceWolo, null);
+  assert.equal(ZODIAC_TRAINING_CONFIG.headline, "Train Under Zodiac");
+  assert.equal(ZODIAC_TRAINING_CONFIG.coachingPriceWolo, 100);
+  assert.equal(
+    ZODIAC_TRAINING_CONFIG.firstLessonMemo,
+    "AoE2WAR Academy · Zodiac · first lesson"
+  );
   assert.equal(ZODIAC_TRAINING_CONFIG.steamGroupUrl, null);
 });
 
-test("only Zodiac's configured uid opens the public mentor contact rail", () => {
+test("only the configured Zodiac uid opens the public advisor line", () => {
   assert.equal(
     isPublicZodiacTrainingContactUid(ZODIAC_TRAINING_CONFIG.userUid),
     true
   );
-  assert.equal(isPublicZodiacTrainingContactUid("u_someone_else"), false);
+  assert.equal(isPublicZodiacTrainingContactUid("u_not_zodiac"), false);
   assert.equal(isPublicZodiacTrainingContactUid(null), false);
 });
 

@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import ZodiacLessonCheckout from "@/components/zodiac/ZodiacLessonCheckout";
 import type { PlayerProfileMatchItem } from "@/lib/playerProfile";
 import type { ZodiacTrainingConfig } from "@/lib/zodiacTraining";
 
@@ -11,6 +12,7 @@ type ZodiacTrainingPageProps = {
   profileHref: string;
   featuredMatches: PlayerProfileMatchItem[];
   totalMatches: number;
+  advisorWalletAddress: string | null;
 };
 
 const TRAINING_STEPS = [
@@ -32,7 +34,7 @@ const TRAINING_STEPS = [
     number: "03",
     icon: "⚔",
     title: "Contender",
-    body: "Play coached games, adapt faster, and build a plan you trust under pressure.",
+    body: "Play guided games, adapt faster, and build a plan you trust under pressure.",
     action: "Improve",
   },
   {
@@ -82,19 +84,10 @@ function resultClasses(result: PlayerProfileMatchItem["result"]) {
 }
 
 function PrimaryCtas({
-  config,
-  profileHref,
   compact = false,
 }: {
-  config: ZodiacTrainingConfig;
-  profileHref: string;
   compact?: boolean;
 }) {
-  const requestHref =
-    config.primaryCtaMode === "direct_message"
-      ? `/contact-emaren?user=${encodeURIComponent(config.userUid)}`
-      : profileHref;
-
   return (
     <div
       className={`grid gap-2.5 ${
@@ -102,10 +95,10 @@ function PrimaryCtas({
       }`}
     >
       <Link
-        href={requestHref}
+        href="#first-lesson"
         className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-300 px-5 py-3 text-sm font-bold text-slate-950 shadow-[0_16px_40px_rgba(251,191,36,0.22)] transition hover:-translate-y-0.5 hover:brightness-110"
       >
-        Request Training
+        Train Under Zodiac
         <span aria-hidden="true" className="transition group-hover:translate-x-0.5">
           →
         </span>
@@ -135,6 +128,7 @@ export default function ZodiacTrainingPage({
   profileHref,
   featuredMatches,
   totalMatches,
+  advisorWalletAddress,
 }: ZodiacTrainingPageProps) {
   const zodiacMessageHref = `/contact-emaren?user=${encodeURIComponent(
     config.userUid
@@ -160,7 +154,7 @@ export default function ZodiacTrainingPage({
             </div>
 
             <p className="text-xs font-semibold uppercase tracking-[0.34em] text-violet-200/70">
-              AoE2 HD Deathmatch Training
+              Academy Advisor · Deathmatch
             </p>
             <h1 className="mt-4 max-w-3xl text-4xl font-black leading-[0.96] tracking-[-0.045em] text-white sm:text-6xl lg:text-7xl">
               {config.headline}
@@ -173,11 +167,11 @@ export default function ZodiacTrainingPage({
             </p>
 
             <div className="mt-7">
-              <PrimaryCtas config={config} profileHref={profileHref} />
+              <PrimaryCtas />
             </div>
 
             <div className="mt-7 flex flex-wrap gap-2 text-[11px] font-medium text-slate-300">
-              {["DM mentor", "HD old guard", "Recruiter", "Beginner-safe"].map(
+              {["DM advisor", "HD old guard", "Recruiter", "Beginner-safe"].map(
                 (label) => (
                   <span
                     key={label}
@@ -193,7 +187,7 @@ export default function ZodiacTrainingPage({
           <div className="relative min-h-[390px] overflow-hidden border-t border-white/8 lg:min-h-full lg:border-l lg:border-t-0">
             <Image
               src={avatarUrl}
-              alt={`${mentorName}, Deathmatch mentor`}
+              alt={`${mentorName}, Deathmatch advisor`}
               fill
               priority
               unoptimized
@@ -291,7 +285,7 @@ export default function ZodiacTrainingPage({
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-amber-200/65">
-              The training path
+              The ascent
             </p>
             <h2 className="mt-2 text-2xl font-black tracking-tight sm:text-3xl">
               Learn → Upload → Review → Improve → Challenge
@@ -391,33 +385,22 @@ export default function ZodiacTrainingPage({
 
         <article className="rounded-[1.6rem] border border-violet-200/15 bg-[radial-gradient(circle_at_bottom_left,rgba(124,58,237,0.18),transparent_38%),rgba(8,10,22,0.92)] p-5 sm:p-8">
           <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-violet-200/70">
-            Private coaching
+            First counsel
           </p>
           <h2 className="mt-4 text-3xl font-black tracking-tight">
             Bring the war you actually played.
           </h2>
           <p className="mt-3 text-sm leading-6 text-slate-300">
-            Upload a replay. Zodiac can teach from your choices, your civ, and the pressure that
-            made the game turn.
+            Upload a replay. Zodiac reads your choices, your civ, and the
+            pressure that made the game turn.
           </p>
-          <div className="mt-6 rounded-[1.1rem] border border-white/9 bg-black/20 p-4">
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-sm font-semibold text-white">Session request</span>
-              <span className="rounded-full bg-emerald-300/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-100">
-                Open
-              </span>
-            </div>
-            <div className="mt-3 flex items-center justify-between gap-3 text-sm">
-              <span className="text-slate-400">Pay in WOLO</span>
-              <span className="text-amber-100">
-                {config.coachingPriceWolo
-                  ? `${config.coachingPriceWolo} WOLO`
-                  : "Coming soon"}
-              </span>
-            </div>
-          </div>
-          <div className="mt-5">
-            <PrimaryCtas config={config} profileHref={profileHref} compact />
+          <div id="first-lesson" className="mt-6 scroll-mt-24">
+            <ZodiacLessonCheckout
+              advisorWalletAddress={advisorWalletAddress}
+              advisorUid={config.userUid}
+              amountWolo={config.coachingPriceWolo || 100}
+              paymentMemo={config.firstLessonMemo}
+            />
           </div>
         </article>
       </section>
@@ -450,8 +433,8 @@ export default function ZodiacTrainingPage({
             The old board has a new threat.
           </h2>
           <p className="mt-3 text-sm leading-6 text-slate-300">
-            Training is not the finish line. Step into the Challenge Hall when the new instincts
-            are ready to meet a real name.
+            Study is not the finish line. Step into the Challenge Hall when
+            the new instincts are ready to meet a real name.
           </p>
           <Link
             href="/challenge"
@@ -543,7 +526,7 @@ export default function ZodiacTrainingPage({
           beginner to arrive already knowing the song.
         </p>
         <div className="mx-auto mt-6 max-w-2xl">
-          <PrimaryCtas config={config} profileHref={profileHref} />
+          <PrimaryCtas />
         </div>
       </section>
     </main>
