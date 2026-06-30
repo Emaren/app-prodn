@@ -292,3 +292,5 @@ Still wanted:
 7. Clean API testing workflow and keep docs aligned with the now-real WOLO betting rails
 
 - Replay Vault upload now extends the existing single replay upload with old-school ZIP replay packs, preserving renamed filenames while importing each replay into the existing replay proof flow.
+
+- `/upload` now shows a compact Replay Vault v1.1 release note and gives the simple upload screen more vertical breathing room above the footer.
