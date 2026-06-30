@@ -241,6 +241,25 @@ amount through WoloChain REST, plus the structured
 `academy_lesson_payment` receipt to `UserActivityEvent`. Do not label a
 reservation paid until that verification succeeds.
 
+### Marketplace / player-built commerce
+
+`/market` is the app-owned Agora for player services and ecosystem businesses.
+The founding shop is The Visage Forge; its craft is named Visagewright and its
+custom profile-avatar commission is displayed as $100 USD.
+
+`POST /api/market/requests` accepts authenticated avatar commissions and shop
+proposals. It validates and bounds the submitted scroll, opens the existing
+private Emaren conversation, stores the full request as a `DirectMessage`, and
+writes either `market_avatar_commission` or `market_shop_proposal` to
+`UserActivityEvent`. The route does not collect or imply payment; payment state
+remains `not_collected` until the operator confirms scope and handles it
+separately.
+
+Finished avatars use the existing managed-media operator rail and are assigned
+to `user-<uid>-pool`. The user then selects the delivered identity from the
+profile avatar vault. Keep delivery in this existing app-owned media path
+instead of inventing a second avatar store.
+
 ### Appearance / theme state
 
 Appearance is app-owned state.
