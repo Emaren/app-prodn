@@ -48,6 +48,42 @@ const FEATURED_WARRIOR_ROTATE_MS = 5200;
 const FEATURED_WARRIOR_FADE_MS = 680;
 const FEATURED_WARRIOR_HOLD_MS = 140;
 
+const JULIO_FEATURED_SUBTITLE_LINES = [
+  {
+    key: "elo",
+    text: "ELO SCORE",
+    className: "text-amber-100/95 [text-shadow:0_0_14px_rgba(251,191,36,0.28)]",
+  },
+  {
+    key: "record",
+    text: "RECORD",
+    className: "text-sky-100/95 [text-shadow:0_0_14px_rgba(56,189,248,0.20)]",
+  },
+  {
+    key: "streak",
+    text: "STREAK 🔥",
+    className: "text-red-200/95 [text-shadow:0_0_16px_rgba(248,113,113,0.32)]",
+  },
+  {
+    key: "ranking",
+    text: "RANKING",
+    className: "text-emerald-100/95 [text-shadow:0_0_16px_rgba(52,211,153,0.24)]",
+  },
+  {
+    key: "og",
+    text: "OG",
+    className: "text-yellow-100/95 [text-shadow:0_0_18px_rgba(250,204,21,0.28)]",
+  },
+] as const;
+
+let julioFeaturedSubtitleCursor = 0;
+
+function nextJulioFeaturedSubtitleLine() {
+  const line = JULIO_FEATURED_SUBTITLE_LINES[julioFeaturedSubtitleCursor % JULIO_FEATURED_SUBTITLE_LINES.length];
+  julioFeaturedSubtitleCursor += 1;
+  return line;
+}
+
 type FeaturedWarrior = {
   key: string;
   name: string;
@@ -690,7 +726,7 @@ function AdvancedFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] })
                 <div className="mx-auto max-w-full overflow-hidden text-balance break-words font-serif text-[clamp(0.78rem,1.02vw,1.05rem)] font-semibold uppercase leading-[1.05] tracking-[0.075em] text-white [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
                   {warrior.name}
                 </div>
-                <FeaturedWarriorSubtitle warrior={warrior} />
+                <FeaturedWarriorSubtitle key={warrior.key} warrior={warrior} />
               </div>
             </Link>
           ))}
@@ -707,14 +743,16 @@ function AdvancedFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] })
   );
 }
 
-
 function FeaturedWarriorSubtitle({ warrior }: { warrior: FeaturedWarrior }) {
   const identity = normalizeFeaturedWarriorKey(warrior.lookupName || warrior.name);
+  const [julioLine] = useState(() =>
+    identity === "julio" || identity === "julio-alvarez" ? nextJulioFeaturedSubtitleLine() : null
+  );
 
-  if (identity === "julio" || identity === "julio-alvarez") {
+  if ((identity === "julio" || identity === "julio-alvarez") && julioLine) {
     return (
-      <div className="mt-1 inline-flex max-w-full items-center justify-center rounded-full border border-amber-200/20 bg-gradient-to-r from-amber-300/[0.11] via-yellow-100/[0.08] to-amber-300/[0.11] px-2.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.155em] text-amber-100/95 shadow-[0_0_18px_rgba(251,191,36,0.13)]">
-        ELO ᛫ RECORD ᛫ STREAK
+      <div className={`mt-1 text-[9px] font-semibold uppercase tracking-[0.18em] ${julioLine.className}`}>
+        {julioLine.text}
       </div>
     );
   }
@@ -795,7 +833,7 @@ function ExtremeFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] }) 
                   <div className="mx-auto max-w-full overflow-hidden text-balance break-words font-serif text-[clamp(0.76rem,0.96vw,1rem)] font-semibold uppercase leading-[1.05] tracking-[0.07em] text-white [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
                     {warrior.name}
                   </div>
-                  <FeaturedWarriorSubtitle warrior={warrior} />
+                  <FeaturedWarriorSubtitle key={warrior.key} warrior={warrior} />
                 </div>
               </Link>
             );
