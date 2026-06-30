@@ -52,7 +52,7 @@ function avatarCommissionMessage(body: MarketRequestBody) {
     message: [
       "MARKET COMMISSION · THE VISAGE FORGE",
       "",
-      `Craft: Custom profile avatar · $${MARKETPLACE_CONFIG.avatarPriceUsd} USD`,
+      `Craft: Custom profile avatar · ${MARKETPLACE_CONFIG.avatarPriceWolo} WOLO`,
       `Identity: ${
         archetypes.length > 0
           ? archetypes.map(marketplaceLabelForArchetype).join(", ")
@@ -70,7 +70,7 @@ function avatarCommissionMessage(body: MarketRequestBody) {
     metadata: {
       shop: MARKETPLACE_CONFIG.avatarShopName,
       craft: MARKETPLACE_CONFIG.avatarCraftName,
-      priceUsd: MARKETPLACE_CONFIG.avatarPriceUsd,
+      priceWolo: MARKETPLACE_CONFIG.avatarPriceWolo,
       archetypes,
       beltPlacement,
       palette: palette || null,

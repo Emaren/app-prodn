@@ -245,7 +245,7 @@ reservation paid until that verification succeeds.
 
 `/market` is the app-owned Agora for player services and ecosystem businesses.
 The founding shop is The Visage Forge; its craft is named Visagewright and its
-custom profile-avatar commission is displayed as $100 USD.
+custom profile-avatar commission is displayed as 100 WOLO.
 
 `POST /api/market/requests` accepts authenticated avatar commissions and shop
 proposals. It validates and bounds the submitted scroll, opens the existing

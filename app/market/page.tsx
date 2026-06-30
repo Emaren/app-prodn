@@ -3,7 +3,6 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowRight,
-  BadgeDollarSign,
   Crown,
   Gem,
   Hammer,
@@ -23,6 +22,8 @@ import {
   OpenShopDesk,
 } from "@/components/market/MarketplaceRequestDesks";
 import { MARKETPLACE_CONFIG } from "@/lib/marketplace";
+
+const WOLO_LOGO_SRC = "/legacy/wolo-logo-transparent.webp";
 
 export const metadata: Metadata = {
   title: "The Marketplace",
@@ -84,55 +85,68 @@ export default function MarketPage() {
         <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(2,5,13,0.97)_0%,rgba(2,5,13,0.88)_30%,rgba(2,5,13,0.45)_58%,rgba(2,5,13,0.12)_100%),linear-gradient(180deg,rgba(2,5,13,0.12),rgba(2,5,13,0.22)_58%,rgba(2,5,13,0.94)_100%)]" />
         <div className="pointer-events-none absolute inset-x-12 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/55 to-transparent" />
 
-        <div className="relative flex min-h-[40rem] max-w-[53rem] flex-col justify-center px-6 py-12 sm:min-h-[45rem] sm:px-10 lg:px-14">
-          <div className="flex flex-wrap gap-2">
-            <span className="inline-flex items-center gap-2 rounded-full border border-amber-100/22 bg-amber-200/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.24em] text-amber-100 backdrop-blur-md">
-              <Landmark className="h-3.5 w-3.5" />
-              The Agora is open
-            </span>
-            <span className="inline-flex items-center gap-2 rounded-full border border-rose-100/18 bg-rose-300/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-rose-100 backdrop-blur-md">
-              <Store className="h-3.5 w-3.5" />
-              First shop trading
-            </span>
+        <div className="relative flex min-h-[40rem] max-w-[53rem] flex-col justify-between px-6 pb-32 pt-12 sm:min-h-[45rem] sm:px-10 sm:py-12 lg:px-14">
+          <div>
+            <div className="flex flex-wrap gap-2">
+              <span className="inline-flex items-center gap-2 rounded-full border border-amber-100/22 bg-black/38 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.24em] text-amber-100 backdrop-blur-md">
+                <Landmark className="h-3.5 w-3.5" />
+                The Agora is open
+              </span>
+              <span className="inline-flex items-center gap-2 rounded-full border border-rose-100/18 bg-black/38 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-rose-100 backdrop-blur-md">
+                <Store className="h-3.5 w-3.5" />
+                First shop trading
+              </span>
+              <span className="inline-flex items-center gap-2 rounded-full border border-amber-100/18 bg-black/38 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-amber-50 backdrop-blur-md">
+                <Image
+                  src={WOLO_LOGO_SRC}
+                  alt="WOLO"
+                  width={22}
+                  height={22}
+                  className="h-[1.35rem] w-[1.35rem] object-contain drop-shadow-[0_3px_8px_rgba(245,158,11,0.34)]"
+                />
+                WOLO economy
+              </span>
+            </div>
+
+            <p className="mt-6 text-[10px] font-bold uppercase tracking-[0.42em] text-slate-400">
+              AoE2WAR · The Marketplace
+            </p>
           </div>
 
-          <p className="mt-7 text-[10px] font-bold uppercase tracking-[0.42em] text-slate-400">
-            AoE2WAR · The Marketplace
-          </p>
-          <h1 className="mt-4 max-w-3xl font-serif text-6xl font-semibold leading-[0.86] tracking-[-0.055em] text-white sm:text-8xl lg:text-[7.5rem]">
-            The kingdom trades here.
-          </h1>
-          <p className="mt-6 max-w-xl text-lg font-medium leading-8 text-slate-200 sm:text-xl">
-            Skills become shops. Identity becomes craft. Players build the
-            economy.
-          </p>
-          <p className="mt-3 max-w-lg text-sm leading-6 text-slate-400">
-            One living street for everything the AoE2 world can make for
-            itself.
-          </p>
-
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+          <div className="max-w-xl">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-amber-100/18 bg-black/55 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.22em] text-amber-50 backdrop-blur-lg">
+              <Image
+                src={WOLO_LOGO_SRC}
+                alt=""
+                width={24}
+                height={24}
+                className="h-5 w-5 object-contain"
+              />
+              {MARKETPLACE_CONFIG.avatarPriceWolo} WOLO founding commission
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row">
             <Link
               href="#stalls"
-              className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-amber-200 px-6 py-3 text-sm font-black text-slate-950 shadow-[0_18px_45px_rgba(251,191,36,0.18)] transition hover:-translate-y-0.5 hover:bg-amber-100"
+              className="market-gold-button group inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-black sm:min-h-14 sm:min-w-[13.5rem] sm:px-8 sm:text-base"
             >
               Walk the Agora
               <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
             </Link>
             <Link
               href="#open-shop"
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-white/16 bg-black/25 px-6 py-3 text-sm font-bold text-white backdrop-blur-md transition hover:-translate-y-0.5 hover:border-amber-100/35 hover:bg-amber-300/10"
+              className="market-iron-button inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-bold sm:min-h-14 sm:min-w-[13.5rem] sm:px-8 sm:text-base"
             >
               Open a shop
               <Plus className="h-4 w-4 text-amber-100" />
             </Link>
+            </div>
           </div>
         </div>
 
         <div className="absolute inset-x-4 bottom-4 hidden grid-cols-3 gap-2 sm:grid lg:inset-x-auto lg:bottom-6 lg:right-6 lg:w-[38rem]">
           {[
             ["01", "Founding shop"],
-            ["$100", "First commission"],
+            [`${MARKETPLACE_CONFIG.avatarPriceWolo} WOLO`, "First commission"],
             ["∞", "Room to build"],
           ].map(([value, label]) => (
             <div
@@ -152,23 +166,17 @@ export default function MarketPage() {
         id="stalls"
         className="scroll-mt-24 rounded-[2rem] border border-white/9 bg-[linear-gradient(145deg,rgba(13,18,31,0.94),rgba(3,6,14,0.96))] p-5 sm:p-8"
       >
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.34em] text-amber-100/65">
-              <Store className="h-4 w-4" />
-              Market street
-            </div>
-            <h2 className="mt-3 font-serif text-4xl font-semibold tracking-[-0.035em] sm:text-6xl">
-              Read every awning at a glance.
-            </h2>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.34em] text-amber-100/65">
+            <Store className="h-4 w-4" />
+            Market street
           </div>
-          <p className="max-w-sm text-sm leading-6 text-slate-400">
-            Identity today. Strategy beside it. The next useful craft gets the
-            next light.
-          </p>
+          <span className="rounded-full border border-white/8 bg-white/[0.025] px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500">
+            Three awnings
+          </span>
         </div>
 
-        <div className="mt-7 grid gap-4 lg:grid-cols-3">
+        <div className="mt-5 grid gap-4 lg:grid-cols-3">
           <Link
             href="#visage-forge"
             className="group relative flex min-h-[22rem] flex-col overflow-hidden rounded-[1.7rem] border border-rose-100/18 bg-[radial-gradient(circle_at_75%_15%,rgba(244,63,94,0.16),transparent_30%),linear-gradient(145deg,#26100f,#090b12_72%)] p-5 transition hover:-translate-y-1 hover:border-rose-100/35"
@@ -191,8 +199,15 @@ export default function MarketPage() {
                 Custom identities forged from your own words.
               </p>
               <div className="mt-5 flex items-center justify-between border-t border-white/10 pt-4">
-                <span className="text-sm font-black text-amber-100">
-                  ${MARKETPLACE_CONFIG.avatarPriceUsd} USD
+                <span className="inline-flex items-center gap-1.5 text-sm font-black text-amber-100">
+                  <Image
+                    src={WOLO_LOGO_SRC}
+                    alt=""
+                    width={22}
+                    height={22}
+                    className="h-5 w-5 object-contain"
+                  />
+                  {MARKETPLACE_CONFIG.avatarPriceWolo} WOLO
                 </span>
                 <span className="inline-flex items-center gap-2 text-sm font-bold text-white">
                   Enter forge
@@ -284,13 +299,9 @@ export default function MarketPage() {
             <h2 className="mt-3 font-serif text-5xl font-semibold leading-[0.94] tracking-[-0.045em] sm:text-7xl">
               The Visage Forge
             </h2>
-            <p className="mt-5 max-w-xl text-xl font-semibold leading-8 text-white">
-              Bring the name. Leave with the face that belongs to it.
-            </p>
-            <p className="mt-3 max-w-xl text-sm leading-6 text-slate-400">
-              This is not a portrait sitting. A Visagewright reads the identity
-              you want to inhabit—armor, colour, bearing, belt, atmosphere—and
-              forges a new profile avatar around it.
+            <p className="mt-4 max-w-xl text-sm leading-6 text-slate-400">
+              Armor, colour, bearing, belt, atmosphere—shaped into a new
+              profile identity.
             </p>
 
             <div className="mt-7 grid grid-cols-3 gap-3">
@@ -318,16 +329,27 @@ export default function MarketPage() {
 
             <div className="mt-6 rounded-[1.35rem] border border-amber-100/15 bg-amber-200/[0.055] p-4">
               <div className="flex items-center justify-between gap-4">
-                <div>
+                <div className="flex items-center gap-3">
+                  <Image
+                    src={WOLO_LOGO_SRC}
+                    alt="WOLO"
+                    width={48}
+                    height={48}
+                    className="h-11 w-11 object-contain drop-shadow-[0_8px_18px_rgba(245,158,11,0.26)]"
+                  />
+                  <div>
                   <div className="text-[9px] font-bold uppercase tracking-[0.22em] text-amber-100/55">
                     Custom identity
                   </div>
                   <div className="mt-1 text-3xl font-black text-white">
-                    ${MARKETPLACE_CONFIG.avatarPriceUsd}{" "}
-                    <span className="text-sm text-amber-100">USD</span>
+                    {MARKETPLACE_CONFIG.avatarPriceWolo}{" "}
+                    <span className="text-sm text-amber-100">WOLO</span>
+                  </div>
                   </div>
                 </div>
-                <BadgeDollarSign className="h-8 w-8 text-amber-100/75" />
+                <span className="rounded-full border border-white/8 bg-black/20 px-3 py-1 text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">
+                  Profile vault
+                </span>
               </div>
               <div className="mt-4 flex items-start gap-2 border-t border-amber-100/10 pt-4 text-xs leading-5 text-slate-400">
                 <PackageCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-200" />
@@ -375,7 +397,7 @@ export default function MarketPage() {
               <Sparkles className="h-4 w-4" />
               The next awning
             </div>
-            <h2 className="mt-4 max-w-3xl font-serif text-5xl font-semibold leading-[0.95] tracking-[-0.045em] sm:text-7xl">
+            <h2 className="mt-4 max-w-3xl bg-[linear-gradient(100deg,#f1dda5_0%,#aeb4bd_42%,#d0a74f_68%,#727983_100%)] bg-clip-text font-serif text-3xl font-medium leading-[1.02] tracking-[-0.035em] text-transparent sm:text-5xl">
               Build a business inside the kingdom.
             </h2>
             <p className="mt-5 max-w-2xl text-lg font-semibold leading-8 text-slate-200">
@@ -417,7 +439,7 @@ export default function MarketPage() {
           The first street of a larger world
         </p>
         <h2 className="mx-auto mt-3 max-w-3xl text-3xl font-black tracking-[-0.03em] sm:text-5xl">
-          The Visage Forge is one shop. The economy is everybody.
+          The Visage Forge is one shop. What can you bring?
         </h2>
       </section>
     </main>

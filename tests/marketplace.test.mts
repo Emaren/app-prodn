@@ -12,7 +12,7 @@ import {
 test("the founding market shop has a clear craft, price, and delivery rail", () => {
   assert.equal(MARKETPLACE_CONFIG.avatarShopName, "The Visage Forge");
   assert.equal(MARKETPLACE_CONFIG.avatarCraftName, "Visagewright");
-  assert.equal(MARKETPLACE_CONFIG.avatarPriceUsd, 100);
+  assert.equal(MARKETPLACE_CONFIG.avatarPriceWolo, 100);
   assert.equal(
     MARKETPLACE_CONFIG.avatarDeliveryLabel,
     "AoE2WAR profile avatar vault"

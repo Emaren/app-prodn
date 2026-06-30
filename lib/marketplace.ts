@@ -1,7 +1,7 @@
 export const MARKETPLACE_CONFIG = {
   avatarShopName: "The Visage Forge",
   avatarCraftName: "Visagewright",
-  avatarPriceUsd: 100,
+  avatarPriceWolo: 100,
   avatarDeliveryLabel: "AoE2WAR profile avatar vault",
 } as const;
 

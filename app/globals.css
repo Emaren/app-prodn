@@ -327,3 +327,138 @@ input[type="datetime-local"] {
   background: none !important;
   box-shadow: none !important;
 }
+
+/* AoE2WAR Marketplace: blackened Spartan gold and forged iron controls */
+.market-gold-button,
+.market-iron-button {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    filter 180ms ease;
+}
+
+.market-gold-button {
+  border: 1px solid rgba(244, 210, 128, 0.48);
+  color: #fff4d4;
+  background:
+    radial-gradient(circle at 50% -35%, rgba(255, 248, 210, 0.34), transparent 45%),
+    linear-gradient(
+      112deg,
+      #080808 0%,
+      #241a0b 14%,
+      #5a3b08 31%,
+      #a66a07 49%,
+      #d19a27 61%,
+      #79500b 76%,
+      #17130d 91%,
+      #070707 100%
+    );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.34),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.62),
+    inset 0 -12px 22px rgba(0, 0, 0, 0.22),
+    0 12px 30px rgba(0, 0, 0, 0.34),
+    0 0 24px rgba(190, 123, 16, 0.12);
+  text-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.75),
+    0 0 12px rgba(255, 226, 149, 0.12);
+}
+
+.market-gold-button::before,
+.market-iron-button::before {
+  content: "";
+  position: absolute;
+  left: 9%;
+  right: 9%;
+  top: 0;
+  height: 1px;
+  z-index: 2;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(226, 230, 235, 0.7) 28%,
+    rgba(255, 248, 214, 0.96) 50%,
+    rgba(185, 191, 201, 0.6) 72%,
+    transparent
+  );
+  pointer-events: none;
+}
+
+.market-gold-button::after {
+  content: "";
+  position: absolute;
+  top: -45%;
+  bottom: -45%;
+  left: -42%;
+  width: 26%;
+  z-index: 1;
+  transform: skewX(-24deg);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(229, 233, 239, 0.1),
+    rgba(255, 255, 255, 0.38),
+    rgba(255, 232, 165, 0.14),
+    transparent
+  );
+  opacity: 0.72;
+  transition: left 620ms cubic-bezier(0.2, 0.75, 0.2, 1);
+  pointer-events: none;
+}
+
+.market-gold-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  border-color: rgba(255, 230, 158, 0.72);
+  filter: brightness(1.06) saturate(1.04);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.42),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.58),
+    inset 0 -12px 22px rgba(0, 0, 0, 0.18),
+    0 16px 36px rgba(0, 0, 0, 0.4),
+    0 0 30px rgba(201, 138, 31, 0.18);
+}
+
+.market-gold-button:hover:not(:disabled)::after {
+  left: 118%;
+}
+
+.market-iron-button {
+  border: 1px solid rgba(203, 213, 225, 0.2);
+  color: #eef1f5;
+  background:
+    radial-gradient(circle at 50% -60%, rgba(255, 255, 255, 0.16), transparent 46%),
+    linear-gradient(118deg, #030405, #151719 35%, #3a3d40 52%, #141619 70%, #050505);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.72),
+    0 12px 28px rgba(0, 0, 0, 0.34);
+}
+
+.market-iron-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  border-color: rgba(240, 215, 151, 0.38);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.66),
+    0 15px 34px rgba(0, 0, 0, 0.42),
+    0 0 22px rgba(179, 126, 36, 0.1);
+}
+
+.market-gold-button:disabled,
+.market-iron-button:disabled {
+  cursor: not-allowed;
+  filter: grayscale(0.35);
+  opacity: 0.46;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .market-gold-button,
+  .market-iron-button,
+  .market-gold-button::after {
+    transition: none;
+  }
+}

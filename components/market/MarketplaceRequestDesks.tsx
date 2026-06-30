@@ -1,11 +1,11 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowRight,
   Check,
   CheckCircle2,
-  CircleDollarSign,
   Loader2,
   LockKeyhole,
   PackageCheck,
@@ -25,6 +25,8 @@ import {
   type AvatarArchetypeId,
   type BeltPlacementId,
 } from "@/lib/marketplace";
+
+const WOLO_LOGO_SRC = "/legacy/wolo-logo-transparent.webp";
 
 type MarketRequestReceipt = {
   ok: true;
@@ -128,7 +130,7 @@ export function AvatarCommissionScroll() {
         <div className="mt-7 grid gap-3 sm:grid-cols-2">
           <Link
             href={receipt.contactHref}
-            className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-emerald-200 px-5 text-sm font-black text-emerald-950 transition hover:bg-emerald-100"
+            className="market-gold-button group inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-5 text-sm font-black"
           >
             Open the private ledger
             <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
@@ -163,13 +165,22 @@ export function AvatarCommissionScroll() {
               Describe your next identity.
             </h3>
           </div>
-          <div className="rounded-xl border border-[#704318]/25 bg-[#f4e6c5]/55 px-3 py-2 text-right">
-            <div className="text-[9px] font-black uppercase tracking-[0.18em] text-[#825622]">
-              One avatar
-            </div>
-            <div className="mt-0.5 text-xl font-black">
-              ${MARKETPLACE_CONFIG.avatarPriceUsd}{" "}
-              <span className="text-[10px]">USD</span>
+          <div className="flex items-center gap-2 rounded-xl border border-[#704318]/25 bg-[#f4e6c5]/55 px-3 py-2">
+            <Image
+              src={WOLO_LOGO_SRC}
+              alt=""
+              width={34}
+              height={34}
+              className="h-8 w-8 object-contain drop-shadow-[0_4px_8px_rgba(92,53,8,0.24)]"
+            />
+            <div className="text-right">
+              <div className="text-[9px] font-black uppercase tracking-[0.18em] text-[#825622]">
+                One avatar
+              </div>
+              <div className="mt-0.5 text-xl font-black">
+                {MARKETPLACE_CONFIG.avatarPriceWolo}{" "}
+                <span className="text-[10px]">WOLO</span>
+              </div>
             </div>
           </div>
         </div>
@@ -270,7 +281,7 @@ export function AvatarCommissionScroll() {
             <button
               type="submit"
               disabled={busy || loading || brief.trim().length < 24}
-              className="group inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-[#2f1d0d] px-5 text-sm font-black text-[#f4dfb1] shadow-[0_18px_40px_rgba(62,35,12,0.2)] transition hover:-translate-y-0.5 hover:bg-[#1f1309] disabled:cursor-not-allowed disabled:opacity-45"
+              className="market-gold-button group inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full px-5 text-sm font-black"
             >
               {busy ? (
                 <>
@@ -279,6 +290,13 @@ export function AvatarCommissionScroll() {
                 </>
               ) : (
                 <>
+                  <Image
+                    src={WOLO_LOGO_SRC}
+                    alt=""
+                    width={24}
+                    height={24}
+                    className="h-5 w-5 object-contain"
+                  />
                   Send commission request
                   <Send className="h-4 w-4 transition group-hover:translate-x-1" />
                 </>
@@ -288,13 +306,12 @@ export function AvatarCommissionScroll() {
             <SteamLoginButton
               label="Sign in to write your scroll"
               returnTo="/market#visage-forge"
-              className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-[#2f1d0d] px-5 text-sm font-black text-[#f4dfb1] shadow-[0_18px_40px_rgba(62,35,12,0.2)] transition hover:-translate-y-0.5 hover:bg-[#1f1309]"
+              className="market-gold-button inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full px-5 text-sm font-black"
             />
           )}
           <div className="mt-3 flex items-start gap-2 text-[10px] font-semibold leading-4 text-[#6d4823]">
             <LockKeyhole className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            No charge is taken here. Scope and payment are confirmed privately
-            before the forge begins.
+            No WOLO moves here. Scope and payment are confirmed privately.
           </div>
         </div>
       </div>
@@ -339,7 +356,7 @@ export function OpenShopDesk() {
     return (
       <div className="flex min-h-[27rem] flex-col justify-between rounded-[1.7rem] border border-amber-100/22 bg-amber-200/[0.07] p-6">
         <div>
-          <div className="grid h-12 w-12 place-items-center rounded-[1rem] bg-amber-200 text-slate-950">
+          <div className="grid h-12 w-12 place-items-center rounded-[1rem] border border-amber-100/35 bg-[linear-gradient(145deg,#9d6a10,#2a1b08)] text-amber-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.26),0_12px_28px_rgba(0,0,0,0.28)]">
             <Check className="h-6 w-6" strokeWidth={3} />
           </div>
           <p className="mt-6 text-[10px] font-bold uppercase tracking-[0.28em] text-amber-100/60">
@@ -355,7 +372,7 @@ export function OpenShopDesk() {
         </div>
         <Link
           href={receipt.contactHref}
-          className="group mt-7 inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-amber-200 px-5 text-sm font-black text-slate-950 transition hover:bg-amber-100"
+          className="market-gold-button group mt-7 inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-5 text-sm font-black"
         >
           Open the private ledger
           <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
@@ -416,7 +433,7 @@ export function OpenShopDesk() {
             shopName.trim().length < 2 ||
             offer.trim().length < 20
           }
-          className="group mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-amber-200 px-5 text-sm font-black text-slate-950 transition hover:-translate-y-0.5 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-45"
+          className="market-gold-button group mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full px-5 text-sm font-black"
         >
           {busy ? (
             <>
@@ -425,6 +442,13 @@ export function OpenShopDesk() {
             </>
           ) : (
             <>
+              <Image
+                src={WOLO_LOGO_SRC}
+                alt=""
+                width={24}
+                height={24}
+                className="h-5 w-5 object-contain"
+              />
               Send shop proposal
               <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
             </>
@@ -434,11 +458,17 @@ export function OpenShopDesk() {
         <SteamLoginButton
           label="Sign in to propose a shop"
           returnTo="/market#open-shop"
-          className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-amber-200 px-5 text-sm font-black text-slate-950 transition hover:-translate-y-0.5 hover:bg-amber-100"
+          className="market-gold-button mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full px-5 text-sm font-black"
         />
       )}
       <div className="mt-3 flex items-center justify-center gap-2 text-[10px] font-semibold text-slate-500">
-        <CircleDollarSign className="h-3.5 w-3.5" />
+        <Image
+          src={WOLO_LOGO_SRC}
+          alt=""
+          width={18}
+          height={18}
+          className="h-4 w-4 object-contain opacity-65"
+        />
         Terms come after the idea earns a place.
       </div>
     </form>
@@ -450,7 +480,11 @@ export function MarketplaceDeliveryRail() {
     <div className="grid gap-3 sm:grid-cols-3">
       {[
         ["01", "Write the scroll", "Shape the identity in your own words."],
-        ["02", "Approve the forge", "Confirm scope and the $100 commission."],
+        [
+          "02",
+          "Approve the forge",
+          `Confirm scope and the ${MARKETPLACE_CONFIG.avatarPriceWolo} WOLO commission.`,
+        ],
         ["03", "Enter the vault", "Choose the finished avatar on your profile."],
       ].map(([step, title, detail]) => (
         <div

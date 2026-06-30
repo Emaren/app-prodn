@@ -110,7 +110,7 @@ Current strengths:
 - `/clans/mystikal` opens with clan chat, a founding roster, public/signed-in/clan-only post audiences, and a clan-admin hall-wide audience ceiling that also hides older broader posts
 - `/academy` is the cinematic front gate for serious strategy study, with Zodiac as the founding advisor and an open seat for future doctrines
 - `/zodiac` now leads with “Train Under Zodiac” and offers a real 100 WOLO first-lesson checkout: Keplr signs the direct advisor payment, the app verifies the `wolo-1` transfer, records a receipt, and opens the private Zodiac line
-- `/market` is the cinematic AoE2WAR Agora: The Visage Forge accepts signed-in $100 USD custom-avatar commission scrolls, sends them into Emaren’s private operator inbox, and promises delivery through the existing profile avatar vault; the open awning also accepts future shop proposals without pretending a payment or shop already exists
+- `/market` is the cinematic AoE2WAR Agora: The Visage Forge accepts signed-in 100 WOLO custom-avatar commission scrolls, sends them into Emaren’s private operator inbox, and promises delivery through the existing profile avatar vault; the open awning also accepts future shop proposals without pretending a payment or shop already exists
 - the site answers “what else can I do here?” better than before
 - overall product identity is stronger than the earlier explainer-heavy versions
 
