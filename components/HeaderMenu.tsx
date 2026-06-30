@@ -88,6 +88,7 @@ export default function HeaderMenu({
       { href: "/staking", label: "Staking", icon: HandCoins, featured: true },
       { href: "/bets", label: "Bets", icon: BadgeDollarSign, featured: true },
       { href: "/kingdom", label: "Kingdom", icon: Castle, featured: true },
+      { href: "/clans", label: "Clans", icon: Users, featured: true },
       { href: "/watch", label: "Watcher / Streaming", icon: Radio, featured: true },
       { href: "/admin/user-list", label: "Admin", icon: Shield, adminOnly: true, featured: true },
       {

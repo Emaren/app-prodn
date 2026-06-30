@@ -55,7 +55,7 @@ const PAGE_HEADINGS: ReadonlyArray<{ prefix: string; title: string }> = [
   { prefix: "/staking/stakers", title: "Staking Hall" },
   { prefix: "/staking", title: "WOLO Staking" },
   { prefix: "/national-champions", title: "National Champions" },
-  { prefix: "/clans", title: "Clans" },
+  { prefix: "/clans", title: "Clan Halls" },
   { prefix: "/academy", title: "Academy" },
   { prefix: "/market", title: "Market" },
   { prefix: "/champions", title: "Championship Belts" },

@@ -82,6 +82,8 @@ model User {
   eventTilesAsPlayerOne          EventTile[]                       @relation("EventTilePlayerOne")
   eventTilesAsPlayerTwo          EventTile[]                       @relation("EventTilePlayerTwo")
   eventTilesAsCommissioner       EventTile[]                       @relation("EventTileCommissioner")
+  clanMemberships                ClanMember[]
+  clanMessages                   ClanMessage[]
 
   @@map("users")
 }
@@ -674,6 +676,60 @@ model ChatMessageGuestReaction {
   @@index([messageId, createdAt], map: "ix_chat_message_guest_reactions_message_id")
   @@index([guestSessionId, createdAt], map: "ix_chat_message_guest_reactions_guest_session_id")
   @@map("chat_message_guest_reactions")
+}
+
+model Clan {
+  id                 Int      @id @default(autoincrement())
+  slug               String   @unique @db.VarChar(80)
+  name               String   @db.VarChar(120)
+  tagline            String?  @db.VarChar(180)
+  description        String?  @db.Text
+  crestUrl           String?  @map("crest_url") @db.VarChar(500)
+  status             String   @default("active") @db.VarChar(20)
+  chatAudiencePolicy String   @default("public") @map("chat_audience_policy") @db.VarChar(20)
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  members  ClanMember[]
+  messages ClanMessage[]
+
+  @@index([status, name], map: "ix_clans_status_name")
+  @@map("clans")
+}
+
+model ClanMember {
+  id       Int      @id @default(autoincrement())
+  clanId   Int      @map("clan_id")
+  userId   Int      @map("user_id")
+  role     String   @default("member") @db.VarChar(20)
+  status   String   @default("active") @db.VarChar(20)
+  joinedAt DateTime @default(now()) @map("joined_at") @db.Timestamp(6)
+
+  clan Clan @relation(fields: [clanId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([clanId, userId], map: "uq_clan_members_clan_user")
+  @@index([userId, status], map: "ix_clan_members_user_status")
+  @@index([clanId, status, role], map: "ix_clan_members_clan_status_role")
+  @@map("clan_members")
+}
+
+model ClanMessage {
+  id           Int      @id @default(autoincrement())
+  clanId       Int      @map("clan_id")
+  authorUserId Int      @map("author_user_id")
+  body         String   @db.VarChar(1200)
+  audience     String   @default("clan") @db.VarChar(20)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  clan  Clan @relation(fields: [clanId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  author User @relation(fields: [authorUserId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([clanId, createdAt], map: "ix_clan_messages_clan_created_at")
+  @@index([clanId, audience, createdAt], map: "ix_clan_messages_clan_audience_created")
+  @@index([authorUserId, createdAt], map: "ix_clan_messages_author_created")
+  @@map("clan_messages")
 }
 
 model LiveTickerMessage {

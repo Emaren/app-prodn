@@ -11,7 +11,7 @@ The app is no longer just a replay/stat shell. It now has a real public product 
 - next tournament panel is shipped and usable
 - players, rivalries, requests, `$WOLO`, and live-game surfaces are all real navigation destinations
 - `/bets`, `/war-chest`, and tournament detail pages are now real public destinations too
-- `/kingdom`, `/champions`, `/national-champions`, and `/forum` are now public AoE2WAR-style league/community destinations, with `/belts`, `/nations`, and `/realm` redirecting into them
+- `/kingdom`, `/champions`, `/national-champions`, `/clans`, and `/forum` are now public AoE2WAR-style league/community destinations, with `/belts`, `/nations`, and `/realm` redirecting into them
 - live replay ingestion can feed visible match outcomes back into the product without the old obviously-broken feel
 
 ## Strongest shipped modules
@@ -24,7 +24,7 @@ Current strengths:
 - every major route has a page-specific header title for orientation
 - desktop navigation is a compact premium command bar with active-route treatment
 - mobile navigation uses a single-row horizontal command rail plus a polished bottom quick-command bar
-- `/kingdom` is included in the castle menu alongside Champions, Nations, and Forum
+- `/kingdom` is included in the castle menu alongside Champions, Nations, Clans, and Forum
 - the castle menu opens by hover/focus on desktop and as an unclipped touch sheet on mobile
 - the account menu renders as an unclipped, viewport-bounded command deck on desktop and mobile
 - `/lobby` now feels like a real destination, not filler
@@ -106,6 +106,8 @@ Current strengths:
 - `/champions` is the championship-belt surface for world, chaos, tag, women, ELO, and designation titles
 - `/national-champions` is the national-beacon surface with claimed and vacant country titles
 - `/forum` is a public War Room shell for community energy, featured threads, champion activity, and WOLO-adjacent calls to action
+- `/clans` is the public clan directory, launching with an equal-weight Mystikal crest and Add Your Clan invitation
+- `/clans/mystikal` opens with clan chat, a founding roster, public/signed-in/clan-only post audiences, and a clan-admin hall-wide audience ceiling that also hides older broader posts
 - the site answers “what else can I do here?” better than before
 - overall product identity is stronger than the earlier explainer-heavy versions
 

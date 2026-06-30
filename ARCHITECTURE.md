@@ -6,7 +6,7 @@
 
 It owns:
 - community lobby and homepage presentation
-- leaderboard, players, rivalries, live-games, tournaments, requests, `$WOLO`, profile, inbox, and admin pages
+- leaderboard, players, rivalries, live-games, clans, tournaments, requests, `$WOLO`, profile, inbox, and admin pages
 - same-origin browser API routes for auth/session-gated actions
 - Prisma-backed user, inbox, badge, gift, request, and appearance state
 - server-side proxying to `api-prodn` where game/replay data still lives there
@@ -45,6 +45,8 @@ Important public surfaces include:
 - `app/players/[uid]/page.tsx`
 - `app/players/by-name/[name]/page.tsx`
 - `app/rivalries/page.tsx`
+- `app/clans/page.tsx`
+- `app/clans/[slug]/page.tsx`
 - `app/contact-emaren/page.tsx`
 - `app/requests/page.tsx`
 - `app/war-chest/page.tsx`
@@ -62,6 +64,7 @@ Live-board presentation is owned by `components/live/LiveGamesBoard.tsx`, with s
 
 Key browser-facing routes include:
 - `app/api/lobby/route.ts`
+- `app/api/clans/[slug]/route.ts`
 - `app/api/lobby/stream/route.ts`
 - `app/api/bets/route.ts`
 - `app/api/bets/wager/route.ts`
@@ -123,7 +126,7 @@ The global header is the shared route-orientation layer:
 - the AOE2WAR logo always returns to `/`
 - each major route resolves to a page-specific header title
 - primary destinations stay in the compact command row
-- the castle menu owns `/kingdom`, `/champions`, `/national-champions`, and `/forum`
+- the castle menu owns `/kingdom`, `/champions`, `/national-champions`, `/clans`, and `/forum`
 - desktop castle navigation opens on hover/focus without requiring a locking click
 - mobile castle and account menus render through document-level sheets so header blur/stacking contexts cannot clip them
 - the account menu is scrollable and viewport-bounded on both desktop and mobile
@@ -208,6 +211,19 @@ Composer UX and text-length rules are part of this contract:
 - lobby chat text is capped by `LOBBY_MESSAGE_MAX_CHARS` in `lib/lobby.ts`
 - challenge notes are capped by `CHALLENGE_NOTE_MAX_CHARS` in `lib/challengeConfig.ts`
 - UI inputs should enforce the same caps and show live remaining/used count so users do not lose text to backend truncation
+
+### Clan halls
+
+Clan identity and chat are app-owned community behavior. `/clans` is the public
+directory and `/clans/[slug]` is the clan hall. The first seeded hall is
+Mystikal.
+
+`Clan`, `ClanMember`, and `ClanMessage` store the hall, active roster, roles,
+and posts. Each message uses one of three audiences: public, signed-in AoE2WAR
+users, or active clan members. `chat_audience_policy` is the clan-admin ceiling;
+tightening it hides previously stored broader posts without rewriting them.
+Site admins may manage the founding hall. Do not move this visibility policy
+into lobby chat, which remains a public-room product.
 
 ### Appearance / theme state
 

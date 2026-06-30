@@ -4,7 +4,7 @@ Production Next.js frontend for AoE2HDBets.
 
 This is the public product shell users actually feel.
 
-It currently owns the premium lobby/community surface, leaderboard presentation, players/rivalries/live-games routes, requests/inbox/admin flows, `$WOLO` product UI, and same-origin browser API routes that enforce session/admin behavior before proxying selected calls to `api-prodn`.
+It currently owns the premium lobby/community surface, leaderboard presentation, players/rivalries/live-games/clan routes, requests/inbox/admin flows, `$WOLO` product UI, and same-origin browser API routes that enforce session/admin behavior before proxying selected calls to `api-prodn`.
 
 ## Canonical docs
 
@@ -24,7 +24,8 @@ It currently owns the premium lobby/community surface, leaderboard presentation,
 - Advanced `/lobby` arena stack with the moving live ticker, Watch & Chat hero/comments rail, compact hero bet slip, compact WOLO swap tile, and the preserved Basic/Advanced/Extreme community lobby toggle. Extreme owns the widened lobby frame, oversized Featured Warriors stage, and side-by-side leaderboard contender hero.
 - Claimed player profiles default to the Advanced command center; unclaimed replay-built profiles default to the classic Basic claim page, and both can toggle Basic/Advanced
 - Advanced player profiles include lazy match archive, watcher proof, form/rivalry diagnostics, resource emblems, AI Scribe/Grimer readout, stream signal, and premium `$WOLO`/staking stats
-- The public Kingdom spine includes `/kingdom`, `/champions`, `/national-champions`, and `/forum`, with the legacy `/belts`, `/nations`, and `/realm` paths redirecting into the new route names
+- The public Kingdom spine includes `/kingdom`, `/champions`, `/national-champions`, `/clans`, and `/forum`, with the legacy `/belts`, `/nations`, and `/realm` paths redirecting into the new route names
+- `/clans` launches with the Mystikal Clan hall and an equal-weight add-your-clan invitation; `/clans/[slug]` owns clan identity, roster, and audience-aware chat
 - `/champions` owns the app-side championship title economy: podium belts, tag titles, national titles, ELO titles, special designations, live custody/bounty overlays, challenge links, and detail pages
 - `/admin/trophies` is the persistent War Trophy command center for definitions, holder/Guardian custody, challenges, replay proof, dry-run settlement, payouts, NFT intents, settings, and audit history
 - `/admin/events` is the Event Studio for the one active published cinematic EventTile shared by `/` and `/lobby`; the current Wolomania Jim / Julio / Commissioner / belt composition remains the seeded default and hard production fallback
@@ -40,6 +41,7 @@ Current notable product routes include:
 - `/kingdom`
 - `/champions`
 - `/national-champions`
+- `/clans`
 - `/forum`
 - `/live-games`
 - `/players`
