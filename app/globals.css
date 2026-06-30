@@ -462,3 +462,19 @@ input[type="datetime-local"] {
     transition: none;
   }
 }
+
+/* Replay detail B/A/E shell width override.
+   The app shell defaults many pages to max-w-6xl; this route needs a wider archive room. */
+main:has(> .aoe2war-replay-detail-shell) {
+  max-width: min(calc(100vw - 1.5rem), 96rem) !important;
+  width: 100%;
+  overflow-x: clip;
+}
+
+main:has(> .aoe2war-replay-detail-shell[data-replay-detail-view="basic"]) {
+  max-width: min(calc(100vw - 1.5rem), 76rem) !important;
+}
+
+main:has(> .aoe2war-replay-detail-shell[data-replay-detail-view="extreme"]) {
+  max-width: min(calc(100vw - 0.75rem), 118rem) !important;
+}

@@ -162,17 +162,19 @@ export default async function GameStatsDetailPage({
       ? game.key_events
       : {};
   const keyEventRecord = keyEvents as Record<string, unknown>;
+  const publicKeyEventRecord = { ...keyEventRecord };
+  delete publicKeyEventRecord.chat_preview;
+  delete publicKeyEventRecord.chatPreview;
+  const publicKeyEvents =
+    keyEvents && typeof keyEvents === "object" && !Array.isArray(keyEvents)
+      ? publicKeyEventRecord
+      : keyEvents;
   const settingsSummary =
     keyEventRecord.settings &&
     typeof keyEventRecord.settings === "object" &&
     !Array.isArray(keyEventRecord.settings)
       ? (keyEventRecord.settings as Record<string, unknown>)
       : {};
-  const chatPreview = Array.isArray(keyEventRecord.chat_preview)
-    ? keyEventRecord.chat_preview.filter(
-        (entry): entry is Record<string, unknown> => Boolean(entry) && typeof entry === "object"
-      )
-    : [];
   const outcomeLabel = outcomeBadgeLabel(game.parse_reason, game.winner);
   const suppressPlayerWinnerState = game.parse_reason === "hd_early_exit_under_60s";
   const rivalryMatchCountLabel = rivalrySummary
@@ -265,10 +267,6 @@ export default async function GameStatsDetailPage({
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <div className="text-[11px] uppercase tracking-[0.35em] text-white/45">Rivalry Score</div>
-                  <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
-                    This is the first thing most people want: the replay-backed series record between
-                    these two players.
-                  </p>
                 </div>
                 {rivalryMatchCountLabel ? <Tag>{rivalryMatchCountLabel}</Tag> : null}
               </div>
@@ -424,31 +422,6 @@ export default async function GameStatsDetailPage({
                 </div>
               ) : null}
 
-              {chatPreview.length > 0 ? (
-                <div>
-                  <div className="text-xs uppercase tracking-[0.25em] text-slate-500">Chat Preview</div>
-                  <div className="mt-3 space-y-2">
-                    {chatPreview.map((entry, index) => (
-                      <div
-                        key={`${String(entry.player_number || "system")}-${index}`}
-                        className="rounded-2xl border border-white/8 bg-white/5 px-4 py-3 text-sm text-slate-200"
-                      >
-                        <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.2em] text-slate-500">
-                          <span>{formatPrimitive(entry.origination)}</span>
-                          <span>{formatPrimitive(entry.type)}</span>
-                          {entry.timestamp_seconds !== null && entry.timestamp_seconds !== undefined ? (
-                            <span>{formatDurationLabel(Number(entry.timestamp_seconds))}</span>
-                          ) : null}
-                        </div>
-                        <div className="mt-2 break-words text-sm text-slate-200 [overflow-wrap:anywhere]">
-                          {formatPrimitive(entry.message)}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-
               <div>
                 <div className="text-xs uppercase tracking-[0.25em] text-slate-500">Event Types</div>
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -460,7 +433,7 @@ export default async function GameStatsDetailPage({
                 </div>
               </div>
 
-              <JsonPanel title="Key Events JSON" value={keyEvents} />
+              <JsonPanel title="Key Events JSON" value={publicKeyEvents} />
               <JsonPanel title="Map JSON" value={game.map} />
             </div>
           </Panel>
@@ -607,7 +580,7 @@ function RivalryHeroSide({
         {align === "left" ? "Left side" : "Right side"}
       </div>
       <div className="mt-2 break-words text-2xl font-semibold text-white">{name}</div>
-      <div className="mt-3 text-sm text-slate-300">{wins} wins in stored finals</div>
+      <div className="mt-3 text-sm text-slate-300">{wins} {wins === 1 ? "win" : "wins"} in stored finals</div>
     </div>
   );
 }
