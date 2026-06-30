@@ -44,9 +44,9 @@ const GRIMER_UID = "aoe2hd_ai_grimer";
 const MOOSE_UID = "aoe2hd-moose";
 
 const FEATURED_WARRIOR_SLOT_COUNT = 4;
-const FEATURED_WARRIOR_ROTATE_MS = 5200;
-const FEATURED_WARRIOR_FADE_MS = 680;
-const FEATURED_WARRIOR_HOLD_MS = 140;
+const FEATURED_WARRIOR_ROTATE_MS = 4600;
+const FEATURED_WARRIOR_FADE_MS = 720;
+const FEATURED_WARRIOR_HOLD_MS = 180;
 
 const JULIO_FEATURED_SUBTITLE_LINES = [
   {
@@ -260,7 +260,6 @@ function buildFeaturedWarriorPool(entries: LobbyLeaderboardEntry[]) {
 }
 
 
-const FEATURED_WARRIOR_MIN_REAL_AVATARS = 3;
 
 const FEATURED_WARRIOR_REAL_AVATAR_KEYS = new Set([
   "premium:zodiac",
@@ -320,42 +319,6 @@ function dedupeFeaturedWarriors(pool: FeaturedWarrior[]) {
   return unique;
 }
 
-function selectFeaturedWarriorLineup(pool: FeaturedWarrior[], current: FeaturedWarrior[] = []) {
-  const combined = dedupeFeaturedWarriors([...current, ...pool, ...FEATURED_WARRIOR_FALLBACKS]);
-  const real = combined.filter(featuredWarriorHasRealAvatar);
-  const placeholder = combined.filter((warrior) => !featuredWarriorHasRealAvatar(warrior));
-
-  const selected: FeaturedWarrior[] = [];
-
-  for (const warrior of real) {
-    if (selected.length >= FEATURED_WARRIOR_MIN_REAL_AVATARS) break;
-    selected.push(warrior);
-  }
-
-  for (const warrior of [...combined, ...real, ...placeholder]) {
-    if (selected.length >= FEATURED_WARRIOR_SLOT_COUNT) break;
-    if (selected.some((candidate) => candidate.key === warrior.key)) continue;
-
-    const next = [...selected, warrior];
-    const placeholderCount = next.filter((candidate) => !featuredWarriorHasRealAvatar(candidate)).length;
-
-    if (placeholderCount <= FEATURED_WARRIOR_SLOT_COUNT - FEATURED_WARRIOR_MIN_REAL_AVATARS) {
-      selected.push(warrior);
-    }
-  }
-
-  for (const warrior of combined) {
-    if (selected.length >= FEATURED_WARRIOR_SLOT_COUNT) break;
-    if (selected.some((candidate) => candidate.key === warrior.key)) continue;
-    selected.push(warrior);
-  }
-
-  return selected.slice(0, FEATURED_WARRIOR_SLOT_COUNT);
-}
-
-function featuredWarriorLineupHasRealFloor(lineup: FeaturedWarrior[]) {
-  return lineup.filter(featuredWarriorHasRealAvatar).length >= FEATURED_WARRIOR_MIN_REAL_AVATARS;
-}
 
 
 function deterministicFeaturedWarriorOpening(pool: FeaturedWarrior[]) {
@@ -483,35 +446,46 @@ function preloadFeaturedWarriorImages(pool: FeaturedWarrior[]) {
 
 
 
+
 function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
-  const openingLineup = useMemo(() => deterministicFeaturedWarriorOpening(pool), [pool]);
+  const poolSignature = useMemo(
+    () => pool.map((warrior) => `${warrior.key}:${featuredWarriorImageSrc(warrior)}`).join("|"),
+    [pool]
+  );
+
+  const openingLineup = deterministicFeaturedWarriorOpening(pool);
   const [visibleWarriors, setVisibleWarriors] = useState(openingLineup);
   const [featuredWarriorsReady, setFeaturedWarriorsReady] = useState(false);
   const [fadingSlot, setFadingSlot] = useState<number | null>(null);
 
+  const poolRef = useRef<FeaturedWarrior[]>(pool);
   const visibleWarriorsRef = useRef<FeaturedWarrior[]>(openingLineup);
   const lastChangedSlotRef = useRef<number | null>(null);
-  const slotBagRef = useRef<number[]>([]);
   const lastWarriorBySlotRef = useRef<Record<number, string | null>>({});
+  const slotCursorRef = useRef(0);
   const transitionInFlightRef = useRef(false);
-  const timerRefs = useRef<number[]>([]);
+  const timersRef = useRef<number[]>([]);
 
   const clearTimers = () => {
-    for (const timer of timerRefs.current) {
+    for (const timer of timersRef.current) {
       window.clearTimeout(timer);
     }
-    timerRefs.current = [];
+    timersRef.current = [];
   };
 
-  const scheduleTimer = (callback: () => void, delay: number) => {
+  const later = (callback: () => void, delay: number) => {
     const timer = window.setTimeout(() => {
-      timerRefs.current = timerRefs.current.filter((value) => value !== timer);
+      timersRef.current = timersRef.current.filter((candidate) => candidate !== timer);
       callback();
     }, delay);
 
-    timerRefs.current.push(timer);
+    timersRef.current.push(timer);
     return timer;
   };
+
+  useEffect(() => {
+    poolRef.current = pool;
+  }, [pool]);
 
   useEffect(() => {
     visibleWarriorsRef.current = visibleWarriors;
@@ -525,23 +499,21 @@ function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
     setFadingSlot(null);
     setFeaturedWarriorsReady(false);
 
-    const startingLineup = deterministicFeaturedWarriorOpening(pool);
-    startingLineup.forEach((warrior, index) => {
+    const initialLineup = deterministicFeaturedWarriorOpening(poolRef.current);
+    initialLineup.forEach((warrior, index) => {
       lastWarriorBySlotRef.current[index] = warrior.key;
     });
 
-    visibleWarriorsRef.current = startingLineup;
-    setVisibleWarriors(startingLineup);
-    preloadFeaturedWarriorImages(pool);
+    visibleWarriorsRef.current = initialLineup;
+    setVisibleWarriors(initialLineup);
+    preloadFeaturedWarriorImages(poolRef.current);
 
-    void decodeFeaturedWarriorLineup(startingLineup).then(() => {
+    void decodeFeaturedWarriorLineup(initialLineup).then(() => {
       if (disposed) return;
 
       window.requestAnimationFrame(() => {
         window.requestAnimationFrame(() => {
-          if (!disposed) {
-            setFeaturedWarriorsReady(true);
-          }
+          if (!disposed) setFeaturedWarriorsReady(true);
         });
       });
     });
@@ -551,65 +523,64 @@ function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
       clearTimers();
       transitionInFlightRef.current = false;
     };
-  }, [pool]);
+  }, [poolSignature]);
 
   useEffect(() => {
-    if (paused || !featuredWarriorsReady || pool.length <= FEATURED_WARRIOR_SLOT_COUNT) {
+    if (paused || !featuredWarriorsReady || poolRef.current.length <= FEATURED_WARRIOR_SLOT_COUNT) {
       return;
     }
 
     let disposed = false;
 
-    const chooseNextWarrior = () => {
-      const current = visibleWarriorsRef.current;
-      if (current.length < FEATURED_WARRIOR_SLOT_COUNT) {
-        return null;
-      }
+    const pickSlot = () => {
+      const slots = Array.from({ length: FEATURED_WARRIOR_SLOT_COUNT }, (_, index) => index);
+      const ordered = slots.filter((slot) => slot !== lastChangedSlotRef.current);
 
-      if (slotBagRef.current.length === 0) {
-        slotBagRef.current = Array.from({ length: FEATURED_WARRIOR_SLOT_COUNT }, (_, index) => index).filter(
-          (slot) => slot !== lastChangedSlotRef.current
-        );
-      }
-
-      const bagIndex = Math.floor(Math.random() * slotBagRef.current.length);
-      const [slot] = slotBagRef.current.splice(bagIndex, 1);
+      const slot = ordered[slotCursorRef.current % ordered.length] ?? 0;
+      slotCursorRef.current += 1;
       lastChangedSlotRef.current = slot;
 
+      return slot;
+    };
+
+    const pickNextWarrior = (slot: number) => {
+      const current = visibleWarriorsRef.current;
+      const activePool = poolRef.current;
       const outgoing = current[slot];
-      const outgoingName = outgoing?.name;
+      const currentKeys = new Set(current.map((warrior) => warrior.key));
       const previousSlotKey = lastWarriorBySlotRef.current[slot];
-      const currentNames = new Set(current.map((warrior) => warrior.name));
 
-      const outsideCurrent = pool.filter(
-        (warrior) => !currentNames.has(warrior.name) && warrior.key !== previousSlotKey
+      const freshCandidates = activePool.filter(
+        (warrior) => !currentKeys.has(warrior.key) && warrior.key !== previousSlotKey
       );
-      const fallbackPool = pool.filter(
-        (warrior) => warrior.name !== outgoingName && warrior.key !== previousSlotKey
-      );
-      const baseCandidatePool = outsideCurrent.length > 0 ? outsideCurrent : fallbackPool;
-      const realCandidatePool = baseCandidatePool.filter(featuredWarriorHasRealAvatar);
-      const candidatePool = realCandidatePool.length > 0 ? realCandidatePool : baseCandidatePool;
-      const nextWarrior = candidatePool[Math.floor(Math.random() * candidatePool.length)];
 
-      if (!nextWarrior || nextWarrior.key === outgoing?.key) {
+      const fallbackCandidates = activePool.filter(
+        (warrior) => warrior.key !== outgoing?.key && warrior.key !== previousSlotKey
+      );
+
+      const candidates = freshCandidates.length > 0 ? freshCandidates : fallbackCandidates;
+      const realCandidates = candidates.filter(featuredWarriorHasRealAvatar);
+      const finalCandidates = realCandidates.length > 0 ? realCandidates : candidates;
+
+      if (finalCandidates.length === 0) {
         return null;
       }
 
-      return { slot, nextWarrior };
+      return finalCandidates[Math.floor(Math.random() * finalCandidates.length)] ?? null;
     };
 
-    const rotate = () => {
+    const rotateOnce = () => {
       if (disposed || transitionInFlightRef.current) {
         return;
       }
 
-      const choice = chooseNextWarrior();
-      if (!choice) {
+      const slot = pickSlot();
+      const nextWarrior = pickNextWarrior(slot);
+
+      if (!nextWarrior) {
         return;
       }
 
-      const { slot, nextWarrior } = choice;
       transitionInFlightRef.current = true;
 
       void decodeFeaturedWarriorImage(featuredWarriorImageSrc(nextWarrior)).then(() => {
@@ -620,58 +591,54 @@ function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
 
         setFadingSlot(slot);
 
-        window.requestAnimationFrame(() => {
-          window.requestAnimationFrame(() => {
+        later(() => {
+          if (disposed) {
+            transitionInFlightRef.current = false;
+            return;
+          }
+
+          setVisibleWarriors((latest) => {
+            const next = [...latest];
+            next[slot] = nextWarrior;
+            lastWarriorBySlotRef.current[slot] = nextWarrior.key;
+            visibleWarriorsRef.current = next;
+            return next;
+          });
+
+          later(() => {
             if (disposed) {
               transitionInFlightRef.current = false;
               return;
             }
 
-            scheduleTimer(() => {
-              setVisibleWarriors((latest) => {
-                const next = [...latest];
-                next[slot] = nextWarrior;
-                lastWarriorBySlotRef.current[slot] = nextWarrior.key;
+            window.requestAnimationFrame(() => {
+              window.requestAnimationFrame(() => {
+                if (disposed) {
+                  transitionInFlightRef.current = false;
+                  return;
+                }
 
-                const finalLineup = featuredWarriorLineupHasRealFloor(next)
-                  ? next
-                  : selectFeaturedWarriorLineup(pool, next);
+                setFadingSlot(null);
 
-                visibleWarriorsRef.current = finalLineup;
-                return finalLineup;
+                later(() => {
+                  transitionInFlightRef.current = false;
+                  later(rotateOnce, FEATURED_WARRIOR_ROTATE_MS);
+                }, FEATURED_WARRIOR_FADE_MS + 120);
               });
-
-              scheduleTimer(() => {
-                window.requestAnimationFrame(() => {
-                  window.requestAnimationFrame(() => {
-                    if (disposed) {
-                      transitionInFlightRef.current = false;
-                      return;
-                    }
-
-                    setFadingSlot(null);
-
-                    scheduleTimer(() => {
-                      transitionInFlightRef.current = false;
-                    }, FEATURED_WARRIOR_FADE_MS + 80);
-                  });
-                });
-              }, FEATURED_WARRIOR_HOLD_MS);
-            }, FEATURED_WARRIOR_FADE_MS + 80);
-          });
-        });
+            });
+          }, FEATURED_WARRIOR_HOLD_MS);
+        }, FEATURED_WARRIOR_FADE_MS);
       });
     };
 
-    const interval = window.setInterval(rotate, FEATURED_WARRIOR_ROTATE_MS);
+    later(rotateOnce, FEATURED_WARRIOR_ROTATE_MS);
 
     return () => {
       disposed = true;
-      window.clearInterval(interval);
       clearTimers();
       transitionInFlightRef.current = false;
     };
-  }, [paused, pool, featuredWarriorsReady]);
+  }, [paused, featuredWarriorsReady, poolSignature]);
 
   return { visibleWarriors, fadingSlot };
 }
@@ -682,14 +649,11 @@ type HomePageClientProps = {
 };
 
 function AdvancedFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] }) {
-  const [paused, setPaused] = useState(false);
-  const { visibleWarriors, fadingSlot } = useRotatingFeaturedWarriors(warriors, paused);
+  const { visibleWarriors, fadingSlot } = useRotatingFeaturedWarriors(warriors, false);
 
   return (
     <section
       className="relative px-4 py-5 sm:px-5 bg-transparent overflow-visible shadow-none border-0 ring-0 rounded-none"
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
     >
       <div className="pointer-events-none absolute inset-x-10 bottom-0 h-px bg-gradient-to-r from-transparent via-amber-200/28 to-transparent" />
       <div className="grid gap-4 lg:grid-cols-[minmax(9rem,0.42fr)_minmax(0,1fr)_minmax(8rem,0.35fr)] lg:items-center">
@@ -707,7 +671,7 @@ function AdvancedFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] })
             <Link
               key={index}
               href={warrior.href}
-              className={`block group relative min-h-[16rem] overflow-visible transform-gpu will-change-[opacity,filter] transition-[opacity,filter] ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 ${fadingSlot === index ? "opacity-0 blur-[1px]" : "opacity-100 blur-0"}`}
+              className={`block group relative min-h-[16rem] overflow-visible transform-gpu will-change-[opacity,filter] transition-[opacity,filter] ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 ${fadingSlot === index ? "opacity-0 blur-sm" : "opacity-100 blur-0"}`}
               style={{ transitionDuration: `${FEATURED_WARRIOR_FADE_MS}ms` }}
             >
               <Image
@@ -776,14 +740,11 @@ function FeaturedWarriorSubtitle({ warrior }: { warrior: FeaturedWarrior }) {
 }
 
 function ExtremeFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] }) {
-  const [paused, setPaused] = useState(false);
-  const { visibleWarriors, fadingSlot } = useRotatingFeaturedWarriors(warriors, paused);
+  const { visibleWarriors, fadingSlot } = useRotatingFeaturedWarriors(warriors, false);
 
   return (
     <section
       className="relative rounded-none px-5 pb-4 pt-8 shadow-[0_34px_120px_rgba(0,0,0,0.38)] sm:px-7 lg:px-8"
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
     >
       <div className="pointer-events-none absolute inset-0 overflow-visible rounded-none">
         <div className="absolute inset-x-10 bottom-0 h-px bg-gradient-to-r from-transparent via-amber-200/30 to-transparent" />
@@ -810,7 +771,7 @@ function ExtremeFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] }) 
               <Link
                 key={index}
                 href={warrior.href}
-                className={`block group relative min-h-[16rem] overflow-visible transform-gpu will-change-[opacity,filter] transition-[opacity,filter] ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 ${fadingSlot === index ? "opacity-0 blur-[1px]" : "opacity-100 blur-0"}`}
+                className={`block group relative min-h-[16rem] overflow-visible transform-gpu will-change-[opacity,filter] transition-[opacity,filter] ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 ${fadingSlot === index ? "opacity-0 blur-sm" : "opacity-100 blur-0"}`}
                 style={{ transitionDuration: `${FEATURED_WARRIOR_FADE_MS}ms` }}
               >
                 <div className="absolute inset-x-0 bottom-2 top-7 overflow-hidden rounded-[1.35rem] border border-amber-100/12 bg-slate-950/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.045),0_18px_60px_rgba(0,0,0,0.24)] transition group-hover:border-amber-200/26">
