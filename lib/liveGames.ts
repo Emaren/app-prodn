@@ -18,7 +18,6 @@ const BROWSER_STREAM_STALE_MS = 120_000;
 const BROWSER_STREAM_ARCHIVE_MS = 6 * 60 * 60 * 1000;
 const EXTERNAL_STREAM_STALE_MS = 20 * 60 * 1000;
 const LIVE_GAMES_RECENT_MATCH_LIMIT = 24;
-const LIVE_GAMES_RECENT_OUTCOME_LIMIT = 3;
 const LIVE_GAMES_COMPLETED_SESSION_DEPTH = 6;
 
 export type LiveGamesSummary = {
@@ -43,17 +42,42 @@ export type LiveGamesSnapshot = LiveGamesSummary & {
   recentMatches: LobbyMatchRow[];
 };
 
-async function loadRecentMatches(): Promise<LobbyMatchRow[]> {
+function normalizeRecentMatchPayload(payload: unknown): LobbyMatchRow[] {
+  if (Array.isArray(payload)) {
+    return payload as LobbyMatchRow[];
+  }
+
+  if (payload && typeof payload === "object") {
+    const maybeMatches = (payload as { matches?: unknown }).matches;
+    if (Array.isArray(maybeMatches)) {
+      return maybeMatches as LobbyMatchRow[];
+    }
+  }
+
+  return [];
+}
+
+async function fetchRecentMatchesFrom(pathname: string): Promise<LobbyMatchRow[]> {
   try {
-    const response = await fetch("http://127.0.0.1:3030/api/game_stats", { cache: "no-store" });
+    const response = await fetch(`http://127.0.0.1:3030${pathname}`, { cache: "no-store" });
     if (!response.ok) return [];
 
-    const payload = (await response.json()) as LobbyMatchRow[] | unknown;
-    return Array.isArray(payload) ? payload.slice(0, LIVE_GAMES_RECENT_MATCH_LIMIT) : [];
+    const payload = (await response.json()) as unknown;
+    return normalizeRecentMatchPayload(payload);
   } catch (error) {
-    console.warn("Failed to load recent matches for live games:", error);
+    console.warn(`Failed to load recent matches from ${pathname}:`, error);
     return [];
   }
+}
+
+async function loadRecentMatches(): Promise<LobbyMatchRow[]> {
+  const lobbyRecentMatches = await fetchRecentMatchesFrom("/api/lobby/recent-matches");
+  if (lobbyRecentMatches.length > 0) {
+    return lobbyRecentMatches.slice(0, LIVE_GAMES_RECENT_MATCH_LIMIT);
+  }
+
+  const legacyRecentMatches = await fetchRecentMatchesFrom("/api/game_stats");
+  return legacyRecentMatches.slice(0, LIVE_GAMES_RECENT_MATCH_LIMIT);
 }
 
 async function loadLiveGamesSnapshotFresh(prisma: PrismaClient): Promise<LiveGamesSnapshot> {
@@ -98,7 +122,7 @@ async function loadLiveGamesSnapshotFresh(prisma: PrismaClient): Promise<LiveGam
     .filter((match) => !recentlyCompletedKeys.has(normalizeSessionKey(match)))
     .slice(0, LIVE_GAMES_RECENT_MATCH_LIMIT);
 
-  const fallbackRecentOutcomeMatches = filteredRecentMatches.slice(0, LIVE_GAMES_RECENT_OUTCOME_LIMIT);
+  const fallbackRecentOutcomeMatches = filteredRecentMatches.slice(0, LIVE_GAMES_COMPLETED_SESSION_DEPTH);
 
   const sessionKeys = [
     ...filteredActiveSessions.flatMap(sessionStreamKeys),

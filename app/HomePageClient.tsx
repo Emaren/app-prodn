@@ -667,7 +667,7 @@ function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
     };
   }, [paused, featuredWarriorsReady, poolSignature]);
 
-  return { visibleWarriors, fadingSlot };
+  return { visibleWarriors, fadingSlot, featuredWarriorsReady };
 }
 
 type HomePageClientProps = {
@@ -676,7 +676,7 @@ type HomePageClientProps = {
 };
 
 function AdvancedFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] }) {
-  const { visibleWarriors, fadingSlot } = useRotatingFeaturedWarriors(warriors, false);
+  const { visibleWarriors, fadingSlot, featuredWarriorsReady } = useRotatingFeaturedWarriors(warriors, false);
 
   return (
     <section
@@ -698,7 +698,7 @@ function AdvancedFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] })
             <Link
               key={index}
               href={warrior.href}
-              className={`block group relative min-h-[16rem] overflow-visible transform-gpu will-change-[opacity,filter] transition-[opacity,filter] ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 ${fadingSlot === index ? "opacity-0 blur-sm" : "opacity-100 blur-0"}`}
+              className={`block group relative min-h-[16rem] overflow-visible transform-gpu will-change-[opacity,filter] transition-[opacity,filter] ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 ${!featuredWarriorsReady ? "opacity-0 blur-sm" : fadingSlot === index ? "opacity-0 blur-sm" : "opacity-100 blur-0"}`}
               style={{ transitionDuration: `${FEATURED_WARRIOR_FADE_MS}ms` }}
             >
               <Image
@@ -767,7 +767,7 @@ function FeaturedWarriorSubtitle({ warrior }: { warrior: FeaturedWarrior }) {
 }
 
 function ExtremeFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] }) {
-  const { visibleWarriors, fadingSlot } = useRotatingFeaturedWarriors(warriors, false);
+  const { visibleWarriors, fadingSlot, featuredWarriorsReady } = useRotatingFeaturedWarriors(warriors, false);
 
   return (
     <section
@@ -798,7 +798,7 @@ function ExtremeFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] }) 
               <Link
                 key={index}
                 href={warrior.href}
-                className={`block group relative min-h-[16rem] overflow-visible transform-gpu will-change-[opacity,filter] transition-[opacity,filter] ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 ${fadingSlot === index ? "opacity-0 blur-sm" : "opacity-100 blur-0"}`}
+                className={`block group relative min-h-[16rem] overflow-visible transform-gpu will-change-[opacity,filter] transition-[opacity,filter] ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 ${!featuredWarriorsReady ? "opacity-0 blur-sm" : fadingSlot === index ? "opacity-0 blur-sm" : "opacity-100 blur-0"}`}
                 style={{ transitionDuration: `${FEATURED_WARRIOR_FADE_MS}ms` }}
               >
                 <div className="absolute inset-x-0 bottom-2 top-7 overflow-hidden rounded-[1.35rem] border border-amber-100/12 bg-slate-950/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.045),0_18px_60px_rgba(0,0,0,0.24)] transition group-hover:border-amber-200/26">
