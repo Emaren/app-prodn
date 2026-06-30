@@ -41,16 +41,29 @@ import {
 
 export const dynamic = "force-dynamic";
 
+type ReplayDetailViewMode = "basic" | "advanced" | "extreme";
+
+function parseReplayDetailViewMode(value: string | string[] | undefined): ReplayDetailViewMode {
+  const raw = Array.isArray(value) ? value[0] : value;
+  return raw === "basic" || raw === "advanced" || raw === "extreme" ? raw : "advanced";
+}
+
 export default async function GameStatsDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<{ view?: string | string[] }>;
 }) {
   const { id } = await params;
   const gameId = Number(id);
   if (!Number.isInteger(gameId) || gameId <= 0) {
     notFound();
   }
+
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const detailView = parseReplayDetailViewMode(resolvedSearchParams.view);
+  const showRawReplayOutput = detailView === "basic" || detailView === "extreme";
 
   const prisma = getPrisma();
   const game = await prisma.gameStats.findUnique({
@@ -191,12 +204,47 @@ export default async function GameStatsDetailPage({
       })
     : "Waiting for the first stored clash";
 
+  const mainShellClassName =
+    "aoe2war-replay-detail-shell mx-auto w-full space-y-6 overflow-x-hidden px-3 py-4 text-white sm:px-4 sm:py-6 2xl:px-0";
+
+  const heroSectionClassName =
+    detailView === "extreme"
+      ? "overflow-hidden rounded-[2.25rem] border border-amber-200/15 bg-[radial-gradient(circle_at_top_left,_rgba(251,191,36,0.18),_transparent_26%),radial-gradient(circle_at_90%_15%,_rgba(56,189,248,0.14),_transparent_30%),linear-gradient(135deg,_#101827,_#0b1120_52%,_#020617)] p-5 shadow-[0_30px_100px_rgba(0,0,0,0.35)] sm:p-8"
+      : "overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(56,189,248,0.16),_transparent_32%),linear-gradient(135deg,_#0f172a,_#111827_60%,_#020617)] p-5 sm:p-8";
+
+  const detailGridClassName =
+    detailView === "extreme"
+      ? "grid min-w-0 gap-6 2xl:grid-cols-[minmax(0,1.16fr)_minmax(24rem,0.62fr)]"
+      : detailView === "advanced"
+        ? "grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(22rem,0.72fr)]"
+        : "grid min-w-0 gap-6 xl:grid-cols-[1.15fr_0.85fr]";
+
+  const summaryGridClassName =
+    detailView === "basic"
+      ? "grid gap-4 sm:grid-cols-2"
+      : "grid gap-3 md:grid-cols-2 2xl:grid-cols-3";
+
+  const settingsGridClassName =
+    detailView === "extreme"
+      ? "mt-3 grid gap-3 md:grid-cols-2 2xl:grid-cols-3"
+      : "mt-3 grid gap-3 md:grid-cols-2";
+
+  const playerGridClassName =
+    detailView === "basic"
+      ? "grid gap-4 xl:grid-cols-2"
+      : "grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,22rem),1fr))]";
+
   return (
-    <main className="space-y-6 overflow-x-hidden py-4 text-white sm:py-6">
-      <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(56,189,248,0.16),_transparent_32%),linear-gradient(135deg,_#0f172a,_#111827_60%,_#020617)] p-5 sm:p-8">
+    <main className={mainShellClassName} data-replay-detail-view={detailView}>
+      <section className={heroSectionClassName}>
         <div className="space-y-6">
           <div className="space-y-4">
-            <div className="text-xs uppercase tracking-[0.35em] text-sky-200/70">Replay Detail</div>
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="text-xs uppercase tracking-[0.35em] text-sky-200/70">Replay Detail</div>
+              <ReplayDetailViewToggle activeView={detailView} gameId={game.id} />
+            </div>
+</div>
             <h1 className="break-words text-4xl font-semibold text-white sm:text-5xl [overflow-wrap:anywhere]">
               {readMapName(game.map)}
             </h1>
@@ -271,8 +319,13 @@ export default async function GameStatsDetailPage({
                 {rivalryMatchCountLabel ? <Tag>{rivalryMatchCountLabel}</Tag> : null}
               </div>
 
-              <div className="mt-5 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-center">
-                <RivalryHeroSide name={playerRefs[0].name} wins={rivalrySummary.leftWins} align="left" />
+              <div className="mt-5 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:items-center">
+                <RivalryHeroSide
+                  name={playerRefs[0].name}
+                  wins={rivalrySummary.leftWins}
+                  align="left"
+                  href={playerRefs[0].href}
+                />
                 <div className="rounded-[1.6rem] border border-white/10 bg-slate-950/70 px-5 py-4 text-center">
                   <div className="text-[11px] uppercase tracking-[0.28em] text-slate-500">Series</div>
                   <div className="mt-2 text-4xl font-semibold tracking-tight text-white sm:text-5xl">
@@ -281,7 +334,12 @@ export default async function GameStatsDetailPage({
                     {rivalrySummary.rightWins}
                   </div>
                 </div>
-                <RivalryHeroSide name={playerRefs[1].name} wins={rivalrySummary.rightWins} align="right" />
+                <RivalryHeroSide
+                  name={playerRefs[1].name}
+                  wins={rivalrySummary.rightWins}
+                  align="right"
+                  href={playerRefs[1].href}
+                />
               </div>
 
               <div className="mt-5 flex flex-wrap gap-2">
@@ -293,10 +351,10 @@ export default async function GameStatsDetailPage({
         </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+      <section className={detailGridClassName}>
         <div className="space-y-6">
           <Panel title="Replay Summary" eyebrow="Overview">
-            <dl className="grid gap-4 sm:grid-cols-2">
+            <dl className={summaryGridClassName}>
               <StatRow label="Replay ID" value={`#${game.id}`} />
               <StatRow label="Winner" value={winnerLabel(game.winner, game.parse_reason)} />
               <StatRow label="Victory Type" value={outcomeLabel || "Recorded final result"} />
@@ -334,7 +392,7 @@ export default async function GameStatsDetailPage({
           </Panel>
 
           <Panel title="Players" eyebrow="Roster">
-            <div className="grid gap-4 lg:grid-cols-2">
+            <div className={playerGridClassName}>
               {players.length === 0 ? (
                 <EmptyPanel message="No player payload was stored for this replay." />
               ) : (
@@ -414,7 +472,7 @@ export default async function GameStatsDetailPage({
               {Object.keys(settingsSummary).length > 0 ? (
                 <div>
                   <div className="text-xs uppercase tracking-[0.25em] text-slate-500">Settings</div>
-                  <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <dl className={settingsGridClassName}>
                     {Object.entries(settingsSummary).map(([key, value]) => (
                       <StatRow key={key} label={humanizeKey(key)} value={formatPrimitive(value)} compact />
                     ))}
@@ -433,8 +491,16 @@ export default async function GameStatsDetailPage({
                 </div>
               </div>
 
-              <JsonPanel title="Key Events JSON" value={publicKeyEvents} />
-              <JsonPanel title="Map JSON" value={game.map} />
+              {showRawReplayOutput ? (
+                <>
+                  <JsonPanel title="Key Events JSON" value={publicKeyEvents} />
+                  <JsonPanel title="Map JSON" value={game.map} />
+                </>
+              ) : (
+                <div className="rounded-2xl border border-amber-200/10 bg-amber-300/[0.045] px-4 py-4 text-sm leading-6 text-amber-50/78">
+                  Raw parser output is tucked into Extreme. Advanced keeps the battle record clean.
+                </div>
+              )}
             </div>
           </Panel>
 
@@ -477,12 +543,59 @@ export default async function GameStatsDetailPage({
             </div>
           </Panel>
 
-          <Panel title="Stored Player JSON" eyebrow="Raw Output">
-            <JsonPanel title="Players JSON" value={game.players} />
-          </Panel>
+          {showRawReplayOutput ? (
+            <Panel title="Stored Player JSON" eyebrow="Raw Output">
+              <JsonPanel title="Players JSON" value={game.players} />
+            </Panel>
+          ) : null}
         </div>
       </section>
     </main>
+  );
+}
+
+function ReplayDetailViewToggle({
+  activeView,
+  gameId,
+}: {
+  activeView: ReplayDetailViewMode;
+  gameId: number;
+}) {
+  const modes: Array<{ value: ReplayDetailViewMode; label: string; title: string }> = [
+    { value: "basic", label: "B", title: "Basic" },
+    { value: "advanced", label: "A", title: "Advanced" },
+    { value: "extreme", label: "E", title: "Extreme" },
+  ];
+
+  return (
+    <nav
+      aria-label="Replay detail view"
+      className="inline-flex rounded-full border border-white/10 bg-black/24 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
+    >
+      {modes.map((mode) => {
+        const active = mode.value === activeView;
+        const href =
+          mode.value === "advanced"
+            ? `/game-stats/${gameId}`
+            : `/game-stats/${gameId}?view=${mode.value}`;
+
+        return (
+          <Link
+            key={mode.value}
+            href={href}
+            title={mode.title}
+            aria-current={active ? "page" : undefined}
+            className={`flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-semibold uppercase tracking-[0.16em] transition ${
+              active
+                ? "bg-sky-200 text-slate-950 shadow-[0_10px_24px_rgba(56,189,248,0.22)]"
+                : "text-slate-400 hover:bg-white/8 hover:text-slate-100"
+            }`}
+          >
+            {mode.label}
+          </Link>
+        );
+      })}
+    </nav>
   );
 }
 
@@ -565,38 +678,58 @@ function RivalryHeroSide({
   name,
   wins,
   align,
+  href,
 }: {
   name: string;
   wins: number;
   align: "left" | "right";
+  href?: string;
 }) {
-  return (
-    <div
-      className={`rounded-[1.5rem] border border-white/8 bg-white/5 px-4 py-4 ${
-        align === "right" ? "text-left sm:text-right" : "text-left"
-      }`}
-    >
-      <div className="text-[11px] uppercase tracking-[0.24em] text-slate-500">
-        {align === "left" ? "Left side" : "Right side"}
+  const sideLabel = align === "left" ? "Left side" : "Right side";
+  const winWord = wins === 1 ? "win" : "wins";
+  const sideClassName = `group/rivalry block min-w-0 rounded-[1.5rem] border border-white/8 bg-white/5 px-4 py-4 text-left transition hover:border-sky-200/25 hover:bg-white/[0.075] hover:shadow-[0_16px_44px_rgba(56,189,248,0.08)] ${
+    align === "right" ? "sm:text-right" : ""
+  }`;
+
+  const content = (
+    <>
+      <div className="text-[11px] uppercase tracking-[0.24em] text-slate-500">{sideLabel}</div>
+      <div className="mt-2 break-words text-2xl font-semibold text-white transition group-hover/rivalry:text-sky-100">
+        {name}
       </div>
-      <div className="mt-2 break-words text-2xl font-semibold text-white">{name}</div>
-      <div className="mt-3 text-sm text-slate-300">{wins} {wins === 1 ? "win" : "wins"} in stored finals</div>
-    </div>
+      <div className="mt-3 text-sm text-slate-300">
+        {wins} {winWord} in stored finals
+      </div>
+    </>
   );
+
+  if (href) {
+    return (
+      <Link href={href} className={sideClassName} title={`Open ${name} player page`}>
+        {content}
+      </Link>
+    );
+  }
+
+  return <div className={sideClassName}>{content}</div>;
 }
+
 
 function readNestedRecord(source: Record<string, unknown>, ...keys: string[]) {
   let current: unknown = source;
+
   for (const key of keys) {
     if (!current || typeof current !== "object" || Array.isArray(current)) {
       return {};
     }
+
     current = (current as Record<string, unknown>)[key];
   }
 
   if (!current || typeof current !== "object" || Array.isArray(current)) {
     return {};
   }
+
   return current as Record<string, unknown>;
 }
 

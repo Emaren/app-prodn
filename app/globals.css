@@ -598,3 +598,31 @@ main:has(> .aoe2war-replay-detail-shell[data-replay-detail-view="basic"]) {
 main:has(> .aoe2war-replay-detail-shell[data-replay-detail-view="extreme"]) {
   max-width: min(calc(100vw - 0.75rem), 118rem) !important;
 }
+
+/* AoE2WAR replay detail BAE shell sizing */
+.aoe2war-replay-detail-shell {
+  max-width: min(96rem, calc(100vw - 1.5rem));
+  transition:
+    max-width 260ms ease,
+    width 260ms ease,
+    transform 260ms ease;
+}
+
+.aoe2war-replay-detail-shell[data-replay-detail-view="basic"] {
+  max-width: min(76rem, calc(100vw - 1.5rem));
+}
+
+.aoe2war-replay-detail-shell[data-replay-detail-view="advanced"] {
+  max-width: min(96rem, calc(100vw - 1.5rem));
+}
+
+.aoe2war-replay-detail-shell[data-replay-detail-view="extreme"] {
+  max-width: min(118rem, calc(100vw - 1rem));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aoe2war-replay-detail-shell {
+    transition: none;
+  }
+}
+/* /AoE2WAR replay detail BAE shell sizing */
