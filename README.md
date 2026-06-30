@@ -329,4 +329,4 @@ By default the runner finalizes the last closed UTC day, allocates the staker ha
 
 - `/upload` keeps the replay form as the hero and seats the free-floating UPDATED Replay Vault v1.1 stamp near the bottom of the first viewport.
 
-- `/upload` hero copy now plainly lists supported replay upload formats while keeping the watcher as the preferred live-proof path.
+- `/upload` hero copy now lists replay formats on one line, then keeps the watcher/live-proof note on the next line.
