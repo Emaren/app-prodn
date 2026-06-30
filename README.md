@@ -327,4 +327,4 @@ By default the runner finalizes the last closed UTC day, allocates the staker ha
 
 - `/upload` keeps the existing single replay flow and adds ZIP replay packs; ZIP imports preserve renamed replay filenames and upload each supported replay as identity-bound proof.
 
-- `/upload` now uses a free-floating UPDATED stamp for Replay Vault v1.1 dated Jun 30, 2026, with the upload form lowered into a cleaner hero position.
+- `/upload` now balances the replay form as the page hero while keeping the free-floating UPDATED Replay Vault v1.1 stamp centered below it.
