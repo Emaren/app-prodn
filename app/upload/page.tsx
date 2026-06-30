@@ -17,6 +17,27 @@ function isReplayPack(file: File | null) {
   return Boolean(file?.name.toLowerCase().endsWith(".zip"));
 }
 
+function ReplayVaultReleaseStamp() {
+  return (
+    <aside className="mx-auto mt-8 w-full max-w-3xl">
+      <div className="ml-auto max-w-sm rounded-[1.6rem] border border-white/10 bg-slate-950/35 px-5 py-4 text-right shadow-[0_24px_80px_rgba(0,0,0,0.22)] backdrop-blur">
+        <div className="text-[10px] font-semibold uppercase tracking-[0.38em] text-amber-200/70">
+          Released
+        </div>
+        <div className="mt-2 text-xl font-semibold tracking-tight text-white">
+          Replay Vault v1.1
+        </div>
+        <div className="mt-1 text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
+          Jun 30, 2026
+        </div>
+        <p className="mt-3 text-xs leading-5 text-slate-300">
+          ZIP packs live · renamed files preserved · old wars documented.
+        </p>
+      </div>
+    </aside>
+  );
+}
+
 export default function UploadReplay() {
   const { isAuthenticated } = useUserAuth();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -72,8 +93,8 @@ export default function UploadReplay() {
 
   if (!isAuthenticated) {
     return (
-      <div className="mx-auto flex min-h-[calc(100vh-10rem)] max-w-3xl flex-col justify-start py-16 pb-40 text-white">
-        <div className="rounded-[2rem] border border-white/10 bg-slate-950/70 p-8">
+      <div className="mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-5xl flex-col justify-center px-4 pt-20 pb-80 text-white">
+        <div className="mx-auto w-full max-w-3xl rounded-[2rem] border border-white/10 bg-slate-950/70 p-8">
           <div className="text-xs uppercase tracking-[0.35em] text-white/45">Replay Upload</div>
           <h1 className="mt-3 text-3xl font-semibold">Sign in before uploading proof.</h1>
           <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-300">
@@ -89,13 +110,14 @@ export default function UploadReplay() {
             </Link>
           </div>
         </div>
+        <ReplayVaultReleaseStamp />
       </div>
     );
   }
 
   return (
-    <div className="mx-auto flex min-h-[calc(100vh-10rem)] max-w-3xl flex-col justify-start py-16 pb-40 text-white">
-      <div className="rounded-[2rem] border border-white/10 bg-slate-950/70 p-8">
+    <div className="mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-5xl flex-col justify-center px-4 pt-20 pb-80 text-white">
+      <div className="mx-auto w-full max-w-3xl rounded-[2rem] border border-white/10 bg-slate-950/70 p-8">
         <div className="text-xs uppercase tracking-[0.35em] text-white/45">Replay Upload</div>
         <h1 className="mt-3 text-3xl font-semibold">Upload a replay manually</h1>
         <p className="mt-4 text-sm leading-6 text-slate-300">
@@ -136,17 +158,7 @@ export default function UploadReplay() {
               : "Single replay detected. Uploads remain tied to your signed-in AoE2WAR identity."}
           </div>
         )}
-
-        <div className="mt-6 rounded-2xl border border-amber-300/15 bg-amber-300/[0.04] px-4 py-3">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.32em] text-amber-200/70">
-            Replay Vault v1.1
-          </div>
-          <p className="mt-1 text-xs leading-5 text-slate-300">
-            ZIP packs live · renamed files preserved · old wars documented.
-          </p>
-        </div>
-
-        {status && <p className="mt-5 text-sm text-slate-300">{status}</p>}
+{status && <p className="mt-5 text-sm text-slate-300">{status}</p>}
 
         {results.length > 0 && (
           <div className="mt-5 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/70">
@@ -166,6 +178,7 @@ export default function UploadReplay() {
           </div>
         )}
       </div>
+      <ReplayVaultReleaseStamp />
     </div>
   );
 }

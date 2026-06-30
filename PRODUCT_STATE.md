@@ -293,4 +293,4 @@ Still wanted:
 
 - Replay Vault upload now extends the existing single replay upload with old-school ZIP replay packs, preserving renamed filenames while importing each replay into the existing replay proof flow.
 
-- `/upload` now shows a compact Replay Vault v1.1 release note and gives the simple upload screen more vertical breathing room above the footer.
+- `/upload` now uses a standalone Replay Vault v1.1 release stamp dated Jun 30, 2026, keeping the upload form clean while pushing the footer below the first screen.
