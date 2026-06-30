@@ -16,6 +16,7 @@ import { TournamentPanel } from "@/components/lobby/TournamentPanel";
 import { WatchAndChatHero } from "@/components/lobby/WatchAndChatHero";
 import { WoloMarketTile } from "@/components/lobby/WoloMarketTile";
 import { WolomaniaPromoTile } from "@/components/lobby/WolomaniaPromoTile";
+import Aoe2ShortsTile from "@/components/home/Aoe2ShortsTile";
 import { useTileViewPreference } from "@/components/tile-view/useTileViewPreference";
 import { buildChatItems } from "@/components/lobby/utils";
 import { useUserAuth } from "@/context/UserAuthContext";
@@ -1607,6 +1608,7 @@ return (
             surface={isExtremeLobby ? "extreme" : "standard"}
           />
           <WolomaniaPromoTile eventTile={initialEventTile} />
+          <Aoe2ShortsTile />
           <WatchAndChatHero
             tournament={tournament}
             recentMatches={recentMatches}

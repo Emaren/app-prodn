@@ -34,6 +34,7 @@ Current strengths:
 - Basic view remains available behind the lobby toggle and keeps the simpler leaderboard/tournament/war-chest-first layout intact
 - the lobby has one primary upper video/event stage; the redundant mid-page broadcast theater was removed so the leaderboard/War Chest section flows directly into chat and online players
 - the premium Wolomania Jim / Julio / Commissioner / championship-belt composition is now the reusable public `EventTile` on `/` and `/lobby`
+- AoE2 Shorts now sits immediately below that event stage on `/` and `/lobby`, defaulting to a portrait replay rail with an optional wide presentation, real gameplay clips, mobile full-screen swipe navigation, uploader/profile links, local like/pass state, comments handoff, and native-or-copy sharing
 - `/admin/events` is the operator Event Studio for creating, editing, duplicating, previewing, publishing, unpublishing, archiving, and activating that single main-stage tile
 - the shipped Wolomania composition is both the seeded active event and the permanent code fallback, so a missing migration, unavailable database, or lack of an active published row cannot remove the production event stage
 - Event Studio controls event copy, timing, badges, CTA, linked app users/trophy, warrior and Commissioner art, belt/artifact art, optional backgrounds, and theme values; it does not yet implement Commissioner Overrides or Featured Warriors stat rotation
@@ -256,6 +257,7 @@ Still wanted:
 - player profile pages are now premium, but the resource/economy rail is only as complete as captured postgame achievement data
 - tournament presentation is good, but not yet “must-watch”
 - Watch & Chat reactions are intentionally lightweight/local for now; the right-side hero comments reuse the public lobby messages, the hero bet slip is a `/bets` handoff, and persistent match-scoped comments need a dedicated context table or reuse plan before they become durable product state
+- AoE2 Shorts is currently a founding editorial surface backed by bundled replay clips. Reactions are local to the browser and comments hand off to the public war room; uploads, durable reactions, and short-scoped comment storage remain future data rails rather than simulated persistence
 - leaderboard is now real, but deeper ranking semantics still need tightening
 - some surfaces still carry more explanatory copy than ideal
 - token rail is now partially real, but live wallet edge cases still need hardening
