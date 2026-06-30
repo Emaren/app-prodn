@@ -153,7 +153,9 @@ export default function MarketPage() {
               key={label}
               className="rounded-[1rem] border border-white/10 bg-slate-950/62 px-4 py-3 backdrop-blur-xl"
             >
-              <div className="text-lg font-black text-white">{value}</div>
+              <div className="market-display-title market-display-gold font-serif text-lg font-semibold">
+                {value}
+              </div>
               <div className="mt-0.5 text-[9px] font-bold uppercase tracking-[0.18em] text-slate-500">
                 {label}
               </div>
@@ -192,7 +194,7 @@ export default function MarketPage() {
               <div className="text-[10px] font-bold uppercase tracking-[0.26em] text-rose-100/55">
                 {MARKETPLACE_CONFIG.avatarCraftName}
               </div>
-              <h3 className="mt-2 text-3xl font-black tracking-[-0.03em]">
+              <h3 className="market-display-title market-display-ember mt-2 font-serif text-[2rem] font-medium leading-none tracking-[-0.035em]">
                 {MARKETPLACE_CONFIG.avatarShopName}
               </h3>
               <p className="mt-2 text-sm leading-6 text-slate-300">
@@ -232,7 +234,7 @@ export default function MarketPage() {
               <div className="text-[10px] font-bold uppercase tracking-[0.26em] text-violet-100/55">
                 Strategic counsel
               </div>
-              <h3 className="mt-2 text-3xl font-black tracking-[-0.03em]">
+              <h3 className="market-display-title market-display-violet mt-2 max-w-sm font-serif text-[2rem] font-medium leading-[1.02] tracking-[-0.035em]">
                 Train under proven players.
               </h3>
               <p className="mt-2 text-sm leading-6 text-slate-300">
@@ -262,7 +264,7 @@ export default function MarketPage() {
               <div className="mt-6 text-[10px] font-bold uppercase tracking-[0.26em] text-amber-100/55">
                 Empty awning
               </div>
-              <h3 className="mt-2 text-3xl font-black tracking-[-0.03em]">
+              <h3 className="market-display-title market-display-gold mx-auto mt-2 font-serif text-[2rem] font-medium leading-[1.02] tracking-[-0.035em]">
                 Your craft belongs here.
               </h3>
               <p className="mx-auto mt-2 max-w-xs text-sm leading-6 text-slate-400">
@@ -296,7 +298,7 @@ export default function MarketPage() {
             <p className="mt-7 text-[10px] font-bold uppercase tracking-[0.34em] text-amber-100/55">
               The {MARKETPLACE_CONFIG.avatarCraftName}
             </p>
-            <h2 className="mt-3 font-serif text-5xl font-semibold leading-[0.94] tracking-[-0.045em] sm:text-7xl">
+            <h2 className="market-display-title market-display-ember mt-3 font-serif text-4xl font-medium leading-[0.96] tracking-[-0.04em] sm:text-6xl">
               The Visage Forge
             </h2>
             <p className="mt-4 max-w-xl text-sm leading-6 text-slate-400">
@@ -341,7 +343,7 @@ export default function MarketPage() {
                   <div className="text-[9px] font-bold uppercase tracking-[0.22em] text-amber-100/55">
                     Custom identity
                   </div>
-                  <div className="mt-1 text-3xl font-black text-white">
+                  <div className="market-display-title market-display-gold mt-1 font-serif text-3xl font-semibold">
                     {MARKETPLACE_CONFIG.avatarPriceWolo}{" "}
                     <span className="text-sm text-amber-100">WOLO</span>
                   </div>
@@ -380,7 +382,9 @@ export default function MarketPage() {
               <div className="text-[9px] font-bold uppercase tracking-[0.24em] text-slate-600">
                 Agora law 0{index + 1}
               </div>
-              <h3 className="mt-1 text-base font-bold text-white">{title}</h3>
+              <h3 className="mt-1 font-serif text-base font-medium text-amber-50/85">
+                {title}
+              </h3>
               <p className="mt-0.5 text-xs text-slate-500">{detail}</p>
             </div>
           </article>
@@ -397,10 +401,10 @@ export default function MarketPage() {
               <Sparkles className="h-4 w-4" />
               The next awning
             </div>
-            <h2 className="mt-4 max-w-3xl bg-[linear-gradient(100deg,#f1dda5_0%,#aeb4bd_42%,#d0a74f_68%,#727983_100%)] bg-clip-text font-serif text-3xl font-medium leading-[1.02] tracking-[-0.035em] text-transparent sm:text-5xl">
+            <h2 className="market-display-title market-display-gold mt-4 max-w-3xl font-serif text-3xl font-medium leading-[1.02] tracking-[-0.035em] sm:text-5xl">
               Build a business inside the kingdom.
             </h2>
-            <p className="mt-5 max-w-2xl text-lg font-semibold leading-8 text-slate-200">
+            <p className="mt-5 max-w-2xl font-serif text-lg font-medium leading-8 text-slate-300">
               If the AoE2 world can use it, the Agora can hold it.
             </p>
             <div className="mt-6 flex flex-wrap gap-2">
@@ -438,7 +442,7 @@ export default function MarketPage() {
         <p className="mt-4 text-[10px] font-bold uppercase tracking-[0.32em] text-amber-100/55">
           The first street of a larger world
         </p>
-        <h2 className="mx-auto mt-3 max-w-3xl text-3xl font-black tracking-[-0.03em] sm:text-5xl">
+        <h2 className="market-display-title market-display-silver mx-auto mt-3 max-w-3xl font-serif text-3xl font-medium leading-[1.04] tracking-[-0.035em] sm:text-5xl">
           The Visage Forge is one shop. What can you bring?
         </h2>
       </section>

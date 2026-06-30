@@ -328,7 +328,127 @@ input[type="datetime-local"] {
   box-shadow: none !important;
 }
 
-/* AoE2WAR Marketplace: blackened Spartan gold and forged iron controls */
+/* AoE2WAR Marketplace: quiet metal typography, AoE2 lobby wood, and forged controls */
+.market-display-title {
+  width: fit-content;
+  color: transparent;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-wrap: balance;
+}
+
+.market-display-title > span {
+  -webkit-text-fill-color: currentColor;
+}
+
+.market-display-gold {
+  background-image: linear-gradient(
+    104deg,
+    #f4e3b0 0%,
+    #b8ac90 38%,
+    #d8aa53 66%,
+    #817762 100%
+  );
+}
+
+.market-display-ember {
+  background-image: linear-gradient(
+    104deg,
+    #f0dfbe 0%,
+    #c6b8aa 36%,
+    #c68d68 66%,
+    #736861 100%
+  );
+}
+
+.market-display-violet {
+  background-image: linear-gradient(
+    104deg,
+    #e9e0d5 0%,
+    #bdb2c8 38%,
+    #aa8bc3 67%,
+    #6f6d78 100%
+  );
+}
+
+.market-display-silver {
+  background-image: linear-gradient(
+    104deg,
+    #eee6d2 0%,
+    #aeb5bd 42%,
+    #c29b51 72%,
+    #747a82 100%
+  );
+}
+
+.market-aoe-rail {
+  position: relative;
+  z-index: 2;
+  border: 1px solid rgba(169, 112, 53, 0.74);
+  border-radius: 0.28rem;
+  background:
+    linear-gradient(90deg, transparent 2%, rgba(255, 220, 156, 0.1) 50%, transparent 98%),
+    repeating-linear-gradient(96deg, rgba(255, 255, 255, 0.025) 0 2px, transparent 2px 9px),
+    linear-gradient(180deg, #6d4725 0%, #2a1b12 35%, #110e0c 58%, #503219 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 225, 174, 0.18),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.74),
+    0 7px 18px rgba(0, 0, 0, 0.48);
+}
+
+.market-aoe-rail::before,
+.market-aoe-rail::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 0.42rem;
+  height: 0.42rem;
+  border: 1px solid rgba(234, 186, 110, 0.36);
+  border-radius: 999px;
+  background: radial-gradient(circle at 35% 30%, #c39759, #342313 68%);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.65);
+  transform: translateY(-50%);
+}
+
+.market-aoe-rail::before {
+  left: 0.55rem;
+}
+
+.market-aoe-rail::after {
+  right: 0.55rem;
+}
+
+.market-aoe-rail-bottom {
+  background:
+    linear-gradient(90deg, transparent 2%, rgba(255, 220, 156, 0.08) 50%, transparent 98%),
+    repeating-linear-gradient(84deg, rgba(255, 255, 255, 0.02) 0 2px, transparent 2px 10px),
+    linear-gradient(180deg, #503219 0%, #110e0c 40%, #2a1b12 65%, #6d4725 100%);
+}
+
+.market-aoe-lobby-panel {
+  position: relative;
+  background:
+    radial-gradient(circle at 18% 12%, rgba(198, 143, 74, 0.13), transparent 27%),
+    radial-gradient(circle at 83% 70%, rgba(88, 61, 36, 0.22), transparent 36%),
+    repeating-linear-gradient(112deg, rgba(255, 245, 220, 0.012) 0 1px, transparent 1px 7px),
+    linear-gradient(104deg, #2b2118 0%, #171411 14%, #201a14 51%, #131110 88%, #292016 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(31, 21, 13, 0.9),
+    inset 0 0 55px rgba(0, 0, 0, 0.64),
+    inset 18px 0 30px rgba(118, 77, 37, 0.08),
+    inset -18px 0 30px rgba(118, 77, 37, 0.08);
+}
+
+.market-aoe-lobby-panel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  border: 1px solid rgba(235, 190, 119, 0.07);
+  pointer-events: none;
+}
+
 .market-gold-button,
 .market-iron-button {
   position: relative;

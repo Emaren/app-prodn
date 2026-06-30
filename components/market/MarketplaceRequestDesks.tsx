@@ -120,7 +120,7 @@ export function AvatarCommissionScroll() {
         <p className="mt-6 text-[10px] font-bold uppercase tracking-[0.3em] text-emerald-100/65">
           Scroll received · #{receipt.requestId}
         </p>
-        <h3 className="mt-3 font-serif text-4xl font-semibold tracking-[-0.035em]">
+        <h3 className="market-display-title market-display-silver mt-3 font-serif text-4xl font-medium tracking-[-0.035em]">
           Your identity is on the forge.
         </h3>
         <p className="mt-3 max-w-lg text-sm leading-6 text-emerald-50/72">
@@ -150,44 +150,50 @@ export function AvatarCommissionScroll() {
   return (
     <form
       onSubmit={submitCommission}
-      className="relative text-[#25180d]"
-      aria-label="Avatar commission scroll"
+      className="relative text-[#ead8aa]"
+      aria-label="Avatar commission lobby"
     >
-      <div className="mx-5 h-3 rounded-full border border-[#7a4c1d]/55 bg-[linear-gradient(180deg,#c18a3f,#6f3d18_48%,#d6a65d)] shadow-[0_8px_22px_rgba(0,0,0,0.3)]" />
-      <div className="-my-1 rounded-[1.2rem] border-x border-[#e3cca0]/50 bg-[radial-gradient(circle_at_20%_15%,rgba(255,255,255,0.32),transparent_24%),linear-gradient(100deg,#bca06f_0%,#ead8ae_8%,#ddc593_50%,#ead7aa_92%,#ad8b58_100%)] px-5 py-7 shadow-[inset_0_0_60px_rgba(96,54,18,0.16),0_32px_100px_rgba(0,0,0,0.34)] sm:px-7">
-        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[#775020]/25 pb-5">
+      <div className="market-aoe-rail mx-4 h-5 sm:mx-6" />
+      <div className="market-aoe-lobby-panel -my-1 overflow-hidden rounded-[0.45rem] border border-[#8d6336]/75 shadow-[0_34px_110px_rgba(0,0,0,0.54)]">
+        <div className="flex items-center justify-between border-b border-[#be8a4b]/32 bg-black/38 px-5 py-2.5 text-[8px] font-bold uppercase tracking-[0.25em] text-[#bda375] sm:px-7">
+          <span>AoE2WAR · Visage Forge</span>
+          <span className="hidden text-[#7d8c68] sm:inline">Commission lobby open</span>
+        </div>
+        <div className="relative px-5 py-6 sm:px-7 sm:py-7">
+          <div className="pointer-events-none absolute inset-y-0 left-[64%] hidden w-px bg-gradient-to-b from-transparent via-[#d29a54]/16 to-transparent sm:block" />
+        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[#c18b4b]/22 pb-5">
           <div>
-            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.28em] text-[#775020]">
+            <div className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-[0.3em] text-[#b99b69]">
               <ScrollText className="h-4 w-4" />
-              Commission scroll
+              Commission settings
             </div>
-            <h3 className="mt-2 font-serif text-3xl font-semibold tracking-[-0.035em] text-[#28180a]">
-              Describe your next identity.
+            <h3 className="market-display-title market-display-gold mt-2 font-serif text-3xl font-medium leading-none tracking-[-0.035em]">
+              Set your likeness.
             </h3>
           </div>
-          <div className="flex items-center gap-2 rounded-xl border border-[#704318]/25 bg-[#f4e6c5]/55 px-3 py-2">
+          <div className="flex items-center gap-2 rounded-[0.35rem] border border-[#a9773e]/48 bg-[linear-gradient(180deg,rgba(91,66,38,0.78),rgba(30,24,18,0.95))] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,224,164,0.16),inset_0_-2px_8px_rgba(0,0,0,0.5)]">
             <Image
               src={WOLO_LOGO_SRC}
               alt=""
               width={34}
               height={34}
-              className="h-8 w-8 object-contain drop-shadow-[0_4px_8px_rgba(92,53,8,0.24)]"
+              className="h-8 w-8 object-contain drop-shadow-[0_4px_9px_rgba(225,164,42,0.28)]"
             />
             <div className="text-right">
-              <div className="text-[9px] font-black uppercase tracking-[0.18em] text-[#825622]">
-                One avatar
+              <div className="text-[8px] font-bold uppercase tracking-[0.18em] text-[#b59a6a]">
+                Commission
               </div>
-              <div className="mt-0.5 text-xl font-black">
+              <div className="market-display-title market-display-gold mt-0.5 font-serif text-xl font-semibold">
                 {MARKETPLACE_CONFIG.avatarPriceWolo}{" "}
-                <span className="text-[10px]">WOLO</span>
+                <span className="text-[9px]">WOLO</span>
               </div>
             </div>
           </div>
         </div>
 
         <fieldset className="mt-5">
-          <legend className="text-[10px] font-black uppercase tracking-[0.22em] text-[#765020]">
-            Choose up to three signals
+          <legend className="text-[9px] font-bold uppercase tracking-[0.24em] text-[#b99b69]">
+            Bearing · choose three
           </legend>
           <div className="mt-3 flex flex-wrap gap-2">
             {AVATAR_ARCHETYPES.map((archetype) => {
@@ -198,10 +204,10 @@ export function AvatarCommissionScroll() {
                   type="button"
                   aria-pressed={selected}
                   onClick={() => toggleArchetype(archetype.id)}
-                  className={`inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-bold transition ${
+                  className={`inline-flex min-h-9 items-center gap-1.5 rounded-[0.3rem] border px-3 py-2 text-xs font-semibold transition ${
                     selected
-                      ? "border-[#4a2b0e] bg-[#34200f] text-[#f5e2b4]"
-                      : "border-[#765020]/25 bg-[#f4e6c5]/40 text-[#5d3a17] hover:bg-[#f4e6c5]/72"
+                      ? "border-[#d19a54]/72 bg-[linear-gradient(180deg,#60472d,#2b2118)] text-[#ffe7b5] shadow-[inset_0_1px_0_rgba(255,229,176,0.2),0_0_16px_rgba(184,118,37,0.11)]"
+                      : "border-[#8b633b]/42 bg-[#171513]/82 text-[#bca880] shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] hover:border-[#b58045]/68 hover:text-[#ead8aa]"
                   }`}
                 >
                   {selected ? <CheckCircle2 className="h-3.5 w-3.5" /> : null}
@@ -213,7 +219,7 @@ export function AvatarCommissionScroll() {
         </fieldset>
 
         <fieldset className="mt-5">
-          <legend className="text-[10px] font-black uppercase tracking-[0.22em] text-[#765020]">
+          <legend className="text-[9px] font-bold uppercase tracking-[0.24em] text-[#b99b69]">
             Championship belt
           </legend>
           <div className="mt-3 grid grid-cols-2 gap-2">
@@ -225,10 +231,10 @@ export function AvatarCommissionScroll() {
                   type="button"
                   aria-pressed={selected}
                   onClick={() => setBeltPlacement(placement.id)}
-                  className={`min-h-10 rounded-xl border px-3 py-2 text-left text-xs font-bold transition ${
+                  className={`min-h-10 rounded-[0.3rem] border px-3 py-2 text-left text-xs font-semibold transition ${
                     selected
-                      ? "border-[#4a2b0e] bg-[#34200f] text-[#f5e2b4]"
-                      : "border-[#765020]/22 bg-[#f4e6c5]/35 text-[#5d3a17] hover:bg-[#f4e6c5]/70"
+                      ? "border-[#d19a54]/72 bg-[linear-gradient(180deg,#60472d,#2b2118)] text-[#ffe7b5] shadow-[inset_0_1px_0_rgba(255,229,176,0.2),0_0_16px_rgba(184,118,37,0.11)]"
+                      : "border-[#8b633b]/42 bg-[#171513]/82 text-[#bca880] shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] hover:border-[#b58045]/68 hover:text-[#ead8aa]"
                   }`}
                 >
                   {placement.label}
@@ -239,22 +245,22 @@ export function AvatarCommissionScroll() {
         </fieldset>
 
         <label className="mt-5 block">
-          <span className="text-[10px] font-black uppercase tracking-[0.22em] text-[#765020]">
-            Colours or atmosphere
+          <span className="text-[9px] font-bold uppercase tracking-[0.24em] text-[#b99b69]">
+            Banner colours · atmosphere
           </span>
           <input
             value={palette}
             onChange={(event) => setPalette(event.target.value.slice(0, 100))}
             maxLength={100}
             placeholder="Oxblood and gold, cold moonlight, emerald..."
-            className="mt-2 min-h-11 w-full rounded-xl border border-[#765020]/25 bg-[#f7ebce]/55 px-3 text-sm font-semibold text-[#2c1b0b] outline-none placeholder:text-[#765020]/50 focus:border-[#4a2b0e]/55 focus:bg-[#f9efd7]"
+            className="mt-2 min-h-11 w-full rounded-[0.3rem] border border-[#8b633b]/48 bg-[#100f0e]/90 px-3 text-sm font-medium text-[#f1dfb8] shadow-[inset_0_2px_12px_rgba(0,0,0,0.52)] outline-none placeholder:text-[#806f52] focus:border-[#c18b4b]/74 focus:bg-[#14120f]"
           />
         </label>
 
         <label className="mt-5 block">
-          <span className="flex items-center justify-between gap-3 text-[10px] font-black uppercase tracking-[0.22em] text-[#765020]">
+          <span className="flex items-center justify-between gap-3 text-[9px] font-bold uppercase tracking-[0.24em] text-[#b99b69]">
             <span>Your words to the Visagewright</span>
-            <span className="tracking-normal text-[#765020]/55">
+            <span className="tracking-normal text-[#7f6d4f]">
               {remaining}
             </span>
           </span>
@@ -266,22 +272,22 @@ export function AvatarCommissionScroll() {
             required
             minLength={24}
             placeholder="I want to look like a veteran commander who has already survived the final battle..."
-            className="mt-2 w-full resize-y rounded-xl border border-[#765020]/28 bg-[#f7ebce]/58 px-4 py-3 text-sm font-medium leading-6 text-[#2c1b0b] outline-none placeholder:text-[#765020]/48 focus:border-[#4a2b0e]/55 focus:bg-[#f9efd7]"
+            className="mt-2 w-full resize-y rounded-[0.3rem] border border-[#8b633b]/48 bg-[#100f0e]/90 px-4 py-3 text-sm font-medium leading-6 text-[#f1dfb8] shadow-[inset_0_2px_14px_rgba(0,0,0,0.55)] outline-none placeholder:text-[#806f52] focus:border-[#c18b4b]/74 focus:bg-[#14120f]"
           />
         </label>
 
         {error ? (
-          <div className="mt-4 rounded-xl border border-[#8f2f24]/28 bg-[#a83f2d]/12 px-3 py-2.5 text-xs font-semibold leading-5 text-[#702419]">
+          <div className="mt-4 rounded-[0.3rem] border border-rose-200/22 bg-rose-950/28 px-3 py-2.5 text-xs font-semibold leading-5 text-rose-100">
             {error}
           </div>
         ) : null}
 
-        <div className="mt-5 border-t border-[#775020]/25 pt-5">
+        <div className="mt-5 border-t border-[#c18b4b]/22 pt-5">
           {uid ? (
             <button
               type="submit"
               disabled={busy || loading || brief.trim().length < 24}
-              className="market-gold-button group inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full px-5 text-sm font-black"
+              className="market-gold-button group inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[0.35rem] px-5 text-sm font-bold"
             >
               {busy ? (
                 <>
@@ -304,18 +310,19 @@ export function AvatarCommissionScroll() {
             </button>
           ) : (
             <SteamLoginButton
-              label="Sign in to write your scroll"
+              label="Sign in to commission"
               returnTo="/market#visage-forge"
-              className="market-gold-button inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full px-5 text-sm font-black"
+              className="market-gold-button inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[0.35rem] px-5 text-sm font-bold"
             />
           )}
-          <div className="mt-3 flex items-start gap-2 text-[10px] font-semibold leading-4 text-[#6d4823]">
+          <div className="mt-3 flex items-start gap-2 text-[9px] font-semibold uppercase leading-4 tracking-[0.08em] text-[#897656]">
             <LockKeyhole className="mt-0.5 h-3.5 w-3.5 shrink-0" />
             No WOLO moves here. Scope and payment are confirmed privately.
           </div>
         </div>
+        </div>
       </div>
-      <div className="mx-5 h-3 rounded-full border border-[#7a4c1d]/55 bg-[linear-gradient(180deg,#d6a65d,#6f3d18_52%,#c18a3f)] shadow-[0_8px_22px_rgba(0,0,0,0.3)]" />
+      <div className="market-aoe-rail market-aoe-rail-bottom mx-4 h-5 sm:mx-6" />
     </form>
   );
 }
@@ -362,7 +369,7 @@ export function OpenShopDesk() {
           <p className="mt-6 text-[10px] font-bold uppercase tracking-[0.28em] text-amber-100/60">
             Proposal #{receipt.requestId}
           </p>
-          <h3 className="mt-3 text-3xl font-black tracking-[-0.03em] text-white">
+          <h3 className="market-display-title market-display-gold mt-3 font-serif text-3xl font-medium tracking-[-0.03em]">
             Your awning is under review.
           </h3>
           <p className="mt-3 text-sm leading-6 text-slate-300">
@@ -499,7 +506,9 @@ export function MarketplaceDeliveryRail() {
               <Sparkles className="h-4 w-4 text-amber-100/65" />
             ) : null}
           </div>
-          <h4 className="mt-5 text-sm font-black text-white">{title}</h4>
+          <h4 className="mt-5 font-serif text-sm font-medium text-amber-50/85">
+            {title}
+          </h4>
           <p className="mt-1 text-xs leading-5 text-slate-500">{detail}</p>
         </div>
       ))}
