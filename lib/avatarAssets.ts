@@ -23,7 +23,7 @@ const NAME_TARGETS: Record<string, string> = {
   "julio alvarez": "julio-alvarez",
   sniper: "sniper",
   "the ai scribe": "sniper",
-  grimer: "emaren",
+  grimer: "grimer",
 
   myth: "myth",
   ra: "ra",
@@ -130,6 +130,8 @@ const MANAGED_NAME_AVATAR_TARGETS = new Set([
   "bdb-pigman",
   "pigman",
   "dil-pascana",
+  "grimer",
+  "moose",
 ]);
 
 export function avatarUrlForName(name: string | null | undefined) {

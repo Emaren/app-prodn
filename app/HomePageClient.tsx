@@ -28,7 +28,7 @@ import {
   type LobbyMessage,
   type LobbySnapshot,
 } from "@/lib/lobby";
-import { avatarCardUrlForName, avatarCardUrlForUser, avatarUrlForName } from "@/lib/avatarAssets";
+import { avatarCardUrlForUser, avatarUrlForName } from "@/lib/avatarAssets";
 
 const EMPTY_MESSAGES: LobbyMessage[] = [];
 const ZODIAC_UID = "u_06c16d39d25c476fac2c86fee7b4d189";
@@ -40,6 +40,8 @@ const RA_UID = "u_510b020f19b5450793c95e05de791cc7";
 const BDB_PIGMAN_UID = "u_a0923530e82d43ceb3f6926c004748dc";
 const DELTAFORCE_UID = "u_f206dd9c3c1c40799b43a3faf7af986e";
 const SLADK0ESHKA_UID = "u_73b78fcddb90417180495c1468937049";
+const GRIMER_UID = "aoe2hd_ai_grimer";
+const MOOSE_UID = "aoe2hd-moose";
 
 const FEATURED_WARRIOR_SLOT_COUNT = 4;
 const FEATURED_WARRIOR_ROTATE_MS = 5200;
@@ -131,9 +133,9 @@ const FEATURED_WARRIOR_PREMIUM_POOL: FeaturedWarrior[] = [
     key: "premium:moose",
     name: "Moose",
     lookupName: "Moose",
-    role: "Featured Warrior",
+    role: "Ranked Warrior",
     href: "/players/by-name/Moose",
-    imageUrl: "/featured-warriors/thumbs/moose-warrior-1782004403325-b6064f9e-thumb.webp",
+    imageUrl: avatarCardUrlForUser(MOOSE_UID, "Moose"),
   },
   {
     key: "premium:deltaforce",
@@ -157,7 +159,7 @@ const FEATURED_WARRIOR_PREMIUM_POOL: FeaturedWarrior[] = [
     lookupName: "Grimer",
     role: "AI Advisor",
     href: "/players/by-name/Grimer",
-    imageUrl: avatarCardUrlForName("Grimer"),
+    imageUrl: avatarCardUrlForUser(GRIMER_UID, "Grimer"),
   },
 ];
 
@@ -169,11 +171,12 @@ function normalizeFeaturedWarriorKey(value: string) {
     .replace(/^-+|-+$/g, "");
 }
 
+
 function featuredRoleForLeaderboardEntry(entry: LobbyLeaderboardEntry) {
+  if (entry.rank > 0) return `Rank #${entry.rank}`;
   if (entry.isOnline) return "In the Arena";
   if (entry.claimed) return "Claimed Warrior";
-  if (entry.rank > 0) return `Rank #${entry.rank}`;
-  return "Replay-Built Warrior";
+  return "Rising Warrior";
 }
 
 function buildFeaturedWarriorPool(entries: LobbyLeaderboardEntry[]) {
@@ -359,7 +362,26 @@ function deterministicFeaturedWarriorOpening(pool: FeaturedWarrior[]) {
 }
 
 
+
 function featuredWarriorImageSrc(warrior: FeaturedWarrior) {
+  const identity = normalizeFeaturedWarriorKey(warrior.lookupName || warrior.name);
+
+  if (identity === "grimer") {
+    return avatarCardUrlForUser(GRIMER_UID, "Grimer");
+  }
+
+  if (identity === "moose") {
+    return avatarCardUrlForUser(MOOSE_UID, "Moose");
+  }
+
+  if (identity === "zodiac") {
+    return avatarCardUrlForUser(ZODIAC_UID, "Zodiac");
+  }
+
+  if (identity === "julio" || identity === "julio-alvarez") {
+    return avatarCardUrlForUser(JULIO_ALVAREZ_UID, "Julio Alvarez");
+  }
+
   return warrior.imageUrl ?? avatarUrlForName(warrior.lookupName);
 }
 
@@ -467,6 +489,7 @@ function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
   const openingLineup = useMemo(() => deterministicFeaturedWarriorOpening(pool), [pool]);
   const [visibleWarriors, setVisibleWarriors] = useState(openingLineup);
   const [featuredWarriorsMounted, setFeaturedWarriorsMounted] = useState(false);
+  const [featuredWarriorsReady, setFeaturedWarriorsReady] = useState(false);
   const [fadingSlot, setFadingSlot] = useState<number | null>(null);
 
   const visibleWarriorsRef = useRef<FeaturedWarrior[]>(openingLineup);
@@ -483,6 +506,7 @@ function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
 
   useEffect(() => {
     setFeaturedWarriorsMounted(true);
+    setFeaturedWarriorsReady(false);
     preloadFeaturedWarriorImages(pool);
   }, [pool]);
 
@@ -504,6 +528,12 @@ function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
 
       visibleWarriorsRef.current = randomized;
       setVisibleWarriors(randomized);
+
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          if (!disposed) setFeaturedWarriorsReady(true);
+        });
+      });
     });
 
     return () => {
@@ -512,7 +542,7 @@ function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
   }, [featuredWarriorsMounted, pool]);
 
   useEffect(() => {
-    if (paused || pool.length <= FEATURED_WARRIOR_SLOT_COUNT) {
+    if (paused || !featuredWarriorsReady || pool.length <= FEATURED_WARRIOR_SLOT_COUNT) {
       return;
     }
 
@@ -620,7 +650,7 @@ function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
       clearFadeTimers();
       transitionInFlightRef.current = false;
     };
-  }, [paused, pool, featuredWarriorsMounted]);
+  }, [paused, pool, featuredWarriorsMounted, featuredWarriorsReady]);
 
   return { visibleWarriors, fadingSlot };
 }
@@ -630,14 +660,13 @@ type HomePageClientProps = {
   initialEventTile: EventTileView;
 };
 
-
 function AdvancedFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] }) {
   const [paused, setPaused] = useState(false);
   const { visibleWarriors, fadingSlot } = useRotatingFeaturedWarriors(warriors, paused);
 
   return (
     <section
-      className="relative px-4 py-5 sm:px-5 bg-transparent overflow-visible bg-transparent shadow-none border-0 ring-0 rounded-none overflow-visible"
+      className="relative px-4 py-5 sm:px-5 bg-transparent overflow-visible shadow-none border-0 ring-0 rounded-none"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
@@ -657,11 +686,10 @@ function AdvancedFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] })
             <Link
               key={index}
               href={warrior.href}
-                className={`block group relative min-h-[16rem] overflow-visible transform-gpu will-change-[opacity] transition-opacity ease-in-out hover:-translate-y-0.5 ${fadingSlot === index ? "opacity-0" : "opacity-100"}`}
-                style={{ transitionDuration: `${FEATURED_WARRIOR_FADE_MS}ms` }}
+              className={`block group relative min-h-[16rem] overflow-visible transform-gpu will-change-[opacity] transition-opacity ease-in-out hover:-translate-y-0.5 ${fadingSlot === index ? "opacity-0" : "opacity-100"}`}
+              style={{ transitionDuration: `${FEATURED_WARRIOR_FADE_MS}ms` }}
             >
               <Image
-                key={warrior.imageUrl ?? warrior.lookupName}
                 src={featuredWarriorImageSrc(warrior)}
                 alt=""
                 fill
@@ -669,7 +697,7 @@ function AdvancedFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] })
                 priority={index < FEATURED_WARRIOR_SLOT_COUNT}
                 quality={100}
                 unoptimized
-                className={`object-contain object-top transition duration-500 ease-out group-hover:scale-[1.01] opacity-90`}
+                className="object-contain object-top transition duration-500 ease-out group-hover:scale-[1.01] opacity-90"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/52 via-black/8 to-transparent" />
               <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-[radial-gradient(circle_at_50%_100%,rgba(251,191,36,0.11),transparent_64%)]" />
@@ -696,16 +724,31 @@ function AdvancedFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] })
 
 
 function FeaturedWarriorSubtitle({ warrior }: { warrior: FeaturedWarrior }) {
-  if (warrior.premiumSubtitle) {
+  const identity = normalizeFeaturedWarriorKey(warrior.lookupName || warrior.name);
+
+  if (identity === "julio" || identity === "julio-alvarez") {
     return (
       <div className="mt-1 inline-flex max-w-full items-center justify-center rounded-full border border-amber-200/20 bg-gradient-to-r from-amber-300/[0.11] via-yellow-100/[0.08] to-amber-300/[0.11] px-2.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.155em] text-amber-100/95 shadow-[0_0_18px_rgba(251,191,36,0.13)]">
-        {warrior.premiumSubtitle}
+        ELO ᛫ RECORD ᛫ STREAK
       </div>
     );
   }
 
+  const subtitle =
+    identity === "zodiac"
+      ? "Chaos Champion"
+      : identity === "grimer"
+        ? "AI Advisor"
+        : identity === "moose" && warrior.role.startsWith("Rank #")
+          ? warrior.role
+          : identity === "moose"
+            ? "Ranked Warrior"
+            : warrior.role;
+
   return (
-    <FeaturedWarriorSubtitle warrior={warrior} />
+    <div className="mt-0.5 text-[10px] uppercase tracking-[0.18em] text-slate-300">
+      {subtitle}
+    </div>
   );
 }
 
@@ -753,7 +796,6 @@ function ExtremeFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] }) 
                 </div>
                 <div className={`absolute inset-x-[-12%] -top-5 bottom-6 z-10 transition duration-700 group-hover:-translate-y-1 group-hover:scale-[1.012] opacity-100`}>
                   <Image
-                    key={avatarSrc}
                     src={avatarSrc}
                     alt=""
                     fill
@@ -768,9 +810,7 @@ function ExtremeFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] }) 
                   <div className="mx-auto max-w-full overflow-hidden text-balance break-words font-serif text-[clamp(0.76rem,0.96vw,1rem)] font-semibold uppercase leading-[1.05] tracking-[0.07em] text-white [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
                     {warrior.name}
                   </div>
-                  <div className="mt-0.5 text-[9px] uppercase tracking-[0.16em] text-slate-300">
-                    {warrior.role}
-                  </div>
+                  <FeaturedWarriorSubtitle warrior={warrior} />
                 </div>
               </Link>
             );
