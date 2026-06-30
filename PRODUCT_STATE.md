@@ -293,4 +293,4 @@ Still wanted:
 
 - Replay Vault upload now extends the existing single replay upload with old-school ZIP replay packs, preserving renamed filenames while importing each replay into the existing replay proof flow.
 
-- `/upload` now balances the replay form as the page hero while keeping the free-floating UPDATED Replay Vault v1.1 stamp centered below it.
+- `/upload` keeps the replay form as the hero and seats the free-floating UPDATED Replay Vault v1.1 stamp near the bottom of the first viewport.

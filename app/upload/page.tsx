@@ -19,7 +19,7 @@ function isReplayPack(file: File | null) {
 
 function ReplayVaultReleaseStamp() {
   return (
-    <aside className="mx-auto mt-12 w-full max-w-3xl text-center">
+    <aside className="mx-auto mt-auto w-full max-w-3xl pt-14 text-center md:pt-20">
       <div className="mx-auto max-w-2xl">
         <div className="text-[10px] font-semibold uppercase tracking-[0.48em] text-amber-200/75">
           Updated
@@ -98,7 +98,7 @@ export default function UploadReplay() {
 
   if (!isAuthenticated) {
     return (
-      <div className="mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-5xl flex-col justify-start px-4 pt-28 pb-72 text-white md:pt-32 md:pb-80">
+      <div className="mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-5xl flex-col justify-start px-4 pt-24 pb-16 text-white md:pt-28 md:pb-20">
         <div className="mx-auto w-full max-w-3xl rounded-[2rem] border border-white/10 bg-slate-950/70 p-8">
           <div className="text-xs uppercase tracking-[0.35em] text-white/45">Replay Upload</div>
           <h1 className="mt-3 text-3xl font-semibold">Sign in before uploading proof.</h1>
@@ -121,7 +121,7 @@ export default function UploadReplay() {
   }
 
   return (
-    <div className="mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-5xl flex-col justify-start px-4 pt-28 pb-72 text-white md:pt-32 md:pb-80">
+    <div className="mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-5xl flex-col justify-start px-4 pt-24 pb-16 text-white md:pt-28 md:pb-20">
       <div className="mx-auto w-full max-w-3xl rounded-[2rem] border border-white/10 bg-slate-950/70 p-8">
         <div className="text-xs uppercase tracking-[0.35em] text-white/45">Replay Upload</div>
         <h1 className="mt-3 text-3xl font-semibold">Upload a replay manually</h1>
