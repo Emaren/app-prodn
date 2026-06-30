@@ -167,7 +167,9 @@ async function loadLiveGamesSnapshotFresh(prisma: PrismaClient): Promise<LiveGam
   const displayedCompletedSessions = dedupeStreamedSessions([
     ...streamedCompletedSessions,
     ...fallbackRecentOutcomeSessions,
-  ]).slice(0, LIVE_GAMES_COMPLETED_SESSION_DEPTH);
+  ])
+    .sort(compareCompletedSessionRecency)
+    .slice(0, LIVE_GAMES_COMPLETED_SESSION_DEPTH);
 
   const displayedCompletedKeys = new Set(
     displayedCompletedSessions.map((session) => session.sessionKey)
@@ -448,6 +450,28 @@ function dedupeStreamedSessions(sessions: StreamedLiveGameSession[]) {
   }
 
   return result;
+}
+
+function completedSessionRecencyMs(session: StreamedLiveGameSession) {
+  for (const value of [session.completedAt, session.updatedAt, session.playedOn, session.createdAt]) {
+    if (!value) continue;
+
+    const ms = new Date(value).getTime();
+    if (Number.isFinite(ms)) {
+      return ms;
+    }
+  }
+
+  return 0;
+}
+
+function compareCompletedSessionRecency(left: StreamedLiveGameSession, right: StreamedLiveGameSession) {
+  const recencyDiff = completedSessionRecencyMs(right) - completedSessionRecencyMs(left);
+  if (recencyDiff !== 0) {
+    return recencyDiff;
+  }
+
+  return Math.abs(right.id) - Math.abs(left.id);
 }
 
 function parseStreamPlayers(title: string): LiveGameSession["players"] {
