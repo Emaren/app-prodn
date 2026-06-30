@@ -18,7 +18,7 @@ const BROWSER_STREAM_STALE_MS = 120_000;
 const BROWSER_STREAM_ARCHIVE_MS = 6 * 60 * 60 * 1000;
 const EXTERNAL_STREAM_STALE_MS = 20 * 60 * 1000;
 const LIVE_GAMES_RECENT_MATCH_LIMIT = 24;
-const LIVE_GAMES_COMPLETED_SESSION_DEPTH = 6;
+const LIVE_GAMES_COMPLETED_SESSION_DEPTH = 3;
 
 export type LiveGamesSummary = {
   liveCount: number;
@@ -164,12 +164,12 @@ async function loadLiveGamesSnapshotFresh(prisma: PrismaClient): Promise<LiveGam
     fallbackRecentOutcomeMatches.map((match) => buildRecentOutcomeSession(match, streamsBySession))
   );
 
-  const displayedCompletedSessions = dedupeStreamedSessions([
-    ...streamedCompletedSessions,
-    ...fallbackRecentOutcomeSessions,
-  ])
-    .sort(compareCompletedSessionRecency)
-    .slice(0, LIVE_GAMES_COMPLETED_SESSION_DEPTH);
+  const displayedCompletedSessions = dedupeStreamedSessions(
+    [
+      ...streamedCompletedSessions,
+      ...fallbackRecentOutcomeSessions,
+    ].sort(compareCompletedSessionRecency)
+  ).slice(0, LIVE_GAMES_COMPLETED_SESSION_DEPTH);
 
   const displayedCompletedKeys = new Set(
     displayedCompletedSessions.map((session) => session.sessionKey)
@@ -439,17 +439,24 @@ function buildRecentOutcomeSession(
   };
 }
 
+
 function dedupeStreamedSessions(sessions: StreamedLiveGameSession[]) {
   const seen = new Set<string>();
-  const result: StreamedLiveGameSession[] = [];
 
-  for (const session of sessions) {
-    if (seen.has(session.sessionKey)) continue;
-    seen.add(session.sessionKey);
-    result.push(session);
-  }
+  return sessions.filter((session) => {
+    const gameId = Number(session.id);
+    const key =
+      Number.isFinite(gameId) && gameId > 0
+        ? `game:${gameId}`
+        : `session:${session.sessionKey || session.completedAt || session.updatedAt || "unknown"}`;
 
-  return result;
+    if (seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+    return true;
+  });
 }
 
 function completedSessionRecencyMs(session: StreamedLiveGameSession) {
