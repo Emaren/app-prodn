@@ -19,18 +19,23 @@ function isReplayPack(file: File | null) {
 
 function ReplayVaultReleaseStamp() {
   return (
-    <aside className="mx-auto mt-8 w-full max-w-3xl">
-      <div className="ml-auto max-w-sm rounded-[1.6rem] border border-white/10 bg-slate-950/35 px-5 py-4 text-right shadow-[0_24px_80px_rgba(0,0,0,0.22)] backdrop-blur">
-        <div className="text-[10px] font-semibold uppercase tracking-[0.38em] text-amber-200/70">
-          Released
+    <aside className="mx-auto mt-10 w-full max-w-3xl text-center">
+      <div className="mx-auto max-w-2xl">
+        <div className="text-[10px] font-semibold uppercase tracking-[0.48em] text-amber-200/75">
+          Updated
         </div>
         <div className="mt-2 text-xl font-semibold tracking-tight text-white">
           Replay Vault v1.1
         </div>
-        <div className="mt-1 text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
+        <div className="mt-2 text-[10px] font-semibold uppercase tracking-[0.38em] text-slate-400">
           Jun 30, 2026
         </div>
-        <p className="mt-3 text-xs leading-5 text-slate-300">
+        <div className="mx-auto mt-4 flex w-36 items-center justify-center gap-3 text-amber-300/70">
+          <span className="h-px flex-1 bg-amber-300/35" />
+          <span className="h-1.5 w-1.5 rotate-45 border border-amber-300/60" />
+          <span className="h-px flex-1 bg-amber-300/35" />
+        </div>
+        <p className="mt-4 whitespace-nowrap text-[11px] leading-5 text-slate-300 sm:text-xs">
           ZIP packs live · renamed files preserved · old wars documented.
         </p>
       </div>
@@ -93,7 +98,7 @@ export default function UploadReplay() {
 
   if (!isAuthenticated) {
     return (
-      <div className="mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-5xl flex-col justify-center px-4 pt-20 pb-80 text-white">
+      <div className="mx-auto flex min-h-[112vh] w-full max-w-5xl flex-col justify-center px-4 pt-36 pb-36 text-white md:pt-44 md:pb-44">
         <div className="mx-auto w-full max-w-3xl rounded-[2rem] border border-white/10 bg-slate-950/70 p-8">
           <div className="text-xs uppercase tracking-[0.35em] text-white/45">Replay Upload</div>
           <h1 className="mt-3 text-3xl font-semibold">Sign in before uploading proof.</h1>
@@ -116,7 +121,7 @@ export default function UploadReplay() {
   }
 
   return (
-    <div className="mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-5xl flex-col justify-center px-4 pt-20 pb-80 text-white">
+    <div className="mx-auto flex min-h-[112vh] w-full max-w-5xl flex-col justify-center px-4 pt-36 pb-36 text-white md:pt-44 md:pb-44">
       <div className="mx-auto w-full max-w-3xl rounded-[2rem] border border-white/10 bg-slate-950/70 p-8">
         <div className="text-xs uppercase tracking-[0.35em] text-white/45">Replay Upload</div>
         <h1 className="mt-3 text-3xl font-semibold">Upload a replay manually</h1>
