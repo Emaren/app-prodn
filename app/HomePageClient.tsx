@@ -361,6 +361,33 @@ function deterministicFeaturedWarriorOpening(pool: FeaturedWarrior[]) {
   return selected.slice(0, FEATURED_WARRIOR_SLOT_COUNT);
 }
 
+function randomFeaturedWarriorOpening(pool: FeaturedWarrior[]) {
+  const realAvatarPool = pool.filter(featuredWarriorHasRealAvatar);
+  const source = realAvatarPool.length >= FEATURED_WARRIOR_SLOT_COUNT ? realAvatarPool : pool;
+  const candidates = [...source];
+
+  for (let index = candidates.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    const current = candidates[index];
+    const swap = candidates[swapIndex];
+
+    if (!current || !swap) {
+      continue;
+    }
+
+    candidates[index] = swap;
+    candidates[swapIndex] = current;
+  }
+
+  const lineup = candidates.slice(0, FEATURED_WARRIOR_SLOT_COUNT);
+
+  if (lineup.length >= FEATURED_WARRIOR_SLOT_COUNT) {
+    return lineup;
+  }
+
+  return deterministicFeaturedWarriorOpening(pool);
+}
+
 
 
 function featuredWarriorImageSrc(warrior: FeaturedWarrior) {
@@ -499,7 +526,7 @@ function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
     setFadingSlot(null);
     setFeaturedWarriorsReady(false);
 
-    const initialLineup = deterministicFeaturedWarriorOpening(poolRef.current);
+    const initialLineup = randomFeaturedWarriorOpening(poolRef.current);
     initialLineup.forEach((warrior, index) => {
       lastWarriorBySlotRef.current[index] = warrior.key;
     });
