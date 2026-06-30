@@ -150,7 +150,7 @@ export function AvatarCommissionScroll() {
   return (
     <form
       onSubmit={submitCommission}
-      className="relative text-[#ead8aa]"
+      className="relative min-w-0 max-w-full text-[#ead8aa]"
       aria-label="Avatar commission lobby"
     >
       <div className="market-aoe-rail mx-4 h-5 sm:mx-6" />
@@ -168,7 +168,7 @@ export function AvatarCommissionScroll() {
               Commission settings
             </div>
             <h3 className="market-display-title market-display-gold mt-2 font-serif text-3xl font-medium leading-none tracking-[-0.035em]">
-              Set your likeness.
+              Let me see your war face.
             </h3>
           </div>
           <div className="flex items-center gap-2 rounded-[0.35rem] border border-[#a9773e]/48 bg-[linear-gradient(180deg,rgba(91,66,38,0.78),rgba(30,24,18,0.95))] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,224,164,0.16),inset_0_-2px_8px_rgba(0,0,0,0.5)]">
@@ -253,7 +253,7 @@ export function AvatarCommissionScroll() {
             onChange={(event) => setPalette(event.target.value.slice(0, 100))}
             maxLength={100}
             placeholder="Oxblood and gold, cold moonlight, emerald..."
-            className="mt-2 min-h-11 w-full rounded-[0.3rem] border border-[#8b633b]/48 bg-[#100f0e]/90 px-3 text-sm font-medium text-[#f1dfb8] shadow-[inset_0_2px_12px_rgba(0,0,0,0.52)] outline-none placeholder:text-[#806f52] focus:border-[#c18b4b]/74 focus:bg-[#14120f]"
+            className="mt-2 min-h-11 w-full min-w-0 max-w-full rounded-[0.3rem] border border-[#8b633b]/48 bg-[#100f0e]/90 px-3 text-sm font-medium text-[#f1dfb8] shadow-[inset_0_2px_12px_rgba(0,0,0,0.52)] outline-none placeholder:text-[#806f52] focus:border-[#c18b4b]/74 focus:bg-[#14120f]"
           />
         </label>
 
@@ -271,8 +271,8 @@ export function AvatarCommissionScroll() {
             rows={7}
             required
             minLength={24}
-            placeholder="I want to look like a veteran commander who has already survived the final battle..."
-            className="mt-2 w-full resize-y rounded-[0.3rem] border border-[#8b633b]/48 bg-[#100f0e]/90 px-4 py-3 text-sm font-medium leading-6 text-[#f1dfb8] shadow-[inset_0_2px_14px_rgba(0,0,0,0.55)] outline-none placeholder:text-[#806f52] focus:border-[#c18b4b]/74 focus:bg-[#14120f]"
+            placeholder="Bigger, badder, more mean."
+            className="mt-2 w-full min-w-0 max-w-full resize-y overflow-x-hidden rounded-[0.3rem] border border-[#8b633b]/48 bg-[#100f0e]/90 px-4 py-3 text-sm font-medium leading-6 text-[#f1dfb8] shadow-[inset_0_2px_14px_rgba(0,0,0,0.55)] outline-none placeholder:text-[#806f52] focus:border-[#c18b4b]/74 focus:bg-[#14120f]"
           />
         </label>
 
@@ -361,7 +361,7 @@ export function OpenShopDesk() {
 
   if (receipt) {
     return (
-      <div className="flex min-h-[27rem] flex-col justify-between rounded-[1.7rem] border border-amber-100/22 bg-amber-200/[0.07] p-6">
+      <div className="flex min-h-[27rem] min-w-0 max-w-full flex-col justify-between rounded-[1.7rem] border border-amber-100/22 bg-amber-200/[0.07] p-6">
         <div>
           <div className="grid h-12 w-12 place-items-center rounded-[1rem] border border-amber-100/35 bg-[linear-gradient(145deg,#9d6a10,#2a1b08)] text-amber-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.26),0_12px_28px_rgba(0,0,0,0.28)]">
             <Check className="h-6 w-6" strokeWidth={3} />
@@ -370,18 +370,18 @@ export function OpenShopDesk() {
             Proposal #{receipt.requestId}
           </p>
           <h3 className="market-display-title market-display-gold mt-3 font-serif text-3xl font-medium tracking-[-0.03em]">
-            Your awning is under review.
+            Emaren has your proposal.
           </h3>
           <p className="mt-3 text-sm leading-6 text-slate-300">
-            The market keeper has the idea. Use the private ledger to shape the
-            offer, delivery, and economics.
+            Your private line is open. Shape the offer, delivery, and economics
+            directly with Emaren.
           </p>
         </div>
         <Link
           href={receipt.contactHref}
           className="market-gold-button group mt-7 inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-5 text-sm font-black"
         >
-          Open the private ledger
+          Open Emaren conversation
           <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
         </Link>
       </div>
@@ -391,7 +391,7 @@ export function OpenShopDesk() {
   return (
     <form
       onSubmit={submitShop}
-      className="rounded-[1.7rem] border border-white/10 bg-black/25 p-5 sm:p-6"
+      className="w-full min-w-0 max-w-full overflow-hidden rounded-[1.7rem] border border-white/10 bg-black/25 p-5 sm:p-6"
       aria-label="Open a marketplace shop"
     >
       <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.28em] text-amber-100/65">
@@ -408,7 +408,7 @@ export function OpenShopDesk() {
           maxLength={100}
           required
           placeholder="The Banner Foundry"
-          className="mt-2 min-h-11 w-full rounded-xl border border-white/10 bg-white/[0.045] px-3 text-sm font-semibold text-white outline-none placeholder:text-slate-600 focus:border-amber-100/30 focus:bg-white/[0.065]"
+          className="mt-2 min-h-11 w-full min-w-0 max-w-full rounded-xl border border-white/10 bg-white/[0.045] px-3 text-sm font-semibold text-white outline-none placeholder:text-slate-600 focus:border-amber-100/30 focus:bg-white/[0.065]"
         />
       </label>
       <label className="mt-4 block">
@@ -423,7 +423,7 @@ export function OpenShopDesk() {
           required
           rows={6}
           placeholder="Custom clan banners and stream overlays for players who want their house to look unmistakable..."
-          className="mt-2 w-full resize-y rounded-xl border border-white/10 bg-white/[0.045] px-3 py-3 text-sm font-medium leading-6 text-white outline-none placeholder:text-slate-600 focus:border-amber-100/30 focus:bg-white/[0.065]"
+          className="mt-2 w-full min-w-0 max-w-full resize-y overflow-x-hidden rounded-xl border border-white/10 bg-white/[0.045] px-3 py-3 text-sm font-medium leading-6 text-white outline-none placeholder:text-slate-600 focus:border-amber-100/30 focus:bg-white/[0.065]"
         />
       </label>
       {error ? (
@@ -445,7 +445,7 @@ export function OpenShopDesk() {
           {busy ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
-              Raising awning…
+              Opening private line…
             </>
           ) : (
             <>
@@ -456,19 +456,19 @@ export function OpenShopDesk() {
                 height={24}
                 className="h-5 w-5 object-contain"
               />
-              Send shop proposal
+              Send to Emaren
               <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
             </>
           )}
         </button>
       ) : (
         <SteamLoginButton
-          label="Sign in to propose a shop"
+          label="Sign in to contact Emaren"
           returnTo="/market#open-shop"
           className="market-gold-button mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full px-5 text-sm font-black"
         />
       )}
-      <div className="mt-3 flex items-center justify-center gap-2 text-[10px] font-semibold text-slate-500">
+      <div className="mt-3 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[10px] font-semibold text-slate-500">
         <Image
           src={WOLO_LOGO_SRC}
           alt=""
@@ -476,7 +476,13 @@ export function OpenShopDesk() {
           height={18}
           className="h-4 w-4 object-contain opacity-65"
         />
-        Terms come after the idea earns a place.
+        <span>Delivered privately to Emaren.</span>
+        <Link
+          href="/contact-emaren"
+          className="text-amber-100/70 underline decoration-amber-100/25 underline-offset-4 transition hover:text-amber-50"
+        >
+          Open direct line
+        </Link>
       </div>
     </form>
   );
