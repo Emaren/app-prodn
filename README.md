@@ -331,4 +331,4 @@ By default the runner finalizes the last closed UTC day, allocates the staker ha
 
 - `/upload` hero copy now lists replay formats on one line, then keeps the watcher/live-proof note on the next line.
 
-- `/upload` now uses the calmer “Replay Vault” hero heading instead of the louder manual-upload headline.
+- `/upload` keeps the calmer premium hero typography while restoring the clearer “Upload a replay manually” CTA heading.
