@@ -324,3 +324,5 @@ npm run staking:rewards:run
 ```
 
 By default the runner finalizes the last closed UTC day, allocates the staker half of the 2% betting fee by staking weight, pays valid wallets through the configured WOLO settlement service, and records confirmed payouts as staking `CLAIM` events. Backfills can be run with `npm run staking:rewards:run -- --date=YYYY-MM-DD`.
+
+- `/upload` keeps the existing single replay flow and adds ZIP replay packs; ZIP imports preserve renamed replay filenames and upload each supported replay as identity-bound proof.

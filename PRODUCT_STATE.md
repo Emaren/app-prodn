@@ -290,3 +290,5 @@ Still wanted:
 5. Add operator visibility for skipped challenge/watcher merges when parser labels do not safely map
 6. Keep hardening live wallet edge cases around Keplr/Ledger handoff and signer/browser failures
 7. Clean API testing workflow and keep docs aligned with the now-real WOLO betting rails
+
+- Replay Vault upload now extends the existing single replay upload with old-school ZIP replay packs, preserving renamed filenames while importing each replay into the existing replay proof flow.

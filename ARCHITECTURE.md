@@ -325,3 +325,5 @@ Do not assume every visible issue is a page bug.
 - Ledger and older-browser signer behavior is improved but still needs tighter client telemetry and user guidance
 - Challenge -> Bets scheduled/live bridging is healthier now, but very fast finishes and duplicate-looking settled history still deserve another pass
 - watcher behavior now looks healthier end-to-end, but the app should still document the live/final replay contract truthfully as it evolves
+
+- Replay upload surface keeps the existing manual single-file flow and adds `/api/replay/upload-package` for browser ZIP packs. ZIP entries are unpacked server-side, filtered to supported AoE2 replay extensions, and forwarded through the canonical backend replay upload contract.
