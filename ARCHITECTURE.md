@@ -249,6 +249,10 @@ reservation paid until that verification succeeds.
 The founding shop is The Visage Forge; its craft is named Visagewright and its
 custom profile-avatar commission is displayed as 100 WOLO.
 
+The open-shop desk posts the proposal into the private Emaren conversation and
+then hands the user directly into that conversation; it is not a disconnected
+lead form.
+
 `POST /api/market/requests` accepts authenticated avatar commissions and shop
 proposals. It validates and bounds the submitted scroll, opens the existing
 private Emaren conversation, stores the full request as a `DirectMessage`, and

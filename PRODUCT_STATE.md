@@ -109,9 +109,9 @@ Current strengths:
 - `/forum` is a public War Room shell for community energy, featured threads, champion activity, and WOLO-adjacent calls to action
 - `/clans` is the public clan directory, launching with an equal-weight Mystikal crest and Add Your Clan invitation
 - `/clans/mystikal` opens with clan chat, a founding roster, public/signed-in/clan-only post audiences, and a clan-admin hall-wide audience ceiling that also hides older broader posts
-- `/academy` is the cinematic front gate for serious strategy study, with Zodiac as the founding advisor and an open seat for future doctrines
+- `/academy` is the cinematic front gate for serious strategy study, with Zodiac as the founding advisor, an open seat for future doctrines, and header/menu stacking that remains above the Academy hero
 - `/zodiac` now leads with “Train Under Zodiac” and offers a real 100 WOLO first-lesson checkout: Keplr signs the direct advisor payment, the app verifies the `wolo-1` transfer, records a receipt, and opens the private Zodiac line
-- `/market` is the cinematic AoE2WAR Agora: three aligned, deep-lit awnings lead into The Visage Forge’s dark wood-and-bronze commission lobby; signed-in 100 WOLO avatar requests and shop proposals open a private Emaren conversation, while finished identities still arrive through the existing profile avatar vault
+- `/market` is the cinematic AoE2WAR Agora: three aligned, tailored awnings lead into The Visage Forge’s dark wood-and-bronze commission lobby; signed-in 100 WOLO avatar requests and shop proposals open a private Emaren conversation, while finished identities still arrive through the existing profile avatar vault
 - the site answers “what else can I do here?” better than before
 - overall product identity is stronger than the earlier explainer-heavy versions
 

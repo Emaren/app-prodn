@@ -168,7 +168,7 @@ export function AvatarCommissionScroll() {
               Commission settings
             </div>
             <h3 className="market-display-title market-display-gold mt-2 font-serif text-3xl font-medium leading-none tracking-[-0.035em]">
-              Let me see your war face.
+              Let me see your real war face.
             </h3>
           </div>
           <div className="flex items-center gap-2 rounded-[0.35rem] border border-[#a9773e]/48 bg-[linear-gradient(180deg,rgba(91,66,38,0.78),rgba(30,24,18,0.95))] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,224,164,0.16),inset_0_-2px_8px_rgba(0,0,0,0.5)]">
@@ -348,6 +348,7 @@ export function OpenShopDesk() {
         offer,
       });
       setReceipt(nextReceipt);
+      window.location.assign(nextReceipt.contactHref);
     } catch (requestError) {
       setError(
         requestError instanceof Error
@@ -478,7 +479,7 @@ export function OpenShopDesk() {
         />
         <span>Delivered privately to Emaren.</span>
         <Link
-          href="/contact-emaren"
+          href="/contact-emaren?subject=Marketplace%20shop%20proposal"
           className="text-amber-100/70 underline decoration-amber-100/25 underline-offset-4 transition hover:text-amber-50"
         >
           Open direct line

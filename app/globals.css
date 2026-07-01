@@ -382,6 +382,24 @@ input[type="datetime-local"] {
   );
 }
 
+.market-hero-title {
+  background-size: 180% 100%;
+  filter: drop-shadow(0 18px 42px rgba(0, 0, 0, 0.56));
+  animation: marketHeroTitleGleam 9s ease-in-out infinite;
+}
+
+@keyframes marketHeroTitleGleam {
+  0%,
+  22%,
+  100% {
+    background-position: 0% 50%;
+  }
+  48%,
+  62% {
+    background-position: 100% 50%;
+  }
+}
+
 .market-aoe-rail {
   position: relative;
   z-index: 2;
@@ -989,7 +1007,11 @@ body:has(.academy-war-college) .academy-route-shell::before {
     radial-gradient(36rem 28rem at 52% 88%, rgba(34, 7, 12, 0.22), transparent 74%);
 }
 
-body:has(.academy-war-college) .academy-route-shell > header,
+body:has(.academy-war-college) .academy-route-shell > header {
+  position: sticky;
+  z-index: 180;
+}
+
 body:has(.academy-war-college) .academy-route-shell > main,
 body:has(.academy-war-college) .academy-route-shell > footer {
   position: relative;

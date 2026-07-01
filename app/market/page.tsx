@@ -82,7 +82,7 @@ export default function MarketPage() {
           sizes="(max-width: 1536px) 100vw, 1536px"
           className="object-cover object-center"
         />
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(2,5,13,0.97)_0%,rgba(2,5,13,0.88)_30%,rgba(2,5,13,0.45)_58%,rgba(2,5,13,0.12)_100%),linear-gradient(180deg,rgba(2,5,13,0.12),rgba(2,5,13,0.22)_58%,rgba(2,5,13,0.94)_100%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(2,5,13,0.84)_0%,rgba(2,5,13,0.72)_30%,rgba(2,5,13,0.34)_58%,rgba(2,5,13,0.1)_100%),linear-gradient(180deg,rgba(2,5,13,0.1),rgba(2,5,13,0.2)_58%,rgba(2,5,13,0.94)_100%)]" />
         <div className="pointer-events-none absolute inset-x-12 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/55 to-transparent" />
 
         <div className="relative flex min-h-[40rem] max-w-[53rem] flex-col justify-between px-6 pb-32 pt-12 sm:min-h-[45rem] sm:px-10 sm:pb-32 sm:pt-12 lg:px-14">
@@ -143,6 +143,13 @@ export default function MarketPage() {
           </div>
         </div>
 
+        <div className="pointer-events-none absolute left-6 top-[34%] z-10 hidden max-w-[34rem] sm:left-10 sm:block lg:left-14">
+          <h1 className="market-display-title market-display-gold market-hero-title pb-2 font-serif text-5xl font-normal leading-[1.02] tracking-[-0.045em] sm:text-6xl lg:text-7xl">
+            The Marketplace
+          </h1>
+          <div className="mt-3 h-px w-32 bg-gradient-to-r from-amber-100/55 via-amber-100/18 to-transparent" />
+        </div>
+
         <div className="absolute bottom-6 right-6 hidden w-[26rem] grid-cols-3 gap-2 lg:grid">
           {[
             ["01", "Founding shop"],
@@ -181,14 +188,10 @@ export default function MarketPage() {
         <div className="mt-5 grid gap-4 lg:grid-cols-3">
           <Link
             href="#visage-forge"
-            className="group relative flex min-h-[30rem] flex-col overflow-hidden rounded-[1.7rem] border border-rose-100/18 bg-[radial-gradient(circle_at_72%_8%,rgba(244,63,94,0.19),transparent_68%),linear-gradient(145deg,#26100f,#090b12_72%)] p-5 transition hover:-translate-y-1 hover:border-rose-100/35"
+            className="group relative flex min-h-[22rem] flex-col overflow-hidden rounded-[1.7rem] border border-rose-100/18 bg-[radial-gradient(circle_at_75%_15%,rgba(244,63,94,0.16),transparent_30%),linear-gradient(145deg,#26100f,#090b12_72%)] p-5 transition hover:-translate-y-1 hover:border-rose-100/35"
           >
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-64">
-              <div className="absolute -inset-x-16 top-10 h-52 bg-[linear-gradient(180deg,rgba(159,42,47,0.42),rgba(91,32,38,0.17)_48%,transparent)] blur-3xl transition duration-500 group-hover:opacity-100" />
-              <div className="absolute inset-x-0 top-0 h-24 bg-[repeating-linear-gradient(90deg,#5a1818_0_72px,#bd9b5d_72px_144px)] opacity-95 shadow-[0_18px_38px_rgba(111,25,30,0.3)]" />
-              <div className="absolute inset-x-0 top-24 h-px bg-gradient-to-r from-transparent via-rose-100/32 to-transparent" />
-            </div>
-            <div className="relative mt-24 flex items-center justify-between gap-3">
+            <div className="absolute inset-x-0 top-0 h-5 bg-[repeating-linear-gradient(90deg,#5a1818_0_44px,#bd9b5d_44px_88px)] opacity-90 shadow-[0_10px_24px_rgba(111,25,30,0.22)]" />
+            <div className="relative mt-5 flex items-center justify-between gap-3">
               <span className="rounded-full border border-amber-100/18 bg-amber-200/[0.08] px-3 py-1 text-[9px] font-black uppercase tracking-[0.2em] text-amber-100">
                 Founding shop
               </span>
@@ -225,14 +228,10 @@ export default function MarketPage() {
 
           <Link
             href="/academy"
-            className="group relative flex min-h-[30rem] flex-col overflow-hidden rounded-[1.7rem] border border-violet-100/16 bg-[radial-gradient(circle_at_72%_8%,rgba(124,58,237,0.23),transparent_68%),linear-gradient(145deg,#121128,#070913_72%)] p-5 transition hover:-translate-y-1 hover:border-violet-100/34"
+            className="group relative flex min-h-[22rem] flex-col overflow-hidden rounded-[1.7rem] border border-violet-100/16 bg-[radial-gradient(circle_at_75%_15%,rgba(124,58,237,0.19),transparent_32%),linear-gradient(145deg,#121128,#070913_72%)] p-5 transition hover:-translate-y-1 hover:border-violet-100/34"
           >
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-64">
-              <div className="absolute -inset-x-16 top-10 h-52 bg-[linear-gradient(180deg,rgba(105,71,184,0.43),rgba(61,42,115,0.18)_48%,transparent)] blur-3xl transition duration-500 group-hover:opacity-100" />
-              <div className="absolute inset-x-0 top-0 h-24 bg-[repeating-linear-gradient(90deg,#352363_0_72px,#a78b6d_72px_144px)] opacity-95 shadow-[0_18px_38px_rgba(72,47,137,0.32)]" />
-              <div className="absolute inset-x-0 top-24 h-px bg-gradient-to-r from-transparent via-violet-100/32 to-transparent" />
-            </div>
-            <div className="relative mt-24 flex items-center justify-between gap-3">
+            <div className="absolute inset-x-0 top-0 h-5 bg-[repeating-linear-gradient(90deg,#352363_0_44px,#a78b6d_44px_88px)] opacity-90 shadow-[0_10px_24px_rgba(72,47,137,0.22)]" />
+            <div className="relative mt-5 flex items-center justify-between gap-3">
               <span className="rounded-full border border-violet-100/18 bg-violet-300/[0.08] px-3 py-1 text-[9px] font-black uppercase tracking-[0.2em] text-violet-100">
                 Academy dispatch
               </span>
@@ -262,14 +261,10 @@ export default function MarketPage() {
 
           <Link
             href="#open-shop"
-            className="group relative flex min-h-[30rem] flex-col overflow-hidden rounded-[1.7rem] border border-dashed border-amber-100/20 bg-[radial-gradient(circle_at_70%_8%,rgba(251,191,36,0.16),transparent_68%),rgba(5,8,15,0.9)] p-5 transition hover:-translate-y-1 hover:border-amber-100/42"
+            className="group relative flex min-h-[22rem] flex-col overflow-hidden rounded-[1.7rem] border border-dashed border-amber-100/20 bg-[radial-gradient(circle_at_50%_26%,rgba(251,191,36,0.1),transparent_28%),rgba(5,8,15,0.9)] p-5 transition hover:-translate-y-1 hover:border-amber-100/42"
           >
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-64">
-              <div className="absolute -inset-x-16 top-10 h-52 bg-[linear-gradient(180deg,rgba(160,125,61,0.33),rgba(92,73,39,0.14)_48%,transparent)] blur-3xl transition duration-500 group-hover:opacity-100" />
-              <div className="absolute inset-x-0 top-0 h-24 bg-[repeating-linear-gradient(90deg,#6c532d_0_72px,#2e2619_72px_144px)] opacity-82 shadow-[0_18px_38px_rgba(111,83,40,0.24)]" />
-              <div className="absolute inset-x-0 top-24 h-px bg-gradient-to-r from-transparent via-amber-100/28 to-transparent" />
-            </div>
-            <div className="relative mt-24 flex items-center justify-between gap-3">
+            <div className="absolute inset-x-0 top-0 h-5 bg-[repeating-linear-gradient(90deg,#6c532d_0_44px,#2e2619_44px_88px)] opacity-65 shadow-[0_10px_24px_rgba(111,83,40,0.18)]" />
+            <div className="relative mt-5 flex items-center justify-between gap-3">
               <span className="rounded-full border border-amber-100/18 bg-amber-200/[0.07] px-3 py-1 text-[9px] font-black uppercase tracking-[0.2em] text-amber-100/80">
                 Empty awning
               </span>
@@ -318,7 +313,7 @@ export default function MarketPage() {
             <p className="mt-7 text-[10px] font-bold uppercase tracking-[0.34em] text-amber-100/55">
               The {MARKETPLACE_CONFIG.avatarCraftName}
             </p>
-            <h2 className="market-display-title market-display-ember mt-3 font-serif text-4xl font-medium leading-[0.96] tracking-[-0.04em] sm:text-6xl">
+            <h2 className="market-display-title market-display-ember mt-3 overflow-visible pb-2 pt-1 font-serif text-4xl font-medium leading-[1.08] tracking-[-0.04em] sm:text-6xl">
               The Visage Forge
             </h2>
             <p className="mt-4 max-w-xl text-sm leading-6 text-slate-400">
