@@ -84,6 +84,7 @@ model User {
   eventTilesAsCommissioner       EventTile[]                       @relation("EventTileCommissioner")
   clanMemberships                ClanMember[]
   clanMessages                   ClanMessage[]
+  clanMessageReactions           ClanMessageReaction[]
 
   @@map("users")
 }
@@ -723,13 +724,30 @@ model ClanMessage {
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
 
-  clan  Clan @relation(fields: [clanId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  author User @relation(fields: [authorUserId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  clan      Clan                  @relation(fields: [clanId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  author    User                  @relation(fields: [authorUserId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  reactions ClanMessageReaction[]
 
   @@index([clanId, createdAt], map: "ix_clan_messages_clan_created_at")
   @@index([clanId, audience, createdAt], map: "ix_clan_messages_clan_audience_created")
   @@index([authorUserId, createdAt], map: "ix_clan_messages_author_created")
   @@map("clan_messages")
+}
+
+model ClanMessageReaction {
+  id        Int      @id @default(autoincrement())
+  messageId Int      @map("message_id")
+  userId    Int      @map("user_id")
+  emoji     String   @db.VarChar(24)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  message ClanMessage @relation(fields: [messageId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([messageId, userId, emoji], map: "uq_clan_message_reactions_message_user_emoji")
+  @@index([messageId, createdAt], map: "ix_clan_message_reactions_message_id")
+  @@index([userId, createdAt], map: "ix_clan_message_reactions_user_id")
+  @@map("clan_message_reactions")
 }
 
 model LiveTickerMessage {

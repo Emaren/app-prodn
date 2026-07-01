@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import {
   audienceAllowedByPolicy,
+  isClanReaction,
   isClanAudience,
   loadClanHallSnapshot,
   normalizeClanAudience,
@@ -19,6 +20,16 @@ const NO_STORE_HEADERS = {
 
 function normalizeSlug(value: string) {
   return decodeURIComponent(value).trim().toLowerCase().slice(0, 80);
+}
+
+function parseMessageId(value: unknown) {
+  const parsed =
+    typeof value === "number"
+      ? value
+      : typeof value === "string"
+        ? Number.parseInt(value, 10)
+        : Number.NaN;
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
 async function readSlug(context: { params: Promise<{ slug: string }> }) {
@@ -90,6 +101,54 @@ export async function POST(
       string,
       unknown
     >;
+
+    if (body.action === "toggle_reaction") {
+      const messageId = parseMessageId(body.messageId);
+      if (!messageId || !isClanReaction(body.emoji)) {
+        return NextResponse.json(
+          { detail: "Choose a valid clan reaction." },
+          { status: 400, headers: NO_STORE_HEADERS }
+        );
+      }
+
+      const current = await loadClanHallSnapshot(prisma, slug, viewer.uid);
+      const visibleMessage = current?.messages.find(
+        (entry) => entry.id === messageId
+      );
+      if (!current || !visibleMessage) {
+        return NextResponse.json(
+          { detail: "That clan message is not visible to you." },
+          { status: 404, headers: NO_STORE_HEADERS }
+        );
+      }
+
+      const key = {
+        messageId_userId_emoji: {
+          messageId,
+          userId: viewer.id,
+          emoji: body.emoji,
+        },
+      };
+      const existing = await prisma.clanMessageReaction.findUnique({
+        where: key,
+        select: { id: true },
+      });
+      if (existing) {
+        await prisma.clanMessageReaction.delete({ where: key });
+      } else {
+        await prisma.clanMessageReaction.create({
+          data: {
+            messageId,
+            userId: viewer.id,
+            emoji: body.emoji,
+          },
+        });
+      }
+
+      const refreshed = await loadClanHallSnapshot(prisma, slug, viewer.uid);
+      return NextResponse.json(refreshed, { headers: NO_STORE_HEADERS });
+    }
+
     const message = normalizeClanMessage(body.message);
     if (!message) {
       return NextResponse.json(
@@ -216,6 +275,43 @@ export async function PATCH(
         { status: 404, headers: NO_STORE_HEADERS }
       );
     }
+    const body = (await request.json().catch(() => ({}))) as Record<
+      string,
+      unknown
+    >;
+
+    if (body.action === "edit_message") {
+      const messageId = parseMessageId(body.messageId);
+      const message = normalizeClanMessage(body.message);
+      if (!messageId || !message) {
+        return NextResponse.json(
+          { detail: "A message and message id are required." },
+          { status: 400, headers: NO_STORE_HEADERS }
+        );
+      }
+
+      const targetMessage = current.messages.find(
+        (entry) => entry.id === messageId
+      );
+      if (!targetMessage || !targetMessage.canEdit) {
+        return NextResponse.json(
+          { detail: "You can only edit messages under your command." },
+          { status: 403, headers: NO_STORE_HEADERS }
+        );
+      }
+
+      await prisma.clanMessage.updateMany({
+        where: {
+          id: messageId,
+          clanId: current.clan.id,
+        },
+        data: { body: message },
+      });
+
+      const refreshed = await loadClanHallSnapshot(prisma, slug, viewer.uid);
+      return NextResponse.json(refreshed, { headers: NO_STORE_HEADERS });
+    }
+
     if (!current.viewer.canManage) {
       return NextResponse.json(
         { detail: "Only clan admins can change the hall audience." },
@@ -223,10 +319,6 @@ export async function PATCH(
       );
     }
 
-    const body = (await request.json().catch(() => ({}))) as Record<
-      string,
-      unknown
-    >;
     if (!isClanAudience(body.chatAudiencePolicy)) {
       return NextResponse.json(
         { detail: "Choose a valid clan chat audience." },
@@ -247,6 +339,62 @@ export async function PATCH(
     console.error("Failed to update clan policy:", error);
     return NextResponse.json(
       { detail: "Clan chat policy could not be updated." },
+      { status: 500, headers: NO_STORE_HEADERS }
+    );
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  context: { params: Promise<{ slug: string }> }
+) {
+  try {
+    const slug = await readSlug(context);
+    const prisma = getPrisma();
+    const viewer = await loadViewer(request, prisma);
+    if (!viewer) {
+      return NextResponse.json(
+        { detail: "Sign in to remove a clan message." },
+        { status: 401, headers: NO_STORE_HEADERS }
+      );
+    }
+
+    const body = (await request.json().catch(() => ({}))) as Record<
+      string,
+      unknown
+    >;
+    const messageId = parseMessageId(body.messageId);
+    if (!messageId) {
+      return NextResponse.json(
+        { detail: "Message id is required." },
+        { status: 400, headers: NO_STORE_HEADERS }
+      );
+    }
+
+    const current = await loadClanHallSnapshot(prisma, slug, viewer.uid);
+    const targetMessage = current?.messages.find(
+      (entry) => entry.id === messageId
+    );
+    if (!current || !targetMessage || !targetMessage.canDelete) {
+      return NextResponse.json(
+        { detail: "You can only remove messages under your command." },
+        { status: 403, headers: NO_STORE_HEADERS }
+      );
+    }
+
+    await prisma.clanMessage.deleteMany({
+      where: {
+        id: messageId,
+        clanId: current.clan.id,
+      },
+    });
+
+    const refreshed = await loadClanHallSnapshot(prisma, slug, viewer.uid);
+    return NextResponse.json(refreshed, { headers: NO_STORE_HEADERS });
+  } catch (error) {
+    console.error("Failed to remove clan message:", error);
+    return NextResponse.json(
+      { detail: "Clan message could not be removed." },
       { status: 500, headers: NO_STORE_HEADERS }
     );
   }

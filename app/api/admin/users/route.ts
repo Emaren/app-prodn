@@ -248,6 +248,21 @@ export async function GET(request: NextRequest) {
         createdAt: true,
         lastSeen: true,
         isAdmin: true,
+        clanMemberships: {
+          orderBy: [{ joinedAt: "asc" }, { id: "asc" }],
+          select: {
+            role: true,
+            status: true,
+            joinedAt: true,
+            clan: {
+              select: {
+                id: true,
+                slug: true,
+                name: true,
+              },
+            },
+          },
+        },
       },
       orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     });
@@ -281,6 +296,7 @@ export async function GET(request: NextRequest) {
       settlementSurface,
       watcherDownloads,
       walletFriction,
+      activeClans,
     ] = await Promise.all([
       loadUserCommunitySummaries(prisma, userIds, { includePending: true }),
       loadInboxPayload(prisma, admin.uid, { summaryOnly: true }),
@@ -492,6 +508,15 @@ export async function GET(request: NextRequest) {
       getWoloSettlementSurfaceStatus(),
       loadWatcherDownloadAnalytics(prisma),
       loadBetWalletFrictionRail(prisma),
+      prisma.clan.findMany({
+        where: { status: "active" },
+        orderBy: [{ name: "asc" }, { id: "asc" }],
+        select: {
+          id: true,
+          slug: true,
+          name: true,
+        },
+      }),
     ]);
 
     const unreadMap = new Map(
@@ -928,6 +953,14 @@ export async function GET(request: NextRequest) {
           scheduledMatchPreferenceStats,
           betLedger: wagers,
           betStats,
+          clanMemberships: entry.clanMemberships.map((membership) => ({
+            id: membership.clan.id,
+            slug: membership.clan.slug,
+            name: membership.clan.name,
+            role: membership.role,
+            status: membership.status,
+            joinedAt: membership.joinedAt.toISOString(),
+          })),
         };
       })
     );
@@ -1321,6 +1354,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       users: userRows,
+      clans: activeClans,
       overview,
       settlementRail,
       marketRail,

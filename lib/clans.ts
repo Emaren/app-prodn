@@ -2,6 +2,9 @@ import type { PrismaClient } from "@/lib/generated/prisma";
 
 export const CLAN_AUDIENCES = ["public", "users", "clan"] as const;
 export type ClanAudience = (typeof CLAN_AUDIENCES)[number];
+export const CLAN_REACTIONS = ["⚔️", "🔥", "🛡️", "🏰", "👑", "🩸"] as const;
+export type ClanReaction = (typeof CLAN_REACTIONS)[number];
+export type ClanViewMode = "basic" | "advanced" | "extreme";
 
 export const CLAN_AUDIENCE_DETAILS: Record<
   ClanAudience,
@@ -102,12 +105,25 @@ export type ClanHallSnapshot = {
     body: string;
     audience: ClanAudience;
     createdAt: string;
+    updatedAt: string;
+    edited: boolean;
+    canEdit: boolean;
+    canDelete: boolean;
     author: {
       uid: string;
       displayName: string;
       role: string | null;
       isClanMember: boolean;
     };
+    reactions: Array<{
+      emoji: ClanReaction;
+      count: number;
+      viewerReacted: boolean;
+      users: Array<{
+        uid: string;
+        displayName: string;
+      }>;
+    }>;
   }>;
   roster: Array<{
     uid: string;
@@ -129,6 +145,15 @@ export function isClanAudience(value: unknown): value is ClanAudience {
   );
 }
 
+export function normalizeClanView(
+  value: string | string[] | null | undefined
+): ClanViewMode {
+  const raw = Array.isArray(value) ? value[0] : value;
+  if (raw === "basic" || raw === "b") return "basic";
+  if (raw === "extreme" || raw === "e") return "extreme";
+  return "advanced";
+}
+
 export function normalizeClanAudience(
   value: unknown,
   fallback: ClanAudience = "clan"
@@ -142,6 +167,13 @@ export function normalizeClanMessage(value: unknown) {
     .replace(/[ \t]+\n/g, "\n")
     .trim()
     .slice(0, 1200);
+}
+
+export function isClanReaction(value: unknown): value is ClanReaction {
+  return (
+    typeof value === "string" &&
+    (CLAN_REACTIONS as readonly string[]).includes(value)
+  );
 }
 
 export function audienceAllowedByPolicy(
@@ -296,12 +328,27 @@ export async function loadClanHallSnapshot(
             body: true,
             audience: true,
             createdAt: true,
+            updatedAt: true,
             author: {
               select: {
                 id: true,
                 uid: true,
                 inGameName: true,
                 steamPersonaName: true,
+              },
+            },
+            reactions: {
+              orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+              select: {
+                emoji: true,
+                userId: true,
+                user: {
+                  select: {
+                    uid: true,
+                    inGameName: true,
+                    steamPersonaName: true,
+                  },
+                },
               },
             },
           },
@@ -385,17 +432,55 @@ export async function loadClanHallSnapshot(
       .reverse()
       .map((message) => {
         const role = roleByUserId.get(message.author.id) ?? null;
+        const groupedReactions = new Map<
+          ClanReaction,
+          {
+            emoji: ClanReaction;
+            count: number;
+            viewerReacted: boolean;
+            users: Array<{ uid: string; displayName: string }>;
+          }
+        >();
+        for (const reaction of message.reactions) {
+          if (!isClanReaction(reaction.emoji)) continue;
+          const group = groupedReactions.get(reaction.emoji) ?? {
+            emoji: reaction.emoji,
+            count: 0,
+            viewerReacted: false,
+            users: [],
+          };
+          group.count += 1;
+          group.viewerReacted =
+            group.viewerReacted || reaction.userId === viewer?.id;
+          group.users.push({
+            uid: reaction.user.uid,
+            displayName: displayName(reaction.user),
+          });
+          groupedReactions.set(reaction.emoji, group);
+        }
+        const canEdit = Boolean(
+          viewer &&
+            (message.author.id === viewer.id || viewer.isAdmin || canManage)
+        );
         return {
           id: message.id,
           body: message.body,
           audience: normalizeClanAudience(message.audience),
           createdAt: message.createdAt.toISOString(),
+          updatedAt: message.updatedAt.toISOString(),
+          edited: message.updatedAt.getTime() > message.createdAt.getTime(),
+          canEdit,
+          canDelete: canEdit,
           author: {
             uid: message.author.uid,
             displayName: displayName(message.author),
             role,
             isClanMember: Boolean(role),
           },
+          reactions: CLAN_REACTIONS.flatMap((emoji) => {
+            const group = groupedReactions.get(emoji);
+            return group ? [group] : [];
+          }),
         };
       }),
     roster: rosterRows.map((member) => ({

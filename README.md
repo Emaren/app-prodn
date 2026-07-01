@@ -25,7 +25,8 @@ It currently owns the premium lobby/community surface, leaderboard presentation,
 - Claimed player profiles default to the Advanced command center; unclaimed replay-built profiles default to the classic Basic claim page, and both can toggle Basic/Advanced
 - Advanced player profiles include lazy match archive, watcher proof, form/rivalry diagnostics, resource emblems, AI Scribe/Grimer readout, stream signal, and premium `$WOLO`/staking stats
 - The public Kingdom spine includes `/kingdom`, `/champions`, `/national-champions`, `/clans`, and `/forum`, with the legacy `/belts`, `/nations`, and `/realm` paths redirecting into the new route names
-- `/clans` launches with the Mystikal Clan hall and an equal-weight add-your-clan invitation; `/clans/[slug]` owns clan identity, roster, and audience-aware chat
+- `/clans` launches with the Mystikal Clan hall and an equal-weight add-your-clan invitation; both the directory and `/clans/[slug]` expose Basic/Advanced/Extreme views with Advanced as the default
+- Clan halls own audience-aware chat, author/admin edit and delete controls, and named premium reactions; `/admin/user-list` assigns or removes real `ClanMember.role` leadership and dispatches the appointment through Emaren’s direct line
 - `/academy` is the premium strategy front gate, launching with Zodiac as the founding advisor; `/zodiac` owns his replay-backed counsel page and verified 100 WOLO first-lesson checkout
 - `/market` is the player-built AoE2WAR Agora, launching with The Visage Forge, tailored merchant awnings, an AoE2-lobby-inspired dark commission desk, authenticated 100 WOLO avatar requests, direct Emaren inbox delivery, profile avatar-vault delivery, and an open-shop proposal rail
 - `/` and `/lobby` place the founding AoE2 Shorts reel directly below the featured event: real replay clips, vertical and wide presentations, a mobile portrait rail, full-screen swipe playback, uploader links, reactions, comments handoff, and sharing

@@ -601,6 +601,174 @@ input[type="datetime-local"] {
   }
 }
 
+/* CLAN B/A/E SURFACES START */
+
+.clan-bae-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.22rem;
+  border: 1px solid rgba(212, 188, 142, 0.22);
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 15% 0%, rgba(87, 21, 43, 0.28), transparent 64%),
+    linear-gradient(135deg, rgba(4, 7, 14, 0.84), rgba(20, 13, 18, 0.88));
+  box-shadow:
+    0 15px 40px rgba(0, 0, 0, 0.32),
+    inset 0 1px 0 rgba(255, 247, 229, 0.055);
+  backdrop-filter: blur(16px) saturate(0.92);
+}
+
+.clan-bae-toggle__item {
+  display: grid;
+  width: 2rem;
+  height: 1.8rem;
+  place-items: center;
+  border-radius: 999px;
+  color: rgba(154, 159, 177, 0.74);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  transition:
+    transform 180ms ease,
+    color 180ms ease,
+    background 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.clan-bae-toggle__item:hover {
+  transform: translateY(-1px);
+  color: rgba(238, 231, 215, 0.94);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.clan-bae-toggle__item--active {
+  color: rgba(255, 242, 213, 0.97);
+  background:
+    radial-gradient(circle at 30% 0%, rgba(154, 53, 81, 0.36), transparent 65%),
+    linear-gradient(135deg, rgba(72, 18, 35, 0.8), rgba(9, 12, 20, 0.92));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.085),
+    0 9px 24px rgba(66, 9, 29, 0.25);
+}
+
+.clan-directory.clan-basic-view,
+.clan-hall.clan-basic-view {
+  max-width: 72rem;
+}
+
+.clan-directory.clan-advanced-view,
+.clan-hall.clan-advanced-view {
+  max-width: 84rem;
+}
+
+.clan-directory.clan-extreme-view,
+.clan-hall.clan-extreme-view {
+  max-width: 90rem;
+}
+
+.clan-advanced-view .clan-directory-card,
+.clan-extreme-view .clan-directory-card {
+  border-color: rgba(190, 174, 207, 0.21);
+  background:
+    radial-gradient(42rem 24rem at 16% 0%, rgba(75, 27, 105, 0.21), transparent 68%),
+    radial-gradient(32rem 18rem at 92% 10%, rgba(111, 73, 34, 0.12), transparent 72%),
+    linear-gradient(148deg, rgba(8, 10, 18, 0.99), rgba(4, 6, 13, 0.99) 56%, rgba(15, 7, 13, 0.98));
+  box-shadow:
+    0 34px 110px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.035);
+}
+
+.clan-advanced-view .clan-directory-card__title,
+.clan-extreme-view .clan-directory-card__title,
+.clan-advanced-view .clan-hall__title,
+.clan-extreme-view .clan-hall__title {
+  width: fit-content;
+  max-width: 100%;
+  font-family: var(--font-cinzel), Georgia, "Times New Roman", serif;
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  color: #d8c7a7;
+  background:
+    linear-gradient(
+      112deg,
+      #efe3c8 0%,
+      #aeb5c5 35%,
+      #d5b171 64%,
+      #9a7184 100%
+    );
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 17px 42px rgba(0, 0, 0, 0.28);
+}
+
+.clan-directory-card--summon .clan-directory-card__title {
+  margin-inline: auto;
+  background:
+    linear-gradient(112deg, #eadfbf 0%, #aaa89f 38%, #d6aa50 72%, #8a7563 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+.clan-advanced-view .clan-directory-card__rank,
+.clan-extreme-view .clan-directory-card__rank {
+  color: rgba(187, 172, 196, 0.7);
+}
+
+.clan-extreme-view .clan-directory-grid {
+  grid-template-columns: minmax(0, 1.22fr) minmax(21rem, 0.78fr);
+}
+
+.clan-extreme-view .clan-directory-card--house {
+  min-height: 38rem;
+}
+
+.clan-extreme-view .clan-directory-card--summon {
+  min-height: 38rem;
+}
+
+.clan-advanced-view article > header h2,
+.clan-extreme-view article > header h2 {
+  font-family: var(--font-cinzel), Georgia, "Times New Roman", serif;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: rgba(228, 216, 196, 0.94);
+}
+
+.clan-advanced-view .clan-message,
+.clan-extreme-view .clan-message {
+  border-color: rgba(190, 174, 207, 0.12);
+  background:
+    radial-gradient(18rem 8rem at 0% 0%, rgba(101, 47, 129, 0.08), transparent 72%),
+    linear-gradient(145deg, rgba(14, 16, 28, 0.88), rgba(7, 9, 17, 0.9));
+}
+
+.clan-hall.clan-extreme-view section.grid {
+  grid-template-columns: minmax(0, 1fr) 23rem;
+}
+
+@media (max-width: 1023px) {
+  .clan-extreme-view .clan-directory-grid,
+  .clan-hall.clan-extreme-view section.grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .clan-bae-toggle__item {
+    width: 1.8rem;
+    height: 1.65rem;
+  }
+
+  .clan-directory > section:first-child,
+  .clan-hall > section:first-child {
+    padding-top: 4.5rem;
+  }
+}
+
+/* CLAN B/A/E SURFACES END */
+
 /* Replay detail B/A/E shell width override.
    The app shell defaults many pages to max-w-6xl; this route needs a wider archive room. */
 main:has(> .aoe2war-replay-detail-shell) {

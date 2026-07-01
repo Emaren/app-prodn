@@ -6,6 +6,7 @@ import ClanHallClient from "@/components/clans/ClanHallClient";
 import {
   buildMystikalFallbackSnapshot,
   loadClanHallSnapshot,
+  normalizeClanView,
 } from "@/lib/clans";
 import { getPrisma } from "@/lib/prisma";
 import {
@@ -24,10 +25,14 @@ export const metadata: Metadata = {
 
 export default async function ClanHallPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams?: Promise<{ view?: string | string[] }>;
 }) {
   const { slug } = await params;
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const view = normalizeClanView(resolvedSearchParams.view);
   const cookieStore = await cookies();
   const claims = await verifySession(
     cookieStore.get(SESSION_COOKIE_NAME)?.value
@@ -50,5 +55,5 @@ export default async function ClanHallPage({
 
   if (!snapshot) notFound();
 
-  return <ClanHallClient initialSnapshot={snapshot} />;
+  return <ClanHallClient initialSnapshot={snapshot} initialView={view} />;
 }

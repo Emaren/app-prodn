@@ -8,7 +8,10 @@ import {
   normalizeHonorKind,
   normalizeHonorTitle,
 } from "@/lib/communityHonors";
-import { getOrCreateConversationByUsers } from "@/lib/contactInbox";
+import {
+  getOrCreateConversationByUsers,
+  resolvePrimaryAdminContact,
+} from "@/lib/contactInbox";
 import { rescindPendingWoloClaim } from "@/lib/pendingWoloClaims";
 import { recordUserActivity } from "@/lib/userExperience";
 import { requireAdmin } from "@/lib/adminSession";
@@ -62,6 +65,7 @@ export async function POST(
       note?: string;
       kind?: string;
       honorKind?: string;
+      clanSlug?: string;
       displayOnProfile?: boolean;
       amount?: number | string;
     };
@@ -220,6 +224,124 @@ export async function POST(
             badgeId: payload.badgeId,
           },
           dedupeWithinSeconds: 0,
+        });
+        break;
+      }
+
+      case "grant_clan_admin":
+      case "remove_clan_admin": {
+        const clanSlug =
+          typeof payload.clanSlug === "string"
+            ? payload.clanSlug.trim().toLowerCase().slice(0, 80)
+            : "";
+        if (!clanSlug) {
+          return NextResponse.json(
+            { detail: "Choose a clan first." },
+            { status: 400 }
+          );
+        }
+
+        const clan = await prisma.clan.findFirst({
+          where: {
+            slug: clanSlug,
+            status: "active",
+          },
+          select: {
+            id: true,
+            slug: true,
+            name: true,
+          },
+        });
+        if (!clan) {
+          return NextResponse.json(
+            { detail: "Active clan not found." },
+            { status: 404 }
+          );
+        }
+
+        const granting = payload.action === "grant_clan_admin";
+        const primaryAdmin = await resolvePrimaryAdminContact(prisma);
+        const notificationSender = primaryAdmin ?? admin;
+        const targetName =
+          target.inGameName || target.steamPersonaName || target.uid;
+        const clanCallsign =
+          clan.name.replace(/\s+clan$/i, "").trim() || clan.name;
+        const conversation =
+          notificationSender.id !== target.id
+            ? await getOrCreateConversationByUsers(
+                prisma,
+                notificationSender.id,
+                target.id
+              )
+            : null;
+
+        await prisma.$transaction(async (tx) => {
+          if (granting) {
+            await tx.clanMember.upsert({
+              where: {
+                clanId_userId: {
+                  clanId: clan.id,
+                  userId: target.id,
+                },
+              },
+              update: {
+                role: "admin",
+                status: "active",
+              },
+              create: {
+                clanId: clan.id,
+                userId: target.id,
+                role: "admin",
+                status: "active",
+              },
+            });
+          } else {
+            await tx.clanMember.updateMany({
+              where: {
+                clanId: clan.id,
+                userId: target.id,
+                role: { in: ["owner", "admin"] },
+              },
+              data: {
+                role: "member",
+                status: "active",
+              },
+            });
+          }
+
+          if (conversation) {
+            await tx.directMessage.create({
+              data: {
+                conversationId: conversation.id,
+                senderUserId: notificationSender.id,
+                body: granting
+                  ? `🏰 You have been selected leader of the clan. ⚔️\n• ${clanCallsign} ${targetName} 🛡️`
+                  : `🏰 Your watch as leader of the clan has ended. ⚔️\n• ${clanCallsign} ${targetName} 🛡️`,
+              },
+            });
+            await tx.directConversation.update({
+              where: { id: conversation.id },
+              data: { updatedAt: new Date() },
+            });
+          }
+
+          await recordUserActivity(tx, {
+            userId: target.id,
+            type: granting
+              ? "clan_admin_assigned"
+              : "clan_admin_removed",
+            path: "/admin/user-list",
+            label: clan.name,
+            metadata: {
+              clanId: clan.id,
+              clanSlug: clan.slug,
+              role: granting ? "admin" : "member",
+              assignedByUid: admin.uid,
+              notificationSenderUid: notificationSender.uid,
+              notificationDelivered: Boolean(conversation),
+            },
+            dedupeWithinSeconds: 0,
+          });
         });
         break;
       }

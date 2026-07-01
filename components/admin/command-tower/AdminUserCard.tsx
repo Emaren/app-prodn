@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   BellDot,
+  Castle,
   Coins,
   Crown,
   Gem,
@@ -12,7 +13,6 @@ import {
   MessageSquareMore,
   ScrollText,
   Shield,
-  Sparkles,
   Swords,
   Ticket,
   type LucideIcon,
@@ -20,6 +20,7 @@ import {
 
 import type {
   Activity,
+  AdminClanOption,
   AdminUserRow,
   DraftState,
 } from "@/components/admin/command-tower/types";
@@ -40,6 +41,7 @@ import { getTileViewMode, type TileViewMode } from "@/lib/tileViewPreferences";
 
 type AdminUserCardProps = {
   user: AdminUserRow;
+  clans: AdminClanOption[];
   draft: DraftState;
   busyKey: string | null;
   renderedActions: Activity[];
@@ -85,7 +87,6 @@ const BELT_HONOR_OPTIONS = allChampionTitles
   .filter((title) => title.type !== "designation")
   .map((title) => title.displayName);
 const ARTIFACT_HONOR_OPTIONS = designationTitles.map((title) => title.displayName);
-const DESIGNATION_HONOR_OPTIONS = designationTitles.map((title) => title.shortName);
 
 function journeyTone(label: NonNullable<JourneySummary>["engagementLabel"]) {
   switch (label) {
@@ -123,6 +124,7 @@ function shortSessionId(value: string | null) {
 
 export default function AdminUserCard({
   user,
+  clans,
   draft,
   busyKey,
   renderedActions,
@@ -155,7 +157,6 @@ export default function AdminUserCard({
   const badgeHonors = user.badges.filter((badge) => badge.honorKind === "badge");
   const beltHonors = user.badges.filter((badge) => badge.honorKind === "belt");
   const artifactHonors = user.badges.filter((badge) => badge.honorKind === "artifact");
-  const designationHonors = user.badges.filter((badge) => badge.honorKind === "designation");
 
   useEffect(() => {
     const root = actionsScrollRef.current;
@@ -548,35 +549,28 @@ export default function AdminUserCard({
                   });
                 }}
               />
-              <HonorGrantSection
-                icon={Sparkles}
-                title="Designations"
-                kind="designation"
-                honors={designationHonors}
-                value={draft.designationTitle}
-                note={draft.designationNote}
-                displayOnProfile={draft.designationDisplayOnProfile}
-                options={DESIGNATION_HONOR_OPTIONS}
-                busy={busyKey === `${user.uid}:grant_honor`}
-                onTitleChange={(designationTitle) => onDraftChange(user.uid, { designationTitle })}
-                onNoteChange={(designationNote) => onDraftChange(user.uid, { designationNote })}
-                onDisplayChange={(designationDisplayOnProfile) =>
-                  onDraftChange(user.uid, { designationDisplayOnProfile })
+              <ClanLeadershipSection
+                clans={clans}
+                memberships={user.clanMemberships}
+                value={draft.clanSlug || clans[0]?.slug || ""}
+                busy={Boolean(
+                  busyKey &&
+                    (busyKey === `${user.uid}:grant_clan_admin` ||
+                      busyKey === `${user.uid}:remove_clan_admin`)
+                )}
+                onClanChange={(clanSlug) =>
+                  onDraftChange(user.uid, { clanSlug })
                 }
-                onGrant={() => {
+                onAssign={(clanSlug) => {
                   void onRunCommunityAction(user.uid, {
-                    action: "grant_honor",
-                    kind: "designation",
-                    title: draft.designationTitle,
-                    note: draft.designationNote,
-                    displayOnProfile: draft.designationDisplayOnProfile,
+                    action: "grant_clan_admin",
+                    clanSlug,
                   });
-                  onDraftChange(user.uid, { designationTitle: "", designationNote: "" });
                 }}
-                onRemove={(badgeId) => {
+                onRemove={(clanSlug) => {
                   void onRunCommunityAction(user.uid, {
-                    action: "remove_honor",
-                    badgeId,
+                    action: "remove_clan_admin",
+                    clanSlug,
                   });
                 }}
               />
@@ -1213,6 +1207,130 @@ function HonorGrantSection({
             Grant
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function ClanLeadershipSection({
+  clans,
+  memberships,
+  value,
+  busy,
+  onClanChange,
+  onAssign,
+  onRemove,
+}: {
+  clans: AdminClanOption[];
+  memberships: AdminUserRow["clanMemberships"];
+  value: string;
+  busy: boolean;
+  onClanChange: (clanSlug: string) => void;
+  onAssign: (clanSlug: string) => void;
+  onRemove: (clanSlug: string) => void;
+}) {
+  const selectedSlug = value || clans[0]?.slug || "";
+  const selectedMembership = memberships.find(
+    (membership) => membership.slug === selectedSlug
+  );
+  const selectedIsLeader =
+    selectedMembership?.status === "active" &&
+    ["owner", "admin"].includes(selectedMembership.role);
+
+  return (
+    <div className="min-w-0 rounded-xl border border-amber-200/14 bg-[radial-gradient(circle_at_80%_0%,rgba(251,191,36,0.09),transparent_38%),rgba(2,6,15,0.68)] px-3 py-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-amber-100/70">
+          <Castle className="h-3.5 w-3.5" />
+          Clan command
+        </div>
+        <div className="text-xs text-slate-400">
+          {
+            memberships.filter(
+              (membership) =>
+                membership.status === "active" &&
+                ["owner", "admin"].includes(membership.role)
+            ).length
+          }
+        </div>
+      </div>
+
+      <div className="mt-3 space-y-2">
+        {memberships.length > 0 ? (
+          memberships.map((membership) => {
+            const isLeader =
+              membership.status === "active" &&
+              ["owner", "admin"].includes(membership.role);
+            return (
+              <div
+                key={membership.id}
+                className="rounded-lg border border-white/8 bg-slate-900/70 px-2.5 py-2"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="truncate text-xs font-semibold text-white">
+                      {membership.name}
+                    </div>
+                    <div className="mt-1 text-[10px] uppercase tracking-[0.18em] text-slate-500">
+                      {membership.status} · {membership.role}
+                    </div>
+                  </div>
+                  {isLeader ? (
+                    <Crown className="h-4 w-4 shrink-0 text-amber-200" />
+                  ) : (
+                    <Shield className="h-4 w-4 shrink-0 text-slate-500" />
+                  )}
+                </div>
+              </div>
+            );
+          })
+        ) : (
+          <div className="rounded-lg border border-white/8 bg-slate-900/70 px-2.5 py-2 text-xs text-slate-400">
+            No clan command assigned.
+          </div>
+        )}
+      </div>
+
+      <div className="mt-3 space-y-2">
+        <select
+          value={selectedSlug}
+          onChange={(event) => onClanChange(event.target.value)}
+          disabled={busy || clans.length === 0}
+          className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none transition focus:border-amber-300/35 disabled:opacity-50"
+        >
+          {clans.length === 0 ? (
+            <option value="">No active clans</option>
+          ) : (
+            clans.map((clan) => (
+              <option key={clan.id} value={clan.slug}>
+                {clan.name}
+              </option>
+            ))
+          )}
+        </select>
+        <button
+          type="button"
+          disabled={busy || !selectedSlug}
+          onClick={() =>
+            selectedIsLeader
+              ? onRemove(selectedSlug)
+              : onAssign(selectedSlug)
+          }
+          className={`w-full rounded-xl border px-3 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${
+            selectedIsLeader
+              ? "border-red-300/18 bg-red-400/[0.06] text-red-200 hover:bg-red-400/10"
+              : "border-amber-200/25 bg-amber-300/12 text-amber-100 hover:bg-amber-300/18"
+          }`}
+        >
+          {busy
+            ? "Updating command…"
+            : selectedIsLeader
+              ? "Remove clan admin"
+              : "Assign clan admin"}
+        </button>
+        <p className="text-[10px] leading-4 text-slate-500">
+          Appointment dispatches a direct line from Emaren.
+        </p>
       </div>
     </div>
   );

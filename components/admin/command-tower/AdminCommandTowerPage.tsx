@@ -52,6 +52,7 @@ const EMPTY_DRAFT: DraftState = {
   designationTitle: "",
   designationNote: "",
   designationDisplayOnProfile: true,
+  clanSlug: "",
   giftKind: "WOLO",
   giftAmount: "",
   giftNote: "",
@@ -639,6 +640,7 @@ export default function AdminCommandTowerPage() {
             <AdminUserCard
               key={user.uid}
               user={user}
+              clans={data?.clans ?? []}
               draft={getDraft(user.uid)}
               busyKey={busyKey}
               renderedActions={activityByUid[user.uid] ?? user.recentActions}

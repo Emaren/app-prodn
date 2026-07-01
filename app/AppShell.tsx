@@ -339,6 +339,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
   const isLobbySurface = pathname === "/" || pathname?.startsWith("/lobby");
   const isMediaManagerSurface = pathname?.startsWith("/admin/media-assets");
   const isAcademySurface = pathname?.startsWith("/academy");
+  const isClanSurface = pathname?.startsWith("/clans");
   const isAcademyOrMarketSurface =
     pathname?.startsWith("/academy") || pathname?.startsWith("/market");
   const communityLobbyViewMode = getTileViewMode(
@@ -595,7 +596,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
             : `px-3 sm:px-4 ${
                 isLobbySurface || isLiveGamesSurface
                   ? immersiveShellMaxWidth
-                  : isAcademyOrMarketSurface
+                  : isAcademyOrMarketSurface || isClanSurface
                     ? "max-w-[90rem]"
                     : "max-w-6xl"
               }`

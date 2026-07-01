@@ -127,6 +127,18 @@ export type BetStats = {
   paidOutWolo: number;
 };
 
+export type AdminClanOption = {
+  id: number;
+  slug: string;
+  name: string;
+};
+
+export type AdminClanMembership = AdminClanOption & {
+  role: string;
+  status: string;
+  joinedAt: string;
+};
+
 export type AdminUserRow = {
   uid: string;
   email: string | null;
@@ -164,6 +176,7 @@ export type AdminUserRow = {
   scheduledMatchPreferenceStats: ScheduledMatchPreferenceStats;
   betLedger: BetLedgerRow[];
   betStats: BetStats;
+  clanMemberships: AdminClanMembership[];
 };
 
 export type AdminOverview = {
@@ -287,6 +300,7 @@ export type WatcherDownloadsPayload = {
 
 export type AdminUsersPayload = {
   users: AdminUserRow[];
+  clans: AdminClanOption[];
   overview: AdminOverview;
   settlementRail: {
     summary: SettlementRailSummary;
@@ -359,6 +373,7 @@ export type DraftState = {
   designationTitle: string;
   designationNote: string;
   designationDisplayOnProfile: boolean;
+  clanSlug: string;
   giftKind: string;
   giftAmount: string;
   giftNote: string;

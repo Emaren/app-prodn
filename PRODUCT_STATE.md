@@ -107,8 +107,11 @@ Current strengths:
 - `/champions` is the championship-belt surface for world, chaos, tag, women, ELO, and designation titles
 - `/national-champions` is the national-beacon surface with claimed and vacant country titles
 - `/forum` is a public War Room shell for community energy, featured threads, champion activity, and WOLO-adjacent calls to action
-- `/clans` is the public clan directory, launching with an equal-weight Mystikal crest and Add Your Clan invitation
+- `/clans` is the public clan directory, launching with an equal-weight Mystikal crest and Add Your Clan invitation; Basic preserves the original card treatment while Advanced is the premium default and Extreme widens the warhouse presentation
 - `/clans/mystikal` opens with clan chat, a founding roster, public/signed-in/clan-only post audiences, and a clan-admin hall-wide audience ceiling that also hides older broader posts
+- Clan-hall authors can edit or delete their posts, clan/site admins can moderate, and authenticated users can place premium reactions whose named participants appear on hover
+- `/admin/user-list` uses the former Designations slot as Clan Command: operators can assign/remove clan leaders through `ClanMember.role`, including themselves; appointments are delivered in a direct conversation with Emaren
+- Clan reactions are persisted in `clan_message_reactions`; production deploys must apply `20260701110000_add_clan_message_reactions`
 - `/academy` is the cinematic front gate for serious strategy study, with Zodiac as the founding advisor, an open seat for future doctrines, and header/menu stacking that remains above the Academy hero
 - `/zodiac` now leads with “Train Under Zodiac” and offers a real 100 WOLO first-lesson checkout: Keplr signs the direct advisor payment, the app verifies the `wolo-1` transfer, records a receipt, and opens the private Zodiac line
 - `/market` is the cinematic AoE2WAR Agora: three aligned, tailored awnings lead into The Visage Forge’s dark wood-and-bronze commission lobby; signed-in 100 WOLO avatar requests and shop proposals open a private Emaren conversation, while finished identities still arrive through the existing profile avatar vault
