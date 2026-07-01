@@ -2,7 +2,7 @@
 
 import {
   Check,
-  Globe2,
+  Globe,
   Languages,
   RotateCcw,
   X,
@@ -39,8 +39,10 @@ const CYCLE_FADE_MS = 560;
 
 export default function UniversalTranslator({
   buttonClassName,
+  tone = "blue",
 }: {
   buttonClassName?: string;
+  tone?: "blue" | "academy";
 }) {
   const {
     selectedLanguage,
@@ -204,7 +206,9 @@ export default function UniversalTranslator({
       : undefined;
 
   return (
-    <div className="universal-translator relative shrink-0">
+    <div
+      className={`universal-translator universal-translator--${tone} relative shrink-0`}
+    >
       <button
         ref={triggerRef}
         type="button"
@@ -216,16 +220,13 @@ export default function UniversalTranslator({
         onClick={() => setOpen((current) => !current)}
         className={[
           buttonClassName,
-          "universal-translator__trigger relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-100/45 sm:w-[4.65rem] sm:justify-start sm:gap-2 sm:px-2.5",
+          "universal-translator__trigger relative inline-flex h-10 w-14 shrink-0 items-center justify-between gap-1 rounded-full border px-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-100/45 sm:w-[4.65rem] sm:gap-2 sm:px-2.5",
         ]
           .filter(Boolean)
           .join(" ")}
       >
-        <span className="universal-translator__orb grid h-7 w-7 shrink-0 place-items-center rounded-full">
-          <Globe2 className="h-4 w-4" aria-hidden="true" />
-        </span>
         <span
-          className={`universal-translator__mark absolute bottom-0.5 right-0.5 grid min-w-[1.4rem] place-items-center rounded-full px-1 py-0.5 text-[7px] font-bold leading-none tracking-[0.04em] sm:static sm:min-w-0 sm:flex-1 sm:bg-transparent sm:p-0 sm:text-[8px] ${
+          className={`universal-translator__mark grid min-w-0 flex-1 place-items-center text-[6.5px] font-bold leading-none tracking-[0.025em] sm:text-[8px] sm:tracking-[0.04em] ${
             markVisible
               ? "universal-translator__mark--visible"
               : "universal-translator__mark--hidden"
@@ -234,6 +235,13 @@ export default function UniversalTranslator({
           aria-hidden="true"
         >
           {visibleMark}
+        </span>
+        <span className="universal-translator__orb grid h-6 w-6 shrink-0 place-items-center rounded-full sm:h-7 sm:w-7">
+          <Globe
+            className="h-[0.95rem] w-[0.95rem] sm:h-4 sm:w-4"
+            strokeWidth={1.55}
+            aria-hidden="true"
+          />
         </span>
       </button>
 
@@ -254,7 +262,7 @@ export default function UniversalTranslator({
                 aria-label="Universal Translator"
                 tabIndex={-1}
                 style={panelStyle}
-                className="universal-translator__panel fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+0.75rem)] top-[calc(env(safe-area-inset-top)+0.75rem)] z-[280] min-h-0 overflow-hidden rounded-[1.85rem] border p-2 shadow-[0_36px_130px_rgba(0,0,0,0.76)] outline-none backdrop-blur-2xl sm:inset-x-auto sm:bottom-auto sm:top-auto sm:w-[42rem] sm:max-w-[calc(100vw-1.5rem)]"
+                className={`universal-translator__panel universal-translator__panel--${tone} fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+0.75rem)] top-[calc(env(safe-area-inset-top)+0.75rem)] z-[280] min-h-0 overflow-hidden rounded-[1.85rem] border p-2 shadow-[0_36px_130px_rgba(0,0,0,0.76)] outline-none backdrop-blur-2xl sm:inset-x-auto sm:bottom-auto sm:top-auto sm:w-[42rem] sm:max-w-[calc(100vw-1.5rem)]`}
               >
                 <div className="flex h-full min-h-0 flex-col">
                   <header className="universal-translator__header rounded-[1.45rem] border px-4 py-4 sm:px-5">

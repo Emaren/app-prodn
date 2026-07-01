@@ -452,10 +452,11 @@ function InnerShell({ children }: { children: React.ReactNode }) {
               </Link>
 
               <div className="flex min-w-0 shrink-0 items-center justify-end gap-2">
-                {uid ? <HeaderInboxControl buttonClassName={`${headerSkin.surface} h-10 w-10`} /> : null}
                 <UniversalTranslator
                   buttonClassName={`${headerSkin.surface} h-10`}
+                  tone={isAcademySurface ? "academy" : "blue"}
                 />
+                {uid ? <HeaderInboxControl buttonClassName={`${headerSkin.surface} h-10 w-10`} /> : null}
                 <HeaderMenu
                   playerName={playerName}
                   uid={uid}
@@ -571,10 +572,11 @@ function InnerShell({ children }: { children: React.ReactNode }) {
             <div className="flex items-center justify-end gap-2 lg:justify-self-end">
               {uid ? (
                 <>
-                  <HeaderInboxControl buttonClassName={`${headerSkin.surface} h-10 w-10`} />
                   <UniversalTranslator
                     buttonClassName={`${headerSkin.surface} h-10`}
+                    tone={isAcademySurface ? "academy" : "blue"}
                   />
+                  <HeaderInboxControl buttonClassName={`${headerSkin.surface} h-10 w-10`} />
                   <HeaderMenu
                     playerName={playerName}
                     uid={uid}
@@ -590,6 +592,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                 <>
                   <UniversalTranslator
                     buttonClassName={`${headerSkin.surface} h-10`}
+                    tone={isAcademySurface ? "academy" : "blue"}
                   />
                   <SteamLoginButton
                     label="Steam Sign In"
