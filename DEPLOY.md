@@ -57,6 +57,15 @@ journalctl -u aoe2hdbets-web.service -n 40 --no-pager
 
 ## Recent deployment notes
 
+### 2026-07-01 War Room forum and Wolo Chronicles
+
+- Replaced the inert `/forum` display shell with a real browsable War Room while preserving the original focused composition as Basic.
+- Advanced is the persistent default at `75rem`; it adds the Wolo Chronicles lead, room signals, thread excerpts, and field-manual context. Extreme currently widens the Advanced kit to `96rem`.
+- Added working search, tabs, channels, feed shelves, read state, bookmarks, direct-linked thread readers, copy links, new-thread publishing, replies, and named reactions.
+- Added `forum_threads`, `forum_posts`, `forum_thread_bookmarks`, and `forum_thread_reactions` in `20260701221500_add_war_room_forum`.
+- The editorial archive remains readable and clickable before migration. `/api/forum` returns HTTP 200 with `ledgerAvailable=false` and `X-AoE2WAR-Forum-Ledger: migration-required`; shared writes stay disabled.
+- Deployment requires `npx prisma migrate deploy` before the production build and restart. Verify `ledgerAvailable=true` after migration.
+
 ### 2026-06-20 Lobby Event Studio App Pass A
 
 - Added persistent `event_tiles` content and `/admin/events` operator controls for the single cinematic tile shared by `/` and `/lobby`.
@@ -237,6 +246,8 @@ curl -I https://aoe2war.com/challenge
 curl -I https://aoe2war.com/champions
 curl -I https://aoe2war.com/players
 curl -I https://aoe2war.com/contact-emaren
+curl -I https://aoe2war.com/forum
+curl -s https://aoe2war.com/api/forum | jq '{ledgerAvailable, threadCount: (.threads | length), firstThread: .threads[0].title}'
 curl -s https://aoe2war.com/api/trophies | jq '{count: (.trophies | length), trophies: [.trophies[] | {trophyId, status, currentHolder, guardianHolder, chainStatus}]}'
 curl -s https://aoe2war.com/api/trophies/canada_champion_belt/metadata | jq '{name, external_url, attributes}'
 curl -s https://aoe2war.com/api/lobby | jq '.leaderboard.trackedPlayers, (.leaderboard.entries | length)'

@@ -350,9 +350,13 @@ function InnerShell({ children }: { children: React.ReactNode }) {
   );
   const liveGamesViewMode = getTileViewMode(tileViewPreferences, "live_games");
   const isLiveGamesSurface = pathname?.startsWith("/live-games");
+  const forumViewMode = getTileViewMode(tileViewPreferences, "forum");
+  const isForumSurface = pathname?.startsWith("/forum");
   const activeSurfaceViewMode = isLiveGamesSurface
     ? liveGamesViewMode
-    : communityLobbyViewMode;
+    : isForumSurface
+      ? forumViewMode
+      : communityLobbyViewMode;
   const immersiveShellMaxWidth =
     activeSurfaceViewMode === "extreme"
       ? "max-w-[96rem]"
@@ -605,7 +609,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
           isMediaManagerSurface
             ? "max-w-none px-3 sm:px-4 2xl:px-6"
             : `px-3 sm:px-4 ${
-                isLobbySurface || isLiveGamesSurface
+                isLobbySurface || isLiveGamesSurface || isForumSurface
                   ? immersiveShellMaxWidth
                   : isAcademyOrMarketSurface || isClanSurface
                     ? "max-w-[90rem]"

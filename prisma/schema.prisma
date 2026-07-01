@@ -85,6 +85,10 @@ model User {
   clanMemberships                ClanMember[]
   clanMessages                   ClanMessage[]
   clanMessageReactions           ClanMessageReaction[]
+  forumThreads                   ForumThread[]                    @relation("ForumThreadAuthor")
+  forumPosts                     ForumPost[]                      @relation("ForumPostAuthor")
+  forumThreadBookmarks           ForumThreadBookmark[]
+  forumThreadReactions           ForumThreadReaction[]
 
   @@map("users")
 }
@@ -748,6 +752,86 @@ model ClanMessageReaction {
   @@index([messageId, createdAt], map: "ix_clan_message_reactions_message_id")
   @@index([userId, createdAt], map: "ix_clan_message_reactions_user_id")
   @@map("clan_message_reactions")
+}
+
+model ForumThread {
+  id           Int      @id @default(autoincrement())
+  slug         String   @unique @db.VarChar(180)
+  seedKey      String?  @unique @map("seed_key") @db.VarChar(100)
+  channel      String   @db.VarChar(60)
+  tag          String   @db.VarChar(48)
+  title        String   @db.VarChar(180)
+  excerpt      String   @db.VarChar(320)
+  body         String   @db.Text
+  authorUserId Int?     @map("author_user_id")
+  authorLabel  String?  @map("author_label") @db.VarChar(100)
+  authorRole   String?  @map("author_role") @db.VarChar(80)
+  isPinned     Boolean  @default(false) @map("is_pinned")
+  isFeatured   Boolean  @default(false) @map("is_featured")
+  isHot        Boolean  @default(false) @map("is_hot")
+  isLocked     Boolean  @default(false) @map("is_locked")
+  viewCount    Int      @default(0) @map("view_count")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  author    User?                 @relation("ForumThreadAuthor", fields: [authorUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  posts     ForumPost[]
+  bookmarks ForumThreadBookmark[]
+  reactions ForumThreadReaction[]
+
+  @@index([channel, updatedAt], map: "ix_forum_threads_channel_updated_at")
+  @@index([isFeatured, updatedAt], map: "ix_forum_threads_featured_updated_at")
+  @@index([authorUserId, updatedAt], map: "ix_forum_threads_author_updated_at")
+  @@map("forum_threads")
+}
+
+model ForumPost {
+  id           Int      @id @default(autoincrement())
+  threadId     Int      @map("thread_id")
+  seedKey      String?  @unique @map("seed_key") @db.VarChar(140)
+  authorUserId Int?     @map("author_user_id")
+  authorLabel  String?  @map("author_label") @db.VarChar(100)
+  authorRole   String?  @map("author_role") @db.VarChar(80)
+  body         String   @db.Text
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  thread ForumThread @relation(fields: [threadId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  author User?       @relation("ForumPostAuthor", fields: [authorUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([threadId, createdAt], map: "ix_forum_posts_thread_created_at")
+  @@index([authorUserId, createdAt], map: "ix_forum_posts_author_created_at")
+  @@map("forum_posts")
+}
+
+model ForumThreadBookmark {
+  id        Int      @id @default(autoincrement())
+  threadId  Int      @map("thread_id")
+  userId    Int      @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  thread ForumThread @relation(fields: [threadId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user   User        @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([threadId, userId], map: "uq_forum_thread_bookmarks_thread_user")
+  @@index([userId, createdAt], map: "ix_forum_thread_bookmarks_user_created_at")
+  @@map("forum_thread_bookmarks")
+}
+
+model ForumThreadReaction {
+  id        Int      @id @default(autoincrement())
+  threadId  Int      @map("thread_id")
+  userId    Int      @map("user_id")
+  emoji     String   @db.VarChar(24)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  thread ForumThread @relation(fields: [threadId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user   User        @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([threadId, userId, emoji], map: "uq_forum_thread_reactions_thread_user_emoji")
+  @@index([threadId, createdAt], map: "ix_forum_thread_reactions_thread_created_at")
+  @@index([userId, createdAt], map: "ix_forum_thread_reactions_user_created_at")
+  @@map("forum_thread_reactions")
 }
 
 model LiveTickerMessage {

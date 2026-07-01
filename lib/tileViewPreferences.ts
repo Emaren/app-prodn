@@ -7,6 +7,7 @@ export const TILE_VIEW_KEYS = [
   "live_games",
   "war_chest",
   "wolo_overview",
+  "forum",
 ] as const;
 
 export const TILE_VIEW_MODES = ["basic", "advanced", "extreme"] as const;
@@ -20,6 +21,7 @@ const TILE_VIEW_MODE_SET = new Set<string>(TILE_VIEW_MODES);
 const DEFAULT_TILE_VIEW_MODES: TileViewPreferences = {
   community_lobby: "extreme",
   live_games: "advanced",
+  forum: "advanced",
 };
 
 export function isTileViewKey(value: string | null | undefined): value is TileViewKey {

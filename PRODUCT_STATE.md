@@ -11,7 +11,7 @@ The app is no longer just a replay/stat shell. It now has a real public product 
 - next tournament panel is shipped and usable
 - players, rivalries, requests, `$WOLO`, and live-game surfaces are all real navigation destinations
 - `/bets`, `/war-chest`, and tournament detail pages are now real public destinations too
-- `/kingdom`, `/champions`, `/national-champions`, `/clans`, and `/forum` are now public AoE2WAR-style league/community destinations, with `/belts`, `/nations`, and `/realm` redirecting into them
+- `/kingdom`, `/champions`, `/national-champions`, `/clans`, and the fully interactive `/forum` War Room are public AoE2WAR-style league/community destinations, with `/belts`, `/nations`, and `/realm` redirecting into them
 - live replay ingestion can feed visible match outcomes back into the product without the old obviously-broken feel
 
 ## Strongest shipped modules
@@ -107,7 +107,10 @@ Current strengths:
 - `/kingdom` tells the app-side chronicle/wealth story without pretending to own WoloChain truth
 - `/champions` is the championship-belt surface for world, chaos, tag, women, ELO, and designation titles
 - `/national-champions` is the national-beacon surface with claimed and vacant country titles
-- `/forum` is a public War Room shell for community energy, featured threads, champion activity, and WOLO-adjacent calls to action
+- `/forum` is a real War Room led by twelve hand-written AoE2 field dispatches and Wolo Chronicles; every thread opens into a direct-link reader with replies, reactions, read state, and bookmarks instead of dead `#` links
+- Forum Basic preserves the original focused composition, Advanced is the persistent default with the Chronicle lead, room signals, excerpts, and field manual at `75rem`, and Extreme currently widens the Advanced kit to `96rem` pending its dedicated product pass
+- Signed-in citizens can publish threads, reply, react, and persist bookmarks through `forum_threads`, `forum_posts`, `forum_thread_reactions`, and `forum_thread_bookmarks`; guests retain local read/bookmark state
+- If the forum migration is absent, `/api/forum` returns the complete editorial archive with `ledgerAvailable=false`, while write surfaces explain that the shared ledger is unavailable rather than fabricating success
 - `/clans` is the public clan directory, launching with an equal-weight Mystikal crest and Add Your Clan invitation; Basic preserves the original card treatment while Advanced is the premium default and Extreme widens the warhouse presentation
 - `/clans/mystikal` opens with clan chat, a founding roster, public/signed-in/clan-only post audiences, and a clan-admin hall-wide audience ceiling that also hides older broader posts
 - Clan-hall authors can edit or delete their posts, clan/site admins can moderate, and authenticated users can place premium reactions whose named participants appear on hover

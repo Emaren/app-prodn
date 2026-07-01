@@ -15,6 +15,7 @@ It currently owns the premium lobby/community surface, leaderboard presentation,
 - [docs/UNIVERSAL_TRANSLATOR.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/docs/UNIVERSAL_TRANSLATOR.md)
 - [docs/CHAMPIONS_TITLE_ECONOMY.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/docs/CHAMPIONS_TITLE_ECONOMY.md)
 - [docs/SCHEDULED_MATCH_SETTLEMENTS.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/docs/SCHEDULED_MATCH_SETTLEMENTS.md)
+- [docs/WAR_ROOM_FORUM.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/docs/WAR_ROOM_FORUM.md)
 
 ## Stack
 
@@ -29,6 +30,8 @@ It currently owns the premium lobby/community surface, leaderboard presentation,
 - The global command bar leaves the Universal Translator’s language signal and wireframe globe loose before NavChat and the player control; Auto spells in and crossfades a randomized sequence, German fills the last Core slot, explicit choices persist locally and in a cookie, and only `/academy` uses the crimson selector while the rest of the product uses navy/steel blue
 - `/clans` launches with the Mystikal Clan hall and an equal-weight add-your-clan invitation; both the directory and `/clans/[slug]` expose Basic/Advanced/Extreme views with Advanced as the default
 - Clan halls own audience-aware chat, author/admin edit and delete controls, and named premium reactions; `/admin/user-list` assigns or removes real `ClanMember.role` leadership and renders the appointment as a compact private AoE2WAR protocol notice rather than an Emaren-authored chat bubble
+- `/forum` is the persistent War Room: Basic preserves the original focused three-column composition, Advanced is the wider default with Wolo Chronicles and field-manual context, and Extreme currently widens the Advanced kit without claiming a separate feature set
+- Forum search, tabs, channels, feed shelves, bookmarks, read state, direct-linked thread readers, publishing, replies, and named reactions are functional; a missing forum migration returns the complete editorial archive read-only instead of white-screening or pretending a write succeeded
 - `/academy` is the premium strategy front gate, launching with Zodiac as the founding advisor; `/zodiac` owns his replay-backed counsel page and verified 100 WOLO first-lesson checkout
 - `/market` is the player-built AoE2WAR Agora, launching with The Visage Forge, tailored merchant awnings, an AoE2-lobby-inspired dark commission desk, authenticated 100 WOLO avatar requests, direct Emaren inbox delivery, profile avatar-vault delivery, and an open-shop proposal rail
 - `/` and `/lobby` place the founding AoE2 Shorts reel directly below the featured event: real replay clips, vertical and wide presentations, a mobile portrait rail, full-screen swipe playback, uploader links, reactions, comments handoff, and sharing
