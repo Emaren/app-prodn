@@ -26,6 +26,10 @@ import {
   DIRECT_MESSAGE_REACTIONS,
 } from "@/lib/contactInboxConfig";
 import { AI_CONCIERGE_NAME, AI_CONCIERGE_UID } from "@/lib/aiConciergeConfig";
+import {
+  parseClanProtocolMessage,
+  type ClanProtocolMessage,
+} from "@/lib/clanProtocolMessages";
 import { summarizeChallengeInboxMessage } from "@/lib/challengeInboxMessages";
 import type {
   ContactChallengeActionKind,
@@ -137,6 +141,12 @@ function sameCalendarDay(left: string | null, right: string | null) {
 function isTightTextSequence(previous: ContactInboxMessage | null, current: ContactInboxMessage) {
   if (!previous) return false;
   if (previous.kind !== "text" || current.kind !== "text") return false;
+  if (
+    parseClanProtocolMessage(previous.body) ||
+    parseClanProtocolMessage(current.body)
+  ) {
+    return false;
+  }
   if (!sameCalendarDay(previous.createdAt, current.createdAt)) return false;
   if (previous.sender.uid !== current.sender.uid) return false;
 
@@ -302,6 +312,30 @@ function ChallengeSystemMessageLine({
             ) : null}
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function ClanProtocolSystemLine({
+  message,
+  protocol,
+}: {
+  message: Extract<ContactInboxMessage, { kind: "text" }>;
+  protocol: ClanProtocolMessage;
+}) {
+  const appointed = protocol.kind === "leader-appointed";
+  const toneClass = appointed
+    ? "border-emerald-300/20 bg-[linear-gradient(90deg,rgba(6,78,59,0.26),rgba(16,185,129,0.13),rgba(6,78,59,0.26))] text-emerald-100 shadow-[0_0_22px_rgba(16,185,129,0.08),inset_0_0_0_1px_rgba(110,231,183,0.04)]"
+    : "border-slate-300/14 bg-[linear-gradient(90deg,rgba(30,41,59,0.42),rgba(51,65,85,0.24),rgba(30,41,59,0.42))] text-slate-200 shadow-[inset_0_0_0_1px_rgba(203,213,225,0.03)]";
+
+  return (
+    <div className="flex justify-center py-0.5">
+      <div
+        title={`AoE2WAR protocol · ${formatBubbleTime(message.createdAt)}`}
+        className={`inline-flex max-w-full items-center justify-center rounded-full border px-3.5 py-1.5 text-center text-[11px] font-medium leading-5 sm:px-4 sm:text-xs ${toneClass}`}
+      >
+        <span className="sm:whitespace-nowrap">{protocol.body}</span>
       </div>
     </div>
   );
@@ -603,6 +637,7 @@ function TextMessageBubble({
     mode === "page" ? "max-h-[min(46vh,28rem)] overflow-y-auto pr-1" : "max-h-48 overflow-y-auto pr-1";
   const canToggleLobbyShare =
     message.sender.uid === AI_CONCIERGE_UID && !message.attachment && message.body.trim().length > 0;
+  const clanProtocolMessage = parseClanProtocolMessage(message.body);
   const compactChallengeNotice = message.body ? challengeNoticeTone(summarizeChallengeInboxMessage(message.body)) : null;
   const [trayPinnedOpen, setTrayPinnedOpen] = useState(false);
   const [trayHovered, setTrayHovered] = useState(false);
@@ -741,6 +776,15 @@ function TextMessageBubble({
       messageId: message.messageId,
     });
     setTrayPinnedOpen(false);
+  }
+
+  if (clanProtocolMessage) {
+    return (
+      <ClanProtocolSystemLine
+        message={message}
+        protocol={clanProtocolMessage}
+      />
+    );
   }
 
   if (compactChallengeNotice) {

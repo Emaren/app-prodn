@@ -1329,7 +1329,7 @@ function ClanLeadershipSection({
               : "Assign clan admin"}
         </button>
         <p className="text-[10px] leading-4 text-slate-500">
-          Appointment dispatches a direct line from Emaren.
+          Appointment lands as a private AoE2WAR protocol notice.
         </p>
       </div>
     </div>

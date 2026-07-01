@@ -12,6 +12,7 @@ import {
   getOrCreateConversationByUsers,
   resolvePrimaryAdminContact,
 } from "@/lib/contactInbox";
+import { buildClanLeaderProtocolMessage } from "@/lib/clanProtocolMessages";
 import { rescindPendingWoloClaim } from "@/lib/pendingWoloClaims";
 import { recordUserActivity } from "@/lib/userExperience";
 import { requireAdmin } from "@/lib/adminSession";
@@ -314,9 +315,11 @@ export async function POST(
               data: {
                 conversationId: conversation.id,
                 senderUserId: notificationSender.id,
-                body: granting
-                  ? `🏰 You have been selected leader of the clan. ⚔️\n• ${clanCallsign} ${targetName} 🛡️`
-                  : `🏰 Your watch as leader of the clan has ended. ⚔️\n• ${clanCallsign} ${targetName} 🛡️`,
+                body: buildClanLeaderProtocolMessage({
+                  clanCallsign,
+                  playerName: targetName,
+                  granting,
+                }),
               },
             });
             await tx.directConversation.update({

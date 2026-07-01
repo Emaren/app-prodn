@@ -45,6 +45,7 @@ type LiveGamesBoardProps = {
 
 type LiveSession = LiveGamesSnapshot["activeSessions"][number];
 type RecentMatch = LiveGamesSnapshot["recentMatches"][number];
+type ClassicLiveTone = "crimson" | "violet";
 
 const LIVE_GAMES_POLL_INTERVAL_MS = 5_000;
 const MAX_VISIBLE_OUTCOMES = 3;
@@ -654,6 +655,7 @@ function ClassicBoard({
   const [archiveOffset, setArchiveOffset] = useState(snapshot.recentMatches.length);
   const [archiveLoading, setArchiveLoading] = useState(false);
   const [archiveHasMore, setArchiveHasMore] = useState(snapshot.recentMatches.length >= 12);
+  const [liveTone, setLiveTone] = useState<ClassicLiveTone>("crimson");
 
   useEffect(() => {
     setArchiveMatches(snapshot.recentMatches);
@@ -716,13 +718,43 @@ function ClassicBoard({
   const archiveItemCount = archivedCompletedSessions.length + archiveMatches.length;
   const recentOutcomeCount = recentScheduledMatches.length + featuredCompletedSessions.length;
   const sectionStatusLabel = liveItemsCount > 0 ? `${liveItemsCount} active` : "Awaiting battle";
+  const playingShellClass =
+    liveTone === "violet"
+      ? "border-fuchsia-300/15 bg-[radial-gradient(circle_at_12%_0%,rgba(126,34,206,0.13),transparent_34%),linear-gradient(rgba(2,6,23,0.78),rgba(2,6,23,0.78))]"
+      : "border-red-300/15 bg-[radial-gradient(circle_at_12%_0%,rgba(127,29,29,0.12),transparent_34%),linear-gradient(rgba(2,6,23,0.78),rgba(2,6,23,0.78))]";
+  const playingEyebrowClass =
+    liveTone === "violet" ? "text-fuchsia-100/72" : "text-red-200/70";
+  const emptyPlayingClass =
+    liveTone === "violet"
+      ? "border-fuchsia-300/15 bg-fuchsia-500/[0.07]"
+      : "border-red-300/15 bg-red-500/[0.07]";
 
   return (
     <section className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-      <section className="min-w-0 rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-5 sm:p-6">
+      <section
+        data-playing-tone={liveTone}
+        onClick={(event) => {
+          const target = event.target as HTMLElement;
+          if (
+            target.closest("[data-playing-content]") ||
+            target.closest(
+              "a,button,input,select,textarea,[role='button'],[role='link']"
+            )
+          ) {
+            return;
+          }
+
+          setLiveTone((current) =>
+            current === "crimson" ? "violet" : "crimson"
+          );
+        }}
+        className={`min-w-0 rounded-[1.8rem] border p-5 transition-[border-color,background] duration-500 sm:p-6 ${playingShellClass}`}
+      >
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <div className="text-xs uppercase tracking-[0.35em] text-red-200/70">Now Playing</div>
+            <div className={`text-xs uppercase tracking-[0.35em] transition-colors duration-500 ${playingEyebrowClass}`}>
+              Now Playing
+            </div>
             <h2 className="mt-2 text-3xl font-semibold text-white">Playing now</h2>
           </div>
 
@@ -734,9 +766,9 @@ function ClassicBoard({
           </div>
         </div>
 
-        <div className="mt-5 space-y-4">
+        <div data-playing-content className="mt-5 space-y-4">
           {liveItemsCount === 0 ? (
-            <div className="rounded-[1.5rem] border border-white/10 bg-white/5 px-5 py-6 text-sm text-slate-300">
+            <div className={`rounded-[1.5rem] border px-5 py-6 text-sm text-slate-300 transition-[border-color,background] duration-500 ${emptyPlayingClass}`}>
               No live games yet.
             </div>
           ) : (
@@ -744,9 +776,17 @@ function ClassicBoard({
               {liveScheduledMatches.map((match) => renderScheduledMatch(match, { detail: true }))}
               {snapshot.activeSessions.map((session) =>
                 advanced ? (
-                  <PremiumClassicLiveSessionCard key={`session-${session.id}`} session={session} />
+                  <PremiumClassicLiveSessionCard
+                    key={`session-${session.id}`}
+                    session={session}
+                    liveTone={liveTone}
+                  />
                 ) : (
-                  <ClassicLiveSessionCard key={`session-${session.id}`} session={session} />
+                  <ClassicLiveSessionCard
+                    key={`session-${session.id}`}
+                    session={session}
+                    liveTone={liveTone}
+                  />
                 )
               )}
               {snapshot.liveMatches.map((match) => (
@@ -756,6 +796,7 @@ function ClassicBoard({
                   emphasis="live"
                   mounted={mounted}
                   premium={advanced}
+                  liveTone={liveTone}
                 />
               ))}
             </>
@@ -820,9 +861,17 @@ function ClassicBoard({
                 {recentScheduledMatches.map((match) => renderScheduledMatch(match, { compact: true }))}
                 {featuredCompletedSessions.map((session) =>
                   advanced ? (
-                    <PremiumClassicLiveSessionCard key={`completed-${session.id}`} session={session} />
+                    <PremiumClassicLiveSessionCard
+                      key={`completed-${session.id}`}
+                      session={session}
+                      liveTone={liveTone}
+                    />
                   ) : (
-                    <ClassicLiveSessionCard key={`completed-${session.id}`} session={session} />
+                    <ClassicLiveSessionCard
+                      key={`completed-${session.id}`}
+                      session={session}
+                      liveTone={liveTone}
+                    />
                   )
                 )}
               </>
@@ -935,8 +984,10 @@ function ClassicBoard({
 
 function PremiumClassicLiveSessionCard({
   session,
+  liveTone,
 }: {
   session: LiveGamesSnapshot["activeSessions"][number];
+  liveTone: ClassicLiveTone;
 }) {
   const sessionAny = session as Record<string, unknown>;
   const isCompleted = session.state === "completed";
@@ -983,20 +1034,36 @@ function PremiumClassicLiveSessionCard({
       ? session.winner.trim()
       : null;
 
+  const activeShellClass =
+    liveTone === "violet"
+      ? "border-fuchsia-400/20 bg-fuchsia-500/10 shadow-[0_26px_90px_rgba(168,85,247,0.12)]"
+      : "border-red-400/20 bg-red-500/10 shadow-[0_26px_90px_rgba(127,29,29,0.13)]";
+  const activeEyebrowClass =
+    liveTone === "violet" ? "text-fuchsia-100/78" : "text-red-100/78";
+  const activeMetaClass =
+    liveTone === "violet" ? "text-fuchsia-100/62" : "text-red-100/62";
+  const activeStatusClass =
+    liveTone === "violet"
+      ? "border-fuchsia-300/25 bg-fuchsia-500/12 text-fuchsia-50"
+      : "border-red-300/25 bg-red-500/12 text-red-50";
+  const activeWinnerClass =
+    liveTone === "violet" ? "text-fuchsia-100/62" : "text-red-100/62";
+  const activeWinnerNameClass =
+    liveTone === "violet" ? "text-fuchsia-50/90" : "text-red-50/90";
   const shellClass = isCompleted
     ? "relative overflow-hidden rounded-[1.9rem] border border-emerald-400/20 bg-emerald-500/10 px-5 py-5 shadow-[0_26px_90px_rgba(16,185,129,0.12)] sm:px-6"
-    : "relative overflow-hidden rounded-[1.9rem] border border-fuchsia-400/20 bg-fuchsia-500/10 px-5 py-5 shadow-[0_26px_90px_rgba(168,85,247,0.12)] sm:px-6";
+    : `relative overflow-hidden rounded-[1.9rem] border px-5 py-5 transition-[border-color,background,box-shadow] duration-500 sm:px-6 ${activeShellClass}`;
 
-  const eyebrowClass = isCompleted ? "text-emerald-100/78" : "text-fuchsia-100/78";
+  const eyebrowClass = isCompleted ? "text-emerald-100/78" : activeEyebrowClass;
   const titleClass = isCompleted
     ? "mt-3 text-[1.26rem] font-semibold leading-[1.08] tracking-[-0.018em] text-slate-50/96 [text-shadow:0_1px_12px_rgba(2,6,23,0.24)] sm:text-[1.4rem]"
     : "mt-3 text-[1.26rem] font-semibold leading-[1.08] tracking-[-0.018em] text-slate-50/96 [text-shadow:0_1px_12px_rgba(2,6,23,0.24)] sm:text-[1.4rem]";
-  const metaClass = isCompleted ? "text-emerald-100/62" : "text-fuchsia-100/62";
+  const metaClass = isCompleted ? "text-emerald-100/62" : activeMetaClass;
   const statusClass = isCompleted
     ? "border-emerald-300/25 bg-emerald-500/12 text-emerald-50"
-    : "border-fuchsia-300/25 bg-fuchsia-500/12 text-fuchsia-50";
-  const winnerClass = isCompleted ? "text-emerald-100/62" : "text-fuchsia-100/62";
-  const winnerNameClass = isCompleted ? "text-emerald-50/90" : "text-fuchsia-50/90";
+    : activeStatusClass;
+  const winnerClass = isCompleted ? "text-emerald-100/62" : activeWinnerClass;
+  const winnerNameClass = isCompleted ? "text-emerald-50/90" : activeWinnerNameClass;
 
   const goToStats = () => {
     window.location.href = gameHref;
@@ -1023,11 +1090,17 @@ function PremiumClassicLiveSessionCard({
           <div className="pointer-events-none absolute -bottom-24 left-8 h-44 w-44 rounded-full bg-cyan-300/6 blur-3xl" />
           <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-emerald-200/45 to-transparent" />
         </>
-      ) : (
+      ) : liveTone === "violet" ? (
         <>
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_86%_10%,rgba(217,70,239,0.16),transparent_34%),linear-gradient(135deg,rgba(88,28,135,0.34),rgba(2,6,23,0)_58%)]" />
           <div className="pointer-events-none absolute -right-24 -top-24 h-56 w-56 rounded-full bg-fuchsia-300/10 blur-3xl" />
           <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-fuchsia-200/40 to-transparent" />
+        </>
+      ) : (
+        <>
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_86%_10%,rgba(248,113,113,0.14),transparent_34%),linear-gradient(135deg,rgba(127,29,29,0.34),rgba(2,6,23,0)_58%)]" />
+          <div className="pointer-events-none absolute -right-24 -top-24 h-56 w-56 rounded-full bg-red-300/9 blur-3xl" />
+          <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-red-200/38 to-transparent" />
         </>
       )}
 
@@ -1093,8 +1166,10 @@ function PremiumClassicLiveSessionCard({
 
 function ClassicLiveSessionCard({
   session,
+  liveTone,
 }: {
   session: LiveGamesSnapshot["activeSessions"][number];
+  liveTone: ClassicLiveTone;
 }) {
   const sessionAny = session as Record<string, unknown>;
   const isCompleted = session.state === "completed";
@@ -1142,17 +1217,37 @@ function ClassicLiveSessionCard({
 
   const shellClass = isCompleted
     ? "border-emerald-400/20 bg-emerald-500/10"
-    : "border-fuchsia-400/20 bg-fuchsia-500/10";
+    : liveTone === "violet"
+      ? "border-fuchsia-400/20 bg-fuchsia-500/10"
+      : "border-red-400/20 bg-red-500/10";
 
-  const eyebrowClass = isCompleted ? "text-emerald-100/75" : "text-fuchsia-100/75";
+  const eyebrowClass = isCompleted
+    ? "text-emerald-100/75"
+    : liveTone === "violet"
+      ? "text-fuchsia-100/75"
+      : "text-red-100/75";
   const titleClass =
     "mt-2 text-xl font-semibold leading-tight tracking-[-0.012em] text-slate-50/95 [text-shadow:0_1px_10px_rgba(2,6,23,0.18)]";
-  const metaClass = isCompleted ? "text-emerald-100/58" : "text-fuchsia-100/58";
+  const metaClass = isCompleted
+    ? "text-emerald-100/58"
+    : liveTone === "violet"
+      ? "text-fuchsia-100/58"
+      : "text-red-100/58";
   const statusClass = isCompleted
     ? "border-emerald-300/25 bg-emerald-400/10 text-emerald-100"
-    : "border-fuchsia-300/25 bg-fuchsia-400/10 text-fuchsia-100";
-  const winnerClass = isCompleted ? "text-emerald-100/58" : "text-fuchsia-100/58";
-  const winnerNameClass = isCompleted ? "text-emerald-50/86" : "text-fuchsia-50/86";
+    : liveTone === "violet"
+      ? "border-fuchsia-300/25 bg-fuchsia-400/10 text-fuchsia-100"
+      : "border-red-300/25 bg-red-400/10 text-red-100";
+  const winnerClass = isCompleted
+    ? "text-emerald-100/58"
+    : liveTone === "violet"
+      ? "text-fuchsia-100/58"
+      : "text-red-100/58";
+  const winnerNameClass = isCompleted
+    ? "text-emerald-50/86"
+    : liveTone === "violet"
+      ? "text-fuchsia-50/86"
+      : "text-red-50/86";
 
   const goToStats = () => {
     window.location.href = gameHref;
@@ -1169,7 +1264,7 @@ function ClassicLiveSessionCard({
           goToStats();
         }
       }}
-      className={`cursor-pointer rounded-[1.5rem] border px-4 py-4 transition duration-200 hover:-translate-y-0.5 hover:border-white/20 ${shellClass}`}
+      className={`cursor-pointer rounded-[1.5rem] border px-4 py-4 transition duration-500 hover:-translate-y-0.5 hover:border-white/20 ${shellClass}`}
       aria-label={`Open final stats for ${title}`}
     >
       <div className="flex items-start justify-between gap-4">
@@ -1218,12 +1313,14 @@ function ClassicTournamentLiveMatchCard({
   mounted,
   compact = false,
   premium = false,
+  liveTone = "crimson",
 }: {
   match: LiveGamesSnapshot["liveMatches"][number];
   emphasis: "live" | "ready";
   mounted: boolean;
   compact?: boolean;
   premium?: boolean;
+  liveTone?: ClassicLiveTone;
 }) {
   const actionHref = match.proof ? `/game-stats/${match.proof.gameStatsId}` : "/lobby";
   const isLive = emphasis === "live";
@@ -1232,12 +1329,20 @@ function ClassicTournamentLiveMatchCard({
 
   if (premium) {
     const shellClass = isLive
-      ? "relative overflow-hidden rounded-[1.75rem] border border-fuchsia-300/25 bg-[radial-gradient(circle_at_85%_10%,rgba(217,70,239,0.22),transparent_32%),linear-gradient(135deg,rgba(88,28,135,0.46),rgba(2,6,23,0.92)_64%)] px-5 py-5 shadow-[0_24px_80px_rgba(168,85,247,0.12)]"
+      ? liveTone === "violet"
+        ? "relative overflow-hidden rounded-[1.75rem] border border-fuchsia-300/25 bg-[radial-gradient(circle_at_85%_10%,rgba(217,70,239,0.22),transparent_32%),linear-gradient(135deg,rgba(88,28,135,0.46),rgba(2,6,23,0.92)_64%)] px-5 py-5 shadow-[0_24px_80px_rgba(168,85,247,0.12)]"
+        : "relative overflow-hidden rounded-[1.75rem] border border-red-300/25 bg-[radial-gradient(circle_at_85%_10%,rgba(248,113,113,0.18),transparent_32%),linear-gradient(135deg,rgba(127,29,29,0.42),rgba(2,6,23,0.92)_64%)] px-5 py-5 shadow-[0_24px_80px_rgba(127,29,29,0.12)]"
       : "relative overflow-hidden rounded-[1.75rem] border border-amber-300/25 bg-[radial-gradient(circle_at_85%_10%,rgba(251,191,36,0.18),transparent_32%),linear-gradient(135deg,rgba(120,53,15,0.42),rgba(2,6,23,0.92)_64%)] px-5 py-5 shadow-[0_24px_80px_rgba(245,158,11,0.10)]";
 
-    const eyebrowClass = isLive ? "text-fuchsia-100/80" : "text-amber-100/80";
+    const eyebrowClass = isLive
+      ? liveTone === "violet"
+        ? "text-fuchsia-100/80"
+        : "text-red-100/80"
+      : "text-amber-100/80";
     const badgeClass = isLive
-      ? "border-fuchsia-200/25 bg-fuchsia-300/12 text-fuchsia-50"
+      ? liveTone === "violet"
+        ? "border-fuchsia-200/25 bg-fuchsia-300/12 text-fuchsia-50"
+        : "border-red-200/25 bg-red-300/12 text-red-50"
       : "border-amber-200/25 bg-amber-300/12 text-amber-50";
 
     return (
@@ -1292,7 +1397,9 @@ function ClassicTournamentLiveMatchCard({
 
   const accentClass =
     emphasis === "live"
-      ? "border-fuchsia-400/20 bg-fuchsia-500/10"
+      ? liveTone === "violet"
+        ? "border-fuchsia-400/20 bg-fuchsia-500/10"
+        : "border-red-400/20 bg-red-500/10"
       : "border-amber-300/20 bg-amber-400/10";
 
   return (
