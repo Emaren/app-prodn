@@ -338,6 +338,9 @@ function InnerShell({ children }: { children: React.ReactNode }) {
   const isContactPage = pathname?.startsWith("/contact-emaren");
   const isLobbySurface = pathname === "/" || pathname?.startsWith("/lobby");
   const isMediaManagerSurface = pathname?.startsWith("/admin/media-assets");
+  const isAcademySurface = pathname?.startsWith("/academy");
+  const isAcademyOrMarketSurface =
+    pathname?.startsWith("/academy") || pathname?.startsWith("/market");
   const communityLobbyViewMode = getTileViewMode(
     tileViewPreferences,
     "community_lobby"
@@ -401,10 +404,19 @@ function InnerShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div
-      className={`flex w-full flex-col overflow-x-hidden text-white transition-[background-image,background-color] duration-500 ${
+      className={`${isAcademySurface ? "academy-route-shell" : ""} flex w-full flex-col overflow-x-hidden text-white transition-[background-image,background-color] duration-500 ${
         isContactPage ? "h-[100dvh] overflow-y-hidden" : "min-h-screen"
       }`}
-      style={pageStyle}
+      style={
+        isAcademySurface
+          ? {
+              ...pageStyle,
+              backgroundColor: "#06070a",
+              backgroundImage:
+                "radial-gradient(78rem 38rem at 10% 0%, rgba(68, 9, 21, 0.24), transparent 66%), radial-gradient(58rem 32rem at 90% 0%, rgba(68, 71, 79, 0.12), transparent 70%), linear-gradient(180deg, #05070b 0%, #06070a 42%, #090407 100%)",
+            }
+          : pageStyle
+      }
       data-text-tone={textColor}
       data-theme-key={themeKey}
     >
@@ -583,9 +595,11 @@ function InnerShell({ children }: { children: React.ReactNode }) {
             : `px-3 sm:px-4 ${
                 isLobbySurface || isLiveGamesSurface
                   ? immersiveShellMaxWidth
-                  : "max-w-6xl"
+                  : isAcademyOrMarketSurface
+                    ? "max-w-[90rem]"
+                    : "max-w-6xl"
               }`
-        } ${
+        } ${isAcademySurface ? "academy-shell-skin" : ""} ${
           isContactPage ? "overflow-hidden" : isMediaManagerSurface ? "overflow-x-visible" : "overflow-x-hidden"
         }`}
       >

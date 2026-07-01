@@ -113,7 +113,7 @@ export default function MarketPage() {
             </p>
           </div>
 
-          <div className="max-w-xl">
+          <div className="absolute bottom-6 left-6 right-6 z-10 max-w-[31rem] sm:left-10 sm:right-auto lg:left-14">
             <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-amber-100/18 bg-black/55 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.22em] text-amber-50 backdrop-blur-lg">
               <Image
                 src={WOLO_LOGO_SRC}
@@ -143,7 +143,7 @@ export default function MarketPage() {
           </div>
         </div>
 
-        <div className="absolute inset-x-4 bottom-4 hidden grid-cols-3 gap-2 sm:grid lg:inset-x-auto lg:bottom-6 lg:right-6 lg:w-[38rem]">
+        <div className="absolute bottom-6 right-6 hidden w-[26rem] grid-cols-3 gap-2 lg:grid">
           {[
             ["01", "Founding shop"],
             [`${MARKETPLACE_CONFIG.avatarPriceWolo} WOLO`, "First commission"],
@@ -468,7 +468,7 @@ export default function MarketPage() {
         </h2>
         <Link
           href="/contact-emaren"
-          className="market-iron-button mt-6 inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-6 text-sm font-bold"
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-white/13 bg-black/32 px-5 py-2.5 text-sm font-semibold text-slate-200 shadow-[0_16px_42px_rgba(0,0,0,0.28)] backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-amber-100/25 hover:bg-white/[0.055] hover:text-white sm:min-w-[12rem]"
         >
           Contact Emaren
           <ArrowRight className="h-4 w-4" />
