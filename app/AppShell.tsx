@@ -8,6 +8,7 @@ import { Castle, Crown, Globe2, GraduationCap, MessageSquare, Store, UsersRound,
 import { createPortal } from "react-dom";
 import UserExperienceTracker from "@/components/analytics/UserExperienceTracker";
 import HeaderInboxControl from "@/components/contact/HeaderInboxControl";
+import UniversalTranslator from "@/components/i18n/UniversalTranslator";
 import HeaderMenu from "@/components/HeaderMenu";
 import SteamLoginButton from "@/components/SteamLoginButton";
 import {
@@ -25,6 +26,7 @@ import { getTileViewMode } from "@/lib/tileViewPreferences";
 import { Toaster } from "sonner";
 import { Providers } from "./Providers";
 import { UserAuthProvider, useUserAuth } from "@/context/UserAuthContext";
+import { UniversalLanguageProvider } from "@/context/UniversalLanguageContext";
 
 const HEADER_LINKS: ReadonlyArray<{
   href: string;
@@ -451,6 +453,9 @@ function InnerShell({ children }: { children: React.ReactNode }) {
 
               <div className="flex min-w-0 shrink-0 items-center justify-end gap-2">
                 {uid ? <HeaderInboxControl buttonClassName={`${headerSkin.surface} h-10 w-10`} /> : null}
+                <UniversalTranslator
+                  buttonClassName={`${headerSkin.surface} h-10`}
+                />
                 <HeaderMenu
                   playerName={playerName}
                   uid={uid}
@@ -567,6 +572,9 @@ function InnerShell({ children }: { children: React.ReactNode }) {
               {uid ? (
                 <>
                   <HeaderInboxControl buttonClassName={`${headerSkin.surface} h-10 w-10`} />
+                  <UniversalTranslator
+                    buttonClassName={`${headerSkin.surface} h-10`}
+                  />
                   <HeaderMenu
                     playerName={playerName}
                     uid={uid}
@@ -579,10 +587,15 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                   />
                 </>
               ) : (
-                <SteamLoginButton
-                  label="Steam Sign In"
-                  className="inline-flex min-h-10 items-center justify-center rounded-full bg-amber-300 px-4 py-2 text-xs font-semibold text-slate-950 shadow-[0_10px_30px_rgba(251,191,36,0.18)] transition hover:bg-amber-200"
-                />
+                <>
+                  <UniversalTranslator
+                    buttonClassName={`${headerSkin.surface} h-10`}
+                  />
+                  <SteamLoginButton
+                    label="Steam Sign In"
+                    className="inline-flex min-h-10 items-center justify-center rounded-full bg-amber-300 px-4 py-2 text-xs font-semibold text-slate-950 shadow-[0_10px_30px_rgba(251,191,36,0.18)] transition hover:bg-amber-200"
+                  />
+                </>
               )}
             </div>
           </div>
@@ -618,9 +631,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <UserAuthProvider>
       <Providers>
-        <LobbyAppearanceProvider>
-          <InnerShell>{children}</InnerShell>
-        </LobbyAppearanceProvider>
+        <UniversalLanguageProvider>
+          <LobbyAppearanceProvider>
+            <InnerShell>{children}</InnerShell>
+          </LobbyAppearanceProvider>
+        </UniversalLanguageProvider>
       </Providers>
     </UserAuthProvider>
   );

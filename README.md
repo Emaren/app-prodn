@@ -12,6 +12,7 @@ It currently owns the premium lobby/community surface, leaderboard presentation,
 - [DEPLOY.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/DEPLOY.md)
 - [PRODUCT_STATE.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/PRODUCT_STATE.md)
 - [WORKSPACE.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/WORKSPACE.md)
+- [docs/UNIVERSAL_TRANSLATOR.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/docs/UNIVERSAL_TRANSLATOR.md)
 - [docs/CHAMPIONS_TITLE_ECONOMY.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/docs/CHAMPIONS_TITLE_ECONOMY.md)
 - [docs/SCHEDULED_MATCH_SETTLEMENTS.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/docs/SCHEDULED_MATCH_SETTLEMENTS.md)
 
@@ -25,6 +26,7 @@ It currently owns the premium lobby/community surface, leaderboard presentation,
 - Claimed player profiles default to the Advanced command center; unclaimed replay-built profiles default to the classic Basic claim page, and both can toggle Basic/Advanced
 - Advanced player profiles include lazy match archive, watcher proof, form/rivalry diagnostics, resource emblems, AI Scribe/Grimer readout, stream signal, and premium `$WOLO`/staking stats
 - The public Kingdom spine includes `/kingdom`, `/champions`, `/national-champions`, `/clans`, and `/forum`, with the legacy `/belts`, `/nations`, and `/realm` paths redirecting into the new route names
+- The global command bar includes the Universal Translator beside chat/account controls: Auto cycles a quiet language signal, explicit choices persist locally and in a cookie, and the shared provider exposes the active language without runtime translation APIs
 - `/clans` launches with the Mystikal Clan hall and an equal-weight add-your-clan invitation; both the directory and `/clans/[slug]` expose Basic/Advanced/Extreme views with Advanced as the default
 - Clan halls own audience-aware chat, author/admin edit and delete controls, and named premium reactions; `/admin/user-list` assigns or removes real `ClanMember.role` leadership and dispatches the appointment through Emaren’s direct line
 - `/academy` is the premium strategy front gate, launching with Zodiac as the founding advisor; `/zodiac` owns his replay-backed counsel page and verified 100 WOLO first-lesson checkout
