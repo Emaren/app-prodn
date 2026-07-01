@@ -20,6 +20,7 @@ export type UniversalLanguageCode =
   | "en"
   | "zh-CN"
   | "fr"
+  | "de"
   | "es"
   | "pt-BR"
   | "pl"
@@ -116,6 +117,14 @@ export const UNIVERSAL_LANGUAGES = [
     group: "core",
   },
   {
+    code: "de",
+    htmlLang: "de",
+    nativeName: "Deutsch",
+    englishName: "German",
+    mark: "DEU",
+    group: "core",
+  },
+  {
     code: "nl",
     htmlLang: "nl",
     nativeName: "Nederlands",
@@ -169,6 +178,7 @@ export const UNIVERSAL_LANGUAGE_CYCLE_MARKS = [
   "中文",
   "ESP",
   "FRA",
+  "DEU",
   "POR",
   "POL",
   "JPN",

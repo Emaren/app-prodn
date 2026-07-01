@@ -8,10 +8,12 @@ The Universal Translator is the global AoE2WAR language-preference surface. It h
 - `context/UniversalLanguageContext.tsx` exposes `useUniversalLanguage()` for future shell and page dictionaries.
 - `lib/i18n/languages.ts` is the typed language registry, display-mark cycle, persistence contract, and sacred-term list.
 - `lib/i18n/dictionary.ts` contains the small translator-shell dictionary.
-- `app/AppShell.tsx` mounts the provider and keeps the authenticated right rail in this order: fading language signal, wireframe globe, NavChat, player control.
+- `app/AppShell.tsx` mounts the provider and keeps the authenticated right rail in this order: loose language signal, wireframe globe, NavChat, player control.
 - `app/globals.css` owns only the component-scoped black-glass, gold, and crimson treatment.
 
 The selector is deep AoE2WAR navy/steel blue across the product. The `/academy` route alone uses the ceremonial crimson variant.
+
+Auto mode shuffles the language-signal order client-side. Each signal spells in by grapheme, pauses, and then crossfades to the next randomized mark. An explicit selection remains still. German is a Core language and occupies the final Core slot beside Traditional Chinese.
 
 ## Persistence
 

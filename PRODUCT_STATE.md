@@ -24,7 +24,7 @@ Current strengths:
 - every major route has a page-specific header title for orientation
 - desktop navigation is a compact premium command bar with active-route treatment
 - mobile navigation uses a single-row horizontal command rail plus a polished bottom quick-command bar
-- the global header now reads language signal → wireframe globe → NavChat → player control; Auto cycles the community marks, choices persist across reloads, and the selector is navy/steel blue everywhere except the Academy’s ceremonial crimson variant
+- the global header now reads loose language signal → wireframe globe → NavChat → player control; Auto spells in and crossfades a randomized language sequence, German fills the final Core slot, choices persist across reloads, and the selector is navy/steel blue everywhere except the Academy’s ceremonial crimson variant
 - `/kingdom` is included in the castle menu alongside Champions, Nations, Clans, and Forum
 - the castle menu opens by hover/focus on desktop and as an unclipped touch sheet on mobile
 - the account menu renders as an unclipped, viewport-bounded command deck on desktop and mobile

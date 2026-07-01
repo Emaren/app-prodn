@@ -35,13 +35,45 @@ type PanelPosition = {
 };
 
 const CYCLE_INTERVAL_MS = 4_200;
-const CYCLE_FADE_MS = 560;
+const CYCLE_FADE_MS = 620;
+
+type GraphemeSegmenter = {
+  segment: (value: string) => Iterable<{ segment: string }>;
+};
+
+type GraphemeSegmenterConstructor = new (
+  locale?: string,
+  options?: { granularity: "grapheme" }
+) => GraphemeSegmenter;
+
+function splitSignalGlyphs(value: string): string[] {
+  const Segmenter = (
+    Intl as unknown as { Segmenter?: GraphemeSegmenterConstructor }
+  ).Segmenter;
+  if (Segmenter) {
+    return Array.from(
+      new Segmenter(undefined, { granularity: "grapheme" }).segment(value),
+      ({ segment }) => segment
+    );
+  }
+  return Array.from(value);
+}
+
+function shuffledSignalMarks(avoidFirst?: string): string[] {
+  const marks = [...UNIVERSAL_LANGUAGE_CYCLE_MARKS];
+  for (let index = marks.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [marks[index], marks[swapIndex]] = [marks[swapIndex], marks[index]];
+  }
+  if (avoidFirst && marks[0] === avoidFirst && marks.length > 1) {
+    [marks[0], marks[1]] = [marks[1], marks[0]];
+  }
+  return marks;
+}
 
 export default function UniversalTranslator({
-  buttonClassName,
   tone = "blue",
 }: {
-  buttonClassName?: string;
   tone?: "blue" | "academy";
 }) {
   const {
@@ -56,7 +88,11 @@ export default function UniversalTranslator({
   const [panelPosition, setPanelPosition] = useState<PanelPosition | null>(
     null
   );
+  const [cycleMarks, setCycleMarks] = useState<string[]>(() => [
+    ...UNIVERSAL_LANGUAGE_CYCLE_MARKS,
+  ]);
   const [cycleIndex, setCycleIndex] = useState(0);
+  const [markSequence, setMarkSequence] = useState(0);
   const [markVisible, setMarkVisible] = useState(true);
   const [reducedMotion, setReducedMotion] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -67,9 +103,12 @@ export default function UniversalTranslator({
   const strings = getUniversalTranslatorStrings(selectedLanguage);
   const visibleMark =
     activeLanguage?.mark ??
-    UNIVERSAL_LANGUAGE_CYCLE_MARKS[
-      cycleIndex % UNIVERSAL_LANGUAGE_CYCLE_MARKS.length
-    ];
+    cycleMarks[cycleIndex % cycleMarks.length] ??
+    UNIVERSAL_LANGUAGE_CYCLE_MARKS[0];
+  const signalGlyphs = useMemo(
+    () => splitSignalGlyphs(visibleMark),
+    [visibleMark]
+  );
   const coreLanguages = useMemo(
     () => UNIVERSAL_LANGUAGES.filter((language) => language.group === "core"),
     []
@@ -113,28 +152,47 @@ export default function UniversalTranslator({
   }, []);
 
   useEffect(() => {
+    if (!languageLoaded || selectedLanguage !== null) return;
+    setCycleMarks(shuffledSignalMarks());
+    setCycleIndex(0);
+    setMarkSequence((current) => current + 1);
+    setMarkVisible(true);
+  }, [languageLoaded, selectedLanguage]);
+
+  useEffect(() => {
     if (!languageLoaded || selectedLanguage || reducedMotion) {
       setMarkVisible(true);
       return;
     }
 
     let fadeTimer: number | null = null;
-    const interval = window.setInterval(() => {
+    const holdTimer = window.setTimeout(() => {
       setMarkVisible(false);
       fadeTimer = window.setTimeout(() => {
-        setCycleIndex(
-          (current) =>
-            (current + 1) % UNIVERSAL_LANGUAGE_CYCLE_MARKS.length
-        );
+        const nextIndex = cycleIndex + 1;
+        if (nextIndex >= cycleMarks.length) {
+          setCycleMarks(shuffledSignalMarks(visibleMark));
+          setCycleIndex(0);
+        } else {
+          setCycleIndex(nextIndex);
+        }
+        setMarkSequence((current) => current + 1);
         setMarkVisible(true);
       }, CYCLE_FADE_MS);
     }, CYCLE_INTERVAL_MS);
 
     return () => {
-      window.clearInterval(interval);
+      window.clearTimeout(holdTimer);
       if (fadeTimer !== null) window.clearTimeout(fadeTimer);
     };
-  }, [languageLoaded, reducedMotion, selectedLanguage]);
+  }, [
+    cycleIndex,
+    cycleMarks,
+    languageLoaded,
+    reducedMotion,
+    selectedLanguage,
+    visibleMark,
+  ]);
 
   useEffect(() => {
     if (!open) return;
@@ -190,7 +248,9 @@ export default function UniversalTranslator({
 
   const chooseAuto = () => {
     resetToAuto();
+    setCycleMarks(shuffledSignalMarks());
     setCycleIndex(0);
+    setMarkSequence((current) => current + 1);
     setMarkVisible(true);
     setOpen(false);
     window.requestAnimationFrame(() => triggerRef.current?.focus());
@@ -218,15 +278,10 @@ export default function UniversalTranslator({
         aria-controls={panelId}
         title="Universal Translator"
         onClick={() => setOpen((current) => !current)}
-        className={[
-          buttonClassName,
-          "universal-translator__trigger relative inline-flex h-10 w-14 shrink-0 items-center justify-between gap-1 rounded-full border px-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-100/45 sm:w-[4.65rem] sm:gap-2 sm:px-2.5",
-        ]
-          .filter(Boolean)
-          .join(" ")}
+        className="universal-translator__trigger group relative inline-flex h-10 w-[3.65rem] shrink-0 items-center justify-between gap-1 px-0.5 focus:outline-none sm:w-[4.15rem] sm:gap-1.5 sm:px-1"
       >
         <span
-          className={`universal-translator__mark grid min-w-0 flex-1 place-items-center text-[6.5px] font-bold leading-none tracking-[0.025em] sm:text-[8px] sm:tracking-[0.04em] ${
+          className={`universal-translator__mark flex min-w-0 flex-1 items-center justify-end text-[7px] font-bold leading-none tracking-[0.035em] sm:text-[8px] sm:tracking-[0.06em] ${
             markVisible
               ? "universal-translator__mark--visible"
               : "universal-translator__mark--hidden"
@@ -234,9 +289,28 @@ export default function UniversalTranslator({
           data-language-mark={visibleMark}
           aria-hidden="true"
         >
-          {visibleMark}
+          {selectedLanguage ? (
+            visibleMark
+          ) : (
+            <span
+              key={`${visibleMark}-${markSequence}`}
+              className="universal-translator__spelling"
+            >
+              {signalGlyphs.map((glyph, index) => (
+                <span
+                  key={`${glyph}-${index}`}
+                  className="universal-translator__letter"
+                  style={{
+                    animationDelay: `${Math.min(index, 3) * 145}ms`,
+                  }}
+                >
+                  {glyph}
+                </span>
+              ))}
+            </span>
+          )}
         </span>
-        <span className="universal-translator__orb grid h-6 w-6 shrink-0 place-items-center rounded-full sm:h-7 sm:w-7">
+        <span className="universal-translator__orb grid h-7 w-7 shrink-0 place-items-center rounded-full transition group-focus-visible:ring-2 group-focus-visible:ring-sky-100/45">
           <Globe
             className="h-[0.95rem] w-[0.95rem] sm:h-4 sm:w-4"
             strokeWidth={1.55}

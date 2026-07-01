@@ -35,6 +35,10 @@ const TRANSLATOR_DICTIONARY: Partial<
     title: "Traducteur universel",
     subtitle: "Choisissez votre langue. Chaque guerrier entre dans la salle.",
   },
+  de: {
+    title: "Universalübersetzer",
+    subtitle: "Wähle deine Sprache. Jeder Krieger betritt die Halle.",
+  },
   es: {
     title: "Traductor universal",
     subtitle: "Elige tu lengua. Todo guerrero entra en la sala.",
