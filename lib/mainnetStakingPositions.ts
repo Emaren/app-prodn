@@ -33,6 +33,22 @@ function displayUserName(user: {
   return user.inGameName?.trim() || user.steamPersonaName?.trim() || user.uid;
 }
 
+
+function computeCanonicalStakingWeight(position: {
+  accumulatedWeight: bigint;
+  currentStakedWolo: number;
+  lastWeightUpdateAt: Date;
+}, asOf: Date) {
+  const seconds = Math.max(
+    0,
+    Math.floor((asOf.getTime() - position.lastWeightUpdateAt.getTime()) / 1000)
+  );
+  return (
+    position.accumulatedWeight +
+    BigInt(Math.max(0, Math.trunc(position.currentStakedWolo))) * BigInt(seconds)
+  ).toString();
+}
+
 export type LoadMainnetStakingPositionsOptions = {
   asOf?: Date;
   weightStartAt?: Date;
@@ -50,7 +66,7 @@ export async function loadMainnetStakingPositions(
   const mainnetStartAt = getWoloMainnetDisplayStartAt();
   const weightStartAt = options.weightStartAt ?? mainnetStartAt;
   const take = Math.max(1, Math.min(options.take ?? 5_000, 10_000));
-  const [addressBook, rows, events] = await Promise.all([
+  const [addressBook, rows, events, canonicalPositions] = await Promise.all([
     buildWoloAddressBook(prisma),
     prisma.woloIndexedTransfer.findMany({
       where: {
@@ -112,6 +128,26 @@ export async function loadMainnetStakingPositions(
         },
       },
     }),
+    prisma.stakingPosition.findMany({
+      where: {
+        status: "active",
+        currentStakedWolo: { gt: 0 },
+      },
+      select: {
+        userId: true,
+        walletAddress: true,
+        currentStakedWolo: true,
+        accumulatedWeight: true,
+        lastWeightUpdateAt: true,
+        user: {
+          select: {
+            uid: true,
+            inGameName: true,
+            steamPersonaName: true,
+          },
+        },
+      },
+    }),
   ]);
 
   const indexedTransfers: MainnetStakingTransferInput[] = rows.map((row) => {
@@ -152,7 +188,7 @@ export async function loadMainnetStakingPositions(
     };
   });
 
-  return deriveMainnetStakingPositionsFromTransfers([...indexedTransfers, ...eventTransfers], {
+  const derivedPositions = deriveMainnetStakingPositionsFromTransfers([...indexedTransfers, ...eventTransfers], {
     stakingWalletAddress,
     mainnetStartAt,
     asOf,
@@ -160,6 +196,44 @@ export async function loadMainnetStakingPositions(
     operationalReserveSourceAddresses:
       WOLO_STAKING_RESERVE_OPERATOR_ADDRESSES,
   });
+
+  const positionsByUserId = new Map(
+    derivedPositions.map((position) => [position.userId, position])
+  );
+
+  for (const canonical of canonicalPositions) {
+    const canonicalStake = Math.max(0, canonical.currentStakedWolo || 0);
+    if (canonicalStake <= 0) continue;
+
+    const existing = positionsByUserId.get(canonical.userId);
+    const player = displayUserName(canonical.user);
+    const walletAddress = normalizeAddress(
+      canonical.walletAddress || existing?.walletAddress
+    );
+
+    positionsByUserId.set(canonical.userId, {
+      ...(existing || {
+        userId: canonical.userId,
+        player,
+        walletAddress,
+        currentStakedWolo: 0,
+        totalStakedWolo: 0,
+        totalUnstakedWolo: 0,
+        stakingWeight: "0",
+        firstStakedAt: canonical.lastWeightUpdateAt,
+        lastTxAt: canonical.lastWeightUpdateAt,
+        txHashes: [],
+      }),
+      player: existing?.player || player,
+      walletAddress: walletAddress || existing?.walletAddress || null,
+      currentStakedWolo: canonicalStake,
+      stakingWeight: existing?.stakingWeight || computeCanonicalStakingWeight(canonical, asOf),
+    });
+  }
+
+  return Array.from(positionsByUserId.values()).filter(
+    (position) => position.currentStakedWolo > 0 || position.totalStakedWolo > 0
+  );
 }
 
 export async function loadMainnetStakingPositionForUser(

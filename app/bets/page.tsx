@@ -2704,7 +2704,7 @@ function BroadcastHeroTile({
             onPlay={() => setPlayingView(activeView.key)}
             layoutToggle={null}
           />
-          <div className="grid grid-cols-3 gap-2 lg:grid-cols-1">
+          <div className="grid grid-cols-3 gap-2 lg:h-full lg:grid-cols-1">
             {views.map((view) => (
               <BroadcastPreviewButton
                 key={view.key}
@@ -2797,8 +2797,8 @@ function BroadcastCompactFrame({
   layoutToggle?: ReactNode;
 }) {
   return (
-    <div className="min-w-0 overflow-hidden rounded-[1.35rem] border border-white/[0.08] bg-slate-950/70 p-2">
-      <div className="relative aspect-video max-h-[18rem] min-h-[9rem] overflow-hidden rounded-[1.1rem] border border-white/[0.06] bg-black/55 sm:min-h-[11rem]">
+    <div className="min-w-0 self-stretch overflow-hidden rounded-[1.35rem] border border-white/[0.08] bg-slate-950/70 p-2 lg:flex lg:h-full lg:min-h-0 lg:flex-col">
+      <div className="relative aspect-video max-h-[18rem] min-h-[9rem] overflow-hidden rounded-[1.1rem] border border-white/[0.06] bg-black/55 sm:min-h-[11rem] lg:aspect-auto lg:max-h-none lg:min-h-0 lg:flex-1">
         <BroadcastSignalSurface
           tone={tone}
           feed={feed}
@@ -2917,9 +2917,10 @@ function BroadcastSignalSurface({
         autoplay: true,
       })
     : null;
-  const hasLoop = Boolean(previewUrl) && !isPlaying && !loopFailed;
-  const hasEmbeddableFeed = Boolean(feed?.canEmbed && feed.embedId);
-  const hasExternalFeed = Boolean(feed && !hasEmbeddableFeed);
+  const hasPreviewLoop = Boolean(previewUrl) && !loopFailed;
+  const hasLoop = hasPreviewLoop && !isPlaying;
+  const hasEmbeddableFeed = Boolean(feed?.canEmbed && feed.embedId && !hasPreviewLoop);
+  const hasExternalFeed = Boolean(feed && !hasEmbeddableFeed && !hasPreviewLoop);
   const glowClassName =
     tone === "warm"
       ? "from-amber-300/24 via-orange-500/12 to-transparent"

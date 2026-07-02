@@ -4,10 +4,8 @@ import {
   type ScheduledMatchTile,
 } from "@/lib/challenges";
 import { parsePlayers, readMapName } from "@/lib/gameStatsView";
-import {
-  loadLiveSessionSnapshot,
-  type LiveGameSession,
-} from "@/lib/liveSessionSnapshot";
+import { loadLiveSessionSnapshot, type LiveGameSession } from "@/lib/liveSessionSnapshot";
+import { loadLiveGamesSnapshot } from "@/lib/liveGames";
 import { resolveFinalGameStatsIdForSessionKey } from "@/lib/liveReplayDetail";
 import {
   createPendingWoloClaim,
@@ -1898,7 +1896,7 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
 
 
 async function buildOpenMarketSeeds(prisma: PrismaClient) {
-  const sessionSnapshot = await loadLiveSessionSnapshot(prisma);
+  const sessionSnapshot = await loadLiveGamesSnapshot(prisma);
   const {
     tiles: scheduledMatchTiles,
     matchedActiveSessionKeys,

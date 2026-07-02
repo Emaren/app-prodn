@@ -5,6 +5,7 @@ const STATIC_AVATAR_FALLBACKS: Record<string, string> = {
   "julio-alvarez": "/champions/players/julio.webp",
   sniper: "/champions/players/sniper.webp",
   silhouette: "/champions/players/silhouette.webp",
+  "ai-scribe": "/champions/players/silhouette.webp",
 };
 
 const STATIC_AVATAR_THUMB_FALLBACKS: Record<string, string> = {
@@ -14,6 +15,7 @@ const STATIC_AVATAR_THUMB_FALLBACKS: Record<string, string> = {
   "julio-alvarez": "/champions/players/julio.thumb.webp",
   sniper: "/champions/players/sniper.thumb.webp",
   silhouette: "/champions/players/silhouette.thumb.webp",
+  "ai-scribe": "/champions/players/silhouette.thumb.webp",
 };
 
 const NAME_TARGETS: Record<string, string> = {
@@ -22,8 +24,8 @@ const NAME_TARGETS: Record<string, string> = {
   julio: "julio-alvarez",
   "julio alvarez": "julio-alvarez",
   sniper: "sniper",
-  "the ai scribe": "silhouette",
-  "ai scribe": "silhouette",
+  "the ai scribe": "ai-scribe",
+  "ai scribe": "ai-scribe",
   grimer: "grimer",
 
   myth: "myth",
@@ -132,6 +134,8 @@ const MANAGED_NAME_AVATAR_TARGETS = new Set([
   "pigman",
   "dil-pascana",
   "grimer",
+  "ai-scribe",
+  "the-ai-scribe",
   "moose",
 ]);
 

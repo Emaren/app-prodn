@@ -440,21 +440,77 @@ function buildRecentOutcomeSession(
 }
 
 
+function normalizeSessionDedupeKey(value: string | null | undefined) {
+  const trimmed = value?.trim();
+  if (!trimmed) return "";
+
+  const basename = streamKeyBasename(trimmed).toLowerCase();
+  const simplified = basename
+    .replace(/\.(aoe2record|aoe2mpgame|zip|webm|mp4)$/i, "")
+    .replace(/[^a-z0-9]+/g, "");
+
+  if (!simplified || simplified.length < 6) return "";
+
+  if (
+    [
+      "watcherstream",
+      "watcherlive",
+      "playersparsing",
+      "battlecam",
+      "maincast",
+      "observer",
+    ].includes(simplified)
+  ) {
+    return "";
+  }
+
+  return simplified;
+}
+
+function sessionDedupeKeys(session: StreamedLiveGameSession) {
+  const values = [
+    session.sessionKey,
+    session.originalFilename,
+    session.replayFile,
+    streamKeyBasename(session.replayFile),
+    ...session.streams.flatMap((stream) => [
+      stream.sessionKey,
+      stream.title,
+      stream.url,
+      stream.playbackUrl,
+    ]),
+  ];
+
+  return Array.from(
+    new Set(
+      values
+        .map((value) => normalizeSessionDedupeKey(value))
+        .filter(Boolean)
+    )
+  );
+}
+
 function dedupeStreamedSessions(sessions: StreamedLiveGameSession[]) {
   const seen = new Set<string>();
 
   return sessions.filter((session) => {
+    const keys = sessionDedupeKeys(session);
     const gameId = Number(session.id);
-    const key =
+    const fallbackKey =
       Number.isFinite(gameId) && gameId > 0
         ? `game:${gameId}`
-        : `session:${session.sessionKey || session.completedAt || session.updatedAt || "unknown"}`;
+        : `session:${normalizeSessionDedupeKey(session.sessionKey) || session.completedAt || session.updatedAt || "unknown"}`;
 
-    if (seen.has(key)) {
+    const finalKeys = keys.length > 0 ? keys : [fallbackKey];
+
+    if (finalKeys.some((key) => seen.has(key))) {
       return false;
     }
 
-    seen.add(key);
+    for (const key of finalKeys) {
+      seen.add(key);
+    }
+
     return true;
   });
 }
@@ -493,6 +549,18 @@ function parseStreamPlayers(title: string): LiveGameSession["players"] {
     name,
     winner: null,
   }));
+}
+
+
+function cleanStandaloneStreamTitle(value: string | null | undefined) {
+  const title = String(value ?? "").replace(/\s+/g, " ").trim();
+
+  if (!title) return "Watcher Live";
+  if (/^platform:/i.test(title)) return "Watcher Live";
+  if (/^aoe2war:\/\/stream/i.test(title)) return "Watcher Live";
+  if (/^mp replay/i.test(title)) return "Players parsing";
+
+  return title;
 }
 
 async function loadStandaloneLiveStreamSessions(
@@ -547,14 +615,14 @@ async function loadStandaloneLiveStreamSessions(
     if (!isVisibleStream(stream)) continue;
     if (!stream.sessionKey || knownActiveSessionKeys.has(stream.sessionKey)) continue;
 
-    const title = stream.title || stream.sessionKey || stream.label || "Watcher Live";
+    const title = cleanStandaloneStreamTitle(stream.title || stream.playerLabel || stream.label);
     const nowIso = new Date().toISOString();
     const activityIso = stream.lastHeartbeatAt || stream.updatedAt || nowIso;
 
     sessions.push({
       id: -Math.abs(stream.id),
       sessionKey: stream.sessionKey,
-      replayFile: stream.sessionKey,
+      replayFile: title || stream.sessionKey,
       replayHash: `stream:${stream.id}`,
       parseIteration: 1,
       createdAt: stream.startedAt || stream.createdAt || activityIso,
@@ -563,7 +631,7 @@ async function loadStandaloneLiveStreamSessions(
       playedOn: stream.startedAt || stream.createdAt || null,
       mapName: null,
       durationSeconds: null,
-      originalFilename: stream.sessionKey,
+      originalFilename: title || "Watcher Live",
       disconnectDetected: false,
       winner: null,
       state: "live",

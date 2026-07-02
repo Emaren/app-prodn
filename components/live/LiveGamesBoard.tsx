@@ -132,9 +132,24 @@ function playerLabel(
 }
 
 function sessionTitle(session: LiveSession) {
-  return session.players.length > 0
-    ? session.players.map((player) => player.name).join(" vs ")
-    : session.originalFilename || "Game in progress";
+  if (session.players.length > 0) {
+    return session.players.map((player) => player.name).join(" vs ");
+  }
+
+  if (session.state === "live") {
+    return "Players parsing";
+  }
+
+  return session.originalFilename || "Game in progress";
+}
+
+function isManualUploadedReplaySession(session: Pick<LiveSession, "uploader" | "uploaders">) {
+  return Boolean(session.uploader || (session.uploaders?.length ?? 0) > 0);
+}
+
+function liveSessionEyebrowLabel(session: LiveSession) {
+  if (session.state !== "completed") return "Watcher live";
+  return isManualUploadedReplaySession(session) ? "Just uploaded" : "Just finished";
 }
 
 function initials(value: string) {
@@ -993,20 +1008,14 @@ function PremiumClassicLiveSessionCard({
   const isCompleted = session.state === "completed";
   const gameHref = `/game-stats/live/${encodeURIComponent(session.sessionKey)}`;
   const watchHref = `/watch/${encodeURIComponent(session.sessionKey)}`;
-  const isUploadedReplay = Boolean(
-    session.originalFilename || session.uploader || session.uploaders?.length
-  );
-
   const title =
     session.players.length > 0
       ? session.players.map((player) => player.name).join(" vs ")
-      : session.originalFilename || "Game in progress";
+      : session.state === "live"
+        ? "Players parsing"
+        : session.originalFilename || "Game in progress";
 
-  const eyebrowLabel = isCompleted
-    ? isUploadedReplay
-      ? "Just uploaded"
-      : "Just finished"
-    : "Watcher live";
+  const eyebrowLabel = liveSessionEyebrowLabel(session);
 
   const statusLabel = isCompleted ? "Final stored" : "Live parse";
   const durationLabel = formatDurationCompact(session.durationSeconds);
@@ -1174,20 +1183,14 @@ function ClassicLiveSessionCard({
   const sessionAny = session as Record<string, unknown>;
   const isCompleted = session.state === "completed";
   const gameHref = `/game-stats/live/${encodeURIComponent(session.sessionKey)}`;
-  const isUploadedReplay = Boolean(
-    session.originalFilename || session.uploader || session.uploaders?.length
-  );
-
   const title =
     session.players.length > 0
       ? session.players.map((player) => player.name).join(" vs ")
-      : session.originalFilename || "Game in progress";
+      : session.state === "live"
+        ? "Players parsing"
+        : session.originalFilename || "Game in progress";
 
-  const eyebrowLabel = isCompleted
-    ? isUploadedReplay
-      ? "Just uploaded"
-      : "Just finished"
-    : "Watcher live";
+  const eyebrowLabel = liveSessionEyebrowLabel(session);
 
   const statusLabel = isCompleted ? "Final stored" : "Live parse";
   const durationLabel = formatDurationCompact(session.durationSeconds);
@@ -1848,7 +1851,7 @@ function LiveSessionCard({
               ) : (
                 <Radio className="h-3.5 w-3.5" />
               )}
-              {isCompleted ? "Final" : "Live now"}
+              {isCompleted ? liveSessionEyebrowLabel(session) : "Live now"}
             </div>
             <span
               className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold ${
@@ -1857,7 +1860,7 @@ function LiveSessionCard({
                   : "border-red-300/20 bg-red-400/10 text-red-100"
               }`}
             >
-              {isCompleted ? "Replay verified" : "Watcher live"}
+              {isCompleted ? (isManualUploadedReplaySession(session) ? "Replay uploaded" : "Final stored") : "Watcher live"}
             </span>
           </div>
 

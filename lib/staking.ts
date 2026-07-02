@@ -1936,6 +1936,7 @@ export async function loadStakingMe(prisma: PrismaClient, userId: number) {
 
   const useMainnetPosition = isWoloMainnet();
   const mainnetPosition = mainnetPositions.find((position) => position.userId === userId) ?? null;
+  const hasCanonicalPosition = Boolean(position && position.currentStakedWolo > 0);
   const mainnetRewardSnapshot = useMainnetPosition
     ? await loadMainnetRewardSnapshotForUser(prisma, userId, mainnetPositions)
     : {
@@ -1943,18 +1944,20 @@ export async function loadStakingMe(prisma: PrismaClient, userId: number) {
         lifetimeRewardsWolo: 0,
         claimedRewardsWolo: 0,
       };
-  const stakingWeight = useMainnetPosition
-    ? BigInt(mainnetPosition?.stakingWeight || 0)
-    : position
-      ? computeCurrentStakingWeight(position, now)
-      : BigInt(0);
+  const stakingWeight =
+    useMainnetPosition && !hasCanonicalPosition
+      ? BigInt(mainnetPosition?.stakingWeight || 0)
+      : position
+        ? computeCurrentStakingWeight(position, now)
+        : BigInt(0);
   const lifetimeTxFeesWolo = txFeeEvents.reduce(
     (sum, event) => sum + metadataNumber(event.metadata, "txFeeWolo"),
     0
   );
-  const currentStakedWolo = useMainnetPosition
-    ? mainnetPosition?.currentStakedWolo ?? 0
-    : position?.currentStakedWolo ?? 0;
+  const currentStakedWolo =
+    useMainnetPosition && !hasCanonicalPosition
+      ? mainnetPosition?.currentStakedWolo ?? 0
+      : position?.currentStakedWolo ?? 0;
 
   return {
     user: {
@@ -1978,14 +1981,16 @@ export async function loadStakingMe(prisma: PrismaClient, userId: number) {
       autoCompoundRewards: position?.autoCompoundRewards ?? true,
       compoundedRewardsWolo: position?.compoundedRewardsWolo ?? 0,
       lifetimeTxFeesWolo,
-      status: useMainnetPosition
-        ? currentStakedWolo > 0
-          ? "mainnet_tx_backed"
-          : "ledger_ready"
-        : position?.status ?? "ledger_ready",
-      lastWeightUpdateAt: useMainnetPosition
-        ? mainnetPosition?.lastTxAt?.toISOString() ?? null
-        : position?.lastWeightUpdateAt.toISOString() ?? null,
+      status:
+        useMainnetPosition && !hasCanonicalPosition
+          ? currentStakedWolo > 0
+            ? "mainnet_tx_backed"
+            : "ledger_ready"
+          : position?.status ?? "ledger_ready",
+      lastWeightUpdateAt:
+        useMainnetPosition && !hasCanonicalPosition
+          ? mainnetPosition?.lastTxAt?.toISOString() ?? null
+          : position?.lastWeightUpdateAt.toISOString() ?? null,
       lastRewardPaymentAt:
         lastReward?.claimedAt?.toISOString() ?? lastReward?.creditedAt?.toISOString() ?? null,
       lastRewardAmountWolo: lastReward?.rewardWolo ?? 0,
