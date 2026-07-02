@@ -423,7 +423,7 @@ export default function AdminCommandTowerPage() {
       ) : null}
 
       {data?.overview ? (
-        <section className="grid gap-4 xl:grid-cols-[1fr_0.95fr_0.85fr]">
+        <section className="grid gap-4 xl:grid-cols-2">
           <div className="rounded-[1.5rem] border border-white/10 bg-slate-950/70 p-5">
             <div className="flex items-center gap-2 text-xs uppercase tracking-[0.28em] text-slate-500">
               <Palette className="h-4 w-4" />
@@ -458,12 +458,12 @@ export default function AdminCommandTowerPage() {
             </div>
           </div>
 
-          <div className="rounded-[1.5rem] border border-white/10 bg-slate-950/70 p-5">
+          <div className="rounded-[1.5rem] border border-white/10 bg-slate-950/70 p-5 xl:col-span-2">
             <div className="flex items-center gap-2 text-xs uppercase tracking-[0.28em] text-slate-500">
               <LayoutGrid className="h-4 w-4" />
               View Preference Signals
             </div>
-            <div className="mt-4 grid gap-3 lg:grid-cols-3">
+            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
               {data.overview.tileViewBreakdown.map((entry) => (
                 <div key={entry.tileKey} className="rounded-2xl border border-white/8 bg-white/5 px-4 py-4">
                   <div className="flex items-center justify-between gap-3">
@@ -515,7 +515,41 @@ export default function AdminCommandTowerPage() {
                   </div>
                 </div>
               ))}
-              <div className="rounded-2xl border border-white/8 bg-white/5 px-4 py-4 lg:col-span-3">
+              <div className="rounded-2xl border border-amber-200/12 bg-[radial-gradient(circle_at_top_right,rgba(251,191,36,0.12),transparent_48%),rgba(255,255,255,0.04)] px-4 py-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-[11px] uppercase tracking-[0.24em] text-slate-500">
+                    Ranked Ladder
+                  </div>
+                  <div className="rounded-full border border-amber-200/18 bg-amber-300/[0.08] px-2.5 py-1 text-[11px] font-semibold uppercase text-amber-100/80">
+                    {data.overview.leaderboardLaneBreakdown.preferredLane} leads
+                  </div>
+                </div>
+                <div className="mt-5 grid grid-cols-2 gap-3">
+                  {[
+                    ["RM", data.overview.leaderboardLaneBreakdown.rmCount, data.overview.leaderboardLaneBreakdown.rmPercent],
+                    ["DM", data.overview.leaderboardLaneBreakdown.dmCount, data.overview.leaderboardLaneBreakdown.dmPercent],
+                  ].map(([lane, count, percent]) => (
+                    <div key={String(lane)} className="rounded-2xl border border-white/8 bg-slate-950/55 px-3 py-3">
+                      <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                        {lane}
+                      </div>
+                      <div className="mt-2 text-2xl font-semibold text-white">{count}</div>
+                      <div className="mt-1 text-xs text-slate-500">{percent}% of users</div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-4 flex h-2 overflow-hidden rounded-full bg-slate-950/80">
+                  <span
+                    className="bg-amber-300"
+                    style={{ width: `${data.overview.leaderboardLaneBreakdown.rmPercent}%` }}
+                  />
+                  <span
+                    className="bg-cyan-300"
+                    style={{ width: `${data.overview.leaderboardLaneBreakdown.dmPercent}%` }}
+                  />
+                </div>
+              </div>
+              <div className="rounded-2xl border border-white/8 bg-white/5 px-4 py-4 md:col-span-2 xl:col-span-4">
                 <div className="flex items-center justify-between gap-3">
                   <div className="text-[11px] uppercase tracking-[0.24em] text-slate-500">
                     Schedule Organization

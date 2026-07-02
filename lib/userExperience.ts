@@ -24,6 +24,11 @@ import {
   normalizeTileViewPreferences,
   type TileViewPreferences,
 } from "@/lib/tileViewPreferences";
+import {
+  DEFAULT_LEADERBOARD_LANE,
+  normalizeLeaderboardLane,
+  type LeaderboardLane,
+} from "@/lib/leaderboardLane";
 
 export type StoredAppearancePreference = {
   themeKey: LobbyThemeKey;
@@ -34,6 +39,7 @@ export type StoredAppearancePreference = {
   timeClockMode: TimeClockMode;
   timezoneOverride: string | null;
   tileViewPreferences: TileViewPreferences;
+  leaderboardLane: LeaderboardLane;
   updatedAt: string | null;
 };
 
@@ -71,6 +77,7 @@ export function normalizeAppearancePreference(input: {
   timeClockMode?: string | null;
   timezoneOverride?: string | null;
   tileViewPreferences?: unknown;
+  leaderboardLane?: unknown;
 }) {
   const rawThemeKey = input.themeKey ?? null;
   const rawTileThemeKey = input.tileThemeKey ?? null;
@@ -80,6 +87,7 @@ export function normalizeAppearancePreference(input: {
   const rawTimeClockMode = input.timeClockMode ?? null;
   const rawTimezoneOverride = input.timezoneOverride ?? null;
   const rawTileViewPreferences = input.tileViewPreferences ?? null;
+  const rawLeaderboardLane = input.leaderboardLane ?? null;
   const themeKey: LobbyThemeKey = isLobbyThemeKey(rawThemeKey)
     ? rawThemeKey
     : DEFAULT_LOBBY_THEME;
@@ -100,6 +108,7 @@ export function normalizeAppearancePreference(input: {
     : DEFAULT_TIME_CLOCK_MODE;
   const timezoneOverride = normalizeTimezoneOverride(rawTimezoneOverride);
   const tileViewPreferences = normalizeTileViewPreferences(rawTileViewPreferences);
+  const leaderboardLane = normalizeLeaderboardLane(rawLeaderboardLane);
 
   return {
     themeKey,
@@ -110,6 +119,7 @@ export function normalizeAppearancePreference(input: {
     timeClockMode,
     timezoneOverride,
     tileViewPreferences,
+    leaderboardLane,
   } satisfies {
     themeKey: LobbyThemeKey;
     tileThemeKey: LobbyThemeKey;
@@ -119,6 +129,7 @@ export function normalizeAppearancePreference(input: {
     timeClockMode: TimeClockMode;
     timezoneOverride: string | null;
     tileViewPreferences: TileViewPreferences;
+    leaderboardLane: LeaderboardLane;
   };
 }
 
@@ -137,6 +148,7 @@ export async function loadAppearancePreferenceForUser(
       timeClockMode: true,
       timezoneOverride: true,
       tileViewPreferences: true,
+      leaderboardLane: true,
       updatedAt: true,
     },
   });
@@ -150,6 +162,7 @@ export async function loadAppearancePreferenceForUser(
     timeClockMode: preference?.timeClockMode ?? null,
     timezoneOverride: preference?.timezoneOverride ?? null,
     tileViewPreferences: preference?.tileViewPreferences ?? null,
+    leaderboardLane: preference?.leaderboardLane ?? null,
   });
 
   return {
@@ -181,6 +194,7 @@ export async function loadAppearancePreferenceMap(
       timeClockMode: true,
       timezoneOverride: true,
       tileViewPreferences: true,
+      leaderboardLane: true,
       updatedAt: true,
     },
   });
@@ -195,6 +209,7 @@ export async function loadAppearancePreferenceMap(
       timeClockMode: DEFAULT_TIME_CLOCK_MODE,
       timezoneOverride: null,
       tileViewPreferences: {},
+      leaderboardLane: DEFAULT_LEADERBOARD_LANE,
       updatedAt: null,
     });
   }
@@ -222,6 +237,7 @@ export async function upsertAppearancePreference(
     timeClockMode?: string | null;
     timezoneOverride?: string | null;
     tileViewPreferences?: unknown;
+    leaderboardLane?: unknown;
   }
 ) {
   const normalized = normalizeAppearancePreference(input);

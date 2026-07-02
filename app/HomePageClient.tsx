@@ -26,9 +26,11 @@ import {
   getFallbackLeaderboard,
   getFallbackTournament,
   type LobbyLeaderboardEntry,
+  type LobbyLeaderboardSummary,
   type LobbyMessage,
   type LobbySnapshot,
 } from "@/lib/lobby";
+import type { LeaderboardLane } from "@/lib/leaderboardLane";
 import { avatarCardUrlForUser, avatarUrlForName } from "@/lib/avatarAssets";
 
 const EMPTY_MESSAGES: LobbyMessage[] = [];
@@ -1046,10 +1048,21 @@ export default function HomePageClient({
   initialEventTile,
 }: HomePageClientProps) {
 const { uid, isAdmin, isAuthenticated, loading, loginWithSteam, playerName, user } = useUserAuth();
-  const { themeKey, tileThemeKey, viewMode, setViewMode } = useLobbyAppearance();
+  const {
+    themeKey,
+    tileThemeKey,
+    viewMode,
+    setViewMode,
+    leaderboardLane,
+    setLeaderboardLane,
+  } = useLobbyAppearance();
   const communityLobbyTile = useTileViewPreference("community_lobby");
 
   const [lobby, setLobby] = useState<LobbySnapshot | null>(initialLobby);
+  const [laneLeaderboard, setLaneLeaderboard] = useState<LobbyLeaderboardSummary | null>(
+    initialLobby?.leaderboard ?? null
+  );
+  const [leaderboardLaneLoading, setLeaderboardLaneLoading] = useState(false);
   const [liveConnected, setLiveConnected] = useState(false);
   const [authError, setAuthError] = useState(false);
   const [authDetail, setAuthDetail] = useState<string | null>(null);
@@ -1168,7 +1181,71 @@ return () => {
   }, []);
 
   const tournament = lobby?.tournament ?? getFallbackTournament(false);
-  const leaderboard = lobby?.leaderboard ?? getFallbackLeaderboard();
+  const baseLeaderboard = useMemo(
+    () => lobby?.leaderboard ?? getFallbackLeaderboard(),
+    [lobby?.leaderboard]
+  );
+  const leaderboard =
+    laneLeaderboard?.lane === leaderboardLane ? laneLeaderboard : baseLeaderboard;
+
+  useEffect(() => {
+    if (leaderboardLane !== "rm") return;
+
+    setLaneLeaderboard(baseLeaderboard);
+    setLeaderboardLaneLoading(false);
+  }, [baseLeaderboard, leaderboardLane]);
+
+  useEffect(() => {
+    if (leaderboardLane !== "dm") return;
+
+    const controller = new AbortController();
+    setLeaderboardLaneLoading(true);
+
+    async function loadSelectedLeaderboard() {
+      try {
+        const params = new URLSearchParams({
+          lane: leaderboardLane,
+          offset: "0",
+          limit: "600",
+        });
+        const response = await fetch(`/api/lobby/leaderboard?${params.toString()}`, {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        const payload = (await response.json().catch(() => ({}))) as
+          | LobbyLeaderboardSummary
+          | { detail?: string };
+
+        if (!response.ok || !("entries" in payload)) {
+          throw new Error("Leaderboard lane unavailable");
+        }
+
+        setLaneLeaderboard(payload);
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          console.warn("Failed to load selected leaderboard lane:", error);
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setLeaderboardLaneLoading(false);
+        }
+      }
+    }
+
+    void loadSelectedLeaderboard();
+
+    return () => {
+      controller.abort();
+    };
+  }, [leaderboardLane]);
+
+  const handleLeaderboardLaneChange = useCallback(
+    (lane: LeaderboardLane) => {
+      if (lane === leaderboardLane) return;
+      setLeaderboardLane(lane);
+    },
+    [leaderboardLane, setLeaderboardLane]
+  );
   const featuredWarriors = useMemo(
     () => buildFeaturedWarriorPool(leaderboard.entries),
     [leaderboard.entries]
@@ -1726,6 +1803,9 @@ return (
             isAuthenticated={isAuthenticated}
             loading={loading}
             leaderboard={leaderboard}
+            leaderboardLane={leaderboardLane}
+            leaderboardLaneLoading={leaderboardLaneLoading}
+            onLeaderboardLaneChange={handleLeaderboardLaneChange}
             recentMatches={recentMatches}
             wolo={wolo}
             aoe2hdPulse={aoe2hdPulse}

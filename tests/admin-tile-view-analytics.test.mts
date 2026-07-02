@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildAdminTileViewBreakdown } from "../lib/adminTileViewAnalytics.ts";
+import {
+  buildAdminLeaderboardLaneBreakdown,
+  buildAdminTileViewBreakdown,
+} from "../lib/adminTileViewAnalytics.ts";
+import { normalizeLeaderboardLane } from "../lib/leaderboardLane.ts";
 
 test("tile-view analytics separate explicit choices from effective defaults", () => {
   const breakdown = buildAdminTileViewBreakdown([
@@ -37,4 +41,23 @@ test("tile-view analytics separate explicit choices from effective defaults", ()
   assert.equal(liveGames?.advancedCount, 2);
   assert.equal(liveGames?.extremeCount, 1);
   assert.equal(liveGames?.explicitCount, 1);
+});
+
+test("leaderboard-lane analytics default invalid or missing values to RM", () => {
+  const breakdown = buildAdminLeaderboardLaneBreakdown([
+    { appearance: { tileViewPreferences: {}, leaderboardLane: "dm" } },
+    { appearance: { tileViewPreferences: {}, leaderboardLane: "rm" } },
+    { appearance: { tileViewPreferences: {}, leaderboardLane: "unknown" } },
+    { appearance: null },
+  ]);
+
+  assert.deepEqual(breakdown, {
+    rmCount: 3,
+    dmCount: 1,
+    rmPercent: 75,
+    dmPercent: 25,
+    preferredLane: "rm",
+  });
+  assert.equal(normalizeLeaderboardLane("dm"), "dm");
+  assert.equal(normalizeLeaderboardLane(null), "rm");
 });

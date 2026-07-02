@@ -1031,6 +1031,7 @@ model UserAppearancePreference {
   timeClockMode       String  @default("24h") @map("time_clock_mode") @db.VarChar(8)
   timezoneOverride    String? @map("timezone_override") @db.VarChar(80)
   tileViewPreferences Json?   @map("tile_view_preferences")
+  leaderboardLane     String  @default("rm") @map("leaderboard_lane") @db.VarChar(8)
 
   @@map("user_appearance_preferences")
 }

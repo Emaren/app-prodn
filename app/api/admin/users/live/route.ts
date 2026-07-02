@@ -18,7 +18,10 @@ import {
   SCHEDULED_MATCH_COLOR_TAGS,
   normalizeScheduledMatchColorTag,
 } from "@/lib/scheduledMatchPreferences";
-import { buildAdminTileViewBreakdown } from "@/lib/adminTileViewAnalytics";
+import {
+  buildAdminLeaderboardLaneBreakdown,
+  buildAdminTileViewBreakdown,
+} from "@/lib/adminTileViewAnalytics";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -353,6 +356,7 @@ export async function GET(request: NextRequest) {
           count: rows.filter((user) => user.appearance?.viewMode === viewMode).length,
         })),
         tileViewBreakdown: buildAdminTileViewBreakdown(rows),
+        leaderboardLaneBreakdown: buildAdminLeaderboardLaneBreakdown(rows),
         scheduledPreferenceUsage: {
           favoriteCount: scheduledPreferenceUsage.favoriteCount,
           bookmarkedCount: scheduledPreferenceUsage.bookmarkedCount,

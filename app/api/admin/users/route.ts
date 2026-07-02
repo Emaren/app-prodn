@@ -9,7 +9,10 @@ import {
   loadAppearancePreferenceMap,
   loadRecentActivityMap,
 } from "@/lib/userExperience";
-import { buildAdminTileViewBreakdown } from "@/lib/adminTileViewAnalytics";
+import {
+  buildAdminLeaderboardLaneBreakdown,
+  buildAdminTileViewBreakdown,
+} from "@/lib/adminTileViewAnalytics";
 import { loadPendingWoloClaimsForAdmin, normalizePendingWoloClaimName } from "@/lib/pendingWoloClaims";
 import {
   isBetStakeIntentCountableStatus,
@@ -1318,6 +1321,7 @@ export async function GET(request: NextRequest) {
         count: userRows.filter((user) => user.appearance?.viewMode === viewMode).length,
       })),
       tileViewBreakdown: buildAdminTileViewBreakdown(userRows),
+      leaderboardLaneBreakdown: buildAdminLeaderboardLaneBreakdown(userRows),
       scheduledPreferenceUsage,
     };
 

@@ -5,6 +5,10 @@ import {
   type TileViewMode,
   type TileViewPreferences,
 } from "./tileViewPreferences.ts";
+import {
+  normalizeLeaderboardLane,
+  type LeaderboardLane,
+} from "./leaderboardLane.ts";
 
 export const ADMIN_TILE_VIEW_SURFACES = [
   { tileKey: "community_lobby", label: "Community Lobby" },
@@ -15,6 +19,7 @@ export const ADMIN_TILE_VIEW_SURFACES = [
 type UserWithTileViewPreferences = {
   appearance?: {
     tileViewPreferences?: TileViewPreferences | null;
+    leaderboardLane?: LeaderboardLane | string | null;
   } | null;
 };
 
@@ -84,4 +89,28 @@ export function buildAdminTileViewBreakdown(
       preferredMode: preferredMode(counts),
     };
   });
+}
+
+export function buildAdminLeaderboardLaneBreakdown(
+  users: UserWithTileViewPreferences[]
+) {
+  const counts: Record<LeaderboardLane, number> = {
+    rm: 0,
+    dm: 0,
+  };
+
+  for (const user of users) {
+    counts[normalizeLeaderboardLane(user.appearance?.leaderboardLane)] += 1;
+  }
+
+  const total = users.length;
+  const rmPercent = total > 0 ? Math.round((counts.rm / total) * 100) : 0;
+
+  return {
+    rmCount: counts.rm,
+    dmCount: counts.dm,
+    rmPercent,
+    dmPercent: total > 0 ? Math.max(0, 100 - rmPercent) : 0,
+    preferredLane: counts.dm > counts.rm ? ("dm" as const) : ("rm" as const),
+  };
 }

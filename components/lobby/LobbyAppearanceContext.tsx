@@ -57,6 +57,12 @@ import {
   type TimeClockMode,
   type TimeDisplayMode,
 } from "@/lib/timeDisplay";
+import {
+  DEFAULT_LEADERBOARD_LANE,
+  readStoredLeaderboardLane,
+  writeStoredLeaderboardLane,
+  type LeaderboardLane,
+} from "@/lib/leaderboardLane";
 
 type LobbyAppearanceContextValue = {
   themeKey: LobbyThemeKey;
@@ -74,6 +80,8 @@ type LobbyAppearanceContextValue = {
   browserTimeZone: string | null;
   tileViewPreferences: TileViewPreferences;
   setTileViewPreference: (tileKey: TileViewKey, viewMode: TileViewMode) => void;
+  leaderboardLane: LeaderboardLane;
+  setLeaderboardLane: (lane: LeaderboardLane) => void;
   appearanceLoaded: boolean;
   presentationTone: ReturnType<typeof getLobbyPresentationTone>;
   pageStyle: CSSProperties;
@@ -91,6 +99,9 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
   const [timeClockMode, setTimeClockMode] = useState<TimeClockMode>(DEFAULT_TIME_CLOCK_MODE);
   const [browserTimeZone, setBrowserTimeZone] = useState<string | null>(null);
   const [tileViewPreferences, setTileViewPreferences] = useState<TileViewPreferences>({});
+  const [leaderboardLane, setLeaderboardLane] = useState<LeaderboardLane>(
+    DEFAULT_LEADERBOARD_LANE
+  );
   const [appearanceLoaded, setAppearanceLoaded] = useState(false);
 
   useEffect(() => {
@@ -104,6 +115,7 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
     const storedTimeDisplayMode = readStoredTimeDisplayMode();
     const storedTimeClockMode = readStoredTimeClockMode();
     const storedTileViewPreferences = applyTileViewDefaultMigration(readStoredTileViewPreferences());
+    const storedLeaderboardLane = readStoredLeaderboardLane();
     const detectedBrowserTimeZone =
       detectBrowserTimeZone() || readStoredBrowserTimeZone();
     setBrowserTimeZone(detectedBrowserTimeZone);
@@ -119,6 +131,7 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
           setTimeDisplayMode(storedTimeDisplayMode);
           setTimeClockMode(storedTimeClockMode);
           setTileViewPreferences(storedTileViewPreferences);
+          setLeaderboardLane(storedLeaderboardLane);
           markTileViewDefaultMigrationApplied();
           setAppearanceLoaded(true);
         }
@@ -136,6 +149,7 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
         setTimeClockMode(preference.timeClockMode);
         setBrowserTimeZone(preference.timezoneOverride || detectedBrowserTimeZone);
         setTileViewPreferences(applyTileViewDefaultMigration(preference.tileViewPreferences ?? {}));
+        setLeaderboardLane(preference.leaderboardLane);
         markTileViewDefaultMigrationApplied();
       } catch (error) {
         console.warn("Failed to hydrate appearance from account:", error);
@@ -147,6 +161,7 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
         setTimeDisplayMode(storedTimeDisplayMode);
         setTimeClockMode(storedTimeClockMode);
         setTileViewPreferences(storedTileViewPreferences);
+        setLeaderboardLane(storedLeaderboardLane);
         markTileViewDefaultMigrationApplied();
       } finally {
         if (!cancelled) {
@@ -194,6 +209,10 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
     writeStoredTileViewPreferences(tileViewPreferences);
   }, [tileViewPreferences]);
 
+  useEffect(() => {
+    writeStoredLeaderboardLane(leaderboardLane);
+  }, [leaderboardLane]);
+
   const setTileViewPreference = useMemo(
     () => (tileKey: TileViewKey, nextViewMode: TileViewMode) => {
       setTileViewPreferences((current) =>
@@ -215,6 +234,7 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
       timeClockMode,
       timezoneOverride: browserTimeZone,
       tileViewPreferences,
+      leaderboardLane,
     }).catch((error) => {
       console.warn("Failed to save appearance preference:", error);
     });
@@ -225,6 +245,7 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
     themeKey,
     tileThemeKey,
     tileViewPreferences,
+    leaderboardLane,
     timeClockMode,
     timeDisplayMode,
     user?.uid,
@@ -316,6 +337,8 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
         browserTimeZone,
         tileViewPreferences,
         setTileViewPreference,
+        leaderboardLane,
+        setLeaderboardLane,
         appearanceLoaded,
         presentationTone,
         pageStyle,

@@ -7,6 +7,7 @@ import type {
 } from "@/components/lobby/lobbyPresentation";
 import type { TimeClockMode, TimeDisplayMode } from "@/lib/timeDisplay";
 import type { TileViewPreferences } from "@/lib/tileViewPreferences";
+import type { LeaderboardLane } from "@/lib/leaderboardLane";
 
 export type AppearancePayload = {
   themeKey: LobbyThemeKey;
@@ -17,6 +18,7 @@ export type AppearancePayload = {
   timeClockMode: TimeClockMode;
   timezoneOverride: string | null;
   tileViewPreferences: TileViewPreferences;
+  leaderboardLane: LeaderboardLane;
   updatedAt: string | null;
 };
 
@@ -38,6 +40,7 @@ export async function saveUserAppearancePreference(input: {
   timeClockMode: TimeClockMode;
   timezoneOverride: string | null;
   tileViewPreferences: TileViewPreferences;
+  leaderboardLane: LeaderboardLane;
 }) {
   const response = await fetch("/api/user/appearance", {
     method: "POST",

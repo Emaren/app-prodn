@@ -303,7 +303,10 @@ export default function AdminUserCard({
             <Palette className="h-4 w-4 text-amber-100/65" />
             View Preferences
           </div>
-          <div className="text-[11px] text-slate-500">
+          <div className="flex flex-wrap items-center justify-end gap-2 text-[11px] text-slate-500">
+            <span className="rounded-full border border-amber-200/18 bg-amber-300/[0.08] px-2.5 py-1 font-semibold uppercase tracking-[0.15em] text-amber-100/80">
+              {(user.appearance?.leaderboardLane ?? "rm").toUpperCase()} ladder
+            </span>
             <AdminTime
               value={user.appearance?.updatedAt ?? null}
               emptyValue="No saved appearance yet"
@@ -365,6 +368,9 @@ export default function AdminUserCard({
         </div>
 
         <div className="flex flex-wrap gap-x-5 gap-y-2 border-t border-white/8 px-4 py-3 text-[11px] text-slate-500">
+          <span>
+            Leaderboard · {(user.appearance?.leaderboardLane ?? "rm").toUpperCase()} ranked lane
+          </span>
           <span>Schedule · {scheduleOrgLabel}</span>
           <span>
             Staking ·{" "}

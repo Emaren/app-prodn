@@ -13,6 +13,10 @@ import {
 import { normalizePublicPlayerName } from "@/lib/publicPlayers";
 import { dedupeFinalReplayRows } from "@/lib/finalReplayIdentity";
 import { loadPendingWoloClaimSummariesByName } from "@/lib/pendingWoloClaims";
+import {
+  normalizeLeaderboardLane,
+  type LeaderboardLane,
+} from "@/lib/leaderboardLane";
 
 const BASE_ARENA_ELO = 1500;
 const ARENA_ELO_K_FACTOR = 32;
@@ -25,6 +29,7 @@ export type LoadLobbyLeaderboardOptions = {
   offset?: number;
   limit?: number;
   includePendingClaimed?: boolean;
+  lane?: LeaderboardLane;
 };
 
 type PreparedLeaderboardGame = {
@@ -92,32 +97,42 @@ function hasTrackedHistory(entry: EnrichedLeaderboardEntry) {
   return entry.totalMatches > 0;
 }
 
-function hasSteamRmRating(entry: EnrichedLeaderboardEntry) {
-  return typeof entry.steamRmRating === "number" && Number.isFinite(entry.steamRmRating);
+function getLaneRating(entry: EnrichedLeaderboardEntry, lane: LeaderboardLane) {
+  const rating = lane === "dm" ? entry.steamDmRating : entry.steamRmRating;
+  return typeof rating === "number" && Number.isFinite(rating) ? rating : null;
 }
 
-function getPrimaryRatingValue(entry: EnrichedLeaderboardEntry) {
-  if (hasSteamRmRating(entry)) {
-    return Math.round(entry.steamRmRating ?? BASE_ARENA_ELO);
+function hasLaneRating(entry: EnrichedLeaderboardEntry, lane: LeaderboardLane) {
+  return getLaneRating(entry, lane) !== null;
+}
+
+function getPrimaryRatingValue(entry: EnrichedLeaderboardEntry, lane: LeaderboardLane) {
+  const laneRating = getLaneRating(entry, lane);
+  if (laneRating !== null) {
+    return Math.round(laneRating);
   }
 
-  if (!hasTrackedHistory(entry)) {
+  if (lane === "dm" || !hasTrackedHistory(entry)) {
     return null;
   }
 
   return entry.arenaElo;
 }
 
-function compareLeaderboardEntries(left: EnrichedLeaderboardEntry, right: EnrichedLeaderboardEntry) {
-  const leftPrimaryRating = getPrimaryRatingValue(left);
-  const rightPrimaryRating = getPrimaryRatingValue(right);
+function compareLeaderboardEntries(
+  left: EnrichedLeaderboardEntry,
+  right: EnrichedLeaderboardEntry,
+  lane: LeaderboardLane
+) {
+  const leftPrimaryRating = getPrimaryRatingValue(left, lane);
+  const rightPrimaryRating = getPrimaryRatingValue(right, lane);
 
   if (leftPrimaryRating !== rightPrimaryRating) {
     return (rightPrimaryRating ?? Number.NEGATIVE_INFINITY) - (leftPrimaryRating ?? Number.NEGATIVE_INFINITY);
   }
 
-  if (hasSteamRmRating(left) !== hasSteamRmRating(right)) {
-    return Number(hasSteamRmRating(right)) - Number(hasSteamRmRating(left));
+  if (hasLaneRating(left, lane) !== hasLaneRating(right, lane)) {
+    return Number(hasLaneRating(right, lane)) - Number(hasLaneRating(left, lane));
   }
 
   if (left.arenaElo !== right.arenaElo) {
@@ -154,13 +169,14 @@ function compareLeaderboardEntries(left: EnrichedLeaderboardEntry, right: Enrich
 const LOBBY_LEADERBOARD_INITIAL_ENTRY_LIMIT = 600;
 
 function buildLeaderboardSelection(entries: EnrichedLeaderboardEntry[], options: LoadLobbyLeaderboardOptions = {}) {
+  const lane = normalizeLeaderboardLane(options.lane);
   const eligibleEntries = entries
     .filter((entry) => entry.totalMatches >= LOBBY_LEADERBOARD_MIN_MATCHES)
-    .sort(compareLeaderboardEntries);
+    .sort((left, right) => compareLeaderboardEntries(left, right, lane));
 
   const rankedEntries = entries
     .filter((entry) => entry.totalMatches > 0)
-    .sort(compareLeaderboardEntries);
+    .sort((left, right) => compareLeaderboardEntries(left, right, lane));
 
   const pendingClaimedEntries = entries
     .filter((entry) => entry.claimed && entry.totalMatches === 0)
@@ -381,21 +397,25 @@ function buildStreakLabel(entry: EnrichedLeaderboardEntry, games: PreparedLeader
   return direction ? `${direction}${count}` : null;
 }
 
-function buildPrimaryRatingLabel(entry: EnrichedLeaderboardEntry) {
-  const value = getPrimaryRatingValue(entry);
+function buildPrimaryRatingLabel(entry: EnrichedLeaderboardEntry, lane: LeaderboardLane) {
+  const value = getPrimaryRatingValue(entry, lane);
   return value === null ? "Pending" : String(Math.round(value));
 }
 
-function buildPrimaryRatingSourceLabel(entry: EnrichedLeaderboardEntry) {
-  if (hasSteamRmRating(entry)) {
-    return "Steam RM";
+function buildPrimaryRatingSourceLabel(entry: EnrichedLeaderboardEntry, lane: LeaderboardLane) {
+  if (hasLaneRating(entry, lane)) {
+    return lane === "dm" ? "DM Rating" : "RM Rating";
+  }
+
+  if (lane === "dm") {
+    return hasTrackedHistory(entry) ? "DM Rating" : "Profile";
   }
 
   return hasTrackedHistory(entry) ? "Site Elo" : "Profile";
 }
 
-function buildSecondaryRatingLabel(entry: EnrichedLeaderboardEntry) {
-  if (!hasSteamRmRating(entry) || !hasTrackedHistory(entry)) {
+function buildSecondaryRatingLabel(entry: EnrichedLeaderboardEntry, lane: LeaderboardLane) {
+  if (!hasLaneRating(entry, lane) || !hasTrackedHistory(entry)) {
     return null;
   }
 
@@ -405,7 +425,8 @@ function buildSecondaryRatingLabel(entry: EnrichedLeaderboardEntry) {
 function toLobbyLeaderboardEntry(
   entry: EnrichedLeaderboardEntry,
   rank: number,
-  games: PreparedLeaderboardGame[]
+  games: PreparedLeaderboardGame[],
+  lane: LeaderboardLane
 ): LobbyLeaderboardEntry {
   return {
     rank,
@@ -417,11 +438,11 @@ function toLobbyLeaderboardEntry(
     arenaElo: Math.round(entry.arenaElo),
     steamRmRating: entry.steamRmRating,
     steamDmRating: entry.steamDmRating,
-    primaryRating: getPrimaryRatingValue(entry),
-    primaryRatingLabel: buildPrimaryRatingLabel(entry),
-    primaryRatingSourceLabel: buildPrimaryRatingSourceLabel(entry),
-    secondaryRatingLabel: buildSecondaryRatingLabel(entry),
-    ratingLabel: buildPrimaryRatingLabel(entry),
+    primaryRating: getPrimaryRatingValue(entry, lane),
+    primaryRatingLabel: buildPrimaryRatingLabel(entry, lane),
+    primaryRatingSourceLabel: buildPrimaryRatingSourceLabel(entry, lane),
+    secondaryRatingLabel: buildSecondaryRatingLabel(entry, lane),
+    ratingLabel: buildPrimaryRatingLabel(entry, lane),
     wins: entry.wins,
     losses: entry.losses,
     unknowns: entry.unknowns,
@@ -490,12 +511,12 @@ function buildDiscoveredLeaderboardEntries(
           : null;
 
       const steamRmRating =
-        ratingSnapshot ??
-        (typeof player.steam_rm_rating === "number" ? player.steam_rm_rating : null);
+        typeof player.steam_rm_rating === "number"
+          ? player.steam_rm_rating
+          : ratingSnapshot;
 
       const steamDmRating =
-        ratingSnapshot ??
-        (typeof player.steam_dm_rating === "number" ? player.steam_dm_rating : null);
+        typeof player.steam_dm_rating === "number" ? player.steam_dm_rating : null;
 
       discovered.set(key, {
         key,
@@ -540,6 +561,7 @@ export async function loadLobbyLeaderboard(
   prisma: PrismaClient,
   options: LoadLobbyLeaderboardOptions = {}
 ): Promise<LobbyLeaderboardSummary> {
+  const lane = normalizeLeaderboardLane(options.lane);
   const dayStart = new Date();
   dayStart.setHours(0, 0, 0, 0);
 
@@ -642,24 +664,30 @@ export async function loadLobbyLeaderboard(
     candidates.push(discoveredEntry);
   }
 
-  const pendingSummaries = await loadPendingWoloClaimSummariesByName(
-    prisma,
-    candidates.flatMap((entry) => [entry.name, entry.inGameName, entry.steamPersonaName, ...entry.aliases])
-  );
-  applyPendingClaimSummaries(candidates, pendingSummaries);
+  try {
+    const pendingSummaries = await loadPendingWoloClaimSummariesByName(
+      prisma,
+      candidates.flatMap((entry) => [
+        entry.name,
+        entry.inGameName,
+        entry.steamPersonaName,
+        ...entry.aliases,
+      ])
+    );
+    applyPendingClaimSummaries(candidates, pendingSummaries);
+  } catch (error) {
+    console.warn("Pending WOLO claim telemetry unavailable for leaderboard:", error);
+  }
   buildArenaElo(candidates, preparedGames);
 
   const { eligibleEntries, selectedEntries, rankByKey, fullEntryCount } = buildLeaderboardSelection(candidates, options);
 
   return {
-    title: "Season Leaderboard",
-    statusLabel: selectedEntries.some(hasSteamRmRating)
-      ? "Steam RM"
-      : eligibleEntries.length > 0
-        ? "Site Elo"
-        : "Need games",
+    title: lane === "dm" ? "Deathmatch Leaderboard" : "Ranked Match Leaderboard",
+    lane,
+    statusLabel: lane.toUpperCase(),
     entries: selectedEntries.map((entry) =>
-      toLobbyLeaderboardEntry(entry, rankByKey.get(entry.key) ?? 1, recentGames)
+      toLobbyLeaderboardEntry(entry, rankByKey.get(entry.key) ?? 1, recentGames, lane)
     ),
     activePlayers: directory.activeClaimed.length,
     matchesToday,

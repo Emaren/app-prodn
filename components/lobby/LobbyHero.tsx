@@ -8,6 +8,7 @@ import Link from "next/link";
 import type { MouseEvent } from "react";
 import SteamLoginButton from "@/components/SteamLoginButton";
 import { LeaderboardPanel } from "@/components/lobby/LeaderboardPanel";
+import { LeaderboardLaneToggle } from "@/components/lobby/LeaderboardLaneToggle";
 import {
   getLobbyPresentationTone,
   type LobbyThemeKey,
@@ -16,7 +17,8 @@ import {
 import { StatCard } from "@/components/lobby/StatCard";
 import type { Aoe2HdPulseItem, Aoe2HdPulseSnapshot } from "@/lib/aoe2HdPulse";
 import type { LobbyLeaderboardEntry, LobbyMatchRow, LobbySnapshot } from "@/lib/lobby";
-import { avatarThumbUrlForName, avatarThumbUrlForUser } from "@/lib/avatarAssets";
+import { avatarCardUrlForUser, avatarThumbUrlForUser } from "@/lib/avatarAssets";
+import type { LeaderboardLane } from "@/lib/leaderboardLane";
 import { TILE_VIEW_MODES, type TileViewMode } from "@/lib/tileViewPreferences";
 
 type WoloMoved24hSnapshot = {
@@ -40,6 +42,9 @@ type LobbyHeroProps = {
   isAuthenticated: boolean;
   loading: boolean;
   leaderboard: LobbySnapshot["leaderboard"];
+  leaderboardLane: LeaderboardLane;
+  leaderboardLaneLoading: boolean;
+  onLeaderboardLaneChange: (lane: LeaderboardLane) => void;
   recentMatches: LobbyMatchRow[];
   wolo: LobbySnapshot["wolo"];
   aoe2hdPulse: Aoe2HdPulseSnapshot | null;
@@ -153,7 +158,7 @@ function formatSteamHdChip(pulse: Aoe2HdPulseSnapshot | null) {
 }
 
 function primaryRating(entry: LobbyLeaderboardEntry) {
-  return entry.primaryRating ?? entry.steamRmRating ?? entry.elo ?? entry.arenaElo ?? null;
+  return entry.primaryRating ?? null;
 }
 
 function TileModeToggle({
@@ -191,6 +196,9 @@ export function LobbyHero({
   isAuthenticated,
   loading,
   leaderboard,
+  leaderboardLane,
+  leaderboardLaneLoading,
+  onLeaderboardLaneChange,
   recentMatches,
   wolo,
   aoe2hdPulse,
@@ -330,7 +338,7 @@ export function LobbyHero({
           <div className="grid gap-5 xl:grid-cols-[minmax(19rem,0.66fr)_minmax(0,1fr)] xl:items-stretch 2xl:grid-cols-[minmax(22rem,0.72fr)_minmax(0,1fr)]">
             <div className="relative min-h-[21rem] overflow-hidden rounded-[1.55rem] border border-amber-200/10 bg-[radial-gradient(circle_at_48%_12%,rgba(251,191,36,0.08),transparent_28%),linear-gradient(135deg,rgba(0,0,0,0.38),rgba(2,6,23,0.42))] sm:min-h-[25rem] xl:min-h-[42rem]">
               <Image
-                src={featuredName.toLowerCase() === "sniper" ? "/uploads/managed-assets/avatar/sniper-1781562832558-257d25a4.png" : avatarThumbUrlForName(featuredName)}
+                src={avatarCardUrlForUser(featuredEntry?.uid, featuredName)}
                 alt=""
                 fill
                 unoptimized
@@ -359,22 +367,26 @@ export function LobbyHero({
             </div>
 
             <div className="min-w-0 space-y-4">
-              <div className="grid gap-3 sm:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <div className="rounded-[1.25rem] border border-amber-200/10 bg-white/[0.035] px-4 py-4">
                   <div className="text-[10px] uppercase tracking-[0.28em] text-amber-100/55">Board</div>
                   <div className="mt-2 text-3xl font-semibold text-white">{leaderboard.trackedPlayers}</div>
                   <div className="mt-1 text-xs text-slate-400">tracked players</div>
                 </div>
-                <div className="rounded-[1.25rem] border border-amber-200/10 bg-white/[0.035] px-4 py-4">
-                  <div className="text-[10px] uppercase tracking-[0.28em] text-amber-100/55">Ranked</div>
-                  <div className="mt-2 text-3xl font-semibold text-white">{leaderboard.rankedPlayers}</div>
-                  <div className="mt-1 text-xs text-slate-400">minimum games met</div>
+                <div className="min-w-0 rounded-[1.25rem] border border-amber-200/10 bg-white/[0.035] px-4 py-4">
+                  <div className="text-[10px] uppercase tracking-[0.28em] text-amber-100/55">Vanguard</div>
+                  <div className="mt-2 truncate text-xl font-semibold text-white">{featuredName}</div>
+                  <div className="mt-1 text-xs text-slate-400">
+                    {featuredRating ? `#1 · ${featuredRating} rating` : "Awaiting a rated contender"}
+                  </div>
                 </div>
-                <div className="rounded-[1.25rem] border border-amber-200/10 bg-white/[0.035] px-4 py-4">
-                  <div className="text-[10px] uppercase tracking-[0.28em] text-amber-100/55">Status</div>
-                  <div className="mt-2 text-xl font-semibold text-white">{leaderboard.statusLabel}</div>
-                  <div className="mt-1 text-xs text-slate-400">current rating lane</div>
-                </div>
+                <LeaderboardLaneToggle
+                  lane={leaderboardLane}
+                  loading={leaderboardLaneLoading}
+                  onChange={onLeaderboardLaneChange}
+                  variant="card"
+                  className="sm:col-span-2"
+                />
               </div>
 
               <div className="rounded-[1.55rem] border border-amber-200/10 bg-black/22 p-4">
@@ -657,22 +669,23 @@ export function LobbyHero({
           </div>
           <div className={`rounded-2xl border px-4 py-4 ${tone.insetPanel}`}>
             <div className={`text-[10px] uppercase tracking-[0.26em] ${tone.eyebrow}`}>
-              Ranked
+              Vanguard
             </div>
-            <div className="mt-2 text-2xl font-semibold text-white">
-              {leaderboard.rankedPlayers}
+            <div className="mt-2 truncate text-xl font-semibold text-white">
+              {leaderboard.entries[0]?.name || "Open"}
             </div>
-            <div className="mt-1 text-xs text-slate-400">minimum games met</div>
+            <div className="mt-1 text-xs text-slate-400">
+              {leaderboard.entries[0]?.primaryRating
+                ? `#1 · ${leaderboard.entries[0].primaryRating} rating`
+                : "Awaiting a rated contender"}
+            </div>
           </div>
-          <div className={`rounded-2xl border px-4 py-4 ${tone.insetPanel}`}>
-            <div className={`text-[10px] uppercase tracking-[0.26em] ${tone.eyebrow}`}>
-              Status
-            </div>
-            <div className="mt-2 text-xl font-semibold text-white">
-              {leaderboard.statusLabel}
-            </div>
-            <div className="mt-1 text-xs text-slate-400">current rating lane</div>
-          </div>
+          <LeaderboardLaneToggle
+            lane={leaderboardLane}
+            loading={leaderboardLaneLoading}
+            onChange={onLeaderboardLaneChange}
+            variant="card"
+          />
         </div>
 
         <div data-ignore-tile-toggle="true">
@@ -682,6 +695,9 @@ export function LobbyHero({
             themeKey={themeKey}
             viewMode={viewMode}
             onViewModeChange={onViewModeChange}
+            leaderboardLane={leaderboardLane}
+            leaderboardLaneLoading={leaderboardLaneLoading}
+            onLeaderboardLaneChange={onLeaderboardLaneChange}
             surface={showExtremeStats ? "extreme" : "standard"}
           />
         </div>
@@ -781,7 +797,10 @@ export function LobbyHero({
         themeKey={themeKey}
         viewMode={viewMode}
         onViewModeChange={onViewModeChange}
-            surface={showExtremeStats ? "extreme" : "standard"}
+        leaderboardLane={leaderboardLane}
+        leaderboardLaneLoading={leaderboardLaneLoading}
+        onLeaderboardLaneChange={onLeaderboardLaneChange}
+        surface={showExtremeStats ? "extreme" : "standard"}
       />
 
       <div className="grid gap-4 sm:grid-cols-2">

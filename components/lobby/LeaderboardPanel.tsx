@@ -5,6 +5,7 @@ import Link from "next/link";
 import { type UIEvent, type WheelEvent, useCallback, useEffect, useRef, useState } from "react";
 
 import SteamLinkedBadge from "@/components/SteamLinkedBadge";
+import { LeaderboardLaneToggle } from "@/components/lobby/LeaderboardLaneToggle";
 import {
   getLobbyPresentationTone,
   type LobbyThemeKey,
@@ -12,6 +13,7 @@ import {
 } from "@/components/lobby/lobbyPresentation";
 import { LobbyViewToggle } from "@/components/lobby/LobbyAppearanceControls";
 import type { LobbyLeaderboardSummary } from "@/lib/lobby";
+import type { LeaderboardLane } from "@/lib/leaderboardLane";
 
 type LeaderboardPanelProps = {
   leaderboard: LobbyLeaderboardSummary;
@@ -19,6 +21,9 @@ type LeaderboardPanelProps = {
   themeKey: LobbyThemeKey;
   viewMode: LobbyViewMode;
   onViewModeChange: (viewMode: LobbyViewMode) => void;
+  leaderboardLane: LeaderboardLane;
+  leaderboardLaneLoading: boolean;
+  onLeaderboardLaneChange: (lane: LeaderboardLane) => void;
   surface?: "standard" | "extreme";
 };
 
@@ -73,6 +78,9 @@ export function LeaderboardPanel({
   themeKey,
   viewMode,
   onViewModeChange,
+  leaderboardLane,
+  leaderboardLaneLoading,
+  onLeaderboardLaneChange,
   surface = "standard",
 }: LeaderboardPanelProps) {
   const tone = getLobbyPresentationTone(themeKey, viewMode);
@@ -89,6 +97,7 @@ export function LeaderboardPanel({
   const leaderboardHydrationStartedRef = useRef(false);
   const preloadAllRef = useRef(false);
   const loadingRef = useRef(false);
+  const activeLaneRef = useRef(leaderboard.lane);
   const nextOffsetRef = useRef(countRankedLeaderboardEntries(leaderboard.entries));
   const hasMoreRef = useRef(
     leaderboard.trackedPlayers > countRankedLeaderboardEntries(leaderboard.entries)
@@ -96,12 +105,24 @@ export function LeaderboardPanel({
 
   useEffect(() => {
     const rankedEntryCount = countRankedLeaderboardEntries(leaderboard.entries);
-    setEntries((current) => mergeLeaderboardEntries(leaderboard.entries, current));
-    nextOffsetRef.current = Math.max(nextOffsetRef.current, rankedEntryCount);
+    const laneChanged = activeLaneRef.current !== leaderboard.lane;
+
+    if (laneChanged) {
+      activeLaneRef.current = leaderboard.lane;
+      setEntries(leaderboard.entries);
+      entriesRef.current = leaderboard.entries;
+      nextOffsetRef.current = rankedEntryCount;
+      leaderboardHydrationStartedRef.current = false;
+      preloadAllRef.current = false;
+    } else {
+      setEntries((current) => mergeLeaderboardEntries(leaderboard.entries, current));
+      nextOffsetRef.current = Math.max(nextOffsetRef.current, rankedEntryCount);
+    }
+
     const nextHasMore = leaderboard.trackedPlayers > nextOffsetRef.current;
     hasMoreRef.current = nextHasMore;
     setHasMore(nextHasMore);
-  }, [leaderboard.entries, leaderboard.trackedPlayers]);
+  }, [leaderboard.entries, leaderboard.lane, leaderboard.trackedPlayers]);
 
   useEffect(() => {
     entriesRef.current = entries;
@@ -121,7 +142,7 @@ export function LeaderboardPanel({
     try {
       const offset = Math.max(nextOffsetRef.current, visibleOffset);
       const response = await fetch(
-        `/api/lobby/leaderboard?offset=${offset}&limit=${LEADERBOARD_PAGE_SIZE}`,
+        `/api/lobby/leaderboard?lane=${leaderboard.lane}&offset=${offset}&limit=${LEADERBOARD_PAGE_SIZE}`,
         { cache: "no-store" }
       );
 
@@ -153,7 +174,7 @@ export function LeaderboardPanel({
       loadingRef.current = false;
       setIsLoadingMore(false);
     }
-  }, [leaderboard.trackedPlayers]);
+  }, [leaderboard.lane, leaderboard.trackedPlayers]);
 
   const handleLeaderboardScroll = useCallback(
     (event: UIEvent<HTMLDivElement>) => {
@@ -326,7 +347,7 @@ export function LeaderboardPanel({
 
         try {
           const response = await fetch(
-            `/api/lobby/leaderboard?offset=${offset}&limit=${LEADERBOARD_PAGE_SIZE}`,
+            `/api/lobby/leaderboard?lane=${leaderboard.lane}&offset=${offset}&limit=${LEADERBOARD_PAGE_SIZE}`,
             { cache: "no-store" }
           );
 
@@ -366,7 +387,7 @@ export function LeaderboardPanel({
     return () => {
       cancelled = true;
     };
-  }, [entries]);
+  }, [entries, leaderboard.lane]);
 
 
   return (
@@ -386,11 +407,11 @@ export function LeaderboardPanel({
                   {leaderboard.trackedPlayers}
                 </div>
 
-                <div
-                  className={`shrink-0 whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-medium ${tone.statusBadge}`}
-                >
-                  {leaderboard.statusLabel}
-                </div>
+                <LeaderboardLaneToggle
+                  lane={leaderboardLane}
+                  loading={leaderboardLaneLoading}
+                  onChange={onLeaderboardLaneChange}
+                />
               </div>
             </div>
 
@@ -425,11 +446,11 @@ export function LeaderboardPanel({
             </div>
 
             <div className="flex flex-nowrap items-center gap-2 sm:ml-auto">
-              <div
-                className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-medium ${tone.statusBadge}`}
-              >
-                {leaderboard.statusLabel}
-              </div>
+              <LeaderboardLaneToggle
+                lane={leaderboardLane}
+                loading={leaderboardLaneLoading}
+                onChange={onLeaderboardLaneChange}
+              />
 
               <LobbyViewToggle
                 viewMode={viewMode}
@@ -447,10 +468,6 @@ export function LeaderboardPanel({
             {onlineCount} Online
           </div>
         </div>
-      </div>
-
-      <div className="mt-3 rounded-xl border border-amber-300/25 bg-amber-300/10 px-3 py-2 text-[0.62rem] font-black uppercase tracking-[0.18em] text-amber-100">
-        Debug board rows: {countRankedLeaderboardEntries(entries)} / {leaderboard.trackedPlayers}
       </div>
 
       <div

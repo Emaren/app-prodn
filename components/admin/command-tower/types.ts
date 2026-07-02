@@ -11,6 +11,7 @@ import type { WalletFrictionRailPayload } from "@/lib/adminWalletFriction";
 import type { HonorKind } from "@/lib/communityHonors";
 import type { ScheduledMatchColorTag } from "@/lib/scheduledMatchPreferences";
 import type { TileViewMode, TileViewPreferences } from "@/lib/tileViewPreferences";
+import type { LeaderboardLane } from "@/lib/leaderboardLane";
 
 export type FounderBonusType = "participants" | "winner";
 
@@ -60,6 +61,7 @@ export type Appearance = {
   timeClockMode: string;
   timezoneOverride: string | null;
   tileViewPreferences: TileViewPreferences;
+  leaderboardLane: LeaderboardLane;
   updatedAt: string | null;
 };
 
@@ -205,6 +207,13 @@ export type AdminOverview = {
     defaultCount: number;
     preferredMode: TileViewMode;
   }>;
+  leaderboardLaneBreakdown: {
+    rmCount: number;
+    dmCount: number;
+    rmPercent: number;
+    dmPercent: number;
+    preferredLane: LeaderboardLane;
+  };
   scheduledPreferenceUsage: {
     favoriteCount: number;
     bookmarkedCount: number;

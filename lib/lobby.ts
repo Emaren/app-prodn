@@ -1,5 +1,6 @@
 import type { Aoe2HdPulseSnapshot } from "@/lib/aoe2HdPulse";
 import type { LiveTickerSnapshot } from "@/lib/liveTicker";
+import type { LeaderboardLane } from "@/lib/leaderboardLane";
 import type { WoloMarketSnapshot } from "@/lib/woloMarket";
 
 export const LOBBY_ROOM_SLUG = "main-lobby";
@@ -162,6 +163,7 @@ export type LobbyLeaderboardEntry = {
 
 export type LobbyLeaderboardSummary = {
   title: string;
+  lane: LeaderboardLane;
   statusLabel: string;
   entries: LobbyLeaderboardEntry[];
   activePlayers: number;
@@ -280,7 +282,8 @@ export function getFallbackTournament(viewerJoined = false): LobbyTournament {
 export function getFallbackLeaderboard(): LobbyLeaderboardSummary {
   return {
     title: "Season Leaderboard",
-    statusLabel: "Rating",
+    lane: "rm",
+    statusLabel: "RM",
     entries: [],
     activePlayers: 0,
     matchesToday: 0,

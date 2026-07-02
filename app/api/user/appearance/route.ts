@@ -53,6 +53,7 @@ export async function POST(request: NextRequest) {
       timeClockMode?: string | null;
       timezoneOverride?: string | null;
       tileViewPreferences?: unknown;
+      leaderboardLane?: unknown;
     };
 
     const prisma = getPrisma();
@@ -78,7 +79,7 @@ export async function POST(request: NextRequest) {
       path: request.nextUrl.pathname,
       label:
         `${normalized.themeKey}/${normalized.tileThemeKey}/${normalized.viewMode}/${normalized.textColor}` +
-        `/${normalized.timeDisplayMode}/${normalized.timeClockMode}`,
+        `/${normalized.timeDisplayMode}/${normalized.timeClockMode}/${normalized.leaderboardLane}`,
       metadata: normalized,
       dedupeWithinSeconds: 90,
     });
@@ -92,6 +93,7 @@ export async function POST(request: NextRequest) {
       timeClockMode: saved.timeClockMode,
       timezoneOverride: saved.timezoneOverride,
       tileViewPreferences: normalized.tileViewPreferences,
+      leaderboardLane: saved.leaderboardLane,
       updatedAt: saved.updatedAt.toISOString(),
     });
   } catch (error) {
