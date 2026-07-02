@@ -50,42 +50,94 @@ const FEATURED_WARRIOR_ROTATE_MS = 3800;
 const FEATURED_WARRIOR_FIRST_ROTATE_MS = 6200;
 const FEATURED_WARRIOR_FADE_MS = 300;
 const FEATURED_WARRIOR_HOLD_MS = 60;
-const FEATURED_WARRIOR_WARMUP_LIMIT = 12;
 
 const JULIO_FEATURED_SUBTITLE_LINES = [
   {
     key: "elo",
-    text: "ELO SCORE",
     className: "text-amber-100/95 [text-shadow:0_0_14px_rgba(251,191,36,0.28)]",
   },
   {
     key: "record",
-    text: "RECORD",
     className: "text-sky-100/95 [text-shadow:0_0_14px_rgba(56,189,248,0.20)]",
   },
   {
-    key: "streak",
-    text: "STREAK 🔥",
-    className: "text-red-200/95 [text-shadow:0_0_16px_rgba(248,113,113,0.32)]",
-  },
-  {
-    key: "ranking",
-    text: "RANKING",
+    key: "rank",
     className: "text-emerald-100/95 [text-shadow:0_0_16px_rgba(52,211,153,0.24)]",
   },
   {
     key: "og",
-    text: "OG",
     className: "text-yellow-100/95 [text-shadow:0_0_18px_rgba(250,204,21,0.28)]",
   },
 ] as const;
 
 let julioFeaturedSubtitleCursor = 0;
 
-function nextJulioFeaturedSubtitleLine() {
+function isFiniteFeaturedNumber(value: number | null | undefined): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function featuredWarriorEloSubtitle(warrior: FeaturedWarrior) {
+  const rating =
+    warrior.elo ??
+    warrior.primaryRating ??
+    warrior.arenaElo ??
+    warrior.steamRmRating ??
+    warrior.steamDmRating;
+
+  if (isFiniteFeaturedNumber(rating) && rating > 0) {
+    return `ELO ${Math.round(rating)}`;
+  }
+
+  const ratingLabel = warrior.ratingLabel || warrior.primaryRatingLabel || "";
+
+  if (ratingLabel && !/unrated|no rating/i.test(ratingLabel)) {
+    return ratingLabel.toUpperCase();
+  }
+
+  return "ELO TBD";
+}
+
+function featuredWarriorRecordSubtitle(warrior: FeaturedWarrior) {
+  if (
+    isFiniteFeaturedNumber(warrior.wins) &&
+    isFiniteFeaturedNumber(warrior.losses) &&
+    isFiniteFeaturedNumber(warrior.unknowns)
+  ) {
+    return `${warrior.wins}W · ${warrior.losses}L · ${warrior.unknowns}U`;
+  }
+
+  return "W-L-U TBD";
+}
+
+function featuredWarriorRankSubtitle(warrior: FeaturedWarrior) {
+  if (isFiniteFeaturedNumber(warrior.rank) && warrior.rank > 0) {
+    return `Rank #${warrior.rank}`;
+  }
+
+  if (/^rank\s*#/i.test(warrior.role)) {
+    return warrior.role;
+  }
+
+  return warrior.role || "Rank Pending";
+}
+
+function nextJulioFeaturedSubtitleLine(warrior: FeaturedWarrior) {
   const line = JULIO_FEATURED_SUBTITLE_LINES[julioFeaturedSubtitleCursor % JULIO_FEATURED_SUBTITLE_LINES.length];
   julioFeaturedSubtitleCursor += 1;
-  return line;
+
+  const text =
+    line.key === "elo"
+      ? featuredWarriorEloSubtitle(warrior)
+      : line.key === "record"
+        ? featuredWarriorRecordSubtitle(warrior)
+        : line.key === "rank"
+          ? featuredWarriorRankSubtitle(warrior)
+          : "AoE2WAR OG";
+
+  return {
+    ...line,
+    text,
+  };
 }
 
 type FeaturedWarrior = {
@@ -97,6 +149,19 @@ type FeaturedWarrior = {
   href: string;
   imageUrl?: string;
   isPlaceholder?: boolean;
+  rank?: number | null;
+  elo?: number | null;
+  arenaElo?: number | null;
+  steamRmRating?: number | null;
+  steamDmRating?: number | null;
+  primaryRating?: number | null;
+  primaryRatingLabel?: string | null;
+  primaryRatingSourceLabel?: string | null;
+  ratingLabel?: string | null;
+  wins?: number | null;
+  losses?: number | null;
+  unknowns?: number | null;
+  totalMatches?: number | null;
 };
 
 const FEATURED_WARRIOR_FALLBACKS: FeaturedWarrior[] = [
@@ -228,6 +293,28 @@ function featuredRoleForLeaderboardEntry(entry: LobbyLeaderboardEntry) {
   return "Rising Warrior";
 }
 
+
+
+function featuredWarriorStatsFromEntry(entry?: LobbyLeaderboardEntry | null): Partial<FeaturedWarrior> {
+  if (!entry) return {};
+
+  return {
+    rank: entry.rank > 0 ? entry.rank : null,
+    elo: entry.elo,
+    arenaElo: entry.arenaElo,
+    steamRmRating: entry.steamRmRating,
+    steamDmRating: entry.steamDmRating,
+    primaryRating: entry.primaryRating,
+    primaryRatingLabel: entry.primaryRatingLabel,
+    primaryRatingSourceLabel: entry.primaryRatingSourceLabel,
+    ratingLabel: entry.ratingLabel,
+    wins: entry.wins,
+    losses: entry.losses,
+    unknowns: entry.unknowns,
+    totalMatches: entry.totalMatches,
+  };
+}
+
 function buildFeaturedWarriorPool(entries: LobbyLeaderboardEntry[]) {
   const entryByName = new Map(
     entries.map((entry) => [normalizeFeaturedWarriorKey(entry.name), entry])
@@ -249,12 +336,13 @@ function buildFeaturedWarriorPool(entries: LobbyLeaderboardEntry[]) {
       role: leaderboardEntry
         ? featuredRoleForLeaderboardEntry(leaderboardEntry)
         : warrior.role,
+      ...featuredWarriorStatsFromEntry(leaderboardEntry),
     });
   };
 
   FEATURED_WARRIOR_PREMIUM_POOL.forEach(pushWarrior);
 
-  entries.slice(0, 32).forEach((entry) => {
+  entries.forEach((entry) => {
     const key = normalizeFeaturedWarriorKey(entry.name);
     if (!key || seen.has(key)) return;
 
@@ -263,6 +351,7 @@ function buildFeaturedWarriorPool(entries: LobbyLeaderboardEntry[]) {
       name: entry.name,
       lookupName: entry.name,
       role: featuredRoleForLeaderboardEntry(entry),
+      ...featuredWarriorStatsFromEntry(entry),
       href: entry.href || `/players/by-name/${encodeURIComponent(entry.name)}`,
       isPlaceholder: true,
     });
@@ -307,7 +396,6 @@ function featuredWarriorHasRealAvatar(warrior: FeaturedWarrior) {
 
   if (
     directImage &&
-    !directImage.startsWith("/api/media-assets/avatar/") &&
     !directImage.includes("no-avatar") &&
     !directImage.includes("silhouette") &&
     !directImage.includes("placeholder")
@@ -323,12 +411,6 @@ function featuredWarriorHasRealAvatar(warrior: FeaturedWarrior) {
   );
 }
 
-function featuredWarriorIsSpectacleReady(warrior: FeaturedWarrior) {
-  return featuredWarriorHasRealAvatar(warrior) || isPinnedFeaturedWarrior(warrior);
-}
-
-
-
 function dedupeFeaturedWarriors(pool: FeaturedWarrior[]) {
   const seen = new Set<string>();
   const unique: FeaturedWarrior[] = [];
@@ -342,10 +424,6 @@ function dedupeFeaturedWarriors(pool: FeaturedWarrior[]) {
 
   return unique;
 }
-
-
-
-
 
 function shuffleFeaturedWarriors(pool: FeaturedWarrior[]) {
   const candidates = [...pool];
@@ -364,18 +442,7 @@ function shuffleFeaturedWarriors(pool: FeaturedWarrior[]) {
   return candidates;
 }
 
-const FEATURED_WARRIOR_PINNED_KEYS = [
-  "premium:grimer",
-  "premium:ai-scribe",
-  "premium:sladk0eshka",
-] as const;
-
-const FEATURED_WARRIOR_PINNED_KEY_SET = new Set<string>(FEATURED_WARRIOR_PINNED_KEYS);
 const UNKNOWN_FEATURED_WARRIOR_IMAGE = "/champions/players/silhouette.card.webp";
-
-function featuredWarriorIdentity(warrior: FeaturedWarrior) {
-  return normalizeFeaturedWarriorKey(warrior.lookupName || warrior.name || warrior.key);
-}
 
 function featuredWarriorBasePool(pool: FeaturedWarrior[]) {
   return dedupeFeaturedWarriors([
@@ -385,80 +452,106 @@ function featuredWarriorBasePool(pool: FeaturedWarrior[]) {
   ]);
 }
 
-function isPinnedFeaturedWarrior(warrior: FeaturedWarrior) {
-  const identity = featuredWarriorIdentity(warrior);
-
-  return (
-    FEATURED_WARRIOR_PINNED_KEY_SET.has(warrior.key) ||
-    identity === "grimer" ||
-    identity === "the-ai-scribe" ||
-    identity === "ai-scribe" ||
-    identity === "sladk0eshka"
-  );
-}
-
 function asUnknownFeaturedWarrior(candidate?: FeaturedWarrior | null): FeaturedWarrior {
+  const displayName = candidate?.name || "Mystery Player";
+  const lookupName = candidate?.lookupName || candidate?.name || displayName;
+
   return {
-    key: candidate ? `unknown:${candidate.key}` : "unknown:warrior",
-    name: candidate?.name || "Unknown Warrior",
-    lookupName: candidate?.lookupName || candidate?.name || "Unknown Warrior",
-    role: "Mystery Warrior",
+    key: candidate ? `unknown:${candidate.key}` : "unknown:mystery-player",
+    name: displayName,
+    lookupName,
+    role: candidate?.role || "Rank Pending",
+    rank: candidate?.rank ?? null,
+    elo: candidate?.elo ?? null,
+    arenaElo: candidate?.arenaElo ?? null,
+    steamRmRating: candidate?.steamRmRating ?? null,
+    steamDmRating: candidate?.steamDmRating ?? null,
+    primaryRating: candidate?.primaryRating ?? null,
+    primaryRatingLabel: candidate?.primaryRatingLabel ?? null,
+    primaryRatingSourceLabel: candidate?.primaryRatingSourceLabel ?? null,
+    ratingLabel: candidate?.ratingLabel ?? null,
+    wins: candidate?.wins ?? null,
+    losses: candidate?.losses ?? null,
+    unknowns: candidate?.unknowns ?? null,
+    totalMatches: candidate?.totalMatches ?? null,
     href: candidate?.href || "/players",
     imageUrl: UNKNOWN_FEATURED_WARRIOR_IMAGE,
     isPlaceholder: true,
   };
 }
 
+function featuredWarriorIsMystery(warrior?: FeaturedWarrior | null) {
+  return Boolean(warrior?.isPlaceholder || warrior?.key.startsWith("unknown:"));
+}
+
 function pickUnknownFeaturedWarrior(
   pool: FeaturedWarrior[],
   blockedKeys = new Set<string>(),
   previousSlotKey: string | null = null,
-  randomize = true
+  randomize = false
 ) {
-  const candidates = featuredWarriorBasePool(pool).filter((warrior) => {
-    const unknownKey = `unknown:${warrior.key}`;
+  const previousRawKey = previousSlotKey?.startsWith("unknown:")
+    ? previousSlotKey.slice("unknown:".length)
+    : previousSlotKey;
 
-    return (
-      !isPinnedFeaturedWarrior(warrior) &&
-      !blockedKeys.has(warrior.key) &&
-      !blockedKeys.has(unknownKey) &&
-      unknownKey !== previousSlotKey
-    );
+  const candidates = featuredWarriorBasePool(pool).filter((warrior) => {
+    if (featuredWarriorHasRealAvatar(warrior)) return false;
+    if (!warrior.name || normalizeFeaturedWarriorKey(warrior.name) === "unknown-warrior") return false;
+    if (blockedKeys.has(warrior.key)) return false;
+    if (blockedKeys.has(`unknown:${warrior.key}`)) return false;
+    if (warrior.key === previousSlotKey) return false;
+    if (warrior.key === previousRawKey) return false;
+    if (`unknown:${warrior.key}` === previousSlotKey) return false;
+    return true;
   });
 
   const ordered = randomize ? shuffleFeaturedWarriors(candidates) : candidates;
   return asUnknownFeaturedWarrior(ordered[0] ?? null);
 }
 
+function pickRealFeaturedWarrior(
+  pool: FeaturedWarrior[],
+  blockedKeys = new Set<string>(),
+  previousSlotKey: string | null = null
+) {
+  const candidates = featuredWarriorBasePool(pool).filter((warrior) => {
+    if (featuredWarriorIsMystery(warrior)) return false;
+    if (!featuredWarriorHasRealAvatar(warrior)) return false;
+    if (blockedKeys.has(warrior.key)) return false;
+    if (warrior.key === previousSlotKey) return false;
+    return true;
+  });
+
+  const ordered = shuffleFeaturedWarriors(candidates);
+  return ordered[0] ?? null;
+}
+
 function curatedFeaturedWarriorOpening(pool: FeaturedWarrior[], randomize = false) {
   const basePool = featuredWarriorBasePool(pool);
-  const byKey = new Map(basePool.map((warrior) => [warrior.key, warrior]));
+  const avatarPool = shuffleFeaturedWarriors(
+    basePool.filter((warrior) => featuredWarriorHasRealAvatar(warrior) && !featuredWarriorIsMystery(warrior))
+  );
   const selected: FeaturedWarrior[] = [];
 
-  for (const key of FEATURED_WARRIOR_PINNED_KEYS) {
-    const warrior = byKey.get(key);
-    if (warrior && !selected.some((item) => item.key === warrior.key)) {
-      selected.push(warrior);
-    }
-  }
-
-  for (const warrior of basePool) {
-    if (selected.length >= FEATURED_WARRIOR_PINNED_KEYS.length) break;
-    if (!featuredWarriorHasRealAvatar(warrior)) continue;
+  for (const warrior of avatarPool) {
+    if (selected.length >= FEATURED_WARRIOR_SLOT_COUNT - 1) break;
     if (selected.some((item) => item.key === warrior.key)) continue;
     selected.push(warrior);
   }
 
-  selected.push(
-    pickUnknownFeaturedWarrior(
-      basePool,
-      new Set(selected.map((warrior) => warrior.key)),
-      null,
-      randomize
-    )
+  const mystery = pickUnknownFeaturedWarrior(
+    basePool,
+    new Set(selected.map((warrior) => warrior.key)),
+    null,
+    true
   );
 
-  return selected.slice(0, FEATURED_WARRIOR_SLOT_COUNT);
+  const lineup = [...selected.slice(0, FEATURED_WARRIOR_SLOT_COUNT - 1), mystery].slice(
+    0,
+    FEATURED_WARRIOR_SLOT_COUNT
+  );
+
+  return randomize ? shuffleFeaturedWarriors(lineup) : lineup;
 }
 
 function featuredWarriorImageSrc(warrior: FeaturedWarrior) {
@@ -488,7 +581,6 @@ function featuredWarriorImageSrc(warrior: FeaturedWarrior) {
 }
 
 const featuredWarriorDecodeCache = new Map<string, Promise<void>>();
-const featuredWarriorHeadHintCache = new Set<string>();
 
 function decodeFeaturedWarriorImage(src: string) {
   if (typeof window === "undefined" || !src) {
@@ -542,63 +634,11 @@ function decodeFeaturedWarriorImage(src: string) {
   return promise;
 }
 
-function decodeFeaturedWarriorLineup(lineup: FeaturedWarrior[]) {
+function warmFeaturedWarriorLineup(lineup: FeaturedWarrior[]) {
   return Promise.all(lineup.map((warrior) => decodeFeaturedWarriorImage(featuredWarriorImageSrc(warrior)))).then(
     () => undefined
   );
 }
-
-
-function featuredWarriorWarmupUrls(pool: FeaturedWarrior[], priorityLineup: FeaturedWarrior[] = []) {
-  const candidates = dedupeFeaturedWarriors([
-    ...priorityLineup,
-    ...pool,
-    ...FEATURED_WARRIOR_PREMIUM_POOL,
-    ...FEATURED_WARRIOR_FALLBACKS,
-  ]);
-
-  const spectacle = candidates.filter(featuredWarriorIsSpectacleReady);
-  const fallback = candidates.filter((warrior) => !featuredWarriorIsSpectacleReady(warrior));
-
-  return Array.from(
-    new Set(
-      [...spectacle, ...fallback]
-        .map(featuredWarriorImageSrc)
-        .filter((url): url is string => Boolean(url))
-    )
-  ).slice(0, FEATURED_WARRIOR_WARMUP_LIMIT);
-}
-
-function installFeaturedWarriorResourceHints(urls: string[]) {
-  if (typeof document === "undefined") return;
-
-  urls.forEach((url, index) => {
-    if (!url || featuredWarriorHeadHintCache.has(url)) return;
-
-    const link = document.createElement("link");
-    link.rel = index < FEATURED_WARRIOR_SLOT_COUNT ? "preload" : "prefetch";
-    link.as = "image";
-    link.href = url;
-    link.setAttribute("fetchpriority", index < FEATURED_WARRIOR_SLOT_COUNT ? "high" : "low");
-    link.setAttribute("data-aoe2war-featured-warrior", "warmup");
-
-    featuredWarriorHeadHintCache.add(url);
-    document.head.appendChild(link);
-  });
-}
-
-function preloadFeaturedWarriorImages(pool: FeaturedWarrior[], priorityLineup: FeaturedWarrior[] = []) {
-  if (typeof window === "undefined") return;
-
-  const urls = featuredWarriorWarmupUrls(pool, priorityLineup);
-
-  installFeaturedWarriorResourceHints(urls);
-
-  for (const url of urls) {
-    void decodeFeaturedWarriorImage(url);
-  }
-}
-
 
 
 function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
@@ -619,36 +659,40 @@ function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
   const transitionInFlightRef = useRef(false);
   const timersRef = useRef<number[]>([]);
 
-  const clearTimers = () => {
+  const clearTimers = useCallback(() => {
     for (const timer of timersRef.current) {
       window.clearTimeout(timer);
     }
     timersRef.current = [];
-  };
+  }, []);
 
-  const later = (callback: () => void, delay: number) => {
-    const timer = window.setTimeout(() => {
-      timersRef.current = timersRef.current.filter((candidate) => candidate !== timer);
-      callback();
-    }, delay);
-
+  const later = useCallback((fn: () => void, delay: number) => {
+    const timer = window.setTimeout(fn, delay);
     timersRef.current.push(timer);
     return timer;
-  };
+  }, []);
 
   useEffect(() => {
     poolRef.current = pool;
+
+    for (const warrior of pool) {
+      if (featuredWarriorHasRealAvatar(warrior)) {
+        void decodeFeaturedWarriorImage(featuredWarriorImageSrc(warrior));
+      }
+    }
   }, [pool]);
 
   useEffect(() => {
-    visibleWarriorsRef.current = visibleWarriors;
-  }, [visibleWarriors]);
+    if (typeof window === "undefined") {
+      return;
+    }
 
-  useEffect(() => {
     let disposed = false;
 
     clearTimers();
     transitionInFlightRef.current = false;
+    lastChangedSlotRef.current = null;
+    lastWarriorBySlotRef.current = {};
     setFadingSlot(null);
     setFeaturedWarriorsReady(false);
 
@@ -657,11 +701,10 @@ function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
       lastWarriorBySlotRef.current[index] = warrior.key;
     });
 
-    preloadFeaturedWarriorImages(poolRef.current, initialLineup);
     visibleWarriorsRef.current = initialLineup;
     setVisibleWarriors(initialLineup);
 
-    void decodeFeaturedWarriorLineup(initialLineup).then(() => {
+    void warmFeaturedWarriorLineup(initialLineup).then(() => {
       if (disposed) return;
 
       window.requestAnimationFrame(() => {
@@ -676,32 +719,61 @@ function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
       clearTimers();
       transitionInFlightRef.current = false;
     };
-  }, [poolSignature]);
+  }, [poolSignature, clearTimers]);
 
   useEffect(() => {
-    if (paused || !featuredWarriorsReady || poolRef.current.length <= FEATURED_WARRIOR_SLOT_COUNT) {
+    if (!featuredWarriorsReady || paused) {
       return;
     }
 
     let disposed = false;
 
     const pickSlot = () => {
-      const slot = FEATURED_WARRIOR_SLOT_COUNT - 1;
-      lastChangedSlotRef.current = slot;
-      return slot;
-    };
+      const slots = Array.from({ length: FEATURED_WARRIOR_SLOT_COUNT }, (_, index) => index);
+      const previousSlot = lastChangedSlotRef.current;
+      const eligibleSlots = previousSlot === null ? slots : slots.filter((slot) => slot !== previousSlot);
+      const weightedSlots: number[] = [];
 
+      for (const slot of eligibleSlots) {
+        const isAdjacent = previousSlot !== null && Math.abs(slot - previousSlot) === 1;
+        const weight = isAdjacent ? 1 : 4;
+
+        for (let count = 0; count < weight; count += 1) {
+          weightedSlots.push(slot);
+        }
+      }
+
+      return weightedSlots[Math.floor(Math.random() * weightedSlots.length)] ?? eligibleSlots[0] ?? 0;
+    };
 
     const pickNextWarrior = (slot: number) => {
       const current = visibleWarriorsRef.current;
       const currentKeys = new Set(current.map((warrior) => warrior.key));
+      const outgoing = current[slot];
       const previousSlotKey = lastWarriorBySlotRef.current[slot];
 
-      return pickUnknownFeaturedWarrior(poolRef.current, currentKeys, previousSlotKey, true);
+      const mysteryCount = current.filter(featuredWarriorIsMystery).length;
+
+      if (featuredWarriorIsMystery(outgoing)) {
+        return pickRealFeaturedWarrior(poolRef.current, currentKeys, previousSlotKey);
+      }
+
+      if (mysteryCount === 0) {
+        return pickUnknownFeaturedWarrior(poolRef.current, currentKeys, previousSlotKey, true);
+      }
+
+      return pickRealFeaturedWarrior(poolRef.current, currentKeys, previousSlotKey);
     };
 
     const rotateOnce = () => {
-      if (disposed || transitionInFlightRef.current) {
+      if (disposed || paused) return;
+
+      if (document.hidden) {
+        later(rotateOnce, FEATURED_WARRIOR_ROTATE_MS);
+        return;
+      }
+
+      if (transitionInFlightRef.current) {
         return;
       }
 
@@ -709,57 +781,66 @@ function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
       const nextWarrior = pickNextWarrior(slot);
 
       if (!nextWarrior) {
+        later(rotateOnce, FEATURED_WARRIOR_ROTATE_MS);
         return;
       }
 
       transitionInFlightRef.current = true;
 
-      void decodeFeaturedWarriorImage(featuredWarriorImageSrc(nextWarrior)).then(() => {
-        if (disposed) {
-          transitionInFlightRef.current = false;
-          return;
-        }
-
-        setFadingSlot(slot);
-
-        later(() => {
-          if (disposed) {
+      void decodeFeaturedWarriorImage(featuredWarriorImageSrc(nextWarrior))
+        .catch(() => undefined)
+        .then(() => {
+          if (disposed || paused) {
             transitionInFlightRef.current = false;
             return;
           }
 
-          setVisibleWarriors((latest) => {
-            const next = [...latest];
-            next[slot] = nextWarrior;
-            lastWarriorBySlotRef.current[slot] = nextWarrior.key;
-            visibleWarriorsRef.current = next;
-            return next;
-          });
+          setFadingSlot(slot);
 
           later(() => {
-            if (disposed) {
+            if (disposed || paused) {
               transitionInFlightRef.current = false;
               return;
             }
 
-            window.requestAnimationFrame(() => {
-              window.requestAnimationFrame(() => {
-                if (disposed) {
-                  transitionInFlightRef.current = false;
-                  return;
-                }
-
-                setFadingSlot(null);
-
-                later(() => {
-                  transitionInFlightRef.current = false;
-                  later(rotateOnce, FEATURED_WARRIOR_ROTATE_MS);
-                }, FEATURED_WARRIOR_FADE_MS + 120);
-              });
+            setVisibleWarriors((latest) => {
+              const next = [...latest];
+              const outgoing = next[slot];
+              lastWarriorBySlotRef.current[slot] = outgoing?.key ?? null;
+              next[slot] = nextWarrior;
+              visibleWarriorsRef.current = next;
+              return next;
             });
-          }, FEATURED_WARRIOR_HOLD_MS);
-        }, FEATURED_WARRIOR_FADE_MS);
-      });
+
+            lastChangedSlotRef.current = slot;
+
+            later(() => {
+              if (disposed) {
+                transitionInFlightRef.current = false;
+                return;
+              }
+
+              window.requestAnimationFrame(() => {
+                window.requestAnimationFrame(() => {
+                  if (disposed) {
+                    transitionInFlightRef.current = false;
+                    return;
+                  }
+
+                  setFadingSlot(null);
+
+                  later(() => {
+                    transitionInFlightRef.current = false;
+
+                    if (!disposed) {
+                      later(rotateOnce, FEATURED_WARRIOR_ROTATE_MS);
+                    }
+                  }, FEATURED_WARRIOR_FADE_MS + 120);
+                });
+              });
+            }, FEATURED_WARRIOR_HOLD_MS);
+          }, FEATURED_WARRIOR_FADE_MS);
+        });
     };
 
     later(rotateOnce, FEATURED_WARRIOR_FIRST_ROTATE_MS);
@@ -769,7 +850,7 @@ function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
       clearTimers();
       transitionInFlightRef.current = false;
     };
-  }, [paused, featuredWarriorsReady, poolSignature]);
+  }, [paused, featuredWarriorsReady, poolSignature, clearTimers, later]);
 
   return { visibleWarriors, fadingSlot, featuredWarriorsReady };
 }
@@ -841,7 +922,7 @@ function AdvancedFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] })
 function FeaturedWarriorSubtitle({ warrior }: { warrior: FeaturedWarrior }) {
   const identity = normalizeFeaturedWarriorKey(warrior.lookupName || warrior.name);
   const [julioLine] = useState(() =>
-    identity === "julio" || identity === "julio-alvarez" ? nextJulioFeaturedSubtitleLine() : null
+    identity === "julio" || identity === "julio-alvarez" ? nextJulioFeaturedSubtitleLine(warrior) : null
   );
 
   if ((identity === "julio" || identity === "julio-alvarez") && julioLine) {
@@ -853,19 +934,11 @@ function FeaturedWarriorSubtitle({ warrior }: { warrior: FeaturedWarrior }) {
   }
 
   const subtitle =
-    identity === "zodiac"
-      ? "Chaos Champion"
-      : identity === "the-ai-scribe" || identity === "ai-scribe"
-        ? "AI Scribe"
-        : warrior.isPlaceholder
-          ? "Mystery Warrior"
-          : identity === "grimer"
-            ? "AI Advisor"
-            : identity === "moose" && warrior.role.startsWith("Rank #")
-              ? warrior.role
-              : identity === "moose"
-                ? "Ranked Warrior"
-                : warrior.role;
+    identity === "the-ai-scribe" || identity === "ai-scribe"
+      ? "The AI Scribe"
+      : identity === "grimer"
+        ? "AI Advisor"
+        : featuredWarriorRankSubtitle(warrior);
 
   return (
     <div className="mt-0.5 text-[10px] uppercase tracking-[0.18em] text-slate-300">
