@@ -141,7 +141,7 @@ export function WoloMarketTile({ market, themeKey, viewMode, surface = "standard
               href={poolUrl}
               target="_blank"
               rel="noreferrer"
-              className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold transition ${tone.primaryButton}`}
+              className="group/swap relative isolate inline-flex min-h-11 items-center justify-center gap-2 overflow-hidden rounded-full border border-amber-200/32 bg-[radial-gradient(circle_at_18%_0%,rgba(255,236,179,0.18),transparent_30%),radial-gradient(circle_at_82%_120%,rgba(185,28,28,0.30),transparent_42%),linear-gradient(135deg,rgba(9,7,5,0.98)_0%,rgba(34,16,6,0.98)_36%,rgba(92,36,8,0.96)_68%,rgba(163,82,18,0.92)_100%)] px-5 text-sm font-black text-amber-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.20),0_0_28px_rgba(245,158,11,0.18),0_16px_38px_rgba(0,0,0,0.34)] ring-1 ring-amber-300/10 transition duration-300 before:pointer-events-none before:absolute before:inset-0 before:-z-10 before:bg-[linear-gradient(112deg,transparent_0%,rgba(255,255,255,0.14)_45%,transparent_58%)] before:opacity-0 before:transition before:duration-500 hover:-translate-y-0.5 hover:border-amber-100/60 hover:text-white hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.26),0_0_44px_rgba(249,115,22,0.32),0_18px_46px_rgba(0,0,0,0.42)] hover:before:translate-x-8 hover:before:opacity-100 active:translate-y-0 active:scale-[0.99]"
             >
               Swap
               <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
