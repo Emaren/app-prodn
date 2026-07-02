@@ -20,7 +20,7 @@ import Aoe2ShortsTile from "@/components/home/Aoe2ShortsTile";
 import { useTileViewPreference } from "@/components/tile-view/useTileViewPreference";
 import { buildChatItems } from "@/components/lobby/utils";
 import { useUserAuth } from "@/context/UserAuthContext";
-import { type AiVisibilityOption } from "@/lib/aiConciergeConfig";
+import { AI_CONCIERGE_NAME, AI_CONCIERGE_UID, AI_GRIMER_NAME, AI_GRIMER_UID, type AiVisibilityOption } from "@/lib/aiConciergeConfig";
 import type { EventTileView } from "@/lib/events/types";
 import {
   getFallbackLeaderboard,
@@ -41,7 +41,8 @@ const RA_UID = "u_510b020f19b5450793c95e05de791cc7";
 const BDB_PIGMAN_UID = "u_a0923530e82d43ceb3f6926c004748dc";
 const DELTAFORCE_UID = "u_f206dd9c3c1c40799b43a3faf7af986e";
 const SLADK0ESHKA_UID = "u_73b78fcddb90417180495c1468937049";
-const GRIMER_UID = "aoe2hd_ai_grimer";
+const AI_SCRIBE_UID = AI_CONCIERGE_UID;
+const GRIMER_UID = AI_GRIMER_UID;
 const MOOSE_UID = "aoe2hd-moose";
 
 const FEATURED_WARRIOR_SLOT_COUNT = 4;
@@ -194,12 +195,20 @@ const FEATURED_WARRIOR_PREMIUM_POOL: FeaturedWarrior[] = [
     imageUrl: avatarCardUrlForUser(SLADK0ESHKA_UID, "Sladk0Eshka"),
   },
   {
+    key: "premium:ai-scribe",
+    name: AI_CONCIERGE_NAME,
+    lookupName: AI_CONCIERGE_NAME,
+    role: "AI Scribe",
+    href: "/contact-emaren",
+    imageUrl: avatarCardUrlForUser(AI_SCRIBE_UID, AI_CONCIERGE_NAME),
+  },
+  {
     key: "premium:grimer",
-    name: "Grimer",
-    lookupName: "Grimer",
+    name: AI_GRIMER_NAME,
+    lookupName: AI_GRIMER_NAME,
     role: "AI Advisor",
     href: "/players/by-name/Grimer",
-    imageUrl: avatarCardUrlForUser(GRIMER_UID, "Grimer"),
+    imageUrl: avatarCardUrlForUser(GRIMER_UID, AI_GRIMER_NAME),
   },
 ];
 
@@ -293,31 +302,6 @@ const FEATURED_WARRIOR_REAL_AVATAR_KEYS = new Set([
   "grimer",
 ]);
 
-const FEATURED_WARRIOR_SPECTACLE_KEYS = new Set([
-  "premium:zodiac",
-  "zodiac",
-  "dil-pascana",
-  "premium:sniper",
-  "sniper",
-  "premium:julio",
-  "premium:julio-alvarez",
-  "julio",
-  "julio-alvarez",
-  "premium:jim",
-  "jim",
-  "premium:ra",
-  "ra",
-  "premium:bdbpigman",
-  "bdbpigman",
-  "bdb-pigman",
-  "pigman",
-  "premium:emaren",
-  "emaren",
-  "premium:moose",
-  "moose",
-]);
-
-
 function featuredWarriorHasRealAvatar(warrior: FeaturedWarrior) {
   const directImage = warrior.imageUrl || "";
 
@@ -340,17 +324,9 @@ function featuredWarriorHasRealAvatar(warrior: FeaturedWarrior) {
 }
 
 function featuredWarriorIsSpectacleReady(warrior: FeaturedWarrior) {
-  if (!featuredWarriorHasRealAvatar(warrior)) {
-    return false;
-  }
-
-  return Boolean(
-    FEATURED_WARRIOR_SPECTACLE_KEYS.has(warrior.key) ||
-      FEATURED_WARRIOR_SPECTACLE_KEYS.has(normalizeFeaturedWarriorKey(warrior.key)) ||
-      FEATURED_WARRIOR_SPECTACLE_KEYS.has(normalizeFeaturedWarriorKey(warrior.name)) ||
-      FEATURED_WARRIOR_SPECTACLE_KEYS.has(normalizeFeaturedWarriorKey(warrior.lookupName))
-  );
+  return featuredWarriorHasRealAvatar(warrior) || isPinnedFeaturedWarrior(warrior);
 }
+
 
 
 function dedupeFeaturedWarriors(pool: FeaturedWarrior[]) {
@@ -369,45 +345,7 @@ function dedupeFeaturedWarriors(pool: FeaturedWarrior[]) {
 
 
 
-function deterministicFeaturedWarriorOpening(pool: FeaturedWarrior[]) {
-  const byKey = new Map<string, FeaturedWarrior>();
 
-  for (const warrior of [...FEATURED_WARRIOR_FALLBACKS, ...pool]) {
-    byKey.set(warrior.key, warrior);
-  }
-
-  const preferredKeys = [
-    "premium:zodiac",
-    "dil-pascana",
-    "premium:sniper",
-    "premium:julio-alvarez",
-    "premium:jim",
-  ];
-
-  const selected: FeaturedWarrior[] = [];
-
-  for (const key of preferredKeys) {
-    const warrior = byKey.get(key);
-    if (warrior && !selected.some((item) => item.key === warrior.key)) {
-      selected.push(warrior);
-    }
-  }
-
-  for (const warrior of [...FEATURED_WARRIOR_FALLBACKS, ...pool]) {
-    if (selected.length >= FEATURED_WARRIOR_SLOT_COUNT) break;
-    if (!featuredWarriorHasRealAvatar(warrior)) continue;
-    if (selected.some((item) => item.key === warrior.key)) continue;
-    selected.push(warrior);
-  }
-
-  for (const warrior of [...FEATURED_WARRIOR_FALLBACKS, ...pool]) {
-    if (selected.length >= FEATURED_WARRIOR_SLOT_COUNT) break;
-    if (selected.some((item) => item.key === warrior.key)) continue;
-    selected.push(warrior);
-  }
-
-  return selected.slice(0, FEATURED_WARRIOR_SLOT_COUNT);
-}
 
 function shuffleFeaturedWarriors(pool: FeaturedWarrior[]) {
   const candidates = [...pool];
@@ -426,32 +364,112 @@ function shuffleFeaturedWarriors(pool: FeaturedWarrior[]) {
   return candidates;
 }
 
-function randomFeaturedWarriorOpening(pool: FeaturedWarrior[]) {
-  const uniquePool = dedupeFeaturedWarriors([...pool, ...FEATURED_WARRIOR_PREMIUM_POOL, ...FEATURED_WARRIOR_FALLBACKS]);
-  const spectaclePool = shuffleFeaturedWarriors(uniquePool.filter(featuredWarriorIsSpectacleReady));
+const FEATURED_WARRIOR_PINNED_KEYS = [
+  "premium:grimer",
+  "premium:ai-scribe",
+  "premium:sladk0eshka",
+] as const;
+
+const FEATURED_WARRIOR_PINNED_KEY_SET = new Set<string>(FEATURED_WARRIOR_PINNED_KEYS);
+const UNKNOWN_FEATURED_WARRIOR_IMAGE = "/champions/players/silhouette.card.webp";
+
+function featuredWarriorIdentity(warrior: FeaturedWarrior) {
+  return normalizeFeaturedWarriorKey(warrior.lookupName || warrior.name || warrior.key);
+}
+
+function featuredWarriorBasePool(pool: FeaturedWarrior[]) {
+  return dedupeFeaturedWarriors([
+    ...pool,
+    ...FEATURED_WARRIOR_PREMIUM_POOL,
+    ...FEATURED_WARRIOR_FALLBACKS,
+  ]);
+}
+
+function isPinnedFeaturedWarrior(warrior: FeaturedWarrior) {
+  const identity = featuredWarriorIdentity(warrior);
+
+  return (
+    FEATURED_WARRIOR_PINNED_KEY_SET.has(warrior.key) ||
+    identity === "grimer" ||
+    identity === "the-ai-scribe" ||
+    identity === "ai-scribe" ||
+    identity === "sladk0eshka"
+  );
+}
+
+function asUnknownFeaturedWarrior(candidate?: FeaturedWarrior | null): FeaturedWarrior {
+  return {
+    key: candidate ? `unknown:${candidate.key}` : "unknown:warrior",
+    name: candidate?.name || "Unknown Warrior",
+    lookupName: candidate?.lookupName || candidate?.name || "Unknown Warrior",
+    role: "Mystery Warrior",
+    href: candidate?.href || "/players",
+    imageUrl: UNKNOWN_FEATURED_WARRIOR_IMAGE,
+    isPlaceholder: true,
+  };
+}
+
+function pickUnknownFeaturedWarrior(
+  pool: FeaturedWarrior[],
+  blockedKeys = new Set<string>(),
+  previousSlotKey: string | null = null,
+  randomize = true
+) {
+  const candidates = featuredWarriorBasePool(pool).filter((warrior) => {
+    const unknownKey = `unknown:${warrior.key}`;
+
+    return (
+      !isPinnedFeaturedWarrior(warrior) &&
+      !blockedKeys.has(warrior.key) &&
+      !blockedKeys.has(unknownKey) &&
+      unknownKey !== previousSlotKey
+    );
+  });
+
+  const ordered = randomize ? shuffleFeaturedWarriors(candidates) : candidates;
+  return asUnknownFeaturedWarrior(ordered[0] ?? null);
+}
+
+function curatedFeaturedWarriorOpening(pool: FeaturedWarrior[], randomize = false) {
+  const basePool = featuredWarriorBasePool(pool);
+  const byKey = new Map(basePool.map((warrior) => [warrior.key, warrior]));
   const selected: FeaturedWarrior[] = [];
 
-  for (const warrior of spectaclePool) {
-    if (selected.length >= FEATURED_WARRIOR_SLOT_COUNT) break;
+  for (const key of FEATURED_WARRIOR_PINNED_KEYS) {
+    const warrior = byKey.get(key);
+    if (warrior && !selected.some((item) => item.key === warrior.key)) {
+      selected.push(warrior);
+    }
+  }
+
+  for (const warrior of basePool) {
+    if (selected.length >= FEATURED_WARRIOR_PINNED_KEYS.length) break;
+    if (!featuredWarriorHasRealAvatar(warrior)) continue;
+    if (selected.some((item) => item.key === warrior.key)) continue;
     selected.push(warrior);
   }
 
-  if (selected.length >= FEATURED_WARRIOR_SLOT_COUNT) {
-    return selected.slice(0, FEATURED_WARRIOR_SLOT_COUNT);
-  }
+  selected.push(
+    pickUnknownFeaturedWarrior(
+      basePool,
+      new Set(selected.map((warrior) => warrior.key)),
+      null,
+      randomize
+    )
+  );
 
-  return deterministicFeaturedWarriorOpening(uniquePool)
-    .filter(featuredWarriorIsSpectacleReady)
-    .slice(0, FEATURED_WARRIOR_SLOT_COUNT);
+  return selected.slice(0, FEATURED_WARRIOR_SLOT_COUNT);
 }
-
-
 
 function featuredWarriorImageSrc(warrior: FeaturedWarrior) {
   const identity = normalizeFeaturedWarriorKey(warrior.lookupName || warrior.name);
 
   if (identity === "grimer") {
-    return avatarCardUrlForUser(GRIMER_UID, "Grimer");
+    return avatarCardUrlForUser(GRIMER_UID, AI_GRIMER_NAME);
+  }
+
+  if (identity === "the-ai-scribe" || identity === "ai-scribe") {
+    return avatarCardUrlForUser(AI_SCRIBE_UID, AI_CONCIERGE_NAME);
   }
 
   if (identity === "moose") {
@@ -589,7 +607,7 @@ function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
     [pool]
   );
 
-  const openingLineup = deterministicFeaturedWarriorOpening(pool);
+  const openingLineup = curatedFeaturedWarriorOpening(pool, false);
   const [visibleWarriors, setVisibleWarriors] = useState(openingLineup);
   const [featuredWarriorsReady, setFeaturedWarriorsReady] = useState(false);
   const [fadingSlot, setFadingSlot] = useState<number | null>(null);
@@ -634,7 +652,7 @@ function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
     setFadingSlot(null);
     setFeaturedWarriorsReady(false);
 
-    const initialLineup = randomFeaturedWarriorOpening(poolRef.current);
+    const initialLineup = curatedFeaturedWarriorOpening(poolRef.current, true);
     initialLineup.forEach((warrior, index) => {
       lastWarriorBySlotRef.current[index] = warrior.key;
     });
@@ -668,39 +686,18 @@ function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
     let disposed = false;
 
     const pickSlot = () => {
-      const slots = Array.from({ length: FEATURED_WARRIOR_SLOT_COUNT }, (_, index) => index);
-      const eligibleSlots = slots.filter((slot) => slot !== lastChangedSlotRef.current);
-      const slot = eligibleSlots[Math.floor(Math.random() * eligibleSlots.length)] ?? 0;
-
+      const slot = FEATURED_WARRIOR_SLOT_COUNT - 1;
       lastChangedSlotRef.current = slot;
-
       return slot;
     };
 
 
     const pickNextWarrior = (slot: number) => {
       const current = visibleWarriorsRef.current;
-      const activePool = poolRef.current;
-      const outgoing = current[slot];
       const currentKeys = new Set(current.map((warrior) => warrior.key));
       const previousSlotKey = lastWarriorBySlotRef.current[slot];
 
-      const freshCandidates = activePool.filter(
-        (warrior) => !currentKeys.has(warrior.key) && warrior.key !== previousSlotKey
-      );
-
-      const fallbackCandidates = activePool.filter(
-        (warrior) => warrior.key !== outgoing?.key && warrior.key !== previousSlotKey
-      );
-
-      const candidates = freshCandidates.length > 0 ? freshCandidates : fallbackCandidates;
-      const finalCandidates = candidates.filter(featuredWarriorIsSpectacleReady);
-
-      if (finalCandidates.length === 0) {
-        return null;
-      }
-
-      return finalCandidates[Math.floor(Math.random() * finalCandidates.length)] ?? null;
+      return pickUnknownFeaturedWarrior(poolRef.current, currentKeys, previousSlotKey, true);
     };
 
     const rotateOnce = () => {
@@ -858,13 +855,17 @@ function FeaturedWarriorSubtitle({ warrior }: { warrior: FeaturedWarrior }) {
   const subtitle =
     identity === "zodiac"
       ? "Chaos Champion"
-      : identity === "grimer"
-        ? "AI Advisor"
-        : identity === "moose" && warrior.role.startsWith("Rank #")
-          ? warrior.role
-          : identity === "moose"
-            ? "Ranked Warrior"
-            : warrior.role;
+      : identity === "the-ai-scribe" || identity === "ai-scribe"
+        ? "AI Scribe"
+        : warrior.isPlaceholder
+          ? "Mystery Warrior"
+          : identity === "grimer"
+            ? "AI Advisor"
+            : identity === "moose" && warrior.role.startsWith("Rank #")
+              ? warrior.role
+              : identity === "moose"
+                ? "Ranked Warrior"
+                : warrior.role;
 
   return (
     <div className="mt-0.5 text-[10px] uppercase tracking-[0.18em] text-slate-300">

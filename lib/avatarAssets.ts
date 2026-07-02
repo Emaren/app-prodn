@@ -22,7 +22,8 @@ const NAME_TARGETS: Record<string, string> = {
   julio: "julio-alvarez",
   "julio alvarez": "julio-alvarez",
   sniper: "sniper",
-  "the ai scribe": "sniper",
+  "the ai scribe": "silhouette",
+  "ai scribe": "silhouette",
   grimer: "grimer",
 
   myth: "myth",
