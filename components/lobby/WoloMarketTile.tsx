@@ -12,6 +12,7 @@ type WoloMarketTileProps = LegacyProps & {
   className?: string;
   extreme?: boolean;
   mode?: string;
+  surface?: string;
   variant?: string;
   view?: string;
   viewMode?: string;
@@ -28,7 +29,8 @@ export default function WoloMarketTile(props: WoloMarketTileProps) {
     isExtreme(props.view) ||
     isExtreme(props.viewMode) ||
     isExtreme(props.activeView) ||
-    isExtreme(props.mode);
+    isExtreme(props.mode) ||
+    isExtreme(props.surface);
 
   if (extreme) {
     return <WoloMarketExtremeTile className={props.className} />;
