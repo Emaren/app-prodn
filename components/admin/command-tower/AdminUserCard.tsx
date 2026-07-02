@@ -11,6 +11,7 @@ import {
   Gift,
   Medal,
   MessageSquareMore,
+  Palette,
   ScrollText,
   Shield,
   Swords,
@@ -35,9 +36,15 @@ import {
 } from "@/components/admin/command-tower/utils";
 import CommunityBadgePill from "@/components/contact/CommunityBadgePill";
 import TimeDisplayText from "@/components/time/TimeDisplayText";
+import { ADMIN_TILE_VIEW_SURFACES } from "@/lib/adminTileViewAnalytics";
 import { DEFAULT_BADGE_LABELS } from "@/lib/communityHonors";
 import { allChampionTitles, designationTitles } from "@/lib/champions/titles";
-import { getTileViewMode, type TileViewMode } from "@/lib/tileViewPreferences";
+import {
+  getTileViewMode,
+  hasExplicitTileViewPreference,
+  TILE_VIEW_MODES,
+  type TileViewMode,
+} from "@/lib/tileViewPreferences";
 
 type AdminUserCardProps = {
   user: AdminUserRow;
@@ -141,10 +148,17 @@ export default function AdminUserCard({
   const [journeyExpanded, setJourneyExpanded] = useState(false);
   const latestPath = findLatestPageView(renderedActions);
   const latestStakingViewSelection = findLatestStakingViewSelection(renderedActions);
-  const communityLobbyView = getTileViewMode(
-    user.appearance?.tileViewPreferences,
-    "community_lobby"
-  );
+  const viewPreferences = ADMIN_TILE_VIEW_SURFACES.map((surface) => ({
+    ...surface,
+    mode: getTileViewMode(
+      user.appearance?.tileViewPreferences,
+      surface.tileKey
+    ),
+    explicit: hasExplicitTileViewPreference(
+      user.appearance?.tileViewPreferences,
+      surface.tileKey
+    ),
+  }));
   const personalColorTagCount = Object.values(
     user.scheduledMatchPreferenceStats.colorTagCounts
   ).reduce((sum, count) => sum + count, 0);
@@ -283,11 +297,87 @@ export default function AdminUserCard({
         </div>
       </div>
 
+      <section className="mt-5 overflow-hidden rounded-[1.2rem] border border-amber-200/14 bg-[linear-gradient(135deg,rgba(251,191,36,0.055),rgba(255,255,255,0.025)_42%,rgba(2,6,23,0.28))]">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/8 px-4 py-3">
+          <div className="flex items-center gap-2 text-xs uppercase tracking-[0.25em] text-slate-500">
+            <Palette className="h-4 w-4 text-amber-100/65" />
+            View Preferences
+          </div>
+          <div className="text-[11px] text-slate-500">
+            <AdminTime
+              value={user.appearance?.updatedAt ?? null}
+              emptyValue="No saved appearance yet"
+            />
+          </div>
+        </div>
+
+        <div className="grid gap-px bg-white/8 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="bg-slate-950/88 px-4 py-4">
+            <div className="text-[10px] uppercase tracking-[0.22em] text-slate-500">
+              Presentation
+            </div>
+            <div className="mt-2 text-sm font-semibold capitalize text-white">
+              {user.appearance?.themeKey ?? "midnight"} ·{" "}
+              {user.appearance?.viewMode ?? "field"}
+            </div>
+            <div className="mt-1 text-xs text-slate-500">
+              {user.appearance?.timeDisplayMode ?? "local"} ·{" "}
+              {user.appearance?.timeClockMode ?? "24h"}
+            </div>
+          </div>
+
+          {viewPreferences.map((preference) => (
+            <div key={preference.tileKey} className="bg-slate-950/88 px-4 py-4">
+              <div className="flex items-center justify-between gap-2">
+                <div className="truncate text-[10px] uppercase tracking-[0.2em] text-slate-500">
+                  {preference.label}
+                </div>
+                <span
+                  className={`shrink-0 rounded-full border px-2 py-0.5 text-[9px] uppercase tracking-[0.16em] ${
+                    preference.explicit
+                      ? "border-emerald-300/18 bg-emerald-400/[0.07] text-emerald-100/75"
+                      : "border-white/8 bg-white/[0.035] text-slate-500"
+                  }`}
+                >
+                  {preference.explicit ? "Chosen" : "Default"}
+                </span>
+              </div>
+              <div className="mt-3 grid grid-cols-3 rounded-full border border-white/8 bg-black/25 p-1">
+                {TILE_VIEW_MODES.map((mode) => (
+                  <span
+                    key={mode}
+                    className={`rounded-full px-1.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.14em] ${
+                      preference.mode === mode
+                        ? "bg-amber-300 text-slate-950 shadow-[0_5px_16px_rgba(251,191,36,0.16)]"
+                        : "text-slate-600"
+                    }`}
+                    title={TILE_VIEW_MODE_LABELS[mode]}
+                  >
+                    {mode[0]}
+                  </span>
+                ))}
+              </div>
+              <div className="mt-2 text-xs font-medium text-slate-300">
+                {formatTileViewMode(preference.mode)}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex flex-wrap gap-x-5 gap-y-2 border-t border-white/8 px-4 py-3 text-[11px] text-slate-500">
+          <span>Schedule · {scheduleOrgLabel}</span>
+          <span>
+            Staking ·{" "}
+            {latestStakingViewSelection?.label || "No view selected"}
+          </span>
+        </div>
+      </section>
+
       <div className="mt-5 grid gap-4 xl:grid-cols-[1.05fr_0.95fr_0.95fr]">
         <section className="rounded-2xl border border-white/8 bg-white/5 p-4">
           <div className="flex items-center gap-2 text-xs uppercase tracking-[0.25em] text-slate-500">
             <Shield className="h-4 w-4" />
-            Identity + Experience
+            Identity + Activity
           </div>
           <dl className="mt-4 grid gap-3 text-sm text-slate-200 md:grid-cols-2">
             <IdentityRow label="UID" value={user.uid} />
@@ -296,38 +386,6 @@ export default function AdminUserCard({
             <IdentityRow label="Steam ID" value={user.steamId || "—"} />
             <IdentityRow label="Created" value={<AdminTime value={user.createdAt} />} />
             <IdentityRow label="Last Seen" value={<AdminTime value={user.lastSeen} emptyValue="Never" />} />
-            <IdentityRow
-              label="Theme / Skin"
-              value={
-                user.appearance
-                  ? `${user.appearance.themeKey} / ${user.appearance.viewMode} / ${user.appearance.timeDisplayMode} / ${user.appearance.timeClockMode}`
-                  : "midnight / steel"
-              }
-            />
-            <IdentityRow
-              label="Community Lobby"
-              value={formatTileViewMode(communityLobbyView)}
-            />
-            <IdentityRow label="Schedule Org" value={scheduleOrgLabel} />
-            <IdentityRow
-              label="Theme Updated"
-              value={<AdminTime value={user.appearance?.updatedAt ?? null} emptyValue="Never" />}
-            />
-            <IdentityRow
-              label="Staking View"
-              value={
-                latestStakingViewSelection ? (
-                  <span>
-                    <span className="block text-white">{latestStakingViewSelection.label || "Staking view selected"}</span>
-                    <span className="mt-1 block text-[11px] text-slate-500">
-                      <AdminTime value={latestStakingViewSelection.createdAt} />
-                    </span>
-                  </span>
-                ) : (
-                  "No staking view yet"
-                )
-              }
-            />
             <IdentityRow label="Last Route" value={latestPath || "No tracked page yet"} />
             <IdentityRow label="Last Activity" value={<AdminTime value={user.lastActivityAt} emptyValue="Never" />} />
           </dl>

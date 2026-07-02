@@ -24,18 +24,24 @@ Forum view is stored under the shared `forum` tile-view preference. Signed-in
 users receive the existing account-backed appearance persistence; visitors use
 the same local preference store.
 
-- Basic: `65rem`. Preserves the original focused three-column composition and
-  centered `FORUM / WAR ROOM` hero.
+- Basic: `65rem`. A disciplined, fast three-column index with the centered
+  `FORUM / WAR ROOM` hero and compact thread cards. Its dedicated thread route
+  becomes a clean single reading column with only the article, reactions, and
+  replies.
 - Advanced: `75rem`. Default. Adds the Wolo Chronicles lead, room signals,
-  excerpts, and field-manual context.
-- Extreme: `96rem`. Currently uses the Advanced feature kit at the wider
-  power-user width. A distinct Extreme information architecture is intentionally
-  deferred.
+  excerpts, field-manual context, and a premium dedicated thread page with an
+  editorial article card, thread record, related-dispatch rail, and reply table.
+- Extreme: `96rem`. A separate unfolded-edition information architecture. The
+  index becomes a full-width newspaper/comic composition with a complete lead
+  article, reply pull quote, dispatch wire, feature stories, illustrated middle,
+  and back page. Article copy is visible without opening a thread. Dedicated
+  Extreme thread routes use a large masthead, multi-column body, related-story
+  strip, and conversation rail.
 
 The B/A/E control belongs conspicuously in the forum hero. A user choice must
 survive reloads and signed-in appearance hydration.
 
-## Reader behavior
+## Thread behavior
 
 The editorial archive is defined in `lib/forum.ts` and seeds the shared ledger
 when the forum tables are available.
@@ -47,10 +53,23 @@ Current reader interactions:
 - Featured, My Feed, Bookmarks, My Threads, Mentions, and Watched shelves
 - local read state and Mark All Read
 - local guest bookmarks
-- direct-linked thread readers through `?thread=<slug>`
+- dedicated, shareable thread routes at `/forum/thread/<slug>`
 - copy-link control
 - Chronicle replies and reaction totals
 - clear empty states with a path back to the full room
+
+Thread titles navigate through the Next.js client router to the dedicated route;
+they never open a dialog, veil, quick reader, or grayscale layer. Browser Back
+returns to the forum index, and Next.js route prefetching keeps the transition
+fast. Legacy `?thread=<slug>` links redirect to the canonical dedicated route.
+
+Basic, Advanced, and Extreme control information density and composition. They
+do not change the meaning of a title click. A future Quick Peek may reuse an
+in-flow primitive only behind a separately labeled, explicit control; it must
+never become the default title action.
+
+The new-thread composer remains an intentional modal because it is a bounded
+creation task rather than a reading surface.
 
 Do not replace the editorial archive with empty database state. The authored
 threads are the permanent founding layer of the room.
@@ -134,6 +153,7 @@ Local code gate:
 npx prisma generate
 npx tsc --noEmit --pretty false
 node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/forum-war-room.test.mts
+node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/admin-tile-view-analytics.test.mts
 npm run build
 ```
 
@@ -143,6 +163,10 @@ Browser verification should cover:
 - Basic persistence after reload
 - no horizontal overflow at a `390px` mobile viewport
 - search result and empty-state behavior
-- direct thread URL opening and closing
+- client-side navigation from index to `/forum/thread/<slug>`
+- legacy `?thread=<slug>` redirect to the canonical route
+- no reader dialog, page veil, body scroll lock, or grayscale treatment
+- Basic single-column, Advanced editorial, and Extreme newspaper thread layouts
+- Extreme index article copy visible before any thread click
 - read-only copy when `ledgerAvailable=false`
 - publishing, reply, bookmark, and reaction state after migration

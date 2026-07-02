@@ -72,6 +72,7 @@ function mergeUsersWithLiveData(users: AdminUserRow[], liveRows: AdminUsersLiveP
       userUnreadCount: live.userUnreadCount,
       lastInboxReadAt: live.lastInboxReadAt,
       adminLastInboxReadAt: live.adminLastInboxReadAt,
+      appearance: live.appearance,
       recentActionsTotalCount: live.recentActionsTotalCount,
       lastActivityAt: live.lastActivityAt,
       journeySummary: live.journeySummary,

@@ -201,6 +201,8 @@ export type AdminOverview = {
     basicPercent: number;
     advancedPercent: number;
     extremePercent: number;
+    explicitCount: number;
+    defaultCount: number;
     preferredMode: TileViewMode;
   }>;
   scheduledPreferenceUsage: {
@@ -341,6 +343,7 @@ export type AdminUserLiveRow = Pick<
   | "userUnreadCount"
   | "lastInboxReadAt"
   | "adminLastInboxReadAt"
+  | "appearance"
   | "recentActions"
   | "recentActionsTotalCount"
   | "lastActivityAt"

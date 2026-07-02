@@ -54,6 +54,13 @@ export function getTileViewMode(
   return preferences?.[tileKey] ?? DEFAULT_TILE_VIEW_MODES[tileKey] ?? "basic";
 }
 
+export function hasExplicitTileViewPreference(
+  preferences: TileViewPreferences | null | undefined,
+  tileKey: TileViewKey
+) {
+  return isTileViewMode(preferences?.[tileKey]);
+}
+
 export function setTileViewPreference(
   preferences: TileViewPreferences | null | undefined,
   tileKey: TileViewKey,

@@ -18,7 +18,7 @@ import {
   SCHEDULED_MATCH_COLOR_TAGS,
   normalizeScheduledMatchColorTag,
 } from "@/lib/scheduledMatchPreferences";
-import { getTileViewMode } from "@/lib/tileViewPreferences";
+import { buildAdminTileViewBreakdown } from "@/lib/adminTileViewAnalytics";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -294,18 +294,6 @@ export async function GET(request: NextRequest) {
       })
     );
 
-    const communityLobbyModes = rows.map((user) =>
-      getTileViewMode(user.appearance?.tileViewPreferences, "community_lobby")
-    );
-    const communityLobbyBasicCount = communityLobbyModes.filter((mode) => mode === "basic").length;
-    const communityLobbyAdvancedCount = communityLobbyModes.filter((mode) => mode === "advanced").length;
-    const communityLobbyExtremeCount = communityLobbyModes.filter((mode) => mode === "extreme").length;
-    const communityLobbyBasicPercent =
-      rows.length > 0 ? Math.round((communityLobbyBasicCount / rows.length) * 100) : 0;
-    const communityLobbyAdvancedPercent =
-      rows.length > 0 ? Math.round((communityLobbyAdvancedCount / rows.length) * 100) : 0;
-    const communityLobbyExtremePercent =
-      rows.length > 0 ? Math.max(0, 100 - communityLobbyBasicPercent - communityLobbyAdvancedPercent) : 0;
     const scheduledPreferenceUsage = {
       favoriteCount: 0,
       bookmarkedCount: 0,
@@ -364,25 +352,7 @@ export async function GET(request: NextRequest) {
           viewMode,
           count: rows.filter((user) => user.appearance?.viewMode === viewMode).length,
         })),
-        tileViewBreakdown: [
-          {
-            tileKey: "community_lobby",
-            label: "Community Lobby",
-            basicCount: communityLobbyBasicCount,
-            advancedCount: communityLobbyAdvancedCount,
-            extremeCount: communityLobbyExtremeCount,
-            basicPercent: communityLobbyBasicPercent,
-            advancedPercent: communityLobbyAdvancedPercent,
-            extremePercent: communityLobbyExtremePercent,
-            preferredMode:
-              communityLobbyExtremeCount >= communityLobbyAdvancedCount &&
-              communityLobbyExtremeCount >= communityLobbyBasicCount
-                ? "extreme"
-                : communityLobbyAdvancedCount > communityLobbyBasicCount
-                  ? "advanced"
-                  : "basic",
-          },
-        ],
+        tileViewBreakdown: buildAdminTileViewBreakdown(rows),
         scheduledPreferenceUsage: {
           favoriteCount: scheduledPreferenceUsage.favoriteCount,
           bookmarkedCount: scheduledPreferenceUsage.bookmarkedCount,
@@ -398,6 +368,7 @@ export async function GET(request: NextRequest) {
         userUnreadCount: row.userUnreadCount,
         lastInboxReadAt: row.lastInboxReadAt,
         adminLastInboxReadAt: row.adminLastInboxReadAt,
+        appearance: row.appearance,
         recentActions: row.recentActions,
         recentActionsTotalCount: row.recentActionsTotalCount,
         lastActivityAt: row.lastActivityAt,

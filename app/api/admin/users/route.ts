@@ -9,7 +9,7 @@ import {
   loadAppearancePreferenceMap,
   loadRecentActivityMap,
 } from "@/lib/userExperience";
-import { getTileViewMode } from "@/lib/tileViewPreferences";
+import { buildAdminTileViewBreakdown } from "@/lib/adminTileViewAnalytics";
 import { loadPendingWoloClaimsForAdmin, normalizePendingWoloClaimName } from "@/lib/pendingWoloClaims";
 import {
   isBetStakeIntentCountableStatus,
@@ -1290,19 +1290,6 @@ export async function GET(request: NextRequest) {
       rows: visibleMarketRailRows,
     };
 
-    const communityLobbyModes = userRows.map((user) =>
-      getTileViewMode(user.appearance?.tileViewPreferences, "community_lobby")
-    );
-    const communityLobbyBasicCount = communityLobbyModes.filter((mode) => mode === "basic").length;
-    const communityLobbyAdvancedCount = communityLobbyModes.filter((mode) => mode === "advanced").length;
-    const communityLobbyExtremeCount = communityLobbyModes.filter((mode) => mode === "extreme").length;
-    const communityLobbyBasicPercent =
-      userRows.length > 0 ? Math.round((communityLobbyBasicCount / userRows.length) * 100) : 0;
-    const communityLobbyAdvancedPercent =
-      userRows.length > 0 ? Math.round((communityLobbyAdvancedCount / userRows.length) * 100) : 0;
-    const communityLobbyExtremePercent =
-      userRows.length > 0 ? Math.max(0, 100 - communityLobbyBasicPercent - communityLobbyAdvancedPercent) : 0;
-
     const overview = {
       totalUsers: userRows.length,
       activeUsers24h: userRows.filter((user) => {
@@ -1330,25 +1317,7 @@ export async function GET(request: NextRequest) {
         viewMode,
         count: userRows.filter((user) => user.appearance?.viewMode === viewMode).length,
       })),
-      tileViewBreakdown: [
-        {
-          tileKey: "community_lobby",
-          label: "Community Lobby",
-          basicCount: communityLobbyBasicCount,
-          advancedCount: communityLobbyAdvancedCount,
-          extremeCount: communityLobbyExtremeCount,
-          basicPercent: communityLobbyBasicPercent,
-          advancedPercent: communityLobbyAdvancedPercent,
-          extremePercent: communityLobbyExtremePercent,
-          preferredMode:
-            communityLobbyExtremeCount >= communityLobbyAdvancedCount &&
-            communityLobbyExtremeCount >= communityLobbyBasicCount
-              ? "extreme"
-              : communityLobbyAdvancedCount > communityLobbyBasicCount
-                ? "advanced"
-                : "basic",
-        },
-      ],
+      tileViewBreakdown: buildAdminTileViewBreakdown(userRows),
       scheduledPreferenceUsage,
     };
 

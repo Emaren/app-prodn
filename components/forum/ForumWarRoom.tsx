@@ -33,6 +33,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   useCallback,
   useEffect,
@@ -315,23 +316,13 @@ function ForumHero({
               <Crown className="h-4 w-4" />
               AoE2WAR
             </div>
-            <h1 className="mt-3 font-serif text-5xl font-semibold uppercase tracking-[0.12em] text-amber-50 sm:text-7xl">
+            <h1 className="mt-3 font-serif text-5xl font-semibold uppercase tracking-[0.12em] text-amber-50 sm:text-6xl 2xl:text-7xl">
               Forum
             </h1>
             <p className="mt-4 max-w-xl text-sm leading-7 text-slate-300">
               The War Room for people who know a replay is evidence, “one more game”
               is not a unit of time, and every great rivalry deserves a written record.
             </p>
-            <div className="mt-5 flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-slate-500">
-              <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5">
-                Advanced view
-              </span>
-              {viewMode === "extreme" ? (
-                <span className="rounded-full border border-sky-200/14 bg-sky-300/[0.06] px-3 py-1.5 text-sky-100/70">
-                  Extreme width · advanced kit
-                </span>
-              ) : null}
-            </div>
           </div>
 
           <button
@@ -558,6 +549,429 @@ function RecentThreadCard({
   );
 }
 
+function StorySignals({ thread }: { thread: ForumThreadView }) {
+  return (
+    <div className="flex flex-wrap items-center gap-3 text-[10px] uppercase tracking-[0.18em] text-slate-500">
+      <span>{thread.author.displayName}</span>
+      <span>{formatForumDate(thread.updatedAt)}</span>
+      <span className="inline-flex items-center gap-1">
+        <MessageSquare className="h-3 w-3" />
+        {thread.replyCount}
+      </span>
+      <span className="inline-flex items-center gap-1">
+        <Eye className="h-3 w-3" />
+        {formatCount(thread.viewCount)}
+      </span>
+    </div>
+  );
+}
+
+function ExtremeStoryCard({
+  thread,
+  variant,
+  issue,
+  onBookmark,
+}: {
+  thread: ForumThreadView;
+  variant: "lead" | "feature" | "panel" | "wire";
+  issue: number;
+  onBookmark: () => void;
+}) {
+  const paragraphs = thread.body.split(/\n\s*\n/);
+  const visibleParagraphs =
+    variant === "lead"
+      ? paragraphs
+      : variant === "feature"
+        ? paragraphs.slice(0, 2)
+        : paragraphs.slice(0, 1);
+  const titleClass =
+    variant === "lead"
+      ? "text-4xl sm:text-6xl xl:text-7xl leading-[0.95]"
+      : variant === "feature"
+        ? "text-3xl sm:text-4xl leading-[1.02]"
+        : variant === "panel"
+          ? "text-2xl leading-[1.05]"
+          : "text-xl leading-[1.08]";
+
+  return (
+    <article
+      className={`group relative overflow-hidden border border-white/11 bg-[linear-gradient(145deg,rgba(15,25,40,0.92),rgba(3,8,15,0.96))] ${
+        variant === "lead"
+          ? "rounded-[1.2rem] px-5 py-6 sm:px-8 sm:py-8"
+          : "rounded-[1rem] p-4 sm:p-5"
+      }`}
+    >
+      <div className="absolute right-3 top-3 font-serif text-5xl text-white/[0.025]">
+        {String(issue).padStart(2, "0")}
+      </div>
+      <div className="relative">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2 text-[9px] uppercase tracking-[0.26em] text-amber-100/58">
+            {thread.isPinned ? <Pin className="h-3.5 w-3.5" /> : null}
+            {thread.tag}
+            {thread.isHot ? <Flame className="h-3.5 w-3.5 text-orange-300" /> : null}
+          </div>
+          <button
+            type="button"
+            onClick={onBookmark}
+            className={`rounded-full border p-2 transition ${
+              thread.bookmarked
+                ? "border-amber-200/24 bg-amber-300/10 text-amber-100"
+                : "border-white/8 bg-black/20 text-slate-500 hover:text-white"
+            }`}
+            aria-label={thread.bookmarked ? "Remove bookmark" : "Bookmark thread"}
+          >
+            <Bookmark className={`h-3.5 w-3.5 ${thread.bookmarked ? "fill-current" : ""}`} />
+          </button>
+        </div>
+
+        <Link href={`/forum/thread/${thread.slug}`} className="block">
+          <h2
+            className={`mt-4 max-w-5xl font-serif font-semibold text-amber-50 transition group-hover:text-white ${titleClass}`}
+          >
+            {thread.title}
+          </h2>
+        </Link>
+
+        {variant !== "lead" ? (
+          <p className="mt-3 text-sm leading-6 text-slate-400">{thread.excerpt}</p>
+        ) : (
+          <p className="mt-5 max-w-4xl text-lg leading-8 text-slate-300">{thread.excerpt}</p>
+        )}
+
+        <div
+          className={`mt-5 text-slate-300 ${
+            variant === "lead"
+              ? "gap-8 text-[15px] leading-8 lg:columns-2"
+              : "space-y-3 text-sm leading-7"
+          }`}
+        >
+          {visibleParagraphs.map((paragraph, index) => (
+            <p
+              key={paragraph}
+              className={`break-inside-avoid ${
+                variant === "lead" && index === 0
+                  ? "first-letter:float-left first-letter:mr-2 first-letter:mt-2 first-letter:font-serif first-letter:text-6xl first-letter:leading-[0.75] first-letter:text-amber-200"
+                  : ""
+              }`}
+            >
+              {paragraph}
+            </p>
+          ))}
+        </div>
+
+        {variant === "lead" && thread.posts[0] ? (
+          <blockquote className="mt-6 border-l-2 border-amber-200/35 pl-4 font-serif text-lg italic leading-7 text-amber-50/80">
+            “{thread.posts[0].body}”
+            <footer className="mt-2 font-sans text-[9px] not-italic uppercase tracking-[0.22em] text-slate-500">
+              {thread.posts[0].author.displayName} · From the long table
+            </footer>
+          </blockquote>
+        ) : null}
+
+        <div className="mt-5 flex flex-wrap items-end justify-between gap-4 border-t border-white/8 pt-4">
+          <StorySignals thread={thread} />
+          <Link
+            href={`/forum/thread/${thread.slug}`}
+            className="inline-flex items-center gap-1 text-xs font-semibold text-amber-100 transition hover:text-amber-50"
+          >
+            Enter discussion
+            <ChevronRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function ExtremeForumFrontPage({
+  threads,
+  channels,
+  selectedTab,
+  selectedChannel,
+  shelf,
+  query,
+  ledgerOnline,
+  snapshotLoading,
+  viewMode,
+  onViewModeChange,
+  onSelectTab,
+  onSelectChannel,
+  onSelectShelf,
+  onQueryChange,
+  onReset,
+  onCreate,
+  onBookmark,
+}: {
+  threads: ForumThreadView[];
+  channels: ForumSnapshot["channels"];
+  selectedTab: ForumTabKey;
+  selectedChannel: ForumChannelKey | null;
+  shelf: ForumShelf;
+  query: string;
+  ledgerOnline: boolean;
+  snapshotLoading: boolean;
+  viewMode: TileViewMode;
+  onViewModeChange: (mode: TileViewMode) => void;
+  onSelectTab: (tab: ForumTabKey) => void;
+  onSelectChannel: (channel: ForumChannelKey) => void;
+  onSelectShelf: (shelf: ForumShelf) => void;
+  onQueryChange: (value: string) => void;
+  onReset: () => void;
+  onCreate: () => void;
+  onBookmark: (thread: ForumThreadView) => void;
+}) {
+  const lead = threads[0] ?? null;
+  const wire = threads.slice(1, 4);
+  const features = threads.slice(4, 6);
+  const panels = threads.slice(6, 10);
+  const backPage = threads.slice(10);
+
+  return (
+    <main className="overflow-x-hidden py-1 text-white sm:py-2">
+      <header className="overflow-hidden rounded-[1.3rem] border border-amber-200/18 bg-[radial-gradient(circle_at_50%_-30%,rgba(251,191,36,0.18),transparent_40%),linear-gradient(145deg,#14100b,#08111d_55%,#04070d)]">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
+          <div className="text-[9px] uppercase tracking-[0.3em] text-slate-500">
+            Vol. II · War Room Edition · Est. 1999
+          </div>
+          <ForumModeToggle viewMode={viewMode} onChange={onViewModeChange} />
+          <div
+            className={`inline-flex items-center gap-2 text-[9px] uppercase tracking-[0.22em] ${
+              ledgerOnline ? "text-emerald-100/65" : "text-amber-100/60"
+            }`}
+          >
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${
+                ledgerOnline ? "bg-emerald-300" : "bg-amber-300"
+              }`}
+            />
+            {snapshotLoading
+              ? "Checking the ledger"
+              : ledgerOnline
+                ? "Shared ledger"
+                : "Editorial archive"}
+          </div>
+        </div>
+
+        <div className="px-4 py-7 text-center sm:px-7 sm:py-9">
+          <div className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.38em] text-amber-100/62">
+            <Crown className="h-4 w-4" />
+            AoE2WAR
+          </div>
+          <h1 className="mt-2 font-serif text-5xl font-semibold uppercase leading-none tracking-[0.16em] text-amber-50 sm:text-7xl lg:text-8xl">
+            The War Room
+          </h1>
+          <div className="mx-auto mt-4 flex max-w-4xl items-center gap-4 text-[9px] uppercase tracking-[0.26em] text-slate-500">
+            <span className="h-px flex-1 bg-white/10" />
+            Replays are evidence · GG is offered · One more game is not a unit of time
+            <span className="h-px flex-1 bg-white/10" />
+          </div>
+        </div>
+
+        <div className="grid border-t border-white/10 md:grid-cols-[minmax(0,1fr)_auto]">
+          <nav className="overflow-x-auto px-3 py-3 [scrollbar-width:none]">
+            <div className="flex min-w-max gap-2">
+              {FORUM_TABS.map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => onSelectTab(tab.key)}
+                  className={`rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] transition ${
+                    selectedTab === tab.key && !selectedChannel
+                      ? "border-amber-200/34 bg-amber-300/12 text-amber-100"
+                      : "border-white/9 bg-white/[0.025] text-slate-400 hover:text-white"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </nav>
+          <div className="flex items-center gap-2 border-t border-white/8 px-3 py-3 md:border-l md:border-t-0">
+            <SearchField value={query} onChange={onQueryChange} />
+            <button
+              type="button"
+              onClick={onCreate}
+              className="inline-flex h-9 shrink-0 items-center gap-2 rounded-full bg-amber-300 px-3 text-xs font-semibold text-slate-950 transition hover:bg-amber-200"
+            >
+              <MessageSquarePlus className="h-3.5 w-3.5" />
+              Dispatch
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <div className="mt-3 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
+        {channels.map((channel) => (
+          <button
+            key={channel.key}
+            type="button"
+            onClick={() => onSelectChannel(channel.key)}
+            className={`inline-flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-[10px] transition ${
+              selectedChannel === channel.key
+                ? "border-sky-200/24 bg-sky-300/10 text-sky-100"
+                : "border-white/8 bg-black/20 text-slate-500 hover:text-slate-200"
+            }`}
+          >
+            {channel.shortLabel}
+            <span>{channel.count}</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-y border-white/8 px-1 py-2">
+        <div className="flex flex-wrap gap-2">
+          {[
+            ["feed", "Edition"],
+            ["featured", "Front Page"],
+            ["bookmarks", "Saved"],
+            ["mine", "My Dispatches"],
+            ["watched", "Read"],
+          ].map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => onSelectShelf(value as ForumShelf)}
+              className={`px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] transition ${
+                shelf === value ? "text-amber-100" : "text-slate-600 hover:text-slate-300"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className="text-[10px] uppercase tracking-[0.2em] text-slate-600">
+          {threads.length} dispatch{threads.length === 1 ? "" : "es"} on the desk
+        </div>
+      </div>
+
+      {threads.length === 0 ? (
+        <div className="mt-4">
+          <EmptyForumState onReset={onReset} onCreate={onCreate} />
+        </div>
+      ) : (
+        <div className="mt-4 grid gap-3 xl:grid-cols-12">
+          {lead ? (
+            <div className="xl:col-span-8 xl:row-span-2">
+              <ExtremeStoryCard
+                thread={lead}
+                variant="lead"
+                issue={1}
+                onBookmark={() => onBookmark(lead)}
+              />
+            </div>
+          ) : null}
+
+          <aside className="grid gap-3 xl:col-span-4">
+            <div className="flex items-center justify-between border-b border-white/10 px-1 pb-2">
+              <div className="text-[10px] uppercase tracking-[0.28em] text-slate-500">
+                Dispatch Wire
+              </div>
+              <Radio className="h-4 w-4 text-amber-100/55" />
+            </div>
+            {wire.map((thread, index) => (
+              <ExtremeStoryCard
+                key={thread.slug}
+                thread={thread}
+                variant="wire"
+                issue={index + 2}
+                onBookmark={() => onBookmark(thread)}
+              />
+            ))}
+          </aside>
+
+          {features.map((thread, index) => (
+            <div
+              key={thread.slug}
+              className={index % 2 === 0 ? "xl:col-span-5" : "xl:col-span-7"}
+            >
+              <ExtremeStoryCard
+                thread={thread}
+                variant="feature"
+                issue={index + 5}
+                onBookmark={() => onBookmark(thread)}
+              />
+            </div>
+          ))}
+
+          {panels.length > 0 ? (
+            <section className="overflow-hidden rounded-[1rem] border border-white/10 bg-black/18 p-2 xl:col-span-12">
+              <div className="flex items-center justify-between px-2 py-2">
+                <div className="text-[10px] uppercase tracking-[0.3em] text-slate-500">
+                  The Illustrated Middle
+                </div>
+                <div className="text-[9px] uppercase tracking-[0.22em] text-amber-100/50">
+                  Builds · Maps · Mistakes · Recovery
+                </div>
+              </div>
+              <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+                {panels.map((thread, index) => (
+                  <ExtremeStoryCard
+                    key={thread.slug}
+                    thread={thread}
+                    variant="panel"
+                    issue={index + 7}
+                    onBookmark={() => onBookmark(thread)}
+                  />
+                ))}
+              </div>
+            </section>
+          ) : null}
+
+          {backPage.length > 0 ? (
+            <section className="grid gap-3 md:grid-cols-2 xl:col-span-12 xl:grid-cols-3">
+              {backPage.map((thread, index) => (
+                <ExtremeStoryCard
+                  key={thread.slug}
+                  thread={thread}
+                  variant="wire"
+                  issue={index + 11}
+                  onBookmark={() => onBookmark(thread)}
+                />
+              ))}
+            </section>
+          ) : null}
+        </div>
+      )}
+
+      <section className="mt-4 grid gap-px overflow-hidden rounded-[1rem] border border-white/10 bg-white/10 sm:grid-cols-3">
+        {[
+          {
+            href: "/game-stats",
+            label: "Replay Desk",
+            body: "The timestamp beats the speech.",
+            Icon: BookOpen,
+          },
+          {
+            href: "/champions",
+            label: "Crown Office",
+            body: "The open throne has a name.",
+            Icon: Crown,
+          },
+          {
+            href: "/wolo",
+            label: "WOLO Ledger",
+            body: "The economy behind the war.",
+            Icon: Swords,
+          },
+        ].map(({ href, label, body, Icon }) => (
+          <Link
+            key={href}
+            href={href}
+            className="flex items-center gap-3 bg-[#07101b] px-4 py-4 transition hover:bg-[#0b1726]"
+          >
+            <Icon className="h-6 w-6 text-amber-100" />
+            <div>
+              <div className="text-sm font-semibold text-white">{label}</div>
+              <div className="mt-1 text-xs text-slate-500">{body}</div>
+            </div>
+          </Link>
+        ))}
+      </section>
+    </main>
+  );
+}
+
 function MiniStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-[1rem] border border-white/8 bg-black/22 px-3 py-3">
@@ -603,8 +1017,12 @@ function EmptyForumState({
   );
 }
 
-function ThreadDialog({
+// Kept as a compact in-flow primitive for a future explicit Quick Peek control.
+// It is intentionally not connected to title clicks or any default forum path.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function ThreadReader({
   thread,
+  viewMode,
   authenticated,
   ledgerOnline,
   pendingAction,
@@ -615,6 +1033,7 @@ function ThreadDialog({
   onSignIn,
 }: {
   thread: ForumThreadView;
+  viewMode: TileViewMode;
   authenticated: boolean;
   ledgerOnline: boolean;
   pendingAction: string | null;
@@ -627,20 +1046,13 @@ function ThreadDialog({
   const [reply, setReply] = useState("");
 
   useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", onKeyDown);
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onKeyDown);
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [onClose]);
+    setReply("");
+  }, [thread.slug]);
 
   const channel = FORUM_CHANNELS.find((entry) => entry.key === thread.channel);
   const canWrite = authenticated && ledgerOnline && thread.id != null && !thread.isLocked;
+  const basic = viewMode === "basic";
+  const extreme = viewMode === "extreme";
 
   async function submitReply(event: FormEvent) {
     event.preventDefault();
@@ -660,230 +1072,242 @@ function ThreadDialog({
     }
   }
 
-  return createPortal(
-    <div className="fixed inset-0 z-[320] flex items-end justify-center sm:items-center sm:p-5">
-      <button
-        type="button"
-        className="absolute inset-0 bg-[#02060f]/82 backdrop-blur-[5px]"
-        onClick={onClose}
-        aria-label="Close thread"
-      />
-      <section
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="forum-thread-title"
-        className="relative flex max-h-[94dvh] w-full max-w-4xl flex-col overflow-hidden rounded-t-[1.75rem] border border-white/12 bg-[linear-gradient(145deg,#0d1828,#050b14_58%,#03070d)] shadow-[0_36px_140px_rgba(0,0,0,0.72)] sm:max-h-[90dvh] sm:rounded-[1.75rem]"
-      >
-        <header className="flex items-center justify-between gap-3 border-b border-white/8 bg-[#07101b]/92 px-4 py-3 backdrop-blur-xl sm:px-6">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.25em] text-amber-100/65">
-              {thread.isPinned ? <Pin className="h-3.5 w-3.5" /> : null}
-              {channel?.label || "War Room"}
-            </div>
-            <div className="mt-1 truncate text-xs text-slate-500">
-              {thread.tag} · {formatForumDate(thread.createdAt)}
-            </div>
+  return (
+    <section
+      role="region"
+      aria-labelledby={`forum-thread-${thread.slug}`}
+      className="scroll-mt-24 overflow-hidden rounded-[1.6rem] border border-amber-200/20 bg-[linear-gradient(145deg,rgba(13,24,40,0.98),rgba(5,11,20,0.98)_58%,rgba(3,7,13,0.98))] shadow-[0_26px_90px_rgba(0,0,0,0.34)]"
+    >
+      <header className="flex items-center justify-between gap-3 border-b border-white/8 bg-[#07101b]/78 px-4 py-3 sm:px-5">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.25em] text-amber-100/65">
+            {thread.isPinned ? <Pin className="h-3.5 w-3.5" /> : null}
+            {channel?.label || "War Room"}
           </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <button
-              type="button"
-              onClick={copyLink}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-slate-400 transition hover:text-white"
-              aria-label="Copy thread link"
-            >
-              <Copy className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={onBookmark}
-              className={`inline-flex h-9 w-9 items-center justify-center rounded-full border transition ${
-                thread.bookmarked
-                  ? "border-amber-200/25 bg-amber-300/12 text-amber-100"
-                  : "border-white/10 bg-white/[0.04] text-slate-400 hover:text-white"
-              }`}
-              aria-label={thread.bookmarked ? "Remove bookmark" : "Bookmark thread"}
-            >
-              <Bookmark
-                className={`h-4 w-4 ${thread.bookmarked ? "fill-current" : ""}`}
-              />
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-slate-400 transition hover:text-white"
-              aria-label="Close thread"
-            >
-              <X className="h-4 w-4" />
-            </button>
+          <div className="mt-1 truncate text-xs text-slate-500">
+            {thread.tag} · {formatForumDate(thread.createdAt)}
           </div>
-        </header>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={copyLink}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-slate-400 transition hover:text-white"
+            aria-label="Copy thread link"
+          >
+            <Copy className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={onBookmark}
+            className={`inline-flex h-9 w-9 items-center justify-center rounded-full border transition ${
+              thread.bookmarked
+                ? "border-amber-200/25 bg-amber-300/12 text-amber-100"
+                : "border-white/10 bg-white/[0.04] text-slate-400 hover:text-white"
+            }`}
+            aria-label={thread.bookmarked ? "Remove bookmark" : "Bookmark thread"}
+          >
+            <Bookmark className={`h-4 w-4 ${thread.bookmarked ? "fill-current" : ""}`} />
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-slate-400 transition hover:text-white"
+            aria-label="Collapse thread"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      </header>
 
-        <div className="overflow-y-auto">
-          <article className="px-5 py-7 sm:px-9 sm:py-9">
-            <div className="flex items-center gap-3">
-              <ThreadAvatar seed={thread.author.displayName} hot={thread.isHot} />
-              <div>
-                <div className="font-semibold text-white">{thread.author.displayName}</div>
+      <div className={extreme ? "2xl:grid 2xl:grid-cols-[minmax(0,1.2fr)_minmax(22rem,0.8fr)]" : ""}>
+        <article className={`${basic ? "px-4 py-5 sm:px-5" : "px-5 py-7 sm:px-8 sm:py-8"}`}>
+          <div className="flex items-center gap-3">
+            <ThreadAvatar
+              seed={thread.author.displayName}
+              hot={thread.isHot}
+              size={basic ? "small" : "standard"}
+            />
+            <div>
+              <div className="font-semibold text-white">{thread.author.displayName}</div>
+              {!basic ? (
                 <div className="mt-0.5 text-xs text-slate-500">{thread.author.role}</div>
-              </div>
+              ) : null}
             </div>
+          </div>
 
-            <h1
-              id="forum-thread-title"
-              className="mt-6 max-w-3xl font-serif text-3xl font-semibold leading-tight text-amber-50 sm:text-5xl"
-            >
-              {thread.title}
-            </h1>
+          <h1
+            id={`forum-thread-${thread.slug}`}
+            className={`max-w-4xl font-serif font-semibold leading-tight text-amber-50 ${
+              basic ? "mt-4 text-2xl sm:text-3xl" : "mt-6 text-3xl sm:text-5xl"
+            }`}
+          >
+            {thread.title}
+          </h1>
+          {!basic ? (
             <p className="mt-4 max-w-3xl text-base leading-7 text-slate-300">
               {thread.excerpt}
             </p>
+          ) : null}
 
-            <div className="mt-7 space-y-5 text-[15px] leading-8 text-slate-200">
-              {thread.body.split(/\n\s*\n/).map((paragraph) => (
-                <p key={paragraph}>{paragraph}</p>
-              ))}
+          <div
+            className={`max-w-4xl space-y-5 text-slate-200 ${
+              basic ? "mt-5 text-sm leading-7" : "mt-7 text-[15px] leading-8"
+            }`}
+          >
+            {thread.body.split(/\n\s*\n/).map((paragraph) => (
+              <p key={paragraph}>{paragraph}</p>
+            ))}
+          </div>
+
+          <div className="mt-7 flex flex-wrap items-center justify-between gap-4 border-y border-white/8 py-4">
+            <div className="flex flex-wrap gap-2">
+              {FORUM_REACTIONS.map((emoji) => {
+                const reaction = thread.reactions.find((entry) => entry.emoji === emoji);
+                return (
+                  <button
+                    key={emoji}
+                    type="button"
+                    onClick={() => onReaction(emoji)}
+                    className={`inline-flex min-h-9 items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition ${
+                      reaction?.viewerReacted
+                        ? "border-amber-200/30 bg-amber-300/12 text-amber-50"
+                        : "border-white/10 bg-white/[0.035] text-slate-300 hover:border-white/20 hover:bg-white/[0.06]"
+                    }`}
+                    aria-label={`React ${emoji}`}
+                  >
+                    <span>{emoji}</span>
+                    <span className="text-xs text-slate-400">{reaction?.count ?? 0}</span>
+                  </button>
+                );
+              })}
             </div>
-
-            <div className="mt-8 flex flex-wrap items-center justify-between gap-4 border-y border-white/8 py-4">
-              <div className="flex flex-wrap gap-2">
-                {FORUM_REACTIONS.map((emoji) => {
-                  const reaction = thread.reactions.find((entry) => entry.emoji === emoji);
-                  return (
-                    <button
-                      key={emoji}
-                      type="button"
-                      onClick={() => onReaction(emoji)}
-                      className={`inline-flex min-h-9 items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition ${
-                        reaction?.viewerReacted
-                          ? "border-amber-200/30 bg-amber-300/12 text-amber-50"
-                          : "border-white/10 bg-white/[0.035] text-slate-300 hover:border-white/20 hover:bg-white/[0.06]"
-                      }`}
-                      aria-label={`React ${emoji}`}
-                    >
-                      <span>{emoji}</span>
-                      <span className="text-xs text-slate-400">{reaction?.count ?? 0}</span>
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="flex items-center gap-4 text-xs text-slate-500">
-                <span className="inline-flex items-center gap-1">
-                  <Eye className="h-3.5 w-3.5" />
-                  {formatCount(thread.viewCount)}
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  <MessageSquare className="h-3.5 w-3.5" />
-                  {thread.replyCount}
-                </span>
-              </div>
+            <div className="flex items-center gap-4 text-xs text-slate-500">
+              <span className="inline-flex items-center gap-1">
+                <Eye className="h-3.5 w-3.5" />
+                {formatCount(thread.viewCount)}
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <MessageSquare className="h-3.5 w-3.5" />
+                {thread.replyCount}
+              </span>
             </div>
-          </article>
+          </div>
+        </article>
 
-          <section className="border-t border-white/8 bg-black/16 px-5 py-7 sm:px-9">
-            <div className="flex items-center justify-between gap-3">
-              <div>
+        <section
+          className={`bg-black/16 px-4 py-6 sm:px-6 ${
+            extreme
+              ? "border-t border-white/8 2xl:border-l 2xl:border-t-0"
+              : "border-t border-white/8"
+          }`}
+        >
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              {!basic ? (
                 <div className="text-[10px] uppercase tracking-[0.28em] text-slate-500">
                   Campfire Replies
                 </div>
-                <h2 className="mt-1 text-xl font-semibold text-white">
-                  {thread.replyCount === 0
-                    ? "First scout gets the clean ground."
-                    : `${thread.replyCount} voice${thread.replyCount === 1 ? "" : "s"} at the table`}
-                </h2>
-              </div>
-              {thread.isLocked ? (
-                <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-slate-400">
-                  <Lock className="h-3.5 w-3.5" />
-                  Sealed
-                </span>
               ) : null}
+              <h2 className={`${basic ? "text-base" : "mt-1 text-xl"} font-semibold text-white`}>
+                {thread.replyCount === 0
+                  ? "First scout gets the clean ground."
+                  : `${thread.replyCount} voice${thread.replyCount === 1 ? "" : "s"} at the table`}
+              </h2>
             </div>
+            {thread.isLocked ? (
+              <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-slate-400">
+                <Lock className="h-3.5 w-3.5" />
+                Sealed
+              </span>
+            ) : null}
+          </div>
 
-            <div className="mt-5 grid gap-3">
-              {thread.posts.map((post, index) => (
-                <article
-                  key={post.id ?? `${post.author.displayName}-${index}`}
-                  className="rounded-[1.25rem] border border-white/8 bg-white/[0.03] p-4"
-                >
-                  <div className="flex gap-3">
-                    <ThreadAvatar seed={post.author.displayName} size="small" />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                        <span className="text-sm font-semibold text-white">
-                          {post.author.displayName}
-                        </span>
-                        <span className="text-[11px] text-slate-500">
-                          {post.author.role} · {formatForumDate(post.createdAt)}
-                        </span>
-                      </div>
-                      <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-slate-300">
-                        {post.body}
-                      </p>
+          <div className="mt-5 grid gap-3">
+            {thread.posts.map((post, index) => (
+              <article
+                key={post.id ?? `${post.author.displayName}-${index}`}
+                className="rounded-[1.15rem] border border-white/8 bg-white/[0.03] p-4"
+              >
+                <div className="flex gap-3">
+                  <ThreadAvatar seed={post.author.displayName} size="small" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                      <span className="text-sm font-semibold text-white">
+                        {post.author.displayName}
+                      </span>
+                      <span className="text-[11px] text-slate-500">
+                        {basic ? formatForumDate(post.createdAt) : `${post.author.role} · ${formatForumDate(post.createdAt)}`}
+                      </span>
                     </div>
+                    <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-slate-300">
+                      {post.body}
+                    </p>
                   </div>
-                </article>
-              ))}
-            </div>
+                </div>
+              </article>
+            ))}
+          </div>
 
-            {!thread.isLocked ? (
-              <form onSubmit={submitReply} className="mt-5">
-                {canWrite ? (
-                  <>
-                    <label className="block">
-                      <span className="sr-only">Reply to this thread</span>
-                      <textarea
-                        value={reply}
-                        onChange={(event) => setReply(event.target.value)}
-                        rows={4}
-                        maxLength={12_000}
-                        placeholder="Add evidence, a useful question, or one exceptionally well-supported grievance…"
-                        className="w-full resize-y rounded-[1.2rem] border border-white/10 bg-[#050b13] px-4 py-3 text-sm leading-6 text-white outline-none transition placeholder:text-slate-600 focus:border-amber-200/30"
-                      />
-                    </label>
-                    <div className="mt-3 flex items-center justify-between gap-3">
+          {!thread.isLocked ? (
+            <form onSubmit={submitReply} className="mt-5">
+              {canWrite ? (
+                <>
+                  <label className="block">
+                    <span className="sr-only">Reply to this thread</span>
+                    <textarea
+                      value={reply}
+                      onChange={(event) => setReply(event.target.value)}
+                      rows={basic ? 3 : 4}
+                      maxLength={12_000}
+                      placeholder="Add evidence, a useful question, or one exceptionally well-supported grievance…"
+                      className="w-full resize-y rounded-[1.1rem] border border-white/10 bg-[#050b13] px-4 py-3 text-sm leading-6 text-white outline-none transition placeholder:text-slate-600 focus:border-amber-200/30"
+                    />
+                  </label>
+                  <div className="mt-3 flex items-center justify-between gap-3">
+                    {!basic ? (
                       <div className="text-xs text-slate-500">
                         Argue the build. Leave the villager intact.
                       </div>
-                      <button
-                        type="submit"
-                        disabled={!reply.trim() || pendingAction === "reply"}
-                        className="inline-flex items-center gap-2 rounded-full bg-amber-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-45"
-                      >
-                        <Send className="h-3.5 w-3.5" />
-                        {pendingAction === "reply" ? "Sending…" : "Send reply"}
-                      </button>
-                    </div>
-                  </>
-                ) : authenticated ? (
-                  <div className="rounded-[1.2rem] border border-amber-200/14 bg-amber-300/[0.05] px-4 py-4 text-sm leading-6 text-amber-50/80">
-                    The Chronicle is readable, but the shared forum ledger is not available
-                    in this environment yet. No pretend posting: your reply rail will open
-                    when the forum migration is live.
+                    ) : <span />}
+                    <button
+                      type="submit"
+                      disabled={!reply.trim() || pendingAction === "reply"}
+                      className="inline-flex items-center gap-2 rounded-full bg-amber-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-45"
+                    >
+                      <Send className="h-3.5 w-3.5" />
+                      {pendingAction === "reply" ? "Sending…" : "Send reply"}
+                    </button>
                   </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={onSignIn}
-                    className="flex w-full items-center justify-between gap-4 rounded-[1.2rem] border border-amber-200/18 bg-amber-300/[0.06] px-4 py-4 text-left transition hover:bg-amber-300/[0.1]"
-                  >
-                    <div>
-                      <div className="text-sm font-semibold text-amber-50">
-                        Sign in to pull up a chair
-                      </div>
+                </>
+              ) : authenticated ? (
+                <div className="rounded-[1.1rem] border border-amber-200/14 bg-amber-300/[0.05] px-4 py-3 text-sm text-amber-50/80">
+                  Reply rail unavailable. Reading remains open.
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={onSignIn}
+                  className="flex w-full items-center justify-between gap-4 rounded-[1.1rem] border border-amber-200/18 bg-amber-300/[0.06] px-4 py-4 text-left transition hover:bg-amber-300/[0.1]"
+                >
+                  <div>
+                    <div className="text-sm font-semibold text-amber-50">
+                      Sign in to pull up a chair
+                    </div>
+                    {!basic ? (
                       <div className="mt-1 text-xs text-slate-400">
                         Reading is public. Replies and reactions belong to known citizens.
                       </div>
-                    </div>
-                    <ChevronRight className="h-4 w-4 shrink-0 text-amber-200" />
-                  </button>
-                )}
-              </form>
-            ) : null}
-          </section>
-        </div>
-      </section>
-    </div>,
-    document.body
+                    ) : null}
+                  </div>
+                  <ChevronRight className="h-4 w-4 shrink-0 text-amber-200" />
+                </button>
+              )}
+            </form>
+          ) : null}
+        </section>
+      </div>
+    </section>
   );
 }
 
@@ -1068,6 +1492,7 @@ function NewThreadDialog({
 }
 
 export default function ForumWarRoom() {
+  const router = useRouter();
   const { viewMode, setViewMode } = useTileViewPreference("forum");
   const {
     isAuthenticated,
@@ -1082,7 +1507,6 @@ export default function ForumWarRoom() {
   const [selectedChannel, setSelectedChannel] = useState<ForumChannelKey | null>(null);
   const [shelf, setShelf] = useState<ForumShelf>("feed");
   const [query, setQuery] = useState("");
-  const [activeSlug, setActiveSlug] = useState<string | null>(null);
   const [composerOpen, setComposerOpen] = useState(false);
   const [readSlugs, setReadSlugs] = useState<Set<string>>(new Set());
   const [guestBookmarks, setGuestBookmarks] = useState<Set<string>>(new Set());
@@ -1115,16 +1539,6 @@ export default function ForumWarRoom() {
     setReadSlugs(readStoredSet(READ_STORAGE_KEY));
     setGuestBookmarks(readStoredSet(GUEST_BOOKMARK_STORAGE_KEY));
     void hydrateSnapshot();
-
-    const threadParam = new URL(window.location.href).searchParams.get("thread");
-    if (threadParam) setActiveSlug(threadParam);
-
-    function onPopState() {
-      const next = new URL(window.location.href).searchParams.get("thread");
-      setActiveSlug(next);
-    }
-    window.addEventListener("popstate", onPopState);
-    return () => window.removeEventListener("popstate", onPopState);
   }, [hydrateSnapshot]);
 
   useEffect(() => {
@@ -1229,9 +1643,6 @@ export default function ForumWarRoom() {
   const latestThreads = filteredThreads
     .filter((thread) => !featuredSlugs.has(thread.slug))
     .slice(0, advanced ? 10 : 8);
-  const activeThread = activeSlug
-    ? threads.find((thread) => thread.slug === activeSlug) ?? null
-    : null;
   const selectedChannelDetail = selectedChannel
     ? snapshot.channels.find((channel) => channel.key === selectedChannel) ||
       FORUM_CHANNELS.find((channel) => channel.key === selectedChannel)
@@ -1244,56 +1655,18 @@ export default function ForumWarRoom() {
     setQuery("");
   }, []);
 
-  const updateThreadUrl = useCallback((slug: string | null, replace = false) => {
-    const url = new URL(window.location.href);
-    if (slug) {
-      url.searchParams.set("thread", slug);
-    } else {
-      url.searchParams.delete("thread");
-    }
-    window.history[replace ? "replaceState" : "pushState"](
-      {},
-      "",
-      `${url.pathname}${url.search}${url.hash}`
-    );
-  }, []);
-
   const openThread = useCallback(
     (slug: string) => {
-      setActiveSlug(slug);
-      updateThreadUrl(slug);
-
       if (!readSlugs.has(slug)) {
         const next = new Set(readSlugs);
         next.add(slug);
         setReadSlugs(next);
         writeStoredSet(READ_STORAGE_KEY, next);
-
-        const thread = threads.find((entry) => entry.slug === slug);
-        if (thread?.id != null && ledgerOnline) {
-          void fetch("/api/forum", {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ action: "record_view", threadId: thread.id }),
-          });
-          setSnapshot((snapshotState) => ({
-            ...snapshotState,
-            threads: snapshotState.threads.map((entry) =>
-              entry.slug === slug
-                ? { ...entry, viewCount: entry.viewCount + 1 }
-                : entry
-              ),
-          }));
-        }
       }
+      router.push(`/forum/thread/${encodeURIComponent(slug)}`);
     },
-    [ledgerOnline, readSlugs, threads, updateThreadUrl]
+    [readSlugs, router]
   );
-
-  const closeThread = useCallback(() => {
-    setActiveSlug(null);
-    updateThreadUrl(null);
-  }, [updateThreadUrl]);
 
   const mutateForum = useCallback(
     async (
@@ -1365,42 +1738,6 @@ export default function ForumWarRoom() {
     [isAuthenticated, ledgerOnline, mutateForum]
   );
 
-  const toggleReaction = useCallback(
-    async (thread: ForumThreadView, emoji: ForumReaction) => {
-      if (!isAuthenticated) {
-        toast("Sign in to put your name behind a reaction.");
-        loginWithSteam(`/forum?thread=${encodeURIComponent(thread.slug)}`);
-        return;
-      }
-      if (!ledgerOnline || thread.id == null) {
-        toast.error("Reactions wait for the shared forum ledger. No phantom applause.");
-        return;
-      }
-      await mutateForum("toggle_reaction", { threadId: thread.id, emoji });
-    },
-    [isAuthenticated, ledgerOnline, loginWithSteam, mutateForum]
-  );
-
-  const submitReply = useCallback(
-    async (thread: ForumThreadView, body: string) => {
-      if (!isAuthenticated) {
-        loginWithSteam(`/forum?thread=${encodeURIComponent(thread.slug)}`);
-        return false;
-      }
-      if (!ledgerOnline || thread.id == null) {
-        toast.error("The shared reply rail is not available in this environment.");
-        return false;
-      }
-      const result = await mutateForum("reply", { threadId: thread.id, body });
-      if (result) {
-        toast.success("Reply carried into the War Room.");
-        return true;
-      }
-      return false;
-    },
-    [isAuthenticated, ledgerOnline, loginWithSteam, mutateForum]
-  );
-
   const submitThread = useCallback(
     async (draft: {
       channel: ForumChannelKey;
@@ -1450,14 +1787,49 @@ export default function ForumWarRoom() {
     toast.success("The room is caught up. Briefly.");
   }
 
+  if (extreme) {
+    return (
+      <>
+        <ExtremeForumFrontPage
+          threads={filteredThreads}
+          channels={snapshot.channels}
+          selectedTab={selectedTab}
+          selectedChannel={selectedChannel}
+          shelf={shelf}
+          query={query}
+          ledgerOnline={ledgerOnline}
+          snapshotLoading={snapshotLoading}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+          onSelectTab={selectTab}
+          onSelectChannel={selectChannel}
+          onSelectShelf={selectShelf}
+          onQueryChange={setQuery}
+          onReset={resetFilters}
+          onCreate={() => setComposerOpen(true)}
+          onBookmark={(thread) => void toggleBookmark(thread)}
+        />
+
+        {mounted && composerOpen ? (
+          <NewThreadDialog
+            authenticated={isAuthenticated}
+            ledgerOnline={ledgerOnline}
+            pending={pendingAction === "create_thread"}
+            onClose={() => setComposerOpen(false)}
+            onSignIn={() => loginWithSteam("/forum")}
+            onSubmit={submitThread}
+          />
+        ) : null}
+      </>
+    );
+  }
+
   return (
     <>
       <main className="overflow-x-hidden py-1 text-white sm:py-2">
         <div
           className={`grid gap-5 ${
-            extreme
-              ? "xl:grid-cols-[15rem_minmax(0,1fr)_22rem]"
-              : advanced
+            advanced
                 ? "xl:grid-cols-[14rem_minmax(0,1fr)_20rem]"
                 : "xl:grid-cols-[13rem_minmax(0,1fr)_19rem]"
           }`}
@@ -1598,9 +1970,11 @@ export default function ForumWarRoom() {
                     <div className="text-sm font-semibold text-white">
                       Champion&apos;s Desk: What the Throne Asks
                     </div>
-                    <div className="mt-1 text-sm text-slate-400">
-                      A real challenge needs a player, a format, a window, and a reason to watch.
-                    </div>
+                    {advanced ? (
+                      <div className="mt-1 text-sm text-slate-400">
+                        A real challenge needs a player, a format, a window, and a reason to watch.
+                      </div>
+                    ) : null}
                   </div>
                 </div>
                 <button
@@ -1608,7 +1982,7 @@ export default function ForumWarRoom() {
                   onClick={() => openThread(CHAMPION_SLUG)}
                   className="inline-flex items-center justify-center rounded-full bg-amber-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-amber-200"
                 >
-                  Open Dispatch
+                  Open
                 </button>
               </div>
             </section>
@@ -1913,22 +2287,6 @@ export default function ForumWarRoom() {
           </button>
         </section>
       </main>
-
-      {mounted && activeThread ? (
-        <ThreadDialog
-          thread={activeThread}
-          authenticated={isAuthenticated}
-          ledgerOnline={ledgerOnline}
-          pendingAction={pendingAction}
-          onClose={closeThread}
-          onBookmark={() => void toggleBookmark(activeThread)}
-          onReaction={(emoji) => void toggleReaction(activeThread, emoji)}
-          onReply={(body) => submitReply(activeThread, body)}
-          onSignIn={() =>
-            loginWithSteam(`/forum?thread=${encodeURIComponent(activeThread.slug)}`)
-          }
-        />
-      ) : null}
 
       {mounted && composerOpen ? (
         <NewThreadDialog

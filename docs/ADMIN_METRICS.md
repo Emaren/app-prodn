@@ -4,7 +4,15 @@ This dashboard must not treat raw watcher package traffic as real users. Package
 
 ## User List / Command Tower
 
-`/admin/user-list` is an operator cockpit, not a plain directory. Keep the top admin navigation visible near the top, preserve exact Community Lobby mode labels (`Basic`, `Advanced`, `Extreme`), and keep Recent Actions in a fixed-height lazy-loaded pane so older activity can stream in without resizing each user card.
+`/admin/user-list` is an operator cockpit, not a plain directory. Keep the top admin navigation visible near the top and keep Recent Actions in a fixed-height lazy-loaded pane so older activity can stream in without resizing each user card.
+
+View preferences are a first-class signal, not an identity-field afterthought.
+Each user card has a dedicated presentation strip for Community Lobby, Live
+Games, and Forum, with exact `Basic`, `Advanced`, and `Extreme` state. A stored
+per-surface preference is distinguished from the effective product default.
+The overview reports the same three surfaces with B/A/E counts, percentages,
+stored preference totals, and default totals. This distinction matters when a
+new product default would otherwise look like a user choice.
 
 The Honors panel owns badge add/remove controls and Phase 3A typed honors. Existing `add_badge` and `remove_badge` behavior stays unchanged. Belts, Artifacts, and Designations use admin-only `grant_honor` / `remove_honor` actions and are stored in `user_badges` as accepted rows with typed labels:
 

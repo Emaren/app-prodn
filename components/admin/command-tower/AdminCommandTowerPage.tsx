@@ -461,9 +461,9 @@ export default function AdminCommandTowerPage() {
           <div className="rounded-[1.5rem] border border-white/10 bg-slate-950/70 p-5">
             <div className="flex items-center gap-2 text-xs uppercase tracking-[0.28em] text-slate-500">
               <LayoutGrid className="h-4 w-4" />
-              Tile Views
+              View Preference Signals
             </div>
-            <div className="mt-4 space-y-3">
+            <div className="mt-4 grid gap-3 lg:grid-cols-3">
               {data.overview.tileViewBreakdown.map((entry) => (
                 <div key={entry.tileKey} className="rounded-2xl border border-white/8 bg-white/5 px-4 py-4">
                   <div className="flex items-center justify-between gap-3">
@@ -474,15 +474,48 @@ export default function AdminCommandTowerPage() {
                       {entry.preferredMode}
                     </div>
                   </div>
-                  <div className="mt-3 text-2xl font-semibold text-white">
-                    {entry.basicPercent}% Basic / {entry.advancedPercent}% Advanced / {entry.extremePercent}% Extreme
+                  <div className="mt-4 flex h-2 overflow-hidden rounded-full bg-slate-950/80">
+                    <span
+                      className="bg-slate-500"
+                      style={{ width: `${entry.basicPercent}%` }}
+                      title={`${entry.basicPercent}% Basic`}
+                    />
+                    <span
+                      className="bg-amber-300"
+                      style={{ width: `${entry.advancedPercent}%` }}
+                      title={`${entry.advancedPercent}% Advanced`}
+                    />
+                    <span
+                      className="bg-sky-300"
+                      style={{ width: `${entry.extremePercent}%` }}
+                      title={`${entry.extremePercent}% Extreme`}
+                    />
                   </div>
-                  <div className="mt-2 text-xs text-slate-400">
-                    {entry.basicCount} basic · {entry.advancedCount} advanced · {entry.extremeCount} extreme
+                  <div className="mt-4 grid grid-cols-3 gap-2">
+                    {[
+                      ["B", entry.basicCount, entry.basicPercent],
+                      ["A", entry.advancedCount, entry.advancedPercent],
+                      ["E", entry.extremeCount, entry.extremePercent],
+                    ].map(([mode, count, percent]) => (
+                      <div
+                        key={String(mode)}
+                        className="rounded-xl border border-white/7 bg-slate-950/55 px-2 py-2 text-center"
+                      >
+                        <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                          {mode}
+                        </div>
+                        <div className="mt-1 text-lg font-semibold text-white">{count}</div>
+                        <div className="text-[10px] text-slate-500">{percent}%</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-3 flex items-center justify-between gap-3 text-[11px] text-slate-500">
+                    <span>{entry.explicitCount} chosen</span>
+                    <span>{entry.defaultCount} default</span>
                   </div>
                 </div>
               ))}
-              <div className="rounded-2xl border border-white/8 bg-white/5 px-4 py-4">
+              <div className="rounded-2xl border border-white/8 bg-white/5 px-4 py-4 lg:col-span-3">
                 <div className="flex items-center justify-between gap-3">
                   <div className="text-[11px] uppercase tracking-[0.24em] text-slate-500">
                     Schedule Organization
