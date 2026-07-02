@@ -142,7 +142,7 @@ Expected production result:
 - `/forum` returns a successful response.
 - `ledgerAvailable` is `true`.
 - the seeded archive contains twelve threads.
-- the first thread is `The Kingdom Has No Pause Button`.
+- the seeded archive includes `The Kingdom Has No Pause Button`.
 - a signed-in user can publish, reply, react, and bookmark.
 
 ## Verification
