@@ -6,6 +6,7 @@ import {
   resolveStreamRequestActor,
 } from "@/lib/streamRequestAuth";
 import { writeStreamChunk } from "@/lib/streamStorage";
+import { maybeEndFinalizedStream } from "@/lib/streamFinalitySentinel";
 import { toWatchStreamPayload } from "@/lib/watchStreams";
 
 export const runtime = "nodejs";
@@ -65,6 +66,14 @@ export async function POST(
     return NextResponse.json(
       { detail: "Stream has ended." },
       { status: 409, headers: NO_STORE_HEADERS }
+    );
+  }
+
+  const finalizedStream = await maybeEndFinalizedStream(prisma, stream);
+  if (finalizedStream) {
+    return NextResponse.json(
+      { stream: toWatchStreamPayload(finalizedStream), finality: "replay_final" },
+      { headers: NO_STORE_HEADERS }
     );
   }
 

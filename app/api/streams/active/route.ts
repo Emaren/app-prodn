@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getPrisma } from "@/lib/prisma";
 import { resolveRequestUid } from "@/lib/requestIdentity";
 import { maybeCleanupBrowserStreams } from "@/lib/streamCleanup";
+import { maybeEndFinalizedStreams } from "@/lib/streamFinalitySentinel";
 import { AOE2WAR_STREAM_SOURCE_TYPES } from "@/lib/streamRequestAuth";
 import { toWatchStreamPayload } from "@/lib/watchStreams";
 
@@ -25,6 +26,10 @@ export async function GET(request: NextRequest) {
   const mine = request.nextUrl.searchParams.get("mine") === "1";
   const uid = mine ? await resolveRequestUid(request) : null;
   const prisma = getPrisma();
+
+  await maybeEndFinalizedStreams(prisma).catch((error) => {
+    console.warn("Finalized stream cleanup skipped:", error);
+  });
 
   await maybeCleanupBrowserStreams(prisma).catch((error) => {
     console.warn("Browser stream cleanup skipped:", error);
