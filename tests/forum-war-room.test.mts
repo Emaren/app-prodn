@@ -12,15 +12,53 @@ import {
   normalizeForumTitle,
 } from "../lib/forum.ts";
 import {
+  applyTileViewDefaultMigration,
   getTileViewMode,
+  markTileViewDefaultMigrationApplied,
   normalizeTileViewPreferences,
+  TILE_VIEW_DEFAULT_VERSION,
+  TILE_VIEW_DEFAULT_VERSION_KEY,
 } from "../lib/tileViewPreferences.ts";
 
-test("forum opens on Advanced and persists as a recognized tile preference", () => {
-  assert.equal(getTileViewMode({}, "forum"), "advanced");
+test("forum opens on Extreme and persists as a recognized tile preference", () => {
+  assert.equal(getTileViewMode({}, "forum"), "extreme");
   assert.deepEqual(normalizeTileViewPreferences({ forum: "basic" }), {
     forum: "basic",
   });
+});
+
+test("the Extreme launch migration runs once without resetting other surfaces", () => {
+  const storage = new Map<string, string>();
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: {
+      localStorage: {
+        getItem: (key: string) => storage.get(key) ?? null,
+        setItem: (key: string, value: string) => storage.set(key, value),
+      },
+    },
+  });
+
+  try {
+    assert.deepEqual(
+      applyTileViewDefaultMigration({
+        forum: "basic",
+        live_games: "extreme",
+      }),
+      {
+        forum: "extreme",
+        live_games: "extreme",
+      }
+    );
+
+    markTileViewDefaultMigrationApplied();
+    assert.equal(storage.get(TILE_VIEW_DEFAULT_VERSION_KEY), TILE_VIEW_DEFAULT_VERSION);
+    assert.deepEqual(applyTileViewDefaultMigration({ forum: "advanced" }), {
+      forum: "advanced",
+    });
+  } finally {
+    Reflect.deleteProperty(globalThis, "window");
+  }
 });
 
 test("editorial fallback is deep, unique, and fully browsable", () => {

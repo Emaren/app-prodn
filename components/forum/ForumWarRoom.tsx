@@ -310,7 +310,7 @@ function ForumHero({
       </div>
 
       {advanced ? (
-        <div className="relative z-10 grid gap-7 pt-8 text-left lg:grid-cols-[minmax(0,1fr)_17.5rem] lg:items-end lg:pt-0">
+        <div className="relative z-10 pt-8 text-left sm:pt-0">
           <div>
             <div className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.34em] text-amber-100/74">
               <Crown className="h-4 w-4" />
@@ -328,24 +328,26 @@ function ForumHero({
           <button
             type="button"
             onClick={onOpenChronicle}
-            className="group relative overflow-hidden rounded-[1.45rem] border border-amber-200/22 bg-black/32 p-5 text-left transition hover:border-amber-200/42 hover:bg-black/42"
+            className="group relative mt-7 flex w-full items-center gap-4 overflow-hidden rounded-[1.35rem] border border-amber-200/22 bg-black/32 p-4 text-left transition hover:border-amber-200/42 hover:bg-black/42 sm:p-5"
           >
             <div className="absolute -right-10 -top-10 h-28 w-28 rounded-full bg-amber-300/10 blur-2xl transition group-hover:bg-amber-300/18" />
-            <div className="relative">
+            <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-amber-200/22 bg-amber-300/[0.08] text-amber-100">
+              <Feather className="h-5 w-5" />
+            </div>
+            <div className="relative min-w-0 flex-1">
               <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.3em] text-amber-100/62">
-                <Feather className="h-3.5 w-3.5" />
                 Wolo Chronicles · I
               </div>
-              <div className="mt-3 text-lg font-semibold leading-6 text-white">
+              <div className="mt-1.5 text-lg font-semibold leading-6 text-white">
                 The Kingdom Has No Pause Button
               </div>
-              <div className="mt-3 text-xs leading-5 text-slate-400">
+              <div className="mt-1 text-xs leading-5 text-slate-400">
                 Origin stories from the civilization we keep returning to.
               </div>
-              <div className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-amber-100">
-                Read the first Chronicle
-                <ChevronRight className="h-3.5 w-3.5 transition group-hover:translate-x-1" />
-              </div>
+            </div>
+            <div className="relative hidden shrink-0 items-center gap-1 text-xs font-semibold text-amber-100 sm:inline-flex">
+              Read
+              <ChevronRight className="h-3.5 w-3.5 transition group-hover:translate-x-1" />
             </div>
           </button>
         </div>

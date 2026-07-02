@@ -28,10 +28,10 @@ the same local preference store.
   `FORUM / WAR ROOM` hero and compact thread cards. Its dedicated thread route
   becomes a clean single reading column with only the article, reactions, and
   replies.
-- Advanced: `75rem`. Default. Adds the Wolo Chronicles lead, room signals,
+- Advanced: `75rem`. Adds the Wolo Chronicles lead, room signals,
   excerpts, field-manual context, and a premium dedicated thread page with an
   editorial article card, thread record, related-dispatch rail, and reply table.
-- Extreme: `96rem`. A separate unfolded-edition information architecture. The
+- Extreme: `96rem`. Default. A separate unfolded-edition information architecture. The
   index becomes a full-width newspaper/comic composition with a complete lead
   article, reply pull quote, dispatch wire, feature stories, illustrated middle,
   and back page. Article copy is visible without opening a thread. Dedicated
@@ -40,6 +40,12 @@ the same local preference store.
 
 The B/A/E control belongs conspicuously in the forum hero. A user choice must
 survive reloads and signed-in appearance hydration.
+
+The July 2 Extreme launch uses the one-time
+`extreme-forum-20260702` tile-default migration. It selects Extreme once for
+existing and new browser/account preference state without changing another
+surface. After that migration marker is written, any Basic, Advanced, or Extreme
+choice the user makes is preserved normally and is not overridden again.
 
 ## Thread behavior
 
@@ -159,7 +165,8 @@ npm run build
 
 Browser verification should cover:
 
-- Advanced as the untouched default
+- Extreme as the untouched and one-time migrated default
+- a subsequent Basic or Advanced selection surviving reload
 - Basic persistence after reload
 - no horizontal overflow at a `390px` mobile viewport
 - search result and empty-state behavior

@@ -14,6 +14,10 @@ The overview reports the same three surfaces with B/A/E counts, percentages,
 stored preference totals, and default totals. This distinction matters when a
 new product default would otherwise look like a user choice.
 
+Forum effective defaults are Extreme. The July 2 launch migration writes that
+selection once for each visiting user; subsequent user changes remain ordinary
+saved preferences and must be reflected by the live admin refresh.
+
 The Honors panel owns badge add/remove controls and Phase 3A typed honors. Existing `add_badge` and `remove_badge` behavior stays unchanged. Belts, Artifacts, and Designations use admin-only `grant_honor` / `remove_honor` actions and are stored in `user_badges` as accepted rows with typed labels:
 
 - `Belt: <title>`
