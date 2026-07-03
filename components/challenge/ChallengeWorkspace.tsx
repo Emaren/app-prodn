@@ -892,7 +892,7 @@ export default function ChallengeWorkspace() {
   }
 
   return (
-    <main className="space-y-5 py-5 text-white sm:space-y-6 sm:py-6">
+    <main className="mx-auto w-full max-w-[min(96vw,92rem)] space-y-5 py-5 text-white sm:space-y-6 sm:py-6">
       <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(251,191,36,0.16),_transparent_30%),radial-gradient(circle_at_bottom_right,_rgba(34,197,94,0.10),_transparent_24%),linear-gradient(135deg,_#101828,_#0f172a_45%,_#020617)] p-6 sm:p-8">
         <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
           <div className="space-y-5">
@@ -953,8 +953,8 @@ export default function ChallengeWorkspace() {
         </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[1.18fr_0.82fr]">
-        <section className="space-y-6">
+      <section className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1.08fr)_minmax(24rem,0.92fr)] 2xl:grid-cols-[minmax(0,1.12fr)_minmax(27rem,0.88fr)]">
+        <section className="min-w-0 space-y-6">
           <section
             id={scheduleFormId}
             className="relative overflow-hidden rounded-[2rem] border border-amber-200/16 bg-[radial-gradient(circle_at_8%_0%,rgba(251,191,36,0.16),transparent_32%),radial-gradient(circle_at_95%_90%,rgba(34,211,238,0.10),transparent_28%),linear-gradient(160deg,rgba(12,19,34,0.98),rgba(2,6,23,0.98))] p-5 shadow-[0_32px_80px_rgba(0,0,0,0.28)] sm:p-7"
@@ -1412,7 +1412,7 @@ export default function ChallengeWorkspace() {
             </section>
           ) : null}
 
-          <section className="rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-5 sm:p-6">
+          <section className="min-w-0 overflow-hidden rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-5 sm:p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="min-w-0">
                 <div className="text-xs uppercase tracking-[0.35em] text-slate-300/70">
@@ -1441,19 +1441,19 @@ export default function ChallengeWorkspace() {
           </section>
         </section>
 
-        <section className="space-y-6">
-          <section className="rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-5 sm:p-6">
+        <section className="min-w-0 space-y-6">
+          <section className="min-w-0 overflow-hidden rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-5 sm:p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <div className="text-xs uppercase tracking-[0.35em] text-cyan-200/70">Your Runway</div>
-                <h2 className="mt-2 text-2xl font-semibold text-white">Active Match Tiles</h2>
+                <h2 className="mt-2 break-words text-2xl font-semibold text-white">Active Match Tiles</h2>
               </div>
               <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
                 {activeRunwayMatches.length} active
               </div>
             </div>
 
-            <div className="mt-5 space-y-4">
+            <div className="mt-5 min-w-0 space-y-4">
               {activeRunwayMatches.length === 0 ? (
                 <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-5 text-sm text-slate-300">
                   No active scheduled matches.
@@ -1483,7 +1483,7 @@ export default function ChallengeWorkspace() {
             </div>
           </section>
 
-          <section className="rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-5 sm:p-6">
+          <section className="min-w-0 overflow-hidden rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-5 sm:p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <div className="text-xs uppercase tracking-[0.35em] text-slate-300/70">
@@ -1525,7 +1525,7 @@ export default function ChallengeWorkspace() {
             </div>
           </section>
 
-          <section className="rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-5 sm:p-6">
+          <section className="min-w-0 overflow-hidden rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-5 sm:p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <div className="text-xs uppercase tracking-[0.35em] text-slate-300/70">
@@ -1538,7 +1538,7 @@ export default function ChallengeWorkspace() {
               </div>
             </div>
 
-            <div className="mt-5 space-y-4">
+            <div className="mt-5 min-w-0 space-y-4">
               {historyMatches.length === 0 ? (
                 <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-5 text-sm text-slate-300">
                   No older challenge history yet.

@@ -416,7 +416,7 @@ function MoneyPill({
 }) {
   return (
     <div
-      className={`min-w-0 rounded-[1rem] border px-3 py-3 ${
+      className={`min-w-0 overflow-hidden rounded-[1rem] border px-3 py-3 ${
         strong ? "border-amber-300/20 bg-amber-300/10" : "border-white/10 bg-white/[0.045]"
       }`}
     >
@@ -443,7 +443,7 @@ function StatusDot({
   active: boolean;
 }) {
   return (
-    <div className="min-w-0 rounded-[0.95rem] border border-white/10 bg-white/[0.04] px-3 py-2.5">
+    <div className="min-w-0 overflow-hidden rounded-[0.95rem] border border-white/10 bg-white/[0.04] px-3 py-2.5">
       <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.16em] text-slate-500">
         <span className={active ? "text-emerald-200" : "text-slate-500"}>{icon}</span>
         <span className="truncate">{label}</span>
@@ -1036,8 +1036,8 @@ export default function ScheduledMatchCard({
   }
 
   return (
-    <div className={`min-w-0 rounded-[1.35rem] border ${compact ? "p-3" : "p-4 sm:p-5"} ${accent.shell}`}>
-      <div className="flex items-start justify-between gap-3">
+    <div className={`min-w-0 w-full max-w-full overflow-hidden rounded-[1.35rem] border ${compact ? "p-3" : "p-4 sm:p-5"} ${accent.shell}`}>
+      <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <div className={`flex items-center gap-2 text-[10px] uppercase tracking-[0.24em] ${accent.eyebrow}`}>
             <Swords className="h-3.5 w-3.5" />
@@ -1048,7 +1048,7 @@ export default function ScheduledMatchCard({
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
           <PreferenceControls
             preference={match.viewerPreference}
             busy={preferenceBusy}
@@ -1089,7 +1089,7 @@ export default function ScheduledMatchCard({
         </div>
       </div>
 
-      <div className={`${compact ? "mt-3 gap-2" : "mt-4 gap-3"} grid ${stacked || compact ? "sm:grid-cols-3" : "sm:grid-cols-3"}`}>
+      <div className={`${compact ? "mt-3 gap-2" : "mt-4 gap-3"} grid ${stacked ? "grid-cols-1 min-[430px]:grid-cols-3" : compact ? "grid-cols-1 sm:grid-cols-3" : "sm:grid-cols-3"}`}>
         <MoneyPill
           icon={<Coins className="h-3.5 w-3.5" />}
           label="Wager"
@@ -1150,7 +1150,7 @@ export default function ScheduledMatchCard({
         </div>
       ) : null}
 
-      <div className={`${compact ? "mt-3 gap-2" : "mt-4 gap-3"} grid sm:grid-cols-2`}>
+      <div className={`${compact ? "mt-3 gap-2" : "mt-4 gap-3"} grid ${stacked ? "grid-cols-1 min-[430px]:grid-cols-2" : "sm:grid-cols-2"}`}>
         <StatusDot
           icon={statusIcon(creatorFunded)}
           label={viewerIsChallenger ? "You" : "Creator"}
@@ -1165,7 +1165,7 @@ export default function ScheduledMatchCard({
         />
       </div>
 
-      <div className={`${compact ? "mt-3 gap-2" : "mt-4 gap-3"} grid sm:grid-cols-4`}>
+      <div className={`${compact ? "mt-3 gap-2" : "mt-4 gap-3"} grid ${stacked ? "grid-cols-2" : "sm:grid-cols-4"}`}>
         <StatusDot
           icon={<Wallet className="h-4 w-4" />}
           label="Wallets"
@@ -1200,9 +1200,9 @@ export default function ScheduledMatchCard({
         />
       </div>
 
-      <div className={`${compact ? "mt-3" : "mt-4"} flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-3`}>
+      <div className={`${compact ? "mt-3" : "mt-4"} flex min-w-0 flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-3`}>
         <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
             <span className={`inline-flex rounded-full border px-3 py-1 text-[11px] font-medium ${accent.badge}`}>
               {countdownLabel}
             </span>
@@ -1232,7 +1232,7 @@ export default function ScheduledMatchCard({
           ) : null}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           {renderPrimaryAction()}
           {primaryActionLabel !== "Open Thread" ? (
             <Link
