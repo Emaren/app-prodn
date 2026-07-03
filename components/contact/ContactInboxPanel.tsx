@@ -1260,7 +1260,7 @@ export default function ContactInboxPanel({
 
   return (
     <div
-      className={`flex min-h-0 flex-col overflow-hidden rounded-[1.25rem] text-white shadow-[0_28px_120px_rgba(0,0,0,0.45)] sm:rounded-[1.6rem] ${shellClassName} ${
+      className={`relative isolate flex min-h-0 flex-col overflow-hidden rounded-[1.25rem] text-white shadow-[0_28px_120px_rgba(0,0,0,0.45),0_0_42px_rgba(16,185,129,0.08)] sm:rounded-[1.6rem] ${shellClassName} ${
         mode === "page"
           ? "h-full max-h-full flex-1 shadow-[0_32px_140px_rgba(0,0,0,0.5)]"
           : "h-full w-full shadow-[0_34px_120px_rgba(2,6,23,0.82)]"

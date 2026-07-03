@@ -194,10 +194,10 @@ function accentClasses(displayState: ScheduledMatchTile["displayState"]) {
     case "terms_accepted":
     case "accepted":
       return {
-        shell: "border-emerald-300/18 bg-[linear-gradient(180deg,rgba(251,191,36,0.09),rgba(15,23,42,0.48))]",
-        badge: "border-emerald-300/25 bg-emerald-300/12 text-emerald-50",
-        icon: "border-emerald-300/20 bg-emerald-300/12 text-emerald-100",
-        eyebrow: "text-emerald-100/75",
+        shell: "border-emerald-100/38 bg-[radial-gradient(circle_at_16%_0%,rgba(167,243,208,0.30),transparent_28%),radial-gradient(circle_at_78%_18%,rgba(45,212,191,0.24),transparent_34%),radial-gradient(circle_at_50%_118%,rgba(250,204,21,0.16),transparent_44%),linear-gradient(135deg,rgba(4,120,87,0.96),rgba(6,78,59,0.90)_45%,rgba(2,6,23,0.84)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_0_32px_rgba(16,185,129,0.20),0_22px_70px_rgba(0,0,0,0.38)]",
+        badge: "border-emerald-100/42 bg-emerald-300/14 text-emerald-50 shadow-[0_0_18px_rgba(52,211,153,0.14),inset_0_1px_0_rgba(255,255,255,0.10)]",
+        icon: "border-emerald-100/32 bg-emerald-300/14 text-emerald-50 shadow-[0_0_16px_rgba(52,211,153,0.12)]",
+        eyebrow: "text-emerald-50/88 drop-shadow-[0_0_12px_rgba(110,231,183,0.18)]",
       };
     case "funded":
     case "checkin_open":
@@ -205,10 +205,10 @@ function accentClasses(displayState: ScheduledMatchTile["displayState"]) {
     case "right_checked_in":
     case "ready":
       return {
-        shell: "border-emerald-300/18 bg-[linear-gradient(180deg,rgba(16,185,129,0.08),rgba(15,23,42,0.48))]",
-        badge: "border-emerald-300/25 bg-emerald-300/12 text-emerald-50",
-        icon: "border-emerald-300/20 bg-emerald-300/12 text-emerald-100",
-        eyebrow: "text-emerald-100/75",
+        shell: "border-emerald-100/34 bg-[radial-gradient(circle_at_18%_0%,rgba(110,231,183,0.26),transparent_30%),radial-gradient(circle_at_82%_16%,rgba(20,184,166,0.20),transparent_34%),radial-gradient(circle_at_48%_112%,rgba(250,204,21,0.12),transparent_42%),linear-gradient(135deg,rgba(4,120,87,0.92),rgba(6,78,59,0.86)_46%,rgba(2,6,23,0.86)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_0_28px_rgba(16,185,129,0.18),0_20px_62px_rgba(0,0,0,0.34)]",
+        badge: "border-emerald-100/42 bg-emerald-300/14 text-emerald-50 shadow-[0_0_18px_rgba(52,211,153,0.14),inset_0_1px_0_rgba(255,255,255,0.10)]",
+        icon: "border-emerald-100/32 bg-emerald-300/14 text-emerald-50 shadow-[0_0_16px_rgba(52,211,153,0.12)]",
+        eyebrow: "text-emerald-50/88 drop-shadow-[0_0_12px_rgba(110,231,183,0.18)]",
       };
     case "live":
       return {
@@ -319,8 +319,8 @@ function buildWatcherStatus(match: ScheduledMatchTile) {
 }
 
 const COLOR_TAG_CLASSES: Record<ScheduledMatchColorTag, string> = {
-  gold: "bg-emerald-300",
-  green: "bg-emerald-300",
+  gold: "bg-emerald-200 shadow-[0_0_12px_rgba(110,231,183,0.65)]",
+  green: "bg-emerald-200 shadow-[0_0_12px_rgba(110,231,183,0.65)]",
   blue: "bg-sky-300",
   red: "bg-rose-300",
 };
@@ -443,7 +443,7 @@ function StatusDot({
   active: boolean;
 }) {
   return (
-    <div className="min-w-0 overflow-hidden rounded-[0.95rem] border border-white/10 bg-emerald-950/[0.16] px-3 py-2.5">
+    <div className="min-w-0 overflow-hidden rounded-[0.95rem] border border-emerald-100/16 bg-[linear-gradient(135deg,rgba(6,95,70,0.34),rgba(2,6,23,0.38))] px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.07)]">
       <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.16em] text-slate-500">
         <span className={active ? "text-emerald-200" : "text-slate-500"}>{icon}</span>
         <span className="truncate">{label}</span>
@@ -515,7 +515,7 @@ export function CompactScheduledMatchHistoryRow({
   return (
     <Link
       href={href}
-      className="flex min-w-0 items-center justify-between gap-3 rounded-[1rem] border border-white/10 bg-emerald-950/[0.16] px-3 py-3 transition hover:border-white/20 hover:bg-white/[0.065]"
+      className="flex min-w-0 items-center justify-between gap-3 rounded-[1rem] border border-emerald-100/14 bg-[linear-gradient(135deg,rgba(6,95,70,0.28),rgba(2,6,23,0.42))] px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.055)] transition hover:border-emerald-100/26 hover:bg-emerald-300/[0.075]"
     >
       <div className="min-w-0">
         <div className="truncate text-sm font-semibold text-white">
@@ -914,7 +914,7 @@ export default function ScheduledMatchCard({
 
   function renderPrimaryAction() {
     const buttonClass =
-      "inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-emerald-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-200 disabled:cursor-not-allowed disabled:opacity-60";
+      "inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-yellow-100/36 bg-[linear-gradient(180deg,#fff1a6_0%,#e8bc4f_32%,#a66a18_100%)] px-4 py-2 text-sm font-black text-[#130d04] shadow-[inset_0_1px_0_rgba(255,255,255,0.60),0_0_22px_rgba(234,179,8,0.18)] transition hover:border-yellow-50/65 hover:text-black hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.72),0_0_30px_rgba(234,179,8,0.26)] disabled:cursor-not-allowed disabled:opacity-60";
 
     if (canAcceptAndFund) {
       return (
@@ -1036,7 +1036,11 @@ export default function ScheduledMatchCard({
   }
 
   return (
-    <div className={`min-w-0 w-full max-w-full overflow-hidden rounded-[1.35rem] border ${compact ? "p-3" : "p-4 sm:p-5"} ${accent.shell}`}>
+    <div className={`relative isolate min-w-0 w-full max-w-full overflow-hidden rounded-[1.35rem] border ${compact ? "p-3" : "p-4 sm:p-5"} ${accent.shell}`}>
+      <div className="pointer-events-none absolute inset-0 rounded-[inherit] bg-[linear-gradient(116deg,transparent_0%,rgba(255,255,255,0.10)_42%,transparent_58%)] opacity-60" />
+      <div className="pointer-events-none absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-emerald-50/80 to-transparent" />
+      <div className="pointer-events-none absolute -left-16 -top-20 h-48 w-48 rounded-full bg-emerald-200/16 blur-3xl" />
+      <div className="pointer-events-none absolute -right-14 bottom-0 h-44 w-44 rounded-full bg-teal-300/12 blur-3xl" />
       <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <div className={`flex items-center gap-2 text-[10px] uppercase tracking-[0.24em] ${accent.eyebrow}`}>
