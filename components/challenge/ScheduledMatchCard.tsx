@@ -194,10 +194,10 @@ function accentClasses(displayState: ScheduledMatchTile["displayState"]) {
     case "terms_accepted":
     case "accepted":
       return {
-        shell: "border-amber-300/18 bg-[linear-gradient(180deg,rgba(251,191,36,0.09),rgba(15,23,42,0.48))]",
-        badge: "border-amber-300/25 bg-amber-300/12 text-amber-50",
-        icon: "border-amber-300/20 bg-amber-300/12 text-amber-100",
-        eyebrow: "text-amber-100/75",
+        shell: "border-emerald-300/18 bg-[linear-gradient(180deg,rgba(251,191,36,0.09),rgba(15,23,42,0.48))]",
+        badge: "border-emerald-300/25 bg-emerald-300/12 text-emerald-50",
+        icon: "border-emerald-300/20 bg-emerald-300/12 text-emerald-100",
+        eyebrow: "text-emerald-100/75",
       };
     case "funded":
     case "checkin_open":
@@ -319,7 +319,7 @@ function buildWatcherStatus(match: ScheduledMatchTile) {
 }
 
 const COLOR_TAG_CLASSES: Record<ScheduledMatchColorTag, string> = {
-  gold: "bg-amber-300",
+  gold: "bg-emerald-300",
   green: "bg-emerald-300",
   blue: "bg-sky-300",
   red: "bg-rose-300",
@@ -443,7 +443,7 @@ function StatusDot({
   active: boolean;
 }) {
   return (
-    <div className="min-w-0 overflow-hidden rounded-[0.95rem] border border-white/10 bg-white/[0.04] px-3 py-2.5">
+    <div className="min-w-0 overflow-hidden rounded-[0.95rem] border border-white/10 bg-emerald-950/[0.16] px-3 py-2.5">
       <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.16em] text-slate-500">
         <span className={active ? "text-emerald-200" : "text-slate-500"}>{icon}</span>
         <span className="truncate">{label}</span>
@@ -515,7 +515,7 @@ export function CompactScheduledMatchHistoryRow({
   return (
     <Link
       href={href}
-      className="flex min-w-0 items-center justify-between gap-3 rounded-[1rem] border border-white/10 bg-white/[0.04] px-3 py-3 transition hover:border-white/20 hover:bg-white/[0.065]"
+      className="flex min-w-0 items-center justify-between gap-3 rounded-[1rem] border border-white/10 bg-emerald-950/[0.16] px-3 py-3 transition hover:border-white/20 hover:bg-white/[0.065]"
     >
       <div className="min-w-0">
         <div className="truncate text-sm font-semibold text-white">
@@ -914,7 +914,7 @@ export default function ScheduledMatchCard({
 
   function renderPrimaryAction() {
     const buttonClass =
-      "inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-amber-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-60";
+      "inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-emerald-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-200 disabled:cursor-not-allowed disabled:opacity-60";
 
     if (canAcceptAndFund) {
       return (
@@ -1067,7 +1067,7 @@ export default function ScheduledMatchCard({
                 title="Collapse to summary"
                 aria-label="Collapse scheduled match to summary"
                 onClick={() => setCardViewMode("summary")}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-slate-300 transition hover:border-white/25 hover:text-white"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-emerald-950/[0.16] text-slate-300 transition hover:border-white/25 hover:text-white"
               >
                 <CircleDashed className="h-4 w-4" />
               </button>
@@ -1078,8 +1078,8 @@ export default function ScheduledMatchCard({
                 onClick={() => setCardViewMode(activeViewMode === "advanced" ? "detail" : "advanced")}
                 className={`inline-flex h-9 w-9 items-center justify-center rounded-full border transition ${
                   activeViewMode === "advanced"
-                    ? "border-amber-300/30 bg-amber-300/12 text-amber-100"
-                    : "border-white/10 bg-white/[0.04] text-slate-300 hover:border-white/25 hover:text-white"
+                    ? "border-emerald-300/30 bg-emerald-300/12 text-emerald-100"
+                    : "border-white/10 bg-emerald-950/[0.16] text-slate-300 hover:border-white/25 hover:text-white"
                 }`}
               >
                 <SlidersHorizontal className="h-4 w-4" />
@@ -1111,8 +1111,8 @@ export default function ScheduledMatchCard({
       </div>
 
       {match.titleStakes.length > 0 ? (
-        <div className={`${compact ? "mt-3" : "mt-4"} rounded-[1rem] border border-amber-200/18 bg-[linear-gradient(135deg,rgba(251,191,36,0.12),rgba(120,53,15,0.05))] p-3`}>
-          <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-amber-100/70">
+        <div className={`${compact ? "mt-3" : "mt-4"} rounded-[1rem] border border-emerald-200/18 bg-[linear-gradient(135deg,rgba(251,191,36,0.12),rgba(6,78,59,0.05))] p-3`}>
+          <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-emerald-100/70">
             <Trophy className="h-3.5 w-3.5" />
             Automatic title stakes
           </div>
@@ -1120,7 +1120,7 @@ export default function ScheduledMatchCard({
             {match.titleStakes.map((titleStake) => (
               <div
                 key={titleStake.challengeId}
-                className="inline-flex min-w-0 items-center gap-2 rounded-full border border-amber-100/15 bg-black/20 py-1.5 pl-1.5 pr-3"
+                className="inline-flex min-w-0 items-center gap-2 rounded-full border border-emerald-100/15 bg-black/20 py-1.5 pl-1.5 pr-3"
               >
                 {titleStake.imageUrl ? (
                   <span className="relative h-7 w-9 shrink-0 overflow-hidden rounded-full bg-black/25">
@@ -1134,17 +1134,17 @@ export default function ScheduledMatchCard({
                     />
                   </span>
                 ) : (
-                  <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-300/10 text-amber-100">
+                  <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-300/10 text-emerald-100">
                     <Trophy className="h-3.5 w-3.5" />
                   </span>
                 )}
-                <span className="max-w-52 truncate text-xs font-semibold text-amber-50">
+                <span className="max-w-52 truncate text-xs font-semibold text-emerald-50">
                   {titleStake.displayName}
                 </span>
               </div>
             ))}
           </div>
-          <div className="mt-2 text-[11px] leading-5 text-amber-100/60">
+          <div className="mt-2 text-[11px] leading-5 text-emerald-100/60">
             Belts move automatically after verified match proof. Artifact records still require their metric proof.
           </div>
         </div>
@@ -1226,7 +1226,7 @@ export default function ScheduledMatchCard({
             </span>
           </div>
           {actionError || fundingError ? (
-            <div className="mt-2 max-w-xl text-xs leading-5 text-amber-100">
+            <div className="mt-2 max-w-xl text-xs leading-5 text-emerald-100">
               {actionError || fundingError}
             </div>
           ) : null}
@@ -1237,7 +1237,7 @@ export default function ScheduledMatchCard({
           {primaryActionLabel !== "Open Thread" ? (
             <Link
               href={threadHref}
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-3 py-2 text-sm font-semibold text-white/85 transition hover:border-white/30 hover:text-white"
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-white/15 bg-emerald-950/[0.16] px-3 py-2 text-sm font-semibold text-white/85 transition hover:border-white/30 hover:text-white"
             >
               <ExternalLink className="h-4 w-4" />
               Thread
@@ -1273,7 +1273,7 @@ export default function ScheduledMatchCard({
               type="button"
               onClick={() => void cancelMatch()}
               disabled={cardBusy}
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-3 py-2 text-sm font-semibold text-white/85 transition hover:border-white/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-white/15 bg-emerald-950/[0.16] px-3 py-2 text-sm font-semibold text-white/85 transition hover:border-white/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
             >
               <XCircle className="h-4 w-4" />
               {currentActionKind === "cancel"
@@ -1299,7 +1299,7 @@ export default function ScheduledMatchCard({
                 value={rescheduledAt}
                 onChange={(event) => setRescheduledAt(event.target.value)}
                 disabled={cardBusy}
-                className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-amber-300/50 disabled:cursor-not-allowed disabled:opacity-60"
+                className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-emerald-300/50 disabled:cursor-not-allowed disabled:opacity-60"
               />
             </label>
 
@@ -1313,14 +1313,14 @@ export default function ScheduledMatchCard({
                 maxRows={compact ? 3 : 4}
                 maxLength={CHALLENGE_NOTE_MAX_CHARS}
                 disabled={cardBusy}
-                className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm leading-6 text-white outline-none focus:border-amber-300/50 disabled:cursor-not-allowed disabled:opacity-60"
+                className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm leading-6 text-white outline-none focus:border-emerald-300/50 disabled:cursor-not-allowed disabled:opacity-60"
                 placeholder="Shift the lock."
               />
             </label>
           </div>
 
           {hasFundingOnFile ? (
-            <div className="rounded-[0.95rem] border border-amber-300/18 bg-amber-300/10 px-3 py-3 text-xs font-medium text-amber-50">
+            <div className="rounded-[0.95rem] border border-emerald-300/18 bg-emerald-300/10 px-3 py-3 text-xs font-medium text-emerald-50">
               Funding preserved · {formatWolo(match.terms.totalFundingWolo)} WOLO each
             </div>
           ) : (
@@ -1334,7 +1334,7 @@ export default function ScheduledMatchCard({
                   value={wagerAmount}
                   onChange={(event) => setWagerAmount(event.target.value)}
                   disabled={cardBusy}
-                  className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-amber-300/50 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-emerald-300/50 disabled:cursor-not-allowed disabled:opacity-60"
                 />
               </label>
               <label className="block space-y-1.5">
@@ -1346,7 +1346,7 @@ export default function ScheduledMatchCard({
                   value={guaranteeAmount}
                   onChange={(event) => setGuaranteeAmount(event.target.value)}
                   disabled={cardBusy}
-                  className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-amber-300/50 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-emerald-300/50 disabled:cursor-not-allowed disabled:opacity-60"
                 />
               </label>
               <MoneyPill
@@ -1361,7 +1361,7 @@ export default function ScheduledMatchCard({
           <button
             type="submit"
             disabled={cardBusy}
-            className="rounded-full bg-amber-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-full bg-emerald-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-200 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {currentActionKind === "reschedule" ? "Saving" : hasFundingOnFile ? "Save Time" : "Send Terms"}
           </button>
@@ -1375,7 +1375,7 @@ export default function ScheduledMatchCard({
               <Wrench className="h-3.5 w-3.5" />
               Details
             </div>
-            <div className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] text-slate-300">
+            <div className="rounded-full border border-white/10 bg-emerald-950/[0.16] px-3 py-1 text-[11px] text-slate-300">
               Fee 2% · 50/50 split
             </div>
           </div>
@@ -1490,7 +1490,7 @@ export default function ScheduledMatchCard({
                     value={fundingTxHash}
                     onChange={(event) => setFundingTxHash(event.target.value)}
                     disabled={cardBusy}
-                    className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-amber-300/50 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-emerald-300/50 disabled:cursor-not-allowed disabled:opacity-60"
                     placeholder="Signed escrow tx hash"
                   />
                 </label>
@@ -1501,7 +1501,7 @@ export default function ScheduledMatchCard({
                     value={fundingWalletAddress}
                     onChange={(event) => setFundingWalletAddress(event.target.value)}
                     disabled={cardBusy}
-                    className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-amber-300/50 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-emerald-300/50 disabled:cursor-not-allowed disabled:opacity-60"
                     placeholder="Optional"
                   />
                 </label>
@@ -1509,7 +1509,7 @@ export default function ScheduledMatchCard({
               <button
                 type="submit"
                 disabled={cardBusy}
-                className="rounded-full bg-amber-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-60"
+                className="rounded-full bg-emerald-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-200 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {currentActionKind === "fund" ? "Recording" : "Record Proof"}
               </button>

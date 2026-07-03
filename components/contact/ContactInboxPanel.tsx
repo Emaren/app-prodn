@@ -197,7 +197,7 @@ function challengeNoticeTone(
       return {
         summary,
         shell:
-          "border-amber-300/18 bg-amber-400/10 text-amber-50 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.08)]",
+          "border-emerald-300/18 bg-emerald-400/10 text-emerald-50 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.08)]",
       };
     case "no_show":
     case "declined":
@@ -228,7 +228,7 @@ function ChallengeSystemMessageLine({
       >
         <div className="relative overflow-hidden px-4 py-4 sm:px-5">
           {isInvite ? (
-            <div className="pointer-events-none absolute -right-8 -top-12 h-36 w-36 rounded-full bg-amber-200/10 blur-2xl" />
+            <div className="pointer-events-none absolute -right-8 -top-12 h-36 w-36 rounded-full bg-emerald-200/10 blur-2xl" />
           ) : null}
 
           <div className="relative flex items-start justify-between gap-3">
@@ -279,7 +279,7 @@ function ChallengeSystemMessageLine({
           </div>
 
           {summary.titleStakesLabel ? (
-            <div className="relative mt-2 rounded-xl border border-amber-100/20 bg-amber-100/10 px-3 py-2.5">
+            <div className="relative mt-2 rounded-xl border border-emerald-100/20 bg-emerald-100/10 px-3 py-2.5">
               <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.16em] text-amber-50/70">
                 <Trophy className="h-3.5 w-3.5" />
                 Titles on the table
@@ -1270,7 +1270,7 @@ export default function ContactInboxPanel({
       <div className={`shrink-0 border-b px-3 py-2.5 sm:px-4 sm:py-3 ${chromeClassName}`}>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <div className="text-[11px] uppercase tracking-[0.32em] text-amber-200/70">
+            <div className="text-[11px] uppercase tracking-[0.32em] text-emerald-200/70">
               {counterpart?.threadKind === "ai"
                 ? "AI scribe"
                 : data?.viewer.isAdmin
@@ -1348,7 +1348,7 @@ export default function ContactInboxPanel({
                   onClick={() => onSelectConversation(summary.targetUid)}
                   className={`rounded-full px-3 py-1.5 text-xs transition ${
                     summary.targetUid === activeTargetUid
-                      ? "bg-amber-400/12 text-amber-100 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.18)]"
+                      ? "bg-emerald-400/12 text-emerald-100 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.18)]"
                       : "bg-white/[0.05] text-slate-300 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)] hover:bg-white/[0.08]"
                   }`}
                 >
@@ -1374,7 +1374,7 @@ export default function ContactInboxPanel({
                 {error}
               </div>
             ) : data?.unavailableReason ? (
-              <div className="rounded-[1.35rem] bg-amber-400/10 px-4 py-5 text-sm text-amber-100 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.2)]">
+              <div className="rounded-[1.35rem] bg-emerald-400/10 px-4 py-5 text-sm text-emerald-100 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.2)]">
                 {data.unavailableReason}
               </div>
             ) : timelineRows.length === 0 ? (
