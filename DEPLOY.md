@@ -70,7 +70,9 @@ journalctl -u aoe2hdbets-web.service -n 40 --no-pager
   models.
 - Added `hero_playlists`, `hero_screens`, `hero_playlist_items`, and
   `hero_playlist_publications` in
-  `20260703_193000_add_hero_studio`.
+  `20260703_193000_add_hero_studio`; the follow-up
+  `20260703_200000_publish_hero_bootstrap` seals the seeded three-screen chain
+  as immutable revision 1 so later draft edits are private immediately.
 - Media Armory now accepts `motion` MP4/WEBM assets up to 48 MB. The managed
   upload serving route supports byte ranges for video playback.
 - Create `/mnt/HC_Volume_105319120/aoe2-managed-media`, chown it to

@@ -46,6 +46,10 @@ read the newest publication, while Admin may continue editing the draft. A
 rollback creates a new live version from an older snapshot rather than mutating
 history.
 
+The schema seed is sealed as revision 1 by
+`20260703_200000_publish_hero_bootstrap`; production should not remain in the
+temporary `draft-bootstrap` compatibility state after migrations complete.
+
 ## Source ownership
 
 Typed Hero screens reference real app-domain rows:
