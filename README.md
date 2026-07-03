@@ -121,7 +121,7 @@ Common:
 - `INTERNAL_API_KEY` (optional; forwarded on replay upload when backend enforces API keys)
 - `ALLOW_GUEST_SESSIONS=false` (recommended; keep guest sessions off so replay evidence ties to signed identities)
 - `DIRECT_MESSAGE_ATTACHMENT_DIR` (optional; default `storage/direct-message-attachments/`; new inbox uploads store file refs there instead of base64 rows)
-- `MANAGED_MEDIA_UPLOAD_DIR` (production: `/mnt/HC_Volume_105319120/aoe2-managed-media`; stores managed image and Hero motion uploads outside the app checkout)
+- `MANAGED_MEDIA_UPLOAD_DIR` (production: `/mnt/HC_Volume_105319120/aoe2-managed-assets`; stores managed image and Hero motion uploads outside the app checkout)
 - `MANAGED_MEDIA_PUBLIC_BASE_PATH=/uploads/managed-assets` (public route prefix for managed assets)
 - `WOLO_OSMOSIS_POOL_ID=3461` / `WOLO_OSMOSIS_POOL_URL=https://app.osmosis.zone/pool/3461` / `WOLO_OSMOSIS_LCD_URL=https://lcd.osmosis.zone` / `WOLO_MARKET_LABEL=WOLO Market`; the Advanced lobby market tile and ticker derive `1 WOLO` price from the Osmosis pool unless `WOLO_USD_PRICE` is explicitly set.
 

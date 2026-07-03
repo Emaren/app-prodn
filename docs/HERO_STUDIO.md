@@ -117,7 +117,7 @@ should provide a poster image.
 Production should set:
 
 ```bash
-MANAGED_MEDIA_UPLOAD_DIR=/mnt/HC_Volume_105319120/aoe2-managed-media
+MANAGED_MEDIA_UPLOAD_DIR=/mnt/HC_Volume_105319120/aoe2-managed-assets
 MANAGED_MEDIA_PUBLIC_BASE_PATH=/uploads/managed-assets
 ```
 

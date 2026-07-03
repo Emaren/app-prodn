@@ -75,8 +75,8 @@ journalctl -u aoe2hdbets-web.service -n 40 --no-pager
   as immutable revision 1 so later draft edits are private immediately.
 - Media Armory now accepts `motion` MP4/WEBM assets up to 48 MB. The managed
   upload serving route supports byte ranges for video playback.
-- Create `/mnt/HC_Volume_105319120/aoe2-managed-media`, chown it to
-  `tony:tony`, and set `MANAGED_MEDIA_UPLOAD_DIR` in the production web env.
+- Reuse `/mnt/HC_Volume_105319120/aoe2-managed-assets`, keep it owned by
+  `tony:tony`, and preserve `MANAGED_MEDIA_UPLOAD_DIR` in the production web env.
 - Deployment requires `npx prisma migrate deploy`, explicit verification of
   the four `hero_*` tables, build, restart, and public `/` plus
   `/admin/hero-studio` smoke checks.
