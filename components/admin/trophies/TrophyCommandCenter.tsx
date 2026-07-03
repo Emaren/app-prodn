@@ -56,7 +56,8 @@ const TABS: Array<{ key: TabKey; label: string; Icon: typeof Crown }> = [
 
 const ADMIN_NAV = [
   { href: "/admin", label: "Admin Home", Icon: Home },
-  { href: "/admin/events", label: "Event Studio", Icon: CalendarRange },
+  { href: "/admin/hero-studio", label: "Hero Studio", Icon: Sparkles },
+  { href: "/admin/events", label: "Featured Event", Icon: CalendarRange },
   { href: "/admin/trophies", label: "Trophy Command", Icon: Crown },
   { href: "/admin/media-assets", label: "Media Assets", Icon: Images },
   { href: "/admin/wolochain", label: "WoloChain", Icon: Coins },

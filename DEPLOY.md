@@ -57,6 +57,28 @@ journalctl -u aoe2hdbets-web.service -n 40 --no-pager
 
 ## Recent deployment notes
 
+### 2026-07-03 Hero Studio and Main Stage carousel
+
+- Replaced the direct single EventTile placement on `/` and `/lobby` with a
+  typed Hero carousel while preserving the Wolomania composition as the hard
+  runtime fallback.
+- Added `/admin/hero-studio` for the reusable screen library, ordering,
+  enabled state, schedules, per-screen durations and links, global transition
+  presets, desktop/mobile preview, atomic publication revisions, and rollback.
+- Added Featured Event, Wolo Chronicle, Warrior Quote, and generic Media
+  Takeover renderers. EventTile and ForumThread remain their own source-of-truth
+  models.
+- Added `hero_playlists`, `hero_screens`, `hero_playlist_items`, and
+  `hero_playlist_publications` in
+  `20260703_193000_add_hero_studio`.
+- Media Armory now accepts `motion` MP4/WEBM assets up to 48 MB. The managed
+  upload serving route supports byte ranges for video playback.
+- Create `/mnt/HC_Volume_105319120/aoe2-managed-media`, chown it to
+  `tony:tony`, and set `MANAGED_MEDIA_UPLOAD_DIR` in the production web env.
+- Deployment requires `npx prisma migrate deploy`, explicit verification of
+  the four `hero_*` tables, build, restart, and public `/` plus
+  `/admin/hero-studio` smoke checks.
+
 ### 2026-07-01 War Room forum and Wolo Chronicles
 
 - Replaced the inert `/forum` display shell with a real browsable War Room while preserving the original focused composition as Basic.

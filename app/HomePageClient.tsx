@@ -15,13 +15,13 @@ import { TopWoloEarnersTile } from "@/components/lobby/TopWoloEarnersTile";
 import { TournamentPanel } from "@/components/lobby/TournamentPanel";
 import { WatchAndChatHero } from "@/components/lobby/WatchAndChatHero";
 import { WoloMarketTile } from "@/components/lobby/WoloMarketTile";
-import { WolomaniaPromoTile } from "@/components/lobby/WolomaniaPromoTile";
+import { HeroCarousel } from "@/components/hero/HeroCarousel";
 import Aoe2ShortsTile from "@/components/home/Aoe2ShortsTile";
 import { useTileViewPreference } from "@/components/tile-view/useTileViewPreference";
 import { buildChatItems } from "@/components/lobby/utils";
 import { useUserAuth } from "@/context/UserAuthContext";
 import { AI_CONCIERGE_NAME, AI_CONCIERGE_UID, AI_GRIMER_NAME, AI_GRIMER_UID, type AiVisibilityOption } from "@/lib/aiConciergeConfig";
-import type { EventTileView } from "@/lib/events/types";
+import type { HeroPlaylistView } from "@/lib/hero/types";
 import {
   getFallbackLeaderboard,
   getFallbackTournament,
@@ -863,7 +863,7 @@ function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
 
 type HomePageClientProps = {
   initialLobby: LobbySnapshot | null;
-  initialEventTile: EventTileView;
+  initialHeroPlaylist: HeroPlaylistView;
 };
 
 function AdvancedFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] }) {
@@ -1045,7 +1045,7 @@ export default function HomePageClient({
 
 
   initialLobby,
-  initialEventTile,
+  initialHeroPlaylist,
 }: HomePageClientProps) {
 const { uid, isAdmin, isAuthenticated, loading, loginWithSteam, playerName, user } = useUserAuth();
   const {
@@ -1762,7 +1762,7 @@ return (
             viewMode={viewMode}
             surface={isExtremeLobby ? "extreme" : "standard"}
           />
-          <WolomaniaPromoTile eventTile={initialEventTile} />
+          <HeroCarousel playlist={initialHeroPlaylist} />
           <Aoe2ShortsTile />
           <WatchAndChatHero
             tournament={tournament}

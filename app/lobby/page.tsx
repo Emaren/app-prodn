@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 
 import LobbyClientOnly from "@/app/lobby/LobbyClientOnly";
-import { loadActiveEventTile } from "@/lib/events/service";
+import { loadPublishedHeroPlaylist } from "@/lib/hero/service";
 import { readGuestReactionSessionIdFromCookies } from "@/lib/guestReactionSession";
 import { loadLobbySnapshot } from "@/lib/lobbySnapshot";
 import { getPrisma } from "@/lib/prisma";
@@ -14,19 +14,19 @@ export default async function LobbyPage() {
   const cookieStore = await cookies();
   const claims = await verifySession(cookieStore.get(SESSION_COOKIE_NAME)?.value);
   const prisma = getPrisma();
-  const [initialLobby, initialEventTile] = await Promise.all([
+  const [initialLobby, initialHeroPlaylist] = await Promise.all([
     loadLobbySnapshot(
       prisma,
       claims?.uid ?? null,
       readGuestReactionSessionIdFromCookies(cookieStore)
     ),
-    loadActiveEventTile(prisma),
+    loadPublishedHeroPlaylist(prisma),
   ]);
 
   return (
     <LobbyClientOnly
       initialLobby={initialLobby}
-      initialEventTile={initialEventTile}
+      initialHeroPlaylist={initialHeroPlaylist}
     />
   );
 }

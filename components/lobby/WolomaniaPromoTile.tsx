@@ -505,9 +505,11 @@ function DesktopPlayerLabel({
 export function WolomaniaPromoTile({
   eventTile = FALLBACK_EVENT_TILE,
   previewMode = null,
+  embedded = false,
 }: {
   eventTile?: EventTileView | null;
   previewMode?: "desktop" | "mobile" | null;
+  embedded?: boolean;
 }) {
   const resolved = eventTile || FALLBACK_EVENT_TILE;
   if (previewMode === "mobile") {
@@ -525,7 +527,7 @@ export function WolomaniaPromoTile({
     );
   }
   return (
-    <section className="relative overflow-hidden rounded-[2.35rem] border border-amber-200/18 bg-black shadow-[0_38px_130px_rgba(0,0,0,0.52)]">
+    <section className={`relative h-full overflow-hidden rounded-[2.35rem] border border-amber-200/18 bg-black ${embedded ? "" : "shadow-[0_38px_130px_rgba(0,0,0,0.52)]"}`}>
       <div className="sm:hidden">
         <MobileEventTile eventTile={resolved} preview={false} />
       </div>

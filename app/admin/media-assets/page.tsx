@@ -53,7 +53,7 @@ type AdminMediaUser = {
   totalMatches?: number;
 };
 
-const KIND_OPTIONS = ["avatar", "belt", "artifact", "logo", "background", "other"] as const;
+const KIND_OPTIONS = ["avatar", "belt", "artifact", "logo", "background", "motion", "other"] as const;
 type MediaKind = (typeof KIND_OPTIONS)[number];
 
 const CATEGORY_LABELS: Record<MediaKind, string> = {
@@ -62,6 +62,7 @@ const CATEGORY_LABELS: Record<MediaKind, string> = {
   artifact: "Artifacts",
   logo: "Logos",
   background: "Backgrounds",
+  motion: "Hero Motion",
   other: "Other",
 };
 
@@ -540,7 +541,7 @@ export default function AdminMediaAssetsPage() {
         </section>
       )}
 
-      <nav className="mb-5 grid gap-2 sm:grid-cols-3 xl:grid-cols-6">
+      <nav className="mb-5 grid gap-2 sm:grid-cols-3 xl:grid-cols-7">
         {categoryStats.map((stat) => (
           <button
             key={stat.kind}
@@ -599,13 +600,19 @@ export default function AdminMediaAssetsPage() {
                 <input
                   type="file"
                   multiple
-                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  accept={
+                    category === "motion"
+                      ? "video/mp4,video/webm,image/png,image/jpeg,image/webp,image/gif"
+                      : "image/png,image/jpeg,image/webp,image/gif"
+                  }
                   onChange={chooseFiles}
                 />
                 <span className="text-xs text-slate-500">
                   {files.length > 0
                     ? `${files.length} file${files.length === 1 ? "" : "s"} · ${formatSize(totalUploadBytes)}`
-                    : "PNG, JPG, WEBP, or GIF. Upload once, assign many times."}
+                    : category === "motion"
+                      ? "MP4 or WEBM up to 48 MB. GIF and still-image fallbacks are also accepted."
+                      : "PNG, JPG, WEBP, or GIF. Upload once, assign many times."}
                 </span>
               </label>
 
@@ -859,7 +866,11 @@ function AssetCard({
         onClick={onToggleSelected}
         className="relative flex aspect-[1.22/1] w-full items-center justify-center bg-[linear-gradient(45deg,rgba(255,255,255,0.045)_25%,transparent_25%,transparent_75%,rgba(255,255,255,0.045)_75%),linear-gradient(45deg,rgba(255,255,255,0.045)_25%,transparent_25%,transparent_75%,rgba(255,255,255,0.045)_75%)] bg-[length:18px_18px] bg-[position:0_0,9px_9px]"
       >
-        <img src={asset.url} alt={asset.alt || asset.label} className="h-full w-full object-contain p-3" />
+        {asset.mimeType?.startsWith("video/") ? (
+          <video src={asset.url} muted loop autoPlay playsInline className="h-full w-full object-contain p-3" />
+        ) : (
+          <img src={asset.url} alt={asset.alt || asset.label} className="h-full w-full object-contain p-3" />
+        )}
         <div className="pointer-events-none absolute inset-0 bg-black/18" />
         <span
           className={`absolute left-2 top-2 inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[10px] uppercase tracking-[0.12em] ${
@@ -928,7 +939,11 @@ function AssignedAssetTile({
   return (
     <div className="min-w-0 overflow-hidden rounded-xl border border-white/10 bg-white/[0.035]">
       <div className="relative flex aspect-square items-center justify-center bg-black/20">
-        <img src={asset.url} alt={asset.alt || asset.label} className="h-full w-full object-contain p-1.5" />
+        {asset.mimeType?.startsWith("video/") ? (
+          <video src={asset.url} muted loop autoPlay playsInline className="h-full w-full object-contain p-1.5" />
+        ) : (
+          <img src={asset.url} alt={asset.alt || asset.label} className="h-full w-full object-contain p-1.5" />
+        )}
         {asset.active ? (
           <span className="absolute left-1.5 top-1.5 rounded-full border border-emerald-300/24 bg-emerald-400/16 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.1em] text-emerald-100">
             Active

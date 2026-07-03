@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import type { EventTileView } from "@/lib/events/types";
+import type { HeroPlaylistView } from "@/lib/hero/types";
 import type { LobbySnapshot } from "@/lib/lobby";
 
 const HomePageClient = dynamic(() => import("@/app/HomePageClient"), {
@@ -20,15 +20,15 @@ const HomePageClient = dynamic(() => import("@/app/HomePageClient"), {
 
 export default function LobbyClientOnly({
   initialLobby,
-  initialEventTile,
+  initialHeroPlaylist,
 }: {
   initialLobby: LobbySnapshot;
-  initialEventTile: EventTileView;
+  initialHeroPlaylist: HeroPlaylistView;
 }) {
   return (
     <HomePageClient
       initialLobby={initialLobby}
-      initialEventTile={initialEventTile}
+      initialHeroPlaylist={initialHeroPlaylist}
     />
   );
 }

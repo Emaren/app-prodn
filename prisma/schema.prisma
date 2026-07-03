@@ -609,6 +609,7 @@ model EventTile {
   playerOne User? @relation("EventTilePlayerOne", fields: [playerOneUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   playerTwo User? @relation("EventTilePlayerTwo", fields: [playerTwoUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   commissioner User? @relation("EventTileCommissioner", fields: [commissionerUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  heroScreens HeroScreen[]
 
   @@index([isPublished, isActive, priority], map: "ix_event_tiles_published_active_priority")
   @@index([status, updatedAt], map: "ix_event_tiles_status_updated")
@@ -778,6 +779,7 @@ model ForumThread {
   posts     ForumPost[]
   bookmarks ForumThreadBookmark[]
   reactions ForumThreadReaction[]
+  heroScreens HeroScreen[]
 
   @@index([channel, updatedAt], map: "ix_forum_threads_channel_updated_at")
   @@index([isFeatured, updatedAt], map: "ix_forum_threads_featured_updated_at")
@@ -1051,10 +1053,96 @@ model ManagedMediaAsset {
   uploadedByUid String?  @map("uploaded_by_uid") @db.VarChar(100)
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+  heroScreens   HeroScreen[]
 
   @@index([kind, target, active], map: "ix_managed_media_assets_kind_target_active")
   @@index([createdAt], map: "ix_managed_media_assets_created_at")
   @@map("managed_media_assets")
+}
+
+model HeroPlaylist {
+  id                   Int      @id @default(autoincrement())
+  key                  String   @unique(map: "uq_hero_playlists_key") @db.VarChar(100)
+  name                 String   @db.VarChar(160)
+  autoplay             Boolean  @default(true)
+  defaultDurationMs    Int      @default(9000) @map("default_duration_ms")
+  transitionDurationMs Int      @default(700) @map("transition_duration_ms")
+  transitionStyle      String   @default("crossfade") @map("transition_style") @db.VarChar(40)
+  pauseOnHover         Boolean  @default(true) @map("pause_on_hover")
+  showArrows           Boolean  @default(true) @map("show_arrows")
+  showDots             Boolean  @default(true) @map("show_dots")
+  showProgress         Boolean  @default(true) @map("show_progress")
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  items        HeroPlaylistItem[]
+  publications HeroPlaylistPublication[]
+
+  @@map("hero_playlists")
+}
+
+model HeroScreen {
+  id             Int      @id @default(autoincrement())
+  key            String   @unique(map: "uq_hero_screens_key") @db.VarChar(120)
+  name           String   @db.VarChar(160)
+  type           String   @db.VarChar(40)
+  status         String   @default("draft") @db.VarChar(24)
+  defaultHref    String?  @map("default_href") @db.VarChar(500)
+  ariaLabel      String?  @map("aria_label") @db.VarChar(180)
+  eventTileId    Int?     @map("event_tile_id")
+  forumThreadId  Int?     @map("forum_thread_id")
+  mediaAssetId   Int?     @map("media_asset_id")
+  config         Json?
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  eventTile   EventTile?         @relation(fields: [eventTileId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  forumThread ForumThread?       @relation(fields: [forumThreadId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  mediaAsset  ManagedMediaAsset? @relation(fields: [mediaAssetId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  items       HeroPlaylistItem[]
+
+  @@index([type, status, updatedAt], map: "ix_hero_screens_type_status_updated")
+  @@index([eventTileId], map: "ix_hero_screens_event_tile")
+  @@index([forumThreadId], map: "ix_hero_screens_forum_thread")
+  @@index([mediaAssetId], map: "ix_hero_screens_media_asset")
+  @@map("hero_screens")
+}
+
+model HeroPlaylistItem {
+  id         Int       @id @default(autoincrement())
+  playlistId Int       @map("playlist_id")
+  screenId   Int       @map("screen_id")
+  position   Int       @default(0)
+  enabled    Boolean   @default(true)
+  startsAt   DateTime? @map("starts_at") @db.Timestamp(6)
+  endsAt     DateTime? @map("ends_at") @db.Timestamp(6)
+  durationMs Int?      @map("duration_ms")
+  hrefOverride String? @map("href_override") @db.VarChar(500)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  playlist HeroPlaylist @relation(fields: [playlistId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  screen   HeroScreen   @relation(fields: [screenId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([playlistId, screenId], map: "uq_hero_playlist_items_playlist_screen")
+  @@index([playlistId, enabled, position], map: "ix_hero_playlist_items_playlist_enabled_position")
+  @@index([screenId], map: "ix_hero_playlist_items_screen")
+  @@map("hero_playlist_items")
+}
+
+model HeroPlaylistPublication {
+  id             Int      @id @default(autoincrement())
+  playlistId     Int      @map("playlist_id")
+  version        Int
+  snapshot       Json
+  publishedByUid String?  @map("published_by_uid") @db.VarChar(100)
+  publishedAt    DateTime @default(now()) @map("published_at") @db.Timestamp(6)
+
+  playlist HeroPlaylist @relation(fields: [playlistId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([playlistId, version], map: "uq_hero_playlist_publications_playlist_version")
+  @@index([playlistId, publishedAt], map: "ix_hero_playlist_publications_playlist_published")
+  @@map("hero_playlist_publications")
 }
 
 model UserActivityEvent {

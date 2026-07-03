@@ -47,7 +47,8 @@ const dateInputClass = `${inputClass} min-h-11 text-[13px] sm:text-sm`;
 
 const ADMIN_LINKS = [
   { href: "/admin", label: "Admin Home", Icon: Home },
-  { href: "/admin/events", label: "Event Studio", Icon: CalendarRange },
+  { href: "/admin/hero-studio", label: "Hero Studio", Icon: Sparkles },
+  { href: "/admin/events", label: "Featured Event", Icon: CalendarRange },
   { href: "/admin/trophies", label: "Trophy Command", Icon: Crown },
   { href: "/admin/media-assets", label: "Media Armory", Icon: Images },
 ] as const;
@@ -322,13 +323,13 @@ export default function EventStudio() {
           <div>
             <div className="flex items-center gap-2 text-xs uppercase tracking-[0.35em] text-amber-100/[0.72]">
               <CalendarRange className="h-4 w-4" />
-              AoE2WAR Lobby Event Studio
+              AoE2WAR Featured Event Studio
             </div>
             <h1 className="mt-3 font-serif text-3xl font-semibold uppercase tracking-[0.08em] text-amber-50 sm:text-5xl">
-              Main Stage Control
+              Featured Event Foundry
             </h1>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
-              Build, preview, publish, and activate the one cinematic Event Tile shown on the homepage and lobby.
+              Build and preview cinematic event screens, then place them into the public rotation from Hero Studio.
             </p>
           </div>
           <Button onClick={() => void load()} disabled={loading || busy}>

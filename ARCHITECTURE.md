@@ -143,9 +143,9 @@ The Community Lobby’s Basic, Advanced, and Extreme modes also own the lobby ca
 
 These widths are resolved in `app/AppShell.tsx` from the `community_lobby` tile preference. Do not apply Extreme’s width globally to all three modes.
 
-Lobby media composition has one primary video/event stage in the upper showcase flow. The old secondary `LiveBroadcastSpotlight` theater between the leaderboard/War Chest section and chat was removed; stream/player ownership remains with `/watch`, live-game surfaces, and the upper Watch & Chat hero.
+Lobby media composition has one primary Hero Main Stage in the upper showcase flow. `HeroPlaylist`, `HeroScreen`, and `HeroPlaylistItem` own the private draft composition; immutable `HeroPlaylistPublication` snapshots own the live order/settings and rollback history. Typed screen renderers hydrate EventTile, ForumThread, and ManagedMediaAsset sources without stealing ownership from those domain models. The public falls back to the permanent Featured Event composition if Hero persistence is missing. The old secondary `LiveBroadcastSpotlight` theater between the leaderboard/War Chest section and chat was removed; stream/player ownership remains with `/watch`, live-game surfaces, and the upper Watch & Chat hero.
 
-AoE2 Shorts is a separate editorial replay surface directly below the featured event and above Watch & Chat. `components/home/Aoe2ShortsTile.tsx` owns the vertical/wide presentations, bundled founding clip manifest, mobile full-screen reel, swipe/keyboard navigation, local reactions, profile links, war-room comment handoff, and sharing. It does not currently claim an upload API or durable reaction/comment model.
+AoE2 Shorts is a separate editorial replay surface directly below the Hero Main Stage and above Watch & Chat. `components/home/Aoe2ShortsTile.tsx` owns the vertical/wide presentations, bundled founding clip manifest, mobile full-screen reel, swipe/keyboard navigation, local reactions, profile links, war-room comment handoff, and sharing. It does not currently claim an upload API or durable reaction/comment model.
 
 In Extreme mode, the leaderboard and War Chest are bounded internal scroll regions. The desktop War Chest rail is deliberately tall enough to preview roughly nine rows, while mobile constrains it to the viewport and scrolls its entries inside the tile.
 

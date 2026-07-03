@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
 
     if (!(file instanceof File)) {
       return NextResponse.json(
-        { detail: "Choose an image file first." },
+        { detail: "Choose a media file first." },
         { status: 400, headers: NO_STORE_HEADERS }
       );
     }

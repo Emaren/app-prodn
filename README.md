@@ -16,6 +16,7 @@ It currently owns the premium lobby/community surface, leaderboard presentation,
 - [docs/CHAMPIONS_TITLE_ECONOMY.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/docs/CHAMPIONS_TITLE_ECONOMY.md)
 - [docs/SCHEDULED_MATCH_SETTLEMENTS.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/docs/SCHEDULED_MATCH_SETTLEMENTS.md)
 - [docs/WAR_ROOM_FORUM.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/docs/WAR_ROOM_FORUM.md)
+- [docs/HERO_STUDIO.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/docs/HERO_STUDIO.md)
 
 ## Stack
 
@@ -36,10 +37,12 @@ It currently owns the premium lobby/community surface, leaderboard presentation,
 - Forum search, tabs, channels, feed shelves, bookmarks, read state, publishing, replies, and named reactions are functional; a missing forum migration returns the complete editorial archive read-only instead of white-screening or pretending a write succeeded
 - `/academy` is the premium strategy front gate, launching with Zodiac as the founding advisor; `/zodiac` owns his replay-backed counsel page and verified 100 WOLO first-lesson checkout
 - `/market` is the player-built AoE2WAR Agora, launching with The Visage Forge, tailored merchant awnings, an AoE2-lobby-inspired dark commission desk, authenticated 100 WOLO avatar requests, direct Emaren inbox delivery, profile avatar-vault delivery, and an open-shop proposal rail
-- `/` and `/lobby` place the founding AoE2 Shorts reel directly below the featured event: real replay clips, vertical and wide presentations, a mobile portrait rail, full-screen swipe playback, uploader links, reactions, comments handoff, and sharing
+- `/` and `/lobby` share the published Hero Main Stage: an accessible, responsive carousel of typed Featured Event, Wolo Chronicle, Warrior Quote, and media-takeover screens with operator-defined ordering, schedules, dwell time, link overrides, and motion presets
+- `/` and `/lobby` place the founding AoE2 Shorts reel directly below the Hero Main Stage: real replay clips, vertical and wide presentations, a mobile portrait rail, full-screen swipe playback, uploader links, reactions, comments handoff, and sharing
 - `/champions` owns the app-side championship title economy: podium belts, tag titles, national titles, ELO titles, special designations, live custody/bounty overlays, challenge links, and detail pages
 - `/admin/trophies` is the persistent War Trophy command center for definitions, holder/Guardian custody, challenges, replay proof, dry-run settlement, payouts, NFT intents, settings, and audit history
-- `/admin/events` is the Event Studio for the one active published cinematic EventTile shared by `/` and `/lobby`; the current Wolomania Jim / Julio / Commissioner / belt composition remains the seeded default and hard production fallback
+- `/admin/hero-studio` owns the reusable screen library, ordered transition chain, scheduling, carousel settings, exact preview, atomic publication history, and rollback
+- `/admin/events` remains the specialized Featured Event editor; EventTile is a typed Hero source rather than the carousel data model, and the Wolomania composition remains the hard production fallback
 - Lazy client islands for wallet-heavy `/wolo`, `/wallet`, and `/connect-wallet` routes so the server shell paints with a small first-load bundle
 
 ## Shipped public surfaces
@@ -118,6 +121,8 @@ Common:
 - `INTERNAL_API_KEY` (optional; forwarded on replay upload when backend enforces API keys)
 - `ALLOW_GUEST_SESSIONS=false` (recommended; keep guest sessions off so replay evidence ties to signed identities)
 - `DIRECT_MESSAGE_ATTACHMENT_DIR` (optional; default `storage/direct-message-attachments/`; new inbox uploads store file refs there instead of base64 rows)
+- `MANAGED_MEDIA_UPLOAD_DIR` (production: `/mnt/HC_Volume_105319120/aoe2-managed-media`; stores managed image and Hero motion uploads outside the app checkout)
+- `MANAGED_MEDIA_PUBLIC_BASE_PATH=/uploads/managed-assets` (public route prefix for managed assets)
 - `WOLO_OSMOSIS_POOL_ID=3461` / `WOLO_OSMOSIS_POOL_URL=https://app.osmosis.zone/pool/3461` / `WOLO_OSMOSIS_LCD_URL=https://lcd.osmosis.zone` / `WOLO_MARKET_LABEL=WOLO Market`; the Advanced lobby market tile and ticker derive `1 WOLO` price from the Osmosis pool unless `WOLO_USD_PRICE` is explicitly set.
 
 WOLO betting / settlement:

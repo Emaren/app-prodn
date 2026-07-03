@@ -1,4 +1,4 @@
-import { readFile } from "fs/promises";
+import { open, readFile, stat } from "fs/promises";
 import path from "path";
 
 import { NextResponse } from "next/server";
@@ -15,6 +15,8 @@ function contentTypeFor(filename: string) {
   if (extension === ".jpg" || extension === ".jpeg") return "image/jpeg";
   if (extension === ".webp") return "image/webp";
   if (extension === ".gif") return "image/gif";
+  if (extension === ".mp4") return "video/mp4";
+  if (extension === ".webm") return "video/webm";
   return "application/octet-stream";
 }
 
@@ -39,7 +41,7 @@ function safeFilePath(baseDir: string, kind: string, file: string) {
 }
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ kind: string; file: string }> }
 ) {
   const { kind, file } = await params;
@@ -53,11 +55,74 @@ export async function GET(
     if (!filePath) continue;
 
     try {
+      const fileStat = await stat(filePath);
+      const range = request.headers.get("range");
+      const commonHeaders = {
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "public, max-age=31536000, immutable",
+        "Content-Type": contentTypeFor(file),
+      };
+      const rangeMatch = range?.match(/^bytes=(\d*)-(\d*)$/i);
+
+      if (range && !rangeMatch) {
+        return new NextResponse(null, {
+          status: 416,
+          headers: {
+            ...commonHeaders,
+            "Content-Range": `bytes */${fileStat.size}`,
+          },
+        });
+      }
+
+      if (rangeMatch) {
+        const isSuffixRange = !rangeMatch[1] && Boolean(rangeMatch[2]);
+        const requestedStart = isSuffixRange
+          ? Math.max(0, fileStat.size - Number(rangeMatch[2] || 0))
+          : Number(rangeMatch[1] || 0);
+        const requestedEnd = isSuffixRange
+          ? fileStat.size - 1
+          : rangeMatch[2]
+            ? Number(rangeMatch[2])
+            : fileStat.size - 1;
+        const start = Math.max(0, requestedStart);
+        const end = Math.min(fileStat.size - 1, requestedEnd);
+        if (
+          !Number.isInteger(start) ||
+          !Number.isInteger(end) ||
+          start > end ||
+          start >= fileStat.size
+        ) {
+          return new NextResponse(null, {
+            status: 416,
+            headers: {
+              ...commonHeaders,
+              "Content-Range": `bytes */${fileStat.size}`,
+            },
+          });
+        }
+        const length = end - start + 1;
+        const handle = await open(filePath, "r");
+        try {
+          const buffer = Buffer.allocUnsafe(length);
+          await handle.read(buffer, 0, length, start);
+          return new NextResponse(new Uint8Array(buffer), {
+            status: 206,
+            headers: {
+              ...commonHeaders,
+              "Content-Length": String(length),
+              "Content-Range": `bytes ${start}-${end}/${fileStat.size}`,
+            },
+          });
+        } finally {
+          await handle.close();
+        }
+      }
+
       const buffer = await readFile(filePath);
       return new NextResponse(new Uint8Array(buffer), {
         headers: {
-          "Cache-Control": "public, max-age=31536000, immutable",
-          "Content-Type": contentTypeFor(file),
+          ...commonHeaders,
+          "Content-Length": String(fileStat.size),
         },
       });
     } catch {

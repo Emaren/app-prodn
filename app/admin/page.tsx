@@ -581,10 +581,16 @@ export default function AdminPage() {
             </div>
             <div className="flex flex-wrap justify-end gap-2">
               <Link
+                href="/admin/hero-studio"
+                className="inline-flex rounded-full border border-emerald-200/22 bg-emerald-300/10 px-5 py-3 text-sm text-emerald-100 transition hover:border-emerald-200/40 hover:bg-emerald-300/16"
+              >
+                Hero Studio
+              </Link>
+              <Link
                 href="/admin/events"
                 className="inline-flex rounded-full border border-amber-200/18 bg-amber-300/10 px-5 py-3 text-sm text-amber-100 transition hover:border-amber-200/36 hover:bg-amber-300/16"
               >
-                Event Studio
+                Featured Event Studio
               </Link>
               <Link
                 href="/admin/trophies"

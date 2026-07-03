@@ -5,18 +5,24 @@ import path from "path";
 import type { PrismaClient } from "@/lib/generated/prisma";
 import { allChampionTitles } from "@/lib/champions/titles";
 
-export const MANAGED_MEDIA_KINDS = ["avatar", "belt", "artifact", "logo", "background", "other"] as const;
+export const MANAGED_MEDIA_KINDS = ["avatar", "belt", "artifact", "logo", "background", "motion", "other"] as const;
 
 export type ManagedMediaKind = (typeof MANAGED_MEDIA_KINDS)[number];
 
 const MANAGED_MEDIA_KIND_SET = new Set<string>(MANAGED_MEDIA_KINDS);
-const MAX_UPLOAD_BYTES = 7 * 1024 * 1024;
+const MAX_IMAGE_UPLOAD_BYTES = 7 * 1024 * 1024;
+const MAX_MOTION_UPLOAD_BYTES = 48 * 1024 * 1024;
 
 const IMAGE_EXTENSIONS: Record<string, string> = {
   "image/png": "png",
   "image/jpeg": "jpg",
   "image/webp": "webp",
   "image/gif": "gif",
+};
+
+const MOTION_EXTENSIONS: Record<string, string> = {
+  "video/mp4": "mp4",
+  "video/webm": "webm",
 };
 
 const STATIC_FALLBACKS: Record<string, string> = {
@@ -114,7 +120,14 @@ export async function resolveManagedMediaUrl(
   return mediaFallbackUrl(normalizedKind, normalizedTarget, fallback) || "/";
 }
 
-function extensionForUpload(mimeType: string | null, originalName: string | null) {
+function extensionForUpload(
+  kind: ManagedMediaKind,
+  mimeType: string | null,
+  originalName: string | null
+) {
+  if (kind === "motion" && mimeType && MOTION_EXTENSIONS[mimeType]) {
+    return MOTION_EXTENSIONS[mimeType];
+  }
   if (mimeType && IMAGE_EXTENSIONS[mimeType]) {
     return IMAGE_EXTENSIONS[mimeType];
   }
@@ -122,7 +135,15 @@ function extensionForUpload(mimeType: string | null, originalName: string | null
   const ext = (originalName ? path.extname(originalName).replace(".", "").toLowerCase() : "")
     .replace(/[^a-z0-9]/g, "")
     .slice(0, 8);
-  return ext && ["png", "jpg", "jpeg", "webp", "gif"].includes(ext) ? (ext === "jpeg" ? "jpg" : ext) : null;
+  const allowed =
+    kind === "motion"
+      ? ["mp4", "webm", "png", "jpg", "jpeg", "webp", "gif"]
+      : ["png", "jpg", "jpeg", "webp", "gif"];
+  return ext && allowed.includes(ext)
+    ? ext === "jpeg"
+      ? "jpg"
+      : ext
+    : null;
 }
 
 function cleanBasePath(value: string | null | undefined) {
@@ -183,15 +204,27 @@ export async function saveManagedMediaUpload({
   const mimeType = cleanText(file.type, 100) || null;
 
   if (file.size <= 0) {
-    throw new Error("Choose an image file first.");
+    throw new Error("Choose a media file first.");
   }
-  if (file.size > MAX_UPLOAD_BYTES) {
-    throw new Error("Image is too large. Keep managed assets under 7 MB.");
+  const maxBytes =
+    normalizedKind === "motion"
+      ? MAX_MOTION_UPLOAD_BYTES
+      : MAX_IMAGE_UPLOAD_BYTES;
+  if (file.size > maxBytes) {
+    throw new Error(
+      normalizedKind === "motion"
+        ? "Motion asset is too large. Keep MP4/WEBM uploads under 48 MB."
+        : "Image is too large. Keep managed assets under 7 MB."
+    );
   }
 
-  const extension = extensionForUpload(mimeType, originalName);
+  const extension = extensionForUpload(normalizedKind, mimeType, originalName);
   if (!extension) {
-    throw new Error("Use PNG, JPG, WEBP, or GIF for managed assets.");
+    throw new Error(
+      normalizedKind === "motion"
+        ? "Use MP4, WEBM, PNG, JPG, WEBP, or GIF for motion assets."
+        : "Use PNG, JPG, WEBP, or GIF for managed assets."
+    );
   }
 
   const targetPart = normalizedTarget || slugifyManagedMediaTarget(normalizedLabel) || "asset";
