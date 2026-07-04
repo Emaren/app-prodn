@@ -7,7 +7,7 @@ const STAKE_OPTIONS = [10, 25, 50, 100] as const;
 
 export type BetSide = "left" | "right";
 export type BetStatus = "open" | "closing" | "live" | "settled";
-export type BetsViewMode = "basic" | "advanced";
+export type BetsViewMode = "basic" | "advanced" | "extreme";
 export type FounderBonusType = "participants" | "winner";
 
 export type BetFounderChip = {

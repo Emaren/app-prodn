@@ -35,7 +35,7 @@ const STAKE_RECOVERY_STORAGE_KEY = "aoe2hdbets.betStakeRecovery.v1";
 const BETS_VIEW_STORAGE_KEY = "aoe2hdbets.betsView.v1";
 type BetSide = "left" | "right";
 type BetStatus = "open" | "closing" | "live" | "settled";
-type BetsViewMode = "basic" | "advanced";
+type BetsViewMode = "basic" | "advanced" | "extreme";
 type FounderBonusType = "participants" | "winner";
 type BroadcastViewKey = "left" | "god" | "right";
 
@@ -900,7 +900,7 @@ export default function BetsPage() {
   const { data: rawWalletBalance } = useWoloBalance(connectedWalletAddress || undefined);
   const nowMs = useNowTicker();
   const [board, setBoard] = useState<BetBoardSnapshot | null>(null);
-  const [betsView, setBetsView] = useState<BetsViewMode>("basic");
+  const [betsView, setBetsView] = useState<BetsViewMode>("extreme");
   const [selection, setSelection] = useState<SelectionState | null>(null);
   const [loadingBoard, setLoadingBoard] = useState(true);
   const [workingKey, setWorkingKey] = useState<string | null>(null);
@@ -961,7 +961,7 @@ export default function BetsPage() {
     }
 
     const storedView = window.localStorage.getItem(BETS_VIEW_STORAGE_KEY);
-    if (storedView === "basic" || storedView === "advanced") {
+    if (storedView === "basic" || storedView === "advanced" || storedView === "extreme") {
       setBetsView(storedView);
     }
   }, []);
