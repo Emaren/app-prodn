@@ -384,6 +384,8 @@ export default function ClanHallClient({
   const clansHref =
     initialView === "advanced" ? "/clans" : `/clans?view=${initialView}`;
 
+  const isMystikalClan = snapshot.clan.slug.toLowerCase() === "mystikal";
+
   return (
     <main
       className={`clan-hall clan-${initialView}-view mx-auto w-full space-y-6 py-3 text-white sm:py-5`}
@@ -433,9 +435,27 @@ export default function ClanHallClient({
                 {policyDetail.label}
               </span>
             </div>
-            <h1 className="clan-hall__title mt-4 font-serif text-5xl font-semibold tracking-[-0.04em] text-white sm:text-7xl">
-              {snapshot.clan.name}
-            </h1>
+            {isMystikalClan ? (
+              <div className="mt-5 flex w-full flex-col items-center">
+                <h1 className="sr-only">{snapshot.clan.name}</h1>
+                <div className="relative w-full max-w-[34rem] overflow-visible">
+                  <Image
+                    src="/clans/mystikal-wordmark.png"
+                    alt=""
+                    aria-hidden="true"
+                    width={920}
+                    height={240}
+                    priority
+                    sizes="(max-width: 1024px) 82vw, 520px"
+                    className="mx-auto h-auto w-full object-contain drop-shadow-[0_0_34px_rgba(168,85,247,0.28)]"
+                  />
+                </div>
+              </div>
+            ) : (
+              <h1 className="clan-hall__title mt-4 font-serif text-5xl font-semibold tracking-[-0.04em] text-white sm:text-7xl">
+                {snapshot.clan.name}
+              </h1>
+            )}
             <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300 sm:text-base">
               {snapshot.clan.description}
             </p>
