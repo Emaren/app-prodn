@@ -111,13 +111,17 @@ export default async function ClansPage({
                   Hall open
                 </span>
               </div>
-              <h2 className="clan-directory-card__title mt-5 font-serif text-5xl font-black uppercase tracking-[0.14em] text-transparent drop-shadow-[0_0_28px_rgba(168,85,247,0.30)] [-webkit-text-stroke:0.45px_rgba(255,255,255,0.26)] bg-[linear-gradient(180deg,#fff9d7_0%,#f7d77d_26%,#c4b5fd_58%,#5b3aa4_100%)] bg-clip-text sm:text-6xl">
-                {view === "basic"
-                  ? clan.name
-                  : view === "extreme"
-                    ? `House ${clan.name.replace(/\s+Clan$/i, "")}`
-                    : clan.name.replace(/\s+Clan$/i, "")}
-              </h2>
+              <div className="clan-directory-card__title mt-5 flex items-center">
+                <Image
+                  src="/clans/mystikal-wordmark.png"
+                  alt="Mystikal"
+                  width={2172}
+                  height={724}
+                  className="h-auto w-full max-w-[26rem] select-none object-contain object-left drop-shadow-[0_0_28px_rgba(79,70,229,0.34)] transition duration-500 group-hover:drop-shadow-[0_0_44px_rgba(124,58,237,0.46)]"
+                  sizes="(max-width: 640px) 82vw, 416px"
+                  priority={false}
+                />
+              </div>
               {view !== "basic" ? (
                 <div className="clan-directory-card__rank mt-2 text-[10px] font-black uppercase tracking-[0.42em] text-amber-100/58 [text-shadow:0_0_16px_rgba(251,191,36,0.16)]">
                   {view === "extreme"
