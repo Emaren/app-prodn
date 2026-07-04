@@ -1,9 +1,21 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
-import { ImagePlus, RefreshCw, Trash2, UploadCloud } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { toast } from "sonner";
 
-type HeroTakeoverState = {
+type HeroStageTransitionStyle = "fade" | "slide" | "cut";
+
+type HeroStageTakeoverSlide = {
+  id: string;
+  imageUrl: string;
+  imageAlt: string | null;
+  title: string | null;
+  linkUrl: string | null;
+  filename: string | null;
+  createdAt: string;
+};
+
+type HeroStageTakeoverState = {
   active: boolean;
   imageUrl: string | null;
   imageAlt: string | null;
@@ -11,311 +23,433 @@ type HeroTakeoverState = {
   linkUrl: string | null;
   startsAt: string | null;
   expiresAt: string | null;
-  originalName: string | null;
   updatedAt: string | null;
+  intervalMs: number;
+  transitionMs: number;
+  transitionStyle: HeroStageTransitionStyle;
+  slides: HeroStageTakeoverSlide[];
 };
 
-function toDateTimeLocalValue(date: Date) {
-  const pad = (value: number) => String(value).padStart(2, "0");
+const EMPTY_STATE: HeroStageTakeoverState = {
+  active: false,
+  imageUrl: null,
+  imageAlt: null,
+  title: "Jim Championship Hero",
+  linkUrl: "/forum",
+  startsAt: null,
+  expiresAt: null,
+  updatedAt: null,
+  intervalMs: 8000,
+  transitionMs: 900,
+  transitionStyle: "fade",
+  slides: [],
+};
 
-  return [
-    date.getFullYear(),
-    "-",
-    pad(date.getMonth() + 1),
-    "-",
-    pad(date.getDate()),
-    "T",
-    pad(date.getHours()),
-    ":",
-    pad(date.getMinutes()),
-  ].join("");
-}
-
-function defaultTonightValue() {
-  const end = new Date();
-  end.setHours(23, 59, 0, 0);
-
-  if (end.getTime() <= Date.now()) {
-    end.setDate(end.getDate() + 1);
-  }
-
-  return toDateTimeLocalValue(end);
-}
-
-function displayDate(value: string | null) {
-  if (!value) return "No expiry";
+function toDateTimeLocal(value: string | null) {
+  if (!value) return "";
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Invalid date";
-  return date.toLocaleString();
+  if (Number.isNaN(date.getTime())) return "";
+  const offset = date.getTimezoneOffset();
+  const local = new Date(date.getTime() - offset * 60 * 1000);
+  return local.toISOString().slice(0, 16);
+}
+
+function slideLabel(slide: HeroStageTakeoverSlide, index: number) {
+  return slide.title || slide.imageAlt || slide.filename || `Hero image ${index + 1}`;
 }
 
 export default function HeroImageTakeoverPanel() {
-  const [state, setState] = useState<HeroTakeoverState | null>(null);
-  const [file, setFile] = useState<File | null>(null);
-  const [fileInputKey, setFileInputKey] = useState(0);
-
-  const [title, setTitle] = useState("Jim Wins the American Championship");
-  const [imageAlt, setImageAlt] = useState("Jim celebrating after winning the American Championship");
-  const [linkUrl, setLinkUrl] = useState("/players/jim");
+  const [state, setState] = useState<HeroStageTakeoverState>(EMPTY_STATE);
+  const [title, setTitle] = useState(EMPTY_STATE.title || "");
+  const [alt, setAlt] = useState("Jim championship hero carousel");
+  const [linkUrl, setLinkUrl] = useState("/forum");
   const [startsAt, setStartsAt] = useState("");
-  const [expiresAt, setExpiresAt] = useState(defaultTonightValue);
-
+  const [expiresAt, setExpiresAt] = useState("");
+  const [intervalMs, setIntervalMs] = useState(8000);
+  const [transitionMs, setTransitionMs] = useState(900);
+  const [transitionStyle, setTransitionStyle] = useState<HeroStageTransitionStyle>("fade");
+  const [replace, setReplace] = useState(false);
+  const [files, setFiles] = useState<File[]>([]);
+  const [removeIds, setRemoveIds] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const localPreview = useMemo(() => {
-    if (!file) return null;
-    return URL.createObjectURL(file);
-  }, [file]);
+  const liveLabel = state.active ? "Live carousel" : "Stage chain";
 
-  useEffect(() => {
-    return () => {
-      if (localPreview) URL.revokeObjectURL(localPreview);
-    };
-  }, [localPreview]);
+  const sortedSlides = useMemo(() => state.slides || [], [state.slides]);
 
-  async function loadState() {
-    setError(null);
-
+  const load = useCallback(async () => {
+    setLoading(true);
     try {
       const response = await fetch("/api/admin/hero-stage-takeover", { cache: "no-store" });
-      const payload = (await response.json().catch(() => ({}))) as HeroTakeoverState & { detail?: string };
-
+      const payload = (await response.json()) as HeroStageTakeoverState;
       if (!response.ok) {
-        throw new Error(payload.detail || "Could not load hero takeover state.");
+        throw new Error((payload as unknown as { detail?: string }).detail || "Could not load hero carousel.");
       }
 
-      setState(payload);
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Could not load hero takeover state.");
+      setState({ ...EMPTY_STATE, ...payload, slides: payload.slides || [] });
+      setTitle(payload.title || EMPTY_STATE.title || "");
+      setAlt(payload.imageAlt || "Jim championship hero carousel");
+      setLinkUrl(payload.linkUrl || "/forum");
+      setStartsAt(toDateTimeLocal(payload.startsAt));
+      setExpiresAt(toDateTimeLocal(payload.expiresAt));
+      setIntervalMs(payload.intervalMs || 8000);
+      setTransitionMs(payload.transitionMs ?? 900);
+      setTransitionStyle(payload.transitionStyle || "fade");
+      setRemoveIds([]);
+      setReplace(false);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not load hero carousel.");
+    } finally {
+      setLoading(false);
     }
-  }
-
-  useEffect(() => {
-    void loadState();
   }, []);
 
-  async function handlePublish(event: FormEvent<HTMLFormElement>) {
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  function toggleRemove(id: string) {
+    setRemoveIds((current) =>
+      current.includes(id) ? current.filter((item) => item !== id) : [...current, id]
+    );
+  }
+
+  async function publish(event: FormEvent) {
     event.preventDefault();
 
-    if (!file) {
-      setError("Choose Jim's celebration image first.");
+    const remainingSlides = sortedSlides.filter((slide) => !removeIds.includes(slide.id));
+    if (!files.length && !remainingSlides.length && !replace) {
+      toast.error("Add at least one hero image first.");
       return;
     }
 
     setBusy(true);
-    setError(null);
-    setNotice(null);
-
     try {
       const formData = new FormData();
-      formData.append("file", file);
-      formData.append("title", title);
-      formData.append("imageAlt", imageAlt);
-      formData.append("linkUrl", linkUrl);
+      formData.set("active", "true");
+      formData.set("replace", replace ? "true" : "false");
+      formData.set("title", title);
+      formData.set("alt", alt);
+      formData.set("linkUrl", linkUrl || "/forum");
+      formData.set("startsAt", startsAt);
+      formData.set("expiresAt", expiresAt);
+      formData.set("intervalMs", String(intervalMs));
+      formData.set("transitionMs", String(transitionMs));
+      formData.set("transitionStyle", transitionStyle);
+      formData.set("slidesJson", JSON.stringify(replace ? [] : remainingSlides));
 
-      if (startsAt) {
-        formData.append("startsAt", new Date(startsAt).toISOString());
-      }
-
-      if (expiresAt) {
-        formData.append("expiresAt", new Date(expiresAt).toISOString());
-      }
+      files.forEach((file) => {
+        formData.append("images", file);
+      });
 
       const response = await fetch("/api/admin/hero-stage-takeover", {
         method: "POST",
         body: formData,
       });
-
-      const payload = (await response.json().catch(() => ({}))) as HeroTakeoverState & { detail?: string };
+      const payload = (await response.json()) as HeroStageTakeoverState & { detail?: string };
 
       if (!response.ok) {
-        throw new Error(payload.detail || "Could not publish hero takeover.");
+        throw new Error(payload.detail || "Could not publish hero carousel.");
       }
 
-      setState(payload);
-      setFile(null);
-      setFileInputKey((key) => key + 1);
-      setNotice("Hero takeover is live. One image. No carousel.");
-    } catch (publishError) {
-      setError(publishError instanceof Error ? publishError.message : "Could not publish hero takeover.");
+      setState({ ...EMPTY_STATE, ...payload, slides: payload.slides || [] });
+      setFiles([]);
+      setRemoveIds([]);
+      setReplace(false);
+      toast.success("Hero carousel is live.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Publish failed.");
     } finally {
       setBusy(false);
     }
   }
 
-  async function handleClear() {
+  async function clear() {
     setBusy(true);
-    setError(null);
-    setNotice(null);
-
     try {
       const response = await fetch("/api/admin/hero-stage-takeover", {
         method: "DELETE",
       });
-
-      const payload = (await response.json().catch(() => ({}))) as HeroTakeoverState & { detail?: string };
+      const payload = (await response.json()) as HeroStageTakeoverState & { detail?: string };
 
       if (!response.ok) {
-        throw new Error(payload.detail || "Could not clear hero takeover.");
+        throw new Error(payload.detail || "Could not clear hero carousel.");
       }
 
-      setState(payload);
-      setNotice("Hero takeover cleared. The normal stage chain is back.");
-    } catch (clearError) {
-      setError(clearError instanceof Error ? clearError.message : "Could not clear hero takeover.");
+      setState({ ...EMPTY_STATE, ...payload, slides: payload.slides || [] });
+      setFiles([]);
+      setRemoveIds([]);
+      toast.success("Hero carousel cleared.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Clear failed.");
     } finally {
       setBusy(false);
     }
   }
 
-  const previewUrl = localPreview || state?.imageUrl || null;
-
   return (
-    <section className="mb-4 overflow-hidden rounded-[1.65rem] border border-amber-200/20 bg-black/48 shadow-[0_24px_80px_rgba(0,0,0,0.38)]">
-      <div className="grid gap-0 lg:grid-cols-[minmax(0,0.95fr)_minmax(20rem,0.78fr)]">
-        <form onSubmit={handlePublish} className="space-y-4 p-4 sm:p-5">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-2 text-[0.64rem] font-semibold uppercase tracking-[0.34em] text-amber-100/75">
-                <ImagePlus className="h-3.5 w-3.5" />
-                One-image hero takeover
-              </div>
-              <h2 className="mt-2 font-serif text-2xl font-semibold uppercase tracking-[0.14em] text-white sm:text-3xl">
-                Jim championship hero
-              </h2>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
-                Upload one image and it replaces the normal hero stage until the expiry time. No carousel. No rotation.
-              </p>
+    <section className="overflow-hidden rounded-[1.6rem] border border-amber-200/18 bg-[radial-gradient(circle_at_45%_0%,rgba(251,191,36,0.12),transparent_36%),rgba(2,6,23,0.78)] text-white shadow-[0_24px_80px_rgba(0,0,0,0.35)]">
+      <div className="grid gap-0 lg:grid-cols-[1.08fr_0.92fr]">
+        <form onSubmit={publish} className="space-y-5 border-white/10 p-5 lg:border-r">
+          <div>
+            <div className="text-[10px] font-black uppercase tracking-[0.32em] text-amber-100/60">
+              Multi-image hero carousel
             </div>
-
-            <div className="rounded-full border border-amber-200/20 bg-amber-300/10 px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.24em] text-amber-100">
-              {state?.active ? "Live override" : "Stage chain"}
+            <h2 className="mt-2 font-serif text-3xl font-semibold uppercase tracking-[0.12em] text-amber-50">
+              Jim Championship Hero
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
+              Add several images, set timing, and rotate the homepage hero without visible arrows.
+            </p>
+            <div className="mt-3 inline-flex rounded-full border border-amber-200/18 bg-amber-300/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-amber-100">
+              {loading ? "Loading" : liveLabel}
             </div>
           </div>
 
-          <div className="grid gap-3 md:grid-cols-2">
-            <label className="space-y-1.5">
-              <span className="text-[0.62rem] uppercase tracking-[0.24em] text-slate-500">Image</span>
-              <input
-                key={fileInputKey}
-                type="file"
-                accept="image/png,image/jpeg,image/webp,image/gif"
-                onChange={(event) => setFile(event.target.files?.[0] || null)}
-                className="block w-full rounded-xl border border-white/10 bg-slate-950/80 px-3 py-2 text-sm text-slate-200 file:mr-3 file:rounded-lg file:border-0 file:bg-amber-200/15 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:uppercase file:tracking-[0.18em] file:text-amber-100"
-              />
-            </label>
+          <label className="block">
+            <span className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500">
+              Images
+            </span>
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              multiple
+              onChange={(event) => setFiles(Array.from(event.target.files || []))}
+              className="mt-2 block w-full rounded-2xl border border-white/10 bg-[#050b13] px-4 py-3 text-sm text-slate-200 file:mr-4 file:rounded-full file:border-0 file:bg-amber-200/16 file:px-4 file:py-2 file:text-xs file:font-black file:uppercase file:tracking-[0.16em] file:text-amber-50"
+            />
+            {files.length ? (
+              <p className="mt-2 text-xs text-emerald-200">
+                {files.length} new image{files.length === 1 ? "" : "s"} staged.
+              </p>
+            ) : null}
+          </label>
 
-            <label className="space-y-1.5">
-              <span className="text-[0.62rem] uppercase tracking-[0.24em] text-slate-500">Click target</span>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label>
+              <span className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500">
+                Click target
+              </span>
               <input
                 value={linkUrl}
                 onChange={(event) => setLinkUrl(event.target.value)}
-                placeholder="/players/jim"
-                className="w-full rounded-xl border border-white/10 bg-slate-950/80 px-3 py-2 text-sm text-slate-200 outline-none transition focus:border-amber-200/40"
+                placeholder="/forum"
+                className="mt-2 w-full rounded-2xl border border-white/10 bg-[#050b13] px-4 py-3 text-sm text-white outline-none focus:border-amber-200/30"
               />
             </label>
 
-            <label className="space-y-1.5">
-              <span className="text-[0.62rem] uppercase tracking-[0.24em] text-slate-500">Title</span>
+            <label>
+              <span className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500">
+                Title
+              </span>
               <input
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
-                className="w-full rounded-xl border border-white/10 bg-slate-950/80 px-3 py-2 text-sm text-slate-200 outline-none transition focus:border-amber-200/40"
+                className="mt-2 w-full rounded-2xl border border-white/10 bg-[#050b13] px-4 py-3 text-sm text-white outline-none focus:border-amber-200/30"
               />
             </label>
+          </div>
 
-            <label className="space-y-1.5">
-              <span className="text-[0.62rem] uppercase tracking-[0.24em] text-slate-500">Alt text</span>
+          <label className="block">
+            <span className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500">
+              Alt text
+            </span>
+            <input
+              value={alt}
+              onChange={(event) => setAlt(event.target.value)}
+              className="mt-2 w-full rounded-2xl border border-white/10 bg-[#050b13] px-4 py-3 text-sm text-white outline-none focus:border-amber-200/30"
+            />
+          </label>
+
+          <div className="grid gap-4 sm:grid-cols-3">
+            <label>
+              <span className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500">
+                Seconds / image
+              </span>
               <input
-                value={imageAlt}
-                onChange={(event) => setImageAlt(event.target.value)}
-                className="w-full rounded-xl border border-white/10 bg-slate-950/80 px-3 py-2 text-sm text-slate-200 outline-none transition focus:border-amber-200/40"
+                type="number"
+                min={2.5}
+                max={60}
+                step={0.5}
+                value={intervalMs / 1000}
+                onChange={(event) =>
+                  setIntervalMs(Math.max(2500, Math.min(60000, Math.round(Number(event.target.value) * 1000))))
+                }
+                className="mt-2 w-full rounded-2xl border border-white/10 bg-[#050b13] px-4 py-3 text-sm text-white outline-none focus:border-amber-200/30"
               />
             </label>
 
-            <label className="space-y-1.5">
-              <span className="text-[0.62rem] uppercase tracking-[0.24em] text-slate-500">Starts</span>
+            <label>
+              <span className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500">
+                Fade ms
+              </span>
+              <input
+                type="number"
+                min={0}
+                max={5000}
+                step={100}
+                value={transitionMs}
+                onChange={(event) =>
+                  setTransitionMs(Math.max(0, Math.min(5000, Math.round(Number(event.target.value)))))
+                }
+                className="mt-2 w-full rounded-2xl border border-white/10 bg-[#050b13] px-4 py-3 text-sm text-white outline-none focus:border-amber-200/30"
+              />
+            </label>
+
+            <label>
+              <span className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500">
+                Transition
+              </span>
+              <select
+                value={transitionStyle}
+                onChange={(event) =>
+                  setTransitionStyle(event.target.value as HeroStageTransitionStyle)
+                }
+                className="mt-2 w-full rounded-2xl border border-white/10 bg-[#050b13] px-4 py-3 text-sm text-white outline-none focus:border-amber-200/30"
+              >
+                <option value="fade">Fade</option>
+                <option value="slide">Slide</option>
+                <option value="cut">Cut</option>
+              </select>
+            </label>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label>
+              <span className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500">
+                Starts
+              </span>
               <input
                 type="datetime-local"
                 value={startsAt}
                 onChange={(event) => setStartsAt(event.target.value)}
-                className="w-full rounded-xl border border-white/10 bg-slate-950/80 px-3 py-2 text-sm text-slate-200 outline-none transition focus:border-amber-200/40"
+                className="mt-2 w-full rounded-2xl border border-white/10 bg-[#050b13] px-4 py-3 text-sm text-white outline-none focus:border-amber-200/30"
               />
             </label>
 
-            <label className="space-y-1.5">
-              <span className="text-[0.62rem] uppercase tracking-[0.24em] text-slate-500">Ends</span>
+            <label>
+              <span className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500">
+                Ends
+              </span>
               <input
                 type="datetime-local"
                 value={expiresAt}
                 onChange={(event) => setExpiresAt(event.target.value)}
-                className="w-full rounded-xl border border-white/10 bg-slate-950/80 px-3 py-2 text-sm text-slate-200 outline-none transition focus:border-amber-200/40"
+                className="mt-2 w-full rounded-2xl border border-white/10 bg-[#050b13] px-4 py-3 text-sm text-white outline-none focus:border-amber-200/30"
               />
             </label>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="submit"
-              disabled={busy}
-              className="inline-flex items-center gap-2 rounded-xl border border-emerald-300/24 bg-emerald-300/12 px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-100 transition hover:bg-emerald-300/18 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <UploadCloud className="h-4 w-4" />
-              Publish image
-            </button>
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/24 p-3">
+            <label className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-slate-300">
+              <input
+                type="checkbox"
+                checked={replace}
+                onChange={(event) => setReplace(event.target.checked)}
+                className="h-4 w-4 accent-amber-300"
+              />
+              Replace current images
+            </label>
 
-            <button
-              type="button"
-              onClick={() => void loadState()}
-              disabled={busy}
-              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-200 transition hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <RefreshCw className="h-4 w-4" />
-              Refresh
-            </button>
-
-            <button
-              type="button"
-              onClick={() => void handleClear()}
-              disabled={busy}
-              className="inline-flex items-center gap-2 rounded-xl border border-red-300/20 bg-red-400/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-red-100 transition hover:bg-red-400/16 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <Trash2 className="h-4 w-4" />
-              Clear
-            </button>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => void load()}
+                disabled={busy}
+                className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-black uppercase tracking-[0.16em] text-slate-200 transition hover:bg-white/[0.08]"
+              >
+                Refresh
+              </button>
+              <button
+                type="button"
+                onClick={() => void clear()}
+                disabled={busy}
+                className="rounded-full border border-red-200/20 bg-red-400/10 px-4 py-2 text-xs font-black uppercase tracking-[0.16em] text-red-100 transition hover:bg-red-400/16"
+              >
+                Clear
+              </button>
+              <button
+                type="submit"
+                disabled={busy}
+                className="rounded-full border border-emerald-200/20 bg-emerald-300/16 px-5 py-2 text-xs font-black uppercase tracking-[0.16em] text-emerald-50 transition hover:bg-emerald-300/22 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {busy ? "Publishing…" : "Publish carousel"}
+              </button>
+            </div>
           </div>
-
-          {notice ? <p className="text-sm text-emerald-200">{notice}</p> : null}
-          {error ? <p className="text-sm text-red-200">{error}</p> : null}
         </form>
 
-        <div className="border-t border-white/10 bg-slate-950/46 p-4 lg:border-l lg:border-t-0 sm:p-5">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <div className="text-[0.62rem] uppercase tracking-[0.24em] text-slate-500">Preview</div>
-            <div className="text-right text-[0.68rem] uppercase tracking-[0.18em] text-slate-400">
-              Ends: {displayDate(state?.expiresAt || null)}
+        <div className="space-y-4 p-5">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500">
+                Preview chain
+              </div>
+              <p className="mt-1 text-sm text-slate-300">
+                {sortedSlides.length} image{sortedSlides.length === 1 ? "" : "s"} live.
+              </p>
+            </div>
+            <div className="text-right text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+              {intervalMs / 1000}s · {transitionStyle}
             </div>
           </div>
 
-          <div className="relative min-h-[15rem] overflow-hidden rounded-2xl border border-white/10 bg-black">
-            {previewUrl ? (
+          <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/40">
+            {sortedSlides[0]?.imageUrl ? (
               <img
-                src={previewUrl}
-                alt={state?.imageAlt || imageAlt}
-                className="absolute inset-0 h-full w-full object-contain"
+                src={sortedSlides[0].imageUrl}
+                alt={sortedSlides[0].imageAlt || "Hero preview"}
+                className="aspect-[16/7] w-full object-cover"
+                draggable={false}
               />
             ) : (
-              <div className="flex min-h-[15rem] items-center justify-center px-6 text-center text-sm text-slate-500">
-                Upload Jim’s celebration image here. This preview becomes the homepage hero.
+              <div className="grid aspect-[16/7] place-items-center px-6 text-center text-sm text-slate-500">
+                Upload championship images here. They rotate on the homepage hero.
               </div>
             )}
           </div>
 
-          <div className="mt-3 text-xs leading-5 text-slate-400">
-            Current file: <span className="text-slate-200">{file?.name || state?.originalName || "none"}</span>
+          <div className="grid gap-3">
+            {sortedSlides.map((slide, index) => {
+              const removing = removeIds.includes(slide.id);
+              return (
+                <div
+                  key={slide.id}
+                  className={`grid grid-cols-[5.5rem_1fr_auto] items-center gap-3 rounded-2xl border p-2 transition ${
+                    removing
+                      ? "border-red-200/22 bg-red-950/20 opacity-55"
+                      : "border-white/10 bg-white/[0.035]"
+                  }`}
+                >
+                  <img
+                    src={slide.imageUrl}
+                    alt={slide.imageAlt || slideLabel(slide, index)}
+                    className="h-14 w-full rounded-xl object-cover"
+                    draggable={false}
+                  />
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-bold text-white">
+                      {index + 1}. {slideLabel(slide, index)}
+                    </div>
+                    <div className="mt-1 truncate text-xs text-slate-500">
+                      {slide.linkUrl || linkUrl || "/forum"}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => toggleRemove(slide.id)}
+                    className="rounded-full border border-white/10 bg-black/30 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-slate-300 hover:bg-white/[0.08]"
+                  >
+                    {removing ? "Keep" : "Remove"}
+                  </button>
+                </div>
+              );
+            })}
           </div>
+
+          <p className="text-xs leading-5 text-slate-500">
+            Homepage side-clicks rotate the image, but no black arrow buttons are shown.
+          </p>
         </div>
       </div>
     </section>
