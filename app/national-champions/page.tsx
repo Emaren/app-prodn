@@ -86,6 +86,18 @@ function playerHref(champion: string | null) {
   return `/players/by-name/${encodeURIComponent(champion)}`;
 }
 
+function nationalBeltImage(id: string) {
+  return nationalBeltArt[id as keyof typeof nationalBeltArt] ?? null;
+}
+
+function nationalBeltShortName(id: string, country: string) {
+  if (id === "us") return "U.S. Championship";
+  if (id === "uk") return "U.K. Championship";
+  if (id === "canada") return "Canadian Championship";
+  if (id === "mexico") return "Mexican Championship";
+  return `${country} Championship`;
+}
+
 function BeaconMarker({ beacon }: { beacon: NationalBeacon }) {
   const lit = Boolean(beacon.champion);
   const scale = flameScore(beacon);
@@ -164,6 +176,89 @@ function WorldMap() {
         <BeaconMarker key={beacon.id} beacon={beacon} />
       ))}
     </div>
+  );
+}
+
+
+function FeaturedChampionBeltCard({ beacon }: { beacon: NationalBeacon }) {
+  const beltHref = beltPageHrefForNationalBelt(beacon.id);
+  const championHref = playerHref(beacon.champion);
+  const challengeHref = challengeHrefForNationalBelt(beacon.id, beacon.champion);
+  const image = nationalBeltImage(beacon.id);
+  const shortName = nationalBeltShortName(beacon.id, beacon.country);
+  const champion = beacon.champion || "Vacant";
+
+  return (
+    <article className="group overflow-hidden rounded-[1.7rem] border border-amber-200/22 bg-[radial-gradient(circle_at_50%_0%,rgba(251,191,36,0.18),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.055),rgba(0,0,0,0.25))] p-4 shadow-[0_22px_70px_rgba(0,0,0,0.28)]">
+      <div className="relative overflow-hidden rounded-[1.25rem] border border-amber-100/18 bg-[radial-gradient(circle_at_50%_30%,rgba(251,191,36,0.12),transparent_42%),#050b17] px-4 py-5">
+        <Link href={beltHref} aria-label={`View ${shortName} NFT`} className="absolute inset-0 z-10 rounded-[1.25rem]" />
+        <div className="absolute inset-x-4 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(251,191,36,0.34),transparent)]" />
+        <div className="relative mx-auto h-32 max-w-[18rem] sm:h-36">
+          {image ? (
+            <Image
+              src={image}
+              alt={`${shortName} belt`}
+              fill
+              sizes="(max-width: 768px) 80vw, 280px"
+              className="object-contain drop-shadow-[0_18px_30px_rgba(0,0,0,0.58)] transition duration-300 group-hover:scale-[1.035]"
+              priority={beacon.id === "us"}
+              unoptimized
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center rounded-[1rem] border border-amber-100/10 bg-black/30 text-center">
+              <div>
+                <div className="text-[10px] uppercase tracking-[0.28em] text-amber-100/70">Belt art pending</div>
+                <div className="mt-2 text-sm font-semibold text-slate-300">Assign managed asset</div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-4">
+        <div className="text-[10px] uppercase tracking-[0.28em] text-amber-100/60">{beacon.country}</div>
+        <h3 className="mt-1 text-lg font-semibold text-amber-50">{shortName}</h3>
+
+        {championHref ? (
+          <Link href={championHref} className="mt-2 block font-serif text-3xl font-semibold text-white transition hover:text-amber-100">
+            {champion}
+          </Link>
+        ) : (
+          <div className="mt-2 font-serif text-3xl font-semibold text-white">{champion}</div>
+        )}
+
+        <p className="mt-2 min-h-[3rem] text-sm leading-6 text-slate-400">
+          The {beacon.country} beacon is lit. {champion} now holds the belt,
+          earns Tribute, and waits for challengers.
+        </p>
+
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <div className="rounded-xl border border-white/8 bg-black/20 px-3 py-2">
+            <div className="text-[9px] uppercase tracking-[0.2em] text-slate-500">Tribute</div>
+            <div className="mt-1 text-sm font-semibold text-amber-100">10 WOLO/day</div>
+          </div>
+          <div className="rounded-xl border border-white/8 bg-black/20 px-3 py-2">
+            <div className="text-[9px] uppercase tracking-[0.2em] text-slate-500">Bounty</div>
+            <div className="mt-1 text-sm font-semibold text-amber-100">{beacon.bountyWolo} WOLO/day</div>
+          </div>
+        </div>
+
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <Link
+            href={beltHref}
+            className="inline-flex items-center justify-center rounded-full border border-white/10 bg-black/20 px-4 py-2.5 text-sm font-semibold text-slate-300 transition hover:border-amber-200/28 hover:text-amber-100"
+          >
+            View NFT
+          </Link>
+          <Link
+            href={challengeHref}
+            className="inline-flex items-center justify-center rounded-full border border-amber-200/30 bg-amber-300/12 px-4 py-2.5 text-sm font-semibold text-amber-100 transition hover:bg-amber-300/20"
+          >
+            Challenge {champion}
+          </Link>
+        </div>
+      </div>
+    </article>
   );
 }
 
@@ -302,6 +397,11 @@ export default function NationalChampionsPage() {
   const championChallengeHref = currentChampion
     ? challengeHrefForNationalBelt(currentChampion.id, currentChampion.champion)
     : challengeHrefForNationalBelt("canada", "Emaren");
+  const currentChampionId = currentChampion?.id ?? null;
+  const additionalChampionBeacons = litBeacons.filter((beacon) => beacon.id !== currentChampionId);
+  const vacantFeaturedBelts = featuredVacantBelts.filter(
+    (belt) => !litBeacons.some((beacon) => beacon.id === belt.id)
+  );
 
   return (
     <main className="mx-auto max-w-[76rem] space-y-8 overflow-x-hidden py-4 text-white sm:py-6">
@@ -320,7 +420,7 @@ export default function NationalChampionsPage() {
               Champions
             </h1>
             <p className="mt-5 max-w-xl text-sm uppercase tracking-[0.22em] text-slate-300 sm:text-base">
-              Canada is lit. Every vacant nation awaits its first champion.
+              Canada and the United States are lit. Every vacant nation awaits its first champion.
             </p>
           </div>
 
@@ -444,7 +544,7 @@ export default function NationalChampionsPage() {
                 </div>
 
                 <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-300">
-                  The first National Championship beacon is lit. Canada now pays daily Tribute to its champion, and every vacant nation is waiting for someone to claim the belt.
+                  National Championship beacons are lit. Canada and the United States now pay daily Tribute to their champions, and every vacant nation is waiting for someone to claim the belt.
                 </p>
 
                 <div className="clear-both pt-5">
@@ -487,7 +587,27 @@ export default function NationalChampionsPage() {
           <div className="mt-7">
             <div className="mb-4 flex items-end justify-between gap-3">
               <div>
-                <div className="text-xs uppercase tracking-[0.3em] text-slate-500">Featured Vacant Belts</div>
+                {additionalChampionBeacons.length > 0 ? (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-xs uppercase tracking-[0.3em] text-slate-500">Newly Lit Beacons</div>
+                      <h2 className="mt-1 text-xl font-semibold text-white">More nations have champions.</h2>
+                    </div>
+                    <div className="rounded-full border border-amber-200/20 bg-amber-300/10 px-3 py-1 text-xs font-semibold text-amber-100">
+                      {additionalChampionBeacons.length} active
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-3">
+                    {additionalChampionBeacons.map((beacon) => (
+                      <FeaturedChampionBeltCard key={beacon.id} beacon={beacon} />
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="text-xs uppercase tracking-[0.3em] text-slate-500">Featured Vacant Belts</div>
                 <h3 className="mt-1 text-xl font-semibold text-white">Three crowns waiting for a fight</h3>
               </div>
               <span className="hidden rounded-full border border-white/10 bg-white/[0.035] px-3 py-1 text-xs text-slate-400 sm:inline-flex">
@@ -496,7 +616,7 @@ export default function NationalChampionsPage() {
             </div>
 
             <div className="grid gap-4 lg:grid-cols-3">
-              {featuredVacantBelts.map((belt) => (
+              {vacantFeaturedBelts.map((belt) => (
                 <FeaturedVacantBeltCard key={belt.id} belt={belt} />
               ))}
             </div>
@@ -543,7 +663,7 @@ export default function NationalChampionsPage() {
             <div className="mt-5 grid gap-3">
               <Stat label="Beacons Lit" value={`${litBeacons.length} / ${nationalBeacons.length}`} />
               <Stat label="Total Bounty Pool" value={`${totalBounty} WOLO/day`} />
-              <Stat label="First Flame" value={currentChampion?.country ?? "Awaiting champion"} />
+              <Stat label="Lit Nations" value={String(litBeacons.length)} />
               <Stat label="Vacant Nations" value={String(vacantBeacons.length)} />
             </div>
           </section>

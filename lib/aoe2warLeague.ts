@@ -364,7 +364,7 @@ export const nationalBeacons: NationalBeacon[] = [
     x: 22,
     y: 35,
   },
-  { id: "us", country: "United States", champion: null, bountyWolo: 10, tenureDays: 0, tier: "vacant", x: 24, y: 47 },
+  { id: "us", country: "United States", champion: "Jim", bountyWolo: 10, tenureDays: 1, tier: "vacant", x: 24, y: 47 },
   { id: "mexico", country: "Mexico", champion: null, bountyWolo: 10, tenureDays: 0, tier: "vacant", x: 22, y: 60 },
   { id: "uk", country: "United Kingdom", champion: null, bountyWolo: 10, tenureDays: 0, tier: "vacant", x: 45, y: 36 },
   { id: "brazil", country: "Brazil", champion: null, bountyWolo: 10, tenureDays: 0, tier: "vacant", x: 37, y: 74 },
