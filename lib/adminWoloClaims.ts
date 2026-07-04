@@ -85,6 +85,248 @@ function isMarketSettlementClaim(claim: {
   );
 }
 
+
+const ADMIN_RETRY_WINNER_CLAIM_KINDS = new Set(["bet_payout", "winner_bounty"]);
+
+type AdminRetryWinnerTruthMarket = {
+  id: number;
+  title: string;
+  eventLabel: string;
+  leftLabel: string;
+  rightLabel: string;
+  winnerSide: string | null;
+  linkedGameStatsId: number | null;
+  linkedGameStats: {
+    id: number;
+    winner: string | null;
+    players: unknown;
+  } | null;
+};
+
+function adminRetryTruthName(value: string | null | undefined) {
+  return normalizePublicPlayerName(value).toLowerCase();
+}
+
+function adminRetryTruthSide(
+  market: Pick<AdminRetryWinnerTruthMarket, "leftLabel" | "rightLabel">,
+  value: string | null | undefined
+): "left" | "right" | null {
+  const key = adminRetryTruthName(value);
+  if (!key) return null;
+  if (key === adminRetryTruthName(market.leftLabel)) return "left";
+  if (key === adminRetryTruthName(market.rightLabel)) return "right";
+  return null;
+}
+
+function adminRetryTruthPlayerName(value: unknown) {
+  if (!value || typeof value !== "object") return "";
+  const record = value as Record<string, unknown>;
+  const raw =
+    typeof record.name === "string"
+      ? record.name
+      : typeof record.player === "string"
+        ? record.player
+        : typeof record.player_name === "string"
+          ? record.player_name
+          : typeof record.displayName === "string"
+            ? record.displayName
+            : "";
+  return normalizePublicPlayerName(raw);
+}
+
+function adminRetryTruthWinnerFlag(value: unknown) {
+  if (!value || typeof value !== "object") return false;
+  const record = value as Record<string, unknown>;
+  const raw = record.winner ?? record.isWinner ?? record.won;
+  return raw === true || raw === "true" || raw === 1 || raw === "1";
+}
+
+function adminRetryTruthKeysMatch(claimKey: string, expectedKey: string) {
+  if (!claimKey || !expectedKey) return false;
+  if (claimKey === expectedKey) return true;
+
+  const shorter = claimKey.length <= expectedKey.length ? claimKey : expectedKey;
+  const longer = claimKey.length <= expectedKey.length ? expectedKey : claimKey;
+
+  // Team winner labels can exceed pending_wolo_claims display/name column limits.
+  // Allow only a meaningful normalized prefix match so truncated team labels
+  // can still be paid, while short wrong-player names remain blocked.
+  return shorter.length >= 24 && longer.startsWith(shorter);
+}
+
+function adminRetryClaimTargetsSide(
+  claim: {
+    displayPlayerName: string;
+    normalizedPlayerName: string;
+  },
+  expectedName: string
+) {
+  const expectedKey = adminRetryTruthName(expectedName);
+  if (!expectedKey) return false;
+
+  const claimKeys = new Set(
+    [claim.displayPlayerName, claim.normalizedPlayerName]
+      .map(adminRetryTruthName)
+      .filter(Boolean)
+  );
+
+  return Array.from(claimKeys).some((claimKey) =>
+    adminRetryTruthKeysMatch(claimKey, expectedKey)
+  );
+}
+
+function assertAdminRetryWinnerTruthGate(input: {
+  claim: {
+    id: number;
+    displayPlayerName: string;
+    normalizedPlayerName: string;
+    claimKind: string | null;
+  };
+  market: AdminRetryWinnerTruthMarket | null;
+}) {
+  const claimKind = (input.claim.claimKind || "").trim();
+  if (!ADMIN_RETRY_WINNER_CLAIM_KINDS.has(claimKind)) return;
+
+  const market = input.market;
+  if (!market) {
+    throw new Error(
+      "ADMIN_RETRY_WINNER_TRUTH_MISMATCH: claim " +
+        input.claim.id +
+        " is a winner payout but has no source market"
+    );
+  }
+
+  const winnerSide =
+    market.winnerSide === "left" || market.winnerSide === "right"
+      ? market.winnerSide
+      : null;
+
+  if (!winnerSide) {
+    throw new Error(
+      "ADMIN_RETRY_WINNER_TRUTH_MISMATCH: claim " +
+        input.claim.id +
+        " cannot be paid because market " +
+        market.id +
+        " has no settled winner_side"
+    );
+  }
+
+  const expectedWinnerName = winnerSide === "left" ? market.leftLabel : market.rightLabel;
+  if (!adminRetryClaimTargetsSide(input.claim, expectedWinnerName)) {
+    throw new Error(
+      'ADMIN_RETRY_WINNER_TRUTH_MISMATCH: claim ' +
+        input.claim.id +
+        ' targets "' +
+        input.claim.displayPlayerName +
+        '", but market ' +
+        market.id +
+        ' winner_side=' +
+        winnerSide +
+        ' is "' +
+        expectedWinnerName +
+        '"'
+    );
+  }
+
+  if (!market.linkedGameStatsId) return;
+
+  const game = market.linkedGameStats;
+  if (!game) {
+    throw new Error(
+      "ADMIN_RETRY_WINNER_TRUTH_MISMATCH: market " +
+        market.id +
+        " linked game_stats " +
+        market.linkedGameStatsId +
+        " is missing"
+    );
+  }
+
+  const rowSide = adminRetryTruthSide(market, game.winner);
+  if (game.winner && !rowSide) {
+    throw new Error(
+      'ADMIN_RETRY_WINNER_TRUTH_MISMATCH: market ' +
+        market.id +
+        ' game_stats ' +
+        game.id +
+        ' winner "' +
+        game.winner +
+        '" does not match market sides'
+    );
+  }
+
+  if (rowSide && rowSide !== winnerSide) {
+    throw new Error(
+      'ADMIN_RETRY_WINNER_TRUTH_MISMATCH: market ' +
+        market.id +
+        ' winner_side=' +
+        winnerSide +
+        ', game_stats ' +
+        game.id +
+        ' winner="' +
+        game.winner +
+        '" maps to ' +
+        rowSide
+    );
+  }
+
+  const flaggedSides = new Set<"left" | "right">();
+  const flaggedNames: string[] = [];
+  const players = Array.isArray(game.players) ? game.players : [];
+
+  for (const player of players) {
+    if (!adminRetryTruthWinnerFlag(player)) continue;
+    const name = adminRetryTruthPlayerName(player);
+    if (!name) continue;
+    flaggedNames.push(name);
+
+    const side = adminRetryTruthSide(market, name);
+    if (side) flaggedSides.add(side);
+  }
+
+  if (flaggedSides.size > 1) {
+    throw new Error(
+      "ADMIN_RETRY_WINNER_TRUTH_MISMATCH: market " +
+        market.id +
+        " game_stats " +
+        game.id +
+        " players JSON has conflicting winner flags (" +
+        flaggedNames.join(", ") +
+        ")"
+    );
+  }
+
+  const flaggedSide = Array.from(flaggedSides)[0] ?? null;
+  if (flaggedSide && rowSide && flaggedSide !== rowSide) {
+    throw new Error(
+      "ADMIN_RETRY_WINNER_TRUTH_MISMATCH: market " +
+        market.id +
+        " game_stats " +
+        game.id +
+        " row winner maps to " +
+        rowSide +
+        ", players JSON winner flag maps to " +
+        flaggedSide +
+        " (" +
+        flaggedNames.join(", ") +
+        ")"
+    );
+  }
+
+  if (flaggedSide && !rowSide && flaggedSide !== winnerSide) {
+    throw new Error(
+      "ADMIN_RETRY_WINNER_TRUTH_MISMATCH: market " +
+        market.id +
+        " winner_side=" +
+        winnerSide +
+        ", players JSON winner flag maps to " +
+        flaggedSide +
+        " (" +
+        flaggedNames.join(", ") +
+        ")"
+    );
+  }
+}
+
 function hashValue(value: string) {
   let hash = 0;
   for (let index = 0; index < value.length; index += 1) {
@@ -320,6 +562,17 @@ export async function retryPendingClaimSettlement(
             id: true,
             title: true,
             eventLabel: true,
+            leftLabel: true,
+            rightLabel: true,
+            winnerSide: true,
+            linkedGameStatsId: true,
+            linkedGameStats: {
+              select: {
+                id: true,
+                winner: true,
+                players: true,
+              },
+            },
           },
         })
       : null;
@@ -333,6 +586,8 @@ export async function retryPendingClaimSettlement(
   let settlementRunId: string | null = null;
 
   try {
+    assertAdminRetryWinnerTruthGate({ claim, market });
+
     const payout = useGroupedMarketSettlement && market
       ? await executeMarketClaimSettlementRun({
           claimId: claim.id,

@@ -990,6 +990,158 @@ function getLosingPlayerName(market: { leftLabel: string; rightLabel: string }, 
 }
 
 
+type SettlementWinnerTruthMarket = {
+  id: number;
+  leftLabel: string;
+  rightLabel: string;
+  linkedGameStatsId: number | null;
+};
+
+function settlementTruthName(value: string | null | undefined) {
+  return normalizeName(value).toLowerCase();
+}
+
+function settlementTruthSide(
+  market: Pick<SettlementWinnerTruthMarket, "leftLabel" | "rightLabel">,
+  value: string | null | undefined
+): BetSide | null {
+  const key = settlementTruthName(value);
+  if (!key) return null;
+  if (key === settlementTruthName(market.leftLabel)) return "left";
+  if (key === settlementTruthName(market.rightLabel)) return "right";
+  return null;
+}
+
+function settlementTruthWinnerFlag(value: unknown) {
+  if (!value || typeof value !== "object") return false;
+  const record = value as Record<string, unknown>;
+  const raw = record.winner ?? record.isWinner ?? record.won;
+  return raw === true || raw === "true" || raw === 1 || raw === "1";
+}
+
+function settlementTruthPlayerName(value: unknown) {
+  if (!value || typeof value !== "object") return "";
+  const record = value as Record<string, unknown>;
+  const raw =
+    typeof record.name === "string"
+      ? record.name
+      : typeof record.player === "string"
+        ? record.player
+        : typeof record.player_name === "string"
+          ? record.player_name
+          : typeof record.displayName === "string"
+            ? record.displayName
+            : "";
+  return normalizeName(raw);
+}
+
+async function assertSettlementWinnerTruthGate(
+  prisma: Pick<PrismaClient, "gameStats">,
+  market: SettlementWinnerTruthMarket,
+  winningSide: BetSide | null
+) {
+  if (!market.linkedGameStatsId || !winningSide) return;
+
+  const game = await prisma.gameStats.findUnique({
+    where: { id: market.linkedGameStatsId },
+    select: { id: true, winner: true, players: true },
+  });
+
+  if (!game) {
+    throw new Error(
+      "WINNER_TRUTH_MISMATCH: market " +
+        market.id +
+        " linked game_stats " +
+        market.linkedGameStatsId +
+        " is missing"
+    );
+  }
+
+  const rowSide = settlementTruthSide(market, game.winner);
+  if (game.winner && !rowSide) {
+    throw new Error(
+      'WINNER_TRUTH_MISMATCH: market ' +
+        market.id +
+        ' game_stats ' +
+        game.id +
+        ' winner "' +
+        game.winner +
+        '" does not match market sides'
+    );
+  }
+
+  if (rowSide && rowSide !== winningSide) {
+    throw new Error(
+      'WINNER_TRUTH_MISMATCH: market ' +
+        market.id +
+        ' winner_side=' +
+        winningSide +
+        ', game_stats ' +
+        game.id +
+        ' winner="' +
+        game.winner +
+        '" maps to ' +
+        rowSide
+    );
+  }
+
+  const flaggedSides = new Set<BetSide>();
+  const flaggedNames: string[] = [];
+  const players = Array.isArray(game.players) ? game.players : [];
+
+  for (const player of players) {
+    if (!settlementTruthWinnerFlag(player)) continue;
+    const name = settlementTruthPlayerName(player);
+    if (!name) continue;
+    flaggedNames.push(name);
+    const side = settlementTruthSide(market, name);
+    if (side) flaggedSides.add(side);
+  }
+
+  if (flaggedSides.size > 1) {
+    throw new Error(
+      "WINNER_TRUTH_MISMATCH: market " +
+        market.id +
+        " game_stats " +
+        game.id +
+        " players JSON has conflicting winner flags (" +
+        flaggedNames.join(", ") +
+        ")"
+    );
+  }
+
+  const flaggedSide = Array.from(flaggedSides)[0] ?? null;
+  if (flaggedSide && rowSide && flaggedSide !== rowSide) {
+    throw new Error(
+      "WINNER_TRUTH_MISMATCH: market " +
+        market.id +
+        " game_stats " +
+        game.id +
+        " row winner maps to " +
+        rowSide +
+        ", players JSON winner flag maps to " +
+        flaggedSide +
+        " (" +
+        flaggedNames.join(", ") +
+        ")"
+    );
+  }
+
+  if (flaggedSide && !rowSide && flaggedSide !== winningSide) {
+    throw new Error(
+      "WINNER_TRUTH_MISMATCH: market " +
+        market.id +
+        " winner_side=" +
+        winningSide +
+        ", players JSON winner flag maps to " +
+        flaggedSide +
+        " (" +
+        flaggedNames.join(", ") +
+        ")"
+    );
+  }
+}
+
 function buildOnchainSettlementNote(
   market: { title: string; eventLabel: string },
   payoutWolo: number,
@@ -1515,6 +1667,8 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
       market.winnerSide === "left" || market.winnerSide === "right"
         ? market.winnerSide
         : null;
+
+    await assertSettlementWinnerTruthGate(prisma, market, winningSide);
     const winningUserPool = winningSide
       ? market.wagers
           .filter((wager) => wager.side === winningSide)
@@ -1925,7 +2079,15 @@ async function buildOpenMarketSeeds(prisma: PrismaClient) {
 
   sessionSnapshot.activeSessions.forEach((session, index) => {
     if (matchedActiveSessionKeys.has(session.sessionKey)) return;
-    const seed = buildSessionMarketSeed(session, index, !hasFeaturedChallenge && seeds.length === 0);
+
+    // Live watcher games are the actual war-room surface.
+    // They must outrank stale scheduled challenge books while the game is live.
+    const seed = buildSessionMarketSeed(
+      session,
+      -300 + index,
+      index === 0 || (!hasFeaturedChallenge && seeds.length === 0)
+    );
+
     if (!seed || seenSlugs.has(seed.slug)) return;
     seenSlugs.add(seed.slug);
     seeds.push(seed);
@@ -3202,7 +3364,12 @@ export async function loadBetBoardSnapshot(
       ),
     };
   });
-  const featuredMarket = openMarkets.find((market) => market.featured) || openMarkets[0] || null;
+  const liveWatcherMarket =
+    openMarkets.find((market) => market.status === "live" && Boolean(market.linkedSessionKey)) ||
+    openMarkets.find((market) => market.status === "closing" && Boolean(market.linkedSessionKey));
+
+  const featuredMarket =
+    liveWatcherMarket || openMarkets.find((market) => market.featured) || openMarkets[0] || null;
 
   const openWagers = openMarkets
     .filter((market) => market.viewerWager)
