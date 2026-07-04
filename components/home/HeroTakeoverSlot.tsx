@@ -75,11 +75,11 @@ export default function HeroTakeoverSlot({ children }: { children: ReactNode }) 
       aria-label={state.title || "AoE2WAR hero image takeover"}
       className="group relative isolate overflow-hidden rounded-[2rem] border border-amber-200/18 bg-black shadow-[0_28px_90px_rgba(0,0,0,0.52)]"
     >
-      <div className="relative min-h-[19rem] overflow-hidden bg-[radial-gradient(circle_at_50%_0%,rgba(251,191,36,0.12),transparent_46%),linear-gradient(180deg,rgba(15,23,42,0.58),rgba(0,0,0,0.94))] sm:min-h-[27rem] lg:min-h-[34rem]">
+      <div className="relative h-[19rem] overflow-hidden bg-[radial-gradient(circle_at_50%_0%,rgba(251,191,36,0.12),transparent_46%),linear-gradient(180deg,rgba(15,23,42,0.58),rgba(0,0,0,0.94))] sm:h-[27rem] lg:h-[34rem]">
         <img
           src={state.imageUrl}
           alt={alt}
-          className="absolute inset-0 h-full w-full object-contain object-center transition duration-700 group-hover:scale-[1.006]"
+          className="absolute inset-0 h-full w-full object-cover object-center transition duration-700 group-hover:scale-[1.006]"
           draggable={false}
         />
 
