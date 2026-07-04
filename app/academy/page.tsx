@@ -105,10 +105,10 @@ export default async function AcademyPage() {
           fill
           priority
           sizes="(max-width: 1536px) 100vw, 1536px"
-          className="object-cover object-[62%_center] brightness-[1.12] saturate-[1.08] contrast-[1.03]"
+          className="object-cover object-[63%_center] brightness-[1.42] saturate-[1.22] contrast-[1.08]"
         />
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(3,7,18,0.82)_0%,rgba(3,7,18,0.58)_34%,rgba(3,7,18,0.24)_62%,rgba(3,7,18,0.04)_100%),linear-gradient(180deg,rgba(3,7,18,0.02),rgba(3,7,18,0.10)_54%,rgba(3,7,18,0.70)_100%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_55%,rgba(127,29,29,0.20),transparent_34%),radial-gradient(circle_at_58%_92%,rgba(251,191,36,0.10),transparent_30%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(3,7,18,0.70)_0%,rgba(3,7,18,0.42)_30%,rgba(3,7,18,0.10)_56%,rgba(3,7,18,0.00)_100%),linear-gradient(180deg,rgba(3,7,18,0.00),rgba(3,7,18,0.02)_54%,rgba(3,7,18,0.42)_100%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_55%,rgba(127,29,29,0.12),transparent_32%),radial-gradient(circle_at_68%_82%,rgba(251,191,36,0.07),transparent_28%)]" />
         <div className="pointer-events-none absolute inset-x-12 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/55 to-transparent" />
 
         <div className="relative flex min-h-[34rem] flex-col px-6 py-10 sm:min-h-[40rem] sm:px-10 lg:px-14">
