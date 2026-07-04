@@ -344,6 +344,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
   const isAcademySurface = pathname?.startsWith("/academy");
   const isClanSurface = pathname?.startsWith("/clans");
   const isNationalChampionsSurface = pathname?.startsWith("/national-champions");
+  const isBetDetailSurface = Boolean(pathname?.match(/^\/bets\/[^/]+/));
   const isFullWidthPrestigeSurface =
     pathname?.startsWith("/academy") ||
     pathname?.startsWith("/market") ||
@@ -443,7 +444,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
         </div>
 
         <div className={`relative mx-auto w-full overflow-visible ${
-          isNationalChampionsSurface ? "max-w-[96rem]" : "max-w-[90rem]"
+          isNationalChampionsSurface || isBetDetailSurface ? "max-w-[96rem]" : "max-w-[90rem]"
         }`}>
           <div className="lg:hidden">
             <div className="flex min-w-0 items-center justify-between gap-3">
@@ -620,7 +621,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                   ? immersiveShellMaxWidth
                   : isFullWidthPrestigeSurface || isClanSurface
                     ? "max-w-[90rem]"
-                    : isNationalChampionsSurface
+                    : isNationalChampionsSurface || isBetDetailSurface
                       ? "max-w-[96rem]"
                       : "max-w-6xl"
               }`

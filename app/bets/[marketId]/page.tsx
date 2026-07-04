@@ -10,7 +10,7 @@ type PageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
-type ViewMode = "advanced" | "basic";
+type ViewMode = "basic" | "advanced" | "extreme";
 type SortMode = "newest" | "oldest";
 
 type MarketRow = {
@@ -99,7 +99,17 @@ function firstParam(value: string | string[] | undefined) {
 }
 
 function normalizeMode(value: string | string[] | undefined): ViewMode {
-  return firstParam(value) === "basic" ? "basic" : "advanced";
+  const raw = Array.isArray(value) ? value[0] : value;
+
+  if (raw === "basic") {
+    return "basic";
+  }
+
+  if (raw === "advanced") {
+    return "advanced";
+  }
+
+  return "extreme";
 }
 
 function normalizeSort(value: string | string[] | undefined): SortMode {
@@ -306,7 +316,13 @@ function TeamNameStack({
   );
 }
 
-function PremiumMatchTitle({ title }: { title: string }) {
+function PremiumMatchTitle({
+  title,
+  layout = "stacked",
+}: {
+  title: string;
+  layout?: "stacked" | "wide";
+}) {
   const matchup = splitTeamMatchTitle(title);
 
   if (!matchup.rightTeam.length) {
@@ -329,6 +345,29 @@ function PremiumMatchTitle({ title }: { title: string }) {
     ? `${matchup.teamSize} VS ${matchup.teamSize}`
     : "VS";
 
+  if (layout === "wide" && matchup.isBalancedTeamMatch) {
+    return (
+      <div className="mt-6 w-full max-w-none min-w-0 overflow-hidden">
+        <div className="grid w-full max-w-none items-stretch gap-3 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+          <TeamNameStack label="Left Team" names={matchup.leftTeam} tone="left" />
+
+          <div className="flex items-center justify-center">
+            <div className="flex h-full min-h-28 flex-col items-center justify-center rounded-[1.25rem] border border-amber-200/22 bg-amber-200/[0.055] px-4 py-3 shadow-[0_0_34px_rgba(245,158,11,0.11)]">
+              <div className="text-[9px] font-black uppercase tracking-[0.3em] text-amber-100/50">
+                Match
+              </div>
+              <div className="mt-2 whitespace-nowrap font-serif text-[clamp(1.15rem,2.25vw,2.15rem)] font-semibold tracking-[-0.04em] text-amber-50">
+                {matchupLabel}
+              </div>
+            </div>
+          </div>
+
+          <TeamNameStack label="Right Team" names={matchup.rightTeam} tone="right" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mt-6 max-w-[42rem] min-w-0 overflow-hidden">
       <div className="grid max-w-full gap-2">
@@ -344,6 +383,39 @@ function PremiumMatchTitle({ title }: { title: string }) {
 
         <TeamNameStack label="Right Team" names={matchup.rightTeam} tone="right" />
       </div>
+    </div>
+  );
+}
+
+function BetDetailBaeToggle({
+  marketId,
+  view,
+}: {
+  marketId: number;
+  view: ViewMode;
+}) {
+  const items: Array<{ key: ViewMode; label: string; href: string }> = [
+    { key: "basic", label: "B", href: `/bets/${marketId}?view=basic` },
+    { key: "advanced", label: "A", href: `/bets/${marketId}?view=advanced` },
+    { key: "extreme", label: "E", href: `/bets/${marketId}?view=extreme` },
+  ];
+
+  return (
+    <div className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/24 p-1 shadow-[0_14px_34px_rgba(0,0,0,0.28)] backdrop-blur-md">
+      {items.map((item) => (
+        <Link
+          key={item.key}
+          href={item.href}
+          className={`inline-flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-black uppercase tracking-[0.18em] transition ${
+            view === item.key
+              ? "border border-amber-200/35 bg-amber-300/18 text-amber-50 shadow-[0_0_22px_rgba(245,158,11,0.14)]"
+              : "text-slate-400 hover:bg-white/[0.06] hover:text-slate-100"
+          }`}
+          title={`${item.label} view`}
+        >
+          {item.label}
+        </Link>
+      ))}
     </div>
   );
 }
@@ -605,6 +677,10 @@ export default async function BetMarketDetailPage({ params, searchParams }: Page
         <section className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-5 py-8 sm:px-8 lg:px-10">
           <BookTopBar market={market} view={view} order={order} replayHref={replayHref} />
 
+        <div className="relative z-10 flex justify-end">
+          <BetDetailBaeToggle marketId={market.id} view={view} />
+        </div>
+
           <section className="rounded-[2rem] border border-white/10 bg-white/[0.035] p-6 shadow-2xl shadow-black/30 sm:p-8">
             <div className="grid gap-6 lg:grid-cols-[1fr_280px] lg:items-end">
               <div>
@@ -648,14 +724,18 @@ export default async function BetMarketDetailPage({ params, searchParams }: Page
         <div className="absolute bottom-[-30%] left-[25%] h-[700px] w-[700px] rounded-full bg-emerald-500/8 blur-3xl" />
       </div>
 
-      <section className="relative mx-auto flex w-full max-w-7xl flex-col gap-6 px-5 py-8 sm:px-8 lg:px-10">
+      <section className="relative mx-auto flex w-full max-w-[96rem] flex-col gap-6 px-5 py-8 sm:px-8 lg:px-10">
         <BookTopBar market={market} view={view} order={order} replayHref={replayHref} />
+
+        <div className="relative z-10 flex justify-end">
+          <BetDetailBaeToggle marketId={market.id} view={view} />
+        </div>
 
         <section className="relative overflow-hidden rounded-[2.25rem] border border-white/10 bg-white/[0.04] p-7 shadow-2xl shadow-black/40 sm:p-10">
           <div className="absolute right-[-80px] top-[-120px] h-80 w-80 rounded-full border border-amber-300/20 bg-amber-300/[0.04]" />
           <div className="absolute bottom-[-120px] left-[30%] h-72 w-72 rounded-full border border-sky-300/20 bg-sky-300/[0.035]" />
 
-          <div className="relative grid min-w-0 gap-7 lg:grid-cols-[minmax(0,1fr)_minmax(13.5rem,240px)] lg:items-end">
+          <div className={`relative grid min-w-0 gap-6 ${view === "extreme" ? "lg:grid-cols-1" : "lg:grid-cols-[minmax(0,1fr)_minmax(13.5rem,240px)]"} lg:items-end`}>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded-full border border-amber-300/20 bg-amber-300/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.35em] text-amber-100">
@@ -666,7 +746,7 @@ export default async function BetMarketDetailPage({ params, searchParams }: Page
                 </span>
               </div>
 
-              <PremiumMatchTitle title={market.title} />
+              <PremiumMatchTitle title={market.title} layout={view === "extreme" ? "wide" : "stacked"} />
 
               <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-300">
                 {market.eventLabel || "AoE2WAR book"} · winner: {winnerName}
