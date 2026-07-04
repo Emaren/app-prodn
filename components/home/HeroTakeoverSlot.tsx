@@ -379,8 +379,8 @@ export default function HeroTakeoverSlot({ children }: { children: ReactNode }) 
       <div aria-label={label} className={`${frameClass} group`}>
         {layers.map((layer, index) => (
           <div
-            key={`${slideKey(layer.slide)}-${layer.phase}-${index}`}
-            className={index === layers.length - 1 ? "relative z-20" : "relative z-10"}
+            key={`${slideKey(layer.slide)}-${index}`}
+            className={index === layers.length - 1 ? "absolute inset-0 z-20" : "absolute inset-0 z-10"}
           >
             <HeroLayer
               layer={layer}
