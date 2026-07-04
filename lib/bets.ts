@@ -429,14 +429,14 @@ function teamSortKey(team: string) {
 }
 
 function compactTeamLabel(names: string[]) {
-  if (names.length <= 2) return names.join(" + ");
-  return `${names[0]} + ${names[1]} + ${names.length - 2} more`;
+  if (names.length <= 4) return names.join(" / ");
+  return `${names[0]} / ${names[1]} / ${names[2]} / ${names[3]} + ${names.length - 4} more`;
 }
 
 function clampMarketLabel(label: string) {
   const clean = normalizeName(label);
-  if (clean.length <= 80) return clean;
-  return `${clean.slice(0, 77).trimEnd()}…`;
+  if (clean.length <= 255) return clean;
+  return `${clean.slice(0, 252).trimEnd()}…`;
 }
 
 function formatTeamLabel(names: string[]) {
@@ -468,6 +468,27 @@ function describeSessionSides(session: LiveGameSession): SessionSideDescription 
   if (teamEntries.length === 2) {
     const leftNames = teamEntries[0][1];
     const rightNames = teamEntries[1][1];
+    const leftLabel = formatTeamLabel(leftNames);
+    const rightLabel = formatTeamLabel(rightNames);
+
+    return {
+      title: `${leftLabel} vs ${rightLabel}`,
+      leftLabel,
+      rightLabel,
+      leftNames,
+      rightNames,
+    };
+  }
+
+  const balancedTeamSize = players.length / 2;
+
+  if (
+    Number.isInteger(balancedTeamSize) &&
+    balancedTeamSize >= 1 &&
+    balancedTeamSize <= 4
+  ) {
+    const leftNames = players.slice(0, balancedTeamSize).map((player) => player.name);
+    const rightNames = players.slice(balancedTeamSize).map((player) => player.name);
     const leftLabel = formatTeamLabel(leftNames);
     const rightLabel = formatTeamLabel(rightNames);
 
@@ -688,7 +709,7 @@ function resolveMarketSideTransfer(
 
 function splitSideNames(label: string) {
   return normalizeName(label)
-    .split(/\s*\/\s*/)
+    .split(/\s*\/\s*|\s+\+\s+/)
     .map((value) => normalizeName(value))
     .filter(Boolean)
     .map((value) => value.toLowerCase());
@@ -757,7 +778,10 @@ function buildSessionMarketSeed(
     source: "session",
     leftLabel,
     rightLabel,
-    leftHref: sides ? `/players/by-name/${encodeURIComponent(leftLabel)}` : null,
+    leftHref:
+      sides && sides.leftNames.length === 1
+        ? `/players/by-name/${encodeURIComponent(sides.leftNames[0])}`
+        : null,
     rightHref:
       rightNames.length === 1
         ? `/players/by-name/${encodeURIComponent(rightNames[0])}`
