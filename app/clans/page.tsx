@@ -3,9 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowRight,
-  MessageSquareText,
   Plus,
-  Shield,
   Sparkles,
   UsersRound,
 } from "lucide-react";
@@ -101,16 +99,6 @@ export default async function ClansPage({
             </div>
 
             <div className="clan-directory-card__body relative mt-6 flex flex-1 flex-col">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-100/22 bg-amber-200/[0.08] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-amber-100 shadow-[0_0_24px_rgba(251,191,36,0.08)]">
-                  <Shield className="h-3.5 w-3.5" />
-                  Founding house
-                </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-100/16 bg-violet-200/[0.055] px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-violet-100/86">
-                  <MessageSquareText className="h-3.5 w-3.5" />
-                  Hall open
-                </span>
-              </div>
               <div className="clan-directory-card__title relative mx-auto mt-4 flex h-[4.95rem] w-full max-w-[27rem] items-center justify-center overflow-visible px-3 sm:h-[5.35rem]">
                 <div className="pointer-events-none absolute inset-0 rounded-full bg-[radial-gradient(circle_at_50%_50%,rgba(124,58,237,0.22),transparent_60%),radial-gradient(circle_at_50%_52%,rgba(56,189,248,0.12),transparent_62%)] blur-2xl" />
                 <div className="pointer-events-none absolute left-1/2 top-1/2 h-px w-[88%] -translate-x-1/2 -translate-y-1/2 bg-gradient-to-r from-transparent via-sky-300/22 to-transparent" />

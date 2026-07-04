@@ -1246,9 +1246,9 @@ function PremiumResolvedOutcomeCard({
   if (resolvedStyle === "teams") {
     return (
       <article
-        data-resolved-outcome-card
         onClick={(event) => event.stopPropagation()}
         className="group relative cursor-default overflow-hidden rounded-[2.15rem] border border-cyan-100/22 bg-[linear-gradient(145deg,rgba(2,6,23,0.98),rgba(15,23,42,0.92)_44%,rgba(8,47,73,0.56))] px-4 py-4 shadow-[0_28px_90px_rgba(2,6,23,0.42)] sm:px-5 sm:py-5"
+        data-resolved-outcome-card="true"
         aria-label={`Resolved outcome card for ${display.heroTitle}`}
       >
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_10%,rgba(34,211,238,0.14),transparent_30%),radial-gradient(circle_at_88%_14%,rgba(251,191,36,0.10),transparent_28%),linear-gradient(90deg,rgba(255,255,255,0.03),transparent_16%,transparent_84%,rgba(255,255,255,0.03))]" />
