@@ -197,7 +197,7 @@ const FEATURED_WARRIOR_FALLBACKS: FeaturedWarrior[] = [
     key: "premium:jim",
     name: "Jim",
     lookupName: "Jim",
-    role: "The General",
+    role: "American Champion",
     href: "/players/by-name/Jim",
     imageUrl: avatarCardUrlForUser(JIM_UID, "Jim"),
   },
@@ -289,6 +289,34 @@ function normalizeFeaturedWarriorKey(value: string) {
 }
 
 
+
+function featuredWarriorHonorSubtitle(
+  warrior: Pick<FeaturedWarrior, "key" | "name" | "lookupName">
+) {
+  const identityKeys = [warrior.key, warrior.name, warrior.lookupName]
+    .map((value) => normalizeFeaturedWarriorKey(value))
+    .filter(Boolean);
+
+  // Champion honors stay pinned regardless of RM/DM rating source or live leaderboard rank.
+  const jimKeys = new Set(["jim", "premium-jim", normalizeFeaturedWarriorKey(JIM_UID)]);
+  const zodiacKeys = new Set([
+    "zodiac",
+    "mystikal-zodiac",
+    "premium-zodiac",
+    normalizeFeaturedWarriorKey(ZODIAC_UID),
+  ]);
+
+  if (identityKeys.some((key) => jimKeys.has(key))) {
+    return "American Champion";
+  }
+
+  if (identityKeys.some((key) => zodiacKeys.has(key))) {
+    return "Chaos Champion";
+  }
+
+  return null;
+}
+
 function featuredRoleForLeaderboardEntry(entry: LobbyLeaderboardEntry) {
   if (entry.rank > 0) return `Rank #${entry.rank}`;
   if (entry.isOnline) return "In the Arena";
@@ -333,12 +361,14 @@ function buildFeaturedWarriorPool(entries: LobbyLeaderboardEntry[]) {
     const leaderboardEntry = entryByName.get(dedupeKey);
     seen.add(dedupeKey);
 
+    const honorSubtitle = featuredWarriorHonorSubtitle(warrior);
+
     warriors.push({
       ...warrior,
       href: leaderboardEntry?.href || warrior.href,
-      role: leaderboardEntry
+      role: honorSubtitle || (leaderboardEntry
         ? featuredRoleForLeaderboardEntry(leaderboardEntry)
-        : warrior.role,
+        : warrior.role),
       ...featuredWarriorStatsFromEntry(leaderboardEntry),
     });
   };
@@ -936,6 +966,16 @@ function FeaturedWarriorSubtitle({ warrior }: { warrior: FeaturedWarrior }) {
     return (
       <div className={`mt-1 text-[9px] font-semibold uppercase tracking-[0.18em] ${julioLine.className}`}>
         {julioLine.text}
+      </div>
+    );
+  }
+
+  const honorSubtitle = featuredWarriorHonorSubtitle(warrior);
+
+  if (honorSubtitle) {
+    return (
+      <div className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.18em] text-amber-100 [text-shadow:0_0_16px_rgba(251,191,36,0.30)]">
+        {honorSubtitle}
       </div>
     );
   }
