@@ -343,8 +343,11 @@ function InnerShell({ children }: { children: React.ReactNode }) {
   const isMediaManagerSurface = pathname?.startsWith("/admin/media-assets");
   const isAcademySurface = pathname?.startsWith("/academy");
   const isClanSurface = pathname?.startsWith("/clans");
-  const isAcademyOrMarketSurface =
-    pathname?.startsWith("/academy") || pathname?.startsWith("/market");
+  const isFullWidthPrestigeSurface =
+    pathname?.startsWith("/academy") ||
+    pathname?.startsWith("/market") ||
+    pathname?.startsWith("/kingdom") ||
+    pathname?.startsWith("/challenge");
   const communityLobbyViewMode = getTileViewMode(
     tileViewPreferences,
     "community_lobby"
@@ -612,7 +615,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
             : `px-3 sm:px-4 ${
                 isLobbySurface || isLiveGamesSurface || isForumSurface
                   ? immersiveShellMaxWidth
-                  : isAcademyOrMarketSurface || isClanSurface
+                  : isFullWidthPrestigeSurface || isClanSurface
                     ? "max-w-[90rem]"
                     : "max-w-6xl"
               }`
