@@ -64,16 +64,19 @@ function statePath() {
   return path.join(storageRoot(), "takeover.json");
 }
 
-function cleanPublicBasePath(value: string | null | undefined) {
-  const cleaned = String(value || "").trim();
-  if (!cleaned || !cleaned.startsWith("/") || cleaned.startsWith("//")) {
-    return "/uploads/hero-stage";
-  }
-  return cleaned.replace(/\/+$/, "") || "/uploads/hero-stage";
-}
 
 function publicUploadUrl(filename: string) {
-  return `${cleanPublicBasePath(process.env.HERO_STAGE_PUBLIC_BASE_PATH)}/${filename}`;
+  return `/api/hero-stage-takeover/image/${encodeURIComponent(filename)}`;
+}
+
+export function heroStageTakeoverImageFilePath(filename: string) {
+  const cleanName = path.basename(String(filename || "").trim());
+
+  if (!cleanName || cleanName !== filename || !/^[a-zA-Z0-9._-]+$/.test(cleanName)) {
+    return null;
+  }
+
+  return path.join(uploadRoot(), cleanName);
 }
 
 function extensionForUpload(mimeType: string | null, originalName: string | null) {
