@@ -98,17 +98,15 @@ export default async function AcademyPage() {
 
   return (
     <main className="academy-war-college space-y-6 py-3 text-white sm:space-y-8 sm:py-5">
-      <section className="relative isolate min-h-[34rem] overflow-hidden rounded-[2.2rem] border border-amber-100/16 bg-[#05070d] shadow-[0_38px_120px_rgba(0,0,0,0.42)] sm:min-h-[40rem]">
-        <Image
-          src="/academy/academy-gates-red.webp"
-          alt="The torchlit gates of the AoE2WAR Academy"
-          fill
-          priority
-          sizes="(max-width: 1536px) 100vw, 1536px"
-          className="object-cover object-[63%_center] brightness-[1.42] saturate-[1.22] contrast-[1.08]"
-        />
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(3,7,18,0.70)_0%,rgba(3,7,18,0.42)_30%,rgba(3,7,18,0.10)_56%,rgba(3,7,18,0.00)_100%),linear-gradient(180deg,rgba(3,7,18,0.00),rgba(3,7,18,0.02)_54%,rgba(3,7,18,0.42)_100%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_55%,rgba(127,29,29,0.12),transparent_32%),radial-gradient(circle_at_68%_82%,rgba(251,191,36,0.07),transparent_28%)]" />
+      <section
+        className="relative isolate min-h-[34rem] overflow-hidden rounded-[2.2rem] border border-amber-100/16 bg-[#05070d] bg-cover shadow-[0_38px_120px_rgba(0,0,0,0.42)] sm:min-h-[40rem]"
+        style={{
+          backgroundImage:
+            "linear-gradient(90deg, rgba(3,7,18,0.70) 0%, rgba(3,7,18,0.42) 30%, rgba(3,7,18,0.08) 58%, rgba(3,7,18,0.00) 100%), linear-gradient(180deg, rgba(3,7,18,0.00) 0%, rgba(3,7,18,0.02) 54%, rgba(3,7,18,0.24) 100%), url('/academy/academy-gates-red.webp')",
+          backgroundPosition: "center, center, 62% center",
+          backgroundSize: "cover, cover, cover",
+        }}
+      >
         <div className="pointer-events-none absolute inset-x-12 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/55 to-transparent" />
 
         <div className="relative flex min-h-[34rem] flex-col px-6 py-10 sm:min-h-[40rem] sm:px-10 lg:px-14">
