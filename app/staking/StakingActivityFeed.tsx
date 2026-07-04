@@ -8,7 +8,10 @@ import type { StakingActivityItem } from "@/lib/staking";
 
 type ActivityFeedEvent = CustomEvent<{ item?: StakingActivityItem }>;
 
+
+
 const PAGE_SIZE = 16;
+const STAKING_BOUNTY_ACTIVITY_LIMIT = 500;
 const LIVE_POLL_INTERVAL_MS = 12_000;
 
 type ActivityMode = "ledger" | "grouped";
@@ -528,7 +531,7 @@ export default function StakingActivityFeed({
     async function refreshModeRows() {
       try {
         const url = new URL(loadMoreEndpoint as string, window.location.origin);
-        url.searchParams.set("limit", String(PAGE_SIZE));
+        url.searchParams.set("limit", String(STAKING_BOUNTY_ACTIVITY_LIMIT));
         url.searchParams.set("mode", mode);
         url.searchParams.set("filter", filterMode);
 
@@ -586,7 +589,7 @@ export default function StakingActivityFeed({
       inFlight = true;
       try {
         const url = new URL(loadMoreEndpoint, window.location.origin);
-        url.searchParams.set("limit", String(PAGE_SIZE));
+        url.searchParams.set("limit", String(STAKING_BOUNTY_ACTIVITY_LIMIT));
         url.searchParams.set("mode", mode);
         url.searchParams.set("filter", filterMode);
 
@@ -685,7 +688,7 @@ export default function StakingActivityFeed({
           url.searchParams.set("before", cursor);
         }
 
-        url.searchParams.set("limit", String(PAGE_SIZE));
+        url.searchParams.set("limit", String(STAKING_BOUNTY_ACTIVITY_LIMIT));
         url.searchParams.set("mode", mode);
         url.searchParams.set("filter", filterMode);
 

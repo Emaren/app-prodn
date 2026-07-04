@@ -5,6 +5,7 @@ import { getSessionUid } from "@/lib/session";
 import { loadMainnetTransferStakingActivityPage } from "@/lib/staking";
 import { canInspectOperationalReserveActivity } from "@/lib/stakingTransferClassification";
 
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -161,8 +162,8 @@ export async function GET(request: NextRequest) {
     }
 
     if (filterParam === "bounties" && request.nextUrl.searchParams.get("mode") !== "grouped") {
-      const limitParam = Number(request.nextUrl.searchParams.get("limit") || 20);
-      const safeLimit = Number.isFinite(limitParam) ? Math.max(1, Math.min(120, Math.trunc(limitParam))) : 20;
+      const limitParam = Number(request.nextUrl.searchParams.get("limit") || 500);
+      const safeLimit = Number.isFinite(limitParam) ? Math.max(1, Math.min(500, Math.trunc(limitParam))) : 500;
       const rows = await loadPublicNumberedBounties(safeLimit);
 
       return NextResponse.json({
