@@ -134,7 +134,7 @@ export default function HeroTakeoverSlot({ children }: { children: ReactNode }) 
             alt={active ? slide.imageAlt || label : ""}
             aria-hidden={!active}
             className={[
-              "absolute inset-0 h-full w-full object-cover object-center",
+              "absolute inset-0 h-full w-full object-contain object-center",
               state.transitionStyle === "cut" ? "" : "transition-all ease-out",
               active ? "z-10 opacity-100" : "z-0 opacity-0",
               useSlide

@@ -399,7 +399,7 @@ export default function HeroImageTakeoverPanel() {
               <img
                 src={sortedSlides[0].imageUrl}
                 alt={sortedSlides[0].imageAlt || "Hero preview"}
-                className="aspect-[16/7] w-full object-cover"
+                className="aspect-[16/7] w-full bg-black object-contain"
                 draggable={false}
               />
             ) : (
@@ -424,7 +424,7 @@ export default function HeroImageTakeoverPanel() {
                   <img
                     src={slide.imageUrl}
                     alt={slide.imageAlt || slideLabel(slide, index)}
-                    className="h-14 w-full rounded-xl object-cover"
+                    className="h-14 w-full rounded-xl bg-black object-contain"
                     draggable={false}
                   />
                   <div className="min-w-0">
