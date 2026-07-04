@@ -42,6 +42,7 @@ export default function HeroTakeoverSlot({ children }: { children: ReactNode }) 
     fetch("/api/hero-stage-takeover", { cache: "no-store" })
       .then(async (response) => {
         const payload = (await response.json().catch(() => null)) as HeroTakeoverState | null;
+
         if (!cancelled && response.ok) {
           setState(payload);
         }
@@ -70,21 +71,21 @@ export default function HeroTakeoverSlot({ children }: { children: ReactNode }) 
   const alt = state.imageAlt || state.title || "AoE2WAR hero image";
 
   const hero = (
-    <article className="group relative isolate overflow-hidden rounded-[1.75rem] border border-amber-200/24 bg-[#030712] shadow-[0_28px_90px_rgba(0,0,0,0.42)] sm:rounded-[2rem]">
-      <div className="relative min-h-[15.5rem] sm:min-h-[22rem] lg:min-h-[27rem] xl:min-h-[31rem]">
+    <article
+      aria-label={state.title || "AoE2WAR hero image takeover"}
+      className="group relative isolate overflow-hidden rounded-[2rem] border border-amber-200/18 bg-black shadow-[0_28px_90px_rgba(0,0,0,0.52)]"
+    >
+      <div className="relative min-h-[19rem] overflow-hidden bg-[radial-gradient(circle_at_50%_0%,rgba(251,191,36,0.12),transparent_46%),linear-gradient(180deg,rgba(15,23,42,0.58),rgba(0,0,0,0.94))] sm:min-h-[27rem] lg:min-h-[34rem]">
         <img
           src={state.imageUrl}
           alt={alt}
-          className="absolute inset-0 h-full w-full object-cover object-center transition duration-700 group-hover:scale-[1.015]"
+          className="absolute inset-0 h-full w-full object-contain object-center transition duration-700 group-hover:scale-[1.006]"
           draggable={false}
         />
 
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_70%_20%,rgba(251,191,36,0.12),transparent_34%),linear-gradient(90deg,rgba(2,6,23,0.30),rgba(2,6,23,0.04)_46%,rgba(2,6,23,0.22))]" />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-[#030712]/65 to-transparent" />
-
-        <div className="absolute left-4 top-4 rounded-full border border-amber-200/28 bg-black/45 px-3 py-1 text-[9px] font-black uppercase tracking-[0.24em] text-amber-100 shadow-[0_12px_28px_rgba(0,0,0,0.28)] backdrop-blur-md sm:left-5 sm:top-5">
-          One-image hero
-        </div>
+        <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-white/10" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-black/34 to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/62 to-transparent" />
 
         {href ? (
           <div className="absolute bottom-4 right-4 rounded-full border border-white/14 bg-black/45 px-4 py-2 text-[10px] font-black uppercase tracking-[0.22em] text-white/88 shadow-[0_12px_28px_rgba(0,0,0,0.30)] backdrop-blur-md transition group-hover:border-amber-200/40 group-hover:text-amber-50 sm:bottom-5 sm:right-5">
