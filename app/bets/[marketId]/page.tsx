@@ -203,94 +203,146 @@ function gameHref(market: MarketRow) {
   return null;
 }
 
-function splitMatchTitle(title: string) {
-  const parts = title.split(/\s+vs\s+/i).map((part) => part.trim()).filter(Boolean);
-  if (parts.length >= 2) {
+function splitTeamMatchTitle(title: string) {
+  const parts = title
+    .split(/\s+vs\s+/i)
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (parts.length < 2) {
     return {
-      left: parts[0],
-      right: parts.slice(1).join(" vs "),
+      leftTeam: [title],
+      rightTeam: [] as string[],
+      teamSize: 1,
+      isBalancedTeamMatch: false,
     };
   }
 
+  if (parts.length % 2 !== 0) {
+    return {
+      leftTeam: [parts[0]],
+      rightTeam: parts.slice(1),
+      teamSize: 1,
+      isBalancedTeamMatch: false,
+    };
+  }
+
+  const half = parts.length / 2;
+
   return {
-    left: title,
-    right: "",
+    leftTeam: parts.slice(0, half),
+    rightTeam: parts.slice(half),
+    teamSize: half,
+    isBalancedTeamMatch: half > 1,
   };
 }
 
-function matchTitleSizeClass(left: string, right: string) {
-  const total = left.length + right.length;
-  const longest = Math.max(left.length, right.length);
-
-  if (total > 92 || longest > 48) {
-    return "text-[clamp(0.95rem,1.35vw,1.42rem)]";
+function teamNameSizeClass(name: string, teamSize: number) {
+  if (teamSize >= 4) {
+    return name.length > 24
+      ? "text-[clamp(0.82rem,1.08vw,1.02rem)]"
+      : "text-[clamp(0.92rem,1.24vw,1.14rem)]";
   }
 
-  if (total > 74 || longest > 38) {
-    return "text-[clamp(1rem,1.55vw,1.62rem)]";
+  if (teamSize >= 3) {
+    return name.length > 24
+      ? "text-[clamp(0.9rem,1.24vw,1.14rem)]"
+      : "text-[clamp(1rem,1.46vw,1.34rem)]";
   }
 
-  if (total > 56 || longest > 30) {
-    return "text-[clamp(1.08rem,1.75vw,1.86rem)]";
+  if (teamSize === 2) {
+    return name.length > 24
+      ? "text-[clamp(1rem,1.48vw,1.38rem)]"
+      : "text-[clamp(1.15rem,1.8vw,1.68rem)]";
   }
 
-  if (total > 42 || longest > 22) {
-    return "text-[clamp(1.22rem,2.1vw,2.2rem)]";
-  }
+  return name.length > 28
+    ? "text-[clamp(1.06rem,1.7vw,1.62rem)]"
+    : "text-[clamp(1.32rem,2.25vw,2.3rem)]";
+}
 
-  return "text-[clamp(1.7rem,3.35vw,3.7rem)]";
+function TeamNameStack({
+  label,
+  names,
+  tone,
+}: {
+  label: string;
+  names: string[];
+  tone: "left" | "right";
+}) {
+  const teamSize = Math.max(1, names.length);
+
+  return (
+    <div
+      className={`min-w-0 rounded-[1.2rem] border px-4 py-3 shadow-[0_16px_44px_rgba(0,0,0,0.24)] backdrop-blur-sm ${
+        tone === "right"
+          ? "border-emerald-200/16 bg-emerald-300/[0.055]"
+          : "border-white/10 bg-black/18"
+      }`}
+    >
+      <div
+        className={`text-[9px] font-black uppercase tracking-[0.35em] ${
+          tone === "right" ? "text-emerald-100/48" : "text-slate-500"
+        }`}
+      >
+        {label}
+      </div>
+
+      <div className="mt-2 grid gap-1.5">
+        {names.map((name, index) => (
+          <div
+            key={`${label}-${name}-${index}`}
+            title={name}
+            className={`${teamNameSizeClass(
+              name,
+              teamSize
+            )} min-w-0 max-w-full overflow-hidden bg-gradient-to-b from-white via-slate-100 to-slate-600 bg-clip-text font-extrabold leading-[1.06] tracking-[-0.035em] text-transparent drop-shadow-[0_14px_28px_rgba(0,0,0,0.48)] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [overflow-wrap:anywhere]`}
+          >
+            {name}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function PremiumMatchTitle({ title }: { title: string }) {
-  const names = splitMatchTitle(title);
+  const matchup = splitTeamMatchTitle(title);
 
-  if (!names.right) {
+  if (!matchup.rightTeam.length) {
     return (
-      <h1
-        title={title}
-        className="mt-6 max-w-full overflow-hidden bg-gradient-to-b from-white via-slate-100 to-slate-500 bg-clip-text text-[clamp(1.45rem,3.2vw,3.75rem)] font-extrabold leading-[0.98] tracking-[-0.05em] text-transparent drop-shadow-[0_16px_30px_rgba(0,0,0,0.5)] [overflow-wrap:anywhere]"
-      >
-        {title}
-      </h1>
+      <div className="mt-6 max-w-[42rem] min-w-0 overflow-hidden rounded-[1.35rem] border border-white/10 bg-black/18 px-4 py-4 shadow-[0_18px_50px_rgba(0,0,0,0.22)] backdrop-blur-sm">
+        <div className="text-[10px] font-black uppercase tracking-[0.34em] text-amber-100/48">
+          Battle Book
+        </div>
+        <h1
+          title={title}
+          className="mt-2 max-w-full overflow-hidden bg-gradient-to-b from-white via-slate-100 to-slate-500 bg-clip-text text-[clamp(1.45rem,3.2vw,3.75rem)] font-extrabold leading-[0.98] tracking-[-0.05em] text-transparent drop-shadow-[0_16px_30px_rgba(0,0,0,0.5)] [overflow-wrap:anywhere]"
+        >
+          {title}
+        </h1>
+      </div>
     );
   }
 
-  const sizeClass = matchTitleSizeClass(names.left, names.right);
-  const total = names.left.length + names.right.length;
-  const longest = Math.max(names.left.length, names.right.length);
-  const stackTitle = total > 46 || longest > 24;
+  const matchupLabel = matchup.isBalancedTeamMatch
+    ? `${matchup.teamSize} VS ${matchup.teamSize}`
+    : "VS";
 
   return (
-    <div className="mt-6 max-w-full min-w-0 overflow-hidden px-1 pb-1">
-      <div
-        className={`min-w-0 max-w-full ${
-          stackTitle
-            ? "grid gap-2"
-            : "flex flex-wrap items-end gap-x-3 gap-y-2"
-        }`}
-      >
-        <span
-          title={names.left}
-          className={`${sizeClass} block min-w-0 max-w-full bg-gradient-to-b from-white via-slate-100 to-slate-500 bg-clip-text pr-1 font-extrabold leading-[0.98] tracking-[-0.05em] text-transparent drop-shadow-[0_16px_30px_rgba(0,0,0,0.5)] [overflow-wrap:anywhere]`}
-        >
-          {names.left}
-        </span>
+    <div className="mt-6 max-w-[42rem] min-w-0 overflow-hidden">
+      <div className="grid max-w-full gap-2">
+        <TeamNameStack label="Left Team" names={matchup.leftTeam} tone="left" />
 
-        <span className="w-fit rounded-full border border-amber-200/20 bg-amber-200/[0.06] px-3 py-1 text-[10px] font-black uppercase tracking-[0.34em] text-amber-100/65 shadow-[0_0_24px_rgba(245,158,11,0.13)]">
-          vs
-        </span>
+        <div className="flex items-center gap-3 px-1">
+          <div className="h-px w-16 bg-amber-200/30" />
+          <span className="rounded-full border border-amber-200/20 bg-amber-200/[0.06] px-3 py-1 text-[10px] font-black uppercase tracking-[0.3em] text-amber-100/78 shadow-[0_0_24px_rgba(245,158,11,0.13)]">
+            {matchupLabel}
+          </span>
+          <div className="h-px flex-1 bg-gradient-to-r from-white/18 via-white/8 to-transparent" />
+        </div>
 
-        <span
-          title={names.right}
-          className={`${sizeClass} block min-w-0 max-w-full bg-gradient-to-b from-slate-50 via-slate-200 to-slate-600 bg-clip-text pr-2 font-extrabold leading-[0.98] tracking-[-0.05em] text-transparent drop-shadow-[0_16px_30px_rgba(0,0,0,0.5)] [overflow-wrap:anywhere]`}
-        >
-          {names.right}
-        </span>
-      </div>
-
-      <div className="mt-4 flex max-w-full items-center gap-3">
-        <div className="h-px w-20 bg-amber-200/30" />
-        <div className="h-px flex-1 bg-gradient-to-r from-white/18 via-white/8 to-transparent" />
+        <TeamNameStack label="Right Team" names={matchup.rightTeam} tone="right" />
       </div>
     </div>
   );
