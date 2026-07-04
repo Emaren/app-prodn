@@ -79,8 +79,7 @@ async function loadPublicNumberedBounties(limit: number) {
         'paid'::text as status,
         coalesce(t.timestamp, t.created_at) as occurred_at
       from wolo_indexed_transfers t
-      where lower(t.sender_address) = lower($1)
-        and lower(coalesce(t.memo, '')) like '%bounty%'
+      where lower(coalesce(t.memo, '')) like '%bounty%'
     ),
     unclaimed_gifts as (
       select
@@ -98,49 +97,15 @@ async function loadPublicNumberedBounties(limit: number) {
         and lower(coalesce(g.note, '')) like '%bounty%'
         and lower(coalesce(g.status, '')) in ('pending', 'accepted')
         and coalesce(g.display_on_profile, false) = true
-    ),
-    winner_bounty_claims as (
-      select
-        'winner_bounty_claim'::text as source_type,
-        pc.id,
-        pc.payout_tx_hash as tx_hash,
-        null::int as transfer_index,
-        pc.amount_wolo::numeric as amount_wolo,
-        coalesce(
-          nullif(pc.note, ''),
-          concat(
-            'Winner bounty',
-            case when bm.title is not null then concat(' · ', bm.title) else '' end
-          )
-        ) as memo,
-        case
-          when lower(coalesce(pc.status, '')) = 'claimed' then 'paid'
-          when lower(coalesce(pc.status, '')) = 'rescinded' then 'rescinded'
-          else 'pending'
-        end as status,
-        coalesce(pc.claimed_at, pc.created_at) as occurred_at
-      from pending_wolo_claims pc
-      left join bet_markets bm on bm.id = pc.source_market_id
-      where pc.amount_wolo > 0
-        and lower(coalesce(pc.status, '')) in ('pending', 'claimed')
-        and (
-          pc.claim_kind = 'winner_bounty'
-          or lower(coalesce(pc.note, '')) like '%winner bounty%'
-          or lower(coalesce(pc.note, '')) like '%title bounty%'
-          or lower(coalesce(pc.note, '')) like '%championship bounty%'
-          or lower(coalesce(pc.note, '')) like '%national belt bounty%'
-        )
     )
     select *
     from (
       select * from paid_transfers
       union all
       select * from unclaimed_gifts
-      union all
-      select * from winner_bounty_claims
     ) rows
     order by occurred_at desc, id desc
-    limit $2
+    limit $1
     `,
     ECOSYSTEM_BOUNTIES_WALLET,
     limit

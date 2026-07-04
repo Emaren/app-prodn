@@ -818,7 +818,7 @@ export default function StakingActivityFeed({
             <div>
               <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-emerald-200/75">Total bounties paid out</div>
               <div className="mt-1 text-lg font-semibold text-white">{formatBountySummaryWolo(bountySummary.paidTotal)}</div>
-              <div className="mt-1 text-xs text-slate-400">All bounty rail</div>
+              <div className="mt-1 text-xs text-slate-400">On-chain bounty rail</div>
             </div>
             <div>
               <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#ded7c3]/70">Paid bounties</div>
