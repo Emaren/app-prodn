@@ -50,6 +50,7 @@ import type {
   ScheduledMatchViewerPreference,
 } from "@/lib/scheduledMatchPreferences";
 import { formatDateTime } from "@/lib/timeDisplay";
+import { countriesEligibilityMatch } from "@/lib/countryEligibility";
 
 const EMPTY_SNAPSHOT: ChallengeHubSnapshot = {
   viewer: null,
@@ -347,7 +348,7 @@ export default function ChallengeWorkspace() {
         const target = requestedTitle
           ? nextTrophies.find((trophy) => {
               if (requestedTitle === "national" && requestedCountry) {
-                return trophy.eligibleNationality === requestedCountry;
+                return countriesEligibilityMatch(trophy.eligibleNationality, requestedCountry);
               }
               return trophy.championTitleId === requestedTitle || trophy.trophyId === requestedTitle;
             }) ?? null

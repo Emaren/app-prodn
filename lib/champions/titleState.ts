@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@/lib/generated/prisma";
 import type { LobbyLeaderboardEntry } from "@/lib/lobby";
 import { loadLobbyLeaderboard } from "@/lib/lobbyLeaderboard";
+import { countriesEligibilityMatch } from "@/lib/countryEligibility";
 import {
   allChampionTitles,
   type ChampionHolder,
@@ -208,7 +209,7 @@ function contendersForTitle(
     const country = definition.country?.toLowerCase().trim();
     const nationalRows = country
       ? leaderboardEntries
-          .filter((entry) => entry.representedCountry?.toLowerCase().trim() === country)
+          .filter((entry) => countriesEligibilityMatch(entry.representedCountry, definition.country))
           .map((entry, index) =>
             toContender(
               entry,

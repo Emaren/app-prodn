@@ -26,6 +26,7 @@ import {
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { useUserAuth } from "@/context/UserAuthContext";
+import { countriesEligibilityMatch } from "@/lib/countryEligibility";
 import type {
   TrophyChallengeRow,
   TrophyCommandSnapshot,
@@ -764,7 +765,7 @@ function TrophyControlCard({
   const [chainOwner, setChainOwner] = useState(trophy.chainOwnerAddress || "");
   const [chainStatus, setChainStatus] = useState(trophy.chainStatus);
   const eligibleUsers = trophy.family === "national"
-    ? users.filter((user) => user.representedCountry === trophy.eligibleNationality)
+    ? users.filter((user) => countriesEligibilityMatch(user.representedCountry, trophy.eligibleNationality))
     : trophy.family === "elo"
       ? users.filter(
           (user) =>

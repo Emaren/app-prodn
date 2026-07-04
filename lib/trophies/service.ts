@@ -8,6 +8,7 @@ import {
   type ChampionTitleDefinition,
 } from "@/lib/champions/titles";
 import { managedMediaPublicUrl } from "@/lib/managedMediaAssets";
+import { countriesEligibilityMatch } from "@/lib/countryEligibility";
 import type {
   TrophyCommandSnapshot,
   TrophyHolding,
@@ -701,7 +702,7 @@ function holderEligible(
 ) {
   if (!trophy.currentHolder) return null;
   if (trophy.family === "national") {
-    return trophy.currentHolder.representedCountry === trophy.eligibleNationality;
+    return countriesEligibilityMatch(trophy.currentHolder.representedCountry, trophy.eligibleNationality);
   }
   if (trophy.family === "elo") {
     const rating =
@@ -1189,7 +1190,7 @@ export async function recordNationalityChange(
     });
 
     for (const trophy of heldNationalTrophies) {
-      const eligible = trophy.eligibleNationality === input.nextCountry;
+      const eligible = countriesEligibilityMatch(trophy.eligibleNationality, input.nextCountry);
       await prisma.$transaction([
         prisma.trophyEvent.create({
           data: {

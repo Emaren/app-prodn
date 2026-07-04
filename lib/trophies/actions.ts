@@ -1,4 +1,5 @@
 import type { Prisma, PrismaClient } from "@/lib/generated/prisma";
+import { countriesEligibilityMatch } from "@/lib/countryEligibility";
 import {
   executePendingTrophyTributePayouts,
   projectedTrophyBounty,
@@ -104,7 +105,7 @@ function eligibilityForUser(
 ) {
   if (trophy.family === "national") {
     return {
-      eligible: user.representedCountry === trophy.eligibleNationality,
+      eligible: countriesEligibilityMatch(user.representedCountry, trophy.eligibleNationality),
       detail: `Requires ${trophy.eligibleNationality || "configured nationality"}; player represents ${user.representedCountry || "unset"}.`,
     };
   }
@@ -890,7 +891,7 @@ async function updateUserNationality(
   const user = await getUser(prisma, nullableInt(payload.userId));
   if (!user) throw new TrophyActionError("Choose a player.");
   const nextCountry = nullableString(payload.representedCountry, 40);
-  const allowed = new Set(["Canada", "USA", "Mexico", "UK"]);
+  const allowed = new Set(["Canada", "USA", "United States", "United States of America", "Mexico", "UK", "United Kingdom", "Hong Kong"]);
   if (nextCountry && !allowed.has(nextCountry)) {
     throw new TrophyActionError("Nationality must be Canada, USA, Mexico, UK, or blank.");
   }

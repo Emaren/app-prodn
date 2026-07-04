@@ -93,90 +93,71 @@ async function loadZodiacCard() {
   }
 }
 
-type AcademyViewMode = "basic" | "advanced" | "extreme";
-
-type AcademySearchParams = {
-  view?: string | string[];
-};
-
-type AcademyPageSearchParams = Promise<AcademySearchParams>;
-
-function normalizeAcademyView(raw: string | string[] | undefined): AcademyViewMode {
-  const value = Array.isArray(raw) ? raw[0] : raw;
-  if (value === "advanced" || value === "a") return "advanced";
-  if (value === "extreme" || value === "e") return "extreme";
-  return "basic";
-}
-
-function AcademyViewToggle({ view }: { view: AcademyViewMode }) {
-  const views: Array<{ key: AcademyViewMode; label: string; title: string; href: string }> = [
-    { key: "basic", label: "B", title: "Basic", href: "/academy" },
-    { key: "advanced", label: "A", title: "Advanced", href: "/academy?view=advanced" },
-    { key: "extreme", label: "E", title: "Extreme", href: "/academy?view=extreme" },
-  ];
-
-  return (
-    <nav className="academy-bae-toggle" aria-label="Academy view mode">
-      {views.map((item) => {
-        const active = view === item.key;
-
-        return (
-          <Link
-            key={item.key}
-            href={item.href}
-            aria-current={active ? "page" : undefined}
-            className={active ? "academy-bae-toggle__item academy-bae-toggle__item--active" : "academy-bae-toggle__item"}
-            title={item.title}
-          >
-            <span>{item.label}</span>
-          </Link>
-        );
-      })}
-    </nav>
-  );
-}
-
-export default async function AcademyPage({ searchParams }: { searchParams?: AcademyPageSearchParams }) {
-  const resolvedSearchParams = searchParams ? await searchParams : {};
-  const academyView = normalizeAcademyView(resolvedSearchParams?.view);
-  const academyViewClass = `academy-${academyView}-view`;
-
+export default async function AcademyPage() {
   const zodiac = await loadZodiacCard();
 
   return (
-    <main className={`${academyViewClass} academy-war-college space-y-6 py-3 text-white sm:space-y-8 sm:py-5`}>
-<section className="relative isolate min-h-[38rem] overflow-hidden rounded-[2.2rem] border border-amber-100/16 bg-[#030711] shadow-[0_38px_120px_rgba(0,0,0,0.42)] sm:min-h-[43rem]">
-        <div className="academy-bae-rail academy-bae-rail--hero">
-          <AcademyViewToggle view={academyView} />
-        </div>
-
+    <main className="academy-war-college space-y-6 py-3 text-white sm:space-y-8 sm:py-5">
+<section className="relative isolate min-h-[38rem] overflow-hidden rounded-[2.2rem] border border-amber-100/18 bg-[#09050b] shadow-[0_38px_120px_rgba(0,0,0,0.42)] sm:min-h-[43rem]">
         <Image
           src="/academy/academy-gates-red.webp"
           alt="The torchlit gates of the AoE2WAR Academy"
           fill
           priority
           sizes="(max-width: 1536px) 100vw, 1536px"
-          className="object-cover object-[62%_center]"
+          className="object-cover object-[62%_center] brightness-[1.18] saturate-[1.18] contrast-[1.04]"
         />
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(2,6,18,0.97)_0%,rgba(2,6,18,0.88)_31%,rgba(2,6,18,0.38)_60%,rgba(2,6,18,0.12)_100%),linear-gradient(180deg,rgba(2,6,18,0.12),rgba(2,6,18,0.18)_58%,rgba(2,6,18,0.92)_100%)]" />
-        <div className="pointer-events-none absolute inset-x-12 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/55 to-transparent" />
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(9,5,11,0.86)_0%,rgba(9,5,11,0.67)_29%,rgba(47,12,19,0.22)_58%,rgba(2,6,18,0.03)_100%),linear-gradient(180deg,rgba(72,13,20,0.08),rgba(2,6,18,0.06)_48%,rgba(2,6,18,0.72)_100%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_38%,rgba(185,28,28,0.22),transparent_34%),radial-gradient(circle_at_52%_82%,rgba(251,191,36,0.12),transparent_32%)]" />
+        <div className="pointer-events-none absolute inset-x-12 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/60 to-transparent" />
 
-        <div className="relative flex min-h-[38rem] max-w-[49rem] flex-col justify-start px-6 pb-28 pt-12 sm:min-h-[43rem] sm:px-10 sm:pb-28 lg:px-14">
+        <div className="relative flex min-h-[38rem] max-w-[52rem] flex-col justify-start px-6 pb-28 pt-12 sm:min-h-[43rem] sm:px-10 sm:pb-28 lg:px-14">
           <div className="flex flex-wrap gap-2">
-            <span className="inline-flex items-center gap-2 rounded-full border border-amber-100/22 bg-amber-200/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.24em] text-amber-100">
+            <span className="inline-flex items-center gap-2 rounded-full border border-amber-100/28 bg-amber-200/12 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.24em] text-amber-100 shadow-[0_10px_32px_rgba(0,0,0,0.24)] backdrop-blur-md">
               <Flame className="h-3.5 w-3.5" />
               The gate is open
             </span>
-            <span className="inline-flex items-center gap-2 rounded-full border border-violet-100/18 bg-violet-300/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-violet-100">
+            <span className="inline-flex items-center gap-2 rounded-full border border-red-200/20 bg-red-500/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-red-100 shadow-[0_10px_32px_rgba(0,0,0,0.22)] backdrop-blur-md">
+              <Shield className="h-3.5 w-3.5" />
+              Spartan doctrine
+            </span>
+            <span className="inline-flex items-center gap-2 rounded-full border border-violet-100/18 bg-violet-300/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-violet-100 shadow-[0_10px_32px_rgba(0,0,0,0.2)] backdrop-blur-md">
               <Orbit className="h-3.5 w-3.5" />
               First advisor seated
             </span>
           </div>
 
-          <p className="mt-7 text-[10px] font-bold uppercase tracking-[0.42em] text-slate-400">
-            AoE2WAR · The Academy
+          <p className="mt-7 text-[10px] font-black uppercase tracking-[0.46em] text-amber-100/64">
+            AoE2WAR · War College
           </p>
-          <p className="academy-war-doctrine absolute bottom-[8.7rem] left-6 right-6 max-w-[29rem] text-[13px] font-medium leading-6 tracking-[0.01em] sm:bottom-[6.6rem] sm:left-10 sm:text-[14px] lg:left-14">
+
+          <div className="mt-8 max-w-[42rem]">
+            <div className="mb-4 h-px w-40 bg-gradient-to-r from-amber-200/70 via-red-300/35 to-transparent" />
+            <h1 className="font-serif text-[4.4rem] font-semibold leading-[0.82] tracking-[-0.075em] text-transparent drop-shadow-[0_22px_48px_rgba(0,0,0,0.42)] sm:text-[7.2rem] lg:text-[8.4rem] bg-[linear-gradient(112deg,#fff7cc_0%,#d8a632_34%,#9f1d24_68%,#f6df9a_100%)] bg-clip-text">
+              The Academy
+            </h1>
+            <p className="mt-5 max-w-[33rem] text-[15px] font-medium leading-7 text-amber-50/88 sm:text-[17px]">
+              Learn the war before you wager it. Replay study, battlefield judgment,
+              and hard counsel from players who have already felt the pressure.
+            </p>
+          </div>
+
+          <div className="mt-8 grid max-w-[34rem] grid-cols-3 overflow-hidden rounded-[1.15rem] border border-amber-100/13 bg-black/22 text-left shadow-[0_18px_46px_rgba(0,0,0,0.28)] backdrop-blur-md">
+            <div className="border-r border-white/8 px-4 py-3">
+              <div className="text-[9px] font-black uppercase tracking-[0.28em] text-red-100/52">Doctrine</div>
+              <div className="mt-1 text-sm font-bold text-amber-50">Field reads</div>
+            </div>
+            <div className="border-r border-white/8 px-4 py-3">
+              <div className="text-[9px] font-black uppercase tracking-[0.28em] text-red-100/52">Command</div>
+              <div className="mt-1 text-sm font-bold text-amber-50">Timing</div>
+            </div>
+            <div className="px-4 py-3">
+              <div className="text-[9px] font-black uppercase tracking-[0.28em] text-red-100/52">Proof</div>
+              <div className="mt-1 text-sm font-bold text-amber-50">Replay war</div>
+            </div>
+          </div>
+
+          <p className="academy-war-doctrine absolute bottom-[8.7rem] left-6 right-6 max-w-[31rem] text-[13px] font-semibold leading-6 tracking-[0.01em] text-amber-50/82 sm:bottom-[6.6rem] sm:left-10 sm:text-[14px] lg:left-14">
             Read the field. Move with intent. Raise your ELO.
           </p>
 

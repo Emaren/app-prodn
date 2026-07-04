@@ -23,6 +23,7 @@ import {
   seededTrophyKeyForChallenge,
 } from "@/lib/trophies/service";
 import { recordUserActivity } from "@/lib/userExperience";
+import { countriesEligibilityMatch } from "@/lib/countryEligibility";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -274,7 +275,7 @@ export async function POST(request: NextRequest) {
       }
 
       if (targetTrophy.family === "national") {
-        if (viewer.representedCountry !== targetTrophy.eligibleNationality) {
+        if (!countriesEligibilityMatch(viewer.representedCountry, targetTrophy.eligibleNationality)) {
           return NextResponse.json(
             {
               detail: `Set Representing Country to ${targetTrophy.eligibleNationality} before challenging for this belt.`,
@@ -391,7 +392,7 @@ export async function POST(request: NextRequest) {
           ratingByUserId.get(automaticChallenger.id) ?? null;
         const eligible =
           trophy.family === "national"
-            ? automaticChallenger.representedCountry === trophy.eligibleNationality
+            ? countriesEligibilityMatch(automaticChallenger.representedCountry, trophy.eligibleNationality)
             : trophy.family === "elo"
               ? automaticRating !== null &&
                 (trophy.eloBandMax === null || automaticRating <= trophy.eloBandMax)
