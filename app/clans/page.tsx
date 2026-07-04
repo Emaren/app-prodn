@@ -80,32 +80,38 @@ export default async function ClansPage({
           <Link
             key={clan.slug}
             href={hallHref(clan.slug)}
-            className="clan-directory-card clan-directory-card--house group relative flex min-h-[31rem] flex-col overflow-hidden rounded-[2.1rem] border border-violet-200/18 bg-[radial-gradient(circle_at_50%_20%,rgba(124,58,237,0.18),transparent_33%),linear-gradient(155deg,rgba(12,18,35,0.98),rgba(3,6,15,0.98))] p-5 shadow-[0_30px_90px_rgba(0,0,0,0.28)] transition duration-300 hover:-translate-y-1 hover:border-violet-200/35 hover:shadow-[0_38px_110px_rgba(76,29,149,0.18)] sm:p-7"
+            className="clan-directory-card clan-directory-card--house group relative flex min-h-[31rem] flex-col overflow-hidden rounded-[2.1rem] border border-violet-100/18 bg-[radial-gradient(circle_at_50%_21%,rgba(168,85,247,0.30),transparent_24%),radial-gradient(circle_at_48%_18%,rgba(56,189,248,0.16),transparent_32%),radial-gradient(circle_at_50%_78%,rgba(251,191,36,0.10),transparent_33%),linear-gradient(155deg,rgba(10,9,22,0.99),rgba(5,7,17,0.99)_54%,rgba(3,5,12,0.99))] p-5 shadow-[0_32px_110px_rgba(0,0,0,0.40),0_0_70px_rgba(109,40,217,0.16)] transition duration-300 hover:-translate-y-1 hover:border-amber-100/30 hover:shadow-[0_42px_130px_rgba(0,0,0,0.48),0_0_92px_rgba(124,58,237,0.25)] sm:p-7"
           >
-            <div className="pointer-events-none absolute inset-x-12 top-0 h-px bg-gradient-to-r from-transparent via-violet-200/55 to-transparent" />
-            <div className="relative mx-auto aspect-square w-full max-w-[22rem] overflow-hidden rounded-[1.8rem] border border-white/10 bg-black/35 shadow-[0_28px_80px_rgba(0,0,0,0.38)]">
+            <div className="pointer-events-none absolute inset-0 opacity-80">
+              <div className="absolute -left-24 top-10 h-72 w-72 rounded-full bg-violet-500/16 blur-3xl" />
+              <div className="absolute left-1/2 top-0 h-64 w-64 -translate-x-1/2 rounded-full bg-sky-300/10 blur-3xl" />
+              <div className="absolute bottom-12 right-4 h-52 w-52 rounded-full bg-amber-300/8 blur-3xl" />
+              <div className="absolute inset-x-12 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/55 to-transparent" />
+              <div className="absolute inset-x-16 bottom-0 h-px bg-gradient-to-r from-transparent via-violet-200/28 to-transparent" />
+            </div>
+            <div className="relative mx-auto grid aspect-square w-full max-w-[22rem] place-items-center overflow-hidden rounded-[2rem] border border-amber-100/18 bg-[radial-gradient(circle_at_50%_42%,rgba(250,204,21,0.11),transparent_32%),linear-gradient(145deg,rgba(2,6,23,0.58),rgba(0,0,0,0.88))] p-3 shadow-[0_32px_90px_rgba(0,0,0,0.52),0_0_74px_rgba(109,40,217,0.30),inset_0_0_34px_rgba(255,255,255,0.05)] before:pointer-events-none before:absolute before:inset-3 before:rounded-[1.55rem] before:border before:border-white/8 after:pointer-events-none after:absolute after:inset-0 after:rounded-[2rem] after:bg-[radial-gradient(circle_at_50%_50%,transparent_38%,rgba(0,0,0,0.42)_100%)]">
               <Image
                 src={clan.crestUrl || "/clans/mystikal-crest.webp"}
                 alt={`${clan.name} crest`}
                 fill
                 priority
                 sizes="(max-width: 1024px) 90vw, 38vw"
-                className="object-cover transition duration-500 group-hover:scale-[1.025]"
+                className="rounded-[1.45rem] object-cover transition duration-700 group-hover:scale-[1.035] group-hover:saturate-[1.12]"
               />
             </div>
 
             <div className="clan-directory-card__body relative mt-6 flex flex-1 flex-col">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-200/18 bg-violet-300/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-violet-100">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-100/22 bg-amber-200/[0.08] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-amber-100 shadow-[0_0_24px_rgba(251,191,36,0.08)]">
                   <Shield className="h-3.5 w-3.5" />
-                  Founding clan
+                  Founding house
                 </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] uppercase tracking-[0.16em] text-slate-300">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-100/16 bg-violet-200/[0.055] px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-violet-100/86">
                   <MessageSquareText className="h-3.5 w-3.5" />
                   Hall open
                 </span>
               </div>
-              <h2 className="clan-directory-card__title mt-4 text-3xl font-black tracking-[-0.025em] text-white sm:text-4xl">
+              <h2 className="clan-directory-card__title mt-5 font-serif text-5xl font-black uppercase tracking-[0.14em] text-transparent drop-shadow-[0_0_28px_rgba(168,85,247,0.30)] [-webkit-text-stroke:0.45px_rgba(255,255,255,0.26)] bg-[linear-gradient(180deg,#fff9d7_0%,#f7d77d_26%,#c4b5fd_58%,#5b3aa4_100%)] bg-clip-text sm:text-6xl">
                 {view === "basic"
                   ? clan.name
                   : view === "extreme"
@@ -113,22 +119,22 @@ export default async function ClansPage({
                     : clan.name.replace(/\s+Clan$/i, "")}
               </h2>
               {view !== "basic" ? (
-                <div className="clan-directory-card__rank mt-2 text-[10px] font-bold uppercase tracking-[0.34em] text-violet-200/60">
+                <div className="clan-directory-card__rank mt-2 text-[10px] font-black uppercase tracking-[0.42em] text-amber-100/58 [text-shadow:0_0_16px_rgba(251,191,36,0.16)]">
                   {view === "extreme"
                     ? "Blood remembers the banner"
                     : "The founding warhouse"}
                 </div>
               ) : null}
-              <p className="mt-2 text-sm leading-6 text-slate-300">
+              <p className="mt-3 text-sm leading-6 text-slate-300/92">
                 {clan.tagline}
               </p>
-              <div className="mt-auto flex items-center justify-between gap-4 border-t border-white/9 pt-5">
-                <span className="text-xs uppercase tracking-[0.2em] text-slate-500">
+              <div className="mt-auto flex items-center justify-between gap-4 border-t border-amber-100/12 pt-5">
+                <span className="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">
                   {clan.memberCount > 0
                     ? `${clan.memberCount} hall member${clan.memberCount === 1 ? "" : "s"}`
                     : "Roster forming"}
                 </span>
-                <span className="inline-flex items-center gap-2 text-sm font-bold text-violet-100 transition group-hover:text-white">
+                <span className="inline-flex items-center gap-2 text-sm font-black uppercase tracking-[0.12em] text-amber-100/88 transition group-hover:text-amber-50">
                   Enter hall
                   <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
                 </span>
