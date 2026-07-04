@@ -343,6 +343,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
   const isMediaManagerSurface = pathname?.startsWith("/admin/media-assets");
   const isAcademySurface = pathname?.startsWith("/academy");
   const isClanSurface = pathname?.startsWith("/clans");
+  const isNationalChampionsSurface = pathname?.startsWith("/national-champions");
   const isFullWidthPrestigeSurface =
     pathname?.startsWith("/academy") ||
     pathname?.startsWith("/market") ||
@@ -441,7 +442,9 @@ function InnerShell({ children }: { children: React.ReactNode }) {
           <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-amber-100/25 to-transparent" />
         </div>
 
-        <div className="relative mx-auto w-full max-w-[90rem] overflow-visible">
+        <div className={`relative mx-auto w-full overflow-visible ${
+          isNationalChampionsSurface ? "max-w-[96rem]" : "max-w-[90rem]"
+        }`}>
           <div className="lg:hidden">
             <div className="flex min-w-0 items-center justify-between gap-3">
               <Link
@@ -617,7 +620,9 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                   ? immersiveShellMaxWidth
                   : isFullWidthPrestigeSurface || isClanSurface
                     ? "max-w-[90rem]"
-                    : "max-w-6xl"
+                    : isNationalChampionsSurface
+                      ? "max-w-[96rem]"
+                      : "max-w-6xl"
               }`
         } ${isAcademySurface ? "academy-shell-skin" : ""} ${
           isContactPage ? "overflow-hidden" : isMediaManagerSurface ? "overflow-x-visible" : "overflow-x-hidden"
