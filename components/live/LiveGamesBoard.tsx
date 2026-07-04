@@ -752,7 +752,7 @@ function ClassicBoard({
   const [archiveOffset, setArchiveOffset] = useState(snapshot.recentMatches.length);
   const [archiveLoading, setArchiveLoading] = useState(false);
   const [archiveHasMore, setArchiveHasMore] = useState(snapshot.recentMatches.length >= 12);
-  const [liveTone, setLiveTone] = useState<ClassicLiveTone>("crimson");
+  const [liveTone, setLiveTone] = useState<ClassicLiveTone>("violet");
 
   useEffect(() => {
     setArchiveMatches(snapshot.recentMatches);
@@ -817,13 +817,13 @@ function ClassicBoard({
   const sectionStatusLabel = liveItemsCount > 0 ? `${liveItemsCount} active` : "Awaiting battle";
   const playingShellClass =
     liveTone === "violet"
-      ? "border-fuchsia-300/15 bg-[radial-gradient(circle_at_12%_0%,rgba(126,34,206,0.13),transparent_34%),linear-gradient(rgba(2,6,23,0.78),rgba(2,6,23,0.78))]"
+      ? "border-[#7d5a78]/24 bg-[radial-gradient(circle_at_12%_0%,rgba(82,35,74,0.22),transparent_34%),linear-gradient(rgba(18,10,25,0.86),rgba(2,6,23,0.78))]"
       : "border-red-300/15 bg-[radial-gradient(circle_at_12%_0%,rgba(127,29,29,0.12),transparent_34%),linear-gradient(rgba(2,6,23,0.78),rgba(2,6,23,0.78))]";
   const playingEyebrowClass =
-    liveTone === "violet" ? "text-fuchsia-100/72" : "text-red-200/70";
+    liveTone === "violet" ? "text-[#d8bfd5]/74" : "text-red-200/70";
   const emptyPlayingClass =
     liveTone === "violet"
-      ? "border-fuchsia-300/15 bg-fuchsia-500/[0.07]"
+      ? "border-[#7d5a78]/20 bg-[#3a2038]/24"
       : "border-red-300/15 bg-red-500/[0.07]";
 
   return (
@@ -1608,20 +1608,20 @@ function PremiumClassicLiveSessionCard({
 
   const activeShellClass =
     liveTone === "violet"
-      ? "border-fuchsia-400/20 bg-fuchsia-500/10 shadow-[0_26px_90px_rgba(168,85,247,0.12)]"
+      ? "border-[#8a647e]/24 bg-[#2a1629]/62 shadow-[0_26px_90px_rgba(52,24,56,0.12)]"
       : "border-red-400/20 bg-red-500/10 shadow-[0_26px_90px_rgba(127,29,29,0.13)]";
   const activeEyebrowClass =
-    liveTone === "violet" ? "text-fuchsia-100/78" : "text-red-100/78";
+    liveTone === "violet" ? "text-[#ead8e7]/78" : "text-red-100/78";
   const activeMetaClass =
-    liveTone === "violet" ? "text-fuchsia-100/62" : "text-red-100/62";
+    liveTone === "violet" ? "text-[#d8bfd5]/62" : "text-red-100/62";
   const activeStatusClass =
     liveTone === "violet"
-      ? "border-fuchsia-300/25 bg-fuchsia-500/12 text-fuchsia-50"
+      ? "border-[#d8bfd5]/22 bg-[#3a2038]/44 text-[#fff4fb]"
       : "border-red-300/25 bg-red-500/12 text-red-50";
   const activeWinnerClass =
-    liveTone === "violet" ? "text-fuchsia-100/62" : "text-red-100/62";
+    liveTone === "violet" ? "text-[#d8bfd5]/62" : "text-red-100/62";
   const activeWinnerNameClass =
-    liveTone === "violet" ? "text-fuchsia-50/90" : "text-red-50/90";
+    liveTone === "violet" ? "text-[#fff4fb]/90" : "text-red-50/90";
   const shellClass = isCompleted
     ? "relative overflow-hidden rounded-[1.9rem] border border-emerald-400/20 bg-emerald-500/10 px-5 py-5 shadow-[0_26px_90px_rgba(16,185,129,0.12)] sm:px-6"
     : `relative overflow-hidden rounded-[1.9rem] border px-5 py-5 transition-[border-color,background,box-shadow] duration-500 sm:px-6 ${activeShellClass}`;
@@ -1664,9 +1664,9 @@ function PremiumClassicLiveSessionCard({
         </>
       ) : liveTone === "violet" ? (
         <>
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_86%_10%,rgba(217,70,239,0.16),transparent_34%),linear-gradient(135deg,rgba(88,28,135,0.34),rgba(2,6,23,0)_58%)]" />
-          <div className="pointer-events-none absolute -right-24 -top-24 h-56 w-56 rounded-full bg-fuchsia-300/10 blur-3xl" />
-          <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-fuchsia-200/40 to-transparent" />
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_86%_10%,rgba(126,87,121,0.16),transparent_34%),linear-gradient(135deg,rgba(54,25,58,0.38),rgba(2,6,23,0)_58%)]" />
+          <div className="pointer-events-none absolute -right-24 -top-24 h-56 w-56 rounded-full bg-[#b48aa9]/10 blur-3xl" />
+          <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-[#d8bfd5]/30 to-transparent" />
         </>
       ) : (
         <>
@@ -1784,35 +1784,35 @@ function ClassicLiveSessionCard({
   const shellClass = isCompleted
     ? "border-emerald-400/20 bg-emerald-500/10"
     : liveTone === "violet"
-      ? "border-fuchsia-400/20 bg-fuchsia-500/10"
+      ? "border-[#8a647e]/22 bg-[#2a1629]/58"
       : "border-red-400/20 bg-red-500/10";
 
   const eyebrowClass = isCompleted
     ? "text-emerald-100/75"
     : liveTone === "violet"
-      ? "text-fuchsia-100/75"
+      ? "text-[#ead8e7]/75"
       : "text-red-100/75";
   const titleClass =
     "mt-2 text-xl font-semibold leading-tight tracking-[-0.012em] text-slate-50/95 [text-shadow:0_1px_10px_rgba(2,6,23,0.18)]";
   const metaClass = isCompleted
     ? "text-emerald-100/58"
     : liveTone === "violet"
-      ? "text-fuchsia-100/58"
+      ? "text-[#d8bfd5]/58"
       : "text-red-100/58";
   const statusClass = isCompleted
     ? "border-emerald-300/25 bg-emerald-400/10 text-emerald-100"
     : liveTone === "violet"
-      ? "border-fuchsia-300/25 bg-fuchsia-400/10 text-fuchsia-100"
+      ? "border-[#d8bfd5]/22 bg-[#3a2038]/38 text-[#fff4fb]"
       : "border-red-300/25 bg-red-400/10 text-red-100";
   const winnerClass = isCompleted
     ? "text-emerald-100/58"
     : liveTone === "violet"
-      ? "text-fuchsia-100/58"
+      ? "text-[#d8bfd5]/58"
       : "text-red-100/58";
   const winnerNameClass = isCompleted
     ? "text-emerald-50/86"
     : liveTone === "violet"
-      ? "text-fuchsia-50/86"
+      ? "text-[#fff4fb]/86"
       : "text-red-50/86";
 
   const goToStats = () => {
@@ -1896,18 +1896,18 @@ function ClassicTournamentLiveMatchCard({
   if (premium) {
     const shellClass = isLive
       ? liveTone === "violet"
-        ? "relative overflow-hidden rounded-[1.75rem] border border-fuchsia-300/25 bg-[radial-gradient(circle_at_85%_10%,rgba(217,70,239,0.22),transparent_32%),linear-gradient(135deg,rgba(88,28,135,0.46),rgba(2,6,23,0.92)_64%)] px-5 py-5 shadow-[0_24px_80px_rgba(168,85,247,0.12)]"
+        ? "relative overflow-hidden rounded-[1.75rem] border border-[#8a647e]/24 bg-[radial-gradient(circle_at_85%_10%,rgba(126,87,121,0.18),transparent_32%),linear-gradient(135deg,rgba(54,25,58,0.42),rgba(2,6,23,0.92)_64%)] px-5 py-5 shadow-[0_24px_80px_rgba(52,24,56,0.12)]"
         : "relative overflow-hidden rounded-[1.75rem] border border-red-300/25 bg-[radial-gradient(circle_at_85%_10%,rgba(248,113,113,0.18),transparent_32%),linear-gradient(135deg,rgba(127,29,29,0.42),rgba(2,6,23,0.92)_64%)] px-5 py-5 shadow-[0_24px_80px_rgba(127,29,29,0.12)]"
       : "relative overflow-hidden rounded-[1.75rem] border border-amber-300/25 bg-[radial-gradient(circle_at_85%_10%,rgba(251,191,36,0.18),transparent_32%),linear-gradient(135deg,rgba(120,53,15,0.42),rgba(2,6,23,0.92)_64%)] px-5 py-5 shadow-[0_24px_80px_rgba(245,158,11,0.10)]";
 
     const eyebrowClass = isLive
       ? liveTone === "violet"
-        ? "text-fuchsia-100/80"
+        ? "text-[#ead8e7]/80"
         : "text-red-100/80"
       : "text-amber-100/80";
     const badgeClass = isLive
       ? liveTone === "violet"
-        ? "border-fuchsia-200/25 bg-fuchsia-300/12 text-fuchsia-50"
+        ? "border-[#d8bfd5]/22 bg-[#3a2038]/40 text-[#fff4fb]"
         : "border-red-200/25 bg-red-300/12 text-red-50"
       : "border-amber-200/25 bg-amber-300/12 text-amber-50";
 
@@ -1964,7 +1964,7 @@ function ClassicTournamentLiveMatchCard({
   const accentClass =
     emphasis === "live"
       ? liveTone === "violet"
-        ? "border-fuchsia-400/20 bg-fuchsia-500/10"
+        ? "border-[#8a647e]/22 bg-[#2a1629]/58"
         : "border-red-400/20 bg-red-500/10"
       : "border-amber-300/20 bg-amber-400/10";
 
