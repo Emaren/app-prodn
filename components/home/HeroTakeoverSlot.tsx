@@ -35,6 +35,11 @@ type HeroTakeoverState = {
   slides: HeroStageTakeoverSlide[];
 };
 
+type CrossfadeLayer = {
+  slide: HeroStageTakeoverSlide;
+  phase: "entering" | "visible" | "leaving";
+};
+
 function safeHref(value: string | null) {
   if (!value) return null;
 
@@ -87,14 +92,71 @@ function slideKey(slide: HeroStageTakeoverSlide) {
   return slide.id || slide.imageUrl;
 }
 
+function layerOpacity(layer: CrossfadeLayer) {
+  if (layer.phase === "visible") return "opacity-100";
+  if (layer.phase === "entering") return "opacity-0";
+  return "opacity-0";
+}
+
+function layerTransform(layer: CrossfadeLayer, transitionStyle: HeroStageTransitionStyle) {
+  if (transitionStyle !== "slide") return "translate-x-0 scale-100";
+  if (layer.phase === "entering") return "translate-x-[1.15%] scale-[1.004]";
+  if (layer.phase === "leaving") return "-translate-x-[1.15%] scale-[1.004]";
+  return "translate-x-0 scale-100";
+}
+
+function HeroLayer({
+  layer,
+  label,
+  transitionMs,
+  transitionStyle,
+  active,
+  onLoad,
+}: {
+  layer: CrossfadeLayer;
+  label: string;
+  transitionMs: number;
+  transitionStyle: HeroStageTransitionStyle;
+  active: boolean;
+  onLoad: () => void;
+}) {
+  const slide = layer.slide;
+  const srcSet = heroImageSrcSet(slide.imageUrl);
+  const duration = transitionStyle === "cut" ? 0 : transitionMs;
+
+  return (
+    <picture key={slideKey(slide)}>
+      {srcSet ? (
+        <source type="image/webp" srcSet={srcSet} sizes="min(100vw, 1840px)" />
+      ) : null}
+      <img
+        src={heroImageUrl(slide.imageUrl, 1840, 94)}
+        alt={active ? slide.imageAlt || label : ""}
+        aria-hidden={!active}
+        className={[
+          "absolute inset-0 h-full w-full object-contain object-center will-change-[opacity,transform]",
+          transitionStyle === "cut" ? "" : "transition-[opacity,transform] ease-[cubic-bezier(0.22,1,0.36,1)]",
+          layerOpacity(layer),
+          layerTransform(layer, transitionStyle),
+        ].join(" ")}
+        style={{ transitionDuration: `${duration}ms` }}
+        loading="eager"
+        decoding="async"
+        onLoad={onLoad}
+        draggable={false}
+      />
+    </picture>
+  );
+}
+
 export default function HeroTakeoverSlot({ children }: { children: ReactNode }) {
   const [state, setState] = useState<HeroTakeoverState | null>(null);
   const [ready, setReady] = useState(false);
   const [loadedByKey, setLoadedByKey] = useState<Record<string, boolean>>({});
   const [displayIndex, setDisplayIndex] = useState(0);
   const [pendingIndex, setPendingIndex] = useState<number | null>(null);
-  const [previousSlide, setPreviousSlide] = useState<HeroStageTakeoverSlide | null>(null);
-  const [revealed, setRevealed] = useState(true);
+  const [layers, setLayers] = useState<CrossfadeLayer[]>([]);
+  const transitionTimerRef = useRef<number | null>(null);
   const inflightRef = useRef<Record<string, boolean>>({});
 
   useEffect(() => {
@@ -162,10 +224,14 @@ export default function HeroTakeoverSlot({ children }: { children: ReactNode }) 
   );
 
   useEffect(() => {
+    if (transitionTimerRef.current !== null) {
+      window.clearTimeout(transitionTimerRef.current);
+      transitionTimerRef.current = null;
+    }
+
     setDisplayIndex(0);
     setPendingIndex(null);
-    setPreviousSlide(null);
-    setRevealed(true);
+    setLayers([]);
   }, [slides.length]);
 
   useEffect(() => {
@@ -178,29 +244,58 @@ export default function HeroTakeoverSlot({ children }: { children: ReactNode }) 
   const currentSlide = slides[displayIndex] || slides[0] || null;
   const currentReady = currentSlide ? Boolean(loadedByKey[slideKey(currentSlide)]) : false;
 
+  useEffect(() => {
+    if (!currentSlide || !currentReady || layers.length) return;
+    setLayers([{ slide: currentSlide, phase: "visible" }]);
+  }, [currentReady, currentSlide, layers.length]);
+
   const commitIndex = useCallback(
     (nextIndex: number) => {
-      if (!slides[nextIndex]) return;
+      if (!slides[nextIndex] || nextIndex === displayIndex) return;
 
-      const transitionMs =
+      const nextSlide = slides[nextIndex];
+      const activeTransitionMs =
         state?.transitionStyle === "cut" ? 0 : Math.max(0, state?.transitionMs ?? 900);
 
-      setPreviousSlide(slides[displayIndex] || null);
+      if (transitionTimerRef.current !== null) {
+        window.clearTimeout(transitionTimerRef.current);
+        transitionTimerRef.current = null;
+      }
+
+      const currentVisibleSlide =
+        layers.find((layer) => layer.phase === "visible")?.slide ||
+        slides[displayIndex] ||
+        currentSlide;
+
       setDisplayIndex(nextIndex);
       setPendingIndex(null);
-      setRevealed(false);
+
+      setLayers([
+        ...(currentVisibleSlide
+          ? [{ slide: currentVisibleSlide, phase: "visible" as const }]
+          : []),
+        { slide: nextSlide, phase: "entering" as const },
+      ]);
 
       window.requestAnimationFrame(() => {
-        window.requestAnimationFrame(() => setRevealed(true));
+        window.requestAnimationFrame(() => {
+          setLayers([
+            ...(currentVisibleSlide
+              ? [{ slide: currentVisibleSlide, phase: "leaving" as const }]
+              : []),
+            { slide: nextSlide, phase: "visible" as const },
+          ]);
+        });
       });
 
-      window.setTimeout(() => {
-        setPreviousSlide(null);
-      }, transitionMs + 80);
+      transitionTimerRef.current = window.setTimeout(() => {
+        setLayers([{ slide: nextSlide, phase: "visible" }]);
+        transitionTimerRef.current = null;
+      }, activeTransitionMs + 180);
 
       preloadSlide(slides[rotateIndex(nextIndex, slides.length, 1)], false);
     },
-    [displayIndex, preloadSlide, slides, state?.transitionMs, state?.transitionStyle]
+    [currentSlide, displayIndex, layers, preloadSlide, slides, state?.transitionMs, state?.transitionStyle]
   );
 
   const queueRotate = useCallback(
@@ -246,18 +341,25 @@ export default function HeroTakeoverSlot({ children }: { children: ReactNode }) 
     return () => window.clearInterval(interval);
   }, [currentReady, queueRotate, slides.length, state?.active, state?.intervalMs]);
 
+  useEffect(() => {
+    return () => {
+      if (transitionTimerRef.current !== null) {
+        window.clearTimeout(transitionTimerRef.current);
+      }
+    };
+  }, []);
+
   if (!ready) {
     return <>{children}</>;
   }
 
-  if (!state?.active || slides.length < 1 || !currentSlide || !currentReady) {
+  if (!state?.active || slides.length < 1 || !currentSlide || !currentReady || !layers.length) {
     return <>{children}</>;
   }
 
   const href = safeHref(currentSlide.linkUrl || state.linkUrl || "/forum");
   const label = currentSlide.title || state.title || "Open AoE2WAR hero dispatch";
   const transitionMs = state.transitionStyle === "cut" ? 0 : Math.max(0, state.transitionMs ?? 900);
-  const currentSrcSet = heroImageSrcSet(currentSlide.imageUrl);
 
   function openCurrent() {
     if (href) {
@@ -275,53 +377,21 @@ export default function HeroTakeoverSlot({ children }: { children: ReactNode }) 
       </div>
 
       <div aria-label={label} className={`${frameClass} group`}>
-        {previousSlide ? (
-          <picture>
-            {heroImageSrcSet(previousSlide.imageUrl) ? (
-              <source
-                type="image/webp"
-                srcSet={heroImageSrcSet(previousSlide.imageUrl)}
-                sizes="min(100vw, 1840px)"
-              />
-            ) : null}
-            <img
-              src={heroImageUrl(previousSlide.imageUrl, 1840, 94)}
-              alt=""
-              aria-hidden="true"
-              className={[
-                "absolute inset-0 z-10 h-full w-full object-contain object-center transition-all ease-out",
-                revealed ? "opacity-0" : "opacity-100",
-                state.transitionStyle === "slide" && revealed ? "-translate-x-[1.4%]" : "translate-x-0",
-              ].join(" ")}
-              style={{ transitionDuration: `${transitionMs}ms` }}
-              draggable={false}
+        {layers.map((layer, index) => (
+          <div
+            key={`${slideKey(layer.slide)}-${layer.phase}-${index}`}
+            className={index === layers.length - 1 ? "relative z-20" : "relative z-10"}
+          >
+            <HeroLayer
+              layer={layer}
+              label={label}
+              transitionMs={transitionMs}
+              transitionStyle={state.transitionStyle}
+              active={slideKey(layer.slide) === slideKey(currentSlide)}
+              onLoad={() => markLoaded(layer.slide)}
             />
-          </picture>
-        ) : null}
-
-        <picture>
-          {currentSrcSet ? (
-            <source
-              type="image/webp"
-              srcSet={currentSrcSet}
-              sizes="min(100vw, 1840px)"
-            />
-          ) : null}
-          <img
-            src={heroImageUrl(currentSlide.imageUrl, 1840, 94)}
-            alt={currentSlide.imageAlt || label}
-            className={[
-              "absolute inset-0 z-20 h-full w-full object-contain object-center transition-all ease-out",
-              revealed ? "opacity-100" : "opacity-0",
-              state.transitionStyle === "slide" && !revealed ? "translate-x-[1.4%]" : "translate-x-0",
-            ].join(" ")}
-            style={{ transitionDuration: `${transitionMs}ms` }}
-            loading="eager"
-            decoding="async"
-            onLoad={() => markLoaded(currentSlide)}
-            draggable={false}
-          />
-        </picture>
+          </div>
+        ))}
 
         <div className="pointer-events-none absolute inset-0 z-30 ring-1 ring-inset ring-white/10" />
 
