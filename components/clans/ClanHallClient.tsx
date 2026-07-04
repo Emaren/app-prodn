@@ -440,14 +440,14 @@ export default function ClanHallClient({
                 <h1 className="sr-only">{snapshot.clan.name}</h1>
                 <div className="relative w-full max-w-[34rem] overflow-visible">
                   <Image
-                    src="/clans/mystikal-wordmark.png"
+                    src="/clans/mystikal-wordmark-transparent.png"
                     alt=""
                     aria-hidden="true"
                     width={920}
                     height={240}
                     priority
                     sizes="(max-width: 1024px) 82vw, 520px"
-                    className="mx-auto h-auto w-full object-contain mix-blend-screen drop-shadow-[0_0_34px_rgba(168,85,247,0.28)]"
+                    className="mx-auto h-auto w-full object-contain drop-shadow-[0_0_34px_rgba(168,85,247,0.28)]"
                   />
                 </div>
               </div>
