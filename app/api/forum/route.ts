@@ -59,6 +59,7 @@ async function requireViewer(request: NextRequest) {
       uid: true,
       inGameName: true,
       steamPersonaName: true,
+      isAdmin: true,
     },
   });
 
@@ -158,6 +159,86 @@ export async function POST(request: NextRequest) {
           body,
           authorUserId: viewer.id,
           authorRole: "AoE2WAR citizen",
+        },
+      });
+    } else if (action === "update_thread") {
+      if (!viewer.isAdmin) {
+        return NextResponse.json(
+          { detail: "Only AoE2WAR stewards can edit War Room dispatches." },
+          { status: 403, headers: NO_STORE_HEADERS }
+        );
+      }
+
+      const threadId = parseThreadId(payload.threadId);
+      const title = normalizeForumTitle(payload.title);
+      const excerpt = normalizeForumExcerpt(payload.excerpt);
+      const body = normalizeForumBody(payload.body);
+      const channel = isForumChannel(payload.channel) ? payload.channel : null;
+      const requestedTag = normalizeForumTitle(payload.tag).slice(0, 48);
+
+      if (!threadId) {
+        return NextResponse.json(
+          { detail: "Choose a real thread before editing." },
+          { status: 400, headers: NO_STORE_HEADERS }
+        );
+      }
+      if (title.length < 6) {
+        return NextResponse.json(
+          { detail: "Give the dispatch a title with at least six characters." },
+          { status: 400, headers: NO_STORE_HEADERS }
+        );
+      }
+      if (excerpt.length < 12) {
+        return NextResponse.json(
+          { detail: "Give the dispatch a short deck/excerpt." },
+          { status: 400, headers: NO_STORE_HEADERS }
+        );
+      }
+      if (body.length < 20) {
+        return NextResponse.json(
+          { detail: "Give the dispatch body at least twenty characters." },
+          { status: 400, headers: NO_STORE_HEADERS }
+        );
+      }
+
+      const existing = await prisma.forumThread.findUnique({
+        where: { id: threadId },
+        select: { id: true },
+      });
+      if (!existing) {
+        return NextResponse.json(
+          { detail: "That dispatch could not be found." },
+          { status: 404, headers: NO_STORE_HEADERS }
+        );
+      }
+
+      const channelDetail = channel
+        ? FORUM_CHANNELS.find((entry) => entry.key === channel)
+        : null;
+
+      await prisma.forumThread.update({
+        where: { id: threadId },
+        data: {
+          title,
+          excerpt,
+          body,
+          ...(channel
+            ? {
+                channel,
+                tag: requestedTag || channelDetail?.shortLabel || "Community",
+              }
+            : requestedTag
+              ? { tag: requestedTag }
+              : {}),
+          isPinned:
+            typeof payload.isPinned === "boolean" ? payload.isPinned : undefined,
+          isFeatured:
+            typeof payload.isFeatured === "boolean" ? payload.isFeatured : undefined,
+          isHot:
+            typeof payload.isHot === "boolean" ? payload.isHot : undefined,
+          isLocked:
+            typeof payload.isLocked === "boolean" ? payload.isLocked : undefined,
+          updatedAt: new Date(),
         },
       });
     } else if (action === "reply") {
