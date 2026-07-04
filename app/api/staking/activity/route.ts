@@ -80,7 +80,7 @@ async function loadPublicNumberedBounties(limit: number) {
         coalesce(t.timestamp, t.created_at) as occurred_at
       from wolo_indexed_transfers t
       where lower(t.sender_address) = lower($1)
-        and lower(coalesce(t.memo, '')) like '%bounty #%'
+        and lower(coalesce(t.memo, '')) like '%bounty%'
     ),
     unclaimed_gifts as (
       select
@@ -95,7 +95,7 @@ async function loadPublicNumberedBounties(limit: number) {
       from user_gifts g
       where g.kind = 'WOLO'
         and g.amount > 0
-        and lower(coalesce(g.note, '')) like '%bounty #%'
+        and lower(coalesce(g.note, '')) like '%bounty%'
         and lower(coalesce(g.status, '')) in ('pending', 'accepted')
         and coalesce(g.display_on_profile, false) = true
     )

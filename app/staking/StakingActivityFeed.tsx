@@ -55,9 +55,21 @@ function isReserveActivity(item: StakingActivityItem) {
 }
 
 function isBountyActivity(item: StakingActivityItem) {
-  const text = sanitizeActivityCopy(`${item.label || ""} ${item.detail || ""}`).toLowerCase();
+  const eventType = normalizedEventType(item);
+  const text = sanitizeActivityCopy(
+    `${item.label || ""} ${item.detail || ""} ${item.meta || ""} ${item.amountLabel || ""} ${item.eventType || ""}`
+  ).toLowerCase();
 
-  return text.includes("bounty #") || text.includes("🏰 bounty");
+  return (
+    eventType === "BOUNTY" ||
+    isBeltBountyPayoutActivity(item) ||
+    text.includes("bounty") ||
+    text.includes("bounties") ||
+    text.includes("championship bounty") ||
+    text.includes("champion bounty") ||
+    text.includes("title bounty") ||
+    text.includes("national belt bounty")
+  );
 }
 
 
@@ -385,7 +397,7 @@ export default function StakingActivityFeed({
   loadMoreEndpoint?: string;
 }) {
   const { isAdmin } = useUserAuth();
-  const initialRows = useMemo(() => items.slice(0, PAGE_SIZE), [items]);
+  const initialRows = useMemo(() => items, [items]);
   const [mode, setMode] = useState<ActivityMode>("ledger");
   const [filterMode, setFilterMode] = useState<ActivityFilterMode>("all");
   const [beltPayoutFilterMode, setBeltPayoutFilterMode] = useState<BeltPayoutFilterMode>("all");
@@ -531,7 +543,7 @@ export default function StakingActivityFeed({
     async function refreshModeRows() {
       try {
         const url = new URL(loadMoreEndpoint as string, window.location.origin);
-        url.searchParams.set("limit", String(STAKING_BOUNTY_ACTIVITY_LIMIT));
+        url.searchParams.set("limit", String(filterMode === "bounties" ? STAKING_BOUNTY_ACTIVITY_LIMIT : PAGE_SIZE));
         url.searchParams.set("mode", mode);
         url.searchParams.set("filter", filterMode);
 
@@ -549,7 +561,7 @@ export default function StakingActivityFeed({
         setFreshKey(
           activityKey(nextRows[0] ?? { label: "", detail: "", meta: "", tone: "slate" })
         );
-        setHasMore(Boolean(payload.hasMore || payload.nextBefore || nextRows.length >= PAGE_SIZE));
+        setHasMore(Boolean(payload.hasMore || payload.nextBefore || nextRows.length >= (filterMode === "bounties" ? STAKING_BOUNTY_ACTIVITY_LIMIT : PAGE_SIZE)));
         setNextBefore(payload.nextBefore || oldestActivityRowTimestamp(nextRows));
       } catch (error) {
         console.warn("Failed to refresh staking activity mode:", error);
@@ -589,7 +601,7 @@ export default function StakingActivityFeed({
       inFlight = true;
       try {
         const url = new URL(loadMoreEndpoint, window.location.origin);
-        url.searchParams.set("limit", String(STAKING_BOUNTY_ACTIVITY_LIMIT));
+        url.searchParams.set("limit", String(filterMode === "bounties" ? STAKING_BOUNTY_ACTIVITY_LIMIT : PAGE_SIZE));
         url.searchParams.set("mode", mode);
         url.searchParams.set("filter", filterMode);
 
@@ -605,7 +617,7 @@ export default function StakingActivityFeed({
           const freshRows = nextRows.filter((row) => !knownKeys.has(activityKey(row)));
 
           setRows((current) => mergeActivityRows(nextRows, current));
-          setHasMore((current) => current || Boolean(payload.hasMore || payload.nextBefore || nextRows.length >= PAGE_SIZE));
+          setHasMore((current) => current || Boolean(payload.hasMore || payload.nextBefore || nextRows.length >= (filterMode === "bounties" ? STAKING_BOUNTY_ACTIVITY_LIMIT : PAGE_SIZE)));
 
           if (freshRows.length > 0) {
             const newestFresh = mergeActivityRows(freshRows)[0];
@@ -688,7 +700,7 @@ export default function StakingActivityFeed({
           url.searchParams.set("before", cursor);
         }
 
-        url.searchParams.set("limit", String(STAKING_BOUNTY_ACTIVITY_LIMIT));
+        url.searchParams.set("limit", String(filterMode === "bounties" ? STAKING_BOUNTY_ACTIVITY_LIMIT : PAGE_SIZE));
         url.searchParams.set("mode", mode);
         url.searchParams.set("filter", filterMode);
 
@@ -705,7 +717,7 @@ export default function StakingActivityFeed({
           collectedRows.push(...nextRows);
         }
 
-        finalHasMore = Boolean(payload.hasMore || payload.nextBefore || nextRows.length >= PAGE_SIZE);
+        finalHasMore = Boolean(payload.hasMore || payload.nextBefore || nextRows.length >= (filterMode === "bounties" ? STAKING_BOUNTY_ACTIVITY_LIMIT : PAGE_SIZE));
         finalNextBefore = fallbackBefore;
 
         const madeCursorProgress = Boolean(fallbackBefore && fallbackBefore !== cursor);
