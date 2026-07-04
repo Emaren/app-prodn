@@ -111,15 +111,23 @@ export default async function ClansPage({
                   Hall open
                 </span>
               </div>
-              <div className="clan-directory-card__title mt-5 flex items-center">
+              <div className="clan-directory-card__title relative mx-auto mt-4 flex h-[4.95rem] w-full max-w-[27rem] items-center justify-center overflow-visible px-3 sm:h-[5.35rem]">
+                <div className="pointer-events-none absolute inset-0 rounded-full bg-[radial-gradient(circle_at_50%_50%,rgba(124,58,237,0.22),transparent_60%),radial-gradient(circle_at_50%_52%,rgba(56,189,248,0.12),transparent_62%)] blur-2xl" />
+                <div className="pointer-events-none absolute left-1/2 top-1/2 h-px w-[88%] -translate-x-1/2 -translate-y-1/2 bg-gradient-to-r from-transparent via-sky-300/22 to-transparent" />
                 <Image
                   src="/clans/mystikal-wordmark.png"
                   alt="Mystikal"
                   width={2172}
                   height={724}
-                  className="h-auto w-full max-w-[26rem] select-none object-contain object-left drop-shadow-[0_0_28px_rgba(79,70,229,0.34)] transition duration-500 group-hover:drop-shadow-[0_0_44px_rgba(124,58,237,0.46)]"
-                  sizes="(max-width: 640px) 82vw, 416px"
+                  className="relative mx-auto block h-auto w-full max-w-[20rem] select-none object-contain object-center opacity-[0.97] mix-blend-screen brightness-[1.12] contrast-[1.18] saturate-[1.08] drop-shadow-[0_0_18px_rgba(129,140,248,0.34)] transition duration-500 group-hover:opacity-100 group-hover:brightness-[1.16] group-hover:drop-shadow-[0_0_30px_rgba(167,139,250,0.48)] sm:max-w-[21.5rem]"
+                  sizes="(max-width: 640px) 78vw, 344px"
                   priority={false}
+                  style={{
+                    WebkitMaskImage:
+                      "linear-gradient(90deg, transparent 0%, black 6%, black 94%, transparent 100%)",
+                    maskImage:
+                      "linear-gradient(90deg, transparent 0%, black 6%, black 94%, transparent 100%)",
+                  }}
                 />
               </div>
               {view !== "basic" ? (

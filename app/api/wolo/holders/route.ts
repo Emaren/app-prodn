@@ -115,23 +115,60 @@ const walletRoleByAddress = new Map(
   WOLO_MAINNET_WALLET_ALIASES.map((wallet) => [wallet.address.toLowerCase(), wallet.role])
 );
 
+function publicHolderRole(role: string, use: string | null) {
+  if (use && use.trim()) {
+    return use.trim();
+  }
+
+  switch (role) {
+    case "founder":
+      return "Founder Wallet";
+    case "treasury":
+      return "Community Treasury";
+    case "liquidity":
+      return "Liquidity Reserve";
+    case "faucet":
+      return "Faucet Wallet";
+    case "validator":
+      return "Operations Reserve";
+    case "bounty":
+      return "Bounty Pool";
+    case "escrow":
+      return "Escrow";
+    case "player":
+    case "user":
+      return "Player Wallet";
+    case "staking":
+      return "Staking Pool";
+    case "relayer":
+      return "Relayer Wallet";
+    case "payout":
+      return "Payout Wallet";
+    case "test":
+    case "module":
+      return "Network Module";
+    default:
+      return "Holder Wallet";
+  }
+}
+
 function classifyHolder(address: string) {
   const lower = address.toLowerCase();
   const networkAccount = networkByAddress.get(lower);
   const walletRole = walletRoleByAddress.get(lower);
-  const role = networkAccount?.role || walletRole || "holder";
+  const rawRole = networkAccount?.role || walletRole || "holder";
   const use = networkAccount?.use ?? null;
   const isKnown = Boolean(networkAccount || walletRole || WOLO_MAINNET_WALLET_ALIAS_BY_ADDRESS[lower]);
-  const isKnownUser = role === "user" || role === "player" || use === "USER";
+  const isKnownUser = rawRole === "user" || rawRole === "player" || use === "Player Wallet";
   const isInfrastructure = isKnown && !isKnownUser;
 
   return {
-    role,
+    role: publicHolderRole(rawRole, use),
     use,
     isKnown,
     isKnownUser,
     isInfrastructure,
-    balanceHidden: isKnownUser,
+    balanceHidden: false,
   };
 }
 
@@ -228,7 +265,7 @@ function renderTable(holders: HolderRow[], totalUwolo: string) {
     `${"ALIAS".padEnd(34)} ${"ADDRESS".padEnd(48)} ${"WOLO".padStart(18)} ROLE`,
     "-".repeat(116),
     ...holders.map((holder) => {
-      const displayBalance = holder.balanceHidden ? "" : holder.balanceWoloFormatted || "0.000000";
+      const displayBalance = holder.balanceWoloFormatted || "0.000000";
       return `${holder.alias.padEnd(34)} ${holder.address.padEnd(48)} ${displayBalance.padStart(18)} ${holder.role}`;
     }),
     "-".repeat(116),

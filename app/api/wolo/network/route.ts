@@ -116,7 +116,7 @@ async function buildNetworkRow(account: WoloMainnetNetworkAccount): Promise<Wolo
 
 function renderTable(rows: WoloNetworkAccountRow[], totalUwolo: string) {
   const lines = [
-    `${"LABEL".padEnd(42)} ${"ADDRESS".padEnd(48)} ${"WOLO".padStart(18)} USE`,
+    `${"LABEL".padEnd(42)} ${"ADDRESS".padEnd(48)} ${"WOLO".padStart(18)} ROLE`,
     "-".repeat(128),
     ...rows.map((row) => {
       const amountText = row.amountWoloFormatted;

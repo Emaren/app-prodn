@@ -169,8 +169,8 @@ function buildKnownWoloHoldersPayload(networkPayload: unknown): HoldersPayload {
 
     const isUserFacing =
       role === "user" ||
-      use === "USER" ||
-      use === "PLAYER_DO_NOT_SHOW_BALANCE";
+      role === "player" ||
+      use === "Player Wallet";
 
     const isInfrastructure =
       role === "infrastructure" ||
@@ -188,10 +188,10 @@ function buildKnownWoloHoldersPayload(networkPayload: unknown): HoldersPayload {
       address,
       role,
       use,
-      balanceWolo: isUserFacing ? null : amountWolo,
-      balanceWoloFormatted: isUserFacing ? null : formatCompactWoloForHolder(amountWolo),
-      exactBalanceWolo: isUserFacing ? "" : exactBalanceWolo,
-      balanceHidden: isUserFacing,
+      balanceWolo: amountWolo,
+      balanceWoloFormatted: formatCompactWoloForHolder(amountWolo),
+      exactBalanceWolo,
+      balanceHidden: false,
       isKnown: true,
       isKnownUser: isUserFacing,
       isInfrastructure,
@@ -218,6 +218,7 @@ type HoldersPayload = {
 const protocolPurposeByLabel: Record<string, string> = {
   "Founder Cold": "Long-hold reserve. Hard-anchor scarcity.",
   "Founder Operating / Emaren": "Build speed. Shipping budget. Public receive wallet.",
+  "Founder Operating / Emaren Legacy": "Legacy founder receive wallet.",
   "Community Treasury": "Public treasury and betting-fee home.",
   "DEX Liquidity Reserve": "Market depth, listings, and tradable liquidity.",
   "Faucet Growth Reserve": "Onboarding reserve for new bettors.",
@@ -251,12 +252,19 @@ function wholeWolo(value: string | null | undefined) {
 }
 
 function roleLabel(role: string, use?: string | null) {
-  if (use === "USER" || role === "user" || role === "player") return "Holder";
-  if (role === "module") return "Module";
-  if (role === "staking") return "Staking";
+  const cleanUse = (use || "").trim();
+
+  if (cleanUse && !cleanUse.includes("_")) return cleanUse;
+  if (role === "user" || role === "player") return "Player Wallet";
+  if (role === "module") return "Network Module";
+  if (role === "staking") return "Staking Pool";
   if (role === "escrow") return "Escrow";
-  if (role === "payout") return "Signer";
+  if (role === "payout") return "Payout Wallet";
   if (role === "reserve") return "Reserve";
+  if (role === "treasury") return "Community Treasury";
+  if (role === "founder") return "Founder Wallet";
+  if (role === "relayer") return "Relayer Wallet";
+
   return role.replace(/_/g, " ");
 }
 
@@ -265,8 +273,7 @@ function protocolAccounts(accounts: NetworkAccount[]) {
     const use = account.use || "";
     const role = account.role || "";
     const isUserFacing =
-      use === "USER" ||
-      use === "PLAYER_DO_NOT_SHOW_BALANCE" ||
+      use === "Player Wallet" ||
       role === "user" ||
       role === "player";
 

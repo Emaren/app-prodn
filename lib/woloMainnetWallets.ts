@@ -54,6 +54,12 @@ export const WOLO_MAINNET_WALLET_ALIASES = [
     role: "founder",
   },
   {
+    label: "Founder Operating / Emaren Legacy",
+    address: "wolo1yj2u283x3c25rdp34ytpju02xyaz47cx5g2ssj",
+    profileNameKeys: ["emaren"],
+    role: "founder",
+  },
+  {
     label: "Founder Rewards",
     address: "wolo1tg04m57e52evgzjkn9ruwwkz626pfv9qfv27wy",
     profileNameKeys: ["emaren"],

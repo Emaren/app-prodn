@@ -18,7 +18,7 @@ function isKnownOperatorStakingSource(address: string) {
 
   if (!account) return false;
 
-  return account.use !== "USER" && account.use !== "PUBLIC_RECEIVE_OK";
+  return account.use !== "Player Wallet" && account.use !== "Founder Operating";
 }
 
 function normalizeWholeWolo(value: unknown) {
