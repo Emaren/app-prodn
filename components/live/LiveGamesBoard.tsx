@@ -818,14 +818,14 @@ function ClassicBoard({
   const sectionStatusLabel = liveItemsCount > 0 ? `${liveItemsCount} active` : "Awaiting battle";
   const playingShellClass =
     liveTone === "violet"
-      ? "border-[#7d5a78]/24 bg-[radial-gradient(circle_at_12%_0%,rgba(82,35,74,0.22),transparent_34%),linear-gradient(rgba(18,10,25,0.86),rgba(2,6,23,0.78))]"
-      : "border-[#7d5a78]/18 bg-[radial-gradient(circle_at_12%_0%,rgba(82,35,74,0.18),transparent_34%),linear-gradient(rgba(18,10,25,0.86),rgba(2,6,23,0.82))]";
+      ? "border-transparent bg-[linear-gradient(180deg,rgba(4,8,22,0.86),rgba(3,6,18,0.96))]"
+      : "border-transparent bg-[linear-gradient(180deg,rgba(4,8,22,0.86),rgba(3,6,18,0.96))]";
   const playingEyebrowClass =
-    liveTone === "violet" ? "text-[#d8bfd5]/74" : "text-red-200/70";
+    liveTone === "violet" ? "text-[#d8bfd5]/74" : "text-[#d8bfd5]/74";
   const emptyPlayingClass =
     liveTone === "violet"
-      ? "border-[#7d5a78]/20 bg-[#3a2038]/24"
-      : "border-[#7d5a78]/16 bg-[#3a2038]/18";
+      ? "border-transparent bg-white/[0.025]"
+      : "border-transparent bg-white/[0.025]";
 
   return (
     <section className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
@@ -868,7 +868,7 @@ function ClassicBoard({
               </button>
             )}
           </div>
-          <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+          <div className="rounded-full border border-white/[0.055] bg-white/[0.025] px-3 py-1 text-xs text-slate-400">
             {sectionStatusLabel}
           </div>
         </div>
