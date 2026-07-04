@@ -6,6 +6,7 @@ import {
   CalendarClock,
   ChevronRight,
   Clock3,
+  Crown,
   Flame,
   Gamepad2,
   Radio,
@@ -149,7 +150,15 @@ function isManualUploadedReplaySession(session: Pick<LiveSession, "uploader" | "
 
 function liveSessionEyebrowLabel(session: LiveSession) {
   if (session.state !== "completed") return "Watcher live";
-  return isManualUploadedReplaySession(session) ? "Just uploaded" : "Just finished";
+
+  const hasResolvedPlayers = session.players.some((player) => {
+    const maybePlayer = player as { winner?: boolean | null; name?: string | null };
+    return Boolean(String(maybePlayer.name ?? "").trim()) || maybePlayer.winner === true;
+  });
+
+  if (hasResolvedPlayers) return "Just finished";
+
+  return isManualUploadedReplaySession(session) ? "Replay uploaded" : "Just finished";
 }
 
 function initials(value: string) {
@@ -214,6 +223,67 @@ function recentMatchWinner(match: RecentMatch) {
     .map((player) => player.name);
   if (winners.length === 0) return null;
   return winners.length === 1 ? winners[0] : `${winners.length} winners`;
+}
+
+
+type DualWatcherProofUploader = {
+  displayName?: string | null;
+  name?: string | null;
+  userName?: string | null;
+  label?: string | null;
+  parseRows?: number | null;
+  rows?: number | null;
+  replayRows?: number | null;
+  uploadCount?: number | null;
+};
+
+function DualWatcherProofStack({
+  uploaders,
+}: {
+  uploaders?: DualWatcherProofUploader[] | null;
+}) {
+  const proofUploaders = Array.isArray(uploaders)
+    ? uploaders.filter((u) => Boolean(u.displayName || u.name || u.userName || u.label))
+    : [];
+
+  if (proofUploaders.length < 2) return null;
+
+  return (
+    <div className="mt-3 w-full rounded-2xl border border-emerald-300/30 bg-gradient-to-br from-emerald-950/55 via-slate-950/75 to-yellow-950/25 p-3 shadow-[0_0_34px_rgba(16,185,129,0.16)]">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <div className="text-[0.58rem] font-black uppercase tracking-[0.34em] text-emerald-200/90">
+          Dual watcher proof
+        </div>
+        <div className="rounded-full border border-emerald-300/30 bg-emerald-400/10 px-2 py-0.5 text-[0.56rem] font-black uppercase tracking-[0.22em] text-emerald-100">
+          {proofUploaders.length} live
+        </div>
+      </div>
+
+      <div className="grid gap-2 sm:grid-cols-2">
+        {proofUploaders.slice(0, 2).map((u, proofIndex) => {
+          const label =
+            u.displayName || u.name || u.userName || u.label || `Watcher ${proofIndex + 1}`;
+
+          return (
+            <div
+              key={`${label}-${proofIndex}`}
+              className="rounded-xl border border-white/10 bg-black/28 px-3 py-2 ring-1 ring-white/5"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0 truncate text-sm font-black text-white">
+                  {label}
+                </div>
+                <div className="h-2 w-2 shrink-0 rounded-full bg-emerald-300 shadow-[0_0_16px_rgba(110,231,183,0.9)]" />
+              </div>
+              <div className="mt-1 text-[0.58rem] font-black uppercase tracking-[0.22em] text-slate-400">
+                Verified
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps) {
@@ -665,6 +735,18 @@ function ClassicBoard({
   const advanced = viewMode === "advanced";
   const featuredCompletedSessions = recentlyCompletedSessions.slice(0, 3);
   const archivedCompletedSessions = advanced ? recentlyCompletedSessions.slice(3) : [];
+  const [resolvedCardStyle, setResolvedCardStyle] = useState<ResolvedCardStyle>("teams");
+  const cycleResolvedCardStyle = useCallback(() => {
+    setResolvedCardStyle((current) =>
+      current === "teams"
+        ? "crest"
+        : current === "crest"
+          ? "ledger"
+          : current === "ledger"
+            ? "legacy"
+            : "teams"
+    );
+  }, []);
 
   const [archiveMatches, setArchiveMatches] = useState<LiveGamesSnapshot["recentMatches"]>(snapshot.recentMatches);
   const [archiveOffset, setArchiveOffset] = useState(snapshot.recentMatches.length);
@@ -855,7 +937,15 @@ function ClassicBoard({
           </div>
         </section>
 
-        <section className="rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-5 sm:p-6">
+        <section
+          onClick={(event) => {
+            const target = event.target as HTMLElement;
+            if (target.closest("a,button,input,select,textarea")) return;
+            if (target.closest("[data-resolved-outcome-card]")) return;
+            if (advanced) cycleResolvedCardStyle();
+          }}
+          className="cursor-pointer rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-5 transition hover:border-emerald-200/20 sm:p-6"
+        >
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <div className="text-xs uppercase tracking-[0.35em] text-emerald-200/70">Resolved</div>
@@ -880,6 +970,7 @@ function ClassicBoard({
                       key={`completed-${session.id}`}
                       session={session}
                       liveTone={liveTone}
+                      resolvedStyle={resolvedCardStyle}
                     />
                   ) : (
                     <ClassicLiveSessionCard
@@ -997,17 +1088,486 @@ function ClassicBoard({
 
 
 
+
+// AOE2WAR_RESOLVED_CARD_STYLES
+type ResolvedCardStyle = "teams" | "crest" | "ledger" | "legacy";
+type PremiumResolvedCardStyle = Exclude<ResolvedCardStyle, "legacy">;
+
+function resolvedPlayerNames(session: LiveSession) {
+  return session.players
+    .map((player) => String(player?.name ?? "").trim())
+    .filter(Boolean);
+}
+
+function resolvedWinnerName(session: LiveSession) {
+  const winner = typeof session.winner === "string" ? session.winner.trim() : "";
+  return winner.length > 0 ? winner : null;
+}
+
+function compactResolvedNames(names: string[], max = 2) {
+  if (names.length <= max) return names.join(" + ");
+  return `${names.slice(0, max).join(" + ")} +${names.length - max}`;
+}
+
+function resolvedBattleSizeLabel(playerCount: number) {
+  if (playerCount <= 1) return "Replay";
+  if (playerCount === 2) return "1v1";
+  if (playerCount % 2 === 0) return `${playerCount / 2}v${playerCount / 2}`;
+  return `${playerCount}-player`;
+}
+
+function resolvedSessionDisplay(session: LiveSession) {
+  const names = resolvedPlayerNames(session);
+  const players = session.players
+    .map((player) => {
+      const rawPlayer = player as {
+        name?: string | null;
+        winner?: boolean | null;
+        team_id?: number | string | null;
+        teamId?: number | string | null;
+      };
+
+      return {
+        name: String(rawPlayer.name ?? "").trim(),
+        winner: rawPlayer.winner === true,
+        teamId:
+          rawPlayer.team_id !== null && rawPlayer.team_id !== undefined
+            ? String(rawPlayer.team_id)
+            : rawPlayer.teamId !== null && rawPlayer.teamId !== undefined
+              ? String(rawPlayer.teamId)
+              : null,
+      };
+    })
+    .filter((player) => player.name);
+
+  const winnerName = resolvedWinnerName(session);
+  const mapName = session.mapName || "Unknown battlefield";
+  const battleSize = resolvedBattleSizeLabel(names.length);
+  const winnerPlayers = players.filter((player) => player.winner);
+  const fieldPlayers = players.filter((player) => !player.winner);
+  const hasWinnerFlags = winnerPlayers.length > 0 && fieldPlayers.length > 0;
+  const isEvenTeamGame = names.length >= 4 && names.length % 2 === 0;
+
+  const winnerSide =
+    hasWinnerFlags
+      ? winnerPlayers.map((player) => player.name)
+      : winnerName
+        ? [winnerName]
+        : names.slice(0, Math.max(1, Math.ceil(names.length / 2)));
+
+  const winnerSet = new Set(winnerSide.map((name) => name.toLowerCase()));
+  const fieldSide =
+    hasWinnerFlags
+      ? fieldPlayers.map((player) => player.name)
+      : names.length > 2
+        ? names.filter((name) => !winnerSet.has(name.toLowerCase()))
+        : names.filter((name) => !winnerName || name !== winnerName);
+
+  if (names.length <= 2) {
+    const loserName = fieldSide[0] || names.find((name) => name !== winnerName) || null;
+    const duelWinner = winnerSide[0] || winnerName;
+
+    return {
+      names,
+      winnerName: duelWinner ?? winnerName,
+      battleSize,
+      mapName,
+      heroTitle: duelWinner && loserName ? `${duelWinner} wins the duel` : sessionTitle(session),
+      heroSubtitle: duelWinner && loserName ? `${duelWinner} defeated ${loserName} · ${mapName}` : mapName,
+      leftLabel: duelWinner ? "Winner" : "Side I",
+      rightLabel: duelWinner ? "Challenger" : "Side II",
+      leftNames: duelWinner ? [duelWinner] : names.slice(0, 1),
+      rightNames: loserName ? [loserName] : names.slice(1, 2),
+    };
+  }
+
+  const leadWinner = winnerSide[0] || winnerName || names[0] || "Victory";
+  const teamTitle =
+    hasWinnerFlags && isEvenTeamGame
+      ? `Team ${leadWinner} wins ${battleSize}`
+      : hasWinnerFlags
+        ? `${compactResolvedNames(winnerSide, 2)} win`
+        : winnerName
+          ? `${winnerName} recorded as victor`
+          : `${battleSize} resolved`;
+
+  const teamSubtitle =
+    fieldSide.length > 0
+      ? `${compactResolvedNames(winnerSide, 3)} defeated ${compactResolvedNames(fieldSide, 3)} · ${mapName}`
+      : `${compactResolvedNames(names, 4)} · ${mapName}`;
+
+  return {
+    names,
+    winnerName,
+    battleSize,
+    mapName,
+    heroTitle: teamTitle,
+    heroSubtitle: teamSubtitle,
+    leftLabel: hasWinnerFlags ? "Victory side" : "Recorded victor",
+    rightLabel: hasWinnerFlags ? "Defeated side" : "Field",
+    leftNames: winnerSide,
+    rightNames: fieldSide,
+  };
+}
+
+function PremiumResolvedOutcomeCard({
+  session,
+  resolvedStyle,
+}: {
+  session: LiveSession;
+  resolvedStyle: PremiumResolvedCardStyle;
+}) {
+  const sessionAny = session as Record<string, unknown>;
+  const display = resolvedSessionDisplay(session);
+  const gameHref = `/game-stats/live/${encodeURIComponent(session.sessionKey)}`;
+  const watchHref = `/watch/${encodeURIComponent(session.sessionKey)}`;
+  const durationLabel = formatDurationCompact(session.durationSeconds);
+  const rawGameNumber =
+    sessionAny["aoe2warGameId"] ??
+    sessionAny["gameNumber"] ??
+    sessionAny["sourceGameId"] ??
+    sessionAny["gameId"] ??
+    sessionAny["matchId"] ??
+    sessionAny["id"];
+
+  const gameNumber =
+    typeof rawGameNumber === "number" || typeof rawGameNumber === "string"
+      ? String(rawGameNumber)
+      : null;
+
+  const metaParts = [
+    gameNumber ? `#${gameNumber}` : null,
+    display.battleSize,
+    durationLabel,
+  ].filter(Boolean) as string[];
+
+  const victoryNameSet = new Set(display.leftNames.map((name) => name.toLowerCase()));
+
+  if (resolvedStyle === "teams") {
+    return (
+      <article
+        data-resolved-outcome-card
+        onClick={(event) => event.stopPropagation()}
+        className="group relative cursor-default overflow-hidden rounded-[2.15rem] border border-cyan-100/22 bg-[linear-gradient(145deg,rgba(2,6,23,0.98),rgba(15,23,42,0.92)_44%,rgba(8,47,73,0.56))] px-4 py-4 shadow-[0_28px_90px_rgba(2,6,23,0.42)] sm:px-5 sm:py-5"
+        aria-label={`Resolved outcome card for ${display.heroTitle}`}
+      >
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_10%,rgba(34,211,238,0.14),transparent_30%),radial-gradient(circle_at_88%_14%,rgba(251,191,36,0.10),transparent_28%),linear-gradient(90deg,rgba(255,255,255,0.03),transparent_16%,transparent_84%,rgba(255,255,255,0.03))]" />
+        <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-cyan-100/50 to-transparent" />
+
+        <div className="relative">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="rounded-full border border-cyan-100/20 bg-cyan-300/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.24em] text-cyan-50/90">
+                {display.battleSize}
+              </span>
+              <span className="text-[10px] font-bold uppercase tracking-[0.34em] text-slate-200/80">
+                {liveSessionEyebrowLabel(session)}
+              </span>
+            </div>
+
+            <span className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-400">
+              {metaParts.join(" · ")}
+            </span>
+          </div>
+
+          <div className="mt-4 grid items-stretch gap-3 [grid-template-columns:minmax(0,1fr)_3.5rem_minmax(0,1fr)]">
+            <div className="relative rounded-[1.45rem] border border-amber-200/40 bg-[radial-gradient(circle_at_18%_0%,rgba(251,191,36,0.12),transparent_34%),rgba(6,78,59,0.18)] p-3 shadow-[0_0_36px_rgba(251,191,36,0.08),inset_0_1px_0_rgba(255,255,255,0.06)]">
+              <div className="flex items-center gap-2">
+                <span className="grid h-7 w-7 place-items-center rounded-full border border-amber-100/30 bg-amber-300/12 text-amber-100 shadow-[0_0_24px_rgba(251,191,36,0.16)]">
+                  <Crown className="h-3.5 w-3.5" strokeWidth={1.7} />
+                </span>
+                <div className="text-[10px] font-black uppercase tracking-[0.32em] text-amber-100/82">
+                  {display.leftLabel}
+                </div>
+              </div>
+
+              <div className="mt-3 space-y-2">
+                {display.leftNames.slice(0, 4).map((name, index) => (
+                  <div
+                    key={`team-left-${name}-${index}`}
+                    className="rounded-[1rem] border border-amber-100/22 bg-slate-950/42 px-3 py-2 font-serif text-[0.98rem] font-semibold leading-[1.05] tracking-[-0.015em] text-amber-50 [overflow-wrap:anywhere] shadow-[0_10px_28px_rgba(0,0,0,0.22)] sm:text-[1.06rem]"
+                  >
+                    {name}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-center">
+              <div className="relative grid h-12 w-12 place-items-center rounded-full border border-amber-100/22 bg-slate-950/65 font-serif text-sm italic tracking-[0.14em] text-amber-50 shadow-[0_18px_40px_rgba(0,0,0,0.28)]">
+                <div className="pointer-events-none absolute -left-5 top-1/2 h-px w-5 bg-gradient-to-l from-amber-100/22 to-transparent" />
+                <div className="pointer-events-none absolute -right-5 top-1/2 h-px w-5 bg-gradient-to-r from-amber-100/22 to-transparent" />
+                vs
+              </div>
+            </div>
+
+            <div className="rounded-[1.45rem] border border-white/12 bg-white/[0.04] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+              <div className="flex h-7 items-center">
+                <div className="text-[10px] font-black uppercase tracking-[0.32em] text-slate-300/70">
+                  {display.rightLabel}
+                </div>
+              </div>
+
+              <div className="mt-3 space-y-2">
+                {display.rightNames.slice(0, 4).map((name, index) => (
+                  <div
+                    key={`team-right-${name}-${index}`}
+                    className="rounded-[1rem] border border-white/10 bg-slate-950/40 px-3 py-2 font-serif text-[0.98rem] font-semibold leading-[1.05] tracking-[-0.015em] text-slate-100 [overflow-wrap:anywhere] shadow-[0_10px_28px_rgba(0,0,0,0.18)] sm:text-[1.06rem]"
+                  >
+                    {name}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 border-t border-white/10 pt-4">
+            <div className="grid items-start gap-3 [grid-template-columns:6.8rem_minmax(0,1fr)]">
+              <Link
+                href={watchHref}
+                onClick={(event) => event.stopPropagation()}
+                className="relative z-20 block overflow-hidden rounded-[1rem] border border-amber-100/18 bg-black/55 shadow-[0_16px_44px_rgba(0,0,0,0.30)] transition hover:scale-[1.02] hover:border-amber-100/32"
+                aria-label={`Watch ${display.heroTitle}`}
+              >
+                <video
+                  className="h-[4.9rem] w-full object-cover opacity-92 transition duration-500 group-hover:scale-[1.04] group-hover:opacity-100"
+                  src={ADVANCED_SESSION_LOOP_VIDEO_URL}
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  preload="metadata"
+                />
+              </Link>
+
+              <div className="min-w-0">
+                <div className="text-[10px] font-black uppercase tracking-[0.30em] text-slate-300/68">
+                  Winning team
+                </div>
+                <h3 className="mt-1 font-serif text-[1.42rem] font-semibold leading-[0.96] tracking-[-0.03em] text-amber-50 [overflow-wrap:anywhere] sm:text-[1.62rem]">
+                  {display.leftNames[0] || display.winnerName || "Victory"}
+                </h3>
+                <div className="mt-1 font-serif text-[1.2rem] font-semibold leading-none tracking-[-0.02em] text-slate-50 sm:text-[1.35rem]">
+                  wins {display.battleSize}
+                </div>
+                <p className="mt-2 line-clamp-2 text-[12px] leading-5 text-slate-300 sm:text-[13px]">
+                  {display.leftNames.join(" + ")}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-3 flex justify-end">
+              <Link
+                href={gameHref}
+                onClick={(event) => event.stopPropagation()}
+                className="inline-flex h-10 min-w-[9.2rem] items-center justify-center gap-2 rounded-full border border-amber-100/28 bg-amber-300/10 px-4 text-[12px] font-semibold text-amber-50 transition hover:border-amber-100/45 hover:bg-amber-300/15"
+              >
+                <span className="grid h-4 w-4 place-items-center rounded-full border border-amber-100/35 text-[10px] leading-none">
+                  ✓
+                </span>
+                Final stored
+              </Link>
+            </div>
+          </div>
+        </div>
+      </article>
+    );
+  }
+
+  if (resolvedStyle === "ledger") {
+    return (
+      <article
+        data-resolved-outcome-card
+        onClick={(event) => event.stopPropagation()}
+        className="group relative cursor-default overflow-hidden rounded-[1.75rem] border border-amber-200/20 bg-[linear-gradient(135deg,rgba(15,23,42,0.92),rgba(30,41,59,0.62)_48%,rgba(2,6,23,0.92))] px-4 py-4 shadow-[0_24px_80px_rgba(2,6,23,0.32)] transition duration-300 hover:-translate-y-0.5 hover:border-amber-100/35 sm:px-5"
+        aria-label={`Cycle resolved outcome card style for ${display.heroTitle}`}
+      >
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_0%,rgba(251,191,36,0.12),transparent_34%),radial-gradient(circle_at_92%_10%,rgba(16,185,129,0.16),transparent_30%)]" />
+        <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/45 to-transparent" />
+
+        <div className="relative grid gap-4 sm:grid-cols-[minmax(0,1fr)_8.5rem] sm:items-start">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full border border-amber-100/20 bg-amber-300/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-amber-100/80">
+                {display.battleSize}
+              </span>
+              <span className="text-[10px] font-semibold uppercase tracking-[0.24em] text-emerald-100/55">
+                {liveSessionEyebrowLabel(session)}
+              </span>
+            </div>
+
+            <h3 className="mt-3 font-serif text-[1.28rem] leading-[1.04] tracking-[-0.015em] text-slate-50 sm:text-[1.5rem]">
+              {display.heroTitle}
+            </h3>
+
+            <p className="mt-2 line-clamp-2 text-sm leading-5 text-slate-300">
+              {display.heroSubtitle}
+            </p>
+          </div>
+
+          <Link
+            href={watchHref}
+            onClick={(event) => event.stopPropagation()}
+            className="relative z-20 block overflow-hidden rounded-2xl border border-white/10 bg-black/50 shadow-[0_18px_48px_rgba(0,0,0,0.32)] transition hover:scale-[1.02] hover:border-amber-100/30"
+            aria-label={`Watch ${display.heroTitle}`}
+          >
+            <video
+              className="h-[4.7rem] w-full object-cover opacity-90 transition duration-500 group-hover:scale-[1.04] sm:h-[5.1rem]"
+              src={ADVANCED_SESSION_LOOP_VIDEO_URL}
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="metadata"
+            />
+          </Link>
+
+          <div className="col-span-full grid gap-3 sm:grid-cols-2">
+            <div className="rounded-2xl border border-emerald-200/15 bg-emerald-300/[0.06] px-3 py-3">
+              <div className="text-[9px] font-bold uppercase tracking-[0.28em] text-emerald-100/55">
+                {display.leftLabel}
+              </div>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {display.leftNames.slice(0, 6).map((name) => (
+                  <span key={`left-${name}`} className="rounded-full border border-emerald-100/15 bg-emerald-300/10 px-2 py-1 text-[11px] font-semibold text-emerald-50">
+                    {name}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-3 py-3">
+              <div className="text-[9px] font-bold uppercase tracking-[0.28em] text-slate-400">
+                {display.rightLabel}
+              </div>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {display.rightNames.slice(0, 8).map((name) => (
+                  <span key={`right-${name}`} className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 text-[11px] font-semibold text-slate-200">
+                    {name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="col-span-full flex flex-wrap items-center justify-between gap-3">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-amber-100/55">
+              {metaParts.join(" · ")}
+            </div>
+            <Link
+              href={gameHref}
+              onClick={(event) => event.stopPropagation()}
+              className="inline-flex h-8 min-w-[8.6rem] items-center justify-center rounded-full border border-amber-100/20 bg-amber-300/10 px-4 text-[11px] font-semibold text-amber-50 transition hover:border-amber-100/40 hover:bg-amber-300/15"
+            >
+              Final stored
+            </Link>
+          </div>
+        </div>
+      </article>
+    );
+  }
+
+  return (
+    <article
+      data-resolved-outcome-card
+      className="group relative cursor-pointer overflow-hidden rounded-[2rem] border border-emerald-200/18 bg-[linear-gradient(145deg,rgba(6,78,59,0.55),rgba(2,6,23,0.92)_58%,rgba(15,23,42,0.94))] px-5 py-5 shadow-[0_30px_100px_rgba(16,185,129,0.13)] transition duration-300 hover:-translate-y-0.5 hover:border-emerald-100/35 sm:px-6"
+      aria-label={`Cycle resolved outcome card style for ${display.heroTitle}`}
+    >
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_86%_8%,rgba(52,211,153,0.20),transparent_34%),radial-gradient(circle_at_6%_100%,rgba(34,211,238,0.10),transparent_32%)]" />
+      <div className="pointer-events-none absolute -right-20 -top-20 h-52 w-52 rounded-full border border-emerald-100/10" />
+      <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-emerald-100/55 to-transparent" />
+
+      <div className="relative grid gap-5 sm:grid-cols-[minmax(0,1fr)_9rem] sm:items-start">
+        <div className="min-w-0">
+          <div className="text-[10px] font-bold uppercase tracking-[0.42em] text-emerald-100/68">
+            {liveSessionEyebrowLabel(session)}
+          </div>
+
+          <h3 className="mt-3 font-serif text-[1.55rem] leading-[0.98] tracking-[-0.028em] text-white sm:text-[1.85rem]">
+            {display.heroTitle}
+          </h3>
+
+          <p className="mt-3 line-clamp-2 max-w-[28rem] text-sm leading-5 text-emerald-50/72">
+            {display.heroSubtitle}
+          </p>
+
+          <div className="mt-4 flex flex-wrap gap-1.5">
+            {display.names.slice(0, 8).map((name) => {
+              const isWinner = victoryNameSet.has(name.toLowerCase());
+              return (
+                <span
+                  key={name}
+                  className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
+                    isWinner
+                      ? "border-emerald-100/25 bg-emerald-300/12 text-emerald-50"
+                      : "border-white/10 bg-white/[0.04] text-slate-200"
+                  }`}
+                >
+                  {name}
+                </span>
+              );
+            })}
+          </div>
+        </div>
+
+        <Link
+          href={watchHref}
+          onClick={(event) => event.stopPropagation()}
+          className="relative z-20 block overflow-hidden rounded-2xl border border-white/10 bg-black/55 shadow-[0_18px_50px_rgba(0,0,0,0.30)] transition hover:scale-[1.02] hover:border-sky-200/30"
+          aria-label={`Watch ${display.heroTitle}`}
+        >
+          <video
+            className="h-[4.9rem] w-full object-cover opacity-92 transition duration-500 group-hover:scale-[1.04] group-hover:opacity-100 sm:h-[5.3rem]"
+            src={ADVANCED_SESSION_LOOP_VIDEO_URL}
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="metadata"
+          />
+        </Link>
+
+        <div className="col-span-full mt-1 flex flex-wrap items-center justify-between gap-3">
+          <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-emerald-100/58">
+            {metaParts.join(" · ")}
+          </div>
+          <Link
+            href={gameHref}
+            onClick={(event) => event.stopPropagation()}
+            className="inline-flex h-8 min-w-[8.6rem] items-center justify-center rounded-full border border-emerald-100/20 bg-emerald-300/10 px-4 text-[11px] font-semibold text-emerald-50 transition hover:border-emerald-100/40 hover:bg-emerald-300/15"
+          >
+            Final stored
+          </Link>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+
 function PremiumClassicLiveSessionCard({
   session,
   liveTone,
+  resolvedStyle,
 }: {
   session: LiveGamesSnapshot["activeSessions"][number];
   liveTone: ClassicLiveTone;
+  resolvedStyle?: ResolvedCardStyle;
 }) {
   const sessionAny = session as Record<string, unknown>;
   const isCompleted = session.state === "completed";
   const gameHref = `/game-stats/live/${encodeURIComponent(session.sessionKey)}`;
   const watchHref = `/watch/${encodeURIComponent(session.sessionKey)}`;
+
+  if (isCompleted && resolvedStyle && resolvedStyle !== "legacy") {
+    return (
+      <PremiumResolvedOutcomeCard
+        session={session}
+        resolvedStyle={resolvedStyle}
+      />
+    );
+  }
+
   const title =
     session.players.length > 0
       ? session.players.map((player) => player.name).join(" vs ")
@@ -1016,6 +1576,9 @@ function PremiumClassicLiveSessionCard({
         : session.originalFilename || "Game in progress";
 
   const eyebrowLabel = liveSessionEyebrowLabel(session);
+
+  {/* FORCE_VISIBLE_DUAL_WATCHER_PROOF */}
+  <DualWatcherProofStack uploaders={session.uploaders} />
 
   const statusLabel = isCompleted ? "Final stored" : "Live parse";
   const durationLabel = formatDurationCompact(session.durationSeconds);
@@ -1860,7 +2423,10 @@ function LiveSessionCard({
                   : "border-red-300/20 bg-red-400/10 text-red-100"
               }`}
             >
-              {isCompleted ? (isManualUploadedReplaySession(session) ? "Replay uploaded" : "Final stored") : "Watcher live"}
+              {/* COMPLETED_DUAL_WATCHER_PROOF */}
+              <DualWatcherProofStack uploaders={(session as { uploaders?: DualWatcherProofUploader[] | null }).uploaders} />
+
+              {isCompleted ? "Final stored" : "Watcher live"}
             </span>
           </div>
 

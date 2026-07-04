@@ -329,12 +329,12 @@ export async function loadLiveSessionSnapshot(prisma: PrismaClient): Promise<{
         OR: [
           {
             timestamp: {
-              gte: freshnessCutoff,
+              gte: completedCompatCutoff,
             },
           },
           {
             createdAt: {
-              gte: freshnessCutoff,
+              gte: completedCompatCutoff,
             },
           },
         ],

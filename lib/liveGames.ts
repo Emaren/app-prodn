@@ -18,7 +18,7 @@ const BROWSER_STREAM_STALE_MS = 120_000;
 const BROWSER_STREAM_ARCHIVE_MS = 6 * 60 * 60 * 1000;
 const EXTERNAL_STREAM_STALE_MS = 20 * 60 * 1000;
 const LIVE_GAMES_RECENT_MATCH_LIMIT = 24;
-const LIVE_GAMES_COMPLETED_SESSION_DEPTH = 3;
+const LIVE_GAMES_COMPLETED_SESSION_DEPTH = 8;
 
 export type LiveGamesSummary = {
   liveCount: number;
@@ -79,6 +79,151 @@ async function loadRecentMatches(): Promise<LobbyMatchRow[]> {
   const legacyRecentMatches = await fetchRecentMatchesFrom("/api/game_stats");
   return legacyRecentMatches.slice(0, LIVE_GAMES_RECENT_MATCH_LIMIT);
 }
+
+
+// AOE2WAR_COMPLETED_UPLOADER_HYDRATION
+type CompletedUploaderHydrationUploader = {
+  displayName: string;
+  parseRows: number;
+};
+
+type CompletedUploaderHydrationSession = {
+  id?: number | string | null;
+  sessionKey?: string | null;
+  completedAt?: string | Date | null;
+  playedOn?: string | Date | null;
+  createdAt?: string | Date | null;
+  players?: Array<{ name?: string | null } | null> | null;
+  uploaders?: CompletedUploaderHydrationUploader[] | null;
+};
+
+type CompletedUploaderHydrationRow = {
+  display_name: string | null;
+  parse_rows: number | string | bigint | null;
+};
+
+type CompletedUploaderHydrationPrisma = {
+  $queryRawUnsafe<T = unknown>(query: string, ...values: unknown[]): Promise<T>;
+};
+
+function completedUploaderDate(value: string | Date | null | undefined) {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(String(value));
+  return Number.isFinite(date.getTime()) ? date : null;
+}
+
+function completedUploaderPlayerNames(session: CompletedUploaderHydrationSession) {
+  const names = new Set<string>();
+  for (const player of session.players ?? []) {
+    const name = player?.name?.trim();
+    if (name) names.add(name);
+  }
+  return [...names];
+}
+
+async function hydrateCompletedSessionUploaders<T extends CompletedUploaderHydrationSession>(
+  prisma: CompletedUploaderHydrationPrisma,
+  sessions: T[]
+): Promise<T[]> {
+  if (!sessions.length) return sessions;
+
+  const hydrated: T[] = [];
+
+  for (const session of sessions) {
+    const existingUploaders = session.uploaders ?? [];
+    if (existingUploaders.length >= 2) {
+      hydrated.push(session);
+      continue;
+    }
+
+    const playerNames = completedUploaderPlayerNames(session);
+    const anchorDate =
+      completedUploaderDate(session.completedAt) ??
+      completedUploaderDate(session.playedOn) ??
+      completedUploaderDate(session.createdAt);
+
+    if (!anchorDate || playerNames.length < 2) {
+      hydrated.push(session);
+      continue;
+    }
+
+    try {
+      const rows = await prisma.$queryRawUnsafe<CompletedUploaderHydrationRow[]>(
+        `
+          with replay_rows as (
+            select
+              coalesce(u.in_game_name, u.uid) as display_name,
+              count(*)::int as parse_rows
+            from replay_parse_attempts r
+            left join users u on u.uid = r.user_uid
+            where r.created_at >= $1::timestamptz - interval '120 minutes'
+              and r.created_at <= $1::timestamptz + interval '20 minutes'
+              and coalesce(u.in_game_name, u.uid) = any($2::text[])
+              and coalesce(r.parse_source, '') in ('watcher_live', 'watcher_final')
+              and coalesce(r.status, '') not ilike '%fail%'
+            group by coalesce(u.in_game_name, u.uid)
+          ),
+          event_rows as (
+            select
+              coalesce(u.in_game_name, u.uid) as display_name,
+              count(*)::int as parse_rows
+            from watcher_client_events e
+            left join users u on u.id = e.user_id
+            where e.created_at >= $1::timestamptz - interval '120 minutes'
+              and e.created_at <= $1::timestamptz + interval '20 minutes'
+              and coalesce(u.in_game_name, u.uid) = any($2::text[])
+              and (
+                coalesce(e.parse_source, '') in ('watcher_live', 'watcher_final')
+                or e.event_type in ('upload_succeeded', 'upload_success', 'parse_succeeded')
+              )
+            group by coalesce(u.in_game_name, u.uid)
+          ),
+          combined as (
+            select * from replay_rows
+            union all
+            select * from event_rows
+          )
+          select
+            display_name,
+            sum(parse_rows)::int as parse_rows
+          from combined
+          where display_name is not null
+          group by display_name
+          order by sum(parse_rows) desc, display_name asc
+        `,
+        anchorDate.toISOString(),
+        playerNames
+      );
+
+      const proofUploaders = rows
+        .map((row) => ({
+          displayName: String(row.display_name ?? "").trim(),
+          parseRows: Number(row.parse_rows ?? 0),
+        }))
+        .filter((row) => row.displayName && row.parseRows > 0);
+
+      hydrated.push(
+        proofUploaders.length >= 2
+          ? {
+              ...session,
+              uploaders: proofUploaders,
+            }
+          : session
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.warn("completed uploader hydration skipped", {
+        sessionId: session.id,
+        sessionKey: session.sessionKey,
+        message,
+      });
+      hydrated.push(session);
+    }
+  }
+
+  return hydrated;
+}
+
 
 async function loadLiveGamesSnapshotFresh(prisma: PrismaClient): Promise<LiveGamesSnapshot> {
   const [tournament, recentMatches, sessionSnapshot] = await Promise.all([
@@ -164,12 +309,17 @@ async function loadLiveGamesSnapshotFresh(prisma: PrismaClient): Promise<LiveGam
     fallbackRecentOutcomeMatches.map((match) => buildRecentOutcomeSession(match, streamsBySession))
   );
 
-  const displayedCompletedSessions = dedupeStreamedSessions(
+  const displayedCompletedSessionsBase = dedupeStreamedSessions(
     [
       ...streamedCompletedSessions,
       ...fallbackRecentOutcomeSessions,
     ].sort(compareCompletedSessionRecency)
   ).slice(0, LIVE_GAMES_COMPLETED_SESSION_DEPTH);
+
+  const displayedCompletedSessions = await hydrateCompletedSessionUploaders(
+    prisma,
+    displayedCompletedSessionsBase
+  );
 
   const displayedCompletedKeys = new Set(
     displayedCompletedSessions.map((session) => session.sessionKey)

@@ -170,6 +170,9 @@ export type PlayerWatcherStats = {
   watcherEventCount: number;
   watcherBackedMatches: number;
   uniqueWatchers: number;
+  multiWatcherProofGames: number;
+  bestMultiWatcherProofLabel: string | null;
+  bestMultiWatcherSourceCount: number;
   lastWatcherSeenAt: string | null;
   recentParseMisses: number;
   parserStoredAttempts: number;
@@ -729,8 +732,87 @@ function extractTwitchChannel(value: string | null | undefined) {
   }
 }
 
+
+// AOE2WAR_PROFILE_REPLAY_DEDUPE
+type PlayerProfileGameRowWithFinal = PlayerProfileGameRow & {
+  is_final?: boolean | null;
+};
+
+function playerProfileDateMs(value: Date | string | null | undefined) {
+  if (!value) return 0;
+  const date = value instanceof Date ? value : new Date(String(value));
+  return Number.isFinite(date.getTime()) ? date.getTime() : 0;
+}
+
+function playerProfileReplayDedupeKey(game: PlayerProfileGameRow) {
+  const replayFile = String(game.replay_file ?? "").trim();
+  const originalFilename = String(game.original_filename ?? "").trim();
+  const replayKey = replayFile || originalFilename;
+  return replayKey ? `replay:${replayKey.toLowerCase()}` : `game:${game.id}`;
+}
+
+function playerProfileIsFinal(game: PlayerProfileGameRow) {
+  return Boolean((game as PlayerProfileGameRowWithFinal).is_final);
+}
+
+function playerProfileHasResolvedWinner(game: PlayerProfileGameRow) {
+  const winner = String(game.winner ?? "").trim().toLowerCase();
+  return Boolean(winner && winner !== "unknown");
+}
+
+function playerProfilePreferenceScore(game: PlayerProfileGameRow) {
+  const parseSource = String(game.parse_source ?? "").toLowerCase();
+  const parseReason = String(game.parse_reason ?? "").toLowerCase();
+
+  return (
+    (playerProfileIsFinal(game) ? 10000 : 0) +
+    (parseSource === "watcher_final" ? 2000 : 0) +
+    (playerProfileHasResolvedWinner(game) ? 1000 : 0) +
+    (parseReason.includes("final") ? 250 : 0) +
+    (parseReason.includes("resignation") ? 150 : 0)
+  );
+}
+
+function playerProfileRecencyScore(game: PlayerProfileGameRow) {
+  return Math.max(
+    playerProfileDateMs(game.played_on),
+    playerProfileDateMs(game.timestamp),
+    playerProfileDateMs(game.createdAt)
+  );
+}
+
+function isPreferredPlayerProfileGame(candidate: PlayerProfileGameRow, current: PlayerProfileGameRow) {
+  const candidateScore = playerProfilePreferenceScore(candidate);
+  const currentScore = playerProfilePreferenceScore(current);
+
+  if (candidateScore !== currentScore) return candidateScore > currentScore;
+
+  const candidateRecency = playerProfileRecencyScore(candidate);
+  const currentRecency = playerProfileRecencyScore(current);
+
+  if (candidateRecency !== currentRecency) return candidateRecency > currentRecency;
+
+  return candidate.id > current.id;
+}
+
+function dedupePlayerProfileGamesByReplay(games: PlayerProfileGameRow[]) {
+  const bestByReplay = new Map<string, PlayerProfileGameRow>();
+
+  for (const game of games) {
+    const key = playerProfileReplayDedupeKey(game);
+    const current = bestByReplay.get(key);
+
+    if (!current || isPreferredPlayerProfileGame(game, current)) {
+      bestByReplay.set(key, game);
+    }
+  }
+
+  return [...bestByReplay.values()].sort(comparePlayedAtDesc);
+}
+
+
 async function loadCandidateFinalGames(prisma: PrismaClient): Promise<PlayerProfileGameRow[]> {
-  return prisma.gameStats.findMany({
+  const rows = await prisma.gameStats.findMany({
     where: {
       OR: [
         { is_final: true },
@@ -771,6 +853,7 @@ async function loadCandidateFinalGames(prisma: PrismaClient): Promise<PlayerProf
     take: PROFILE_MATCH_SCAN_LIMIT,
     select: {
       id: true,
+        is_final: true,
       winner: true,
       players: true,
       played_on: true,
@@ -787,6 +870,8 @@ async function loadCandidateFinalGames(prisma: PrismaClient): Promise<PlayerProf
       key_events: true,
     },
   });
+
+  return dedupePlayerProfileGamesByReplay(rows);
 }
 
 function filterGamesForPlayer(games: PlayerProfileGameRow[], currentPlayer: PublicPlayerRef) {
@@ -962,6 +1047,142 @@ async function loadWoloStats(
   };
 }
 
+
+
+// AOE2WAR_PROFILE_MULTI_WATCHER_PROOF
+type PlayerProfileWatcherProofRow = {
+  display_name: string | null;
+  proof_rows: number | string | bigint | null;
+};
+
+type PlayerProfileMultiWatcherProofStats = {
+  multiWatcherProofGames: number;
+  bestMultiWatcherProofLabel: string | null;
+  bestMultiWatcherSourceCount: number;
+};
+
+function playerProfileProofDate(value: Date | string | null | undefined) {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(String(value));
+  return Number.isFinite(date.getTime()) ? date : null;
+}
+
+function playerProfileGameAnchorDate(game: PlayerProfileGameRow) {
+  return (
+    playerProfileProofDate(readPlayedAt(game)) ??
+    playerProfileProofDate(game.played_on) ??
+    playerProfileProofDate(game.timestamp) ??
+    playerProfileProofDate(game.createdAt)
+  );
+}
+
+function playerProfileGameProofNames(game: PlayerProfileGameRow) {
+  const names = new Set<string>();
+
+  for (const player of parsePlayers(game.players)) {
+    const name = displayPlayerName(player).trim();
+    if (name && name.toLowerCase() !== "unknown") names.add(name);
+  }
+
+  return [...names];
+}
+
+async function loadMultiWatcherProofStats(
+  prisma: PrismaClient,
+  games: PlayerProfileGameRow[]
+): Promise<PlayerProfileMultiWatcherProofStats> {
+  let multiWatcherProofGames = 0;
+  let bestMultiWatcherProofLabel: string | null = null;
+  let bestMultiWatcherSourceCount = 0;
+
+  const proofGames = games
+    .filter((game) => String(game.parse_source ?? "").startsWith("watcher"))
+    .slice(0, 24);
+
+  for (const game of proofGames) {
+    const anchorDate = playerProfileGameAnchorDate(game);
+    const playerNames = playerProfileGameProofNames(game);
+    if (!anchorDate || playerNames.length < 2) continue;
+
+    const playerNameSet = new Set(playerNames.map((name) => name.toLowerCase()));
+
+    try {
+      const rows = await prisma.$queryRawUnsafe<PlayerProfileWatcherProofRow[]>(
+        `
+          with replay_rows as (
+            select
+              coalesce(u.in_game_name, u.steam_persona_name, u.uid, r.user_uid) as display_name,
+              count(*)::int as proof_rows
+            from replay_parse_attempts r
+            left join users u on u.uid = r.user_uid
+            where r.created_at >= $1::timestamptz - interval '120 minutes'
+              and r.created_at <= $1::timestamptz + interval '20 minutes'
+              and coalesce(r.parse_source, '') in ('watcher_live', 'watcher_final')
+              and coalesce(r.status, '') not ilike '%fail%'
+            group by coalesce(u.in_game_name, u.steam_persona_name, u.uid, r.user_uid)
+          ),
+          event_rows as (
+            select
+              coalesce(u.in_game_name, u.steam_persona_name, u.uid, e.user_uid) as display_name,
+              count(*)::int as proof_rows
+            from watcher_client_events e
+            left join users u on u.id = e.user_id
+            where e.created_at >= $1::timestamptz - interval '120 minutes'
+              and e.created_at <= $1::timestamptz + interval '20 minutes'
+              and e.event_type in (
+                'upload_succeeded',
+                'upload_success',
+                'parse_succeeded',
+                'stream_chunk_uploaded',
+                'stream_heartbeat',
+                'final_candidate_ready',
+                'final_candidate_accepted'
+              )
+            group by coalesce(u.in_game_name, u.steam_persona_name, u.uid, e.user_uid)
+          ),
+          combined as (
+            select * from replay_rows
+            union all
+            select * from event_rows
+          )
+          select display_name, sum(proof_rows)::int as proof_rows
+          from combined
+          where display_name is not null
+          group by display_name
+          order by sum(proof_rows) desc, display_name asc
+        `,
+        anchorDate.toISOString()
+      );
+
+      const uniqueProofNames = [
+        ...new Set(
+          rows
+            .map((row) => String(row.display_name ?? "").trim())
+            .filter((name) => name && playerNameSet.has(name.toLowerCase()))
+        ),
+      ];
+
+      if (uniqueProofNames.length >= 2) {
+        multiWatcherProofGames += 1;
+
+        if (uniqueProofNames.length > bestMultiWatcherSourceCount) {
+          bestMultiWatcherSourceCount = uniqueProofNames.length;
+          bestMultiWatcherProofLabel = uniqueProofNames.slice(0, 3).join(" + ");
+        }
+      }
+    } catch (error) {
+      warnOptionalProfileRail("multi watcher proof", error);
+    }
+  }
+
+  return {
+    multiWatcherProofGames,
+    bestMultiWatcherProofLabel,
+    bestMultiWatcherSourceCount,
+  };
+}
+
+
 async function loadWatcherStats(
   prisma: PrismaClient,
   user: { id: number; uid: string } | null,
@@ -975,6 +1196,9 @@ async function loadWatcherStats(
       watcherEventCount: 0,
       watcherBackedMatches,
       uniqueWatchers: 0,
+      multiWatcherProofGames: 0,
+      bestMultiWatcherProofLabel: null,
+      bestMultiWatcherSourceCount: 0,
       lastWatcherSeenAt: null,
       recentParseMisses: 0,
       parserStoredAttempts: 0,
@@ -1013,11 +1237,14 @@ async function loadWatcherStats(
   const uniqueWatchers = new Set(watcherEvents.map((event) => event.watcherId).filter(Boolean)).size;
   const parserStoredAttempts = parseAttempts.filter((attempt) => attempt.status === "stored").length;
   const parserFailedAttempts = parseAttempts.filter((attempt) => attempt.status !== "stored").length;
+  const multiWatcherProof = await loadMultiWatcherProofStats(prisma, games);
   const proofScore = Math.min(
     100,
     verificationLevel * 12 +
       watcherKeys * 8 +
       watcherBackedMatches * 4 +
+      multiWatcherProof.multiWatcherProofGames * 14 +
+      Math.max(0, multiWatcherProof.bestMultiWatcherSourceCount - 1) * 6 +
       parserStoredAttempts * 2 -
       parserFailedAttempts * 2
   );
@@ -1027,6 +1254,7 @@ async function loadWatcherStats(
     watcherEventCount: watcherEvents.length,
     watcherBackedMatches,
     uniqueWatchers,
+    ...multiWatcherProof,
     lastWatcherSeenAt: watcherEvents[0]?.createdAt.toISOString() ?? null,
     recentParseMisses: parserFailedAttempts,
     parserStoredAttempts,

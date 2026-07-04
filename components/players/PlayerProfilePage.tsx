@@ -435,7 +435,16 @@ function AdvancedHero({ profile }: { profile: PlayerProfile }) {
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <HeroSignal label="Watcher Proof" value={`${profile.watcher.watcherBackedMatches} games`} detail={`${profile.watcher.uniqueWatchers || profile.watcher.watcherKeys} watcher source${(profile.watcher.uniqueWatchers || profile.watcher.watcherKeys) === 1 ? "" : "s"}`} tone="emerald" />
+          <HeroSignal
+            label="Watcher Proof"
+            value={`${profile.watcher.watcherBackedMatches} games`}
+            detail={
+              profile.watcher.multiWatcherProofGames > 0
+                ? `${profile.watcher.multiWatcherProofGames} dual proof${profile.watcher.multiWatcherProofGames === 1 ? "" : "s"} · ${profile.watcher.bestMultiWatcherProofLabel ?? "2+ watchers"}`
+                : `${profile.watcher.uniqueWatchers || profile.watcher.watcherKeys} account source${(profile.watcher.uniqueWatchers || profile.watcher.watcherKeys) === 1 ? "" : "s"}`
+            }
+            tone="emerald"
+          />
           <HeroSignal label="Steam" value={profile.steam.rmRating ? String(profile.steam.rmRating) : "Linked"} detail={profile.steam.personaName || "rating feed"} tone="sky" />
           <HeroSignal label="Favorite Map" value={profile.command.favoriteMap || "Calibrating"} detail={profile.command.mostPlayedCivilization || "civ mix building"} tone="amber" />
           <HeroSignal label="Stream" value={profile.stream.twitchChannel || "Ready"} detail={profile.stream.twitchUrl ? "Twitch rail linked" : "Add Twitch in profile"} tone="rose" />
@@ -772,13 +781,15 @@ function BestGamesGrid({ games }: { games: PlayerBestGame[] }) {
 }
 
 function WatcherRail({ profile }: { profile: PlayerProfile }) {
+  const watcherSourceCount = profile.watcher.uniqueWatchers || profile.watcher.watcherKeys;
+
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2">
         <MiniStat label="Watcher Games" value={String(profile.watcher.watcherBackedMatches)} />
-        <MiniStat label="Watcher Sources" value={String(profile.watcher.uniqueWatchers || profile.watcher.watcherKeys)} />
-        <MiniStat label="Stored Parses" value={String(profile.watcher.parserStoredAttempts)} />
-        <MiniStat label="Parse Misses" value={String(profile.watcher.parserFailedAttempts)} />
+        <MiniStat label="Account Sources" value={String(watcherSourceCount)} />
+        <MiniStat label="Dual Proofs" value={String(profile.watcher.multiWatcherProofGames)} />
+        <MiniStat label="Best Proof" value={profile.watcher.bestMultiWatcherProofLabel || "—"} />
       </div>
       <div className="h-3 overflow-hidden rounded-full bg-white/8">
         <div
