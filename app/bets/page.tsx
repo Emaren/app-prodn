@@ -2068,7 +2068,7 @@ export default function BetsPage() {
                 <MarketFeature
                   market={spotlightMarket}
                   eyebrowLabel={spotlightMarket.featured ? "Featured Market" : "Current Book"}
-                  detailMode="advanced"
+                  detailMode={betsView === "extreme" ? "extreme" : "advanced"}
                   selection={selection}
                   workingKey={workingKey}
                   lockWorkflow={lockWorkflow}
@@ -2099,7 +2099,7 @@ export default function BetsPage() {
             <OpenBooksSection
               eyebrow="Open Books"
               title="Pick a side."
-              detailMode="advanced"
+              detailMode={betsView === "extreme" ? "extreme" : "advanced"}
               markets={openMarkets}
               selection={selection}
               workingKey={workingKey}
@@ -2217,7 +2217,7 @@ function OpenBooksSection({
 }: {
   eyebrow: string;
   title: string;
-  detailMode?: "basic" | "advanced";
+  detailMode?: "basic" | "advanced" | "extreme";
   markets: BetBoardMarket[];
   selection: SelectionState | null;
   workingKey: string | null;
@@ -3160,6 +3160,216 @@ function StakeAmountRail({
   );
 }
 
+
+type ExtremeRosterSide = {
+  key: BetSide;
+  label: string;
+  players: string[];
+  side: BetBoardSide;
+};
+
+type ExtremeMarketRoster = {
+  isBalancedTeamGame: boolean;
+  teamSize: number;
+  formatLabel: string;
+  left: ExtremeRosterSide;
+  right: ExtremeRosterSide;
+  players: Array<{ name: string; side: BetSide }>;
+};
+
+function cleanRosterName(value: string | null | undefined) {
+  return String(value || "").trim().replace(/\s+/g, " ");
+}
+
+function splitRosterSideLabel(label: string | null | undefined) {
+  return cleanRosterName(label)
+    .split(/\s*\/\s*|\s+\+\s+/)
+    .map(cleanRosterName)
+    .filter(Boolean)
+    .filter((value) => !/^\d+\s+more$/i.test(value));
+}
+
+function splitRosterTitle(title: string | null | undefined) {
+  return cleanRosterName(title)
+    .split(/\s+vs\s+/i)
+    .map(cleanRosterName)
+    .filter(Boolean);
+}
+
+function uniqueRosterNames(names: string[]) {
+  const seen = new Set<string>();
+  const result: string[] = [];
+
+  for (const name of names) {
+    const clean = cleanRosterName(name);
+    const key = clean.toLowerCase();
+    if (!clean || seen.has(key)) continue;
+    seen.add(key);
+    result.push(clean);
+  }
+
+  return result;
+}
+
+function buildExtremeMarketRoster(market: BetBoardMarket): ExtremeMarketRoster {
+  let leftPlayers = splitRosterSideLabel(market.left.name);
+  let rightPlayers = splitRosterSideLabel(market.right.name);
+  const titlePlayers = splitRosterTitle(market.title);
+
+  if (
+    titlePlayers.length >= 2 &&
+    titlePlayers.length <= 8 &&
+    titlePlayers.length % 2 === 0 &&
+    (leftPlayers.length !== rightPlayers.length || leftPlayers.length + rightPlayers.length !== titlePlayers.length)
+  ) {
+    const midpoint = titlePlayers.length / 2;
+    leftPlayers = titlePlayers.slice(0, midpoint);
+    rightPlayers = titlePlayers.slice(midpoint);
+  }
+
+  leftPlayers = uniqueRosterNames(leftPlayers.length ? leftPlayers : [market.left.name]);
+  rightPlayers = uniqueRosterNames(rightPlayers.length ? rightPlayers : [market.right.name]);
+
+  const teamSize = Math.max(leftPlayers.length, rightPlayers.length);
+  const isBalancedTeamGame =
+    teamSize >= 1 &&
+    teamSize <= 4 &&
+    leftPlayers.length === rightPlayers.length &&
+    leftPlayers.length + rightPlayers.length >= 2;
+
+  return {
+    isBalancedTeamGame,
+    teamSize,
+    formatLabel: isBalancedTeamGame ? `${teamSize}v${teamSize}` : "1v1",
+    left: {
+      key: "left",
+      label: leftPlayers.length > 1 ? `${leftPlayers[0]} team` : market.left.name,
+      players: leftPlayers,
+      side: market.left,
+    },
+    right: {
+      key: "right",
+      label: rightPlayers.length > 1 ? `${rightPlayers[0]} team` : market.right.name,
+      players: rightPlayers,
+      side: market.right,
+    },
+    players: [
+      ...leftPlayers.map((name) => ({ name, side: "left" as BetSide })),
+      ...rightPlayers.map((name) => ({ name, side: "right" as BetSide })),
+    ],
+  };
+}
+
+function ExtremeTeamPanel({
+  roster,
+  selected,
+  disabled,
+  tone,
+  onSelect,
+}: {
+  roster: ExtremeRosterSide;
+  selected: boolean;
+  disabled: boolean;
+  tone: "gold" | "blue";
+  onSelect: () => void;
+}) {
+  const selectedClass =
+    tone === "gold"
+      ? "border-amber-200/24 bg-amber-400/[0.075] shadow-[0_0_38px_rgba(251,191,36,0.08)]"
+      : "border-cyan-200/20 bg-cyan-400/[0.06] shadow-[0_0_38px_rgba(34,211,238,0.07)]";
+
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      disabled={disabled}
+      className={`min-w-0 rounded-[1.6rem] border p-4 text-left transition ${
+        selected ? selectedClass : "border-white/10 bg-white/[0.035] hover:border-white/18 hover:bg-white/[0.05]"
+      } ${disabled ? "cursor-not-allowed opacity-60" : ""}`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-[10px] uppercase tracking-[0.34em] text-slate-500">Team pick</div>
+          <div className="mt-2 truncate text-xl font-semibold tracking-[-0.03em] text-white">{roster.label}</div>
+        </div>
+        <div className="shrink-0 rounded-full border border-white/10 bg-black/20 px-2.5 py-1 text-[11px] text-slate-300">
+          {roster.side.crowdPercent}%
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-2">
+        {roster.players.map((player, index) => (
+          <div
+            key={`${roster.key}-${player}-${index}`}
+            className="flex items-center justify-between gap-3 rounded-2xl border border-white/[0.075] bg-slate-950/34 px-3 py-2"
+          >
+            <span className="min-w-0 truncate text-sm font-semibold text-slate-100">{player}</span>
+            <span className="shrink-0 text-[10px] uppercase tracking-[0.22em] text-slate-500">P{index + 1}</span>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-4 flex items-center justify-between gap-3 border-t border-white/[0.08] pt-3">
+        <div className="text-xs text-slate-400">
+          {roster.side.slips} slip{roster.side.slips === 1 ? "" : "s"}
+        </div>
+        <div className="flex items-center gap-1.5 text-sm font-semibold text-white">
+          <CoinMark small />
+          {formatExactWolo(roster.side.poolWolo)}
+        </div>
+      </div>
+    </button>
+  );
+}
+
+function ExtremePlayerChips({
+  roster,
+  disabled,
+  selectedSide,
+  onSelect,
+}: {
+  roster: ExtremeMarketRoster;
+  disabled: boolean;
+  selectedSide: BetSide | null;
+  onSelect: (side: BetSide) => void;
+}) {
+  return (
+    <div className={`${insetClass()} mt-4 px-4 py-4`}>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div className="text-[10px] uppercase tracking-[0.34em] text-slate-500">Player pick</div>
+          <div className="mt-1 text-sm text-slate-300">Choose a player. The slip backs that player’s team.</div>
+        </div>
+        <div className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-slate-400">
+          Team-settled
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+        {roster.players.map((player) => (
+          <button
+            key={`${player.side}-${player.name}`}
+            type="button"
+            onClick={() => onSelect(player.side)}
+            disabled={disabled}
+            className={`flex min-w-0 items-center justify-between gap-3 rounded-2xl border px-3 py-2.5 text-left transition ${
+              selectedSide === player.side
+                ? "border-amber-200/22 bg-amber-400/[0.075] text-white"
+                : "border-white/[0.08] bg-slate-950/26 text-slate-300 hover:border-white/18 hover:text-white"
+            } ${disabled ? "cursor-not-allowed opacity-60" : ""}`}
+          >
+            <span className="min-w-0 truncate text-sm font-semibold">{player.name}</span>
+            <span className="shrink-0 text-[10px] uppercase tracking-[0.22em] text-slate-500">
+              {player.side === "left" ? "A" : "B"}
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+
 function MarketFeature({
   market,
   eyebrowLabel = "Featured Market",
@@ -3180,7 +3390,7 @@ function MarketFeature({
 }: {
   market: BetBoardMarket;
   eyebrowLabel?: string;
-  detailMode?: "basic" | "advanced";
+  detailMode?: "basic" | "advanced" | "extreme";
   selection: SelectionState | null;
   workingKey: string | null;
   lockWorkflow: LockWorkflow | null;
@@ -3248,6 +3458,169 @@ function MarketFeature({
       : market.viewerWager
         ? "Add More"
         : "Lock";
+  const extremeRoster = buildExtremeMarketRoster(market);
+  const extremeTitle = extremeRoster.isBalancedTeamGame
+    ? `${extremeRoster.left.label} vs ${extremeRoster.right.label}`
+    : market.title;
+
+  if (detailMode === "extreme" && extremeRoster.isBalancedTeamGame) {
+    return (
+      <div className="relative">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full border border-amber-200/16 bg-amber-400/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.28em] text-amber-100">
+                {extremeRoster.formatLabel}
+              </span>
+              <span className="rounded-full border border-emerald-200/14 bg-emerald-400/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.24em] text-emerald-100">
+                Live team book
+              </span>
+            </div>
+
+            <div className="mt-3 text-[11px] uppercase tracking-[0.35em] text-slate-500">{eyebrowLabel}</div>
+            {market.href ? (
+              <Link
+                href={market.href}
+                className="mt-2 inline-flex text-3xl font-semibold tracking-[-0.04em] text-white transition hover:text-amber-100 sm:text-4xl"
+              >
+                {extremeTitle}
+              </Link>
+            ) : (
+              <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl">
+                {extremeTitle}
+              </h2>
+            )}
+            <div className="mt-2 text-sm text-slate-400">{market.eventLabel}</div>
+            <FounderBonusChips bonuses={market.founderBonuses} variant="full" />
+            <MarketTimingRail market={market} nowMs={nowMs} />
+          </div>
+
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {market.href ? (
+              <Link
+                href={market.href}
+                className={`inline-flex items-center rounded-full px-3 py-1 text-xs transition ${edgeButton("glass")}`}
+              >
+                View Match
+              </Link>
+            ) : null}
+            {isAdmin ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => onOpenFounderBonus(market, "participants")}
+                  className="rounded-full border border-amber-300/20 bg-amber-400/10 px-3 py-1 text-xs text-amber-100 transition hover:bg-amber-400/18"
+                >
+                  +FB
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onOpenFounderBonus(market, "winner")}
+                  className="rounded-full border border-sky-300/20 bg-sky-400/10 px-3 py-1 text-xs text-sky-100 transition hover:bg-sky-400/18"
+                >
+                  +FW
+                </button>
+              </>
+            ) : null}
+            <MarketStatusPill market={market} />
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_12rem_minmax(0,1fr)] xl:items-stretch">
+          <ExtremeTeamPanel
+            roster={extremeRoster.left}
+            selected={displaySide === "left"}
+            disabled={!canEditSlip || Boolean(lockedSide && lockedSide !== "left")}
+            tone="gold"
+            onSelect={() => onSelect(market, "left")}
+          />
+
+          <div className={`${insetClass()} flex flex-col items-center justify-center px-5 py-5 text-center`}>
+            <div className="text-[11px] uppercase tracking-[0.3em] text-slate-500" title="Total WOLO already sitting in the book.">
+              Pot
+            </div>
+            <div className="mt-3 flex items-center justify-center gap-2 text-3xl font-semibold text-white">
+              <CoinMark />
+              <span>{formatExactWolo(market.totalPotWolo)}</span>
+            </div>
+            <div className="mt-2 text-xs text-slate-400">{market.left.crowdPercent}% / {market.right.crowdPercent}%</div>
+            <div className="mt-4 rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs italic text-slate-300">
+              vs
+            </div>
+          </div>
+
+          <ExtremeTeamPanel
+            roster={extremeRoster.right}
+            selected={displaySide === "right"}
+            disabled={!canEditSlip || Boolean(lockedSide && lockedSide !== "right")}
+            tone="blue"
+            onSelect={() => onSelect(market, "right")}
+          />
+        </div>
+
+        <ExtremePlayerChips
+          roster={extremeRoster}
+          disabled={!canEditSlip || Boolean(lockedSide)}
+          selectedSide={displaySide}
+          onSelect={(side) => onSelect(market, side)}
+        />
+
+        <div className={`${insetClass()} mt-5 px-4 py-4`}>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="flex-1">
+              <StakeAmountRail
+                activeSelection={activeSelection}
+                canEdit={canEditSlip}
+                maxStakeWolo={maxStakeWolo}
+                onStakeChange={onStakeChange}
+              />
+            </div>
+            <div className="text-right">
+              <div className="text-[11px] uppercase tracking-[0.28em] text-slate-500" title="Projected book return if this side wins right now.">
+                If Right
+              </div>
+              <div className="mt-2 text-xl font-semibold text-white">
+                {activeSelection ? `${formatCompact(projectedReturn)} WOLO` : "Pick a team"}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <div className={`text-sm ${stakeError ? "text-rose-200" : "text-slate-400"}`}>
+              {stakeError || statusCopy}
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {market.viewerWager && !onchainLocked ? (
+                <button
+                  type="button"
+                  onClick={onClear}
+                  disabled={workingKey === `clear-${market.id}`}
+                  className={`inline-flex items-center rounded-full px-4 py-2.5 text-sm transition ${edgeButton("glass")} ${
+                    workingKey === `clear-${market.id}` ? "opacity-60" : ""
+                  }`}
+                >
+                  {workingKey === `clear-${market.id}` ? "Clearing..." : "Clear"}
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={onLock}
+                disabled={!activeSelection || Boolean(stakeError) || !canEditSlip || workingKey === `lock-${market.id}`}
+                className={`inline-flex items-center rounded-full px-4 py-2.5 text-sm font-semibold transition ${edgeButton("gold")} ${
+                  !activeSelection || Boolean(stakeError) || !canEditSlip || workingKey === `lock-${market.id}` ? "opacity-60" : ""
+                }`}
+              >
+                {lockLabel}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <WarTape rows={market.warTape} />
+      </div>
+    );
+  }
 
   return (
     <div className="relative">
@@ -3407,7 +3780,7 @@ function MarketCard({
   accent,
 }: {
   market: BetBoardMarket;
-  detailMode?: "basic" | "advanced";
+  detailMode?: "basic" | "advanced" | "extreme";
   selection: SelectionState | null;
   workingKey: string | null;
   lockWorkflow: LockWorkflow | null;
