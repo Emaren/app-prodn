@@ -37,7 +37,6 @@ type PublicBountyActivityRow = {
   occurred_at: Date | string | null;
 };
 
-const ECOSYSTEM_BOUNTIES_WALLET = "wolo1dmj5dnm7g9hmj005yzy5e5xcygudyt7wxzpxjq";
 
 function shortPublicBountyTx(value?: string | null) {
   if (!value) return null;
@@ -107,7 +106,6 @@ async function loadPublicNumberedBounties(limit: number) {
     order by occurred_at desc, id desc
     limit $1
     `,
-    ECOSYSTEM_BOUNTIES_WALLET,
     limit
   );
 
