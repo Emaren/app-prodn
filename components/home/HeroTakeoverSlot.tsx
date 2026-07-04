@@ -155,6 +155,7 @@ export default function HeroTakeoverSlot({ children }: { children: ReactNode }) 
   const [loadedByKey, setLoadedByKey] = useState<Record<string, boolean>>({});
   const [displayIndex, setDisplayIndex] = useState(0);
   const [pendingIndex, setPendingIndex] = useState<number | null>(null);
+  const [paused, setPaused] = useState(false);
   const [layers, setLayers] = useState<CrossfadeLayer[]>([]);
   const transitionTimerRef = useRef<number | null>(null);
   const inflightRef = useRef<Record<string, boolean>>({});
@@ -231,6 +232,7 @@ export default function HeroTakeoverSlot({ children }: { children: ReactNode }) 
 
     setDisplayIndex(0);
     setPendingIndex(null);
+    setPaused(false);
     setLayers([]);
   }, [slides.length]);
 
@@ -332,14 +334,14 @@ export default function HeroTakeoverSlot({ children }: { children: ReactNode }) 
   }, [commitIndex, loadedByKey, pendingIndex, slides]);
 
   useEffect(() => {
-    if (!state?.active || slides.length <= 1 || !currentReady) return;
+    if (!state?.active || slides.length <= 1 || !currentReady || paused) return;
 
     const interval = window.setInterval(() => {
       queueRotate(1);
     }, Math.max(2500, state.intervalMs || 8000));
 
     return () => window.clearInterval(interval);
-  }, [currentReady, queueRotate, slides.length, state?.active, state?.intervalMs]);
+  }, [currentReady, paused, queueRotate, slides.length, state?.active, state?.intervalMs]);
 
   useEffect(() => {
     return () => {
@@ -376,7 +378,14 @@ export default function HeroTakeoverSlot({ children }: { children: ReactNode }) 
         {children}
       </div>
 
-      <div aria-label={label} className={`${frameClass} group`}>
+      <div
+        aria-label={label}
+        className={`${frameClass} group`}
+        onMouseEnter={() => setPaused(true)}
+        onMouseLeave={() => setPaused(false)}
+        onFocusCapture={() => setPaused(true)}
+        onBlurCapture={() => setPaused(false)}
+      >
         {layers.map((layer, index) => (
           <div
             key={`${slideKey(layer.slide)}-${index}`}
@@ -427,19 +436,6 @@ export default function HeroTakeoverSlot({ children }: { children: ReactNode }) 
           className="absolute inset-x-[18%] inset-y-0 z-30 cursor-pointer bg-transparent"
         />
 
-        {href ? (
-          <button
-            type="button"
-            onClick={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              openCurrent();
-            }}
-            className="absolute bottom-4 right-4 z-50 rounded-full border border-white/14 bg-black/42 px-4 py-2 text-[10px] font-black uppercase tracking-[0.22em] text-white/88 shadow-[0_12px_28px_rgba(0,0,0,0.30)] backdrop-blur-md transition hover:border-amber-200/40 hover:text-amber-50 sm:bottom-5 sm:right-5"
-          >
-            Open the dispatch ↗
-          </button>
-        ) : null}
 
         {slides.length > 1 ? (
           <div className="pointer-events-none absolute bottom-5 left-1/2 z-50 flex -translate-x-1/2 gap-1.5">
