@@ -752,7 +752,8 @@ function ClassicBoard({
   const [archiveOffset, setArchiveOffset] = useState(snapshot.recentMatches.length);
   const [archiveLoading, setArchiveLoading] = useState(false);
   const [archiveHasMore, setArchiveHasMore] = useState(snapshot.recentMatches.length >= 12);
-  const [liveTone, setLiveTone] = useState<ClassicLiveTone>("violet");
+  const [liveTone] = useState<ClassicLiveTone>("violet");
+  const [playingControlsOpen, setPlayingControlsOpen] = useState(false);
 
   useEffect(() => {
     setArchiveMatches(snapshot.recentMatches);
@@ -818,13 +819,13 @@ function ClassicBoard({
   const playingShellClass =
     liveTone === "violet"
       ? "border-[#7d5a78]/24 bg-[radial-gradient(circle_at_12%_0%,rgba(82,35,74,0.22),transparent_34%),linear-gradient(rgba(18,10,25,0.86),rgba(2,6,23,0.78))]"
-      : "border-red-300/15 bg-[radial-gradient(circle_at_12%_0%,rgba(127,29,29,0.12),transparent_34%),linear-gradient(rgba(2,6,23,0.78),rgba(2,6,23,0.78))]";
+      : "border-[#7d5a78]/18 bg-[radial-gradient(circle_at_12%_0%,rgba(82,35,74,0.18),transparent_34%),linear-gradient(rgba(18,10,25,0.86),rgba(2,6,23,0.82))]";
   const playingEyebrowClass =
     liveTone === "violet" ? "text-[#d8bfd5]/74" : "text-red-200/70";
   const emptyPlayingClass =
     liveTone === "violet"
       ? "border-[#7d5a78]/20 bg-[#3a2038]/24"
-      : "border-red-300/15 bg-red-500/[0.07]";
+      : "border-[#7d5a78]/16 bg-[#3a2038]/18";
 
   return (
     <section className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
@@ -841,9 +842,7 @@ function ClassicBoard({
             return;
           }
 
-          setLiveTone((current) =>
-            current === "crimson" ? "violet" : "crimson"
-          );
+          setPlayingControlsOpen((current) => !current);
         }}
         className={`min-w-0 rounded-[1.8rem] border p-5 transition-[border-color,background] duration-500 sm:p-6 ${playingShellClass}`}
       >
@@ -856,7 +855,18 @@ function ClassicBoard({
           </div>
 
           <div className="order-last flex w-full justify-center pt-2 sm:order-none sm:w-auto sm:flex-1 sm:pt-0">
-            <LiveGamesViewToggle viewMode={viewMode} onViewModeChange={onViewModeChange} />
+            {playingControlsOpen ? (
+              <LiveGamesViewToggle viewMode={viewMode} onViewModeChange={onViewModeChange} />
+            ) : (
+              <button
+                type="button"
+                onClick={() => setPlayingControlsOpen(true)}
+                className="rounded-full border border-white/[0.055] bg-white/[0.025] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500 transition hover:border-white/10 hover:text-slate-300"
+                title="Show Live Games view controls"
+              >
+                View
+              </button>
+            )}
           </div>
           <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
             {sectionStatusLabel}
