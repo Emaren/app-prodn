@@ -91,7 +91,7 @@ type ScheduledMatchSettlementDbClient = PrismaClient | Prisma.TransactionClient;
 
 type ParticipantSide = "left" | "right";
 type TransferBucket = "wager" | "guarantee" | "combined";
-type TransferReason = "refund" | "treasury";
+type TransferReason = "refund" | "treasury" | "award";
 
 type ParticipantPlan = {
   side: ParticipantSide;
@@ -119,7 +119,7 @@ export type ScheduledMatchSettlementTransfer = {
   amountWolo: number;
   requestId: string;
   memo: string;
-  eventType: "refund_sent" | "guarantee_forfeited_to_treasury";
+  eventType: "refund_sent" | "guarantee_forfeited_to_treasury" | "guarantee_awarded";
   sourceWalletAddress: string | null;
   fundingTxHash: string | null;
   fundingWalletAddress: string | null;
@@ -438,6 +438,28 @@ function buildRawTransfers(input: {
     });
   };
 
+  const awardGuaranteeToParticipant = (
+    recipient: ParticipantPlan,
+    sourceParticipant: ParticipantPlan,
+    amountWolo: number,
+    action: string,
+    label: string
+  ) => {
+    addTransfer(transfers, input.row, input.existingMap, {
+      action,
+      label,
+      participant: sourceParticipant,
+      participantSide: recipient.side,
+      bucket: "guarantee",
+      reason: "award",
+      recipientAddress: recipient.fundingWalletAddress || recipient.userWalletAddress,
+      recipientLabel: recipient.name,
+      amountWolo,
+      eventType: "guarantee_awarded",
+      sourceWalletAddress: input.sourceWalletAddress,
+    });
+  };
+
   if (status === "canceled" || status === "cancelled") {
     if (input.left.funded) {
       refundParticipant(input.left, total, "left_full_refund", "left full refund", "combined");
@@ -467,16 +489,25 @@ function buildRawTransfers(input: {
   if (status === "no_show_left") {
     if (input.left.funded) {
       refundParticipant(input.left, wager, "left_wager_refund", "left wager refund", "wager");
-      treasuryTransfer(input.left, guarantee, "left_guarantee_to_treasury", "left guarantee to treasury");
     }
     if (input.right.funded) {
-      refundParticipant(
+      refundParticipant(input.right, wager, "right_wager_refund", "right wager refund", "wager");
+      awardGuaranteeToParticipant(
         input.right,
-        total,
-        "right_wager_guarantee_refund",
-        "right wager and guarantee refund",
-        "combined"
+        input.right,
+        guarantee,
+        "right_own_guarantee_return",
+        "right own match guarantee return"
       );
+      if (input.left.funded) {
+        awardGuaranteeToParticipant(
+          input.right,
+          input.left,
+          guarantee,
+          "left_guarantee_awarded_to_right",
+          "left missed-side match guarantee to right"
+        );
+      }
     }
     return transfers;
   }
@@ -484,16 +515,25 @@ function buildRawTransfers(input: {
   if (status === "no_show_right") {
     if (input.right.funded) {
       refundParticipant(input.right, wager, "right_wager_refund", "right wager refund", "wager");
-      treasuryTransfer(input.right, guarantee, "right_guarantee_to_treasury", "right guarantee to treasury");
     }
     if (input.left.funded) {
-      refundParticipant(
+      refundParticipant(input.left, wager, "left_wager_refund", "left wager refund", "wager");
+      awardGuaranteeToParticipant(
         input.left,
-        total,
-        "left_wager_guarantee_refund",
-        "left wager and guarantee refund",
-        "combined"
+        input.left,
+        guarantee,
+        "left_own_guarantee_return",
+        "left own match guarantee return"
       );
+      if (input.right.funded) {
+        awardGuaranteeToParticipant(
+          input.left,
+          input.right,
+          guarantee,
+          "right_guarantee_awarded_to_left",
+          "right missed-side match guarantee to left"
+        );
+      }
     }
   }
 

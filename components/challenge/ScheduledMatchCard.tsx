@@ -505,12 +505,7 @@ export function CompactScheduledMatchHistoryRow({
       : match.displayState.includes("no_show")
         ? "Guarantee"
         : match.economy.statusLabel;
-  const href =
-    (match.displayState === "completed" || match.displayState === "live") && match.linkedSessionKey
-      ? `/game-stats/live/${encodeURIComponent(match.linkedSessionKey)}`
-      : `/contact-emaren?user=${encodeURIComponent(
-          viewerUid === match.challenger.uid ? match.challenged.uid : match.challenger.uid
-        )}`;
+  const href = `/challenge/${match.id}`;
 
   return (
     <Link
@@ -712,7 +707,7 @@ export default function ScheduledMatchCard({
   );
 
   const spotlightPlayer = viewerIsChallenged ? match.challenger : match.challenged;
-  const threadHref = `/contact-emaren?user=${encodeURIComponent(spotlightPlayer.uid)}`;
+  const threadHref = `/challenge/${match.id}`;
   const statsHref =
     (match.displayState === "completed" || match.displayState === "live") && match.linkedSessionKey
       ? `/game-stats/live/${encodeURIComponent(match.linkedSessionKey)}`

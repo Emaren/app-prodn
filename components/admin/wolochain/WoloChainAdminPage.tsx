@@ -1600,12 +1600,12 @@ export default function WoloChainAdminPage() {
         <BucketCard
           label="Match Guarantee"
           value="Coordination bond"
-          detail="Returns when both players check in; missed-side guarantees route to Community Treasury on no-show."
+          detail="Returns when both players check in; one no-show awards both guarantees to the showing player."
         />
         <BucketCard
           label="Treasury Route"
-          value="No-show guarantees"
-          detail="One-sided no-show sends the missed guarantee to Treasury; double no-show sends both guarantees."
+          value="Double no-show only"
+          detail="Treasury receives guarantees only when both players miss check-in."
         />
         <BucketCard
           label="Payout / Refund"

@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { FormEvent, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -109,6 +109,64 @@ type PublicTrophyTarget = {
 };
 
 type ScheduleMode = "basic" | "advanced" | "extreme";
+type ChallengeHallView = "basic" | "advanced" | "extreme";
+
+function parseChallengeHallView(value: string | null): ChallengeHallView {
+  return value === "basic" || value === "advanced" || value === "extreme" ? value : "extreme";
+}
+
+function challengeHallViewHref(search: string, view: ChallengeHallView) {
+  const params = new URLSearchParams(search);
+
+  if (view === "extreme") {
+    params.delete("view");
+  } else {
+    params.set("view", view);
+  }
+
+  const query = params.toString();
+  return query ? `/challenge?${query}` : "/challenge";
+}
+
+function ChallengeHallBaEToggle({
+  view,
+  search,
+}: {
+  view: ChallengeHallView;
+  search: string;
+}) {
+  const options: Array<{ key: ChallengeHallView; label: string; helper: string }> = [
+    { key: "basic", label: "Basic", helper: "Classic" },
+    { key: "advanced", label: "Advanced", helper: "Classic +" },
+    { key: "extreme", label: "Extreme", helper: "War Hall" },
+  ];
+
+  return (
+    <div className="inline-grid rounded-full border border-amber-100/14 bg-black/32 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_22px_70px_rgba(0,0,0,0.28)] sm:grid-cols-3">
+      {options.map((option) => {
+        const active = option.key === view;
+
+        return (
+          <Link
+            key={option.key}
+            href={challengeHallViewHref(search, option.key)}
+            className={`rounded-full px-4 py-2.5 text-center transition ${
+              active
+                ? "bg-amber-300/18 text-amber-50 shadow-[inset_0_0_0_1px_rgba(253,230,138,0.22),0_0_34px_rgba(245,158,11,0.14)]"
+                : "text-slate-400 hover:bg-white/[0.05] hover:text-slate-100"
+            }`}
+          >
+            <span className="block text-xs font-black">{option.label}</span>
+            <span className="mt-0.5 block text-[9px] font-black uppercase tracking-[0.22em] opacity-60">
+              {option.helper}
+            </span>
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
 
 const ACTIVE_RUNWAY_STATES: string[] = [
   "proposed",
@@ -192,8 +250,15 @@ function formatActivityTitle(activity: ChallengeActivityItem) {
       return "Challenge rescheduled";
     case "completed":
       return "Match completed";
+    case "refund_due":
+      return "Refund due";
     case "refund_sent":
       return "Refund sent";
+    case "guarantee_awarded": {
+      const amount = metadataNumber(activity, "amountWolo");
+      const txHash = metadataString(activity, "txHash");
+      return `Guarantee awarded${amount ? ` · ${amount.toLocaleString()} WOLO` : ""}${txHash ? ` · tx ${shortHash(txHash)}` : ""}`;
+    }
     case "guarantee_forfeited_to_treasury":
       return "Guarantee routed to Treasury";
     case "scheduled_settlement_completed":
@@ -222,6 +287,161 @@ function shortHash(value: string) {
   return `${value.slice(0, 8)}...${value.slice(-6)}`;
 }
 
+function buildSyntheticSettlementActivities(matches: ActivityMatch[]): ChallengeActivityItem[] {
+  const rows: ChallengeActivityItem[] = [];
+
+  for (const match of matches) {
+    const noShowLeft = match.displayState === "no_show_left";
+    const noShowRight = match.displayState === "no_show_right";
+    const doubleNoShow = match.displayState === "double_no_show";
+
+    if (!noShowLeft && !noShowRight && !doubleNoShow) {
+      continue;
+    }
+
+    const baseTime = new Date(
+      match.economy.settlementReadyAt || match.activityAt || match.scheduledAt || match.createdAt
+    );
+    const baseMs = Number.isNaN(baseTime.getTime()) ? Date.now() : baseTime.getTime();
+
+    function pushRow(input: {
+      offset: number;
+      eventType: string;
+      actorUid: string | null;
+      actorName: string | null;
+      detail: string;
+      amountWolo: number;
+      participantName: string;
+      bucket: "wager" | "guarantee";
+      settlementTarget: "refund" | "treasury";
+    }) {
+      if (input.amountWolo <= 0) return;
+
+      rows.push({
+        id: match.id * 100_000 + 900 + input.offset,
+        scheduledMatchId: match.id,
+        eventType: input.eventType,
+        detail: input.detail,
+        actorUid: input.actorUid,
+        actorName: input.actorName,
+        createdAt: new Date(baseMs + input.offset * 1000).toISOString(),
+        metadata: {
+          amountWolo: input.amountWolo,
+          participantName: input.participantName,
+          bucket: input.bucket,
+          settlementTarget: input.settlementTarget,
+          synthetic: true,
+        },
+      });
+    }
+
+    const left = match.challenger;
+    const right = match.challenged;
+
+    if (noShowLeft || doubleNoShow) {
+      pushRow({
+        offset: 1,
+        eventType: "refund_due",
+        actorUid: left.uid,
+        actorName: left.name,
+        detail: `${left.name} Wolo Wager refund due · ${match.terms.wagerAmountWolo.toLocaleString()} WOLO.`,
+        amountWolo: match.terms.wagerAmountWolo,
+        participantName: left.name,
+        bucket: "wager",
+        settlementTarget: "refund",
+      });
+
+      pushRow({
+        offset: 2,
+        eventType: "guarantee_forfeited_to_treasury",
+        actorUid: left.uid,
+        actorName: left.name,
+        detail: `${left.name} Match Guarantee → Treasury · ${match.terms.guaranteeAmountWolo.toLocaleString()} WOLO.`,
+        amountWolo: match.terms.guaranteeAmountWolo,
+        participantName: left.name,
+        bucket: "guarantee",
+        settlementTarget: "treasury",
+      });
+    } else {
+      pushRow({
+        offset: 1,
+        eventType: "refund_due",
+        actorUid: left.uid,
+        actorName: left.name,
+        detail: `${left.name} Wolo Wager refund due · ${match.terms.wagerAmountWolo.toLocaleString()} WOLO.`,
+        amountWolo: match.terms.wagerAmountWolo,
+        participantName: left.name,
+        bucket: "wager",
+        settlementTarget: "refund",
+      });
+
+      pushRow({
+        offset: 2,
+        eventType: "refund_due",
+        actorUid: left.uid,
+        actorName: left.name,
+        detail: `${left.name} Match Guarantee refund due · ${match.terms.guaranteeAmountWolo.toLocaleString()} WOLO.`,
+        amountWolo: match.terms.guaranteeAmountWolo,
+        participantName: left.name,
+        bucket: "guarantee",
+        settlementTarget: "refund",
+      });
+    }
+
+    if (noShowRight || doubleNoShow) {
+      pushRow({
+        offset: 3,
+        eventType: "refund_due",
+        actorUid: right.uid,
+        actorName: right.name,
+        detail: `${right.name} Wolo Wager refund due · ${match.terms.wagerAmountWolo.toLocaleString()} WOLO.`,
+        amountWolo: match.terms.wagerAmountWolo,
+        participantName: right.name,
+        bucket: "wager",
+        settlementTarget: "refund",
+      });
+
+      pushRow({
+        offset: 4,
+        eventType: "guarantee_forfeited_to_treasury",
+        actorUid: right.uid,
+        actorName: right.name,
+        detail: `${right.name} Match Guarantee → Treasury · ${match.terms.guaranteeAmountWolo.toLocaleString()} WOLO.`,
+        amountWolo: match.terms.guaranteeAmountWolo,
+        participantName: right.name,
+        bucket: "guarantee",
+        settlementTarget: "treasury",
+      });
+    } else {
+      pushRow({
+        offset: 3,
+        eventType: "refund_due",
+        actorUid: right.uid,
+        actorName: right.name,
+        detail: `${right.name} Wolo Wager refund due · ${match.terms.wagerAmountWolo.toLocaleString()} WOLO.`,
+        amountWolo: match.terms.wagerAmountWolo,
+        participantName: right.name,
+        bucket: "wager",
+        settlementTarget: "refund",
+      });
+
+      pushRow({
+        offset: 4,
+        eventType: "refund_due",
+        actorUid: right.uid,
+        actorName: right.name,
+        detail: `${right.name} Match Guarantee refund due · ${match.terms.guaranteeAmountWolo.toLocaleString()} WOLO.`,
+        amountWolo: match.terms.guaranteeAmountWolo,
+        participantName: right.name,
+        bucket: "guarantee",
+        settlementTarget: "refund",
+      });
+    }
+  }
+
+  return rows;
+}
+
 function formatActivityCompact(activity: ChallengeActivityItem, match?: ActivityMatch) {
   const totalLabel = match ? `${match.terms.totalFundingWolo.toLocaleString()} WOLO` : "WOLO";
   const matchLabel = match
@@ -230,11 +450,20 @@ function formatActivityCompact(activity: ChallengeActivityItem, match?: Activity
 
   switch (activity.eventType) {
     case "scheduled":
+      return match
+        ? `Scheduled · ${matchLabel} · ${totalLabel} each`
+        : `${formatActivityTitle(activity)} · Match #${activity.scheduledMatchId}`;
     case "accepted":
+      return match
+        ? `Accepted · ${matchLabel}`
+        : `${formatActivityTitle(activity)} · Match #${activity.scheduledMatchId}`;
     case "terms_accepted":
+      return match
+        ? `Terms accepted · opponent funding next`
+        : `${formatActivityTitle(activity)} · Match #${activity.scheduledMatchId}`;
     case "rescheduled":
       return match
-        ? `${matchLabel} · ${totalLabel} each · ${match.economy.statusLabel}`
+        ? `Rescheduled · ${matchLabel}`
         : `${formatActivityTitle(activity)} · Match #${activity.scheduledMatchId}`;
     case "creator_funded":
       return match
@@ -248,9 +477,22 @@ function formatActivityCompact(activity: ChallengeActivityItem, match?: Activity
     case "right_checked_in":
       return `${activity.actorName || "Player"} checked in`;
     case "live_confirmed":
-      return match ? `${matchLabel} · Game detected` : `Game detected · Match #${activity.scheduledMatchId}`;
+      return match ? `Live confirmed · ${matchLabel}` : `Game detected · Match #${activity.scheduledMatchId}`;
     case "completed":
-      return match ? `${matchLabel} · ${match.economy.resolution.label || "Resolved"}` : "Match completed";
+      return match ? `Completed · ${match.economy.resolution.label || matchLabel}` : "Match completed";
+    case "refund_due": {
+      const amount = metadataNumber(activity, "amountWolo");
+      const participantName = metadataString(activity, "participantName");
+      const bucket = metadataString(activity, "bucket");
+      const target = metadataString(activity, "settlementTarget");
+      const label =
+        bucket === "guarantee"
+          ? target === "treasury"
+            ? "Match Guarantee → Treasury"
+            : "Match Guarantee refund due"
+          : "Wolo Wager refund due";
+      return `${participantName ? `${participantName} ` : ""}${label}${amount ? ` · ${amount.toLocaleString()} WOLO` : ""}`;
+    }
     case "refund_sent": {
       const amount = metadataNumber(activity, "amountWolo");
       const txHash = metadataString(activity, "txHash");
@@ -259,31 +501,77 @@ function formatActivityCompact(activity: ChallengeActivityItem, match?: Activity
     case "guarantee_forfeited_to_treasury": {
       const amount = metadataNumber(activity, "amountWolo");
       const txHash = metadataString(activity, "txHash");
-      return `Guarantee to Community Treasury${amount ? ` · ${amount.toLocaleString()} WOLO` : ""}${txHash ? ` · tx ${shortHash(txHash)}` : ""}`;
+      const participantName = metadataString(activity, "participantName");
+      return `${participantName ? `${participantName} ` : ""}Match Guarantee → Treasury${amount ? ` · ${amount.toLocaleString()} WOLO` : ""}${txHash ? ` · tx ${shortHash(txHash)}` : ""}`;
     }
     case "scheduled_settlement_completed":
-      return `Escrow settlement completed · Match #${activity.scheduledMatchId}`;
+      return `Escrow settled · Match #${activity.scheduledMatchId}`;
     case "scheduled_settlement_failed":
       return activity.detail || `Escrow settlement failed · Match #${activity.scheduledMatchId}`;
     case "declined":
-      return `Challenge declined · Match #${activity.scheduledMatchId}`;
+      return `Declined · Match #${activity.scheduledMatchId}`;
     case "cancelled":
     case "canceled":
-      return `Challenge cancelled · Match #${activity.scheduledMatchId}`;
+      return `Cancelled · Match #${activity.scheduledMatchId}`;
     case "no_show_left":
+      return match
+        ? `${match.challenger.name} missed check-in`
+        : `No-show · Match #${activity.scheduledMatchId}`;
     case "no_show_right":
+      return match
+        ? `${match.challenged.name} missed check-in`
+        : `No-show · Match #${activity.scheduledMatchId}`;
     case "double_no_show":
-      return `No-show resolved · Match #${activity.scheduledMatchId}`;
+      return match ? `Double no-show · ${matchLabel}` : `Double no-show · Match #${activity.scheduledMatchId}`;
     case "forfeited":
-      return `Match forfeited · Match #${activity.scheduledMatchId}`;
+      return `Forfeited · Match #${activity.scheduledMatchId}`;
     default:
-      return match ? `${matchLabel} · ${match.economy.statusLabel}` : `${formatActivityTitle(activity)} · Match #${activity.scheduledMatchId}`;
+      return match ? `${matchLabel} · ${formatActivityTitle(activity)}` : `${formatActivityTitle(activity)} · Match #${activity.scheduledMatchId}`;
   }
 }
 
-export default function ChallengeWorkspace() {
+function formatActivityBadge(activity: ChallengeActivityItem) {
+  switch (activity.eventType) {
+    case "scheduled":
+      return "Scheduled";
+    case "accepted":
+      return "Accepted";
+    case "terms_accepted":
+      return "Terms";
+    case "creator_funded":
+      return "Creator funded";
+    case "opponent_funded":
+      return "Opponent funded";
+    case "left_checked_in":
+    case "right_checked_in":
+      return "Checked in";
+    case "live_confirmed":
+      return "Live";
+    case "no_show_left":
+    case "no_show_right":
+    case "double_no_show":
+      return "No-show";
+    case "scheduled_settlement_completed":
+      return "Settled";
+    case "scheduled_settlement_failed":
+      return "Settlement failed";
+    case "refund_sent":
+      return "Refund";
+    case "guarantee_forfeited_to_treasury":
+      return "Treasury";
+    default:
+      return formatActivityTitle(activity);
+  }
+}
+
+type ChallengeWorkspaceProps = {
+  initialFocusId?: number | null;
+};
+
+export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeWorkspaceProps) {
   const { loading: authLoading, isAuthenticated, uid } = useUserAuth();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const { status: walletStatus, address: connectedWalletAddress, connect: connectKeplr } = useKeplr();
   const { timeDisplayMode, setTimeDisplayMode, timeClockMode, browserTimeZone } = useLobbyAppearance();
   const scheduleFormId = "schedule-game";
@@ -315,6 +603,15 @@ export default function ChallengeWorkspace() {
   const requestedKind = searchParams.get("kind");
   const requestedCountry = searchParams.get("country");
   const requestedFocusId = Number.parseInt(searchParams.get("focus") || "", 10);
+  const challengeHallView = parseChallengeHallView(searchParams.get("view"));
+  const challengeHallExtreme = challengeHallView === "extreme";
+  const routeFocusId =
+    typeof initialFocusId === "number" && Number.isFinite(initialFocusId) && initialFocusId > 0
+      ? initialFocusId
+      : null;
+  const effectiveFocusId =
+    routeFocusId ??
+    (Number.isFinite(requestedFocusId) && requestedFocusId > 0 ? requestedFocusId : null);
   const isNationalChallengeFlow =
     requestedKind === "national" || requestedTitle === "national" || Boolean(requestedCountry);
   const initialNationalCountry = isRepresentedCountry(requestedCountry) ? requestedCountry : "";
@@ -381,7 +678,10 @@ export default function ChallengeWorkspace() {
       setLoading(true);
 
       try {
-        const response = await fetch("/api/challenges", {
+        const challengeApiHref = effectiveFocusId
+          ? `/api/challenges?focus=${effectiveFocusId}`
+          : "/api/challenges";
+        const response = await fetch(challengeApiHref, {
           cache: "no-store",
         });
 
@@ -416,7 +716,7 @@ export default function ChallengeWorkspace() {
     return () => {
       cancelled = true;
     };
-  }, [authLoading, isAuthenticated]);
+  }, [authLoading, effectiveFocusId, isAuthenticated]);
 
   useEffect(() => {
     setScheduledAt(defaultScheduledAtValue());
@@ -502,7 +802,29 @@ export default function ChallengeWorkspace() {
 
   const historyMatches = useMemo(() => snapshot.historyMatches.slice(0, 8), [snapshot.historyMatches]);
 
-  const recentActivities = useMemo(() => snapshot.activities.slice(0, 8), [snapshot.activities]);
+  const visibleMatchTiles = useMemo(() => {
+    const byId = new Map<number, ActivityMatch>();
+    for (const match of [...activeRunwayMatches, ...snapshot.historyMatches]) {
+      byId.set(match.id, match);
+    }
+    return Array.from(byId.values());
+  }, [activeRunwayMatches, snapshot.historyMatches]);
+
+  const recentActivities = useMemo(() => {
+    const syntheticSettlementRows = buildSyntheticSettlementActivities(snapshot.historyMatches);
+    const seen = new Set<string>();
+
+    return [...snapshot.activities, ...syntheticSettlementRows]
+      .filter((activity) => {
+        const key = `${activity.scheduledMatchId}:${activity.eventType}:${activity.actorUid || "system"}:${metadataString(activity, "bucket") || ""}:${metadataString(activity, "settlementTarget") || ""}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime())
+      .slice(0, 12);
+  }, [snapshot.activities, snapshot.historyMatches]);
+
   const activityMatchById = useMemo(() => {
     const matches = new Map<number, ActivityMatch>();
     for (const match of [...snapshot.scheduledMatches, ...snapshot.historyMatches]) {
@@ -594,8 +916,8 @@ export default function ChallengeWorkspace() {
               ? "Recording..."
               : `Create + Fund ${totalFundingPreview.toLocaleString()} WOLO`;
   const focusedMatch = useMemo(
-    () => activeRunwayMatches.find((match) => match.id === focusedMatchId) || activeRunwayMatches[0] || null,
-    [activeRunwayMatches, focusedMatchId]
+    () => visibleMatchTiles.find((match) => match.id === focusedMatchId) || visibleMatchTiles[0] || null,
+    [focusedMatchId, visibleMatchTiles]
   );
   const focusedCounterpart = useMemo(() => {
     if (!focusedMatch || !uid) {
@@ -606,25 +928,22 @@ export default function ChallengeWorkspace() {
   }, [focusedMatch, uid]);
 
   useEffect(() => {
-    if (activeRunwayMatches.length === 0) {
+    if (visibleMatchTiles.length === 0) {
       setFocusedMatchId(null);
       return;
     }
 
-    if (
-      Number.isFinite(requestedFocusId) &&
-      activeRunwayMatches.some((match) => match.id === requestedFocusId)
-    ) {
-      setFocusedMatchId(requestedFocusId);
+    if (effectiveFocusId && visibleMatchTiles.some((match) => match.id === effectiveFocusId)) {
+      setFocusedMatchId(effectiveFocusId);
       return;
     }
 
     setFocusedMatchId((current) =>
-      current && activeRunwayMatches.some((match) => match.id === current)
+      current && visibleMatchTiles.some((match) => match.id === current)
         ? current
-        : activeRunwayMatches[0].id
+        : visibleMatchTiles[0].id
     );
-  }, [activeRunwayMatches, requestedFocusId]);
+  }, [effectiveFocusId, visibleMatchTiles]);
 
   function toggleSiteTimePreference() {
     setTimeDisplayMode(timeDisplayMode === "local" ? "utc" : "local");
@@ -872,6 +1191,8 @@ export default function ChallengeWorkspace() {
       }
 
       setSnapshot(fundedPayload);
+      setFocusedMatchId(createdChallengeId);
+      router.push(`/challenge/${createdChallengeId}`);
       setNotice(
         duplicateWarning
           ? `${duplicateWarning} Challenge funded. Opponent can accept + fund.`
@@ -893,20 +1214,39 @@ export default function ChallengeWorkspace() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-[min(96vw,92rem)] space-y-5 py-5 text-white sm:space-y-6 sm:py-6">
+    <main
+      className={`${
+        challengeHallExtreme
+          ? "mx-auto w-full max-w-[min(98vw,118rem)] space-y-5 px-3 py-4 text-white sm:space-y-6 sm:px-5 sm:py-5 lg:px-8"
+          : "mx-auto w-full max-w-[min(96vw,92rem)] space-y-5 py-5 text-white sm:space-y-6 sm:py-6"
+      }`}
+    >
       <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(251,191,36,0.16),_transparent_30%),radial-gradient(circle_at_bottom_right,_rgba(34,197,94,0.10),_transparent_24%),linear-gradient(135deg,_#101828,_#0f172a_45%,_#020617)] p-6 sm:p-8">
         <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
           <div className="space-y-5">
             <div className="text-sm uppercase tracking-[0.4em] text-amber-200/70">Challenge</div>
-            <h1 className="max-w-3xl text-4xl font-semibold leading-[1.02] text-white sm:text-5xl">
+            <h1
+              className={`${
+                challengeHallExtreme
+                  ? "max-w-5xl bg-[linear-gradient(180deg,#fff7d6_0%,#f0cf78_27%,#c18a2d_65%,#74420f_100%)] bg-clip-text font-serif text-[clamp(3.15rem,5.8vw,7rem)] font-semibold leading-[0.88] tracking-[-0.055em] text-transparent drop-shadow-[0_16px_34px_rgba(0,0,0,0.85)]"
+                  : "max-w-3xl text-4xl font-semibold leading-[1.02] text-white sm:text-5xl"
+              }`}
+            >
               Schedule Matches
             </h1>
+            {challengeHallExtreme ? (
+              <p className="max-w-3xl font-serif text-base italic tracking-[0.08em] text-amber-100/56 sm:text-lg">
+                summon the duel · lock the rail · let the record remember
+              </p>
+            ) : null}
 
             <div className="flex flex-wrap gap-2">
               <HeroPill>{snapshot.candidates.length} players available</HeroPill>
               <HeroPill>{pendingIncomingCount} awaiting you</HeroPill>
               <HeroPill live>{readyCount} match-ready</HeroPill>
             </div>
+
+            <ChallengeHallBaEToggle view={challengeHallView} search={searchParams.toString()} />
 
             <div className="flex flex-wrap gap-3">
               <Link
@@ -954,8 +1294,14 @@ export default function ChallengeWorkspace() {
         </div>
       </section>
 
-      <section className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1.08fr)_minmax(24rem,0.92fr)] 2xl:grid-cols-[minmax(0,1.12fr)_minmax(27rem,0.88fr)]">
-        <section className="min-w-0 space-y-6">
+      <section
+        className={`${
+          challengeHallExtreme
+            ? "grid min-w-0 gap-6 xl:grid-cols-[minmax(32rem,0.74fr)_minmax(0,1.26fr)] 2xl:grid-cols-[minmax(34rem,0.68fr)_minmax(0,1.32fr)]"
+            : "grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1.08fr)_minmax(24rem,0.92fr)] 2xl:grid-cols-[minmax(0,1.12fr)_minmax(27rem,0.88fr)]"
+        }`}
+      >
+        <section className={`${challengeHallExtreme ? "xl:order-2" : ""} min-w-0 space-y-6`}>
           <section
             id={scheduleFormId}
             className="relative overflow-hidden rounded-[2rem] border border-amber-200/16 bg-[radial-gradient(circle_at_8%_0%,rgba(251,191,36,0.16),transparent_32%),radial-gradient(circle_at_95%_90%,rgba(34,211,238,0.10),transparent_28%),linear-gradient(160deg,rgba(12,19,34,0.98),rgba(2,6,23,0.98))] p-5 shadow-[0_32px_80px_rgba(0,0,0,0.28)] sm:p-7"
@@ -1346,9 +1692,9 @@ export default function ChallengeWorkspace() {
               </div>
             </div>
 
-            {activeRunwayMatches.length > 1 ? (
+            {visibleMatchTiles.length > 1 ? (
               <div className="mt-4 flex flex-wrap gap-2">
-                {activeRunwayMatches.map((match) => {
+                {visibleMatchTiles.map((match) => {
                   const counterpart =
                     uid && match.challenger.uid === uid ? match.challenged : match.challenger;
                   const active = focusedMatch.id === match.id;
@@ -1402,7 +1748,7 @@ export default function ChallengeWorkspace() {
               ) : null}
               {focusedCounterpart ? (
                 <Link
-                  href={`/contact-emaren?user=${encodeURIComponent(focusedCounterpart.uid)}`}
+                  href={`/challenge/${focusedMatch.id}`}
                   className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.05] px-3 py-1.5 text-[11px] font-medium text-white transition hover:border-white/25 hover:bg-white/[0.08]"
                 >
                   <MessageSquareMore className="h-3.5 w-3.5" />
@@ -1442,8 +1788,10 @@ export default function ChallengeWorkspace() {
           </section>
         </section>
 
-        <section className="min-w-0 space-y-6">
-          <section className="min-w-0 overflow-hidden rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-5 sm:p-6">
+        <section className={`${challengeHallExtreme ? "min-w-0 space-y-6 xl:contents" : "min-w-0 space-y-6"}`}>
+          <section
+            className={`${challengeHallExtreme ? "xl:order-2 xl:col-start-2" : ""} min-w-0 overflow-hidden rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-5 sm:p-6`}
+          >
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <div className="text-xs uppercase tracking-[0.35em] text-cyan-200/70">Your Runway</div>
@@ -1484,13 +1832,17 @@ export default function ChallengeWorkspace() {
             </div>
           </section>
 
-          <section className="min-w-0 overflow-hidden rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-5 sm:p-6">
+          <section
+            className={`${challengeHallExtreme ? "xl:order-1 xl:col-span-2 rounded-[2rem] border-amber-100/14 bg-[radial-gradient(circle_at_10%_0%,rgba(251,191,36,0.10),transparent_28%),radial-gradient(circle_at_95%_80%,rgba(14,165,233,0.08),transparent_26%),rgba(2,6,23,0.82)] shadow-[0_30px_110px_rgba(0,0,0,0.34)]" : "rounded-[1.8rem] border-white/10 bg-slate-950/75"} min-w-0 overflow-hidden border p-5 sm:p-6`}
+          >
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <div className="text-xs uppercase tracking-[0.35em] text-slate-300/70">
+                <div className="text-xs uppercase tracking-[0.35em] text-amber-100/45">
                   Challenge Activity
                 </div>
-                <h3 className="mt-2 text-xl font-semibold text-white">Recent Challenge Activity</h3>
+                <h3 className={`${challengeHallExtreme ? "font-serif text-3xl font-semibold tracking-[-0.035em] text-amber-50/90 sm:text-4xl" : "text-xl font-semibold text-white"} mt-2`}>
+                  Recent Challenge Activity
+                </h3>
               </div>
               <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
                 {recentActivities.length} shown
@@ -1504,35 +1856,42 @@ export default function ChallengeWorkspace() {
                 </div>
               ) : (
                 recentActivities.map((activity) => (
-                  <div
+                  <Link
                     key={`${activity.scheduledMatchId}-${activity.id}`}
-                    className="flex flex-wrap items-center justify-between gap-3 rounded-[1rem] border border-white/10 bg-white/[0.04] px-3 py-2.5"
+                    href={`/challenge/${activity.scheduledMatchId}`}
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-[1rem] border border-white/10 bg-white/[0.04] px-3 py-2.5 transition hover:border-amber-100/22 hover:bg-white/[0.065]"
                   >
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-sm font-semibold text-white">
                         {formatActivityCompact(activity, activityMatchById.get(activity.scheduledMatchId))}
                       </div>
                       <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500">
-                        {activity.actorName ? `${activity.actorName} · ` : ""}
+                        Match #{activity.scheduledMatchId}
+                        {activity.actorName ? ` · ${activity.actorName}` : ""}
+                        {" · "}
                         <TimeDisplayText value={activity.createdAt} className="text-slate-400" />
                       </div>
                     </div>
-                    <div className="shrink-0 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-slate-300">
-                      #{activity.scheduledMatchId}
+                    <div className="shrink-0 rounded-full border border-amber-100/12 bg-amber-100/[0.045] px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-amber-100/72">
+                      {formatActivityBadge(activity)}
                     </div>
-                  </div>
+                  </Link>
                 ))
               )}
             </div>
           </section>
 
-          <section className="min-w-0 overflow-hidden rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-5 sm:p-6">
+          <section
+            className={`${challengeHallExtreme ? "xl:order-3 xl:col-span-2 rounded-[2rem] border-white/10 bg-slate-950/66" : "rounded-[1.8rem] border-white/10 bg-slate-950/75"} min-w-0 overflow-hidden border p-5 sm:p-6`}
+          >
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <div className="text-xs uppercase tracking-[0.35em] text-slate-300/70">
                   Challenge History
                 </div>
-                <h3 className="mt-2 text-xl font-semibold text-white">Past Scheduled Matches</h3>
+                <h3 className={`${challengeHallExtreme ? "font-serif text-3xl font-semibold tracking-[-0.035em] text-amber-50/86 sm:text-4xl" : "text-xl font-semibold text-white"} mt-2`}>
+                  Past Scheduled Matches
+                </h3>
               </div>
               <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
                 {snapshot.historyMatches.length} tracked
