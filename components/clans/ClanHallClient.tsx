@@ -447,7 +447,7 @@ export default function ClanHallClient({
                     height={240}
                     priority
                     sizes="(max-width: 1024px) 82vw, 520px"
-                    className="mx-auto h-auto w-full object-contain drop-shadow-[0_0_34px_rgba(168,85,247,0.28)]"
+                    className="mx-auto h-auto w-full object-contain mix-blend-screen drop-shadow-[0_0_34px_rgba(168,85,247,0.28)]"
                   />
                 </div>
               </div>
