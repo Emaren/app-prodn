@@ -316,14 +316,149 @@ function TeamNameStack({
   );
 }
 
+function TeamBattleBookPanel({
+  label,
+  names,
+  amount,
+  won,
+  tone,
+}: {
+  label: string;
+  names: string[];
+  amount: number;
+  won: boolean;
+  tone: "left" | "right";
+}) {
+  const teamSize = Math.max(1, names.length);
+
+  return (
+    <article
+      className={`min-w-0 rounded-[1.35rem] border px-5 py-5 shadow-[0_18px_54px_rgba(0,0,0,0.24)] ${
+        tone === "right"
+          ? "border-emerald-200/18 bg-emerald-300/[0.055]"
+          : "border-white/10 bg-black/18"
+      }`}
+    >
+      <div className="flex min-w-0 items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div
+            className={`text-[10px] font-black uppercase tracking-[0.34em] ${
+              tone === "right" ? "text-emerald-100/50" : "text-slate-500"
+            }`}
+          >
+            {label}
+          </div>
+          <div className="mt-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+            {teamSize} players
+          </div>
+        </div>
+
+        {won ? (
+          <span className="rounded-full border border-emerald-200/24 bg-emerald-300/12 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-emerald-100">
+            Winner
+          </span>
+        ) : null}
+      </div>
+
+      <div className="mt-5 grid gap-2">
+        {names.map((name, index) => (
+          <div
+            key={`${label}-${name}-${index}`}
+            title={name}
+            className="min-w-0 rounded-xl border border-white/8 bg-black/22 px-3 py-2"
+          >
+            <div
+              className={`${teamNameSizeClass(
+                name,
+                teamSize
+              )} min-w-0 max-w-full overflow-hidden bg-gradient-to-b from-white via-slate-100 to-slate-600 bg-clip-text font-extrabold leading-[1.06] tracking-[-0.035em] text-transparent [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [overflow-wrap:anywhere]`}
+            >
+              {name}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-5 rounded-[1rem] border border-white/9 bg-black/24 px-4 py-3">
+        <div className="text-[9px] font-black uppercase tracking-[0.28em] text-slate-500">
+          WOLO Exposure
+        </div>
+        <div className="mt-1 text-3xl font-black tracking-[-0.04em] text-white">
+          {formatWolo(amount)}
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function TeamBattleBook({
+  matchup,
+  leftAmount,
+  rightAmount,
+  leftWon,
+  rightWon,
+}: {
+  matchup: ReturnType<typeof splitTeamMatchTitle>;
+  leftAmount: number;
+  rightAmount: number;
+  leftWon: boolean;
+  rightWon: boolean;
+}) {
+  if (!matchup.isBalancedTeamMatch || !matchup.rightTeam.length) {
+    return (
+      <div className="grid gap-4 md:grid-cols-2">
+        <AdvancedSidePanel label="Left" name={matchup.leftTeam.join(" / ")} amount={leftAmount} won={leftWon} />
+        <AdvancedSidePanel label="Right" name={matchup.rightTeam.join(" / ")} amount={rightAmount} won={rightWon} />
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="mb-3 flex items-center justify-center gap-3">
+        <div className="h-px w-20 bg-amber-200/28" />
+        <div className="rounded-full border border-amber-200/22 bg-amber-200/[0.075] px-4 py-1 text-[10px] font-black uppercase tracking-[0.3em] text-amber-100/80">
+          {matchup.teamSize} VS {matchup.teamSize}
+        </div>
+        <div className="h-px w-20 bg-amber-200/28" />
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+        <TeamBattleBookPanel
+          label="Left Team"
+          names={matchup.leftTeam}
+          amount={leftAmount}
+          won={leftWon}
+          tone="left"
+        />
+
+        <div className="hidden items-center justify-center xl:flex">
+          <div className="rounded-full border border-amber-200/20 bg-black/28 px-4 py-3 font-serif text-xl font-semibold text-amber-50">
+            VS
+          </div>
+        </div>
+
+        <TeamBattleBookPanel
+          label="Right Team"
+          names={matchup.rightTeam}
+          amount={rightAmount}
+          won={rightWon}
+          tone="right"
+        />
+      </div>
+    </div>
+  );
+}
 function PremiumMatchTitle({
   title,
   layout = "stacked",
+  matchup: suppliedMatchup,
 }: {
   title: string;
   layout?: "stacked" | "wide";
+  matchup?: ReturnType<typeof splitTeamMatchTitle>;
 }) {
-  const matchup = splitTeamMatchTitle(title);
+  const matchup = suppliedMatchup ?? splitTeamMatchTitle(title);
 
   if (!matchup.rightTeam.length) {
     return (
@@ -670,6 +805,7 @@ export default async function BetMarketDetailPage({ params, searchParams }: Page
   );
 
   const replayHref = gameHref(market);
+  const resolvedTeamMatchup = splitTeamMatchTitle(market.title);
 
   if (view === "basic") {
     return (
@@ -746,7 +882,7 @@ export default async function BetMarketDetailPage({ params, searchParams }: Page
                 </span>
               </div>
 
-              <PremiumMatchTitle title={market.title} layout={view === "extreme" ? "wide" : "stacked"} />
+              <PremiumMatchTitle title={market.title} layout={view === "extreme" ? "wide" : "stacked"} matchup={resolvedTeamMatchup} />
 
               <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-300">
                 {market.eventLabel || "AoE2WAR book"} · winner: {winnerName}
@@ -755,7 +891,21 @@ export default async function BetMarketDetailPage({ params, searchParams }: Page
             </div>
 
             <div className="grid gap-3">
-              <BookMetric label="Visible Book" value={`${formatWolo(visibleBookWolo)} WOLO`} helper={`Payout rail ${formatWolo(payoutRailWolo)} WOLO`} />
+              {view === "extreme" ? (
+                <div className="w-full rounded-[1.15rem] border border-amber-200/18 bg-amber-300/[0.09] px-5 py-4 text-center shadow-[0_18px_54px_rgba(0,0,0,0.24)]">
+                  <div className="text-[10px] font-black uppercase tracking-[0.34em] text-amber-100/58">
+                    Visible Book
+                  </div>
+                  <div className="mt-1 text-4xl font-black tracking-[-0.045em] text-white">
+                    {formatWolo(visibleBookWolo)} WOLO
+                  </div>
+                  <div className="mt-1 text-xs font-semibold text-slate-400">
+                    Payout rail {formatWolo(payoutRailWolo)} WOLO
+                  </div>
+                </div>
+              ) : (
+                <BookMetric label="Visible Book" value={`${formatWolo(visibleBookWolo)} WOLO`} helper={`Payout rail ${formatWolo(payoutRailWolo)} WOLO`} />
+              )}
               <div className="grid grid-cols-3 gap-3">
                 <MiniMetric label="Matched" value={`${formatWolo(matchedWolo)}`} />
                 <MiniMetric label="Open" value={`${formatWolo(openImbalanceWolo)}`} />
@@ -777,10 +927,20 @@ export default async function BetMarketDetailPage({ params, searchParams }: Page
                 </div>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <AdvancedSidePanel label="Left" name={market.leftLabel} amount={leftBookWolo} won={leftWon} />
-                <AdvancedSidePanel label="Right" name={market.rightLabel} amount={rightBookWolo} won={rightWon} />
-              </div>
+              {view === "extreme" ? (
+                <TeamBattleBook
+                  matchup={resolvedTeamMatchup}
+                  leftAmount={leftBookWolo}
+                  rightAmount={rightBookWolo}
+                  leftWon={leftWon}
+                  rightWon={rightWon}
+                />
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2">
+                  <AdvancedSidePanel label="Left" name={market.leftLabel} amount={leftBookWolo} won={leftWon} />
+                  <AdvancedSidePanel label="Right" name={market.rightLabel} amount={rightBookWolo} won={rightWon} />
+                </div>
+              )}
 
               <div className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/45">
                 <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center">
