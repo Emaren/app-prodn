@@ -552,9 +552,22 @@ function RecentThreadCard({
 }
 
 function StorySignals({ thread }: { thread: ForumThreadView }) {
+  const authorHref = thread.author.uid
+    ? `/players/${encodeURIComponent(thread.author.uid)}`
+    : null;
+
   return (
     <div className="flex flex-wrap items-center gap-3 text-[10px] uppercase tracking-[0.18em] text-slate-500">
-      <span>{thread.author.displayName}</span>
+      {authorHref ? (
+        <Link
+          href={authorHref}
+          className="text-amber-100/70 transition hover:text-amber-50"
+        >
+          {thread.author.displayName}
+        </Link>
+      ) : (
+        <span>{thread.author.displayName}</span>
+      )}
       <span>{formatForumDate(thread.updatedAt)}</span>
       <span className="inline-flex items-center gap-1">
         <MessageSquare className="h-3 w-3" />
@@ -734,7 +747,7 @@ function ExtremeForumFrontPage({
       <header className="overflow-hidden rounded-[1.3rem] border border-amber-200/18 bg-[radial-gradient(circle_at_50%_-30%,rgba(251,191,36,0.18),transparent_40%),linear-gradient(145deg,#14100b,#08111d_55%,#04070d)]">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
           <div className="text-[9px] uppercase tracking-[0.3em] text-slate-500">
-            Vol. II · War Room Edition · Est. 1999
+            Vol. III · Saturday Edition · July 4, 2026
           </div>
           <ForumModeToggle viewMode={viewMode} onChange={onViewModeChange} />
           <div
@@ -765,7 +778,7 @@ function ExtremeForumFrontPage({
           </h1>
           <div className="mx-auto mt-4 flex max-w-4xl items-center gap-4 text-[9px] uppercase tracking-[0.26em] text-slate-500">
             <span className="h-px flex-1 bg-white/10" />
-            Replays are evidence · GG is offered · One more game is not a unit of time
+            Saturday · July 4, 2026 · American Championship Edition
             <span className="h-px flex-1 bg-white/10" />
           </div>
         </div>
@@ -1131,7 +1144,16 @@ function ThreadReader({
               size={basic ? "small" : "standard"}
             />
             <div>
-              <div className="font-semibold text-white">{thread.author.displayName}</div>
+              {thread.author.uid ? (
+                <Link
+                  href={`/players/${encodeURIComponent(thread.author.uid)}`}
+                  className="font-semibold text-white transition hover:text-amber-100"
+                >
+                  {thread.author.displayName}
+                </Link>
+              ) : (
+                <div className="font-semibold text-white">{thread.author.displayName}</div>
+              )}
               {!basic ? (
                 <div className="mt-0.5 text-xs text-slate-500">{thread.author.role}</div>
               ) : null}
