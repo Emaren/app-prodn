@@ -995,7 +995,7 @@ const BELT_ACTIVITY_ASSETS = [
   },
   {
     terms: ["usa champion tribute", "usa champion", "united states champion"],
-    src: "/champions/belts/usa.png",
+    src: "/uploads/managed-assets/belt/national-usa-1781561984182-c5fa08c6.png",
     alt: "USA Champion belt",
     badge: "USA Champion",
   },
