@@ -17,6 +17,7 @@ import { WatchAndChatHero } from "@/components/lobby/WatchAndChatHero";
 import { WoloMarketTile } from "@/components/lobby/WoloMarketTile";
 import { HeroCarousel } from "@/components/hero/HeroCarousel";
 import Aoe2ShortsTile from "@/components/home/Aoe2ShortsTile";
+import HeroTakeoverSlot from "@/components/home/HeroTakeoverSlot";
 import { useTileViewPreference } from "@/components/tile-view/useTileViewPreference";
 import { buildChatItems } from "@/components/lobby/utils";
 import { useUserAuth } from "@/context/UserAuthContext";
@@ -1762,7 +1763,9 @@ return (
             viewMode={viewMode}
             surface={isExtremeLobby ? "extreme" : "standard"}
           />
-          <HeroCarousel playlist={initialHeroPlaylist} />
+          <HeroTakeoverSlot>
+            <HeroCarousel playlist={initialHeroPlaylist} />
+          </HeroTakeoverSlot>
           <Aoe2ShortsTile />
           <WatchAndChatHero
             tournament={tournament}
