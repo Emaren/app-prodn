@@ -1,7 +1,13 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 type HeroStageTransitionStyle = "fade" | "slide" | "cut";
 
@@ -53,10 +59,43 @@ function rotateIndex(current: number, count: number, direction: 1 | -1) {
   return (current + direction + count) % count;
 }
 
+function isHeroApiImage(url: string) {
+  return url.startsWith("/api/hero-stage-takeover/image/");
+}
+
+function heroImageUrl(url: string, width = 1840, quality = 94) {
+  if (!isHeroApiImage(url)) return url;
+  const separator = url.includes("?") ? "&" : "?";
+  return `${url}${separator}w=${width}&fmt=webp&q=${quality}`;
+}
+
+function heroImageSrcSet(url: string) {
+  if (!isHeroApiImage(url)) return undefined;
+
+  return [
+    [920, 92],
+    [1280, 93],
+    [1840, 94],
+    [2760, 94],
+    [3680, 94],
+  ]
+    .map(([width, quality]) => `${heroImageUrl(url, width, quality)} ${width}w`)
+    .join(", ");
+}
+
+function slideKey(slide: HeroStageTakeoverSlide) {
+  return slide.id || slide.imageUrl;
+}
+
 export default function HeroTakeoverSlot({ children }: { children: ReactNode }) {
   const [state, setState] = useState<HeroTakeoverState | null>(null);
   const [ready, setReady] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [loadedByKey, setLoadedByKey] = useState<Record<string, boolean>>({});
+  const [displayIndex, setDisplayIndex] = useState(0);
+  const [pendingIndex, setPendingIndex] = useState<number | null>(null);
+  const [previousSlide, setPreviousSlide] = useState<HeroStageTakeoverSlide | null>(null);
+  const [revealed, setRevealed] = useState(true);
+  const inflightRef = useRef<Record<string, boolean>>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -81,138 +120,150 @@ export default function HeroTakeoverSlot({ children }: { children: ReactNode }) 
     };
   }, []);
 
-  const slides = useMemo(() => state?.slides?.filter((slide) => slide.imageUrl) || [], [state]);
+  const slides = useMemo(
+    () => state?.slides?.filter((slide) => slide.imageUrl) || [],
+    [state]
+  );
+
+  const markLoaded = useCallback((slide: HeroStageTakeoverSlide) => {
+    const key = slideKey(slide);
+    setLoadedByKey((current) => {
+      if (current[key]) return current;
+      return { ...current, [key]: true };
+    });
+  }, []);
+
+  const preloadSlide = useCallback(
+    (slide: HeroStageTakeoverSlide | null | undefined, priority = false) => {
+      if (!slide?.imageUrl || typeof window === "undefined") return;
+
+      const key = slideKey(slide);
+      if (loadedByKey[key] || inflightRef.current[key]) return;
+
+      inflightRef.current[key] = true;
+
+      const img = new window.Image();
+      img.decoding = "async";
+      img.src = heroImageUrl(slide.imageUrl, priority ? 1840 : 1280, priority ? 94 : 92);
+
+      const done = () => {
+        markLoaded(slide);
+        inflightRef.current[key] = false;
+      };
+
+      if (typeof img.decode === "function") {
+        img.decode().then(done).catch(done);
+      } else {
+        img.onload = done;
+        img.onerror = done;
+      }
+    },
+    [loadedByKey, markLoaded]
+  );
 
   useEffect(() => {
-    setActiveIndex(0);
+    setDisplayIndex(0);
+    setPendingIndex(null);
+    setPreviousSlide(null);
+    setRevealed(true);
   }, [slides.length]);
 
   useEffect(() => {
-    if (!state?.active || slides.length <= 1) return;
+    if (!slides.length) return;
+
+    preloadSlide(slides[0], true);
+    preloadSlide(slides[1], false);
+  }, [preloadSlide, slides]);
+
+  const currentSlide = slides[displayIndex] || slides[0] || null;
+  const currentReady = currentSlide ? Boolean(loadedByKey[slideKey(currentSlide)]) : false;
+
+  const commitIndex = useCallback(
+    (nextIndex: number) => {
+      if (!slides[nextIndex]) return;
+
+      const transitionMs =
+        state?.transitionStyle === "cut" ? 0 : Math.max(0, state?.transitionMs ?? 900);
+
+      setPreviousSlide(slides[displayIndex] || null);
+      setDisplayIndex(nextIndex);
+      setPendingIndex(null);
+      setRevealed(false);
+
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => setRevealed(true));
+      });
+
+      window.setTimeout(() => {
+        setPreviousSlide(null);
+      }, transitionMs + 80);
+
+      preloadSlide(slides[rotateIndex(nextIndex, slides.length, 1)], false);
+    },
+    [displayIndex, preloadSlide, slides, state?.transitionMs, state?.transitionStyle]
+  );
+
+  const queueRotate = useCallback(
+    (direction: 1 | -1) => {
+      if (slides.length <= 1) return;
+
+      const nextIndex = rotateIndex(displayIndex, slides.length, direction);
+      const nextSlide = slides[nextIndex];
+      if (!nextSlide) return;
+
+      preloadSlide(nextSlide, true);
+
+      if (loadedByKey[slideKey(nextSlide)]) {
+        commitIndex(nextIndex);
+      } else {
+        setPendingIndex(nextIndex);
+      }
+    },
+    [commitIndex, displayIndex, loadedByKey, preloadSlide, slides]
+  );
+
+  useEffect(() => {
+    if (pendingIndex === null) return;
+
+    const pendingSlide = slides[pendingIndex];
+    if (!pendingSlide) {
+      setPendingIndex(null);
+      return;
+    }
+
+    if (loadedByKey[slideKey(pendingSlide)]) {
+      commitIndex(pendingIndex);
+    }
+  }, [commitIndex, loadedByKey, pendingIndex, slides]);
+
+  useEffect(() => {
+    if (!state?.active || slides.length <= 1 || !currentReady) return;
 
     const interval = window.setInterval(() => {
-      setActiveIndex((current) => rotateIndex(current, slides.length, 1));
+      queueRotate(1);
     }, Math.max(2500, state.intervalMs || 8000));
 
     return () => window.clearInterval(interval);
-  }, [state?.active, state?.intervalMs, slides.length]);
+  }, [currentReady, queueRotate, slides.length, state?.active, state?.intervalMs]);
 
   if (!ready) {
     return <>{children}</>;
   }
 
-  if (!state?.active || slides.length < 1) {
+  if (!state?.active || slides.length < 1 || !currentSlide || !currentReady) {
     return <>{children}</>;
   }
 
-  const currentSlide = slides[activeIndex] || slides[0];
   const href = safeHref(currentSlide.linkUrl || state.linkUrl || "/forum");
   const label = currentSlide.title || state.title || "Open AoE2WAR hero dispatch";
   const transitionMs = state.transitionStyle === "cut" ? 0 : Math.max(0, state.transitionMs ?? 900);
-
-  function rotate(direction: 1 | -1) {
-    setActiveIndex((current) => rotateIndex(current, slides.length, direction));
-  }
+  const currentSrcSet = heroImageSrcSet(currentSlide.imageUrl);
 
   function openCurrent() {
     if (href) {
       window.location.href = href;
     }
   }
-
-  const visual = (
-    <>
-      {slides.map((slide, index) => {
-        const active = index === activeIndex;
-        const previous = index < activeIndex;
-        const useSlide = state.transitionStyle === "slide";
-
-        return (
-          <img
-            key={slide.id || slide.imageUrl}
-            src={slide.imageUrl}
-            alt={active ? slide.imageAlt || label : ""}
-            aria-hidden={!active}
-            className={[
-              "absolute inset-0 h-full w-full object-contain object-center",
-              state.transitionStyle === "cut" ? "" : "transition-all ease-out",
-              active ? "z-10 opacity-100" : "z-0 opacity-0",
-              useSlide
-                ? active
-                  ? "translate-x-0"
-                  : previous
-                    ? "-translate-x-[2%]"
-                    : "translate-x-[2%]"
-                : "",
-            ].join(" ")}
-            style={{ transitionDuration: `${transitionMs}ms` }}
-            draggable={false}
-          />
-        );
-      })}
-
-      <div className="pointer-events-none absolute inset-0 z-20 ring-1 ring-inset ring-white/10" />
-
-      {slides.length > 1 ? (
-        <>
-          <button
-            type="button"
-            aria-label="Previous hero image"
-            onClick={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              rotate(-1);
-            }}
-            className="absolute inset-y-0 left-0 z-30 w-[18%] cursor-w-resize bg-transparent"
-          />
-          <button
-            type="button"
-            aria-label="Next hero image"
-            onClick={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              rotate(1);
-            }}
-            className="absolute inset-y-0 right-0 z-30 w-[18%] cursor-e-resize bg-transparent"
-          />
-        </>
-      ) : null}
-
-      <button
-        type="button"
-        aria-label={label}
-        onClick={openCurrent}
-        className="absolute inset-x-[18%] inset-y-0 z-20 cursor-pointer bg-transparent"
-      />
-
-      {href ? (
-        <button
-          type="button"
-          onClick={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            openCurrent();
-          }}
-          className="absolute bottom-4 right-4 z-40 rounded-full border border-white/14 bg-black/42 px-4 py-2 text-[10px] font-black uppercase tracking-[0.22em] text-white/88 shadow-[0_12px_28px_rgba(0,0,0,0.30)] backdrop-blur-md transition hover:border-amber-200/40 hover:text-amber-50 sm:bottom-5 sm:right-5"
-        >
-          Open the dispatch ↗
-        </button>
-      ) : null}
-
-      {slides.length > 1 ? (
-        <div className="pointer-events-none absolute bottom-5 left-1/2 z-40 flex -translate-x-1/2 gap-1.5">
-          {slides.map((slide, index) => (
-            <span
-              key={slide.id || slide.imageUrl}
-              className={`h-1 rounded-full transition-all ${
-                index === activeIndex ? "w-7 bg-amber-200/90" : "w-1.5 bg-white/24"
-              }`}
-            />
-          ))}
-        </div>
-      ) : null}
-    </>
-  );
 
   const frameClass =
     "absolute inset-0 z-10 overflow-hidden rounded-[2rem] border border-amber-200/18 bg-black shadow-[0_28px_90px_rgba(0,0,0,0.52)]";
@@ -224,7 +275,114 @@ export default function HeroTakeoverSlot({ children }: { children: ReactNode }) 
       </div>
 
       <div aria-label={label} className={`${frameClass} group`}>
-        {visual}
+        {previousSlide ? (
+          <picture>
+            {heroImageSrcSet(previousSlide.imageUrl) ? (
+              <source
+                type="image/webp"
+                srcSet={heroImageSrcSet(previousSlide.imageUrl)}
+                sizes="min(100vw, 1840px)"
+              />
+            ) : null}
+            <img
+              src={heroImageUrl(previousSlide.imageUrl, 1840, 94)}
+              alt=""
+              aria-hidden="true"
+              className={[
+                "absolute inset-0 z-10 h-full w-full object-contain object-center transition-all ease-out",
+                revealed ? "opacity-0" : "opacity-100",
+                state.transitionStyle === "slide" && revealed ? "-translate-x-[1.4%]" : "translate-x-0",
+              ].join(" ")}
+              style={{ transitionDuration: `${transitionMs}ms` }}
+              draggable={false}
+            />
+          </picture>
+        ) : null}
+
+        <picture>
+          {currentSrcSet ? (
+            <source
+              type="image/webp"
+              srcSet={currentSrcSet}
+              sizes="min(100vw, 1840px)"
+            />
+          ) : null}
+          <img
+            src={heroImageUrl(currentSlide.imageUrl, 1840, 94)}
+            alt={currentSlide.imageAlt || label}
+            className={[
+              "absolute inset-0 z-20 h-full w-full object-contain object-center transition-all ease-out",
+              revealed ? "opacity-100" : "opacity-0",
+              state.transitionStyle === "slide" && !revealed ? "translate-x-[1.4%]" : "translate-x-0",
+            ].join(" ")}
+            style={{ transitionDuration: `${transitionMs}ms` }}
+            loading="eager"
+            decoding="async"
+            onLoad={() => markLoaded(currentSlide)}
+            draggable={false}
+          />
+        </picture>
+
+        <div className="pointer-events-none absolute inset-0 z-30 ring-1 ring-inset ring-white/10" />
+
+        {slides.length > 1 ? (
+          <>
+            <button
+              type="button"
+              aria-label="Previous hero image"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                queueRotate(-1);
+              }}
+              className="absolute inset-y-0 left-0 z-40 w-[18%] cursor-w-resize bg-transparent"
+            />
+            <button
+              type="button"
+              aria-label="Next hero image"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                queueRotate(1);
+              }}
+              className="absolute inset-y-0 right-0 z-40 w-[18%] cursor-e-resize bg-transparent"
+            />
+          </>
+        ) : null}
+
+        <button
+          type="button"
+          aria-label={label}
+          onClick={openCurrent}
+          className="absolute inset-x-[18%] inset-y-0 z-30 cursor-pointer bg-transparent"
+        />
+
+        {href ? (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              openCurrent();
+            }}
+            className="absolute bottom-4 right-4 z-50 rounded-full border border-white/14 bg-black/42 px-4 py-2 text-[10px] font-black uppercase tracking-[0.22em] text-white/88 shadow-[0_12px_28px_rgba(0,0,0,0.30)] backdrop-blur-md transition hover:border-amber-200/40 hover:text-amber-50 sm:bottom-5 sm:right-5"
+          >
+            Open the dispatch ↗
+          </button>
+        ) : null}
+
+        {slides.length > 1 ? (
+          <div className="pointer-events-none absolute bottom-5 left-1/2 z-50 flex -translate-x-1/2 gap-1.5">
+            {slides.map((slide, index) => (
+              <span
+                key={slideKey(slide)}
+                className={`h-1 rounded-full transition-all ${
+                  index === displayIndex ? "w-7 bg-amber-200/90" : "w-1.5 bg-white/24"
+                }`}
+              />
+            ))}
+          </div>
+        ) : null}
       </div>
     </div>
   );

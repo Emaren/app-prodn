@@ -54,6 +54,14 @@ function toDateTimeLocal(value: string | null) {
   return local.toISOString().slice(0, 16);
 }
 
+
+function adminHeroPreviewUrl(url: string | null | undefined, width = 920) {
+  if (!url) return "";
+  if (!url.startsWith("/api/hero-stage-takeover/image/")) return url;
+  const separator = url.includes("?") ? "&" : "?";
+  return `${url}${separator}w=${width}&fmt=webp&q=92`;
+}
+
 function slideLabel(slide: HeroStageTakeoverSlide, index: number) {
   return slide.title || slide.imageAlt || slide.filename || `Hero image ${index + 1}`;
 }
@@ -397,7 +405,7 @@ export default function HeroImageTakeoverPanel() {
           <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/40">
             {sortedSlides[0]?.imageUrl ? (
               <img
-                src={sortedSlides[0].imageUrl}
+                src={adminHeroPreviewUrl(sortedSlides[0].imageUrl, 920)}
                 alt={sortedSlides[0].imageAlt || "Hero preview"}
                 className="aspect-[16/7] w-full bg-black object-contain"
                 draggable={false}
@@ -422,7 +430,7 @@ export default function HeroImageTakeoverPanel() {
                   }`}
                 >
                   <img
-                    src={slide.imageUrl}
+                    src={adminHeroPreviewUrl(slide.imageUrl, 320)}
                     alt={slide.imageAlt || slideLabel(slide, index)}
                     className="h-14 w-full rounded-xl bg-black object-contain"
                     draggable={false}
