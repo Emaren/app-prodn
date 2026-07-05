@@ -1,11 +1,14 @@
 "use client";
 
+import Link from "next/link";
+
 import {
   BetBoardSnapshot,
   PendingStakeRecovery,
   CoinMark,
   MiniMetric,
   cardClass,
+  buildBetMarketHistoryHref,
   edgeButton,
   formatCompact,
   formatSettledTime,
@@ -197,53 +200,66 @@ export default function YourBookSection({
 
           <div className="mt-5 space-y-3">
             {board?.yourBook.openWagers.length ? (
-              board.yourBook.openWagers.map((wager) => (
-                <article
-                  key={wager.marketId}
-                  className={`${cardClass()} flex items-center justify-between gap-4 px-4 py-4`}
-                >
-                  <div className="min-w-0">
-                    <div className="break-words text-sm uppercase tracking-[0.28em] text-slate-500">
-                      {wager.eventLabel}
-                    </div>
-                    <div className="mt-2 break-words text-lg font-semibold leading-tight text-white">
-                      {wager.pickedLabel}
-                    </div>
-                    <div className="mt-1 text-sm text-slate-400">{wager.closeLabel}</div>
-                    <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-slate-500">
-                      <span>{wager.slipCount} slip{wager.slipCount === 1 ? "" : "s"}</span>
-                      <span>
-                        {wager.executionMode === "onchain_escrow"
-                          ? "verified escrow"
-                          : "app-side fallback"}
-                      </span>
-                      {wager.stakeTxHash ? (
-                        <span className="font-mono text-slate-400">{shortTxHash(wager.stakeTxHash)}</span>
-                      ) : null}
-                      {wager.stakeProofUrl ? (
-                        <a
-                          href={wager.stakeProofUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-cyan-200 transition hover:text-cyan-100"
-                        >
-                          proof
-                        </a>
-                      ) : null}
-                    </div>
-                  </div>
+              board.yourBook.openWagers.map((wager) => {
+                const marketHistoryHref = buildBetMarketHistoryHref(wager.marketId);
 
-                  <div className="text-right">
-                    <div className="flex items-center justify-end gap-2 text-sm font-semibold text-white">
-                      <CoinMark small />
-                      <span>{formatCompact(wager.amountWolo)}</span>
+                return (
+                  <article
+                    key={wager.marketId}
+                    className={`${cardClass()} flex items-center justify-between gap-4 px-4 py-4`}
+                  >
+                    <div className="min-w-0">
+                      <div className="break-words text-sm uppercase tracking-[0.28em] text-slate-500">
+                        {wager.eventLabel}
+                      </div>
+                      {marketHistoryHref ? (
+                        <Link
+                          href={marketHistoryHref}
+                          className="mt-2 inline-flex break-words text-lg font-semibold leading-tight text-white transition hover:text-amber-100"
+                        >
+                          {wager.pickedLabel}
+                        </Link>
+                      ) : (
+                        <div className="mt-2 break-words text-lg font-semibold leading-tight text-white">
+                          {wager.pickedLabel}
+                        </div>
+                      )}
+                      <div className="mt-1 text-sm text-slate-400">{wager.closeLabel}</div>
+                      <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-slate-500">
+                        <span>{wager.slipCount} slip{wager.slipCount === 1 ? "" : "s"}</span>
+                        <span>
+                          {wager.executionMode === "onchain_escrow"
+                            ? "verified escrow"
+                            : "app-side fallback"}
+                        </span>
+                        {wager.stakeTxHash ? (
+                          <span className="font-mono text-slate-400">{shortTxHash(wager.stakeTxHash)}</span>
+                        ) : null}
+                        {wager.stakeProofUrl ? (
+                          <a
+                            href={wager.stakeProofUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-cyan-200 transition hover:text-cyan-100"
+                          >
+                            proof
+                          </a>
+                        ) : null}
+                      </div>
                     </div>
-                    <div className="mt-1 text-xs text-slate-400">
-                      {formatCompact(wager.projectedReturnWolo)} back
+
+                    <div className="text-right">
+                      <div className="flex items-center justify-end gap-2 text-sm font-semibold text-white">
+                        <CoinMark small />
+                        <span>{formatCompact(wager.amountWolo)}</span>
+                      </div>
+                      <div className="mt-1 text-xs text-slate-400">
+                        {formatCompact(wager.projectedReturnWolo)} back
+                      </div>
                     </div>
-                  </div>
-                </article>
-              ))
+                  </article>
+                );
+              })
             ) : (
               <div className={`${insetClass()} px-4 py-5`}>
                 <div className="text-base font-semibold text-white">No slips yet.</div>

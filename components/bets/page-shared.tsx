@@ -265,6 +265,38 @@ export function formatSettledTime(value: string | null) {
   });
 }
 
+export function buildBetMarketHistoryHref(marketId: number | null | undefined) {
+  if (
+    typeof marketId !== "number" ||
+    !Number.isSafeInteger(marketId) ||
+    marketId <= 0
+  ) {
+    return null;
+  }
+
+  return `/bets/${marketId}`;
+}
+
+export function buildBetGameStatsHref(input: {
+  linkedGameStatsId: number | null | undefined;
+  linkedSessionKey: string | null | undefined;
+}) {
+  if (
+    typeof input.linkedGameStatsId === "number" &&
+    Number.isSafeInteger(input.linkedGameStatsId) &&
+    input.linkedGameStatsId > 0
+  ) {
+    return `/game-stats/${input.linkedGameStatsId}`;
+  }
+
+  const sessionKey = input.linkedSessionKey?.trim();
+  return sessionKey ? `/game-stats/live/${encodeURIComponent(sessionKey)}` : null;
+}
+
+export function isBetMarketHistoryHref(value: string | null | undefined) {
+  return Boolean(value && /^\/bets\/[1-9]\d*(?:[/?#]|$)/.test(value));
+}
+
 export function isRecoveryBookOpen(status: BetStatus) {
   return status === "open" || status === "closing" || status === "live";
 }

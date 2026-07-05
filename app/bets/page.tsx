@@ -15,7 +15,11 @@ import FounderBonusChips from "@/components/bets/FounderBonusChips";
 import FounderBonusModal from "@/components/bets/FounderBonusModal";
 import LiveStreamFrame from "@/components/streaming/LiveStreamFrame";
 import WarTape from "@/components/bets/WarTape";
-import { isRecoveryBookOpen } from "@/components/bets/page-shared";
+import {
+  buildBetGameStatsHref,
+  buildBetMarketHistoryHref,
+  isRecoveryBookOpen,
+} from "@/components/bets/page-shared";
 import { useUserAuth } from "@/context/UserAuthContext";
 import { useKeplr } from "@/hooks/use-keplr";
 import { useWoloBalance } from "@/hooks/useWoloBalance";
@@ -3682,6 +3686,9 @@ function MarketFeature({
         ? "Add More"
         : "Lock";
   const extremeRoster = buildExtremeMarketRoster(market);
+  const marketHistoryHref = buildBetMarketHistoryHref(market.id);
+  const gameStatsHref = buildBetGameStatsHref(market);
+  const gameStatsLabel = market.status === "live" ? "Live Stats" : "Game Stats";
 
   if (detailMode === "extreme" && extremeRoster.isBalancedTeamGame) {
     return (
@@ -3698,9 +3705,18 @@ function MarketFeature({
             </div>
 
             <div className="mt-5 text-[11px] uppercase tracking-[0.35em] text-slate-500">{eyebrowLabel}</div>
-            <h2 className="mt-2 font-serif text-3xl leading-[1.05] tracking-[-0.025em] text-[#fff6dc] sm:text-4xl">
-              Choose the winning side.
-            </h2>
+            {marketHistoryHref ? (
+              <Link
+                href={marketHistoryHref}
+                className="mt-2 inline-flex font-serif text-3xl leading-[1.05] tracking-[-0.025em] text-[#fff6dc] transition hover:text-amber-100 sm:text-4xl"
+              >
+                Choose the winning side.
+              </Link>
+            ) : (
+              <h2 className="mt-2 font-serif text-3xl leading-[1.05] tracking-[-0.025em] text-[#fff6dc] sm:text-4xl">
+                Choose the winning side.
+              </h2>
+            )}
             <div className="mt-3 max-w-3xl break-words text-sm leading-6 text-slate-400 [overflow-wrap:anywhere] sm:text-base">
               {market.eventLabel}
             </div>
@@ -3709,12 +3725,20 @@ function MarketFeature({
           </div>
 
           <div className="flex flex-wrap items-center gap-2 xl:justify-end">
-            {market.href ? (
+            {marketHistoryHref ? (
               <Link
-                href={market.href}
+                href={marketHistoryHref}
                 className={`inline-flex items-center rounded-full px-3 py-1 text-xs transition ${edgeButton("glass")}`}
               >
-                View Match
+                Market History
+              </Link>
+            ) : null}
+            {gameStatsHref ? (
+              <Link
+                href={gameStatsHref}
+                className={`inline-flex items-center rounded-full px-3 py-1 text-xs transition ${edgeButton("glass")}`}
+              >
+                {gameStatsLabel}
               </Link>
             ) : null}
             {isAdmin ? (
@@ -3864,9 +3888,9 @@ function MarketFeature({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="text-[11px] uppercase tracking-[0.35em] text-slate-500">{eyebrowLabel}</div>
-          {market.href ? (
+          {marketHistoryHref ? (
             <Link
-              href={market.href}
+              href={marketHistoryHref}
               className="mt-2 inline-flex text-3xl font-semibold tracking-[-0.04em] text-white transition hover:text-amber-100 sm:text-4xl"
             >
               {market.title}
@@ -3884,12 +3908,20 @@ function MarketFeature({
           <MarketTimingRail market={market} nowMs={nowMs} />
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
-          {market.href ? (
+          {marketHistoryHref ? (
             <Link
-              href={market.href}
+              href={marketHistoryHref}
               className={`inline-flex items-center rounded-full px-3 py-1 text-xs transition ${edgeButton("glass")}`}
             >
-              View Match
+              Market History
+            </Link>
+          ) : null}
+          {gameStatsHref ? (
+            <Link
+              href={gameStatsHref}
+              className={`inline-flex items-center rounded-full px-3 py-1 text-xs transition ${edgeButton("glass")}`}
+            >
+              {gameStatsLabel}
             </Link>
           ) : null}
           {isAdmin ? (
@@ -4071,6 +4103,9 @@ function MarketCard({
         : "Lock";
   const extremeRoster = buildExtremeMarketRoster(market);
   const isExtremeTeamMarket = detailMode === "extreme" && extremeRoster.isBalancedTeamGame;
+  const marketHistoryHref = buildBetMarketHistoryHref(market.id);
+  const gameStatsHref = buildBetGameStatsHref(market);
+  const gameStatsLabel = market.status === "live" ? "Live Stats" : "Game Stats";
 
   return (
     <article
@@ -4087,16 +4122,25 @@ function MarketCard({
           </div>
           {isExtremeTeamMarket ? (
             <div className="mt-3 flex flex-wrap items-center gap-2">
-              <div className="font-serif text-2xl text-[#fff6dc] sm:text-3xl">
-                Team A <span className="mx-1 text-slate-600">vs</span> Team B
-              </div>
+              {marketHistoryHref ? (
+                <Link
+                  href={marketHistoryHref}
+                  className="font-serif text-2xl text-[#fff6dc] transition hover:text-amber-100 sm:text-3xl"
+                >
+                  Team A <span className="mx-1 text-slate-600">vs</span> Team B
+                </Link>
+              ) : (
+                <div className="font-serif text-2xl text-[#fff6dc] sm:text-3xl">
+                  Team A <span className="mx-1 text-slate-600">vs</span> Team B
+                </div>
+              )}
               <span className="rounded-full border border-amber-200/[0.10] bg-amber-400/[0.07] px-2.5 py-1 text-[10px] uppercase tracking-[0.24em] text-amber-100">
                 {extremeRoster.formatLabel}
               </span>
             </div>
-          ) : market.href ? (
+          ) : marketHistoryHref ? (
             <Link
-              href={market.href}
+              href={marketHistoryHref}
               className="mt-2 inline-flex text-[1.65rem] font-semibold leading-[1.05] text-white transition hover:text-amber-100"
             >
               {market.title}
@@ -4115,12 +4159,20 @@ function MarketCard({
         </div>
         <div className="flex flex-col items-end gap-2">
           <MarketStatusPill market={market} />
-          {market.href ? (
+          {marketHistoryHref ? (
             <Link
-              href={market.href}
+              href={marketHistoryHref}
               className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] transition ${edgeButton("glass")}`}
             >
-              View Match
+              Market History
+            </Link>
+          ) : null}
+          {gameStatsHref ? (
+            <Link
+              href={gameStatsHref}
+              className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] transition ${edgeButton("glass")}`}
+            >
+              {gameStatsLabel}
             </Link>
           ) : null}
         </div>

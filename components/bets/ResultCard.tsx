@@ -9,6 +9,7 @@ import {
   cardClass,
   formatExactWolo,
   formatSettledTime,
+  isBetMarketHistoryHref,
 } from "@/components/bets/page-shared";
 
 export default function ResultCard({
@@ -26,6 +27,8 @@ export default function ResultCard({
 
   const cardPadding = compact ? "px-4 py-4" : "px-4 py-4";
   const cardMinHeight = compact ? "min-h-[168px]" : "min-h-[198px]";
+  const marketHistoryHref = isBetMarketHistoryHref(result.href) ? result.href : null;
+  const replayStatsHref = result.href && !marketHistoryHref ? result.href : null;
 
   const content = (
     <div className="flex h-full flex-col">
@@ -77,16 +80,28 @@ export default function ResultCard({
     </div>
   );
 
-  if (result.href) {
-    return (
-      <Link
-        href={result.href}
-        className={`${cardClass()} block ${cardMinHeight} ${cardPadding} transition hover:border-white/14 hover:bg-white/[0.05]`}
-      >
-        {content}
-      </Link>
-    );
-  }
+  return (
+    <article
+      className={`${cardClass()} group overflow-hidden ${cardMinHeight} transition hover:border-white/14 hover:bg-white/[0.05]`}
+    >
+      {marketHistoryHref ? (
+        <Link href={marketHistoryHref} className={`block ${cardPadding}`}>
+          {content}
+        </Link>
+      ) : (
+        <div className={cardPadding}>{content}</div>
+      )}
 
-  return <article className={`${cardClass()} ${cardMinHeight} ${cardPadding}`}>{content}</article>;
+      {replayStatsHref ? (
+        <div className="border-t border-white/[0.06] px-4 py-3">
+          <Link
+            href={replayStatsHref}
+            className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-200 transition hover:text-sky-100"
+          >
+            Replay Stats
+          </Link>
+        </div>
+      ) : null}
+    </article>
+  );
 }

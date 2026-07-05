@@ -341,20 +341,9 @@ function formatCloseLabel(status: BetStatus, closeAt: Date | null) {
   return `${diffMinutes}m left`;
 }
 
-function buildBetMarketHref(input: {
-  linkedGameStatsId: number | null;
-  linkedSessionKey: string | null;
-}) {
-  if (typeof input.linkedGameStatsId === "number" && Number.isFinite(input.linkedGameStatsId)) {
-    return `/game-stats/${input.linkedGameStatsId}`;
-  }
-
-  const sessionKey = input.linkedSessionKey?.trim();
-  if (sessionKey) {
-    return `/game-stats/live/${encodeURIComponent(sessionKey)}`;
-  }
-
-  return null;
+function buildBetMarketHref(marketId: number) {
+  if (!Number.isSafeInteger(marketId) || marketId <= 0) return null;
+  return `/bets/${marketId}`;
 }
 
 function getNamedSessionPlayers(session: LiveGameSession) {
@@ -2679,10 +2668,7 @@ function buildMarketCard(
     slug: market.slug,
     title: market.title,
     eventLabel: market.eventLabel,
-    href: buildBetMarketHref({
-      linkedGameStatsId: market.linkedGameStatsId ?? null,
-      linkedSessionKey,
-    }),
+    href: buildBetMarketHref(market.id),
     linkedSessionKey,
     linkedGameStatsId: market.linkedGameStatsId ?? null,
     status: market.status as BetStatus,
@@ -2781,53 +2767,6 @@ async function loadOpenMarkets(prisma: PrismaClient) {
   });
 
   return markets.filter(isConfidentBetMarket);
-}
-
-function buildSessionSettledResult(session: LiveGameSession): BetSettledResult {
-  return {
-    id: session.id,
-    title: buildSessionMarketTitle(session),
-    eventLabel: buildSessionEventLabel(session),
-    winner: session.winner || "Unknown",
-    mapName: session.mapName || "Unknown Map",
-    totalPotWolo: 0,
-    payoutWolo: 0,
-    settledAt: session.completedAt || session.updatedAt || session.createdAt,
-    href: `/game-stats/live/${encodeURIComponent(session.sessionKey)}`,
-    linkedSessionKey: session.sessionKey,
-    broadcastFeeds: EMPTY_BROADCAST_FEEDS,
-    broadcastPreviewUrls: { ...EMPTY_BET_BROADCAST_PREVIEW_URLS },
-    founderBonuses: [],
-  };
-}
-
-function settledResultSurfaceKey(result: BetSettledResult) {
-  const sessionKey = normalizeName(result.linkedSessionKey);
-  if (sessionKey) return `session:${sessionKey.toLowerCase()}`;
-  return `match:${normalizeSettledMatchKey(result.title, result.mapName)}`;
-}
-
-function mergeSettledResultsWithSessions(
-  sessionResults: BetSettledResult[],
-  marketResults: BetSettledResult[]
-) {
-  const merged: BetSettledResult[] = [];
-  const seen = new Set<string>();
-
-  for (const result of [...marketResults, ...sessionResults]) {
-    const key = settledResultSurfaceKey(result);
-    if (seen.has(key)) continue;
-    seen.add(key);
-    merged.push(result);
-  }
-
-  return merged
-    .sort((left, right) => {
-      const leftTime = new Date(left.settledAt || 0).getTime();
-      const rightTime = new Date(right.settledAt || 0).getTime();
-      return rightTime - leftTime;
-    })
-    .slice(0, 4);
 }
 
 async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettledResult[]> {
@@ -2939,11 +2878,10 @@ async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettle
     }
   }
 
-  const sessionHrefByMatchKey = new Map(
+  const sessionOutcomeByMatchKey = new Map(
     sessionSnapshot.recentlyCompletedSessions.map((session) => [
       normalizeSettledMatchKey(buildSessionMarketTitle(session), session.mapName),
       {
-        href: `/game-stats/live/${encodeURIComponent(session.sessionKey)}`,
         settledAt: session.completedAt || session.updatedAt || session.createdAt,
       },
     ])
@@ -2967,7 +2905,7 @@ async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettle
           ? Math.max(settledPayoutTotal, claimWolo)
           : Math.max(totalPotWolo, claimWolo);
       const mapName = readMarketMapLabel(market.eventLabel);
-      const matchedSession = sessionHrefByMatchKey.get(
+      const matchedSession = sessionOutcomeByMatchKey.get(
         normalizeSettledMatchKey(market.title, mapName)
       );
       const linkedSessionKey =
@@ -2998,10 +2936,8 @@ async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettle
       } satisfies BetSettledResult;
     });
 
-  const sessionResults = sessionSnapshot.recentlyCompletedSessions.map(buildSessionSettledResult);
-  const mergedSettledResults = mergeSettledResultsWithSessions(sessionResults, marketResults);
-  if (mergedSettledResults.length > 0) {
-    return mergedSettledResults;
+  if (marketResults.length > 0) {
+    return marketResults.slice(0, 4);
   }
 
   if (isWoloMainnet()) {
