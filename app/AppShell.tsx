@@ -344,8 +344,10 @@ function InnerShell({ children }: { children: React.ReactNode }) {
   const isAcademySurface = pathname?.startsWith("/academy");
   const isClanSurface = pathname?.startsWith("/clans");
   const isNationalChampionsSurface = pathname?.startsWith("/national-champions");
+  const isBetsSurface = pathname === "/bets";
   const isBetDetailSurface = Boolean(pathname?.match(/^\/bets\/[^/]+/));
   const isFullWidthPrestigeSurface =
+    isBetsSurface ||
     pathname?.startsWith("/academy") ||
     pathname?.startsWith("/market") ||
     pathname?.startsWith("/kingdom") ||

@@ -1942,9 +1942,8 @@ export default function BetsPage() {
         <>
           <section
             data-testid="extreme-betting-hall"
-            className={`${shellClass()} relative isolate overflow-hidden p-5 sm:p-7 lg:p-8`}
+            className="relative isolate min-w-0 w-full max-w-full overflow-hidden rounded-[2.2rem] border border-white/[0.055] bg-[radial-gradient(circle_at_18%_0%,rgba(251,191,36,0.14),transparent_34%),radial-gradient(circle_at_84%_10%,rgba(56,189,248,0.11),transparent_32%),linear-gradient(180deg,rgba(13,20,36,0.98),rgba(7,12,22,0.98))] px-5 py-7 shadow-[0_34px_100px_rgba(2,6,23,0.42)] sm:px-8 sm:py-9 lg:px-10 lg:py-11"
           >
-            <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_18%_0%,rgba(251,191,36,0.16),transparent_32%),radial-gradient(circle_at_84%_10%,rgba(56,189,248,0.14),transparent_30%)]" />
             <div className="pointer-events-none absolute -right-16 -top-20 -z-10 opacity-[0.08]">
               <Image
                 src={WOLO_LOGO_SRC}
@@ -1955,21 +1954,21 @@ export default function BetsPage() {
               />
             </div>
 
-            <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+            <div className="flex flex-col gap-8 xl:flex-row xl:items-end xl:justify-between xl:gap-12">
               <div className="min-w-0 max-w-4xl">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-full border border-amber-200/16 bg-amber-400/10 px-3 py-1 text-[10px] uppercase tracking-[0.3em] text-amber-100">
+                  <span className="rounded-full border border-amber-200/[0.12] bg-amber-400/[0.08] px-3 py-1 text-[10px] uppercase tracking-[0.3em] text-amber-100">
                     Extreme
                   </span>
-                  <span className="rounded-full border border-emerald-200/14 bg-emerald-400/10 px-3 py-1 text-[10px] uppercase tracking-[0.24em] text-emerald-100">
+                  <span className="rounded-full border border-emerald-200/[0.10] bg-emerald-400/[0.07] px-3 py-1 text-[10px] uppercase tracking-[0.24em] text-emerald-100">
                     Team markets · 1v1 to 4v4
                   </span>
                 </div>
-                <div className="mt-5 text-[11px] uppercase tracking-[0.4em] text-slate-400">
+                <div className="mt-6 text-[11px] uppercase tracking-[0.4em] text-slate-400">
                   The War Book
                 </div>
-                <h1 className="mt-2 text-4xl font-semibold tracking-[-0.055em] text-white sm:text-5xl lg:text-6xl">
-                  Full-width betting hall.
+                <h1 className="mt-3 font-serif text-4xl tracking-[-0.035em] text-[#fff6dc] sm:text-5xl lg:text-6xl">
+                  Choose your side.
                 </h1>
                 <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-300 sm:text-base">
                   Pick a team directly, or pick any player to back that player&apos;s team. Every
@@ -1977,11 +1976,11 @@ export default function BetsPage() {
                 </p>
               </div>
 
-              <div className="grid w-full grid-cols-2 gap-2 sm:grid-cols-4 xl:w-auto xl:min-w-[34rem]">
-                <MiniMetric label="Open" value={String(openCount)} />
-                <MiniMetric label="In Play" value={String(liveCount)} />
-                <MiniMetric label="Book Pot" value={`${formatExactWolo(totalBookPot || 0)} WOLO`} />
-                <MiniMetric
+              <div className="grid w-full grid-cols-2 overflow-hidden rounded-[1.4rem] bg-black/[0.14] shadow-[inset_0_1px_0_rgba(255,255,255,0.025)] ring-1 ring-white/[0.045] sm:grid-cols-4 xl:w-auto xl:min-w-[38rem]">
+                <ExtremeMetric label="Open" value={String(openCount)} />
+                <ExtremeMetric label="In Play" value={String(liveCount)} />
+                <ExtremeMetric label="Book Pot" value={`${formatExactWolo(totalBookPot || 0)} WOLO`} />
+                <ExtremeMetric
                   label="Your Slips"
                   value={isAuthenticated ? String(board?.yourBook.activeCount || 0) : "Sign in"}
                 />
@@ -2045,9 +2044,9 @@ export default function BetsPage() {
 
           <section
             data-testid="extreme-featured-market"
-            className={`${shellClass()} relative overflow-hidden p-4 sm:p-6 lg:p-8`}
+            className="relative min-w-0 w-full max-w-full overflow-hidden rounded-[2.2rem] border border-white/[0.055] bg-[radial-gradient(circle_at_8%_8%,rgba(245,158,11,0.08),transparent_28%),radial-gradient(circle_at_92%_12%,rgba(56,189,248,0.08),transparent_28%),linear-gradient(180deg,rgba(10,17,31,0.99),rgba(6,11,20,0.99))] px-4 py-7 shadow-[0_34px_100px_rgba(2,6,23,0.4)] sm:px-8 sm:py-9 lg:px-10 lg:py-11"
           >
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/45 to-transparent" />
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/25 to-transparent" />
             {loadingBoard ? (
               <LoadingMarket />
             ) : spotlightMarket ? (
@@ -2417,19 +2416,29 @@ function OpenBooksSection({
 }) {
   const visibleMarkets = limit ? markets.slice(0, limit) : markets;
 
+  const extremeSurface = detailMode === "extreme";
+
   return (
-    <section className={`${shellClass()} p-5 sm:p-6`}>
+    <section
+      className={
+        extremeSurface
+          ? "min-w-0 w-full max-w-full rounded-[2.1rem] border border-white/[0.05] bg-[linear-gradient(180deg,rgba(11,18,32,0.92),rgba(7,12,22,0.94))] px-4 py-7 shadow-[0_28px_80px_rgba(2,6,23,0.30)] sm:px-7 sm:py-8 lg:px-9"
+          : `${shellClass()} p-5 sm:p-6`
+      }
+    >
       <div className="flex items-end justify-between gap-3">
         <div>
           <div className="text-[11px] uppercase tracking-[0.35em] text-slate-500">{eyebrow}</div>
-          <h2 className="mt-2 text-2xl font-semibold text-white">{title}</h2>
+          <h2 className={`mt-2 text-white ${extremeSurface ? "font-serif text-3xl text-[#fff6dc] sm:text-4xl" : "text-2xl font-semibold"}`}>
+            {title}
+          </h2>
         </div>
-        <div className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-slate-300">
+        <div className="rounded-full bg-white/[0.035] px-3 py-1 text-xs text-slate-300 ring-1 ring-white/[0.05]">
           {markets.length}
         </div>
       </div>
 
-      <div className={`mt-5 grid gap-4 ${wide ? "grid-cols-1" : "md:grid-cols-2"}`}>
+      <div className={`grid ${extremeSurface ? "mt-7 gap-6" : "mt-5 gap-4"} ${wide ? "grid-cols-1" : "md:grid-cols-2"}`}>
         {loadingBoard ? (
           <>
             <LoadingCard />
@@ -3461,13 +3470,13 @@ function buildExtremeMarketRoster(market: BetBoardMarket): ExtremeMarketRoster {
     formatLabel: isBalancedTeamGame ? `${teamSize}v${teamSize}` : "1v1",
     left: {
       key: "left",
-      label: leftPlayers.length > 1 ? `${leftPlayers[0]} team` : market.left.name,
+      label: "Team A",
       players: leftPlayers,
       side: market.left,
     },
     right: {
       key: "right",
-      label: rightPlayers.length > 1 ? `${rightPlayers[0]} team` : market.right.name,
+      label: "Team B",
       players: rightPlayers,
       side: market.right,
     },
@@ -3493,47 +3502,52 @@ function ExtremeTeamPanel({
 }) {
   const selectedClass =
     tone === "gold"
-      ? "border-amber-200/24 bg-amber-400/[0.075] shadow-[0_0_38px_rgba(251,191,36,0.08)]"
-      : "border-cyan-200/20 bg-cyan-400/[0.06] shadow-[0_0_38px_rgba(34,211,238,0.07)]";
+      ? "border-amber-200/[0.14] bg-[radial-gradient(circle_at_0%_0%,rgba(251,191,36,0.12),transparent_42%),linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.018))] shadow-[0_22px_60px_rgba(120,72,8,0.13)]"
+      : "border-cyan-200/[0.12] bg-[radial-gradient(circle_at_100%_0%,rgba(56,189,248,0.10),transparent_42%),linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.018))] shadow-[0_22px_60px_rgba(8,75,120,0.12)]";
 
   return (
     <button
       type="button"
       onClick={onSelect}
       disabled={disabled}
-      className={`min-w-0 rounded-[1.6rem] border p-4 text-left transition ${
-        selected ? selectedClass : "border-white/10 bg-white/[0.035] hover:border-white/18 hover:bg-white/[0.05]"
+      aria-pressed={selected}
+      className={`min-w-0 rounded-[1.75rem] border p-5 text-left transition sm:p-6 ${
+        selected
+          ? selectedClass
+          : "border-white/[0.055] bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.012))] hover:border-white/[0.09] hover:bg-white/[0.04]"
       } ${disabled ? "cursor-not-allowed opacity-60" : ""}`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-[10px] uppercase tracking-[0.3em] text-slate-500">
-            Team {roster.key === "left" ? "A" : "B"} · Team pick
+          <div className="text-[10px] uppercase tracking-[0.32em] text-slate-500">
+            Team pick
           </div>
-          <div className="mt-2 break-words text-xl font-semibold leading-tight tracking-[-0.03em] text-white [overflow-wrap:anywhere] sm:text-2xl">
+          <div className="mt-2 break-words font-serif text-2xl leading-tight tracking-[-0.02em] text-[#fff6dc] [overflow-wrap:anywhere] sm:text-3xl">
             {roster.label}
           </div>
         </div>
-        <div className="shrink-0 rounded-full border border-white/10 bg-black/20 px-2.5 py-1 text-[11px] text-slate-300">
+        <div className="shrink-0 rounded-full bg-black/20 px-2.5 py-1 text-[11px] text-slate-300 ring-1 ring-white/[0.055]">
           {roster.side.crowdPercent}%
         </div>
       </div>
 
-      <div className="mt-4 grid gap-2">
+      <div className="mt-5 divide-y divide-white/[0.055] border-y border-white/[0.055]">
         {roster.players.map((player, index) => (
           <div
             key={`${roster.key}-${player}-${index}`}
-            className="flex items-center justify-between gap-3 rounded-2xl border border-white/[0.075] bg-slate-950/34 px-3 py-2"
+            className="flex min-h-14 min-w-0 items-center gap-3 py-3.5"
           >
-            <span className="min-w-0 break-words text-sm font-semibold leading-snug text-slate-100 [overflow-wrap:anywhere] sm:text-base">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/[0.035] text-[10px] uppercase tracking-[0.08em] text-slate-500 ring-1 ring-white/[0.05]">
+              {index + 1}
+            </span>
+            <span className="min-w-0 break-words text-base font-semibold leading-snug text-slate-100 [overflow-wrap:anywhere] sm:text-lg">
               {player}
             </span>
-            <span className="shrink-0 text-[10px] uppercase tracking-[0.22em] text-slate-500">P{index + 1}</span>
           </div>
         ))}
       </div>
 
-      <div className="mt-4 flex items-center justify-between gap-3 border-t border-white/[0.08] pt-3">
+      <div className="mt-4 flex items-center justify-between gap-3">
         <div className="text-xs text-slate-400">
           {roster.side.slips} slip{roster.side.slips === 1 ? "" : "s"}
         </div>
@@ -3558,7 +3572,7 @@ function ExtremePlayerChips({
   onSelect: (side: BetSide) => void;
 }) {
   return (
-    <div className={`${insetClass()} mt-4 px-4 py-4`}>
+    <div className="mt-8 border-t border-white/[0.055] pt-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="text-[10px] uppercase tracking-[0.34em] text-slate-500">Player pick</div>
@@ -3566,22 +3580,22 @@ function ExtremePlayerChips({
             Player pick backs that player&apos;s team.
           </div>
         </div>
-        <div className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-slate-400">
+        <div className="rounded-full bg-white/[0.035] px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-slate-400 ring-1 ring-white/[0.05]">
           Team-settled
         </div>
       </div>
 
-      <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-4 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
         {roster.players.map((player) => (
           <button
             key={`${player.side}-${player.name}`}
             type="button"
             onClick={() => onSelect(player.side)}
             disabled={disabled}
-            className={`flex min-w-0 items-center justify-between gap-3 rounded-2xl border px-3 py-2.5 text-left transition ${
+            className={`flex min-h-12 min-w-0 items-center justify-between gap-3 rounded-2xl border px-3.5 py-3 text-left transition ${
               selectedSide === player.side
-                ? "border-amber-200/22 bg-amber-400/[0.075] text-white"
-                : "border-white/[0.08] bg-slate-950/26 text-slate-300 hover:border-white/18 hover:text-white"
+                ? "border-amber-200/[0.14] bg-amber-400/[0.065] text-white shadow-[0_12px_28px_rgba(120,72,8,0.10)]"
+                : "border-white/[0.05] bg-slate-950/20 text-slate-300 hover:border-white/[0.09] hover:bg-white/[0.035] hover:text-white"
             } ${disabled ? "cursor-not-allowed opacity-60" : ""}`}
           >
             <span className="min-w-0 break-words text-sm font-semibold leading-snug [overflow-wrap:anywhere]">
@@ -3687,45 +3701,33 @@ function MarketFeature({
         ? "Add More"
         : "Lock";
   const extremeRoster = buildExtremeMarketRoster(market);
-  const extremeTitle = extremeRoster.isBalancedTeamGame
-    ? `${extremeRoster.left.label} vs ${extremeRoster.right.label}`
-    : market.title;
 
   if (detailMode === "extreme" && extremeRoster.isBalancedTeamGame) {
     return (
       <div className="relative">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0 flex-1">
+        <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
+          <div className="min-w-0 flex-1 xl:max-w-4xl">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full border border-amber-200/16 bg-amber-400/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.28em] text-amber-100">
+              <span className="rounded-full border border-amber-200/[0.11] bg-amber-400/[0.075] px-2.5 py-1 text-[10px] uppercase tracking-[0.28em] text-amber-100">
                 {extremeRoster.formatLabel}
               </span>
-              <span className="rounded-full border border-emerald-200/14 bg-emerald-400/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.24em] text-emerald-100">
+              <span className="rounded-full border border-emerald-200/[0.10] bg-emerald-400/[0.07] px-2.5 py-1 text-[10px] uppercase tracking-[0.24em] text-emerald-100">
                 Live team book
               </span>
             </div>
 
-            <div className="mt-3 text-[11px] uppercase tracking-[0.35em] text-slate-500">{eyebrowLabel}</div>
-            {market.href ? (
-              <Link
-                href={market.href}
-                className="mt-2 inline-flex break-words text-3xl font-semibold leading-[1.04] tracking-[-0.04em] text-white transition [overflow-wrap:anywhere] hover:text-amber-100 sm:text-4xl lg:text-5xl"
-              >
-                {extremeTitle}
-              </Link>
-            ) : (
-              <h2 className="mt-2 break-words text-3xl font-semibold leading-[1.04] tracking-[-0.04em] text-white [overflow-wrap:anywhere] sm:text-4xl lg:text-5xl">
-                {extremeTitle}
-              </h2>
-            )}
-            <div className="mt-3 break-words text-sm text-slate-400 [overflow-wrap:anywhere] sm:text-base">
+            <div className="mt-5 text-[11px] uppercase tracking-[0.35em] text-slate-500">{eyebrowLabel}</div>
+            <h2 className="mt-2 font-serif text-3xl leading-[1.05] tracking-[-0.025em] text-[#fff6dc] sm:text-4xl">
+              Choose the winning side.
+            </h2>
+            <div className="mt-3 max-w-3xl break-words text-sm leading-6 text-slate-400 [overflow-wrap:anywhere] sm:text-base">
               {market.eventLabel}
             </div>
             <FounderBonusChips bonuses={market.founderBonuses} variant="full" />
             <MarketTimingRail market={market} nowMs={nowMs} />
           </div>
 
-          <div className="flex flex-wrap items-center justify-end gap-2">
+          <div className="flex flex-wrap items-center gap-2 xl:justify-end">
             {market.href ? (
               <Link
                 href={market.href}
@@ -3739,14 +3741,14 @@ function MarketFeature({
                 <button
                   type="button"
                   onClick={() => onOpenFounderBonus(market, "participants")}
-                  className="rounded-full border border-amber-300/20 bg-amber-400/10 px-3 py-1 text-xs text-amber-100 transition hover:bg-amber-400/18"
+                  className="rounded-full border border-amber-300/[0.14] bg-amber-400/[0.08] px-3 py-1 text-xs text-amber-100 transition hover:bg-amber-400/[0.14]"
                 >
                   +FB
                 </button>
                 <button
                   type="button"
                   onClick={() => onOpenFounderBonus(market, "winner")}
-                  className="rounded-full border border-sky-300/20 bg-sky-400/10 px-3 py-1 text-xs text-sky-100 transition hover:bg-sky-400/18"
+                  className="rounded-full border border-sky-300/[0.14] bg-sky-400/[0.08] px-3 py-1 text-xs text-sky-100 transition hover:bg-sky-400/[0.14]"
                 >
                   +FW
                 </button>
@@ -3756,7 +3758,7 @@ function MarketFeature({
           </div>
         </div>
 
-        <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_13rem_minmax(0,1fr)] lg:items-stretch">
+        <div className="mt-8 grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_15rem_minmax(0,1fr)] lg:items-stretch xl:gap-6">
           <ExtremeTeamPanel
             roster={extremeRoster.left}
             selected={displaySide === "left"}
@@ -3765,13 +3767,13 @@ function MarketFeature({
             onSelect={() => onSelect(market, "left")}
           />
 
-          <div className={`${insetClass()} order-none flex flex-col items-center justify-center overflow-hidden px-5 py-6 text-center`}>
+          <div className="order-none flex min-w-0 flex-col items-center justify-center overflow-hidden rounded-[1.75rem] bg-[radial-gradient(circle_at_50%_24%,rgba(251,191,36,0.07),transparent_42%),rgba(2,6,23,0.22)] px-5 py-7 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.025)] ring-1 ring-white/[0.045]">
             <div className="text-[11px] uppercase tracking-[0.3em] text-slate-500" title="Total WOLO already sitting in the book.">
               Pot
             </div>
-            <div className="mt-3 flex items-center justify-center gap-2 text-3xl font-semibold text-white">
+            <div className="mt-3 flex min-w-0 max-w-full items-center justify-center gap-2 text-3xl font-semibold text-white">
               <CoinMark />
-              <span>{formatExactWolo(market.totalPotWolo)}</span>
+              <span className="min-w-0 break-words [overflow-wrap:anywhere]">{formatExactWolo(market.totalPotWolo)}</span>
             </div>
             <div className="mt-3 w-full overflow-hidden rounded-full bg-white/[0.06]">
               <div className="flex h-1.5 w-full">
@@ -3788,7 +3790,7 @@ function MarketFeature({
             <div className="mt-2 text-xs text-slate-400">
               {market.left.crowdPercent}% · {market.right.crowdPercent}%
             </div>
-            <div className="mt-4 rounded-full border border-white/10 bg-black/20 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.24em] text-slate-300">
+            <div className="mt-5 font-serif text-4xl text-[#fff6dc]">
               VS
             </div>
             <div className="mt-4 max-w-full text-[10px] uppercase tracking-[0.22em] text-slate-500">
@@ -3819,9 +3821,9 @@ function MarketFeature({
           onSelect={(side) => onSelect(market, side)}
         />
 
-        <div className={`${insetClass()} mt-5 px-4 py-4`}>
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="flex-1">
+        <div className="mt-6 rounded-[1.7rem] bg-black/[0.16] px-4 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.022)] ring-1 ring-white/[0.045] sm:px-5 sm:py-6">
+          <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
+            <div className="min-w-0">
               <StakeAmountRail
                 activeSelection={activeSelection}
                 canEdit={canEditSlip}
@@ -3829,7 +3831,7 @@ function MarketFeature({
                 onStakeChange={onStakeChange}
               />
             </div>
-            <div className="text-right">
+            <div className="min-w-0 lg:text-right">
               <div className="text-[11px] uppercase tracking-[0.28em] text-slate-500" title="Projected book return if this side wins right now.">
                 If Right
               </div>
@@ -3839,12 +3841,12 @@ function MarketFeature({
             </div>
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-            <div className={`text-sm ${stakeError ? "text-rose-200" : "text-slate-400"}`}>
+          <div className="mt-5 flex flex-col gap-4 border-t border-white/[0.05] pt-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className={`min-w-0 break-words text-sm [overflow-wrap:anywhere] ${stakeError ? "text-rose-200" : "text-slate-400"}`}>
               {stakeError || statusCopy}
             </div>
 
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 sm:justify-end">
               {market.viewerWager && !onchainLocked ? (
                 <button
                   type="button"
@@ -4086,15 +4088,32 @@ function MarketCard({
       : market.viewerWager
         ? "Add"
         : "Lock";
+  const extremeRoster = buildExtremeMarketRoster(market);
+  const isExtremeTeamMarket = detailMode === "extreme" && extremeRoster.isBalancedTeamGame;
 
   return (
-    <article className={`${cardClass()} overflow-hidden p-4`}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1 pr-2">
+    <article
+      className={
+        isExtremeTeamMarket
+          ? "min-w-0 max-w-full overflow-hidden rounded-[1.9rem] border border-white/[0.05] bg-[radial-gradient(circle_at_0%_0%,rgba(251,191,36,0.055),transparent_30%),radial-gradient(circle_at_100%_0%,rgba(56,189,248,0.05),transparent_30%),rgba(2,6,23,0.18)] p-5 shadow-[0_22px_60px_rgba(2,6,23,0.24)] sm:p-7"
+          : `${cardClass()} overflow-hidden p-4`
+      }
+    >
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 flex-1 sm:pr-2">
           <div className="text-[11px] uppercase tracking-[0.32em] text-slate-500 break-words">
             {market.eventLabel}
           </div>
-          {market.href ? (
+          {isExtremeTeamMarket ? (
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <div className="font-serif text-2xl text-[#fff6dc] sm:text-3xl">
+                Team A <span className="mx-1 text-slate-600">vs</span> Team B
+              </div>
+              <span className="rounded-full border border-amber-200/[0.10] bg-amber-400/[0.07] px-2.5 py-1 text-[10px] uppercase tracking-[0.24em] text-amber-100">
+                {extremeRoster.formatLabel}
+              </span>
+            </div>
+          ) : market.href ? (
             <Link
               href={market.href}
               className="mt-2 inline-flex text-[1.65rem] font-semibold leading-[1.05] text-white transition hover:text-amber-100"
@@ -4126,7 +4145,13 @@ function MarketCard({
         </div>
       </div>
 
-      <div className={`${insetClass()} mt-4 px-4 py-3`}>
+      <div
+        className={
+          isExtremeTeamMarket
+            ? "mt-5 border-y border-white/[0.05] py-4"
+            : `${insetClass()} mt-4 px-4 py-3`
+        }
+      >
         <div className="flex items-center justify-between gap-3">
           <div>
             <div className="text-[11px] uppercase tracking-[0.26em] text-slate-500">Pot</div>
@@ -4142,24 +4167,57 @@ function MarketCard({
         </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-2">
-        <SideMiniChoice
-          side={market.left}
-          selected={displaySide === "left"}
-          emphasis={accent === "warm" ? "warm" : "cool"}
-          disabled={!canEditSlip || Boolean(lockedSide && lockedSide !== "left")}
-          onSelect={() => onSelect(market, "left")}
-        />
-        <SideMiniChoice
-          side={market.right}
-          selected={displaySide === "right"}
-          emphasis={accent === "warm" ? "cool" : "warm"}
-          disabled={!canEditSlip || Boolean(lockedSide && lockedSide !== "right")}
-          onSelect={() => onSelect(market, "right")}
-        />
-      </div>
+      {isExtremeTeamMarket ? (
+        <>
+          <div className="mt-6 grid min-w-0 gap-4 lg:grid-cols-2 lg:gap-6">
+            <ExtremeTeamPanel
+              roster={extremeRoster.left}
+              selected={displaySide === "left"}
+              disabled={!canEditSlip || Boolean(lockedSide && lockedSide !== "left")}
+              tone="gold"
+              onSelect={() => onSelect(market, "left")}
+            />
+            <ExtremeTeamPanel
+              roster={extremeRoster.right}
+              selected={displaySide === "right"}
+              disabled={!canEditSlip || Boolean(lockedSide && lockedSide !== "right")}
+              tone="blue"
+              onSelect={() => onSelect(market, "right")}
+            />
+          </div>
+          <ExtremePlayerChips
+            roster={extremeRoster}
+            disabled={!canEditSlip || Boolean(lockedSide)}
+            selectedSide={displaySide}
+            onSelect={(side) => onSelect(market, side)}
+          />
+        </>
+      ) : (
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <SideMiniChoice
+            side={market.left}
+            selected={displaySide === "left"}
+            emphasis={accent === "warm" ? "warm" : "cool"}
+            disabled={!canEditSlip || Boolean(lockedSide && lockedSide !== "left")}
+            onSelect={() => onSelect(market, "left")}
+          />
+          <SideMiniChoice
+            side={market.right}
+            selected={displaySide === "right"}
+            emphasis={accent === "warm" ? "cool" : "warm"}
+            disabled={!canEditSlip || Boolean(lockedSide && lockedSide !== "right")}
+            onSelect={() => onSelect(market, "right")}
+          />
+        </div>
+      )}
 
-      <div className={`${insetClass()} mt-4 px-4 py-4`}>
+      <div
+        className={
+          isExtremeTeamMarket
+            ? "mt-6 rounded-[1.6rem] bg-black/[0.16] px-4 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.022)] ring-1 ring-white/[0.045] sm:px-5"
+            : `${insetClass()} mt-4 px-4 py-4`
+        }
+      >
         <StakeAmountRail
           activeSelection={activeSelection}
           canEdit={canEditSlip}
@@ -4312,6 +4370,19 @@ function MiniMetric({ label, value }: { label: string; value: string }) {
         {label}
       </div>
       <div className="mt-2 text-lg font-semibold leading-tight tracking-tight text-white break-words sm:text-2xl">
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function ExtremeMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0 border-b border-r border-white/[0.045] px-4 py-4 last:border-r-0 sm:border-b-0 sm:px-5 sm:py-5">
+      <div className="text-[10px] uppercase tracking-[0.28em] text-slate-500">
+        {label}
+      </div>
+      <div className="mt-2 min-w-0 break-words text-lg font-semibold leading-tight tracking-tight text-white [overflow-wrap:anywhere] sm:text-xl">
         {value}
       </div>
     </div>
