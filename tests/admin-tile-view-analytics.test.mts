@@ -8,7 +8,10 @@ import {
 import { normalizeLeaderboardLane } from "../lib/leaderboardLane.ts";
 import {
   applyTileViewDefaultMigration,
+  LIVE_GAMES_VIEW_STORAGE_KEY,
+  readStoredLiveGamesViewMode,
   TILE_VIEW_DEFAULT_VERSION_KEY,
+  writeStoredLiveGamesViewMode,
 } from "../lib/tileViewPreferences.ts";
 
 test("tile-view analytics separate explicit choices from effective defaults", () => {
@@ -68,12 +71,22 @@ test("leaderboard-lane analytics default invalid or missing values to RM", () =>
 });
 
 test("the current tile migration restores Basic as the live-games default", () => {
+  const storage = new Map<string, string>([
+    [
+      "aoe2hdbets:tile-view-preferences",
+      JSON.stringify({ live_games: "extreme" }),
+    ],
+  ]);
+
   Object.defineProperty(globalThis, "window", {
     configurable: true,
     value: {
       localStorage: {
         getItem(key: string) {
-          return key === TILE_VIEW_DEFAULT_VERSION_KEY ? "previous-defaults" : null;
+          return storage.get(key) ?? null;
+        },
+        setItem(key: string, value: string) {
+          storage.set(key, value);
         },
       },
     },
@@ -90,6 +103,22 @@ test("the current tile migration restores Basic as the live-games default", () =
         community_lobby: "extreme",
         forum: "extreme",
       }
+    );
+    assert.equal(readStoredLiveGamesViewMode(), "basic");
+
+    writeStoredLiveGamesViewMode("advanced");
+    assert.equal(storage.get(LIVE_GAMES_VIEW_STORAGE_KEY), "advanced");
+    assert.equal(readStoredLiveGamesViewMode(), "advanced");
+    assert.equal(
+      applyTileViewDefaultMigration({ live_games: "extreme" }).live_games,
+      "advanced"
+    );
+
+    storage.set(TILE_VIEW_DEFAULT_VERSION_KEY, "explicit-live-games-view-20260704");
+    storage.delete(LIVE_GAMES_VIEW_STORAGE_KEY);
+    assert.equal(
+      applyTileViewDefaultMigration({ live_games: "extreme" }).live_games,
+      "basic"
     );
   } finally {
     Reflect.deleteProperty(globalThis, "window");

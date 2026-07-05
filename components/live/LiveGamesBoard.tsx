@@ -36,8 +36,10 @@ import { useUserAuth } from "@/context/UserAuthContext";
 import type { LiveGamesSnapshot } from "@/lib/liveGames";
 import { getTournamentMatchStatusLabel } from "@/lib/lobby";
 import {
+  readStoredLiveGamesViewMode,
   TILE_VIEW_MODES,
   type TileViewMode,
+  writeStoredLiveGamesViewMode,
 } from "@/lib/tileViewPreferences";
 import type { WatchStreamPayload } from "@/lib/watchStreams";
 
@@ -289,8 +291,8 @@ function DualWatcherProofStack({
 
 export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps) {
   const { uid } = useUserAuth();
-  const liveGamesTile = useTileViewPreference("live_games");
-  const viewMode = liveGamesTile.viewMode;
+  const { setViewMode: setSharedLiveGamesViewMode } = useTileViewPreference("live_games");
+  const [viewMode, setViewMode] = useState<TileViewMode>("basic");
   const [snapshot, setSnapshot] = useState(initialSnapshot);
   const [mounted, setMounted] = useState(false);
   const [actionState, setActionState] = useState<ScheduledMatchCardActionState>({
@@ -301,6 +303,19 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
   const [boardNotice, setBoardNotice] = useState<string | null>(null);
   const refreshInFlightRef = useRef(false);
   const mountedRef = useRef(true);
+
+  useEffect(() => {
+    setViewMode(readStoredLiveGamesViewMode());
+  }, []);
+
+  const handleViewModeChange = useCallback(
+    (nextViewMode: TileViewMode) => {
+      writeStoredLiveGamesViewMode(nextViewMode);
+      setViewMode(nextViewMode);
+      setSharedLiveGamesViewMode(nextViewMode);
+    },
+    [setSharedLiveGamesViewMode]
+  );
 
   const refresh = useCallback(async () => {
     if (refreshInFlightRef.current) return;
@@ -509,9 +524,9 @@ const liveItemsCount =
       ) : null}
 
       {viewMode === "extreme" ? (
-        <ExtremeBoard {...boardProps} viewMode={viewMode} onViewModeChange={liveGamesTile.setViewMode} />
+        <ExtremeBoard {...boardProps} viewMode={viewMode} onViewModeChange={handleViewModeChange} />
       ) : (
-        <ClassicBoard {...boardProps} viewMode={viewMode} onViewModeChange={liveGamesTile.setViewMode} />
+        <ClassicBoard {...boardProps} viewMode={viewMode} onViewModeChange={handleViewModeChange} />
       )}
     </main>
   );

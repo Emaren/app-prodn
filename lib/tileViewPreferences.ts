@@ -1,6 +1,8 @@
 export const TILE_VIEW_STORAGE_KEY = "aoe2hdbets:tile-view-preferences";
 export const TILE_VIEW_DEFAULT_VERSION_KEY = "aoe2hdbets:tile-view-default-version";
-export const TILE_VIEW_DEFAULT_VERSION = "extreme-forum-basic-live-games-20260704";
+export const TILE_VIEW_DEFAULT_VERSION = "explicit-live-games-view-20260704";
+export const LIVE_GAMES_VIEW_STORAGE_KEY =
+  "aoe2hdbets:live-games-view-mode:explicit-20260704";
 
 export const TILE_VIEW_KEYS = [
   "community_lobby",
@@ -85,23 +87,59 @@ export function readStoredTileViewPreferences(): TileViewPreferences {
   }
 }
 
-export function applyTileViewDefaultMigration(preferences: TileViewPreferences): TileViewPreferences {
+export function readStoredLiveGamesViewMode(): TileViewMode {
   if (typeof window === "undefined") {
-    return preferences;
+    return "basic";
+  }
+
+  try {
+    const value = window.localStorage.getItem(LIVE_GAMES_VIEW_STORAGE_KEY);
+    return isTileViewMode(value) ? value : "basic";
+  } catch {
+    return "basic";
+  }
+}
+
+export function writeStoredLiveGamesViewMode(viewMode: TileViewMode) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(LIVE_GAMES_VIEW_STORAGE_KEY, viewMode);
+  } catch {
+    // Ignore private-mode/localStorage failures. Basic remains the runtime default.
+  }
+}
+
+export function applyTileViewDefaultMigration(preferences: TileViewPreferences): TileViewPreferences {
+  const liveGamesViewMode = readStoredLiveGamesViewMode();
+
+  if (typeof window === "undefined") {
+    return {
+      ...preferences,
+      live_games: liveGamesViewMode,
+    };
   }
 
   try {
     if (window.localStorage.getItem(TILE_VIEW_DEFAULT_VERSION_KEY) === TILE_VIEW_DEFAULT_VERSION) {
-      return preferences;
+      return {
+        ...preferences,
+        live_games: liveGamesViewMode,
+      };
     }
   } catch {
-    return preferences;
+    return {
+      ...preferences,
+      live_games: liveGamesViewMode,
+    };
   }
 
   return {
     ...preferences,
     forum: "extreme" as const,
-    live_games: "basic" as const,
+    live_games: liveGamesViewMode,
   };
 }
 
