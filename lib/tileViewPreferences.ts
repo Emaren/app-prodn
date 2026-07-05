@@ -1,6 +1,6 @@
 export const TILE_VIEW_STORAGE_KEY = "aoe2hdbets:tile-view-preferences";
 export const TILE_VIEW_DEFAULT_VERSION_KEY = "aoe2hdbets:tile-view-default-version";
-export const TILE_VIEW_DEFAULT_VERSION = "extreme-forum-20260702";
+export const TILE_VIEW_DEFAULT_VERSION = "extreme-forum-basic-live-games-20260704";
 
 export const TILE_VIEW_KEYS = [
   "community_lobby",
@@ -20,7 +20,7 @@ const TILE_VIEW_KEY_SET = new Set<string>(TILE_VIEW_KEYS);
 const TILE_VIEW_MODE_SET = new Set<string>(TILE_VIEW_MODES);
 const DEFAULT_TILE_VIEW_MODES: TileViewPreferences = {
   community_lobby: "extreme",
-  live_games: "advanced",
+  live_games: "basic",
   forum: "extreme",
 };
 
@@ -101,6 +101,7 @@ export function applyTileViewDefaultMigration(preferences: TileViewPreferences):
   return {
     ...preferences,
     forum: "extreme" as const,
+    live_games: "basic" as const,
   };
 }
 

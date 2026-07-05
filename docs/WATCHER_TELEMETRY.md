@@ -134,6 +134,16 @@ Only `trusted_final*` and `reviewed_match*` statuses should set `should_settle =
 
 `/admin/watcher-funnel` adds a conversion/diagnostic command surface, including dedicated support tiles for known watcher users and any signed-in user who emits runtime telemetry. Use it while users are running the watcher to inspect start/stop/heartbeat, auth, replay detection, final-candidate deferrals, upload failures, finality status, version, platform, watcher id, session id, streamer status, source choice, upload chunks, heartbeat freshness, and streamer errors.
 
+The recent-event rail translates finality telemetry into operator language:
+
+- `final_unparsed_proof` / `unparsedFinal` -> **Final proof preserved but parser could not extract winner**
+- `final_candidate_deferred` with `final_candidate_cooldown` -> **Replay still cooling down**
+- `parse_pending` or `parse_result_unknown_fields` -> **Awaiting roster parse**
+- `final_candidate_accepted` / `finalAccepted` -> **Accepted into game #____** when a game id is present
+- `replay_detected_ignored` -> **Ignored duplicate replay event**
+
+An unparsed final row is preservation evidence, not an accepted game result. It must not settle a market or override winner/history.
+
 Per user, it shows:
 
 - `app_version`

@@ -139,6 +139,39 @@ function eventDetailText(event: WatcherFocusUserDiagnostics["recentEvents"][numb
   return event.errorMessage || event.reason || event.detail || streamDetail || event.parseReason || "none";
 }
 
+function operatorEventExplanation(
+  event: WatcherFocusUserDiagnostics["recentEvents"][number]
+) {
+  if (event.unparsedFinal || event.finalityStatus === "final_unparsed_proof") {
+    return "Final proof preserved but parser could not extract winner";
+  }
+
+  if (
+    event.eventType === "final_candidate_deferred" &&
+    event.reason === "final_candidate_cooldown"
+  ) {
+    const seconds = event.waitMs ? Math.max(1, Math.ceil(event.waitMs / 1000)) : null;
+    return `Replay still cooling down${seconds ? ` · ${seconds}s remaining` : ""}`;
+  }
+
+  if (
+    event.eventType === "parse_pending" ||
+    event.eventType === "parse_result_unknown_fields"
+  ) {
+    return "Awaiting roster parse";
+  }
+
+  if (event.eventType === "final_candidate_accepted" || event.finalAccepted) {
+    return event.gameId ? `Accepted into game #${event.gameId}` : "Accepted into game";
+  }
+
+  if (event.eventType === "replay_detected_ignored") {
+    return "Ignored duplicate replay event";
+  }
+
+  return null;
+}
+
 function SupportUserDiagnostics({ focusUser }: { focusUser: WatcherFocusUserDiagnostics }) {
   const visibleCounts = Object.entries(focusUser.eventCounts)
     .sort((left, right) => right[1] - left[1])
@@ -267,9 +300,20 @@ function SupportUserDiagnostics({ focusUser }: { focusUser: WatcherFocusUserDiag
                       {event.finalAccepted === null ? "?" : event.finalAccepted ? "yes" : "no"}
                     </div>
                   </td>
-	                  <td className="border-b border-white/8 px-3 py-3">
-	                    {eventDetailText(event)}
-	                  </td>
+                  <td className="border-b border-white/8 px-3 py-3">
+                    {operatorEventExplanation(event) ? (
+                      <>
+                        <div className="font-semibold text-white">
+                          {operatorEventExplanation(event)}
+                        </div>
+                        <div className="mt-1 text-xs text-slate-500">
+                          {eventDetailText(event)}
+                        </div>
+                      </>
+                    ) : (
+                      eventDetailText(event)
+                    )}
+                  </td>
                 </tr>
               ))
             ) : (

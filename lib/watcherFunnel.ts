@@ -106,6 +106,9 @@ export type WatcherFocusUserEvent = {
   finalityStatus: string | null;
   finalAccepted: boolean | null;
   shouldSettle: boolean | null;
+  unparsedFinal: boolean | null;
+  gameId: string | null;
+  waitMs: number | null;
   reason: string | null;
   detail: string | null;
   errorMessage: string | null;
@@ -339,6 +342,19 @@ function metadataBoolean(metadata: Prisma.JsonValue | null | undefined, key: str
 function metadataNumber(metadata: Prisma.JsonValue | null | undefined, key: string) {
   const value = metadataObject(metadata)[key];
   return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function metadataIdentifier(metadata: Prisma.JsonValue | null | undefined, keys: string[]) {
+  for (const key of keys) {
+    const value = metadataObject(metadata)[key];
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return String(value);
+    }
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+  return null;
 }
 
 function isoOrNull(value: Date | null | undefined) {
@@ -832,6 +848,9 @@ async function loadFocusUserDiagnostics(
       finalityStatus: metadataString(event.metadata, "finalityStatus"),
       finalAccepted: metadataBoolean(event.metadata, "finalAccepted"),
       shouldSettle: metadataBoolean(event.metadata, "shouldSettle"),
+      unparsedFinal: metadataBoolean(event.metadata, "unparsedFinal"),
+      gameId: metadataIdentifier(event.metadata, ["gameId", "game_id", "gameStatsId"]),
+      waitMs: metadataNumber(event.metadata, "waitMs"),
       reason: metadataString(event.metadata, "reason"),
       detail: metadataString(event.metadata, "detail"),
       errorMessage: metadataString(event.metadata, "errorMessage"),
