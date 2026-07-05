@@ -32,7 +32,7 @@ const WOLO_LOGO_SRC = "/legacy/wolo-logo-transparent.webp";
 const STAKE_OPTIONS = [10, 25, 50, 100] as const;
 const BETS_POLL_INTERVAL_MS = 5_000;
 const STAKE_RECOVERY_STORAGE_KEY = "aoe2hdbets.betStakeRecovery.v1";
-const BETS_VIEW_STORAGE_KEY = "aoe2hdbets.betsView.v1";
+const BETS_VIEW_STORAGE_KEY = "aoe2hdbets.betsView.v2";
 type BetSide = "left" | "right";
 type BetStatus = "open" | "closing" | "live" | "settled";
 type BetsViewMode = "basic" | "advanced" | "extreme";
@@ -1755,13 +1755,23 @@ export default function BetsPage() {
       previews: EMPTY_BROADCAST_PREVIEW_URLS,
     };
   }, [latestResult, spotlightMarket]);
+  const broadcastHasSource = useMemo(
+    () =>
+      Object.values(broadcastSurface.feeds).some((feed) =>
+        Boolean(feed?.playbackUrl || feed?.embedId || feed?.url)
+      ) || Object.values(broadcastSurface.previews).some(Boolean),
+    [broadcastSurface.feeds, broadcastSurface.previews]
+  );
 
   useEffect(() => {
-    setBroadcastVisible(false);
-  }, [broadcastSurface.key]);
+    setBroadcastVisible(betsView === "extreme" && broadcastHasSource);
+  }, [betsView, broadcastHasSource, broadcastSurface.key]);
 
   return (
-    <main className="space-y-5 overflow-x-hidden py-4 text-white sm:space-y-6 sm:py-5">
+    <main
+      data-bets-view={betsView}
+      className="space-y-5 overflow-x-hidden py-4 text-white sm:space-y-6 sm:py-5"
+    >
       <BroadcastHeroTile
         key={broadcastSurface.key}
         leftName={broadcastSurface.leftName}
@@ -1948,6 +1958,194 @@ export default function BetsPage() {
             />
           </section>
         </>
+      ) : betsView === "extreme" ? (
+        <>
+          <section
+            data-testid="extreme-betting-hall"
+            className={`${shellClass()} relative isolate overflow-hidden p-5 sm:p-7 lg:p-8`}
+          >
+            <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_18%_0%,rgba(251,191,36,0.16),transparent_32%),radial-gradient(circle_at_84%_10%,rgba(56,189,248,0.14),transparent_30%)]" />
+            <div className="pointer-events-none absolute -right-16 -top-20 -z-10 opacity-[0.08]">
+              <Image
+                src={WOLO_LOGO_SRC}
+                alt=""
+                width={380}
+                height={388}
+                className="h-[22rem] w-[22rem] object-contain"
+              />
+            </div>
+
+            <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+              <div className="min-w-0 max-w-4xl">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-full border border-amber-200/16 bg-amber-400/10 px-3 py-1 text-[10px] uppercase tracking-[0.3em] text-amber-100">
+                    Extreme
+                  </span>
+                  <span className="rounded-full border border-emerald-200/14 bg-emerald-400/10 px-3 py-1 text-[10px] uppercase tracking-[0.24em] text-emerald-100">
+                    Team markets · 1v1 to 4v4
+                  </span>
+                </div>
+                <div className="mt-5 text-[11px] uppercase tracking-[0.4em] text-slate-400">
+                  The War Book
+                </div>
+                <h1 className="mt-2 text-4xl font-semibold tracking-[-0.055em] text-white sm:text-5xl lg:text-6xl">
+                  Full-width betting hall.
+                </h1>
+                <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-300 sm:text-base">
+                  Pick a team directly, or pick any player to back that player&apos;s team. Every
+                  slip still settles on the left or right team side.
+                </p>
+              </div>
+
+              <div className="grid w-full grid-cols-2 gap-2 sm:grid-cols-4 xl:w-auto xl:min-w-[34rem]">
+                <MiniMetric label="Open" value={String(openCount)} />
+                <MiniMetric label="In Play" value={String(liveCount)} />
+                <MiniMetric label="Book Pot" value={`${formatExactWolo(totalBookPot || 0)} WOLO`} />
+                <MiniMetric
+                  label="Your Slips"
+                  value={isAuthenticated ? String(board?.yourBook.activeCount || 0) : "Sign in"}
+                />
+              </div>
+            </div>
+
+            <div className="mt-6 flex flex-wrap gap-2 border-t border-white/[0.07] pt-5">
+              <span
+                className={`rounded-full px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] ${
+                  onchainBetEscrowRequired && onchainBetEscrowEnabled
+                    ? "border border-cyan-300/20 bg-cyan-400/10 text-cyan-100"
+                    : onchainBetEscrowRequired
+                      ? "border border-rose-300/20 bg-rose-400/10 text-rose-100"
+                      : onchainBetEscrowEnabled
+                        ? "border border-amber-300/20 bg-amber-400/10 text-amber-100"
+                        : "border border-white/[0.08] bg-white/[0.04] text-slate-300"
+                }`}
+              >
+                {stakeRailLabel({
+                  required: onchainBetEscrowRequired,
+                  enabled: onchainBetEscrowEnabled,
+                  mode: runtimeBetEscrowMode,
+                })}
+              </span>
+              <span
+                className={`rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] ${groupedSettlementTone(groupedRunCapability)}`}
+              >
+                {groupedSettlementLabel(groupedRunCapability)}
+              </span>
+              <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-slate-300">
+                {settlementRailLabel(settlementExecutionMode)}
+              </span>
+            </div>
+
+            {runtimeBetTestMode ? (
+              <div className={`mt-5 ${insetClass()} px-4 py-4 text-sm text-slate-300`}>
+                Testing mode keeps the book open until official result or finalization. Same wallet,
+                same team side only for now.
+              </div>
+            ) : null}
+            {publicEscrowConfig ? (
+              <div
+                className={`mt-5 ${insetClass()} border-rose-300/15 bg-rose-500/[0.08] px-4 py-4 text-sm text-rose-100`}
+              >
+                {publicEscrowConfig}
+              </div>
+            ) : null}
+            {publicSettlementNotice ? (
+              <div
+                className={`mt-5 ${insetClass()} px-4 py-4 text-sm ${
+                  publicSettlementNotice.tone === "amber"
+                    ? "border-amber-300/15 bg-amber-500/[0.08] text-amber-100"
+                    : "text-slate-300"
+                }`}
+              >
+                <div className="font-semibold text-white">{publicSettlementNotice.title}</div>
+                <div className="mt-1 leading-6">{publicSettlementNotice.body}</div>
+              </div>
+            ) : null}
+          </section>
+
+          <section
+            data-testid="extreme-featured-market"
+            className={`${shellClass()} relative overflow-hidden p-4 sm:p-6 lg:p-8`}
+          >
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/45 to-transparent" />
+            {loadingBoard ? (
+              <LoadingMarket />
+            ) : spotlightMarket ? (
+              <MarketFeature
+                market={spotlightMarket}
+                eyebrowLabel={spotlightMarket.featured ? "Featured Market" : "Current Book"}
+                detailMode="extreme"
+                selection={selection}
+                workingKey={workingKey}
+                lockWorkflow={lockWorkflow}
+                nowMs={nowMs}
+                isAuthenticated={isAuthenticated}
+                isAdmin={isAdmin}
+                loadingAuth={loading}
+                maxStakeWolo={maxStakeWolo}
+                onSelect={handleSelect}
+                onStakeChange={(stake) =>
+                  setSelection((current) =>
+                    current && current.marketId === spotlightMarket.id
+                      ? { ...current, stake }
+                      : current
+                  )
+                }
+                onLock={() => handleLock(spotlightMarket)}
+                onClear={() => handleClear(spotlightMarket.id)}
+                onOpenFounderBonus={openFounderComposer}
+              />
+            ) : recentResults.length ? (
+              <RecentResultFeature result={recentResults[0]} />
+            ) : (
+              <EmptyShell label="No books armed yet. The latest closed book will linger here once proof lands." />
+            )}
+          </section>
+
+          <OpenBooksSection
+            eyebrow="More Open Books"
+            title="Every live team book, with room to breathe."
+            detailMode="extreme"
+            markets={openMarkets}
+            selection={selection}
+            workingKey={workingKey}
+            lockWorkflow={lockWorkflow}
+            nowMs={nowMs}
+            isAdmin={isAdmin}
+            maxStakeWolo={maxStakeWolo}
+            onSelect={handleSelect}
+            onStakeChange={(marketId, stake) =>
+              setSelection((current) =>
+                current && current.marketId === marketId ? { ...current, stake } : current
+              )
+            }
+            onLock={handleLock}
+            onClear={handleClear}
+            onOpenFounderBonus={openFounderComposer}
+            loadingBoard={loadingBoard}
+            limit={null}
+            emptyLabel="No additional open books right now."
+            wide
+          />
+
+          <section className="grid gap-5 xl:grid-cols-[1.08fr_0.92fr]">
+            <YourBookSection
+              board={board}
+              isAuthenticated={isAuthenticated}
+              loadingAuth={loading}
+              loginWithSteam={loginWithSteam}
+              unresolvedStakeIntents={unresolvedStakeIntents}
+              pendingStakeRecoveries={pendingStakeRecoveries}
+              recoveringIntentId={recoveringIntentId}
+              onRecover={recoverStakeIntent}
+            />
+
+            <div className="space-y-5">
+              <SettledSection results={recentResults} />
+              <HeatSection board={board} />
+            </div>
+          </section>
+        </>
       ) : (
         <>
           <section className="grid gap-5 xl:grid-cols-[0.78fr_1.22fr]">
@@ -2068,7 +2266,7 @@ export default function BetsPage() {
                 <MarketFeature
                   market={spotlightMarket}
                   eyebrowLabel={spotlightMarket.featured ? "Featured Market" : "Current Book"}
-                  detailMode={betsView === "extreme" ? "extreme" : "advanced"}
+                  detailMode="advanced"
                   selection={selection}
                   workingKey={workingKey}
                   lockWorkflow={lockWorkflow}
@@ -2099,7 +2297,7 @@ export default function BetsPage() {
             <OpenBooksSection
               eyebrow="Open Books"
               title="Pick a side."
-              detailMode={betsView === "extreme" ? "extreme" : "advanced"}
+              detailMode="advanced"
               markets={openMarkets}
               selection={selection}
               workingKey={workingKey}
@@ -2214,6 +2412,7 @@ function OpenBooksSection({
   limit,
   emptyLabel,
   footerNote,
+  wide = false,
 }: {
   eyebrow: string;
   title: string;
@@ -2234,6 +2433,7 @@ function OpenBooksSection({
   limit: number | null;
   emptyLabel: string;
   footerNote?: string | null;
+  wide?: boolean;
 }) {
   const visibleMarkets = limit ? markets.slice(0, limit) : markets;
 
@@ -2249,7 +2449,7 @@ function OpenBooksSection({
         </div>
       </div>
 
-      <div className="mt-5 grid gap-4 md:grid-cols-2">
+      <div className={`mt-5 grid gap-4 ${wide ? "grid-cols-1" : "md:grid-cols-2"}`}>
         {loadingBoard ? (
           <>
             <LoadingCard />
@@ -2616,6 +2816,7 @@ function BroadcastHeroTile({
   );
   const activeView = views.find((view) => view.key === selectedView) || defaultView;
   const activeViewShouldAutoplay = broadcastViewHasNativePlayback(activeView);
+  const hasBroadcastSource = views.some(broadcastViewHasSource);
 
   useEffect(() => {
     setBrowserHost(window.location.hostname || "aoe2war.com");
@@ -2657,7 +2858,24 @@ function BroadcastHeroTile({
         </div>
       </div>
 
-      {visible ? (
+      {!hasBroadcastSource ? (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[1.25rem] border border-white/[0.07] bg-slate-950/36 px-4 py-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.04]">
+              <Monitor className="h-5 w-5 text-slate-400" aria-hidden="true" />
+            </span>
+            <div className="min-w-0">
+              <div className="text-sm font-semibold text-white">Battle Cam standing by</div>
+              <div className="mt-0.5 text-xs leading-5 text-slate-400">
+                The full-width broadcast stage opens here when a live feed arrives.
+              </div>
+            </div>
+          </div>
+          <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-slate-500">
+            No feed
+          </span>
+        </div>
+      ) : visible ? (
         <>
           <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
             {views.map((view) => (
@@ -3289,8 +3507,12 @@ function ExtremeTeamPanel({
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-[10px] uppercase tracking-[0.34em] text-slate-500">Team pick</div>
-          <div className="mt-2 truncate text-xl font-semibold tracking-[-0.03em] text-white">{roster.label}</div>
+          <div className="text-[10px] uppercase tracking-[0.3em] text-slate-500">
+            Team {roster.key === "left" ? "A" : "B"} · Team pick
+          </div>
+          <div className="mt-2 break-words text-xl font-semibold leading-tight tracking-[-0.03em] text-white [overflow-wrap:anywhere] sm:text-2xl">
+            {roster.label}
+          </div>
         </div>
         <div className="shrink-0 rounded-full border border-white/10 bg-black/20 px-2.5 py-1 text-[11px] text-slate-300">
           {roster.side.crowdPercent}%
@@ -3303,7 +3525,9 @@ function ExtremeTeamPanel({
             key={`${roster.key}-${player}-${index}`}
             className="flex items-center justify-between gap-3 rounded-2xl border border-white/[0.075] bg-slate-950/34 px-3 py-2"
           >
-            <span className="min-w-0 truncate text-sm font-semibold text-slate-100">{player}</span>
+            <span className="min-w-0 break-words text-sm font-semibold leading-snug text-slate-100 [overflow-wrap:anywhere] sm:text-base">
+              {player}
+            </span>
             <span className="shrink-0 text-[10px] uppercase tracking-[0.22em] text-slate-500">P{index + 1}</span>
           </div>
         ))}
@@ -3338,7 +3562,9 @@ function ExtremePlayerChips({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="text-[10px] uppercase tracking-[0.34em] text-slate-500">Player pick</div>
-          <div className="mt-1 text-sm text-slate-300">Choose a player. The slip backs that player’s team.</div>
+          <div className="mt-1 text-sm text-slate-300">
+            Player pick backs that player&apos;s team.
+          </div>
         </div>
         <div className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-slate-400">
           Team-settled
@@ -3358,7 +3584,9 @@ function ExtremePlayerChips({
                 : "border-white/[0.08] bg-slate-950/26 text-slate-300 hover:border-white/18 hover:text-white"
             } ${disabled ? "cursor-not-allowed opacity-60" : ""}`}
           >
-            <span className="min-w-0 truncate text-sm font-semibold">{player.name}</span>
+            <span className="min-w-0 break-words text-sm font-semibold leading-snug [overflow-wrap:anywhere]">
+              {player.name}
+            </span>
             <span className="shrink-0 text-[10px] uppercase tracking-[0.22em] text-slate-500">
               {player.side === "left" ? "A" : "B"}
             </span>
@@ -3467,7 +3695,7 @@ function MarketFeature({
     return (
       <div className="relative">
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <span className="rounded-full border border-amber-200/16 bg-amber-400/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.28em] text-amber-100">
                 {extremeRoster.formatLabel}
@@ -3481,16 +3709,18 @@ function MarketFeature({
             {market.href ? (
               <Link
                 href={market.href}
-                className="mt-2 inline-flex text-3xl font-semibold tracking-[-0.04em] text-white transition hover:text-amber-100 sm:text-4xl"
+                className="mt-2 inline-flex break-words text-3xl font-semibold leading-[1.04] tracking-[-0.04em] text-white transition [overflow-wrap:anywhere] hover:text-amber-100 sm:text-4xl lg:text-5xl"
               >
                 {extremeTitle}
               </Link>
             ) : (
-              <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl">
+              <h2 className="mt-2 break-words text-3xl font-semibold leading-[1.04] tracking-[-0.04em] text-white [overflow-wrap:anywhere] sm:text-4xl lg:text-5xl">
                 {extremeTitle}
               </h2>
             )}
-            <div className="mt-2 text-sm text-slate-400">{market.eventLabel}</div>
+            <div className="mt-3 break-words text-sm text-slate-400 [overflow-wrap:anywhere] sm:text-base">
+              {market.eventLabel}
+            </div>
             <FounderBonusChips bonuses={market.founderBonuses} variant="full" />
             <MarketTimingRail market={market} nowMs={nowMs} />
           </div>
@@ -3526,7 +3756,7 @@ function MarketFeature({
           </div>
         </div>
 
-        <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_12rem_minmax(0,1fr)] xl:items-stretch">
+        <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_13rem_minmax(0,1fr)] lg:items-stretch">
           <ExtremeTeamPanel
             roster={extremeRoster.left}
             selected={displaySide === "left"}
@@ -3535,7 +3765,7 @@ function MarketFeature({
             onSelect={() => onSelect(market, "left")}
           />
 
-          <div className={`${insetClass()} flex flex-col items-center justify-center px-5 py-5 text-center`}>
+          <div className={`${insetClass()} order-none flex flex-col items-center justify-center overflow-hidden px-5 py-6 text-center`}>
             <div className="text-[11px] uppercase tracking-[0.3em] text-slate-500" title="Total WOLO already sitting in the book.">
               Pot
             </div>
@@ -3543,9 +3773,33 @@ function MarketFeature({
               <CoinMark />
               <span>{formatExactWolo(market.totalPotWolo)}</span>
             </div>
-            <div className="mt-2 text-xs text-slate-400">{market.left.crowdPercent}% / {market.right.crowdPercent}%</div>
-            <div className="mt-4 rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs italic text-slate-300">
-              vs
+            <div className="mt-3 w-full overflow-hidden rounded-full bg-white/[0.06]">
+              <div className="flex h-1.5 w-full">
+                <span
+                  className="h-full bg-gradient-to-r from-amber-300 to-amber-500"
+                  style={{ width: `${market.left.crowdPercent}%` }}
+                />
+                <span
+                  className="h-full bg-gradient-to-r from-sky-500 to-cyan-300"
+                  style={{ width: `${market.right.crowdPercent}%` }}
+                />
+              </div>
+            </div>
+            <div className="mt-2 text-xs text-slate-400">
+              {market.left.crowdPercent}% · {market.right.crowdPercent}%
+            </div>
+            <div className="mt-4 rounded-full border border-white/10 bg-black/20 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.24em] text-slate-300">
+              VS
+            </div>
+            <div className="mt-4 max-w-full text-[10px] uppercase tracking-[0.22em] text-slate-500">
+              Your pick
+            </div>
+            <div className="mt-1 max-w-full break-words text-sm font-semibold text-white [overflow-wrap:anywhere]">
+              {displaySide
+                ? displaySide === "left"
+                  ? extremeRoster.left.label
+                  : extremeRoster.right.label
+                : "Choose a team"}
             </div>
           </div>
 
