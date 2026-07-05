@@ -5,6 +5,7 @@ import {
   Archive,
   CalendarClock,
   ChevronRight,
+  CircleAlert,
   Clock3,
   Crown,
   Flame,
@@ -36,6 +37,7 @@ import { useTileViewPreference } from "@/components/tile-view/useTileViewPrefere
 import { useUserAuth } from "@/context/UserAuthContext";
 import type { LiveGamesSnapshot } from "@/lib/liveGames";
 import { getTournamentMatchStatusLabel } from "@/lib/lobby";
+import { normalizeResolvedWinner } from "@/lib/unresolvedWatcherResult";
 import {
   readStoredLiveGamesViewMode,
   TILE_VIEW_MODES,
@@ -1102,8 +1104,7 @@ function resolvedPlayerNames(session: LiveSession) {
 }
 
 function resolvedWinnerName(session: LiveSession) {
-  const winner = typeof session.winner === "string" ? session.winner.trim() : "";
-  return winner.length > 0 ? winner : null;
+  return normalizeResolvedWinner(session.winner);
 }
 
 function compactResolvedNames(names: string[], max = 2) {
@@ -1205,11 +1206,89 @@ function resolvedSessionDisplay(session: LiveSession) {
     mapName,
     heroTitle: teamTitle,
     heroSubtitle: teamSubtitle,
-    leftLabel: hasWinnerFlags ? "Victory side" : "Recorded victor",
+    leftLabel: hasWinnerFlags ? "Victory side" : "Recorded winner",
     rightLabel: hasWinnerFlags ? "Defeated side" : "Field",
     leftNames: winnerSide,
     rightNames: fieldSide,
   };
+}
+
+function UnresolvedReplayOutcomeCard({ session }: { session: LiveSession }) {
+  const unresolved = session.unresolvedResult;
+  if (!unresolved) return null;
+
+  const gameHref = `/game-stats/live/${encodeURIComponent(session.sessionKey)}`;
+  const watchHref = `/watch/${encodeURIComponent(session.sessionKey)}`;
+  const names = resolvedPlayerNames(session);
+  const reasonLabel = unresolved.code.replaceAll("_", " ");
+
+  return (
+    <article
+      className="relative overflow-hidden rounded-[1.75rem] border border-amber-200/16 bg-[radial-gradient(circle_at_88%_10%,rgba(251,191,36,0.10),transparent_34%),linear-gradient(145deg,rgba(30,41,59,0.90),rgba(2,6,23,0.96))] px-5 py-5 shadow-[0_24px_80px_rgba(2,6,23,0.32)]"
+      data-unresolved-result={unresolved.code}
+      aria-label={`${unresolved.label}: ${unresolved.explanation}`}
+    >
+      <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/35 to-transparent" />
+      <div className="relative">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.3em] text-amber-100/70">
+              <CircleAlert className="h-4 w-4" />
+              Result review
+            </div>
+            <h3 className="mt-3 font-serif text-[1.55rem] leading-none tracking-[-0.025em] text-white">
+              {unresolved.label}
+            </h3>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
+              {unresolved.explanation}
+            </p>
+          </div>
+          <span
+            className={`rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${
+              unresolved.reviewNeeded
+                ? "border-amber-200/20 bg-amber-300/10 text-amber-100"
+                : "border-sky-200/20 bg-sky-300/10 text-sky-100"
+            }`}
+          >
+            {reasonLabel}
+          </span>
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          {names.map((name) => (
+            <span
+              key={name}
+              className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-slate-200"
+            >
+              {name}
+            </span>
+          ))}
+          {session.mapName && session.mapName !== "Unknown" ? (
+            <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-slate-300">
+              {session.mapName}
+            </span>
+          ) : null}
+        </div>
+
+        <div className="mt-5 flex flex-wrap gap-2 border-t border-white/8 pt-4">
+          <Link
+            href={gameHref}
+            className="inline-flex min-h-9 items-center justify-center rounded-full border border-amber-200/20 bg-amber-300/10 px-4 text-xs font-semibold text-amber-50 transition hover:bg-amber-300/15"
+          >
+            Open parser record
+          </Link>
+          {session.primaryStream ? (
+            <Link
+              href={watchHref}
+              className="inline-flex min-h-9 items-center justify-center rounded-full border border-sky-200/18 bg-sky-300/10 px-4 text-xs font-semibold text-sky-100 transition hover:bg-sky-300/15"
+            >
+              Watch preserved video
+            </Link>
+          ) : null}
+        </div>
+      </div>
+    </article>
+  );
 }
 
 function PremiumResolvedOutcomeCard({
@@ -1219,6 +1298,10 @@ function PremiumResolvedOutcomeCard({
   session: LiveSession;
   resolvedStyle: PremiumResolvedCardStyle;
 }) {
+  if (session.unresolvedResult) {
+    return <UnresolvedReplayOutcomeCard session={session} />;
+  }
+
   const sessionAny = session as Record<string, unknown>;
   const display = resolvedSessionDisplay(session);
   const gameHref = `/game-stats/live/${encodeURIComponent(session.sessionKey)}`;
@@ -1582,7 +1665,11 @@ function PremiumClassicLiveSessionCard({
   {/* FORCE_VISIBLE_DUAL_WATCHER_PROOF */}
   <DualWatcherProofStack uploaders={session.uploaders} />
 
-  const statusLabel = isCompleted ? "Final stored" : "Live parse";
+  const statusLabel = session.unresolvedResult
+    ? session.unresolvedResult.label
+    : isCompleted
+      ? "Final stored"
+      : "Live parse";
   const durationLabel = formatDurationCompact(session.durationSeconds);
 
   const rawGameNumber =
@@ -1603,10 +1690,7 @@ function PremiumClassicLiveSessionCard({
     durationLabel || null,
   ].filter(Boolean) as string[];
 
-  const winnerName =
-    typeof session.winner === "string" && session.winner.trim().length > 0
-      ? session.winner.trim()
-      : null;
+  const winnerName = resolvedWinnerName(session);
 
   const activeShellClass =
     liveTone === "violet"
@@ -1718,6 +1802,15 @@ function PremiumClassicLiveSessionCard({
               <div className={`text-[11px] font-medium uppercase tracking-[0.22em] ${winnerClass}`}>
                 Winner <span className={`ml-1 ${winnerNameClass}`}>{winnerName}</span>
               </div>
+            ) : session.unresolvedResult ? (
+              <div>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-100">
+                  {session.unresolvedResult.label}
+                </div>
+                <div className="mt-1 text-xs leading-5 text-slate-400">
+                  {session.unresolvedResult.explanation}
+                </div>
+              </div>
             ) : (
               <div className="h-[14px]" />
             )}
@@ -1791,7 +1884,11 @@ function ClassicLiveSessionCard({
     : "border-red-400/25 bg-red-500/12 text-red-50";
   const eyebrowClass = isCompleted ? "text-emerald-100/80" : "text-red-100/80";
   const eyebrowLabel = isCompleted ? "Just finished" : "Watcher live";
-  const badgeLabel = isCompleted ? "Final stored" : "Live parse";
+  const badgeLabel = session.unresolvedResult
+    ? session.unresolvedResult.label
+    : isCompleted
+      ? "Final stored"
+      : "Live parse";
   const compactDuration = formatDurationCompact(session.durationSeconds);
 
   return (
@@ -1834,6 +1931,16 @@ function ClassicLiveSessionCard({
               <span className="rounded-full border border-emerald-300/25 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-100">
                 Winner {session.winner}
               </span>
+            ) : null}
+            {session.unresolvedResult ? (
+              <>
+                <span className="rounded-full border border-amber-300/25 bg-amber-500/10 px-3 py-1 text-xs text-amber-100">
+                  {session.unresolvedResult.label}
+                </span>
+                <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+                  {session.unresolvedResult.code.replaceAll("_", " ")}
+                </span>
+              </>
             ) : null}
             {primaryStream ? (
               <span className="rounded-full border border-red-300/25 bg-red-400/10 px-3 py-1 text-xs text-red-100">
@@ -2395,10 +2502,7 @@ function LiveSessionCard({
   const title = sessionTitle(session);
   const compactDuration = formatDurationCompact(session.durationSeconds);
   const mapName = session.mapName || "Map pending";
-  const winner =
-    isCompleted && session.winner && session.winner !== "Unknown"
-      ? session.winner
-      : null;
+  const winner = isCompleted ? resolvedWinnerName(session) : null;
   const sourceCount = Math.max(
     session.watcherCount || 0,
     session.uploaders?.length || 0,
@@ -2451,7 +2555,11 @@ function LiveSessionCard({
               {/* COMPLETED_DUAL_WATCHER_PROOF */}
               <DualWatcherProofStack uploaders={(session as { uploaders?: DualWatcherProofUploader[] | null }).uploaders} />
 
-              {isCompleted ? "Final stored" : "Watcher live"}
+              {session.unresolvedResult
+                ? session.unresolvedResult.label
+                : isCompleted
+                  ? "Final stored"
+                  : "Watcher live"}
             </span>
           </div>
 
@@ -2468,6 +2576,18 @@ function LiveSessionCard({
               <Trophy className="h-4 w-4 text-amber-300" />
               <span className="text-slate-400">Winner</span>
               <span className="font-semibold">{winner}</span>
+            </div>
+          ) : null}
+          {session.unresolvedResult ? (
+            <div className="mt-2 rounded-xl border border-amber-200/15 bg-amber-300/[0.06] px-3 py-2.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-semibold text-amber-100">
+                  {session.unresolvedResult.explanation}
+                </span>
+                <span className="rounded-full border border-white/10 bg-slate-950/35 px-2 py-0.5 text-[9px] uppercase tracking-[0.14em] text-slate-300">
+                  {session.unresolvedResult.code.replaceAll("_", " ")}
+                </span>
+              </div>
             </div>
           ) : null}
 

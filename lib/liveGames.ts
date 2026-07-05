@@ -7,6 +7,10 @@ import {
   loadLiveSessionSnapshot,
   normalizeSessionKey,
 } from "@/lib/liveSessionSnapshot";
+import {
+  classifyUnresolvedWatcherResult,
+  normalizeResolvedWinner,
+} from "@/lib/unresolvedWatcherResult";
 import { toWatchStreamPayload, type WatchStreamPayload } from "@/lib/watchStreams";
 
 type StreamedLiveGameSession = LiveGameSession & {
@@ -561,6 +565,9 @@ function buildRecentOutcomeSession(
     new Date().toISOString();
   const originalFilename = readMatchText(match, "original_filename", "originalFilename", "filename");
   const replayFile = readMatchText(match, "replay_file", "replayFile") || originalFilename || null;
+  const rawWinner = readMatchText(match, "winner", "winner_name", "winnerName");
+  const parseReason = readMatchText(match, "parse_reason", "parseReason") || null;
+  const parseSource = readMatchText(match, "parse_source", "parseSource") || null;
 
   return {
     id,
@@ -576,7 +583,17 @@ function buildRecentOutcomeSession(
     durationSeconds: readMatchNumber(match, "duration_seconds", "durationSeconds"),
     originalFilename: originalFilename || replayFile || sessionKey,
     disconnectDetected: false,
-    winner: readMatchText(match, "winner", "winner_name", "winnerName") || null,
+    winner: normalizeResolvedWinner(rawWinner),
+    parseReason,
+    parseSource,
+    unresolvedResult: classifyUnresolvedWatcherResult({
+      winner: rawWinner,
+      players,
+      state: "completed",
+      parseReason,
+      parseSource,
+      watcherCount: 1,
+    }),
     state: "completed",
     players,
     uploaders: [],
@@ -784,6 +801,9 @@ async function loadStandaloneLiveStreamSessions(
       originalFilename: title || "Watcher Live",
       disconnectDetected: false,
       winner: null,
+      parseReason: null,
+      parseSource: "watcher_stream",
+      unresolvedResult: null,
       state: "live",
       players: parseStreamPlayers(title),
       uploaders: [],

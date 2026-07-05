@@ -142,6 +142,10 @@ function eventDetailText(event: WatcherFocusUserDiagnostics["recentEvents"][numb
 function operatorEventExplanation(
   event: WatcherFocusUserDiagnostics["recentEvents"][number]
 ) {
+  if (event.unresolvedResult) {
+    return event.unresolvedResult.explanation;
+  }
+
   if (event.unparsedFinal || event.finalityStatus === "final_unparsed_proof") {
     return "Final proof preserved but parser could not extract winner";
   }
@@ -306,6 +310,19 @@ function SupportUserDiagnostics({ focusUser }: { focusUser: WatcherFocusUserDiag
                         <div className="font-semibold text-white">
                           {operatorEventExplanation(event)}
                         </div>
+                        {event.unresolvedResult ? (
+                          <div className="mt-1.5">
+                            <span
+                              className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] ${
+                                event.unresolvedResult.reviewNeeded
+                                  ? "border-amber-300/20 bg-amber-400/10 text-amber-100"
+                                  : "border-sky-300/20 bg-sky-400/10 text-sky-100"
+                              }`}
+                            >
+                              {event.unresolvedResult.code.replaceAll("_", " ")}
+                            </span>
+                          </div>
+                        ) : null}
                         <div className="mt-1 text-xs text-slate-500">
                           {eventDetailText(event)}
                         </div>

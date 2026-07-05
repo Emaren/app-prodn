@@ -1,4 +1,8 @@
 import { Prisma, type PrismaClient } from "@/lib/generated/prisma";
+import {
+  classifyUnresolvedWatcherResult,
+  type UnresolvedWatcherResult,
+} from "@/lib/unresolvedWatcherResult";
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 const WATCHER_PARSE_SOURCES = ["watcher_live", "watcher_final"] as const;
@@ -128,6 +132,7 @@ export type WatcherFocusUserEvent = {
   streamLastUploadLatencyMs: number | null;
   streamDroppedChunks: number | null;
   streamHeartbeatFailures: number | null;
+  unresolvedResult: UnresolvedWatcherResult | null;
 };
 
 export type WatcherFocusUserStreamDiagnostics = {
@@ -342,6 +347,18 @@ function metadataBoolean(metadata: Prisma.JsonValue | null | undefined, key: str
 function metadataNumber(metadata: Prisma.JsonValue | null | undefined, key: string) {
   const value = metadataObject(metadata)[key];
   return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function metadataPlayerCount(metadata: Prisma.JsonValue | null | undefined) {
+  const record = metadataObject(metadata);
+  for (const key of ["playerCount", "playersCount", "parsedPlayerCount", "rosterCount"]) {
+    const value = record[key];
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return Math.max(0, Math.floor(value));
+    }
+  }
+
+  return Array.isArray(record.players) ? record.players.length : null;
 }
 
 function metadataIdentifier(metadata: Prisma.JsonValue | null | undefined, keys: string[]) {
@@ -834,43 +851,69 @@ async function loadFocusUserDiagnostics(
     lastFinalityStatus,
     stream,
     eventCounts: compactEventCounts(recentEvents),
-    recentEvents: recentEvents.slice(0, 16).map((event) => ({
-      createdAt: event.createdAt.toISOString(),
-      eventType: event.eventType,
-      appVersion: event.appVersion,
-      platform: event.platform,
-      watcherId: event.watcherId,
-      sessionId: event.sessionId,
-      replayHash: event.replayHash,
-      replayFile: event.replayFile,
-      parseSource: event.parseSource,
-      parseReason: event.parseReason,
-      finalityStatus: metadataString(event.metadata, "finalityStatus"),
-      finalAccepted: metadataBoolean(event.metadata, "finalAccepted"),
-      shouldSettle: metadataBoolean(event.metadata, "shouldSettle"),
-      unparsedFinal: metadataBoolean(event.metadata, "unparsedFinal"),
-      gameId: metadataIdentifier(event.metadata, ["gameId", "game_id", "gameStatsId"]),
-      waitMs: metadataNumber(event.metadata, "waitMs"),
-      reason: metadataString(event.metadata, "reason"),
-      detail: metadataString(event.metadata, "detail"),
-      errorMessage: metadataString(event.metadata, "errorMessage"),
-      fileSizeBytes: metadataNumber(event.metadata, "fileSizeBytes"),
-      streamId: metadataString(event.metadata, "streamId"),
-      streamSessionKey: metadataString(event.metadata, "sessionKey"),
-      streamSourceType: metadataString(event.metadata, "sourceType"),
-      streamSourceName: metadataString(event.metadata, "sourceName"),
-      streamSourceKind: metadataString(event.metadata, "sourceKind"),
-      streamCaptureMode: metadataString(event.metadata, "captureMode"),
-      streamModeDetail: metadataString(event.metadata, "modeDetail"),
-      streamVideoBitrate: metadataNumber(event.metadata, "videoBitrate"),
-      streamChunkTimesliceMs: metadataNumber(event.metadata, "chunkTimesliceMs"),
-      streamSequence: metadataNumber(event.metadata, "sequence"),
-      streamBlobSize: metadataNumber(event.metadata, "blobSize"),
-      streamUploadQueueLength: metadataNumber(event.metadata, "uploadQueueLength"),
-      streamLastUploadLatencyMs: metadataNumber(event.metadata, "lastUploadLatencyMs") ?? metadataNumber(event.metadata, "uploadLatencyMs"),
-      streamDroppedChunks: metadataNumber(event.metadata, "droppedChunks"),
-      streamHeartbeatFailures: metadataNumber(event.metadata, "heartbeatFailures"),
-    })),
+    recentEvents: recentEvents.slice(0, 16).map((event) => {
+      const finalityStatus = metadataString(event.metadata, "finalityStatus");
+      const finalAccepted = metadataBoolean(event.metadata, "finalAccepted");
+      const unparsedFinal = metadataBoolean(event.metadata, "unparsedFinal");
+      const waitMs = metadataNumber(event.metadata, "waitMs");
+      const reason = metadataString(event.metadata, "reason");
+      const winner =
+        metadataString(event.metadata, "winner") ??
+        metadataString(event.metadata, "winnerName");
+
+      return {
+        createdAt: event.createdAt.toISOString(),
+        eventType: event.eventType,
+        appVersion: event.appVersion,
+        platform: event.platform,
+        watcherId: event.watcherId,
+        sessionId: event.sessionId,
+        replayHash: event.replayHash,
+        replayFile: event.replayFile,
+        parseSource: event.parseSource,
+        parseReason: event.parseReason,
+        finalityStatus,
+        finalAccepted,
+        shouldSettle: metadataBoolean(event.metadata, "shouldSettle"),
+        unparsedFinal,
+        gameId: metadataIdentifier(event.metadata, ["gameId", "game_id", "gameStatsId"]),
+        waitMs,
+        reason,
+        detail: metadataString(event.metadata, "detail"),
+        errorMessage: metadataString(event.metadata, "errorMessage"),
+        fileSizeBytes: metadataNumber(event.metadata, "fileSizeBytes"),
+        streamId: metadataString(event.metadata, "streamId"),
+        streamSessionKey: metadataString(event.metadata, "sessionKey"),
+        streamSourceType: metadataString(event.metadata, "sourceType"),
+        streamSourceName: metadataString(event.metadata, "sourceName"),
+        streamSourceKind: metadataString(event.metadata, "sourceKind"),
+        streamCaptureMode: metadataString(event.metadata, "captureMode"),
+        streamModeDetail: metadataString(event.metadata, "modeDetail"),
+        streamVideoBitrate: metadataNumber(event.metadata, "videoBitrate"),
+        streamChunkTimesliceMs: metadataNumber(event.metadata, "chunkTimesliceMs"),
+        streamSequence: metadataNumber(event.metadata, "sequence"),
+        streamBlobSize: metadataNumber(event.metadata, "blobSize"),
+        streamUploadQueueLength: metadataNumber(event.metadata, "uploadQueueLength"),
+        streamLastUploadLatencyMs:
+          metadataNumber(event.metadata, "lastUploadLatencyMs") ??
+          metadataNumber(event.metadata, "uploadLatencyMs"),
+        streamDroppedChunks: metadataNumber(event.metadata, "droppedChunks"),
+        streamHeartbeatFailures: metadataNumber(event.metadata, "heartbeatFailures"),
+        unresolvedResult: classifyUnresolvedWatcherResult({
+          winner,
+          playerCount: metadataPlayerCount(event.metadata),
+          eventType: event.eventType,
+          parseReason: event.parseReason,
+          parseSource: event.parseSource,
+          finalityStatus,
+          finalAccepted,
+          unparsedFinal,
+          reason,
+          waitMs,
+          watcherCount: metadataNumber(event.metadata, "watcherCount"),
+        }),
+      };
+    }),
   };
 }
 

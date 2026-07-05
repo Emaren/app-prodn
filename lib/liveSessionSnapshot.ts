@@ -1,6 +1,11 @@
 import path from "node:path";
 
 import type { PrismaClient } from "@/lib/generated/prisma";
+import {
+  classifyUnresolvedWatcherResult,
+  normalizeResolvedWinner,
+  type UnresolvedWatcherResult,
+} from "@/lib/unresolvedWatcherResult";
 
 export type LiveGameSession = {
   id: number;
@@ -17,6 +22,9 @@ export type LiveGameSession = {
   originalFilename: string | null;
   disconnectDetected: boolean;
   winner: string | null;
+  parseReason: string | null;
+  parseSource: string | null;
+  unresolvedResult: UnresolvedWatcherResult | null;
   state: "live" | "completed";
   players: Array<{
     name: string;
@@ -61,7 +69,7 @@ type SessionRow = {
   key_events?: unknown;
   disconnect_detected: boolean;
   parse_reason?: string | null;
-  parse_source?: string;
+  parse_source?: string | null;
   user: {
     uid: string;
     inGameName: string | null;
@@ -225,6 +233,17 @@ function buildSessionFromRow(
   const activityTime = getRowActivityTime(row);
   const uploaders = collectUploaders(sourceRows);
   const primaryUploader = uploaders[0] ?? null;
+  const players = parsePlayers(row.players);
+  const winner = normalizeResolvedWinner(row.winner);
+  const unresolvedResult = classifyUnresolvedWatcherResult({
+    winner: row.winner,
+    players,
+    state,
+    parseReason: row.parse_reason,
+    parseSource: row.parse_source,
+    keyEvents: row.key_events,
+    watcherCount: uploaders.length,
+  });
   return {
     id: row.id,
     sessionKey,
@@ -242,9 +261,12 @@ function buildSessionFromRow(
         : null,
     originalFilename: row.original_filename ?? null,
     disconnectDetected: row.disconnect_detected,
-    winner: row.winner ?? null,
+    winner,
+    parseReason: row.parse_reason ?? null,
+    parseSource: row.parse_source ?? null,
+    unresolvedResult,
     state,
-    players: parsePlayers(row.players),
+    players,
     uploaders,
     watcherCount: uploaders.length,
     parseRows: sourceRows.length,
@@ -314,6 +336,7 @@ export async function loadLiveSessionSnapshot(prisma: PrismaClient): Promise<{
         key_events: true,
         disconnect_detected: true,
         parse_reason: true,
+        parse_source: true,
         user: {
           select: {
             uid: true,
@@ -361,6 +384,7 @@ export async function loadLiveSessionSnapshot(prisma: PrismaClient): Promise<{
         players: true,
         key_events: true,
         disconnect_detected: true,
+        parse_reason: true,
         parse_source: true,
         user: {
           select: {
