@@ -11,6 +11,7 @@ import {
   publicPlayerMatchesName,
 } from "@/lib/publicPlayers";
 import { loadPendingWoloClaimSummariesByName } from "@/lib/pendingWoloClaims";
+import { resolveReliableReplayWinner } from "@/lib/unresolvedWatcherResult";
 
 const RECENT_FINAL_MATCH_SCAN_LIMIT = 5000;
 
@@ -84,8 +85,14 @@ function updateLastPlayedAt(current: string | null, next: Date | string | null) 
   return current;
 }
 
-function winnerMatchesPlayer(player: PublicPlayerRef, winner: string | null | undefined) {
-  if (!winner || winner === "Unknown") {
+function winnerMatchesPlayer(player: PublicPlayerRef, game: MatchupGameRow) {
+  const winner = resolveReliableReplayWinner({
+    winner: game.winner,
+    players: parsePlayers(game.players),
+    parseReason: game.parse_reason,
+    keyEvents: game.key_events,
+  });
+  if (!winner) {
     return false;
   }
 
@@ -169,9 +176,9 @@ export function summarizeHeadToHead(
   let lastPlayedAt: string | null = null;
 
   for (const game of games) {
-    if (winnerMatchesPlayer(left, game.winner)) {
+    if (winnerMatchesPlayer(left, game)) {
       leftWins += 1;
-    } else if (winnerMatchesPlayer(right, game.winner)) {
+    } else if (winnerMatchesPlayer(right, game)) {
       rightWins += 1;
     } else {
       unknowns += 1;
@@ -234,9 +241,9 @@ export async function buildRivalSummaries(
       summary.totalMatches += 1;
       summary.lastPlayedAt = updateLastPlayedAt(summary.lastPlayedAt, playedAt);
 
-      if (winnerMatchesPlayer(currentPlayer, match.winner)) {
+      if (winnerMatchesPlayer(currentPlayer, match)) {
         summary.wins += 1;
-      } else if (winnerMatchesPlayer(ref, match.winner)) {
+      } else if (winnerMatchesPlayer(ref, match)) {
         summary.losses += 1;
       } else {
         summary.unknowns += 1;
@@ -320,9 +327,9 @@ export async function loadPublicRivalries(
     rivalry.totalMatches += 1;
     rivalry.lastPlayedAt = updateLastPlayedAt(rivalry.lastPlayedAt, readPlayedAt(entry.match));
 
-    if (winnerMatchesPlayer(left, entry.match.winner)) {
+    if (winnerMatchesPlayer(left, entry.match)) {
       rivalry.leftWins += 1;
-    } else if (winnerMatchesPlayer(right, entry.match.winner)) {
+    } else if (winnerMatchesPlayer(right, entry.match)) {
       rivalry.rightWins += 1;
     } else {
       rivalry.unknowns += 1;

@@ -37,7 +37,13 @@ import { useTileViewPreference } from "@/components/tile-view/useTileViewPrefere
 import { useUserAuth } from "@/context/UserAuthContext";
 import type { LiveGamesSnapshot } from "@/lib/liveGames";
 import { getTournamentMatchStatusLabel } from "@/lib/lobby";
-import { normalizeResolvedWinner } from "@/lib/unresolvedWatcherResult";
+import {
+  normalizePublicReplayText,
+  normalizeResolvedWinner,
+  publicReplayMapLabel,
+  resolveReliableReplayWinner,
+  unresolvedReplayReviewLabel,
+} from "@/lib/unresolvedWatcherResult";
 import {
   readStoredLiveGamesViewMode,
   TILE_VIEW_MODES,
@@ -177,19 +183,19 @@ function initials(value: string) {
 }
 
 function recentMatchMap(match: RecentMatch) {
-  if (typeof match.map === "string") return match.map;
-  if (match.map && typeof match.map === "object" && "name" in match.map) {
-    return String(match.map.name || "Unknown map");
-  }
-  return "Unknown map";
+  return publicReplayMapLabel(match.map);
 }
 
 function recentMatchPlayers(match: RecentMatch) {
   if (!Array.isArray(match.players)) return [];
+  const reliableWinner = resolveReliableReplayWinner({
+    winner: match.winner,
+    parseReason: match.parse_reason,
+  });
   return match.players
     .map((player) => ({
-      name: typeof player?.name === "string" ? player.name.trim() : "",
-      winner: player?.winner === true,
+      name: normalizePublicReplayText(player?.name) ?? "",
+      winner: Boolean(reliableWinner && player?.winner === true),
     }))
     .filter((player) => player.name);
 }
@@ -1021,8 +1027,15 @@ function ClassicBoard({
                               : session.originalFilename || "Uploaded replay"}
                           </div>
                           <div className="mt-1 text-sm text-slate-300">
-                            {session.mapName || "Uploaded replay"}
+                            {publicReplayMapLabel(session.mapName)}
                           </div>
+                          {session.unresolvedResult ? (
+                            <div className="mt-2">
+                              <span className="rounded-full border border-amber-200/18 bg-amber-300/8 px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-amber-100">
+                                {session.unresolvedResult.label}
+                              </span>
+                            </div>
+                          ) : null}
                         </div>
                         <div className="shrink-0 text-right text-xs text-slate-400">
                           {formatTime(session.playedOn || session.completedAt || session.updatedAt, mounted)}
@@ -1040,17 +1053,24 @@ function ClassicBoard({
                       <div className="flex items-start justify-between gap-4">
                         <div className="min-w-0">
                           <div className="text-sm font-semibold text-white">
-                            {Array.isArray(match.players)
-                              ? match.players.map((player) => player.name).filter(Boolean).join(" vs ")
-                              : "Replay-backed result"}
+                            {recentMatchTitle(match)}
                           </div>
                           <div className="mt-1 text-sm text-slate-300">
-                            {typeof match.map === "string"
-                              ? match.map
-                              : match.map && typeof match.map === "object" && "name" in match.map
-                                ? String(match.map.name || "Unknown map")
-                                : "Unknown map"}
+                            {recentMatchMap(match)}
                           </div>
+                          {!resolveReliableReplayWinner({
+                            winner: match.winner,
+                            parseReason: match.parse_reason,
+                          }) ? (
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              <span className="rounded-full border border-amber-200/18 bg-amber-300/8 px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-amber-100">
+                                Winner unresolved
+                              </span>
+                              <span className="rounded-full border border-white/9 bg-white/[0.04] px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-slate-300">
+                                {unresolvedReplayReviewLabel(match.parse_reason)}
+                              </span>
+                            </div>
+                          ) : null}
                         </div>
                         <div className="shrink-0 text-right text-xs text-slate-400">
                           {formatTime(match.played_on || match.timestamp, mounted)}
@@ -1144,7 +1164,7 @@ function resolvedSessionDisplay(session: LiveSession) {
     .filter((player) => player.name);
 
   const winnerName = resolvedWinnerName(session);
-  const mapName = session.mapName || "Unknown battlefield";
+  const mapName = publicReplayMapLabel(session.mapName, "Map pending");
   const battleSize = resolvedBattleSizeLabel(names.length);
   const winnerPlayers = players.filter((player) => player.winner);
   const fieldPlayers = players.filter((player) => !player.winner);
@@ -1263,9 +1283,9 @@ function UnresolvedReplayOutcomeCard({ session }: { session: LiveSession }) {
               {name}
             </span>
           ))}
-          {session.mapName && session.mapName !== "Unknown" ? (
+          {normalizePublicReplayText(session.mapName) ? (
             <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-slate-300">
-              {session.mapName}
+              {publicReplayMapLabel(session.mapName)}
             </span>
           ) : null}
         </div>
@@ -1898,9 +1918,9 @@ function ClassicLiveSessionCard({
           <div className={`text-xs uppercase tracking-[0.3em] ${eyebrowClass}`}>{eyebrowLabel}</div>
           <div className="mt-2 text-xl font-semibold text-white">{title}</div>
           <div className="mt-3 flex flex-wrap gap-2">
-            {session.mapName && session.mapName !== "Unknown" ? (
+            {normalizePublicReplayText(session.mapName) ? (
               <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-200">
-                {session.mapName}
+                {publicReplayMapLabel(session.mapName)}
               </span>
             ) : null}
             <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-200">
@@ -1927,9 +1947,9 @@ function ClassicLiveSessionCard({
                 +{hiddenUploaderCount} more
               </span>
             ) : null}
-            {isCompleted && session.winner && session.winner !== "Unknown" ? (
+            {isCompleted && normalizeResolvedWinner(session.winner) ? (
               <span className="rounded-full border border-emerald-300/25 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-100">
-                Winner {session.winner}
+                Winner {normalizeResolvedWinner(session.winner)}
               </span>
             ) : null}
             {session.unresolvedResult ? (

@@ -2,6 +2,10 @@ import {
   pickLobbyMatchPlayedAt,
   type LobbyMatchTimeSource,
 } from "@/lib/lobbyMatchTime";
+import {
+  resolveReliableReplayWinner,
+  unresolvedReplayReviewLabel,
+} from "@/lib/unresolvedWatcherResult";
 
 type ReplayPlayerRecord = Record<string, unknown>;
 
@@ -82,13 +86,13 @@ export function readMapRecord(value: unknown) {
 export function readMapName(value: unknown) {
   const record = readMapRecord(value);
   const name = record.name;
-  return typeof name === "string" && name.trim() ? name : "Unknown Map";
+  return typeof name === "string" && name.trim() ? name : "Map unresolved";
 }
 
 export function readMapSize(value: unknown) {
   const record = readMapRecord(value);
   const size = record.size;
-  return typeof size === "string" && size.trim() ? size : "Unknown";
+  return typeof size === "string" && size.trim() ? size : "Size unavailable";
 }
 
 export function readPlayedAt(value: LobbyMatchTimeSource) {
@@ -113,19 +117,19 @@ export function displayReplayFilename(originalFilename: string | null | undefine
 }
 
 export function displayGameVersion(value: string | null | undefined) {
-  if (!value) return "Unknown";
+  if (!value) return "Version unavailable";
 
   const trimmed = value.trim();
-  if (!trimmed) return "Unknown";
+  if (!trimmed) return "Version unavailable";
 
   return cleanVersionName(trimmed);
 }
 
 export function displayGameType(value: string | null | undefined) {
-  if (!value) return "Unknown";
+  if (!value) return "Match type unavailable";
 
   const trimmed = value.trim();
-  if (!trimmed) return "Unknown";
+  if (!trimmed) return "Match type unavailable";
 
   const tupleMatch = trimmed.match(/^\(<Version\.([^:>]+):\s*\d+>,\s*'([^']+)'/);
   if (tupleMatch) {
@@ -174,13 +178,17 @@ export function winnerLabel(winner: string | null | undefined, parseReason?: str
   if (isEarlyExitNoResult(parseReason)) {
     return "No rated result";
   }
-  if (winner && winner !== "Unknown") {
-    return winner;
+  const resolvedWinner = resolveReliableReplayWinner({
+    winner,
+    parseReason,
+  });
+  if (resolvedWinner) {
+    return resolvedWinner;
   }
   if (isProvisionalWinnerInference(parseReason)) {
     return "Winner not confirmed";
   }
-  return "Unknown";
+  return "Winner unresolved";
 }
 
 export function outcomeBadgeLabel(
@@ -188,17 +196,19 @@ export function outcomeBadgeLabel(
   winner?: string | null | undefined
 ) {
   if (isEarlyExitNoResult(parseReason)) return "Under 60s drop";
-  if (!winner || winner === "Unknown") return null;
+  if (!resolveReliableReplayWinner({ winner, parseReason })) {
+    return unresolvedReplayReviewLabel(parseReason);
+  }
   if (isFallbackWinnerInference(parseReason)) return null;
   if (isProvisionalWinnerInference(parseReason)) return "Provisional inference";
   return isResignationOutcome(parseReason) ? "Win by resignation" : null;
 }
 
 export function displayParseReason(value: string | null | undefined) {
-  if (!value) return "Unknown parse reason";
+  if (!value) return "Parse reason unavailable";
 
   const trimmed = value.trim();
-  if (!trimmed) return "Unknown parse reason";
+  if (!trimmed) return "Parse reason unavailable";
 
   switch (trimmed) {
     case "watcher_or_browser":
@@ -247,7 +257,7 @@ export function normalizeDurationSeconds(value: number | null | undefined) {
 
 export function formatDurationLabel(value: number | null | undefined) {
   const totalSeconds = normalizeDurationSeconds(value);
-  if (!totalSeconds) return "Unknown";
+  if (!totalSeconds) return "Duration unavailable";
 
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
@@ -289,7 +299,7 @@ export function parseStatusLabel(status: string) {
 
 export function displayPlayerName(player: ReplayPlayerRecord) {
   const name = player.name;
-  return typeof name === "string" && name.trim() ? name : "Unknown player";
+  return typeof name === "string" && name.trim() ? name : "Roster unresolved";
 }
 
 export function readPlayerCivilizationLabel(player: ReplayPlayerRecord) {
@@ -300,14 +310,14 @@ export function readPlayerCivilizationLabel(player: ReplayPlayerRecord) {
 
   const value = player.civilization;
   if (typeof value === "number" && Number.isFinite(value)) {
-    return HD_CIVILIZATION_NAMES[Math.round(value)] || `Unknown (${Math.round(value)})`;
+    return HD_CIVILIZATION_NAMES[Math.round(value)] || `Civilization #${Math.round(value)}`;
   }
 
   if (typeof value === "string" && value.trim()) {
     return value.trim();
   }
 
-  return "Unknown";
+  return "Civilization unavailable";
 }
 
 function readNumericPlayerField(player: ReplayPlayerRecord, ...keys: string[]) {

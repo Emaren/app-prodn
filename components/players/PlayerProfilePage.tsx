@@ -56,8 +56,8 @@ function PlayerProfileAdvanced({ profile }: { profile: PlayerProfile }) {
             <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
               <CommandTile label="Win Rate" value={formatPercent(profile.command.winRate)} detail={`${profile.command.wins}W / ${profile.command.losses}L`} tone="emerald" />
               <CommandTile label="Current Streak" value={profile.command.currentStreakLabel} detail={`${profile.command.matchesLast30Days} games in 30d`} tone={currentStreakTone} />
-              <CommandTile label="Peak Score" value={formatNumber(profile.command.bestScore)} detail={`avg ${formatNumber(profile.command.averageScore)}`} tone="sky" />
-              <CommandTile label="Peak EAPM" value={formatDecimal(profile.command.bestEapm)} detail={`avg ${formatDecimal(profile.command.averageEapm)}`} tone="red" />
+              <CommandTile label="Peak Score" value={formatPeakNumber(profile.command.bestScore)} detail={formatAverageNumber(profile.command.averageScore)} tone="sky" />
+              <CommandTile label="Peak EAPM" value={formatPeakDecimal(profile.command.bestEapm)} detail={formatAverageDecimal(profile.command.averageEapm)} tone="red" />
             </div>
 
             <div className="mt-5 grid gap-4 2xl:grid-cols-[0.95fr_1.05fr]">
@@ -184,15 +184,15 @@ function ClaimedBasicProfile({ profile }: { profile: PlayerProfile }) {
               <MetricCard label="Longest Game" value={formatDurationLabel(profile.performance.longestDurationSeconds)} />
               <MetricCard label="Unique Opponents" value={String(profile.performance.uniqueOpponents)} />
               <MetricCard label="Civilizations" value={String(profile.performance.civilizationsPlayed)} />
-              <MetricCard label="Most Played Map" value={profile.performance.mostPlayedMap || "Unknown"} />
+              <MetricCard label="Most Played Map" value={profile.performance.mostPlayedMap || "Map unresolved"} />
             </div>
           </Panel>
 
           <Panel eyebrow="Profile" title="Identity">
             <dl className="grid gap-4">
               <StatRow label="Public Name" value={profile.displayName} />
-              <StatRow label="Steam Persona" value={profile.steam.personaName || "Unknown"} />
-              <StatRow label="Steam ID" value={profile.steam.steamId || "Unknown"} />
+              <StatRow label="Steam Persona" value={profile.steam.personaName || "Not linked"} />
+              <StatRow label="Steam ID" value={profile.steam.steamId || "Not linked"} />
               <StatRow label="Verification" value={`level ${profile.verificationLevel} · ${profile.verificationMethod}`} />
               <StatRow
                 label="Known Aliases"
@@ -257,7 +257,7 @@ function ReplayClassicBasicProfile({ profile }: { profile: PlayerProfile }) {
               {pendingClaimCount > 0 ? <Tag>{pendingClaimAmount} WOLO unclaimed</Tag> : null}
               {wins > 0 ? <Tag>{wins} wins</Tag> : null}
               {losses > 0 ? <Tag>{losses} losses</Tag> : null}
-              {unknowns > 0 ? <Tag>{unknowns} unknown outcomes</Tag> : null}
+              {unknowns > 0 ? <Tag>{unknowns} unresolved outcomes</Tag> : null}
             </div>
           </div>
 
@@ -307,7 +307,7 @@ function ReplayClassicBasicProfile({ profile }: { profile: PlayerProfile }) {
               <MetricCard label="Shortest Game" value={formatDurationLabel(profile.performance.shortestDurationSeconds)} />
               <MetricCard label="Unique Opponents" value={String(profile.performance.uniqueOpponents)} />
               <MetricCard label="Civilizations Played" value={String(profile.performance.civilizationsPlayed)} />
-              <MetricCard label="Most Played Map" value={profile.performance.mostPlayedMap || "Unknown"} />
+              <MetricCard label="Most Played Map" value={profile.performance.mostPlayedMap || "Map unresolved"} />
             </div>
             {profile.performance.ratingLastSeenAt ? (
               <div className="mt-4 text-xs text-slate-400">
@@ -753,7 +753,7 @@ function BreakdownBars({ rows, accent }: { rows: PlayerBreakdownRow[]; accent: "
             <div className={`h-full rounded-full ${barClass}`} style={{ width: `${Math.max(8, row.share)}%` }} />
           </div>
           <div className="mt-2 text-xs text-slate-500">
-            {row.wins}W / {row.losses}L{row.unknowns > 0 ? ` / ${row.unknowns}U` : ""}
+            {row.wins}W / {row.losses}L{row.unknowns > 0 ? ` / ${row.unknowns} unresolved` : ""}
           </div>
         </div>
       ))}
@@ -925,7 +925,7 @@ function ClassicRivalries({ profile }: { profile: PlayerProfile }) {
               </div>
               <div className="text-right text-xs text-slate-300">
                 {rivalry.wins}-{rivalry.losses}
-                {rivalry.unknowns > 0 ? ` · ${rivalry.unknowns} unknown` : ""}
+                {rivalry.unknowns > 0 ? ` · ${rivalry.unknowns} unresolved` : ""}
               </div>
             </div>
 
@@ -1003,19 +1003,37 @@ function Tag({ children }: { children: ReactNode }) {
 }
 
 function formatRatingMetric(value: number | null | undefined) {
-  return typeof value === "number" && Number.isFinite(value) ? String(Math.round(value)) : "Unknown";
+  return typeof value === "number" && Number.isFinite(value) ? String(Math.round(value)) : "Not ranked";
 }
 
 function formatNumber(value: number | null | undefined) {
-  return typeof value === "number" && Number.isFinite(value) ? Math.round(value).toLocaleString() : "Unknown";
-}
-
-function formatDecimal(value: number | null | undefined) {
-  return typeof value === "number" && Number.isFinite(value) ? String(value) : "Unknown";
+  return typeof value === "number" && Number.isFinite(value) ? Math.round(value).toLocaleString() : "—";
 }
 
 function formatPercent(value: number | null | undefined) {
-  return typeof value === "number" && Number.isFinite(value) ? `${value}%` : "Unknown";
+  return typeof value === "number" && Number.isFinite(value) ? `${value}%` : "—";
+}
+
+function formatPeakNumber(value: number | null | undefined) {
+  return typeof value === "number" && Number.isFinite(value)
+    ? Math.round(value).toLocaleString()
+    : "No peak yet";
+}
+
+function formatAverageNumber(value: number | null | undefined) {
+  return typeof value === "number" && Number.isFinite(value)
+    ? `avg ${Math.round(value).toLocaleString()}`
+    : "avg unavailable";
+}
+
+function formatPeakDecimal(value: number | null | undefined) {
+  return typeof value === "number" && Number.isFinite(value) ? String(value) : "No peak yet";
+}
+
+function formatAverageDecimal(value: number | null | undefined) {
+  return typeof value === "number" && Number.isFinite(value)
+    ? `avg ${value}`
+    : "avg unavailable";
 }
 
 function formatWolo(value: number | null | undefined) {

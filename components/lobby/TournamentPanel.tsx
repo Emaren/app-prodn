@@ -9,6 +9,10 @@ import {
 } from "@/components/lobby/lobbyPresentation";
 import { getTournamentMatchStatusLabel, getTournamentStatusLabel, type LobbySnapshot } from "@/lib/lobby";
 import { displayMatchPlayer, displayName, formatLobbyMoment, formatTournamentWindow } from "@/components/lobby/utils";
+import {
+  normalizeResolvedWinner,
+  publicReplayMapLabel,
+} from "@/lib/unresolvedWatcherResult";
 
 type TournamentPanelProps = {
   tournament: LobbySnapshot["tournament"];
@@ -203,11 +207,13 @@ export function TournamentPanel({
 
                   {match.proof && (
                     <div className="mt-2.5 text-xs text-emerald-100/90">
-                      {match.proof.mapName || "Unknown map"}
+                      {publicReplayMapLabel(match.proof.mapName)}
                       {match.proof.playedOn
                         ? ` · ${formatLobbyMoment(match.proof.playedOn)}`
                         : ""}
-                      {match.proof.winner ? ` · Winner ${match.proof.winner}` : ""}
+                      {normalizeResolvedWinner(match.proof.winner)
+                        ? ` · Winner ${normalizeResolvedWinner(match.proof.winner)}`
+                        : " · Winner unresolved"}
                     </div>
                   )}
                 </div>

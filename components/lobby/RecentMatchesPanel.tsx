@@ -11,11 +11,14 @@ import {
 import {
   outcomeBadgeLabel,
   parsePlayers as parseReplayPlayers,
-  readMapName,
   winnerLabel,
 } from "@/lib/gameStatsView";
 import type { LobbyMatchRow } from "@/lib/lobby";
 import { pickLobbyMatchPlayedAt } from "@/lib/lobbyMatchTime";
+import {
+  normalizePublicReplayText,
+  publicReplayMapLabel,
+} from "@/lib/unresolvedWatcherResult";
 
 const MATCH_FEED_PAGE_SIZE = 24;
 
@@ -254,7 +257,7 @@ function MatchCard({
 }) {
   const tone = getLobbyPresentationTone(themeKey, viewMode);
   const players = parseReplayPlayers(match.players)
-    .map((player) => String(player.name || ""))
+    .map((player) => normalizePublicReplayText(player.name) ?? "")
     .filter(Boolean);
 
   const playedAt = pickLobbyMatchPlayedAt(match);
@@ -267,9 +270,9 @@ function MatchCard({
     >
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <div className="font-medium text-white">{readMapName(match.map)}</div>
+          <div className="font-medium text-white">{publicReplayMapLabel(match.map)}</div>
           <div className="mt-1 truncate text-sm text-slate-300">
-            {players.join(" vs ")}
+            {players.length > 0 ? players.join(" vs ") : "Roster unresolved"}
           </div>
         </div>
 

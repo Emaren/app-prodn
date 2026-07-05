@@ -32,6 +32,11 @@ import {
 } from "@/lib/publicPlayers";
 import { isAtOrAfterWoloMainnetStart, isMainnetVisibleBetWager } from "@/lib/woloChain";
 import { loadUserCommunitySummaries, type UserCommunitySummary } from "@/lib/communityHonors";
+import {
+  normalizePublicReplayText,
+  publicReplayMapLabel,
+  resolveReliableReplayWinner,
+} from "@/lib/unresolvedWatcherResult";
 
 export type PlayerProfileViewMode = "basic" | "advanced";
 export type PlayerProfileIdentity =
@@ -351,8 +356,14 @@ function currentPlayerRecord(game: PlayerProfileGameRow, currentPlayer: PublicPl
 }
 
 function gameResult(game: PlayerProfileGameRow, currentPlayer: PublicPlayerRef): "win" | "loss" | "unknown" {
-  if (!game.winner || game.winner === "Unknown") return "unknown";
-  return publicPlayerMatchesName(currentPlayer, game.winner) ? "win" : "loss";
+  const winner = resolveReliableReplayWinner({
+    winner: game.winner,
+    players: parsePlayers(game.players),
+    parseReason: game.parse_reason,
+    keyEvents: game.key_events,
+  });
+  if (!winner) return "unknown";
+  return publicPlayerMatchesName(currentPlayer, winner) ? "win" : "loss";
 }
 
 function comparePlayedAtDesc(left: PlayerProfileGameRow, right: PlayerProfileGameRow) {
@@ -397,7 +408,7 @@ function buildBreakdownRow(label: string, matches: number, wins: number, losses:
     wins,
     losses,
     unknowns,
-    winRate: percentage(wins, matches),
+    winRate: percentage(wins, wins + losses),
     share: total > 0 ? Math.round((matches / total) * 100) : 0,
   } satisfies PlayerBreakdownRow;
 }
@@ -430,8 +441,8 @@ function buildCurrentStreakLabel(games: PlayerProfileGameRow[], currentPlayer: P
   for (const game of games) {
     const result = gameResult(game, currentPlayer);
     if (result === "unknown") {
-      if (count === 0) continue;
-      break;
+      if (count === 0) return "Awaiting result proof";
+      return `${count} ${streakKind === "win" ? (count === 1 ? "win" : "wins") : count === 1 ? "loss" : "losses"} · proof boundary`;
     }
 
     if (!streakKind) {
@@ -474,17 +485,19 @@ function buildCommandStats(games: PlayerProfileGameRow[], currentPlayer: PublicP
     else unknowns += 1;
 
     const player = currentPlayerRecord(game, currentPlayer);
-    const civ = player ? readPlayerCivilizationLabel(player) : "Unknown";
-    if (civ !== "Unknown") civCounts.set(civ, (civCounts.get(civ) ?? 0) + 1);
+    const civ = player ? normalizePublicReplayText(readPlayerCivilizationLabel(player)) : null;
+    if (civ) civCounts.set(civ, (civCounts.get(civ) ?? 0) + 1);
 
-    const mapName = readMapName(game.map);
-    if (mapName !== "Unknown Map") mapCounts.set(mapName, (mapCounts.get(mapName) ?? 0) + 1);
+    const mapName = normalizePublicReplayText(readMapName(game.map));
+    if (mapName) mapCounts.set(mapName, (mapCounts.get(mapName) ?? 0) + 1);
 
-    const score = readPlayerScore(player);
-    if (score !== null && score > 0) scores.push(score);
+    if (result !== "unknown") {
+      const score = readPlayerScore(player);
+      if (score !== null && score > 0) scores.push(score);
 
-    const eapm = readPlayerEapm(player);
-    if (eapm !== null && eapm > 0) eapms.push(eapm);
+      const eapm = readPlayerEapm(player);
+      if (eapm !== null && eapm > 0) eapms.push(eapm);
+    }
 
     const playedAt = readPlayedAt(game);
     const playedIso = toIso(playedAt);
@@ -501,19 +514,27 @@ function buildCommandStats(games: PlayerProfileGameRow[], currentPlayer: PublicP
     if (displayParseReason(game.parse_reason).toLowerCase().includes("manual")) manualBackfillMatches += 1;
   }
 
-  const last10 = games.slice(0, 10);
-  const last30 = games.slice(0, 30);
-  const countWins = (rows: PlayerProfileGameRow[]) =>
-    rows.filter((game) => gameResult(game, currentPlayer) === "win").length;
+  const resolvedResults = (rows: PlayerProfileGameRow[]) =>
+    rows
+      .map((game) => gameResult(game, currentPlayer))
+      .filter((result) => result !== "unknown");
+  const last10Results = resolvedResults(games).slice(0, 10);
+  const last30Results = resolvedResults(games).slice(0, 30);
 
   return {
     totalMatches: games.length,
     wins,
     losses,
     unknowns,
-    winRate: percentage(wins, games.length),
-    last10WinRate: percentage(countWins(last10), last10.length),
-    last30WinRate: percentage(countWins(last30), last30.length),
+    winRate: percentage(wins, wins + losses),
+    last10WinRate: percentage(
+      last10Results.filter((result) => result === "win").length,
+      last10Results.length
+    ),
+    last30WinRate: percentage(
+      last30Results.filter((result) => result === "win").length,
+      last30Results.length
+    ),
     currentStreakLabel: buildCurrentStreakLabel(games, currentPlayer),
     activeDays: activeDayKeys.size,
     matchesLast7Days,
@@ -547,6 +568,8 @@ function buildResourceStats(games: PlayerProfileGameRow[], currentPlayer: Public
   const visibleGameIds = new Set<number>();
 
   for (const game of games) {
+    if (gameResult(game, currentPlayer) === "unknown") continue;
+
     const player = currentPlayerRecord(game, currentPlayer);
     const playedAt = toIso(readPlayedAt(game));
     const mapName = readMapName(game.map);
@@ -585,10 +608,10 @@ function buildCharts(games: PlayerProfileGameRow[], currentPlayer: PublicPlayerR
   for (const game of games) {
     const result = gameResult(game, currentPlayer);
     const player = currentPlayerRecord(game, currentPlayer);
-    const civ = player ? readPlayerCivilizationLabel(player) : "Unknown";
-    const mapName = readMapName(game.map);
-    if (civ !== "Unknown") updateBreakdown(civs, civ, result);
-    if (mapName !== "Unknown Map") updateBreakdown(maps, mapName, result);
+    const civ = player ? normalizePublicReplayText(readPlayerCivilizationLabel(player)) : null;
+    const mapName = normalizePublicReplayText(readMapName(game.map));
+    if (civ) updateBreakdown(civs, civ, result);
+    if (mapName) updateBreakdown(maps, mapName, result);
   }
 
   const form = games
@@ -624,14 +647,17 @@ function buildBestGames(games: PlayerProfileGameRow[], currentPlayer: PublicPlay
 
   for (const game of games) {
     const player = currentPlayerRecord(game, currentPlayer);
-    const score = readPlayerScore(player);
-    if (score !== null && score > 0 && (!highestScore || score > highestScore.value)) {
-      highestScore = { game, value: score };
-    }
+    const result = gameResult(game, currentPlayer);
+    if (result !== "unknown") {
+      const score = readPlayerScore(player);
+      if (score !== null && score > 0 && (!highestScore || score > highestScore.value)) {
+        highestScore = { game, value: score };
+      }
 
-    const eapm = readPlayerEapm(player);
-    if (eapm !== null && eapm > 0 && (!highestEapm || eapm > highestEapm.value)) {
-      highestEapm = { game, value: eapm };
+      const eapm = readPlayerEapm(player);
+      if (eapm !== null && eapm > 0 && (!highestEapm || eapm > highestEapm.value)) {
+        highestEapm = { game, value: eapm };
+      }
     }
 
     const duration = normalizeDurationSeconds(game.duration ?? game.game_duration ?? null);
@@ -650,7 +676,7 @@ function buildBestGames(games: PlayerProfileGameRow[], currentPlayer: PublicPlay
       label,
       value,
       href: `/game-stats/${game.id}`,
-      mapName: readMapName(game.map),
+      mapName: publicReplayMapLabel(game.map),
       playedAt: toIso(readPlayedAt(game)),
     });
   };
@@ -672,15 +698,24 @@ function toMatchItem(game: PlayerProfileGameRow, currentPlayer: PublicPlayerRef)
   return {
     id: game.id,
     href: `/game-stats/${game.id}`,
-    mapName: readMapName(game.map),
-    playersLabel: players.length > 0 ? players.map((entry) => displayPlayerName(entry)).join(" vs ") : "Players unavailable",
+    mapName: publicReplayMapLabel(game.map),
+    playersLabel: (() => {
+      const names = players
+        .map((entry) => normalizePublicReplayText(entry.name))
+        .filter((name): name is string => Boolean(name));
+      if (names.length >= 2) return names.join(" vs ");
+      if (names.length === 1) return `${names[0]} · Opponent unresolved`;
+      return "Roster unresolved";
+    })(),
     winnerLabel: winnerLabel(game.winner, game.parse_reason),
     outcomeLabel: outcomeBadgeLabel(game.parse_reason, game.winner),
     parseLabel: displayParseReason(game.parse_reason),
     playedAt,
     durationLabel: formatDurationLabel(game.duration ?? game.game_duration ?? null),
     disconnectDetected: Boolean(game.disconnect_detected),
-    playerCivilization: player ? readPlayerCivilizationLabel(player) : "Unknown",
+    playerCivilization:
+      (player ? normalizePublicReplayText(readPlayerCivilizationLabel(player)) : null) ??
+      "Civilization unavailable",
     result,
     score: readPlayerScore(player),
     eapm: readPlayerEapm(player),
@@ -756,8 +791,14 @@ function playerProfileIsFinal(game: PlayerProfileGameRow) {
 }
 
 function playerProfileHasResolvedWinner(game: PlayerProfileGameRow) {
-  const winner = String(game.winner ?? "").trim().toLowerCase();
-  return Boolean(winner && winner !== "unknown");
+  return Boolean(
+    resolveReliableReplayWinner({
+      winner: game.winner,
+      players: parsePlayers(game.players),
+      parseReason: game.parse_reason,
+      keyEvents: game.key_events,
+    })
+  );
 }
 
 function playerProfilePreferenceScore(game: PlayerProfileGameRow) {
@@ -1080,8 +1121,8 @@ function playerProfileGameProofNames(game: PlayerProfileGameRow) {
   const names = new Set<string>();
 
   for (const player of parsePlayers(game.players)) {
-    const name = displayPlayerName(player).trim();
-    if (name && name.toLowerCase() !== "unknown") names.add(name);
+    const name = normalizePublicReplayText(player.name);
+    if (name) names.add(name);
   }
 
   return [...names];

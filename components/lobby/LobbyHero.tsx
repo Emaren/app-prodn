@@ -20,6 +20,11 @@ import type { LobbyLeaderboardEntry, LobbyMatchRow, LobbySnapshot } from "@/lib/
 import { avatarCardUrlForUser, avatarThumbUrlForUser } from "@/lib/avatarAssets";
 import type { LeaderboardLane } from "@/lib/leaderboardLane";
 import { TILE_VIEW_MODES, type TileViewMode } from "@/lib/tileViewPreferences";
+import {
+  normalizePublicReplayText,
+  publicReplayMapLabel,
+  resolveReliableReplayWinner,
+} from "@/lib/unresolvedWatcherResult";
 
 type WoloMoved24hSnapshot = {
   totalWolo: number;
@@ -82,26 +87,25 @@ function getRecentMatchSummary(match: LobbyMatchRow | null | undefined) {
     return null;
   }
 
-  const mapName =
-    typeof match.map === "string"
-      ? match.map
-      : typeof match.map?.name === "string"
-        ? match.map.name
-        : null;
+  const mapName = normalizePublicReplayText(publicReplayMapLabel(match.map));
+  const winner = resolveReliableReplayWinner({
+    winner: match.winner,
+    parseReason: match.parse_reason,
+  });
 
-  if (match.winner && mapName) {
-    return `${match.winner} on ${mapName}`.slice(0, 48);
+  if (winner && mapName) {
+    return `${winner} on ${mapName}`.slice(0, 48);
   }
 
-  if (match.winner) {
-    return match.winner.slice(0, 48);
+  if (winner) {
+    return winner.slice(0, 48);
   }
 
   if (mapName) {
     return mapName.slice(0, 48);
   }
 
-  return "Replay parsed";
+  return "Replay needs review";
 }
 
 function buildPulseItems({

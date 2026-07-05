@@ -33,6 +33,7 @@ import {
   winnerLabel,
 } from "@/lib/gameStatsView";
 import type { LiveReplayDetailSnapshot, LiveReplayPlayerRecord } from "@/lib/liveReplayDetail";
+import { resolveReliableReplayWinner } from "@/lib/unresolvedWatcherResult";
 
 const POLL_INTERVAL_MS = 5_000;
 
@@ -190,6 +191,13 @@ export default function LiveReplayDetail({
     : [];
   const eventTypes = Array.isArray(game.eventTypes) ? game.eventTypes : [];
   const outcomeLabel = isBattleArchive ? outcomeBadgeLabel(game.parseReason, game.winner) : null;
+  const reliableWinner = resolveReliableReplayWinner({
+    winner: game.winner,
+    players,
+    parseReason: game.parseReason,
+    keyEvents: game.keyEvents,
+    eventTypes,
+  });
   const historyPulses = snapshot.history.map((entry) => ({
     ...entry,
     parsedPlayers: parsePlayers(entry.players),
@@ -374,7 +382,7 @@ export default function LiveReplayDetail({
               <SignalTile
                 label="Current winner signal"
                 value={winnerLabel(game.winner, game.parseReason)}
-                tone={game.winner && game.winner !== "Unknown" ? "emerald" : "neutral"}
+                tone={reliableWinner ? "emerald" : "neutral"}
               />
               <SignalTile
                 label="Disconnect alarm"
@@ -452,8 +460,13 @@ export default function LiveReplayDetail({
                 players.map((player, index) => {
                   const playerName = displayPlayerName(player);
                   const pulseSummary = playerPulseSummaries[index];
-                  const winnerState =
-                    player.winner === true ? "winner signal" : player.winner === false ? "trailing signal" : "live";
+                  const winnerState = reliableWinner
+                    ? player.winner === true
+                      ? "winner signal"
+                      : player.winner === false
+                        ? "trailing signal"
+                        : "live"
+                    : "winner unresolved";
 
                   return (
                     <div
@@ -556,7 +569,15 @@ export default function LiveReplayDetail({
                     <div className="text-right text-xs text-slate-400">
                       <div>{formatDateTime(entry.updatedAt)}</div>
                       <div className="mt-1 uppercase tracking-[0.22em] text-slate-500">
-                        {entry.winner && entry.winner !== "Unknown" ? `winner ${entry.winner}` : "winner pending"}
+                        {resolveReliableReplayWinner({
+                          winner: entry.winner,
+                          parseReason: entry.parseReason,
+                        })
+                          ? `winner ${resolveReliableReplayWinner({
+                              winner: entry.winner,
+                              parseReason: entry.parseReason,
+                            })}`
+                          : "winner unresolved"}
                       </div>
                     </div>
                   </div>
@@ -699,7 +720,7 @@ export default function LiveReplayDetail({
 
                     <div className="mt-4 flex flex-wrap gap-2">
                       <Tag>{attempt.parseSource}</Tag>
-                      <Tag>{attempt.uploadMode || "unknown mode"}</Tag>
+                      <Tag>{attempt.uploadMode || "mode unavailable"}</Tag>
                       <Tag>{shortHash(attempt.replayHash)}</Tag>
                     </div>
 
@@ -1045,7 +1066,7 @@ function renderUploader(
   user: LiveReplayDetailSnapshot["game"]["user"]
 ) {
   if (!user) {
-    return "Unknown uploader";
+    return "Uploader unavailable";
   }
 
   const label = user.inGameName || user.steamPersonaName || user.uid;
@@ -1060,7 +1081,7 @@ function renderUploader(
 }
 
 function formatPrimitive(value: unknown) {
-  if (value === null || value === undefined || value === "") return "Unknown";
+  if (value === null || value === undefined || value === "") return "Unavailable";
   if (typeof value === "boolean") return value ? "Yes" : "No";
   return String(value);
 }
@@ -1089,7 +1110,7 @@ function readPlayerScore(player: LiveReplayPlayerRecord) {
 }
 
 function formatRatingMetric(value: number | null) {
-  return typeof value === "number" && Number.isFinite(value) ? String(Math.round(value)) : "Unknown";
+  return typeof value === "number" && Number.isFinite(value) ? String(Math.round(value)) : "Unavailable";
 }
 
 function formatActivityMetric(value: number | null) {
@@ -1097,7 +1118,7 @@ function formatActivityMetric(value: number | null) {
 }
 
 function formatNumericMetric(value: number | null) {
-  return typeof value === "number" && Number.isFinite(value) ? String(Math.round(value)) : "Unknown";
+  return typeof value === "number" && Number.isFinite(value) ? String(Math.round(value)) : "Unavailable";
 }
 
 function formatPulseMetric(value: number | null) {
@@ -1111,14 +1132,14 @@ function formatDeltaMetric(value: number | null) {
 }
 
 function formatDateTime(value: Date | string | null | undefined) {
-  if (!value) return "Unknown";
+  if (!value) return "Unavailable";
   const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) return "Unknown";
+  if (Number.isNaN(date.getTime())) return "Unavailable";
   return date.toLocaleString();
 }
 
 function formatPositionValue(value: unknown) {
-  return Array.isArray(value) && value.length === 2 ? value.join(", ") : "Unknown";
+  return Array.isArray(value) && value.length === 2 ? value.join(", ") : "Unavailable";
 }
 
 function humanizeKey(value: string) {

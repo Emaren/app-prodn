@@ -3,7 +3,9 @@ import path from "node:path";
 import type { PrismaClient } from "@/lib/generated/prisma";
 import {
   classifyUnresolvedWatcherResult,
-  normalizeResolvedWinner,
+  normalizePublicReplayText,
+  resolveReliableReplayWinner,
+  resolveReplayWinnerTruth,
   type UnresolvedWatcherResult,
 } from "@/lib/unresolvedWatcherResult";
 
@@ -131,7 +133,13 @@ function isCompletedLiveCompatRow(
     Boolean(completionSource) ||
     parseReason.includes("final") ||
     parseReason.includes("resignation") ||
-    Boolean(row.winner && row.winner !== "Unknown")
+    Boolean(
+      resolveReliableReplayWinner({
+        winner: row.winner,
+        parseReason: row.parse_reason,
+        keyEvents: row.key_events,
+      })
+    )
   );
 }
 
@@ -141,7 +149,7 @@ function parseMapName(value: unknown) {
   }
 
   const name = "name" in value ? value.name : null;
-  return typeof name === "string" && name.trim() ? name.trim() : null;
+  return normalizePublicReplayText(name);
 }
 
 function parsePlayers(value: unknown): LiveGameSession["players"] {
@@ -155,7 +163,8 @@ function parsePlayers(value: unknown): LiveGameSession["players"] {
         return null;
       }
 
-      const name = "name" in entry && typeof entry.name === "string" ? entry.name.trim() : "";
+      const name =
+        "name" in entry ? normalizePublicReplayText(entry.name) ?? "" : "";
       if (!name) {
         return null;
       }
@@ -233,11 +242,21 @@ function buildSessionFromRow(
   const activityTime = getRowActivityTime(row);
   const uploaders = collectUploaders(sourceRows);
   const primaryUploader = uploaders[0] ?? null;
-  const players = parsePlayers(row.players);
-  const winner = normalizeResolvedWinner(row.winner);
+  const parsedPlayers = parsePlayers(row.players);
+  const winnerTruth = resolveReplayWinnerTruth({
+    winner: row.winner,
+    players: parsedPlayers,
+    parseReason: row.parse_reason,
+    parseSource: row.parse_source,
+    keyEvents: row.key_events,
+  });
+  const winner = winnerTruth.winner;
+  const players = winnerTruth.statsEligible
+    ? parsedPlayers
+    : parsedPlayers.map((player) => ({ ...player, winner: null }));
   const unresolvedResult = classifyUnresolvedWatcherResult({
     winner: row.winner,
-    players,
+    players: parsedPlayers,
     state,
     parseReason: row.parse_reason,
     parseSource: row.parse_source,

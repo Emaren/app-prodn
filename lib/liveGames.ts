@@ -9,7 +9,8 @@ import {
 } from "@/lib/liveSessionSnapshot";
 import {
   classifyUnresolvedWatcherResult,
-  normalizeResolvedWinner,
+  normalizePublicReplayText,
+  resolveReliableReplayWinner,
 } from "@/lib/unresolvedWatcherResult";
 import { toWatchStreamPayload, type WatchStreamPayload } from "@/lib/watchStreams";
 
@@ -510,17 +511,28 @@ function recentMatchStreamKeys(match: LobbyMatchRow) {
 function extractRecentMatchPlayers(match: LobbyMatchRow): LiveGameSession["players"] {
   const row = match as unknown as Record<string, unknown>;
   const rawPlayers = Array.isArray(row.players) ? row.players : [];
-  const winner = readMatchText(match, "winner", "winner_name", "winnerName").toLowerCase();
+  const truthPlayers = rawPlayers.filter(
+    (player): player is { name?: unknown; winner?: unknown } =>
+      Boolean(player) && typeof player === "object"
+  );
+  const winner =
+    resolveReliableReplayWinner({
+      winner: readMatchText(match, "winner", "winner_name", "winnerName"),
+      players: truthPlayers,
+      parseReason: readMatchText(match, "parse_reason", "parseReason") || null,
+      keyEvents: row.key_events ?? row.keyEvents,
+    })?.toLowerCase() ?? "";
 
   if (rawPlayers.length > 0) {
     return rawPlayers
       .map((player) => {
         const record = player as Record<string, unknown>;
-        const name = String(record.name ?? record.player ?? record.playerName ?? "").trim();
+        const name =
+          normalizePublicReplayText(record.name ?? record.player ?? record.playerName) ?? "";
         if (!name) return null;
         return {
           name,
-          winner: winner ? name.toLowerCase() === winner : Boolean(record.winner),
+          winner: winner ? name.toLowerCase() === winner : null,
         };
       })
       .filter(Boolean) as LiveGameSession["players"];
@@ -532,10 +544,14 @@ function extractRecentMatchPlayers(match: LobbyMatchRow): LiveGameSession["playe
     .map((part) => part.trim())
     .filter(Boolean);
 
-  return parts.slice(0, 2).map((name) => ({
-    name,
+  return parts.slice(0, 2).flatMap((name) => {
+    const resolvedName = normalizePublicReplayText(name);
+    if (!resolvedName) return [];
+    return [{
+    name: resolvedName,
     winner: winner ? name.toLowerCase() === winner : false,
-  }));
+    }];
+  });
 }
 
 function buildRecentOutcomeSession(
@@ -583,7 +599,12 @@ function buildRecentOutcomeSession(
     durationSeconds: readMatchNumber(match, "duration_seconds", "durationSeconds"),
     originalFilename: originalFilename || replayFile || sessionKey,
     disconnectDetected: false,
-    winner: normalizeResolvedWinner(rawWinner),
+    winner: resolveReliableReplayWinner({
+      winner: rawWinner,
+      players,
+      parseReason,
+      keyEvents: (match as unknown as Record<string, unknown>).key_events,
+    }),
     parseReason,
     parseSource,
     unresolvedResult: classifyUnresolvedWatcherResult({
@@ -592,6 +613,7 @@ function buildRecentOutcomeSession(
       state: "completed",
       parseReason,
       parseSource,
+      keyEvents: (match as unknown as Record<string, unknown>).key_events,
       watcherCount: 1,
     }),
     state: "completed",

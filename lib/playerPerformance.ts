@@ -8,6 +8,10 @@ import {
   readPlayerSteamRmRating,
 } from "@/lib/gameStatsView";
 import { type PublicPlayerRef, publicPlayerMatchesName } from "@/lib/publicPlayers";
+import {
+  normalizePublicReplayText,
+  resolveReliableReplayWinner,
+} from "@/lib/unresolvedWatcherResult";
 
 type PerformanceGame = {
   winner: string | null;
@@ -16,6 +20,7 @@ type PerformanceGame = {
   duration?: number | null;
   game_duration?: number | null;
   key_events?: unknown;
+  parse_reason?: string | null;
   played_on?: Date | string | null;
   timestamp?: Date | string | null;
 };
@@ -108,14 +113,17 @@ export function buildPlayerPerformanceStats(
     }
 
     for (const player of players) {
-      const name = displayPlayerName(player);
+      const name = normalizePublicReplayText(player.name);
+      if (!name) continue;
       if (!publicPlayerMatchesName(currentPlayer, name)) {
         opponentKeys.add(name.toLowerCase());
       }
     }
 
-    const mapName = readMapName(match.map);
-    mapCounts.set(mapName, (mapCounts.get(mapName) || 0) + 1);
+    const mapName = normalizePublicReplayText(readMapName(match.map));
+    if (mapName) {
+      mapCounts.set(mapName, (mapCounts.get(mapName) || 0) + 1);
+    }
 
     const durationSeconds = normalizeDurationSeconds(match.duration ?? match.game_duration ?? null);
     if (durationSeconds) {
@@ -126,8 +134,14 @@ export function buildPlayerPerformanceStats(
       ratedMatches += 1;
     }
 
-    if (match.winner && match.winner !== "Unknown") {
-      if (publicPlayerMatchesName(currentPlayer, match.winner)) {
+    const winner = resolveReliableReplayWinner({
+      winner: match.winner,
+      players,
+      parseReason: match.parse_reason,
+      keyEvents: match.key_events,
+    });
+    if (winner) {
+      if (publicPlayerMatchesName(currentPlayer, winner)) {
         wins += 1;
       } else {
         losses += 1;
@@ -155,7 +169,7 @@ export function buildPlayerPerformanceStats(
     wins,
     losses,
     unknowns,
-    winRate: matches.length > 0 ? Math.round((wins / matches.length) * 100) : null,
+    winRate: wins + losses > 0 ? Math.round((wins / (wins + losses)) * 100) : null,
     averageDurationSeconds,
     longestDurationSeconds: durations.length > 0 ? Math.max(...durations) : null,
     shortestDurationSeconds: durations.length > 0 ? Math.min(...durations) : null,

@@ -17,6 +17,11 @@ import type { LobbyMatchRow, LobbyMessage, LobbySnapshot } from "@/lib/lobby";
 import type { LiveGameSession } from "@/lib/liveSessionSnapshot";
 import type { WatchStreamPayload } from "@/lib/watchStreams";
 import { avatarThumbUrlForName, avatarThumbUrlForUser } from "@/lib/avatarAssets";
+import {
+  normalizePublicReplayText,
+  publicReplayMapLabel,
+  resolveReliableReplayWinner,
+} from "@/lib/unresolvedWatcherResult";
 
 type WatchAndChatHeroProps = {
   tournament: LobbySnapshot["tournament"];
@@ -74,15 +79,15 @@ function matchPlayersFromRow(match: LobbyMatchRow | null | undefined) {
   if (!match) return [];
   if (Array.isArray(match.players)) {
     return match.players
-      .map((player) => player.name?.trim())
+      .map((player) => normalizePublicReplayText(player.name))
       .filter((name): name is string => Boolean(name));
   }
 
   if (typeof match.players === "string") {
     return match.players
       .split(/,| vs |\sv\s/gi)
-      .map((name) => name.trim())
-      .filter(Boolean);
+      .map((name) => normalizePublicReplayText(name))
+      .filter((name): name is string => Boolean(name));
   }
 
   return [];
@@ -90,12 +95,13 @@ function matchPlayersFromRow(match: LobbyMatchRow | null | undefined) {
 
 function mapNameFromRow(match: LobbyMatchRow | null | undefined) {
   if (!match) return null;
-  if (typeof match.map === "string") return match.map;
-  return typeof match.map?.name === "string" ? match.map.name : null;
+  return publicReplayMapLabel(match.map);
 }
 
 function sessionPlayerNames(session: LiveGameSession) {
-  return session.players.map((player) => player.name).filter(Boolean);
+  return session.players
+    .map((player) => normalizePublicReplayText(player.name))
+    .filter((name): name is string => Boolean(name));
 }
 
 function titleFromPlayers(players: string[], fallback: string) {
@@ -120,6 +126,10 @@ function featuredFromReplay(match: LobbyMatchRow | null, tournamentTitle: string
 
   const players = matchPlayersFromRow(match);
   const mapName = mapNameFromRow(match);
+  const winner = resolveReliableReplayWinner({
+    winner: match.winner,
+    parseReason: match.parse_reason,
+  });
   const playedAt = match.played_on || match.played_at || match.derived_played_on || match.created_at || match.createdAt || null;
   const sessionKey = match.original_filename || match.replay_file || null;
 
@@ -127,7 +137,7 @@ function featuredFromReplay(match: LobbyMatchRow | null, tournamentTitle: string
     key: `replay-${match.id}`,
     sessionKey,
     statusLabel: "Replay",
-    title: titleFromPlayers(players, match.winner ? `Winner ${match.winner}` : "Latest verified war"),
+    title: titleFromPlayers(players, winner ? `Winner ${winner}` : "Replay needs review"),
     players,
     mapName,
     detail: playedAt ? `Parsed ${formatLobbyMoment(playedAt)}` : "Latest HD parse",
@@ -142,9 +152,9 @@ function featuredFromLiveSession(session: StreamedLiveGameSession): FeaturedWar 
     key: `live-${session.sessionKey}`,
     sessionKey: session.sessionKey,
     statusLabel: session.state === "live" ? "Live" : "Replay",
-    title: titleFromPlayers(players, session.mapName || "Live AoE2HD war"),
+    title: titleFromPlayers(players, publicReplayMapLabel(session.mapName, "Live AoE2HD war")),
     players,
-    mapName: session.mapName,
+    mapName: publicReplayMapLabel(session.mapName, "Map pending"),
     detail:
       session.state === "live"
         ? `Updated ${formatLobbyMoment(session.updatedAt)}`

@@ -33,6 +33,10 @@ function resultClass(result: PlayerProfileMatchItem["result"]) {
   return "border-white/10 bg-white/5 text-slate-300";
 }
 
+function resultLabel(result: PlayerProfileMatchItem["result"]) {
+  return result === "unknown" ? "unresolved" : result;
+}
+
 function accentHoverClass(accent: "amber" | "rose" | "sky") {
   if (accent === "rose") return "hover:border-rose-300/35";
   if (accent === "sky") return "hover:border-sky-300/35";
@@ -186,7 +190,7 @@ export default function PlayerMatchFeedClient({
                     <div className="flex flex-wrap items-center gap-2">
                       <div className="font-semibold text-white">{item.mapName}</div>
                       <span className={`rounded-full border px-2.5 py-1 text-[11px] uppercase tracking-[0.18em] ${resultClass(item.result)}`}>
-                        {item.result}
+                        {resultLabel(item.result)}
                       </span>
                     </div>
                     <div className="mt-1 text-sm leading-6 text-slate-300">{item.playersLabel}</div>

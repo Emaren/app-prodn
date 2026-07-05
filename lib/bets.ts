@@ -7,6 +7,7 @@ import { parsePlayers, readMapName } from "@/lib/gameStatsView";
 import { loadLiveSessionSnapshot, type LiveGameSession } from "@/lib/liveSessionSnapshot";
 import { loadLiveGamesSnapshot } from "@/lib/liveGames";
 import { resolveFinalGameStatsIdForSessionKey } from "@/lib/liveReplayDetail";
+import { resolveReplayWinnerTruth } from "@/lib/unresolvedWatcherResult";
 import {
   createPendingWoloClaim,
   normalizePendingWoloClaimName,
@@ -745,18 +746,28 @@ function inferWinnerSideFromGameStats(
   game: {
     winner: string | null;
     players: unknown;
+    parse_reason?: string | null;
+    key_events?: unknown;
   }
 ): BetSide | null {
   const leftNames = splitSideNames(market.leftLabel);
   const rightNames = splitSideNames(market.rightLabel);
-  const normalizedWinner = normalizeName(game.winner).toLowerCase();
+  const players = parsePlayers(game.players);
+  const winnerTruth = resolveReplayWinnerTruth({
+    winner: game.winner,
+    players,
+    parseReason: game.parse_reason,
+    keyEvents: game.key_events,
+  });
+  if (!winnerTruth.bettingEligible) return null;
+
+  const normalizedWinner = normalizeName(winnerTruth.winner).toLowerCase();
 
   if (normalizedWinner) {
     if (leftNames.includes(normalizedWinner)) return "left";
     if (rightNames.includes(normalizedWinner)) return "right";
   }
 
-  const players = parsePlayers(game.players);
   const leftWinner = players.some((player) => {
     const playerName = typeof player.name === "string" ? normalizeName(player.name).toLowerCase() : "";
     return Boolean(playerName && player.winner === true && leftNames.includes(playerName));
@@ -2244,6 +2255,8 @@ async function reconcileDetachedWatcherMarkets(
       id: number;
       winner: string | null;
       players: unknown;
+      parse_reason: string | null;
+      key_events: unknown;
       map: unknown;
       timestamp: Date | null;
       createdAt: Date;
@@ -2273,6 +2286,8 @@ async function reconcileDetachedWatcherMarkets(
             id: true,
             winner: true,
             players: true,
+            parse_reason: true,
+            key_events: true,
             map: true,
             timestamp: true,
             createdAt: true,
@@ -2308,7 +2323,9 @@ async function reconcileDetachedWatcherMarkets(
           linkedGameStatsId: finalGame?.id ?? market.linkedGameStatsId ?? null,
           eventLabel: buildWatcherEventLabel(
             "Final",
-            mapName && mapName !== "Unknown Map"
+            mapName &&
+              mapName !== "Unknown Map" &&
+              mapName !== "Map unresolved"
               ? mapName
               : market.eventLabel.includes("•")
                 ? market.eventLabel.split("•").slice(1).join("•").trim() || null

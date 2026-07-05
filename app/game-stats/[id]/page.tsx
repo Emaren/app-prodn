@@ -38,6 +38,7 @@ import {
   getClaimedPublicPlayer,
   getPublicPlayerHref,
 } from "@/lib/publicPlayers";
+import { resolveReliableReplayWinner } from "@/lib/unresolvedWatcherResult";
 
 export const dynamic = "force-dynamic";
 
@@ -189,7 +190,15 @@ export default async function GameStatsDetailPage({
       ? (keyEventRecord.settings as Record<string, unknown>)
       : {};
   const outcomeLabel = outcomeBadgeLabel(game.parse_reason, game.winner);
-  const suppressPlayerWinnerState = game.parse_reason === "hd_early_exit_under_60s";
+  const reliableWinner = resolveReliableReplayWinner({
+    winner: game.winner,
+    players,
+    parseReason: game.parse_reason,
+    keyEvents: game.key_events,
+    eventTypes,
+  });
+  const suppressPlayerWinnerState =
+    game.parse_reason === "hd_early_exit_under_60s" || !reliableWinner;
   const rivalryMatchCountLabel = rivalrySummary
     ? rivalrySummary.totalMatches === 1
       ? "1 replay-backed meeting"
@@ -344,7 +353,7 @@ export default async function GameStatsDetailPage({
 
               <div className="mt-5 flex flex-wrap gap-2">
                 <Tag>Last played {rivalryLastPlayedLabel}</Tag>
-                {rivalrySummary.unknowns > 0 ? <Tag>{rivalrySummary.unknowns} unknown results</Tag> : null}
+                {rivalrySummary.unknowns > 0 ? <Tag>{rivalrySummary.unknowns} unresolved results</Tag> : null}
               </div>
             </div>
           ) : null}
@@ -530,7 +539,7 @@ export default async function GameStatsDetailPage({
 
                     <div className="mt-4 flex flex-wrap gap-2">
                       <Tag>{attempt.parseSource}</Tag>
-                      <Tag>{attempt.uploadMode || "unknown mode"}</Tag>
+                      <Tag>{attempt.uploadMode || "mode unavailable"}</Tag>
                       <Tag>{shortHash(attempt.replayHash)}</Tag>
                     </div>
 
@@ -763,7 +772,7 @@ function renderUploader(
       }
     | null
 ) {
-  if (!user) return "Unknown uploader";
+  if (!user) return "Uploader unavailable";
   const label = user.inGameName || user.steamPersonaName || user.uid;
 
   return (
@@ -777,24 +786,24 @@ function renderUploader(
 }
 
 function formatPrimitive(value: unknown) {
-  if (value === null || value === undefined || value === "") return "Unknown";
+  if (value === null || value === undefined || value === "") return "Unavailable";
   if (typeof value === "boolean") return value ? "Yes" : "No";
   return String(value);
 }
 
 function formatRatingMetric(value: number | null) {
-  return typeof value === "number" && Number.isFinite(value) ? String(Math.round(value)) : "Unknown";
+  return typeof value === "number" && Number.isFinite(value) ? String(Math.round(value)) : "Unavailable";
 }
 
 function formatDateTime(value: Date | string | null | undefined) {
-  if (!value) return "Unknown";
+  if (!value) return "Unavailable";
   const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) return "Unknown";
+  if (Number.isNaN(date.getTime())) return "Unavailable";
   return date.toLocaleString();
 }
 
 function formatPositionValue(value: unknown) {
-  return Array.isArray(value) && value.length === 2 ? value.join(", ") : "Unknown";
+  return Array.isArray(value) && value.length === 2 ? value.join(", ") : "Unavailable";
 }
 
 function humanizeKey(value: string) {
