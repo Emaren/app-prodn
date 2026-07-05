@@ -3416,13 +3416,6 @@ function splitRosterSideLabel(label: string | null | undefined) {
     .filter((value) => !/^\d+\s+more$/i.test(value));
 }
 
-function splitRosterTitle(title: string | null | undefined) {
-  return cleanRosterName(title)
-    .split(/\s+vs\s+/i)
-    .map(cleanRosterName)
-    .filter(Boolean);
-}
-
 function uniqueRosterNames(names: string[]) {
   const seen = new Set<string>();
   const result: string[] = [];
@@ -3441,18 +3434,6 @@ function uniqueRosterNames(names: string[]) {
 function buildExtremeMarketRoster(market: BetBoardMarket): ExtremeMarketRoster {
   let leftPlayers = splitRosterSideLabel(market.left.name);
   let rightPlayers = splitRosterSideLabel(market.right.name);
-  const titlePlayers = splitRosterTitle(market.title);
-
-  if (
-    titlePlayers.length >= 2 &&
-    titlePlayers.length <= 8 &&
-    titlePlayers.length % 2 === 0 &&
-    (leftPlayers.length !== rightPlayers.length || leftPlayers.length + rightPlayers.length !== titlePlayers.length)
-  ) {
-    const midpoint = titlePlayers.length / 2;
-    leftPlayers = titlePlayers.slice(0, midpoint);
-    rightPlayers = titlePlayers.slice(midpoint);
-  }
 
   leftPlayers = uniqueRosterNames(leftPlayers.length ? leftPlayers : [market.left.name]);
   rightPlayers = uniqueRosterNames(rightPlayers.length ? rightPlayers : [market.right.name]);
