@@ -2,9 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { OfflineSigner } from "@cosmjs/proto-signing";
-import { Monitor, PanelRight, PanelTop, Play } from "lucide-react";
+import { ChevronDown, ChevronUp, Monitor, Play } from "lucide-react";
 import { toast } from "sonner";
 
 import BetsViewToggle from "@/components/bets/BetsViewToggle";
@@ -19,6 +19,13 @@ import { isRecoveryBookOpen } from "@/components/bets/page-shared";
 import { useUserAuth } from "@/context/UserAuthContext";
 import { useKeplr } from "@/hooks/use-keplr";
 import { useWoloBalance } from "@/hooks/useWoloBalance";
+import {
+  BATTLE_CAM_STANDBY_VIDEO_URL,
+  isExplicitlyAttachedBroadcastFeed,
+  readStoredBattleCamVisibility,
+  type BattleCamVisibility,
+  writeStoredBattleCamVisibility,
+} from "@/lib/broadcastPresentation";
 import {
   WOLO_BASE_DENOM,
   WOLO_CHAIN_ID,
@@ -537,18 +544,6 @@ function sameBroadcastSource(
   return Boolean(firstUrl && firstUrl === secondUrl);
 }
 
-function splitMatchTitle(value: string | null | undefined) {
-  const title = value?.trim() || "";
-  const [left, ...rightParts] = title.split(/\s+vs\s+/i);
-  const right = rightParts.join(" vs ");
-
-  return {
-    leftName: safePlayerName(left, "Player 1"),
-    rightName: safePlayerName(right, "Player 2"),
-  };
-}
-
-
 function isPendingLivePlaceholderMarket(market: BetBoardMarket | null | undefined) {
   if (!market) return false;
 
@@ -910,7 +905,8 @@ export default function BetsPage() {
   const [founderComposer, setFounderComposer] = useState<FounderComposerState | null>(null);
   const [savingFounderBonus, setSavingFounderBonus] = useState(false);
   const [founderBonusError, setFounderBonusError] = useState<string | null>(null);
-  const [broadcastVisible, setBroadcastVisible] = useState(false);
+  const [battleCamVisibility, setBattleCamVisibility] =
+    useState<BattleCamVisibility>("closed");
   const [pendingStakeRecoveries, setPendingStakeRecoveries] = useState<PendingStakeRecovery[]>([]);
 
   const syncPendingStakeRecoveries = useCallback(() => {
@@ -974,9 +970,20 @@ export default function BetsPage() {
     window.localStorage.setItem(BETS_VIEW_STORAGE_KEY, betsView);
   }, [betsView]);
 
+  useEffect(() => {
+    setBattleCamVisibility(readStoredBattleCamVisibility());
+  }, []);
 
   function handleBetsViewChange(next: BetsViewMode) {
     setBetsView(next);
+  }
+
+  function handleBattleCamToggle() {
+    setBattleCamVisibility((current) => {
+      const next = current === "open" ? "closed" : "open";
+      writeStoredBattleCamVisibility(next);
+      return next;
+    });
   }
 
   useEffect(() => {
@@ -1714,58 +1721,31 @@ export default function BetsPage() {
   }
 
   const viewerName = board?.viewerName || user?.inGameName || user?.steamPersonaName || "Your book";
-  const latestResult = recentResults[0] ?? null;
   const broadcastSurface = useMemo(() => {
     if (spotlightMarket) {
       return {
         key: `market-${spotlightMarket.id}`,
+        sessionKey: spotlightMarket.linkedSessionKey,
         leftName: safePlayerName(spotlightMarket.left.name, "Player 1"),
         rightName: safePlayerName(spotlightMarket.right.name, "Player 2"),
         marketTitle: spotlightMarket.title,
         eventLabel: spotlightMarket.eventLabel,
-        settled: false,
         feeds: spotlightMarket.broadcastFeeds ?? EMPTY_BROADCAST_FEEDS,
         previews: spotlightMarket.broadcastPreviewUrls ?? EMPTY_BROADCAST_PREVIEW_URLS,
       };
     }
 
-    if (latestResult) {
-      const resultPlayers = splitMatchTitle(latestResult.title);
-
-      return {
-        key: `result-${latestResult.id}`,
-        leftName: resultPlayers.leftName,
-        rightName: resultPlayers.rightName,
-        marketTitle: latestResult.title,
-        eventLabel: latestResult.eventLabel,
-        settled: true,
-        feeds: latestResult.broadcastFeeds ?? EMPTY_BROADCAST_FEEDS,
-        previews: latestResult.broadcastPreviewUrls ?? EMPTY_BROADCAST_PREVIEW_URLS,
-      };
-    }
-
     return {
       key: "broadcast-empty",
+      sessionKey: null,
       leftName: "Player 1",
       rightName: "Player 2",
-      marketTitle: "Broadcast arming",
+      marketTitle: "Battle Cam standby",
       eventLabel: "Waiting for the next book",
-      settled: false,
       feeds: EMPTY_BROADCAST_FEEDS,
       previews: EMPTY_BROADCAST_PREVIEW_URLS,
     };
-  }, [latestResult, spotlightMarket]);
-  const broadcastHasSource = useMemo(
-    () =>
-      Object.values(broadcastSurface.feeds).some((feed) =>
-        Boolean(feed?.playbackUrl || feed?.embedId || feed?.url)
-      ) || Object.values(broadcastSurface.previews).some(Boolean),
-    [broadcastSurface.feeds, broadcastSurface.previews]
-  );
-
-  useEffect(() => {
-    setBroadcastVisible(betsView === "extreme" && broadcastHasSource);
-  }, [betsView, broadcastHasSource, broadcastSurface.key]);
+  }, [spotlightMarket]);
 
   return (
     <main
@@ -1774,15 +1754,15 @@ export default function BetsPage() {
     >
       <BroadcastHeroTile
         key={broadcastSurface.key}
+        sessionKey={broadcastSurface.sessionKey}
         leftName={broadcastSurface.leftName}
         rightName={broadcastSurface.rightName}
         marketTitle={broadcastSurface.marketTitle}
         eventLabel={broadcastSurface.eventLabel}
-        settled={broadcastSurface.settled}
         feeds={broadcastSurface.feeds}
         previews={broadcastSurface.previews}
-        visible={broadcastVisible}
-        onToggle={() => setBroadcastVisible((current) => !current)}
+        open={battleCamVisibility === "open"}
+        onToggle={handleBattleCamToggle}
         viewMode={betsView}
         onViewModeChange={handleBetsViewChange}
       />
@@ -2649,27 +2629,29 @@ function RecentResultFeature({ result }: { result: BetSettledResult }) {
 }
 
 function BroadcastVisibilityButton({
-  visible,
+  open,
   onToggle,
 }: {
-  visible: boolean;
+  open: boolean;
   onToggle: () => void;
 }) {
-  const Icon = visible ? PanelRight : PanelTop;
+  const Icon = open ? ChevronUp : ChevronDown;
 
   return (
     <button
       type="button"
-      aria-pressed={visible}
-      aria-label={visible ? "Use side-rail Battle Cam layout" : "Use stacked Battle Cam layout"}
-      title={visible ? "Side-rail Battle Cam" : "Stacked Battle Cam"}
+      data-testid="battle-cam-toggle"
+      aria-expanded={open}
+      aria-controls="battle-cam-panel"
+      aria-label={open ? "Close Battle Cam" : "Open Battle Cam"}
       onClick={onToggle}
-      className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition ${
-        visible
+      className={`inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-xl border px-3 text-xs font-semibold uppercase tracking-[0.18em] transition ${
+        open
           ? "border-amber-200/18 bg-amber-300/12 text-amber-100 shadow-[0_0_24px_rgba(251,191,36,0.08)] hover:bg-amber-300/18"
           : "border-white/[0.08] bg-white/[0.04] text-slate-300 hover:bg-white/[0.08]"
       }`}
     >
+      {open ? "Close" : "Open"}
       <Icon className="h-4 w-4" aria-hidden="true" />
     </button>
   );
@@ -2718,18 +2700,6 @@ function buildBroadcastEmbedSrc(
 }
 
 
-function broadcastViewHasSource(view: {
-  feed: BroadcastFeed | null;
-  previewUrl: string | null;
-}) {
-  return Boolean(
-    view.previewUrl ||
-      view.feed?.playbackUrl ||
-      view.feed?.embedId ||
-      view.feed?.url
-  );
-}
-
 function broadcastViewHasNativePlayback(view: {
   feed: BroadcastFeed | null;
   previewUrl: string | null;
@@ -2745,26 +2715,26 @@ function broadcastViewHasNativePlayback(view: {
 }
 
 function BroadcastHeroTile({
+  sessionKey,
   leftName,
   rightName,
   marketTitle,
   eventLabel,
-  settled = false,
   feeds,
   previews,
-  visible,
+  open,
   onToggle,
   viewMode,
   onViewModeChange,
 }: {
+  sessionKey: string | null;
   leftName: string;
   rightName: string;
   marketTitle: string;
   eventLabel: string;
-  settled?: boolean;
   feeds: BroadcastFeeds;
   previews: BroadcastPreviewUrls;
-  visible: boolean;
+  open: boolean;
   onToggle: () => void;
   viewMode: BetsViewMode;
   onViewModeChange: (next: BetsViewMode) => void;
@@ -2772,10 +2742,30 @@ function BroadcastHeroTile({
   const [selectedView, setSelectedView] = useState<BroadcastViewKey>("god");
   const [playingView, setPlayingView] = useState<BroadcastViewKey | null>(null);
   const [browserHost, setBrowserHost] = useState("aoe2war.com");
+  const attachedFeeds = useMemo<BroadcastFeeds>(
+    () => ({
+      left: isExplicitlyAttachedBroadcastFeed(feeds.left, sessionKey)
+        ? feeds.left
+        : null,
+      god: isExplicitlyAttachedBroadcastFeed(feeds.god, sessionKey)
+        ? feeds.god
+        : null,
+      right: isExplicitlyAttachedBroadcastFeed(feeds.right, sessionKey)
+        ? feeds.right
+        : null,
+    }),
+    [feeds, sessionKey]
+  );
   const leftPreviewUrl =
-    previews.left || (sameBroadcastSource(feeds.left, feeds.god) ? previews.god : null);
+    previews.left ||
+    (sameBroadcastSource(attachedFeeds.left, attachedFeeds.god)
+      ? previews.god
+      : null);
   const rightPreviewUrl =
-    previews.right || (sameBroadcastSource(feeds.right, feeds.god) ? previews.god : null);
+    previews.right ||
+    (sameBroadcastSource(attachedFeeds.right, attachedFeeds.god)
+      ? previews.god
+      : null);
   const views = useMemo(
     () =>
       [
@@ -2784,7 +2774,7 @@ function BroadcastHeroTile({
           label: safePlayerName(leftName, "Player 1"),
           eyebrow: "Player cam",
           tone: "warm" as const,
-          feed: feeds.left,
+          feed: attachedFeeds.left,
           previewUrl: leftPreviewUrl,
         },
         {
@@ -2792,7 +2782,7 @@ function BroadcastHeroTile({
           label: "Battle Cam",
           eyebrow: "Observer",
           tone: "gold" as const,
-          feed: feeds.god,
+          feed: attachedFeeds.god,
           previewUrl: previews.god,
         },
         {
@@ -2800,23 +2790,39 @@ function BroadcastHeroTile({
           label: safePlayerName(rightName, "Player 2"),
           eyebrow: "Player cam",
           tone: "cool" as const,
-          feed: feeds.right,
+          feed: attachedFeeds.right,
           previewUrl: rightPreviewUrl,
         },
       ],
-    [feeds, leftName, leftPreviewUrl, previews.god, rightName, rightPreviewUrl]
+    [
+      attachedFeeds,
+      leftName,
+      leftPreviewUrl,
+      previews.god,
+      rightName,
+      rightPreviewUrl,
+    ]
+  );
+  const availableViews = useMemo(
+    () => views.filter((view) => Boolean(view.feed)),
+    [views]
   );
   const defaultView = useMemo(
     () =>
-      views.find(broadcastViewHasNativePlayback) ||
+      availableViews.find(broadcastViewHasNativePlayback) ||
+      availableViews.find((view) => view.key === "god") ||
+      availableViews[0] ||
       views[1] ||
-      views.find(broadcastViewHasSource) ||
       views[0],
-    [views]
+    [availableViews, views]
   );
-  const activeView = views.find((view) => view.key === selectedView) || defaultView;
+  const activeView =
+    availableViews.find((view) => view.key === selectedView) || defaultView;
   const activeViewShouldAutoplay = broadcastViewHasNativePlayback(activeView);
-  const hasBroadcastSource = views.some(broadcastViewHasSource);
+  const hasAttachedFeed = availableViews.length > 0;
+  const feedStatusLabel = hasAttachedFeed
+    ? `${providerLabel(defaultView.feed)} feed available`
+    : "Standby";
 
   useEffect(() => {
     setBrowserHost(window.location.hostname || "aoe2war.com");
@@ -2827,9 +2833,53 @@ function BroadcastHeroTile({
     setPlayingView(null);
   }, [defaultView.key, marketTitle, leftName, rightName]);
 
+  if (!open) {
+    return (
+      <section
+        data-testid="broadcast-hero-tile"
+        data-battle-cam-state="closed"
+        className={`${shellClass()} overflow-hidden border-amber-200/[0.07] bg-[radial-gradient(circle_at_10%_0%,rgba(251,191,36,0.09),transparent_28%),linear-gradient(180deg,rgba(13,20,36,0.96),rgba(8,13,24,0.96))] px-3 py-3 sm:px-4`}
+      >
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/[0.07] bg-white/[0.035]">
+              <Monitor className="h-5 w-5 text-amber-100/70" aria-hidden="true" />
+            </span>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm font-semibold text-white">Battle Cam</span>
+                <span
+                  className={`rounded-full border px-2.5 py-0.5 text-[9px] uppercase tracking-[0.2em] ${
+                    hasAttachedFeed
+                      ? "border-emerald-200/14 bg-emerald-400/[0.08] text-emerald-100"
+                      : "border-white/[0.07] bg-white/[0.035] text-slate-400"
+                  }`}
+                >
+                  {feedStatusLabel}
+                </span>
+              </div>
+              <div className="mt-1 text-xs text-slate-400">
+                {hasAttachedFeed
+                  ? "A video source is attached to the current market."
+                  : "Video feed not attached yet."}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex max-w-full flex-wrap items-center justify-end gap-2">
+            <BetsViewToggle value={viewMode} onChange={onViewModeChange} />
+            <BroadcastVisibilityButton open={open} onToggle={onToggle} />
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section
+      id="battle-cam-panel"
       data-testid="broadcast-hero-tile"
+      data-battle-cam-state="open"
       className={`${shellClass()} overflow-hidden border-amber-200/10 bg-[radial-gradient(circle_at_14%_0%,rgba(251,191,36,0.14),transparent_30%),radial-gradient(circle_at_86%_14%,rgba(56,189,248,0.11),transparent_30%),linear-gradient(180deg,rgba(15,23,42,0.82),rgba(2,6,23,0.48))] p-4 sm:p-5 lg:p-6`}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -2837,15 +2887,14 @@ function BroadcastHeroTile({
           <div className="text-[11px] uppercase tracking-[0.32em] text-amber-100/70">
             Broadcast
           </div>
-          <h2 className="mt-2 truncate text-2xl font-semibold tracking-[-0.04em] text-white sm:text-3xl lg:text-4xl">
-            {activeView.label}
+          <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-white sm:text-3xl lg:text-4xl">
+            Battle Cam
           </h2>
           <div className="mt-2 text-sm text-slate-400">
-            {activeView.feed
-              ? `${providerLabel(activeView.feed)} feed`
-              : settled
-                ? "Replay camera placeholder"
-                : "Live camera placeholder"} · {eventLabel}
+            {hasAttachedFeed
+              ? `${providerLabel(activeView.feed)} source attached`
+              : "Video feed not attached yet"}{" "}
+            · {eventLabel}
           </div>
         </div>
 
@@ -2854,46 +2903,31 @@ function BroadcastHeroTile({
             {marketTitle}
           </span>
           <BetsViewToggle value={viewMode} onChange={onViewModeChange} />
-          <BroadcastVisibilityButton visible={visible} onToggle={onToggle} />
+          <BroadcastVisibilityButton open={open} onToggle={onToggle} />
         </div>
       </div>
 
-      {!hasBroadcastSource ? (
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[1.25rem] border border-white/[0.07] bg-slate-950/36 px-4 py-3">
-          <div className="flex min-w-0 items-center gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.04]">
-              <Monitor className="h-5 w-5 text-slate-400" aria-hidden="true" />
-            </span>
-            <div className="min-w-0">
-              <div className="text-sm font-semibold text-white">Battle Cam standing by</div>
-              <div className="mt-0.5 text-xs leading-5 text-slate-400">
-                The full-width broadcast stage opens here when a live feed arrives.
-              </div>
-            </div>
-          </div>
-          <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-slate-500">
-            No feed
-          </span>
-        </div>
-      ) : visible ? (
+      {hasAttachedFeed ? (
         <>
-          <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
-            {views.map((view) => (
-              <BroadcastPreviewButton
-                key={view.key}
-                label={view.label}
-                eyebrow={view.eyebrow}
-                tone={view.tone}
-                feed={view.feed}
-                previewUrl={view.previewUrl}
-                selected={selectedView === view.key}
-                onSelect={() => {
-                  setSelectedView(view.key);
-                  setPlayingView(null);
-                }}
-              />
-            ))}
-          </div>
+          {availableViews.length > 1 ? (
+            <div className="mt-4 grid gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3">
+              {availableViews.map((view) => (
+                <BroadcastPreviewButton
+                  key={view.key}
+                  label={view.label}
+                  eyebrow={view.eyebrow}
+                  tone={view.tone}
+                  feed={view.feed}
+                  previewUrl={view.previewUrl}
+                  selected={activeView.key === view.key}
+                  onSelect={() => {
+                    setSelectedView(view.key);
+                    setPlayingView(null);
+                  }}
+                />
+              ))}
+            </div>
+          ) : null}
 
           <BroadcastPlaceholderFrame
             label={activeView.label}
@@ -2905,43 +2939,65 @@ function BroadcastHeroTile({
             marketTitle={marketTitle}
             isPlaying={activeViewShouldAutoplay || playingView === activeView.key}
             onPlay={() => setPlayingView(activeView.key)}
-            layoutToggle={null}
           />
         </>
       ) : (
-        <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_14rem] lg:items-stretch">
-          <BroadcastCompactFrame
-            label={activeView.label}
-            eyebrow={activeView.eyebrow}
-            tone={activeView.tone}
-            feed={activeView.feed}
-            previewUrl={activeView.previewUrl}
-            browserHost={browserHost}
-            marketTitle={marketTitle}
-            isPlaying={activeViewShouldAutoplay || playingView === activeView.key}
-            onPlay={() => setPlayingView(activeView.key)}
-            layoutToggle={null}
-          />
-          <div className="grid grid-cols-3 gap-2 lg:h-full lg:grid-cols-1">
-            {views.map((view) => (
-              <BroadcastPreviewButton
-                key={view.key}
-                label={view.label}
-                eyebrow={view.eyebrow}
-                tone={view.tone}
-                feed={view.feed}
-                previewUrl={view.previewUrl}
-                selected={selectedView === view.key}
-                onSelect={() => {
-                  setSelectedView(view.key);
-                  setPlayingView(null);
-                }}
-              />
-            ))}
-          </div>
-        </div>
+        <BattleCamStandbyFrame
+          eventLabel={eventLabel}
+          marketTitle={marketTitle}
+        />
       )}
     </section>
+  );
+}
+
+function BattleCamStandbyFrame({
+  eventLabel,
+  marketTitle,
+}: {
+  eventLabel: string;
+  marketTitle: string;
+}) {
+  return (
+    <div
+      data-testid="battle-cam-standby-loop"
+      className="mt-4 overflow-hidden rounded-[1.45rem] border border-white/[0.06] bg-slate-950/78 p-2.5 sm:p-3"
+    >
+      <div className="relative aspect-video max-h-[30rem] min-h-[12rem] overflow-hidden rounded-[1.2rem] bg-black/70 sm:min-h-[16rem]">
+        <video
+          className="absolute inset-0 h-full w-full object-cover opacity-45 saturate-[0.65]"
+          src={BATTLE_CAM_STANDBY_VIDEO_URL}
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="metadata"
+          aria-hidden="true"
+        />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_36%,rgba(251,191,36,0.10),transparent_34%),linear-gradient(180deg,rgba(2,6,23,0.34),rgba(2,6,23,0.82))]" />
+        <div className="pointer-events-none absolute inset-0 bg-[repeating-linear-gradient(0deg,rgba(255,255,255,0.025)_0px,rgba(255,255,255,0.025)_1px,transparent_1px,transparent_11px)]" />
+
+        <div className="relative z-10 flex h-full min-h-[12rem] flex-col items-center justify-center px-6 py-10 text-center sm:min-h-[16rem]">
+          <span className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/[0.09] bg-black/30 backdrop-blur-sm">
+            <Monitor className="h-7 w-7 text-amber-100/75" aria-hidden="true" />
+          </span>
+          <div className="mt-5 text-[10px] uppercase tracking-[0.34em] text-amber-100/65">
+            Battle Cam standby
+          </div>
+          <div className="mt-2 text-xl font-semibold text-white sm:text-2xl">
+            Video feed not attached yet
+          </div>
+          <div className="mt-2 max-w-xl text-sm leading-6 text-slate-300">
+            This is a local ambient loop, not live footage from this match.
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-slate-500">
+        <span>{eventLabel}</span>
+        <span className="max-w-full truncate">{marketTitle}</span>
+      </div>
+    </div>
   );
 }
 
@@ -2991,59 +3047,6 @@ function BroadcastPreviewButton({
   );
 }
 
-function BroadcastCompactFrame({
-  label,
-  eyebrow,
-  tone,
-  feed,
-  previewUrl,
-  browserHost,
-  marketTitle,
-  isPlaying,
-  onPlay,
-  layoutToggle,
-}: {
-  label: string;
-  eyebrow: string;
-  tone: "warm" | "gold" | "cool";
-  feed: BroadcastFeed | null;
-  previewUrl: string | null;
-  browserHost: string;
-  marketTitle: string;
-  isPlaying: boolean;
-  onPlay: () => void;
-  layoutToggle?: ReactNode;
-}) {
-  return (
-    <div className="min-w-0 self-stretch overflow-hidden rounded-[1.35rem] border border-white/[0.08] bg-slate-950/70 p-2 lg:flex lg:h-full lg:min-h-0 lg:flex-col">
-      <div className="relative aspect-video max-h-[18rem] min-h-[9rem] overflow-hidden rounded-[1.1rem] border border-white/[0.06] bg-black/55 sm:min-h-[11rem] lg:aspect-auto lg:max-h-none lg:min-h-0 lg:flex-1">
-        <BroadcastSignalSurface
-          tone={tone}
-          feed={feed}
-          previewUrl={previewUrl}
-          browserHost={browserHost}
-          isPlaying={isPlaying}
-          onPlay={onPlay}
-        />
-      </div>
-      <div className="mt-2 flex min-w-0 flex-wrap items-center justify-between gap-2 px-1">
-        <div className="min-w-0">
-          <div className="truncate text-[10px] uppercase tracking-[0.22em] text-slate-500">
-            {feed ? providerLabel(feed) : eyebrow}
-          </div>
-          <div className="mt-1 truncate text-sm font-semibold text-white sm:text-base">{label}</div>
-        </div>
-        <div className="flex max-w-full min-w-0 items-center gap-2">
-          {layoutToggle}
-          <div className="max-w-full truncate rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-[11px] text-slate-300">
-            {feed ? `${providerLabel(feed)} feed` : `Preview · ${marketTitle}`}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function BroadcastPlaceholderFrame({
   label,
   eyebrow,
@@ -3054,7 +3057,6 @@ function BroadcastPlaceholderFrame({
   marketTitle,
   isPlaying,
   onPlay,
-  layoutToggle,
 }: {
   label: string;
   eyebrow: string;
@@ -3065,7 +3067,6 @@ function BroadcastPlaceholderFrame({
   marketTitle: string;
   isPlaying: boolean;
   onPlay: () => void;
-  layoutToggle?: ReactNode;
 }) {
   return (
     <div className="mt-4 overflow-hidden rounded-[1.45rem] border border-white/[0.08] bg-slate-950/78 p-2.5 sm:p-3">
@@ -3087,7 +3088,6 @@ function BroadcastPlaceholderFrame({
           <div className="mt-1 truncate text-lg font-semibold text-white sm:text-xl">{label}</div>
         </div>
         <div className="flex max-w-full min-w-0 items-center gap-2">
-          {layoutToggle}
           {feed ? (
             <a
               href={feed.url}

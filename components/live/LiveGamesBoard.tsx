@@ -31,6 +31,7 @@ import ScheduledMatchCard, {
 } from "@/components/challenge/ScheduledMatchCard";
 import { displayName } from "@/components/lobby/utils";
 import LiveStreamFrame from "@/components/streaming/LiveStreamFrame";
+import { BATTLE_CAM_STANDBY_VIDEO_URL } from "@/lib/broadcastPresentation";
 import { useTileViewPreference } from "@/components/tile-view/useTileViewPreference";
 import { useUserAuth } from "@/context/UserAuthContext";
 import type { LiveGamesSnapshot } from "@/lib/liveGames";
@@ -54,7 +55,6 @@ type ClassicLiveTone = "crimson" | "violet";
 const LIVE_GAMES_POLL_INTERVAL_MS = 5_000;
 const MAX_VISIBLE_OUTCOMES = 3;
 const MAX_EXTREME_ARCHIVE_MATCHES = 9;
-const ADVANCED_SESSION_LOOP_VIDEO_URL = "/watch-loops/live-hero-loop.mp4";
 
 const RESOLVED_SCHEDULED_STATES = new Set([
   "completed",
@@ -1333,7 +1333,7 @@ function PremiumResolvedOutcomeCard({
               >
                 <video
                   className="h-[4.9rem] w-full object-cover opacity-92 transition duration-500 group-hover:scale-[1.04] group-hover:opacity-100"
-                  src={ADVANCED_SESSION_LOOP_VIDEO_URL}
+                  src={BATTLE_CAM_STANDBY_VIDEO_URL}
                   autoPlay
                   muted
                   loop
@@ -1415,7 +1415,7 @@ function PremiumResolvedOutcomeCard({
           >
             <video
               className="h-[4.7rem] w-full object-cover opacity-90 transition duration-500 group-hover:scale-[1.04] sm:h-[5.1rem]"
-              src={ADVANCED_SESSION_LOOP_VIDEO_URL}
+              src={BATTLE_CAM_STANDBY_VIDEO_URL}
               autoPlay
               muted
               loop
@@ -1520,7 +1520,7 @@ function PremiumResolvedOutcomeCard({
         >
           <video
             className="h-[4.9rem] w-full object-cover opacity-92 transition duration-500 group-hover:scale-[1.04] group-hover:opacity-100 sm:h-[5.3rem]"
-            src={ADVANCED_SESSION_LOOP_VIDEO_URL}
+            src={BATTLE_CAM_STANDBY_VIDEO_URL}
             autoPlay
             muted
             loop
@@ -1701,7 +1701,7 @@ function PremiumClassicLiveSessionCard({
           >
             <video
               className="h-[4.8rem] w-full object-cover opacity-92 transition duration-500 group-hover:scale-[1.04] group-hover:opacity-100 sm:h-[5.2rem]"
-              src={ADVANCED_SESSION_LOOP_VIDEO_URL}
+              src={BATTLE_CAM_STANDBY_VIDEO_URL}
               autoPlay
               muted
               loop
