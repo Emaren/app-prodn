@@ -820,7 +820,7 @@ function sideSurface(selected: boolean, emphasis: "warm" | "cool") {
     return "border-amber-200/18 bg-[linear-gradient(155deg,rgba(251,191,36,0.32),rgba(180,83,9,0.18)_58%,rgba(15,23,42,0.72))] text-white shadow-[0_16px_38px_rgba(245,158,11,0.18)]";
   }
   if (selected) {
-    return "border-sky-200/18 bg-[linear-gradient(155deg,rgba(125,211,252,0.22),rgba(37,99,235,0.18)_58%,rgba(15,23,42,0.72))] text-white shadow-[0_16px_38px_rgba(37,99,235,0.18)]";
+    return "border-white/[0.12] bg-[linear-gradient(155deg,rgba(148,163,184,0.16),rgba(51,65,85,0.18)_58%,rgba(15,23,42,0.72))] text-slate-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_12px_28px_rgba(2,6,23,0.28)]";
   }
   return "border-white/[0.06] bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.025))] text-slate-100 hover:border-white/10 hover:bg-white/[0.06]";
 }
