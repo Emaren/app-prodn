@@ -37,7 +37,7 @@ function PlayerRecordBadge({ profile }: { profile: PlayerProfile }) {
     <span
       aria-label={`Player record ${recordLabel}`}
       title="Wins - Losses - Unknown"
-      className="mb-1 ml-6 inline-flex shrink-0 items-baseline text-xl font-semibold leading-none tracking-[0.075em] text-white/58 sm:mb-1.5 sm:ml-[5%] sm:text-2xl"
+      className="mb-1 ml-6 inline-flex shrink-0 items-baseline text-xl font-semibold leading-none tracking-[0.056em] text-white/58 sm:mb-1.5 sm:ml-[5%] sm:text-2xl"
     >
       {recordLabel}
     </span>
