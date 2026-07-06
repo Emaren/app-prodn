@@ -37,7 +37,7 @@ export default function AcademyHero() {
           <p className="text-[10px] font-bold uppercase tracking-[0.44em] text-slate-300/64">
             AoE2WAR · The Academy
           </p>
-          <div className="academy-hero-title-art pointer-events-none relative -ml-7 mb-3 mt-7 w-[min(59rem,calc(100vw-3rem))] overflow-visible [aspect-ratio:1672/520] sm:-ml-9 lg:-ml-12">
+          <div className="academy-hero-title-art pointer-events-none relative -ml-7 mb-3 mt-7 w-[min(59rem,calc(100vw-3rem))] overflow-hidden [aspect-ratio:1672/520] sm:-ml-9 lg:-ml-12">
             <Image
               src={ACADEMY_HERO_TITLE_IMAGE}
               alt=""
@@ -45,10 +45,8 @@ export default function AcademyHero() {
               priority
               sizes="(max-width: 768px) 100vw, 59rem"
               aria-hidden="true"
-              className="select-none object-cover object-center opacity-[0.52] mix-blend-screen brightness-[0.54] contrast-[0.9] saturate-[0.72] drop-shadow-none [mask-image:radial-gradient(ellipse_82%_58%_at_40%_50%,black_0%,black_48%,rgba(0,0,0,0.52)_68%,transparent_100%)]"
+              className="select-none object-cover object-center opacity-[0.72] mix-blend-screen brightness-[0.72] contrast-[0.88] saturate-[0.68] drop-shadow-none [mask-image:linear-gradient(90deg,transparent_0%,rgba(0,0,0,0.22)_5%,black_13%,black_80%,rgba(0,0,0,0.42)_91%,transparent_100%)]"
             />
-            <div className="pointer-events-none absolute inset-[-12%] bg-[radial-gradient(ellipse_78%_52%_at_40%_48%,transparent_0%,transparent_48%,rgba(3,7,18,0.18)_67%,rgba(3,7,18,0.62)_100%)]" />
-            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(3,7,18,0.20)_0%,transparent_26%,transparent_58%,rgba(3,7,18,0.26)_100%)]" />
           </div>
           <h1 className="sr-only">The Academy</h1>
 
