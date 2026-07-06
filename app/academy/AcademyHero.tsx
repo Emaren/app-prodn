@@ -1,5 +1,8 @@
+import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Flame, Orbit, Shield, Sparkles } from "lucide-react";
+
+const ACADEMY_HERO_TITLE_IMAGE = "/academy/the-academy-title-gold.png";
 
 export default function AcademyHero() {
   return (
@@ -34,12 +37,18 @@ export default function AcademyHero() {
           <p className="text-[10px] font-bold uppercase tracking-[0.44em] text-slate-300/64">
             AoE2WAR · The Academy
           </p>
-
-          <h1 className="mt-16 font-serif text-5xl font-medium leading-[0.92] tracking-[-0.048em] text-transparent drop-shadow-[0_18px_42px_rgba(0,0,0,0.42)] sm:text-7xl">
-            <span className="bg-[linear-gradient(180deg,#f1e6bf_0%,#d8bd79_34%,#b7bec8_58%,#ead9aa_78%,#8f6b3e_100%)] bg-clip-text">
-              The Academy
-            </span>
-          </h1>
+          <div className="academy-hero-title-art relative -ml-7 mb-4 mt-7 w-[min(59rem,calc(100vw-3rem))] overflow-visible [aspect-ratio:1672/520] sm:-ml-9 lg:-ml-12">
+            <Image
+              src={ACADEMY_HERO_TITLE_IMAGE}
+              alt=""
+              fill
+              priority
+              sizes="(max-width: 768px) 100vw, 59rem"
+              aria-hidden="true"
+              className="select-none object-cover object-center opacity-[0.98] mix-blend-screen drop-shadow-[0_22px_48px_rgba(0,0,0,0.52)] [mask-image:linear-gradient(90deg,transparent_0%,black_6%,black_93%,transparent_100%)]"
+            />
+          </div>
+          <h1 className="sr-only">The Academy</h1>
 
           <div className="mt-5 h-px w-56 bg-gradient-to-r from-amber-200/70 via-amber-100/18 to-transparent" />
 
