@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { getPrisma } from "@/lib/prisma";
+import { applyReplayAdjudicationsToGameStatsRows } from "@/lib/replayAdjudications";
 import {
   displayParseReason,
   displayPlayerName,
@@ -20,7 +21,7 @@ export const dynamic = "force-dynamic";
 export default async function GameStatsPage() {
   const prisma = getPrisma();
 
-  const [games, recentAttempts] = await Promise.all([
+  const [rawGames, recentAttempts] = await Promise.all([
     prisma.gameStats.findMany({
       where: { is_final: true },
       orderBy: [{ played_on: "desc" }, { timestamp: "desc" }, { createdAt: "desc" }],
@@ -45,6 +46,7 @@ export default async function GameStatsPage() {
 
   const failedAttempts = recentAttempts.filter((attempt) => attempt.status !== "stored");
   const storedAttempts = recentAttempts.filter((attempt) => attempt.status === "stored");
+  const games = applyReplayAdjudicationsToGameStatsRows(rawGames);
 
   return (
     <main className="space-y-6 py-6 text-white">

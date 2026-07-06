@@ -12,6 +12,7 @@ import {
 } from "@/lib/publicPlayers";
 import { loadPendingWoloClaimSummariesByName } from "@/lib/pendingWoloClaims";
 import { resolveReliableReplayWinner } from "@/lib/unresolvedWatcherResult";
+import { applyReplayAdjudicationToGameStats } from "@/lib/replayAdjudications";
 
 const RECENT_FINAL_MATCH_SCAN_LIMIT = 5000;
 
@@ -86,11 +87,12 @@ function updateLastPlayedAt(current: string | null, next: Date | string | null) 
 }
 
 function winnerMatchesPlayer(player: PublicPlayerRef, game: MatchupGameRow) {
+  const adjudicatedGame = applyReplayAdjudicationToGameStats(game);
   const winner = resolveReliableReplayWinner({
-    winner: game.winner,
-    players: parsePlayers(game.players),
-    parseReason: game.parse_reason,
-    keyEvents: game.key_events,
+    winner: adjudicatedGame.winner,
+    players: parsePlayers(adjudicatedGame.players),
+    parseReason: adjudicatedGame.parse_reason,
+    keyEvents: adjudicatedGame.key_events,
   });
   if (!winner) {
     return false;

@@ -4,6 +4,10 @@ import {
   resolveReplayWinnerTruth,
   type UnresolvedWatcherResult,
 } from "./unresolvedWatcherResult.ts";
+import {
+  applyReplayAdjudicationToGameStats,
+  getReplayAdjudicationForGameStatsId,
+} from "@/lib/replayAdjudications";
 
 export type PublicGameStatsLike = {
   id?: number | string | null;
@@ -144,6 +148,8 @@ export function publicReplayWinnerTruth(row: PublicGameStatsLike) {
 }
 
 export function isPublicResolvedGameStatsRow(row: PublicGameStatsLike) {
+  const adjudication = getReplayAdjudicationForGameStatsId(row.id);
+  if (adjudication?.affectsStats) return publicReplayIsFinal(row);
   return publicReplayIsFinal(row) && publicReplayWinnerTruth(row).statsEligible;
 }
 
@@ -187,7 +193,8 @@ function metadataScore(row: PublicGameStatsLike) {
   let score = knownPlayers * 50;
   if (readMapName(row)) score += 100;
   if (publicReplayIsFinal(row)) score += 500;
-  if (publicReplayWinnerTruth(row).statsEligible) score += 1000;
+  if (getReplayAdjudicationForGameStatsId(row.id)?.affectsStats) score += 1400;
+  else if (publicReplayWinnerTruth(row).statsEligible) score += 1000;
   score += Math.min(250, Math.max(0, readNumber(row, "parse_iteration", "parseIteration")));
   return score;
 }
@@ -277,6 +284,11 @@ function sanitizePublicMetadataFields<T extends PublicGameStatsLike>(row: T): T 
 }
 
 export function toPublicGameStatsRow<T extends PublicGameStatsLike>(row: T): T {
+  const adjudicated = applyReplayAdjudicationToGameStats(row);
+  if (getReplayAdjudicationForGameStatsId(row.id)) {
+    return sanitizePublicMetadataFields(adjudicated);
+  }
+
   const truth = publicReplayWinnerTruth(row);
   const publicRow = sanitizePublicMetadataFields(row);
   if (truth.statsEligible) return publicRow;

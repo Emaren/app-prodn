@@ -39,6 +39,7 @@ import {
   getPublicPlayerHref,
 } from "@/lib/publicPlayers";
 import { resolveReliableReplayWinner } from "@/lib/unresolvedWatcherResult";
+import { applyReplayAdjudicationToGameStats } from "@/lib/replayAdjudications";
 
 export const dynamic = "force-dynamic";
 
@@ -67,7 +68,7 @@ export default async function GameStatsDetailPage({
   const showRawReplayOutput = detailView === "basic" || detailView === "extreme";
 
   const prisma = getPrisma();
-  const game = await prisma.gameStats.findUnique({
+  const rawGame = await prisma.gameStats.findUnique({
     where: { id: gameId },
     include: {
       user: {
@@ -94,9 +95,11 @@ export default async function GameStatsDetailPage({
     },
   });
 
-  if (!game) {
+  if (!rawGame) {
     notFound();
   }
+
+  const game = applyReplayAdjudicationToGameStats(rawGame);
 
   const parseAttempts = await prisma.replayParseAttempt.findMany({
     where: {

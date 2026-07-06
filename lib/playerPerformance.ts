@@ -8,12 +8,14 @@ import {
   readPlayerSteamRmRating,
 } from "@/lib/gameStatsView";
 import { type PublicPlayerRef, publicPlayerMatchesName } from "@/lib/publicPlayers";
+import { applyReplayAdjudicationToGameStats } from "@/lib/replayAdjudications";
 import {
   normalizePublicReplayText,
   resolveReliableReplayWinner,
 } from "@/lib/unresolvedWatcherResult";
 
 type PerformanceGame = {
+  id?: number | string | null;
   winner: string | null;
   players: unknown;
   map: unknown;
@@ -82,7 +84,8 @@ export function buildPlayerPerformanceStats(
   let ratingLastSeenAt: string | null = null;
   let ratingLastSeenMs = 0;
 
-  for (const match of matches) {
+  for (const rawMatch of matches) {
+    const match = applyReplayAdjudicationToGameStats(rawMatch);
     const players = parsePlayers(match.players);
     const currentRecord = players.find((player) =>
       publicPlayerMatchesName(currentPlayer, displayPlayerName(player))

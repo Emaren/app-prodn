@@ -32,6 +32,7 @@ import {
 } from "@/lib/publicPlayers";
 import { isAtOrAfterWoloMainnetStart, isMainnetVisibleBetWager } from "@/lib/woloChain";
 import { loadUserCommunitySummaries, type UserCommunitySummary } from "@/lib/communityHonors";
+import { applyReplayAdjudicationToGameStats } from "@/lib/replayAdjudications";
 import {
   normalizePublicReplayText,
   publicReplayMapLabel,
@@ -356,12 +357,14 @@ function currentPlayerRecord(game: PlayerProfileGameRow, currentPlayer: PublicPl
 }
 
 function gameResult(game: PlayerProfileGameRow, currentPlayer: PublicPlayerRef): "win" | "loss" | "unknown" {
+  const adjudicatedGame = applyReplayAdjudicationToGameStats(game);
   const winner = resolveReliableReplayWinner({
-    winner: game.winner,
-    players: parsePlayers(game.players),
-    parseReason: game.parse_reason,
-    keyEvents: game.key_events,
+    winner: adjudicatedGame.winner,
+    players: parsePlayers(adjudicatedGame.players),
+    parseReason: adjudicatedGame.parse_reason,
+    keyEvents: adjudicatedGame.key_events,
   });
+
   if (!winner) return "unknown";
   return publicPlayerMatchesName(currentPlayer, winner) ? "win" : "loss";
 }
@@ -690,6 +693,7 @@ function buildBestGames(games: PlayerProfileGameRow[], currentPlayer: PublicPlay
 }
 
 function toMatchItem(game: PlayerProfileGameRow, currentPlayer: PublicPlayerRef): PlayerProfileMatchItem {
+  game = applyReplayAdjudicationToGameStats(game);
   const players = parsePlayers(game.players);
   const player = currentPlayerRecord(game, currentPlayer);
   const playedAt = toIso(readPlayedAt(game));
@@ -791,12 +795,13 @@ function playerProfileIsFinal(game: PlayerProfileGameRow) {
 }
 
 function playerProfileHasResolvedWinner(game: PlayerProfileGameRow) {
+  const adjudicatedGame = applyReplayAdjudicationToGameStats(game);
   return Boolean(
     resolveReliableReplayWinner({
-      winner: game.winner,
-      players: parsePlayers(game.players),
-      parseReason: game.parse_reason,
-      keyEvents: game.key_events,
+      winner: adjudicatedGame.winner,
+      players: parsePlayers(adjudicatedGame.players),
+      parseReason: adjudicatedGame.parse_reason,
+      keyEvents: adjudicatedGame.key_events,
     })
   );
 }
