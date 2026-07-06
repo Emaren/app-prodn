@@ -289,8 +289,37 @@ export function toPublicGameStatsRow<T extends PublicGameStatsLike>(row: T): T {
     return sanitizePublicMetadataFields(adjudicated);
   }
 
-  const truth = publicReplayWinnerTruth(row);
   const publicRow = sanitizePublicMetadataFields(row);
+
+  const parseReason = readString(row, "parse_reason", "parseReason") || "";
+  const inferredFallbackWinner =
+    readString(row, "winner", "winnerName", "winner_name") || "";
+
+  const isHistoricalInferredWinnerFallback =
+    publicReplayIsFinal(row) &&
+    inferredFallbackWinner.length > 0 &&
+    inferredFallbackWinner.toLowerCase() !== "unknown" &&
+    (
+      parseReason === "watcher_inferred_opponent_win_on_incomplete_1v1" ||
+      parseReason === "watcher_inferred_opponent_win_on_incomplete"
+    );
+
+  if (isHistoricalInferredWinnerFallback) {
+    const next: Record<string, unknown> = { ...publicRow };
+
+    // Product truth policy:
+    // The old incomplete-1v1 opponent inference remains the foreground fallback.
+    // It is not perfect proof, but it is good enough for immediate public results.
+    // Disputes/adjudication overlays still override it before this branch.
+    next["winner"] = inferredFallbackWinner;
+    next["unresolvedResult"] = null;
+    next["reviewNeeded"] = false;
+    next["winnerProof"] = "historical_inferred_fallback";
+
+    return next as T;
+  }
+
+  const truth = publicReplayWinnerTruth(row);
   if (truth.statsEligible) return publicRow;
 
   const players = readPlayers(row.players);
