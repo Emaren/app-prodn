@@ -81,6 +81,10 @@ export function getReplayAdjudicationForGameStatsId(id: unknown) {
   return REPLAY_ADJUDICATIONS.find((entry) => entry.gameStatsId === gameStatsId) ?? null;
 }
 
+export function listReplayAdjudications() {
+  return [...REPLAY_ADJUDICATIONS];
+}
+
 export function resolveReplayAdjudicatedWinner(row: { id?: unknown }) {
   return getReplayAdjudicationForGameStatsId(row.id)?.winner ?? null;
 }

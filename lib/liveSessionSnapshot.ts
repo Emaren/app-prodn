@@ -1,6 +1,7 @@
 import path from "node:path";
 
 import type { PrismaClient } from "@/lib/generated/prisma";
+import type { ReplayReviewMarketSummary } from "@/lib/replayReviewQueue";
 import {
   classifyUnresolvedWatcherResult,
   normalizePublicReplayText,
@@ -47,6 +48,7 @@ export type LiveGameSession = {
         displayName: string;
       }
     | null;
+  reviewMarket?: ReplayReviewMarketSummary | null;
 };
 
 const LIVE_SESSION_FRESHNESS_MS = 12 * 60 * 1000;

@@ -220,6 +220,26 @@ function proofExplanation(session: LiveSession) {
   return explanation;
 }
 
+function sessionStatsHref(session: LiveSession) {
+  return session.state === "completed" && Number.isSafeInteger(session.id) && session.id > 0
+    ? `/game-stats/${session.id}`
+    : `/game-stats/live/${encodeURIComponent(session.sessionKey)}`;
+}
+
+function replayReviewHref(session: LiveSession) {
+  return `/admin/replay-review?gameId=${encodeURIComponent(String(session.id))}#game-${encodeURIComponent(String(session.id))}`;
+}
+
+function replayReviewMarketLabel(session: LiveSession) {
+  const market = session.reviewMarket;
+  if (!market) return null;
+  if (market.moneyState === "no_slips") return "Market attached · no slips";
+  if (market.moneyState === "awaiting_verdict") {
+    return `${market.slipCount} slip${market.slipCount === 1 ? "" : "s"} · Awaiting verdict`;
+  }
+  return market.moneyLabel;
+}
+
 function liveDisplayTitle(session: LiveSession) {
   const names = sessionKnownParticipantNames(session);
 
@@ -401,7 +421,7 @@ function DualWatcherProofStack({
 }
 
 export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps) {
-  const { uid } = useUserAuth();
+  const { uid, isAdmin } = useUserAuth();
   const { setViewMode: setSharedLiveGamesViewMode } = useTileViewPreference("live_games");
   const [viewMode, setViewMode] = useState<TileViewMode>("basic");
   const [snapshot, setSnapshot] = useState(initialSnapshot);
@@ -617,6 +637,7 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
 
   const boardProps: BoardViewProps = {
     uid,
+    isAdmin,
     snapshot,
     mounted,
     liveItemsCount,
@@ -832,6 +853,7 @@ function StatusPill({
 
 type BoardViewProps = {
   uid: string | null | undefined;
+  isAdmin: boolean;
   snapshot: LiveGamesSnapshot;
   mounted: boolean;
   liveItemsCount: number;
@@ -854,6 +876,7 @@ type BoardViewProps = {
 
 
 function ClassicBoard({
+  isAdmin,
   snapshot,
   mounted,
   liveScheduledMatches,
@@ -1144,6 +1167,7 @@ function ClassicBoard({
                   key={`review-${liveSessionIdentity(session)}`}
                   session={session}
                   mounted={mounted}
+                  isAdmin={isAdmin}
                 />
               ))}
             </div>
@@ -2004,12 +2028,14 @@ function PremiumClassicLiveSessionCard({
 function ClassicLiveSessionCard({
   session,
   mounted,
+  isAdmin = false,
 }: {
   session: LiveGamesSnapshot["activeSessions"][number];
   mounted: boolean;
+  isAdmin?: boolean;
 }) {
   const isCompleted = session.state === "completed";
-  const gameHref = `/game-stats/live/${encodeURIComponent(session.sessionKey)}`;
+  const gameHref = sessionStatsHref(session);
   const watchHref = `/watch/${encodeURIComponent(session.sessionKey)}`;
   const primaryStream = session.primaryStream ?? session.streams?.[0] ?? null;
   const uploaders =
@@ -2107,6 +2133,11 @@ function ClassicLiveSessionCard({
                 <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
                   {session.unresolvedResult.code.replaceAll("_", " ")}
                 </span>
+                {replayReviewMarketLabel(session) ? (
+                  <span className="rounded-full border border-violet-300/20 bg-violet-400/10 px-3 py-1 text-xs text-violet-100">
+                    {replayReviewMarketLabel(session)}
+                  </span>
+                ) : null}
               </>
             ) : null}
             {primaryStream ? (
@@ -2142,6 +2173,14 @@ function ClassicLiveSessionCard({
       </div>
 
       <div className="mt-4 flex flex-wrap gap-3">
+        {session.unresolvedResult && isAdmin ? (
+          <Link
+            href={replayReviewHref(session)}
+            className="rounded-full bg-amber-200 px-4 py-2 text-sm font-semibold text-amber-950 transition hover:bg-amber-100"
+          >
+            Review Result
+          </Link>
+        ) : null}
         <Link
           href={watchHref}
           className="rounded-full bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200"
@@ -2161,7 +2200,7 @@ function ClassicLiveSessionCard({
           Open Lobby
         </Link>
         <Link
-          href="/bets"
+          href={session.reviewMarket ? `/bets/${session.reviewMarket.id}` : "/bets"}
           className="rounded-full border border-amber-300/30 bg-amber-400/10 px-4 py-2 text-sm text-amber-100 transition hover:bg-amber-400/15"
         >
           Bet Rail
@@ -2313,6 +2352,7 @@ function ClassicTournamentLiveMatchCard({
 }
 
 function ExtremeBoard({
+  isAdmin,
   snapshot,
   mounted,
   liveItemsCount,
@@ -2484,6 +2524,7 @@ function ExtremeBoard({
                 session={session}
                 mounted={mounted}
                 variant="extreme"
+                isAdmin={isAdmin}
               />
             ))}
           </div>
@@ -2680,13 +2721,15 @@ function LiveSessionCard({
   session,
   mounted,
   variant,
+  isAdmin = false,
 }: {
   session: LiveSession;
   mounted: boolean;
   variant: TileViewMode;
+  isAdmin?: boolean;
 }) {
   const isCompleted = session.state === "completed";
-  const gameHref = `/game-stats/live/${encodeURIComponent(session.sessionKey)}`;
+  const gameHref = sessionStatsHref(session);
   const watchHref = `/watch/${encodeURIComponent(session.sessionKey)}`;
   const primaryStream = session.primaryStream;
   const title = liveDisplayTitle(session);
@@ -2778,6 +2821,11 @@ function LiveSessionCard({
                   {session.unresolvedResult.code.replaceAll("_", " ")}
                 </span>
               </div>
+              {replayReviewMarketLabel(session) ? (
+                <div className="mt-2 text-[11px] font-semibold text-violet-100">
+                  {replayReviewMarketLabel(session)}
+                </div>
+              ) : null}
             </div>
           ) : null}
 
@@ -2817,6 +2865,14 @@ function LiveSessionCard({
           isCompleted ? "border-emerald-100/10" : "border-red-100/10"
         }`}
       >
+        {session.unresolvedResult && isAdmin ? (
+          <Link
+            href={replayReviewHref(session)}
+            className="inline-flex min-h-9 flex-1 items-center justify-center rounded-full bg-amber-200 px-4 py-2 text-center text-xs font-bold text-amber-950 transition hover:bg-amber-100"
+          >
+            Review Result
+          </Link>
+        ) : null}
         <Link
           href={gameHref}
           className={`inline-flex min-h-9 flex-1 items-center justify-center rounded-full px-4 py-2 text-center text-xs font-bold transition ${
@@ -2837,7 +2893,7 @@ function LiveSessionCard({
         ) : null}
         {!isBasic && !isExtreme ? (
           <Link
-            href="/bets"
+            href={session.reviewMarket ? `/bets/${session.reviewMarket.id}` : "/bets"}
             className="inline-flex min-h-9 items-center justify-center rounded-full border border-amber-200/18 bg-amber-300/8 px-4 py-2 text-center text-xs font-semibold text-amber-100 transition hover:bg-amber-300/14"
           >
             Bet rail

@@ -167,6 +167,12 @@ Use this rail when a player says the watcher saw a replay but the site did not
 show a live game or final result. The rail is diagnostic only: it does not
 fabricate replay outcomes and it does not replace parser truth.
 
+`/admin/replay-review` is the commissioner handoff for final rows whose winner
+truth is still unsafe. It joins parser evidence with linked market/slip/claim
+state, but remains read-only until an append-only adjudication model exists.
+See [Commissioner Replay Review](./COMMISSIONER_REPLAY_REVIEW.md) for the truth
+layers, money-safety rules, and operator playbook.
+
 ## Debug Queries
 
 Package pulls in the last 24 hours:

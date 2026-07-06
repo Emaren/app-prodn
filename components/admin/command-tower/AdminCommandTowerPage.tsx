@@ -9,6 +9,7 @@ import {
   Coins,
   Crown,
   Filter,
+  FileSearch,
   Home,
   Images,
   LayoutGrid,
@@ -65,6 +66,7 @@ const ADMIN_NAV_LINKS = [
   { href: "/admin/events", label: "Featured Event", Icon: CalendarRange },
   { href: "/admin/trophies", label: "Trophy Command", Icon: Crown },
   { href: "/admin/media-assets", label: "Media Assets", Icon: Images },
+  { href: "/admin/replay-review", label: "Replay Review", Icon: FileSearch },
   { href: "/admin/wolochain", label: "WoloChain", Icon: Coins },
   { href: "/admin/user-list", label: "User List / Command Tower", Icon: UsersRound },
 ] as const;

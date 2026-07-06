@@ -12,6 +12,7 @@ import {
   normalizePublicReplayText,
   resolveReliableReplayWinner,
 } from "@/lib/unresolvedWatcherResult";
+import { loadReplayReviewMarketSummaryMap } from "@/lib/replayReviewQueue";
 import { toWatchStreamPayload, type WatchStreamPayload } from "@/lib/watchStreams";
 
 type StreamedLiveGameSession = LiveGameSession & {
@@ -321,10 +322,23 @@ async function loadLiveGamesSnapshotFresh(prisma: PrismaClient): Promise<LiveGam
     ].sort(compareCompletedSessionRecency)
   ).slice(0, LIVE_GAMES_COMPLETED_SESSION_DEPTH);
 
-  const displayedCompletedSessions = await hydrateCompletedSessionUploaders(
+  const hydratedCompletedSessions = await hydrateCompletedSessionUploaders(
     prisma,
     displayedCompletedSessionsBase
   );
+  const reviewMarketSummaries = await loadReplayReviewMarketSummaryMap(
+    prisma,
+    hydratedCompletedSessions
+      .filter((session) => Boolean(session.unresolvedResult))
+      .map((session) => ({ id: session.id, sessionKey: session.sessionKey }))
+  ).catch((error) => {
+    console.warn("Failed to load replay review market summaries:", error);
+    return new Map();
+  });
+  const displayedCompletedSessions = hydratedCompletedSessions.map((session) => ({
+    ...session,
+    reviewMarket: reviewMarketSummaries.get(session.id) ?? null,
+  }));
 
   const displayedCompletedKeys = new Set(
     displayedCompletedSessions.map((session) => session.sessionKey)
