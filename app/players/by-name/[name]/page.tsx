@@ -39,7 +39,8 @@ export default async function ReplayOnlyPlayerPage({
   });
 
   if (claimedUser) {
-    redirect(`/players/${claimedUser.uid}`);
+    const viewQuery = resolvedSearchParams.view ? `?view=${encodeURIComponent(String(resolvedSearchParams.view))}` : "";
+    redirect(`/players/${claimedUser.uid}${viewQuery}`);
   }
 
   const profile = await loadReplayPlayerProfile(prisma, playerName);

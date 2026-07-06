@@ -663,7 +663,7 @@ function ExtremeHero({
           </div>
         </div>
 
-        <div className="relative z-0 grid gap-3 sm:grid-cols-2 xl:pt-10">
+        <div className="relative z-0 grid gap-3 sm:grid-cols-2 xl:pt-12">
           <HeroSignal
             label="Watcher Proof"
             value={`${profile.watcher.watcherBackedMatches} games`}
@@ -687,24 +687,24 @@ function FloatingTitleHonor({ honor }: { honor: PlayerTitleHonor }) {
   return (
     <Link
       href={honor.routeHref}
-      className="pointer-events-auto absolute right-5 top-5 z-20 hidden w-44 rounded-[1.5rem] bg-slate-950/28 p-3 text-left opacity-95 shadow-[0_24px_70px_rgba(2,6,23,0.34)] ring-1 ring-amber-100/10 backdrop-blur-md transition hover:bg-slate-950/42 hover:ring-amber-100/18 lg:block"
+      className="pointer-events-auto absolute right-6 top-6 z-20 hidden w-28 text-center opacity-86 transition hover:opacity-100 lg:block"
       aria-label={`${honor.displayName} title page`}
     >
-      <div className="text-[9px] font-semibold uppercase tracking-[0.32em] text-amber-100/62">Title Held</div>
-      <div className="mt-1 text-sm font-semibold leading-tight text-white/92">{honor.displayName}</div>
+      <div className="mx-auto mb-1 h-px w-16 bg-gradient-to-r from-transparent via-amber-100/42 to-transparent" />
       {honor.imageUrl ? (
-        <div className="relative mt-2 h-16 overflow-visible">
+        <div className="relative mx-auto h-12 w-24 overflow-visible">
           <Image
             src={honor.imageUrl}
             alt={`${honor.displayName} belt`}
             fill
-            sizes="176px"
-            className="object-contain drop-shadow-[0_14px_22px_rgba(251,191,36,0.16)]"
+            sizes="96px"
+            className="object-contain drop-shadow-[0_12px_18px_rgba(251,191,36,0.18)]"
           />
         </div>
-      ) : (
-        <div className="mt-3 h-px w-full bg-gradient-to-r from-transparent via-amber-100/38 to-transparent" />
-      )}
+      ) : null}
+      <div className="mt-1 truncate text-[9px] font-semibold uppercase tracking-[0.24em] text-amber-100/66">
+        {honor.displayName}
+      </div>
     </Link>
   );
 }
