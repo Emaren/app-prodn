@@ -472,6 +472,20 @@ function readMatchText(match: LobbyMatchRow, ...keys: string[]) {
   return "";
 }
 
+function readMatchMapName(match: LobbyMatchRow) {
+  const row = match as unknown as Record<string, unknown>;
+  const map = row.map;
+  if (map && typeof map === "object" && !Array.isArray(map)) {
+    const name = normalizePublicReplayText(
+      (map as Record<string, unknown>).name
+    );
+    if (name) return name;
+  }
+  return normalizePublicReplayText(
+    readMatchText(match, "map_name", "mapName")
+  );
+}
+
 function readMatchNumber(match: LobbyMatchRow, ...keys: string[]) {
   const row = match as unknown as Record<string, unknown>;
   for (const key of keys) {
@@ -584,6 +598,7 @@ function buildRecentOutcomeSession(
   const rawWinner = readMatchText(match, "winner", "winner_name", "winnerName");
   const parseReason = readMatchText(match, "parse_reason", "parseReason") || null;
   const parseSource = readMatchText(match, "parse_source", "parseSource") || null;
+  const mapName = readMatchMapName(match);
 
   return {
     id,
@@ -595,7 +610,7 @@ function buildRecentOutcomeSession(
     updatedAt: readMatchText(match, "updated_at", "updatedAt") || playedAt,
     completedAt: playedAt,
     playedOn: playedAt,
-    mapName: readMatchText(match, "map", "map_name", "mapName") || null,
+    mapName,
     durationSeconds: readMatchNumber(match, "duration_seconds", "durationSeconds"),
     originalFilename: originalFilename || replayFile || sessionKey,
     disconnectDetected: false,
@@ -610,6 +625,7 @@ function buildRecentOutcomeSession(
     unresolvedResult: classifyUnresolvedWatcherResult({
       winner: rawWinner,
       players,
+      mapName,
       state: "completed",
       parseReason,
       parseSource,

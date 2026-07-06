@@ -36,6 +36,10 @@ import { BATTLE_CAM_STANDBY_VIDEO_URL } from "@/lib/broadcastPresentation";
 import { useTileViewPreference } from "@/components/tile-view/useTileViewPreference";
 import { useUserAuth } from "@/context/UserAuthContext";
 import type { LiveGamesSnapshot } from "@/lib/liveGames";
+import {
+  liveSessionIdentity,
+  reconcileLiveGamesSnapshots,
+} from "@/lib/liveGamesClientReconcile";
 import { getTournamentMatchStatusLabel } from "@/lib/lobby";
 import {
   normalizePublicReplayText,
@@ -311,6 +315,9 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
   const [boardNotice, setBoardNotice] = useState<string | null>(null);
   const refreshInFlightRef = useRef(false);
   const mountedRef = useRef(true);
+  const requestSequenceRef = useRef(0);
+  const appliedRequestSequenceRef = useRef(0);
+  const activeSessionSeenAtRef = useRef(new Map<string, number>());
 
   useEffect(() => {
     setViewMode(readStoredLiveGamesViewMode());
@@ -328,13 +335,26 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
   const refresh = useCallback(async () => {
     if (refreshInFlightRef.current) return;
 
+    const requestSequence = ++requestSequenceRef.current;
     refreshInFlightRef.current = true;
     try {
       const response = await fetch("/api/live-games", { cache: "no-store" });
       if (!response.ok) return;
 
       const payload = (await response.json()) as LiveGamesSnapshot;
-      if (mountedRef.current) setSnapshot(payload);
+      if (
+        mountedRef.current &&
+        requestSequence > appliedRequestSequenceRef.current
+      ) {
+        appliedRequestSequenceRef.current = requestSequence;
+        setSnapshot((current) =>
+          reconcileLiveGamesSnapshots(
+            current,
+            payload,
+            activeSessionSeenAtRef.current
+          )
+        );
+      }
     } catch (error) {
       console.warn("Failed to refresh live games:", error);
     } finally {
@@ -343,6 +363,7 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
   }, []);
 
   useEffect(() => {
+    mountedRef.current = true;
     setMounted(true);
     void refresh();
 
@@ -388,8 +409,13 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
     0,
     MAX_VISIBLE_OUTCOMES
   );
-  const recentlyCompletedSessions = snapshot.recentlyCompletedSessions;
-const liveItemsCount =
+  const recentlyCompletedSessions = snapshot.recentlyCompletedSessions.filter(
+    (session) => !session.unresolvedResult
+  );
+  const reviewCompletedSessions = snapshot.recentlyCompletedSessions.filter(
+    (session) => Boolean(session.unresolvedResult)
+  );
+  const liveItemsCount =
     liveScheduledMatches.length +
     snapshot.activeSessions.length +
     snapshot.liveMatches.length;
@@ -503,6 +529,7 @@ const liveItemsCount =
     pendingScheduledMatches,
     recentScheduledMatches,
     recentlyCompletedSessions,
+    reviewCompletedSessions,
     renderScheduledMatch,
   };
 
@@ -717,6 +744,7 @@ type BoardViewProps = {
   pendingScheduledMatches: LiveGamesSnapshot["scheduledMatches"];
   recentScheduledMatches: LiveGamesSnapshot["scheduledMatches"];
   recentlyCompletedSessions: LiveGamesSnapshot["recentlyCompletedSessions"];
+  reviewCompletedSessions: LiveGamesSnapshot["recentlyCompletedSessions"];
   renderScheduledMatch: (
     match: LiveGamesSnapshot["scheduledMatches"][number],
     options?: { compact?: boolean; detail?: boolean }
@@ -734,6 +762,7 @@ function ClassicBoard({
   pendingScheduledMatches,
   recentScheduledMatches,
   recentlyCompletedSessions,
+  reviewCompletedSessions,
   liveItemsCount,
   onDeckCount,
   renderScheduledMatch,
@@ -884,13 +913,13 @@ function ClassicBoard({
               {snapshot.activeSessions.map((session) =>
                 advanced ? (
                   <PremiumClassicLiveSessionCard
-                    key={`session-${session.id}`}
+                    key={liveSessionIdentity(session)}
                     session={session}
                     liveTone={liveTone}
                   />
                 ) : (
                   <ClassicLiveSessionCard
-                    key={`session-${session.id}`}
+                    key={liveSessionIdentity(session)}
                     session={session}
                     mounted={mounted}
                   />
@@ -977,14 +1006,14 @@ function ClassicBoard({
                 {featuredCompletedSessions.map((session) =>
                   advanced ? (
                     <PremiumClassicLiveSessionCard
-                      key={`completed-${session.id}`}
+                      key={`completed-${liveSessionIdentity(session)}`}
                       session={session}
                       liveTone={liveTone}
                       resolvedStyle={resolvedCardStyle}
                     />
                   ) : (
                     <ClassicLiveSessionCard
-                      key={`completed-${session.id}`}
+                      key={`completed-${liveSessionIdentity(session)}`}
                       session={session}
                       mounted={mounted}
                     />
@@ -994,6 +1023,33 @@ function ClassicBoard({
             )}
           </div>
         </section>
+
+        {reviewCompletedSessions.length > 0 ? (
+          <section className="rounded-[1.8rem] border border-amber-200/12 bg-amber-300/[0.035] p-5 sm:p-6">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <div className="text-xs uppercase tracking-[0.35em] text-amber-100/65">
+                  Parser Review
+                </div>
+                <h2 className="mt-2 text-2xl font-semibold text-white">
+                  Final proof awaiting a verdict
+                </h2>
+              </div>
+              <div className="rounded-full border border-amber-200/15 bg-amber-300/[0.06] px-3 py-1 text-xs text-amber-100">
+                {reviewCompletedSessions.length} needs review
+              </div>
+            </div>
+            <div className="mt-5 space-y-3">
+              {reviewCompletedSessions.map((session) => (
+                <ClassicLiveSessionCard
+                  key={`review-${liveSessionIdentity(session)}`}
+                  session={session}
+                  mounted={mounted}
+                />
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         <section className="rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-5 sm:p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
@@ -1015,7 +1071,7 @@ function ClassicBoard({
                 <>
                   {archivedCompletedSessions.map((session) => (
                     <Link
-                      key={`archive-upload-${session.id}`}
+                      key={`archive-upload-${liveSessionIdentity(session)}`}
                       href={`/game-stats/live/${encodeURIComponent(session.sessionKey)}`}
                       className="block rounded-2xl border border-white/10 bg-white/5 px-4 py-4 transition hover:border-white/20 hover:bg-white/7"
                     >
@@ -2177,6 +2233,7 @@ function ExtremeBoard({
   pendingScheduledMatches,
   recentScheduledMatches,
   recentlyCompletedSessions,
+  reviewCompletedSessions,
   renderScheduledMatch,
   viewMode,
   onViewModeChange,
@@ -2212,7 +2269,7 @@ function ExtremeBoard({
                   )}
                   {snapshot.activeSessions.map((session) => (
                     <LiveSessionCard
-                      key={`session-${session.id}`}
+                      key={liveSessionIdentity(session)}
                       session={session}
                       mounted={mounted}
                       variant="extreme"
@@ -2309,7 +2366,7 @@ function ExtremeBoard({
               )}
               {recentlyCompletedSessions.map((session) => (
                 <LiveSessionCard
-                  key={`completed-${session.id}`}
+                  key={`completed-${liveSessionIdentity(session)}`}
                   session={session}
                   mounted={mounted}
                   variant="extreme"
@@ -2319,6 +2376,28 @@ function ExtremeBoard({
           )}
         </div>
       </section>
+
+      {reviewCompletedSessions.length > 0 ? (
+        <section className="overflow-hidden rounded-[2.15rem] border border-amber-200/10 bg-[radial-gradient(circle_at_85%_0%,rgba(251,191,36,0.09),transparent_28%),linear-gradient(145deg,rgba(28,20,8,0.92),rgba(2,6,23,0.95))] p-4 sm:p-6">
+          <RailHeader
+            icon={<CircleAlert className="h-4 w-4" />}
+            eyebrow="Parser Review"
+            title="Final proof awaiting a verdict"
+            count={`${reviewCompletedSessions.length} review`}
+            tone="amber"
+          />
+          <div className="mt-5 grid gap-4 lg:grid-cols-3">
+            {reviewCompletedSessions.map((session) => (
+              <LiveSessionCard
+                key={`review-${liveSessionIdentity(session)}`}
+                session={session}
+                mounted={mounted}
+                variant="extreme"
+              />
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <section className="overflow-hidden rounded-[2.15rem] border border-violet-200/10 bg-[radial-gradient(circle_at_12%_0%,rgba(139,92,246,0.11),transparent_29%),linear-gradient(145deg,rgba(15,12,30,0.96),rgba(2,6,23,0.95))] p-4 sm:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">

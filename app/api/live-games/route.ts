@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { loadLiveGamesSnapshot } from "@/lib/liveGames";
 import { getPrisma } from "@/lib/prisma";
+import { sanitizePublicLiveGamesSnapshot } from "@/lib/publicReplayTruth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,7 +22,7 @@ export async function GET(request: NextRequest) {
       }, { headers });
     }
 
-    return NextResponse.json(snapshot, { headers });
+    return NextResponse.json(sanitizePublicLiveGamesSnapshot(snapshot), { headers });
   } catch (error) {
     console.error("Failed to load live games:", error);
     return NextResponse.json({ detail: "Live games unavailable." }, { status: 500 });

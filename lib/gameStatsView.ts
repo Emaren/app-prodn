@@ -3,6 +3,7 @@ import {
   type LobbyMatchTimeSource,
 } from "@/lib/lobbyMatchTime";
 import {
+  normalizePublicReplayText,
   resolveReliableReplayWinner,
   unresolvedReplayReviewLabel,
 } from "@/lib/unresolvedWatcherResult";
@@ -85,14 +86,12 @@ export function readMapRecord(value: unknown) {
 
 export function readMapName(value: unknown) {
   const record = readMapRecord(value);
-  const name = record.name;
-  return typeof name === "string" && name.trim() ? name : "Map unresolved";
+  return normalizePublicReplayText(record.name) ?? "Map unavailable";
 }
 
 export function readMapSize(value: unknown) {
   const record = readMapRecord(value);
-  const size = record.size;
-  return typeof size === "string" && size.trim() ? size : "Size unavailable";
+  return normalizePublicReplayText(record.size) ?? "Size unavailable";
 }
 
 export function readPlayedAt(value: LobbyMatchTimeSource) {
@@ -298,24 +297,21 @@ export function parseStatusLabel(status: string) {
 }
 
 export function displayPlayerName(player: ReplayPlayerRecord) {
-  const name = player.name;
-  return typeof name === "string" && name.trim() ? name : "Roster unresolved";
+  return normalizePublicReplayText(player.name) ?? "Roster unresolved";
 }
 
 export function readPlayerCivilizationLabel(player: ReplayPlayerRecord) {
   const named = player.civilization_name;
-  if (typeof named === "string" && named.trim()) {
-    return named.trim();
-  }
+  const normalizedNamed = normalizePublicReplayText(named);
+  if (normalizedNamed) return normalizedNamed;
 
   const value = player.civilization;
   if (typeof value === "number" && Number.isFinite(value)) {
     return HD_CIVILIZATION_NAMES[Math.round(value)] || `Civilization #${Math.round(value)}`;
   }
 
-  if (typeof value === "string" && value.trim()) {
-    return value.trim();
-  }
+  const normalizedValue = normalizePublicReplayText(value);
+  if (normalizedValue) return normalizedValue;
 
   return "Civilization unavailable";
 }

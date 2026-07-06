@@ -68,6 +68,7 @@ type SessionRow = {
   game_duration: number | null;
   winner: string | null;
   players: unknown;
+  event_types?: unknown;
   key_events?: unknown;
   disconnect_detected: boolean;
   parse_reason?: string | null;
@@ -180,6 +181,43 @@ function parsePlayers(value: unknown): LiveGameSession["players"] {
     .filter((entry): entry is LiveGameSession["players"][number] => Boolean(entry));
 }
 
+function bestKnownPlayers(rows: SessionRow[], fallback: SessionRow) {
+  let best = parsePlayers(fallback.players);
+
+  for (const row of rows) {
+    const players = parsePlayers(row.players);
+    if (players.length > best.length) {
+      best = players;
+    }
+  }
+
+  return best;
+}
+
+function bestKnownMapName(rows: SessionRow[], fallback: SessionRow) {
+  for (const row of [fallback, ...rows]) {
+    const mapName = parseMapName(row.map);
+    if (mapName) return mapName;
+  }
+  return null;
+}
+
+function bestKnownDuration(rows: SessionRow[], fallback: SessionRow) {
+  let duration: number | null = null;
+
+  for (const row of [fallback, ...rows]) {
+    if (
+      typeof row.game_duration === "number" &&
+      Number.isFinite(row.game_duration) &&
+      row.game_duration > 0
+    ) {
+      duration = Math.max(duration ?? 0, row.game_duration);
+    }
+  }
+
+  return duration;
+}
+
 function getRowActivityTime(row: Pick<SessionRow, "timestamp" | "createdAt">) {
   return row.timestamp ?? row.createdAt;
 }
@@ -242,21 +280,29 @@ function buildSessionFromRow(
   const activityTime = getRowActivityTime(row);
   const uploaders = collectUploaders(sourceRows);
   const primaryUploader = uploaders[0] ?? null;
-  const parsedPlayers = parsePlayers(row.players);
+  const parsedPlayers = bestKnownPlayers(sourceRows, row);
+  const mapName = bestKnownMapName(sourceRows, row);
   const winnerTruth = resolveReplayWinnerTruth({
     winner: row.winner,
     players: parsedPlayers,
     parseReason: row.parse_reason,
     parseSource: row.parse_source,
     keyEvents: row.key_events,
+    eventTypes: row.event_types,
   });
   const winner = winnerTruth.winner;
   const players = winnerTruth.statsEligible
-    ? parsedPlayers
+    ? parsedPlayers.map((player) => ({
+        ...player,
+        winner: winner
+          ? player.name.toLowerCase() === winner.toLowerCase()
+          : player.winner,
+      }))
     : parsedPlayers.map((player) => ({ ...player, winner: null }));
   const unresolvedResult = classifyUnresolvedWatcherResult({
     winner: row.winner,
     players: parsedPlayers,
+    mapName,
     state,
     parseReason: row.parse_reason,
     parseSource: row.parse_source,
@@ -273,11 +319,8 @@ function buildSessionFromRow(
     updatedAt: activityTime.toISOString(),
     completedAt: state === "completed" ? activityTime.toISOString() : null,
     playedOn: row.played_on?.toISOString() ?? null,
-    mapName: parseMapName(row.map),
-    durationSeconds:
-      typeof row.game_duration === "number" && Number.isFinite(row.game_duration)
-        ? row.game_duration
-        : null,
+    mapName,
+    durationSeconds: bestKnownDuration(sourceRows, row),
     originalFilename: row.original_filename ?? null,
     disconnectDetected: row.disconnect_detected,
     winner,
@@ -338,7 +381,6 @@ export async function loadLiveSessionSnapshot(prisma: PrismaClient): Promise<{
         },
       },
       orderBy: [{ createdAt: "desc" }, { parse_iteration: "desc" }, { id: "desc" }],
-      take: 48,
       select: {
         id: true,
         replayHash: true,
@@ -352,6 +394,7 @@ export async function loadLiveSessionSnapshot(prisma: PrismaClient): Promise<{
         game_duration: true,
         winner: true,
         players: true,
+        event_types: true,
         key_events: true,
         disconnect_detected: true,
         parse_reason: true,
@@ -401,6 +444,7 @@ export async function loadLiveSessionSnapshot(prisma: PrismaClient): Promise<{
         game_duration: true,
         winner: true,
         players: true,
+        event_types: true,
         key_events: true,
         disconnect_detected: true,
         parse_reason: true,
@@ -455,6 +499,7 @@ export async function loadLiveSessionSnapshot(prisma: PrismaClient): Promise<{
         game_duration: true,
         winner: true,
         players: true,
+        event_types: true,
         key_events: true,
         disconnect_detected: true,
         parse_reason: true,
@@ -563,14 +608,18 @@ export async function loadLiveSessionSnapshot(prisma: PrismaClient): Promise<{
   activeSessions.sort((left, right) => {
     const leftActivityAt = new Date(left.updatedAt).getTime();
     const rightActivityAt = new Date(right.updatedAt).getTime();
-    return rightActivityAt - leftActivityAt;
+    const activityDiff = rightActivityAt - leftActivityAt;
+    if (activityDiff !== 0) return activityDiff;
+    return left.sessionKey.localeCompare(right.sessionKey);
   });
 
-  recentlyCompletedSessions.sort(
-    (left, right) =>
+  recentlyCompletedSessions.sort((left, right) => {
+    const activityDiff =
       new Date(right.completedAt || right.createdAt).getTime() -
-      new Date(left.completedAt || left.createdAt).getTime()
-  );
+      new Date(left.completedAt || left.createdAt).getTime();
+    if (activityDiff !== 0) return activityDiff;
+    return left.sessionKey.localeCompare(right.sessionKey);
+  });
 
   return {
     activeSessions,

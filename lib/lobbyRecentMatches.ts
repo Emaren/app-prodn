@@ -4,6 +4,7 @@ import type { LobbyMatchRow } from "@/lib/lobby";
 import { loadLiveSessionSnapshot } from "@/lib/liveSessionSnapshot";
 import { getLobbyMatchPlayedAtMs } from "@/lib/lobbyMatchTime";
 import { mergeCompletedSessionsIntoLobbyMatches } from "@/lib/liveCompletedMatchSurface";
+import { cleanPublicGameRows } from "@/lib/publicReplayTruth";
 
 export type LoadLobbyRecentMatchesOptions = {
   offset?: number;
@@ -32,8 +33,13 @@ export async function loadLobbyRecentMatches({
         return [];
       });
 
+    const publicRows = cleanPublicGameRows(payload, {
+      includeReview: true,
+      includeLive: false,
+    });
+
     return mergeCompletedSessionsIntoLobbyMatches(
-      payload.slice().sort((a, b) => getLobbyMatchPlayedAtMs(b) - getLobbyMatchPlayedAtMs(a)),
+      publicRows.slice().sort((a, b) => getLobbyMatchPlayedAtMs(b) - getLobbyMatchPlayedAtMs(a)),
       completedSessions,
       safeOffset + safeLimit
     ).slice(safeOffset, safeOffset + safeLimit);

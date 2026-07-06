@@ -130,9 +130,12 @@ function buildPulseItems({
       detail: "AoE2HDBets live sessions",
     },
     {
-      label: "Matches today",
+      label: "Resolved today",
       value: String(leaderboard.matchesToday),
-      detail: "Final games parsed today",
+      detail:
+        leaderboard.needsReviewToday > 0
+          ? `${leaderboard.needsReviewToday} final replay${leaderboard.needsReviewToday === 1 ? "" : "s"} awaiting parser review`
+          : "Unique final replays with reliable results",
     },
     latestMatch
       ? {
@@ -507,12 +510,16 @@ export function LobbyHero({
 
             <div className="rounded-[1.55rem] border border-white/14 bg-slate-950/44 px-5 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.045),0_18px_55px_rgba(0,0,0,0.18)]">
               <div className="text-[11px] uppercase tracking-[0.34em] text-slate-300/70">
-                Matches Today
+                Resolved Today
               </div>
               <div className="mt-4 text-4xl font-semibold tracking-tight text-white tabular-nums">
                 {leaderboard.matchesToday}
               </div>
-              <div className="mt-4 text-sm font-medium text-slate-300">Final games.</div>
+              <div className="mt-4 text-sm font-medium text-slate-300">
+                {leaderboard.needsReviewToday > 0
+                  ? `${leaderboard.needsReviewToday} awaiting parser review.`
+                  : "Reliable final games."}
+              </div>
             </div>
 
             <div className="rounded-[1.55rem] border border-amber-200/35 bg-[linear-gradient(135deg,rgba(251,191,36,0.13),rgba(15,23,42,0.48))] px-5 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.055),0_18px_55px_rgba(0,0,0,0.18)]">
@@ -817,9 +824,13 @@ export function LobbyHero({
           viewMode={viewMode}
         />
         <StatCard
-          label="Matches Today"
+          label="Resolved Today"
           value={String(leaderboard.matchesToday)}
-          subtext="Final games on the board."
+          subtext={
+            leaderboard.needsReviewToday > 0
+              ? `${leaderboard.needsReviewToday} final replay${leaderboard.needsReviewToday === 1 ? "" : "s"} need review.`
+              : "Reliable final games."
+          }
           themeKey={themeKey}
           viewMode={viewMode}
         />

@@ -77,6 +77,7 @@ type UnresolvedWatcherResultInput = {
   winner?: unknown;
   players?: Array<{ name?: unknown; winner?: unknown }> | null;
   playerCount?: number | null;
+  mapName?: unknown;
   state?: string | null;
   parseReason?: string | null;
   parseSource?: string | null;
@@ -520,6 +521,7 @@ export function classifyUnresolvedWatcherResult(
   const parseReason = textValue(input.parseReason).toLowerCase();
   const reason = textValue(input.reason).toLowerCase();
   const state = textValue(input.state).toLowerCase();
+  const hasKnownMap = normalizePublicReplayText(input.mapName) !== null;
   const combined = [
     eventType,
     finalityStatus,
@@ -536,6 +538,39 @@ export function classifyUnresolvedWatcherResult(
     Boolean(completionSource) ||
     combined.includes("final") ||
     combined.includes("resignation");
+
+  if (!finalish && state === "live") {
+    if (playerCount === 0) {
+      return result(
+        "roster_missing",
+        "Awaiting fuller proof",
+        "Player roster still parsing",
+        false
+      );
+    }
+
+    if (playerCount === 1) {
+      return result(
+        "incomplete_single_watcher_proof",
+        "Awaiting fuller proof",
+        "Only one player detected; awaiting fuller proof",
+        false
+      );
+    }
+
+    if (!hasKnownMap) {
+      return result(
+        "parser_unknown_fields",
+        "Awaiting fuller proof",
+        "Map unavailable; live replay metadata still parsing",
+        false
+      );
+    }
+
+    // A live replay is not expected to expose winner proof yet. Known roster and
+    // map metadata are enough to present it as a normal active game.
+    return null;
+  }
 
   if (winnerTruth.confidence === "inferred_low_confidence") {
     return result(

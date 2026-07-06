@@ -168,6 +168,9 @@ export type LobbyLeaderboardSummary = {
   entries: LobbyLeaderboardEntry[];
   activePlayers: number;
   matchesToday: number;
+  resolvedGamesToday: number;
+  uniqueReplaysToday: number;
+  needsReviewToday: number;
   trackedPlayers: number;
   rankedPlayers: number;
   minimumMatches: number;
@@ -287,6 +290,9 @@ export function getFallbackLeaderboard(): LobbyLeaderboardSummary {
     entries: [],
     activePlayers: 0,
     matchesToday: 0,
+    resolvedGamesToday: 0,
+    uniqueReplaysToday: 0,
+    needsReviewToday: 0,
     trackedPlayers: 0,
     rankedPlayers: 0,
     minimumMatches: LOBBY_LEADERBOARD_MIN_MATCHES,

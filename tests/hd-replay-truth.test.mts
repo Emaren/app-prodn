@@ -8,6 +8,15 @@ import {
   resolveReliableReplayWinner,
   resolveReplayWinnerTruth,
 } from "../lib/unresolvedWatcherResult.ts";
+import {
+  cleanPublicGameRows,
+  toPublicGameStatsRow,
+} from "../lib/publicReplayTruth.ts";
+import {
+  liveSessionIdentity,
+  reconcileLiveGamesSnapshots,
+} from "../lib/liveGamesClientReconcile.ts";
+import type { LiveGamesSnapshot } from "../lib/liveGames.ts";
 
 const tell3zEmarenPlayers = [
   {
@@ -160,4 +169,226 @@ test("unknown-like placeholders are never promoted to replay metadata", () => {
 
   assert.equal(publicReplayMapLabel({ name: "Unknown" }), "Map unresolved");
   assert.equal(publicReplayMapLabel({ name: "Yucatan" }), "Yucatan");
+});
+
+test("active games with known roster and map are not mislabeled as parser review", () => {
+  const unresolved = classifyUnresolvedWatcherResult({
+    winner: "Unknown",
+    players: [
+      { name: "Jim", winner: false },
+      { name: "King Kurt", winner: false },
+    ],
+    mapName: "Forest Nothing Feitoria",
+    state: "live",
+    parseReason: "hd_live_parse_match_fallback",
+    parseSource: "watcher_live",
+  });
+
+  assert.equal(unresolved, null);
+});
+
+test("public replay rows reject unsafe winners and normalize unknown metadata", () => {
+  const row = toPublicGameStatsRow({
+    id: 10252,
+    is_final: true,
+    winner: "Tell3z",
+    parse_reason: "watcher_inferred_opponent_win_on_incomplete_1v1",
+    parse_source: "watcher_final",
+    map: { name: "Unknown", size: "Unknown" },
+    players: [
+      { name: "Emaren", winner: false, civilization_name: "Mayans" },
+      { name: "Tell3z", winner: true, civilization_name: "Aztecs" },
+    ],
+    key_events: tell3zEmarenKeyEvents,
+  });
+
+  assert.equal(row.winner, null);
+  assert.equal((row.map as { name?: unknown }).name, null);
+  assert.equal(row.unresolvedResult?.label, "Winner unresolved");
+  assert.deepEqual(
+    (row.players as Array<{ winner?: unknown }>).map((player) => player.winner),
+    [null, null]
+  );
+});
+
+test("watcher iterations dedupe and never inflate resolved final counts", () => {
+  const liveRows = Array.from({ length: 53 }, (_, index) => ({
+    id: index + 1,
+    original_filename: "MP Replay active.aoe2record",
+    replay_hash: `rolling-${index}`,
+    winner: "Unknown",
+    players: [{ name: "Jim", winner: null }],
+    parse_reason: "watcher_live_iteration",
+    parse_source: "watcher_live",
+    parse_iteration: index + 1,
+    is_final: false,
+    timestamp: `2026-07-05T20:${String(index).padStart(2, "0")}:00Z`,
+  }));
+  const finalRows = [
+    {
+      id: 100,
+      original_filename: "MP Replay unsafe.aoe2record",
+      replay_hash: "unsafe-final",
+      winner: "Tell3z",
+      players: tell3zEmarenPlayers,
+      key_events: tell3zEmarenKeyEvents,
+      parse_reason: "watcher_inferred_opponent_win_on_incomplete_1v1",
+      parse_source: "watcher_final",
+      parse_iteration: 88,
+      is_final: true,
+      timestamp: "2026-07-05T22:00:00Z",
+    },
+    {
+      id: 101,
+      original_filename: "MP Replay proven.aoe2record",
+      replay_hash: "proven-final",
+      winner: "Emaren",
+      players: [
+        { name: "Emaren", winner: true },
+        { name: "Condorito", winner: false },
+      ],
+      key_events: {
+        completed: true,
+        completion_source: "resignation",
+        resigned_player_names: ["Condorito"],
+      },
+      parse_reason: "recorded_resignation_final",
+      parse_source: "watcher_final",
+      parse_iteration: 30,
+      is_final: true,
+      timestamp: "2026-07-05T23:00:00Z",
+    },
+  ];
+
+  assert.equal(
+    cleanPublicGameRows([...liveRows, ...finalRows], {
+      includeReview: true,
+      includeLive: false,
+    }).length,
+    2
+  );
+  assert.equal(
+    cleanPublicGameRows([...liveRows, ...finalRows], {
+      includeReview: false,
+      includeLive: false,
+    }).length,
+    1
+  );
+});
+
+function liveSession(
+  overrides: Partial<LiveGamesSnapshot["activeSessions"][number]>
+): LiveGamesSnapshot["activeSessions"][number] {
+  return {
+    id: 1,
+    sessionKey: "platform:stable",
+    replayFile: "MP Replay stable.aoe2record",
+    replayHash: "rolling-hash",
+    parseIteration: 1,
+    createdAt: "2026-07-05T20:00:00Z",
+    updatedAt: "2026-07-05T20:00:05Z",
+    completedAt: null,
+    playedOn: "2026-07-05T20:00:00Z",
+    mapName: "Yucatan",
+    durationSeconds: 5,
+    originalFilename: "MP Replay stable.aoe2record",
+    disconnectDetected: false,
+    winner: null,
+    parseReason: "watcher_live_iteration",
+    parseSource: "watcher_live",
+    unresolvedResult: null,
+    state: "live",
+    players: [
+      { name: "Emaren", winner: null },
+      { name: "Condorito", winner: null },
+    ],
+    uploaders: [],
+    watcherCount: 1,
+    parseRows: 1,
+    coverageLevel: "single",
+    uploader: null,
+    streams: [],
+    primaryStream: null,
+    ...overrides,
+  };
+}
+
+function snapshot(
+  activeSessions: LiveGamesSnapshot["activeSessions"]
+): LiveGamesSnapshot {
+  return {
+    liveCount: activeSessions.length,
+    readyCount: 0,
+    onDeckCount: 0,
+    updatedAt: "2026-07-05T20:00:10Z",
+    tournament: null,
+    activeSessions,
+    recentlyCompletedSessions: [],
+    liveMatches: [],
+    readyMatches: [],
+    scheduledMatches: [],
+    recentMatches: [],
+  };
+}
+
+test("live client reconciliation keeps simultaneous games through a missed poll", () => {
+  const emaren = liveSession({ id: 1, sessionKey: "platform:emaren" });
+  const jim = liveSession({
+    id: 2,
+    sessionKey: "platform:jim",
+    players: [
+      { name: "Jim", winner: null },
+      { name: "King Kurt", winner: null },
+    ],
+  });
+  const seenAt = new Map<string, number>();
+  const initial = snapshot([emaren, jim]);
+  for (const session of initial.activeSessions) {
+    seenAt.set(liveSessionIdentity(session), 1_000);
+  }
+
+  const reconciled = reconcileLiveGamesSnapshots(
+    initial,
+    snapshot([jim]),
+    seenAt,
+    5_000,
+    90_000
+  );
+
+  assert.equal(reconciled.activeSessions.length, 2);
+  assert.deepEqual(
+    new Set(reconciled.activeSessions.map((session) => session.sessionKey)),
+    new Set(["platform:emaren", "platform:jim"])
+  );
+});
+
+test("live metadata reconciliation never lets unknown overwrite known fields", () => {
+  const known = liveSession({
+    id: 1,
+    sessionKey: "platform:jim",
+    mapName: "FN 5x5",
+    players: [
+      { name: "Jim", winner: null },
+      { name: "Scavanger_Ab", winner: null },
+    ],
+    parseIteration: 10,
+  });
+  const partial = liveSession({
+    id: 2,
+    sessionKey: "platform:jim",
+    mapName: null,
+    players: [{ name: "Jim", winner: null }],
+    parseIteration: 11,
+    updatedAt: "2026-07-05T20:00:20Z",
+  });
+
+  const reconciled = reconcileLiveGamesSnapshots(
+    snapshot([known]),
+    snapshot([partial]),
+    new Map([[liveSessionIdentity(known), 1_000]]),
+    2_000
+  );
+  assert.equal(reconciled.activeSessions[0].mapName, "FN 5x5");
+  assert.equal(reconciled.activeSessions[0].players.length, 2);
+  assert.equal(reconciled.activeSessions[0].parseIteration, 11);
 });

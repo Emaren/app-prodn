@@ -11,8 +11,8 @@ import {
   type PublicPlayerDirectoryEntry,
 } from "@/lib/publicPlayerDirectory";
 import { normalizePublicPlayerName } from "@/lib/publicPlayers";
-import { dedupeFinalReplayRows } from "@/lib/finalReplayIdentity";
 import { loadPendingWoloClaimSummariesByName } from "@/lib/pendingWoloClaims";
+import { cleanPublicGameRows } from "@/lib/publicReplayTruth";
 import {
   normalizeLeaderboardLane,
   type LeaderboardLane,
@@ -23,7 +23,6 @@ const ARENA_ELO_K_FACTOR = 32;
 const LEADERBOARD_GAME_WINDOW = 5000;
 
 const SUPERSEDED_PARSE_REASON = "superseded_by_later_upload";
-const UNPARSED_FINAL_PARSE_REASON = "watcher_final_unparsed";
 
 export type LoadLobbyLeaderboardOptions = {
   offset?: number;
@@ -40,7 +39,9 @@ type PreparedLeaderboardGame = {
 
 type CandidateLeaderboardGame = {
   createdAt: Date;
+  event_types: unknown;
   id: number;
+  is_final: boolean;
   key_events: unknown;
   original_filename: string | null;
   played_on: Date | null;
@@ -49,6 +50,8 @@ type CandidateLeaderboardGame = {
   replayHash: string | null;
   timestamp: Date | null;
   winner: string | null;
+  parse_reason: string | null;
+  parse_source: string | null;
 };
 
 type EnrichedLeaderboardEntry = PublicPlayerDirectoryEntry & {
@@ -569,52 +572,18 @@ export async function loadLobbyLeaderboard(
     loadPublicPlayerDirectory(prisma),
     prisma.gameStats.findMany({
       where: {
-        OR: [
-          { is_final: true },
-          {
-            is_final: false,
-            parse_source: "watcher_live",
-            parse_iteration: {
-              gt: 0,
-            },
-            OR: [
-              {
-                parse_reason: {
-                  contains: "final",
-                  mode: "insensitive",
-                },
-              },
-              {
-                parse_reason: {
-                  contains: "resignation",
-                  mode: "insensitive",
-                },
-              },
-              {
-                winner: {
-                  notIn: ["", "Unknown"],
-                },
-              },
-              {
-                key_events: {
-                  path: ["completed"],
-                  equals: true,
-                },
-              },
-            ],
-          },
-        ],
+        is_final: true,
         NOT: {
-          parse_reason: {
-            in: [SUPERSEDED_PARSE_REASON, UNPARSED_FINAL_PARSE_REASON],
-          },
+          parse_reason: SUPERSEDED_PARSE_REASON,
         },
       },
       orderBy: [{ timestamp: "desc" }, { createdAt: "desc" }, { id: "desc" }],
       take: LEADERBOARD_GAME_WINDOW,
       select: {
         createdAt: true,
+        event_types: true,
         id: true,
+        is_final: true,
         key_events: true,
         original_filename: true,
         played_on: true,
@@ -630,9 +599,16 @@ export async function loadLobbyLeaderboard(
   ]);
 
   const leaderboardGames = [...rawLeaderboardGames].sort(sortCandidateGamesByPlayedAtDesc);
-  const uniqueGames = dedupeFinalReplayRows(leaderboardGames);
+  const uniqueGames = cleanPublicGameRows(leaderboardGames, {
+    includeReview: true,
+    includeLive: false,
+  });
+  const resolvedGames = cleanPublicGameRows(leaderboardGames, {
+    includeReview: false,
+    includeLive: false,
+  });
 
-  const preparedGames: PreparedLeaderboardGame[] = uniqueGames.map((game) => {
+  const preparedGames: PreparedLeaderboardGame[] = resolvedGames.map((game) => {
     const playedAt = readPlayedAt(game);
 
     return {
@@ -644,9 +620,14 @@ export async function loadLobbyLeaderboard(
 
   const recentGames = [...preparedGames].sort((left, right) => right.playedAtMs - left.playedAtMs);
   const dayStartMs = dayStart.getTime();
-  const matchesToday = preparedGames.filter(
-    (game) => Number.isFinite(game.playedAtMs) && game.playedAtMs >= dayStartMs
-  ).length;
+  const isToday = (game: CandidateLeaderboardGame) => {
+    const playedAt = readPlayedAt(game);
+    const playedAtMs = playedAt ? new Date(playedAt).getTime() : 0;
+    return Number.isFinite(playedAtMs) && playedAtMs >= dayStartMs;
+  };
+  const matchesToday = resolvedGames.filter(isToday).length;
+  const uniqueReplaysToday = uniqueGames.filter(isToday).length;
+  const needsReviewToday = Math.max(0, uniqueReplaysToday - matchesToday);
 
   const candidates = directory.allEntries
     .filter((entry) => entry.totalMatches > 0 || entry.claimed)
@@ -691,6 +672,9 @@ export async function loadLobbyLeaderboard(
     ),
     activePlayers: directory.activeClaimed.length,
     matchesToday,
+    resolvedGamesToday: matchesToday,
+    uniqueReplaysToday,
+    needsReviewToday,
     trackedPlayers: fullEntryCount,
     rankedPlayers: eligibleEntries.length,
     minimumMatches: LOBBY_LEADERBOARD_MIN_MATCHES,
