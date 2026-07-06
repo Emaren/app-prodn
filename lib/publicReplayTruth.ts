@@ -322,6 +322,35 @@ export function toPublicGameStatsRow<T extends PublicGameStatsLike>(row: T): T {
   const truth = publicReplayWinnerTruth(row);
   if (truth.statsEligible) return publicRow;
 
+  const noCapturedWinnerReason = readString(row, "parse_reason", "parseReason") || "";
+  const isQuietCompletedNoWinner =
+    publicReplayIsFinal(row) &&
+    (
+      noCapturedWinnerReason === "hd_final_parse_match_fallback" ||
+      noCapturedWinnerReason === "repaired_parse_match_fallback" ||
+      noCapturedWinnerReason === "recorded_resignation_final" ||
+      noCapturedWinnerReason === "watcher_final_unparsed" ||
+      noCapturedWinnerReason === "watcher_final_submission"
+    );
+
+  if (isQuietCompletedNoWinner) {
+    const next: Record<string, unknown> = clearUnsafeWinnerFields(publicRow);
+
+    // Product truth policy:
+    // If no winner can be captured, do not put the match in a scary manual-review state.
+    // It is simply completed with no winner captured unless someone disputes it.
+    next["unresolvedResult"] = {
+      code: "winner_not_captured",
+      label: "Completed",
+      explanation: "Match completed, but no reliable winner was captured from the replay data.",
+      reviewNeeded: false,
+    };
+    next["reviewNeeded"] = false;
+    next["winnerProof"] = "not_captured";
+
+    return next as T;
+  }
+
   const players = readPlayers(row.players);
   const next: Record<string, unknown> = clearUnsafeWinnerFields(publicRow);
   next["unresolvedResult"] =
