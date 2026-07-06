@@ -2097,10 +2097,7 @@ export default function BetsPage() {
                 <div className="mt-6 text-[11px] uppercase tracking-[0.4em] text-slate-400">
                   The War Book
                 </div>
-                <h1 className="mt-3 font-serif text-4xl tracking-[-0.035em] text-[#fff6dc] sm:text-5xl lg:text-6xl">
-                  Choose your side.
-                </h1>
-                <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-300 sm:text-base">
+<p className="mt-4 max-w-3xl text-sm leading-6 text-slate-300 sm:text-base">
                   Pick a team directly, or pick any player to back that player&apos;s team. Every
                   slip still settles on the left or right team side.
                 </p>
@@ -2965,7 +2962,6 @@ function BroadcastHeroTile({
         role="button"
         tabIndex={0}
         aria-label="Open Battle Cam"
-        title="Open Battle Cam"
         onClick={handleBattleCamTileClick}
         onKeyDown={handleBattleCamTileKeyDown}
         data-testid="broadcast-hero-tile"
@@ -3012,7 +3008,6 @@ function BroadcastHeroTile({
       role="button"
       tabIndex={0}
       aria-label="Close Battle Cam"
-      title="Close Battle Cam"
       onClick={handleBattleCamTileClick}
       onKeyDown={handleBattleCamTileKeyDown}
       data-testid="broadcast-hero-tile"
