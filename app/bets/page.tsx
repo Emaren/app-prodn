@@ -2790,12 +2790,8 @@ function BroadcastVisibilityButton({
         open ? "border-amber-100/10 bg-amber-100/[0.035] text-amber-100/66" : "",
       ].join(" ")}
     >
-      <span className="relative inline-flex h-4.5 w-4.5 items-center justify-center opacity-80">
-        <Monitor className="h-4.5 w-4.5 opacity-75" aria-hidden="true" />
-        <Play
-          className="absolute h-2 w-2 translate-x-[0.02rem] fill-current stroke-[2] opacity-55"
-          aria-hidden="true"
-        />
+      <span className="relative inline-flex h-4.5 w-4.5 items-center justify-center opacity-72">
+        <Monitor className="h-4.5 w-4.5 opacity-72" aria-hidden="true" />
       </span>
       <span className="sr-only">{label}</span>
     </button>
