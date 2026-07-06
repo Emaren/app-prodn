@@ -204,13 +204,7 @@ export default function KingdomHero({ featuredStats }: KingdomHeroProps) {
 
         <div className="max-w-[58rem]">
           <TitleVariant style={titleStyle} />
-
-          <p className="mt-4 max-w-[43rem] text-[clamp(0.98rem,1.05vw,1.12rem)] leading-8 text-slate-200/74 drop-shadow-[0_3px_12px_rgba(0,0,0,0.65)]">
-            Every kingdom begins with a single fire. The citizens arrive, the first games are
-            recorded, and the ledger starts to remember.
-          </p>
-
-          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+<div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             <Link
               href="#chronicles"
               className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-amber-100/18 bg-[linear-gradient(135deg,rgba(126,82,23,0.30),rgba(3,7,18,0.42))] px-6 py-3 text-sm font-black text-amber-50/86 shadow-[0_14px_40px_rgba(0,0,0,0.24)] backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-amber-100/30 hover:text-amber-50 sm:min-w-[13rem]"
