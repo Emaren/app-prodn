@@ -2785,13 +2785,13 @@ function BroadcastVisibilityButton({
       title={label}
       onClick={onToggle}
       className={[
-        "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/[0.052] bg-white/[0.020] text-slate-500/48 shadow-[inset_0_1px_0_rgba(255,255,255,0.026)] transition",
-        "hover:border-white/[0.085] hover:bg-white/[0.034] hover:text-slate-400/68 focus:outline-none focus:ring-2 focus:ring-white/10",
-        open ? "border-amber-100/[0.075] bg-amber-100/[0.026] text-amber-100/48" : "",
+        "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/[0.06] bg-white/[0.024] text-slate-300/52 shadow-[inset_0_1px_0_rgba(255,255,255,0.032)] transition",
+        "hover:border-white/[0.10] hover:bg-white/[0.04] hover:text-slate-200/62 focus:outline-none focus:ring-2 focus:ring-white/10",
+        open ? "border-amber-100/[0.09] bg-amber-100/[0.03] text-amber-100/58" : "",
       ].join(" ")}
     >
-      <span className="relative inline-flex h-4 w-4 items-center justify-center opacity-58">
-        <Monitor className="h-4 w-4 opacity-58" strokeWidth={1.55} aria-hidden="true" />
+      <span className="relative inline-flex h-4.5 w-4.5 items-center justify-center">
+        <Monitor className="h-4.5 w-4.5 opacity-78" strokeWidth={1.65} aria-hidden="true" />
       </span>
       <span className="sr-only">{label}</span>
     </button>
