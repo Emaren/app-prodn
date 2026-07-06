@@ -265,15 +265,84 @@ function readReplayTruthReviewNeeded(match: LobbyMatchRow, result: ReplayTruthRe
   return (match as { reviewNeeded?: unknown }).reviewNeeded === true || result?.reviewNeeded === true;
 }
 
+function normalizeLobbyWinnerName(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function readLobbyMatchPlayers(match: LobbyMatchRow) {
+  const value = (match as { players?: unknown }).players;
+
+  if (Array.isArray(value)) {
+    return value.filter(
+      (player): player is Record<string, unknown> =>
+        Boolean(player) && typeof player === "object" && !Array.isArray(player)
+    );
+  }
+
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value) as unknown;
+      if (Array.isArray(parsed)) {
+        return parsed.filter(
+          (player): player is Record<string, unknown> =>
+            Boolean(player) && typeof player === "object" && !Array.isArray(player)
+        );
+      }
+    } catch {
+      return [];
+    }
+  }
+
+  return [];
+}
+
+function readMarkedPlayerWinner(match: LobbyMatchRow) {
+  const players = readLobbyMatchPlayers(match);
+  const winner = players.find((player) => player.winner === true);
+  return normalizeLobbyWinnerName(winner?.name);
+}
+
+function readOldWatcherInferredOpponentWinner(match: LobbyMatchRow) {
+  const parseReason = normalizeLobbyWinnerName(match.parse_reason).toLowerCase();
+
+  if (parseReason !== "watcher_inferred_opponent_win_on_incomplete_1v1") {
+    return "";
+  }
+
+  const players = readLobbyMatchPlayers(match);
+  const namedPlayers = players
+    .map((player) => normalizeLobbyWinnerName(player.name))
+    .filter(Boolean);
+
+  if (namedPlayers.length !== 2) return "";
+
+  const ownerName =
+    normalizeLobbyWinnerName((match as { ownerPlayerName?: unknown }).ownerPlayerName) ||
+    normalizeLobbyWinnerName((match as { owner_player_name?: unknown }).owner_player_name) ||
+    normalizeLobbyWinnerName((match as { ownerDisplayName?: unknown }).ownerDisplayName);
+
+  if (ownerName) {
+    const ownerLower = ownerName.toLowerCase();
+    const opponent = namedPlayers.find((name) => name.toLowerCase() !== ownerLower);
+    if (opponent) return opponent;
+  }
+
+  const emarenOpponent = namedPlayers.find((name) => name.toLowerCase() !== "emaren");
+  return emarenOpponent || "";
+}
+
 function getLobbyMatchResultDisplay(match: LobbyMatchRow) {
-  const rawWinner = typeof match.winner === "string" ? match.winner.trim() : "";
+  const rawWinner = normalizeLobbyWinnerName(match.winner);
+  const markedPlayerWinner = readMarkedPlayerWinner(match);
+  const oldWatcherWinner = readOldWatcherInferredOpponentWinner(match);
   const truthResult = readReplayTruthResult(match);
   const reviewNeeded = readReplayTruthReviewNeeded(match, truthResult);
+  const resolvedWinner = rawWinner || markedPlayerWinner || oldWatcherWinner;
 
-  if (rawWinner) {
+  if (resolvedWinner) {
     return {
-      headline: winnerLabel(rawWinner, match.parse_reason),
-      pill: outcomeBadgeLabel(match.parse_reason, rawWinner),
+      headline: winnerLabel(resolvedWinner, match.parse_reason),
+      pill: outcomeBadgeLabel(match.parse_reason, resolvedWinner),
     };
   }
 
