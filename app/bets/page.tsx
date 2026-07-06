@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { OfflineSigner } from "@cosmjs/proto-signing";
 import { ChevronDown, ChevronUp, Monitor, Play } from "lucide-react";
 import { toast } from "sonner";
@@ -1031,29 +1031,93 @@ export default function BetsPage() {
     };
   }, [loadBoard]);
 
+  const [focusedMarketId, setFocusedMarketId] = useState<number | null>(null);
+  const marketOrderRef = useRef<Map<number, number>>(new Map());
+
   const featuredMarket = board?.featuredMarket ?? null;
-  const spotlightMarket = useMemo(
-    () => featuredMarket ?? board?.openMarkets?.[0] ?? null,
-    [board?.openMarkets, featuredMarket]
-  );
+
+  const orderedBookMarkets = useMemo(() => {
+    const rawMarkets = [...(board?.openMarkets || [])];
+
+    if (featuredMarket && !rawMarkets.some((market) => market.id === featuredMarket.id)) {
+      rawMarkets.unshift(featuredMarket);
+    }
+
+    const order = marketOrderRef.current;
+    const liveIds = new Set(rawMarkets.map((market) => market.id));
+
+    for (const marketId of Array.from(order.keys())) {
+      if (!liveIds.has(marketId)) {
+        order.delete(marketId);
+      }
+    }
+
+    for (const market of rawMarkets) {
+      if (!order.has(market.id)) {
+        order.set(market.id, order.size);
+      }
+    }
+
+    const statusRank = (market: BetBoardMarket) => {
+      if (market.status === "live") return 0;
+      if (market.status === "open") return 1;
+      return 2;
+    };
+
+    return rawMarkets.sort((left, right) => {
+      const statusDelta = statusRank(left) - statusRank(right);
+      if (statusDelta !== 0) return statusDelta;
+
+      const leftOrder = order.get(left.id) ?? Number.MAX_SAFE_INTEGER;
+      const rightOrder = order.get(right.id) ?? Number.MAX_SAFE_INTEGER;
+      if (leftOrder !== rightOrder) return leftOrder - rightOrder;
+
+      return left.id - right.id;
+    });
+  }, [board?.openMarkets, featuredMarket]);
+
+  useEffect(() => {
+    if (focusedMarketId !== null) return;
+    if (orderedBookMarkets.length > 0) {
+      setFocusedMarketId(orderedBookMarkets[0].id);
+    }
+  }, [focusedMarketId, orderedBookMarkets]);
+
+  useEffect(() => {
+    if (focusedMarketId === null) return;
+    if (!orderedBookMarkets.some((market) => market.id === focusedMarketId)) {
+      setFocusedMarketId(orderedBookMarkets[0]?.id ?? null);
+    }
+  }, [focusedMarketId, orderedBookMarkets]);
+
+  const spotlightMarket = useMemo(() => {
+    const focusedMarket = focusedMarketId
+      ? orderedBookMarkets.find((market) => market.id === focusedMarketId)
+      : null;
+
+    if (focusedMarket) return focusedMarket;
+
+    return orderedBookMarkets[0] ?? null;
+  }, [focusedMarketId, orderedBookMarkets]);
+
   const openMarkets = useMemo(
-    () =>
-      (board?.openMarkets || []).filter((market) => !spotlightMarket || market.id !== spotlightMarket.id),
-    [board?.openMarkets, spotlightMarket]
+    () => orderedBookMarkets.filter((market) => !spotlightMarket || market.id !== spotlightMarket.id),
+    [orderedBookMarkets, spotlightMarket]
   );
+
   const totalBookPot = useMemo(
     () => {
-      const openPot = (board?.openMarkets || []).reduce((sum, market) => sum + market.totalPotWolo, 0);
+      const openPot = orderedBookMarkets.reduce((sum, market) => sum + market.totalPotWolo, 0);
       if (openPot > 0) {
         return openPot;
       }
 
       return board?.settledResults?.[0]?.totalPotWolo || 0;
     },
-    [board?.openMarkets, board?.settledResults]
+    [orderedBookMarkets, board?.settledResults]
   );
-  const liveCount = board?.heat.liveCount || 0;
-  const openCount = board?.openMarkets.length || 0;
+  const liveCount = orderedBookMarkets.filter((market) => market.status === "live").length || board?.heat.liveCount || 0;
+  const openCount = orderedBookMarkets.length;
   const recentResults = board?.settledResults || [];
   const runtimeBetEscrowMode = board?.wolo.betEscrowMode || "disabled";
   const runtimeBetEscrowAddress = board?.wolo.betEscrowAddress?.trim() || "";
@@ -1900,8 +1964,8 @@ export default function BetsPage() {
 
           <section className="grid gap-5 xl:grid-cols-[0.98fr_1.02fr]">
             <OpenBooksSection
-              eyebrow={spotlightMarket ? "More Open Books" : "Open Books"}
-              title={spotlightMarket ? "Keep the page alive without crowding it." : "Pick a side."}
+              eyebrow={spotlightMarket ? "Other Live Books" : "Open Books"}
+              title={spotlightMarket ? "Every war stays reachable." : "Pick a side."}
               detailMode="basic"
               markets={openMarkets}
               selection={selection}
