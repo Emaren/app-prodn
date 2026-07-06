@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Flame, Orbit, Shield, Sparkles } from "lucide-react";
 
-const ACADEMY_HERO_TITLE_IMAGE = "/academy/the-academy-title-gold-cutout.png";
+const ACADEMY_HERO_TITLE_IMAGE = "/academy/the-academy-title-gold-solid-cutout.png";
 
 export default function AcademyHero() {
   return (
@@ -34,7 +34,15 @@ export default function AcademyHero() {
         </div>
 
         <div className="mt-auto max-w-[42rem] pb-2">
-<div className="academy-hero-title-art pointer-events-none relative -ml-7 mb-3 mt-7 w-[min(59rem,calc(100vw-3rem))] overflow-hidden [aspect-ratio:1672/520] sm:-ml-9 lg:-ml-12">
+          <div className="academy-hero-title-art pointer-events-none relative -ml-7 mb-3 mt-7 w-[min(59rem,calc(100vw-3rem))] overflow-visible [aspect-ratio:1672/520] sm:-ml-9 lg:-ml-12">
+            <Image
+              src={ACADEMY_HERO_TITLE_IMAGE}
+              alt=""
+              fill
+              aria-hidden="true"
+              sizes="(max-width: 768px) 100vw, 59rem"
+              className="pointer-events-none select-none object-cover object-center opacity-[0.24] mix-blend-screen blur-[2.2px] brightness-[1.28] contrast-[1.04] saturate-[1.08]"
+            />
             <Image
               src={ACADEMY_HERO_TITLE_IMAGE}
               alt=""
@@ -42,7 +50,7 @@ export default function AcademyHero() {
               priority
               sizes="(max-width: 768px) 100vw, 59rem"
               aria-hidden="true"
-              className="select-none object-cover object-center opacity-[0.82] mix-blend-screen brightness-[0.76] contrast-[0.88] saturate-[0.72] drop-shadow-none [mask-image:linear-gradient(90deg,transparent_0%,rgba(0,0,0,0.38)_5%,black_12%,black_82%,rgba(0,0,0,0.46)_93%,transparent_100%)]"
+              className="select-none object-cover object-center opacity-[1] brightness-[1.1] contrast-[1.12] saturate-[1.04] drop-shadow-[0_0_14px_rgba(245,190,92,0.16)]"
             />
           </div>
           <h1 className="sr-only">The Academy</h1>
@@ -53,7 +61,7 @@ export default function AcademyHero() {
             Read the field. Move with intent. Raise your ELO.
           </p>
 
-          <p className="mt-3 max-w-[37rem] text-sm leading-6 text-slate-400/68/66">
+          <p className="mt-3 max-w-[37rem] text-sm leading-6 text-slate-400/58">
             Replay study, battlefield judgment, and proven advice from real players.
             A cleaner war school for players who want to improve before they wager.
           </p>
@@ -64,11 +72,11 @@ export default function AcademyHero() {
               className="group inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-white/9 bg-[linear-gradient(135deg,rgba(92,64,18,0.16),rgba(3,7,18,0.58))] px-5 py-2.5 text-xs font-semibold text-slate-200/78 shadow-[0_14px_34px_rgba(0,0,0,0.26)] backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-amber-100/22 hover:bg-amber-100/[0.045]"
             >
               Meet the advisors
-              <ArrowRight className="h-3.5 w-3.5 text-amber-100/68/48 transition group-hover:translate-x-1" />
+              <ArrowRight className="h-3.5 w-3.5 text-amber-100/42 transition group-hover:translate-x-1" />
             </Link>
             <Link
               href="/zodiac"
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-white/[0.075] bg-black/24 px-5 py-2.5 text-xs font-semibold text-slate-300/78/70 backdrop-blur-md transition hover:-translate-y-0.5 hover:border-violet-100/18 hover:bg-violet-300/[0.045] hover:text-slate-200/86"
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-white/[0.075] bg-black/24 px-5 py-2.5 text-xs font-semibold text-slate-300/62 backdrop-blur-md transition hover:-translate-y-0.5 hover:border-violet-100/18 hover:bg-violet-300/[0.045] hover:text-slate-200/86"
             >
               Train under the Zodiac
               <Sparkles className="h-3.5 w-3.5 text-violet-200/45" />
