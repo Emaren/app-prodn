@@ -830,7 +830,7 @@ function edgeButton(kind: "gold" | "blue" | "glass") {
     return "border border-amber-200/14 bg-[linear-gradient(135deg,#fde68a_0%,#f5c95f_28%,#d7a73e_72%,#8c5e10_100%)] text-slate-950 shadow-[0_14px_34px_rgba(245,158,11,0.18)] hover:brightness-105";
   }
   if (kind === "blue") {
-    return "border border-sky-200/12 bg-[linear-gradient(135deg,#dbeafe_0%,#93c5fd_26%,#3b82f6_68%,#1d4ed8_100%)] text-slate-950 shadow-[0_14px_34px_rgba(59,130,246,0.16)] hover:brightness-105";
+    return "border border-white/[0.12] bg-[linear-gradient(135deg,rgba(226,232,240,0.18)_0%,rgba(148,163,184,0.16)_34%,rgba(51,65,85,0.22)_72%,rgba(15,23,42,0.82)_100%)] text-slate-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_12px_28px_rgba(2,6,23,0.28)] hover:border-white/[0.18] hover:bg-white/[0.10]";
   }
   return "border border-white/[0.08] bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] text-slate-100 hover:border-white/14 hover:bg-white/[0.08]";
 }
