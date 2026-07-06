@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { OfflineSigner } from "@cosmjs/proto-signing";
-import { ChevronDown, ChevronUp, Monitor, Play } from "lucide-react";
+import { Monitor, Play } from "lucide-react";
 import { toast } from "sonner";
 
 import BetsViewToggle from "@/components/bets/BetsViewToggle";
@@ -2773,7 +2773,7 @@ function BroadcastVisibilityButton({
   open: boolean;
   onToggle: () => void;
 }) {
-  const Icon = open ? ChevronUp : ChevronDown;
+  const label = open ? "Hide Battle Cam" : "Show Battle Cam";
 
   return (
     <button
@@ -2781,19 +2781,27 @@ function BroadcastVisibilityButton({
       data-testid="battle-cam-toggle"
       aria-expanded={open}
       aria-controls="battle-cam-panel"
-      aria-label={open ? "Close Battle Cam" : "Open Battle Cam"}
+      aria-label={label}
+      title={label}
       onClick={onToggle}
-      className={`inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-xl border px-3 text-xs font-semibold uppercase tracking-[0.18em] transition ${
-        open
-          ? "border-amber-200/18 bg-amber-300/12 text-amber-100 shadow-[0_0_24px_rgba(251,191,36,0.08)] hover:bg-amber-300/18"
-          : "border-white/[0.08] bg-white/[0.04] text-slate-300 hover:bg-white/[0.08]"
-      }`}
+      className={[
+        "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.035] text-slate-200/82 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition",
+        "hover:border-white/14 hover:bg-white/[0.07] hover:text-white focus:outline-none focus:ring-2 focus:ring-white/18",
+        open ? "border-amber-100/14 bg-amber-100/[0.055] text-amber-50" : "",
+      ].join(" ")}
     >
-      {open ? "Close" : "Open"}
-      <Icon className="h-4 w-4" aria-hidden="true" />
+      <span className="relative inline-flex h-5 w-5 items-center justify-center">
+        <Monitor className="h-5 w-5" aria-hidden="true" />
+        <Play
+          className="absolute h-2.5 w-2.5 translate-x-[0.03rem] fill-current stroke-[2.2]"
+          aria-hidden="true"
+        />
+      </span>
+      <span className="sr-only">{label}</span>
     </button>
   );
 }
+
 
 function providerLabel(feed: BroadcastFeed | null | undefined) {
   if (!feed) return "Placeholder";
