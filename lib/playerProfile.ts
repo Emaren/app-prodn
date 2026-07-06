@@ -33,6 +33,7 @@ import {
 import { isAtOrAfterWoloMainnetStart, isMainnetVisibleBetWager } from "@/lib/woloChain";
 import { loadUserCommunitySummaries, type UserCommunitySummary } from "@/lib/communityHonors";
 import { applyReplayAdjudicationToGameStats } from "@/lib/replayAdjudications";
+import { cleanPublicGameRows, type PublicGameStatsLike } from "@/lib/publicReplayTruth";
 import {
   normalizePublicReplayText,
   publicReplayMapLabel,
@@ -60,6 +61,16 @@ export type PlayerProfileGameRow = {
   duration?: number | null;
   game_duration?: number | null;
   key_events?: unknown;
+  event_types?: unknown;
+  is_final?: boolean | null;
+  winnerProof?: string | null;
+  reviewNeeded?: boolean | null;
+  unresolvedResult?: {
+    code?: string;
+    label?: string;
+    explanation?: string;
+    reviewNeeded?: boolean;
+  } | null;
 };
 
 export type PlayerProfileMatchItem = {
@@ -711,8 +722,8 @@ function toMatchItem(game: PlayerProfileGameRow, currentPlayer: PublicPlayerRef)
       if (names.length === 1) return `${names[0]} · Opponent unresolved`;
       return "Roster unresolved";
     })(),
-    winnerLabel: winnerLabel(game.winner, game.parse_reason),
-    outcomeLabel: outcomeBadgeLabel(game.parse_reason, game.winner),
+    winnerLabel: playerProfileWinnerLabel(game),
+    outcomeLabel: playerProfileOutcomeLabel(game),
     parseLabel: displayParseReason(game.parse_reason),
     playedAt,
     durationLabel: formatDurationLabel(game.duration ?? game.game_duration ?? null),
@@ -724,6 +735,24 @@ function toMatchItem(game: PlayerProfileGameRow, currentPlayer: PublicPlayerRef)
     score: readPlayerScore(player),
     eapm: readPlayerEapm(player),
   };
+}
+
+function playerProfileUnresolvedResult(game: PlayerProfileGameRow) {
+  const unresolved = game.unresolvedResult;
+  return unresolved && typeof unresolved === "object" ? unresolved : null;
+}
+
+function playerProfileWinnerLabel(game: PlayerProfileGameRow) {
+  const unresolved = playerProfileUnresolvedResult(game);
+  if (unresolved?.code === "winner_not_captured") return "Winner not captured";
+  return winnerLabel(game.winner, game.parse_reason);
+}
+
+function playerProfileOutcomeLabel(game: PlayerProfileGameRow) {
+  const unresolved = playerProfileUnresolvedResult(game);
+  if (unresolved?.code === "winner_not_captured") return "Completed";
+  if (unresolved?.label === "Completed") return "Completed";
+  return outcomeBadgeLabel(game.parse_reason, game.winner);
 }
 
 function buildMatchFeed(games: PlayerProfileGameRow[], currentPlayer: PublicPlayerRef, offset = 0, limit = PROFILE_MATCH_PAGE_LIMIT): PlayerProfileMatchFeedPage {
@@ -891,7 +920,7 @@ async function loadCandidateFinalGames(prisma: PrismaClient): Promise<PlayerProf
       ],
       NOT: {
         parse_reason: {
-          in: ["superseded_by_later_upload", "watcher_final_unparsed"],
+          in: ["superseded_by_later_upload"],
         },
       },
     },
@@ -914,10 +943,16 @@ async function loadCandidateFinalGames(prisma: PrismaClient): Promise<PlayerProf
       duration: true,
       game_duration: true,
       key_events: true,
+      event_types: true,
     },
   });
 
-  return dedupePlayerProfileGamesByReplay(rows);
+  const publicRows = cleanPublicGameRows(rows as unknown as PublicGameStatsLike[], {
+    includeReview: true,
+    includeLive: false,
+  }) as unknown as PlayerProfileGameRow[];
+
+  return dedupePlayerProfileGamesByReplay(publicRows);
 }
 
 function filterGamesForPlayer(games: PlayerProfileGameRow[], currentPlayer: PublicPlayerRef) {
