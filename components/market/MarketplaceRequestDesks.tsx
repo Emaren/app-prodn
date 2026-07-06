@@ -128,6 +128,12 @@ export function AvatarCommissionScroll() {
       return;
     }
 
+    const cleanBrief = brief.trim();
+    if (!cleanBrief) {
+      setError("Write a few words for the Visagewright.");
+      return;
+    }
+
     setBusy(true);
     setError(null);
     try {
@@ -318,7 +324,6 @@ export function AvatarCommissionScroll() {
             onChange={(event) => setBrief(event.target.value.slice(0, 1200))}
             maxLength={1200}
             rows={7}
-            required
             placeholder="Bigger, badder, more mean."
             className="mt-2 w-full min-w-0 max-w-full resize-y overflow-x-hidden rounded-[0.3rem] border border-[#8b633b]/48 bg-[#100f0e]/90 px-4 py-3 text-sm font-medium leading-6 text-[#f1dfb8] shadow-[inset_0_2px_14px_rgba(0,0,0,0.55)] outline-none placeholder:text-[#806f52] focus:border-[#c18b4b]/74 focus:bg-[#14120f]"
           />
@@ -334,7 +339,7 @@ export function AvatarCommissionScroll() {
           {uid ? (
             <button
               type="submit"
-              disabled={busy || !brief.trim()}
+              disabled={busy}
               className="market-gold-button group inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[0.35rem] px-5 text-sm font-bold"
             >
               {busy ? (
@@ -385,6 +390,17 @@ export function OpenShopDesk() {
     if (busy || receipt) return;
     if (!uid) {
       loginWithSteam("/market#open-shop");
+      return;
+    }
+
+    const cleanShopName = shopName.trim();
+    const cleanOffer = offer.trim();
+    if (!cleanShopName) {
+      setError("Give the proposed shop a name.");
+      return;
+    }
+    if (!cleanOffer) {
+      setError("Tell the Agora what your shop would make or do.");
       return;
     }
 
@@ -464,7 +480,6 @@ export function OpenShopDesk() {
           value={shopName}
           onChange={(event) => setShopName(event.target.value.slice(0, 100))}
           maxLength={100}
-          required
           placeholder="The Banner Foundry"
           className="mt-2 min-h-11 w-full min-w-0 max-w-full rounded-xl border border-white/10 bg-white/[0.045] px-3 text-sm font-semibold text-white outline-none placeholder:text-slate-600 focus:border-amber-100/30 focus:bg-white/[0.065]"
         />
@@ -477,7 +492,6 @@ export function OpenShopDesk() {
           value={offer}
           onChange={(event) => setOffer(event.target.value.slice(0, 900))}
           maxLength={900}
-          required
           rows={6}
           placeholder="Custom clan banners and stream overlays for players who want their house to look unmistakable..."
           className="mt-2 w-full min-w-0 max-w-full resize-y overflow-x-hidden rounded-xl border border-white/10 bg-white/[0.045] px-3 py-3 text-sm font-medium leading-6 text-white outline-none placeholder:text-slate-600 focus:border-amber-100/30 focus:bg-white/[0.065]"
@@ -491,7 +505,7 @@ export function OpenShopDesk() {
       {uid ? (
         <button
           type="submit"
-          disabled={busy || !shopName.trim() || !offer.trim()}
+          disabled={busy}
           className="market-gold-button group mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full px-5 text-sm font-black"
         >
           {busy ? (
