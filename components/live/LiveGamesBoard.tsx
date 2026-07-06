@@ -153,7 +153,7 @@ function sessionTitle(session: LiveSession) {
   }
 
   if (session.state === "live") {
-    return "Players parsing";
+    return "Battle proof assembling";
   }
 
   return session.originalFilename || "Game in progress";
@@ -1120,7 +1120,7 @@ function ClassicBoard({
                           }) ? (
                             <div className="mt-2 flex flex-wrap gap-2">
                               <span className="rounded-full border border-amber-200/18 bg-amber-300/8 px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-amber-100">
-                                Winner unresolved
+                                Winner under review
                               </span>
                               <span className="rounded-full border border-white/9 bg-white/[0.04] px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-slate-300">
                                 {unresolvedReplayReviewLabel(match.parse_reason)}
@@ -1733,7 +1733,7 @@ function PremiumClassicLiveSessionCard({
     session.players.length > 0
       ? session.players.map((player) => player.name).join(" vs ")
       : session.state === "live"
-        ? "Players parsing"
+        ? "Battle proof assembling"
         : session.originalFilename || "Game in progress";
 
   const eyebrowLabel = liveSessionEyebrowLabel(session);
