@@ -51,17 +51,41 @@ function hydrateCompletedSessionRowFromParsedTruth(
   sessionRow: LobbyMatchRow,
   parsedMatch: LobbyMatchRow | null | undefined
 ): LobbyMatchRow {
-  if (!parsedMatch || !hasLobbyWinner(parsedMatch)) return sessionRow;
+  if (!parsedMatch) return sessionRow;
 
   const parsed = parsedMatch as LobbyMatchRow & Record<string, unknown>;
+  const parsedWinnerProof =
+    typeof parsed.winnerProof === "string" ? normalizeSurfaceText(parsed.winnerProof) : "";
+  const parsedUnresolved =
+    parsed.unresolvedResult && typeof parsed.unresolvedResult === "object"
+      ? parsed.unresolvedResult as Record<string, unknown>
+      : null;
+  const hasParsedWinner = hasLobbyWinner(parsedMatch);
+  const hasNoWinnerCaptured =
+    parsedWinnerProof === "not_captured" ||
+    parsedUnresolved?.code === "winner_not_captured";
+
+  if (!hasParsedWinner && !hasNoWinnerCaptured) return sessionRow;
+
   const next = {
     ...sessionRow,
     ...parsed,
-    // Keep the parsed winner/truth foregrounded.
-    winner: parsedMatch.winner,
-    unresolvedResult: null,
+    // Keep parsed final truth foregrounded over the completed-live shell.
+    winner: hasParsedWinner ? parsedMatch.winner : null,
     reviewNeeded: false,
   } as LobbyMatchRow & Record<string, unknown>;
+
+  if (hasParsedWinner) {
+    next.unresolvedResult = null;
+  } else {
+    next.unresolvedResult =
+      parsed.unresolvedResult ?? {
+        code: "winner_not_captured",
+        label: "Completed",
+        explanation: "Match completed, but no reliable winner was captured from the replay data.",
+        reviewNeeded: false,
+      };
+  }
 
   if (parsed.winnerProof) {
     next.winnerProof = parsed.winnerProof;
