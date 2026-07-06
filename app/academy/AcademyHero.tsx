@@ -37,7 +37,15 @@ export default function AcademyHero() {
           <p className="text-[10px] font-bold uppercase tracking-[0.44em] text-slate-300/64">
             AoE2WAR · The Academy
           </p>
-          <div className="academy-hero-title-art pointer-events-none relative -ml-7 mb-3 mt-7 w-[min(59rem,calc(100vw-3rem))] overflow-hidden [aspect-ratio:1672/520] sm:-ml-9 lg:-ml-12">
+          <div className="academy-hero-title-art pointer-events-none relative -ml-7 mb-3 mt-7 w-[min(59rem,calc(100vw-3rem))] overflow-visible [aspect-ratio:1672/520] sm:-ml-9 lg:-ml-12">
+            <Image
+              src={ACADEMY_HERO_TITLE_IMAGE}
+              alt=""
+              fill
+              aria-hidden="true"
+              sizes="(max-width: 768px) 100vw, 59rem"
+              className="pointer-events-none select-none object-cover object-center opacity-[0.34] mix-blend-screen blur-[2.4px] brightness-[1.35] contrast-[1.08] saturate-[1.12] [mask-image:linear-gradient(90deg,transparent_0%,rgba(0,0,0,0.42)_5%,black_12%,black_82%,rgba(0,0,0,0.48)_93%,transparent_100%)]"
+            />
             <Image
               src={ACADEMY_HERO_TITLE_IMAGE}
               alt=""
@@ -45,7 +53,15 @@ export default function AcademyHero() {
               priority
               sizes="(max-width: 768px) 100vw, 59rem"
               aria-hidden="true"
-              className="select-none object-cover object-center opacity-[0.82] mix-blend-screen brightness-[0.76] contrast-[0.88] saturate-[0.72] drop-shadow-none [mask-image:linear-gradient(90deg,transparent_0%,rgba(0,0,0,0.38)_5%,black_12%,black_82%,rgba(0,0,0,0.46)_93%,transparent_100%)]"
+              className="select-none object-cover object-center opacity-[0.98] brightness-[1.08] contrast-[1.08] saturate-[1.02] drop-shadow-[0_0_16px_rgba(245,190,92,0.18)] [mask-image:linear-gradient(90deg,transparent_0%,rgba(0,0,0,0.42)_5%,black_12%,black_82%,rgba(0,0,0,0.48)_93%,transparent_100%)]"
+            />
+            <Image
+              src={ACADEMY_HERO_TITLE_IMAGE}
+              alt=""
+              fill
+              aria-hidden="true"
+              sizes="(max-width: 768px) 100vw, 59rem"
+              className="pointer-events-none select-none object-cover object-center opacity-[0.18] mix-blend-screen brightness-[1.8] contrast-[1.18] saturate-[1.16] [mask-image:linear-gradient(90deg,transparent_0%,rgba(0,0,0,0.42)_5%,black_12%,black_82%,rgba(0,0,0,0.48)_93%,transparent_100%)]"
             />
           </div>
           <h1 className="sr-only">The Academy</h1>
