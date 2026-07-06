@@ -40,7 +40,7 @@ import {
   resolveReliableReplayWinner,
 } from "@/lib/unresolvedWatcherResult";
 
-export type PlayerProfileViewMode = "basic" | "advanced";
+export type PlayerProfileViewMode = "basic" | "advanced" | "extreme";
 export type PlayerProfileIdentity =
   | { kind: "claimed"; uid: string }
   | { kind: "replay"; name: string };

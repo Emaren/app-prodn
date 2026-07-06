@@ -7,6 +7,7 @@ import PlayerMatchFeedClient from "@/components/players/PlayerMatchFeedClient";
 import SteamLinkedBadge from "@/components/SteamLinkedBadge";
 import { formatDurationLabel } from "@/lib/gameStatsView";
 import { buildMatchupHref } from "@/lib/publicMatchups";
+import { getPrisma } from "@/lib/prisma";
 import type {
   PlayerBreakdownRow,
   PlayerBestGame,
@@ -20,6 +21,91 @@ type PlayerProfilePageProps = {
   profile: PlayerProfile;
   viewMode: PlayerProfileViewMode;
 };
+
+type PlayerTitleHonor = {
+  id: number;
+  trophyId: string;
+  displayName: string;
+  kind: string;
+  family: string;
+  tier: string;
+  status: string;
+  imageUrl: string | null;
+  holderSince: string | null;
+  routeHref: string;
+};
+
+function normalizedTitleHolder(value: string | null | undefined) {
+  return (value || "").trim().toLowerCase();
+}
+
+function trophyRouteHref(trophyId: string) {
+  const normalized = trophyId.trim().toLowerCase();
+  const map: Record<string, string> = {
+    canada_champion_belt: "/champions/nations/canada",
+    usa_champion_belt: "/champions/nations/usa",
+    mexico_champion_belt: "/champions/nations/mexico",
+    uk_champion_belt: "/champions/nations/uk",
+    world_champion: "/champions/world",
+    chaos_champion: "/champions/chaos",
+    womens_champion: "/champions/womens",
+    elite_champion_belt: "/champions/elo/elite",
+  };
+  return map[normalized] || "/champions";
+}
+
+async function loadPlayerTitleHonors(profile: PlayerProfile): Promise<PlayerTitleHonor[]> {
+  const holderName = normalizedTitleHolder(profile.displayName);
+  if (!holderName) return [];
+
+  try {
+    const trophies = await getPrisma().trophy.findMany({
+      where: {
+        status: { in: ["held", "active", "guardian_held"] },
+      },
+      select: {
+        id: true,
+        trophyId: true,
+        displayName: true,
+        kind: true,
+        family: true,
+        tier: true,
+        status: true,
+        currentHolderDisplayName: true,
+        guardianHolderDisplayName: true,
+        nftImageUri: true,
+        holderSince: true,
+      },
+      orderBy: [
+        { family: "asc" },
+        { tier: "asc" },
+        { displayName: "asc" },
+      ],
+    });
+
+    return trophies
+      .filter((trophy) => {
+        const currentHolder = normalizedTitleHolder(trophy.currentHolderDisplayName);
+        const guardianHolder = normalizedTitleHolder(trophy.guardianHolderDisplayName);
+        return currentHolder === holderName || guardianHolder === holderName;
+      })
+      .map((trophy) => ({
+        id: trophy.id,
+        trophyId: trophy.trophyId,
+        displayName: trophy.displayName,
+        kind: trophy.kind,
+        family: trophy.family,
+        tier: trophy.tier || "title",
+        status: trophy.status,
+        imageUrl: trophy.nftImageUri || null,
+        holderSince: trophy.holderSince?.toISOString() ?? null,
+        routeHref: trophyRouteHref(trophy.trophyId),
+      }));
+  } catch (error) {
+    console.error("Failed to load player title honors", error);
+    return [];
+  }
+}
 
 const RESOURCE_LABELS: Array<keyof PlayerResourceStats["totals"]> = ["wood", "food", "gold", "stone"];
 const WOLO_LOGO_SRC = "/legacy/wolo-logo-transparent.webp";
@@ -44,11 +130,112 @@ function PlayerRecordBadge({ profile }: { profile: PlayerProfile }) {
   );
 }
 
-export default function PlayerProfilePage({ profile, viewMode }: PlayerProfilePageProps) {
-  return viewMode === "basic" ? (
-    <PlayerProfileBasic profile={profile} />
-  ) : (
-    <PlayerProfileAdvanced profile={profile} />
+export default async function PlayerProfilePage({ profile, viewMode }: PlayerProfilePageProps) {
+  const titleHonors = await loadPlayerTitleHonors(profile);
+
+  if (viewMode === "basic") {
+    return <PlayerProfileBasic profile={profile} />;
+  }
+
+  if (viewMode === "extreme") {
+    return <PlayerProfileExtreme profile={profile} titleHonors={titleHonors} />;
+  }
+
+  return <PlayerProfileAdvanced profile={profile} />;
+}
+
+function PlayerProfileExtreme({
+  profile,
+  titleHonors,
+}: {
+  profile: PlayerProfile;
+  titleHonors: PlayerTitleHonor[];
+}) {
+  const currentStreakTone = profile.command.currentStreakLabel.includes("loss")
+    ? "red"
+    : profile.command.currentStreakLabel.includes("win")
+      ? "emerald"
+      : "amber";
+
+  return (
+    <main className="relative left-1/2 w-screen max-w-[100vw] -translate-x-1/2 overflow-hidden px-4 py-5 text-white sm:px-6 sm:py-7 lg:px-10">
+      <div className="mx-auto max-w-[118rem] space-y-6">
+        <ExtremeHero profile={profile} titleHonors={titleHonors} />
+        <PlayerProfileTicker items={profile.tickerItems} />
+
+        <section className="grid gap-6 2xl:grid-cols-[minmax(0,1.22fr)_minmax(28rem,0.78fr)]">
+          <div className="space-y-6">
+            <Panel eyebrow="Command Deck" title="Performance radar" count={`${profile.command.totalMatches} games`}>
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <CommandTile label="Win Rate" value={formatPercent(profile.command.winRate)} detail={`${profile.command.wins}W / ${profile.command.losses}L`} tone="emerald" />
+                <CommandTile label="Current Streak" value={profile.command.currentStreakLabel} detail={`${profile.command.matchesLast30Days} games in 30d`} tone={currentStreakTone} />
+                <CommandTile label="Peak Score" value={formatPeakNumber(profile.command.bestScore)} detail={formatAverageNumber(profile.command.averageScore)} tone="sky" />
+                <CommandTile label="Peak EAPM" value={formatPeakDecimal(profile.command.bestEapm)} detail={formatAverageDecimal(profile.command.averageEapm)} tone="red" />
+              </div>
+
+              <div className="mt-5 grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
+                <FormChart points={profile.charts.form} />
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <MiniStat label="Steam RM" value={formatNumber(profile.steam.rmRating)} />
+                  <MiniStat label="Steam DM" value={formatNumber(profile.steam.dmRating)} />
+                  <MiniStat label="Active Days" value={String(profile.command.activeDays)} />
+                  <MiniStat label="Last 10" value={formatPercent(profile.command.last10WinRate)} />
+                  <MiniStat label="Last 30" value={formatPercent(profile.command.last30WinRate)} />
+                  <MiniStat label="Unique Rivals" value={String(profile.performance.uniqueOpponents)} />
+                </div>
+              </div>
+            </Panel>
+
+            <section className="grid gap-6 xl:grid-cols-[1.04fr_0.96fr]">
+              <Panel eyebrow="Economy Vault" title="Resource command" count={profile.resources.visibleGames > 0 ? `${profile.resources.visibleGames} visible` : "gated"}>
+                <ResourceVault resources={profile.resources} />
+              </Panel>
+
+              <Panel eyebrow="Best Games" title="Personal highlight reel" count={String(profile.bestGames.length)}>
+                <BestGamesGrid games={profile.bestGames} />
+              </Panel>
+            </section>
+
+            <section className="grid gap-6 xl:grid-cols-2">
+              <Panel eyebrow="Civilizations" title="Civ matrix" count={String(profile.charts.civs.length)}>
+                <BreakdownBars rows={profile.charts.civs.slice(0, 7)} accent="amber" />
+              </Panel>
+              <Panel eyebrow="Maps" title="Battlefield read" count={String(profile.charts.maps.length)}>
+                <BreakdownBars rows={profile.charts.maps.slice(0, 7)} accent="sky" />
+              </Panel>
+            </section>
+          </div>
+
+          <div className="space-y-6">
+            <Panel eyebrow="Match Feed" title="Replay archive" count={`${profile.matchFeed.totalMatches} total`}>
+              <PlayerMatchFeedClient
+                identity={profile.identity}
+                initialItems={profile.matchFeed.items}
+                initialNextCursor={profile.matchFeed.nextCursor}
+                totalMatches={profile.matchFeed.totalMatches}
+                accent={profile.identity.kind === "replay" ? "rose" : "amber"}
+              />
+            </Panel>
+
+            <Panel eyebrow="Watcher Proof" title="Coverage stack" count={`${profile.watcher.proofScore}/100`}>
+              <WatcherRail profile={profile} />
+            </Panel>
+
+            <Panel eyebrow="AI War Room" title="Scribe / Grimer readout" count="coach">
+              <AiRail profile={profile} />
+            </Panel>
+
+            <Panel eyebrow="$WOLO" title="Earnings rail" count={`${profile.wolo.totalFlexWolo} WOLO`}>
+              <WoloRail profile={profile} />
+            </Panel>
+
+            <Panel eyebrow="Rivalries" title="Pressure list" count={String(profile.rivalries.length)}>
+              <RivalryList profile={profile} />
+            </Panel>
+          </div>
+        </section>
+      </div>
+    </main>
   );
 }
 
@@ -403,6 +590,158 @@ function ReplayClassicBasicProfile({ profile }: { profile: PlayerProfile }) {
   );
 }
 
+function ExtremeHero({
+  profile,
+  titleHonors,
+}: {
+  profile: PlayerProfile;
+  titleHonors: PlayerTitleHonor[];
+}) {
+  const profileLabel = profile.isClaimed ? "Verified player command center" : "Claimable player command center";
+  const primaryHonor = titleHonors[0] ?? null;
+
+  return (
+    <section className="relative overflow-hidden rounded-[2.75rem] bg-[radial-gradient(circle_at_20%_0%,rgba(250,204,21,0.23),transparent_31%),radial-gradient(circle_at_82%_12%,rgba(56,189,248,0.18),transparent_30%),linear-gradient(135deg,rgba(15,23,42,0.98),rgba(7,17,31,0.96)_55%,rgba(2,6,23,0.98))] p-5 shadow-[0_38px_120px_rgba(2,6,23,0.42)] ring-1 ring-white/8 sm:p-7 lg:p-8">
+      {primaryHonor ? <FloatingTitleHonor honor={primaryHonor} /> : null}
+
+      <div className="grid gap-7 xl:grid-cols-[minmax(0,1.18fr)_minmax(28rem,0.82fr)] xl:items-stretch">
+        <div className="relative z-10 flex min-h-[22rem] flex-col justify-between gap-7">
+          <div className="space-y-5">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full bg-amber-300/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-amber-100/90 ring-1 ring-amber-200/12">
+                Extreme
+              </span>
+              <span className="rounded-full bg-white/[0.04] px-3 py-1 text-xs text-slate-300 ring-1 ring-white/8">
+                {profileLabel}
+              </span>
+              {profile.isLive ? (
+                <span className="rounded-full bg-emerald-400/10 px-3 py-1 text-xs text-emerald-100 ring-1 ring-emerald-300/18">
+                  Online now
+                </span>
+              ) : null}
+            </div>
+
+            <div>
+              <div className="text-xs uppercase tracking-[0.42em] text-amber-200/70">AoE2HD Gamer Profile</div>
+              <div className="mt-3 flex min-w-0 flex-wrap items-end gap-x-3 gap-y-2">
+                <h1 className="max-w-5xl text-5xl font-semibold leading-[0.9] tracking-[-0.045em] text-white sm:text-7xl lg:text-8xl">
+                  {profile.displayName}
+                </h1>
+                <PlayerRecordBadge profile={profile} />
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <HeroStat label="Games" value={String(profile.command.totalMatches)} />
+              <HeroStat label="Win Rate" value={formatPercent(profile.command.winRate)} />
+              <HeroStat
+                label={profile.wolo.pendingClaimWolo > 0 ? "Claimable WOLO" : "WOLO Flex"}
+                value={formatWolo(profile.wolo.pendingClaimWolo > 0 ? profile.wolo.pendingClaimWolo : profile.wolo.totalFlexWolo)}
+              />
+              <HeroStat label="Proof" value={`${profile.watcher.proofScore}/100`} />
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <ViewToggle profile={profile} active="extreme" />
+              {profile.claimHref ? (
+                <Link href={profile.claimHref} className="rounded-full bg-rose-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-rose-200">
+                  Claim This Page
+                </Link>
+              ) : (
+                <Link href="/profile" className="rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200">
+                  Open My Profile
+                </Link>
+              )}
+              <Link href="/players" className="rounded-full border border-white/12 bg-white/[0.025] px-5 py-3 text-sm text-white/82 transition hover:border-white/24 hover:text-white">
+                Browse Players
+              </Link>
+            </div>
+
+            <TitleHonorRail honors={titleHonors} />
+          </div>
+        </div>
+
+        <div className="relative z-0 grid gap-3 sm:grid-cols-2 xl:pt-16">
+          <HeroSignal
+            label="Watcher Proof"
+            value={`${profile.watcher.watcherBackedMatches} games`}
+            detail={
+              profile.watcher.multiWatcherProofGames > 0
+                ? `${profile.watcher.multiWatcherProofGames} dual proof${profile.watcher.multiWatcherProofGames === 1 ? "" : "s"} · ${profile.watcher.bestMultiWatcherProofLabel ?? "2+ watchers"}`
+                : `${profile.watcher.uniqueWatchers || profile.watcher.watcherKeys} account source${(profile.watcher.uniqueWatchers || profile.watcher.watcherKeys) === 1 ? "" : "s"}`
+            }
+            tone="emerald"
+          />
+          <HeroSignal label="Steam" value={profile.steam.rmRating ? String(profile.steam.rmRating) : "Linked"} detail={profile.steam.personaName || "rating feed"} tone="sky" />
+          <HeroSignal label="Favorite Map" value={profile.command.favoriteMap || "Calibrating"} detail={profile.command.mostPlayedCivilization || "civ mix building"} tone="amber" />
+          <HeroSignal label="Stream" value={profile.stream.twitchChannel || "Ready"} detail={profile.stream.twitchUrl ? "Twitch rail linked" : "Add Twitch in profile"} tone="rose" />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function FloatingTitleHonor({ honor }: { honor: PlayerTitleHonor }) {
+  return (
+    <Link
+      href={honor.routeHref}
+      className="pointer-events-auto absolute right-5 top-5 z-20 hidden w-44 rounded-[1.5rem] bg-slate-950/28 p-3 text-left opacity-95 shadow-[0_24px_70px_rgba(2,6,23,0.34)] ring-1 ring-amber-100/10 backdrop-blur-md transition hover:bg-slate-950/42 hover:ring-amber-100/18 lg:block"
+      aria-label={`${honor.displayName} title page`}
+    >
+      <div className="text-[9px] font-semibold uppercase tracking-[0.32em] text-amber-100/62">Title Held</div>
+      <div className="mt-1 text-sm font-semibold leading-tight text-white/92">{honor.displayName}</div>
+      {honor.imageUrl ? (
+        <div className="relative mt-2 h-16 overflow-visible">
+          <Image
+            src={honor.imageUrl}
+            alt={`${honor.displayName} belt`}
+            fill
+            sizes="176px"
+            className="object-contain drop-shadow-[0_14px_22px_rgba(251,191,36,0.16)]"
+          />
+        </div>
+      ) : (
+        <div className="mt-3 h-px w-full bg-gradient-to-r from-transparent via-amber-100/38 to-transparent" />
+      )}
+    </Link>
+  );
+}
+
+function TitleHonorRail({ honors }: { honors: PlayerTitleHonor[] }) {
+  if (honors.length === 0) return null;
+
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.28em] text-amber-100/48">Title honors</div>
+      {honors.map((honor) => (
+        <Link
+          key={honor.id}
+          href={honor.routeHref}
+          className="group inline-flex min-w-0 items-center gap-3 rounded-full bg-white/[0.035] px-3 py-2 text-xs text-slate-200 ring-1 ring-white/7 transition hover:bg-white/[0.055] hover:ring-amber-100/18"
+        >
+          {honor.imageUrl ? (
+            <span className="relative h-6 w-11 shrink-0">
+              <Image
+                src={honor.imageUrl}
+                alt=""
+                fill
+                sizes="44px"
+                className="object-contain opacity-90 drop-shadow-[0_8px_12px_rgba(251,191,36,0.14)] transition group-hover:opacity-100"
+              />
+            </span>
+          ) : (
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-200/70 shadow-[0_0_14px_rgba(251,191,36,0.45)]" />
+          )}
+          <span className="truncate font-semibold text-white/84">{honor.displayName}</span>
+          <span className="hidden text-[10px] uppercase tracking-[0.2em] text-amber-100/45 sm:inline">{honor.tier}</span>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
 function AdvancedHero({ profile }: { profile: PlayerProfile }) {
   const profileLabel = profile.isClaimed ? "Verified player command center" : "Claimable player command center";
 
@@ -523,7 +862,7 @@ function PlayerProfileTicker({ items }: { items: string[] }) {
 }
 
 function defaultViewMode(profile: PlayerProfile): PlayerProfileViewMode {
-  return profile.isClaimed ? "advanced" : "basic";
+  return profile.isClaimed ? "extreme" : "basic";
 }
 
 function playerProfileViewHref(profile: PlayerProfile, mode: PlayerProfileViewMode) {
@@ -537,7 +876,7 @@ function ViewToggleRail({ profile, active }: { profile: PlayerProfile; active: P
       <div className="min-w-0">
         <div className="text-[10px] uppercase tracking-[0.3em] text-white/45">Profile Display</div>
         <div className="mt-1 text-sm text-slate-300">
-          {profile.isClaimed ? "Claimed profiles open on Advanced." : "Replay-built profiles open on Basic."}
+          {profile.isClaimed ? "Claimed profiles open on Extreme." : "Replay-built profiles open on Basic."}
         </div>
       </div>
       <ViewToggle profile={profile} active={active} />
@@ -546,26 +885,32 @@ function ViewToggleRail({ profile, active }: { profile: PlayerProfile; active: P
 }
 
 function ViewToggle({ profile, active }: { profile: PlayerProfile; active: PlayerProfileViewMode }) {
+  const modes: PlayerProfileViewMode[] = profile.isClaimed
+    ? ["basic", "advanced", "extreme"]
+    : ["basic", "advanced"];
+
   return (
-    <div className="flex rounded-full border border-white/10 bg-slate-950/55 p-1 text-xs">
-      {(["basic", "advanced"] as PlayerProfileViewMode[]).map((mode) => (
-        <Link
-          key={mode}
-          href={playerProfileViewHref(profile, mode)}
-          className={`rounded-full px-3 py-2 font-medium uppercase tracking-[0.2em] transition ${
-            active === mode
-              ? mode === "advanced"
-                ? "bg-white text-slate-950"
-                : "bg-amber-300 text-slate-950"
-              : "text-slate-400 hover:text-white"
-          }`}
-        >
-          {mode}
-        </Link>
-      ))}
+    <div className="inline-flex items-center gap-1 rounded-full border border-white/8 bg-slate-950/28 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]">
+      {modes.map((mode) => {
+        const selected = active === mode;
+        return (
+          <Link
+            key={mode}
+            href={playerProfileViewHref(profile, mode)}
+            className={`rounded-full px-3.5 py-1.5 text-xs font-semibold capitalize transition ${
+              selected
+                ? "bg-amber-200/12 text-amber-100 shadow-[inset_0_0_0_1px_rgba(253,230,138,0.14)]"
+                : "text-slate-400 hover:bg-white/[0.045] hover:text-slate-100"
+            }`}
+          >
+            {mode}
+          </Link>
+        );
+      })}
     </div>
   );
 }
+
 
 function Panel({
   eyebrow,
