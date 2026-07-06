@@ -151,6 +151,56 @@ function formatCompactWoloForHolder(value: unknown): string {
   })} WOLO`;
 }
 
+function isProtocolHolderRow(label: string, use: string, role: string) {
+  const haystack = `${label} ${use} ${role}`.toUpperCase();
+
+  return [
+    "FOUNDER",
+    "TREASURY",
+    "COMMUNITY",
+    "DEX",
+    "LIQUIDITY",
+    "RESERVE",
+    "FAUCET",
+    "GROWTH",
+    "VALIDATOR",
+    "OPS",
+    "OPERATING",
+    "ECOSYSTEM",
+    "BOUNTY",
+    "BOUNTIES",
+    "REWARD",
+    "REWARDS",
+    "STAKING",
+    "ESCROW",
+    "PAYOUT",
+    "SIGNER",
+    "MODULE",
+    "RELAYER",
+    "IBC",
+    "HOT WALLET",
+  ].some((token) => haystack.includes(token));
+}
+
+function isUserOrPlayerHolderRow(label: string, use: string, role: string) {
+  const normalizedUse = use.toUpperCase();
+  const normalizedRole = role.toLowerCase();
+  const isProtocol = isProtocolHolderRow(label, use, role);
+
+  if (isProtocol) return false;
+
+  return (
+    normalizedRole === "user" ||
+    normalizedRole === "player" ||
+    normalizedRole === "holder" ||
+    normalizedUse === "USER" ||
+    normalizedUse.includes("USER") ||
+    normalizedUse.includes("PLAYER") ||
+    normalizedUse.includes("DO_NOT_SHOW_BALANCE") ||
+    normalizedUse.includes("WALLET")
+  );
+}
+
 function buildKnownWoloHoldersPayload(networkPayload: unknown): HoldersPayload {
   const rows = getWoloNetworkRowsForHolderDisplay(networkPayload);
 
@@ -159,39 +209,32 @@ function buildKnownWoloHoldersPayload(networkPayload: unknown): HoldersPayload {
     const use = String(row.use ?? "");
     const role = String(row.role ?? "");
     const label = String(row.label ?? "Unaliased holder");
-    const amountWolo = row.amountWolo ?? row.balanceWolo ?? row.amountWoloFormatted ?? row.balanceWoloFormatted ?? "0";
-    const exactBalanceWolo = typeof row.amountWolo === "string" || typeof row.amountWolo === "number"
-      ? Number(row.amountWolo).toLocaleString(undefined, {
-          minimumFractionDigits: 6,
-          maximumFractionDigits: 6,
-        })
-      : String(row.amountWoloFormatted ?? row.balanceWoloFormatted ?? "0.000000");
 
-    const isUserFacing =
-      role === "user" ||
-      role === "player" ||
-      use === "Player Wallet";
+    const amountWolo =
+      row.amountWolo ??
+      row.balanceWolo ??
+      row.amountWoloFormatted ??
+      row.balanceWoloFormatted ??
+      "0";
 
-    const isInfrastructure =
-      role === "infrastructure" ||
-      use.includes("TREASURY") ||
-      use.includes("RESERVE") ||
-      use.includes("ESCROW") ||
-      use.includes("SIGNER") ||
-      use.includes("MODULE") ||
-      use.includes("RELAYER") ||
-      use.includes("FAUCET") ||
-      use.includes("VALIDATOR");
+    const numericBalance = parseWoloNumber(amountWolo);
+    const exactBalanceWolo = numericBalance.toLocaleString(undefined, {
+      minimumFractionDigits: 6,
+      maximumFractionDigits: 6,
+    });
+
+    const isInfrastructure = isProtocolHolderRow(label, use, role);
+    const isUserFacing = !isInfrastructure && isUserOrPlayerHolderRow(label, use, role);
 
     return {
       alias: label,
       address,
       role,
       use,
-      balanceWolo: amountWolo,
-      balanceWoloFormatted: formatCompactWoloForHolder(amountWolo),
-      exactBalanceWolo,
-      balanceHidden: false,
+      balanceWolo: isUserFacing ? null : amountWolo,
+      balanceWoloFormatted: isUserFacing ? null : formatCompactWoloForHolder(amountWolo),
+      exactBalanceWolo: isUserFacing ? "" : exactBalanceWolo,
+      balanceHidden: isUserFacing,
       isKnown: true,
       isKnownUser: isUserFacing,
       isInfrastructure,
