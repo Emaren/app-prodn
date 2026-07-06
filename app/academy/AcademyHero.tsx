@@ -42,7 +42,7 @@ export default function AcademyHero() {
               priority
               sizes="(max-width: 768px) 100vw, 59rem"
               aria-hidden="true"
-              className="select-none object-cover object-center opacity-[0.98] mix-blend-screen drop-shadow-[0_22px_48px_rgba(0,0,0,0.52)] [mask-image:linear-gradient(90deg,transparent_0%,black_6%,black_93%,transparent_100%)]"
+              className="select-none object-cover object-center opacity-[0.98] mix-blend-screen drop-shadow-[0_22px_48px_rgba(0,0,0,0.52)] [mask-image:radial-gradient(ellipse_78%_62%_at_43%_55%,black_0%,black_52%,rgba(0,0,0,0.72)_67%,rgba(0,0,0,0.28)_82%,transparent_100%)]"
             />
           </div>
           <h1 className="sr-only">The Academy</h1>
