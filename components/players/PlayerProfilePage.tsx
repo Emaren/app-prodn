@@ -158,8 +158,8 @@ function PlayerProfileExtreme({
       : "amber";
 
   return (
-    <main className="relative left-1/2 w-screen max-w-[100vw] -translate-x-1/2 overflow-hidden px-4 py-5 text-white sm:px-6 sm:py-7 lg:px-10">
-      <div className="mx-auto max-w-[118rem] space-y-6">
+    <main className="w-full overflow-hidden px-4 py-5 text-white sm:px-6 sm:py-7 lg:px-8 xl:px-10">
+      <div className="mx-auto w-full max-w-[112rem] space-y-6">
         <ExtremeHero profile={profile} titleHonors={titleHonors} />
         <PlayerProfileTicker items={profile.tickerItems} />
 
@@ -601,11 +601,11 @@ function ExtremeHero({
   const primaryHonor = titleHonors[0] ?? null;
 
   return (
-    <section className="relative overflow-hidden rounded-[2.75rem] bg-[radial-gradient(circle_at_20%_0%,rgba(250,204,21,0.23),transparent_31%),radial-gradient(circle_at_82%_12%,rgba(56,189,248,0.18),transparent_30%),linear-gradient(135deg,rgba(15,23,42,0.98),rgba(7,17,31,0.96)_55%,rgba(2,6,23,0.98))] p-5 shadow-[0_38px_120px_rgba(2,6,23,0.42)] ring-1 ring-white/8 sm:p-7 lg:p-8">
+    <section className="relative overflow-hidden rounded-[2.25rem] bg-[radial-gradient(circle_at_20%_0%,rgba(250,204,21,0.16),transparent_30%),radial-gradient(circle_at_82%_12%,rgba(56,189,248,0.13),transparent_30%),linear-gradient(135deg,rgba(15,23,42,0.98),rgba(7,17,31,0.96)_55%,rgba(2,6,23,0.98))] p-5 shadow-[0_30px_90px_rgba(2,6,23,0.34)] ring-1 ring-white/8 sm:p-6 lg:p-7">
       {primaryHonor ? <FloatingTitleHonor honor={primaryHonor} /> : null}
 
       <div className="grid gap-7 xl:grid-cols-[minmax(0,1.18fr)_minmax(28rem,0.82fr)] xl:items-stretch">
-        <div className="relative z-10 flex min-h-[22rem] flex-col justify-between gap-7">
+        <div className="relative z-10 flex min-h-[18rem] flex-col justify-between gap-6">
           <div className="space-y-5">
             <div className="flex flex-wrap items-center gap-2">
               <span className="rounded-full bg-amber-300/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-amber-100/90 ring-1 ring-amber-200/12">
@@ -624,7 +624,7 @@ function ExtremeHero({
             <div>
               <div className="text-xs uppercase tracking-[0.42em] text-amber-200/70">AoE2HD Gamer Profile</div>
               <div className="mt-3 flex min-w-0 flex-wrap items-end gap-x-3 gap-y-2">
-                <h1 className="max-w-5xl text-5xl font-semibold leading-[0.9] tracking-[-0.045em] text-white sm:text-7xl lg:text-8xl">
+                <h1 className="max-w-5xl text-5xl font-semibold leading-[0.92] tracking-[-0.045em] text-white sm:text-6xl lg:text-7xl">
                   {profile.displayName}
                 </h1>
                 <PlayerRecordBadge profile={profile} />
@@ -663,7 +663,7 @@ function ExtremeHero({
           </div>
         </div>
 
-        <div className="relative z-0 grid gap-3 sm:grid-cols-2 xl:pt-16">
+        <div className="relative z-0 grid gap-3 sm:grid-cols-2 xl:pt-10">
           <HeroSignal
             label="Watcher Proof"
             value={`${profile.watcher.watcherBackedMatches} games`}
