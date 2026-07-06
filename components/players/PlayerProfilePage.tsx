@@ -158,8 +158,8 @@ function PlayerProfileExtreme({
       : "amber";
 
   return (
-    <main className="w-full overflow-hidden px-4 py-5 text-white sm:px-6 sm:py-7 lg:px-8 xl:px-10">
-      <div className="mx-auto w-full max-w-[112rem] space-y-6">
+    <main className="relative w-full overflow-hidden px-4 py-5 text-white sm:px-6 sm:py-7 lg:-mx-10 lg:px-10 xl:-mx-20 xl:px-12 2xl:-mx-28">
+      <div className="mx-auto w-full max-w-none space-y-6">
         <ExtremeHero profile={profile} titleHonors={titleHonors} />
         <PlayerProfileTicker items={profile.tickerItems} />
 
@@ -663,7 +663,7 @@ function ExtremeHero({
           </div>
         </div>
 
-        <div className="relative z-0 grid gap-3 sm:grid-cols-2 xl:pt-12">
+        <div className="relative z-0 grid gap-3 sm:grid-cols-2 xl:pt-8">
           <HeroSignal
             label="Watcher Proof"
             value={`${profile.watcher.watcherBackedMatches} games`}
@@ -684,28 +684,21 @@ function ExtremeHero({
 }
 
 function FloatingTitleHonor({ honor }: { honor: PlayerTitleHonor }) {
+  if (!honor.imageUrl) return null;
+
   return (
-    <Link
-      href={honor.routeHref}
-      className="pointer-events-auto absolute right-6 top-6 z-20 hidden w-28 text-center opacity-86 transition hover:opacity-100 lg:block"
-      aria-label={`${honor.displayName} title page`}
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute right-7 top-5 z-10 hidden h-16 w-32 opacity-38 mix-blend-screen lg:block"
     >
-      <div className="mx-auto mb-1 h-px w-16 bg-gradient-to-r from-transparent via-amber-100/42 to-transparent" />
-      {honor.imageUrl ? (
-        <div className="relative mx-auto h-12 w-24 overflow-visible">
-          <Image
-            src={honor.imageUrl}
-            alt={`${honor.displayName} belt`}
-            fill
-            sizes="96px"
-            className="object-contain drop-shadow-[0_12px_18px_rgba(251,191,36,0.18)]"
-          />
-        </div>
-      ) : null}
-      <div className="mt-1 truncate text-[9px] font-semibold uppercase tracking-[0.24em] text-amber-100/66">
-        {honor.displayName}
-      </div>
-    </Link>
+      <Image
+        src={honor.imageUrl}
+        alt=""
+        fill
+        sizes="128px"
+        className="object-contain drop-shadow-[0_14px_24px_rgba(251,191,36,0.18)]"
+      />
+    </div>
   );
 }
 
