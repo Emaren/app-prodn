@@ -19,7 +19,7 @@ export default function AcademyHero() {
 
       <div className="relative flex min-h-[34rem] flex-col px-6 py-10 sm:min-h-[40rem] sm:px-10 lg:px-14">
         <div className="flex flex-wrap gap-2">
-          <span className="inline-flex items-center gap-2 rounded-full border border-amber-100/22 bg-black/24 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.24em] text-amber-100 backdrop-blur-md">
+          <span className="inline-flex items-center gap-2 rounded-full border border-amber-100/22 bg-black/24 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.24em] text-amber-100/68 backdrop-blur-md">
             <Flame className="h-3.5 w-3.5" />
             The gate is open
           </span>
@@ -34,18 +34,7 @@ export default function AcademyHero() {
         </div>
 
         <div className="mt-auto max-w-[42rem] pb-2">
-          <p className="text-[10px] font-bold uppercase tracking-[0.44em] text-slate-300/64">
-            AoE2WAR · The Academy
-          </p>
-          <div className="academy-hero-title-art pointer-events-none relative -ml-7 mb-3 mt-7 w-[min(59rem,calc(100vw-3rem))] overflow-visible [aspect-ratio:1672/520] sm:-ml-9 lg:-ml-12">
-            <Image
-              src={ACADEMY_HERO_TITLE_IMAGE}
-              alt=""
-              fill
-              aria-hidden="true"
-              sizes="(max-width: 768px) 100vw, 59rem"
-              className="pointer-events-none select-none object-cover object-center opacity-[0.34] mix-blend-screen blur-[2.4px] brightness-[1.35] contrast-[1.08] saturate-[1.12] [mask-image:linear-gradient(90deg,transparent_0%,rgba(0,0,0,0.42)_5%,black_12%,black_82%,rgba(0,0,0,0.48)_93%,transparent_100%)]"
-            />
+<div className="academy-hero-title-art pointer-events-none relative -ml-7 mb-3 mt-7 w-[min(59rem,calc(100vw-3rem))] overflow-hidden [aspect-ratio:1672/520] sm:-ml-9 lg:-ml-12">
             <Image
               src={ACADEMY_HERO_TITLE_IMAGE}
               alt=""
@@ -53,15 +42,7 @@ export default function AcademyHero() {
               priority
               sizes="(max-width: 768px) 100vw, 59rem"
               aria-hidden="true"
-              className="select-none object-cover object-center opacity-[0.98] brightness-[1.08] contrast-[1.08] saturate-[1.02] drop-shadow-[0_0_16px_rgba(245,190,92,0.18)] [mask-image:linear-gradient(90deg,transparent_0%,rgba(0,0,0,0.42)_5%,black_12%,black_82%,rgba(0,0,0,0.48)_93%,transparent_100%)]"
-            />
-            <Image
-              src={ACADEMY_HERO_TITLE_IMAGE}
-              alt=""
-              fill
-              aria-hidden="true"
-              sizes="(max-width: 768px) 100vw, 59rem"
-              className="pointer-events-none select-none object-cover object-center opacity-[0.18] mix-blend-screen brightness-[1.8] contrast-[1.18] saturate-[1.16] [mask-image:linear-gradient(90deg,transparent_0%,rgba(0,0,0,0.42)_5%,black_12%,black_82%,rgba(0,0,0,0.48)_93%,transparent_100%)]"
+              className="select-none object-cover object-center opacity-[0.82] mix-blend-screen brightness-[0.76] contrast-[0.88] saturate-[0.72] drop-shadow-none [mask-image:linear-gradient(90deg,transparent_0%,rgba(0,0,0,0.38)_5%,black_12%,black_82%,rgba(0,0,0,0.46)_93%,transparent_100%)]"
             />
           </div>
           <h1 className="sr-only">The Academy</h1>
@@ -72,7 +53,7 @@ export default function AcademyHero() {
             Read the field. Move with intent. Raise your ELO.
           </p>
 
-          <p className="mt-3 max-w-[37rem] text-sm leading-6 text-slate-400/66">
+          <p className="mt-3 max-w-[37rem] text-sm leading-6 text-slate-400/68/66">
             Replay study, battlefield judgment, and proven advice from real players.
             A cleaner war school for players who want to improve before they wager.
           </p>
@@ -80,14 +61,14 @@ export default function AcademyHero() {
           <div className="mt-7 flex flex-col gap-3 sm:flex-row">
             <Link
               href="#advisors"
-              className="group inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-white/14 bg-[linear-gradient(135deg,rgba(92,64,18,0.16),rgba(3,7,18,0.58))] px-5 py-2.5 text-xs font-semibold text-slate-200/78 shadow-[0_14px_34px_rgba(0,0,0,0.26)] backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-amber-100/22 hover:bg-amber-100/[0.045]"
+              className="group inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-white/9 bg-[linear-gradient(135deg,rgba(92,64,18,0.16),rgba(3,7,18,0.58))] px-5 py-2.5 text-xs font-semibold text-slate-200/78 shadow-[0_14px_34px_rgba(0,0,0,0.26)] backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-amber-100/22 hover:bg-amber-100/[0.045]"
             >
               Meet the advisors
-              <ArrowRight className="h-3.5 w-3.5 text-amber-100/48 transition group-hover:translate-x-1" />
+              <ArrowRight className="h-3.5 w-3.5 text-amber-100/68/48 transition group-hover:translate-x-1" />
             </Link>
             <Link
               href="/zodiac"
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-white/[0.075] bg-black/24 px-5 py-2.5 text-xs font-semibold text-slate-300/70 backdrop-blur-md transition hover:-translate-y-0.5 hover:border-violet-100/18 hover:bg-violet-300/[0.045] hover:text-slate-200/86"
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-white/[0.075] bg-black/24 px-5 py-2.5 text-xs font-semibold text-slate-300/78/70 backdrop-blur-md transition hover:-translate-y-0.5 hover:border-violet-100/18 hover:bg-violet-300/[0.045] hover:text-slate-200/86"
             >
               Train under the Zodiac
               <Sparkles className="h-3.5 w-3.5 text-violet-200/45" />
@@ -95,9 +76,9 @@ export default function AcademyHero() {
           </div>
         </div>
 
-        <div className="absolute bottom-6 right-6 hidden grid-cols-3 overflow-hidden rounded-[1.1rem] border border-white/[0.075] bg-black/30 text-left shadow-[0_18px_46px_rgba(0,0,0,0.28)] backdrop-blur-md lg:grid">
+        <div className="absolute bottom-6 right-6 hidden grid-cols-3 overflow-hidden rounded-[1.1rem] border border-white/[0.075] bg-black/22 text-left shadow-[0_18px_46px_rgba(0,0,0,0.28)] backdrop-blur-md lg:grid">
           <div className="border-r border-white/[0.06] px-4 py-3">
-            <div className="text-[9px] font-bold uppercase tracking-[0.24em] text-slate-500">
+            <div className="text-[9px] font-bold uppercase tracking-[0.24em] text-slate-500/62">
               Doctrine
             </div>
             <div className="mt-1 text-sm font-bold text-slate-200/78">
@@ -105,7 +86,7 @@ export default function AcademyHero() {
             </div>
           </div>
           <div className="border-r border-white/[0.06] px-4 py-3">
-            <div className="text-[9px] font-bold uppercase tracking-[0.24em] text-slate-500">
+            <div className="text-[9px] font-bold uppercase tracking-[0.24em] text-slate-500/62">
               Command
             </div>
             <div className="mt-1 text-sm font-bold text-slate-200/78">
@@ -113,7 +94,7 @@ export default function AcademyHero() {
             </div>
           </div>
           <div className="px-4 py-3">
-            <div className="text-[9px] font-bold uppercase tracking-[0.24em] text-slate-500">
+            <div className="text-[9px] font-bold uppercase tracking-[0.24em] text-slate-500/62">
               Proof
             </div>
             <div className="mt-1 text-sm font-bold text-slate-200/78">
