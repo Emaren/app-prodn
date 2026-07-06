@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ExternalLink, Monitor, Play, Radio } from "lucide-react";
 
 import type { WatchStreamPayload } from "@/lib/watchStreams";
+import { BattleLoopPreview } from "@/components/media/BattleLoopPreview";
 
 type Props = {
   stream?: WatchStreamPayload | null;
@@ -88,16 +89,12 @@ export default function LiveStreamFrame({
     >
       {isBrowserStream && stream ? (
         <BrowserChunkPlayer stream={stream} title={title} compact={compact} />
-      ) : embedSrc ? (
-        <iframe
-          src={embedSrc}
-          title={`${title} stream`}
-          className="absolute inset-0 h-full w-full border-0"
-          allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
-          allowFullScreen
-        />
       ) : (
-        <StreamPoster stream={stream} compact={compact} fallbackLabel={fallbackLabel} />
+        <BattleLoopPreview
+          seed={stream?.id ?? embedSrc ?? title ?? fallbackLabel}
+          className="absolute inset-0 h-full w-full rounded-none border-0"
+          label={`${title} battle loop`}
+        />
       )}
 
       <div className="pointer-events-none absolute inset-0 z-20 bg-gradient-to-t from-black/76 via-black/10 to-black/20" />
@@ -108,14 +105,14 @@ export default function LiveStreamFrame({
           <span className="relative inline-flex h-2 w-2 rounded-full bg-red-400" />
         </span>
         <span className="rounded-full border border-white/15 bg-black/45 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.18em] text-white/85 backdrop-blur">
-          {stream ? providerLabel(stream) : fallbackLabel}
+          {isBrowserStream && stream ? providerLabel(stream) : "Battle loop"}
         </span>
       </div>
 
       {!compact ? (
         <div className="pointer-events-none absolute bottom-3 left-3 right-3 z-30">
           <div className="truncate text-base font-black text-white drop-shadow-lg">
-            {stream?.title || stream?.label || title}
+            {isBrowserStream && stream ? stream?.title || stream?.label || title : "MP4 concept loop"}
           </div>
         </div>
       ) : null}

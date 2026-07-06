@@ -14,6 +14,7 @@ import YourBookSection from "@/components/bets/YourBookSection";
 import FounderBonusChips from "@/components/bets/FounderBonusChips";
 import FounderBonusModal from "@/components/bets/FounderBonusModal";
 import LiveStreamFrame from "@/components/streaming/LiveStreamFrame";
+import { BattleLoopPreview } from "@/components/media/BattleLoopPreview";
 import WarTape from "@/components/bets/WarTape";
 import {
   buildBetGameStatsHref,
@@ -2873,7 +2874,7 @@ function BroadcastHeroTile({
               </div>
               <div className="mt-1 text-xs text-slate-400">
                 {hasAttachedFeed
-                  ? "A video source is attached to the current market."
+                  ? "A local battle loop is standing in until live video is wired."
                   : "Video feed not attached yet."}
               </div>
             </div>
@@ -3230,14 +3231,12 @@ function BroadcastSignalSurface({
       ) : null}
 
       {embedSrc ? (
-        <iframe
-          src={embedSrc}
-          title={feed?.label || "Broadcast feed"}
-          className={`absolute inset-0 z-20 h-full w-full border-0 ${
+        <BattleLoopPreview
+          seed={feed?.id ?? previewUrl ?? embedSrc ?? "bets-broadcast-loop"}
+          className={`absolute inset-0 z-20 h-full w-full rounded-none border-0 ${
             compact ? "pointer-events-none" : ""
           }`}
-          allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
-          allowFullScreen
+          label="AoE2WAR battle loop"
         />
       ) : null}
 
