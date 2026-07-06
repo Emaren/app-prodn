@@ -900,7 +900,7 @@ function MarketTimingRail({ market, nowMs }: { market: BetBoardMarket; nowMs: nu
 function BettingHallImageHero() {
   return (
     <section className="relative mx-auto w-full max-w-[min(92rem,calc(100vw-2rem))] overflow-hidden rounded-[2.35rem] border border-amber-100/18 bg-slate-950 shadow-[0_34px_110px_rgba(2,6,23,0.50)]">
-      <div className="relative min-h-[26rem] sm:min-h-[32rem] lg:min-h-[39rem] xl:min-h-[42rem]">
+      <div className="relative min-h-[30rem] sm:min-h-[37rem] lg:min-h-[43rem] xl:min-h-[45rem]">
         <Image
           src={BETTING_HALL_HERO_SRC}
           alt="The Betting Hall"
