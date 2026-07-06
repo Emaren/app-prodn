@@ -2,12 +2,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Flame, Orbit, Shield, Sparkles } from "lucide-react";
 
-const ACADEMY_HERO_TITLE_IMAGE = "/academy/the-academy-title-gold-hero-strip.png";
+const ACADEMY_HERO_TITLE_IMAGE = "/academy/the-academy-title-gold.png";
 
 export default function AcademyHero() {
   return (
     <section
-      className="relative isolate min-h-[42rem] overflow-hidden rounded-[2.2rem] border border-amber-100/16 bg-[#05070d] bg-cover shadow-[0_38px_120px_rgba(0,0,0,0.42)] sm:min-h-[42rem]"
+      className="relative isolate min-h-[38rem] overflow-hidden rounded-[2.2rem] border border-amber-100/16 bg-[#05070d] bg-cover shadow-[0_38px_120px_rgba(0,0,0,0.42)] sm:min-h-[43rem] lg:min-h-[46rem]"
       style={{
         backgroundImage:
           "linear-gradient(90deg, rgba(3,7,18,0.80) 0%, rgba(3,7,18,0.56) 32%, rgba(3,7,18,0.18) 58%, rgba(3,7,18,0.02) 100%), linear-gradient(180deg, rgba(3,7,18,0.02) 0%, rgba(3,7,18,0.06) 54%, rgba(3,7,18,0.34) 100%), url('/academy/academy-gates-red.webp')",
@@ -17,7 +17,7 @@ export default function AcademyHero() {
     >
       <div className="pointer-events-none absolute inset-x-12 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/55 to-transparent" />
 
-      <div className="relative flex min-h-[42rem] flex-col px-6 py-10 sm:min-h-[42rem] sm:px-10 lg:px-14">
+      <div className="relative flex min-h-[38rem] flex-col px-6 py-10 sm:min-h-[43rem] sm:px-10 lg:min-h-[46rem] lg:px-14">
         <div className="flex flex-wrap gap-2">
           <span className="inline-flex items-center gap-2 rounded-full border border-amber-100/22 bg-black/24 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.24em] text-amber-100/68 backdrop-blur-md">
             <Flame className="h-3.5 w-3.5" />
@@ -42,7 +42,7 @@ export default function AcademyHero() {
               priority
               sizes="(max-width: 768px) 100vw, 59rem"
               aria-hidden="true"
-              className="select-none object-cover object-center opacity-[0.9] mix-blend-screen brightness-[0.84] contrast-[0.9] saturate-[0.78] drop-shadow-[0_18px_38px_rgba(0,0,0,0.48)]"
+              className="select-none object-cover object-center opacity-[0.98] mix-blend-screen drop-shadow-[0_22px_48px_rgba(0,0,0,0.52)] [mask-image:linear-gradient(90deg,transparent_0%,black_6%,black_93%,transparent_100%)]"
             />
           </div>
           <h1 className="sr-only">The Academy</h1>
