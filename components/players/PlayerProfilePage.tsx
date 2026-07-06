@@ -31,13 +31,13 @@ const RESOURCE_META: Record<keyof PlayerResourceStats["totals"], { label: string
 };
 
 function PlayerRecordBadge({ profile }: { profile: PlayerProfile }) {
-  const recordLabel = `${profile.command.wins}-${profile.command.losses}-${profile.command.unknowns} W-L-U`;
+  const recordLabel = `${profile.command.wins}-${profile.command.losses}-${profile.command.unknowns}`;
 
   return (
     <span
       aria-label={`Player record ${recordLabel}`}
       title="Wins-Losses-Unknown"
-      className="mb-1 inline-flex shrink-0 items-center rounded-full border border-white/10 bg-white/[0.045] px-3 py-1 font-mono text-[11px] font-black uppercase tracking-[0.16em] text-slate-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] sm:mb-2 sm:text-xs"
+      className="mb-1 inline-flex shrink-0 items-baseline text-2xl font-semibold leading-none tracking-[-0.055em] text-white/48 sm:mb-1.5 sm:text-3xl"
     >
       {recordLabel}
     </span>
@@ -159,7 +159,7 @@ function ClaimedBasicProfile({ profile }: { profile: PlayerProfile }) {
             <div className="text-xs uppercase tracking-[0.35em] text-amber-200/70">
               {profile.isClaimed ? "Public Warrior Page" : "Replay-Built Warrior Page"}
             </div>
-            <div className="flex min-w-0 flex-wrap items-end gap-x-4 gap-y-2">
+            <div className="flex min-w-0 flex-wrap items-end gap-x-3 gap-y-2">
               <h1 className="text-4xl font-semibold text-white sm:text-5xl">
                 {profile.displayName}
               </h1>
@@ -264,7 +264,7 @@ function ReplayClassicBasicProfile({ profile }: { profile: PlayerProfile }) {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="space-y-4">
             <div className="text-xs uppercase tracking-[0.35em] text-rose-200/70">Replay-Built Warrior Page</div>
-            <div className="flex min-w-0 flex-wrap items-end gap-x-4 gap-y-2">
+            <div className="flex min-w-0 flex-wrap items-end gap-x-3 gap-y-2">
               <h1 className="text-4xl font-semibold text-white sm:text-5xl">
                 {profile.displayName}
               </h1>
@@ -426,7 +426,7 @@ function AdvancedHero({ profile }: { profile: PlayerProfile }) {
 
           <div>
             <div className="text-xs uppercase tracking-[0.42em] text-amber-200/70">AoE2HD Gamer Profile</div>
-            <div className="mt-3 flex min-w-0 flex-wrap items-end gap-x-4 gap-y-2">
+            <div className="mt-3 flex min-w-0 flex-wrap items-end gap-x-3 gap-y-2">
             <h1 className="max-w-4xl text-4xl font-semibold leading-[0.96] text-white sm:text-6xl">
               {profile.displayName}
             </h1>
