@@ -1179,7 +1179,7 @@ function ClassicBoard({
                           <div className="text-sm font-semibold text-white">
                             {session.players.length > 0
                               ? session.players.map((player) => player.name).filter(Boolean).join(" vs ")
-                              : session.originalFilename || "Uploaded replay"}
+                              : liveDisplayTitle(session)}
                           </div>
                           <div className="mt-1 text-sm text-slate-300">
                             {publicReplayMapLabel(session.mapName)}
@@ -1828,12 +1828,7 @@ function PremiumClassicLiveSessionCard({
     );
   }
 
-  const title =
-    session.players.length > 0
-      ? session.players.map((player) => player.name).join(" vs ")
-      : session.state === "live"
-        ? "Battle proof assembling"
-        : session.originalFilename || "Game in progress";
+  const title = liveDisplayTitle(session);
 
   const eyebrowLabel = liveSessionEyebrowLabel(session);
 
@@ -2047,10 +2042,7 @@ function ClassicLiveSessionCard({
       : watcherCount === 2
         ? "border-amber-300/25 bg-amber-400/10 text-amber-100"
         : "border-white/10 bg-white/5 text-slate-300";
-  const title =
-    session.players.length > 0
-      ? session.players.map((player) => player.name).join(" vs ")
-      : session.originalFilename || "Game in progress";
+  const title = liveDisplayTitle(session);
   const shellClass = isCompleted
     ? "border-emerald-400/20 bg-emerald-500/10"
     : "border-red-400/20 bg-red-500/10";
