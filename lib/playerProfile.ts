@@ -368,13 +368,8 @@ function currentPlayerRecord(game: PlayerProfileGameRow, currentPlayer: PublicPl
 }
 
 function gameResult(game: PlayerProfileGameRow, currentPlayer: PublicPlayerRef): "win" | "loss" | "unknown" {
-  const adjudicatedGame = applyReplayAdjudicationToGameStats(game);
-  const winner = resolveReliableReplayWinner({
-    winner: adjudicatedGame.winner,
-    players: parsePlayers(adjudicatedGame.players),
-    parseReason: adjudicatedGame.parse_reason,
-    keyEvents: adjudicatedGame.key_events,
-  });
+  const adjudicatedGame = applyReplayAdjudicationToGameStats(game) as PlayerProfileGameRow;
+  const winner = playerProfileReliableWinner(adjudicatedGame);
 
   if (!winner) return "unknown";
   return publicPlayerMatchesName(currentPlayer, winner) ? "win" : "loss";
@@ -737,6 +732,23 @@ function toMatchItem(game: PlayerProfileGameRow, currentPlayer: PublicPlayerRef)
   };
 }
 
+function playerProfileReliableWinner(game: PlayerProfileGameRow) {
+  const storedWinner = normalizePublicReplayText(game.winner);
+
+  if (game.winnerProof === "historical_inferred_fallback" && storedWinner) {
+    return storedWinner;
+  }
+
+  return resolveReliableReplayWinner({
+    winner: game.winner,
+    players: parsePlayers(game.players),
+    parseReason: game.parse_reason,
+    parseSource: game.parse_source,
+    keyEvents: game.key_events,
+    eventTypes: game.event_types,
+  });
+}
+
 function playerProfileUnresolvedResult(game: PlayerProfileGameRow) {
   const unresolved = game.unresolvedResult;
   return unresolved && typeof unresolved === "object" ? unresolved : null;
@@ -745,6 +757,10 @@ function playerProfileUnresolvedResult(game: PlayerProfileGameRow) {
 function playerProfileWinnerLabel(game: PlayerProfileGameRow) {
   const unresolved = playerProfileUnresolvedResult(game);
   if (unresolved?.code === "winner_not_captured") return "Winner not captured";
+
+  const reliableWinner = playerProfileReliableWinner(game);
+  if (reliableWinner) return reliableWinner;
+
   return winnerLabel(game.winner, game.parse_reason);
 }
 
@@ -752,6 +768,7 @@ function playerProfileOutcomeLabel(game: PlayerProfileGameRow) {
   const unresolved = playerProfileUnresolvedResult(game);
   if (unresolved?.code === "winner_not_captured") return "Completed";
   if (unresolved?.label === "Completed") return "Completed";
+  if (game.winnerProof === "historical_inferred_fallback" && playerProfileReliableWinner(game)) return null;
   return outcomeBadgeLabel(game.parse_reason, game.winner);
 }
 
@@ -824,15 +841,8 @@ function playerProfileIsFinal(game: PlayerProfileGameRow) {
 }
 
 function playerProfileHasResolvedWinner(game: PlayerProfileGameRow) {
-  const adjudicatedGame = applyReplayAdjudicationToGameStats(game);
-  return Boolean(
-    resolveReliableReplayWinner({
-      winner: adjudicatedGame.winner,
-      players: parsePlayers(adjudicatedGame.players),
-      parseReason: adjudicatedGame.parse_reason,
-      keyEvents: adjudicatedGame.key_events,
-    })
-  );
+  const adjudicatedGame = applyReplayAdjudicationToGameStats(game) as PlayerProfileGameRow;
+  return Boolean(playerProfileReliableWinner(adjudicatedGame));
 }
 
 function playerProfilePreferenceScore(game: PlayerProfileGameRow) {
