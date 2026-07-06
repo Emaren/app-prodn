@@ -918,6 +918,38 @@ function BettingHallImageHero() {
 }
 
 
+
+function BetsMutedToggleCss() {
+  return (
+    <style>{`
+      main[data-bets-view] button[class*="#3b82f6"],
+      main[data-bets-view] button[class*="#1d4ed8"],
+      main[data-bets-view] button[class*="#93c5fd"],
+      main[data-bets-view] button[class*="59,130,246"],
+      main[data-bets-view] button[class*="37,99,235"],
+      main[data-bets-view] button[class*="bg-sky"][class*="text-slate-950"],
+      main[data-bets-view] button[class*="border-sky"][class*="text-slate-950"] {
+        border-color: rgba(255,255,255,0.14) !important;
+        background: linear-gradient(135deg, rgba(226,232,240,0.16) 0%, rgba(100,116,139,0.18) 42%, rgba(30,41,59,0.30) 72%, rgba(15,23,42,0.86) 100%) !important;
+        color: rgb(226 232 240) !important;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 12px 28px rgba(2,6,23,0.32) !important;
+        filter: none !important;
+      }
+
+      main[data-bets-view] button[class*="#3b82f6"] *,
+      main[data-bets-view] button[class*="#1d4ed8"] *,
+      main[data-bets-view] button[class*="#93c5fd"] *,
+      main[data-bets-view] button[class*="59,130,246"] *,
+      main[data-bets-view] button[class*="37,99,235"] *,
+      main[data-bets-view] button[class*="bg-sky"][class*="text-slate-950"] *,
+      main[data-bets-view] button[class*="border-sky"][class*="text-slate-950"] * {
+        color: inherit !important;
+      }
+    `}</style>
+  );
+}
+
+
 export default function BetsPage() {
   const { isAdmin, isAuthenticated, loading, loginWithSteam, user } = useUserAuth();
   const { address: connectedWalletAddress, connect: connectKeplr } = useKeplr();
@@ -1845,6 +1877,8 @@ export default function BetsPage() {
       data-bets-view={betsView}
       className="space-y-5 overflow-x-hidden py-4 text-white sm:space-y-6 sm:py-5"
     >
+      <BetsMutedToggleCss />
+
       <BettingHallImageHero />
 
       <BroadcastHeroTile
