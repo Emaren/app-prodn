@@ -246,6 +246,50 @@ export function RecentMatchesPanel({
   );
 }
 
+
+type ReplayTruthResult = {
+  code?: string | null;
+  label?: string | null;
+  reviewNeeded?: boolean | null;
+};
+
+function readReplayTruthResult(match: LobbyMatchRow): ReplayTruthResult | null {
+  const value = (match as { unresolvedResult?: unknown }).unresolvedResult;
+
+  if (!value || typeof value !== "object") return null;
+
+  return value as ReplayTruthResult;
+}
+
+function readReplayTruthReviewNeeded(match: LobbyMatchRow, result: ReplayTruthResult | null) {
+  return (match as { reviewNeeded?: unknown }).reviewNeeded === true || result?.reviewNeeded === true;
+}
+
+function getLobbyMatchResultDisplay(match: LobbyMatchRow) {
+  const rawWinner = typeof match.winner === "string" ? match.winner.trim() : "";
+  const truthResult = readReplayTruthResult(match);
+  const reviewNeeded = readReplayTruthReviewNeeded(match, truthResult);
+
+  if (rawWinner) {
+    return {
+      headline: winnerLabel(rawWinner, match.parse_reason),
+      pill: outcomeBadgeLabel(match.parse_reason, rawWinner),
+    };
+  }
+
+  if (!reviewNeeded && truthResult?.label) {
+    return {
+      headline: truthResult.label,
+      pill: null,
+    };
+  }
+
+  return {
+    headline: "Winner unresolved",
+    pill: outcomeBadgeLabel(match.parse_reason, match.winner) || (reviewNeeded ? "Needs review" : null),
+  };
+}
+
 function MatchCard({
   match,
   themeKey,
@@ -261,7 +305,7 @@ function MatchCard({
     .filter(Boolean);
 
   const playedAt = pickLobbyMatchPlayedAt(match);
-  const outcomeLabel = outcomeBadgeLabel(match.parse_reason, match.winner);
+  const resultDisplay = getLobbyMatchResultDisplay(match);
 
   return (
     <Link
@@ -278,11 +322,11 @@ function MatchCard({
 
         <div className="shrink-0 space-y-2 text-right">
           <div className="text-xs uppercase tracking-[0.25em] text-slate-400">
-            {winnerLabel(match.winner, match.parse_reason)}
+            {resultDisplay.headline}
           </div>
-          {outcomeLabel ? (
+          {resultDisplay.pill ? (
             <ResultTypePill toneClassName={tone.resultPill}>
-              {outcomeLabel}
+              {resultDisplay.pill}
             </ResultTypePill>
           ) : null}
         </div>
