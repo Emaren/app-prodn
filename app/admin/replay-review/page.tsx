@@ -26,8 +26,11 @@ export const dynamic = "force-dynamic";
 type PageProps = {
   searchParams: Promise<{
     gameId?: string | string[];
+    page?: string | string[];
   }>;
 };
+
+const REVIEW_PAGE_SIZE = 30;
 
 function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
@@ -82,6 +85,52 @@ function StoragePendingButton({ children }: { children: string }) {
     >
       {children}
     </button>
+  );
+}
+
+function ReviewPagination({
+  page,
+  totalPages,
+  totalEntries,
+}: {
+  page: number;
+  totalPages: number;
+  totalEntries: number;
+}) {
+  if (totalPages <= 1) return null;
+  const first = (page - 1) * REVIEW_PAGE_SIZE + 1;
+  const last = Math.min(totalEntries, page * REVIEW_PAGE_SIZE);
+
+  return (
+    <nav
+      aria-label="Replay review pages"
+      className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/[0.07] bg-white/[0.025] px-4 py-3"
+    >
+      <div className="text-xs text-slate-400">
+        Showing {first}–{last} of {totalEntries}
+      </div>
+      <div className="flex items-center gap-2">
+        {page > 1 ? (
+          <Link
+            href={`/admin/replay-review?page=${page - 1}`}
+            className="rounded-full border border-white/[0.09] bg-white/[0.04] px-3.5 py-2 text-xs font-semibold text-slate-200 transition hover:bg-white/[0.08]"
+          >
+            Previous
+          </Link>
+        ) : null}
+        <span className="px-2 text-xs text-slate-500">
+          Page {page} of {totalPages}
+        </span>
+        {page < totalPages ? (
+          <Link
+            href={`/admin/replay-review?page=${page + 1}`}
+            className="rounded-full border border-white/[0.09] bg-white/[0.04] px-3.5 py-2 text-xs font-semibold text-slate-200 transition hover:bg-white/[0.08]"
+          >
+            Next
+          </Link>
+        ) : null}
+      </div>
+    </nav>
   );
 }
 
@@ -382,7 +431,19 @@ export default async function AdminReplayReviewPage({ searchParams }: PageProps)
   await requireServerAdmin();
   const params = await searchParams;
   const focusedGameId = Number(firstParam(params.gameId));
+  const requestedPage = Number(firstParam(params.page));
   const data = await loadReplayReviewQueue(getPrisma());
+  const totalPages = Math.max(1, Math.ceil(data.entries.length / REVIEW_PAGE_SIZE));
+  const page =
+    Number.isSafeInteger(requestedPage) && requestedPage > 0
+      ? Math.min(requestedPage, totalPages)
+      : 1;
+  const focusedEntry = Number.isSafeInteger(focusedGameId)
+    ? data.entries.find((entry) => entry.id === focusedGameId) ?? null
+    : null;
+  const visibleEntries = focusedEntry
+    ? [focusedEntry]
+    : data.entries.slice((page - 1) * REVIEW_PAGE_SIZE, page * REVIEW_PAGE_SIZE);
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(15,118,110,0.10),transparent_30%),radial-gradient(circle_at_top_right,rgba(245,158,11,0.11),transparent_28%),#050914] px-4 py-8 text-white sm:px-6 lg:px-8">
@@ -447,8 +508,15 @@ export default async function AdminReplayReviewPage({ searchParams }: PageProps)
         </div>
 
         <div className="mt-6 space-y-5">
-          {data.entries.length ? (
-            data.entries.map((entry) => (
+          {!focusedEntry ? (
+            <ReviewPagination
+              page={page}
+              totalPages={totalPages}
+              totalEntries={data.entries.length}
+            />
+          ) : null}
+          {visibleEntries.length ? (
+            visibleEntries.map((entry) => (
               <ReviewCard
                 key={entry.id}
                 entry={entry}
@@ -462,6 +530,22 @@ export default async function AdminReplayReviewPage({ searchParams }: PageProps)
               <p className="mt-2 text-sm text-slate-400">
                 No final replay currently lacks reliable winner proof.
               </p>
+            </div>
+          )}
+          {!focusedEntry ? (
+            <ReviewPagination
+              page={page}
+              totalPages={totalPages}
+              totalEntries={data.entries.length}
+            />
+          ) : (
+            <div className="text-center">
+              <Link
+                href="/admin/replay-review"
+                className="inline-flex min-h-10 items-center rounded-full border border-white/[0.09] bg-white/[0.035] px-4 py-2 text-xs font-semibold text-slate-300 transition hover:text-white"
+              >
+                Return to full review queue
+              </Link>
             </div>
           )}
         </div>

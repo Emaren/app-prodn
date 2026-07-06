@@ -686,6 +686,11 @@ export async function loadReplayReviewQueue(
         lobby: "/lobby",
       },
     } satisfies ReplayReviewQueueEntry;
+  }).sort((left, right) => {
+    const leftMs = left.playedOn ? new Date(left.playedOn).getTime() : 0;
+    const rightMs = right.playedOn ? new Date(right.playedOn).getTime() : 0;
+    if (rightMs !== leftMs) return rightMs - leftMs;
+    return right.id - left.id;
   });
 
   return {
