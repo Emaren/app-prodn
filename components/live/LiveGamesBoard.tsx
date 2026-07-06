@@ -897,7 +897,7 @@ function ClassicBoard({
   const advanced = viewMode === "advanced";
   const featuredCompletedSessions = recentlyCompletedSessions.slice(0, 3);
   const archivedCompletedSessions = advanced ? recentlyCompletedSessions.slice(3) : [];
-  const [resolvedCardStyle, setResolvedCardStyle] = useState<ResolvedCardStyle>("teams");
+  const [resolvedCardStyle, setResolvedCardStyle] = useState<ResolvedCardStyle>("crest");
   const cycleResolvedCardStyle = useCallback(() => {
     setResolvedCardStyle((current) =>
       current === "teams"
