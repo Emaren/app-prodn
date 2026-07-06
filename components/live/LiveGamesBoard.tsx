@@ -617,7 +617,7 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
         key={`scheduled-${match.id}`}
         match={match}
         viewerUid={uid}
-        defaultViewMode={detail ? "detail" : "summary"}
+        defaultViewMode={compact ? "summary" : detail ? "detail" : "summary"}
         onAccept={(challengeId) => updateChallenge(challengeId, "accept")}
         onDecline={(challengeId) => updateChallenge(challengeId, "decline")}
         onCancel={(challengeId) => updateChallenge(challengeId, "cancel")}
