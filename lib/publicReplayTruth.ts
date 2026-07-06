@@ -1,3 +1,4 @@
+import { resolveReplayOwnerDisplay } from "@/lib/replayOwnerDisplay";
 import {
   classifyUnresolvedWatcherResult,
   normalizePublicReplayText,
@@ -279,6 +280,13 @@ function sanitizePublicMetadataFields<T extends PublicGameStatsLike>(row: T): T 
       }];
     });
   }
+
+  const owner = resolveReplayOwnerDisplay(row);
+  next["ownerPlayerName"] = owner.ownerPlayerName;
+  next["owner_player_name"] = owner.ownerPlayerName;
+  next["ownerDisplayName"] = owner.ownerDisplayName;
+  next["ownerDisplaySource"] = owner.ownerDisplaySource;
+  next["ownerWatcherId"] = owner.ownerWatcherId;
 
   return next as T;
 }
