@@ -2766,39 +2766,6 @@ function RecentResultFeature({ result }: { result: BetSettledResult }) {
   );
 }
 
-function BroadcastVisibilityButton({
-  open,
-  onToggle,
-}: {
-  open: boolean;
-  onToggle: () => void;
-}) {
-  const label = open ? "Hide Battle Cam" : "Show Battle Cam";
-
-  return (
-    <button
-      type="button"
-      data-testid="battle-cam-toggle"
-      aria-expanded={open}
-      aria-controls="battle-cam-panel"
-      aria-label={label}
-      title={label}
-      onClick={onToggle}
-      className={[
-        "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/[0.06] bg-white/[0.024] text-slate-300/52 shadow-[inset_0_1px_0_rgba(255,255,255,0.032)] transition",
-        "hover:border-white/[0.10] hover:bg-white/[0.04] hover:text-slate-200/62 focus:outline-none focus:ring-2 focus:ring-white/10",
-        open ? "border-amber-100/[0.09] bg-amber-100/[0.03] text-amber-100/58" : "",
-      ].join(" ")}
-    >
-      <span className="relative inline-flex h-4.5 w-4.5 items-center justify-center">
-        <Monitor className="h-4.5 w-4.5 opacity-78" strokeWidth={1.65} aria-hidden="true" />
-      </span>
-      <span className="sr-only">{label}</span>
-    </button>
-  );
-}
-
-
 function providerLabel(feed: BroadcastFeed | null | undefined) {
   if (!feed) return "Placeholder";
   if (feed.provider === "aoe2war") return "AoE2WAR";
@@ -2978,6 +2945,12 @@ function BroadcastHeroTile({
   if (!open) {
     return (
       <section
+        title="Open Battle Cam"
+        onClick={(event) => {
+          const target = event.target as HTMLElement;
+          if (target.closest("button,a,input,select,textarea,[role='button']")) return;
+          onToggle();
+        }}
         data-testid="broadcast-hero-tile"
         data-battle-cam-state="closed"
         className={`${shellClass()} overflow-hidden border-amber-200/[0.07] bg-[radial-gradient(circle_at_10%_0%,rgba(251,191,36,0.09),transparent_28%),linear-gradient(180deg,rgba(13,20,36,0.96),rgba(8,13,24,0.96))] px-3 py-3 sm:px-4`}
@@ -3010,7 +2983,6 @@ function BroadcastHeroTile({
 
           <div className="flex max-w-full flex-wrap items-center justify-end gap-2">
             <BetsViewToggle value={viewMode} onChange={onViewModeChange} />
-            <BroadcastVisibilityButton open={open} onToggle={onToggle} />
           </div>
         </div>
       </section>
@@ -3045,7 +3017,6 @@ function BroadcastHeroTile({
             {marketTitle}
           </span>
           <BetsViewToggle value={viewMode} onChange={onViewModeChange} />
-          <BroadcastVisibilityButton open={open} onToggle={onToggle} />
         </div>
       </div>
 
