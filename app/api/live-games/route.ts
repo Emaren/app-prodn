@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { loadLiveGamesSnapshot } from "@/lib/liveGames";
 import { getPrisma } from "@/lib/prisma";
-import { sanitizePublicLiveGamesSnapshot } from "@/lib/publicReplayTruth";
+import { loadPublicLiveGamesSnapshot } from "@/lib/liveGamesPublicSnapshot";
 
 
 function liveSessionTimeMs(session: Record<string, unknown>) {
@@ -71,9 +70,8 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
-    const snapshot = withLiveProofCounts(
-      sanitizePublicLiveGamesSnapshot(await loadLiveGamesSnapshot(getPrisma())) as Record<string, unknown>
-    );
+    const publicSnapshot = await loadPublicLiveGamesSnapshot(getPrisma());
+    const snapshot = withLiveProofCounts(publicSnapshot as Record<string, unknown>);
     const headers = {
       "Cache-Control": "no-store, max-age=0",
     };
