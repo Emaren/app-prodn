@@ -1108,28 +1108,32 @@ function BestGamesGrid({ games }: { games: PlayerBestGame[] }) {
   }
 
   return (
-    <div className="grid gap-3">
+    <div className="grid gap-3 md:grid-cols-3">
       {games.map((game) => (
         <Link
           key={game.key}
           href={game.href}
-          className="group grid gap-4 rounded-[1.35rem] border border-white/8 bg-white/[0.03] p-4 transition hover:border-amber-300/24 hover:bg-white/[0.05] sm:grid-cols-[8rem_minmax(0,1fr)]"
+          className="group relative flex min-h-[11rem] flex-col overflow-hidden rounded-[1.45rem] border border-white/[0.055] bg-[radial-gradient(circle_at_20%_0%,rgba(250,204,21,0.055),transparent_34%),linear-gradient(145deg,rgba(15,23,42,0.54),rgba(7,15,29,0.76))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] transition duration-200 hover:border-amber-100/14 hover:bg-white/[0.032]"
         >
-          <div className="rounded-[1rem] border border-white/8 bg-slate-950/20 px-3 py-3">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-400">
+          <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/18 to-transparent" />
+          <div className="flex items-start justify-between gap-3">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-400/88">
               {game.label}
             </div>
-            <div className="mt-2 text-2xl font-semibold text-white">
-              {game.value}
-            </div>
-          </div>
-          <div className="min-w-0 self-center">
-            <div className="truncate text-base font-semibold text-white group-hover:text-amber-100">
-              {game.mapName}
-            </div>
-            <div className="mt-2 text-xs text-slate-500">
+            <div className="shrink-0 text-[10px] text-slate-500/80">
               {formatDate(game.playedAt)}
             </div>
+          </div>
+
+          <div className="mt-5 text-3xl font-semibold leading-[0.98] tracking-[-0.035em] text-white/94">
+            {game.value}
+          </div>
+
+          <div className="mt-auto pt-7">
+            <div className="truncate text-sm font-semibold text-white/82 transition group-hover:text-amber-100/90">
+              {game.mapName}
+            </div>
+            <div className="mt-3 h-px w-full bg-gradient-to-r from-white/[0.10] via-white/[0.035] to-transparent" />
           </div>
         </Link>
       ))}
