@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Flame, Orbit, Shield, Sparkles } from "lucide-react";
 
-const ACADEMY_HERO_TITLE_IMAGE = "/academy/the-academy-title-gold.png";
+const ACADEMY_HERO_TITLE_IMAGE = "/academy/the-academy-title-gold-cutout.png";
 
 export default function AcademyHero() {
   return (
@@ -45,7 +45,7 @@ export default function AcademyHero() {
               priority
               sizes="(max-width: 768px) 100vw, 59rem"
               aria-hidden="true"
-              className="select-none object-cover object-center opacity-[0.72] mix-blend-screen brightness-[0.72] contrast-[0.88] saturate-[0.68] drop-shadow-none [mask-image:linear-gradient(90deg,transparent_0%,rgba(0,0,0,0.22)_5%,black_13%,black_80%,rgba(0,0,0,0.42)_91%,transparent_100%)]"
+              className="select-none object-cover object-center opacity-[0.82] mix-blend-screen brightness-[0.76] contrast-[0.88] saturate-[0.72] drop-shadow-none [mask-image:linear-gradient(90deg,transparent_0%,rgba(0,0,0,0.38)_5%,black_12%,black_82%,rgba(0,0,0,0.46)_93%,transparent_100%)]"
             />
           </div>
           <h1 className="sr-only">The Academy</h1>
