@@ -1866,8 +1866,8 @@ export default function BetsPage() {
       sessionKey: null,
       leftName: "Player 1",
       rightName: "Player 2",
-      marketTitle: "Battle Cam standby",
-      eventLabel: "Waiting for the next book",
+      marketTitle: "",
+      eventLabel: "",
       feeds: EMPTY_BROADCAST_FEEDS,
       previews: EMPTY_BROADCAST_PREVIEW_URLS,
     };
@@ -2097,11 +2097,7 @@ export default function BetsPage() {
                 <div className="mt-6 text-[11px] uppercase tracking-[0.4em] text-slate-400">
                   The War Book
                 </div>
-<p className="mt-4 max-w-3xl text-sm leading-6 text-slate-300 sm:text-base">
-                  Pick a team directly, or pick any player to back that player&apos;s team. Every
-                  slip still settles on the left or right team side.
-                </p>
-              </div>
+</div>
 
               <div className="grid w-full grid-cols-2 overflow-hidden rounded-[1.4rem] bg-black/[0.14] shadow-[inset_0_1px_0_rgba(255,255,255,0.025)] ring-1 ring-white/[0.045] sm:grid-cols-4 xl:w-auto xl:min-w-[38rem]">
                 <ExtremeMetric label="Open" value={String(openCount)} />
@@ -2210,7 +2206,7 @@ export default function BetsPage() {
 
           <OpenBooksSection
             eyebrow="More Open Books"
-            title="Every live team book, with room to breathe."
+            title=""
             detailMode="extreme"
             markets={openMarkets}
             selection={selection}
@@ -2556,9 +2552,9 @@ function OpenBooksSection({
       <div className="flex items-end justify-between gap-3">
         <div>
           <div className="text-[11px] uppercase tracking-[0.35em] text-slate-500">{eyebrow}</div>
-          <h2 className={`mt-2 text-white ${extremeSurface ? "font-serif text-3xl text-[#fff6dc] sm:text-4xl" : "text-2xl font-semibold"}`}>
+          {title ? (<h2 className={`mt-2 text-white ${extremeSurface ? "font-serif text-3xl text-[#fff6dc] sm:text-4xl" : "text-2xl font-semibold"}`}>
             {title}
-          </h2>
+          </h2>) : null}
         </div>
         <div className="rounded-full bg-white/[0.035] px-3 py-1 text-xs text-slate-300 ring-1 ring-white/[0.05]">
           {markets.length}
@@ -2678,9 +2674,7 @@ function BoardPulseSection({
   return (
     <section className={`${shellClass()} p-5 sm:p-6`}>
       <div className="text-[11px] uppercase tracking-[0.35em] text-slate-500">Board Pulse</div>
-      <h2 className="mt-2 text-2xl font-semibold text-white"></h2>
-
-      <div className="mt-5 space-y-3">
+<div className="mt-5 space-y-3">
         <HeatRow
           label="Open books"
           value={openCount > 0 ? `${openCount} book${openCount === 1 ? "" : "s"} armed` : "Quiet for now"}
@@ -2940,23 +2934,25 @@ function BroadcastHeroTile({
     setPlayingView(null);
   }, [defaultView.key, marketTitle, leftName, rightName]);
 
-      const handleBattleCamTileClick = (event: ReactMouseEvent<HTMLElement>) => {
-    const target = event.target as HTMLElement;
-    const interactive = target.closest("button,a,input,select,textarea,video,iframe,[role='button']");
+        const handleBattleCamTileClick = (event: ReactMouseEvent<HTMLElement>) => {
+    const target = event.target;
+    const element = target instanceof HTMLElement ? target : null;
+    const interactive = element?.closest("button,a,input,select,textarea,video,iframe,[role='button']");
     if (interactive && interactive !== event.currentTarget) return;
     onToggle();
   };
 
   const handleBattleCamTileKeyDown = (event: ReactKeyboardEvent<HTMLElement>) => {
     if (event.key !== "Enter" && event.key !== " ") return;
-    const target = event.target as HTMLElement;
-    const interactive = target.closest("button,a,input,select,textarea,video,iframe,[role='button']");
+    const target = event.target;
+    const element = target instanceof HTMLElement ? target : null;
+    const interactive = element?.closest("button,a,input,select,textarea,video,iframe,[role='button']");
     if (interactive && interactive !== event.currentTarget) return;
     event.preventDefault();
     onToggle();
   };
 
-  if (!open) {
+if (!open) {
     return (
       <section
         role="button"
@@ -2986,12 +2982,7 @@ function BroadcastHeroTile({
                   {feedStatusLabel}
                 </span>
               </div>
-              <div className="mt-1 text-xs text-slate-400">
-                {hasAttachedFeed
-                  ? "A local battle loop is standing in until live video is wired."
-                  : "Video feed not attached yet."}
-              </div>
-            </div>
+</div>
           </div>
 
           <div className="flex max-w-full flex-wrap items-center justify-end gap-2">
@@ -3014,22 +3005,7 @@ function BroadcastHeroTile({
       data-battle-cam-state="open"
       className={`${shellClass()} cursor-pointer select-none overflow-hidden border-amber-200/10 bg-[radial-gradient(circle_at_14%_0%,rgba(251,191,36,0.14),transparent_30%),radial-gradient(circle_at_86%_14%,rgba(56,189,248,0.11),transparent_30%),linear-gradient(180deg,rgba(15,23,42,0.82),rgba(2,6,23,0.48))] p-4 sm:p-5 lg:p-6`}
     >
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="text-[11px] uppercase tracking-[0.32em] text-amber-100/70">
-            Broadcast
-          </div>
-          <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-white sm:text-3xl lg:text-4xl">
-            Battle Cam
-          </h2>
-          <div className="mt-2 text-sm text-slate-400">
-            {hasAttachedFeed
-              ? `${providerLabel(activeView.feed)} source attached`
-              : "Video feed not attached yet"}{" "}
-            · {eventLabel}
-          </div>
-        </div>
-
+      <div className="flex flex-wrap items-start justify-end gap-3">
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
           <span className="hidden max-w-[14rem] truncate rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-slate-300 sm:block sm:max-w-[22rem]">
             {marketTitle}
@@ -3113,13 +3089,13 @@ function BattleCamStandbyFrame({
             <Monitor className="h-7 w-7 text-amber-100/75" aria-hidden="true" />
           </span>
           <div className="mt-5 text-[10px] uppercase tracking-[0.34em] text-amber-100/65">
-            Battle Cam standby
+            
           </div>
           <div className="mt-2 text-xl font-semibold text-white sm:text-2xl">
-            Video feed not attached yet
+            
           </div>
           <div className="mt-2 max-w-xl text-sm leading-6 text-slate-300">
-            This is a local ambient loop, not live footage from this match.
+            
           </div>
         </div>
       </div>
@@ -4001,7 +3977,7 @@ function MarketFeature({
 
   return (
     <div className="relative">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-end gap-3">
         <div>
           <div className="text-[11px] uppercase tracking-[0.35em] text-slate-500">{eyebrowLabel}</div>
           {marketHistoryHref ? (
