@@ -120,11 +120,17 @@ async function loadLobbySnapshotFresh(
       loadAoe2HdPulseSnapshot(),
       loadLiveSessionSnapshot(prisma),
     ]);
-    const recentMatches = mergeCompletedSessionsIntoLobbyMatches(
-      baseRecentMatches,
-      liveSessionSnapshot.recentlyCompletedSessions,
-      LOBBY_RECENT_MATCH_INITIAL_LIMIT
-    );
+    const recentMatches = cleanPublicGameRows(
+      mergeCompletedSessionsIntoLobbyMatches(
+        baseRecentMatches,
+        liveSessionSnapshot.recentlyCompletedSessions,
+        LOBBY_RECENT_MATCH_INITIAL_LIMIT
+      ),
+      {
+        includeReview: true,
+        includeLive: false,
+      }
+    ) as LobbyMatchRow[];
     const liveTicker = await loadLiveTickerSnapshot(prisma, {
       tournament,
       leaderboard,
@@ -159,7 +165,10 @@ async function loadLobbySnapshotFresh(
       tournament: getFallbackTournament(false),
       messages: [],
       onlineUsers: [],
-      recentMatches: await loadRecentMatches(),
+      recentMatches: cleanPublicGameRows(await loadRecentMatches(), {
+        includeReview: true,
+        includeLive: false,
+      }) as LobbyMatchRow[],
       leaderboard: getFallbackLeaderboard(),
       wolo,
       woloEarners: getFallbackWoloEarnersBoard(),
