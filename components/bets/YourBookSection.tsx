@@ -92,15 +92,18 @@ function BookWagerRow({
             href={marketHistoryHref}
             className="mt-2 inline-flex break-words text-lg font-semibold leading-tight text-white transition hover:text-amber-100"
           >
-            {wager.pickedLabel}
+            {wager.title}
           </Link>
         ) : (
           <div className="mt-2 break-words text-lg font-semibold leading-tight text-white">
-            {wager.pickedLabel}
+            {wager.title}
           </div>
         )}
+        <div className="mt-1 text-xs text-slate-500">
+          Pick · <span className="font-semibold text-slate-300">{wager.pickedLabel}</span>
+        </div>
         <div
-          className={`mt-1 text-sm ${
+          className={`mt-2 text-sm ${
             lifecycle === "awaiting"
               ? "text-amber-100"
               : lifecycle === "proof"
