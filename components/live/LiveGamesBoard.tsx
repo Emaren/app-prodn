@@ -221,18 +221,28 @@ function proofExplanation(session: LiveSession) {
 }
 
 function liveDisplayTitle(session: LiveSession) {
+  const names = sessionKnownParticipantNames(session);
+
+  if (session.players.length === 0 && names.length >= 2) {
+    return names.join(" vs ");
+  }
+
+  if (session.players.length === 0 && names.length === 1) {
+    return session.state === "live"
+      ? `${names[0]} vs opponent resolving`
+      : `${names[0]} replay awaiting proof`;
+  }
+
   const title = sessionTitle(session);
+  const genericProofTitle = title === "Battle proof assembling" || title === "Game in progress";
   const fileLike =
     title === session.originalFilename ||
     title === session.replayFile ||
     title.endsWith(".aoe2record") ||
     title.endsWith(".aoe2mpgame");
 
-  if (session.state === "live" && fileLike) {
-    const names = sessionKnownParticipantNames(session);
-    if (names.length >= 2) return names.join(" vs ");
-    if (names.length === 1) return `${names[0]} vs opponent resolving`;
-    return "Battle proof assembling";
+  if (genericProofTitle || fileLike) {
+    return session.state === "live" ? "Battle proof assembling" : "Replay awaiting proof";
   }
 
   return title;
@@ -240,8 +250,10 @@ function liveDisplayTitle(session: LiveSession) {
 
 function liveDisplaySubtitle(session: LiveSession) {
   const names = sessionKnownParticipantNames(session);
-  if (session.state === "live" && names.length > 0 && session.players.length === 0) {
-    return `${names.join(" + ")} linked · roster resolving from replay`;
+  if (names.length > 0 && session.players.length === 0) {
+    return session.state === "live"
+      ? `${names.join(" + ")} linked · opponent resolving from replay`
+      : `${names.join(" + ")} linked · replay proof incomplete`;
   }
   return proofExplanation(session);
 }
