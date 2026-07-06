@@ -223,7 +223,7 @@ export const nationalTitles: ChampionTitleDefinition[] = [
     displayName: "USA Champion",
     shortName: "USA",
     eyebrow: "Representing Country",
-    assetUrl: "/champions/belts/usa.webp",
+    assetUrl: "/uploads/managed-assets/belt/national-usa-1781561984182-c5fa08c6.png",
     routeHref: "/champions/nations/usa",
     tributeKind: "REIGN_TRIBUTE",
     dailyWolo: 10,
