@@ -158,7 +158,7 @@ function PlayerProfileExtreme({
       : "amber";
 
   return (
-    <main className="relative w-full overflow-hidden px-4 py-5 text-white sm:px-6 sm:py-7 lg:-mx-10 lg:px-10 xl:-mx-20 xl:px-12 2xl:-mx-28">
+    <main className="w-full overflow-x-hidden py-3 text-white sm:py-5">
       <div className="mx-auto w-full max-w-none space-y-6">
         <ExtremeHero profile={profile} titleHonors={titleHonors} />
         <PlayerProfileTicker items={profile.tickerItems} />
@@ -602,8 +602,6 @@ function ExtremeHero({
 
   return (
     <section className="relative overflow-hidden rounded-[2.25rem] bg-[radial-gradient(circle_at_20%_0%,rgba(250,204,21,0.16),transparent_30%),radial-gradient(circle_at_82%_12%,rgba(56,189,248,0.13),transparent_30%),linear-gradient(135deg,rgba(15,23,42,0.98),rgba(7,17,31,0.96)_55%,rgba(2,6,23,0.98))] p-5 shadow-[0_30px_90px_rgba(2,6,23,0.34)] ring-1 ring-white/8 sm:p-6 lg:p-7">
-      {primaryHonor ? <FloatingTitleHonor honor={primaryHonor} /> : null}
-
       <div className="grid gap-7 xl:grid-cols-[minmax(0,1.18fr)_minmax(28rem,0.82fr)] xl:items-stretch">
         <div className="relative z-10 flex min-h-[18rem] flex-col justify-between gap-6">
           <div className="space-y-5">
@@ -614,6 +612,7 @@ function ExtremeHero({
               <span className="rounded-full bg-white/[0.04] px-3 py-1 text-xs text-slate-300 ring-1 ring-white/8">
                 {profileLabel}
               </span>
+              {primaryHonor ? <HeroTitleHonorMark honor={primaryHonor} /> : null}
               {profile.isLive ? (
                 <span className="rounded-full bg-emerald-400/10 px-3 py-1 text-xs text-emerald-100 ring-1 ring-emerald-300/18">
                   Online now
@@ -683,22 +682,28 @@ function ExtremeHero({
   );
 }
 
-function FloatingTitleHonor({ honor }: { honor: PlayerTitleHonor }) {
-  if (!honor.imageUrl) return null;
-
+function HeroTitleHonorMark({ honor }: { honor: PlayerTitleHonor }) {
   return (
-    <div
-      aria-hidden="true"
-      className="pointer-events-none absolute right-7 top-5 z-10 hidden h-16 w-32 opacity-38 mix-blend-screen lg:block"
+    <Link
+      href={honor.routeHref}
+      className="inline-flex max-w-full items-center gap-2 rounded-full bg-amber-200/[0.035] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-amber-100/72 ring-1 ring-amber-100/8 transition hover:bg-amber-200/[0.055] hover:text-amber-50 hover:ring-amber-100/16"
+      aria-label={`${honor.displayName} title page`}
     >
-      <Image
-        src={honor.imageUrl}
-        alt=""
-        fill
-        sizes="128px"
-        className="object-contain drop-shadow-[0_14px_24px_rgba(251,191,36,0.18)]"
-      />
-    </div>
+      {honor.imageUrl ? (
+        <span className="relative h-4 w-8 shrink-0 opacity-82">
+          <Image
+            src={honor.imageUrl}
+            alt=""
+            fill
+            sizes="32px"
+            className="object-contain drop-shadow-[0_6px_10px_rgba(251,191,36,0.16)]"
+          />
+        </span>
+      ) : (
+        <span className="h-1.5 w-1.5 rounded-full bg-amber-100/70 shadow-[0_0_14px_rgba(251,191,36,0.35)]" />
+      )}
+      <span className="max-w-[11rem] truncate">{honor.displayName}</span>
+    </Link>
   );
 }
 

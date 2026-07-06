@@ -334,6 +334,7 @@ function HeaderLiveGamesLink({
 function InnerShell({ children }: { children: React.ReactNode }) {
   const { uid, playerName, isAdmin } = useUserAuth();
   const pathname = usePathname();
+  const isPlayerProfileSurface = pathname.startsWith("/players/");
   const { themeKey, viewMode, textColor, pageStyle, tileViewPreferences } =
     useLobbyAppearance();
   const [liveGamesCount, setLiveGamesCount] = React.useState(0);
@@ -625,7 +626,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                     ? "max-w-[90rem]"
                     : isNationalChampionsSurface || isBetDetailSurface
                       ? "max-w-[96rem]"
-                      : "max-w-6xl"
+                      : isPlayerProfileSurface ? "max-w-[90rem]" : "max-w-6xl"
               }`
         } ${isAcademySurface ? "academy-shell-skin" : ""} ${
           isContactPage ? "overflow-hidden" : isMediaManagerSurface ? "overflow-x-visible" : "overflow-x-hidden"
