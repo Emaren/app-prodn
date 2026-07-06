@@ -2785,15 +2785,15 @@ function BroadcastVisibilityButton({
       title={label}
       onClick={onToggle}
       className={[
-        "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.035] text-slate-200/82 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition",
-        "hover:border-white/14 hover:bg-white/[0.07] hover:text-white focus:outline-none focus:ring-2 focus:ring-white/18",
-        open ? "border-amber-100/14 bg-amber-100/[0.055] text-amber-50" : "",
+        "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/[0.065] bg-white/[0.026] text-slate-400/62 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] transition",
+        "hover:border-white/11 hover:bg-white/[0.045] hover:text-slate-300/82 focus:outline-none focus:ring-2 focus:ring-white/12",
+        open ? "border-amber-100/10 bg-amber-100/[0.035] text-amber-100/66" : "",
       ].join(" ")}
     >
-      <span className="relative inline-flex h-5 w-5 items-center justify-center">
-        <Monitor className="h-5 w-5" aria-hidden="true" />
+      <span className="relative inline-flex h-4.5 w-4.5 items-center justify-center opacity-80">
+        <Monitor className="h-4.5 w-4.5 opacity-75" aria-hidden="true" />
         <Play
-          className="absolute h-2.5 w-2.5 translate-x-[0.03rem] fill-current stroke-[2.2]"
+          className="absolute h-2 w-2 translate-x-[0.02rem] fill-current stroke-[2] opacity-55"
           aria-hidden="true"
         />
       </span>
