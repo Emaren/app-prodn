@@ -23,8 +23,13 @@ export async function loadLobbyRecentMatches({
     const response = await fetch(`${base}/api/game_stats`, { cache: "no-store" });
     if (!response.ok) return [];
 
-    const payload = (await response.json()) as LobbyMatchRow[] | unknown;
+    const payload = (await response.json()) as unknown;
     if (!Array.isArray(payload)) return [];
+
+    const publicRows = cleanPublicGameRows(payload, {
+      includeReview: true,
+      includeLive: false,
+    }) as LobbyMatchRow[];
 
     const completedSessions = await loadLiveSessionSnapshot(getPrisma())
       .then((snapshot) => snapshot.recentlyCompletedSessions)
@@ -33,16 +38,16 @@ export async function loadLobbyRecentMatches({
         return [];
       });
 
-    const publicRows = cleanPublicGameRows(payload, {
-      includeReview: true,
-      includeLive: false,
-    });
-
-    return mergeCompletedSessionsIntoLobbyMatches(
+    const mergedRows = mergeCompletedSessionsIntoLobbyMatches(
       publicRows.slice().sort((a, b) => getLobbyMatchPlayedAtMs(b) - getLobbyMatchPlayedAtMs(a)),
       completedSessions,
       safeOffset + safeLimit
-    ).slice(safeOffset, safeOffset + safeLimit);
+    );
+
+    return cleanPublicGameRows(mergedRows, {
+      includeReview: true,
+      includeLive: false,
+    }).slice(safeOffset, safeOffset + safeLimit) as LobbyMatchRow[];
   } catch (error) {
     console.warn("Failed to load lobby recent matches:", error);
     return [];
