@@ -30,6 +30,20 @@ const RESOURCE_META: Record<keyof PlayerResourceStats["totals"], { label: string
   stone: { label: "Stone", icon: "🪨", accent: "from-slate-300 to-sky-200" },
 };
 
+function PlayerRecordBadge({ profile }: { profile: PlayerProfile }) {
+  const recordLabel = `${profile.command.wins}-${profile.command.losses}-${profile.command.unknowns} W-L-U`;
+
+  return (
+    <span
+      aria-label={`Player record ${recordLabel}`}
+      title="Wins-Losses-Unknown"
+      className="mb-1 inline-flex shrink-0 items-center rounded-full border border-white/10 bg-white/[0.045] px-3 py-1 font-mono text-[11px] font-black uppercase tracking-[0.16em] text-slate-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] sm:mb-2 sm:text-xs"
+    >
+      {recordLabel}
+    </span>
+  );
+}
+
 export default function PlayerProfilePage({ profile, viewMode }: PlayerProfilePageProps) {
   return viewMode === "basic" ? (
     <PlayerProfileBasic profile={profile} />
@@ -145,7 +159,12 @@ function ClaimedBasicProfile({ profile }: { profile: PlayerProfile }) {
             <div className="text-xs uppercase tracking-[0.35em] text-amber-200/70">
               {profile.isClaimed ? "Public Warrior Page" : "Replay-Built Warrior Page"}
             </div>
-            <h1 className="text-4xl font-semibold text-white sm:text-5xl">{profile.displayName}</h1>
+            <div className="flex min-w-0 flex-wrap items-end gap-x-4 gap-y-2">
+              <h1 className="text-4xl font-semibold text-white sm:text-5xl">
+                {profile.displayName}
+              </h1>
+              <PlayerRecordBadge profile={profile} />
+            </div>
             <div className="flex flex-wrap gap-2">
               {profile.verificationLevel > 0 ? <SteamLinkedBadge compact /> : null}
               <Tag>{profile.isVerified ? "Replay verified" : profile.isClaimed ? "Claimed profile" : "Unclaimed identity"}</Tag>
@@ -245,7 +264,12 @@ function ReplayClassicBasicProfile({ profile }: { profile: PlayerProfile }) {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="space-y-4">
             <div className="text-xs uppercase tracking-[0.35em] text-rose-200/70">Replay-Built Warrior Page</div>
-            <h1 className="text-4xl font-semibold text-white sm:text-5xl">{profile.displayName}</h1>
+            <div className="flex min-w-0 flex-wrap items-end gap-x-4 gap-y-2">
+              <h1 className="text-4xl font-semibold text-white sm:text-5xl">
+                {profile.displayName}
+              </h1>
+              <PlayerRecordBadge profile={profile} />
+            </div>
             <p className="max-w-3xl text-base leading-7 text-slate-300 sm:text-lg">
               This public page was created automatically from parsed AoE2HD replays. If this is
               you, sign in with Steam, claim the name, and start building a verified tournament and
@@ -402,9 +426,12 @@ function AdvancedHero({ profile }: { profile: PlayerProfile }) {
 
           <div>
             <div className="text-xs uppercase tracking-[0.42em] text-amber-200/70">AoE2HD Gamer Profile</div>
-            <h1 className="mt-3 max-w-4xl text-4xl font-semibold leading-[0.96] text-white sm:text-6xl">
+            <div className="mt-3 flex min-w-0 flex-wrap items-end gap-x-4 gap-y-2">
+            <h1 className="max-w-4xl text-4xl font-semibold leading-[0.96] text-white sm:text-6xl">
               {profile.displayName}
             </h1>
+            <PlayerRecordBadge profile={profile} />
+          </div>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
