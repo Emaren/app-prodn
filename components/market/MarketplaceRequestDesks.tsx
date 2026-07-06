@@ -7,10 +7,8 @@ import {
   Check,
   CheckCircle2,
   Loader2,
-  LockKeyhole,
   PackageCheck,
   ScrollText,
-  Send,
   Sparkles,
   Store,
 } from "lucide-react";
@@ -18,12 +16,15 @@ import { useMemo, useState, type FormEvent } from "react";
 
 import SteamLoginButton from "@/components/SteamLoginButton";
 import { useUserAuth } from "@/context/UserAuthContext";
+import { useKeplr } from "@/hooks/use-keplr";
+import { payMarketplaceRequestOnChain } from "@/lib/clientMarketplacePayment";
 import {
   AVATAR_ARCHETYPES,
   BELT_PLACEMENTS,
   MARKETPLACE_CONFIG,
   type AvatarArchetypeId,
   type BeltPlacementId,
+  type MarketplaceRequestKind,
 } from "@/lib/marketplace";
 
 const WOLO_LOGO_SRC = "/legacy/wolo-logo-transparent.webp";
@@ -32,9 +33,42 @@ type MarketRequestReceipt = {
   ok: true;
   requestId: number;
   createdAt: string;
+  amountWolo?: number;
+  txHash?: string;
+  proofUrl?: string | null;
   contactHref: string;
   profileHref: string;
 };
+
+type MarketRequestPaymentQuote = {
+  ok: true;
+  kind: MarketplaceRequestKind;
+  amountWolo: number;
+  recipientAddress: string;
+  recipientUid: string;
+  memo: string;
+};
+
+async function loadMarketRequestPaymentQuote(kind: MarketplaceRequestKind) {
+  const response = await fetch(
+    `/api/market/requests?kind=${encodeURIComponent(kind)}`,
+    { cache: "no-store" }
+  );
+  const payload = (await response.json().catch(() => null)) as
+    | MarketRequestPaymentQuote
+    | { detail?: string }
+    | null;
+
+  if (!response.ok || !payload || !("ok" in payload)) {
+    throw new Error(
+      payload && "detail" in payload && payload.detail
+        ? payload.detail
+        : "The marketplace payment quote is unavailable."
+    );
+  }
+
+  return payload;
+}
 
 async function postMarketRequest(body: Record<string, unknown>) {
   const response = await fetch("/api/market/requests", {
@@ -59,7 +93,8 @@ async function postMarketRequest(body: Record<string, unknown>) {
 }
 
 export function AvatarCommissionScroll() {
-  const { uid, loading } = useUserAuth();
+  const { uid, loading, loginWithSteam } = useUserAuth();
+  const { address, connect } = useKeplr();
   const [archetypes, setArchetypes] = useState<AvatarArchetypeId[]>([
     "arena-champion",
   ]);
@@ -87,24 +122,38 @@ export function AvatarCommissionScroll() {
 
   async function submitCommission(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (busy || receipt || !uid) return;
+    if (busy || receipt) return;
+    if (!uid) {
+      loginWithSteam("/market#visage-forge");
+      return;
+    }
 
     setBusy(true);
     setError(null);
     try {
+      const quote = await loadMarketRequestPaymentQuote("avatar_commission");
+      const walletAddress = address || (await connect());
+      const payment = await payMarketplaceRequestOnChain({
+        recipientAddress: quote.recipientAddress,
+        amountWolo: quote.amountWolo,
+        memo: quote.memo,
+        fallbackWalletAddress: walletAddress,
+      });
       const nextReceipt = await postMarketRequest({
         kind: "avatar_commission",
         archetypes,
         beltPlacement,
         palette,
         brief,
+        txHash: payment.transactionHash,
+        fromAddress: payment.walletAddress,
       });
       setReceipt(nextReceipt);
     } catch (requestError) {
       setError(
         requestError instanceof Error
           ? requestError.message
-          : "The commission scroll could not be sent."
+          : "The commission request could not be submitted."
       );
     } finally {
       setBusy(false);
@@ -124,7 +173,7 @@ export function AvatarCommissionScroll() {
           Your identity is on the forge.
         </h3>
         <p className="mt-3 max-w-lg text-sm leading-6 text-emerald-50/72">
-          Emaren has the full commission brief. Scope and payment come next;
+          Payment verified. The commission brief is now in Emaren&apos;s inbox;
           finished identities are placed directly in your profile avatar vault.
         </p>
         <div className="mt-7 grid gap-3 sm:grid-cols-2">
@@ -292,7 +341,7 @@ export function AvatarCommissionScroll() {
               {busy ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Sealing scroll…
+                  Submitting…
                 </>
               ) : (
                 <>
@@ -303,22 +352,18 @@ export function AvatarCommissionScroll() {
                     height={24}
                     className="h-5 w-5 object-contain"
                   />
-                  Send commission request
-                  <Send className="h-4 w-4 transition group-hover:translate-x-1" />
+                  Submit
+                  <CheckCircle2 className="h-4 w-4 transition group-hover:translate-x-1" />
                 </>
               )}
             </button>
           ) : (
             <SteamLoginButton
-              label="Sign in to commission"
+              label="Sign in to submit"
               returnTo="/market#visage-forge"
               className="market-gold-button inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[0.35rem] px-5 text-sm font-bold"
             />
           )}
-          <div className="mt-3 flex items-start gap-2 text-[9px] font-semibold uppercase leading-4 tracking-[0.08em] text-[#897656]">
-            <LockKeyhole className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            No WOLO moves here. Scope and payment are confirmed privately.
-          </div>
         </div>
         </div>
       </div>
@@ -328,7 +373,8 @@ export function AvatarCommissionScroll() {
 }
 
 export function OpenShopDesk() {
-  const { uid, loading } = useUserAuth();
+  const { uid, loading, loginWithSteam } = useUserAuth();
+  const { address, connect } = useKeplr();
   const [shopName, setShopName] = useState("");
   const [offer, setOffer] = useState("");
   const [busy, setBusy] = useState(false);
@@ -337,23 +383,36 @@ export function OpenShopDesk() {
 
   async function submitShop(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (busy || receipt || !uid) return;
+    if (busy || receipt) return;
+    if (!uid) {
+      loginWithSteam("/market#open-shop");
+      return;
+    }
 
     setBusy(true);
     setError(null);
     try {
+      const quote = await loadMarketRequestPaymentQuote("shop_proposal");
+      const walletAddress = address || (await connect());
+      const payment = await payMarketplaceRequestOnChain({
+        recipientAddress: quote.recipientAddress,
+        amountWolo: quote.amountWolo,
+        memo: quote.memo,
+        fallbackWalletAddress: walletAddress,
+      });
       const nextReceipt = await postMarketRequest({
         kind: "shop_proposal",
         shopName,
         offer,
+        txHash: payment.transactionHash,
+        fromAddress: payment.walletAddress,
       });
       setReceipt(nextReceipt);
-      window.location.assign(nextReceipt.contactHref);
     } catch (requestError) {
       setError(
         requestError instanceof Error
           ? requestError.message
-          : "The shop proposal could not be sent."
+          : "The shop proposal could not be submitted."
       );
     } finally {
       setBusy(false);
@@ -374,8 +433,7 @@ export function OpenShopDesk() {
             Emaren has your proposal.
           </h3>
           <p className="mt-3 text-sm leading-6 text-slate-300">
-            Your private line is open. Shape the offer, delivery, and economics
-            directly with Emaren.
+            Payment verified. The shop proposal is now in Emaren&apos;s inbox.
           </p>
         </div>
         <Link
@@ -446,7 +504,7 @@ export function OpenShopDesk() {
           {busy ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
-              Opening private line…
+              Submitting…
             </>
           ) : (
             <>
@@ -457,34 +515,18 @@ export function OpenShopDesk() {
                 height={24}
                 className="h-5 w-5 object-contain"
               />
-              Send to Emaren
+              Submit
               <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
             </>
           )}
         </button>
       ) : (
         <SteamLoginButton
-          label="Sign in to contact Emaren"
+          label="Sign in to submit"
           returnTo="/market#open-shop"
           className="market-gold-button mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full px-5 text-sm font-black"
         />
       )}
-      <div className="mt-3 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[10px] font-semibold text-slate-500">
-        <Image
-          src={WOLO_LOGO_SRC}
-          alt=""
-          width={18}
-          height={18}
-          className="h-4 w-4 object-contain opacity-65"
-        />
-        <span>Delivered privately to Emaren.</span>
-        <Link
-          href="/contact-emaren?subject=Marketplace%20shop%20proposal"
-          className="text-amber-100/70 underline decoration-amber-100/25 underline-offset-4 transition hover:text-amber-50"
-        >
-          Open direct line
-        </Link>
-      </div>
     </form>
   );
 }

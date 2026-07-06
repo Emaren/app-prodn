@@ -85,3 +85,11 @@ export function marketplaceLabelForBelt(id: BeltPlacementId) {
     BELT_PLACEMENTS.find((placement) => placement.id === id)?.label || id
   );
 }
+
+export type MarketplaceRequestKind = "avatar_commission" | "shop_proposal";
+
+export function marketplacePaymentMemo(kind: MarketplaceRequestKind) {
+  return kind === "avatar_commission"
+    ? "AoE2WAR Market · avatar commission · 100 WOLO"
+    : "AoE2WAR Market · shop proposal · 100 WOLO";
+}
