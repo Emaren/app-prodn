@@ -319,7 +319,6 @@ export function AvatarCommissionScroll() {
             maxLength={1200}
             rows={7}
             required
-            minLength={24}
             placeholder="Bigger, badder, more mean."
             className="mt-2 w-full min-w-0 max-w-full resize-y overflow-x-hidden rounded-[0.3rem] border border-[#8b633b]/48 bg-[#100f0e]/90 px-4 py-3 text-sm font-medium leading-6 text-[#f1dfb8] shadow-[inset_0_2px_14px_rgba(0,0,0,0.55)] outline-none placeholder:text-[#806f52] focus:border-[#c18b4b]/74 focus:bg-[#14120f]"
           />
@@ -335,13 +334,13 @@ export function AvatarCommissionScroll() {
           {uid ? (
             <button
               type="submit"
-              disabled={busy || loading || brief.trim().length < 24}
+              disabled={busy || loading || !brief.trim()}
               className="market-gold-button group inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[0.35rem] px-5 text-sm font-bold"
             >
               {busy ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Submitting…
+                  Approving 100 WOLO…
                 </>
               ) : (
                 <>
@@ -478,7 +477,6 @@ export function OpenShopDesk() {
           value={offer}
           onChange={(event) => setOffer(event.target.value.slice(0, 900))}
           maxLength={900}
-          minLength={20}
           required
           rows={6}
           placeholder="Custom clan banners and stream overlays for players who want their house to look unmistakable..."
@@ -493,18 +491,13 @@ export function OpenShopDesk() {
       {uid ? (
         <button
           type="submit"
-          disabled={
-            busy ||
-            loading ||
-            shopName.trim().length < 2 ||
-            offer.trim().length < 20
-          }
+          disabled={busy || loading || !shopName.trim() || !offer.trim()}
           className="market-gold-button group mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full px-5 text-sm font-black"
         >
           {busy ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
-              Submitting…
+              Approving 100 WOLO…
             </>
           ) : (
             <>

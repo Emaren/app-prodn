@@ -102,10 +102,8 @@ function avatarCommissionMessage(body: MarketRequestBody) {
   const beltPlacement = normalizeBeltPlacement(body.beltPlacement);
   const palette = normalizeMarketplaceLine(body.palette, 100);
 
-  if (brief.length < 24) {
-    throw new Error(
-      "Give the Visagewright at least a few clear details about the identity you want."
-    );
+  if (!brief) {
+    throw new Error("Write a few words for the Visagewright.");
   }
 
   return {
@@ -150,10 +148,10 @@ function shopProposalMessage(body: MarketRequestBody) {
   const shopName = normalizeMarketplaceLine(body.shopName, 100);
   const offer = normalizeMarketplaceBrief(body.offer, 900);
 
-  if (shopName.length < 2) {
+  if (!shopName) {
     throw new Error("Give the proposed shop a name.");
   }
-  if (offer.length < 20) {
+  if (!offer) {
     throw new Error("Tell the Agora what your shop would make or do.");
   }
 
