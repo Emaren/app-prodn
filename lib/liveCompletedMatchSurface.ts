@@ -31,6 +31,45 @@ function lobbyMatchKey(match: LobbyMatchRow) {
   return `match:${players.toLowerCase()}::${mapName.toLowerCase()}::${getLobbyMatchPlayedAtMs(match)}`;
 }
 
+function hasLobbyWinner(match: LobbyMatchRow | null | undefined) {
+  const winner = normalizeSurfaceText(match?.winner);
+  return winner.length > 0 && winner.toLowerCase() !== "unknown";
+}
+
+function rememberBetterMatch(
+  lookup: Map<string, LobbyMatchRow>,
+  key: string,
+  match: LobbyMatchRow
+) {
+  const current = lookup.get(key);
+  if (!current || (hasLobbyWinner(match) && !hasLobbyWinner(current))) {
+    lookup.set(key, match);
+  }
+}
+
+function hydrateCompletedSessionRowFromParsedTruth(
+  sessionRow: LobbyMatchRow,
+  parsedMatch: LobbyMatchRow | null | undefined
+): LobbyMatchRow {
+  if (!parsedMatch || !hasLobbyWinner(parsedMatch)) return sessionRow;
+
+  const parsed = parsedMatch as LobbyMatchRow & Record<string, unknown>;
+  const next = {
+    ...sessionRow,
+    ...parsed,
+    // Keep the parsed winner/truth foregrounded.
+    winner: parsedMatch.winner,
+    unresolvedResult: null,
+    reviewNeeded: false,
+  } as LobbyMatchRow & Record<string, unknown>;
+
+  if (parsed.winnerProof) {
+    next.winnerProof = parsed.winnerProof;
+  }
+
+  return next as LobbyMatchRow;
+}
+
 export function completedSessionToLobbyMatch(session: LiveGameSession): LobbyMatchRow {
   const playedAt = session.playedOn || session.completedAt || session.updatedAt || session.createdAt;
 
@@ -61,9 +100,27 @@ export function mergeCompletedSessionsIntoLobbyMatches(
 ) {
   const rows: LobbyMatchRow[] = [];
   const seen = new Set<string>();
+  const parsedMatchByKey = new Map<string, LobbyMatchRow>();
+
+  for (const match of matches) {
+    rememberBetterMatch(parsedMatchByKey, lobbyMatchKey(match), match);
+    rememberBetterMatch(parsedMatchByKey, `id:${match.id}`, match);
+  }
 
   for (const session of completedSessions) {
-    const row = completedSessionToLobbyMatch(session);
+    const sessionRow = completedSessionToLobbyMatch(session);
+    const sessionKeys = [
+      sessionMatchKey(session),
+      lobbyMatchKey(sessionRow),
+      `id:${sessionRow.id}`,
+    ];
+
+    const parsedMatch =
+      sessionKeys.map((key) => parsedMatchByKey.get(key)).find(hasLobbyWinner) ??
+      sessionKeys.map((key) => parsedMatchByKey.get(key)).find(Boolean) ??
+      null;
+
+    const row = hydrateCompletedSessionRowFromParsedTruth(sessionRow, parsedMatch);
     const keys = [
       sessionMatchKey(session),
       lobbyMatchKey(row),
