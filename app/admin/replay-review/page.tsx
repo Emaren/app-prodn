@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 
 import { getPrisma } from "@/lib/prisma";
+import { requireServerAdmin } from "@/lib/adminSession";
 import {
   loadReplayReviewQueue,
   type ReplayReviewMarketSummary,
@@ -378,6 +379,7 @@ function ReviewCard({
 }
 
 export default async function AdminReplayReviewPage({ searchParams }: PageProps) {
+  await requireServerAdmin();
   const params = await searchParams;
   const focusedGameId = Number(firstParam(params.gameId));
   const data = await loadReplayReviewQueue(getPrisma());
