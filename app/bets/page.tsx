@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent } from "react";
 import type { OfflineSigner } from "@cosmjs/proto-signing";
 import { Monitor, Play } from "lucide-react";
 import { toast } from "sonner";
@@ -2942,18 +2943,34 @@ function BroadcastHeroTile({
     setPlayingView(null);
   }, [defaultView.key, marketTitle, leftName, rightName]);
 
+      const handleBattleCamTileClick = (event: ReactMouseEvent<HTMLElement>) => {
+    const target = event.target as HTMLElement;
+    const interactive = target.closest("button,a,input,select,textarea,video,iframe,[role='button']");
+    if (interactive && interactive !== event.currentTarget) return;
+    onToggle();
+  };
+
+  const handleBattleCamTileKeyDown = (event: ReactKeyboardEvent<HTMLElement>) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    const target = event.target as HTMLElement;
+    const interactive = target.closest("button,a,input,select,textarea,video,iframe,[role='button']");
+    if (interactive && interactive !== event.currentTarget) return;
+    event.preventDefault();
+    onToggle();
+  };
+
   if (!open) {
     return (
       <section
+        role="button"
+        tabIndex={0}
+        aria-label="Open Battle Cam"
         title="Open Battle Cam"
-        onClick={(event) => {
-          const target = event.target as HTMLElement;
-          if (target.closest("button,a,input,select,textarea,[role='button']")) return;
-          onToggle();
-        }}
+        onClick={handleBattleCamTileClick}
+        onKeyDown={handleBattleCamTileKeyDown}
         data-testid="broadcast-hero-tile"
         data-battle-cam-state="closed"
-        className={`${shellClass()} overflow-hidden border-amber-200/[0.07] bg-[radial-gradient(circle_at_10%_0%,rgba(251,191,36,0.09),transparent_28%),linear-gradient(180deg,rgba(13,20,36,0.96),rgba(8,13,24,0.96))] px-3 py-3 sm:px-4`}
+        className={`${shellClass()} cursor-pointer select-none overflow-hidden border-amber-200/[0.07] bg-[radial-gradient(circle_at_10%_0%,rgba(251,191,36,0.09),transparent_28%),linear-gradient(180deg,rgba(13,20,36,0.96),rgba(8,13,24,0.96))] px-3 py-3 sm:px-4`}
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
@@ -2992,9 +3009,15 @@ function BroadcastHeroTile({
   return (
     <section
       id="battle-cam-panel"
+      role="button"
+      tabIndex={0}
+      aria-label="Close Battle Cam"
+      title="Close Battle Cam"
+      onClick={handleBattleCamTileClick}
+      onKeyDown={handleBattleCamTileKeyDown}
       data-testid="broadcast-hero-tile"
       data-battle-cam-state="open"
-      className={`${shellClass()} overflow-hidden border-amber-200/10 bg-[radial-gradient(circle_at_14%_0%,rgba(251,191,36,0.14),transparent_30%),radial-gradient(circle_at_86%_14%,rgba(56,189,248,0.11),transparent_30%),linear-gradient(180deg,rgba(15,23,42,0.82),rgba(2,6,23,0.48))] p-4 sm:p-5 lg:p-6`}
+      className={`${shellClass()} cursor-pointer select-none overflow-hidden border-amber-200/10 bg-[radial-gradient(circle_at_14%_0%,rgba(251,191,36,0.14),transparent_30%),radial-gradient(circle_at_86%_14%,rgba(56,189,248,0.11),transparent_30%),linear-gradient(180deg,rgba(15,23,42,0.82),rgba(2,6,23,0.48))] p-4 sm:p-5 lg:p-6`}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
