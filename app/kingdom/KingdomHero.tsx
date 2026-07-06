@@ -178,10 +178,10 @@ export default function KingdomHero({ featuredStats }: KingdomHeroProps) {
         fill
         priority
         sizes="(max-width: 1536px) 100vw, 1536px"
-        className="object-cover object-[58%_center]"
+        className="object-cover object-[58%_center] brightness-[1.20] contrast-[0.98] saturate-[1.05]"
       />
 
-      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(2,5,13,0.97)_0%,rgba(2,5,13,0.86)_30%,rgba(2,5,13,0.38)_62%,rgba(2,5,13,0.20)_100%),linear-gradient(180deg,rgba(2,5,13,0.12),rgba(2,5,13,0.16)_48%,rgba(2,5,13,0.95)_100%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(2,5,13,0.64)_0%,rgba(2,5,13,0.52)_30%,rgba(2,5,13,0.18)_62%,rgba(2,5,13,0.08)_100%),linear-gradient(180deg,rgba(2,5,13,0.04),rgba(2,5,13,0.06)_48%,rgba(2,5,13,0.50)_100%)]" />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_76%_22%,rgba(251,191,36,0.06),transparent_25%)]" />
       <div className="pointer-events-none absolute inset-x-12 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/34 to-transparent" />
 
