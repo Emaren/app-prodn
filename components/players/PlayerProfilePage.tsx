@@ -166,7 +166,7 @@ function PlayerProfileExtreme({
         <section className="grid gap-6 2xl:grid-cols-[minmax(0,1.22fr)_minmax(28rem,0.78fr)]">
           <div className="space-y-6">
             <Panel eyebrow="Command Deck" title="Performance radar" count={`${profile.command.totalMatches} games`}>
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <CommandTile label="Win Rate" value={formatPercent(profile.command.winRate)} detail={`${profile.command.wins}W / ${profile.command.losses}L`} tone="emerald" />
                 <CommandTile label="Current Streak" value={profile.command.currentStreakLabel} detail={`${profile.command.matchesLast30Days} games in 30d`} tone={currentStreakTone} />
                 <CommandTile label="Peak Score" value={formatPeakNumber(profile.command.bestScore)} detail={formatAverageNumber(profile.command.averageScore)} tone="sky" />
@@ -186,7 +186,7 @@ function PlayerProfileExtreme({
               </div>
             </Panel>
 
-            <section className="grid gap-6 xl:grid-cols-[1.04fr_0.96fr]">
+            <section className="grid gap-6">
               <Panel eyebrow="Economy Vault" title="Resource command" count={profile.resources.visibleGames > 0 ? `${profile.resources.visibleGames} visible` : "gated"}>
                 <ResourceVault resources={profile.resources} />
               </Panel>
@@ -254,7 +254,7 @@ function PlayerProfileAdvanced({ profile }: { profile: PlayerProfile }) {
       <section className="grid gap-5 xl:grid-cols-[1.12fr_0.88fr]">
         <div className="space-y-5">
           <Panel eyebrow="Command Deck" title="Performance radar" count={`${profile.command.totalMatches} games`}>
-            <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <CommandTile label="Win Rate" value={formatPercent(profile.command.winRate)} detail={`${profile.command.wins}W / ${profile.command.losses}L`} tone="emerald" />
               <CommandTile label="Current Streak" value={profile.command.currentStreakLabel} detail={`${profile.command.matchesLast30Days} games in 30d`} tone={currentStreakTone} />
               <CommandTile label="Peak Score" value={formatPeakNumber(profile.command.bestScore)} detail={formatAverageNumber(profile.command.averageScore)} tone="sky" />
@@ -598,11 +598,9 @@ function ExtremeHero({
   titleHonors: PlayerTitleHonor[];
 }) {
   const profileLabel = profile.isClaimed ? "Verified player command center" : "Claimable player command center";
-  const primaryHonor = titleHonors[0] ?? null;
 
   return (
     <section className="relative overflow-hidden rounded-[2.25rem] bg-[radial-gradient(circle_at_20%_0%,rgba(250,204,21,0.16),transparent_30%),radial-gradient(circle_at_82%_12%,rgba(56,189,248,0.13),transparent_30%),linear-gradient(135deg,rgba(15,23,42,0.98),rgba(7,17,31,0.96)_55%,rgba(2,6,23,0.98))] p-5 shadow-[0_30px_90px_rgba(2,6,23,0.30)] ring-1 ring-white/[0.04] sm:p-6 lg:p-7">
-      {primaryHonor ? <LooseTitleHonorBelt honor={primaryHonor} /> : null}
       <div className="grid gap-7 xl:grid-cols-[minmax(0,1.18fr)_minmax(28rem,0.82fr)] xl:items-stretch">
         <div className="relative z-10 flex min-h-[18rem] flex-col justify-between gap-6">
           <div className="space-y-5">
@@ -631,7 +629,7 @@ function ExtremeHero({
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <HeroStat label="Games" value={String(profile.command.totalMatches)} />
               <HeroStat label="Win Rate" value={formatPercent(profile.command.winRate)} />
               <HeroStat
@@ -650,7 +648,7 @@ function ExtremeHero({
                   Claim This Page
                 </Link>
               ) : (
-                <Link href="/profile" className="rounded-full border border-amber-100/35 bg-[linear-gradient(135deg,rgba(255,232,133,1)_0%,rgba(244,204,75,1)_42%,rgba(191,128,31,1)_100%)] px-5 py-3 text-sm font-semibold text-slate-950 shadow-[0_16px_34px_rgba(217,160,42,0.28),inset_0_1px_0_rgba(255,255,255,0.48),inset_0_-1px_0_rgba(92,55,12,0.22)] transition duration-200 hover:brightness-[1.04] hover:shadow-[0_20px_42px_rgba(217,160,42,0.35),inset_0_1px_0_rgba(255,255,255,0.56),inset_0_-1px_0_rgba(92,55,12,0.18)]">\n                  Open My Profile\n                </Link>
+                <Link href="/profile" className="rounded-full border border-amber-100/24 bg-[linear-gradient(135deg,rgba(255,232,132,0.98)_0%,rgba(245,204,74,0.98)_48%,rgba(184,124,27,0.98)_100%)] px-5 py-3 text-sm font-semibold text-slate-950 shadow-[0_14px_34px_rgba(214,161,45,0.24),inset_0_1px_0_rgba(255,255,255,0.52),inset_0_-1px_0_rgba(90,56,12,0.18)] transition duration-200 hover:brightness-[1.03] hover:shadow-[0_18px_42px_rgba(214,161,45,0.30),inset_0_1px_0_rgba(255,255,255,0.58),inset_0_-1px_0_rgba(90,56,12,0.16)]">Open My Profile</Link>
               )}
               <Link href="/players" className="rounded-full border border-white/12 bg-white/[0.025] px-5 py-3 text-sm text-white/82 transition hover:border-white/24 hover:text-white">
                 Browse Players
@@ -681,27 +679,6 @@ function ExtremeHero({
   );
 }
 
-function LooseTitleHonorBelt({ honor }: { honor: PlayerTitleHonor }) {
-  if (!honor.imageUrl) return null;
-
-  return (
-    <Link
-      href={honor.routeHref}
-      className="pointer-events-auto absolute right-12 top-7 z-10 hidden lg:block opacity-88 transition duration-200 hover:opacity-100"
-      aria-label={`${honor.displayName} title page`}
-    >
-      <div className="relative h-11 w-24 xl:h-12 xl:w-28">
-        <Image
-          src={honor.imageUrl}
-          alt=""
-          fill
-          sizes="96px"
-          className="object-contain drop-shadow-[0_10px_22px_rgba(15,23,42,0.42)]"
-        />
-      </div>
-    </Link>
-  );
-}
 
 function TitleHonorRail({ honors }: { honors: PlayerTitleHonor[] }) {
   if (honors.length === 0) return null;
@@ -767,7 +744,7 @@ function AdvancedHero({ profile }: { profile: PlayerProfile }) {
           </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2">
             <HeroStat label="Games" value={String(profile.command.totalMatches)} />
             <HeroStat label="Win Rate" value={formatPercent(profile.command.winRate)} />
             <HeroStat
@@ -784,7 +761,7 @@ function AdvancedHero({ profile }: { profile: PlayerProfile }) {
                 Claim This Page
               </Link>
             ) : (
-              <Link href="/profile" className="rounded-full border border-amber-100/35 bg-[linear-gradient(135deg,rgba(255,232,133,1)_0%,rgba(244,204,75,1)_42%,rgba(191,128,31,1)_100%)] px-5 py-3 text-sm font-semibold text-slate-950 shadow-[0_16px_34px_rgba(217,160,42,0.28),inset_0_1px_0_rgba(255,255,255,0.48),inset_0_-1px_0_rgba(92,55,12,0.22)] transition duration-200 hover:brightness-[1.04] hover:shadow-[0_20px_42px_rgba(217,160,42,0.35),inset_0_1px_0_rgba(255,255,255,0.56),inset_0_-1px_0_rgba(92,55,12,0.18)]">\n                  Open My Profile\n                </Link>
+              <Link href="/profile" className="rounded-full border border-amber-100/24 bg-[linear-gradient(135deg,rgba(255,232,132,0.98)_0%,rgba(245,204,74,0.98)_48%,rgba(184,124,27,0.98)_100%)] px-5 py-3 text-sm font-semibold text-slate-950 shadow-[0_14px_34px_rgba(214,161,45,0.24),inset_0_1px_0_rgba(255,255,255,0.52),inset_0_-1px_0_rgba(90,56,12,0.18)] transition duration-200 hover:brightness-[1.03] hover:shadow-[0_18px_42px_rgba(214,161,45,0.30),inset_0_1px_0_rgba(255,255,255,0.58),inset_0_-1px_0_rgba(90,56,12,0.16)]">Open My Profile</Link>
             )}
             <Link href="/players" className="rounded-full border border-white/15 px-5 py-3 text-sm text-white/85 transition hover:border-white/30 hover:text-white">
               Browse Players
@@ -1060,7 +1037,7 @@ function ResourceVault({ resources }: { resources: PlayerResourceStats }) {
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2">
         {RESOURCE_LABELS.map((resource) => {
           const meta = RESOURCE_META[resource];
           const total = resources.totals[resource];
@@ -1131,18 +1108,35 @@ function BestGamesGrid({ games }: { games: PlayerBestGame[] }) {
   }
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid gap-3">
       {games.map((game) => (
-        <Link key={game.key} href={game.href} className="rounded-[1.2rem] border border-white/8 bg-white/5 px-4 py-4 transition hover:border-amber-300/35 hover:bg-white/10">
-          <div className="text-[11px] uppercase tracking-[0.24em] text-slate-500">{game.label}</div>
-          <div className="mt-3 text-2xl font-semibold text-white">{game.value}</div>
-          <div className="mt-2 text-sm text-slate-300">{game.mapName}</div>
-          <div className="mt-3 text-xs text-slate-500">{formatDate(game.playedAt)}</div>
+        <Link
+          key={game.key}
+          href={game.href}
+          className="group grid gap-4 rounded-[1.35rem] border border-white/8 bg-white/[0.03] p-4 transition hover:border-amber-300/24 hover:bg-white/[0.05] sm:grid-cols-[8rem_minmax(0,1fr)]"
+        >
+          <div className="rounded-[1rem] border border-white/8 bg-slate-950/20 px-3 py-3">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-400">
+              {game.label}
+            </div>
+            <div className="mt-2 text-2xl font-semibold text-white">
+              {game.value}
+            </div>
+          </div>
+          <div className="min-w-0 self-center">
+            <div className="truncate text-base font-semibold text-white group-hover:text-amber-100">
+              {game.mapName}
+            </div>
+            <div className="mt-2 text-xs text-slate-500">
+              {formatDate(game.playedAt)}
+            </div>
+          </div>
         </Link>
       ))}
     </div>
   );
 }
+
 
 function WatcherRail({ profile }: { profile: PlayerProfile }) {
   const watcherSourceCount = profile.watcher.uniqueWatchers || profile.watcher.watcherKeys;
