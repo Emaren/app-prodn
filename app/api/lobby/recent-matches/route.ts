@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { loadLobbyRecentMatches } from "@/lib/lobbyRecentMatches";
+import { cleanPublicGameRows } from "@/lib/publicReplayTruth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,7 +25,10 @@ export async function GET(request: NextRequest) {
   );
 
   const rows = await loadLobbyRecentMatches({ offset, limit: limit + 1 });
-  const matches = rows.slice(0, limit);
+  const matches = cleanPublicGameRows(rows.slice(0, limit), {
+    includeReview: true,
+    includeLive: false,
+  });
 
   return NextResponse.json({
     ok: true,
