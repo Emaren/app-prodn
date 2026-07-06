@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { BattleLoopPreview } from "@/components/media/BattleLoopPreview";
 
 type WatchPreviewScreenProps = {
   title: string;
@@ -100,12 +101,10 @@ export function WatchPreviewScreen({
       ) : null}
 
       {shouldShowLive ? (
-        <iframe
-          title={`${title} live stream`}
-          src={liveEmbedUrl || ""}
-          className="absolute inset-0 z-20 h-full w-full border-0"
-          allow="autoplay; fullscreen; picture-in-picture"
-          allowFullScreen
+        <BattleLoopPreview
+          seed="aoe2war-public-battle-loop"
+          className="absolute inset-0 h-full w-full rounded-none border-0"
+          label="AoE2WAR battle loop"
         />
       ) : null}
 

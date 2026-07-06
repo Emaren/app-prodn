@@ -22,6 +22,7 @@ import {
   publicReplayMapLabel,
   resolveReliableReplayWinner,
 } from "@/lib/unresolvedWatcherResult";
+import { BattleLoopPreview } from "@/components/media/BattleLoopPreview";
 
 type WatchAndChatHeroProps = {
   tournament: LobbySnapshot["tournament"];
@@ -421,13 +422,11 @@ export function WatchAndChatHero({
                 fallbackLabel={heroStreamFallbackLabel}
               />
             ) : embedSrc ? (
-              <iframe
-                src={embedSrc}
-                title={primaryStream?.label || selectedWar.title}
-                className="absolute inset-0 h-full w-full border-0"
-                allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
-                allowFullScreen
-              />
+              <BattleLoopPreview
+          seed="aoe2war-public-battle-loop"
+          className="absolute inset-0 h-full w-full rounded-none border-0"
+          label="AoE2WAR battle loop"
+        />
             ) : fallbackVideoUrl ? (
               <video
                 key={`${selectedWar.key}-${fallbackVideoUrl}`}

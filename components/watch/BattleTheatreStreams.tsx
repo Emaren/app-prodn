@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 
 import LiveStreamFrame from "@/components/streaming/LiveStreamFrame";
 import type { WatchStreamPayload, WatchStreamRole } from "@/lib/watchStreams";
+import { BattleLoopPreview } from "@/components/media/BattleLoopPreview";
 
 type Props = {
   sessionKey: string;
@@ -158,13 +159,11 @@ export default function BattleTheatreStreams({ sessionKey, playerNames }: Props)
               className="absolute inset-0 h-full min-h-0 rounded-none border-0 shadow-none"
             />
           ) : embedSrc ? (
-            <iframe
-              src={embedSrc}
-              title={activeStream?.label || "Battle Theatre stream"}
-              className="absolute inset-0 h-full w-full"
-              allow="autoplay; fullscreen; picture-in-picture"
-              allowFullScreen
-            />
+            <BattleLoopPreview
+          seed="aoe2war-public-battle-loop"
+          className="absolute inset-0 h-full w-full rounded-none border-0"
+          label="AoE2WAR battle loop"
+        />
           ) : activeStream ? (
             <div className="absolute inset-0 flex items-center justify-center p-6">
               <div className="max-w-xl text-center">
