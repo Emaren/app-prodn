@@ -18,6 +18,7 @@ import {
   type LobbySnapshot,
 } from "@/lib/lobby";
 import { getLobbyMatchPlayedAtMs } from "@/lib/lobbyMatchTime";
+import { cleanPublicGameRows } from "@/lib/publicReplayTruth";
 import { reconcileTournamentMatchProofs } from "@/lib/tournamentProofReconciler";
 import { loadWoloDevSnapshot } from "@/lib/woloDevSnapshot";
 import { loadWoloMarketSnapshot } from "@/lib/woloMarket";
@@ -33,7 +34,12 @@ async function loadRecentMatches(): Promise<LobbyMatchRow[]> {
     const payload = (await response.json()) as LobbyMatchRow[] | unknown;
     if (!Array.isArray(payload)) return [];
 
-    return payload
+    const publicRows = cleanPublicGameRows(payload, {
+      includeReview: true,
+      includeLive: false,
+    }) as LobbyMatchRow[];
+
+    return publicRows
       .slice()
       .sort((a, b) => getLobbyMatchPlayedAtMs(b) - getLobbyMatchPlayedAtMs(a))
       .slice(0, LOBBY_RECENT_MATCH_INITIAL_LIMIT);
