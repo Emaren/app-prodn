@@ -166,7 +166,7 @@ function PlayerProfileExtreme({
         <section className="grid gap-6 2xl:grid-cols-[minmax(0,1.22fr)_minmax(28rem,0.78fr)]">
           <div className="space-y-6">
             <Panel eyebrow="Command Deck" title="Performance radar" count={`${profile.command.totalMatches} games`}>
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <CommandTile label="Win Rate" value={formatPercent(profile.command.winRate)} detail={`${profile.command.wins}W / ${profile.command.losses}L`} tone="emerald" />
                 <CommandTile label="Current Streak" value={profile.command.currentStreakLabel} detail={`${profile.command.matchesLast30Days} games in 30d`} tone={currentStreakTone} />
                 <CommandTile label="Peak Score" value={formatPeakNumber(profile.command.bestScore)} detail={formatAverageNumber(profile.command.averageScore)} tone="sky" />
@@ -254,7 +254,7 @@ function PlayerProfileAdvanced({ profile }: { profile: PlayerProfile }) {
       <section className="grid gap-5 xl:grid-cols-[1.12fr_0.88fr]">
         <div className="space-y-5">
           <Panel eyebrow="Command Deck" title="Performance radar" count={`${profile.command.totalMatches} games`}>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
               <CommandTile label="Win Rate" value={formatPercent(profile.command.winRate)} detail={`${profile.command.wins}W / ${profile.command.losses}L`} tone="emerald" />
               <CommandTile label="Current Streak" value={profile.command.currentStreakLabel} detail={`${profile.command.matchesLast30Days} games in 30d`} tone={currentStreakTone} />
               <CommandTile label="Peak Score" value={formatPeakNumber(profile.command.bestScore)} detail={formatAverageNumber(profile.command.averageScore)} tone="sky" />
