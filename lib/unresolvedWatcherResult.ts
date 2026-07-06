@@ -14,7 +14,7 @@ export type UnresolvedWatcherResultCode =
 
 export type UnresolvedWatcherResult = {
   code: UnresolvedWatcherResultCode;
-  label: "Winner unresolved" | "Needs parser review" | "Awaiting fuller proof";
+  label: "Winner under review" | "Result review" | "Awaiting final proof";
   explanation: string;
   reviewNeeded: boolean;
 };
@@ -384,7 +384,7 @@ export function resolveReplayWinnerTruth(
       candidateWinner,
       confidence: "inferred_low_confidence",
       truthReasons,
-      publicLabel: "Winner unresolved",
+      publicLabel: "Winner under review",
       statsEligible: false,
       bettingEligible: false,
       diagnosticSummary: candidateWinner
@@ -465,7 +465,7 @@ export function resolveReplayWinnerTruth(
       ? "inferred_low_confidence"
       : "unresolved",
     truthReasons,
-    publicLabel: "Winner unresolved",
+    publicLabel: "Winner under review",
     statsEligible: false,
     bettingEligible: false,
     diagnosticSummary: lowConfidenceFlag
@@ -543,7 +543,7 @@ export function classifyUnresolvedWatcherResult(
     if (playerCount === 0) {
       return result(
         "roster_missing",
-        "Awaiting fuller proof",
+        "Awaiting final proof",
         "Player roster still parsing",
         false
       );
@@ -552,7 +552,7 @@ export function classifyUnresolvedWatcherResult(
     if (playerCount === 1) {
       return result(
         "incomplete_single_watcher_proof",
-        "Awaiting fuller proof",
+        "Awaiting final proof",
         "Only one player detected; awaiting fuller proof",
         false
       );
@@ -561,7 +561,7 @@ export function classifyUnresolvedWatcherResult(
     if (!hasKnownMap) {
       return result(
         "parser_unknown_fields",
-        "Awaiting fuller proof",
+        "Awaiting final proof",
         "Map unavailable; live replay metadata still parsing",
         false
       );
@@ -575,7 +575,7 @@ export function classifyUnresolvedWatcherResult(
   if (winnerTruth.confidence === "inferred_low_confidence") {
     return result(
       "impossible_from_available_replay_data",
-      "Winner unresolved",
+      "Winner under review",
       winnerTruth.diagnosticSummary,
       true
     );
@@ -589,7 +589,7 @@ export function classifyUnresolvedWatcherResult(
   ) {
     return result(
       "final_proof_unparsed",
-      "Needs parser review",
+      "Result review",
       "Final proof preserved but parser could not extract winner",
       true
     );
@@ -607,7 +607,7 @@ export function classifyUnresolvedWatcherResult(
         : null;
     return result(
       "replay_still_cooling_down",
-      "Awaiting fuller proof",
+      "Awaiting final proof",
       `Replay still cooling down${seconds ? ` · ${seconds}s remaining` : ""}`,
       false
     );
@@ -621,7 +621,7 @@ export function classifyUnresolvedWatcherResult(
   ) {
     return result(
       "duplicate_or_alias_conflict",
-      "Needs parser review",
+      "Result review",
       "Duplicate replay candidate ignored",
       false
     );
@@ -636,7 +636,7 @@ export function classifyUnresolvedWatcherResult(
   ) {
     return result(
       "incomplete_single_watcher_proof",
-      "Awaiting fuller proof",
+      "Awaiting final proof",
       "Only one player detected; awaiting fuller proof",
       false
     );
@@ -649,7 +649,7 @@ export function classifyUnresolvedWatcherResult(
   ) {
     return result(
       "impossible_from_available_replay_data",
-      "Winner unresolved",
+      "Winner under review",
       "Winner is impossible to determine from the available replay data",
       true
     );
@@ -658,7 +658,7 @@ export function classifyUnresolvedWatcherResult(
   if (playerCount >= 2 && finalish) {
     return result(
       "winner_missing",
-      "Winner unresolved",
+      "Winner under review",
       "Replay parsed but winner field missing",
       true
     );
@@ -671,7 +671,7 @@ export function classifyUnresolvedWatcherResult(
   ) {
     return result(
       "parser_unknown_fields",
-      "Needs parser review",
+      "Result review",
       "Parser returned unknown replay fields; needs parser review",
       true
     );
@@ -680,7 +680,7 @@ export function classifyUnresolvedWatcherResult(
   if (playerCount === 0 && eventType === "parse_pending") {
     return result(
       "roster_missing",
-      "Awaiting fuller proof",
+      "Awaiting final proof",
       "Player roster missing; awaiting fuller proof",
       false
     );
@@ -689,7 +689,7 @@ export function classifyUnresolvedWatcherResult(
   if (finalish) {
     return result(
       "impossible_from_available_replay_data",
-      "Winner unresolved",
+      "Winner under review",
       "Winner is impossible to determine from the available replay data",
       true
     );

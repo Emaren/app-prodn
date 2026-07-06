@@ -147,9 +147,41 @@ function playerLabel(
   return displayName(entrant.inGameName, entrant.steamPersonaName);
 }
 
+function uniqueNonEmpty(values: Array<string | null | undefined>) {
+  const seen = new Set<string>();
+  const names: string[] = [];
+
+  for (const value of values) {
+    const name = normalizePublicReplayText(value);
+    if (!name) continue;
+
+    const key = name.toLowerCase();
+    if (seen.has(key)) continue;
+
+    seen.add(key);
+    names.push(name);
+  }
+
+  return names;
+}
+
+function sessionKnownParticipantNames(session: Pick<LiveSession, "players" | "uploader" | "uploaders">) {
+  return uniqueNonEmpty([
+    ...session.players.map((player) => player.name),
+    ...(session.uploaders ?? []).map((uploader) => uploader.displayName),
+    session.uploader?.displayName,
+  ]);
+}
+
 function sessionTitle(session: LiveSession) {
-  if (session.players.length > 0) {
-    return session.players.map((player) => player.name).join(" vs ");
+  const names = sessionKnownParticipantNames(session);
+
+  if (names.length >= 2) {
+    return names.join(" vs ");
+  }
+
+  if (names.length === 1) {
+    return `${names[0]} vs opponent resolving`;
   }
 
   if (session.state === "live") {
@@ -157,6 +189,35 @@ function sessionTitle(session: LiveSession) {
   }
 
   return session.originalFilename || "Game in progress";
+}
+
+function proofLabel(session: LiveSession) {
+  const label = session.unresolvedResult?.label as string | undefined;
+  if (!label) return null;
+  if (label === "Awaiting fuller proof") return "Awaiting final proof";
+  if (label === "Winner unresolved") return "Winner under review";
+  if (label === "Needs parser review") return "Result review";
+  return label;
+}
+
+function proofExplanation(session: LiveSession) {
+  const explanation = session.unresolvedResult?.explanation;
+  if (!explanation) return null;
+
+  const names = sessionKnownParticipantNames(session);
+  if (session.unresolvedResult?.code === "roster_missing" && names.length > 0) {
+    return `${names.join(" + ")} linked; opponent resolving from replay proof.`;
+  }
+
+  if (explanation === "Player roster still parsing") {
+    return "Roster still resolving from the live replay.";
+  }
+
+  if (explanation === "Replay parsed but winner field missing") {
+    return "Replay proof is incomplete; review needed.";
+  }
+
+  return explanation;
 }
 
 function isManualUploadedReplaySession(session: Pick<LiveSession, "uploader" | "uploaders">) {
@@ -1088,7 +1149,7 @@ function ClassicBoard({
                           {session.unresolvedResult ? (
                             <div className="mt-2">
                               <span className="rounded-full border border-amber-200/18 bg-amber-300/8 px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-amber-100">
-                                {session.unresolvedResult.label}
+                                {proofLabel(session) ?? session.unresolvedResult.label}
                               </span>
                             </div>
                           ) : null}
@@ -1742,7 +1803,7 @@ function PremiumClassicLiveSessionCard({
   <DualWatcherProofStack uploaders={session.uploaders} />
 
   const statusLabel = session.unresolvedResult
-    ? session.unresolvedResult.label
+    ? proofLabel(session) ?? session.unresolvedResult.label
     : isCompleted
       ? "Final stored"
       : "Live parse";
@@ -1881,10 +1942,10 @@ function PremiumClassicLiveSessionCard({
             ) : session.unresolvedResult ? (
               <div>
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-100">
-                  {session.unresolvedResult.label}
+                  {proofLabel(session) ?? session.unresolvedResult.label}
                 </div>
                 <div className="mt-1 text-xs leading-5 text-slate-400">
-                  {session.unresolvedResult.explanation}
+                  {proofExplanation(session) ?? session.unresolvedResult.explanation}
                 </div>
               </div>
             ) : (
@@ -1961,7 +2022,7 @@ function ClassicLiveSessionCard({
   const eyebrowClass = isCompleted ? "text-emerald-100/80" : "text-red-100/80";
   const eyebrowLabel = isCompleted ? "Just finished" : "Watcher live";
   const badgeLabel = session.unresolvedResult
-    ? session.unresolvedResult.label
+    ? proofLabel(session) ?? session.unresolvedResult.label
     : isCompleted
       ? "Final stored"
       : "Live parse";
@@ -2011,7 +2072,7 @@ function ClassicLiveSessionCard({
             {session.unresolvedResult ? (
               <>
                 <span className="rounded-full border border-amber-300/25 bg-amber-500/10 px-3 py-1 text-xs text-amber-100">
-                  {session.unresolvedResult.label}
+                  {proofLabel(session) ?? session.unresolvedResult.label}
                 </span>
                 <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
                   {session.unresolvedResult.code.replaceAll("_", " ")}
@@ -2655,7 +2716,7 @@ function LiveSessionCard({
               <DualWatcherProofStack uploaders={(session as { uploaders?: DualWatcherProofUploader[] | null }).uploaders} />
 
               {session.unresolvedResult
-                ? session.unresolvedResult.label
+                ? proofLabel(session) ?? session.unresolvedResult.label
                 : isCompleted
                   ? "Final stored"
                   : "Watcher live"}
@@ -2681,7 +2742,7 @@ function LiveSessionCard({
             <div className="mt-2 rounded-xl border border-amber-200/15 bg-amber-300/[0.06] px-3 py-2.5">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs font-semibold text-amber-100">
-                  {session.unresolvedResult.explanation}
+                  {proofExplanation(session) ?? session.unresolvedResult.explanation}
                 </span>
                 <span className="rounded-full border border-white/10 bg-slate-950/35 px-2 py-0.5 text-[9px] uppercase tracking-[0.14em] text-slate-300">
                   {session.unresolvedResult.code.replaceAll("_", " ")}
