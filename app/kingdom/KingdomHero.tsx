@@ -78,37 +78,46 @@ function MovieKingdomTitle({ haze = "soft" }: { haze?: "clear" | "soft" | "full"
         : "opacity-0";
 
   return (
-    <div className="relative max-w-[46rem]">
+    <div className="relative mt-2 max-w-none overflow-visible pb-6">
       <div
         aria-hidden="true"
-        className={`pointer-events-none absolute -left-16 top-8 h-[20rem] w-[20rem] rounded-full bg-[radial-gradient(circle,rgba(245,158,11,0.28)_0%,rgba(245,158,11,0.18)_24%,rgba(245,158,11,0.10)_40%,rgba(245,158,11,0.05)_54%,transparent_74%)] blur-3xl transition-opacity duration-300 ${hazeClass}`}
+        className={`pointer-events-none absolute -inset-x-8 -inset-y-6 rounded-[3rem] bg-[radial-gradient(circle_at_18%_48%,rgba(251,191,36,0.20),transparent_29%),radial-gradient(circle_at_72%_28%,rgba(250,204,21,0.11),transparent_24%)] blur-2xl transition-opacity duration-300 ${hazeClass}`}
       />
 
-      <div className="relative">
-        <div className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-200/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-          Royal Chronicle
-        </div>
+      <h1
+        aria-label="The Kingdom"
+        className="relative font-serif leading-[0.82] tracking-[-0.055em]"
+      >
+        <span className="mb-2 flex items-center gap-4 text-[clamp(0.82rem,1.55vw,1.28rem)] font-black uppercase tracking-[0.58em] text-amber-100/72 sm:mb-3">
+          <span className="h-px w-12 bg-gradient-to-r from-amber-200/0 via-amber-100/62 to-amber-200/0" />
+          The
+          <span className="hidden h-px w-56 bg-gradient-to-r from-amber-100/44 via-amber-200/10 to-transparent sm:block" />
+        </span>
 
-        <div className="mt-5 font-serif text-[clamp(1.15rem,1.8vw,1.55rem)] italic tracking-[0.18em] text-amber-50/80">
-          the first fire
-        </div>
-
-        <div className="mt-3">
-          <div className="mb-2 text-[clamp(2rem,3.1vw,2.7rem)] font-semibold uppercase tracking-[0.48em] text-amber-50/90">
-            THE
-          </div>
-
-          <div className="font-serif text-[clamp(4.2rem,10vw,8.25rem)] font-semibold uppercase leading-[0.88] tracking-[-0.045em] bg-[linear-gradient(180deg,#fff4cc_0%,#f3d27a_28%,#d39a31_62%,#8b5616_100%)] bg-clip-text text-transparent drop-shadow-[0_10px_22px_rgba(0,0,0,0.88)]">
-            KINGDOM
-          </div>
-        </div>
-
-        <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2">
-          <span className="h-px w-14 bg-gradient-to-r from-amber-100/0 via-amber-100/45 to-amber-100/0" />
-          <span className="font-serif text-[clamp(0.95rem,1.45vw,1.1rem)] italic tracking-[0.08em] text-amber-50/80">
-            founded in fire · remembered on chain
+        <span className="relative block overflow-visible pb-5">
+          <span
+            className="absolute -left-[0.045em] top-[0.035em] inline-block w-max max-w-none select-none whitespace-nowrap text-[clamp(3.74rem,10.35vw,8.10rem)] font-semibold uppercase tracking-[0.025em] text-black/70 blur-[1.5px]"
+            aria-hidden="true"
+          >
+            Kingdom
           </span>
-        </div>
+          <span
+            className="absolute left-[0.028em] top-[0.02em] inline-block w-max max-w-none select-none whitespace-nowrap bg-[linear-gradient(180deg,rgba(255,250,220,0.18)_0%,rgba(251,191,36,0.10)_44%,rgba(92,46,11,0.08)_100%)] bg-clip-text text-[clamp(3.74rem,10.35vw,8.10rem)] font-semibold uppercase tracking-[0.025em] text-transparent blur-[0.35px]"
+            aria-hidden="true"
+          >
+            Kingdom
+          </span>
+          <span className="relative inline-block w-max max-w-none whitespace-nowrap bg-[linear-gradient(180deg,#fff9df_0%,#f5d68a_28%,#c99632_58%,#7a4617_100%)] bg-clip-text text-[clamp(3.74rem,10.35vw,8.10rem)] font-semibold uppercase tracking-[0.025em] text-transparent drop-shadow-[0_10px_26px_rgba(0,0,0,0.88)]">
+            Kingdom
+          </span>
+        </span>
+      </h1>
+
+      <div className="mt-0 flex items-center gap-3 sm:mt-1">
+        <span className="h-px w-16 bg-gradient-to-r from-amber-200/0 via-amber-100/70 to-amber-200/0" />
+        <span className="font-serif text-sm italic tracking-[0.16em] text-amber-100/82 sm:text-base">
+          founded in fire · remembered on chain
+        </span>
       </div>
     </div>
   );
