@@ -34,7 +34,7 @@ export default function AcademyHero() {
         </div>
 
         <div className="mt-auto max-w-[42rem] pb-2">
-          <div className="academy-hero-title-art relative -ml-7 mb-4 mt-7 w-[min(59rem,calc(100vw-3rem))] overflow-visible [aspect-ratio:1672/520] sm:-ml-9 lg:-ml-12">
+                    <div className="academy-hero-title-art pointer-events-none relative -ml-7 mb-4 mt-7 w-[min(59rem,calc(100vw-3rem))] overflow-hidden [aspect-ratio:1672/520] sm:-ml-9 lg:-ml-12">
             <Image
               src={ACADEMY_HERO_TITLE_IMAGE}
               alt=""
@@ -42,7 +42,19 @@ export default function AcademyHero() {
               priority
               sizes="(max-width: 768px) 100vw, 59rem"
               aria-hidden="true"
-              className="select-none object-cover object-center opacity-[0.98] mix-blend-screen drop-shadow-[0_22px_48px_rgba(0,0,0,0.52)] [mask-image:linear-gradient(90deg,transparent_0%,black_6%,black_93%,transparent_100%)]"
+              className="select-none object-cover object-center opacity-[0.96] mix-blend-screen brightness-[0.92] contrast-[0.94] saturate-[0.86] drop-shadow-[0_22px_48px_rgba(0,0,0,0.52)] [mask-image:linear-gradient(90deg,transparent_0%,black_6%,black_93%,transparent_100%)]"
+            />
+            <div
+              aria-hidden="true"
+              className="absolute inset-x-0 top-0 h-[16%] bg-gradient-to-b from-[#120712]/88 via-[#120712]/50 to-transparent"
+            />
+            <div
+              aria-hidden="true"
+              className="absolute inset-x-0 top-[12.5%] h-[7%] bg-gradient-to-b from-[#2a1020]/26 via-[#170914]/16 to-transparent blur-[6px]"
+            />
+            <div
+              aria-hidden="true"
+              className="absolute inset-x-0 bottom-0 h-[10%] bg-gradient-to-t from-[#080510]/58 to-transparent"
             />
           </div>
           <h1 className="sr-only">The Academy</h1>
