@@ -2,14 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import {
-  useEffect,
-  useMemo,
-  useState,
-  type KeyboardEvent,
-  type MouseEvent,
-  type ReactNode,
-} from "react";
+import { useEffect, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from "react";
 import { ArrowRight, Crown, ExternalLink, Flame, Landmark } from "lucide-react";
 
 type KingdomStat = {
@@ -149,8 +142,6 @@ export default function KingdomHero({ featuredStats }: KingdomHeroProps) {
     }
   }, []);
 
-  const titleIndex = useMemo(() => titleStyles.indexOf(titleStyle), [titleStyle]);
-
   function cycleTitle() {
     setTitleStyle((current) => {
       const next = getNextStyle(current);
@@ -241,26 +232,7 @@ export default function KingdomHero({ featuredStats }: KingdomHeroProps) {
               Championship Belts
             </Link>
           </div>
-
-          <div className="mt-5 flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-slate-500/68">
-            {titleStyles.map((style, index) => (
-              <button
-                key={style}
-                type="button"
-                aria-label={`Use Kingdom title style ${index + 1}`}
-                className={`h-1.5 rounded-full transition ${
-                  index === titleIndex
-                    ? "w-7 bg-amber-100/48"
-                    : "w-1.5 bg-white/15 hover:bg-white/28"
-                }`}
-                onClick={() => {
-                  setTitleStyle(style);
-                  window.localStorage.setItem(TITLE_STORAGE_KEY, style);
-                }}
-              />
-            ))}
-          </div>
-        </div>
+</div>
       </div>
 
       <div className="absolute bottom-5 right-5 hidden w-[29rem] grid-cols-3 gap-3 xl:grid">
