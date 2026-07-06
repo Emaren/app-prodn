@@ -196,11 +196,7 @@ export default function KingdomHero({ featuredStats }: KingdomHeroProps) {
               Chronicle Live
             </HeroChip>
           </div>
-
-          <p className="mt-6 text-[10px] font-black uppercase tracking-[0.40em] text-slate-400/66">
-            AoE2WAR · The Kingdom
-          </p>
-        </div>
+</div>
 
         <div className="max-w-[58rem]">
           <TitleVariant style={titleStyle} />
