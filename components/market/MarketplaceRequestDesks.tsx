@@ -93,7 +93,7 @@ async function postMarketRequest(body: Record<string, unknown>) {
 }
 
 export function AvatarCommissionScroll() {
-  const { uid, loading, loginWithSteam } = useUserAuth();
+  const { uid, loginWithSteam } = useUserAuth();
   const { address, connect } = useKeplr();
   const [archetypes, setArchetypes] = useState<AvatarArchetypeId[]>([
     "arena-champion",
@@ -334,7 +334,7 @@ export function AvatarCommissionScroll() {
           {uid ? (
             <button
               type="submit"
-              disabled={busy || loading || !brief.trim()}
+              disabled={busy || !brief.trim()}
               className="market-gold-button group inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[0.35rem] px-5 text-sm font-bold"
             >
               {busy ? (
@@ -372,7 +372,7 @@ export function AvatarCommissionScroll() {
 }
 
 export function OpenShopDesk() {
-  const { uid, loading, loginWithSteam } = useUserAuth();
+  const { uid, loginWithSteam } = useUserAuth();
   const { address, connect } = useKeplr();
   const [shopName, setShopName] = useState("");
   const [offer, setOffer] = useState("");
@@ -491,7 +491,7 @@ export function OpenShopDesk() {
       {uid ? (
         <button
           type="submit"
-          disabled={busy || loading || !shopName.trim() || !offer.trim()}
+          disabled={busy || !shopName.trim() || !offer.trim()}
           className="market-gold-button group mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full px-5 text-sm font-black"
         >
           {busy ? (
