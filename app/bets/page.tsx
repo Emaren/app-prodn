@@ -898,8 +898,8 @@ function MarketTimingRail({ market, nowMs }: { market: BetBoardMarket; nowMs: nu
 
 function BettingHallImageHero() {
   return (
-    <section className="relative mx-auto w-full max-w-[min(92rem,calc(100vw-2rem))] overflow-hidden rounded-[2.25rem] border border-amber-100/18 bg-slate-950 shadow-[0_34px_110px_rgba(2,6,23,0.46)]">
-      <div className="relative min-h-[22rem] sm:min-h-[28rem] lg:min-h-[34rem]">
+    <section className="relative mx-auto w-full max-w-[min(92rem,calc(100vw-2rem))] overflow-hidden rounded-[2.35rem] border border-amber-100/18 bg-slate-950 shadow-[0_34px_110px_rgba(2,6,23,0.50)]">
+      <div className="relative min-h-[30rem] sm:min-h-[38rem] lg:min-h-[46rem] xl:min-h-[50rem]">
         <Image
           src={BETTING_HALL_HERO_SRC}
           alt="The Betting Hall"
@@ -910,7 +910,7 @@ function BettingHallImageHero() {
         />
         <div
           aria-hidden="true"
-          className="absolute inset-0 bg-[linear-gradient(90deg,rgba(2,6,23,0.12)_0%,rgba(2,6,23,0.03)_44%,rgba(2,6,23,0.10)_100%),linear-gradient(180deg,rgba(2,6,23,0.04)_0%,rgba(2,6,23,0.00)_48%,rgba(2,6,23,0.42)_100%)]"
+          className="absolute inset-0 bg-[linear-gradient(90deg,rgba(2,6,23,0.08)_0%,rgba(2,6,23,0.02)_44%,rgba(2,6,23,0.08)_100%),linear-gradient(180deg,rgba(2,6,23,0.02)_0%,rgba(2,6,23,0.00)_50%,rgba(2,6,23,0.34)_100%)]"
         />
       </div>
     </section>
