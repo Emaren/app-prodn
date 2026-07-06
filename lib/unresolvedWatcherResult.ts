@@ -655,6 +655,15 @@ export function classifyUnresolvedWatcherResult(
     );
   }
 
+  if (playerCount >= 2 && finalish) {
+    return result(
+      "winner_missing",
+      "Winner unresolved",
+      "Replay parsed but winner field missing",
+      true
+    );
+  }
+
   if (
     eventType === "parse_result_unknown_fields" ||
     combined.includes("unknown_fields") ||
@@ -674,15 +683,6 @@ export function classifyUnresolvedWatcherResult(
       "Awaiting fuller proof",
       "Player roster missing; awaiting fuller proof",
       false
-    );
-  }
-
-  if (playerCount >= 2 && finalish) {
-    return result(
-      "winner_missing",
-      "Winner unresolved",
-      "Replay parsed but winner field missing",
-      true
     );
   }
 

@@ -187,6 +187,33 @@ test("active games with known roster and map are not mislabeled as parser review
   assert.equal(unresolved, null);
 });
 
+test("completed replay metadata names the missing winner instead of generic unknown fields", () => {
+  const unresolved = classifyUnresolvedWatcherResult({
+    winner: "Unknown",
+    players: [
+      { name: "Jim", winner: false },
+      { name: "King Kurt", winner: false },
+    ],
+    mapName: "Forest Nothing Feitoria",
+    state: "completed",
+    parseReason: "hd_final_parse_match_fallback",
+    parseSource: "watcher_final",
+    keyEvents: {
+      completed: true,
+      postgame_available: false,
+      has_scores: false,
+      has_achievements: false,
+    },
+  });
+
+  assert.equal(unresolved?.code, "winner_missing");
+  assert.equal(unresolved?.label, "Winner unresolved");
+  assert.equal(
+    unresolved?.explanation,
+    "Replay parsed but winner field missing"
+  );
+});
+
 test("public replay rows reject unsafe winners and normalize unknown metadata", () => {
   const row = toPublicGameStatsRow({
     id: 10252,
