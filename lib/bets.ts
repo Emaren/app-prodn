@@ -3183,6 +3183,84 @@ async function loadWatchStreamsBySession(
   return streamsBySession;
 }
 
+
+async function loadViewerRecentClosedBookEntries(
+  prisma: PrismaClient,
+  viewerId: number | null | undefined,
+  excludedMarketIds: Set<number>
+): Promise<BetBookEntry[]> {
+  if (!viewerId) return [];
+
+  const rows = await prisma.betWager.findMany({
+    where: {
+      userId: viewerId,
+      status: { in: ["active", "won", "lost", "void"] },
+      marketId: excludedMarketIds.size > 0 ? { notIn: Array.from(excludedMarketIds) } : undefined,
+    },
+    orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
+    take: 12,
+    select: {
+      id: true,
+      marketId: true,
+      side: true,
+      amountWolo: true,
+      status: true,
+      payoutWolo: true,
+      executionMode: true,
+      stakeTxHash: true,
+      createdAt: true,
+      updatedAt: true,
+      market: {
+        select: {
+          id: true,
+          slug: true,
+          title: true,
+          eventLabel: true,
+          status: true,
+          leftLabel: true,
+          rightLabel: true,
+          settledAt: true,
+        },
+      },
+    },
+  });
+
+  const statusLabel = (status: string, payoutWolo: number | null) => {
+    if (status === "active") return "Slip locked";
+    if (status === "won") return "Won";
+    if (status === "lost") return "Lost";
+    if (status === "void") return (payoutWolo ?? 0) > 0 ? "Refund recorded" : "Voided";
+    return status.replace(/_/g, " ");
+  };
+
+  return rows.map((row): BetBookEntry => {
+    const side: BetSide = row.side === "right" ? "right" : "left";
+    const pickedLabel = side === "left" ? row.market.leftLabel : row.market.rightLabel;
+    const marketStatus: BetStatus = ["open", "closing", "live", "settled"].includes(row.market.status)
+      ? (row.market.status as BetStatus)
+      : "settled";
+
+    return {
+      marketId: row.marketId,
+      marketSlug: row.market.slug,
+      title: row.market.title,
+      eventLabel: row.market.eventLabel,
+      side,
+      pickedLabel,
+      amountWolo: row.amountWolo,
+      slipCount: 1,
+      projectedReturnWolo: row.payoutWolo ?? 0,
+      closeLabel: statusLabel(row.status, row.payoutWolo),
+      scheduledStartAt: row.market.settledAt?.toISOString() ?? null,
+      status: marketStatus,
+      executionMode: row.executionMode === "onchain_escrow" ? "onchain_escrow" : "app_only",
+      stakeTxHash: row.stakeTxHash,
+      stakeProofUrl: row.stakeTxHash ? buildWoloRestTxLookupUrl(row.stakeTxHash) : null,
+    };
+  });
+}
+
+
 export async function loadBetBoardSnapshot(
   prisma: PrismaClient,
   viewerUid?: string | null
@@ -3293,7 +3371,7 @@ export async function loadBetBoardSnapshot(
   const featuredMarket =
     liveWatcherMarket || openMarkets.find((market) => market.featured) || openMarkets[0] || null;
 
-  const openWagers = openMarkets
+  const activeOpenWagers = openMarkets
     .filter((market) => market.viewerWager)
     .map((market) => {
       const side = market.viewerWager?.side || "left";
@@ -3326,6 +3404,15 @@ export async function loadBetBoardSnapshot(
       } satisfies BetBookEntry;
     })
     .sort((left, right) => right.amountWolo - left.amountWolo);
+
+
+  const activeBookMarketIds = new Set(activeOpenWagers.map((entry) => entry.marketId));
+  const recentClosedWagers = await loadViewerRecentClosedBookEntries(
+    prisma,
+    viewer?.id ?? null,
+    activeBookMarketIds
+  );
+  const openWagers = [...activeOpenWagers, ...recentClosedWagers];
 
   const bestReturn = openMarkets.reduce<{
     label: string;
@@ -3404,9 +3491,9 @@ export async function loadBetBoardSnapshot(
     openMarkets,
     settledResults,
     yourBook: {
-      activeCount: openWagers.reduce((sum, wager) => sum + wager.slipCount, 0),
-      stakedWolo: openWagers.reduce((sum, wager) => sum + wager.amountWolo, 0),
-      projectedReturnWolo: openWagers.reduce(
+      activeCount: activeOpenWagers.reduce((sum, wager) => sum + wager.slipCount, 0),
+      stakedWolo: activeOpenWagers.reduce((sum, wager) => sum + wager.amountWolo, 0),
+      projectedReturnWolo: activeOpenWagers.reduce(
         (sum, wager) => sum + wager.projectedReturnWolo,
         0
       ),
