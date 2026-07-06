@@ -601,7 +601,8 @@ function ExtremeHero({
   const primaryHonor = titleHonors[0] ?? null;
 
   return (
-    <section className="relative overflow-hidden rounded-[2.25rem] bg-[radial-gradient(circle_at_20%_0%,rgba(250,204,21,0.16),transparent_30%),radial-gradient(circle_at_82%_12%,rgba(56,189,248,0.13),transparent_30%),linear-gradient(135deg,rgba(15,23,42,0.98),rgba(7,17,31,0.96)_55%,rgba(2,6,23,0.98))] p-5 shadow-[0_30px_90px_rgba(2,6,23,0.34)] ring-1 ring-white/8 sm:p-6 lg:p-7">
+    <section className="relative overflow-hidden rounded-[2.25rem] bg-[radial-gradient(circle_at_20%_0%,rgba(250,204,21,0.16),transparent_30%),radial-gradient(circle_at_82%_12%,rgba(56,189,248,0.13),transparent_30%),linear-gradient(135deg,rgba(15,23,42,0.98),rgba(7,17,31,0.96)_55%,rgba(2,6,23,0.98))] p-5 shadow-[0_30px_90px_rgba(2,6,23,0.30)] ring-1 ring-white/[0.04] sm:p-6 lg:p-7">
+      {primaryHonor ? <LooseTitleHonorBelt honor={primaryHonor} /> : null}
       <div className="grid gap-7 xl:grid-cols-[minmax(0,1.18fr)_minmax(28rem,0.82fr)] xl:items-stretch">
         <div className="relative z-10 flex min-h-[18rem] flex-col justify-between gap-6">
           <div className="space-y-5">
@@ -609,12 +610,12 @@ function ExtremeHero({
               <span className="rounded-full bg-amber-300/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-amber-100/90 ring-1 ring-amber-200/12">
                 Extreme
               </span>
-              <span className="rounded-full bg-white/[0.04] px-3 py-1 text-xs text-slate-300 ring-1 ring-white/8">
+              <span className="rounded-full bg-white/[0.02] px-3 py-1 text-xs text-slate-300/88 ring-1 ring-white/6 backdrop-blur-sm">
                 {profileLabel}
               </span>
-              {primaryHonor ? <HeroTitleHonorMark honor={primaryHonor} /> : null}
+
               {profile.isLive ? (
-                <span className="rounded-full bg-emerald-400/10 px-3 py-1 text-xs text-emerald-100 ring-1 ring-emerald-300/18">
+                <span className="rounded-full bg-emerald-400/8 px-3 py-1 text-xs text-emerald-100/90 ring-1 ring-emerald-200/12">
                   Online now
                 </span>
               ) : null}
@@ -649,9 +650,7 @@ function ExtremeHero({
                   Claim This Page
                 </Link>
               ) : (
-                <Link href="/profile" className="rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200">
-                  Open My Profile
-                </Link>
+                <Link href="/profile" className="rounded-full border border-amber-100/35 bg-[linear-gradient(135deg,rgba(255,232,133,1)_0%,rgba(244,204,75,1)_42%,rgba(191,128,31,1)_100%)] px-5 py-3 text-sm font-semibold text-slate-950 shadow-[0_16px_34px_rgba(217,160,42,0.28),inset_0_1px_0_rgba(255,255,255,0.48),inset_0_-1px_0_rgba(92,55,12,0.22)] transition duration-200 hover:brightness-[1.04] hover:shadow-[0_20px_42px_rgba(217,160,42,0.35),inset_0_1px_0_rgba(255,255,255,0.56),inset_0_-1px_0_rgba(92,55,12,0.18)]">\n                  Open My Profile\n                </Link>
               )}
               <Link href="/players" className="rounded-full border border-white/12 bg-white/[0.025] px-5 py-3 text-sm text-white/82 transition hover:border-white/24 hover:text-white">
                 Browse Players
@@ -682,27 +681,24 @@ function ExtremeHero({
   );
 }
 
-function HeroTitleHonorMark({ honor }: { honor: PlayerTitleHonor }) {
+function LooseTitleHonorBelt({ honor }: { honor: PlayerTitleHonor }) {
+  if (!honor.imageUrl) return null;
+
   return (
     <Link
       href={honor.routeHref}
-      className="inline-flex max-w-full items-center gap-2 rounded-full bg-amber-200/[0.035] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-amber-100/72 ring-1 ring-amber-100/8 transition hover:bg-amber-200/[0.055] hover:text-amber-50 hover:ring-amber-100/16"
+      className="pointer-events-auto absolute right-12 top-7 z-10 hidden lg:block opacity-88 transition duration-200 hover:opacity-100"
       aria-label={`${honor.displayName} title page`}
     >
-      {honor.imageUrl ? (
-        <span className="relative h-4 w-8 shrink-0 opacity-82">
-          <Image
-            src={honor.imageUrl}
-            alt=""
-            fill
-            sizes="32px"
-            className="object-contain drop-shadow-[0_6px_10px_rgba(251,191,36,0.16)]"
-          />
-        </span>
-      ) : (
-        <span className="h-1.5 w-1.5 rounded-full bg-amber-100/70 shadow-[0_0_14px_rgba(251,191,36,0.35)]" />
-      )}
-      <span className="max-w-[11rem] truncate">{honor.displayName}</span>
+      <div className="relative h-11 w-24 xl:h-12 xl:w-28">
+        <Image
+          src={honor.imageUrl}
+          alt=""
+          fill
+          sizes="96px"
+          className="object-contain drop-shadow-[0_10px_22px_rgba(15,23,42,0.42)]"
+        />
+      </div>
     </Link>
   );
 }
@@ -712,12 +708,12 @@ function TitleHonorRail({ honors }: { honors: PlayerTitleHonor[] }) {
 
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <div className="text-[10px] font-semibold uppercase tracking-[0.28em] text-amber-100/48">Title honors</div>
+      <div className="text-[10px] font-semibold uppercase tracking-[0.28em] text-amber-100/38">Title honors</div>
       {honors.map((honor) => (
         <Link
           key={honor.id}
           href={honor.routeHref}
-          className="group inline-flex min-w-0 items-center gap-3 rounded-full bg-white/[0.035] px-3 py-2 text-xs text-slate-200 ring-1 ring-white/7 transition hover:bg-white/[0.055] hover:ring-amber-100/18"
+          className="group inline-flex min-w-0 items-center gap-3 rounded-full bg-white/[0.018] px-3 py-1.5 text-xs text-slate-200/82 ring-1 ring-white/[0.045] transition hover:bg-white/[0.035] hover:ring-amber-100/12"
         >
           {honor.imageUrl ? (
             <span className="relative h-6 w-11 shrink-0">
@@ -732,8 +728,8 @@ function TitleHonorRail({ honors }: { honors: PlayerTitleHonor[] }) {
           ) : (
             <span className="h-1.5 w-1.5 rounded-full bg-amber-200/70 shadow-[0_0_14px_rgba(251,191,36,0.45)]" />
           )}
-          <span className="truncate font-semibold text-white/84">{honor.displayName}</span>
-          <span className="hidden text-[10px] uppercase tracking-[0.2em] text-amber-100/45 sm:inline">{honor.tier}</span>
+          <span className="truncate font-semibold text-white/72">{honor.displayName}</span>
+          <span className="hidden text-[10px] uppercase tracking-[0.2em] text-amber-100/30 sm:inline">{honor.tier}</span>
         </Link>
       ))}
     </div>
@@ -788,9 +784,7 @@ function AdvancedHero({ profile }: { profile: PlayerProfile }) {
                 Claim This Page
               </Link>
             ) : (
-              <Link href="/profile" className="rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200">
-                Open My Profile
-              </Link>
+              <Link href="/profile" className="rounded-full border border-amber-100/35 bg-[linear-gradient(135deg,rgba(255,232,133,1)_0%,rgba(244,204,75,1)_42%,rgba(191,128,31,1)_100%)] px-5 py-3 text-sm font-semibold text-slate-950 shadow-[0_16px_34px_rgba(217,160,42,0.28),inset_0_1px_0_rgba(255,255,255,0.48),inset_0_-1px_0_rgba(92,55,12,0.22)] transition duration-200 hover:brightness-[1.04] hover:shadow-[0_20px_42px_rgba(217,160,42,0.35),inset_0_1px_0_rgba(255,255,255,0.56),inset_0_-1px_0_rgba(92,55,12,0.18)]">\n                  Open My Profile\n                </Link>
             )}
             <Link href="/players" className="rounded-full border border-white/15 px-5 py-3 text-sm text-white/85 transition hover:border-white/30 hover:text-white">
               Browse Players
