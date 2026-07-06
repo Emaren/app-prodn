@@ -220,6 +220,32 @@ function proofExplanation(session: LiveSession) {
   return explanation;
 }
 
+function liveDisplayTitle(session: LiveSession) {
+  const title = sessionTitle(session);
+  const fileLike =
+    title === session.originalFilename ||
+    title === session.replayFile ||
+    title.endsWith(".aoe2record") ||
+    title.endsWith(".aoe2mpgame");
+
+  if (session.state === "live" && fileLike) {
+    const names = sessionKnownParticipantNames(session);
+    if (names.length >= 2) return names.join(" vs ");
+    if (names.length === 1) return `${names[0]} vs opponent resolving`;
+    return "Battle proof assembling";
+  }
+
+  return title;
+}
+
+function liveDisplaySubtitle(session: LiveSession) {
+  const names = sessionKnownParticipantNames(session);
+  if (session.state === "live" && names.length > 0 && session.players.length === 0) {
+    return `${names.join(" + ")} linked · roster resolving from replay`;
+  }
+  return proofExplanation(session);
+}
+
 function isManualUploadedReplaySession(session: Pick<LiveSession, "uploader" | "uploaders">) {
   return Boolean(session.uploader || (session.uploaders?.length ?? 0) > 0);
 }
@@ -1312,7 +1338,7 @@ function resolvedSessionDisplay(session: LiveSession) {
       winnerName: duelWinner ?? winnerName,
       battleSize,
       mapName,
-      heroTitle: duelWinner && loserName ? `${duelWinner} wins the duel` : sessionTitle(session),
+      heroTitle: duelWinner && loserName ? `${duelWinner} wins the duel` : liveDisplayTitle(session),
       heroSubtitle: duelWinner && loserName ? `${duelWinner} defeated ${loserName} · ${mapName}` : mapName,
       leftLabel: duelWinner ? "Winner" : "Side I",
       rightLabel: duelWinner ? "Challenger" : "Side II",
@@ -1945,7 +1971,7 @@ function PremiumClassicLiveSessionCard({
                   {proofLabel(session) ?? session.unresolvedResult.label}
                 </div>
                 <div className="mt-1 text-xs leading-5 text-slate-400">
-                  {proofExplanation(session) ?? session.unresolvedResult.explanation}
+                  {liveDisplaySubtitle(session) ?? session.unresolvedResult.explanation}
                 </div>
               </div>
             ) : (
@@ -2001,7 +2027,7 @@ function ClassicLiveSessionCard({
       : watcherCount === 2
         ? "Dual watcher coverage"
         : watcherCount === 1
-          ? "Single watcher source"
+          ? "Single watcher"
           : "Watcher source pending";
   const coverageClass =
     watcherCount >= 3
@@ -2659,7 +2685,7 @@ function LiveSessionCard({
   const gameHref = `/game-stats/live/${encodeURIComponent(session.sessionKey)}`;
   const watchHref = `/watch/${encodeURIComponent(session.sessionKey)}`;
   const primaryStream = session.primaryStream;
-  const title = sessionTitle(session);
+  const title = liveDisplayTitle(session);
   const compactDuration = formatDurationCompact(session.durationSeconds);
   const mapName = session.mapName || "Map pending";
   const winner = isCompleted ? resolvedWinnerName(session) : null;
@@ -2742,7 +2768,7 @@ function LiveSessionCard({
             <div className="mt-2 rounded-xl border border-amber-200/15 bg-amber-300/[0.06] px-3 py-2.5">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs font-semibold text-amber-100">
-                  {proofExplanation(session) ?? session.unresolvedResult.explanation}
+                  {liveDisplaySubtitle(session) ?? session.unresolvedResult.explanation}
                 </span>
                 <span className="rounded-full border border-white/10 bg-slate-950/35 px-2 py-0.5 text-[9px] uppercase tracking-[0.14em] text-slate-300">
                   {session.unresolvedResult.code.replaceAll("_", " ")}
@@ -2855,7 +2881,7 @@ function BattleThumbnail({
   return (
     <Link
       href={href}
-      aria-label={`${stream ? "Watch" : "Open"} ${sessionTitle(session)}`}
+      aria-label={`${stream ? "Watch" : "Open"} ${liveDisplayTitle(session)}`}
       className={`relative isolate block overflow-hidden rounded-[1.2rem] border border-white/10 bg-[radial-gradient(circle_at_30%_20%,rgba(125,211,252,0.20),transparent_30%),radial-gradient(circle_at_75%_76%,rgba(251,191,36,0.16),transparent_31%),linear-gradient(145deg,#111827,#020617)] shadow-[0_18px_45px_rgba(0,0,0,0.24)] transition group-hover:border-white/20 ${
         large ? "min-h-[8.5rem]" : "min-h-[7.25rem]"
       }`}
