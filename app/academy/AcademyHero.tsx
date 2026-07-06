@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Flame, Orbit, Shield, Sparkles } from "lucide-react";
 
-const ACADEMY_HERO_TITLE_IMAGE = "/academy/the-academy-title-gold-solid-cutout.png";
+const ACADEMY_HERO_TITLE_IMAGE = "/academy/the-academy-title-gold.png";
 
 export default function AcademyHero() {
   return (
@@ -34,15 +34,7 @@ export default function AcademyHero() {
         </div>
 
         <div className="mt-auto max-w-[42rem] pb-2">
-          <div className="academy-hero-title-art pointer-events-none relative -ml-7 mb-3 mt-7 w-[min(59rem,calc(100vw-3rem))] overflow-visible [aspect-ratio:1672/520] sm:-ml-9 lg:-ml-12">
-            <Image
-              src={ACADEMY_HERO_TITLE_IMAGE}
-              alt=""
-              fill
-              aria-hidden="true"
-              sizes="(max-width: 768px) 100vw, 59rem"
-              className="pointer-events-none select-none object-cover object-center opacity-[0.24] mix-blend-screen blur-[2.2px] brightness-[1.28] contrast-[1.04] saturate-[1.08]"
-            />
+          <div className="academy-hero-title-art relative -ml-7 mb-4 mt-7 w-[min(59rem,calc(100vw-3rem))] overflow-visible [aspect-ratio:1672/520] sm:-ml-9 lg:-ml-12">
             <Image
               src={ACADEMY_HERO_TITLE_IMAGE}
               alt=""
@@ -50,7 +42,7 @@ export default function AcademyHero() {
               priority
               sizes="(max-width: 768px) 100vw, 59rem"
               aria-hidden="true"
-              className="select-none object-cover object-center opacity-[1] brightness-[1.1] contrast-[1.12] saturate-[1.04] drop-shadow-[0_0_14px_rgba(245,190,92,0.16)]"
+              className="select-none object-cover object-center opacity-[0.98] mix-blend-screen drop-shadow-[0_22px_48px_rgba(0,0,0,0.52)] [mask-image:linear-gradient(90deg,transparent_0%,black_6%,black_93%,transparent_100%)]"
             />
           </div>
           <h1 className="sr-only">The Academy</h1>
