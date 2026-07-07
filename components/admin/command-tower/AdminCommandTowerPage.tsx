@@ -265,6 +265,102 @@ function buildJourneyCounts(users: AdminUserRow[]) {
   };
 }
 
+type PlayerAiTelemetryMode = "aoe2_ai" | "regular" | "unknown";
+
+function getPlayerAiModeFromActivity(
+  activity: AdminUserRow["recentActions"][number]
+): PlayerAiTelemetryMode {
+  const mode = activity.metadata?.mode;
+  if (mode === "aoe2_ai" || mode === "regular") return mode;
+  const label = activity.label?.toLowerCase() ?? "";
+  if (label.includes("aoe2")) return "aoe2_ai";
+  if (label.includes("regular")) return "regular";
+  return "unknown";
+}
+
+function formatTelemetryTime(value: string) {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "unknown";
+  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function buildPlayerAiTelemetry(users: AdminUserRow[]) {
+  const events = users.flatMap((user) =>
+    user.recentActions
+      .filter((activity) => activity.type.startsWith("player_ai_"))
+      .map((activity) => ({
+        ...activity,
+        displayName: user.displayName,
+        uid: user.uid,
+        mode: getPlayerAiModeFromActivity(activity),
+      }))
+  ).sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime());
+
+  const latestModeByUid = new Map<string, PlayerAiTelemetryMode>();
+
+  for (const event of events) {
+    if (
+      !latestModeByUid.has(event.uid) &&
+      (event.type === "player_ai_mode_selected" || event.type === "player_ai_mode_stayed")
+    ) {
+      latestModeByUid.set(event.uid, event.mode);
+    }
+  }
+
+  return {
+    aiSelected: events.filter((event) => event.type === "player_ai_mode_selected" && event.mode === "aoe2_ai").length,
+    regularSelected: events.filter((event) => event.type === "player_ai_mode_selected" && event.mode === "regular").length,
+    aiStayed: events.filter((event) => event.type === "player_ai_mode_stayed" && event.mode === "aoe2_ai").length,
+    regularStayed: events.filter((event) => event.type === "player_ai_mode_stayed" && event.mode === "regular").length,
+    fundClicks: events.filter((event) => event.type === "player_ai_fund_clicked").length,
+    currentAi: Array.from(latestModeByUid.values()).filter((mode) => mode === "aoe2_ai").length,
+    currentRegular: Array.from(latestModeByUid.values()).filter((mode) => mode === "regular").length,
+    latest: events.slice(0, 8),
+  };
+}
+
+function PlayerAiTelemetryCard({
+  label,
+  value,
+  sublabel,
+}: {
+  label: string;
+  value: number;
+  sublabel: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-white/8 bg-slate-950/55 px-4 py-4">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+        {label}
+      </div>
+      <div className="mt-2 text-2xl font-semibold text-white">{value}</div>
+      <div className="mt-1 text-xs text-slate-400">{sublabel}</div>
+    </div>
+  );
+}
+
+function formatAdminDateTime(value: string | null) {
+  if (!value) return "No signal yet";
+
+  try {
+    return new Intl.DateTimeFormat(undefined, {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(new Date(value));
+  } catch {
+    return value;
+  }
+}
+
+const ACADEMY_HERO_VARIANT_LABELS = {
+  b: "Base",
+  a: "Antique",
+  e: "Epic",
+} as const;
+
+
 export default function AdminCommandTowerPage() {
   const {
     data,
@@ -359,6 +455,11 @@ export default function AdminCommandTowerPage() {
     [data?.users]
   );
 
+  const playerAiTelemetry = useMemo(
+    () => buildPlayerAiTelemetry(data?.users ?? []),
+    [data?.users]
+  );
+
   const sortedUsers = useMemo(() => {
     const users = data?.users ?? [];
     return users
@@ -422,6 +523,68 @@ export default function AdminCommandTowerPage() {
           <StatCard label="Pending Honors" value={data.overview.pendingHonors} sublabel="Badges + gifts waiting on acceptance" />
           <StatCard label="Pending Wallet Links" value={data.overview.pendingWoloClaims} sublabel={`${formatWolo(data.overview.pendingWoloClaimAmount)} WOLO awaiting verified wallets`} />
           <StatCard label="Claimed Claims" value={data.overview.claimedWoloClaims} sublabel={`${formatWolo(data.overview.claimedWoloClaimAmount)} WOLO resolved`} />
+        </section>
+      ) : null}
+
+      {data ? (
+        <section className="rounded-[1.5rem] border border-cyan-200/10 bg-[radial-gradient(circle_at_18%_0%,rgba(34,211,238,0.10),transparent_30%),linear-gradient(135deg,rgba(2,6,23,0.88),rgba(15,23,42,0.72))] p-5">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 text-xs uppercase tracking-[0.28em] text-cyan-100/60">
+                <Sparkles className="h-4 w-4" />
+                Player AI Telemetry
+              </div>
+              <div className="mt-2 text-2xl font-semibold text-white">
+                AoE2WAR AI vs Regular profile behavior
+              </div>
+              <div className="mt-1 text-sm text-slate-400">
+                Clicks, settled mode, and funding intent from the player hero chamber.
+              </div>
+            </div>
+            <div className="rounded-full border border-white/10 bg-slate-950/60 px-3 py-1.5 text-xs text-slate-300">
+              Current: {playerAiTelemetry.currentAi} AI · {playerAiTelemetry.currentRegular} regular
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            <PlayerAiTelemetryCard label="AI selected" value={playerAiTelemetry.aiSelected} sublabel="Opened AoE2WAR AI" />
+            <PlayerAiTelemetryCard label="Regular selected" value={playerAiTelemetry.regularSelected} sublabel="Returned to profile" />
+            <PlayerAiTelemetryCard label="Stayed AI" value={playerAiTelemetry.aiStayed} sublabel="Stayed 9s on AI" />
+            <PlayerAiTelemetryCard label="Stayed Regular" value={playerAiTelemetry.regularStayed} sublabel="Stayed 9s regular" />
+            <PlayerAiTelemetryCard label="Fund Clicks" value={playerAiTelemetry.fundClicks} sublabel="Development funding intent" />
+          </div>
+
+          <div className="mt-5 grid gap-2">
+            {playerAiTelemetry.latest.length > 0 ? (
+              playerAiTelemetry.latest.map((event) => (
+                <div
+                  key={`${event.uid}:${event.id}`}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/8 bg-slate-950/55 px-4 py-3 text-sm"
+                >
+                  <div>
+                    <span className="font-semibold text-white">{event.displayName}</span>
+                    <span className="ml-2 text-slate-400">{event.label || event.type}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className={`rounded-full border px-2.5 py-1 font-semibold uppercase tracking-[0.16em] ${
+                      event.mode === "aoe2_ai"
+                        ? "border-cyan-200/25 bg-cyan-400/10 text-cyan-100"
+                        : event.mode === "regular"
+                          ? "border-amber-200/25 bg-amber-400/10 text-amber-100"
+                          : "border-white/10 bg-white/5 text-slate-300"
+                    }`}>
+                      {event.mode === "aoe2_ai" ? "AoE2 AI" : event.mode}
+                    </span>
+                    <span className="text-slate-500">{formatTelemetryTime(event.createdAt)}</span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="rounded-2xl border border-white/8 bg-slate-950/55 px-4 py-4 text-sm text-slate-400">
+                No Player AI events yet. Open a player page and toggle the AI chamber once.
+              </div>
+            )}
+          </div>
         </section>
       ) : null}
 
@@ -552,6 +715,134 @@ export default function AdminCommandTowerPage() {
                   />
                 </div>
               </div>
+              <div className="rounded-2xl border border-rose-200/12 bg-[radial-gradient(circle_at_top_right,rgba(124,29,67,0.2),transparent_52%),rgba(255,255,255,0.04)] px-4 py-4 md:col-span-2 xl:col-span-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <div className="text-[11px] uppercase tracking-[0.24em] text-slate-500">
+                      Academy Hero Signal
+                    </div>
+                    <div className="mt-2 text-sm leading-6 text-slate-400">
+                      Latest chosen hero per visitor. Raw clicks stay visible underneath.
+                    </div>
+                  </div>
+                  <div className="rounded-full border border-rose-200/16 bg-rose-300/[0.08] px-2.5 py-1 text-[11px] font-semibold uppercase text-rose-100/80">
+                    {ACADEMY_HERO_VARIANT_LABELS[data.overview.academyHeroPreferences.preferredVariant]} leads
+                  </div>
+                </div>
+
+                <div className="mt-4 grid gap-3 md:grid-cols-[1.1fr_0.9fr]">
+                  <div className="rounded-2xl border border-white/8 bg-slate-950/55 p-4">
+                    <div className="flex h-2 overflow-hidden rounded-full bg-slate-950/80">
+                      <span
+                        className="bg-slate-500"
+                        style={{
+                          width: `${data.overview.academyHeroPreferences.latestVisitorChoicePercentages.b}%`,
+                        }}
+                        title={`${data.overview.academyHeroPreferences.latestVisitorChoicePercentages.b}% Base`}
+                      />
+                      <span
+                        className="bg-amber-300"
+                        style={{
+                          width: `${data.overview.academyHeroPreferences.latestVisitorChoicePercentages.a}%`,
+                        }}
+                        title={`${data.overview.academyHeroPreferences.latestVisitorChoicePercentages.a}% Antique`}
+                      />
+                      <span
+                        className="bg-rose-400"
+                        style={{
+                          width: `${data.overview.academyHeroPreferences.latestVisitorChoicePercentages.e}%`,
+                        }}
+                        title={`${data.overview.academyHeroPreferences.latestVisitorChoicePercentages.e}% Epic`}
+                      />
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-3 gap-2">
+                      {(["b", "a", "e"] as const).map((variant) => (
+                        <div
+                          key={variant}
+                          className="rounded-xl border border-white/7 bg-slate-950/55 px-2 py-2 text-center"
+                        >
+                          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                            {variant.toUpperCase()}
+                          </div>
+                          <div className="mt-1 text-lg font-semibold text-white">
+                            {data.overview.academyHeroPreferences.latestVisitorChoiceCounts[variant]}
+                          </div>
+                          <div className="text-[10px] text-slate-500">
+                            {data.overview.academyHeroPreferences.latestVisitorChoicePercentages[variant]}% users
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="mt-4 grid gap-2 text-xs text-slate-400 sm:grid-cols-4">
+                      <div>
+                        <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Visitors</div>
+                        <div className="mt-1 text-lg font-semibold text-white">
+                          {data.overview.academyHeroPreferences.uniqueVisitors}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Events</div>
+                        <div className="mt-1 text-lg font-semibold text-white">
+                          {data.overview.academyHeroPreferences.totalEvents}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">24h</div>
+                        <div className="mt-1 text-lg font-semibold text-white">
+                          {data.overview.academyHeroPreferences.last24Hours}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Latest</div>
+                        <div className="mt-1 text-[11px] font-semibold text-slate-200">
+                          {formatAdminDateTime(data.overview.academyHeroPreferences.latestAt)}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-white/8 bg-slate-950/55 p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
+                        Recent Choices
+                      </div>
+                      <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">
+                        {data.overview.academyHeroPreferences.sourceCounts.heroClick} clicks · {data.overview.academyHeroPreferences.sourceCounts.toggle} toggles
+                      </div>
+                    </div>
+
+                    <div className="mt-3 space-y-2">
+                      {data.overview.academyHeroPreferences.recent.length > 0 ? (
+                        data.overview.academyHeroPreferences.recent.slice(0, 5).map((row, index) => (
+                          <div
+                            key={`${row.at}-${row.anonymousId ?? row.ip ?? index}`}
+                            className="flex items-center justify-between gap-3 rounded-xl border border-white/7 bg-black/20 px-3 py-2"
+                          >
+                            <div className="min-w-0">
+                              <div className="truncate text-xs font-semibold text-slate-200">
+                                {row.path || "/academy"} · {row.source === "hero-click" ? "hero click" : row.source}
+                              </div>
+                              <div className="mt-0.5 truncate text-[10px] text-slate-500">
+                                {formatAdminDateTime(row.at)} · {row.ip ?? "unknown ip"}
+                              </div>
+                            </div>
+                            <div className="rounded-full border border-rose-200/14 bg-rose-300/[0.08] px-2.5 py-1 text-[11px] font-black uppercase text-rose-100">
+                              {row.variant}
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="rounded-xl border border-white/7 bg-black/20 px-3 py-3 text-xs text-slate-500">
+                          No Academy hero choices logged yet.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div className="rounded-2xl border border-white/8 bg-white/5 px-4 py-4 md:col-span-2 xl:col-span-4">
                 <div className="flex items-center justify-between gap-3">
                   <div className="text-[11px] uppercase tracking-[0.24em] text-slate-500">

@@ -334,7 +334,31 @@ function HeaderLiveGamesLink({
 function InnerShell({ children }: { children: React.ReactNode }) {
   const { uid, playerName, isAdmin } = useUserAuth();
   const pathname = usePathname();
+  const [playerProfileViewMode, setPlayerProfileViewMode] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const syncPlayerProfileViewMode = () => {
+      setPlayerProfileViewMode(new URLSearchParams(window.location.search).get("view"));
+    };
+
+    syncPlayerProfileViewMode();
+
+    window.addEventListener("popstate", syncPlayerProfileViewMode);
+    window.addEventListener("focus", syncPlayerProfileViewMode);
+
+    const interval = window.setInterval(syncPlayerProfileViewMode, 500);
+
+    return () => {
+      window.removeEventListener("popstate", syncPlayerProfileViewMode);
+      window.removeEventListener("focus", syncPlayerProfileViewMode);
+      window.clearInterval(interval);
+    };
+  }, [pathname]);
   const isPlayerProfileSurface = pathname.startsWith("/players/");
+  const isExtremePlayerProfileSurface =
+    isPlayerProfileSurface && playerProfileViewMode !== "basic" && playerProfileViewMode !== "advanced";
   const { themeKey, viewMode, textColor, pageStyle, tileViewPreferences } =
     useLobbyAppearance();
   const [liveGamesCount, setLiveGamesCount] = React.useState(0);
@@ -626,7 +650,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                     ? "max-w-[90rem]"
                     : isNationalChampionsSurface || isBetDetailSurface
                       ? "max-w-[96rem]"
-                      : isPlayerProfileSurface ? "max-w-[90rem]" : "max-w-6xl"
+                      : isExtremePlayerProfileSurface ? "max-w-[90rem]" : "max-w-6xl"
               }`
         } ${isAcademySurface ? "academy-shell-skin" : ""} ${
           isContactPage ? "overflow-hidden" : isMediaManagerSurface ? "overflow-x-visible" : "overflow-x-hidden"

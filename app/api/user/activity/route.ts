@@ -9,6 +9,9 @@ export const dynamic = "force-dynamic";
 
 const ALLOWED_ACTIVITY_TYPES = new Set([
   "staking_view_selected",
+  "player_ai_mode_selected",
+  "player_ai_mode_stayed",
+  "player_ai_fund_clicked",
 ]);
 
 function cleanText(value: unknown, fallback: string, maxLength = 180) {

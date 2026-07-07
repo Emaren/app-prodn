@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 import CommunityBadgePill from "@/components/contact/CommunityBadgePill";
 import PlayerMatchFeedClient from "@/components/players/PlayerMatchFeedClient";
+import { PlayerAiDevelopmentConsole, PlayerHeroAiDomBinder } from "@/components/players/PlayerAiFeature";
 import SteamLinkedBadge from "@/components/SteamLinkedBadge";
 import { formatDurationLabel } from "@/lib/gameStatsView";
 import { buildMatchupHref } from "@/lib/publicMatchups";
@@ -648,7 +649,7 @@ function ExtremeHero({
                   Claim This Page
                 </Link>
               ) : (
-                <Link href="/profile" className="rounded-full border border-amber-100/24 bg-[linear-gradient(135deg,rgba(255,232,132,0.98)_0%,rgba(245,204,74,0.98)_48%,rgba(184,124,27,0.98)_100%)] px-5 py-3 text-sm font-semibold text-slate-950 shadow-[0_14px_34px_rgba(214,161,45,0.24),inset_0_1px_0_rgba(255,255,255,0.52),inset_0_-1px_0_rgba(90,56,12,0.18)] transition duration-200 hover:brightness-[1.03] hover:shadow-[0_18px_42px_rgba(214,161,45,0.30),inset_0_1px_0_rgba(255,255,255,0.58),inset_0_-1px_0_rgba(90,56,12,0.16)]">Open My Profile</Link>
+                <Link href="/profile" className="rounded-full border border-amber-100/18 bg-[linear-gradient(135deg,rgba(248,214,84,0.98)_0%,rgba(232,181,49,0.98)_100%)] px-5 py-3 text-sm font-semibold text-slate-950 shadow-none transition duration-200 hover:bg-amber-300/95 hover:brightness-[1.01]">Open My Profile</Link>
               )}
               <Link href="/players" className="rounded-full border border-white/12 bg-white/[0.025] px-5 py-3 text-sm text-white/82 transition hover:border-white/24 hover:text-white">
                 Browse Players
@@ -699,7 +700,7 @@ function TitleHonorRail({ honors }: { honors: PlayerTitleHonor[] }) {
                 alt=""
                 fill
                 sizes="44px"
-                className="object-contain opacity-90 drop-shadow-[0_8px_12px_rgba(251,191,36,0.14)] transition group-hover:opacity-100"
+                className="object-contain opacity-90 transition group-hover:opacity-100"
               />
             </span>
           ) : (
@@ -761,7 +762,7 @@ function AdvancedHero({ profile }: { profile: PlayerProfile }) {
                 Claim This Page
               </Link>
             ) : (
-              <Link href="/profile" className="rounded-full border border-amber-100/24 bg-[linear-gradient(135deg,rgba(255,232,132,0.98)_0%,rgba(245,204,74,0.98)_48%,rgba(184,124,27,0.98)_100%)] px-5 py-3 text-sm font-semibold text-slate-950 shadow-[0_14px_34px_rgba(214,161,45,0.24),inset_0_1px_0_rgba(255,255,255,0.52),inset_0_-1px_0_rgba(90,56,12,0.18)] transition duration-200 hover:brightness-[1.03] hover:shadow-[0_18px_42px_rgba(214,161,45,0.30),inset_0_1px_0_rgba(255,255,255,0.58),inset_0_-1px_0_rgba(90,56,12,0.16)]">Open My Profile</Link>
+              <Link href="/profile" className="rounded-full border border-amber-100/18 bg-[linear-gradient(135deg,rgba(248,214,84,0.98)_0%,rgba(232,181,49,0.98)_100%)] px-5 py-3 text-sm font-semibold text-slate-950 shadow-none transition duration-200 hover:bg-amber-300/95 hover:brightness-[1.01]">Open My Profile</Link>
             )}
             <Link href="/players" className="rounded-full border border-white/15 px-5 py-3 text-sm text-white/85 transition hover:border-white/30 hover:text-white">
               Browse Players
@@ -1169,40 +1170,27 @@ function WatcherRail({ profile }: { profile: PlayerProfile }) {
 }
 
 function AiRail({ profile }: { profile: PlayerProfile }) {
-  const contactHref = profile.identity.kind === "claimed"
-    ? `/contact-emaren?user=${encodeURIComponent(profile.identity.uid)}`
-    : "/contact-emaren";
-  const mapLabel = profile.command.favoriteMap || "map pool";
-  const civLabel = profile.command.mostPlayedCivilization || "civ mix";
-  const weaknessLabel = profile.command.losses > 0
-    ? `${profile.command.losses} loss${profile.command.losses === 1 ? "" : "es"} to review`
-    : "no clear leak yet";
+  const weaknessLabel =
+    profile.command.losses > 0
+      ? `${profile.command.losses} loss${profile.command.losses === 1 ? "" : "es"} to review`
+      : "No clear leak yet";
+
+  const props = {
+    totalMatches: profile.command.totalMatches,
+    winRateLabel: formatPercent(profile.command.winRate),
+    mapLabel: profile.command.favoriteMap || "Map unavailable",
+    civLabel: profile.command.mostPlayedCivilization || "Civilization unavailable",
+    weaknessLabel,
+    profileUid: profile.identity.kind === "claimed" ? profile.identity.uid : profile.identity.name,
+    profileDisplayName: profile.displayName,
+    profileIdentityKind: profile.identity.kind,
+  };
 
   return (
-    <div className="space-y-3">
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="rounded-[1.15rem] border border-sky-300/18 bg-sky-400/10 px-4 py-4">
-          <div className="text-[10px] uppercase tracking-[0.24em] text-sky-100/70">The AI Scribe</div>
-          <div className="mt-3 text-lg font-semibold text-white">{formatPercent(profile.command.winRate)} pressure read</div>
-          <div className="mt-2 text-xs leading-5 text-slate-300">
-            {mapLabel} plus {civLabel}; use the archive to spot repeat openings.
-          </div>
-        </div>
-        <div className="rounded-[1.15rem] border border-red-500/22 bg-red-500/10 px-4 py-4">
-          <div className="text-[10px] uppercase tracking-[0.24em] text-red-100/75">Grimer</div>
-          <div className="mt-3 text-lg font-semibold text-white">{weaknessLabel}</div>
-          <div className="mt-2 text-xs leading-5 text-slate-300">
-            Bring receipts: replay-backed losses, rival patterns, and late-game fades.
-          </div>
-        </div>
-      </div>
-      <Link
-        href={contactHref}
-        className="inline-flex rounded-full border border-white/12 bg-white/5 px-4 py-2 text-sm font-medium text-slate-100 transition hover:border-sky-300/35 hover:bg-sky-400/10"
-      >
-        Open AI corner
-      </Link>
-    </div>
+    <>
+      <PlayerHeroAiDomBinder {...props} />
+      <PlayerAiDevelopmentConsole {...props} variant="rail" />
+    </>
   );
 }
 
@@ -1317,7 +1305,7 @@ function StreamRail({ profile }: { profile: PlayerProfile }) {
       {streamHref ? (
         <Link
           href={streamHref}
-          className="inline-flex rounded-full border border-sky-300/25 bg-sky-400/10 px-4 py-2 text-sm font-medium text-sky-100 transition hover:bg-sky-400/15"
+          className="inline-flex rounded-full border border-sky-300/25 bg-sky-400/10 px-4 py-2 text-sm font-medium text-slate-200/86 transition hover:bg-sky-400/15"
         >
           Open stream rail
         </Link>
