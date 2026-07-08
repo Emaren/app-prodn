@@ -101,14 +101,14 @@ function ChronicleIcon({ kind }: { kind: KingdomChronicle["kind"] }) {
 
 function getRoyalTitleClass(view: KingdomChronicleView) {
   if (view === "b") {
-    return "mt-4 block max-w-full whitespace-nowrap font-serif text-[clamp(0.92rem,1.95vw,2.35rem)] leading-[0.96] tracking-[-0.043em] text-stone-50";
+    return "mt-3 block max-w-full whitespace-nowrap pb-2 font-serif text-[clamp(0.86rem,1.82vw,2.18rem)] leading-[1.14] tracking-[-0.041em] text-stone-50";
   }
 
   if (view === "a") {
-    return "mt-4 block max-w-full whitespace-nowrap font-serif text-[clamp(0.92rem,1.9vw,2.25rem)] font-medium leading-[0.96] tracking-[-0.047em] text-transparent bg-gradient-to-br from-stone-50 via-amber-100 to-amber-300 bg-clip-text drop-shadow-[0_12px_26px_rgba(251,191,36,0.11)]";
+    return "mt-3 block max-w-full whitespace-nowrap pb-2 font-serif text-[clamp(0.86rem,1.78vw,2.08rem)] font-medium leading-[1.14] tracking-[-0.045em] text-transparent bg-gradient-to-br from-stone-50 via-amber-100 to-amber-300 bg-clip-text drop-shadow-[0_12px_26px_rgba(251,191,36,0.11)]";
   }
 
-  return "mt-4 block max-w-full whitespace-nowrap font-serif text-[clamp(0.92rem,1.92vw,2.3rem)] font-medium leading-[0.96] tracking-[-0.05em] text-transparent bg-gradient-to-br from-white via-amber-100 to-yellow-400 bg-clip-text drop-shadow-[0_16px_34px_rgba(251,191,36,0.15)]";
+  return "mt-3 block max-w-full whitespace-nowrap pb-2 font-serif text-[clamp(0.86rem,1.8vw,2.12rem)] font-medium leading-[1.14] tracking-[-0.047em] text-transparent bg-gradient-to-br from-white via-amber-100 to-yellow-400 bg-clip-text drop-shadow-[0_16px_34px_rgba(251,191,36,0.15)]";
 }
 
 function getRoyalTitle() {
