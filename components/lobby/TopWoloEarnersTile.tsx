@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import {
   getLobbyPresentationTone,
@@ -29,8 +29,12 @@ const PLACEHOLDER_LANES = [
   { rank: "2nd", title: "Awaiting first earner" },
   { rank: "3rd", title: "Awaiting first earner" },
   { rank: "4th", title: "Awaiting first earner" },
+  { rank: "5th", title: "Awaiting first earner" },
+  { rank: "6th", title: "Awaiting first earner" },
+  { rank: "7th", title: "Awaiting first earner" },
+  { rank: "8th", title: "Awaiting first earner" },
 ] as const;
-const VISIBLE_ROWS = 4;
+const VISIBLE_ROWS = 8;
 
 function formatCompactWolo(value: number | null | undefined) {
   if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) return null;
@@ -138,21 +142,103 @@ export function TopWoloEarnersTile({
   const isExtreme = surface === "extreme";
   const reserve = formatCompactWolo(wolo?.accounts.ecosystembounties?.wolo ?? null);
   const [mode, setMode] = useState<LobbyWoloEarnersMode>(board?.mode ?? "weekly");
+  const [lazyEntries, setLazyEntries] = useState(board?.entries ?? []);
+  const [lazyLoaded, setLazyLoaded] = useState(false);
+  const [lazyLoading, setLazyLoading] = useState(false);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
+  const scrollViewportRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    setLazyEntries(board?.entries ?? []);
+    setLazyLoaded(false);
+    setLazyLoading(false);
+  }, [board?.entries, mode]);
+
+  useEffect(() => {
+    if (lazyLoaded || lazyLoading) return;
+
+    const sentinel = loadMoreRef.current;
+    const scrollRoot = scrollViewportRef.current;
+    if (!sentinel || !scrollRoot) return;
+
+    let cancelled = false;
+    const controller = new AbortController();
+
+    const loadFullBoard = async () => {
+      if (cancelled || lazyLoaded || lazyLoading) return;
+      setLazyLoading(true);
+
+      try {
+        const response = await fetch(
+          `/api/lobby/wolo-earners?mode=${encodeURIComponent(mode)}&limit=64`,
+          {
+            cache: "no-store",
+            signal: controller.signal,
+          },
+        );
+
+        if (!response.ok) return;
+
+        const payload = await response.json();
+        const nextEntries = payload?.board?.entries;
+
+        if (!cancelled && Array.isArray(nextEntries) && nextEntries.length > 0) {
+          setLazyEntries(nextEntries);
+          setLazyLoaded(true);
+        }
+      } catch {
+        // Initial 8-row War Chest remains usable if the lazy call fails.
+      } finally {
+        if (!cancelled) {
+          setLazyLoading(false);
+        }
+      }
+    };
+
+    if (typeof IntersectionObserver === "undefined") {
+      window.setTimeout(loadFullBoard, 250);
+      return () => {
+        cancelled = true;
+        controller.abort();
+      };
+    }
+
+    const observer = new IntersectionObserver(
+      (records) => {
+        if (records.some((record) => record.isIntersecting)) {
+          loadFullBoard();
+        }
+      },
+      {
+        root: scrollRoot,
+        rootMargin: "260px 0px 420px 0px",
+        threshold: 0.01,
+      },
+    );
+
+    observer.observe(sentinel);
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+      observer.disconnect();
+    };
+  }, [lazyLoaded, lazyLoading, mode]);
+
   const entries = useMemo(
     () =>
-      (board?.entries ?? [])
+      (lazyEntries ?? [])
         .slice()
         .sort(compareEntriesForMode(mode))
         .map((entry, index) => ({ ...entry, rank: index + 1 })),
-    [board?.entries, mode]
+    [lazyEntries, mode]
   );
   const statusLabel = mode === "weekly" ? "Weekly" : "All Time";
   const nextModeLabel = mode === "weekly" ? "All Time" : "Weekly";
   const headlineMeta =
-    entries.length > 0 ? `${entries.length} earners` : reserve ? `${reserve} reserve` : "4 earners";
+    entries.length > 0 ? `${entries.length} earners` : reserve ? `${reserve} reserve` : "8 earners";
   const placeholderCount = Math.max(0, VISIBLE_ROWS - entries.length);
   const viewportHeightClassName = isExtreme
-    ? "h-[min(72dvh,42rem)] min-h-[30rem] max-h-[42rem] lg:h-[76rem] lg:min-h-[76rem] lg:max-h-[76rem]"
+    ? "h-full min-h-[30rem] max-h-none lg:h-full lg:min-h-full lg:max-h-none"
     : "h-full min-h-0 max-h-full";
 
   return (
@@ -241,7 +327,10 @@ export function TopWoloEarnersTile({
             ))}
           </div>
         ) : (
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
+          <div
+            ref={scrollViewportRef}
+            className="min-h-0 flex-1 scroll-smooth overflow-y-auto overflow-x-hidden overscroll-contain pr-1 [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,0.28)_transparent]"
+          >
             <div className="grid gap-2.5">
               {entries.map((entry) => {
 
@@ -318,6 +407,18 @@ export function TopWoloEarnersTile({
                   </Link>
                 );
               })}
+
+              <div
+                ref={loadMoreRef}
+                aria-hidden="true"
+                className="h-1 w-full shrink-0"
+              />
+
+              {lazyLoading ? (
+                <div className="rounded-[1.15rem] border border-white/10 bg-white/[0.025] px-4 py-3 text-center text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+                  Loading more wars…
+                </div>
+              ) : null}
 
               {PLACEHOLDER_LANES.slice(entries.length, entries.length + placeholderCount).map((lane) => (
                 <div

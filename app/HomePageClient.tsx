@@ -1862,8 +1862,8 @@ return (
           </div>
 
           <div
-            className={`grid min-h-0 min-w-0 overflow-hidden gap-3.5 lg:grid-rows-[auto_minmax(0,1fr)] lg:self-start lg:pt-4 ${
-              isExtremeLobby ? "lg:min-h-[96rem]" : ""
+            className={`grid min-h-0 min-w-0 overflow-visible gap-3.5 lg:grid-rows-[auto_minmax(0,1fr)] lg:self-stretch lg:pt-4 ${
+              isExtremeLobby ? "lg:h-full lg:min-h-0" : ""
             }`}
             style={heroRailStyle}
           >
@@ -1883,8 +1883,8 @@ return (
             />
 
             <div
-              className={`h-full min-h-0 overflow-hidden ${
-                isExtremeLobby ? "lg:h-[80rem] lg:min-h-[80rem] lg:max-h-[80rem]" : ""
+              className={`h-full min-h-0 overflow-visible ${
+                isExtremeLobby ? "lg:h-[calc(100%+1px)] lg:min-h-0 lg:max-h-[calc(100%+1px)]" : ""
               }`}
             >
               <TopWoloEarnersTile

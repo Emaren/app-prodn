@@ -126,7 +126,7 @@ async function loadLobbySnapshotFresh(
             ...woloEarners,
             entries: woloEarners.entries.slice(
               0,
-              Math.max(3, Number(woloEarners.visibleSlots) || 3)
+              Math.max(8, Number(woloEarners.visibleSlots) || 8)
             ),
           }
         : woloEarners;
