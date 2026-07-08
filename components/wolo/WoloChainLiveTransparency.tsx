@@ -47,6 +47,9 @@ type WoloNetworkAccountForHolderDisplay = {
   balanceUwolo?: string | number | null;
   balanceWolo?: string | number | null;
   balanceWoloFormatted?: string | null;
+  hideBalance?: boolean | null;
+  stakedAmountUwolo?: string | number | null;
+  rankingAmountUwolo?: string | number | null;
 };
 
 function getWoloNetworkRowsForHolderDisplay(payload: unknown): WoloNetworkAccountForHolderDisplay[] {
@@ -234,7 +237,7 @@ function buildKnownWoloHoldersPayload(networkPayload: unknown): HoldersPayload {
       balanceWolo: isUserFacing ? null : amountWolo,
       balanceWoloFormatted: isUserFacing ? null : formatCompactWoloForHolder(amountWolo),
       exactBalanceWolo: isUserFacing ? "" : exactBalanceWolo,
-      balanceHidden: isUserFacing,
+      balanceHidden: Boolean(row.hideBalance) || isUserFacing,
       isKnown: true,
       isKnownUser: isUserFacing,
       isInfrastructure,

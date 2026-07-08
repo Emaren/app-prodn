@@ -14,6 +14,8 @@ import {
   type WoloMainnetNetworkAccount,
 } from "@/lib/woloMainnetNetworkAccounts";
 import { fetchWoloBalanceAmount } from "@/lib/woloRuntime";
+import { loadMainnetStakingPositions } from "@/lib/mainnetStakingPositions";
+import { getPrisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,11 +32,18 @@ type WoloNetworkAccountRow = {
   amountUwolo: string;
   amountWolo: string;
   amountWoloFormatted: string;
+  directAmountUwolo: string;
+  stakedAmountUwolo: string;
+  rankingAmountUwolo: string;
   hideBalance: boolean;
   isModule: boolean;
   isRetired: boolean;
   isUserFacing: boolean;
 };
+
+function normalizeAddress(value: string | null | undefined) {
+  return (value || "").trim().toLowerCase();
+}
 
 function normalizeAmount(value: unknown): string {
   if (typeof value !== "string" || !/^\d+$/.test(value)) return "0";
@@ -72,6 +81,43 @@ function addAmountStrings(left: string, right: string): string {
   return result.replace(/^0+(?=\d)/, "");
 }
 
+function woloNumberToUwoloString(value: number): string {
+  if (!Number.isFinite(value) || value <= 0) {
+    return "0";
+  }
+
+  return String(Math.max(0, Math.round(value * 10 ** WOLO_COIN_DECIMALS)));
+}
+
+async function loadStakedUwoloByAddress() {
+  const stakedUwoloByAddress = new Map<string, string>();
+
+  try {
+    const prisma = getPrisma();
+    const positions = await loadMainnetStakingPositions(prisma, { take: 10_000 });
+
+    for (const position of positions) {
+      const walletAddress = normalizeAddress(position.walletAddress);
+      const stakedAmountUwolo = normalizeAmount(
+        woloNumberToUwoloString(position.currentStakedWolo || 0),
+      );
+
+      if (!walletAddress || stakedAmountUwolo === "0") {
+        continue;
+      }
+
+      stakedUwoloByAddress.set(
+        walletAddress,
+        addAmountStrings(stakedUwoloByAddress.get(walletAddress) || "0", stakedAmountUwolo),
+      );
+    }
+  } catch (error) {
+    console.error("Failed to load staked WOLO for holder ranking:", error);
+  }
+
+  return stakedUwoloByAddress;
+}
+
 function groupWholeNumber(value: string): string {
   return value.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
@@ -88,16 +134,25 @@ function formatWolo(amountUwolo: string, grouped = false): string {
 
 function sortNetworkRows(rows: WoloNetworkAccountRow[]) {
   return [...rows].sort((left, right) => {
-    const amountCompare = compareAmountStrings(left.amountUwolo, right.amountUwolo);
+    const amountCompare = compareAmountStrings(left.rankingAmountUwolo, right.rankingAmountUwolo);
 
     if (amountCompare !== 0) return -amountCompare;
     return left.label.localeCompare(right.label);
   });
 }
 
-async function buildNetworkRow(account: WoloMainnetNetworkAccount): Promise<WoloNetworkAccountRow> {
-  const hideBalance = false;
-  const amountUwolo = hideBalance ? "0" : normalizeAmount(await fetchWoloBalanceAmount(account.address));
+async function buildNetworkRow(
+  account: WoloMainnetNetworkAccount,
+  stakedUwoloByAddress: Map<string, string>,
+): Promise<WoloNetworkAccountRow> {
+  const isPlayerWallet = account.role === "user" || account.use === "Player Wallet";
+  const hideBalance = isPlayerWallet;
+  const directAmountUwolo = normalizeAmount(await fetchWoloBalanceAmount(account.address));
+  const stakedAmountUwolo = isPlayerWallet
+    ? normalizeAmount(stakedUwoloByAddress.get(normalizeAddress(account.address)) || "0")
+    : "0";
+  const rankingAmountUwolo = addAmountStrings(directAmountUwolo, stakedAmountUwolo);
+  const amountUwolo = directAmountUwolo;
 
   return {
     label: account.label,
@@ -105,6 +160,9 @@ async function buildNetworkRow(account: WoloMainnetNetworkAccount): Promise<Wolo
     use: account.use,
     role: account.role,
     amountUwolo,
+    directAmountUwolo,
+    stakedAmountUwolo,
+    rankingAmountUwolo,
     amountWolo: hideBalance ? "" : formatWolo(amountUwolo),
     amountWoloFormatted: hideBalance ? "" : formatWolo(amountUwolo, true),
     hideBalance,
@@ -133,7 +191,14 @@ function renderTable(rows: WoloNetworkAccountRow[], totalUwolo: string) {
 
 export async function GET(request: NextRequest) {
   try {
-    const rows = sortNetworkRows(await Promise.all(WOLO_MAINNET_NETWORK_ACCOUNTS.map(buildNetworkRow)));
+    const stakedUwoloByAddress = await loadStakedUwoloByAddress();
+    const rows = sortNetworkRows(
+      await Promise.all(
+        WOLO_MAINNET_NETWORK_ACCOUNTS.map((account) =>
+          buildNetworkRow(account, stakedUwoloByAddress),
+        ),
+      ),
+    );
     const totalUwolo = rows.reduce((sum, row) => addAmountStrings(sum, row.amountUwolo), "0");
     const format = request.nextUrl.searchParams.get("format");
 
@@ -162,6 +227,9 @@ export async function GET(request: NextRequest) {
           use: row.use,
           role: row.role,
           amountUwolo: row.amountUwolo,
+          directAmountUwolo: row.directAmountUwolo,
+          stakedAmountUwolo: row.stakedAmountUwolo,
+          rankingAmountUwolo: row.rankingAmountUwolo,
           amountWolo: row.amountWolo,
           amountWoloFormatted: row.amountWoloFormatted,
           hideBalance: row.hideBalance,
