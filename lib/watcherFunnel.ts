@@ -8,7 +8,7 @@ const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 const WATCHER_PARSE_SOURCES = ["watcher_live", "watcher_final"] as const;
 const RECENT_EVENT_SCAN_LIMIT = 5000;
 const SESSION_ROW_LIMIT = 50;
-const FOCUS_USER_EVENT_LIMIT = 120;
+const FOCUS_USER_EVENT_LIMIT = 5000;
 const JULIO_UID_PREFIX = "u_79ce46af3d";
 const SUPPORT_USER_TILE_LIMIT = 10;
 const SUPPORT_USER_TARGETS: WatcherSupportUserTarget[] = [
@@ -826,6 +826,13 @@ async function loadFocusUserDiagnostics(
       .find(Boolean) ?? null;
   const stream = buildStreamDiagnostics(recentEvents);
 
+  const displayEvents = recentEvents.filter((event) => {
+    if (event.eventType !== "replay_detected_ignored") return true;
+    return metadataString(event.metadata, "reason") !== "monitoring";
+  });
+
+  const recentDisplayEvents = displayEvents.length > 0 ? displayEvents : recentEvents;
+
   return {
     label: displayNameForTarget(target, focusUser),
     uidPrefix: target.uidPrefix || focusUser?.uid?.slice(0, 12) || target.userUid?.slice(0, 12) || null,
@@ -850,8 +857,8 @@ async function loadFocusUserDiagnostics(
     finalCandidateDeferrals: countEvents(recentEvents, ["final_candidate_deferred"]),
     lastFinalityStatus,
     stream,
-    eventCounts: compactEventCounts(recentEvents),
-    recentEvents: recentEvents.slice(0, 16).map((event) => {
+    eventCounts: compactEventCounts(recentDisplayEvents),
+    recentEvents: recentDisplayEvents.slice(0, 16).map((event) => {
       const finalityStatus = metadataString(event.metadata, "finalityStatus");
       const finalAccepted = metadataBoolean(event.metadata, "finalAccepted");
       const unparsedFinal = metadataBoolean(event.metadata, "unparsedFinal");

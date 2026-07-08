@@ -539,6 +539,18 @@ export function classifyUnresolvedWatcherResult(
     combined.includes("final") ||
     combined.includes("resignation");
 
+  if (
+    eventType === "final_candidate_reopened" ||
+    reason === "replay_changed_after_final_acceptance"
+  ) {
+    return result(
+      "replay_still_cooling_down",
+      "Awaiting final proof",
+      "Replay changed after final acceptance; live proof reopened",
+      false
+    );
+  }
+
   if (!finalish && state === "live") {
     if (playerCount === 0) {
       return result(

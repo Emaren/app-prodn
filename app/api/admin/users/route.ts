@@ -33,6 +33,7 @@ import {
   isWoloMainnet,
 } from "@/lib/woloChain";
 import { loadBetWalletFrictionRail } from "@/lib/adminWalletFriction";
+import { loadAcademyHeroPreferenceAnalytics } from "@/lib/adminAcademyHeroTelemetry";
 
 function buildPairKey(leftUserId: number, rightUserId: number) {
   return [leftUserId, rightUserId].sort((a, b) => a - b).join(":");
@@ -300,6 +301,7 @@ export async function GET(request: NextRequest) {
       watcherDownloads,
       walletFriction,
       activeClans,
+      academyHeroPreferences,
     ] = await Promise.all([
       loadUserCommunitySummaries(prisma, userIds, { includePending: true }),
       loadInboxPayload(prisma, admin.uid, { summaryOnly: true }),
@@ -520,6 +522,7 @@ export async function GET(request: NextRequest) {
           name: true,
         },
       }),
+      loadAcademyHeroPreferenceAnalytics(),
     ]);
 
     const unreadMap = new Map(
@@ -1322,6 +1325,7 @@ export async function GET(request: NextRequest) {
       })),
       tileViewBreakdown: buildAdminTileViewBreakdown(userRows),
       leaderboardLaneBreakdown: buildAdminLeaderboardLaneBreakdown(userRows),
+        academyHeroPreferences,
       scheduledPreferenceUsage,
     };
 

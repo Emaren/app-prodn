@@ -22,6 +22,7 @@ import {
   buildAdminLeaderboardLaneBreakdown,
   buildAdminTileViewBreakdown,
 } from "@/lib/adminTileViewAnalytics";
+import { loadAcademyHeroPreferenceAnalytics } from "@/lib/adminAcademyHeroTelemetry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -110,6 +111,7 @@ export async function GET(request: NextRequest) {
       activityStats,
       allClaims,
       scheduledPreferenceRows,
+      academyHeroPreferences,
     ] = await Promise.all([
       loadUserCommunitySummaries(prisma, userIds, { includePending: true }),
       loadInboxPayload(prisma, admin.uid, { summaryOnly: true }),
@@ -159,6 +161,7 @@ export async function GET(request: NextRequest) {
           colorTag: true,
         },
       }),
+      loadAcademyHeroPreferenceAnalytics(),
     ]);
 
     const unreadMap = new Map(
@@ -357,6 +360,7 @@ export async function GET(request: NextRequest) {
         })),
         tileViewBreakdown: buildAdminTileViewBreakdown(rows),
         leaderboardLaneBreakdown: buildAdminLeaderboardLaneBreakdown(rows),
+        academyHeroPreferences,
         scheduledPreferenceUsage: {
           favoriteCount: scheduledPreferenceUsage.favoriteCount,
           bookmarkedCount: scheduledPreferenceUsage.bookmarkedCount,

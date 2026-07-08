@@ -12,6 +12,7 @@ import type { HonorKind } from "@/lib/communityHonors";
 import type { ScheduledMatchColorTag } from "@/lib/scheduledMatchPreferences";
 import type { TileViewMode, TileViewPreferences } from "@/lib/tileViewPreferences";
 import type { LeaderboardLane } from "@/lib/leaderboardLane";
+import type { AcademyHeroPreferenceAnalytics } from "@/lib/adminAcademyHeroTelemetry";
 
 export type FounderBonusType = "participants" | "winner";
 
@@ -214,6 +215,7 @@ export type AdminOverview = {
     dmPercent: number;
     preferredLane: LeaderboardLane;
   };
+  academyHeroPreferences: AcademyHeroPreferenceAnalytics;
   scheduledPreferenceUsage: {
     favoriteCount: number;
     bookmarkedCount: number;

@@ -124,6 +124,10 @@ function FocusMetric({ label, value }: { label: string; value: string | number |
 }
 
 function eventDetailText(event: WatcherFocusUserDiagnostics["recentEvents"][number]) {
+  if (event.eventType === "replay_detected_ignored" && event.reason === "monitoring") {
+    return "same active replay file; watcher is already monitoring it";
+  }
+
   const streamDetail = [
     event.streamSourceType,
     event.streamSourceKind,
@@ -142,6 +146,20 @@ function eventDetailText(event: WatcherFocusUserDiagnostics["recentEvents"][numb
 function operatorEventExplanation(
   event: WatcherFocusUserDiagnostics["recentEvents"][number]
 ) {
+  if (
+    event.eventType === "final_candidate_reopened" ||
+    event.reason === "replay_changed_after_final_acceptance"
+  ) {
+    return "Live replay changed after final check; proof reopened";
+  }
+
+  if (
+    event.eventType === "final_candidate_accepted" &&
+    event.unresolvedResult
+  ) {
+    return "Final candidate captured; winner still under review";
+  }
+
   if (event.unresolvedResult) {
     return event.unresolvedResult.explanation;
   }
@@ -170,6 +188,9 @@ function operatorEventExplanation(
   }
 
   if (event.eventType === "replay_detected_ignored") {
+    if (event.reason === "monitoring") {
+      return "Already monitoring live replay";
+    }
     return "Ignored duplicate replay event";
   }
 
