@@ -255,7 +255,7 @@ export async function POST(request: NextRequest) {
               conversationId: conversation.id,
             },
             orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-            take: 10,
+            take: 250,
             select: {
               body: true,
               senderUserId: true,
