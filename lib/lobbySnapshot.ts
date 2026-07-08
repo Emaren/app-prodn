@@ -115,11 +115,22 @@ async function loadLobbySnapshotFresh(
       }),
       loadOnlineUsers(prisma),
       loadRecentMatches(),
-      loadLobbyLeaderboard(prisma, { limit: 600, includePendingClaimed: false }),
+      loadLobbyLeaderboard(prisma, { limit: 96, includePendingClaimed: false }),
       loadLobbyWoloEarnersBoard(prisma, { mode: "weekly" }),
       loadAoe2HdPulseSnapshot(),
       loadLiveSessionSnapshot(prisma),
     ]);
+    const visibleWoloEarners =
+      woloEarners && Array.isArray(woloEarners.entries)
+        ? {
+            ...woloEarners,
+            entries: woloEarners.entries.slice(
+              0,
+              Math.max(3, Number(woloEarners.visibleSlots) || 3)
+            ),
+          }
+        : woloEarners;
+
     const recentMatches = cleanPublicGameRows(
       mergeCompletedSessionsIntoLobbyMatches(
         baseRecentMatches,
@@ -153,7 +164,7 @@ async function loadLobbySnapshotFresh(
       recentMatches,
       leaderboard,
       wolo,
-      woloEarners,
+      woloEarners: visibleWoloEarners,
       aoe2hdPulse,
       liveTicker,
       woloMarket,
