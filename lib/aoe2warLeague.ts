@@ -44,8 +44,8 @@ export const kingdomStats = [
   { label: "Bounties", value: "40" },
   { label: "Kingdom Wealth", value: "100,000,000 WOLO" },
   { label: "Watchers Active", value: "2" },
-  { label: "Citizens", value: "6" },
-  { label: "Made Contact", value: "5" },
+  { label: "Citizens", value: "5" },
+  { label: "Joined The Quest", value: "6" },
 ];
 
 export const kingdomChronicles: KingdomChronicle[] = [
