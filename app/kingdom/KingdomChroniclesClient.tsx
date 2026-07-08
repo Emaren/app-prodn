@@ -217,7 +217,7 @@ function ChronicleCard({
             <div className="mt-2 max-w-full truncate font-mono text-xs text-emerald-100/90">
               {item.txHash}
             </div>
-          ) : !locked && item.kind === "transaction" ? (
+          ) : !locked && item.kind === "transaction" && !href ? (
             <div className="mt-2 text-xs text-slate-500">Proof pending in the indexed rail</div>
           ) : null}
         </div>
@@ -448,8 +448,6 @@ export default function KingdomChroniclesClient() {
               Jim
             </Link>
             <span>- Ra 𓁛𓇳</span>
-            <span>Dil_Pascana · joined</span>
-            <span>Deltaforce · joined</span>
             <Link href="/players/by-name/Slad0eshka" className="hover:text-amber-100">
               Slad0eshka
             </Link>
@@ -481,13 +479,13 @@ export default function KingdomChroniclesClient() {
               <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500">
                 Citizens
               </div>
-              <div className="mt-1 text-lg font-black text-white">9</div>
+              <div className="mt-1 text-lg font-black text-white">8</div>
             </div>
             <div className="border-t border-white/10 pt-3 first:border-t-0 first:pt-0">
               <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500">
                 Joined the quest
               </div>
-              <div className="mt-1 text-lg font-black text-white">11</div>
+              <div className="mt-1 text-lg font-black text-white">13</div>
             </div>
           </div>
         </div>

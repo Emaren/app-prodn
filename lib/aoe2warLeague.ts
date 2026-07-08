@@ -44,8 +44,8 @@ export const kingdomStats = [
   { label: "Bounties", value: "40" },
   { label: "Kingdom Wealth", value: "100,000,000 WOLO" },
   { label: "Watchers Active", value: "3" },
-  { label: "Citizens", value: "9" },
-  { label: "Joined The Quest", value: "11" },
+  { label: "Citizens", value: "8" },
+  { label: "Joined The Quest", value: "13" },
 ];
 
 export const kingdomChronicles: KingdomChronicle[] = [
@@ -285,10 +285,22 @@ export const kingdomChronicles: KingdomChronicle[] = [
     actor: "Sniper",
   },
   {
-    id: "second-watchtower",
+    id: "jim-bets-against-the-king-2026-07-07",
     label: "Chronicle XXIV",
-    title: "The Second Watchtower",
-    body: "A second watcher rises. The Kingdom sees further.",
+    dateLabel: "Jul 7, 2026",
+    title: "Jim Bets Against the King",
+    body: "Jim put 100 WOLO on the field against Emaren and lost. The King took the field.",
+    kind: "transaction",
+    actor: "Jim / Emaren",
+    amountWolo: 100,
+    status: "Jim lost",
+    href: "/staking",
+  },
+  {
+    id: "second-watchtower",
+    label: "Chronicle XXV",
+    title: "The Fourth Watcher",
+    body: "A fourth watcher rises. The Kingdom sees further.",
     dateLabel: "Locked",
     kind: "locked",
   },
