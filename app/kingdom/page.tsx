@@ -29,15 +29,15 @@ const ages = [
   {
     label: "Age I",
     title: "Dark Age",
-    body: "The wilderness. The first fire.",
-    state: "Mar 23 - Jun 5, 2026",
+    body: "The first fire before contact.",
+    state: "Mar 23 - Mar 26, 2026",
     active: false,
   },
   {
     label: "Age II",
     title: "Feudal Age",
-    body: "The kingdom finds its feet.",
-    state: "Jun 6 - now",
+    body: "The first citizens answer.",
+    state: "Mar 27 - now",
     active: true,
   },
   {
