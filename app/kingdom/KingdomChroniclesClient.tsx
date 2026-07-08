@@ -101,14 +101,14 @@ function ChronicleIcon({ kind }: { kind: KingdomChronicle["kind"] }) {
 
 function getRoyalTitleClass(view: KingdomChronicleView) {
   if (view === "b") {
-    return "mt-4 whitespace-nowrap font-serif text-[clamp(1.55rem,2.65vw,3.1rem)] leading-[0.94] tracking-[-0.045em] text-stone-50";
+    return "mt-4 block max-w-full whitespace-nowrap font-serif text-[clamp(0.92rem,1.95vw,2.35rem)] leading-[0.96] tracking-[-0.043em] text-stone-50";
   }
 
   if (view === "a") {
-    return "mt-4 whitespace-nowrap font-serif text-[clamp(1.5rem,2.5vw,2.95rem)] font-medium leading-[0.94] tracking-[-0.05em] text-transparent bg-gradient-to-br from-stone-50 via-amber-100 to-amber-300 bg-clip-text drop-shadow-[0_14px_30px_rgba(251,191,36,0.12)]";
+    return "mt-4 block max-w-full whitespace-nowrap font-serif text-[clamp(0.92rem,1.9vw,2.25rem)] font-medium leading-[0.96] tracking-[-0.047em] text-transparent bg-gradient-to-br from-stone-50 via-amber-100 to-amber-300 bg-clip-text drop-shadow-[0_12px_26px_rgba(251,191,36,0.11)]";
   }
 
-  return "mt-4 whitespace-nowrap font-serif text-[clamp(1.52rem,2.58vw,3rem)] font-medium leading-[0.94] tracking-[-0.052em] text-transparent bg-gradient-to-br from-white via-amber-100 to-yellow-400 bg-clip-text drop-shadow-[0_18px_38px_rgba(251,191,36,0.16)]";
+  return "mt-4 block max-w-full whitespace-nowrap font-serif text-[clamp(0.92rem,1.92vw,2.3rem)] font-medium leading-[0.96] tracking-[-0.05em] text-transparent bg-gradient-to-br from-white via-amber-100 to-yellow-400 bg-clip-text drop-shadow-[0_16px_34px_rgba(251,191,36,0.15)]";
 }
 
 function getRoyalTitle() {
@@ -363,8 +363,8 @@ export default function KingdomChroniclesClient() {
             ))}
           </div>
 
-          <div className="relative z-10 pr-24 sm:pr-32">
-            <div className="flex flex-wrap items-center gap-2 pr-2 text-[10px] font-black uppercase tracking-[0.34em] text-amber-100/72">
+          <div className="relative z-10">
+            <div className="flex flex-wrap items-center gap-2 pr-24 text-[10px] font-black uppercase tracking-[0.34em] text-amber-100/72 sm:pr-32">
               <span className="inline-flex items-center gap-2">
                 <ScrollText className="h-4 w-4" />
                 The Royal Chronicle
