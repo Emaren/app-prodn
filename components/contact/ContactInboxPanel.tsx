@@ -138,6 +138,14 @@ function sameCalendarDay(left: string | null, right: string | null) {
   return leftDate.toDateString() === rightDate.toDateString();
 }
 
+const ONE_OFF_HIDDEN_BUBBLE_TIMESTAMP_MESSAGE_IDS = new Set<number>([
+  3334,
+]);
+
+function shouldHideOneOffBubbleTimestamp(message: ContactInboxMessage) {
+  return message.kind === "text" && ONE_OFF_HIDDEN_BUBBLE_TIMESTAMP_MESSAGE_IDS.has(message.messageId);
+}
+
 function isTightTextSequence(previous: ContactInboxMessage | null, current: ContactInboxMessage) {
   if (!previous) return false;
   if (previous.kind !== "text" || current.kind !== "text") return false;
@@ -1052,7 +1060,7 @@ function buildTimelineRows(messages: ContactInboxMessage[]) {
       type: "message",
       key: message.id,
       message,
-      showMeta: !isTightTextSequence(previous, message),
+      showMeta: !shouldHideOneOffBubbleTimestamp(message) && !isTightTextSequence(previous, message),
       showTail: next ? !isTightTextSequence(message, next) : true,
     });
   });
