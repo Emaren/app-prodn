@@ -275,13 +275,9 @@ export default function KingdomPage() {
                 <ScrollText className="h-4 w-4" />
                 The Royal Chronicle
               </div>
-              <h2 className="mt-3 max-w-2xl font-serif text-3xl font-medium leading-tight tracking-[-0.02em] text-amber-50 sm:text-5xl">
-                Feudal stories. On-chain memory.
-              </h2>
+              <h2 className="font-serif text-[clamp(2.35rem,4vw,4.65rem)] leading-[0.94] tracking-[-0.045em] text-stone-50">Feudal stories.</h2>
             </div>
-            <p className="max-w-sm text-sm leading-6 text-slate-400">
-              Bounties, citizens, proofs, and future locks: the early kingdom written as it happens.
-            </p>
+            <p className="max-w-md text-sm leading-7 text-slate-300/85 sm:text-[0.95rem]">On-chain memory for bounties, citizens, proof, and future locks.</p>
           </div>
 
           <div className="space-y-3">
