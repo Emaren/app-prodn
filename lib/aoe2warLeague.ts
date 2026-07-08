@@ -43,7 +43,7 @@ export const kingdomStats = [
   { label: "Chronicles", value: "22" },
   { label: "Bounties", value: "40" },
   { label: "Kingdom Wealth", value: "100,000,000 WOLO" },
-  { label: "Watchers Active", value: "2" },
+  { label: "Watchers Active", value: "3" },
   { label: "Citizens", value: "9" },
   { label: "Joined The Quest", value: "11" },
 ];
