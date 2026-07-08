@@ -101,31 +101,20 @@ function ChronicleIcon({ kind }: { kind: KingdomChronicle["kind"] }) {
 
 function getRoyalTitleClass(view: KingdomChronicleView) {
   if (view === "b") {
-    return "mt-4 whitespace-nowrap font-serif text-[clamp(2.15rem,3.55vw,4.15rem)] leading-[0.92] tracking-[-0.052em] text-stone-50";
+    return "mt-4 whitespace-nowrap font-serif text-[clamp(1.55rem,2.65vw,3.1rem)] leading-[0.94] tracking-[-0.045em] text-stone-50";
   }
 
   if (view === "a") {
-    return "mt-4 whitespace-nowrap font-serif text-[clamp(2.05rem,3.35vw,3.9rem)] font-medium leading-[0.93] tracking-[-0.055em] text-transparent bg-gradient-to-br from-stone-50 via-amber-100 to-amber-300 bg-clip-text drop-shadow-[0_16px_34px_rgba(251,191,36,0.12)]";
+    return "mt-4 whitespace-nowrap font-serif text-[clamp(1.5rem,2.5vw,2.95rem)] font-medium leading-[0.94] tracking-[-0.05em] text-transparent bg-gradient-to-br from-stone-50 via-amber-100 to-amber-300 bg-clip-text drop-shadow-[0_14px_30px_rgba(251,191,36,0.12)]";
   }
 
-  return "mt-4 whitespace-nowrap font-serif text-[clamp(2.08rem,3.45vw,4rem)] font-medium leading-[0.92] tracking-[-0.06em] text-transparent bg-gradient-to-br from-white via-amber-100 to-yellow-400 bg-clip-text drop-shadow-[0_20px_46px_rgba(251,191,36,0.18)]";
+  return "mt-4 whitespace-nowrap font-serif text-[clamp(1.52rem,2.58vw,3rem)] font-medium leading-[0.94] tracking-[-0.052em] text-transparent bg-gradient-to-br from-white via-amber-100 to-yellow-400 bg-clip-text drop-shadow-[0_18px_38px_rgba(251,191,36,0.16)]";
 }
 
 function getRoyalTitle() {
-  return "Feudal stories.";
+  return "The early kingdom, written as it happens.";
 }
 
-function getRoyalBody(view: KingdomChronicleView) {
-  if (view === "b") {
-    return "On-chain memory for bounties, citizens, proof, and future locks.";
-  }
-
-  if (view === "a") {
-    return "On-chain memory for bounties, citizens, proof, and future locks — clean, readable, and written as the kingdom grows.";
-  }
-
-  return "Bounties, citizens, proof, and future locks — the early kingdom written as it happens.";
-}
 
 function getChronicleTitleClass(view: KingdomChronicleView) {
   if (view === "b") {
@@ -375,21 +364,17 @@ export default function KingdomChroniclesClient() {
           </div>
 
           <div className="relative z-10 pr-24 sm:pr-32">
-            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.34em] text-amber-100/72">
-              <ScrollText className="h-4 w-4" />
-              The Royal Chronicle
+            <div className="flex flex-wrap items-center gap-2 pr-2 text-[10px] font-black uppercase tracking-[0.34em] text-amber-100/72">
+              <span className="inline-flex items-center gap-2">
+                <ScrollText className="h-4 w-4" />
+                The Royal Chronicle
+              </span>
+              <span className="inline-flex rounded-full border border-amber-100/14 bg-amber-200/[0.06] px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-amber-100/62">
+                On-chain memory
+              </span>
             </div>
 
             <h2 className={getRoyalTitleClass(chronicleView)}>{getRoyalTitle()}</h2>
-
-            <div className="mt-4 max-w-2xl">
-              <div className="mb-2 hidden w-fit rounded-full border border-amber-100/14 bg-amber-200/[0.06] px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-amber-100/62 sm:block">
-                On-chain memory
-              </div>
-              <p className="text-sm leading-6 text-slate-300/88 sm:text-[0.95rem]">
-                {getRoyalBody(chronicleView)}
-              </p>
-            </div>
           </div>
         </div>
 
