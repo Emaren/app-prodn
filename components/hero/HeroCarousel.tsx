@@ -1,7 +1,6 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { HeroScreenRenderer } from "@/components/hero/HeroScreenRenderer";
@@ -60,7 +59,6 @@ export function HeroCarousel({
   const reducedMotion = useReducedMotion();
   const [index, setIndex] = useState(0);
   const [direction, setDirection] = useState(1);
-  const [pausedByUser, setPausedByUser] = useState(false);
   const [interactionPaused, setInteractionPaused] = useState(false);
   const [documentHidden, setDocumentHidden] = useState(false);
   const [cycle, setCycle] = useState(0);
@@ -69,8 +67,8 @@ export function HeroCarousel({
   const hasMultiple = items.length > 1;
   const current = items[index] || items[0];
   const settings = playlist.playlist;
-  const paused =
-    pausedByUser || interactionPaused || documentHidden || Boolean(reducedMotion);
+  const imageFit = current?.screen.config.imageFit === "contain" ? "contain" : "cover";
+  const paused = interactionPaused || documentHidden || Boolean(reducedMotion);
 
   useEffect(() => {
     if (index >= items.length) setIndex(0);
@@ -170,71 +168,59 @@ export function HeroCarousel({
           aria-roledescription="slide"
           aria-label={`${index + 1} of ${items.length}: ${current.screen.name}`}
         >
-          <HeroScreenRenderer item={current} />
+          <div className={imageFit === "contain" ? "aoe2-hero-fit-contain h-full w-full bg-black" : "h-full w-full"}>
+            {imageFit === "contain" ? (
+              <style>{`
+                .aoe2-hero-fit-contain img.object-cover,
+                .aoe2-hero-fit-contain video.object-cover {
+                  object-fit: contain !important;
+                  background-color: #000 !important;
+                }
+                .aoe2-hero-fit-contain [style*="background-image"] {
+                  background-size: contain !important;
+                  background-repeat: no-repeat !important;
+                  background-position: center center !important;
+                  background-color: #000 !important;
+                }
+              `}</style>
+            ) : null}
+            <HeroScreenRenderer item={current} />
+          </div>
         </motion.div>
       </AnimatePresence>
 
       {hasMultiple ? (
         <>
-          {settings.showArrows ? (
-            <>
-              <button
-                type="button"
-                onClick={() => move(-1)}
-                className="absolute left-3 top-1/2 z-[120] grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full border border-white/20 bg-black/55 text-white shadow-xl backdrop-blur transition hover:border-amber-200/45 hover:bg-black/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200 sm:left-5 sm:h-12 sm:w-12"
-                aria-label="Show previous Hero screen"
-              >
-                <ChevronLeft className="h-5 w-5" />
-              </button>
-              <button
-                type="button"
-                onClick={() => move(1)}
-                className="absolute right-3 top-1/2 z-[120] grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full border border-white/20 bg-black/55 text-white shadow-xl backdrop-blur transition hover:border-amber-200/45 hover:bg-black/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200 sm:right-5 sm:h-12 sm:w-12"
-                aria-label="Show next Hero screen"
-              >
-                <ChevronRight className="h-5 w-5" />
-              </button>
-            </>
-          ) : null}
+          <button
+            type="button"
+            aria-label="Previous hero screen"
+            onPointerDown={(event) => event.stopPropagation()}
+            onPointerUp={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation();
+              move(-1);
+            }}
+            className="group absolute inset-y-0 left-0 z-[120] hidden w-[12%] cursor-pointer appearance-none overflow-hidden border-0 bg-transparent p-0 text-transparent outline-none focus:outline-none sm:block"
+          >
+            <span className="pointer-events-none absolute inset-y-0 left-0 w-full bg-[linear-gradient(90deg,rgba(255,255,255,0.070),rgba(255,255,255,0.022)_44%,transparent_100%)] opacity-0 transition-opacity duration-500 group-hover:opacity-70 group-focus-visible:opacity-70" />
+            <span className="pointer-events-none absolute inset-y-[12%] left-0 w-px rounded-full bg-white/22 opacity-0 shadow-[0_0_18px_rgba(255,255,255,0.18)] transition-opacity duration-500 group-hover:opacity-55 group-focus-visible:opacity-55" />
+          </button>
+          <button
+            type="button"
+            aria-label="Next hero screen"
+            onPointerDown={(event) => event.stopPropagation()}
+            onPointerUp={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation();
+              move(1);
+            }}
+            className="group absolute inset-y-0 right-0 z-[120] hidden w-[12%] cursor-pointer appearance-none overflow-hidden border-0 bg-transparent p-0 text-transparent outline-none focus:outline-none sm:block"
+          >
+            <span className="pointer-events-none absolute inset-y-0 right-0 w-full bg-[linear-gradient(270deg,rgba(255,255,255,0.070),rgba(255,255,255,0.022)_44%,transparent_100%)] opacity-0 transition-opacity duration-500 group-hover:opacity-70 group-focus-visible:opacity-70" />
+            <span className="pointer-events-none absolute inset-y-[12%] right-0 w-px rounded-full bg-white/22 opacity-0 shadow-[0_0_18px_rgba(255,255,255,0.18)] transition-opacity duration-500 group-hover:opacity-55 group-focus-visible:opacity-55" />
+          </button>
 
-          <div className="absolute bottom-4 left-1/2 z-[125] flex -translate-x-1/2 items-center gap-2 rounded-full border border-white/15 bg-black/58 px-2.5 py-2 shadow-lg backdrop-blur sm:bottom-5">
-            {settings.showDots
-              ? items.map((item, itemIndex) => (
-                  <button
-                    key={item.screen.id}
-                    type="button"
-                    onClick={() => {
-                      setDirection(itemIndex >= index ? 1 : -1);
-                      setIndex(itemIndex);
-                      setCycle((value) => value + 1);
-                    }}
-                    className={`h-1.5 rounded-full transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200 ${
-                      itemIndex === index
-                        ? "w-7 bg-amber-200"
-                        : "w-1.5 bg-white/38 hover:bg-white/70"
-                    }`}
-                    aria-label={`Show ${item.screen.name}`}
-                    aria-current={itemIndex === index ? "true" : undefined}
-                  />
-                ))
-              : null}
-            {settings.autoplay && !reducedMotion ? (
-              <button
-                type="button"
-                onClick={() => setPausedByUser((value) => !value)}
-                className="ml-1 grid h-6 w-6 place-items-center rounded-full text-white/70 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200"
-                aria-label={pausedByUser ? "Resume Hero rotation" : "Pause Hero rotation"}
-              >
-                {pausedByUser ? (
-                  <Play className="h-3.5 w-3.5 fill-current" />
-                ) : (
-                  <Pause className="h-3.5 w-3.5 fill-current" />
-                )}
-              </button>
-            ) : null}
-          </div>
-
-          {settings.showProgress && settings.autoplay && !preview ? (
+          {false && settings.showProgress && settings.autoplay && !preview ? (
             <div className="absolute inset-x-0 bottom-0 z-[130] h-1 bg-black/45">
               <motion.div
                 key={`progress-${current.screen.id}-${cycle}-${paused}`}

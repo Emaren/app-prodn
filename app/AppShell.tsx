@@ -366,6 +366,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
   const isContactPage = pathname?.startsWith("/contact-emaren");
   const isLobbySurface = pathname === "/" || pathname?.startsWith("/lobby");
   const isMediaManagerSurface = pathname?.startsWith("/admin/media-assets");
+  const isHeroStudioSurface = pathname?.startsWith("/admin/hero-studio");
   const isAcademySurface = pathname?.startsWith("/academy");
   const isClanSurface = pathname?.startsWith("/clans");
   const isNationalChampionsSurface = pathname?.startsWith("/national-champions");
@@ -643,6 +644,8 @@ function InnerShell({ children }: { children: React.ReactNode }) {
         className={`mx-auto flex min-h-0 min-w-0 w-full flex-1 flex-col py-4 pb-32 transition-[max-width] duration-300 lg:pb-4 ${
           isMediaManagerSurface
             ? "max-w-none px-3 sm:px-4 2xl:px-6"
+            : isHeroStudioSurface
+              ? "max-w-none px-1 sm:px-2 2xl:px-3"
             : `px-3 sm:px-4 ${
                 isLobbySurface || isLiveGamesSurface || isForumSurface
                   ? immersiveShellMaxWidth
@@ -653,13 +656,13 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                       : isExtremePlayerProfileSurface ? "max-w-[90rem]" : "max-w-6xl"
               }`
         } ${isAcademySurface ? "academy-shell-skin" : ""} ${
-          isContactPage ? "overflow-hidden" : isMediaManagerSurface ? "overflow-x-visible" : "overflow-x-hidden"
+          isContactPage ? "overflow-hidden" : isMediaManagerSurface || isHeroStudioSurface ? "overflow-x-visible" : "overflow-x-hidden"
         }`}
       >
         <GlobalInstallAppPrompt />
         {children}
       </main>
-      {!isContactPage ? <AoE2WarFooter /> : null}
+      {!isContactPage && !isHeroStudioSurface ? <AoE2WarFooter /> : null}
       <MobileFloatingNav />
       <Toaster richColors />
     </div>

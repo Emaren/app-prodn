@@ -280,6 +280,51 @@ function WarriorQuote({ item }: { item: HeroPlaylistItemView }) {
 
 function MediaTakeover({ item }: { item: HeroPlaylistItemView }) {
   const config = item.screen.config;
+  const url = mediaUrl(item);
+  const videoUrl =
+    config.videoUrl ||
+    (item.screen.mediaAsset?.mimeType.startsWith("video/")
+      ? item.screen.mediaAsset.url
+      : "");
+  const isPureImage =
+    config.pureImage === true ||
+    ((config.overlayOpacity ?? 0.45) <= 0.01 &&
+      !config.eyebrow &&
+      !config.title &&
+      !config.subtitle &&
+      !config.ctaLabel);
+  const fitClass =
+    config.imageFit === "contain" ? "object-contain" : "object-cover";
+
+  if (isPureImage) {
+    return (
+      <ScreenLink
+        item={item}
+        className="group relative block h-full min-h-[46rem] overflow-hidden rounded-[2.35rem] border border-white/12 bg-black text-white sm:min-h-[48rem] xl:min-h-[51rem]"
+      >
+        {videoUrl ? (
+          <video
+            className={`h-full w-full ${fitClass}`}
+            src={videoUrl}
+            poster={config.posterUrl || url || undefined}
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="metadata"
+          />
+        ) : url ? (
+          <img
+            src={url}
+            alt={item.screen.ariaLabel || item.screen.name || "AoE2WAR hero image"}
+            className={`h-full w-full ${fitClass}`}
+            draggable={false}
+          />
+        ) : null}
+      </ScreenLink>
+    );
+  }
+
   return (
     <ScreenLink
       item={item}
@@ -295,22 +340,28 @@ function MediaTakeover({ item }: { item: HeroPlaylistItemView }) {
         style={{ opacity: config.overlayOpacity ?? 0.45 }}
       />
       <div className="relative flex h-full min-h-[46rem] flex-col justify-end p-7 sm:min-h-[48rem] sm:p-12 xl:min-h-[51rem]">
-        <div className="inline-flex w-fit items-center gap-2 rounded-full border border-amber-100/24 bg-black/45 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.26em] text-amber-100 backdrop-blur">
-          <Crown className="h-4 w-4" />
-          {config.eyebrow}
-        </div>
-        <h2 className="mt-6 max-w-5xl font-serif text-[clamp(3.6rem,8vw,9rem)] font-semibold leading-[0.86] tracking-[-0.05em] text-white">
-          {config.title}
-        </h2>
+        {config.eyebrow ? (
+          <div className="inline-flex w-fit items-center gap-2 rounded-full border border-amber-100/24 bg-black/45 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.26em] text-amber-100 backdrop-blur">
+            <Crown className="h-4 w-4" />
+            {config.eyebrow}
+          </div>
+        ) : null}
+        {config.title ? (
+          <h2 className="mt-6 max-w-5xl font-serif text-[clamp(3.6rem,8vw,9rem)] font-semibold leading-[0.86] tracking-[-0.05em] text-white">
+            {config.title}
+          </h2>
+        ) : null}
         {config.subtitle ? (
           <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-200">
             {config.subtitle}
           </p>
         ) : null}
-        <span className="mt-8 inline-flex w-fit items-center gap-2 rounded-full bg-amber-200 px-5 py-3 text-xs font-black uppercase tracking-[0.18em] text-slate-950 transition group-hover:bg-white">
-          {config.ctaLabel}
-          <ArrowUpRight className="h-4 w-4" />
-        </span>
+        {config.ctaLabel ? (
+          <span className="mt-8 inline-flex w-fit items-center gap-2 rounded-full bg-amber-200 px-5 py-3 text-xs font-black uppercase tracking-[0.18em] text-slate-950 transition group-hover:bg-white">
+            {config.ctaLabel}
+            <ArrowUpRight className="h-4 w-4" />
+          </span>
+        ) : null}
       </div>
     </ScreenLink>
   );

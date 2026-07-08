@@ -24,6 +24,7 @@ import {
   Smartphone,
   Sparkles,
   Trash2,
+  UploadCloud,
 } from "lucide-react";
 import {
   type ReactNode,
@@ -65,6 +66,25 @@ const TRANSITION_LABELS = {
   cut: "Hard Cut",
 } as const;
 
+function purePlaylistSettings(
+  settings: HeroPlaylistSettings
+): HeroPlaylistSettings {
+  return {
+    ...settings,
+    autoplay: true,
+    pauseOnHover: false,
+    transitionStyle:
+      settings.transitionStyle === "cut" ? "crossfade" : settings.transitionStyle,
+    transitionDurationMs:
+      settings.transitionDurationMs && settings.transitionDurationMs >= 1600
+        ? settings.transitionDurationMs
+        : 2900,
+    showArrows: false,
+    showDots: false,
+    showProgress: false,
+  };
+}
+
 function screenIcon(type: HeroScreenType) {
   if (type === "featured_event") return Clapperboard;
   if (type === "chronicle_cover") return FileText;
@@ -84,6 +104,7 @@ function blankScreen(type: HeroScreenType): HeroScreenDefinition {
       kicker: "THE LONG WAR, RECORDED",
       theme: "chronicle",
       overlayOpacity: 0.72,
+      imageFit: "cover",
     },
     warrior_quote: {
       eyebrow: "WARRIOR QUOTE OF THE DAY",
@@ -93,14 +114,16 @@ function blankScreen(type: HeroScreenType): HeroScreenDefinition {
       motionPreset: "embers",
       theme: "stoic",
       overlayOpacity: 0.62,
+      imageFit: "cover",
     },
     media_takeover: {
       eyebrow: "AOE2WAR PRESENTS",
       title: "Main Stage",
       subtitle: "",
-      ctaLabel: "Enter",
+      ctaLabel: "",
       theme: "midnight",
       overlayOpacity: 0.45,
+      imageFit: "cover",
     },
   };
   return {
@@ -235,6 +258,7 @@ export default function HeroStudio() {
     blankScreen("featured_event")
   );
   const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("desktop");
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -242,7 +266,7 @@ export default function HeroStudio() {
 
   function applySnapshot(next: HeroStudioSnapshot, selectedId?: number | null) {
     setSnapshot(next);
-    setPlaylist(next.draft.playlist);
+    setPlaylist(purePlaylistSettings(next.draft.playlist));
     setItems(next.draft.items);
     const targetId = selectedId ?? (draft.id || next.screens[0]?.id);
     const selected = next.screens.find((screen) => screen.id === targetId);
@@ -333,7 +357,7 @@ export default function HeroStudio() {
     return {
       playlist: {
         ...playlist,
-        autoplay: false,
+        autoplay: true,
         showArrows: false,
         showDots: false,
         showProgress: false,
@@ -358,6 +382,20 @@ export default function HeroStudio() {
     setItems((current) => {
       const next = [...current];
       [next[index], next[nextIndex]] = [next[nextIndex], next[index]];
+      return next.map((item, position) => ({ ...item, position }));
+    });
+  }
+
+  function reorderItem(fromIndex: number, toIndex: number) {
+    if (fromIndex === toIndex) return;
+    if (fromIndex < 0 || toIndex < 0) return;
+    if (fromIndex >= items.length || toIndex >= items.length) return;
+
+    setItems((current) => {
+      const next = [...current];
+      const [moved] = next.splice(fromIndex, 1);
+      if (!moved) return current;
+      next.splice(toIndex, 0, moved);
       return next.map((item, position) => ({ ...item, position }));
     });
   }
@@ -389,6 +427,139 @@ export default function HeroStudio() {
     ]);
   }
 
+
+  async function uploadImageFilesToChain(fileList: FileList | File[] | null) {
+    const files = Array.from(fileList || []).filter((file) =>
+      file.type.startsWith("image/")
+    );
+
+    if (!files.length) {
+      setError("Drop PNG, JPG, WebP, or GIF images.");
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+
+    try {
+      let latestSnapshot: HeroStudioSnapshot | null = null;
+      const createdIds: number[] = [];
+
+      for (const file of files) {
+        const label = file.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ").trim() || "Hero image";
+        const target = `hero-chain-${Date.now()}-${Math.random()
+          .toString(36)
+          .slice(2, 8)}`;
+
+        const mediaForm = new FormData();
+        mediaForm.set("file", file);
+        mediaForm.set("kind", "background");
+        mediaForm.set("target", target);
+        mediaForm.set("label", label);
+        mediaForm.set("alt", label);
+
+        const mediaResponse = await fetch("/api/admin/media-assets", {
+          method: "POST",
+          body: mediaForm,
+        });
+        const mediaPayload = (await mediaResponse.json().catch(() => ({}))) as {
+          asset?: {
+            id: number;
+            url: string;
+            label?: string | null;
+            alt?: string | null;
+          };
+          detail?: string;
+        };
+
+        if (!mediaResponse.ok || !mediaPayload.asset) {
+          throw new Error(mediaPayload.detail || `Could not upload ${file.name}.`);
+        }
+
+        const base = blankScreen("media_takeover");
+        const screenResponse = await fetch("/api/admin/hero-studio", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            action: "save_screen",
+            ...base,
+            name: mediaPayload.asset.label || label,
+            key: "",
+            status: "published",
+            defaultHref: "/forum",
+            ariaLabel: mediaPayload.asset.alt || mediaPayload.asset.label || label,
+            mediaAssetId: mediaPayload.asset.id,
+            config: {
+              ...base.config,
+              eyebrow: "",
+              title: "",
+              subtitle: "",
+              ctaLabel: "",
+              backgroundImageUrl: mediaPayload.asset.url,
+              overlayOpacity: 0,
+              pureImage: true,
+              imageFit: "cover",
+              theme: "midnight",
+            },
+          }),
+        });
+
+        const screenPayload = (await screenResponse.json().catch(() => ({}))) as {
+          snapshot?: HeroStudioSnapshot;
+          resultId?: number;
+          detail?: string;
+        };
+
+        if (!screenResponse.ok || !screenPayload.snapshot || !screenPayload.resultId) {
+          throw new Error(screenPayload.detail || `Could not create hero screen for ${file.name}.`);
+        }
+
+        latestSnapshot = screenPayload.snapshot;
+        createdIds.push(screenPayload.resultId);
+      }
+
+      if (latestSnapshot) {
+        const createdScreens = latestSnapshot.screens.filter((screen) =>
+          createdIds.includes(screen.id)
+        );
+
+        applySnapshot(latestSnapshot, createdIds[createdIds.length - 1]);
+
+        setItems((current) => {
+          const existing = new Set(current.map((item) => item.screen.id));
+          const newItems = createdScreens
+            .filter((screen) => !existing.has(screen.id))
+            .map((screen, addIndex) => {
+              const resolved = clientResolvedScreen(screen, latestSnapshot as HeroStudioSnapshot);
+              return {
+                id: -screen.id,
+                position: current.length + addIndex,
+                enabled: true,
+                startsAt: null,
+                endsAt: null,
+                durationMs: null,
+                hrefOverride: "",
+                href: screen.defaultHref || "/",
+                screen: resolved,
+              };
+            });
+
+          return [...current, ...newItems].map((item, position) => ({
+            ...item,
+            position,
+          }));
+        });
+
+        setNotice(`${files.length} image${files.length === 1 ? "" : "s"} added to the hero chain.`);
+      }
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : "Could not add images to the chain.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function saveScreen() {
     await action(
       {
@@ -402,8 +573,10 @@ export default function HeroStudio() {
 
   async function saveChain() {
     if (!playlist) return null;
+    const purePlaylist = purePlaylistSettings(playlist);
+    setPlaylist(purePlaylist);
     const savedPlaylist = await action(
-      { action: "save_playlist", ...playlist },
+      { action: "save_playlist", ...purePlaylist },
       "Hero settings saved.",
       draft.id || null
     );
@@ -434,19 +607,19 @@ export default function HeroStudio() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[100rem] space-y-5 py-6 text-white">
+    <div className="w-full min-w-0 space-y-5 py-2 text-white">
       <section className="overflow-hidden rounded-[2rem] border border-amber-200/16 bg-[radial-gradient(circle_at_12%_0%,rgba(251,191,36,0.20),transparent_30%),radial-gradient(circle_at_88%_10%,rgba(59,130,246,0.15),transparent_32%),linear-gradient(145deg,#120d08,#07111c_56%,#02040a)] p-5 shadow-[0_36px_120px_rgba(0,0,0,0.42)] sm:p-7">
         <div className="flex flex-wrap items-start justify-between gap-5">
           <div>
             <div className="flex items-center gap-2 text-xs uppercase tracking-[0.35em] text-amber-100/72">
               <Sparkles className="h-4 w-4" />
-              AoE2WAR Hero Studio
+              AoE2WAR Hero Chain
             </div>
             <h1 className="mt-3 font-serif text-4xl font-semibold uppercase tracking-[0.07em] text-amber-50 sm:text-6xl">
-              Main Stage Director
+              Hero Tile Chain
             </h1>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
-              Build reusable screens, order the live chain, tune its motion, preview the exact public stage, and publish the full composition atomically.
+              Build the homepage hero as one ordered chain. Drop images in, add event-fed screens, tune timing, reorder the elements, and publish once.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -491,11 +664,11 @@ export default function HeroStudio() {
         </div>
       ) : null}
 
-      <div className="grid gap-5 xl:grid-cols-[19rem_minmax(0,1fr)]">
-        <aside className="space-y-4">
+      <div className="grid gap-4 2xl:grid-cols-[17rem_minmax(0,1fr)]">
+        <aside className="space-y-4 2xl:sticky 2xl:top-24 2xl:self-start">
           <section className="rounded-[1.6rem] border border-white/10 bg-[#030712] p-4">
             <div className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">
-              New screen
+              Elements
             </div>
             <div className="mt-3 grid grid-cols-2 gap-2">
               {HERO_SCREEN_TYPES.map((type) => {
@@ -519,7 +692,7 @@ export default function HeroStudio() {
 
           <section className="rounded-[1.6rem] border border-white/10 bg-[#030712] p-3">
             <div className="px-2 py-2 text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">
-              Screen library
+              Saved elements
             </div>
             <div className="max-h-[62rem] space-y-2 overflow-y-auto">
               {snapshot.screens.map((screen) => {
@@ -554,15 +727,15 @@ export default function HeroStudio() {
         </aside>
 
         <main className="min-w-0 space-y-5">
-          <section className="rounded-[1.8rem] border border-white/10 bg-[#030712] p-4 sm:p-6">
+          <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_18%_0%,rgba(251,191,36,0.10),transparent_34%),linear-gradient(180deg,rgba(3,7,18,0.98),rgba(2,6,23,0.94))] p-4 shadow-[0_24px_90px_rgba(0,0,0,0.32)] sm:p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2 text-xs uppercase tracking-[0.28em] text-amber-100/65">
                   <GripVertical className="h-4 w-4" />
-                  Live transition chain
+                  Hero chain
                 </div>
                 <p className="mt-2 text-sm text-slate-500">
-                  The draft order remains private until Publish Live.
+                  Drag images in. Add saved elements. Reorder the live hero sequence.
                 </p>
               </div>
               {availableScreens.length ? (
@@ -586,14 +759,69 @@ export default function HeroStudio() {
               ) : null}
             </div>
 
+            <label
+              onDragOver={(event) => {
+                event.preventDefault();
+                event.dataTransfer.dropEffect = "copy";
+              }}
+              onDrop={(event) => {
+                event.preventDefault();
+                void uploadImageFilesToChain(event.dataTransfer.files);
+              }}
+              className="mt-5 flex cursor-pointer items-center justify-between gap-4 rounded-[1.6rem] border border-dashed border-amber-100/28 bg-[radial-gradient(circle_at_14%_0%,rgba(251,191,36,0.16),transparent_35%),rgba(255,255,255,0.03)] p-5 transition hover:border-amber-100/45 hover:bg-amber-300/[0.06]"
+            >
+              <span className="flex min-w-0 items-center gap-3">
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-amber-200/18 bg-amber-300/10 text-amber-100">
+                  <UploadCloud className="h-5 w-5" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold text-white">
+                    Drop images into the chain
+                  </span>
+                  <span className="mt-1 block text-xs text-slate-500">
+                    They become chain elements. Reorder, tune, publish once.
+                  </span>
+                </span>
+              </span>
+              <span className="rounded-full border border-white/10 bg-black/25 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300">
+                Choose
+              </span>
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                multiple
+                className="hidden"
+                onChange={(event) => {
+                  void uploadImageFilesToChain(event.target.files);
+                  event.currentTarget.value = "";
+                }}
+              />
+            </label>
+
             <div className="mt-5 space-y-3">
               {items.map((item, index) => (
                 <div
                   key={item.screen.id}
-                  className="rounded-2xl border border-white/9 bg-white/[0.025] p-3"
+                  draggable
+                  onDragStart={() => setDragIndex(index)}
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    event.dataTransfer.dropEffect = "move";
+                  }}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    if (dragIndex !== null) reorderItem(dragIndex, index);
+                    setDragIndex(null);
+                  }}
+                  onDragEnd={() => setDragIndex(null)}
+                  className={`group rounded-[1.35rem] border p-3 transition ${
+                    dragIndex === index
+                      ? "border-amber-200/45 bg-amber-300/10 opacity-75"
+                      : "border-white/10 bg-white/[0.025] hover:border-amber-100/22 hover:bg-white/[0.04]"
+                  }`}
                 >
                   <div className="flex flex-wrap items-center gap-3">
-                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-amber-200/16 bg-amber-300/8 font-serif text-lg text-amber-100">
+                    <span className="grid h-10 w-10 shrink-0 cursor-grab place-items-center rounded-xl border border-amber-200/18 bg-amber-300/9 font-serif text-lg text-amber-100 active:cursor-grabbing">
                       {index + 1}
                     </span>
                     <button
@@ -647,7 +875,7 @@ export default function HeroStudio() {
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </div>
-                  <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                  <div className="mt-3 grid gap-2 md:grid-cols-2 2xl:grid-cols-[11rem_minmax(12rem,1fr)_minmax(12rem,1fr)_minmax(12rem,1fr)]">
                     <Field label="Display duration ms">
                       <input
                         className={inputClass}
@@ -712,12 +940,12 @@ export default function HeroStudio() {
             </div>
           </section>
 
-          <section className="rounded-[1.8rem] border border-white/10 bg-[#030712] p-4 sm:p-6">
+          <section className="rounded-[1.6rem] border border-white/10 bg-[#030712]/92 p-4 sm:p-5">
             <div className="flex items-center gap-2 text-xs uppercase tracking-[0.28em] text-amber-100/65">
               <Settings2 className="h-4 w-4" />
-              Carousel direction
+              Stage defaults
             </div>
-            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-8">
               <Field label="Playlist name">
                 <input
                   className={inputClass}
@@ -788,22 +1016,21 @@ export default function HeroStudio() {
                   setPlaylist({ ...playlist, pauseOnHover })
                 }
               />
-              <Toggle
-                label="Arrow controls"
-                checked={playlist.showArrows}
-                onChange={(showArrows) => setPlaylist({ ...playlist, showArrows })}
-              />
-              <Toggle
-                label="Dots + progress"
-                checked={playlist.showDots && playlist.showProgress}
-                onChange={(value) =>
-                  setPlaylist({
-                    ...playlist,
-                    showDots: value,
-                    showProgress: value,
-                  })
-                }
-              />
+              <div className="flex min-h-11 items-center justify-between gap-3 rounded-xl border border-amber-200/16 bg-amber-300/[0.07] px-3 text-xs text-amber-100">
+                <span className="inline-flex items-center gap-2">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Pure stage
+                </span>
+                <span className="text-[10px] uppercase tracking-[0.16em] text-amber-100/55">
+                  no arrows
+                </span>
+              </div>
+              <div className="flex min-h-11 items-center justify-between gap-3 rounded-xl border border-white/10 bg-[#070b14] px-3 text-xs text-slate-300">
+                <span>No dots</span>
+                <span className="text-[10px] uppercase tracking-[0.16em] text-slate-600">
+                  no rail
+                </span>
+              </div>
             </div>
           </section>
 
@@ -811,7 +1038,7 @@ export default function HeroStudio() {
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <div className="text-xs uppercase tracking-[0.28em] text-amber-100/65">
-                  Screen definition
+                  Element definition
                 </div>
                 <h2 className="mt-2 text-2xl font-semibold">
                   {draft.name || "New Hero screen"}
@@ -858,8 +1085,8 @@ export default function HeroStudio() {
               </div>
             </div>
 
-            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <Field label="Screen name">
+            <div className="mt-5 grid gap-3 md:grid-cols-2 2xl:grid-cols-4">
+              <Field label="Element name">
                 <input
                   className={inputClass}
                   value={draft.name}
@@ -1053,7 +1280,84 @@ export default function HeroStudio() {
 
             {draft.type !== "featured_event" ? (
               <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                <Field label="Desktop background path">
+                <div className="md:col-span-2 2xl:col-span-4 rounded-[1.35rem] border border-white/10 bg-[radial-gradient(circle_at_14%_0%,rgba(255,255,255,0.055),transparent_34%),rgba(255,255,255,0.025)] p-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                      Image treatment
+                    </div>
+                    <div className="mt-1 text-xs text-slate-500">
+                      Pure image, fitted image, or readable hero copy.
+                    </div>
+                  </div>
+                  <div className="mr-2 flex min-w-[16rem] flex-1 items-center gap-3 rounded-xl border border-white/10 bg-[#070b14] px-3 py-2">
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                      Visible
+                    </span>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      step={1}
+                      value={Math.round((1 - (draft.config.overlayOpacity ?? 0.45)) * 100)}
+                      onChange={(event) => {
+                        const visible = Number(event.target.value) / 100;
+                        patchConfig({
+                          overlayOpacity: Math.max(0, Math.min(1, 1 - visible)),
+                          pureImage: visible >= 0.99,
+                        });
+                      }}
+                      className="h-1.5 flex-1 accent-amber-200"
+                    />
+                    <span className="min-w-10 text-right text-xs font-semibold text-slate-300">
+                      {Math.round((1 - (draft.config.overlayOpacity ?? 0.45)) * 100)}%
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      tone={(draft.config.imageFit ?? "cover") === "cover" ? "gold" : "neutral"}
+                      onClick={() => patchConfig({ imageFit: "cover" })}
+                    >
+                      Fill tile
+                    </Button>
+                    <Button
+                      tone={draft.config.imageFit === "contain" ? "gold" : "neutral"}
+                      onClick={() => patchConfig({ imageFit: "contain" })}
+                    >
+                      Full image + bars
+                    </Button>
+                    <Button
+                      tone={(draft.config.overlayOpacity ?? 0) <= 0.01 ? "gold" : "neutral"}
+                      onClick={() =>
+                        patchConfig({
+                          overlayOpacity: 0,
+                          pureImage: true,
+                          eyebrow: "",
+                          title: "",
+                          subtitle: "",
+                          ctaLabel: "",
+                        })
+                      }
+                    >
+                      Pure image
+                    </Button>
+                    <Button
+                      tone={(draft.config.overlayOpacity ?? 0) > 0.01 && (draft.config.overlayOpacity ?? 0) <= 0.28 ? "gold" : "neutral"}
+                      onClick={() => patchConfig({ overlayOpacity: 0.24, pureImage: false })}
+                    >
+                      Soft veil
+                    </Button>
+                    <Button
+                      tone={(draft.config.overlayOpacity ?? 0) > 0.28 ? "gold" : "neutral"}
+                      onClick={() => patchConfig({ overlayOpacity: 0.45, pureImage: false })}
+                    >
+                      Readable
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              <Field label="Desktop background path">
                   <input className={inputClass} value={draft.config.backgroundImageUrl || ""} placeholder="/uploads/managed-assets/..." onChange={(event) => patchConfig({ backgroundImageUrl: event.target.value })} />
                 </Field>
                 <Field label="Mobile background path">
@@ -1092,7 +1396,7 @@ export default function HeroStudio() {
               </div>
             </div>
             {previewPlaylist?.items.length ? (
-              <div className={`mt-5 overflow-hidden ${previewMode === "mobile" ? "mx-auto max-w-[25rem]" : "w-full"}`}>
+              <div className={`mt-5 overflow-hidden rounded-[1.4rem] ${previewMode === "mobile" ? "mx-auto max-w-[24rem]" : "w-full max-w-[72rem]"}`}>
                 <HeroCarousel playlist={previewPlaylist} preview />
               </div>
             ) : (

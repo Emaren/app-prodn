@@ -45,6 +45,8 @@ export type HeroScreenConfig = {
   videoUrl?: string;
   posterUrl?: string;
   overlayOpacity?: number;
+  imageFit?: "cover" | "contain";
+  pureImage?: boolean;
 };
 
 export type HeroForumThreadSource = {
@@ -223,6 +225,11 @@ export function normalizeHeroScreenConfig(
   );
   const videoUrl = stringValue(raw.videoUrl, "", 500);
   const posterUrl = stringValue(raw.posterUrl, "", 500);
+  const imageFit = choiceValue(raw.imageFit, "cover", [
+    "cover",
+    "contain",
+  ] as const);
+  const pureImage = raw.pureImage === true || raw.pureImage === "true";
 
   for (const url of [
     backgroundImageUrl,
@@ -248,6 +255,8 @@ export function normalizeHeroScreenConfig(
       backgroundImageUrl,
       mobileBackgroundImageUrl,
       overlayOpacity: numberValue(raw.overlayOpacity, 0.72, 0, 1),
+      imageFit,
+      pureImage,
       theme: choiceValue(raw.theme, "chronicle", [
         "royal",
         "chronicle",
@@ -289,20 +298,24 @@ export function normalizeHeroScreenConfig(
       videoUrl,
       posterUrl,
       overlayOpacity: numberValue(raw.overlayOpacity, 0.62, 0, 1),
+      imageFit,
+      pureImage,
     };
   }
 
   if (type === "media_takeover") {
     return {
-      eyebrow: stringValue(raw.eyebrow, "AOE2WAR PRESENTS", 100),
-      title: stringValue(raw.title, "Main Stage", 180),
+      eyebrow: stringValue(raw.eyebrow, "", 100),
+      title: stringValue(raw.title, "", 180),
       subtitle: stringValue(raw.subtitle, "", 300),
-      ctaLabel: stringValue(raw.ctaLabel, "Enter", 100),
+      ctaLabel: stringValue(raw.ctaLabel, "", 100),
       backgroundImageUrl,
       mobileBackgroundImageUrl,
       videoUrl,
       posterUrl,
       overlayOpacity: numberValue(raw.overlayOpacity, 0.45, 0, 1),
+      imageFit,
+      pureImage,
       theme: choiceValue(raw.theme, "midnight", [
         "royal",
         "chronicle",
