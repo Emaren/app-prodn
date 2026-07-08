@@ -1091,6 +1091,7 @@ export default function ContactInboxPanel({
   const activeTargetUid = data?.activeTargetUid ?? null;
   const timelineViewportRef = useRef<HTMLDivElement | null>(null);
   const timelineBottomRef = useRef<HTMLDivElement | null>(null);
+  const lastAutoScrolledTargetUidRef = useRef<string | null>(null);
   const [showTimelineJump, setShowTimelineJump] = useState(false);
   const [typingHudMode, setTypingHudMode] = useState<"steady" | "pulse">("steady");
   const [ownTypingPulse, setOwnTypingPulse] = useState(false);
@@ -1238,6 +1239,17 @@ export default function ContactInboxPanel({
     const viewport = timelineViewportRef.current;
     if (!viewport) return;
 
+    const targetChanged = lastAutoScrolledTargetUidRef.current !== activeTargetUid;
+    const distanceFromBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
+    const userIsNearBottom = distanceFromBottom < 220;
+
+    if (!targetChanged && !userIsNearBottom) {
+      updateTimelineJumpButton();
+      return;
+    }
+
+    lastAutoScrolledTargetUidRef.current = activeTargetUid;
+
     let secondFrame = 0;
     const scrollToLatest = () => {
       timelineBottomRef.current?.scrollIntoView({ block: "end" });
@@ -1264,7 +1276,7 @@ export default function ContactInboxPanel({
       window.cancelAnimationFrame(frame);
       window.cancelAnimationFrame(secondFrame);
     };
-  }, [activeTargetUid, latestTimelineKey, loading]);
+  }, [activeTargetUid, latestTimelineKey, loading, timelineRows.length]);
 
   return (
     <div
