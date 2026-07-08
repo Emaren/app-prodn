@@ -29,28 +29,28 @@ const ages = [
   {
     label: "Age I",
     title: "Dark Age",
-    body: "The first fire before contact.",
+    body: "One fire. No tribe yet.",
     state: "Mar 23 - Mar 26, 2026",
     active: false,
   },
   {
     label: "Age II",
     title: "Feudal Age",
-    body: "The first citizens answer.",
+    body: "The warband gathers.",
     state: "Mar 27 - now",
     active: true,
   },
   {
     label: "Age III",
     title: "Castle Age",
-    body: "Stone walls. Royal houses. Crown law.",
+    body: "Clan walls. Royal law.",
     state: "Locked future",
     active: false,
   },
   {
     label: "Age IV",
     title: "Imperial Age",
-    body: "The empire rises from proof.",
+    body: "Kingdom without end.",
     state: "Locked future",
     active: false,
   },
@@ -119,10 +119,10 @@ function ChronicleCard({ item, index }: { item: KingdomChronicle; index: number 
             </span>
             <span className="text-xs text-slate-500">{item.dateLabel}</span>
           </div>
-          <h2 className="mt-2 text-xl font-bold leading-tight text-white sm:text-2xl">
+          <h2 className="mt-2 text-lg font-bold leading-tight text-white sm:text-lg">
             {item.title}
           </h2>
-          <p className="mt-2 text-sm leading-6 text-slate-300">{item.body}</p>
+          <p className="mt-2 text-sm leading-5 text-slate-300">{item.body}</p>
         </div>
 
         <div className="min-w-0">
@@ -239,14 +239,14 @@ export default function KingdomPage() {
             <div className="mt-5 text-[10px] font-black uppercase tracking-[0.28em] text-amber-100/65">
               {label}
             </div>
-            <p className="mt-2 text-sm leading-6 text-slate-300">{body}</p>
+            <p className="mt-2 text-sm leading-5 text-slate-300">{body}</p>
           </article>
         ))}
       </section>
 
       <section
         id="chronicles"
-        className="grid gap-6 scroll-mt-28 lg:grid-cols-[14rem_minmax(0,1fr)] xl:grid-cols-[15rem_minmax(0,1fr)_17rem]"
+        className="relative overflow-hidden rounded-[1.15rem] border border-white/18 bg-slate-950/55 px-4 py-4 shadow-[0_14px_42px_rgba(0,0,0,0.25)] ring-1 ring-white/5 sm:px-5 sm:py-5"
       >
         <aside className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
           {ages.map((age) => (
@@ -261,8 +261,8 @@ export default function KingdomPage() {
               <div className="text-[11px] font-black uppercase tracking-[0.26em] text-slate-500">
                 {age.label}
               </div>
-              <div className="mt-2 font-serif text-2xl text-amber-50">{age.title}</div>
-              <p className="mt-4 text-sm leading-6 text-slate-300">{age.body}</p>
+              <div className="mt-2 font-serif text-lg text-amber-50">{age.title}</div>
+              <p className="mt-4 text-sm leading-5 text-slate-300">{age.body}</p>
               <div className="mt-4 text-xs text-slate-500">{age.state}</div>
             </article>
           ))}
@@ -275,12 +275,16 @@ export default function KingdomPage() {
                 <ScrollText className="h-4 w-4" />
                 The Royal Chronicle
               </div>
-              <h2 className="font-serif text-[clamp(2.35rem,4vw,4.65rem)] leading-[0.94] tracking-[-0.045em] text-stone-50">Feudal stories.</h2>
+              <h2 className="mt-2 font-serif text-[clamp(1.75rem,2.15vw,2.65rem)] leading-none tracking-[-0.035em] text-stone-50">
+                Feudal stories. <span className="whitespace-nowrap text-amber-100/90">On-chain memory.</span>
+              </h2>
             </div>
-            <p className="max-w-md text-sm leading-7 text-slate-300/85 sm:text-[0.95rem]">On-chain memory for bounties, citizens, proof, and future locks.</p>
+            <p className="max-w-sm text-[0.72rem] font-semibold uppercase tracking-[0.26em] text-slate-400/75">
+              Bounties · citizens · proof · future locks
+            </p>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {kingdomChronicles.map((item, index) => (
               <ChronicleCard key={item.id} item={item} index={index} />
             ))}
@@ -297,7 +301,7 @@ export default function KingdomPage() {
               <TowerControl className="h-4 w-4" />
               About
             </div>
-            <p className="mt-4 text-sm leading-6 text-slate-300">
+            <p className="mt-4 text-sm leading-5 text-slate-300">
               This is the on-chain history of AoE2WAR. Every Chronicle is a major event in the
               kingdom. Every Bounty is a reward for those who build it.
             </p>
@@ -308,7 +312,7 @@ export default function KingdomPage() {
               <Shield className="h-4 w-4" />
               Legend
             </div>
-            <div className="mt-4 space-y-3 text-sm text-slate-300">
+            <div className="mt-4 space-y-2.5 text-sm text-slate-300">
               <div className="flex items-center gap-2">
                 <ScrollText className="h-4 w-4 text-amber-100" />
                 Chronicle
