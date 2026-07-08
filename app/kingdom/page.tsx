@@ -338,18 +338,20 @@ export default function KingdomPage() {
               Citizens
             </div>
             <div className="mt-4 grid gap-2 text-sm text-slate-300">
+              <Link href="/players/by-name/Julio%20Alvarez" className="hover:text-amber-100">
+                Julio Alvarez
+              </Link>
               <Link href="/players/by-name/Sniper" className="hover:text-amber-100">
                 Sniper
               </Link>
-              <Link href="/players/by-name/Julio%20Alvarez" className="hover:text-amber-100">
-                Julio Alvarez
+              <Link href="/players/by-name/%5BBDB%5DPigman" className="hover:text-amber-100">
+                [BDB]Pigman
               </Link>
               <Link href="/players/by-name/Jim" className="hover:text-amber-100">
                 Jim
               </Link>
-              <span>Ra</span>
               <span>Dil_Pascana</span>
-              <span>Pigman</span>
+              <span>- Ra 𓁛𓇳</span>
             </div>
           </div>
 
