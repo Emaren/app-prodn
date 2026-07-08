@@ -29,28 +29,28 @@ const ages = [
   {
     label: "Age I",
     title: "Dark Age",
-    body: "The first fire before contact.",
+    body: "One fire. No tribe yet.",
     state: "Mar 23 - Mar 26, 2026",
     active: false,
   },
   {
     label: "Age II",
     title: "Feudal Age",
-    body: "The first citizens answer.",
+    body: "The warband gathers.",
     state: "Mar 27 - now",
     active: true,
   },
   {
     label: "Age III",
     title: "Castle Age",
-    body: "Stone walls. Royal houses. Crown law.",
+    body: "Clan walls. Royal law.",
     state: "Locked future",
     active: false,
   },
   {
     label: "Age IV",
     title: "Imperial Age",
-    body: "The empire rises from proof.",
+    body: "Kingdom without end.",
     state: "Locked future",
     active: false,
   },
@@ -119,10 +119,10 @@ function ChronicleCard({ item, index }: { item: KingdomChronicle; index: number 
             </span>
             <span className="text-xs text-slate-500">{item.dateLabel}</span>
           </div>
-          <h2 className="mt-2 text-xl font-bold leading-tight text-white sm:text-2xl">
+          <h2 className="mt-2 font-serif text-[1.45rem] font-medium leading-[1.06] tracking-[-0.035em] text-transparent bg-gradient-to-br from-stone-50 via-amber-50 to-amber-300 bg-clip-text sm:text-[1.75rem]">
             {item.title}
           </h2>
-          <p className="mt-2 text-sm leading-6 text-slate-300">{item.body}</p>
+          <p className="mt-3 max-w-2xl text-[0.95rem] leading-7 text-slate-300/90">{item.body}</p>
         </div>
 
         <div className="min-w-0">
@@ -275,9 +275,13 @@ export default function KingdomPage() {
                 <ScrollText className="h-4 w-4" />
                 The Royal Chronicle
               </div>
-              <h2 className="font-serif text-[clamp(2.35rem,4vw,4.65rem)] leading-[0.94] tracking-[-0.045em] text-stone-50">Feudal stories.</h2>
+              <h2 className="mt-3 whitespace-nowrap font-serif text-[clamp(1.35rem,2.45vw,2.85rem)] font-medium leading-none tracking-[-0.045em] text-transparent bg-gradient-to-br from-stone-50 via-amber-100 to-amber-300 bg-clip-text drop-shadow-[0_12px_30px_rgba(251,191,36,0.12)]">
+                Feudal stories. On-chain memory.
+              </h2>
             </div>
-            <p className="max-w-md text-sm leading-7 text-slate-300/85 sm:text-[0.95rem]">On-chain memory for bounties, citizens, proof, and future locks.</p>
+            <p className="max-w-xl text-sm leading-6 text-slate-400">
+              Bounties, citizens, proof, and future locks — the early kingdom written as it happens.
+            </p>
           </div>
 
           <div className="space-y-3">
