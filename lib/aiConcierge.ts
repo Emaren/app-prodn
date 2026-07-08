@@ -75,7 +75,7 @@ function normalizeAiReply(
 
 async function loadRecentMatchesForAi(): Promise<LobbyMatchRow[]> {
   try {
-    const response = await fetch(`${getBackendUpstreamBase()}/api/game_stats`, {
+    const response = await fetch(`${getBackendUpstreamBase()}/api/game_stats?limit=24`, {
       cache: "no-store",
     });
     if (!response.ok) {

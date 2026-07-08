@@ -82,7 +82,7 @@ async function loadRecentMatches(): Promise<LobbyMatchRow[]> {
     return lobbyRecentMatches.slice(0, LIVE_GAMES_RECENT_MATCH_LIMIT);
   }
 
-  const legacyRecentMatches = await fetchRecentMatchesFrom("/api/game_stats");
+  const legacyRecentMatches = await fetchRecentMatchesFrom("/api/game_stats?limit=160");
   return legacyRecentMatches.slice(0, LIVE_GAMES_RECENT_MATCH_LIMIT);
 }
 

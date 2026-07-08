@@ -20,7 +20,7 @@ export async function loadLobbyRecentMatches({
     const safeLimit = Math.max(1, Math.min(96, Math.floor(limit)));
 
     const base = getBackendUpstreamBase();
-    const response = await fetch(`${base}/api/game_stats`, { cache: "no-store" });
+    const response = await fetch(`${base}/api/game_stats?limit=160`, { cache: "no-store" });
     if (!response.ok) return [];
 
     const payload = (await response.json()) as unknown;
