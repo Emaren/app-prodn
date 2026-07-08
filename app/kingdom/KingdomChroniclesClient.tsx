@@ -101,23 +101,27 @@ function ChronicleIcon({ kind }: { kind: KingdomChronicle["kind"] }) {
 
 function getRoyalTitleClass(view: KingdomChronicleView) {
   if (view === "b") {
-    return "font-serif text-[clamp(2.35rem,4vw,4.65rem)] leading-[0.94] tracking-[-0.045em] text-stone-50";
+    return "mt-4 font-serif text-[clamp(2.35rem,4.4vw,4.85rem)] leading-[0.92] tracking-[-0.05em] text-stone-50";
   }
 
   if (view === "a") {
-    return "whitespace-nowrap font-serif text-[clamp(1.35rem,2.25vw,2.8rem)] font-medium leading-[0.94] tracking-[-0.05em] text-transparent bg-gradient-to-br from-stone-50 via-amber-100 to-amber-300 bg-clip-text drop-shadow-[0_12px_30px_rgba(251,191,36,0.10)]";
+    return "mt-4 font-serif text-[clamp(2.15rem,4vw,4.35rem)] font-medium leading-[0.93] tracking-[-0.055em] text-transparent bg-gradient-to-br from-stone-50 via-amber-100 to-amber-300 bg-clip-text drop-shadow-[0_16px_34px_rgba(251,191,36,0.12)]";
   }
 
-  return "whitespace-nowrap font-serif text-[clamp(1.35rem,2.25vw,2.8rem)] font-medium leading-[0.94] tracking-[-0.055em] text-transparent bg-gradient-to-br from-white via-amber-100 to-yellow-400 bg-clip-text drop-shadow-[0_16px_36px_rgba(251,191,36,0.16)]";
+  return "mt-4 font-serif text-[clamp(2.2rem,4.1vw,4.55rem)] font-medium leading-[0.92] tracking-[-0.06em] text-transparent bg-gradient-to-br from-white via-amber-100 to-yellow-400 bg-clip-text drop-shadow-[0_20px_46px_rgba(251,191,36,0.18)]";
 }
 
-function getRoyalTitle(view: KingdomChronicleView) {
-  return view === "b" ? "Feudal stories." : "Feudal stories. On-chain memory.";
+function getRoyalTitle() {
+  return "Feudal stories.";
 }
 
 function getRoyalBody(view: KingdomChronicleView) {
   if (view === "b") {
     return "On-chain memory for bounties, citizens, proof, and future locks.";
+  }
+
+  if (view === "a") {
+    return "On-chain memory for bounties, citizens, proof, and future locks — clean, readable, and written as the kingdom grows.";
   }
 
   return "Bounties, citizens, proof, and future locks — the early kingdom written as it happens.";
@@ -343,43 +347,52 @@ export default function KingdomChroniclesClient() {
       </aside>
 
       <div className="relative xl:border-l xl:border-amber-100/12 xl:pl-10">
-        <div className="mb-5 flex flex-col gap-3 rounded-[1.6rem] border border-amber-100/14 bg-[linear-gradient(145deg,rgba(120,71,16,0.16),rgba(3,7,18,0.78))] p-5 sm:flex-row sm:items-end sm:justify-between">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.34em] text-amber-100/70">
+        <div className="relative mb-5 overflow-hidden rounded-[1.85rem] border border-amber-100/20 bg-[radial-gradient(circle_at_12%_0%,rgba(251,191,36,0.16),transparent_32%),radial-gradient(circle_at_88%_14%,rgba(59,130,246,0.12),transparent_34%),linear-gradient(145deg,rgba(20,25,38,0.96),rgba(3,7,18,0.86))] p-5 pr-24 shadow-[0_24px_72px_rgba(0,0,0,0.28)] ring-1 ring-white/[0.04] sm:p-6 sm:pr-32">
+          <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/45 to-transparent" />
+          <div className="pointer-events-none absolute -left-24 -top-24 h-56 w-56 rounded-full bg-amber-300/10 blur-3xl" />
+          <div className="pointer-events-none absolute -right-20 bottom-0 h-48 w-48 rounded-full bg-sky-400/10 blur-3xl" />
+
+          <div
+            className="absolute right-4 top-4 z-20 inline-flex rounded-full border border-white/12 bg-slate-950/70 p-1 shadow-[0_12px_34px_rgba(0,0,0,0.38)] backdrop-blur-md"
+            aria-label="Kingdom chronicle view"
+          >
+            {kingdomBaeViews.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setChronicleView(option.value)}
+                className={`grid h-7 min-w-7 place-items-center rounded-full px-2 text-[10px] font-black uppercase tracking-[0.18em] transition ${
+                  chronicleView === option.value
+                    ? "bg-amber-100 text-slate-950 shadow-[0_0_22px_rgba(251,191,36,0.22)]"
+                    : "text-slate-500 hover:bg-white/10 hover:text-amber-100"
+                }`}
+                title={option.title}
+                aria-pressed={chronicleView === option.value}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="relative z-10 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(17rem,0.72fr)] lg:items-end">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.34em] text-amber-100/72">
                 <ScrollText className="h-4 w-4" />
                 The Royal Chronicle
               </div>
 
-              <div
-                className="inline-flex rounded-full border border-white/10 bg-white/[0.045] p-1 shadow-inner shadow-black/30"
-                aria-label="Kingdom chronicle view"
-              >
-                {kingdomBaeViews.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => setChronicleView(option.value)}
-                    className={`h-7 min-w-7 rounded-full px-2 text-[10px] font-black uppercase tracking-[0.2em] transition ${
-                      chronicleView === option.value
-                        ? "bg-amber-100 text-slate-950 shadow-[0_0_20px_rgba(251,191,36,0.16)]"
-                        : "text-slate-400 hover:bg-white/10 hover:text-amber-100"
-                    }`}
-                    title={option.title}
-                    aria-pressed={chronicleView === option.value}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
+              <h2 className={getRoyalTitleClass(chronicleView)}>{getRoyalTitle()}</h2>
             </div>
 
-            <h2 className={getRoyalTitleClass(chronicleView)}>{getRoyalTitle(chronicleView)}</h2>
+            <div className="max-w-xl lg:pb-1">
+              <div className="mb-2 hidden w-fit rounded-full border border-amber-100/14 bg-amber-200/[0.06] px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-amber-100/62 sm:block">
+                On-chain memory
+              </div>
+              <p className="text-sm leading-6 text-slate-300/88 sm:text-[0.95rem]">
+                {getRoyalBody(chronicleView)}
+              </p>
+            </div>
           </div>
-
-          <p className="max-w-xl text-sm leading-6 text-slate-400 sm:text-[0.95rem]">
-            {getRoyalBody(chronicleView)}
-          </p>
         </div>
 
         <div className="space-y-3">
