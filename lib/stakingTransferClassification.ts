@@ -11,6 +11,9 @@ const LEGACY_RESERVE_MEMOS = [
   /^top up\s+#\d+\s*[—–-]\s*staking wallet reserve top-up$/i,
   /^aoe2war\s+staking\s+reserve\s+top-up(?:\s+to\s+\d+(?:\.\d+)?k)?$/i,
   /^aoe2war\s+staking\s+wallet\s+reserve\s+top-up(?:\s+to\s+\d+(?:\.\d+)?k)?$/i,
+  /^aoe2war\s+staking\s+reserve\s+manual\s+top-up(?:\s+#\d+)?$/i,
+  /^aoe2war\s+staking\s+wallet\s+reserve\s+manual\s+top-up(?:\s+#\d+)?$/i,
+  /^aoe2war\s+staking\s+reserve\s+top-up(?:\s+#\d+)?$/i,
 ];
 
 function normalizeMemo(value: string | null | undefined) {
