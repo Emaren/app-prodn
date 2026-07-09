@@ -155,7 +155,7 @@ export function formatWoloAmount(raw?: string | number | null) {
   }
 
   return (numeric / 10 ** WOLO_COIN_DECIMALS).toLocaleString(undefined, {
-    minimumFractionDigits: 2,
+    minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   });
 }

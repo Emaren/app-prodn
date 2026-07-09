@@ -17,6 +17,8 @@ import {
 } from "lucide-react";
 
 import { getPrisma } from "@/lib/prisma";
+import { formatPublicStakingWeight } from "@/lib/stakingDisplay";
+import { loadMainnetStakingPositionForUser } from "@/lib/mainnetStakingPositions";
 import { SESSION_COOKIE_NAME, verifySession } from "@/lib/session";
 import StakerLedgerPanel from "./StakerLedgerPanel";
 import CopyableWalletAddress, { WalletOwnerBalance } from "./CopyableWalletAddress";
@@ -135,24 +137,11 @@ function formatWoloFull(value: number, maximumFractionDigits = 2) {
   return `${formatDecimalFull(value, maximumFractionDigits)} WOLO`;
 }
 
-function formatRawWeightFull(value: string | number | null | undefined) {
-  const raw = String(value ?? "").trim();
-  if (!raw) return "0";
-
-  const numeric = Number(raw);
-  if (!Number.isFinite(numeric)) return raw;
-
-  return new Intl.NumberFormat("en-US", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(numeric);
-}
-
 function compactWolo(value: number) {
   if (!Number.isFinite(value)) return "0 WOLO";
   if (Math.abs(value) >= 1_000_000) return `${(value / 1_000_000).toFixed(1).replace(/\.0$/, "")}M WOLO`;
   if (Math.abs(value) >= 1_000) return `${(value / 1_000).toFixed(value >= 100_000 ? 0 : 1).replace(/\.0$/, "")}K WOLO`;
-  return `${value.toLocaleString(undefined, { maximumFractionDigits: 6 })} WOLO`;
+  return `${value.toLocaleString(undefined, { maximumFractionDigits: 2 })} WOLO`;
 }
 
 function shortAddress(address?: string | null) {
@@ -364,7 +353,8 @@ export default async function StakerHallPage({ params }: PageProps) {
   if (!profile) notFound();
 
   const { registry, row, rank, totalStake, allocations } = profile;
-  const rawWeight = row?.accumulated_weight != null ? String(row.accumulated_weight) : registry.fallbackWeight;
+  const mainnetPosition = row?.user_id != null ? await loadMainnetStakingPositionForUser(getPrisma(), Number(row.user_id)) : null;
+  const rawWeight = mainnetPosition?.stakingWeight ?? (row?.accumulated_weight != null ? String(row.accumulated_weight) : registry.fallbackWeight);
   const wallet = row?.wallet_address || null;
   const canShowWalletBalance = await viewerOwnsWalletAddress(wallet);
   const joined = row?.created_at || null;
@@ -479,7 +469,7 @@ export default async function StakerHallPage({ params }: PageProps) {
 
         <section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard label="Seat size" value={formatWoloFull(seatSize)} helper="Base stake + compounded rewards" tone="gold" icon={<Coins className="h-4 w-4" />} />
-          <StatCard label="Weight" value={formatRawWeightFull(rawWeight)} helper="Raw accounting weight" tone="sky" icon={<Sparkles className="h-4 w-4" />} />
+          <StatCard label="Weight" value={formatPublicStakingWeight(rawWeight)} helper="Time-weighted stake" tone="sky" icon={<Sparkles className="h-4 w-4" />} />
           <StatCard label="Hall share" value={share} helper="Of visible seat size" tone="emerald" icon={<Landmark className="h-4 w-4" />} />
           <StatCard label="Rewards credited" value={formatWoloFull(lifetime)} helper="Compounded + paid" tone="gold" icon={<Trophy className="h-4 w-4" />} />
         </section>
@@ -491,7 +481,7 @@ export default async function StakerHallPage({ params }: PageProps) {
             label={pendingLabel}
             value={
               pending > 0 && pending < 1
-                ? `${pending.toLocaleString(undefined, { maximumFractionDigits: 6 })} WOLO`
+                ? `${pending.toLocaleString(undefined, { maximumFractionDigits: 2 })} WOLO`
                 : compactWolo(pending)
             }
             helper={pendingHelper}
