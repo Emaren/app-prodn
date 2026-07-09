@@ -34,7 +34,7 @@ const PLACEHOLDER_LANES = [
   { rank: "7th", title: "Awaiting first earner" },
   { rank: "8th", title: "Awaiting first earner" },
 ] as const;
-const VISIBLE_ROWS = 12;
+const VISIBLE_ROWS = 14;
 
 function formatCompactWolo(value: number | null | undefined) {
   if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) return null;
@@ -163,7 +163,7 @@ export function TopWoloEarnersTile({
 
     try {
       const response = await fetch(
-        `/api/lobby/wolo-earners?mode=${encodeURIComponent(mode)}&limit=256`,
+        `/api/lobby/wolo-earners?mode=${encodeURIComponent(mode)}&limit=512`,
         { cache: "no-store" }
       );
 
@@ -207,7 +207,7 @@ export function TopWoloEarnersTile({
       }
 
       const distanceFromBottom = target.scrollHeight - target.scrollTop - target.clientHeight;
-      if (distanceFromBottom < 520) {
+      if (distanceFromBottom < 900) {
         void loadFullBoard();
       }
     },
@@ -260,8 +260,8 @@ export function TopWoloEarnersTile({
     entries.length > 0 ? `${entries.length} earners` : reserve ? `${reserve} reserve` : "8 earners";
   const placeholderCount = Math.max(0, VISIBLE_ROWS - entries.length);
   const viewportHeightClassName = isExtreme
-    ? "h-[min(92dvh,82rem)] min-h-[42rem] max-h-[82rem] lg:min-h-[56rem] lg:max-h-[86rem]"
-    : "h-[min(90dvh,76rem)] min-h-[38rem] max-h-[76rem] sm:min-h-[44rem] xl:min-h-[56rem]"
+    ? "h-[clamp(34rem,calc(100svh-13rem),82rem)] min-h-[42rem] max-h-[88rem] lg:min-h-[56rem] lg:max-h-[92rem]"
+    : "h-[clamp(34rem,calc(100svh-13rem),76rem)] min-h-[38rem] max-h-[88rem] sm:min-h-[44rem] xl:min-h-[56rem]"
 
   return (
     <section
@@ -352,7 +352,7 @@ export function TopWoloEarnersTile({
           <div
             ref={scrollViewportRef}
             onWheel={handleWarChestWheel}
-            className="min-h-0 flex-1 scroll-smooth overflow-y-auto overflow-x-hidden overscroll-contain pr-1 [scrollbar-gutter:stable] [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,0.28)_transparent] [-webkit-overflow-scrolling:touch] [touch-action:pan-y]"
+            className="min-h-0 flex-1 scroll-smooth overflow-y-auto overflow-x-hidden overscroll-y-auto pr-1 [scrollbar-gutter:stable] [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,0.28)_transparent] [-webkit-overflow-scrolling:touch] [touch-action:pan-y] [contain:layout_paint]"
           >
             <div className="grid gap-2.5">
               {entries.map((entry) => {

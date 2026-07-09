@@ -27,7 +27,7 @@ type LeaderboardPanelProps = {
   surface?: "standard" | "extreme";
 };
 
-const LEADERBOARD_PAGE_SIZE = 128;
+const LEADERBOARD_PAGE_SIZE = 64;
 
 type LeaderboardPageResponse = {
   ok?: boolean;
@@ -182,7 +182,7 @@ export function LeaderboardPanel({
       const distanceFromBottom =
         target.scrollHeight - target.scrollTop - target.clientHeight;
 
-      if (distanceFromBottom < 420) {
+      if (distanceFromBottom < 900) {
         void loadMoreLeaderboardEntries();
       }
     },
@@ -302,7 +302,7 @@ export function LeaderboardPanel({
         if (before >= leaderboard.trackedPlayers) return;
 
         await loadMoreLeaderboardEntries();
-        await sleep(180);
+        await sleep(40);
 
         const after = countRankedLeaderboardEntries(entriesRef.current);
         if (after <= before && !loadingRef.current) {
@@ -322,8 +322,8 @@ export function LeaderboardPanel({
   }, [leaderboard.trackedPlayers, loadMoreLeaderboardEntries]);
 
   const leaderboardScrollClassName = isExtreme
-    ? "mt-6 h-[min(92dvh,82rem)] min-h-[34rem] space-y-3 overflow-y-auto overflow-x-hidden overscroll-contain pr-2 scroll-smooth [scrollbar-gutter:stable] [scrollbar-width:thin] [-webkit-overflow-scrolling:touch] [touch-action:pan-y]"
-    : "mt-6 h-[min(82dvh,62rem)] min-h-[30rem] space-y-3 overflow-y-auto overflow-x-hidden overscroll-contain pr-2 scroll-smooth [scrollbar-gutter:stable] [scrollbar-width:thin] [-webkit-overflow-scrolling:touch] [touch-action:pan-y] sm:h-[min(84dvh,68rem)] lg:h-[min(88dvh,76rem)]"
+    ? "mt-6 h-[clamp(34rem,calc(100svh-13rem),82rem)] min-h-[34rem] space-y-3 overflow-y-auto overflow-x-hidden overscroll-y-auto pr-2 scroll-smooth [scrollbar-gutter:stable] [scrollbar-width:thin] [-webkit-overflow-scrolling:touch] [touch-action:pan-y] [contain:layout_paint]"
+    : "mt-6 h-[clamp(30rem,calc(100svh-15rem),62rem)] min-h-[30rem] space-y-3 overflow-y-auto overflow-x-hidden overscroll-y-auto pr-2 scroll-smooth [scrollbar-gutter:stable] [scrollbar-width:thin] [-webkit-overflow-scrolling:touch] [touch-action:pan-y] [contain:layout_paint] sm:h-[clamp(30rem,calc(100svh-15rem),68rem)] lg:h-[clamp(32rem,calc(100svh-14rem),76rem)]"
 
   const leaderboardPanelShellClassName = isExtreme
     ? `relative flex min-h-0 flex-col rounded-[1.85rem] border p-5 transition-all duration-300 sm:p-6 ${tone.panelShell}`

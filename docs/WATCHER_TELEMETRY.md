@@ -261,3 +261,11 @@ where parse_source = 'file_upload'
 - Leaderboard and War Chest route/library caps were lifted so taller home boards can actually receive enough rows.
 - War Chest keeps team-split names and can request up to 256 visible earners.
 - Leaderboard page size/default caps target 128 rows for the premium home board.
+
+
+## Homepage board butter-scroll pass — 2026-07-09
+
+- Leaderboard and War Chest panes use stable `svh`/clamped viewport sizing so first paint matches post-resize layout.
+- Nested board panes use native scroll chaining and stable scrollbar gutters instead of brittle clipped dynamic viewport boxes.
+- Leaderboard lazy-load page size is smaller and more eager near the bottom for smoother progressive loading.
+- War Chest route/component limit headroom supports the full board while keeping the pane scrollable.
