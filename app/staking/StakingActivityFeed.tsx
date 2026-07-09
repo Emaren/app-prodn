@@ -1610,7 +1610,7 @@ function ActivityRow({
   return (
     <div
       style={groupedBetRowStyle}
-      className={`max-w-full overflow-hidden rounded-[1.1rem] border p-3.5 transition hover:bg-white/[0.035] ${
+      className={`relative max-w-full overflow-hidden rounded-[1.1rem] border p-3.5 transition hover:bg-white/[0.035] ${
         visual.card
       }  ${className}`}
     >
@@ -1619,11 +1619,11 @@ function ActivityRow({
         onClick={() => {
           if (hasChildren) setExpanded((value) => !value);
         }}
-        className={`flex w-full min-w-0 flex-col gap-3 text-left focus:outline-none focus-visible:outline-none sm:flex-row sm:items-center ${
+        className={`relative min-h-[5.45rem] w-full min-w-0 pr-[8.6rem] text-left focus:outline-none focus-visible:outline-none ${
           hasChildren ? "cursor-pointer" : "cursor-default"
         }`}
       >
-        <div className="flex min-w-0 flex-1 gap-3">
+        <div className="flex min-w-0 gap-3">
           <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border text-lg font-black ${visual.orb}`}>
             <span className="translate-y-[-1px]">{visual.icon}</span>
           </div>
@@ -1641,7 +1641,7 @@ function ActivityRow({
           </div>
         </div>
 
-        <div className="flex min-w-0 shrink-0 flex-col items-end gap-1.5 pl-5 text-right sm:min-w-[7.5rem] sm:max-w-[45%] sm:pl-0">
+        <div className="absolute right-0 top-1/2 z-20 flex w-[7.8rem] -translate-y-1/2 flex-col items-end gap-1.5 text-right">
           <FeedChip>{displayTypeLabel}</FeedChip>
           <FeedChip>{displayTimestampLabel}</FeedChip>
           {amountLabel ? <FeedChip>{displayAmountLabel}</FeedChip> : null}
@@ -1677,7 +1677,7 @@ function ActivityRow({
 
 function FeedChip({ children }: { children: string }) {
   return (
-    <span className="max-w-full break-all rounded-full border border-transparent bg-black/14 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#aaa18b] shadow-[inset_0_0_0_1px_rgba(125,108,68,0.10)]">
+    <span className="max-w-full break-all rounded-full border border-transparent bg-black/14 px-2.5 py-[0.22rem] text-[9px] font-semibold uppercase tracking-[0.14em] text-[#aaa18b] shadow-[inset_0_0_0_1px_rgba(125,108,68,0.10)]">
       {children}
     </span>
   );
