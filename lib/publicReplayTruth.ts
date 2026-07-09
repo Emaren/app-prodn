@@ -291,6 +291,45 @@ function sanitizePublicMetadataFields<T extends PublicGameStatsLike>(row: T): T 
   return next as T;
 }
 
+function isManualPublicResultReason(parseReason: string | null | undefined) {
+  const reason = String(parseReason || "").trim().toLowerCase();
+  return (
+    reason === "manual_override" ||
+    reason === "manual_recovery" ||
+    reason.includes("manual_backfill") ||
+    reason.includes("manual_recovery") ||
+    reason.includes("manual_override")
+  );
+}
+
+function publicWinnerFlagIsTrue(value: unknown) {
+  return value === true || value === "true" || value === 1 || value === "1";
+}
+
+function trustedManualPublicWinner(row: PublicGameStatsLike) {
+  const parseReason = readString(row, "parse_reason", "parseReason") || "";
+  if (!isManualPublicResultReason(parseReason)) return null;
+
+  const storedWinner = normalizePublicReplayText(
+    readString(row, "winner", "winnerName", "winner_name")
+  );
+  if (!storedWinner) return null;
+
+  const winnerKey = storedWinner.trim().toLowerCase();
+  const players = readPlayers(row.players);
+
+  const matchingWinnerFlag = players.some((player) => {
+    const playerName = normalizePublicReplayText(player.name);
+    return Boolean(
+      playerName &&
+      playerName.trim().toLowerCase() === winnerKey &&
+      publicWinnerFlagIsTrue(player.winner)
+    );
+  });
+
+  return matchingWinnerFlag ? storedWinner : null;
+}
+
 export function toPublicGameStatsRow<T extends PublicGameStatsLike>(row: T): T {
   const adjudicated = applyReplayAdjudicationToGameStats(row);
   if (getReplayAdjudicationForGameStatsId(row.id)) {
@@ -298,6 +337,16 @@ export function toPublicGameStatsRow<T extends PublicGameStatsLike>(row: T): T {
   }
 
   const publicRow = sanitizePublicMetadataFields(row);
+
+  const trustedManualWinner = trustedManualPublicWinner(row);
+  if (trustedManualWinner) {
+    const next: Record<string, unknown> = { ...publicRow };
+    next["winner"] = trustedManualWinner;
+    next["winnerProof"] = "manual_winner_flag";
+    next["reviewNeeded"] = false;
+    next["unresolvedResult"] = null;
+    return next as T;
+  }
 
   const parseReason = readString(row, "parse_reason", "parseReason") || "";
   const inferredFallbackWinner =
