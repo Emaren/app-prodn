@@ -1,6 +1,7 @@
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { cookies } from "next/headers";
 import type { Metadata } from "next";
 import {
   ArrowLeft,
@@ -16,6 +17,7 @@ import {
 } from "lucide-react";
 
 import { getPrisma } from "@/lib/prisma";
+import { SESSION_COOKIE_NAME, verifySession } from "@/lib/session";
 import StakerLedgerPanel from "./StakerLedgerPanel";
 import CopyableWalletAddress, { WalletOwnerBalance } from "./CopyableWalletAddress";
 
@@ -163,6 +165,31 @@ function compactWeight(value: number | string | null | undefined) {
 function shortAddress(address?: string | null) {
   if (!address) return "Wallet pending";
   return address.length > 18 ? `${address.slice(0, 10)}...${address.slice(-6)}` : address;
+}
+
+function normalizeWalletAddress(value?: string | null) {
+  return (value || "").trim().toLowerCase();
+}
+
+async function viewerOwnsWalletAddress(address?: string | null) {
+  const walletAddress = normalizeWalletAddress(address);
+  if (!walletAddress) return false;
+
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+    const session = await verifySession(token);
+    if (!session?.uid) return false;
+
+    const viewer = await getPrisma().user.findUnique({
+      where: { uid: session.uid },
+      select: { walletAddress: true },
+    });
+
+    return normalizeWalletAddress(viewer?.walletAddress) === walletAddress;
+  } catch {
+    return false;
+  }
 }
 
 
@@ -344,13 +371,14 @@ export default async function StakerHallPage({ params }: PageProps) {
   if (!profile) notFound();
 
   const { registry, row, rank, totalStake, allocations } = profile;
-  const weight = row?.accumulated_weight != null ? String(row.accumulated_weight) : registry.fallbackWeight;
   const wallet = row?.wallet_address || null;
+  const canShowWalletBalance = await viewerOwnsWalletAddress(wallet);
   const joined = row?.created_at || null;
   const autoCompound = row?.auto_compound_rewards ?? true;
   const claimed = row ? asNumber(row.claimed_rewards_wolo) : 0;
   const compounded = row ? asNumber(row.compounded_rewards_wolo) : 0;
   const seatSize = row ? seatSizeForRow(row, registry.fallbackStake) : registry.fallbackStake;
+  const rankWeight = Math.max(0, Math.round(seatSize));
   const visibleSeatTotal = totalStake > 0 ? totalStake : seatSize;
   const share = visibleSeatTotal > 0 ? `${((seatSize / visibleSeatTotal) * 100).toFixed(2)}%` : "Founding";
   const microCarryWolo = await loadMicroCarryWolo(row?.user_id);
@@ -384,8 +412,9 @@ export default async function StakerHallPage({ params }: PageProps) {
       : pending < 1
         ? "Held as precise carry"
         : autoCompound
-          ? "Awaiting next compound cycle"
+          ? "Queued for next compound cycle"
           : "Awaiting payout threshold";
+  const pendingLabel = pending >= 1 && autoCompound ? "Pending compound" : "Carry";
   const championshipTitle = registry.slug === "jim" ? "USA National Champion" : registry.slug === "julio-alvarez" ? "Mexico National Champion" : "Verified Grind";
   const kingdomBenefit = registry.slug === "jim" ? "US Champion lane · founding staking guardian · public kingdom proof" : registry.slug === "julio-alvarez" ? "Mexico Champion lane · first scout · early staking proof" : "Operator lane · verified wallet · public economy rail";
   const designationRows: Array<{ label: string; meta: string; value: string; tone: "gold" | "emerald" | "sky" }> = [
@@ -440,7 +469,11 @@ export default async function StakerHallPage({ params }: PageProps) {
               <div className="mt-4 grid grid-cols-2 gap-4">
                 <div>
                   <div className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Wallet balance</div>
-                  <WalletOwnerBalance address={wallet} />
+                  {canShowWalletBalance ? (
+                    <WalletOwnerBalance address={wallet} />
+                  ) : (
+                    <div className="mt-1 text-sm font-semibold text-slate-400">Hidden publicly</div>
+                  )}
                 </div>
                 <div>
                   <div className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Joined</div>
@@ -453,7 +486,7 @@ export default async function StakerHallPage({ params }: PageProps) {
 
         <section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard label="Seat size" value={preciseWolo(seatSize, 2)} helper="Base stake + compounded rewards" tone="gold" icon={<Coins className="h-4 w-4" />} />
-          <StatCard label="Weight" value={compactWeight(weight)} helper="Accounting weight" tone="sky" icon={<Sparkles className="h-4 w-4" />} />
+          <StatCard label="Rank score" value={compactWeight(rankWeight)} helper="Seat-size score" tone="sky" icon={<Sparkles className="h-4 w-4" />} />
           <StatCard label="Hall share" value={share} helper="Of visible seat size" tone="emerald" icon={<Landmark className="h-4 w-4" />} />
           <StatCard label="Rewards credited" value={compactWolo(lifetime)} helper="Compounded + paid" tone="gold" icon={<Trophy className="h-4 w-4" />} />
         </section>
@@ -462,7 +495,7 @@ export default async function StakerHallPage({ params }: PageProps) {
           <StatCard label="Inside stake" value={compactWolo(compounded)} helper="Compounded into seat" tone="gold" icon={<Crown className="h-4 w-4" />} />
           <StatCard label="Paid out" value={compactWolo(claimed)} helper="Claimed to wallet" tone="emerald" icon={<Wallet className="h-4 w-4" />} />
           <StatCard
-            label="Carry"
+            label={pendingLabel}
             value={
               pending > 0 && pending < 1
                 ? `${pending.toLocaleString(undefined, { maximumFractionDigits: 6 })} WOLO`
