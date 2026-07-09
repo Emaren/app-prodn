@@ -26,6 +26,121 @@ const EXTERNAL_STREAM_STALE_MS = 20 * 60 * 1000;
 const LIVE_GAMES_RECENT_MATCH_LIMIT = 24;
 const LIVE_GAMES_COMPLETED_SESSION_DEPTH = 8;
 
+// AOE2WAR_LIVE_ACTIVE_ITERATION_DEDUPE
+function normalizeLiveReplayIdentityText(value: unknown) {
+  return String(value ?? "")
+    .split(/[\\/]/)
+    .pop()
+    ?.trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ") || "";
+}
+
+function liveSessionPlayersIdentity(session: LiveGameSession) {
+  return (Array.isArray(session.players) ? session.players : [])
+    .map((player) => normalizeLiveReplayIdentityText((player as { name?: unknown })?.name))
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b))
+    .join("|");
+}
+
+function liveSessionMapIdentity(session: LiveGameSession) {
+  return normalizeLiveReplayIdentityText(
+    (session as unknown as { mapName?: unknown }).mapName ??
+      (session as unknown as { map?: { name?: unknown } }).map?.name
+  );
+}
+
+function liveSessionUpdatedMs(session: LiveGameSession) {
+  const candidates = [
+    (session as unknown as { updatedAt?: unknown }).updatedAt,
+    (session as unknown as { playedOn?: unknown }).playedOn,
+    (session as unknown as { createdAt?: unknown }).createdAt,
+  ];
+
+  for (const value of candidates) {
+    if (typeof value === "string" && value.trim()) {
+      const ms = new Date(value).getTime();
+      if (Number.isFinite(ms)) return ms;
+    }
+
+    if (value instanceof Date) {
+      const ms = value.getTime();
+      if (Number.isFinite(ms)) return ms;
+    }
+  }
+
+  return 0;
+}
+
+function liveSessionDurationSeconds(session: LiveGameSession) {
+  const value =
+    (session as unknown as { durationSeconds?: unknown }).durationSeconds ??
+    (session as unknown as { duration?: unknown }).duration;
+
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function activeLiveIterationDedupeKey(session: LiveGameSession) {
+  const replayFile = normalizeLiveReplayIdentityText(
+    session.replayFile || session.originalFilename || session.sessionKey
+  );
+  const watcherSession =
+    normalizeLiveReplayIdentityText(
+      (session as unknown as { watcherSessionId?: unknown }).watcherSessionId ??
+        (session as unknown as { watcher_session_id?: unknown }).watcher_session_id
+    ) || "watcher";
+
+  const players = liveSessionPlayersIdentity(session);
+  const map = liveSessionMapIdentity(session);
+
+  if (watcherSession && replayFile) {
+    return `watcher:${watcherSession}:file:${replayFile}`;
+  }
+
+  if (replayFile) {
+    return `file:${replayFile}:players:${players}:map:${map}`;
+  }
+
+  return `session:${session.sessionKey || session.id}`;
+}
+
+function preferNewerLiveSession(current: LiveGameSession, candidate: LiveGameSession) {
+  const currentTime = liveSessionUpdatedMs(current);
+  const candidateTime = liveSessionUpdatedMs(candidate);
+
+  if (candidateTime !== currentTime) return candidateTime > currentTime;
+
+  const currentDuration = liveSessionDurationSeconds(current);
+  const candidateDuration = liveSessionDurationSeconds(candidate);
+
+  if (candidateDuration !== currentDuration) return candidateDuration > currentDuration;
+
+  return Number(candidate.id || 0) > Number(current.id || 0);
+}
+
+function dedupeActiveLiveIterations(sessions: LiveGameSession[]) {
+  const bestByIdentity = new Map<string, LiveGameSession>();
+
+  for (const session of sessions) {
+    const key = activeLiveIterationDedupeKey(session);
+    const current = bestByIdentity.get(key);
+
+    if (!current || preferNewerLiveSession(current, session)) {
+      bestByIdentity.set(key, session);
+    }
+  }
+
+  return [...bestByIdentity.values()].sort((left, right) => {
+    const byTime = liveSessionUpdatedMs(right) - liveSessionUpdatedMs(left);
+    if (byTime !== 0) return byTime;
+
+    return Number(right.id || 0) - Number(left.id || 0);
+  });
+}
+
+
 export type LiveGamesSummary = {
   liveCount: number;
   readyCount: number;
@@ -238,7 +353,8 @@ async function loadLiveGamesSnapshotFresh(prisma: PrismaClient): Promise<LiveGam
     loadLiveSessionSnapshot(prisma),
   ]);
 
-  const { activeSessions, recentlyCompletedSessions } = sessionSnapshot;
+  const activeSessions = dedupeActiveLiveIterations(sessionSnapshot.activeSessions);
+  const { recentlyCompletedSessions } = sessionSnapshot;
   let scheduledMatches: ScheduledMatchTile[] = [];
   let matchedActiveSessionKeys = new Set<string>();
   let matchedCompletedSessionKeys = new Set<string>();
