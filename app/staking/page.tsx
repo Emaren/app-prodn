@@ -46,6 +46,7 @@ import {
 import { getWoloStakingRuntime } from "@/lib/woloStakingRuntime";
 import StakingWalletPanel from "./StakingWalletPanel";
 import StakingActivityFeed from "./StakingActivityFeed";
+import StakingLiveRefresh from "./StakingLiveRefresh";
 import StakingHeroStakeTiles from "./StakingHeroStakeTiles";
 import StakingActionTile from "./StakingActionTile";
 import StakingAdvancedTrigger from "./StakingAdvancedTrigger";
@@ -983,6 +984,7 @@ export default async function StakingPage({
           </div>
         </div>
       </section>
+          <StakingLiveRefresh />
     </main>
   );
 }
