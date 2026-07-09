@@ -608,6 +608,11 @@ export async function loadLiveSessionSnapshot(prisma: PrismaClient): Promise<{
   }
 
   activeSessions.sort((left, right) => {
+    const leftStartedAt = new Date(left.playedOn || left.createdAt || left.updatedAt).getTime();
+    const rightStartedAt = new Date(right.playedOn || right.createdAt || right.updatedAt).getTime();
+    const startedDiff = leftStartedAt - rightStartedAt;
+    if (startedDiff !== 0) return startedDiff;
+
     const leftActivityAt = new Date(left.updatedAt).getTime();
     const rightActivityAt = new Date(right.updatedAt).getTime();
     const activityDiff = rightActivityAt - leftActivityAt;

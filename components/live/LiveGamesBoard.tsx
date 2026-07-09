@@ -220,10 +220,36 @@ function proofExplanation(session: LiveSession) {
   return explanation;
 }
 
+function liveMarketHref(session: LiveSession) {
+  const marketId = session.reviewMarket?.id;
+  if (session.state === "completed" || marketId === null || marketId === undefined) {
+    return null;
+  }
+
+  return `/bets/${encodeURIComponent(String(marketId))}`;
+}
+
+function hasLiveBetMarket(session: LiveSession) {
+  return Boolean(liveMarketHref(session));
+}
+
 function sessionStatsHref(session: LiveSession) {
+  const marketHref = liveMarketHref(session);
+  if (marketHref) return marketHref;
+
   return session.state === "completed" && Number.isSafeInteger(session.id) && session.id > 0
     ? `/game-stats/${session.id}`
     : `/game-stats/live/${encodeURIComponent(session.sessionKey)}`;
+}
+
+function liveSessionPrimaryActionLabel(session: LiveSession) {
+  if (hasLiveBetMarket(session)) return "Bet live";
+  return session.state === "completed" ? "Open final stats" : "Watch live stats";
+}
+
+function liveSessionStatusLabel(session: LiveSession) {
+  if (hasLiveBetMarket(session)) return "Bet live";
+  return session.state === "completed" ? "Final stored" : "Live parse";
 }
 
 function replayReviewHref(session: LiveSession) {
@@ -1416,7 +1442,7 @@ function UnresolvedReplayOutcomeCard({ session }: { session: LiveSession }) {
   const unresolved = session.unresolvedResult;
   if (!unresolved) return null;
 
-  const gameHref = `/game-stats/live/${encodeURIComponent(session.sessionKey)}`;
+  const gameHref = sessionStatsHref(session);
   const watchHref = `/watch/${encodeURIComponent(session.sessionKey)}`;
   const names = resolvedPlayerNames(session);
   const reasonLabel = unresolved.code.replaceAll("_", " ");
@@ -1503,7 +1529,7 @@ function PremiumResolvedOutcomeCard({
 
   const sessionAny = session as Record<string, unknown>;
   const display = resolvedSessionDisplay(session);
-  const gameHref = `/game-stats/live/${encodeURIComponent(session.sessionKey)}`;
+  const gameHref = sessionStatsHref(session);
   const watchHref = `/watch/${encodeURIComponent(session.sessionKey)}`;
   const durationLabel = formatDurationCompact(session.durationSeconds);
   const rawGameNumber =
@@ -1840,7 +1866,7 @@ function PremiumClassicLiveSessionCard({
 }) {
   const sessionAny = session as Record<string, unknown>;
   const isCompleted = session.state === "completed";
-  const gameHref = `/game-stats/live/${encodeURIComponent(session.sessionKey)}`;
+  const gameHref = sessionStatsHref(session);
   const watchHref = `/watch/${encodeURIComponent(session.sessionKey)}`;
 
   if (isCompleted && resolvedStyle && resolvedStyle !== "legacy") {
@@ -1861,9 +1887,7 @@ function PremiumClassicLiveSessionCard({
 
   const statusLabel = session.unresolvedResult
     ? proofLabel(session) ?? session.unresolvedResult.label
-    : isCompleted
-      ? "Final stored"
-      : "Live parse";
+    : liveSessionStatusLabel(session);
   const durationLabel = formatDurationCompact(session.durationSeconds);
 
   const rawGameNumber =
@@ -2079,9 +2103,7 @@ function ClassicLiveSessionCard({
   const eyebrowLabel = isCompleted ? "Just finished" : "Watcher live";
   const badgeLabel = session.unresolvedResult
     ? proofLabel(session) ?? session.unresolvedResult.label
-    : isCompleted
-      ? "Final stored"
-      : "Live parse";
+    : liveSessionStatusLabel(session);
   const compactDuration = formatDurationCompact(session.durationSeconds);
 
   return (
@@ -2191,7 +2213,7 @@ function ClassicLiveSessionCard({
           href={gameHref}
           className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-slate-200"
         >
-          {isCompleted ? "Open Final Stats" : "Watch Live Stats"}
+          {liveSessionPrimaryActionLabel(session)}
         </Link>
         <Link
           href="/lobby"
@@ -2200,7 +2222,7 @@ function ClassicLiveSessionCard({
           Open Lobby
         </Link>
         <Link
-          href={session.reviewMarket ? `/bets/${session.reviewMarket.id}` : "/bets"}
+          href={liveMarketHref(session) ?? "/bets"}
           className="rounded-full border border-amber-300/30 bg-amber-400/10 px-4 py-2 text-sm text-amber-100 transition hover:bg-amber-400/15"
         >
           Bet Rail
@@ -2790,9 +2812,11 @@ function LiveSessionCard({
 
               {session.unresolvedResult
                 ? proofLabel(session) ?? session.unresolvedResult.label
-                : isCompleted
-                  ? "Final stored"
-                  : "Watcher live"}
+                : hasLiveBetMarket(session)
+                  ? "Bet live"
+                  : isCompleted
+                    ? "Final stored"
+                    : "Watcher live"}
             </span>
           </div>
 
@@ -2881,7 +2905,7 @@ function LiveSessionCard({
               : "bg-red-200 text-red-950 hover:bg-red-100"
           }`}
         >
-          {isCompleted ? "Open final stats" : "Watch live stats"}
+          {liveSessionPrimaryActionLabel(session)}
         </Link>
         {primaryStream ? (
           <Link
@@ -2893,7 +2917,7 @@ function LiveSessionCard({
         ) : null}
         {!isBasic && !isExtreme ? (
           <Link
-            href={session.reviewMarket ? `/bets/${session.reviewMarket.id}` : "/bets"}
+            href={liveMarketHref(session) ?? "/bets"}
             className="inline-flex min-h-9 items-center justify-center rounded-full border border-amber-200/18 bg-amber-300/8 px-4 py-2 text-center text-xs font-semibold text-amber-100 transition hover:bg-amber-300/14"
           >
             Bet rail

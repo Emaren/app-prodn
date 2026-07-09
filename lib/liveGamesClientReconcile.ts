@@ -3,7 +3,7 @@ import { normalizePublicReplayText } from "./unresolvedWatcherResult.ts";
 
 type LiveSession = LiveGamesSnapshot["activeSessions"][number];
 
-export const LIVE_GAME_CLIENT_GRACE_MS = 90_000;
+export const LIVE_GAME_CLIENT_GRACE_MS = 8 * 60_000;
 
 function basename(value: string) {
   return value.split(/[\\/]/).pop()?.trim() || value.trim();
@@ -38,6 +38,18 @@ function activityMs(session: LiveSession) {
     if (Number.isFinite(ms)) return ms;
   }
   return 0;
+}
+
+function startedMs(session: LiveSession) {
+  for (const value of [
+    session.playedOn,
+    session.createdAt,
+    session.updatedAt,
+  ]) {
+    const ms = new Date(value ?? "").getTime();
+    if (Number.isFinite(ms)) return ms;
+  }
+  return Number.MAX_SAFE_INTEGER;
 }
 
 function knownPlayerCount(session: LiveSession) {
@@ -160,6 +172,8 @@ export function reconcileLiveGamesSnapshots(
   }
 
   activeSessions.sort((left, right) => {
+    const startedDiff = startedMs(left) - startedMs(right);
+    if (startedDiff !== 0) return startedDiff;
     const activityDiff = activityMs(right) - activityMs(left);
     if (activityDiff !== 0) return activityDiff;
     return liveSessionIdentity(left).localeCompare(liveSessionIdentity(right));
