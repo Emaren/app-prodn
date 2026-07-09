@@ -272,17 +272,96 @@ function activityKey(item: StakingActivityItem) {
   return item.key || `${sanitizeActivityCopy(item.label)}:${sanitizeActivityCopy(item.detail)}:${item.meta}`;
 }
 
-function ledgerBetGroupKey(item: StakingActivityItem) {
+function cleanLedgerBetTitle(value: string) {
+  return sanitizeActivityCopy(value)
+    .replace(/\bmemo\s+/gi, "")
+    .replace(
+      /^\s*[\d,.]+(?:\.\d+)?\s*(?:K|M|B|T)?\s+WOLO\s+(?:settlement queue:|bet payout:|bet escrow stake intent:|direct transfer|wager:|payout:)?\s*/i,
+      ""
+    )
+    .replace(/\s+·.*$/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function normalizeLedgerBetTitleKey(value: string) {
+  return cleanLedgerBetTitle(value).toLowerCase();
+}
+
+function ledgerBetTxHash(item: StakingActivityItem) {
+  const direct = item.txHash?.trim();
+  if (direct) return direct.toUpperCase();
+
+  const keyMatch = String(item.key || "").match(/tx-([A-Fa-f0-9]{64})/);
+  if (keyMatch?.[1]) return keyMatch[1].toUpperCase();
+
+  const text = `${item.label || ""} ${item.detail || ""}`;
+  const detailMatch = text.match(/\btx\s+([A-Fa-f0-9]{8,64})(?:\.\.\.[A-Fa-f0-9]{4,8})?\b/i);
+  return detailMatch?.[1] && detailMatch[1].length === 64 ? detailMatch[1].toUpperCase() : null;
+}
+
+function extractLedgerBetTitle(group: StakingActivityItem[]) {
+  for (const item of group) {
+    const text = `${item.label || ""} · ${item.detail || ""}`;
+
+    const memoMatch = text.match(/memo\s+([^·:|]{2,120}?\s+vs\s+[^·:|]{2,120}?)(?=\s*·|\s*$)/i);
+    if (memoMatch?.[1]) {
+      const title = cleanLedgerBetTitle(memoMatch[1]);
+      if (title) return title;
+    }
+
+    const settlementMatch = text.match(/settlement queue:\s*([^·:|]{2,120}?\s+vs\s+[^·:|]{2,120}?)(?=\s*·|\s*$)/i);
+    if (settlementMatch?.[1]) {
+      const title = cleanLedgerBetTitle(settlementMatch[1]);
+      if (title) return title;
+    }
+
+    const looseMatch = text.match(/([^·:|]{2,120}?\s+vs\s+[^·:|]{2,120}?)(?=\s*·|\s*$)/i);
+    if (looseMatch?.[1]) {
+      const title = cleanLedgerBetTitle(looseMatch[1]);
+      if (title) return title;
+    }
+  }
+
+  return "WoloChain bet rail";
+}
+
+function explicitLedgerBetGroupKey(item: StakingActivityItem) {
   if (item.groupKey?.trim()) return item.groupKey.trim();
 
   const text = `${item.key || ""} ${item.label || ""} ${item.detail || ""}`;
   const marketMatch = text.match(/\bmarket\s*[:#-]?\s*(\d{2,})\b/i);
   if (marketMatch?.[1]) return `market:${marketMatch[1]}`;
 
-  const match = text.match(/([^·:|]+?\s+vs\s+[^·:|]+)/i);
-  if (match?.[1]) return `match:${match[1].replace(/\s+/g, " ").trim().toLowerCase()}`;
+  const gameMatch = text.match(/\b(?:game|game_stats|replay)\s*[:#-]?\s*(\d{2,})\b/i);
+  if (gameMatch?.[1]) return `game:${gameMatch[1]}`;
 
-  return activityKey(item);
+  const title = extractLedgerBetTitle([item]);
+  if (title && title !== "WoloChain bet rail") {
+    return `match:${normalizeLedgerBetTitleKey(title)}`;
+  }
+
+  return null;
+}
+
+function preferLedgerBetGroupKey(current: string | undefined, next: string | null | undefined) {
+  if (!next) return current;
+  if (!current) return next;
+  if (next.startsWith("market:")) return next;
+  if (current.startsWith("market:")) return current;
+  if (next.startsWith("game:")) return next;
+  if (current.startsWith("game:")) return current;
+  return current;
+}
+
+function ledgerBetGroupKey(item: StakingActivityItem, txGroupKeys?: Map<string, string>) {
+  const txHash = ledgerBetTxHash(item);
+  if (txHash) {
+    const peerGroupKey = txGroupKeys?.get(txHash);
+    if (peerGroupKey) return peerGroupKey;
+  }
+
+  return explicitLedgerBetGroupKey(item) || activityKey(item);
 }
 
 function activityTimestamp(item: StakingActivityItem) {
@@ -338,76 +417,119 @@ function ActivityDateDivider({ label }: { label: string }) {
   );
 }
 
-function extractLedgerBetTitle(group: StakingActivityItem[]) {
-  for (const item of group) {
-    const text = `${item.label || ""} ${item.detail || ""}`;
-    const match = text.match(/([^·:|]+?\s+vs\s+[^·:|]+)/i);
-
-    if (match?.[1]) {
-      return match[1].replace(/\s+/g, " ").trim();
-    }
-  }
-
-  return "WoloChain bet rail";
-}
-
 function collapseLedgerBetRows(rows: StakingActivityItem[], enabled: boolean) {
   if (!enabled) return rows;
 
-  const settled: StakingActivityItem[] = [];
-  let group: StakingActivityItem[] = [];
-  let activeGroupKey: string | null = null;
+  type LedgerBetGroup = {
+    key: string;
+    title: string;
+    rows: StakingActivityItem[];
+    newestAt: number;
+    firstIndex: number;
+  };
 
-  const flushGroup = () => {
-    if (group.length === 0) return;
+  const txGroupKeys = new Map<string, string>();
 
-    if (group.length === 1) {
-      settled.push(group[0]);
-      group = [];
-      activeGroupKey = null;
+  rows.forEach((row) => {
+    if (!isBetActivity(row)) return;
+
+    const txHash = ledgerBetTxHash(row);
+    const explicit = explicitLedgerBetGroupKey(row);
+    if (!txHash || !explicit) return;
+
+    txGroupKeys.set(txHash, preferLedgerBetGroupKey(txGroupKeys.get(txHash), explicit) || explicit);
+  });
+
+  const passthrough: StakingActivityItem[] = [];
+  const groups = new Map<string, LedgerBetGroup>();
+
+  rows.forEach((row, index) => {
+    if (!isBetActivity(row)) {
+      passthrough.push(row);
       return;
     }
 
-    const first = group[0];
-    const title = extractLedgerBetTitle(group);
+    const key = ledgerBetGroupKey(row, txGroupKeys);
+    const title = extractLedgerBetTitle([row]);
+    const timestamp = activityTimestamp(row);
+    const group = groups.get(key) || {
+      key,
+      title: title === "WoloChain bet rail" ? "WoloChain bet rail" : title,
+      rows: [],
+      newestAt: timestamp,
+      firstIndex: index,
+    };
 
-    settled.push({
-      key: `ledger-bet-group-${activeGroupKey || activityKey(first)}-${group.length}`,
-      label: `${title} · bet settled`,
-      detail: `${group.length.toLocaleString()} WoloChain bet rows · click to inspect settlement, escrow, payout, and founder-transfer receipts`,
+    group.rows.push(row);
+    group.firstIndex = Math.min(group.firstIndex, index);
+    if (timestamp >= group.newestAt) group.newestAt = timestamp;
+
+    if (group.title === "WoloChain bet rail" && title !== "WoloChain bet rail") {
+      group.title = title;
+    }
+
+    groups.set(key, group);
+  });
+
+  const marketGroupsByTitle = new Map<string, LedgerBetGroup[]>();
+
+  for (const group of groups.values()) {
+    if (!group.key.startsWith("market:")) continue;
+
+    const titleKey = normalizeLedgerBetTitleKey(group.title);
+    const bucket = marketGroupsByTitle.get(titleKey) || [];
+    bucket.push(group);
+    marketGroupsByTitle.set(titleKey, bucket);
+  }
+
+  for (const [key, group] of Array.from(groups.entries())) {
+    if (!key.startsWith("match:")) continue;
+
+    const candidates = marketGroupsByTitle.get(normalizeLedgerBetTitleKey(group.title)) || [];
+    if (candidates.length !== 1) continue;
+
+    const target = candidates[0];
+    target.rows.push(...group.rows);
+    target.firstIndex = Math.min(target.firstIndex, group.firstIndex);
+    target.newestAt = Math.max(target.newestAt, group.newestAt);
+    if (target.title === "WoloChain bet rail" && group.title !== "WoloChain bet rail") {
+      target.title = group.title;
+    }
+
+    groups.delete(key);
+  }
+
+  const collapsed: StakingActivityItem[] = [...passthrough];
+
+  for (const group of groups.values()) {
+    const children = [...group.rows].sort((left, right) => activityTimestamp(right) - activityTimestamp(left));
+    const first = children[0];
+
+    if (children.length === 1) {
+      collapsed.push(children[0]);
+      continue;
+    }
+
+    collapsed.push({
+      key: `ledger-bet-group-${group.key}`,
+      label: `${group.title} · bet settled`,
+      detail: `${children.length.toLocaleString()} WoloChain bet rows · click to inspect settlement, escrow, payout, and founder-transfer receipts`,
       meta: first.meta,
       eventType: "GROUPED BET",
       timestampLabel: first.timestampLabel || first.meta,
       occurredAt: first.occurredAt,
-      groupKey: activeGroupKey || undefined,
+      groupKey: group.key,
       tone: "sky",
-      children: group,
+      children,
     });
-
-    group = [];
-    activeGroupKey = null;
-  };
-
-  for (const row of rows) {
-    if (isBetActivity(row)) {
-      const nextGroupKey = ledgerBetGroupKey(row);
-      if (group.length > 0 && activeGroupKey !== nextGroupKey) {
-        flushGroup();
-      }
-      activeGroupKey = nextGroupKey;
-      group.push(row);
-      continue;
-    }
-
-    flushGroup();
-    settled.push(row);
   }
 
-  flushGroup();
-
-  return settled;
+  return collapsed.sort((left, right) => {
+    const byTime = activityTimestamp(right) - activityTimestamp(left);
+    if (byTime !== 0) return byTime;
+    return activityKey(left).localeCompare(activityKey(right));
+  });
 }
-
 
 export default function StakingActivityFeed({
   items,
@@ -1369,7 +1491,7 @@ function ActivityRow({
             hasChildren ? "cursor-pointer" : "cursor-default"
           }`}
         >
-          <div className="absolute right-5 top-0 z-40 flex max-w-[45%] flex-wrap items-center justify-end gap-2">
+          <div className="absolute right-5 top-0 z-40 flex max-w-[45%] flex-col items-end gap-1.5 text-right">
             <FeedChip>{displayTypeLabel}</FeedChip>
             {amountLabel ? <FeedChip>{displayAmountLabel}</FeedChip> : null}
             <FeedChip>{displayTimestampLabel}</FeedChip>
@@ -1499,7 +1621,7 @@ function ActivityRow({
           </div>
         </div>
 
-        <div className="flex min-w-0 shrink-0 flex-wrap gap-2 pl-5 sm:max-w-[45%] sm:justify-end sm:pl-0">
+        <div className="flex min-w-0 shrink-0 flex-col items-end gap-1.5 pl-5 text-right sm:min-w-[7.5rem] sm:max-w-[45%] sm:pl-0">
           <FeedChip>{displayTypeLabel}</FeedChip>
           {hasChildren ? <FeedChip>{expanded ? "Hide rows" : `${children.length} rows`}</FeedChip> : null}
           {amountLabel ? <FeedChip>{displayAmountLabel}</FeedChip> : null}
