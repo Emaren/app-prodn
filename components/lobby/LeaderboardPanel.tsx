@@ -321,9 +321,8 @@ export function LeaderboardPanel({
     };
   }, [leaderboard.trackedPlayers, loadMoreLeaderboardEntries]);
 
-  const leaderboardScrollClassName = isExtreme
-    ? "mt-6 h-[clamp(34rem,calc(100svh-13rem),82rem)] min-h-[34rem] space-y-3 overflow-y-auto overflow-x-hidden overscroll-y-auto pr-2 scroll-smooth [scrollbar-gutter:stable] [scrollbar-width:thin] [-webkit-overflow-scrolling:touch] [touch-action:pan-y] [contain:layout_paint]"
-    : "mt-6 h-[clamp(30rem,calc(100svh-15rem),62rem)] min-h-[30rem] space-y-3 overflow-y-auto overflow-x-hidden overscroll-y-auto pr-2 scroll-smooth [scrollbar-gutter:stable] [scrollbar-width:thin] [-webkit-overflow-scrolling:touch] [touch-action:pan-y] [contain:layout_paint] sm:h-[clamp(30rem,calc(100svh-15rem),68rem)] lg:h-[clamp(32rem,calc(100svh-14rem),76rem)]"
+  const leaderboardScrollClassName =
+    "mt-6 space-y-3 overflow-visible pr-1";
 
   const leaderboardPanelShellClassName = isExtreme
     ? `relative flex min-h-0 flex-col rounded-[1.85rem] border p-5 transition-all duration-300 sm:p-6 ${tone.panelShell}`
