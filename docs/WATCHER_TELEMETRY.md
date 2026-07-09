@@ -275,4 +275,10 @@ where parse_source = 'file_upload'
 - War Chest now uses offset/limit pagination instead of a single large capped fetch.
 - `/api/lobby/wolo-earners` returns `nextOffset`, `hasMore`, and `totalParticipants`.
 - The homepage War Chest loads a fast first chunk, then keeps fetching additional chunks until the real participant total is reached.
-- Request limits are safety limits only; the board is designed to grow with natural user activity.
+- Request limits are safety limits only; the board is designed to grow with natural user activity.\n
+
+## Mainnet wager visibility guard — 2026-07-09
+
+- Mainnet escrow wagers are visible on `/bets` only after the linked stake intent is safely recorded.
+- Broadcast status updates must never downgrade an already-recorded stake intent back to `broadcast_submitted`.
+- Conservative repair rule: if an active on-chain wager exists with a matching stake intent and tx hash, and the intent already has `recorded_at`, the intent status may be restored to `recorded`.

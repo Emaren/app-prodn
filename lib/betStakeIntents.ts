@@ -131,6 +131,15 @@ export async function updateBetStakeIntentBroadcast(
     stakeTxHash: string;
   }
 ) {
+  const existing = await prisma.betStakeIntent.findUnique({
+    where: { id: input.intentId },
+    select: {
+      status: true,
+    },
+  });
+
+  const alreadyRecorded = existing?.status === "recorded";
+
   return prisma.betStakeIntent.update({
     where: { id: input.intentId },
     data: {
@@ -140,7 +149,7 @@ export async function updateBetStakeIntentBroadcast(
       browserInfo: normalizeString(input.browserInfo, 255),
       routePath: normalizeString(input.routePath, 160),
       stakeTxHash: normalizeString(input.stakeTxHash, 128),
-      status: "broadcast_submitted",
+      status: alreadyRecorded ? "recorded" : "broadcast_submitted",
       errorDetail: null,
       orphanedAt: null,
     },
