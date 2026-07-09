@@ -773,8 +773,46 @@ function toMatchItem(game: PlayerProfileGameRow, currentPlayer: PublicPlayerRef)
   };
 }
 
+function isManualProfileResultReason(parseReason: string | null | undefined) {
+  const reason = String(parseReason || "").trim().toLowerCase();
+  return (
+    reason === "manual_override" ||
+    reason === "manual_recovery" ||
+    reason.includes("manual_backfill") ||
+    reason.includes("manual_recovery") ||
+    reason.includes("manual_override")
+  );
+}
+
+function playerWinnerFlagIsTrue(value: unknown) {
+  return value === true || value === "true" || value === 1 || value === "1";
+}
+
+function trustedManualProfileWinner(game: PlayerProfileGameRow, storedWinner: string | null) {
+  if (!storedWinner || !isManualProfileResultReason(game.parse_reason)) {
+    return null;
+  }
+
+  const winnerKey = storedWinner.trim().toLowerCase();
+  const players = parsePlayers(game.players);
+
+  const matchingWinnerFlag = players.some((player) => {
+    const playerName = normalizePublicReplayText(displayPlayerName(player));
+    return Boolean(
+      playerName &&
+      playerName.trim().toLowerCase() === winnerKey &&
+      playerWinnerFlagIsTrue(player.winner)
+    );
+  });
+
+  return matchingWinnerFlag ? storedWinner : null;
+}
+
 function playerProfileReliableWinner(game: PlayerProfileGameRow) {
   const storedWinner = normalizePublicReplayText(game.winner);
+
+  const manualWinner = trustedManualProfileWinner(game, storedWinner);
+  if (manualWinner) return manualWinner;
 
   if (game.winnerProof === "historical_inferred_fallback" && storedWinner) {
     return storedWinner;
