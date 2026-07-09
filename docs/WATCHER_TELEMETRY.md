@@ -247,3 +247,10 @@ where parse_source = 'file_upload'
 - Market reconciliation still runs from `/api/bets`, but as a throttled background pass.
 - Settlement capability checks use a short fast-path timeout and cache so public bet-board rendering is not blocked by settlement-service probing.
 - Player Match Feed uses an internal scroll viewport with a near-bottom loading backstop for deep archives.
+
+
+## Homepage board height pass — 2026-07-09
+
+- Leaderboard uses a taller internal scroll viewport and avoids clipping the final rows.
+- Homepage War Chest renders as a full-height board beside the leaderboard instead of a short promo tile.
+- Legacy 96-row leaderboard caps were lifted to 128 where present.

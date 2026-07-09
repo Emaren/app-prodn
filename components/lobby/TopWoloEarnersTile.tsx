@@ -260,8 +260,8 @@ export function TopWoloEarnersTile({
     entries.length > 0 ? `${entries.length} earners` : reserve ? `${reserve} reserve` : "8 earners";
   const placeholderCount = Math.max(0, VISIBLE_ROWS - entries.length);
   const viewportHeightClassName = isExtreme
-    ? "h-full min-h-[28rem] max-h-[min(78dvh,58rem)] lg:h-full lg:min-h-[34rem] lg:max-h-[min(82dvh,64rem)]"
-    : "h-full min-h-0 max-h-[min(72dvh,46rem)]";
+    ? "h-[min(92dvh,82rem)] min-h-[42rem] max-h-[82rem] lg:min-h-[56rem] lg:max-h-[86rem]"
+    : "h-[min(90dvh,76rem)] min-h-[38rem] max-h-[76rem] sm:min-h-[44rem] xl:min-h-[56rem]"
 
   return (
     <section
@@ -352,7 +352,7 @@ export function TopWoloEarnersTile({
           <div
             ref={scrollViewportRef}
             onWheel={handleWarChestWheel}
-            className="min-h-0 flex-1 scroll-smooth overflow-y-auto overflow-x-hidden overscroll-contain pr-1 [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,0.28)_transparent] [-webkit-overflow-scrolling:touch] [touch-action:pan-y]"
+            className="min-h-0 flex-1 scroll-smooth overflow-y-auto overflow-x-hidden overscroll-contain pr-1 [scrollbar-gutter:stable] [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,0.28)_transparent] [-webkit-overflow-scrolling:touch] [touch-action:pan-y]"
           >
             <div className="grid gap-2.5">
               {entries.map((entry) => {
