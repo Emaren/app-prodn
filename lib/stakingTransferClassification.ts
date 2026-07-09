@@ -9,6 +9,8 @@ const CANONICAL_RESERVE_MEMO =
 const LEGACY_RESERVE_MEMOS = [
   /^staking wallet\s*[—–-]\s*top up(?:\s+#\d+)?$/i,
   /^top up\s+#\d+\s*[—–-]\s*staking wallet reserve top-up$/i,
+  /^aoe2war\s+staking\s+reserve\s+top-up(?:\s+to\s+\d+(?:\.\d+)?k)?$/i,
+  /^aoe2war\s+staking\s+wallet\s+reserve\s+top-up(?:\s+to\s+\d+(?:\.\d+)?k)?$/i,
 ];
 
 function normalizeMemo(value: string | null | undefined) {
