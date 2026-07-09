@@ -28,7 +28,7 @@ const LOBBY_RECENT_MATCH_INITIAL_LIMIT = 12;
 async function loadRecentMatches(): Promise<LobbyMatchRow[]> {
   try {
     const base = getBackendUpstreamBase();
-    const response = await fetch(`${base}/api/game_stats?limit=80`, { cache: "no-store" });
+    const response = await fetch(`${base}/api/game_stats?limit=128`, { cache: "no-store" });
     if (!response.ok) return [];
 
     const payload = (await response.json()) as LobbyMatchRow[] | unknown;

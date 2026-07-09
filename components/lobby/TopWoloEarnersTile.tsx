@@ -34,7 +34,7 @@ const PLACEHOLDER_LANES = [
   { rank: "7th", title: "Awaiting first earner" },
   { rank: "8th", title: "Awaiting first earner" },
 ] as const;
-const VISIBLE_ROWS = 8;
+const VISIBLE_ROWS = 12;
 
 function formatCompactWolo(value: number | null | undefined) {
   if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) return null;

@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
   const rawLimit = Number(url.searchParams.get("limit") || "64");
   const limit = Math.max(
     8,
-    Math.min(96, Number.isFinite(rawLimit) ? Math.floor(rawLimit) : 64),
+    Math.min(256, Number.isFinite(rawLimit) ? Math.floor(rawLimit) : 64),
   );
 
   try {

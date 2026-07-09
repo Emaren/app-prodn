@@ -254,3 +254,10 @@ where parse_source = 'file_upload'
 - Leaderboard uses a taller internal scroll viewport and avoids clipping the final rows.
 - Homepage War Chest renders as a full-height board beside the leaderboard instead of a short promo tile.
 - Legacy 96-row leaderboard caps were lifted to 128 where present.
+
+
+## Homepage board data-cap pass — 2026-07-09
+
+- Leaderboard and War Chest route/library caps were lifted so taller home boards can actually receive enough rows.
+- War Chest keeps team-split names and can request up to 256 visible earners.
+- Leaderboard page size/default caps target 128 rows for the premium home board.

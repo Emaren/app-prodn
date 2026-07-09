@@ -27,7 +27,7 @@ type LeaderboardPanelProps = {
   surface?: "standard" | "extreme";
 };
 
-const LEADERBOARD_PAGE_SIZE = 600;
+const LEADERBOARD_PAGE_SIZE = 128;
 
 type LeaderboardPageResponse = {
   ok?: boolean;

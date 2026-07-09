@@ -7,8 +7,8 @@ import { getPrisma } from "@/lib/prisma";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const DEFAULT_LIMIT = 80;
-const MAX_LIMIT = 600;
+const DEFAULT_LIMIT = 128;
+const MAX_LIMIT = 256;
 
 function readIntegerParam(request: NextRequest, name: string, fallback: number) {
   const rawValue = request.nextUrl.searchParams.get(name);
