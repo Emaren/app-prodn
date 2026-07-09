@@ -123,44 +123,37 @@ function seatSizeForRow(row: PositionRow | null | undefined, fallback = 0) {
   return asNumber(row.current_staked_wolo, fallback) + asNumber(row.compounded_rewards_wolo);
 }
 
+function formatDecimalFull(value: number, maximumFractionDigits = 2) {
+  const numeric = Number.isFinite(value) ? value : 0;
+  return new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits,
+  }).format(numeric);
+}
+
+function formatWoloFull(value: number, maximumFractionDigits = 2) {
+  return `${formatDecimalFull(value, maximumFractionDigits)} WOLO`;
+}
+
+function formatRawWeightFull(value: string | number | null | undefined) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "0";
+
+  const numeric = Number(raw);
+  if (!Number.isFinite(numeric)) return raw;
+
+  return new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(numeric);
+}
+
 function compactWolo(value: number) {
   if (!Number.isFinite(value)) return "0 WOLO";
   if (Math.abs(value) >= 1_000_000) return `${(value / 1_000_000).toFixed(1).replace(/\.0$/, "")}M WOLO`;
   if (Math.abs(value) >= 1_000) return `${(value / 1_000).toFixed(value >= 100_000 ? 0 : 1).replace(/\.0$/, "")}K WOLO`;
   return `${value.toLocaleString(undefined, { maximumFractionDigits: 6 })} WOLO`;
 }
-
-function preciseWolo(value: number, decimals = 2) {
-  if (!Number.isFinite(value)) return `${(0).toFixed(decimals)} WOLO`;
-
-  return `${value.toLocaleString(undefined, {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  })} WOLO`;
-}
-
-function compactWeight(value: number | string | null | undefined) {
-  const numericValue = Number(value || 0);
-
-  if (!Number.isFinite(numericValue) || numericValue <= 0) return "0";
-
-  const abs = Math.abs(numericValue);
-
-  if (abs >= 1_000_000_000) {
-    return `${(numericValue / 1_000_000_000).toLocaleString(undefined, { maximumFractionDigits: 1 })}B`;
-  }
-
-  if (abs >= 1_000_000) {
-    return `${(numericValue / 1_000_000).toLocaleString(undefined, { maximumFractionDigits: 1 })}M`;
-  }
-
-  if (abs >= 1_000) {
-    return `${(numericValue / 1_000).toLocaleString(undefined, { maximumFractionDigits: 1 })}K`;
-  }
-
-  return numericValue.toLocaleString(undefined, { maximumFractionDigits: 0 });
-}
-
 
 function shortAddress(address?: string | null) {
   if (!address) return "Wallet pending";
@@ -371,6 +364,7 @@ export default async function StakerHallPage({ params }: PageProps) {
   if (!profile) notFound();
 
   const { registry, row, rank, totalStake, allocations } = profile;
+  const rawWeight = row?.accumulated_weight != null ? String(row.accumulated_weight) : registry.fallbackWeight;
   const wallet = row?.wallet_address || null;
   const canShowWalletBalance = await viewerOwnsWalletAddress(wallet);
   const joined = row?.created_at || null;
@@ -378,7 +372,6 @@ export default async function StakerHallPage({ params }: PageProps) {
   const claimed = row ? asNumber(row.claimed_rewards_wolo) : 0;
   const compounded = row ? asNumber(row.compounded_rewards_wolo) : 0;
   const seatSize = row ? seatSizeForRow(row, registry.fallbackStake) : registry.fallbackStake;
-  const rankWeight = Math.max(0, Math.round(seatSize));
   const visibleSeatTotal = totalStake > 0 ? totalStake : seatSize;
   const share = visibleSeatTotal > 0 ? `${((seatSize / visibleSeatTotal) * 100).toFixed(2)}%` : "Founding";
   const microCarryWolo = await loadMicroCarryWolo(row?.user_id);
@@ -424,7 +417,7 @@ export default async function StakerHallPage({ params }: PageProps) {
         ? [{ label: "Mexico National Champion", meta: "National belt", value: "75 WOLO/mo", tone: "gold" as const }]
         : []),
     { label: registry.title, meta: registry.lane, value: registry.badge, tone: registry.tone },
-    { label: autoCompound ? "Auto-compound" : "Manual claim", meta: "Staking mode", value: "Seat " + compactWolo(seatSize), tone: "emerald" },
+    { label: autoCompound ? "Auto-compound" : "Manual claim", meta: "Staking mode", value: "Seat " + formatWoloFull(seatSize), tone: "emerald" },
   ];
 
   return (
@@ -485,15 +478,15 @@ export default async function StakerHallPage({ params }: PageProps) {
         </section>
 
         <section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard label="Seat size" value={preciseWolo(seatSize, 2)} helper="Base stake + compounded rewards" tone="gold" icon={<Coins className="h-4 w-4" />} />
-          <StatCard label="Rank score" value={compactWeight(rankWeight)} helper="Seat-size score" tone="sky" icon={<Sparkles className="h-4 w-4" />} />
+          <StatCard label="Seat size" value={formatWoloFull(seatSize)} helper="Base stake + compounded rewards" tone="gold" icon={<Coins className="h-4 w-4" />} />
+          <StatCard label="Weight" value={formatRawWeightFull(rawWeight)} helper="Raw accounting weight" tone="sky" icon={<Sparkles className="h-4 w-4" />} />
           <StatCard label="Hall share" value={share} helper="Of visible seat size" tone="emerald" icon={<Landmark className="h-4 w-4" />} />
-          <StatCard label="Rewards credited" value={compactWolo(lifetime)} helper="Compounded + paid" tone="gold" icon={<Trophy className="h-4 w-4" />} />
+          <StatCard label="Rewards credited" value={formatWoloFull(lifetime)} helper="Compounded + paid" tone="gold" icon={<Trophy className="h-4 w-4" />} />
         </section>
 
         <section className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <StatCard label="Inside stake" value={compactWolo(compounded)} helper="Compounded into seat" tone="gold" icon={<Crown className="h-4 w-4" />} />
-          <StatCard label="Paid out" value={compactWolo(claimed)} helper="Claimed to wallet" tone="emerald" icon={<Wallet className="h-4 w-4" />} />
+          <StatCard label="Inside stake" value={formatWoloFull(compounded)} helper="Compounded into seat" tone="gold" icon={<Crown className="h-4 w-4" />} />
+          <StatCard label="Paid out" value={formatWoloFull(claimed)} helper="Claimed to wallet" tone="emerald" icon={<Wallet className="h-4 w-4" />} />
           <StatCard
             label={pendingLabel}
             value={
