@@ -181,26 +181,47 @@ export function TopWoloEarnersTile({
   const scrollViewportRef = useRef<HTMLDivElement | null>(null);
   const lazyLoadingRef = useRef(false);
   const nextOffsetRef = useRef(board?.entries?.length ?? 0);
+  const activeModeRef = useRef(mode);
 
   useEffect(() => {
     const boardEntries = board?.entries ?? [];
     const boardTotal = board?.totalParticipants ?? boardEntries.length;
+    const boardMode = board?.mode ?? "weekly";
+    const boardMatchesMode = mode === boardMode;
 
-    if (mode === (board?.mode ?? "weekly")) {
-      setLazyEntries(boardEntries);
+    if (activeModeRef.current !== mode) {
+      activeModeRef.current = mode;
+      const seedEntries = boardMatchesMode ? boardEntries : [];
+
+      setLazyEntries(seedEntries);
       setTotalParticipants(boardTotal);
-      nextOffsetRef.current = boardEntries.length;
-      const nextHasMore = boardEntries.length < boardTotal;
+      nextOffsetRef.current = seedEntries.length;
+
+      const nextHasMore = seedEntries.length < boardTotal;
       setHasMoreEntries(nextHasMore);
       lazyLoadingRef.current = false;
       setLazyLoading(false);
       return;
     }
 
-    setLazyEntries([]);
     setTotalParticipants(boardTotal);
-    nextOffsetRef.current = 0;
-    setHasMoreEntries(boardTotal > 0);
+
+    if (boardMatchesMode && boardEntries.length > 0) {
+      setLazyEntries((current) => {
+        const merged = mergeWoloEarnersEntries(boardEntries, current);
+        nextOffsetRef.current = Math.max(nextOffsetRef.current, merged.length);
+        return merged;
+      });
+
+      const nextHasMore = Math.max(nextOffsetRef.current, boardEntries.length) < boardTotal;
+      setHasMoreEntries(nextHasMore);
+      lazyLoadingRef.current = false;
+      setLazyLoading(false);
+      return;
+    }
+
+    const nextHasMore = nextOffsetRef.current < boardTotal;
+    setHasMoreEntries(nextHasMore);
     lazyLoadingRef.current = false;
     setLazyLoading(false);
   }, [board?.entries, board?.mode, board?.totalParticipants, mode]);
@@ -442,7 +463,7 @@ export function TopWoloEarnersTile({
           <div
             ref={scrollViewportRef}
             onWheel={handleWarChestWheel}
-            className="min-h-0 flex-1 scroll-smooth overflow-y-auto overflow-x-hidden overscroll-y-auto pr-1 [scrollbar-gutter:stable] [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,0.28)_transparent] [-webkit-overflow-scrolling:touch] [touch-action:pan-y] [contain:layout_paint]"
+            className="min-h-0 flex-1 scroll-smooth overflow-y-auto overflow-x-hidden overscroll-y-auto pr-1 [scrollbar-gutter:stable] [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,0.28)_transparent] [-webkit-overflow-scrolling:touch] [touch-action:pan-y]"
           >
             <div className="grid gap-2.5">
               {entries.map((entry) => {

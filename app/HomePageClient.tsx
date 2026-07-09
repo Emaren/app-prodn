@@ -1893,7 +1893,6 @@ return (
                 themeKey={tileThemeKey}
                 viewMode={viewMode}
                 surface={isExtremeLobby ? "extreme" : "standard"}
-                className="h-full"
               />
             </div>
           </div>
