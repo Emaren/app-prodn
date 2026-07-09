@@ -10,7 +10,7 @@ type ActivityFeedEvent = CustomEvent<{ item?: StakingActivityItem }>;
 
 
 
-const PAGE_SIZE = 24;
+const PAGE_SIZE = 40;
 const STAKING_BOUNTY_ACTIVITY_LIMIT = 500;
 const LIVE_POLL_INTERVAL_MS = 12_000;
 
@@ -703,7 +703,7 @@ export default function StakingActivityFeed({
     if (!loadMoreEndpoint || !hasMore || loadingMoreRef.current) return;
 
     const now = Date.now();
-    if (now - lastLoadMoreAtRef.current < 450) return;
+    if (now - lastLoadMoreAtRef.current < 120) return;
 
     loadingMoreRef.current = true;
     lastLoadMoreAtRef.current = now;
@@ -778,7 +778,7 @@ export default function StakingActivityFeed({
       if (!root || loadingMoreRef.current || !hasMore) return;
 
       const remaining = root.scrollHeight - root.scrollTop - root.clientHeight;
-      if (remaining < 520) {
+      if (remaining < 1600) {
         void loadMore();
       }
     });
@@ -796,7 +796,7 @@ export default function StakingActivityFeed({
           void loadMore();
         }
       },
-      { root, rootMargin: "640px 0px" }
+      { root, rootMargin: "1800px 0px" }
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
@@ -952,7 +952,7 @@ export default function StakingActivityFeed({
             const showDivider = index === 0 || currentDay !== previousDay;
 
             return (
-              <div key={key} className="space-y-2.5">
+              <div key={key} className="space-y-2.5 [content-visibility:auto] [contain-intrinsic-size:132px]">
                 {showDivider ? <ActivityDateDivider label={formatActivityDayLabel(item.occurredAt)} /> : null}
                 <ActivityRow item={item} isFresh={key === freshKey} />
               </div>
@@ -966,7 +966,7 @@ export default function StakingActivityFeed({
                   type="button"
                   onClick={() => void loadMore()}
                   disabled={loadingMore}
-                  className="rounded-full border border-slate-700/75 bg-white/[0.035] px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-200 transition hover:border-slate-500/70 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                  className={`rounded-full border border-slate-700/75 bg-white/[0.035] px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-200 transition hover:border-slate-500/70 hover:text-white disabled:cursor-not-allowed disabled:opacity-60 ${loadingMore ? "pointer-events-none opacity-0" : ""}`}
                 >
                   {loadingMore
                     ? "Loading..."

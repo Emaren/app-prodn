@@ -352,6 +352,53 @@ function extractMarketGroupKeyFromText(value: string | null | undefined) {
   return marketMatch?.[1] ? `market:${marketMatch[1]}` : undefined;
 }
 
+async function loadBetMarketGroupKeysForTxHashes(
+  prisma: PrismaClient,
+  txHashes: Array<string | null | undefined>
+) {
+  const uniqueTxHashes = Array.from(
+    new Set(
+      txHashes
+        .map((value) => String(value || "").trim())
+        .filter(Boolean)
+    )
+  );
+
+  const resolved = new Map<string, string>();
+  if (uniqueTxHashes.length === 0) return resolved;
+
+  const [stakeIntents, stakeWagers, payoutWagers] = await Promise.all([
+    prisma.betStakeIntent.findMany({
+      where: { stakeTxHash: { in: uniqueTxHashes } },
+      select: { stakeTxHash: true, marketId: true },
+    }).catch(() => []),
+    prisma.betWager.findMany({
+      where: { stakeTxHash: { in: uniqueTxHashes } },
+      select: { stakeTxHash: true, marketId: true },
+    }).catch(() => []),
+    prisma.betWager.findMany({
+      where: { payoutTxHash: { in: uniqueTxHashes } },
+      select: { payoutTxHash: true, marketId: true },
+    }).catch(() => []),
+  ]);
+
+  function remember(txHash: string | null | undefined, marketId: number | null | undefined) {
+    const cleanTxHash = String(txHash || "").trim();
+    if (!cleanTxHash || !marketId) return;
+
+    const groupKey = `market:${marketId}`;
+    resolved.set(cleanTxHash, groupKey);
+    resolved.set(cleanTxHash.toLowerCase(), groupKey);
+    resolved.set(cleanTxHash.toUpperCase(), groupKey);
+  }
+
+  for (const row of stakeIntents) remember(row.stakeTxHash, row.marketId);
+  for (const row of stakeWagers) remember(row.stakeTxHash, row.marketId);
+  for (const row of payoutWagers) remember(row.payoutTxHash, row.marketId);
+
+  return resolved;
+}
+
 function groupedBetRowKind(item: StakingActivityItem) {
   const eventType = String(item.eventType || "").toUpperCase();
   const text = `${item.label || ""} ${item.detail || ""}`.toLowerCase();
@@ -1462,6 +1509,11 @@ export async function loadMainnetTransferStakingActivityPage(
       };
     });
 
+  const resolvedIndexedTransferGroupKeys = await loadBetMarketGroupKeysForTxHashes(
+    prisma,
+    indexedTransferRows.map((row) => row.txHash)
+  );
+
   const compactMainnetActivityItems =
     stakingAllocationItems.length > 0
       ? mainnetActivityItems.filter((item) => {
@@ -1487,7 +1539,16 @@ export async function loadMainnetTransferStakingActivityPage(
     ...pendingSettlementItems,
     ...stakingAllocationItems,
     ...stakingCycleItems,
-    ...indexedTransferRows.map((row) => indexedTransferToActivityItem(row)),
+    ...indexedTransferRows.map((row) => {
+      const item = indexedTransferToActivityItem(row);
+      const resolvedGroupKey =
+        item.groupKey ||
+        resolvedIndexedTransferGroupKeys.get(row.txHash) ||
+        resolvedIndexedTransferGroupKeys.get(String(row.txHash || "").toLowerCase()) ||
+        resolvedIndexedTransferGroupKeys.get(String(row.txHash || "").toUpperCase());
+
+      return resolvedGroupKey ? { ...item, groupKey: resolvedGroupKey } : item;
+    }),
     ...giftRows.map((row) => giftToActivityItem(row)),
   ]
     .filter((item) =>
