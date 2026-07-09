@@ -19,7 +19,7 @@ type LedgerRow = {
   txHash?: string | null;
 };
 
-const STAKER_LEDGER_VIEW_PREFS_KEY = "aoe2war:staker-ledger-view";
+const STAKER_LEDGER_VIEW_PREFS_KEY = "aoe2war:staker-ledger-view:v2";
 
 const VIEWS: Array<{ key: LedgerView; label: string }> = [
   { key: "all", label: "All" },
@@ -27,8 +27,8 @@ const VIEWS: Array<{ key: LedgerView; label: string }> = [
   { key: "compounded", label: "Compounded" },
   { key: "championships", label: "Championships" },
   { key: "bounties", label: "Bounties" },
-  { key: "bets", label: "Bets" },
-  { key: "grouped-bets", label: "Grouped Bets" },
+  { key: "bets", label: "Bets placed" },
+  { key: "grouped-bets", label: "Grouped bets" },
 ];
 
 function toneClass(tone: LedgerRow["tone"]) {
@@ -191,7 +191,7 @@ export default function StakerLedgerPanel({
     pending: number;
   };
 }) {
-  const [view, setView] = useState<LedgerView>("all");
+  const [view, setView] = useState<LedgerView>("staking");
   const [viewPreferenceReady, setViewPreferenceReady] = useState(false);
 
 
@@ -288,16 +288,16 @@ export default function StakerLedgerPanel({
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <div className="text-xs uppercase tracking-[0.28em] text-slate-500">Personal Ledger</div>
-          <h2 className="mt-2 text-2xl font-semibold text-white">{`${player}'s public receipts`}</h2>
+          <h2 className="mt-2 text-2xl font-semibold text-white">{`${player}'s staking receipts`}</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
-            Mainnet-only from May 25 onward. Reward allocations show as canonical rows; matching compound tx details are folded into the same receipt when present.
+            Mainnet-only from May 25 onward. This view starts with staking receipts; betting receipts live under Bets placed.
           </p>
         </div>
         <Link
           href="/staking"
           className="rounded-full border border-white/10 bg-white/[0.045] px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-200 transition hover:border-amber-300/35 hover:text-amber-100"
         >
-          Full ledger
+          Full history
         </Link>
       </div>
 
@@ -339,7 +339,7 @@ export default function StakerLedgerPanel({
                   <div className="mt-1 text-xs text-slate-400">rolled into stake</div>
                 </div>
                 <div>
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Paid out</div>
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Paid to wallet</div>
                   <div className="mt-1 text-lg font-semibold text-emerald-100">{formatCompactWolo(trail.paid)}</div>
                   <div className="mt-1 text-xs text-slate-400">all time</div>
                 </div>
@@ -364,7 +364,7 @@ export default function StakerLedgerPanel({
             <div>
               <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Unclaimed</div>
               <div className="mt-1 text-lg font-semibold text-amber-100">{bountySummary.unclaimedCount}</div>
-              <div className="mt-1 text-xs text-slate-400">reserved gifts</div>
+              <div className="mt-1 text-xs text-slate-400">unclaimed gifts</div>
             </div>
           </div>
         </div>

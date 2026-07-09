@@ -116,6 +116,11 @@ function asNumber(value: unknown, fallback = 0) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function seatSizeForRow(row: PositionRow | null | undefined, fallback = 0) {
+  if (!row) return fallback;
+  return asNumber(row.current_staked_wolo, fallback) + asNumber(row.compounded_rewards_wolo);
+}
+
 function compactWolo(value: number) {
   if (!Number.isFinite(value)) return "0 WOLO";
   if (Math.abs(value) >= 1_000_000) return `${(value / 1_000_000).toFixed(1).replace(/\.0$/, "")}M WOLO`;
@@ -234,7 +239,7 @@ async function loadPosition(slug: string) {
       from staking_positions sp
       left join users u on u.id = sp.user_id
       where coalesce(sp.current_staked_wolo, 0) > 0
-      order by sp.current_staked_wolo desc, sp.created_at asc
+      order by (coalesce(sp.current_staked_wolo, 0) + coalesce(sp.compounded_rewards_wolo, 0)) desc, sp.created_at asc
       limit 200
     `);
 
@@ -250,7 +255,7 @@ async function loadPosition(slug: string) {
         registry: fallback,
         row: null,
         rank: fallback.slug === "jim" ? 1 : fallback.slug === "julio-alvarez" ? 2 : 3,
-        totalStake: rows.reduce((sum, item) => sum + asNumber(item.current_staked_wolo), 0),
+        totalStake: rows.reduce((sum, item) => sum + seatSizeForRow(item), 0),
         allocations: [] as AllocationRow[],
       };
     }
@@ -280,7 +285,7 @@ async function loadPosition(slug: string) {
       registry: fallback,
       row: match.row,
       rank: match.rank,
-      totalStake: rows.reduce((sum, item) => sum + asNumber(item.current_staked_wolo), 0),
+      totalStake: rows.reduce((sum, item) => sum + seatSizeForRow(item), 0),
       allocations,
     };
   } catch (error) {
@@ -339,15 +344,15 @@ export default async function StakerHallPage({ params }: PageProps) {
   if (!profile) notFound();
 
   const { registry, row, rank, totalStake, allocations } = profile;
-  const stake = row ? asNumber(row.current_staked_wolo, registry.fallbackStake) : registry.fallbackStake;
   const weight = row?.accumulated_weight != null ? String(row.accumulated_weight) : registry.fallbackWeight;
-  const share = totalStake > 0 ? `${((stake / totalStake) * 100).toFixed(2)}%` : "Founding";
   const wallet = row?.wallet_address || null;
   const joined = row?.created_at || null;
   const autoCompound = row?.auto_compound_rewards ?? true;
   const claimed = row ? asNumber(row.claimed_rewards_wolo) : 0;
   const compounded = row ? asNumber(row.compounded_rewards_wolo) : 0;
-  const seatSize = stake + compounded;
+  const seatSize = row ? seatSizeForRow(row, registry.fallbackStake) : registry.fallbackStake;
+  const visibleSeatTotal = totalStake > 0 ? totalStake : seatSize;
+  const share = visibleSeatTotal > 0 ? `${((seatSize / visibleSeatTotal) * 100).toFixed(2)}%` : "Founding";
   const microCarryWolo = await loadMicroCarryWolo(row?.user_id);
   const lifetime = Math.max(row ? asNumber(row.lifetime_rewards_wolo) : 0, allocations.reduce((sum, item) => sum + asNumber(item.reward_wolo), 0));
   const rawPending = row ? asNumber(row.pending_rewards_wolo) : 0;
@@ -373,6 +378,14 @@ export default async function StakerHallPage({ params }: PageProps) {
           : derivedPending > 0.000001
             ? derivedPending
             : 0;
+  const pendingHelper =
+    pending <= 0
+      ? "No pending carry"
+      : pending < 1
+        ? "Held as precise carry"
+        : autoCompound
+          ? "Awaiting next compound cycle"
+          : "Awaiting payout threshold";
   const championshipTitle = registry.slug === "jim" ? "USA National Champion" : registry.slug === "julio-alvarez" ? "Mexico National Champion" : "Verified Grind";
   const kingdomBenefit = registry.slug === "jim" ? "US Champion lane · founding staking guardian · public kingdom proof" : registry.slug === "julio-alvarez" ? "Mexico Champion lane · first scout · early staking proof" : "Operator lane · verified wallet · public economy rail";
   const designationRows: Array<{ label: string; meta: string; value: string; tone: "gold" | "emerald" | "sky" }> = [
@@ -382,7 +395,7 @@ export default async function StakerHallPage({ params }: PageProps) {
         ? [{ label: "Mexico National Champion", meta: "National belt", value: "75 WOLO/mo", tone: "gold" as const }]
         : []),
     { label: registry.title, meta: registry.lane, value: registry.badge, tone: registry.tone },
-    { label: autoCompound ? "Auto-compound" : "Manual claim", meta: "Staking mode", value: compactWolo(seatSize), tone: "emerald" },
+    { label: autoCompound ? "Auto-compound" : "Manual claim", meta: "Staking mode", value: "Seat " + compactWolo(seatSize), tone: "emerald" },
   ];
 
   return (
@@ -426,7 +439,7 @@ export default async function StakerHallPage({ params }: PageProps) {
               <CopyableWalletAddress address={wallet} label={shortAddress(wallet)} />
               <div className="mt-4 grid grid-cols-2 gap-4">
                 <div>
-                  <div className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Your balance</div>
+                  <div className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Wallet balance</div>
                   <WalletOwnerBalance address={wallet} />
                 </div>
                 <div>
@@ -439,23 +452,23 @@ export default async function StakerHallPage({ params }: PageProps) {
         </section>
 
         <section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard label="Seat size" value={preciseWolo(seatSize, 2)} helper="Principal + rewards" tone="gold" icon={<Coins className="h-4 w-4" />} />
+          <StatCard label="Seat size" value={preciseWolo(seatSize, 2)} helper="Base stake + compounded rewards" tone="gold" icon={<Coins className="h-4 w-4" />} />
           <StatCard label="Weight" value={compactWeight(weight)} helper="Accounting weight" tone="sky" icon={<Sparkles className="h-4 w-4" />} />
-          <StatCard label="Hall share" value={share} helper="Of visible active stake" tone="emerald" icon={<Landmark className="h-4 w-4" />} />
-          <StatCard label="Reward Total" value={compactWolo(lifetime)} helper="All time earnings" tone="gold" icon={<Trophy className="h-4 w-4" />} />
+          <StatCard label="Hall share" value={share} helper="Of visible seat size" tone="emerald" icon={<Landmark className="h-4 w-4" />} />
+          <StatCard label="Rewards credited" value={compactWolo(lifetime)} helper="Compounded + paid" tone="gold" icon={<Trophy className="h-4 w-4" />} />
         </section>
 
         <section className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <StatCard label="Auto-compounded" value={compactWolo(compounded)} helper="Included in seat size" tone="gold" icon={<Crown className="h-4 w-4" />} />
-          <StatCard label="Paid Out" value={compactWolo(claimed)} helper="All time" tone="emerald" icon={<Wallet className="h-4 w-4" />} />
+          <StatCard label="Inside stake" value={compactWolo(compounded)} helper="Compounded into seat" tone="gold" icon={<Crown className="h-4 w-4" />} />
+          <StatCard label="Paid out" value={compactWolo(claimed)} helper="Claimed to wallet" tone="emerald" icon={<Wallet className="h-4 w-4" />} />
           <StatCard
-            label="Building"
+            label="Carry"
             value={
               pending > 0 && pending < 1
                 ? `${pending.toLocaleString(undefined, { maximumFractionDigits: 6 })} WOLO`
                 : compactWolo(pending)
             }
-            helper={pending > 0 && pending < 1 ? "Dust under threshold" : "Below reward threshold"}
+            helper={pendingHelper}
             icon={<Flame className="h-4 w-4" />}
             tone="gold"
           />
@@ -481,7 +494,7 @@ export default async function StakerHallPage({ params }: PageProps) {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="text-xs uppercase tracking-[0.28em] text-emerald-100/60">Kingdom Benefits</div>
-                <h2 className="mt-2 text-2xl font-semibold text-white">Public seat benefits</h2>
+                <h2 className="mt-2 text-2xl font-semibold text-white">Seat benefits</h2>
                 <p className="mt-2 text-sm leading-6 text-slate-300">{kingdomBenefit}</p>
               </div>
               <div className="rounded-full border border-emerald-300/20 bg-emerald-500/10 p-3 text-emerald-100">

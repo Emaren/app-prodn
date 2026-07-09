@@ -542,8 +542,8 @@ async function loadBetRows(userId: number | null, grouped: boolean) {
       key: `grouped-bet-${key}`,
       view: "grouped-bets" as const,
       tone: "sky" as const,
-      label: `${formatWolo(row.amount)} grouped bet activity`,
-      detail: `${row.market} · ${row.count} ${row.count === 1 ? "entry" : "entries"} · ${formatWolo(row.payout)} payout value`,
+      label: `${formatWolo(row.amount)} grouped bets placed`,
+      detail: `${row.market} · ${row.count} ${row.count === 1 ? "receipt" : "receipts"} · ${formatWolo(row.payout)} payout value`,
       meta: formatTime(row.occurredAt),
       occurredAt: row.occurredAt,
       amountLabel: formatWolo(row.amount),
@@ -737,7 +737,7 @@ export async function GET(request: Request, context: RouteContext) {
     view === "all" || view === "staking" || view === "compounded" ? loadStakingRows(user?.user_id ?? null, before, limitDays) : Promise.resolve({ rows: [], hasMore: false, nextBefore: null }),
     view === "all" || view === "championships" ? loadChampionshipRows(slug, user?.user_id ?? null) : Promise.resolve([]),
     view === "all" || view === "bounties" ? loadBountyRows(user?.user_id ?? null) : Promise.resolve([]),
-    view === "all" || view === "bets" ? loadBetRows(user?.user_id ?? null, false) : Promise.resolve([]),
+    view === "bets" ? loadBetRows(user?.user_id ?? null, false) : Promise.resolve([]),
     view === "grouped-bets" ? loadBetRows(user?.user_id ?? null, true) : Promise.resolve([]),
   ]);
 
@@ -772,7 +772,7 @@ export async function GET(request: Request, context: RouteContext) {
           ? bets
           : view === "grouped-bets"
             ? groupedBets
-            : [...staking.rows, ...championships, ...bounties, ...bets].sort(
+            : [...staking.rows, ...championships, ...bounties].sort(
                 (left, right) => new Date(right.occurredAt).getTime() - new Date(left.occurredAt).getTime()
               );
 
