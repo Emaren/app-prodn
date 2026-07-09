@@ -115,8 +115,14 @@ export function LeaderboardPanel({
       leaderboardHydrationStartedRef.current = false;
       preloadAllRef.current = false;
     } else {
-      setEntries((current) => mergeLeaderboardEntries(leaderboard.entries, current));
-      nextOffsetRef.current = Math.max(nextOffsetRef.current, rankedEntryCount);
+      const merged = mergeLeaderboardEntries(leaderboard.entries, entriesRef.current);
+      entriesRef.current = merged;
+      setEntries(merged);
+      nextOffsetRef.current = Math.max(
+        nextOffsetRef.current,
+        rankedEntryCount,
+        countRankedLeaderboardEntries(merged)
+      );
     }
 
     const nextHasMore = leaderboard.trackedPlayers > nextOffsetRef.current;
@@ -155,15 +161,22 @@ export function LeaderboardPanel({
       const payload = (await response.json()) as LeaderboardPageResponse;
       const nextEntries = Array.isArray(payload.entries) ? payload.entries : [];
 
-      setEntries((current) => mergeLeaderboardEntries(current, nextEntries));
+      const mergedEntries = mergeLeaderboardEntries(entriesRef.current, nextEntries);
+      entriesRef.current = mergedEntries;
+      setEntries(mergedEntries);
 
-      const fallbackNextOffset = offset + nextEntries.length;
+      const mergedRankedCount = countRankedLeaderboardEntries(mergedEntries);
+      const fetchedRankedCount = countRankedLeaderboardEntries(nextEntries);
+      const fallbackNextOffset = Math.max(offset + fetchedRankedCount, mergedRankedCount);
       nextOffsetRef.current =
-        typeof payload.nextOffset === "number" ? payload.nextOffset : fallbackNextOffset;
+        typeof payload.nextOffset === "number"
+          ? Math.max(payload.nextOffset, mergedRankedCount)
+          : fallbackNextOffset;
       const nextHasMore =
-        typeof payload.hasMore === "boolean"
+        nextOffsetRef.current < leaderboard.trackedPlayers &&
+        (typeof payload.hasMore === "boolean"
           ? payload.hasMore
-          : countRankedLeaderboardEntries(nextEntries) > 0;
+          : fetchedRankedCount > 0);
       hasMoreRef.current = nextHasMore;
       setHasMore(nextHasMore);
     } catch (error) {
@@ -295,18 +308,24 @@ export function LeaderboardPanel({
     const preloadAllLeaderboardPages = async () => {
       await sleep(450);
 
-      for (let page = 0; page < 24; page += 1) {
+      const maxPages = Math.ceil(leaderboard.trackedPlayers / LEADERBOARD_PAGE_SIZE) + 6;
+
+      for (let page = 0; page < maxPages; page += 1) {
         if (cancelled) return;
 
         const before = countRankedLeaderboardEntries(entriesRef.current);
-        if (before >= leaderboard.trackedPlayers) return;
+        if (before >= leaderboard.trackedPlayers) {
+          hasMoreRef.current = false;
+          setHasMore(false);
+          return;
+        }
 
         await loadMoreLeaderboardEntries();
-        await sleep(40);
+        await sleep(180);
 
         const after = countRankedLeaderboardEntries(entriesRef.current);
         if (after <= before && !loadingRef.current) {
-          await sleep(700);
+          await sleep(900);
         }
       }
     };
@@ -342,7 +361,7 @@ export function LeaderboardPanel({
     async function hydrateFullLeaderboard() {
       let offset = firstOffset;
 
-      for (let attempt = 0; attempt < 4; attempt += 1) {
+      for (let attempt = 0; attempt < 8; attempt += 1) {
         if (cancelled) return;
 
         try {
@@ -364,12 +383,10 @@ export function LeaderboardPanel({
             return;
           }
 
-          setEntries((current) => {
-            const merged = mergeLeaderboardEntries(current, nextEntries);
-            entriesRef.current = merged;
-            nextOffsetRef.current = countRankedLeaderboardEntries(merged);
-            return merged;
-          });
+          const merged = mergeLeaderboardEntries(entriesRef.current, nextEntries);
+          entriesRef.current = merged;
+          nextOffsetRef.current = countRankedLeaderboardEntries(merged);
+          setEntries(merged);
           hasMoreRef.current = true;
           setHasMore(true);
 

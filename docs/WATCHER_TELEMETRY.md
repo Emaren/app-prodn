@@ -298,3 +298,10 @@ where parse_source = 'file_upload'
 - Homepage returns the full current War Chest board instead of the old visible-slot slice.
 - Lazy/request limits remain server-safety limits only; they are not product caps.
 - Leaderboard can continue loading beyond the seeded board through the paged `/api/lobby/leaderboard` route.
+
+
+## Leaderboard continuation past seed — 2026-07-09
+
+- Homepage seeds the Leaderboard with 600 rows for fast first paint.
+- The Leaderboard client now keeps hydrating through the paged API until the real tracked-player total is reached.
+- The 600-row seed is not a product cap; it is only the first payload.
