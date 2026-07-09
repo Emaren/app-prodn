@@ -269,3 +269,10 @@ where parse_source = 'file_upload'
 - Nested board panes use native scroll chaining and stable scrollbar gutters instead of brittle clipped dynamic viewport boxes.
 - Leaderboard lazy-load page size is smaller and more eager near the bottom for smoother progressive loading.
 - War Chest route/component limit headroom supports the full board while keeping the pane scrollable.
+
+## War Chest true pagination — 2026-07-09
+
+- War Chest now uses offset/limit pagination instead of a single large capped fetch.
+- `/api/lobby/wolo-earners` returns `nextOffset`, `hasMore`, and `totalParticipants`.
+- The homepage War Chest loads a fast first chunk, then keeps fetching additional chunks until the real participant total is reached.
+- Request limits are safety limits only; the board is designed to grow with natural user activity.

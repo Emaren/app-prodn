@@ -15,6 +15,19 @@ import { avatarThumbUrlForUser } from "@/lib/avatarAssets";
 
 const WOLO_LOGO_SRC = "/api/media-assets/logo/footer-wolo?fallback=%2Flegacy%2Fwolo-logo-transparent.webp";
 
+type WoloEarnersBoardPage = NonNullable<LobbySnapshot["woloEarners"]> & {
+  nextOffset?: number;
+  hasMore?: boolean;
+};
+
+type WoloEarnersPageResponse = {
+  ok?: boolean;
+  board?: WoloEarnersBoardPage;
+  nextOffset?: number;
+  hasMore?: boolean;
+  totalParticipants?: number;
+};
+
 type TopWoloEarnersTileProps = {
   wolo: LobbySnapshot["wolo"];
   board: LobbySnapshot["woloEarners"] | null;
@@ -35,6 +48,7 @@ const PLACEHOLDER_LANES = [
   { rank: "8th", title: "Awaiting first earner" },
 ] as const;
 const VISIBLE_ROWS = 14;
+const WAR_CHEST_PAGE_SIZE = 48;
 
 function formatCompactWolo(value: number | null | undefined) {
   if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) return null;
@@ -91,6 +105,19 @@ function getEntryTake(entry: LobbyWoloEarnersEntry, mode: LobbyWoloEarnersMode) 
   return mode === "weekly" ? entry.weeklyTakeWolo : entry.allTimeTakeWolo;
 }
 
+function mergeWoloEarnersEntries(
+  primary: LobbyWoloEarnersEntry[],
+  secondary: LobbyWoloEarnersEntry[]
+) {
+  const byKey = new Map<string, LobbyWoloEarnersEntry>();
+
+  for (const entry of [...primary, ...secondary]) {
+    byKey.set(entry.key, entry);
+  }
+
+  return Array.from(byKey.values());
+}
+
 function compareEntriesForMode(mode: LobbyWoloEarnersMode) {
   return (a: LobbyWoloEarnersEntry, b: LobbyWoloEarnersEntry) => {
     const aTake = getEntryTake(a, mode);
@@ -142,55 +169,112 @@ export function TopWoloEarnersTile({
   const isExtreme = surface === "extreme";
   const reserve = formatCompactWolo(wolo?.accounts.ecosystembounties?.wolo ?? null);
   const [mode, setMode] = useState<LobbyWoloEarnersMode>(board?.mode ?? "weekly");
-  const [lazyEntries, setLazyEntries] = useState(board?.entries ?? []);
-  const [lazyLoaded, setLazyLoaded] = useState(false);
+  const [lazyEntries, setLazyEntries] = useState<LobbyWoloEarnersEntry[]>(board?.entries ?? []);
+  const [totalParticipants, setTotalParticipants] = useState(
+    board?.totalParticipants ?? board?.entries?.length ?? 0
+  );
+  const [hasMoreEntries, setHasMoreEntries] = useState(
+    () => (board?.entries?.length ?? 0) < (board?.totalParticipants ?? board?.entries?.length ?? 0)
+  );
   const [lazyLoading, setLazyLoading] = useState(false);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const scrollViewportRef = useRef<HTMLDivElement | null>(null);
   const lazyLoadingRef = useRef(false);
+  const nextOffsetRef = useRef(board?.entries?.length ?? 0);
+
   useEffect(() => {
-    setLazyEntries(board?.entries ?? []);
-    setLazyLoaded(false);
-    setLazyLoading(false);
+    const boardEntries = board?.entries ?? [];
+    const boardTotal = board?.totalParticipants ?? boardEntries.length;
+
+    if (mode === (board?.mode ?? "weekly")) {
+      setLazyEntries(boardEntries);
+      setTotalParticipants(boardTotal);
+      nextOffsetRef.current = boardEntries.length;
+      const nextHasMore = boardEntries.length < boardTotal;
+      setHasMoreEntries(nextHasMore);
+      lazyLoadingRef.current = false;
+      setLazyLoading(false);
+      return;
+    }
+
+    setLazyEntries([]);
+    setTotalParticipants(boardTotal);
+    nextOffsetRef.current = 0;
+    setHasMoreEntries(boardTotal > 0);
     lazyLoadingRef.current = false;
-  }, [board?.entries, mode]);
+    setLazyLoading(false);
+  }, [board?.entries, board?.mode, board?.totalParticipants, mode]);
 
-  const loadFullBoard = useCallback(async () => {
-    if (lazyLoaded || lazyLoadingRef.current) return;
+  const loadNextBoardPage = useCallback(async () => {
+    if (lazyLoadingRef.current || !hasMoreEntries) return;
 
+    const offset = nextOffsetRef.current;
     lazyLoadingRef.current = true;
     setLazyLoading(true);
 
     try {
       const response = await fetch(
-        `/api/lobby/wolo-earners?mode=${encodeURIComponent(mode)}&limit=512`,
+        `/api/lobby/wolo-earners?mode=${encodeURIComponent(mode)}&offset=${offset}&limit=${WAR_CHEST_PAGE_SIZE}`,
         { cache: "no-store" }
       );
 
-      if (!response.ok) return;
-
-      const payload = await response.json();
-      const nextEntries = payload?.board?.entries;
-
-      if (Array.isArray(nextEntries) && nextEntries.length > 0) {
-        setLazyEntries(nextEntries);
-        setLazyLoaded(true);
+      if (!response.ok) {
+        setHasMoreEntries(false);
+        return;
       }
-    } catch {
-      // Initial board remains usable if the lazy call fails.
+
+      const payload = (await response.json()) as WoloEarnersPageResponse;
+      const pageBoard = payload.board;
+      const nextEntries = Array.isArray(pageBoard?.entries) ? pageBoard.entries : [];
+      const nextTotal =
+        typeof pageBoard?.totalParticipants === "number"
+          ? pageBoard.totalParticipants
+          : typeof payload.totalParticipants === "number"
+            ? payload.totalParticipants
+            : totalParticipants;
+
+      setTotalParticipants(nextTotal);
+
+      if (nextEntries.length > 0) {
+        setLazyEntries((current) => mergeWoloEarnersEntries(current, nextEntries));
+      }
+
+      const fallbackNextOffset = offset + nextEntries.length;
+      const nextOffset =
+        typeof pageBoard?.nextOffset === "number"
+          ? pageBoard.nextOffset
+          : typeof payload.nextOffset === "number"
+            ? payload.nextOffset
+            : fallbackNextOffset;
+
+      nextOffsetRef.current = nextOffset;
+
+      const nextHasMore =
+        typeof pageBoard?.hasMore === "boolean"
+          ? pageBoard.hasMore
+          : typeof payload.hasMore === "boolean"
+            ? payload.hasMore
+            : nextOffset < nextTotal;
+
+      setHasMoreEntries(nextHasMore);
+    } catch (error) {
+      console.warn("Failed to load more War Chest earners:", error);
+      setHasMoreEntries(false);
     } finally {
       lazyLoadingRef.current = false;
       setLazyLoading(false);
     }
-  }, [lazyLoaded, mode]);
+  }, [hasMoreEntries, mode, totalParticipants]);
 
   useEffect(() => {
+    if (!hasMoreEntries) return;
+
     const timer = window.setTimeout(() => {
-      void loadFullBoard();
-    }, 350);
+      void loadNextBoardPage();
+    }, 450);
 
     return () => window.clearTimeout(timer);
-  }, [loadFullBoard]);
+  }, [hasMoreEntries, loadNextBoardPage]);
 
   const handleWarChestWheel = useCallback(
     (event: WheelEvent<HTMLDivElement>) => {
@@ -208,28 +292,28 @@ export function TopWoloEarnersTile({
 
       const distanceFromBottom = target.scrollHeight - target.scrollTop - target.clientHeight;
       if (distanceFromBottom < 900) {
-        void loadFullBoard();
+        void loadNextBoardPage();
       }
     },
-    [loadFullBoard]
+    [loadNextBoardPage]
   );
 
   useEffect(() => {
-    if (lazyLoaded || lazyLoading) return;
+    if (!hasMoreEntries || lazyLoading) return;
 
     const sentinel = loadMoreRef.current;
     const scrollRoot = scrollViewportRef.current;
     if (!sentinel || !scrollRoot) return;
 
     if (typeof IntersectionObserver === "undefined") {
-      window.setTimeout(() => void loadFullBoard(), 250);
+      window.setTimeout(() => void loadNextBoardPage(), 250);
       return undefined;
     }
 
     const observer = new IntersectionObserver(
       (records) => {
         if (records.some((record) => record.isIntersecting)) {
-          void loadFullBoard();
+          void loadNextBoardPage();
         }
       },
       {
@@ -244,7 +328,7 @@ export function TopWoloEarnersTile({
     return () => {
       observer.disconnect();
     };
-  }, [lazyLoaded, lazyLoading, mode, loadFullBoard]);
+  }, [hasMoreEntries, lazyLoading, mode, loadNextBoardPage]);
 
   const entries = useMemo(
     () =>
@@ -257,7 +341,13 @@ export function TopWoloEarnersTile({
   const statusLabel = mode === "weekly" ? "Weekly" : "All Time";
   const nextModeLabel = mode === "weekly" ? "All Time" : "Weekly";
   const headlineMeta =
-    entries.length > 0 ? `${entries.length} earners` : reserve ? `${reserve} reserve` : "8 earners";
+    entries.length > 0
+      ? totalParticipants > entries.length
+        ? `${entries.length} / ${totalParticipants} earners`
+        : `${entries.length} earners`
+      : reserve
+        ? `${reserve} reserve`
+        : "8 earners";
   const placeholderCount = Math.max(0, VISIBLE_ROWS - entries.length);
   const viewportHeightClassName = isExtreme
     ? "h-[clamp(34rem,calc(100svh-13rem),82rem)] min-h-[42rem] max-h-[88rem] lg:min-h-[56rem] lg:max-h-[92rem]"
@@ -439,7 +529,7 @@ export function TopWoloEarnersTile({
 
               {lazyLoading ? (
                 <div className="rounded-[1.15rem] border border-white/10 bg-white/[0.025] px-4 py-3 text-center text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">
-                  Loading more wars…
+                  Loading more earners…
                 </div>
               ) : null}
 
