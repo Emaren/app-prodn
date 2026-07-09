@@ -417,6 +417,25 @@ function ActivityDateDivider({ label }: { label: string }) {
   );
 }
 
+function groupedLedgerBetAmountLabel(children: StakingActivityItem[]) {
+  const candidates = children.filter((child) => child.amountLabel?.trim());
+  if (candidates.length === 0) return undefined;
+
+  const settlement =
+    candidates.find((child) => {
+      const text = `${child.eventType || ""} ${child.label || ""} ${child.detail || ""}`.toLowerCase();
+      return text.includes("settlement queue") || text.includes("settlement");
+    }) || null;
+
+  const payout =
+    candidates.find((child) => {
+      const text = `${child.eventType || ""} ${child.label || ""} ${child.detail || ""}`.toLowerCase();
+      return text.includes("bet payout") || text.includes("bet_refund") || text.includes("founders_bonus") || text.includes("founders bonus");
+    }) || null;
+
+  return settlement?.amountLabel || payout?.amountLabel || candidates[0]?.amountLabel;
+}
+
 function collapseLedgerBetRows(rows: StakingActivityItem[], enabled: boolean) {
   if (!enabled) return rows;
 
@@ -513,7 +532,8 @@ function collapseLedgerBetRows(rows: StakingActivityItem[], enabled: boolean) {
     collapsed.push({
       key: `ledger-bet-group-${group.key}`,
       label: `${group.title} · bet settled`,
-      detail: `${children.length.toLocaleString()} WoloChain bet rows · click to inspect settlement, escrow, payout, and founder-transfer receipts`,
+      detail: "WoloChain bet receipts · click to inspect settlement, escrow, payout, and founder-transfer receipts",
+      amountLabel: groupedLedgerBetAmountLabel(children),
       meta: first.meta,
       eventType: "GROUPED BET",
       timestampLabel: first.timestampLabel || first.meta,
@@ -1493,9 +1513,9 @@ function ActivityRow({
         >
           <div className="absolute right-5 top-0 z-40 flex max-w-[45%] flex-col items-end gap-1.5 text-right">
             <FeedChip>{displayTypeLabel}</FeedChip>
-            {amountLabel ? <FeedChip>{displayAmountLabel}</FeedChip> : null}
             <FeedChip>{displayTimestampLabel}</FeedChip>
-            {hasChildren ? <FeedChip>{expanded ? "Hide rows" : `${children.length} rows`}</FeedChip> : null}
+            {amountLabel ? <FeedChip>{displayAmountLabel}</FeedChip> : null}
+            {hasChildren ? <FeedChip>{expanded ? "Hide receipts" : "Receipts"}</FeedChip> : null}
             {item.txUrl ? (
               <a
                 href={item.txUrl}
@@ -1573,7 +1593,7 @@ function ActivityRow({
         </button>
 
         {hasChildren && expanded ? (
-          <div className="mt-3 space-y-2 overflow-hidden border-t border-amber-200/8 pt-3">
+          <div className="mt-3 max-h-56 space-y-2 overflow-x-hidden overflow-y-auto border-t border-amber-200/8 pr-2 pt-3 [scrollbar-width:thin]">
             {children.map((child, index) => (
               <ActivityRow
                 key={activityKey(child) || `${item.key || item.label}-child-${index}`}
@@ -1623,9 +1643,9 @@ function ActivityRow({
 
         <div className="flex min-w-0 shrink-0 flex-col items-end gap-1.5 pl-5 text-right sm:min-w-[7.5rem] sm:max-w-[45%] sm:pl-0">
           <FeedChip>{displayTypeLabel}</FeedChip>
-          {hasChildren ? <FeedChip>{expanded ? "Hide rows" : `${children.length} rows`}</FeedChip> : null}
-          {amountLabel ? <FeedChip>{displayAmountLabel}</FeedChip> : null}
           <FeedChip>{displayTimestampLabel}</FeedChip>
+          {amountLabel ? <FeedChip>{displayAmountLabel}</FeedChip> : null}
+          {hasChildren ? <FeedChip>{expanded ? "Hide receipts" : "Receipts"}</FeedChip> : null}
           {item.txUrl ? (
             <a
               href={item.txUrl}
@@ -1641,7 +1661,7 @@ function ActivityRow({
       </button>
 
       {hasChildren && expanded ? (
-        <div className="mt-3 space-y-2 overflow-hidden border-t border-slate-800/80 pt-3">
+        <div className="mt-3 max-h-56 space-y-2 overflow-x-hidden overflow-y-auto border-t border-slate-800/80 pr-2 pt-3 [scrollbar-width:thin]">
           {children.map((child, index) => (
             <ActivityRow
               key={activityKey(child) || `${item.key || item.label}-child-${index}`}

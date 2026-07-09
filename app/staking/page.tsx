@@ -1150,6 +1150,31 @@ function CompactLeaderboard({
   );
 }
 
+function StakedWoloValue({ value }: { value: string }) {
+  const trimmed = value.trim();
+  const match = trimmed.match(/^(.+?)\s+WOLO$/i);
+
+  if (!match) return <span>{value}</span>;
+
+  return (
+    <span className="inline-flex flex-col leading-tight">
+      <span>{match[1]}</span>
+      <span>WOLO</span>
+    </span>
+  );
+}
+
+function StakedLeaderboardCell({ value }: { value: string }) {
+  return (
+    <div className="mt-3 min-w-0 md:mt-0">
+      <div className="text-xs uppercase tracking-[0.2em] text-slate-500 md:hidden">Staked</div>
+      <div className="mt-1 text-sm font-semibold leading-tight text-slate-100 md:mt-0">
+        <StakedWoloValue value={value} />
+      </div>
+    </div>
+  );
+}
+
 function CompactLeaderboardRow({
   rank,
   row,
@@ -1194,7 +1219,7 @@ function CompactLeaderboardRow({
         </div>
       </div>
 
-      <MobileLabel label="Staked" value={row.staked} />
+      <StakedLeaderboardCell value={row.staked} />
       <MobileLabel label="Weight" value={row.weight} />
 
       <div className={`mt-3 rounded-full border px-2.5 py-1 text-[11px] md:mt-0 md:text-center ${badgeClass}`}>
