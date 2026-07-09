@@ -305,3 +305,10 @@ where parse_source = 'file_upload'
 - Homepage seeds the Leaderboard with 600 rows for fast first paint.
 - The Leaderboard client now keeps hydrating through the paged API until the real tracked-player total is reached.
 - The 600-row seed is not a product cap; it is only the first payload.
+
+
+## Homepage full leaderboard seed — 2026-07-09
+
+- Homepage now seeds enough Leaderboard rows to include the full current tracked-player board.
+- This removes dependence on brittle client-side hydration inside the homepage scroll tile.
+- The paged `/api/lobby/leaderboard` route remains available for future expansion and dedicated full-board views.
