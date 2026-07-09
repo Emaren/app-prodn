@@ -290,3 +290,11 @@ where parse_source = 'file_upload'
 - War Chest merges parent lobby refreshes into already-loaded pages instead of resetting back to the first page.
 - Home no longer passes `h-full` into War Chest, so the tile can keep its own stable height.
 - Request limits remain per-call safety limits only, not product caps.
+
+
+## Homepage board seed fix — 2026-07-09
+
+- Homepage seeds Leaderboard with 600 rows so the tile no longer visually stops at rank 128.
+- Homepage returns the full current War Chest board instead of the old visible-slot slice.
+- Lazy/request limits remain server-safety limits only; they are not product caps.
+- Leaderboard can continue loading beyond the seeded board through the paged `/api/lobby/leaderboard` route.
