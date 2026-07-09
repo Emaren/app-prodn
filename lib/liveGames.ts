@@ -326,6 +326,19 @@ async function loadLiveGamesSnapshotFresh(prisma: PrismaClient): Promise<LiveGam
     prisma,
     displayedCompletedSessionsBase
   );
+  const activeMarketSummaries = await loadReplayReviewMarketSummaryMap(
+    prisma,
+    streamedActiveSessions.map((session) => ({ id: session.id, sessionKey: session.sessionKey }))
+  ).catch((error) => {
+    console.warn("Failed to load active live market summaries:", error);
+    return new Map();
+  });
+
+  const activeSessionsWithMarkets = streamedActiveSessions.map((session) => ({
+    ...session,
+    reviewMarket: activeMarketSummaries.get(session.id) ?? null,
+  }));
+
   const reviewMarketSummaries = await loadReplayReviewMarketSummaryMap(
     prisma,
     hydratedCompletedSessions
@@ -392,7 +405,7 @@ async function loadLiveGamesSnapshotFresh(prisma: PrismaClient): Promise<LiveGam
           format: tournament.format,
           status: tournament.status,
         },
-    activeSessions: streamedActiveSessions,
+    activeSessions: activeSessionsWithMarkets,
     recentlyCompletedSessions: displayedCompletedSessions,
     liveMatches,
     readyMatches,

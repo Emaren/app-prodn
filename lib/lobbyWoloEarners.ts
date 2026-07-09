@@ -356,12 +356,72 @@ function claimCountsAsSettled(claim: Pick<ClaimSample, "claimKind" | "status">) 
   return claim.status === "claimed" && claimCountsAsWeeklyTake(claim);
 }
 
+function splitTeamClaimNames(claim: Pick<ClaimSample, "claimedByUserId" | "displayPlayerName" | "normalizedPlayerName">) {
+  if (claim.claimedByUserId) {
+    return [];
+  }
+
+  const sourceName =
+    normalizePublicPlayerName(claim.displayPlayerName) ||
+    normalizePublicPlayerName(claim.normalizedPlayerName) ||
+    "";
+
+  if (!sourceName.includes("/")) {
+    return [];
+  }
+
+  const parts = sourceName
+    .split(/\s+\/\s+/)
+    .map((part) => normalizePublicPlayerName(part))
+    .filter((part): part is string => Boolean(part));
+
+  const unique: string[] = [];
+  const seen = new Set<string>();
+
+  for (const part of parts) {
+    const key = normalizeNameKey(part);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    unique.push(part);
+  }
+
+  return unique.length >= 2 ? unique : [];
+}
+
+function expandTeamClaimSamples(claims: ClaimSample[]) {
+  const expanded: ClaimSample[] = [];
+
+  for (const claim of expandedClaims) {
+    const teamNames = splitTeamClaimNames(claim);
+
+    if (teamNames.length === 0) {
+      expanded.push(claim);
+      continue;
+    }
+
+    const share = claim.amountWolo / teamNames.length;
+
+    for (const name of teamNames) {
+      expanded.push({
+        ...claim,
+        claimedByUserId: null,
+        displayPlayerName: name,
+        normalizedPlayerName: normalizeNameKey(name),
+        amountWolo: share,
+      });
+    }
+  }
+
+  return expanded;
+}
+
 function wagerCountsAsSettled(wager: Pick<WagerSample, "status" | "payoutWolo">) {
   return (wager.status === "won" || wager.status === "void") && (wager.payoutWolo ?? 0) > 0;
 }
 
 async function loadBoardMetrics(prisma: PrismaClient, weekStartsAt: Date) {
   const [claims, wagers] = await Promise.all([loadClaims(prisma), loadWagers(prisma)]);
+  const expandedClaims = expandTeamClaimSamples(claims);
 
   const claimedUserIds = claims
     .map((claim) => claim.claimedByUserId)
@@ -378,7 +438,7 @@ async function loadBoardMetrics(prisma: PrismaClient, weekStartsAt: Date) {
 
   const metrics = new Map<string, ActorMetrics>();
 
-  for (const claim of claims) {
+  for (const claim of expandedClaims) {
     const directUser = claim.claimedByUserId ? usersById.get(claim.claimedByUserId) ?? null : null;
     const matchedUser =
       directUser ??

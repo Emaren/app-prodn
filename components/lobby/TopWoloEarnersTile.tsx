@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type WheelEvent } from "react";
 
 import {
   getLobbyPresentationTone,
@@ -147,11 +147,72 @@ export function TopWoloEarnersTile({
   const [lazyLoading, setLazyLoading] = useState(false);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const scrollViewportRef = useRef<HTMLDivElement | null>(null);
+  const lazyLoadingRef = useRef(false);
   useEffect(() => {
     setLazyEntries(board?.entries ?? []);
     setLazyLoaded(false);
     setLazyLoading(false);
+    lazyLoadingRef.current = false;
   }, [board?.entries, mode]);
+
+  const loadFullBoard = useCallback(async () => {
+    if (lazyLoaded || lazyLoadingRef.current) return;
+
+    lazyLoadingRef.current = true;
+    setLazyLoading(true);
+
+    try {
+      const response = await fetch(
+        `/api/lobby/wolo-earners?mode=${encodeURIComponent(mode)}&limit=256`,
+        { cache: "no-store" }
+      );
+
+      if (!response.ok) return;
+
+      const payload = await response.json();
+      const nextEntries = payload?.board?.entries;
+
+      if (Array.isArray(nextEntries) && nextEntries.length > 0) {
+        setLazyEntries(nextEntries);
+        setLazyLoaded(true);
+      }
+    } catch {
+      // Initial board remains usable if the lazy call fails.
+    } finally {
+      lazyLoadingRef.current = false;
+      setLazyLoading(false);
+    }
+  }, [lazyLoaded, mode]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void loadFullBoard();
+    }, 350);
+
+    return () => window.clearTimeout(timer);
+  }, [loadFullBoard]);
+
+  const handleWarChestWheel = useCallback(
+    (event: WheelEvent<HTMLDivElement>) => {
+      const target = event.currentTarget;
+      if (target.scrollHeight <= target.clientHeight) return;
+
+      const maxScrollTop = Math.max(0, target.scrollHeight - target.clientHeight);
+      const nextScrollTop = Math.max(0, Math.min(maxScrollTop, target.scrollTop + event.deltaY));
+
+      if (nextScrollTop !== target.scrollTop) {
+        event.preventDefault();
+        event.stopPropagation();
+        target.scrollTop = nextScrollTop;
+      }
+
+      const distanceFromBottom = target.scrollHeight - target.scrollTop - target.clientHeight;
+      if (distanceFromBottom < 520) {
+        void loadFullBoard();
+      }
+    },
+    [loadFullBoard]
+  );
 
   useEffect(() => {
     if (lazyLoaded || lazyLoading) return;
@@ -160,52 +221,15 @@ export function TopWoloEarnersTile({
     const scrollRoot = scrollViewportRef.current;
     if (!sentinel || !scrollRoot) return;
 
-    let cancelled = false;
-    const controller = new AbortController();
-
-    const loadFullBoard = async () => {
-      if (cancelled || lazyLoaded || lazyLoading) return;
-      setLazyLoading(true);
-
-      try {
-        const response = await fetch(
-          `/api/lobby/wolo-earners?mode=${encodeURIComponent(mode)}&limit=64`,
-          {
-            cache: "no-store",
-            signal: controller.signal,
-          },
-        );
-
-        if (!response.ok) return;
-
-        const payload = await response.json();
-        const nextEntries = payload?.board?.entries;
-
-        if (!cancelled && Array.isArray(nextEntries) && nextEntries.length > 0) {
-          setLazyEntries(nextEntries);
-          setLazyLoaded(true);
-        }
-      } catch {
-        // Initial 8-row War Chest remains usable if the lazy call fails.
-      } finally {
-        if (!cancelled) {
-          setLazyLoading(false);
-        }
-      }
-    };
-
     if (typeof IntersectionObserver === "undefined") {
-      window.setTimeout(loadFullBoard, 250);
-      return () => {
-        cancelled = true;
-        controller.abort();
-      };
+      window.setTimeout(() => void loadFullBoard(), 250);
+      return undefined;
     }
 
     const observer = new IntersectionObserver(
       (records) => {
         if (records.some((record) => record.isIntersecting)) {
-          loadFullBoard();
+          void loadFullBoard();
         }
       },
       {
@@ -218,11 +242,9 @@ export function TopWoloEarnersTile({
     observer.observe(sentinel);
 
     return () => {
-      cancelled = true;
-      controller.abort();
       observer.disconnect();
     };
-  }, [lazyLoaded, lazyLoading, mode]);
+  }, [lazyLoaded, lazyLoading, mode, loadFullBoard]);
 
   const entries = useMemo(
     () =>
@@ -238,8 +260,8 @@ export function TopWoloEarnersTile({
     entries.length > 0 ? `${entries.length} earners` : reserve ? `${reserve} reserve` : "8 earners";
   const placeholderCount = Math.max(0, VISIBLE_ROWS - entries.length);
   const viewportHeightClassName = isExtreme
-    ? "h-full min-h-[30rem] max-h-none lg:h-full lg:min-h-full lg:max-h-none"
-    : "h-full min-h-0 max-h-full";
+    ? "h-full min-h-[28rem] max-h-[min(78dvh,58rem)] lg:h-full lg:min-h-[34rem] lg:max-h-[min(82dvh,64rem)]"
+    : "h-full min-h-0 max-h-[min(72dvh,46rem)]";
 
   return (
     <section
@@ -329,7 +351,8 @@ export function TopWoloEarnersTile({
         ) : (
           <div
             ref={scrollViewportRef}
-            className="min-h-0 flex-1 scroll-smooth overflow-y-auto overflow-x-hidden overscroll-contain pr-1 [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,0.28)_transparent]"
+            onWheel={handleWarChestWheel}
+            className="min-h-0 flex-1 scroll-smooth overflow-y-auto overflow-x-hidden overscroll-contain pr-1 [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,0.28)_transparent] [-webkit-overflow-scrolling:touch] [touch-action:pan-y]"
           >
             <div className="grid gap-2.5">
               {entries.map((entry) => {

@@ -322,11 +322,11 @@ export function LeaderboardPanel({
   }, [leaderboard.trackedPlayers, loadMoreLeaderboardEntries]);
 
   const leaderboardScrollClassName = isExtreme
-    ? "mt-6 h-[min(78dvh,56rem)] min-h-0 space-y-3 overflow-y-auto overscroll-contain pr-2 [scrollbar-width:thin] [-webkit-overflow-scrolling:touch] [touch-action:pan-y]"
+    ? "mt-6 h-[min(82dvh,64rem)] min-h-0 space-y-3 overflow-y-auto overscroll-contain pr-2 [scrollbar-width:thin] [-webkit-overflow-scrolling:touch] [touch-action:pan-y]"
     : "mt-6 h-[min(68dvh,44rem)] min-h-0 space-y-3 overflow-y-auto overscroll-contain pr-2 [scrollbar-width:thin] [-webkit-overflow-scrolling:touch] [touch-action:pan-y] sm:h-[min(70dvh,48rem)] lg:h-[min(74dvh,54rem)]";
 
   const leaderboardPanelShellClassName = isExtreme
-    ? `relative flex min-h-[112rem] flex-col rounded-[1.85rem] border p-5 transition-all duration-300 sm:p-6 lg:min-h-[118rem] xl:min-h-[126rem] ${tone.panelShell}`
+    ? `relative flex min-h-0 flex-col overflow-hidden rounded-[1.85rem] border p-5 transition-all duration-300 sm:p-6 ${tone.panelShell}`
     : `relative rounded-[1.85rem] border p-5 transition-all duration-300 sm:p-6 ${tone.panelShell}`;
 
   useEffect(() => {
