@@ -239,3 +239,11 @@ from game_stats
 where parse_source = 'file_upload'
   and user_uid is not null;
 ```
+
+
+## Bet-board fast path — 2026-07-09
+
+- `/api/bets` serves the public board without awaiting heavyweight bet-market reconciliation.
+- Market reconciliation still runs from `/api/bets`, but as a throttled background pass.
+- Settlement capability checks use a short fast-path timeout and cache so public bet-board rendering is not blocked by settlement-service probing.
+- Player Match Feed uses an internal scroll viewport with a near-bottom loading backstop for deep archives.

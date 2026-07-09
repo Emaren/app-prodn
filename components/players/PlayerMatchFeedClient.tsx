@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type UIEvent } from "react";
 
 import type { PlayerProfileIdentity, PlayerProfileMatchItem } from "@/lib/playerProfile";
 
@@ -71,6 +71,7 @@ export default function PlayerMatchFeedClient({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const scrollerRef = useRef<HTMLDivElement | null>(null);
 
   const loadMore = useCallback(async () => {
     if (loading || nextCursor === null) return;
@@ -101,6 +102,17 @@ export default function PlayerMatchFeedClient({
     }
   }, [identity, loading, nextCursor]);
 
+  const handleFeedScroll = useCallback(
+    (event: UIEvent<HTMLDivElement>) => {
+      const node = event.currentTarget;
+      const distanceFromBottom = node.scrollHeight - node.scrollTop - node.clientHeight;
+      if (distanceFromBottom < 520) {
+        void loadMore();
+      }
+    },
+    [loadMore]
+  );
+
   useEffect(() => {
     if (!sentinelRef.current || nextCursor === null) return;
 
@@ -111,8 +123,8 @@ export default function PlayerMatchFeedClient({
         }
       },
       {
-        root: null,
-        rootMargin: "240px",
+        root: scrollerRef.current,
+        rootMargin: "360px",
       }
     );
 
@@ -142,7 +154,7 @@ export default function PlayerMatchFeedClient({
         )}
       </div>
 
-      <div className="max-h-[48rem] space-y-3 overflow-y-auto pr-1 [scrollbar-color:rgba(251,191,36,0.35)_rgba(15,23,42,0.55)]">
+      <div ref={scrollerRef} onScroll={handleFeedScroll} className="max-h-[min(74dvh,56rem)] space-y-3 overflow-y-auto overscroll-contain pr-1 scroll-smooth [scrollbar-width:thin] [scrollbar-color:rgba(251,191,36,0.35)_rgba(15,23,42,0.55)] [-webkit-overflow-scrolling:touch] [touch-action:pan-y]">
         {items.length === 0 ? (
           <div className="rounded-[1.25rem] border border-white/8 bg-white/5 px-4 py-5 text-sm text-slate-300">
             No replay-backed matches have landed here yet.

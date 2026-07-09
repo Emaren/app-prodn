@@ -3261,11 +3261,90 @@ async function loadViewerRecentClosedBookEntries(
 }
 
 
+type LoadBetBoardSnapshotOptions = {
+  ensureMarkets?: boolean;
+  settlementSurfaceMode?: "full" | "fast";
+};
+
+type WoloSettlementSurfaceSnapshot = Awaited<ReturnType<typeof getWoloSettlementSurfaceStatus>>;
+
+let cachedSettlementSurface: {
+  value: WoloSettlementSurfaceSnapshot;
+  loadedAt: number;
+} | null = null;
+
+function fastSettlementSurfaceFallback(detail = "Settlement capability check deferred for fast bet-board load."): WoloSettlementSurfaceSnapshot {
+  return {
+    settlementServiceConfigured: false,
+    settlementAuthConfigured: false,
+    payoutExecutionMode: hasWoloPayoutExecutionConfigured()
+      ? "local_signer_fallback"
+      : "unconfigured",
+    groupedRunCapability: "unknown",
+    escrowVerifyCapability: "unknown",
+    escrowRecentCapability: "unknown",
+    warnings: [detail],
+    detail,
+  } as WoloSettlementSurfaceSnapshot;
+}
+
+async function loadSettlementSurfaceForBetBoard(
+  mode: LoadBetBoardSnapshotOptions["settlementSurfaceMode"] = "full"
+): Promise<WoloSettlementSurfaceSnapshot> {
+  const now = Date.now();
+  if (cachedSettlementSurface && now - cachedSettlementSurface.loadedAt < 60_000) {
+    return cachedSettlementSurface.value;
+  }
+
+  if (mode !== "fast") {
+    const value = await getWoloSettlementSurfaceStatus();
+    cachedSettlementSurface = { value, loadedAt: Date.now() };
+    return value;
+  }
+
+  const timeoutMs = 350;
+  let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
+
+  try {
+    const value = await Promise.race([
+      getWoloSettlementSurfaceStatus(),
+      new Promise<WoloSettlementSurfaceSnapshot>((resolve) => {
+        timeoutHandle = setTimeout(() => {
+          resolve(fastSettlementSurfaceFallback());
+        }, timeoutMs);
+      }),
+    ]);
+
+    if (timeoutHandle) {
+      clearTimeout(timeoutHandle);
+    }
+
+    cachedSettlementSurface = { value, loadedAt: Date.now() };
+    return value;
+  } catch (error) {
+    if (timeoutHandle) {
+      clearTimeout(timeoutHandle);
+    }
+
+    const value = fastSettlementSurfaceFallback(
+      error instanceof Error
+        ? `Settlement capability check deferred: ${error.message}`
+        : "Settlement capability check deferred."
+    );
+    cachedSettlementSurface = { value, loadedAt: Date.now() };
+    return value;
+  }
+}
+
+
 export async function loadBetBoardSnapshot(
   prisma: PrismaClient,
-  viewerUid?: string | null
+  viewerUid?: string | null,
+  options: LoadBetBoardSnapshotOptions = {}
 ): Promise<BetBoardSnapshot> {
-  await ensureBetMarkets(prisma);
+  if (options.ensureMarkets !== false) {
+    await ensureBetMarkets(prisma);
+  }
   const escrowRuntime = getWoloBetEscrowRuntime();
 
   const viewer = viewerUid
@@ -3283,7 +3362,7 @@ export async function loadBetBoardSnapshot(
     loadOpenMarkets(prisma),
     loadRecentSettledResults(prisma),
     viewer?.id ? loadViewerBetStakeIntents(prisma, viewer.id) : Promise.resolve([]),
-    getWoloSettlementSurfaceStatus(),
+    loadSettlementSurfaceForBetBoard(options.settlementSurfaceMode),
   ]);
 
   const openMarketIds = openMarketsRaw.map((market) => market.id);
