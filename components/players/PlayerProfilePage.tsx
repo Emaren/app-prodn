@@ -118,12 +118,16 @@ const RESOURCE_META: Record<keyof PlayerResourceStats["totals"], { label: string
 };
 
 function PlayerRecordBadge({ profile }: { profile: PlayerProfile }) {
-  const recordLabel = `${profile.command.wins} - ${profile.command.losses} - ${profile.command.unknowns}`;
+  const hasUnknowns = profile.command.unknowns > 0;
+  const recordLabel = hasUnknowns
+    ? `${profile.command.wins} - ${profile.command.losses} - ${profile.command.unknowns}`
+    : `${profile.command.wins} - ${profile.command.losses}`;
+  const recordTitle = hasUnknowns ? "Wins - Losses - Unknown" : "Wins - Losses";
 
   return (
     <span
       aria-label={`Player record ${recordLabel}`}
-      title="Wins - Losses - Unknown"
+      title={recordTitle}
       className="mb-1 ml-6 inline-flex shrink-0 items-baseline text-xl font-semibold leading-none tracking-[0.056em] text-white/58 sm:mb-1.5 sm:ml-[5%] sm:text-2xl"
     >
       {recordLabel}

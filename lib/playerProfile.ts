@@ -480,8 +480,19 @@ function isNoGameProfileReplay(game: PlayerProfileGameRow) {
   return earlyExit && noRatedResult && !completed && duration < 60;
 }
 
+const HIDDEN_PLAYER_PROFILE_GAME_IDS = new Set<number>([
+  // Recovered raw replay exists, but HD replay metadata cannot prove a final winner:
+  // pineTREE and Aleix resigned, leaving one survivor on each team.
+  // Keep the raw/detail history, but do not count it against public player records.
+  5045,
+]);
+
+function isHiddenPlayerProfileGame(game: PlayerProfileGameRow) {
+  return HIDDEN_PLAYER_PROFILE_GAME_IDS.has(Number(game.id));
+}
+
 function filterVisiblePlayerProfileGames(games: PlayerProfileGameRow[]) {
-  return games.filter((game) => !isNoGameProfileReplay(game));
+  return games.filter((game) => !isHiddenPlayerProfileGame(game) && !isNoGameProfileReplay(game));
 }
 
 function buildCurrentStreakLabel(games: PlayerProfileGameRow[], currentPlayer: PublicPlayerRef) {
@@ -1046,6 +1057,7 @@ async function loadCandidateFinalGames(prisma: PrismaClient): Promise<PlayerProf
 
 function filterGamesForPlayer(games: PlayerProfileGameRow[], currentPlayer: PublicPlayerRef) {
   return games
+    .filter((game) => !isHiddenPlayerProfileGame(game))
     .filter((game) => currentPlayerRecord(game, currentPlayer))
     .sort(comparePlayedAtDesc);
 }
