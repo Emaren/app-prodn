@@ -10,7 +10,7 @@ type ActivityFeedEvent = CustomEvent<{ item?: StakingActivityItem }>;
 
 
 
-const PAGE_SIZE = 16;
+const PAGE_SIZE = 24;
 const STAKING_BOUNTY_ACTIVITY_LIMIT = 500;
 const LIVE_POLL_INTERVAL_MS = 12_000;
 
@@ -272,6 +272,19 @@ function activityKey(item: StakingActivityItem) {
   return item.key || `${sanitizeActivityCopy(item.label)}:${sanitizeActivityCopy(item.detail)}:${item.meta}`;
 }
 
+function ledgerBetGroupKey(item: StakingActivityItem) {
+  if (item.groupKey?.trim()) return item.groupKey.trim();
+
+  const text = `${item.key || ""} ${item.label || ""} ${item.detail || ""}`;
+  const marketMatch = text.match(/\bmarket\s*[:#-]?\s*(\d{2,})\b/i);
+  if (marketMatch?.[1]) return `market:${marketMatch[1]}`;
+
+  const match = text.match(/([^·:|]+?\s+vs\s+[^·:|]+)/i);
+  if (match?.[1]) return `match:${match[1].replace(/\s+/g, " ").trim().toLowerCase()}`;
+
+  return activityKey(item);
+}
+
 function activityTimestamp(item: StakingActivityItem) {
   const parsed = item.occurredAt ? Date.parse(item.occurredAt) : Number.NaN;
   return Number.isFinite(parsed) ? parsed : 0;
@@ -343,6 +356,7 @@ function collapseLedgerBetRows(rows: StakingActivityItem[], enabled: boolean) {
 
   const settled: StakingActivityItem[] = [];
   let group: StakingActivityItem[] = [];
+  let activeGroupKey: string | null = null;
 
   const flushGroup = () => {
     if (group.length === 0) return;
@@ -350,6 +364,7 @@ function collapseLedgerBetRows(rows: StakingActivityItem[], enabled: boolean) {
     if (group.length === 1) {
       settled.push(group[0]);
       group = [];
+      activeGroupKey = null;
       return;
     }
 
@@ -357,22 +372,29 @@ function collapseLedgerBetRows(rows: StakingActivityItem[], enabled: boolean) {
     const title = extractLedgerBetTitle(group);
 
     settled.push({
-      key: `ledger-bet-group-${activityKey(first)}-${group.length}`,
+      key: `ledger-bet-group-${activeGroupKey || activityKey(first)}-${group.length}`,
       label: `${title} · bet settled`,
       detail: `${group.length.toLocaleString()} WoloChain bet rows · click to inspect settlement, escrow, payout, and founder-transfer receipts`,
       meta: first.meta,
       eventType: "GROUPED BET",
       timestampLabel: first.timestampLabel || first.meta,
       occurredAt: first.occurredAt,
+      groupKey: activeGroupKey || undefined,
       tone: "sky",
       children: group,
     });
 
     group = [];
+    activeGroupKey = null;
   };
 
   for (const row of rows) {
     if (isBetActivity(row)) {
+      const nextGroupKey = ledgerBetGroupKey(row);
+      if (group.length > 0 && activeGroupKey !== nextGroupKey) {
+        flushGroup();
+      }
+      activeGroupKey = nextGroupKey;
       group.push(row);
       continue;
     }
@@ -756,7 +778,7 @@ export default function StakingActivityFeed({
       if (!root || loadingMoreRef.current || !hasMore) return;
 
       const remaining = root.scrollHeight - root.scrollTop - root.clientHeight;
-      if (remaining < 140) {
+      if (remaining < 520) {
         void loadMore();
       }
     });
@@ -774,7 +796,7 @@ export default function StakingActivityFeed({
           void loadMore();
         }
       },
-      { root, rootMargin: "160px 0px" }
+      { root, rootMargin: "640px 0px" }
     );
     observer.observe(sentinel);
     return () => observer.disconnect();

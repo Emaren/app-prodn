@@ -65,6 +65,7 @@ export type StakingActivityItem = {
   occurredAt?: string;
   txHash?: string;
   txUrl?: string;
+  groupKey?: string;
   children?: StakingActivityItem[];
   tone: "amber" | "emerald" | "sky" | "slate";
 };
@@ -332,6 +333,25 @@ function extractBetActivityMatch(item: StakingActivityItem) {
   return null;
 }
 
+function extractBetActivityGroupKey(item: StakingActivityItem, fallbackMatchLabel: string) {
+  const explicit = item.groupKey?.trim();
+  if (explicit) return explicit;
+
+  const haystack = `${item.key || ""} ${item.label || ""} ${item.detail || ""}`;
+  const marketMatch = haystack.match(/\bmarket\s*[:#-]?\s*(\d{2,})\b/i);
+  if (marketMatch?.[1]) return `market:${marketMatch[1]}`;
+
+  const gameMatch = haystack.match(/\b(?:game|game_stats|replay)\s*[:#-]?\s*(\d{2,})\b/i);
+  if (gameMatch?.[1]) return `game:${gameMatch[1]}`;
+
+  return `match:${fallbackMatchLabel.toLowerCase()}`;
+}
+
+function extractMarketGroupKeyFromText(value: string | null | undefined) {
+  const marketMatch = String(value || "").match(/\bmarket\s*[:#-]?\s*(\d{2,})\b/i);
+  return marketMatch?.[1] ? `market:${marketMatch[1]}` : undefined;
+}
+
 function groupedBetRowKind(item: StakingActivityItem) {
   const eventType = String(item.eventType || "").toUpperCase();
   const text = `${item.label || ""} ${item.detail || ""}`.toLowerCase();
@@ -357,6 +377,7 @@ function groupStakingBetActivityItems(items: StakingActivityItem[], limit: numbe
     label: string;
     rows: StakingActivityItem[];
     newestAt: string;
+    key: string;
     amountTotal: number;
     hasSettlement: boolean;
     hasPayout: boolean;
@@ -370,12 +391,13 @@ function groupStakingBetActivityItems(items: StakingActivityItem[], limit: numbe
     const matchLabel = extractBetActivityMatch(item);
     if (!matchLabel) continue;
 
-    const key = matchLabel.toLowerCase();
+    const key = extractBetActivityGroupKey(item, matchLabel);
     const occurredAt = item.occurredAt || new Date(0).toISOString();
     const amount = Number.parseFloat(String(item.amountLabel || "0").replace(/[^0-9.]/g, "")) || 0;
     const kind = groupedBetRowKind(item);
 
     const group = groups.get(key) ?? {
+      key,
       label: matchLabel,
       rows: [],
       newestAt: occurredAt,
@@ -429,7 +451,7 @@ function groupStakingBetActivityItems(items: StakingActivityItem[], limit: numbe
         }));
 
       return {
-        key: `grouped-bet-${group.label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+        key: `grouped-bet-${group.key.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}`,
         label: group.label,
         detail: `${phases.length ? phases.join(" · ") : "bet activity"}${rowSummary ? ` · ${rowSummary}` : ""}`,
         meta: formatActivityTimestamp(group.newestAt),
@@ -437,6 +459,7 @@ function groupStakingBetActivityItems(items: StakingActivityItem[], limit: numbe
         amountLabel: group.amountTotal > 0 ? formatActivityWoloAmount(group.amountTotal) : undefined,
         timestampLabel: formatActivityTimestamp(group.newestAt),
         occurredAt: group.newestAt,
+        groupKey: group.key,
         children,
         tone: group.hasSettlement ? "sky" : group.hasPayout ? "emerald" : group.hasEscrow ? "amber" : "slate",
       } satisfies StakingActivityItem;
@@ -511,6 +534,7 @@ export function indexedTransferToActivityItem(
     meta: timestampLabel,
     eventType: presentation.eventType,
     amountLabel: row.amountLabel,
+    groupKey: extractMarketGroupKeyFromText(row.memo),
     timestampLabel,
     occurredAt: safeTimestamp.toISOString(),
     tone: presentation.tone,
@@ -895,6 +919,7 @@ export async function loadStakingSummary(
       take: 8,
       select: {
         id: true,
+        marketId: true,
         amountWolo: true,
         payoutWolo: true,
         status: true,
@@ -1069,6 +1094,7 @@ export async function loadStakingSummary(
       meta: timestampLabel,
       eventType: eventTypeForMainnetActivity(row),
       amountLabel,
+      groupKey: row.groupKey ?? undefined,
       timestampLabel,
       occurredAt: safeTimestamp.toISOString(),
       tone: toneForMainnetActivity(row),
@@ -1087,6 +1113,7 @@ export async function loadStakingSummary(
       meta: timestampLabel,
       eventType: "SETTLEMENT",
       amountLabel,
+      groupKey: row.marketId ? `market:${row.marketId}` : row.key,
       timestampLabel,
       occurredAt: row.latestAt.toISOString(),
       tone: row.failureCount > 0 ? "amber" : "sky",
@@ -1115,6 +1142,7 @@ export async function loadStakingSummary(
       meta: timestampLabel,
       eventType,
       amountLabel,
+      groupKey: `market:${wager.marketId}`,
       timestampLabel,
       occurredAt: wager.createdAt.toISOString(),
       tone: isWin ? "emerald" : "sky",
@@ -1164,6 +1192,7 @@ export async function loadStakingSummary(
         meta: item.meta,
         eventType: item.eventType,
         amountLabel: item.amountLabel,
+        groupKey: item.groupKey,
         txFeeLabel: item.txFeeLabel,
         timestampLabel: item.timestampLabel,
         occurredAt: item.occurredAt,
@@ -1297,6 +1326,7 @@ export async function loadMainnetTransferStakingActivityPage(
         meta: timestampLabel,
         eventType: eventTypeForMainnetActivity(row),
         amountLabel,
+        groupKey: row.groupKey ?? undefined,
         timestampLabel,
         occurredAt: safeTimestamp.toISOString(),
         tone: toneForMainnetActivity(row),
@@ -1315,6 +1345,7 @@ export async function loadMainnetTransferStakingActivityPage(
         meta: timestampLabel,
         eventType: "SETTLEMENT",
         amountLabel,
+        groupKey: row.marketId ? `market:${row.marketId}` : row.key,
         timestampLabel,
         occurredAt: row.latestAt.toISOString(),
         tone: row.failureCount > 0 ? "amber" : "sky",
@@ -1592,6 +1623,7 @@ export async function loadMainnetTransferStakingActivityPage(
       meta: normalized.meta,
       eventType: normalized.eventType,
       amountLabel: normalized.amountLabel,
+      groupKey: normalized.groupKey,
       txFeeLabel: normalized.txFeeLabel,
       timestampLabel: normalized.timestampLabel,
       occurredAt: normalized.occurredAt,
@@ -1936,7 +1968,6 @@ export async function loadStakingMe(prisma: PrismaClient, userId: number) {
 
   const useMainnetPosition = isWoloMainnet();
   const mainnetPosition = mainnetPositions.find((position) => position.userId === userId) ?? null;
-  const hasCanonicalPosition = Boolean(position && position.currentStakedWolo > 0);
   const mainnetRewardSnapshot = useMainnetPosition
     ? await loadMainnetRewardSnapshotForUser(prisma, userId, mainnetPositions)
     : {
@@ -1944,20 +1975,20 @@ export async function loadStakingMe(prisma: PrismaClient, userId: number) {
         lifetimeRewardsWolo: 0,
         claimedRewardsWolo: 0,
       };
+  const fallbackStakingWeight = position
+    ? computeCurrentStakingWeight(position, now)
+    : BigInt(0);
   const stakingWeight =
-    useMainnetPosition && !hasCanonicalPosition
-      ? BigInt(mainnetPosition?.stakingWeight || 0)
-      : position
-        ? computeCurrentStakingWeight(position, now)
-        : BigInt(0);
+    useMainnetPosition && mainnetPosition
+      ? BigInt(mainnetPosition.stakingWeight || 0)
+      : fallbackStakingWeight;
   const lifetimeTxFeesWolo = txFeeEvents.reduce(
     (sum, event) => sum + metadataNumber(event.metadata, "txFeeWolo"),
     0
   );
-  const currentStakedWolo =
-    useMainnetPosition && !hasCanonicalPosition
-      ? mainnetPosition?.currentStakedWolo ?? 0
-      : position?.currentStakedWolo ?? 0;
+  const currentStakedWolo = useMainnetPosition
+    ? mainnetPosition?.currentStakedWolo ?? position?.currentStakedWolo ?? 0
+    : position?.currentStakedWolo ?? 0;
 
   return {
     user: {
@@ -1982,14 +2013,14 @@ export async function loadStakingMe(prisma: PrismaClient, userId: number) {
       compoundedRewardsWolo: position?.compoundedRewardsWolo ?? 0,
       lifetimeTxFeesWolo,
       status:
-        useMainnetPosition && !hasCanonicalPosition
+        useMainnetPosition
           ? currentStakedWolo > 0
             ? "mainnet_tx_backed"
-            : "ledger_ready"
+            : position?.status ?? "ledger_ready"
           : position?.status ?? "ledger_ready",
       lastWeightUpdateAt:
-        useMainnetPosition && !hasCanonicalPosition
-          ? mainnetPosition?.lastTxAt?.toISOString() ?? null
+        useMainnetPosition
+          ? mainnetPosition?.lastTxAt?.toISOString() ?? position?.lastWeightUpdateAt.toISOString() ?? null
           : position?.lastWeightUpdateAt.toISOString() ?? null,
       lastRewardPaymentAt:
         lastReward?.claimedAt?.toISOString() ?? lastReward?.creditedAt?.toISOString() ?? null,

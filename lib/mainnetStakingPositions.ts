@@ -137,6 +137,7 @@ export async function loadMainnetStakingPositions(
         userId: true,
         walletAddress: true,
         currentStakedWolo: true,
+        compoundedRewardsWolo: true,
         accumulatedWeight: true,
         lastWeightUpdateAt: true,
         user: {
@@ -202,14 +203,24 @@ export async function loadMainnetStakingPositions(
   );
 
   for (const canonical of canonicalPositions) {
-    const canonicalStake = Math.max(0, canonical.currentStakedWolo || 0);
-    if (canonicalStake <= 0) continue;
+    const canonicalBaseStake = Math.max(0, canonical.currentStakedWolo || 0);
+    const canonicalCompoundedStake = Math.max(0, canonical.compoundedRewardsWolo || 0);
+    const canonicalSeatStake = canonicalBaseStake + canonicalCompoundedStake;
 
     const existing = positionsByUserId.get(canonical.userId);
+    const existingStake = Math.max(0, existing?.currentStakedWolo || 0);
+    const publicSeatStake = Math.max(existingStake, canonicalSeatStake);
+    if (publicSeatStake <= 0) continue;
+
     const player = displayUserName(canonical.user);
     const walletAddress = normalizeAddress(
       canonical.walletAddress || existing?.walletAddress
     );
+    const canonicalWeightInput = {
+      accumulatedWeight: canonical.accumulatedWeight,
+      currentStakedWolo: publicSeatStake,
+      lastWeightUpdateAt: canonical.lastWeightUpdateAt,
+    };
 
     positionsByUserId.set(canonical.userId, {
       ...(existing || {
@@ -226,8 +237,9 @@ export async function loadMainnetStakingPositions(
       }),
       player: existing?.player || player,
       walletAddress: walletAddress || existing?.walletAddress || null,
-      currentStakedWolo: canonicalStake,
-      stakingWeight: existing?.stakingWeight || computeCanonicalStakingWeight(canonical, asOf),
+      currentStakedWolo: publicSeatStake,
+      totalStakedWolo: Math.max(existing?.totalStakedWolo || 0, publicSeatStake),
+      stakingWeight: existing?.stakingWeight || computeCanonicalStakingWeight(canonicalWeightInput, asOf),
     });
   }
 

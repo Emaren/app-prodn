@@ -67,6 +67,7 @@ export type WoloRecoveryRow = {
   walletAddress: string | null;
   amountWolo: number | null;
   contextLabel: string;
+  groupKey?: string | null;
   createdAt: string;
   updatedAt: string;
   lastCheckedAt: string | null;
@@ -113,6 +114,7 @@ export type WoloMainnetActivityRow = {
   walletAddress: string | null;
   amountWolo: number | null;
   contextLabel: string;
+  groupKey?: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -506,6 +508,7 @@ async function loadRecoveryCandidates(prisma: PrismaClient) {
       take: SOURCE_TAKE,
       select: {
         id: true,
+        marketId: true,
         amountWolo: true,
         side: true,
         status: true,
@@ -534,6 +537,7 @@ async function loadRecoveryCandidates(prisma: PrismaClient) {
       take: SOURCE_TAKE,
       select: {
         id: true,
+        marketId: true,
         amountWolo: true,
         payoutWolo: true,
         status: true,
@@ -766,6 +770,7 @@ async function loadRecoveryCandidates(prisma: PrismaClient) {
       walletAddress: intent.walletAddress || intent.user.walletAddress || null,
       amountWolo: intent.amountWolo,
       contextLabel: `${intent.market.title} · ${intent.side}`,
+      groupKey: `market:${intent.marketId}`,
       createdAt: intent.createdAt.toISOString(),
       updatedAt: intent.updatedAt.toISOString(),
     });
@@ -787,6 +792,7 @@ async function loadRecoveryCandidates(prisma: PrismaClient) {
         walletAddress: wager.stakeWalletAddress || wager.user.walletAddress || null,
         amountWolo: wager.amountWolo,
         contextLabel,
+        groupKey: `market:${wager.marketId}`,
         createdAt: wager.createdAt.toISOString(),
         updatedAt: rowDate(wager.stakeLockedAt || wager.updatedAt, wager.createdAt),
       });
@@ -806,6 +812,7 @@ async function loadRecoveryCandidates(prisma: PrismaClient) {
         walletAddress: wager.user.walletAddress || null,
         amountWolo: wager.payoutWolo,
         contextLabel,
+        groupKey: `market:${wager.marketId}`,
         createdAt: wager.createdAt.toISOString(),
         updatedAt: rowDate(wager.settledAt || wager.updatedAt, wager.createdAt),
       });
@@ -993,6 +1000,7 @@ export async function loadWoloMainnetActivityRows(
     walletAddress: row.walletAddress,
     amountWolo: row.amountWolo,
     contextLabel: row.contextLabel,
+    groupKey: row.groupKey ?? null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   }));
