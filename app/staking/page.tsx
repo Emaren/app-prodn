@@ -32,7 +32,7 @@ import {
 } from "@/lib/staking";
 import {
   formatPublicStakingWeight,
-  formatPublicStakingWeightStat,
+  formatPublicStakingWeightTile,
 } from "@/lib/stakingDisplay";
 import { getStakingWalletReserveHeadroomWolo } from "@/lib/stakingExecution";
 import { fetchWoloBalanceAmount } from "@/lib/woloRuntime";
@@ -728,7 +728,7 @@ export default async function StakingPage({
                   </div>
                 </div>
                 <div className="mt-2 text-2xl font-semibold text-white">
-                  {formatPublicStakingWeightStat(snapshot.totalStakingWeight)}
+                  {formatPublicStakingWeightTile(snapshot.totalStakingWeight)}
                 </div>
                 <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/35">
                   <div
