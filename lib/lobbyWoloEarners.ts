@@ -391,7 +391,7 @@ function splitTeamClaimNames(claim: Pick<ClaimSample, "claimedByUserId" | "displ
 function expandTeamClaimSamples(claims: ClaimSample[]) {
   const expanded: ClaimSample[] = [];
 
-  for (const claim of expandedClaims) {
+  for (const claim of claims) {
     const teamNames = splitTeamClaimNames(claim);
 
     if (teamNames.length === 0) {
