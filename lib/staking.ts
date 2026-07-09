@@ -469,6 +469,44 @@ function groupStakingBetActivityItems(items: StakingActivityItem[], limit: numbe
     groups.set(key, group);
   }
 
+  const normalizedGroupLabel = (value: string) =>
+    value
+      .toLowerCase()
+      .replace(/\s+/g, " ")
+      .replace(/\s+·.*$/g, "")
+      .trim();
+
+  const marketGroupsByLabel = new Map<string, Group[]>();
+  for (const group of groups.values()) {
+    if (!group.key.startsWith("market:")) continue;
+
+    const labelKey = normalizedGroupLabel(group.label);
+    const bucket = marketGroupsByLabel.get(labelKey) ?? [];
+    bucket.push(group);
+    marketGroupsByLabel.set(labelKey, bucket);
+  }
+
+  for (const [key, group] of Array.from(groups.entries())) {
+    if (!group.key.startsWith("match:")) continue;
+
+    const candidates = marketGroupsByLabel.get(normalizedGroupLabel(group.label)) ?? [];
+    if (candidates.length !== 1) continue;
+
+    const target = candidates[0];
+    target.rows.push(...group.rows);
+    target.amountTotal += group.amountTotal;
+    target.hasSettlement = target.hasSettlement || group.hasSettlement;
+    target.hasPayout = target.hasPayout || group.hasPayout;
+    target.hasEscrow = target.hasEscrow || group.hasEscrow;
+    target.hasFounder = target.hasFounder || group.hasFounder;
+
+    if (Date.parse(group.newestAt) > Date.parse(target.newestAt)) {
+      target.newestAt = group.newestAt;
+    }
+
+    groups.delete(key);
+  }
+
   return Array.from(groups.values())
     .map((group) => {
       const phases = [

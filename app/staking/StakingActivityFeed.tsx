@@ -536,6 +536,7 @@ export default function StakingActivityFeed({
   const loadingMoreRef = useRef(false);
   const scrollFrameRef = useRef<number | null>(null);
   const lastLoadMoreAtRef = useRef(0);
+  const autoPrefetchedViewRef = useRef<string | null>(null);
 
   useEffect(() => {
     return () => {
@@ -765,6 +766,22 @@ export default function StakingActivityFeed({
       }, 160);
     }
   }, [filterMode, hasMore, loadMoreEndpoint, mode, nextBefore]);
+
+  useEffect(() => {
+    if (!loadMoreEndpoint || !hasMore) return;
+
+    const viewKey = `${mode}:${filterMode}`;
+    if (autoPrefetchedViewRef.current === viewKey) return;
+    autoPrefetchedViewRef.current = viewKey;
+
+    const timer = window.setTimeout(() => {
+      if (!loadingMoreRef.current) {
+        void loadMore();
+      }
+    }, 220);
+
+    return () => window.clearTimeout(timer);
+  }, [filterMode, hasMore, loadMore, loadMoreEndpoint, mode]);
 
   const handleLedgerScroll = useCallback(() => {
     if (scrollFrameRef.current !== null) {

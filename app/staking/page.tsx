@@ -453,6 +453,39 @@ async function loadEconomySnapshot(period: PeriodKey): Promise<EconomySnapshot> 
   return loadStakingSummary(getPrisma(), period);
 }
 
+const BET_PAYOUT_WARNING_FLOOR_WOLO = 25_000;
+const BET_PAYOUT_TARGET_WOLO = 100_000;
+
+function formatPolicyWolo(value: number) {
+  return `${new Intl.NumberFormat("en-US", {
+    maximumFractionDigits: value >= 10_000 ? 0 : 3,
+    minimumFractionDigits: 0,
+  }).format(value)} WOLO`;
+}
+
+function applyBetPayoutPolicy<T extends { balanceWolo: number | null; detail: string }>(wallet: T): T {
+  if (wallet.balanceWolo == null) return wallet;
+
+  if (wallet.balanceWolo < BET_PAYOUT_WARNING_FLOOR_WOLO) {
+    return {
+      ...wallet,
+      detail: `Needs top-up · ${formatPolicyWolo(wallet.balanceWolo)} / ${formatPolicyWolo(BET_PAYOUT_WARNING_FLOOR_WOLO)} floor · target ${formatPolicyWolo(BET_PAYOUT_TARGET_WOLO)}`,
+    };
+  }
+
+  if (wallet.balanceWolo < BET_PAYOUT_TARGET_WOLO) {
+    return {
+      ...wallet,
+      detail: `Healthy floor · ${formatPolicyWolo(wallet.balanceWolo)} / ${formatPolicyWolo(BET_PAYOUT_TARGET_WOLO)} target`,
+    };
+  }
+
+  return {
+    ...wallet,
+    detail: `Launch-ready cashier · target ${formatPolicyWolo(BET_PAYOUT_TARGET_WOLO)}+`,
+  };
+}
+
 function fallbackSnapshot(period: PeriodKey): EconomySnapshot {
   return {
     period,
@@ -540,6 +573,8 @@ export default async function StakingPage({
       readyDetail: "DEX liquidity",
     }),
   ]);
+  const policyPayoutWallet = applyBetPayoutPolicy(payoutWallet);
+
   const txFeeEvents = await getPrisma().stakingEvent.findMany({
     where: {
       status: "CONFIRMED",
@@ -721,7 +756,7 @@ export default async function StakingPage({
               />
               <CustodyRailTile
                 title="Bet Payout"
-                wallet={payoutWallet}
+                wallet={policyPayoutWallet}
                 icon={<HandCoins className="h-4 w-4" />}
                 tone="sky"
               />
