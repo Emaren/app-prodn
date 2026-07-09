@@ -198,7 +198,7 @@ function buildLeaderboardSelection(entries: EnrichedLeaderboardEntry[], options:
   const safeOffset = Math.max(0, Math.floor(options.offset ?? 0));
   const safeLimit = Math.max(
     1,
-    Math.min(600, Math.floor(options.limit ?? LOBBY_LEADERBOARD_INITIAL_ENTRY_LIMIT))
+    Math.min(2500, Math.floor(options.limit ?? LOBBY_LEADERBOARD_INITIAL_ENTRY_LIMIT))
   );
   const includePendingClaimed = options.includePendingClaimed ?? true;
   const orderedEntries = [...rankedEntries, ...pendingClaimedEntries];

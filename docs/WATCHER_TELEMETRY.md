@@ -312,3 +312,10 @@ where parse_source = 'file_upload'
 - Homepage now seeds enough Leaderboard rows to include the full current tracked-player board.
 - This removes dependence on brittle client-side hydration inside the homepage scroll tile.
 - The paged `/api/lobby/leaderboard` route remains available for future expansion and dedicated full-board views.
+
+
+## Lobby leaderboard helper cap — 2026-07-09
+
+- The homepage may request a larger Leaderboard seed, but the helper previously capped returned rows at 600.
+- The helper cap is raised so the homepage can seed the full current board.
+- This is not a product cap; it is only the current safe homepage seed range while dedicated pagination remains available.
