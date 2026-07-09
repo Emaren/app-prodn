@@ -12,6 +12,7 @@ import {
   readPlayerSteamId,
   readPlayerSteamRmRating,
   winnerLabel,
+  isEarlyExitNoResult,
 } from "@/lib/gameStatsView";
 import type { PrismaClient } from "@/lib/generated/prisma";
 import { normalizeSessionKey } from "@/lib/liveSessionSnapshot";
@@ -441,6 +442,46 @@ function sortBreakdowns(rows: PlayerBreakdownRow[]) {
     if ((left.winRate ?? -1) !== (right.winRate ?? -1)) return (right.winRate ?? -1) - (left.winRate ?? -1);
     return left.label.localeCompare(right.label);
   });
+}
+
+// AOE2WAR_PROFILE_HIDE_NO_GAME_EARLY_EXITS
+function readProfileKeyEvents(value: unknown): Record<string, unknown> {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+
+  if (typeof value === "string" && value.trim()) {
+    try {
+      const parsed = JSON.parse(value) as unknown;
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        return parsed as Record<string, unknown>;
+      }
+    } catch {
+      return {};
+    }
+  }
+
+  return {};
+}
+
+function profileTruthy(value: unknown) {
+  return value === true || value === "true" || value === 1 || value === "1";
+}
+
+function isNoGameProfileReplay(game: PlayerProfileGameRow) {
+  const keyEvents = readProfileKeyEvents(game.key_events);
+  const duration = normalizeDurationSeconds(game.duration ?? game.game_duration ?? null) ?? 0;
+  const earlyExit =
+    isEarlyExitNoResult(game.parse_reason) ||
+    profileTruthy(keyEvents.early_exit_under_60s);
+  const noRatedResult = profileTruthy(keyEvents.no_rated_result);
+  const completed = profileTruthy(keyEvents.completed);
+
+  return earlyExit && noRatedResult && !completed && duration < 60;
+}
+
+function filterVisiblePlayerProfileGames(games: PlayerProfileGameRow[]) {
+  return games.filter((game) => !isNoGameProfileReplay(game));
 }
 
 function buildCurrentStreakLabel(games: PlayerProfileGameRow[], currentPlayer: PublicPlayerRef) {
@@ -892,7 +933,7 @@ function dedupePlayerProfileGamesByReplay(games: PlayerProfileGameRow[]) {
     }
   }
 
-  return [...bestByReplay.values()].sort(comparePlayedAtDesc);
+  return filterVisiblePlayerProfileGames([...bestByReplay.values()].sort(comparePlayedAtDesc));
 }
 
 
