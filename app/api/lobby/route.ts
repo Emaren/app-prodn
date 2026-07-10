@@ -10,11 +10,18 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   const prisma = getPrisma();
   const viewerUid = await getSessionUid(request);
-  return NextResponse.json(
-    await loadLobbySnapshot(
-      prisma,
-      viewerUid,
-      readGuestReactionSessionIdFromRequest(request)
-    )
+  const snapshot = await loadLobbySnapshot(
+    prisma,
+    viewerUid,
+    readGuestReactionSessionIdFromRequest(request)
   );
+
+  return NextResponse.json(snapshot, {
+    headers: {
+      "Cache-Control":
+        "no-store, no-cache, must-revalidate, max-age=0",
+      Pragma: "no-cache",
+      Expires: "0",
+    },
+  });
 }

@@ -21,6 +21,7 @@ import {
 } from "@/lib/unresolvedWatcherResult";
 
 const MATCH_FEED_PAGE_SIZE = 24;
+const MATCH_FEED_REFRESH_MS = 15_000;
 
 type RecentMatchesResponse = {
   ok?: boolean;
@@ -36,17 +37,126 @@ type RecentMatchesPanelProps = {
   surface?: "standard" | "extreme";
 };
 
-function mergeMatchLists(primary: LobbyMatchRow[], secondary: LobbyMatchRow[]) {
-  const seen = new Set<number>();
-  const merged: LobbyMatchRow[] = [];
+function readMatchPlayersForTruth(match: LobbyMatchRow) {
+  const raw = (match as { players?: unknown }).players;
 
-  for (const match of [...primary, ...secondary]) {
-    if (seen.has(match.id)) continue;
-    seen.add(match.id);
-    merged.push(match);
+  if (Array.isArray(raw)) {
+    return raw.filter(
+      (player): player is Record<string, unknown> =>
+        Boolean(player) &&
+        typeof player === "object" &&
+        !Array.isArray(player)
+    );
   }
 
-  return merged;
+  if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+
+      if (Array.isArray(parsed)) {
+        return parsed.filter(
+          (player): player is Record<string, unknown> =>
+            Boolean(player) &&
+            typeof player === "object" &&
+            !Array.isArray(player)
+        );
+      }
+    } catch {
+      return [];
+    }
+  }
+
+  return [];
+}
+
+function normalizeTruthWinner(value: unknown) {
+  const winner = String(value || "").trim();
+
+  if (!winner || winner.toLowerCase() === "unknown") {
+    return "";
+  }
+
+  return winner;
+}
+
+function matchTruthScore(match: LobbyMatchRow) {
+  const candidate = match as LobbyMatchRow & {
+    winnerProof?: unknown;
+    reviewNeeded?: unknown;
+    unresolvedResult?: unknown;
+    parse_reason?: unknown;
+    parseReason?: unknown;
+  };
+
+  const directWinner = normalizeTruthWinner(candidate.winner);
+
+  const markedWinners = readMatchPlayersForTruth(match).filter(
+    (player) =>
+      player.winner === true &&
+      normalizeTruthWinner(player.name)
+  );
+
+  const unresolved =
+    candidate.unresolvedResult &&
+    typeof candidate.unresolvedResult === "object";
+
+  const parseReason = String(
+    candidate.parse_reason || candidate.parseReason || ""
+  ).toLowerCase();
+
+  let score = 0;
+
+  if (directWinner) score += 1000;
+  if (markedWinners.length > 0) score += 700;
+
+  if (candidate.reviewNeeded === false) score += 120;
+  if (candidate.reviewNeeded === true) score -= 180;
+
+  if (!unresolved) score += 80;
+  if (unresolved) score -= 40;
+
+  if (candidate.winnerProof) score += 40;
+
+  if (parseReason === "recorded_resignation_final") {
+    score += 80;
+  } else if (
+    parseReason ===
+      "watcher_inferred_opponent_win_on_incomplete_1v1" ||
+    parseReason === "watcher_inferred_opponent_win_on_incomplete"
+  ) {
+    score += 30;
+  }
+
+  return score;
+}
+
+function mergeMatchLists(
+  primary: LobbyMatchRow[],
+  secondary: LobbyMatchRow[]
+) {
+  const order: number[] = [];
+  const byId = new Map<number, LobbyMatchRow>();
+
+  for (const match of [...primary, ...secondary]) {
+    if (!byId.has(match.id)) {
+      order.push(match.id);
+      byId.set(match.id, match);
+      continue;
+    }
+
+    const current = byId.get(match.id)!;
+    const currentScore = matchTruthScore(current);
+    const incomingScore = matchTruthScore(match);
+
+    // Never allow a later stale snapshot to downgrade known truth.
+    if (incomingScore > currentScore) {
+      byId.set(match.id, match);
+    }
+  }
+
+  return order
+    .map((id) => byId.get(id))
+    .filter((match): match is LobbyMatchRow => Boolean(match));
 }
 
 export function RecentMatchesPanel({
@@ -64,6 +174,7 @@ export function RecentMatchesPanel({
 
   const matchesRef = useRef(matches);
   const loadingRef = useRef(false);
+  const refreshingLatestRef = useRef(false);
   const hasMoreRef = useRef(true);
   const matchFeedScrollRef = useRef<HTMLDivElement | null>(null);
   const matchFeedSentinelRef = useRef<HTMLDivElement | null>(null);
@@ -84,6 +195,82 @@ export function RecentMatchesPanel({
   useEffect(() => {
     hasMoreRef.current = hasMoreMatches;
   }, [hasMoreMatches]);
+
+  const refreshLatestMatches = useCallback(async () => {
+    if (refreshingLatestRef.current) return;
+
+    refreshingLatestRef.current = true;
+
+    try {
+      const response = await fetch(
+        `/api/lobby/recent-matches?offset=0&limit=${MATCH_FEED_PAGE_SIZE}&refresh=${Date.now()}`,
+        {
+          cache: "no-store",
+          headers: {
+            "Cache-Control": "no-cache",
+          },
+        }
+      );
+
+      if (!response.ok) return;
+
+      const payload =
+        (await response.json()) as RecentMatchesResponse;
+
+      const latestMatches = Array.isArray(payload.matches)
+        ? payload.matches
+        : [];
+
+      if (latestMatches.length === 0) return;
+
+      // The fresh page goes first. Existing rows with the same ID are
+      // discarded, so repaired winner truth replaces stale client truth.
+      setMatches((current) =>
+        mergeMatchLists(latestMatches, current)
+      );
+    } catch (error) {
+      console.warn(
+        "Failed to refresh latest lobby matches:",
+        error
+      );
+    } finally {
+      refreshingLatestRef.current = false;
+    }
+  }, []);
+
+  useEffect(() => {
+    const refreshIfVisible = () => {
+      if (document.visibilityState === "visible") {
+        void refreshLatestMatches();
+      }
+    };
+
+    const firstRefresh = window.setTimeout(
+      refreshIfVisible,
+      700
+    );
+
+    const interval = window.setInterval(
+      refreshIfVisible,
+      MATCH_FEED_REFRESH_MS
+    );
+
+    window.addEventListener("focus", refreshIfVisible);
+    document.addEventListener(
+      "visibilitychange",
+      refreshIfVisible
+    );
+
+    return () => {
+      window.clearTimeout(firstRefresh);
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refreshIfVisible);
+      document.removeEventListener(
+        "visibilitychange",
+        refreshIfVisible
+      );
+    };
+  }, [refreshLatestMatches]);
 
   const loadMoreMatches = useCallback(async () => {
     if (loadingRef.current || !hasMoreRef.current) return;
@@ -346,16 +533,18 @@ function getLobbyMatchResultDisplay(match: LobbyMatchRow) {
     };
   }
 
-  if (!reviewNeeded && truthResult?.label) {
+  if (!reviewNeeded) {
     return {
-      headline: truthResult.label,
+      headline: truthResult?.label || "Completed",
       pill: null,
     };
   }
 
   return {
     headline: "Winner unresolved",
-    pill: outcomeBadgeLabel(match.parse_reason, match.winner) || (reviewNeeded ? "Needs review" : null),
+    pill:
+      outcomeBadgeLabel(match.parse_reason, match.winner) ||
+      "Needs review",
   };
 }
 

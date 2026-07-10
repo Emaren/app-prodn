@@ -1,3 +1,17 @@
+const fs = require("fs");
+const path = require("path");
+
+const BUILD_VERSION_FILE = path.join(
+  __dirname,
+  ".aoe2war-build-version"
+);
+
+const AOE2WAR_BUILD_VERSION = fs.existsSync(
+  BUILD_VERSION_FILE
+)
+  ? fs.readFileSync(BUILD_VERSION_FILE, "utf8").trim()
+  : "development";
+
 // next.config.js
 //
 // Goal: NEVER bake api-prodn into the browser bundle.
@@ -20,6 +34,10 @@ module.exports = {
     NEXT_PUBLIC_API_BASE_URL: ".",
 
     NEXT_PUBLIC_CHAIN_REST: process.env.NEXT_PUBLIC_CHAIN_REST ?? "",
+
+    // Unique identity generated before every production build.
+    NEXT_PUBLIC_AOE2WAR_BUILD_VERSION:
+      AOE2WAR_BUILD_VERSION,
   },
 
 

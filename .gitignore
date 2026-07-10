@@ -74,3 +74,6 @@ public/downloads/
 # Watch theatre full recordings are too large for GitHub.
 public/watch/recordings/*.mp4
 storage/
+
+# Generated deployment identity
+.aoe2war-build-version

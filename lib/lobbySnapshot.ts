@@ -4,6 +4,7 @@ import { getEmptyAoe2HdPulseSnapshot, loadAoe2HdPulseSnapshot } from "@/lib/aoe2
 import { getBackendUpstreamBase } from "@/lib/backendUpstream";
 import { getFeaturedTournament, getLobbyMessages } from "@/lib/communityStore";
 import { loadLobbyLeaderboard } from "@/lib/lobbyLeaderboard";
+import { loadLobbyRecentMatches } from "@/lib/lobbyRecentMatches";
 import { mergeCompletedSessionsIntoLobbyMatches } from "@/lib/liveCompletedMatchSurface";
 import { loadLobbyWoloEarnersBoard } from "@/lib/lobbyWoloEarners";
 import { getFallbackLiveTickerSnapshot, loadLiveTickerSnapshot } from "@/lib/liveTicker";
@@ -191,6 +192,33 @@ const LOBBY_SNAPSHOT_CACHE_TTL_MS = 15000;
 const LOBBY_SNAPSHOT_STALE_TTL_MS = 10 * 60 * 1000;
 const lobbySnapshotCache = new Map<string, LobbySnapshotCacheEntry>();
 
+async function attachCanonicalRecentMatches(
+  snapshot: LobbySnapshotCacheEntry["value"]
+): Promise<LobbySnapshotCacheEntry["value"]> {
+  try {
+    const recentMatches = await loadLobbyRecentMatches({
+      offset: 0,
+      limit: LOBBY_RECENT_MATCH_INITIAL_LIMIT,
+    });
+
+    if (recentMatches.length === 0) {
+      return snapshot;
+    }
+
+    return {
+      ...snapshot,
+      recentMatches,
+    };
+  } catch (error) {
+    console.warn(
+      "Failed to attach canonical recent matches to lobby snapshot:",
+      error
+    );
+
+    return snapshot;
+  }
+}
+
 export async function loadLobbySnapshot(
   prisma: Parameters<typeof loadLobbySnapshotFresh>[0],
   viewerUid: Parameters<typeof loadLobbySnapshotFresh>[1],
@@ -201,7 +229,7 @@ export async function loadLobbySnapshot(
   const cached = lobbySnapshotCache.get(cacheKey);
 
   if (cached && cached.expiresAt > now) {
-    return cached.value;
+    return attachCanonicalRecentMatches(cached.value);
   }
 
   if (cached && cached.staleUntil > now) {
@@ -229,7 +257,7 @@ export async function loadLobbySnapshot(
         });
     }
 
-    return cached.value;
+    return attachCanonicalRecentMatches(cached.value);
   }
 
   const value = await loadLobbySnapshotFresh(prisma, viewerUid, guestReactionSessionId);
@@ -249,5 +277,5 @@ export async function loadLobbySnapshot(
     }
   }
 
-  return value;
+  return attachCanonicalRecentMatches(value);
 }

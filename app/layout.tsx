@@ -4,6 +4,7 @@ import Script from "next/script";
 import "./globals.css";
 import AppShell from "./AppShell";
 import PwaRegister from "@/components/pwa/PwaRegister";
+import DeploymentVersionGuard from "@/components/pwa/DeploymentVersionGuard";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://aoe2war.com"),
@@ -98,6 +99,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
         <AppShell>{children}</AppShell>
         <PwaRegister />
+        <DeploymentVersionGuard />
       </body>
     </html>
   );
