@@ -2,7 +2,7 @@
 
 import { formatLobbyMoment } from "@/components/lobby/utils";
 import Link from "next/link";
-import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import {
   getLobbyPresentationTone,
   type LobbyThemeKey,
@@ -130,9 +130,35 @@ function matchTruthScore(match: LobbyMatchRow) {
   return score;
 }
 
+function matchRenderFingerprint(
+  match: LobbyMatchRow
+) {
+  const candidate = match as LobbyMatchRow & {
+    winnerProof?: unknown;
+    reviewNeeded?: unknown;
+    unresolvedResult?: unknown;
+    parseReason?: unknown;
+  };
+
+  return JSON.stringify({
+    map: candidate.map,
+    players: candidate.players,
+    winner: candidate.winner,
+    winnerProof: candidate.winnerProof,
+    reviewNeeded: candidate.reviewNeeded,
+    unresolvedResult: candidate.unresolvedResult,
+    parseReason:
+      candidate.parse_reason ||
+      candidate.parseReason ||
+      "",
+    playedAt: pickLobbyMatchPlayedAt(match),
+  });
+}
+
 function mergeMatchLists(
   primary: LobbyMatchRow[],
-  secondary: LobbyMatchRow[]
+  secondary: LobbyMatchRow[],
+  preserveSecondaryWhenIdentical = false
 ) {
   const order: number[] = [];
   const byId = new Map<number, LobbyMatchRow>();
@@ -148,15 +174,43 @@ function mergeMatchLists(
     const currentScore = matchTruthScore(current);
     const incomingScore = matchTruthScore(match);
 
-    // Never allow a later stale snapshot to downgrade known truth.
     if (incomingScore > currentScore) {
+      byId.set(match.id, match);
+      continue;
+    }
+
+    if (
+      preserveSecondaryWhenIdentical &&
+      incomingScore === currentScore &&
+      matchRenderFingerprint(match) ===
+        matchRenderFingerprint(current)
+    ) {
+      // Primary controls ordering and supplies fresher truth when
+      // something changed. For identical rows, retain the existing
+      // client object so React has nothing to repaint.
       byId.set(match.id, match);
     }
   }
 
-  return order
+  const merged = order
     .map((id) => byId.get(id))
-    .filter((match): match is LobbyMatchRow => Boolean(match));
+    .filter(
+      (match): match is LobbyMatchRow =>
+        Boolean(match)
+    );
+
+  if (
+    preserveSecondaryWhenIdentical &&
+    merged.length === secondary.length &&
+    merged.every(
+      (match, index) =>
+        match === secondary[index]
+    )
+  ) {
+    return secondary;
+  }
+
+  return merged;
 }
 
 export function RecentMatchesPanel({
@@ -180,7 +234,7 @@ export function RecentMatchesPanel({
   const matchFeedSentinelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    setMatches((current) => mergeMatchLists(recentMatches, current));
+    setMatches((current) => mergeMatchLists(recentMatches, current, true));
 
     if (recentMatches.length > 0) {
       hasMoreRef.current = true;
@@ -226,7 +280,7 @@ export function RecentMatchesPanel({
       // The fresh page goes first. Existing rows with the same ID are
       // discarded, so repaired winner truth replaces stale client truth.
       setMatches((current) =>
-        mergeMatchLists(latestMatches, current)
+        mergeMatchLists(latestMatches, current, true)
       );
     } catch (error) {
       console.warn(
@@ -402,9 +456,8 @@ export function RecentMatchesPanel({
 
       <div
         ref={matchFeedScrollRef}
-        className="mt-5 min-h-0 max-h-[min(52dvh,32rem)] overflow-y-auto overscroll-contain pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="mt-5 min-h-0 max-h-[min(52dvh,32rem)] transform-gpu overflow-y-auto overscroll-contain pr-1 [-webkit-overflow-scrolling:touch] [will-change:scroll-position] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         aria-busy={isLoadingMore}
-        onScroll={maybeLoadMoreMatches}
       >
         <div className="space-y-3">
           {matches.length === 0 ? (
@@ -524,12 +577,37 @@ function getLobbyMatchResultDisplay(match: LobbyMatchRow) {
   const oldWatcherWinner = readOldWatcherInferredOpponentWinner(match);
   const truthResult = readReplayTruthResult(match);
   const reviewNeeded = readReplayTruthReviewNeeded(match, truthResult);
-  const resolvedWinner = rawWinner || markedPlayerWinner || oldWatcherWinner;
+  const resolvedWinner =
+    rawWinner || markedPlayerWinner || oldWatcherWinner;
+
+  const winnerProof = normalizeLobbyWinnerName(
+    (match as { winnerProof?: unknown }).winnerProof
+  );
+
+  const acceptedPublicFallback =
+    winnerProof === "historical_inferred_fallback";
 
   if (resolvedWinner) {
+    // The public replay sanitizer has already made the product-level
+    // decision to expose this historical fallback winner. Do not run
+    // that accepted public result back through the stricter settlement
+    // validator, which intentionally rejects inference-only evidence.
+    if (acceptedPublicFallback) {
+      return {
+        headline: resolvedWinner,
+        pill: "Replay inference",
+      };
+    }
+
     return {
-      headline: winnerLabel(resolvedWinner, match.parse_reason),
-      pill: outcomeBadgeLabel(match.parse_reason, resolvedWinner),
+      headline: winnerLabel(
+        resolvedWinner,
+        match.parse_reason
+      ),
+      pill: outcomeBadgeLabel(
+        match.parse_reason,
+        resolvedWinner
+      ),
     };
   }
 
@@ -548,7 +626,7 @@ function getLobbyMatchResultDisplay(match: LobbyMatchRow) {
   };
 }
 
-function MatchCard({
+const MatchCard = memo(function MatchCard({
   match,
   themeKey,
   viewMode,
@@ -568,7 +646,7 @@ function MatchCard({
   return (
     <Link
       href={`/game-stats/${match.id}`}
-      className={`block rounded-2xl border px-4 py-4 transition ${tone.card} ${tone.cardHover}`}
+      className={`block rounded-2xl border px-4 py-4 transition-colors duration-150 ${tone.card} ${tone.cardHover}`}
     >
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
@@ -582,11 +660,6 @@ function MatchCard({
           <div className="text-xs uppercase tracking-[0.25em] text-slate-400">
             {resultDisplay.headline}
           </div>
-          {resultDisplay.pill ? (
-            <ResultTypePill toneClassName={tone.resultPill}>
-              {resultDisplay.pill}
-            </ResultTypePill>
-          ) : null}
         </div>
       </div>
 
@@ -597,20 +670,4 @@ function MatchCard({
       ) : null}
     </Link>
   );
-}
-
-function ResultTypePill({
-  children,
-  toneClassName,
-}: {
-  children: ReactNode;
-  toneClassName: string;
-}) {
-  return (
-    <span
-      className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.18em] ${toneClassName}`}
-    >
-      {children}
-    </span>
-  );
-}
+});
