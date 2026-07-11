@@ -364,6 +364,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
   const [liveGamesCount, setLiveGamesCount] = React.useState(0);
   const [requestCount, setRequestCount] = React.useState(0);
   const isContactPage = pathname?.startsWith("/contact-emaren");
+  const [contactViewportHeight, setContactViewportHeight] = React.useState<number | null>(null);
   const isLobbySurface = pathname === "/" || pathname?.startsWith("/lobby");
   const isMediaManagerSurface = pathname?.startsWith("/admin/media-assets");
   const isHeroStudioSurface = pathname?.startsWith("/admin/hero-studio");
@@ -395,6 +396,23 @@ function InnerShell({ children }: { children: React.ReactNode }) {
   );
   const isRivalriesSurface =
     pathname === "/rivalries";
+  React.useEffect(() => {
+    if (!isContactPage) {
+      setContactViewportHeight(null);
+      return;
+    }
+    const visualViewport = window.visualViewport;
+    const updateViewportHeight = () => {
+      setContactViewportHeight(Math.round(visualViewport?.height ?? window.innerHeight));
+    };
+    updateViewportHeight();
+    window.addEventListener("resize", updateViewportHeight);
+    visualViewport?.addEventListener("resize", updateViewportHeight);
+    return () => {
+      window.removeEventListener("resize", updateViewportHeight);
+      visualViewport?.removeEventListener("resize", updateViewportHeight);
+    };
+  }, [isContactPage]);
   const activeSurfaceViewMode = isLiveGamesSurface
     ? liveGamesViewMode
     : isForumSurface
@@ -474,7 +492,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div
-      className={`${isAcademySurface ? "academy-route-shell" : ""} flex min-h-screen w-full flex-col overflow-x-hidden text-white transition-[background-image,background-color] duration-500 ${isContactPage ? "lg:h-[100dvh] lg:max-h-[100dvh] lg:overflow-y-hidden" : ""}`}
+      className={`${isAcademySurface ? "academy-route-shell" : ""} flex w-full flex-col overflow-x-hidden text-white transition-[background-image,background-color] duration-500 ${isContactPage ? "h-[100dvh] min-h-0 max-h-[100dvh] overflow-y-hidden" : "min-h-screen"}`}
       onWheel={handleContactShellWheel}
       style={
         isAcademySurface
@@ -484,14 +502,19 @@ function InnerShell({ children }: { children: React.ReactNode }) {
               backgroundImage:
                 "radial-gradient(78rem 38rem at 10% 0%, rgba(68, 9, 21, 0.24), transparent 66%), radial-gradient(58rem 32rem at 90% 0%, rgba(68, 71, 79, 0.12), transparent 70%), linear-gradient(180deg, #05070b 0%, #06070a 42%, #090407 100%)",
             }
-          : pageStyle
+          : {
+              ...pageStyle,
+              ...(isContactPage && contactViewportHeight
+                ? { height: `${contactViewportHeight}px`, maxHeight: `${contactViewportHeight}px` }
+                : {}),
+            }
       }
       data-text-tone={textColor}
       data-theme-key={themeKey}
     >
       <UserExperienceTracker />
       <header
-        className={`sticky top-0 z-[180] overflow-visible border-b px-3 pb-3 pt-[calc(env(safe-area-inset-top)+0.7rem)] backdrop-blur-2xl transition-[background-color,border-color] duration-500 sm:px-4 lg:py-3 ${headerSkin.shell}`}
+        className={`sticky top-0 z-[180] shrink-0 overflow-visible border-b px-3 pb-3 pt-[calc(env(safe-area-inset-top)+0.7rem)] backdrop-blur-2xl transition-[background-color,border-color] duration-500 sm:px-4 lg:py-3 ${headerSkin.shell}`}
       >
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
           <div className="absolute -left-16 -top-20 h-44 w-72 rounded-full bg-amber-300/[0.055] blur-3xl" />
@@ -684,14 +707,14 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                       : isExtremePlayerProfileSurface ? "max-w-[90rem]" : "max-w-6xl"
               }`
         } ${isAcademySurface ? "academy-shell-skin" : ""} ${
-          isContactPage ? "overflow-x-hidden overflow-y-visible lg:overflow-y-hidden" : isMediaManagerSurface || isHeroStudioSurface ? "overflow-x-visible" : "overflow-x-hidden"
+          isContactPage ? "!py-2 !pb-2 overflow-hidden sm:!py-3 sm:!pb-3" : isMediaManagerSurface || isHeroStudioSurface ? "overflow-x-visible" : "overflow-x-hidden"
         }`}
       >
         <GlobalInstallAppPrompt />
         {children}
       </main>
       {!isContactPage && !isHeroStudioSurface ? <AoE2WarFooter /> : null}
-      <MobileFloatingNav />
+      {!isContactPage ? <MobileFloatingNav /> : null}
       <Toaster richColors />
     </div>
   );

@@ -115,25 +115,13 @@ function formatTimestamp(value: string | null) {
   });
 }
 
-function formatReceiptTimestamp(value: string, compareTo?: string | null) {
+function formatReceiptTimestamp(value: string, includeSeconds = false) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "recently";
-
-  const comparisonDate = compareTo ? new Date(compareTo) : new Date();
-  const sameDay =
-    !Number.isNaN(comparisonDate.getTime()) && date.toDateString() === comparisonDate.toDateString();
-  if (sameDay) {
-    return date.toLocaleTimeString([], {
-      hour: "numeric",
-      minute: "2-digit",
-    });
-  }
-
-  return date.toLocaleString([], {
-    month: "short",
-    day: "numeric",
+  return date.toLocaleTimeString([], {
     hour: "numeric",
     minute: "2-digit",
+    ...(includeSeconds ? { second: "2-digit" as const } : {}),
   });
 }
 
@@ -564,14 +552,14 @@ function ReceiptLine({
 
   const copy =
     message.receipt.status === "read" && message.receipt.readAt
-      ? `Read ${formatReceiptTimestamp(message.receipt.readAt, message.createdAt)}`
+      ? `${formatReceiptTimestamp(message.createdAt, true)} · Read`
       : message.receipt.status === "delivered"
-        ? "Delivered"
+        ? `${formatReceiptTimestamp(message.createdAt, true)} · Delivered`
         : message.receipt.status === "sending"
           ? "Sending…"
           : message.receipt.status === "failed"
             ? "Failed to send"
-            : "Sent";
+            : `${formatReceiptTimestamp(message.createdAt, true)} · Sent`;
 
   return <div className={`mt-1 text-right text-[10px] italic ${message.receipt.status === "failed" ? "text-rose-300" : "text-slate-500/80"}`}>{copy}{message.receipt.status === "failed" && onRetry ? <button type="button" onClick={onRetry} className="ml-2 font-semibold not-italic underline decoration-rose-300/40 underline-offset-2">Retry</button> : null}</div>;
 }
@@ -1366,7 +1354,7 @@ export default function ContactInboxPanel({
   const lastBodyForTypingPulseRef = useRef(body);
   const hasConversationChoices = (data?.summaries.length ?? 0) > 1;
   const showConversationRail = Boolean(mode === "page" && hasConversationChoices);
-  const showConversationChips = !showConversationRail && hasConversationChoices;
+  const showConversationChips = hasConversationChoices;
   const unreadCount = data?.totalUnreadCount ?? 0;
   const heading = counterpart?.displayName || (data?.viewer.isAdmin ? "Private inbox" : "Private Thread");
   const premiumTypingHud = typingHudMode === "pulse";
@@ -1714,7 +1702,7 @@ export default function ContactInboxPanel({
         }
       >
         {showConversationRail ? (
-          <aside className={`max-h-64 overflow-y-auto overscroll-contain border-b p-4 lg:max-h-none lg:border-b-0 lg:border-r ${chromeClassName} ${railClassName}`}>
+          <aside className={`hidden max-h-64 overflow-y-auto overscroll-contain border-b p-4 lg:block lg:max-h-none lg:border-b-0 lg:border-r ${chromeClassName} ${railClassName}`}>
             <div className="space-y-3">
               {data?.summaries.map((summary) => (
                 <SummaryButton
@@ -1731,7 +1719,7 @@ export default function ContactInboxPanel({
 
         <div className="flex min-h-0 flex-1 flex-col">
           {showConversationChips ? (
-            <div className={`flex shrink-0 gap-2 overflow-x-auto overscroll-contain border-b px-3 py-2 sm:px-4 sm:py-3 ${chromeClassName}`}>
+            <div className={`flex shrink-0 gap-2 overflow-x-auto overscroll-contain border-b px-3 py-2 sm:px-4 sm:py-3 ${mode === "page" ? "lg:hidden" : ""} ${chromeClassName}`}>
               {data?.summaries.map((summary) => (
                 <button
                   key={summary.targetUid}
@@ -1903,7 +1891,12 @@ export default function ContactInboxPanel({
                     }
                   }}
                   placeholder={buildPrompt(data, counterpart)}
-                  className={`min-w-0 flex-1 ${isLineView ? "rounded-md" : "rounded-[1.25rem]"} px-4 py-3 text-sm leading-6 text-white outline-none placeholder:text-slate-500 transition focus:shadow-[inset_0_0_0_1px_rgba(251,191,36,0.25)] ${plainComposerInputClassName}`}
+                  inputMode="text"
+                  enterKeyHint="send"
+                  autoCapitalize="sentences"
+                  autoCorrect="on"
+                  spellCheck
+                  className={`min-w-0 flex-1 touch-manipulation ${isLineView ? "rounded-md" : "rounded-[1.25rem]"} px-4 py-3 text-base leading-6 text-white outline-none placeholder:text-slate-500 transition focus:shadow-[inset_0_0_0_1px_rgba(251,191,36,0.25)] sm:text-sm ${plainComposerInputClassName}`}
                 />
                 <button
                   type="button"

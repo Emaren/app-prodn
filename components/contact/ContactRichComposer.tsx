@@ -260,7 +260,12 @@ export default function ContactRichComposer({
             }
           }}
           placeholder={counterpartName ? `Message ${counterpartName}...` : "Message the thread..."}
-          className="w-full bg-transparent px-1 py-1 text-sm leading-6 text-white outline-none placeholder:text-slate-500"
+          inputMode="text"
+          enterKeyHint="send"
+          autoCapitalize="sentences"
+          autoCorrect="on"
+          spellCheck
+          className="w-full touch-manipulation bg-transparent px-1 py-1 text-base leading-6 text-white outline-none placeholder:text-slate-500 sm:text-sm"
         />
 
         <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-white/8 pt-2.5 sm:mt-3 sm:gap-3 sm:pt-3">

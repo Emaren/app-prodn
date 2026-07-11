@@ -2,6 +2,8 @@
 
 import { MessageSquareMore, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import type { CSSProperties } from "react";
 
 import ContactInboxPanel from "@/components/contact/ContactInboxPanel";
 import type {
@@ -11,7 +13,6 @@ import type {
   ContactTextMessage,
 } from "@/components/contact/types";
 import { useUserAuth } from "@/context/UserAuthContext";
-import { useClickOutside } from "@/hooks/useClickOutside";
 
 function readDetail(payload: unknown) {
   if (!payload || typeof payload !== "object") {
@@ -71,6 +72,9 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
   const [reactingMessageId, setReactingMessageId] = useState<number | null>(null);
   const [replyingTo, setReplyingTo] = useState<ContactTextMessage | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const [desktopAnchor, setDesktopAnchor] = useState({ right: 16, top: 72 });
+  const [mobileViewportHeight, setMobileViewportHeight] = useState<number | null>(null);
   const selectedTargetUidRef = useRef<string | null>(null);
   const typingTimerRef = useRef<number | null>(null);
   const typingActiveRef = useRef(false);
@@ -78,7 +82,45 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
   const panelRequestIdRef = useRef(0);
   const draftHydratedTargetRef = useRef<string | null>(null);
 
-  useClickOutside(panelRef as React.RefObject<HTMLElement>, () => setOpen(false));
+  const updateDesktopAnchor = useCallback(() => {
+    const trigger = triggerRef.current;
+    if (!trigger || typeof window === "undefined") return;
+    const rect = trigger.getBoundingClientRect();
+    setDesktopAnchor({
+      right: Math.max(16, window.innerWidth - rect.right),
+      top: rect.bottom + 8,
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const visualViewport = window.visualViewport;
+    const updateViewportHeight = () => {
+      setMobileViewportHeight(Math.round(visualViewport?.height ?? window.innerHeight));
+    };
+    updateDesktopAnchor();
+    updateViewportHeight();
+    window.addEventListener("resize", updateDesktopAnchor);
+    window.addEventListener("resize", updateViewportHeight);
+    visualViewport?.addEventListener("resize", updateViewportHeight);
+    return () => {
+      window.removeEventListener("resize", updateDesktopAnchor);
+      window.removeEventListener("resize", updateViewportHeight);
+      visualViewport?.removeEventListener("resize", updateViewportHeight);
+    };
+  }, [open, updateDesktopAnchor]);
+
+  useEffect(() => {
+    if (!open || typeof document === "undefined") return;
+    const previousDocumentOverflow = document.documentElement.style.overflow;
+    const previousBodyOverflow = document.body.style.overflow;
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.documentElement.style.overflow = previousDocumentOverflow;
+      document.body.style.overflow = previousBodyOverflow;
+    };
+  }, [open]);
 
   const applySelectedTargetUid = useCallback((targetUid: string | null) => {
     selectedTargetUidRef.current = targetUid;
@@ -341,38 +383,53 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
   }
 
   return (
-    <div className={`relative ${open ? "z-[120]" : "z-10"}`} ref={panelRef}>
-      <button
-        type="button"
-        onClick={() => setOpen((current) => !current)}
-        className={[
-          "relative flex h-11 w-11 items-center justify-center rounded-full border text-white transition",
-          buttonClassName || "border-white/15 bg-white/5 hover:border-white/30 hover:bg-white/10",
-        ]
-          .filter(Boolean)
-          .join(" ")}
-        aria-label="Open Contact Emaren inbox"
-        aria-expanded={open}
-        aria-haspopup="dialog"
-      >
-        <MessageSquareMore className="h-5 w-5" />
-        {unreadCount > 0 ? (
-          <span className="absolute -right-1 -top-1 min-w-5 rounded-full bg-red-500 px-1.5 py-0.5 text-[11px] font-semibold leading-none text-white">
-            {unreadCount}
-          </span>
-        ) : null}
-      </button>
+    <>
+      <div className={`relative ${open ? "z-[120]" : "z-10"}`}>
+        <button
+          ref={triggerRef}
+          type="button"
+          onClick={() => {
+            if (!open) updateDesktopAnchor();
+            setOpen((current) => !current);
+          }}
+          className={[
+            "relative flex h-11 w-11 items-center justify-center rounded-full border text-white transition",
+            buttonClassName || "border-white/15 bg-white/5 hover:border-white/30 hover:bg-white/10",
+          ]
+            .filter(Boolean)
+            .join(" ")}
+          aria-label="Open Contact Emaren inbox"
+          aria-expanded={open}
+          aria-haspopup="dialog"
+        >
+          <MessageSquareMore className="h-5 w-5" />
+          {unreadCount > 0 ? (
+            <span className="absolute -right-1 -top-1 min-w-5 rounded-full bg-red-500 px-1.5 py-0.5 text-[11px] font-semibold leading-none text-white">
+              {unreadCount}
+            </span>
+          ) : null}
+        </button>
+      </div>
 
-      {open ? (
+      {open && typeof document !== "undefined" ? createPortal(
         <>
           <button
             type="button"
             aria-label="Close inbox overlay"
             onClick={() => setOpen(false)}
-            className="fixed inset-0 z-40 bg-[#02060f]/78 backdrop-blur-[2px] sm:hidden"
+            className="fixed inset-0 z-[210] bg-[#02060f]/78 backdrop-blur-[2px] sm:bg-transparent sm:backdrop-blur-none"
           />
 
-          <div className="fixed inset-x-2 bottom-[max(0.6rem,env(safe-area-inset-bottom))] top-[5.75rem] z-[140] sm:absolute sm:inset-x-auto sm:bottom-auto sm:right-0 sm:top-14 sm:h-[min(38rem,calc(100dvh-6.5rem))] sm:w-[29.5rem] sm:max-w-[calc(100vw-2rem)]">
+          <div
+            role="dialog"
+            aria-label="Private inbox"
+            className="fixed inset-x-2 top-[5.75rem] z-[220] h-[calc(var(--contact-inbox-viewport-height,100dvh)-6.35rem)] sm:inset-x-auto sm:right-[var(--contact-inbox-right)] sm:top-[var(--contact-inbox-top)] sm:h-[min(38rem,calc(100dvh-6.5rem))] sm:w-[29.5rem] sm:max-w-[calc(100vw-2rem)]"
+            style={{
+              "--contact-inbox-right": `${desktopAnchor.right}px`,
+              "--contact-inbox-top": `${desktopAnchor.top}px`,
+              "--contact-inbox-viewport-height": mobileViewportHeight ? `${mobileViewportHeight}px` : "100dvh",
+            } as CSSProperties}
+          >
             <div className="absolute -top-11 right-0 flex justify-end sm:hidden">
               <button
                 type="button"
@@ -384,7 +441,7 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
               </button>
             </div>
 
-            <div className="h-full min-h-0 overflow-hidden rounded-[1.35rem] border border-white/12 bg-[#050c16] shadow-[0_34px_96px_rgba(2,6,23,0.82)] sm:rounded-[1.6rem]">
+            <div ref={panelRef} className="h-full min-h-0 overflow-hidden rounded-[1.35rem] border border-white/12 bg-[#050c16] shadow-[0_34px_96px_rgba(2,6,23,0.82)] sm:rounded-[1.6rem]">
               <ContactInboxPanel
                 data={panelData ?? summary}
                 loading={loading && !(panelData ?? summary)}
@@ -565,8 +622,9 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
               />
             </div>
           </div>
-        </>
+        </>,
+        document.body
       ) : null}
-    </div>
+    </>
   );
 }
