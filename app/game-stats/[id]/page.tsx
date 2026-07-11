@@ -27,11 +27,13 @@ import {
 } from "@/lib/gameStatsView";
 import {
   buildMatchupHref,
+  buildTeamMatchupHref,
   filterHeadToHeadMatches,
   loadRecentFinalMatchupRows,
   summarizeHeadToHead,
 } from "@/lib/publicMatchups";
 import { getPrisma } from "@/lib/prisma";
+import { parseReplaySides } from "@/lib/replaySides";
 import {
   buildPublicPlayerRef,
   findClaimedUsersForReplayNames,
@@ -159,7 +161,43 @@ export default async function GameStatsDetailPage({
   const playerRefs = players.map((player) =>
     buildPublicPlayerRef(displayPlayerName(player), claimedPlayers)
   );
-  const matchupHref = playerRefs.length === 2 ? buildMatchupHref(playerRefs[0], playerRefs[1]) : null;
+  // AOE2WAR_GAME_STATS_EXACT_RIVALRY_LINK
+  const replaySides =
+    parseReplaySides(game.players);
+
+  const rivalryHref =
+    replaySides?.format === "1v1" &&
+    playerRefs.length === 2
+      ? buildMatchupHref(
+          playerRefs[0],
+          playerRefs[1]
+        )
+      : replaySides &&
+          replaySides.format !== "1v1"
+        ? buildTeamMatchupHref(
+            replaySides.left.map(
+              (member) =>
+                buildPublicPlayerRef(
+                  member.name,
+                  claimedPlayers
+                )
+            ),
+            replaySides.right.map(
+              (member) =>
+                buildPublicPlayerRef(
+                  member.name,
+                  claimedPlayers
+                )
+            )
+          )
+        : null;
+
+  const rivalryActionLabel =
+    replaySides?.format === "1v1"
+      ? "Open Player Rivalry"
+      : replaySides
+        ? "Open Team Rivalry"
+        : "Open Rivalry";
   const rivalryCandidates =
     playerRefs.length === 2
       ? await loadRecentFinalMatchupRows(prisma, 800)
@@ -292,12 +330,13 @@ export default async function GameStatsDetailPage({
           </div>
 
           <div className="flex flex-wrap gap-3">
-            {matchupHref ? (
+            {rivalryHref ? (
               <Link
-                href={matchupHref}
+                href={rivalryHref}
                 className="w-full rounded-full border border-white/15 px-5 py-3 text-center text-sm text-white/85 transition hover:border-sky-300/40 hover:text-white sm:w-auto"
+                data-game-stats-rivalry-link
               >
-                Open Rivalry
+                {rivalryActionLabel}
               </Link>
             ) : null}
             {battleTapeHref ? (

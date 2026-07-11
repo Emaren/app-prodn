@@ -187,7 +187,7 @@ export default async function ChampionTitleDetailPage({
               {title.dailyWolo} WOLO/day{title.type === "tag_team" ? " each" : ""}
             </div>
             <p className="mt-3 text-sm leading-6 text-slate-400">
-              Belts, national titles, ELO ladders, and tag titles pay a Reward Tribute. Special designations pay an Artifact Bonus.
+              Belts, national titles, ELO ladders, and tag titles pay a Reigning Tribute. Special designations pay an Artifact Bonus.
             </p>
           </Panel>
 

@@ -1,14 +1,17 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Coins, ExternalLink, Lock, ScrollText, Shield, Swords, TowerControl, Users } from "lucide-react";
 
 import { kingdomChronicles, type KingdomChronicle } from "@/lib/aoe2warLeague";
+import { kingdomChronicleAvatarCardUrlForName } from "@/lib/avatarAssets";
 
 type KingdomChronicleView = "b" | "a" | "e";
 
 const KINGDOM_BAE_FALLBACK_KEY = "aoe2war.kingdom.bae.local.v1";
+const KINGDOM_CHRONICLE_AVATAR_KEY = "aoe2war.kingdom.chronicleAvatars.v1";
 
 const kingdomBaeViews: Array<{ value: KingdomChronicleView; label: string; title: string }> = [
   { value: "b", label: "B", title: "Basic" },
@@ -136,6 +139,114 @@ function getChronicleBodyClass(view: KingdomChronicleView) {
   return "mt-3 max-w-2xl text-[0.95rem] leading-7 text-slate-300/90";
 }
 
+function getQuestActor(item: KingdomChronicle) {
+  return item.questActor || null;
+}
+
+function normalizeQuestActorKey(value: string | null | undefined) {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_\-]+/g, " ")
+    .replace(/[^a-z0-9\[\] ]+/g, "")
+    .replace(/^bdb pigman$/, "[bdb]pigman")
+    .replace(/^julio alvarez$/, "julio")
+    .replace(/^dil pascana$/, "dil_pascana")
+    .trim();
+}
+
+function getAvatarActors(item: KingdomChronicle) {
+  if (Array.isArray(item.avatarActors) && item.avatarActors.length) {
+    return item.avatarActors.filter(Boolean);
+  }
+
+  const actor = item.avatarActor || item.questActor || null;
+  return actor ? [actor] : [];
+}
+
+function getChronicleAvatarClass(
+  item: KingdomChronicle,
+  view: KingdomChronicleView,
+  actorName?: string | null
+) {
+  const actor = String(actorName || "").toLowerCase();
+
+  // Ghosted exceptions only:
+  // Chronicle II   = Pigman seen/no contact
+  // Chronicle IV   = Deltaforce signed in/no contact
+  // Chronicle VIII = The Silent Seat / Dil_Pascana
+  const keepGhosted =
+    item.id === "pigman-sees-fire" ||
+    item.id === "deltaforce-joins-quest" ||
+    item.id === "silent-seat";
+
+  // Match the current Scribe/Grimer strength:
+  const strongOpacity = view === "e" ? "opacity-[0.54]" : "opacity-[0.42]";
+
+  if (keepGhosted) {
+    if (item.id === "pigman-sees-fire") {
+      return "object-contain object-right-bottom opacity-[0.095] scale-[1.02] translate-y-1 saturate-[0.78] origin-bottom-right";
+    }
+
+    if (item.id === "deltaforce-joins-quest") {
+      return "object-contain object-right-bottom opacity-[0.12] scale-[1.02] translate-y-1 saturate-[0.82] origin-bottom-right";
+    }
+
+    return "object-contain object-right-bottom opacity-[0.12] scale-[1.04] translate-y-2 saturate-[0.82] origin-bottom-right";
+  }
+
+  if (item.id === "scribe-enters") {
+    return `object-contain object-right-bottom ${strongOpacity} scale-[1.04] translate-y-1 saturate-[0.98] origin-bottom-right`;
+  }
+
+  if (actor.includes("dil")) {
+    return `object-contain object-right-bottom ${strongOpacity} scale-[1.06] translate-y-2 saturate-[0.82] origin-bottom-right`;
+  }
+
+  if (actor.includes("pigman")) {
+    return `object-contain object-right-bottom ${strongOpacity} scale-[1.02] translate-y-1 saturate-[0.78] origin-bottom-right`;
+  }
+
+  if (actor.includes("ra")) {
+    return `object-contain object-right-bottom ${strongOpacity} scale-[1.03] translate-y-1 saturate-[0.84] origin-bottom-right`;
+  }
+
+  if (actor.includes("zodiac")) {
+    return `object-contain object-right-bottom ${strongOpacity} scale-[1.03] translate-y-1 saturate-[0.85] origin-bottom-right`;
+  }
+
+  return `object-contain object-right-bottom ${strongOpacity} scale-[1.02] translate-y-1 saturate-[0.84] origin-bottom-right`;
+}
+
+function getChronicleAvatarMask(
+  item: KingdomChronicle,
+  view: KingdomChronicleView
+) {
+  const keepGhosted =
+    item.id === "pigman-sees-fire" ||
+    item.id === "deltaforce-joins-quest" ||
+    item.id === "silent-seat";
+
+  // Ghost cards stay deliberately hidden.
+  if (keepGhosted) {
+    return "linear-gradient(to right, transparent 0%, transparent 18%, rgba(0,0,0,0.36) 42%, rgba(0,0,0,0.86) 68%, rgba(0,0,0,1) 100%)";
+  }
+
+  // AI Scribe / Grimer:
+  // soften left edge more to kill the visible straight seam.
+  if (item.id === "scribe-enters") {
+    return "linear-gradient(to right, rgba(0,0,0,0.02) 0%, rgba(0,0,0,0.10) 8%, rgba(0,0,0,0.28) 18%, rgba(0,0,0,0.56) 32%, rgba(0,0,0,0.82) 48%, rgba(0,0,0,0.96) 66%, rgba(0,0,0,1) 100%)";
+  }
+
+  // All normal avatars, including Chronicle IX / Eastern Beacon,
+  // use the same stronger visibility treatment.
+  if (view === "e") {
+    return "linear-gradient(to right, rgba(0,0,0,0.18) 0%, rgba(0,0,0,0.34) 14%, rgba(0,0,0,0.66) 32%, rgba(0,0,0,0.90) 56%, rgba(0,0,0,1) 100%)";
+  }
+
+  return "linear-gradient(to right, rgba(0,0,0,0.10) 0%, rgba(0,0,0,0.22) 14%, rgba(0,0,0,0.52) 32%, rgba(0,0,0,0.84) 56%, rgba(0,0,0,1) 100%)";
+}
+
 function TimelinePin({ index, locked }: { index: number; locked: boolean }) {
   return (
     <div className="absolute -left-[2.55rem] top-6 hidden xl:block">
@@ -156,13 +267,20 @@ function ChronicleCard({
   item,
   index,
   view,
+  showAvatars,
+  showQuestLabel,
 }: {
   item: KingdomChronicle;
   index: number;
   view: KingdomChronicleView;
+  showAvatars: boolean;
+  showQuestLabel: boolean;
 }) {
   const href = chronicleHref(item);
   const locked = item.kind === "locked";
+  const questActor = getQuestActor(item);
+  const avatarActors = getAvatarActors(item);
+  const chronicleAvatarMask = getChronicleAvatarMask(item, view);
 
   const content = (
     <div
@@ -176,8 +294,63 @@ function ChronicleCard({
     >
       <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/30 to-transparent opacity-0 transition group-hover:opacity-100" />
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(13rem,0.7fr)_auto] lg:items-center">
-        <div className="min-w-0">
+      {showQuestLabel && questActor ? (
+        <div
+          className="kingdom-chronicle-quest-label pointer-events-none absolute right-7 top-5 z-20 max-w-[48%] overflow-hidden text-ellipsis whitespace-nowrap text-right text-[10px] font-semibold tracking-[0.18em] text-slate-400/45 sm:right-8 sm:max-w-[44%]"
+          style={
+            showAvatars
+              ? {
+                  right: "clamp(8.65rem, 11vw, 9.85rem)",
+                  maxWidth: "calc(100% - clamp(9.75rem, 13vw, 11.15rem))",
+                  textAlign: "right",
+                  whiteSpace: "nowrap",
+                  overflow: "visible",
+                  textOverflow: "clip",
+                }
+              : undefined
+          }
+        >
+          {questActor} joined the quest.
+        </div>
+      ) : null}
+
+      {showAvatars && avatarActors.length ? (
+        <div
+          className="pointer-events-none absolute inset-y-0 right-0 z-0 hidden w-[11.5rem] overflow-hidden sm:block lg:right-0 lg:w-[14rem]"
+          style={{
+            WebkitMaskImage: chronicleAvatarMask,
+            maskImage: chronicleAvatarMask,
+          }}
+        >
+          {avatarActors.map((actorName, actorIndex) => (
+            <div
+              key={`${item.id}-${actorName}`}
+              className={
+                avatarActors.length > 1
+                  ? actorIndex === 0
+                    ? "absolute inset-y-0 right-[5rem] w-[9.5rem] lg:right-[6.6rem] lg:w-[10.75rem]"
+                    : "absolute inset-y-0 right-0 w-[9.5rem] lg:w-[10.75rem]"
+                  : "absolute inset-y-0 right-0 w-full"
+              }
+            >
+              <Image
+                src={kingdomChronicleAvatarCardUrlForName(actorName)}
+                alt=""
+                fill
+                sizes="(max-width: 1024px) 0px, 260px"
+                className={getChronicleAvatarClass(item, view, actorName)}
+              />
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      <div
+        data-kingdom-chronicle-avatar-mode={showAvatars ? "true" : "false"}
+        data-kingdom-chronicle-view={view}
+        className="relative z-10 grid min-w-0 max-w-full gap-4 kingdom-chronicle-card-grid lg:grid-cols-[minmax(0,1fr)_minmax(11.5rem,0.64fr)_auto] lg:items-center xl:grid-cols-[minmax(0,1.18fr)_minmax(12rem,0.68fr)_auto]"
+      >
+        <div className="min-w-0 max-w-full">
           <div className="flex flex-wrap items-center gap-2">
             <span
               className={`rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.22em] ${
@@ -191,23 +364,27 @@ function ChronicleCard({
             <span className="text-xs text-slate-500">{item.dateLabel}</span>
           </div>
 
-          <h2 className={getChronicleTitleClass(view)}>{item.title}</h2>
+          <h2 className={`kingdom-chronicle-title ${getChronicleTitleClass(view)}`}>{item.title}</h2>
           <p className={getChronicleBodyClass(view)}>{item.body}</p>
         </div>
 
-        <div className="min-w-0">
+        <div className="min-w-0 max-w-full">
           <div className="flex flex-wrap gap-2">
             {item.actor ? (
-              <span className="rounded-full border border-sky-200/16 bg-sky-300/10 px-3 py-1 text-xs text-sky-100">
+              <span className={`kingdom-chronicle-actor-chip rounded-full border px-3 py-1 text-xs ${
+                showAvatars
+                  ? "border-white/10 bg-white/[0.05] text-slate-300/78"
+                  : "border-sky-200/16 bg-sky-300/10 text-sky-100"
+              }`}>
                 {item.actor}
               </span>
             ) : null}
-            {item.amountWolo ? (
+            {!showAvatars && item.amountWolo ? (
               <span className="rounded-full border border-amber-200/20 bg-amber-300/10 px-3 py-1 text-xs font-bold text-amber-100">
                 {formatWolo(item.amountWolo)} WOLO
               </span>
             ) : null}
-            {item.status ? (
+            {!showAvatars && item.status ? (
               <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-xs text-slate-300">
                 {item.status}
               </span>
@@ -256,8 +433,88 @@ function ChronicleCard({
 }
 
 export default function KingdomChroniclesClient() {
-  const [chronicleView, setChronicleView] = useState<KingdomChronicleView>("b");
+  const [chronicleView, setChronicleView] = useState<KingdomChronicleView>("e");
   const [baeStorageKey, setBaeStorageKey] = useState<string | null>(null);
+  const [showChronicleAvatars, setShowChronicleAvatars] = useState(true);
+
+  const persistKingdomChroniclePreferences = useCallback(
+    async (view: KingdomChronicleView, avatarsEnabled: boolean) => {
+      try {
+        await fetch("/api/user/kingdom-chronicle-preferences", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({ view, avatarsEnabled }),
+        });
+      } catch {
+        // Anonymous visitors still keep the local premium default.
+      }
+    },
+    []
+  );
+
+  const chooseChronicleView = useCallback(
+    (view: KingdomChronicleView) => {
+      setChronicleView(view);
+      if (baeStorageKey) {
+        try {
+          window.localStorage.setItem(baeStorageKey, view);
+        } catch {
+          // Ignore private-mode/localStorage failures.
+        }
+      }
+      void persistKingdomChroniclePreferences(view, showChronicleAvatars);
+    },
+    [baeStorageKey, persistKingdomChroniclePreferences, showChronicleAvatars]
+  );
+
+  const toggleChronicleAvatars = useCallback(() => {
+    setShowChronicleAvatars((current) => {
+      const next = !current;
+      try {
+        window.localStorage.setItem(KINGDOM_CHRONICLE_AVATAR_KEY, next ? "1" : "0");
+      } catch {
+        // Ignore private-mode/localStorage failures.
+      }
+      void persistKingdomChroniclePreferences(chronicleView, next);
+      return next;
+    });
+  }, [chronicleView, persistKingdomChroniclePreferences]);
+
+  const firstQuestChronicleIds = useMemo(() => {
+    const seen = new Set<string>();
+    const ids = new Set<string>();
+
+    for (const item of kingdomChronicles) {
+      const actor = getQuestActor(item);
+      const key = normalizeQuestActorKey(actor);
+
+      if (!actor || !key || seen.has(key)) {
+        continue;
+      }
+
+      seen.add(key);
+      ids.add(item.id);
+    }
+
+    return ids;
+  }, []);
+
+  useEffect(() => {
+    try {
+      setShowChronicleAvatars(window.localStorage.getItem(KINGDOM_CHRONICLE_AVATAR_KEY) !== "0");
+    } catch {
+      setShowChronicleAvatars(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(KINGDOM_CHRONICLE_AVATAR_KEY, showChronicleAvatars ? "1" : "0");
+    } catch {
+      // Keep the page usable when local storage is blocked.
+    }
+  }, [showChronicleAvatars]);
 
   useEffect(() => {
     let alive = true;
@@ -289,7 +546,7 @@ export default function KingdomChroniclesClient() {
           setChronicleView(saved);
         }
       } catch {
-        setChronicleView("b");
+        setChronicleView("e");
       }
     }
 
@@ -336,7 +593,22 @@ export default function KingdomChroniclesClient() {
       </aside>
 
       <div className="relative xl:border-l xl:border-amber-100/12 xl:pl-10">
-        <div className="relative mb-5 overflow-hidden rounded-[1.85rem] border border-amber-100/20 bg-[radial-gradient(circle_at_12%_0%,rgba(251,191,36,0.16),transparent_32%),radial-gradient(circle_at_88%_14%,rgba(59,130,246,0.12),transparent_34%),linear-gradient(145deg,rgba(20,25,38,0.96),rgba(3,7,18,0.86))] p-5 shadow-[0_24px_72px_rgba(0,0,0,0.28)] ring-1 ring-white/[0.04] sm:p-6">
+        <div
+          className="relative mb-5 cursor-pointer overflow-hidden rounded-[1.85rem] border border-amber-100/20 bg-[radial-gradient(circle_at_12%_0%,rgba(251,191,36,0.16),transparent_32%),radial-gradient(circle_at_88%_14%,rgba(59,130,246,0.12),transparent_34%),linear-gradient(145deg,rgba(20,25,38,0.96),rgba(3,7,18,0.86))] p-5 shadow-[0_24px_72px_rgba(0,0,0,0.28)] ring-1 ring-white/[0.04] sm:p-6"
+          role="button"
+          tabIndex={0}
+          aria-pressed={showChronicleAvatars}
+          onClick={(event) => {
+            if ((event.target as HTMLElement).closest("button,a")) return;
+            toggleChronicleAvatars();
+          }}
+          onKeyDown={(event) => {
+            if (event.key !== "Enter" && event.key !== " ") return;
+            if ((event.target as HTMLElement).closest("button,a")) return;
+            event.preventDefault();
+            toggleChronicleAvatars();
+          }}
+        >
           <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/45 to-transparent" />
           <div className="pointer-events-none absolute -left-24 -top-24 h-56 w-56 rounded-full bg-amber-300/10 blur-3xl" />
           <div className="pointer-events-none absolute -right-20 bottom-0 h-48 w-48 rounded-full bg-sky-400/10 blur-3xl" />
@@ -349,7 +621,7 @@ export default function KingdomChroniclesClient() {
               <button
                 key={option.value}
                 type="button"
-                onClick={() => setChronicleView(option.value)}
+                onClick={() => chooseChronicleView(option.value)}
                 className={`grid h-7 min-w-7 place-items-center rounded-full px-2 text-[10px] font-black uppercase tracking-[0.18em] transition ${
                   chronicleView === option.value
                     ? "bg-amber-100 text-slate-950 shadow-[0_0_22px_rgba(251,191,36,0.22)]"
@@ -380,7 +652,14 @@ export default function KingdomChroniclesClient() {
 
         <div className="space-y-3">
           {kingdomChronicles.map((item, index) => (
-            <ChronicleCard key={item.id} item={item} index={index} view={chronicleView} />
+            <ChronicleCard
+              key={item.id}
+              item={item}
+              index={index}
+              view={chronicleView}
+              showAvatars={showChronicleAvatars}
+              showQuestLabel={firstQuestChronicleIds.has(item.id)}
+            />
           ))}
         </div>
 
@@ -407,19 +686,19 @@ export default function KingdomChroniclesClient() {
             Legend
           </div>
           <div className="mt-4 space-y-3 text-sm text-slate-300">
-            <div className="flex items-center gap-2">
+            <div className="kingdom-chronicle-chip-rail flex min-w-0 flex-wrap items-center gap-2">
               <ScrollText className="h-4 w-4 text-amber-100" />
               Chronicle
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
               <Swords className="h-4 w-4 text-amber-100" />
               Bounty
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
               <Coins className="h-4 w-4 text-amber-100" />
               Transaction
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
               <Lock className="h-4 w-4 text-slate-500" />
               Locked future
             </div>
@@ -441,15 +720,21 @@ export default function KingdomChroniclesClient() {
             <Link href="/players/by-name/Julio%20Alvarez" className="hover:text-amber-100">
               Julio Alvarez
             </Link>
+            <Link href="/players/by-name/Deltaforce" className="hover:text-amber-100">
+              Deltaforce
+            </Link>
             <Link href="/players/by-name/Sniper" className="hover:text-amber-100">
               Sniper
             </Link>
             <Link href="/players/by-name/Jim" className="hover:text-amber-100">
               Jim
             </Link>
+            <Link href="/players/by-name/Dil_Pascana" className="hover:text-amber-100">
+              Dil_Pascana
+            </Link>
             <span>- Ra 𓁛𓇳</span>
-            <Link href="/players/by-name/Slad0eshka" className="hover:text-amber-100">
-              Slad0eshka
+            <Link href="/players/by-name/Sladk0Eshka" className="hover:text-amber-100">
+              Sladk0Eshka
             </Link>
             <Link href="/zodiac" className="hover:text-amber-100">
               Zodiac

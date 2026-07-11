@@ -2,6 +2,7 @@ import { type ScheduledMatchTile, loadScheduledMatchTilesForLiveBoard } from "@/
 import { getFeaturedTournament } from "@/lib/communityStore";
 import { type PrismaClient } from "@/lib/generated/prisma";
 import { type LobbyMatchRow, type LobbyTournamentMatch } from "@/lib/lobby";
+import { cleanPublicGameRows } from "@/lib/publicReplayTruth";
 import {
   type LiveGameSession,
   loadLiveSessionSnapshot,
@@ -161,44 +162,77 @@ export type LiveGamesSnapshot = LiveGamesSummary & {
   readyMatches: LobbyTournamentMatch[];
   scheduledMatches: ScheduledMatchTile[];
   recentMatches: LobbyMatchRow[];
+  archiveTotal: number;
 };
 
-function normalizeRecentMatchPayload(payload: unknown): LobbyMatchRow[] {
-  if (Array.isArray(payload)) {
-    return payload as LobbyMatchRow[];
-  }
+async function loadRecentMatches(
+  prisma: PrismaClient
+): Promise<LobbyMatchRow[]> {
+  const rows =
+    await prisma.gameStats.findMany({
+      where: {
+        is_final: true,
+      },
+      orderBy: [
+        { played_on: "desc" },
+        { timestamp: "desc" },
+        { createdAt: "desc" },
+        { id: "desc" },
+      ],
+      take: 160,
+      select: {
+        id: true,
+        replayHash: true,
+        winner: true,
+        map: true,
+        players: true,
+        played_on: true,
+        timestamp: true,
+        createdAt: true,
+        parse_reason: true,
+        parse_source: true,
+        original_filename: true,
+        replay_file: true,
+        key_events: true,
+        is_final: true,
+      },
+    });
 
-  if (payload && typeof payload === "object") {
-    const maybeMatches = (payload as { matches?: unknown }).matches;
-    if (Array.isArray(maybeMatches)) {
-      return maybeMatches as LobbyMatchRow[];
+  const cleaned = cleanPublicGameRows(
+    rows,
+    {
+      includeReview: true,
+      includeLive: false,
     }
-  }
+  ).slice(
+    0,
+    LIVE_GAMES_RECENT_MATCH_LIMIT
+  );
 
-  return [];
-}
-
-async function fetchRecentMatchesFrom(pathname: string): Promise<LobbyMatchRow[]> {
-  try {
-    const response = await fetch(`http://127.0.0.1:3030${pathname}`, { cache: "no-store" });
-    if (!response.ok) return [];
-
-    const payload = (await response.json()) as unknown;
-    return normalizeRecentMatchPayload(payload);
-  } catch (error) {
-    console.warn(`Failed to load recent matches from ${pathname}:`, error);
-    return [];
-  }
-}
-
-async function loadRecentMatches(): Promise<LobbyMatchRow[]> {
-  const lobbyRecentMatches = await fetchRecentMatchesFrom("/api/lobby/recent-matches");
-  if (lobbyRecentMatches.length > 0) {
-    return lobbyRecentMatches.slice(0, LIVE_GAMES_RECENT_MATCH_LIMIT);
-  }
-
-  const legacyRecentMatches = await fetchRecentMatchesFrom("/api/game_stats?limit=160");
-  return legacyRecentMatches.slice(0, LIVE_GAMES_RECENT_MATCH_LIMIT);
+  return cleaned.map((row) => ({
+    id: row.id,
+    winner: row.winner,
+    map:
+      row.map as LobbyMatchRow["map"],
+    players:
+      row.players as LobbyMatchRow["players"],
+    createdAt:
+      row.createdAt.toISOString(),
+    created_at:
+      row.createdAt.toISOString(),
+    played_on:
+      row.played_on?.toISOString() ??
+      null,
+    timestamp:
+      row.timestamp?.toISOString() ??
+      null,
+    parse_reason:
+      row.parse_reason,
+    original_filename:
+      row.original_filename,
+    replay_file:
+      row.replay_file,
+  }));
 }
 
 
@@ -347,10 +381,20 @@ async function hydrateCompletedSessionUploaders<T extends CompletedUploaderHydra
 
 
 async function loadLiveGamesSnapshotFresh(prisma: PrismaClient): Promise<LiveGamesSnapshot> {
-  const [tournament, recentMatches, sessionSnapshot] = await Promise.all([
+  const [
+    tournament,
+    recentMatches,
+    sessionSnapshot,
+    archiveTotal,
+  ] = await Promise.all([
     getFeaturedTournament(prisma),
-    loadRecentMatches(),
+    loadRecentMatches(prisma),
     loadLiveSessionSnapshot(prisma),
+    prisma.gameStats.count({
+      where: {
+        is_final: true,
+      },
+    }),
   ]);
 
   const activeSessions = dedupeActiveLiveIterations(sessionSnapshot.activeSessions);
@@ -381,13 +425,11 @@ async function loadLiveGamesSnapshotFresh(prisma: PrismaClient): Promise<LiveGam
 
   const liveMatches = tournament.matches.filter((match) => match.status === "live");
   const readyMatches = tournament.matches.filter((match) => match.status === "ready");
-  const recentlyCompletedKeys = new Set([
-    ...filteredCompletedSessions.map((session) => session.sessionKey),
-    ...matchedCompletedSessionKeys,
-  ]);
-  const filteredRecentMatches = recentMatches
-    .filter((match) => !recentlyCompletedKeys.has(normalizeSessionKey(match)))
-    .slice(0, LIVE_GAMES_RECENT_MATCH_LIMIT);
+  const filteredRecentMatches =
+    recentMatches.slice(
+      0,
+      LIVE_GAMES_RECENT_MATCH_LIMIT
+    );
 
   const fallbackRecentOutcomeMatches = filteredRecentMatches.slice(0, LIVE_GAMES_COMPLETED_SESSION_DEPTH);
 
@@ -469,13 +511,8 @@ async function loadLiveGamesSnapshotFresh(prisma: PrismaClient): Promise<LiveGam
     reviewMarket: reviewMarketSummaries.get(session.id) ?? null,
   }));
 
-  const displayedCompletedKeys = new Set(
-    displayedCompletedSessions.map((session) => session.sessionKey)
-  );
-
-  const displayedRecentMatches = filteredRecentMatches.filter(
-    (match) => !displayedCompletedKeys.has(normalizeSessionKey(match))
-  );
+  const displayedRecentMatches =
+    filteredRecentMatches;
 
   const scheduledLiveCount = scheduledMatches.filter((match) => match.displayState === "live").length;
   const scheduledReadyCount = scheduledMatches.filter(
@@ -527,6 +564,7 @@ async function loadLiveGamesSnapshotFresh(prisma: PrismaClient): Promise<LiveGam
     readyMatches,
     scheduledMatches,
     recentMatches: displayedRecentMatches,
+    archiveTotal,
   };
 }
 

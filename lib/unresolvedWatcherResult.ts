@@ -364,6 +364,62 @@ export function resolveReplayWinnerTruth(
       resignationProof);
   const candidateWinner = storedWinner ?? reliableFlagWinner;
 
+  // AOE2WAR_TRUST_CONSISTENT_INCOMPLETE_1V1_WINNER
+  //
+  // The HD watcher can finish a two-player replay without a
+  // postgame block while still storing one winner and one
+  // matching player winner flag. Accept only that exact,
+  // internally consistent 1v1 shape. All broader inferred
+  // results remain rejected.
+  const namedPlayerCount = (
+    Array.isArray(input.players)
+      ? input.players
+      : []
+  ).filter(
+    (player) =>
+      Boolean(
+        normalizePublicReplayText(
+          player?.name
+        )
+      )
+  ).length;
+
+  const trustedIncompleteOneVOne =
+    parseReason ===
+      "watcher_inferred_opponent_win_on_incomplete_1v1" &&
+    storedWinner !== null &&
+    reliableFlagWinner !== null &&
+    flaggedWinners.length === 1 &&
+    namedPlayerCount === 2 &&
+    storedWinner.toLowerCase() ===
+      reliableFlagWinner.toLowerCase();
+
+  if (
+    trustedIncompleteOneVOne &&
+    storedWinner &&
+    reliableFlagWinner
+  ) {
+    const truthReasons:
+      ReplayWinnerTruthReason[] = [
+        "stored_winner_field",
+        "reliable_player_winner_flag",
+      ];
+
+    return {
+      winner: storedWinner,
+      candidateWinner: storedWinner,
+      confidence: "recovered",
+      truthReasons,
+      publicLabel: storedWinner,
+      statsEligible: true,
+      bettingEligible: true,
+      diagnosticSummary:
+        `Winner ${storedWinner} is supported by the stored ` +
+        "1v1 result and the sole matching player winner flag.",
+      neededEvidence: [],
+    };
+  }
+
   if (inferenceRejected) {
     const inference = readKeyEvents(input.keyEvents).winner_inference;
     const inferenceType =

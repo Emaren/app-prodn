@@ -37,6 +37,7 @@ import {
 import {
   managedMediaPublicUrl,
 } from "@/lib/managedMediaAssets";
+import ChampionsViewToggle from "./ChampionsViewToggle";
 
 export const metadata: Metadata = {
   title: "Championship Belts",
@@ -202,16 +203,18 @@ function BeltAsset({
   const wearable = title.type !== "designation";
 
   return (
-    <div className={`relative mx-auto w-full overflow-visible ${className}`}>
+    <div className={`champions-belt-asset relative mx-auto w-full overflow-visible ${className}`}>
       {typeof title.currentBountyWolo === "number" ? (
-        <div className="absolute inset-x-3 -top-3 z-[70] flex justify-center">
-          <div className="rounded-full border border-amber-100/35 bg-[linear-gradient(180deg,rgba(53,32,7,0.96),rgba(8,6,3,0.96))] px-4 py-2 text-center shadow-[0_14px_40px_rgba(0,0,0,0.58)] backdrop-blur">
-            <div className="text-[8px] font-black uppercase tracking-[0.28em] text-amber-200/72">
-              {title.guardianHeld ? "Open activation reward" : "Estimated dethrone reward"}
-            </div>
-            <div className="mt-0.5 text-sm font-black text-amber-50">
-              {title.currentBountyWolo.toLocaleString()} WOLO
-              <span className="ml-2 text-[10px] font-semibold text-amber-200/65">
+        <div className="champions-bounty-badge absolute inset-x-3 -top-3 z-[70] flex justify-center">
+          <div className="champions-bounty-badge-inner rounded-full px-4 py-2 text-center shadow-[0_14px_40px_rgba(0,0,0,0.58)] backdrop-blur">
+            <div className="flex items-baseline justify-center gap-2 whitespace-nowrap">
+              <span className="champions-bounty-kicker text-[9px] font-black uppercase tracking-[0.28em]">
+                Bounty
+              </span>
+              <span className="champions-bounty-amount text-base font-black">
+                {title.currentBountyWolo.toLocaleString()} WOLO
+              </span>
+              <span className="champions-bounty-growth text-[11px] font-bold">
                 +{title.bountyGrowthWolo ?? title.dailyWolo}/day
               </span>
             </div>
@@ -462,7 +465,7 @@ function PodiumCard({
 
   return (
     <article
-      className={`relative min-w-0 overflow-hidden rounded-[1.7rem] border bg-[radial-gradient(circle_at_50%_0%,var(--tw-gradient-from),transparent_38%),linear-gradient(180deg,rgba(255,255,255,0.055),rgba(0,0,0,0.28))] p-4 shadow-2xl ${tone} ${orderClass} ${
+      className={`champions-podium-card champions-podium-card-${position} relative min-w-0 overflow-hidden rounded-[1.7rem] border bg-[radial-gradient(circle_at_50%_0%,var(--tw-gradient-from),transparent_38%),linear-gradient(180deg,rgba(255,255,255,0.055),rgba(0,0,0,0.28))] p-4 shadow-2xl ${tone} ${orderClass} ${
         isCenter ? "lg:-mt-3 lg:p-5" : ""
       }`}
     >
@@ -487,10 +490,17 @@ function PodiumCard({
 
       <div className="relative z-10 space-y-3">
         <HolderLine title={title} dense={!isCenter} />
-        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-          <TributePill title={title} />
-          <ChallengeButton title={title} />
-        </div>
+        {position === "left" ? (
+          <div className="grid gap-2 sm:max-w-[16rem]">
+            <TributePill title={title} compact />
+            <ChallengeButton title={title} compact />
+          </div>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+            <TributePill title={title} />
+            <ChallengeButton title={title} />
+          </div>
+        )}
         <ContenderList title={titleState} compact={!isCenter} />
       </div>
     </article>
@@ -734,9 +744,10 @@ export default async function ChampionsPage() {
   const budget = dailyBudget(state.titles);
 
   return (
-    <main className="space-y-8 overflow-x-hidden py-4 text-white sm:py-6">
-      <section className="relative overflow-hidden rounded-[2rem] border border-amber-200/14 bg-[radial-gradient(circle_at_50%_0%,rgba(251,191,36,0.24),transparent_28%),radial-gradient(circle_at_10%_25%,rgba(14,165,233,0.12),transparent_24%),linear-gradient(145deg,#120d08,#07111c_54%,#02040a)] px-5 py-10 shadow-[0_34px_120px_rgba(0,0,0,0.42)] sm:px-8">
+    <main className="champions-page-shell space-y-8 py-4 text-white sm:py-6 overflow-visible">
+      <section className="champions-e-breakout champions-hero-shell relative overflow-hidden rounded-[2rem] border border-amber-200/14 bg-[radial-gradient(circle_at_50%_0%,rgba(251,191,36,0.24),transparent_28%),radial-gradient(circle_at_10%_25%,rgba(14,165,233,0.12),transparent_24%),linear-gradient(145deg,#120d08,#07111c_54%,#02040a)] px-5 py-10 shadow-[0_34px_120px_rgba(0,0,0,0.42)] sm:px-8">
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/55 to-transparent" />
+        <ChampionsViewToggle />
         <HeroRosterBackdrop />
         <div className="relative z-10 grid gap-7 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
           <div className="min-w-0">
@@ -755,7 +766,7 @@ export default async function ChampionsPage() {
             </p>
           </div>
 
-          <div className="grid min-w-[min(100%,22rem)] gap-2 rounded-2xl border border-white/10 bg-black/22 p-4 sm:grid-cols-3 lg:min-w-[28rem]">
+          <div className="champions-hero-stats grid min-w-[min(100%,22rem)] gap-2 rounded-2xl border border-white/10 bg-black/22 p-4 sm:grid-cols-3 lg:min-w-[28rem]">
             <HeroStat label="Active" value={String(activeTitleCount)} />
             <HeroStat label="Vacant" value={String(vacantTitleCount)} />
             <HeroStat label="Tribute pool" value={`${budget} WOLO/day`} />
@@ -763,7 +774,7 @@ export default async function ChampionsPage() {
         </div>
       </section>
 
-      <section className="grid gap-5 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.18fr)_minmax(0,0.92fr)] lg:items-start">
+      <section className="champions-e-breakout champions-podium-grid grid gap-5 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.18fr)_minmax(0,0.92fr)] lg:items-start">
         <PodiumCard title={world} titleState={world} position="center" />
         <PodiumCard title={chaos} titleState={chaos} position="left" />
         <PodiumCard title={womens} titleState={womens} position="right" />

@@ -10,7 +10,7 @@ type LedgerView = "all" | "staking" | "compounded" | "championships" | "bounties
 type LedgerRow = {
   key: string;
   view: LedgerView | "staking-day";
-  tone: "gold" | "emerald" | "sky" | "slate";
+  tone: "gold" | "emerald" | "red" | "sky" | "slate";
   label: string;
   detail: string;
   meta: string;
@@ -37,6 +37,9 @@ function toneClass(tone: LedgerRow["tone"]) {
   }
   if (tone === "emerald") {
     return "border-emerald-800/70 bg-[radial-gradient(circle_at_left,rgba(6,95,70,0.18),transparent_34%),linear-gradient(90deg,rgba(5,46,22,0.30),rgba(3,7,18,0.88))] shadow-[inset_3px_0_0_rgba(52,211,153,0.55)]";
+  }
+  if (tone === "red") {
+    return "border-red-900/70 bg-[radial-gradient(circle_at_left,rgba(127,29,29,0.20),transparent_36%),linear-gradient(90deg,rgba(69,10,10,0.34),rgba(3,7,18,0.90))] shadow-[inset_4px_0_0_rgba(185,28,28,0.78)]";
   }
   if (tone === "sky") {
     return "border-sky-300/25 bg-[radial-gradient(circle_at_left,rgba(14,165,233,0.13),transparent_34%),linear-gradient(90deg,rgba(8,47,73,0.28),rgba(3,7,18,0.88))] shadow-[inset_3px_0_0_rgba(56,189,248,0.55)]";
@@ -154,21 +157,51 @@ function LedgerCard({ row }: { row: LedgerRow }) {
     <div className={`rounded-[1.15rem] border p-4 ${toneClass(row.tone)}`}>
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div className="flex min-w-0 gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/10 bg-black/25 text-slate-100">
+          <div
+            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border ${
+              row.tone === "red"
+                ? "border-red-950/80 bg-[linear-gradient(180deg,rgba(45,6,6,0.72),rgba(23,4,4,0.62))] text-[#f3e8e2]"
+                : "border-white/10 bg-black/25 text-slate-100"
+            }`}
+          >
             {iconFor(row)}
           </div>
           <div className="min-w-0">
-            <div className="break-words font-semibold text-white">{row.label}</div>
-            <div className="mt-1 break-words text-sm leading-6 text-slate-300">{row.detail}</div>
+            <div
+              className={`break-words font-semibold ${
+                row.tone === "red" ? "text-[#f4e7e1]" : "text-white"
+              }`}
+            >
+              {row.label}
+            </div>
+            <div
+              className={`mt-1 break-words text-sm leading-6 ${
+                row.tone === "red" ? "text-[#d8bbb3]/90" : "text-slate-300/90"
+              }`}
+            >
+              {row.detail}
+            </div>
           </div>
         </div>
         <div className="flex shrink-0 flex-wrap gap-2 md:justify-end">
           {row.amountLabel ? (
-            <div className="rounded-full border border-white/10 bg-black/25 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300">
+            <div
+              className={`rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${
+                row.tone === "red"
+                  ? "border-red-950/80 bg-[linear-gradient(180deg,rgba(48,7,7,0.70),rgba(24,4,4,0.60))] text-[#f1ddd7]"
+                  : "border-white/10 bg-black/25 text-slate-300"
+              }`}
+            >
               {row.amountLabel}
             </div>
           ) : null}
-          <div className="rounded-full border border-white/10 bg-black/25 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300">
+          <div
+            className={`rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${
+              row.tone === "red"
+                ? "border-red-950/80 bg-[linear-gradient(180deg,rgba(48,7,7,0.70),rgba(24,4,4,0.60))] text-[#e7c9c1]"
+                : "border-white/10 bg-black/25 text-slate-300"
+            }`}
+          >
             {row.meta}
           </div>
         </div>

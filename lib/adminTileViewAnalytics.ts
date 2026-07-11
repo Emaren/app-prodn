@@ -1,3 +1,4 @@
+import type { PrismaClient } from "@/lib/generated/prisma";
 import {
   getTileViewMode,
   hasExplicitTileViewPreference,
@@ -14,6 +15,8 @@ export const ADMIN_TILE_VIEW_SURFACES = [
   { tileKey: "community_lobby", label: "Community Lobby" },
   { tileKey: "live_games", label: "Live Games" },
   { tileKey: "forum", label: "Forum" },
+  { tileKey: "kingdom_chronicle", label: "Kingdom Chronicle" },
+  { tileKey: "rivalries", label: "Rivalries" },
 ] as const satisfies ReadonlyArray<{ tileKey: TileViewKey; label: string }>;
 
 type UserWithTileViewPreferences = {
@@ -112,5 +115,137 @@ export function buildAdminLeaderboardLaneBreakdown(
     rmPercent,
     dmPercent: total > 0 ? Math.max(0, 100 - rmPercent) : 0,
     preferredLane: counts.dm > counts.rm ? ("dm" as const) : ("rm" as const),
+  };
+}
+
+
+export const KINGDOM_CHRONICLE_AVATAR_EVENT_TYPE = "kingdom_chronicle_avatar_toggle";
+
+type UserForKingdomAvatarPreference = {
+  id: number;
+  uid: string;
+  displayName?: string | null;
+  inGameName?: string | null;
+  steamPersonaName?: string | null;
+};
+
+export type KingdomChronicleAvatarPreferenceAnalytics = {
+  totalUsers: number;
+  onCount: number;
+  offCount: number;
+  onPercent: number;
+  offPercent: number;
+  explicitOnCount: number;
+  explicitOffCount: number;
+  defaultOnCount: number;
+  explicitCount: number;
+  preferredMode: "on" | "off";
+  recent: Array<{
+    uid: string;
+    displayName: string;
+    enabled: boolean;
+    at: string;
+    path: string | null;
+  }>;
+};
+
+function displayKingdomAvatarUserName(user: UserForKingdomAvatarPreference) {
+  return user.displayName || user.inGameName || user.steamPersonaName || user.uid;
+}
+
+function metadataAvatarsEnabled(metadata: unknown) {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
+    return true;
+  }
+
+  const value = (metadata as { avatarsEnabled?: unknown }).avatarsEnabled;
+  return value !== false;
+}
+
+export async function loadKingdomChronicleAvatarPreferenceAnalytics(
+  prisma: PrismaClient,
+  users: UserForKingdomAvatarPreference[]
+): Promise<KingdomChronicleAvatarPreferenceAnalytics> {
+  const userIds = users.map((user) => user.id);
+  const userById = new Map(users.map((user) => [user.id, user] as const));
+  const latestByUserId = new Map<number, {
+    enabled: boolean;
+    at: Date;
+    path: string | null;
+  }>();
+
+  if (userIds.length > 0) {
+    const events = await prisma.userActivityEvent.findMany({
+      where: {
+        userId: { in: userIds },
+        type: KINGDOM_CHRONICLE_AVATAR_EVENT_TYPE,
+      },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      select: {
+        userId: true,
+        path: true,
+        metadata: true,
+        createdAt: true,
+      },
+      take: Math.max(50, userIds.length * 4),
+    });
+
+    for (const event of events) {
+      if (latestByUserId.has(event.userId)) {
+        continue;
+      }
+
+      latestByUserId.set(event.userId, {
+        enabled: metadataAvatarsEnabled(event.metadata),
+        at: event.createdAt,
+        path: event.path,
+      });
+    }
+  }
+
+  let explicitOnCount = 0;
+  let explicitOffCount = 0;
+
+  for (const row of latestByUserId.values()) {
+    if (row.enabled) explicitOnCount += 1;
+    else explicitOffCount += 1;
+  }
+
+  const explicitCount = explicitOnCount + explicitOffCount;
+  const defaultOnCount = Math.max(0, users.length - explicitCount);
+  const onCount = defaultOnCount + explicitOnCount;
+  const offCount = explicitOffCount;
+  const onPercent = users.length > 0 ? Math.round((onCount / users.length) * 100) : 0;
+  const offPercent = users.length > 0 ? Math.max(0, 100 - onPercent) : 0;
+
+  const recent = Array.from(latestByUserId.entries())
+    .map(([userId, row]) => {
+      const user = userById.get(userId);
+      return user
+        ? {
+            uid: user.uid,
+            displayName: displayKingdomAvatarUserName(user),
+            enabled: row.enabled,
+            at: row.at.toISOString(),
+            path: row.path,
+          }
+        : null;
+    })
+    .filter((row): row is NonNullable<typeof row> => Boolean(row))
+    .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
+    .slice(0, 5);
+
+  return {
+    totalUsers: users.length,
+    onCount,
+    offCount,
+    onPercent,
+    offPercent,
+    explicitOnCount,
+    explicitOffCount,
+    defaultOnCount,
+    explicitCount,
+    preferredMode: onCount >= offCount ? "on" : "off",
+    recent,
   };
 }

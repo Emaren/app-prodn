@@ -311,3 +311,34 @@ Still wanted:
 - `/upload` hero copy now lists replay formats on one line, then keeps the watcher/live-proof note on the next line.
 
 - `/upload` keeps the calmer premium hero typography while restoring the clearer “Upload a replay manually” CTA heading.
+
+<!-- AOE2WAR:RIVALRIES_WAR_VAULT:START -->
+## Rivalries and War Vault — 2026-07-11
+
+- `/battle-archive` is the War Vault: one numbered card per replay,
+  a total filed count, newest-first filing, direct game-stats access,
+  rivalry navigation, replay access, and linked betting markets where
+  available.
+- `/rivalries` is team-aware. True duels remain player rivalries,
+  while balanced 2v2, 3v3, and 4v4 battles preserve both exact
+  rosters.
+- Player rivalry histories include true duels, opposing team
+  appearances, and allied context without turning teammates into
+  opponents.
+- Exact-team routes use canonical base64url roster tokens, preventing
+  duplicate histories caused by roster order.
+- First-time visitors default to Extreme. B/A/E selection persists
+  and flows into Admin preference telemetry.
+- Basic preserves its original visual language and adds a local
+  `Replay-Backed Battles` cycle: two-across, one-across, and original
+  Basic duel composition.
+- `/game-stats/[id]` links back to the correct player or exact-team
+  rivalry.
+- Rivalry match-feed cards link to game stats, while warrior names
+  link directly to player profiles.
+- The Individual Rivalry Matrix keeps whole-card rivalry navigation
+  and independent player-profile links.
+- Consistent incomplete watcher 1v1 outcomes are accepted only when
+  the stored winner and sole reliable player winner flag agree.
+- Full detail lives in `docs/RIVALRIES_AND_WAR_VAULT.md`.
+<!-- AOE2WAR:RIVALRIES_WAR_VAULT:END -->

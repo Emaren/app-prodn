@@ -532,7 +532,7 @@ function collapseLedgerBetRows(rows: StakingActivityItem[], enabled: boolean) {
     collapsed.push({
       key: `ledger-bet-group-${group.key}`,
       label: `${group.title} · bet settled`,
-      detail: "WoloChain bet receipts · click to inspect settlement, escrow, payout, and founder-transfer receipts",
+      detail: "WoloChain bet receipts",
       amountLabel: groupedLedgerBetAmountLabel(children),
       meta: first.meta,
       eventType: "GROUPED BET",
@@ -550,6 +550,216 @@ function collapseLedgerBetRows(rows: StakingActivityItem[], enabled: boolean) {
     return activityKey(left).localeCompare(activityKey(right));
   });
 }
+
+function relatedActivityMinuteKey(item: StakingActivityItem) {
+  const parsed = item.occurredAt ? new Date(item.occurredAt) : null;
+
+  if (parsed && !Number.isNaN(parsed.getTime())) {
+    return parsed.toISOString().slice(0, 16);
+  }
+
+  return sanitizeActivityCopy(item.timestampLabel || item.meta || "unknown").toLowerCase();
+}
+
+function extractRelatedActivityActor(item: StakingActivityItem) {
+  const label = sanitizeActivityCopy(item.label || "");
+  const detail = sanitizeActivityCopy(item.detail || "");
+
+  const labelActor = label.match(/:\s*([^:·|]+)$/);
+  if (labelActor?.[1]) return labelActor[1].trim();
+
+  const rolledActor = detail.match(/^([^·]+?)\s*·\s*rolled into/i);
+  if (rolledActor?.[1]) return rolledActor[1].trim();
+
+  const preciseActor = detail.match(/^([^·]+?)\s*·\s*precise micro reward/i);
+  if (preciseActor?.[1]) return preciseActor[1].trim();
+
+  const queuedActor = label.match(/reward queued:\s*(.+)$/i);
+  if (queuedActor?.[1]) return queuedActor[1].trim();
+
+  const payoutActor = label.match(/reward payout:\s*(.+)$/i);
+  if (payoutActor?.[1]) return payoutActor[1].trim();
+
+  return "wallet";
+}
+
+function firstRelatedAmountLabel(group: StakingActivityItem[]) {
+  return (
+    group.find((item) => item.amountLabel)?.amountLabel ||
+    group
+      .map((item) => sanitizeActivityCopy(item.label || ""))
+      .map((label) => label.match(/^([0-9,]+(?:\.[0-9]+)?\s+WOLO)/i)?.[1])
+      .find(Boolean) ||
+    null
+  );
+}
+
+function relatedLedgerGroupKey(item: StakingActivityItem) {
+  if (isBetActivity(item)) return null;
+  if (isBountyActivity(item)) return null;
+  if (isBeltActivity(item)) return null;
+  if (isReserveActivity(item)) return null;
+
+  const eventType = normalizedEventType(item);
+  const text = sanitizeActivityCopy(
+    `${item.label || ""} ${item.detail || ""} ${item.meta || ""} ${item.amountLabel || ""} ${item.eventType || ""}`
+  ).toLowerCase();
+
+  const minute = relatedActivityMinuteKey(item);
+
+  const isTreasuryBundle =
+    text.includes("staking treasury payout") ||
+    text.includes("aoe2 staking treasury") ||
+    text.includes("community treasury");
+
+  if (isTreasuryBundle) {
+    return `treasury:${minute}`;
+  }
+
+  const isRewardBundle =
+    eventType === "REWARD" ||
+    eventType === "COMPOUND" ||
+    text.includes("reward payout") ||
+    text.includes("auto-compounded reward") ||
+    text.includes("reward queued") ||
+    text.includes("staking reward held in carry") ||
+    text.includes("daily staking share") ||
+    text.includes("canonical compounded receipt") ||
+    text.includes("rolled into staking principal") ||
+    text.includes("rolled into principal");
+
+  if (!isRewardBundle) return null;
+
+  const actor = extractRelatedActivityActor(item).toLowerCase();
+
+  return `staking-reward:${actor}:${minute}`;
+}
+
+function summarizeRelatedLedgerGroup(group: StakingActivityItem[]) {
+  const sorted = [...group].sort((left, right) => activityTimestamp(right) - activityTimestamp(left));
+  const preferred =
+    sorted.find((item) => sanitizeActivityCopy(item.label || "").toLowerCase().includes("reward payout")) ||
+    sorted.find((item) => sanitizeActivityCopy(item.label || "").toLowerCase().includes("auto-compounded")) ||
+    sorted[0];
+
+  const key = relatedLedgerGroupKey(preferred) || activityKey(preferred);
+  const actor = extractRelatedActivityActor(preferred);
+  const amountLabel = firstRelatedAmountLabel(sorted);
+
+  const text = sanitizeActivityCopy(
+    sorted.map((item) => `${item.label || ""} ${item.detail || ""}`).join(" ")
+  ).toLowerCase();
+
+  const containsTreasury =
+    text.includes("staking treasury") ||
+    text.includes("community treasury") ||
+    text.includes("aoe2 staking treasury");
+
+  const containsPayout = text.includes("payout") || text.includes("paid");
+  const containsCompound = text.includes("compound") || text.includes("rolled into");
+  const containsQueued = text.includes("queued") || text.includes("waiting on payout");
+  const containsCarry = text.includes("held in carry") || text.includes("micro reward");
+
+  const parts = [
+    containsPayout ? "payout" : null,
+    containsCompound ? "compound" : null,
+    containsQueued ? "queue" : null,
+    containsCarry ? "carry" : null,
+  ].filter(Boolean);
+
+  if (containsTreasury) {
+    const treasuryLead =
+      sorted.find((item) => sanitizeActivityCopy(item.label || "").toLowerCase().includes("direct transfer")) ||
+      sorted.find((item) => sanitizeActivityCopy(item.detail || "").toLowerCase().includes("bet payout signer")) ||
+      preferred;
+
+    return {
+      key: `related-ledger-${key}`,
+      label: treasuryLead.label || (amountLabel ? `${amountLabel} direct transfer` : "Direct transfer"),
+      detail: sanitizeActivityCopy(treasuryLead.detail || "Bet Payout Signer -> Community Treasury"),
+      meta: treasuryLead.meta,
+      eventType: "PAYOUT",
+      timestampLabel: treasuryLead.timestampLabel || treasuryLead.meta,
+      occurredAt: treasuryLead.occurredAt,
+      tone: treasuryLead.tone,
+      amountLabel: treasuryLead.amountLabel || amountLabel,
+      txHash: treasuryLead.txHash,
+      txUrl: treasuryLead.txUrl,
+      children: sorted,
+    } as StakingActivityItem;
+  }
+
+  return {
+    key: `related-ledger-${key}`,
+    label: `${amountLabel || "Staking"} reward: ${actor}`,
+    detail: `${parts.length ? parts.join(" / ") : "staking receipts"} · ${sorted.length.toLocaleString()} ledger rows`,
+    meta: preferred.meta,
+    eventType: "REWARD",
+    timestampLabel: preferred.timestampLabel || preferred.meta,
+    occurredAt: preferred.occurredAt,
+    tone: preferred.tone,
+    amountLabel,
+    txHash: preferred.txHash,
+    txUrl: preferred.txUrl,
+    children: sorted,
+  } as StakingActivityItem;
+}
+
+
+function isVisibleActivityItem(item: StakingActivityItem): boolean {
+  const label = sanitizeActivityCopy(item.label || "").toLowerCase();
+  const detail = sanitizeActivityCopy(item.detail || "").toLowerCase();
+  const amountLabel = sanitizeActivityCopy(item.amountLabel || "").toLowerCase();
+  const text = `${label} ${detail} ${amountLabel}`;
+
+  const isFaucetHotWallet =
+    text.includes("wolo1dsh") &&
+    text.includes("myp5g0");
+
+  return !isFaucetHotWallet;
+}
+
+function collapseRelatedLedgerRows(rows: StakingActivityItem[], enabled: boolean) {
+  if (!enabled) return rows;
+
+  const groups = new Map<string, StakingActivityItem[]>();
+
+  for (const row of rows) {
+    const key = relatedLedgerGroupKey(row);
+    if (!key) continue;
+
+    const bucket = groups.get(key);
+    if (bucket) bucket.push(row);
+    else groups.set(key, [row]);
+  }
+
+  const consumed = new Set<string>();
+  const output: StakingActivityItem[] = [];
+
+  for (const row of rows) {
+    const key = relatedLedgerGroupKey(row);
+
+    if (!key) {
+      output.push(row);
+      continue;
+    }
+
+    const group = groups.get(key) || [row];
+
+    if (group.length <= 1) {
+      output.push(row);
+      continue;
+    }
+
+    if (consumed.has(key)) continue;
+
+    consumed.add(key);
+    output.push(summarizeRelatedLedgerGroup(group));
+  }
+
+  return output;
+}
+
 
 export default function StakingActivityFeed({
   items,
@@ -925,24 +1135,6 @@ export default function StakingActivityFeed({
     return () => window.clearTimeout(timer);
   }, [filterMode, hasMore, loadMore, loadMoreEndpoint, mode]);
 
-  const handleLedgerScroll = useCallback(() => {
-    if (scrollFrameRef.current !== null) {
-      window.cancelAnimationFrame(scrollFrameRef.current);
-    }
-
-    scrollFrameRef.current = window.requestAnimationFrame(() => {
-      scrollFrameRef.current = null;
-
-      const root = scrollRootRef.current;
-      if (!root || loadingMoreRef.current || !hasMore) return;
-
-      const remaining = root.scrollHeight - root.scrollTop - root.clientHeight;
-      if (remaining < 1600) {
-        void loadMore();
-      }
-    });
-  }, [hasMore, loadMore]);
-
   useEffect(() => {
     if (!loadMoreEndpoint || !hasMore) return;
     const sentinel = sentinelRef.current;
@@ -955,7 +1147,7 @@ export default function StakingActivityFeed({
           void loadMore();
         }
       },
-      { root, rootMargin: "1800px 0px" }
+      { root, rootMargin: "260px 0px" }
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
@@ -966,10 +1158,18 @@ export default function StakingActivityFeed({
     filterMode === "belts"
       ? filterBeltActivityRows(baseVisibleRows, beltPayoutFilterMode)
       : baseVisibleRows;
-  const displayRows = useMemo(
-    () => collapseLedgerBetRows(visibleRows, mode === "ledger" && filterMode === "all"),
-    [filterMode, mode, visibleRows]
-  );
+  const displayRows = useMemo(() => {
+    const betCollapsed = collapseLedgerBetRows(
+      visibleRows,
+      mode === "ledger" && filterMode === "all"
+    );
+
+    return collapseRelatedLedgerRows(
+      betCollapsed,
+      mode === "ledger" &&
+        (filterMode === "all" || filterMode === "staking" || filterMode === "compounded")
+    ).filter(isVisibleActivityItem);
+  }, [filterMode, mode, visibleRows]);
   const bountySummary = filterMode === "bounties" ? computePublicBountySummary(displayRows) : null;
   const activityFilters = useMemo<ActivityFilterMode[]>(
     () => [
@@ -986,7 +1186,7 @@ export default function StakingActivityFeed({
   );
 
   return (
-    <div className="space-y-2.5 overflow-hidden">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
       {note ? (
         <div className="rounded-[1rem] border border-slate-800/55 bg-slate-900/40 px-3.5 py-3 text-xs leading-5 text-slate-400">
           {note}
@@ -1021,9 +1221,9 @@ export default function StakingActivityFeed({
         </div>
       ) : null}
 
-      <div className="overflow-hidden rounded-[1.2rem] border border-transparent bg-transparent p-2 shadow-none">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 px-1">
-          <div className="flex flex-wrap gap-2">
+      <div className="flex h-0 min-h-0 flex-1 flex-col overflow-hidden rounded-[1.2rem] border border-transparent bg-transparent p-2 shadow-none">
+        <div className="mb-3 shrink-0 flex flex-wrap items-center justify-between gap-3 px-1">
+          <div className="flex flex-wrap items-center gap-2">
             {(["ledger", "grouped"] as ActivityMode[]).map((nextMode) => (
               <button
                 key={nextMode}
@@ -1044,7 +1244,7 @@ export default function StakingActivityFeed({
             <span>
               {hasMore
                 ? mode === "ledger"
-                  ? "Scroll for older ledger rows"
+                  ? ""
                   : "Scroll for older grouped bets"
                 : displayRows.length > 0
                   ? "At mainnet start"
@@ -1052,7 +1252,7 @@ export default function StakingActivityFeed({
             </span>
           </div>
         </div>
-        <div className="mb-3 flex flex-wrap gap-2">
+        <div className="mb-4 shrink-0 flex flex-wrap items-center gap-2 px-1">
           {activityFilters.map((filter) => (
             <button
               key={filter}
@@ -1100,10 +1300,23 @@ export default function StakingActivityFeed({
         <div
           ref={scrollRootRef}
           style={{ borderColor: "transparent", boxShadow: "none", outline: "none" }}
-          onScroll={handleLedgerScroll}
           aria-busy={loadingMore ? "true" : "false"}
-          className="max-h-[34rem] space-y-2.5 overflow-x-hidden overflow-y-auto overscroll-contain pr-1 [scrollbar-gutter:stable]"
-        >
+          className="h-0 min-h-0 flex-1 space-y-2.5 overflow-x-hidden overflow-y-auto overscroll-contain pr-1 [scrollbar-gutter:stable]"
+        
+          tabIndex={0}
+          onWheelCapture={(event) => {
+            const el = event.currentTarget;
+            if (el.scrollHeight <= el.clientHeight + 2) return;
+
+            const atTop = el.scrollTop <= 0 && event.deltaY < 0;
+            const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 2 && event.deltaY > 0;
+
+            if (atTop || atBottom) return;
+
+            event.preventDefault();
+            event.stopPropagation();
+            el.scrollTop += event.deltaY;
+          }}>
           {displayRows.map((item, index) => {
             const key = activityKey(item);
             const currentDay = activityDayKey(item);
@@ -1515,7 +1728,7 @@ function ActivityRow({
             <FeedChip>{displayTypeLabel}</FeedChip>
             <FeedChip>{displayTimestampLabel}</FeedChip>
             {amountLabel ? <FeedChip>{displayAmountLabel}</FeedChip> : null}
-            {hasChildren ? <FeedChip>{expanded ? "Hide receipts" : "Receipts"}</FeedChip> : null}
+            {hasChildren ? <FeedChip>{expanded ? "Hide" : "Receipts"}</FeedChip> : null}
             {item.txUrl ? (
               <a
                 href={item.txUrl}
@@ -1593,7 +1806,7 @@ function ActivityRow({
         </button>
 
         {hasChildren && expanded ? (
-          <div className="mt-3 max-h-56 space-y-2 overflow-x-hidden overflow-y-auto border-t border-amber-200/8 pr-2 pt-3 [scrollbar-width:thin]">
+          <div className="mt-3 space-y-2 overflow-visible border-t border-amber-200/8 pt-3">
             {children.map((child, index) => (
               <ActivityRow
                 key={activityKey(child) || `${item.key || item.label}-child-${index}`}
@@ -1631,11 +1844,11 @@ function ActivityRow({
           <div className="min-w-0 flex-1">
             <div className="flex min-w-0 items-start gap-2">
               <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${visual.dot}`} />
-              <div className={`min-w-0 break-words font-semibold ${visual.label}`}>
+              <div className={`min-w-0 overflow-hidden text-ellipsis whitespace-nowrap font-semibold ${visual.label}`}>
                 {displayLabel}
               </div>
             </div>
-            <div className={`mt-1 min-w-0 break-words text-sm leading-6 ${visual.detail}`}>
+            <div className={`mt-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-sm leading-5 ${visual.detail}`}>
               {displayDetail}
             </div>
           </div>
@@ -1645,7 +1858,7 @@ function ActivityRow({
           <FeedChip>{displayTypeLabel}</FeedChip>
           <FeedChip>{displayTimestampLabel}</FeedChip>
           {amountLabel ? <FeedChip>{displayAmountLabel}</FeedChip> : null}
-          {hasChildren ? <FeedChip>{expanded ? "Hide receipts" : "Receipts"}</FeedChip> : null}
+          {hasChildren ? <FeedChip>{expanded ? "Hide" : "Receipts"}</FeedChip> : null}
           {item.txUrl ? (
             <a
               href={item.txUrl}
@@ -1661,7 +1874,7 @@ function ActivityRow({
       </button>
 
       {hasChildren && expanded ? (
-        <div className="mt-3 max-h-56 space-y-2 overflow-x-hidden overflow-y-auto border-t border-slate-800/80 pr-2 pt-3 [scrollbar-width:thin]">
+        <div className="mt-3 space-y-2 overflow-visible border-t border-slate-800/80 pt-3">
           {children.map((child, index) => (
             <ActivityRow
               key={activityKey(child) || `${item.key || item.label}-child-${index}`}

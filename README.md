@@ -347,3 +347,22 @@ By default the runner finalizes the last closed UTC day, allocates the staker ha
 - `/upload` hero copy now lists replay formats on one line, then keeps the watcher/live-proof note on the next line.
 
 - `/upload` keeps the calmer premium hero typography while restoring the clearer “Upload a replay manually” CTA heading.
+
+<!-- AOE2WAR:REPLAY_HISTORY_ROUTES:START -->
+## Replay history routes
+
+AoE2WAR's replay-history loop is fully connected:
+
+- `/battle-archive` — numbered War Vault of filed replays;
+- `/game-stats/[id]` — authoritative detail for one replay;
+- `/rivalries` — player and exact-team rivalry directory;
+- `/matchups/[left]/[right]` — comprehensive player-pair history;
+- `/matchups/team/[left]/[right]` — canonical 2v2, 3v3, and 4v4
+  roster history.
+
+Game-stats pages link to their canonical rivalry, rivalry battle
+cards link back to game stats, and warrior names link to their public
+profiles.
+
+See `docs/RIVALRIES_AND_WAR_VAULT.md`.
+<!-- AOE2WAR:REPLAY_HISTORY_ROUTES:END -->

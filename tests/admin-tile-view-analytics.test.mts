@@ -124,3 +124,48 @@ test("the current tile migration restores Basic as the live-games default", () =
     Reflect.deleteProperty(globalThis, "window");
   }
 });
+
+
+test("rivalries BAE defaults to Extreme and tracks explicit choices", () => {
+  const breakdown =
+    buildAdminTileViewBreakdown([
+      {
+        appearance: {
+          tileViewPreferences: {},
+        },
+      },
+      {
+        appearance: {
+          tileViewPreferences: {
+            rivalries: "basic",
+          },
+        },
+      },
+      {
+        appearance: {
+          tileViewPreferences: {
+            rivalries: "advanced",
+          },
+        },
+      },
+    ]);
+
+  const rivalries = breakdown.find(
+    (entry) =>
+      entry.tileKey === "rivalries"
+  );
+
+  assert.deepEqual(rivalries, {
+    tileKey: "rivalries",
+    label: "Rivalries",
+    basicCount: 1,
+    advancedCount: 1,
+    extremeCount: 1,
+    basicPercent: 33,
+    advancedPercent: 33,
+    extremePercent: 34,
+    explicitCount: 2,
+    defaultCount: 1,
+    preferredMode: "extreme",
+  });
+});

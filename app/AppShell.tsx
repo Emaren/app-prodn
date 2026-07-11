@@ -372,11 +372,14 @@ function InnerShell({ children }: { children: React.ReactNode }) {
   const isNationalChampionsSurface = pathname?.startsWith("/national-champions");
   const isBetsSurface = pathname === "/bets";
   const isBetDetailSurface = Boolean(pathname?.match(/^\/bets\/[^/]+/));
+  const isChampionsSurface = pathname === "/champions" || Boolean(pathname?.startsWith("/champions/"));
   const isFullWidthPrestigeSurface =
     isBetsSurface ||
+    isChampionsSurface ||
     pathname?.startsWith("/academy") ||
     pathname?.startsWith("/market") ||
     pathname?.startsWith("/kingdom") ||
+    pathname?.startsWith("/battle-archive") ||
     pathname?.startsWith("/challenge");
   const communityLobbyViewMode = getTileViewMode(
     tileViewPreferences,
@@ -386,11 +389,19 @@ function InnerShell({ children }: { children: React.ReactNode }) {
   const isLiveGamesSurface = pathname?.startsWith("/live-games");
   const forumViewMode = getTileViewMode(tileViewPreferences, "forum");
   const isForumSurface = pathname?.startsWith("/forum");
+  const rivalriesViewMode = getTileViewMode(
+    tileViewPreferences,
+    "rivalries"
+  );
+  const isRivalriesSurface =
+    pathname === "/rivalries";
   const activeSurfaceViewMode = isLiveGamesSurface
     ? liveGamesViewMode
     : isForumSurface
       ? forumViewMode
-      : communityLobbyViewMode;
+      : isRivalriesSurface
+        ? rivalriesViewMode
+        : communityLobbyViewMode;
   const immersiveShellMaxWidth =
     activeSurfaceViewMode === "extreme"
       ? "max-w-[96rem]"
@@ -647,7 +658,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
             : isHeroStudioSurface
               ? "max-w-none px-1 sm:px-2 2xl:px-3"
             : `px-3 sm:px-4 ${
-                isLobbySurface || isLiveGamesSurface || isForumSurface
+                isLobbySurface || isLiveGamesSurface || isForumSurface || isRivalriesSurface
                   ? immersiveShellMaxWidth
                   : isFullWidthPrestigeSurface || isClanSurface
                     ? "max-w-[90rem]"

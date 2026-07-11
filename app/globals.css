@@ -2535,3 +2535,210 @@ body:has(.academy-war-college.academy-extreme-view) .academy-route-shell > foote
     transition: none;
   }
 }
+
+
+
+
+
+/* The middle grid column is the chip rail: keep only the first/player chip in avatar mode. */
+
+/* Make the remaining player chip feel like the muted secondary chip, not a loud CTA. */
+
+/* AoE2WAR Kingdom Chronicle final layout rules. */
+.kingdom-chronicle-title {
+  display: block !important;
+  line-height: 1.18 !important;
+  padding-bottom: 0.22em !important;
+  margin-bottom: -0.08em !important;
+  overflow: visible !important;
+  text-wrap: balance;
+}
+
+/* Avatar mode: no chip smear, no icon rail. The avatar and quest label are the UI. */
+.kingdom-chronicle-card-grid[data-kingdom-chronicle-avatar-mode="true"] > :nth-child(2),
+.kingdom-chronicle-card-grid[data-kingdom-chronicle-avatar-mode="true"] > :last-child {
+  display: none !important;
+}
+
+/* AoE2WAR champions B/A/E view tuning */
+.champions-page-shell {
+  position: relative !important;
+  left: auto !important;
+  right: auto !important;
+  transform: none !important;
+  width: 100% !important;
+  max-width: min(80rem, calc(100vw - 2rem)) !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  overflow: visible !important;
+}
+
+/* B = compact */
+html[data-champions-view="b"] .champions-page-shell {
+  max-width: min(70rem, calc(100vw - 2rem)) !important;
+}
+
+/* A = wider */
+html[data-champions-view="a"] .champions-page-shell {
+  max-width: min(78rem, calc(100vw - 2rem)) !important;
+}
+
+/* E = default premium widescreen, but safe */
+html[data-champions-view="e"] .champions-page-shell,
+html:not([data-champions-view]) .champions-page-shell {
+  max-width: min(88rem, calc(100vw - 2rem)) !important;
+}
+
+.champions-hero-shell,
+.champions-podium-grid {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  transform: none !important;
+}
+
+.champions-hero-shell {
+  overflow: hidden !important;
+}
+
+.champions-hero-shell > *,
+.champions-podium-grid > * {
+  min-width: 0 !important;
+}
+
+.champions-hero-stats {
+  min-width: 0 !important;
+  width: min(100%, 24rem) !important;
+  max-width: 100% !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+
+.champions-hero-stats > div {
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+.champions-hero-stats > div > div:last-child {
+  white-space: nowrap !important;
+  font-size: clamp(0.72rem, 0.9vw, 1rem) !important;
+}
+
+@media (min-width: 1024px) {
+  html[data-champions-view="e"] .champions-podium-grid,
+  html:not([data-champions-view]) .champions-podium-grid {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.22fr) minmax(0, 0.9fr) !important;
+  }
+
+  html[data-champions-view="a"] .champions-podium-grid {
+    grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.16fr) minmax(0, 0.92fr) !important;
+  }
+
+  html[data-champions-view="b"] .champions-podium-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+
+.champions-bounty-badge-inner {
+  border: 1px solid rgba(253, 230, 138, 0.34);
+  background: linear-gradient(180deg, rgba(53, 32, 7, 0.96), rgba(8, 6, 3, 0.96));
+}
+
+.champions-bounty-kicker {
+  color: rgba(253, 230, 138, 0.74);
+}
+
+.champions-bounty-amount {
+  color: rgba(255, 251, 235, 0.98);
+}
+
+.champions-bounty-growth {
+  color: rgba(254, 240, 138, 0.70);
+}
+
+html[data-champions-view="b"] .champions-bounty-badge-inner {
+  border-color: rgba(224, 242, 254, 0.24);
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.94), rgba(2, 6, 23, 0.97));
+}
+
+html[data-champions-view="b"] .champions-bounty-kicker {
+  color: rgba(224, 242, 254, 0.72);
+}
+
+html[data-champions-view="b"] .champions-bounty-growth {
+  color: rgba(209, 250, 229, 0.78);
+}
+
+
+
+html[data-champions-view="e"] .champions-hero-shell,
+html:not([data-champions-view]) .champions-hero-shell {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+html[data-champions-view="e"] .champions-podium-grid,
+html:not([data-champions-view]) .champions-podium-grid {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* AoE2WAR champions real E breakout */
+.champions-page-shell {
+  overflow: visible !important;
+}
+
+/* E/default: force the important pieces to break out of the narrow inner shell. */
+.champions-e-breakout {
+  --champions-e-width: min(82rem, calc(100vw - 4rem));
+  position: relative !important;
+  left: 50% !important;
+  width: var(--champions-e-width) !important;
+  max-width: none !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  transform: translateX(-50%) !important;
+  box-sizing: border-box !important;
+}
+
+.champions-hero-shell,
+.champions-podium-grid {
+  min-width: 0 !important;
+}
+
+.champions-hero-stats {
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+/* A: wide, but not full war-table. */
+html[data-champions-view="a"] .champions-e-breakout {
+  --champions-e-width: min(76rem, calc(100vw - 4rem));
+}
+
+/* B: classic compact card. */
+html[data-champions-view="b"] .champions-e-breakout {
+  left: auto !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  transform: none !important;
+}
+
+/* E: explicit, same as default. */
+html[data-champions-view="e"] .champions-e-breakout,
+html:not([data-champions-view]) .champions-e-breakout {
+  --champions-e-width: min(82rem, calc(100vw - 4rem));
+}
+
+@media (min-width: 1536px) {
+  .champions-e-breakout,
+  html[data-champions-view="e"] .champions-e-breakout,
+  html:not([data-champions-view]) .champions-e-breakout {
+    --champions-e-width: min(88rem, calc(100vw - 5rem));
+  }
+}
+

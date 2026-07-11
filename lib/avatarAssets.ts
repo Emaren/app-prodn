@@ -187,6 +187,88 @@ export function avatarCardUrlForName(name: string | null | undefined) {
   return managedAvatarUrl(normalized, avatarFallbackForName(normalized), { size: "card" });
 }
 
+function managedAvatarCardUrlWithFallbackTargets(
+  targets: Array<string | null | undefined>,
+  fallback: string
+) {
+  let url = fallback;
+
+  for (const target of [...targets].reverse()) {
+    const normalizedTarget = slugifyAvatarTarget(target);
+    if (!normalizedTarget) continue;
+    url = managedAvatarUrl(normalizedTarget, url, { size: "card" });
+  }
+
+  return url;
+}
+
+function kingdomChronicleAvatarTargetsForName(name: string | null | undefined) {
+  const normalized = normalizeName(name);
+
+  if (normalized === "emaren") {
+    return ["warrior2", "emaren"];
+  }
+
+  if (normalized === "deltaforce" || normalized === "delta force") {
+    return ["deltaforce", "delta-force"];
+  }
+
+  if (
+    normalized === "sladk0eshka" ||
+    normalized === "sladk0 eshka" ||
+    normalized === "sladk0-eshka" ||
+    normalized === "slad0eshka"
+  ) {
+    return ["sladk0eshka", "sladk0-eshka", "slad0eshka"];
+  }
+
+  if (
+    normalized === "[bdb]pigman" ||
+    normalized === "bdb pigman" ||
+    normalized === "pigman"
+  ) {
+    return ["bdb-pigman", "pigman"];
+  }
+
+  if (
+    normalized === "dil_pascana" ||
+    normalized === "dil pascana" ||
+    normalized === "dil-pascana"
+  ) {
+    return ["dil-pascana"];
+  }
+
+  if (normalized.includes("ra")) {
+    return ["ra"];
+  }
+
+  if (normalized === "the ai scribe" || normalized === "ai scribe" || normalized === "ai-scribe") {
+    return ["ai-scribe", "the-ai-scribe"];
+  }
+
+  if (normalized === "grimer") {
+    return ["grimer"];
+  }
+
+  if (normalized === "zodiac") {
+    const override = managedAvatarTargetOverrideForName(name);
+    return override ? [override, "zodiac"] : ["zodiac"];
+  }
+
+  return null;
+}
+
+export function kingdomChronicleAvatarCardUrlForName(name: string | null | undefined) {
+  const targets = kingdomChronicleAvatarTargetsForName(name);
+  const fallback = avatarCardUrlForName(name);
+
+  if (!targets?.length) {
+    return fallback;
+  }
+
+  return managedAvatarCardUrlWithFallbackTargets(targets, fallback);
+}
+
 export function avatarCardUrlForUser(uid: string | null | undefined, name: string | null | undefined) {
   const normalizedUid = slugifyAvatarTarget(uid);
   if (!normalizedUid) {

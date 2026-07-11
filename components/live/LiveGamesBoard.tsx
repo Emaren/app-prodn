@@ -939,15 +939,24 @@ function ClassicBoard({
   const [archiveMatches, setArchiveMatches] = useState<LiveGamesSnapshot["recentMatches"]>(snapshot.recentMatches);
   const [archiveOffset, setArchiveOffset] = useState(snapshot.recentMatches.length);
   const [archiveLoading, setArchiveLoading] = useState(false);
-  const [archiveHasMore, setArchiveHasMore] = useState(snapshot.recentMatches.length >= 12);
+  const [archiveHasMore, setArchiveHasMore] = useState(
+    snapshot.recentMatches.length <
+      snapshot.archiveTotal
+  );
   const [liveTone] = useState<ClassicLiveTone>("violet");
   const [playingControlsOpen, setPlayingControlsOpen] = useState(false);
 
   useEffect(() => {
     setArchiveMatches(snapshot.recentMatches);
     setArchiveOffset(snapshot.recentMatches.length);
-    setArchiveHasMore(snapshot.recentMatches.length >= 12);
-  }, [snapshot.recentMatches]);
+    setArchiveHasMore(
+      snapshot.recentMatches.length <
+        snapshot.archiveTotal
+    );
+  }, [
+    snapshot.archiveTotal,
+    snapshot.recentMatches,
+  ]);
 
   const loadMoreArchiveMatches = useCallback(async () => {
     if (!advanced || archiveLoading || !archiveHasMore) return;
@@ -1001,7 +1010,12 @@ function ClassicBoard({
     [loadMoreArchiveMatches]
   );
 
-  const archiveItemCount = archivedCompletedSessions.length + archiveMatches.length;
+  const archiveLoadedCount =
+    archivedCompletedSessions.length +
+    archiveMatches.length;
+
+  const archiveItemCount =
+    snapshot.archiveTotal;
   const recentOutcomeCount = recentScheduledMatches.length + featuredCompletedSessions.length;
   const sectionStatusLabel = liveItemsCount > 0 ? `${liveItemsCount} active` : "Awaiting battle";
   return (
@@ -1202,17 +1216,32 @@ function ClassicBoard({
 
         <section className="rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-5 sm:p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <div className="text-xs uppercase tracking-[0.35em] text-sky-200/70">Archive</div>
-                <h2 className="mt-2 text-2xl font-semibold text-white">Recently Played</h2>
-              </div>
-              <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-                {archiveItemCount} filed
-              </div>
+              <Link
+                href="/battle-archive"
+                className="group flex min-w-0 flex-1 items-start justify-between gap-4 rounded-2xl transition hover:bg-white/[0.025]"
+              >
+                <div>
+                  <div className="text-xs uppercase tracking-[0.35em] text-sky-200/70">
+                    Archive
+                  </div>
+
+                  <h2 className="mt-2 text-2xl font-semibold text-white transition group-hover:text-sky-100">
+                    Recently Played
+                  </h2>
+
+                  <div className="mt-2 text-xs text-slate-500">
+                    Open the complete battle archive
+                  </div>
+                </div>
+
+                <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300 transition group-hover:border-sky-300/25 group-hover:text-sky-100">
+                  {archiveItemCount} filed
+                </div>
+              </Link>
             </div>
 
             <div onScroll={handleArchiveScroll} className="mt-5 max-h-[34rem] space-y-3 overflow-y-auto scroll-smooth overscroll-contain pr-1 [scrollbar-color:rgba(148,163,184,0.45)_transparent] [scrollbar-width:thin]">
-              {archiveItemCount === 0 ? (
+              {archiveLoadedCount === 0 ? (
                 <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-5 text-sm text-slate-300">
                   Waiting on the next completed match.
                 </div>
@@ -2559,7 +2588,7 @@ function ExtremeBoard({
             icon={<Archive className="h-4 w-4" />}
             eyebrow="Archive"
             title="Recently played"
-            count={`${snapshot.recentMatches.length} loaded`}
+            count={`${snapshot.archiveTotal} filed`}
             tone="violet"
           />
           <div className="flex flex-wrap gap-2">
@@ -2571,8 +2600,8 @@ function ExtremeBoard({
               Add your classic
             </Link>
             <Link
-              href="/game-stats"
-              className="inline-flex min-h-10 items-center gap-2 rounded-full border border-white/12 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:border-white/25 hover:bg-white/10"
+              href="/battle-archive"
+              className="inline-flex min-h-10 items-center gap-2 rounded-full border border-white/12 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:border-violet-200/30 hover:bg-white/10"
             >
               Full archive
               <ChevronRight className="h-4 w-4" />

@@ -68,6 +68,17 @@ type BountyLedgerRow = {
 };
 
 
+type WalletTransferRow = {
+  id: number;
+  tx_hash: string | null;
+  transfer_index: number | null;
+  sender_address: string | null;
+  recipient_address: string | null;
+  amount_wolo: number | string | null;
+  memo: string | null;
+  occurred_at: Date | string | null;
+};
+
 type BetRow = {
   id: number;
   kind: "wager" | "intent";
@@ -76,6 +87,7 @@ type BetRow = {
   side: string | null;
   amount_wolo: number | string | null;
   payout_wolo: number | string | null;
+  market_payout_wolo: number | string | null;
   status: string | null;
   tx_hash: string | null;
   occurred_at: Date | string | null;
@@ -84,7 +96,7 @@ type BetRow = {
 type LedgerRow = {
   key: string;
   view: LedgerView | "staking-day";
-  tone: "gold" | "emerald" | "sky" | "slate";
+  tone: "gold" | "emerald" | "red" | "sky" | "slate";
   label: string;
   detail: string;
   meta: string;
@@ -107,6 +119,10 @@ const REGISTRY: Record<string, { player: string; championship?: string; designat
     player: "Emaren",
     designation: "Operator Founder · Verified Grind",
   },
+};
+
+const KNOWN_STAKER_WALLETS: Record<string, string> = {
+  jim: "wolo10zspyrrphzctrpysh6l9dsqj4wcwmj3tk660sz",
 };
 
 function slugify(value: string) {
@@ -400,7 +416,7 @@ async function loadStakingRows(userId: number | null, before: string | null, lim
   const hasMore = nextDay >= mainnetStart;
 
   return {
-    rows,
+    rows: (rows as unknown as LedgerRow[]).filter(isVisibleStakerLedgerRow),
     nextBefore: hasMore ? nextDay.toISOString() : null,
     hasMore,
   };
@@ -482,6 +498,12 @@ async function loadBetRows(userId: number | null, grouped: boolean) {
       bw.side,
       bw.amount_wolo,
       bw.payout_wolo,
+      (
+        select coalesce(sum(winner_wager.payout_wolo), 0)
+        from bet_wagers winner_wager
+        where winner_wager.market_id = bw.market_id
+          and winner_wager.status = 'won'
+      ) as market_payout_wolo,
       bw.status,
       coalesce(bw.payout_tx_hash, bw.stake_tx_hash) as tx_hash,
       coalesce(bw.settled_at, bw.stake_locked_at, bw.created_at) as occurred_at
@@ -499,7 +521,13 @@ async function loadBetRows(userId: number | null, grouped: boolean) {
       bm.title as market_title,
       bsi.side,
       bsi.amount_wolo,
-      null as payout_wolo,
+      null::numeric as payout_wolo,
+      (
+        select coalesce(sum(winner_wager.payout_wolo), 0)
+        from bet_wagers winner_wager
+        where winner_wager.market_id = bsi.market_id
+          and winner_wager.status = 'won'
+      ) as market_payout_wolo,
       bsi.status,
       bsi.stake_tx_hash as tx_hash,
       coalesce(bsi.recorded_at, bsi.verified_at, bsi.created_at) as occurred_at
@@ -507,6 +535,18 @@ async function loadBetRows(userId: number | null, grouped: boolean) {
     join bet_markets bm on bm.id = bsi.market_id
     where bsi.user_id = $1
       and coalesce(bsi.recorded_at, bsi.verified_at, bsi.created_at)::date >= $2::date
+      and not exists (
+        select 1
+        from bet_wagers linked_wager
+        where linked_wager.stake_intent_id = bsi.id
+           or (
+             linked_wager.market_id = bsi.market_id
+             and linked_wager.user_id = bsi.user_id
+             and linked_wager.stake_tx_hash is not null
+             and bsi.stake_tx_hash is not null
+             and upper(linked_wager.stake_tx_hash) = upper(bsi.stake_tx_hash)
+           )
+      )
 
     order by occurred_at desc
     limit 120
@@ -516,7 +556,19 @@ async function loadBetRows(userId: number | null, grouped: boolean) {
   );
 
   if (grouped) {
-    const groupedRows = new Map<string, { market: string; amount: number; payout: number; count: number; occurredAt: string }>();
+    const groupedRows = new Map<
+      string,
+      {
+        market: string;
+        amount: number;
+        marketPayout: number;
+        count: number;
+        won: number;
+        lost: number;
+        pending: number;
+        occurredAt: string;
+      }
+    >();
 
     for (const row of rows) {
       const key = String(row.market_id || row.market_title || row.id);
@@ -525,46 +577,127 @@ async function loadBetRows(userId: number | null, grouped: boolean) {
         {
           market: row.market_title || "Bet market",
           amount: 0,
-          payout: 0,
+          marketPayout: 0,
           count: 0,
+          won: 0,
+          lost: 0,
+          pending: 0,
           occurredAt: new Date(row.occurred_at || new Date()).toISOString(),
         };
 
       current.amount += asNumber(row.amount_wolo);
-      current.payout += asNumber(row.payout_wolo);
+      current.marketPayout = Math.max(
+        current.marketPayout,
+        asNumber(row.market_payout_wolo)
+      );
       current.count += 1;
-      const occurredAt = new Date(row.occurred_at || new Date()).toISOString();
-      if (new Date(occurredAt) > new Date(current.occurredAt)) current.occurredAt = occurredAt;
+
+      const status = String(row.status || "").toLowerCase();
+
+      if (row.kind === "wager" && status === "won") {
+        current.won += 1;
+      } else if (row.kind === "wager" && status === "lost") {
+        current.lost += 1;
+      } else {
+        current.pending += 1;
+      }
+
+      const occurredAt = new Date(
+        row.occurred_at || new Date()
+      ).toISOString();
+
+      if (new Date(occurredAt) > new Date(current.occurredAt)) {
+        current.occurredAt = occurredAt;
+      }
+
       groupedRows.set(key, current);
     }
 
-    return Array.from(groupedRows.entries()).map(([key, row]) => ({
-      key: `grouped-bet-${key}`,
-      view: "grouped-bets" as const,
-      tone: "sky" as const,
-      label: `${formatWolo(row.amount)} grouped bets placed`,
-      detail: `${row.market} · ${row.count} ${row.count === 1 ? "receipt" : "receipts"} · ${formatWolo(row.payout)} payout value`,
-      meta: formatTime(row.occurredAt),
-      occurredAt: row.occurredAt,
-      amountLabel: formatWolo(row.amount),
-    }));
+    return Array.from(groupedRows.entries()).map(([key, row]) => {
+      const outcome =
+        row.won > 0 && row.lost === 0 && row.pending === 0
+          ? "won"
+          : row.lost > 0 && row.won === 0 && row.pending === 0
+            ? "lost"
+            : row.won === 0 && row.lost === 0
+              ? "pending"
+              : "mixed";
+
+      const tone: LedgerRow["tone"] =
+        outcome === "won"
+          ? "emerald"
+          : outcome === "lost"
+            ? "red"
+            : "sky";
+
+      const label =
+        outcome === "won"
+          ? `${formatWolo(row.amount)} won`
+          : outcome === "lost"
+            ? `${formatWolo(row.amount)} lost`
+            : outcome === "mixed"
+              ? `${formatWolo(row.amount)} mixed result`
+              : `${formatWolo(row.amount)} bet pending`;
+
+      const countLabel =
+        `${row.count} ${row.count === 1 ? "bet" : "bets"}`;
+
+      const payoutLabel =
+        outcome === "pending"
+          ? "awaiting settlement"
+          : `${formatWolo(row.marketPayout)} payout value`;
+
+      return {
+        key: `grouped-bet-${key}`,
+        view: "grouped-bets" as const,
+        tone,
+        label,
+        detail: `${row.market} · ${countLabel} · ${payoutLabel}`,
+        meta: formatTime(row.occurredAt),
+        occurredAt: row.occurredAt,
+        amountLabel: formatWolo(row.amount),
+      };
+    });
   }
 
   return rows.map((row) => {
-    const occurredAt = new Date(row.occurred_at || new Date()).toISOString();
+    const occurredAt = new Date(
+      row.occurred_at || new Date()
+    ).toISOString();
+
     const amount = asNumber(row.amount_wolo);
     const payout = asNumber(row.payout_wolo);
+    const marketPayout = asNumber(row.market_payout_wolo);
+    const status = String(row.status || "recorded").toLowerCase();
+
+    const won = row.kind === "wager" && status === "won";
+    const lost = row.kind === "wager" && status === "lost";
+
+    const tone: LedgerRow["tone"] =
+      won ? "emerald" : lost ? "red" : "sky";
+
+    const label =
+      row.kind === "intent"
+        ? `${formatWolo(amount)} bet pending`
+        : won
+          ? `${formatWolo(amount)} bet won`
+          : lost
+            ? `${formatWolo(amount)} bet lost`
+            : `${formatWolo(amount)} bet wager`;
 
     return {
       key: `bet-${row.kind}-${row.id}`,
       view: "bets",
-      tone: row.kind === "intent" ? "sky" : payout > 0 ? "emerald" : "sky",
-      label: `${formatWolo(amount)} ${row.kind === "intent" ? "bet stake intent" : "bet wager"}`,
+      tone,
+      label,
       detail: [
         row.market_title,
         row.side ? `side ${row.side}` : null,
-        row.status,
-        payout > 0 ? `${formatWolo(payout)} payout` : null,
+        status,
+        won ? `${formatWolo(payout)} paid out` : null,
+        lost && marketPayout > 0
+          ? `${formatWolo(marketPayout)} payout value`
+          : null,
       ]
         .filter(Boolean)
         .join(" · "),
@@ -576,28 +709,138 @@ async function loadBetRows(userId: number | null, grouped: boolean) {
   });
 }
 
-
-
-
 function shortClaimTx(value?: string | null) {
   if (!value) return null;
   return value.length > 18 ? `${value.slice(0, 8)}...${value.slice(-6)}` : value;
 }
 
-const ECOSYSTEM_BOUNTIES_WALLET = "wolo1dmj5dnm7g9hmj005yzy5e5xcygudyt7wxzpxjq";
+function shortWalletAddress(value?: string | null) {
+  const clean = value?.trim();
+  if (!clean) return "unknown";
+  return clean.length > 18 ? `${clean.slice(0, 8)}...${clean.slice(-6)}` : clean;
+}
 
-async function loadBountyRows(userId: number | null): Promise<LedgerRow[]> {
+function isBetLikeWalletMemo(value?: string | null) {
+  const memo = String(value || "").toLowerCase();
+  return (
+    memo.includes("bet stake") ||
+    memo.includes("bet_refund") ||
+    memo.includes("founders_bonus")
+  );
+}
+
+
+function isVisibleStakerLedgerRow(row: LedgerRow): boolean {
+  const label = String(row.label || "").toLowerCase();
+  const detail = String(row.detail || "").toLowerCase();
+  const amountLabel = String(row.amountLabel || "").toLowerCase();
+  const text = `${label} ${detail} ${amountLabel}`;
+
+  const isFaucetHotWallet =
+    text.includes("wolo1dsh") &&
+    text.includes("myp5g0");
+
+  return !isFaucetHotWallet;
+}
+
+
+function dedupeLedgerRowsForAll(rows: unknown[]): LedgerRow[] {
+  const seen = new Set<string>();
+  const out: LedgerRow[] = [];
+
+  for (const raw of rows) {
+    const row = raw as LedgerRow;
+    const tx = row.txHash?.trim().toUpperCase();
+    const key = tx ? `tx:${tx}` : row.key;
+
+    if (seen.has(key)) continue;
+
+    seen.add(key);
+    out.push(row);
+  }
+
+  return out;
+}
+
+async function loadWalletTransferRows(walletAddress: string | null | undefined): Promise<LedgerRow[]> {
+  const wallet = walletAddress?.trim().toLowerCase();
+  if (!wallet) return [];
+
+  const prisma = getPrisma();
+
+  try {
+    const rows = await prisma.$queryRawUnsafe<WalletTransferRow[]>(
+      `
+      select
+        t.id,
+        t.tx_hash,
+        t.transfer_index,
+        t.sender_address,
+        t.recipient_address,
+        t.amount_wolo_display as amount_wolo,
+        t.memo,
+        coalesce(t.timestamp, t.created_at) as occurred_at
+      from wolo_indexed_transfers t
+      where (
+          lower(t.sender_address) = lower($1)
+          or lower(t.recipient_address) = lower($1)
+        )
+        and coalesce(t.timestamp, t.created_at)::date >= $2::date
+      order by coalesce(t.timestamp, t.created_at) desc, t.id desc, t.transfer_index desc
+      limit 360
+      `,
+      wallet,
+      MAINNET_START
+    );
+
+    return rows
+      .filter((row) => !isBetLikeWalletMemo(row.memo))
+      .map((row) => {
+        const sender = row.sender_address?.trim().toLowerCase() || "";
+        const recipient = row.recipient_address?.trim().toLowerCase() || "";
+        const incoming = recipient === wallet;
+        const outgoing = sender === wallet;
+        const amount = asNumber(row.amount_wolo);
+        const tx = shortClaimTx(row.tx_hash);
+        const counterparty = incoming ? row.sender_address : row.recipient_address;
+        const direction = incoming ? "received" : outgoing ? "sent" : "wallet transfer";
+
+        return {
+          key: `wallet-transfer-${row.id}-${row.transfer_index ?? 0}`,
+          view: "all",
+          tone: incoming ? "emerald" : "sky",
+          label: `${formatWolo(amount)} ${direction}`,
+          detail: [
+            incoming ? `from ${shortWalletAddress(counterparty)}` : `to ${shortWalletAddress(counterparty)}`,
+            row.memo?.trim() || null,
+            tx ? `tx ${tx}` : null,
+          ]
+            .filter(Boolean)
+            .join(" · "),
+          meta: formatTime(row.occurred_at),
+          occurredAt: new Date(row.occurred_at || Date.now()).toISOString(),
+          amountLabel: formatWolo(amount),
+          txHash: row.tx_hash,
+        };
+      });
+  } catch (error) {
+    console.error("[staking/stakers/ledger] failed to load wallet transfer rows", error);
+    return [];
+  }
+}
+
+
+
+async function loadBountyRows(userId: number | null, walletAddress: string | null | undefined): Promise<LedgerRow[]> {
+  const wallet = walletAddress?.trim().toLowerCase() || "";
+  if (userId == null && !wallet) return [];
+
   const prisma = getPrisma();
 
   try {
     const rows = await prisma.$queryRawUnsafe<BountyLedgerRow[]>(
       `
-      with target_user as (
-        select id, wallet_address
-        from users
-        where id = $1::int
-      ),
-      paid_transfers as (
+      with paid_transfers as (
         select
           'transfer'::text as source_type,
           t.id,
@@ -609,8 +852,9 @@ async function loadBountyRows(userId: number | null): Promise<LedgerRow[]> {
           'paid'::text as status,
           coalesce(t.timestamp, t.created_at) as occurred_at
         from wolo_indexed_transfers t
-        where lower(t.sender_address) = lower($2)
-          and lower(coalesce(t.memo, '')) like '%bounty #%' 
+        where lower(t.recipient_address) = lower($2)
+          and lower(coalesce(t.memo, '')) like '%bounty #%'
+          and coalesce(t.timestamp, t.created_at)::date >= $3::date
       ),
       unclaimed_gifts as (
         select
@@ -625,7 +869,8 @@ async function loadBountyRows(userId: number | null): Promise<LedgerRow[]> {
           g.created_at as occurred_at
         from user_gifts g
         join users u on u.id = g.user_id
-        where g.kind = 'WOLO'
+        where g.user_id = $1::int
+          and g.kind = 'WOLO'
           and g.amount > 0
           and lower(coalesce(g.note, '')) like '%bounty #%'
           and lower(coalesce(g.status, '')) in ('pending', 'accepted')
@@ -637,11 +882,12 @@ async function loadBountyRows(userId: number | null): Promise<LedgerRow[]> {
         union all
         select * from unclaimed_gifts
       ) rows
-      order by occurred_at desc, id desc
-      limit 120
+      order by occurred_at desc, id desc, coalesce(transfer_index, 0) desc
+      limit 180
       `,
-      userId,
-      ECOSYSTEM_BOUNTIES_WALLET
+      userId ?? -1,
+      wallet,
+      MAINNET_START
     );
 
     return rows.map((row) => {
@@ -728,17 +974,20 @@ export async function GET(request: Request, context: RouteContext) {
   const limitDays = Math.max(7, Math.min(45, Number(url.searchParams.get("limitDays") || 18)));
 
   if (!REGISTRY[slug]) {
-    return NextResponse.json({ ok: false, rows: [], hasMore: false, nextBefore: null }, { status: 404 });
+
+  return NextResponse.json({ ok: false, rows: [], hasMore: false, nextBefore: null }, { status: 404 });
   }
 
   const user = await resolveUser(slug);
+  const walletAddress = KNOWN_STAKER_WALLETS[slug] || user?.wallet_address || null;
 
-  const [staking, championships, bounties, bets, groupedBets] = await Promise.all([
+  const [staking, championships, bounties, bets, groupedBets, walletTransfers] = await Promise.all([
     view === "all" || view === "staking" || view === "compounded" ? loadStakingRows(user?.user_id ?? null, before, limitDays) : Promise.resolve({ rows: [], hasMore: false, nextBefore: null }),
     view === "all" || view === "championships" ? loadChampionshipRows(slug, user?.user_id ?? null) : Promise.resolve([]),
-    view === "all" || view === "bounties" ? loadBountyRows(user?.user_id ?? null) : Promise.resolve([]),
+    view === "all" || view === "bounties" ? loadBountyRows(user?.user_id ?? null, walletAddress) : Promise.resolve([]),
     view === "bets" ? loadBetRows(user?.user_id ?? null, false) : Promise.resolve([]),
-    view === "grouped-bets" ? loadBetRows(user?.user_id ?? null, true) : Promise.resolve([]),
+    view === "all" || view === "grouped-bets" ? loadBetRows(user?.user_id ?? null, true) : Promise.resolve([]),
+    view === "all" ? loadWalletTransferRows(walletAddress) : Promise.resolve([]),
   ]);
 
   const rows =
@@ -766,22 +1015,30 @@ export async function GET(request: Request, context: RouteContext) {
           )
       : view === "championships"
         ? championships
-      : view === "bounties"
-        ? bounties
-        : view === "bets"
-          ? bets
-          : view === "grouped-bets"
-            ? groupedBets
-            : [...staking.rows, ...championships, ...bounties].sort(
-                (left, right) => new Date(right.occurredAt).getTime() - new Date(left.occurredAt).getTime()
-              );
+        : view === "bounties"
+          ? bounties
+          : view === "bets"
+            ? bets
+            : view === "grouped-bets"
+              ? groupedBets
+              : dedupeLedgerRowsForAll(
+                  [
+                    ...bounties,
+                    ...staking.rows.filter((row) => row.view !== "staking-day"),
+                    ...walletTransfers,
+                    ...championships,
+                    ...groupedBets,
+                  ].sort(
+                    (left, right) => new Date(right.occurredAt).getTime() - new Date(left.occurredAt).getTime()
+                  )
+                );
 
   return NextResponse.json({
     ok: true,
     slug,
     player: REGISTRY[slug].player,
     view,
-    rows,
+    rows: (rows as unknown as LedgerRow[]).filter(isVisibleStakerLedgerRow),
     hasMore: view === "all" || view === "staking" || view === "compounded" ? staking.hasMore : false,
     nextBefore: view === "all" || view === "staking" || view === "compounded" ? staking.nextBefore : null,
     counts: {
@@ -790,6 +1047,7 @@ export async function GET(request: Request, context: RouteContext) {
       bounties: bounties.length,
       bets: bets.length,
       groupedBets: groupedBets.length,
+      walletTransfers: walletTransfers.length,
       compounded: staking.rows.filter((row) => {
         const text = `${row.label} ${row.detail} ${row.txHash || ""}`.toLowerCase();
         return (

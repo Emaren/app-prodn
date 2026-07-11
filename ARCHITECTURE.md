@@ -333,3 +333,62 @@ Do not assume every visible issue is a page bug.
 - watcher behavior now looks healthier end-to-end, but the app should still document the live/final replay contract truthfully as it evolves
 
 - Replay upload surface keeps the existing manual single-file flow and adds `/api/replay/upload-package` for browser ZIP packs. ZIP entries are unpacked server-side, filtered to supported AoE2 replay extensions, and forwarded through the canonical backend replay upload contract.
+
+<!-- AOE2WAR:REPLAY_RIVALRY_ARCHITECTURE:START -->
+## Replay history and rivalry graph
+
+### Ownership
+
+- `lib/replaySides.ts` reconstructs safe 1v1 and balanced team sides.
+- `lib/publicMatchups.ts` builds player-pair and exact-team rivalry
+  aggregates.
+- `lib/unresolvedWatcherResult.ts` governs whether recovered outcomes
+  are statistically and financially eligible.
+- `app/battle-archive/page.tsx` renders the chronological War Vault.
+- `app/game-stats/[id]/page.tsx` renders one replay and resolves its
+  canonical rivalry destination.
+- `app/matchups/[left]/[right]/page.tsx` renders comprehensive
+  player-pair history.
+- `app/matchups/team/[left]/[right]/page.tsx` renders exact-team
+  history and the cross-side player matrix.
+- `app/rivalries/page.tsx` composes the directory.
+- `components/rivalries/RivalriesViews.tsx` owns Advanced and Extreme.
+- `components/rivalries/BasicRivalriesView.tsx` owns Basic and its
+  internal three-state presentation cycle.
+
+### Canonical identity
+
+Player rivalry routes use canonical public-player tokens.
+
+Team routes encode each canonical roster as a base64url JSON array.
+Both rosters and both sides are normalized before URL construction.
+Equivalent rosters therefore resolve to one route.
+
+### Data flow
+
+    stored replay row
+        -> replay-side reconstruction
+            -> winner truth
+                -> one archive entry
+                -> player-pair aggregate
+                -> exact-team aggregate
+                -> game-stats and rivalry cross-navigation
+
+A replay may contribute to several legitimate analytical views, but
+it remains one historical battle and one recent-activity entry.
+
+### Click-target contract
+
+Cards use a whole-card link with higher-z-index nested profile links
+where two destinations are required:
+
+- match-feed card -> game stats;
+- player name -> player profile;
+- matrix card -> player rivalry;
+- matrix player name -> player profile.
+
+This removes redundant visible calls to action while retaining
+keyboard focus treatment and accessible labels.
+
+See `docs/RIVALRIES_AND_WAR_VAULT.md`.
+<!-- AOE2WAR:REPLAY_RIVALRY_ARCHITECTURE:END -->

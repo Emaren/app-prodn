@@ -1088,13 +1088,27 @@ function Panel({
   return (
     <section
       id={id}
-      className="scroll-mt-24 rounded-[1.65rem] border border-white/10 bg-[linear-gradient(180deg,rgba(10,16,29,0.92),rgba(4,7,14,0.98))] p-5 shadow-[0_24px_90px_rgba(2,6,23,0.25)] sm:p-6"
+      className={`scroll-mt-24 rounded-[1.65rem] border border-white/10 bg-[linear-gradient(180deg,rgba(10,16,29,0.92),rgba(4,7,14,0.98))] p-5 shadow-[0_24px_90px_rgba(2,6,23,0.25)] sm:p-6 ${
+        id === "staking-advanced"
+          ? "flex h-[72svh] min-h-[34rem] max-h-[54rem] flex-col overflow-hidden"
+          : ""
+      }`}
     >
-      <div className="mb-5">
-        <div className="text-xs uppercase tracking-[0.28em] text-slate-500">{eyebrow}</div>
-        <h2 className="mt-2 text-2xl font-semibold text-white">{title}</h2>
-      </div>
-      {children}
+      {id === "staking-advanced" ? (
+        <div className="mb-4 shrink-0">
+          <div className="text-xs uppercase tracking-[0.28em] text-slate-500">{eyebrow}</div>
+        </div>
+      ) : (
+        <div className="mb-5">
+          <div className="text-xs uppercase tracking-[0.28em] text-slate-500">{eyebrow}</div>
+          <h2 className="mt-2 text-2xl font-semibold text-white">{title}</h2>
+        </div>
+      )}
+      {id === "staking-advanced" ? (
+        <div className="h-0 min-h-0 flex-1 overflow-hidden">{children}</div>
+      ) : (
+        children
+      )}
     </section>
   );
 }
