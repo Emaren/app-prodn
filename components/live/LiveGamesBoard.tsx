@@ -174,6 +174,20 @@ function sessionKnownParticipantNames(session: Pick<LiveSession, "players" | "up
 }
 
 function sessionTitle(session: LiveSession) {
+  // Betting markets already preserve the authoritative team
+  // presentation: teammates separated by "/" and one "vs"
+  // between the two complete sides.
+  const marketTitle = normalizePublicReplayText(
+    session.reviewMarket?.title
+  );
+
+  if (
+    marketTitle &&
+    /\s+vs\s+/i.test(marketTitle)
+  ) {
+    return marketTitle;
+  }
+
   const names = sessionKnownParticipantNames(session);
 
   if (names.length >= 2) {
