@@ -1463,7 +1463,10 @@ export default function ContactInboxPanel({
     const viewport = timelineViewportRef.current;
     if (!viewport) return;
 
-    const distanceFromBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
+    const usesDocumentScroll = mode === "page" && viewport.scrollHeight <= viewport.clientHeight + 1;
+    const distanceFromBottom = usesDocumentScroll
+      ? document.documentElement.scrollHeight - window.scrollY - window.innerHeight
+      : viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
     const shouldShow = distanceFromBottom > 140;
     shouldStickToBottomRef.current = distanceFromBottom < 220;
 
@@ -1474,9 +1477,13 @@ export default function ContactInboxPanel({
     const viewport = timelineViewportRef.current;
     shouldStickToBottomRef.current = true;
 
-    timelineBottomRef.current?.scrollIntoView({ block: "end", behavior });
+    if (mode === "page" && viewport && viewport.scrollHeight <= viewport.clientHeight + 1) {
+      window.scrollTo({ top: document.documentElement.scrollHeight, behavior });
+    } else {
+      timelineBottomRef.current?.scrollIntoView({ block: "end", behavior });
+    }
 
-    if (viewport) {
+    if (viewport && !(mode === "page" && viewport.scrollHeight <= viewport.clientHeight + 1)) {
       viewport.scrollTo({
         top: viewport.scrollHeight,
         behavior,
@@ -1495,11 +1502,18 @@ export default function ContactInboxPanel({
     const viewport = timelineViewportRef.current;
     const previousHeight = viewport?.scrollHeight ?? 0;
     const previousTop = viewport?.scrollTop ?? 0;
+    const usesDocumentScroll = Boolean(mode === "page" && viewport && viewport.scrollHeight <= viewport.clientHeight + 1);
+    const previousDocumentHeight = document.documentElement.scrollHeight;
+    const previousWindowY = window.scrollY;
     setLoadingOlder(true);
     try {
       await onLoadOlder();
       window.requestAnimationFrame(() => {
-        if (viewport) viewport.scrollTop = previousTop + (viewport.scrollHeight - previousHeight);
+        if (usesDocumentScroll) {
+          window.scrollTo({ top: previousWindowY + (document.documentElement.scrollHeight - previousDocumentHeight), behavior: "auto" });
+        } else if (viewport) {
+          viewport.scrollTop = previousTop + (viewport.scrollHeight - previousHeight);
+        }
       });
     } finally {
       setLoadingOlder(false);
@@ -1559,6 +1573,13 @@ export default function ContactInboxPanel({
     }
   }, [body, typingHudMode]);
 
+  useEffect(() => {
+    if (mode !== "page") return;
+    const handleDocumentScroll = () => updateTimelineJumpButton();
+    window.addEventListener("scroll", handleDocumentScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleDocumentScroll);
+  }, [mode]);
+
   useLayoutEffect(() => {
     if (typeof window === "undefined") return;
     if (!timelineRows.length) return;
@@ -1567,7 +1588,10 @@ export default function ContactInboxPanel({
     if (!viewport) return;
 
     const targetChanged = lastAutoScrolledTargetUidRef.current !== activeTargetUid;
-    const distanceFromBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
+    const usesDocumentScroll = mode === "page" && viewport.scrollHeight <= viewport.clientHeight + 1;
+    const distanceFromBottom = usesDocumentScroll
+      ? document.documentElement.scrollHeight - window.scrollY - window.innerHeight
+      : viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
     const userIsNearBottom = shouldStickToBottomRef.current || distanceFromBottom < 220;
 
     if (!targetChanged && !userIsNearBottom) {
@@ -1579,7 +1603,11 @@ export default function ContactInboxPanel({
     shouldStickToBottomRef.current = true;
 
     const scrollToLatest = () => {
-      viewport.scrollTop = viewport.scrollHeight;
+      if (usesDocumentScroll) {
+        window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "auto" });
+      } else {
+        viewport.scrollTop = viewport.scrollHeight;
+      }
       setShowTimelineJump(false);
     };
 
@@ -1598,13 +1626,17 @@ export default function ContactInboxPanel({
 
     const observer = new ResizeObserver(() => {
       if (shouldStickToBottomRef.current) {
-        viewport.scrollTop = viewport.scrollHeight;
+        if (mode === "page" && viewport.scrollHeight <= viewport.clientHeight + 1) {
+          window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "auto" });
+        } else {
+          viewport.scrollTop = viewport.scrollHeight;
+        }
         setShowTimelineJump(false);
       }
     });
     observer.observe(content);
     return () => observer.disconnect();
-  }, [activeTargetUid, timelineRows.length]);
+  }, [activeTargetUid, mode, timelineRows.length]);
 
   return (
     <div
