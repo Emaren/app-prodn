@@ -5,6 +5,7 @@ import { Mic, Paperclip, SendHorizonal, Square, X } from "lucide-react";
 import { useId, useRef, useState, type ClipboardEvent, type DragEvent } from "react";
 
 import AutoGrowTextarea from "@/components/ui/AutoGrowTextarea";
+import { useChatViewPreference } from "@/components/contact/chatViewPreference";
 import { DIRECT_MESSAGE_MAX_CHARS } from "@/lib/contactInboxConfig";
 
 type ComposerAttachment = {
@@ -83,6 +84,9 @@ export default function ContactRichComposer({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [attachNotice, setAttachNotice] = useState<string | null>(null);
+  const { chatViewMode } = useChatViewPreference();
+  const isLineView = chatViewMode === "v2";
+  const isObsidianView = chatViewMode === "v3";
 
   const attachmentLocked = sendPending || Boolean(unavailableReason);
   const isDisabled = sendPending || Boolean(unavailableReason) || (!body.trim() && !attachment);
@@ -162,7 +166,7 @@ export default function ContactRichComposer({
 
   return (
     <div
-      className="relative min-w-0 space-y-2.5 sm:space-y-3"
+      className={`relative min-w-0 ${isLineView ? "space-y-2" : "space-y-2.5 sm:space-y-3"}`}
       onPaste={handlePaste}
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
@@ -238,7 +242,13 @@ export default function ContactRichComposer({
         </div>
       ) : null}
 
-      <div className="min-w-0 rounded-[1.2rem] bg-white/[0.055] p-2.5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)] sm:rounded-[1.35rem] sm:p-3">
+      <div className={`min-w-0 p-2.5 sm:p-3 ${
+        isLineView
+          ? "rounded-md bg-[#383a40] shadow-none"
+          : isObsidianView
+            ? "rounded-[1rem] border border-teal-100/10 bg-[linear-gradient(145deg,rgba(255,255,255,0.055),rgba(255,255,255,0.025))] shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_16px_45px_rgba(0,0,0,0.22)]"
+            : "rounded-[1.2rem] bg-white/[0.055] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)] sm:rounded-[1.35rem]"
+      }`}>
         <AutoGrowTextarea
           value={body}
           maxRows={4}
@@ -274,7 +284,7 @@ export default function ContactRichComposer({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="inline-flex items-center gap-2 rounded-full bg-white/[0.06] px-3 py-2 text-sm text-slate-200 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)] transition hover:bg-white/[0.1] hover:text-white"
+              className={`inline-flex items-center gap-2 bg-white/[0.06] px-3 py-2 text-sm text-slate-200 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)] transition hover:bg-white/[0.1] hover:text-white ${isLineView ? "rounded-md" : "rounded-full"}`}
               aria-label="Attach image"
             >
               <Paperclip className="h-4 w-4" />
@@ -285,7 +295,7 @@ export default function ContactRichComposer({
               type="button"
               onClick={onToggleVoiceRecording}
               disabled={!voiceSupported}
-              className="inline-flex items-center gap-2 rounded-full bg-white/[0.06] px-3 py-2 text-sm text-slate-200 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)] transition hover:bg-white/[0.1] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+              className={`inline-flex items-center gap-2 bg-white/[0.06] px-3 py-2 text-sm text-slate-200 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)] transition hover:bg-white/[0.1] hover:text-white disabled:cursor-not-allowed disabled:opacity-50 ${isLineView ? "rounded-md" : "rounded-full"}`}
               aria-label={voiceRecording ? "Stop voice recording" : "Start voice recording"}
             >
               {voiceRecording ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
@@ -297,7 +307,7 @@ export default function ContactRichComposer({
             type="button"
             onClick={onSend}
             disabled={isDisabled}
-            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-amber-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+            className={`inline-flex min-h-11 w-full items-center justify-center gap-2 bg-amber-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto ${isLineView ? "rounded-md" : "rounded-full"}`}
           >
             <SendHorizonal className="h-4 w-4" />
             {sendPending ? "Sending..." : "Send"}

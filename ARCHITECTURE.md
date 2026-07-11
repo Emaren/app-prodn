@@ -199,6 +199,10 @@ The private inbox and community honors loop are owned here.
 Current behavior includes:
 - users can message Emaren directly
 - existing peer direct threads can also exist for challenge-related inbox flow
+- the header popover and `/contact-emaren` render through the shared `ContactInboxPanel`, including the persisted V1/V2/V3 view contract
+- V1 is the upgraded asymmetric bubble UI, V2 is the compact line feed, and V3 is the obsidian-glass premium UI; the mode preference is stored under `aoe2war:direct-chat-view`
+- direct-message actions open on click/long-press through the shared compact quick-reaction/action picker rather than automatic bubble hover
+- full-page startup fetches the complete thread once; the nav surface maintains a warm thread cache and silently reconciles it
 - admins can award badges and gifts
 - gifts/badges can appear in chat threads
 - users can accept privately, accept publicly, or decline

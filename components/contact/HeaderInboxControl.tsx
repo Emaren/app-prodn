@@ -71,6 +71,8 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
   const selectedTargetUidRef = useRef<string | null>(null);
   const typingTimerRef = useRef<number | null>(null);
   const typingActiveRef = useRef(false);
+  const panelCacheRef = useRef(new Map<string, ContactInboxPayload>());
+  const panelRequestIdRef = useRef(0);
 
   useClickOutside(panelRef as React.RefObject<HTMLElement>, () => setOpen(false));
 
@@ -81,6 +83,9 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
 
   const applyInboxPayload = useCallback(
     (payload: ContactInboxPayload) => {
+      if (payload.activeTargetUid) {
+        panelCacheRef.current.set(payload.activeTargetUid, payload);
+      }
       setPanelData(payload);
       setSummary(payload);
       applySelectedTargetUid(payload.activeTargetUid);
@@ -108,21 +113,35 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
     async (targetUid?: string | null, options?: { silent?: boolean }) => {
       if (!uid) return null;
       const silent = Boolean(options?.silent);
+      const requestedTargetUid = targetUid ?? selectedTargetUidRef.current ?? null;
+      const cachedPayload = requestedTargetUid
+        ? panelCacheRef.current.get(requestedTargetUid) ?? null
+        : null;
+      const requestId = panelRequestIdRef.current + 1;
+      panelRequestIdRef.current = requestId;
 
       if (!silent) {
-        setLoading(true);
+        if (cachedPayload) {
+          setPanelData(cachedPayload);
+        }
+        setLoading(!cachedPayload);
         setError(null);
       }
 
       try {
-        const payload = await requestInbox(targetUid ?? selectedTargetUidRef.current ?? undefined, false);
+        const payload = await requestInbox(requestedTargetUid ?? undefined, false);
+        if (panelRequestIdRef.current !== requestId) {
+          return null;
+        }
         applyInboxPayload(payload);
         return payload;
       } catch (fetchError) {
-        setError(fetchError instanceof Error ? fetchError.message : "Inbox failed.");
+        if (panelRequestIdRef.current === requestId) {
+          setError(fetchError instanceof Error ? fetchError.message : "Inbox failed.");
+        }
         return null;
       } finally {
-        if (!silent) {
+        if (!silent && panelRequestIdRef.current === requestId) {
           setLoading(false);
         }
       }
@@ -356,6 +375,7 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
                       throw new Error(readDetail(payload) || "Inbox action failed.");
                     }
 
+                    panelRequestIdRef.current += 1;
                     applyInboxPayload(payload as ContactInboxPayload);
                   } catch (actionError) {
                     setError(
@@ -369,7 +389,9 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
                 challengeActionState={challengeActionState}
                 onSelectConversation={(targetUid) => {
                   applySelectedTargetUid(targetUid);
-                  void refreshPanel(targetUid);
+                  const cachedPayload = panelCacheRef.current.get(targetUid) ?? null;
+                  setPanelData(cachedPayload);
+                  void refreshPanel(targetUid, { silent: Boolean(cachedPayload) });
                 }}
                 onSend={async () => {
                   if (!body.trim()) return;
@@ -398,6 +420,7 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
 
                     setBody("");
                     void sendTypingState(false);
+                    panelRequestIdRef.current += 1;
                     applyInboxPayload(payload as ContactInboxPayload);
                   } catch (sendError) {
                     setError(sendError instanceof Error ? sendError.message : "Message failed.");
@@ -431,6 +454,7 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
                       throw new Error(readDetail(payload) || "Reaction failed.");
                     }
 
+                    panelRequestIdRef.current += 1;
                     applyInboxPayload(payload as ContactInboxPayload);
                   } catch (reactionError) {
                     setError(

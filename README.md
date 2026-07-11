@@ -17,6 +17,7 @@ It currently owns the premium lobby/community surface, leaderboard presentation,
 - [docs/SCHEDULED_MATCH_SETTLEMENTS.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/docs/SCHEDULED_MATCH_SETTLEMENTS.md)
 - [docs/WAR_ROOM_FORUM.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/docs/WAR_ROOM_FORUM.md)
 - [docs/HERO_STUDIO.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/docs/HERO_STUDIO.md)
+- [docs/DIRECT_CHAT.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/docs/DIRECT_CHAT.md)
 
 ## Stack
 
@@ -29,6 +30,7 @@ It currently owns the premium lobby/community surface, leaderboard presentation,
 - Advanced player profiles include lazy match archive, watcher proof, form/rivalry diagnostics, resource emblems, AI Scribe/Grimer readout, stream signal, and premium `$WOLO`/staking stats
 - The public Kingdom spine includes `/kingdom`, `/champions`, `/national-champions`, `/clans`, and `/forum`, with the legacy `/belts`, `/nations`, and `/realm` paths redirecting into the new route names
 - The global command bar leaves the Universal Translator’s language signal and wireframe globe loose before NavChat and the player control; Auto spells in and crossfades a randomized sequence, German fills the last Core slot, explicit choices persist locally and in a cookie, and only `/academy` uses the crimson selector while the rest of the product uses navy/steel blue
+- Nav Chat and `/contact-emaren` share three persisted direct-chat presentations: upgraded V1 floating bubbles, V2 compact Steam/Discord-style lines, and V3 obsidian glass. Their shared timeline uses deliberate click/long-press reactions, latest-message anchoring, a lower-left typing-display control, and cross-surface preference sync.
 - `/clans` launches with the Mystikal Clan hall and an equal-weight add-your-clan invitation; both the directory and `/clans/[slug]` expose Basic/Advanced/Extreme views with Advanced as the default
 - Clan halls own audience-aware chat, author/admin edit and delete controls, and named premium reactions; `/admin/user-list` assigns or removes real `ClanMember.role` leadership and renders the appointment as a compact private AoE2WAR protocol notice rather than an Emaren-authored chat bubble
 - `/forum` is the persistent War Room: Basic is the focused compact index and single-column reading experience; Advanced adds Wolo Chronicles, room signals, excerpts, editorial thread pages, and useful context rails; Extreme is the default and a distinct full-width unfolded edition with visible lead copy, dispatch wire, feature blocks, an illustrated middle, and newspaper-style thread pages

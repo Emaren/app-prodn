@@ -6,15 +6,20 @@ import Link from "next/link";
 import {
   ArrowRight,
   CalendarClock,
+  ChevronDown,
   Coins,
+  LayoutList,
   MessageCirclePlus,
+  MessageSquare,
   Mic,
+  MoreHorizontal,
   Paperclip,
   ShieldCheck,
+  Sparkles,
   Swords,
   Trophy,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
 import CommunityBadgePill from "@/components/contact/CommunityBadgePill";
@@ -23,8 +28,13 @@ import TimeDisplayText from "@/components/time/TimeDisplayText";
 import AutoGrowTextarea from "@/components/ui/AutoGrowTextarea";
 import {
   DIRECT_MESSAGE_MAX_CHARS,
+  DIRECT_MESSAGE_QUICK_REACTIONS,
   DIRECT_MESSAGE_REACTIONS,
 } from "@/lib/contactInboxConfig";
+import {
+  type ChatViewMode,
+  useChatViewPreference,
+} from "@/components/contact/chatViewPreference";
 import { AI_CONCIERGE_NAME, AI_CONCIERGE_UID } from "@/lib/aiConciergeConfig";
 import {
   parseClanProtocolMessage,
@@ -410,23 +420,88 @@ function ChallengeThreadStrip({
   );
 }
 
+const CHAT_VIEW_OPTIONS: Array<{
+  mode: ChatViewMode;
+  label: string;
+  title: string;
+  icon: typeof MessageSquare;
+}> = [
+  { mode: "v1", label: "V1", title: "Classic bubbles", icon: MessageSquare },
+  { mode: "v2", label: "V2", title: "Compact lines", icon: LayoutList },
+  { mode: "v3", label: "V3", title: "Obsidian glass", icon: Sparkles },
+];
+
+function ChatViewSwitcher({
+  value,
+  onChange,
+}: {
+  value: ChatViewMode;
+  onChange: (mode: ChatViewMode) => void;
+}) {
+  return (
+    <div
+      className="inline-flex shrink-0 items-center rounded-full border border-white/10 bg-black/25 p-1 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.025)]"
+      role="group"
+      aria-label="Chat appearance"
+    >
+      {CHAT_VIEW_OPTIONS.map((option) => {
+        const Icon = option.icon;
+        const active = value === option.mode;
+        return (
+          <button
+            key={option.mode}
+            type="button"
+            onClick={() => onChange(option.mode)}
+            aria-pressed={active}
+            title={option.title}
+            className={`inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-[10px] font-black uppercase tracking-[0.14em] transition sm:px-3 ${
+              active
+                ? option.mode === "v3"
+                  ? "bg-[linear-gradient(135deg,rgba(45,212,191,0.2),rgba(251,191,36,0.18))] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.14),0_0_20px_rgba(45,212,191,0.08)]"
+                  : "bg-white/[0.12] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)]"
+                : "text-slate-500 hover:bg-white/[0.055] hover:text-slate-200"
+            }`}
+          >
+            <Icon className="h-3 w-3" aria-hidden="true" />
+            {option.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function SummaryButton({
   summary,
   active,
   onClick,
+  viewMode,
 }: {
   summary: ContactInboxSummary;
   active: boolean;
   onClick: () => void;
+  viewMode: ChatViewMode;
 }) {
+  const isLineView = viewMode === "v2";
+  const isObsidianView = viewMode === "v3";
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`w-full rounded-[1.35rem] px-3 py-3 text-left transition ${
+      className={`w-full px-3 text-left transition ${
+        isLineView ? "rounded-md py-2.5" : isObsidianView ? "rounded-[1rem] py-3" : "rounded-[1.35rem] py-3"
+      } ${
         active
-          ? "bg-[#16233a] text-white shadow-[inset_0_0_0_1px_rgba(251,191,36,0.18)]"
-          : "bg-[#111a2c] text-slate-200 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.07)] hover:bg-[#172339]"
+          ? isLineView
+            ? "bg-[#30333a] text-white shadow-[inset_3px_0_0_#6ee7b7]"
+            : isObsidianView
+              ? "bg-[linear-gradient(135deg,rgba(45,212,191,0.11),rgba(251,191,36,0.07))] text-white shadow-[inset_0_0_0_1px_rgba(94,234,212,0.16)]"
+              : "bg-[#16233a] text-white shadow-[inset_0_0_0_1px_rgba(251,191,36,0.18)]"
+          : isLineView
+            ? "text-slate-300 hover:bg-white/[0.055]"
+            : isObsidianView
+              ? "bg-white/[0.025] text-slate-300 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.045)] hover:bg-white/[0.05]"
+              : "bg-[#111a2c] text-slate-200 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.07)] hover:bg-[#172339]"
       }`}
     >
       <div className="flex items-start justify-between gap-3">
@@ -606,14 +681,24 @@ function HonorActions({
   return null;
 }
 
-function DateDivider({ label }: { label: string }) {
+function DateDivider({ label, viewMode }: { label: string; viewMode: ChatViewMode }) {
+  if (viewMode === "v2") {
+    return (
+      <div className="my-3 flex items-center gap-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#8b8d93]">
+        <div className="h-px flex-1 bg-white/10" />
+        {label}
+        <div className="h-px flex-1 bg-white/10" />
+      </div>
+    );
+  }
+
   return (
     <div className="my-3 flex items-center gap-3 py-1">
-      <div className="h-px flex-1 bg-white/7" />
-      <div className="rounded-full bg-white/[0.05] px-3 py-1 text-[11px] uppercase tracking-[0.24em] text-slate-500">
+      <div className={`h-px flex-1 ${viewMode === "v3" ? "bg-gradient-to-r from-transparent to-teal-200/20" : "bg-white/7"}`} />
+      <div className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.24em] ${viewMode === "v3" ? "border border-teal-100/10 bg-teal-200/[0.045] text-teal-100/45" : "bg-white/[0.05] text-slate-500"}`}>
         {label}
       </div>
-      <div className="h-px flex-1 bg-white/7" />
+      <div className={`h-px flex-1 ${viewMode === "v3" ? "bg-gradient-to-l from-transparent to-amber-200/20" : "bg-white/7"}`} />
     </div>
   );
 }
@@ -623,6 +708,7 @@ function TextMessageBubble({
   viewerUid,
   viewerIsAdmin,
   mode,
+  viewMode,
   showMeta,
   onInboxAction,
   onToggleReaction,
@@ -632,6 +718,7 @@ function TextMessageBubble({
   viewerUid: string;
   viewerIsAdmin: boolean;
   mode: "popover" | "page";
+  viewMode: ChatViewMode;
   showMeta: boolean;
   onInboxAction: (action: Record<string, unknown>) => void;
   onToggleReaction?: (messageId: number, emoji: string) => void;
@@ -640,7 +727,13 @@ function TextMessageBubble({
   const isViewer = message.sender.uid === viewerUid;
   const canManageMessage = viewerIsAdmin || isViewer;
   const maxBubbleWidthClass =
-    mode === "page" ? "max-w-[min(96%,56rem)]" : "max-w-[94%] sm:max-w-[82%]";
+    viewMode === "v2"
+      ? "w-full max-w-none"
+      : mode === "page"
+        ? viewMode === "v3"
+          ? "max-w-[min(92%,52rem)]"
+          : "max-w-[min(96%,56rem)]"
+        : "max-w-[94%] sm:max-w-[82%]";
   const messageBodyViewportClass =
     mode === "page" ? "max-h-[min(46vh,28rem)] overflow-y-auto pr-1" : "max-h-48 overflow-y-auto pr-1";
   const canToggleLobbyShare =
@@ -648,10 +741,9 @@ function TextMessageBubble({
   const clanProtocolMessage = parseClanProtocolMessage(message.body);
   const compactChallengeNotice = message.body ? challengeNoticeTone(summarizeChallengeInboxMessage(message.body)) : null;
   const [trayPinnedOpen, setTrayPinnedOpen] = useState(false);
-  const [trayHovered, setTrayHovered] = useState(false);
+  const [reactionMoreOpen, setReactionMoreOpen] = useState(false);
   const [attachmentPreviewFailed, setAttachmentPreviewFailed] = useState(false);
   const holdTimerRef = useRef<number | null>(null);
-  const hoverCloseTimerRef = useRef<number | null>(null);
   const longPressTriggeredRef = useRef(false);
   const bubbleRef = useRef<HTMLDivElement | null>(null);
 
@@ -675,7 +767,6 @@ function TextMessageBubble({
   useEffect(() => {
     return () => {
       clearHoldTimer();
-      clearHoverCloseTimer();
     };
   }, []);
 
@@ -690,20 +781,6 @@ function TextMessageBubble({
     }
   }
 
-  function clearHoverCloseTimer() {
-    if (hoverCloseTimerRef.current) {
-      window.clearTimeout(hoverCloseTimerRef.current);
-      hoverCloseTimerRef.current = null;
-    }
-  }
-
-  function prefersHover() {
-    return (
-      typeof window !== "undefined" &&
-      window.matchMedia("(hover: hover) and (pointer: fine)").matches
-    );
-  }
-
   function beginLongPress(pointerType: string) {
     if (pointerType === "mouse") return;
     longPressTriggeredRef.current = false;
@@ -715,9 +792,6 @@ function TextMessageBubble({
   }
 
   function handleBubbleClick() {
-    if (prefersHover()) {
-      return;
-    }
     if (longPressTriggeredRef.current) {
       longPressTriggeredRef.current = false;
       return;
@@ -725,32 +799,27 @@ function TextMessageBubble({
     setTrayPinnedOpen((current) => !current);
   }
 
-  function handleDesktopHoverStart() {
-    if (!prefersHover()) return;
-    clearHoverCloseTimer();
-    setTrayHovered(true);
-  }
-
-  function handleDesktopHoverEnd() {
-    if (!prefersHover()) return;
-    clearHoverCloseTimer();
-    hoverCloseTimerRef.current = window.setTimeout(() => {
-      setTrayHovered(false);
-    }, 140);
-  }
-
   const bubbleTone = isViewer
-    ? mode === "popover"
-      ? "border border-amber-300/14 bg-[linear-gradient(180deg,rgba(138,94,18,0.96),rgba(103,70,14,0.94))] text-amber-50 shadow-[0_18px_34px_rgba(76,54,15,0.34)]"
-      : "border border-amber-300/10 bg-[linear-gradient(180deg,rgba(251,191,36,0.28),rgba(245,158,11,0.16))] text-amber-50 shadow-[0_16px_32px_rgba(245,158,11,0.12)]"
-    : mode === "popover"
-      ? "border border-slate-200/10 bg-[linear-gradient(180deg,rgba(22,31,47,0.98),rgba(14,21,34,0.96))] text-slate-100 shadow-[0_18px_34px_rgba(2,6,23,0.42)]"
-      : "border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] text-slate-100 shadow-[0_14px_28px_rgba(0,0,0,0.18)]";
+    ? viewMode === "v2"
+      ? "border-l-2 border-emerald-300/55 bg-emerald-300/[0.035] text-slate-100"
+      : viewMode === "v3"
+        ? "border border-amber-100/14 bg-[linear-gradient(135deg,rgba(251,191,36,0.19),rgba(120,53,15,0.14)_58%,rgba(8,15,25,0.84))] text-amber-50 shadow-[0_18px_50px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-xl"
+        : mode === "popover"
+          ? "border border-amber-300/14 bg-[linear-gradient(180deg,rgba(138,94,18,0.96),rgba(103,70,14,0.94))] text-amber-50 shadow-[0_18px_34px_rgba(76,54,15,0.34)]"
+          : "border border-amber-300/10 bg-[linear-gradient(180deg,rgba(251,191,36,0.28),rgba(245,158,11,0.16))] text-amber-50 shadow-[0_16px_32px_rgba(245,158,11,0.12)]"
+    : viewMode === "v2"
+      ? "border-l-2 border-transparent text-slate-200 hover:bg-white/[0.025]"
+      : viewMode === "v3"
+        ? "border border-teal-100/12 bg-[linear-gradient(135deg,rgba(12,28,39,0.92),rgba(8,15,25,0.82))] text-slate-100 shadow-[0_18px_50px_rgba(0,0,0,0.26),inset_0_1px_0_rgba(255,255,255,0.055)] backdrop-blur-xl"
+        : mode === "popover"
+          ? "border border-slate-200/10 bg-[linear-gradient(180deg,rgba(22,31,47,0.98),rgba(14,21,34,0.96))] text-slate-100 shadow-[0_18px_34px_rgba(2,6,23,0.42)]"
+          : "border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] text-slate-100 shadow-[0_14px_28px_rgba(0,0,0,0.18)]";
 
   function handleReactionPick(emoji: string) {
     if (!onToggleReaction) return;
     onToggleReaction(message.messageId, emoji);
     setTrayPinnedOpen(false);
+    setReactionMoreOpen(false);
   }
 
   function handleLobbyShareToggle() {
@@ -759,6 +828,7 @@ function TextMessageBubble({
       messageId: message.messageId,
     });
     setTrayPinnedOpen(false);
+    setReactionMoreOpen(false);
   }
 
   function handleEditMessage() {
@@ -799,31 +869,53 @@ function TextMessageBubble({
     return <ChallengeSystemMessageLine message={message} compactNotice={compactChallengeNotice} />;
   }
 
-  const trayVisible = trayPinnedOpen || trayHovered;
+  const trayVisible = trayPinnedOpen;
   const hasTray = Boolean(onToggleReaction || canToggleLobbyShare || canManageMessage);
+  const secondaryReactions = DIRECT_MESSAGE_REACTIONS.filter(
+    (emoji) => !(DIRECT_MESSAGE_QUICK_REACTIONS as readonly string[]).includes(emoji)
+  );
+  const senderInitial = message.sender.displayName.trim().charAt(0).toUpperCase() || "?";
 
   return (
-    <div className={`flex ${isViewer ? "justify-end" : "justify-start"}`}>
+    <div className={`flex ${viewMode === "v2" ? "justify-start" : isViewer ? "justify-end" : "justify-start"}`}>
       <div
         ref={bubbleRef}
-        className={`group relative min-w-0 max-w-full ${maxBubbleWidthClass}`}
+        className={`group relative min-w-0 max-w-full ${maxBubbleWidthClass} ${viewMode === "v2" ? "py-0.5 pl-9 sm:pl-11" : ""}`}
         onPointerDown={(event) => beginLongPress(event.pointerType)}
         onPointerUp={clearHoldTimer}
         onPointerCancel={clearHoldTimer}
         onPointerLeave={clearHoldTimer}
-        onMouseEnter={handleDesktopHoverStart}
-        onMouseLeave={handleDesktopHoverEnd}
       >
-        {showMeta ? (
+        {viewMode === "v2" && showMeta ? (
+          <div className="mb-0.5 flex items-baseline gap-2 px-2">
+            <span className={`font-semibold ${isViewer ? "text-emerald-200" : "text-white"}`}>
+              {isViewer ? "You" : message.sender.displayName}
+            </span>
+            <span className="text-[10px] font-medium text-[#777a82]">{formatBubbleTime(message.createdAt)}</span>
+          </div>
+        ) : showMeta ? (
           <div className={`mb-1 px-2 text-[11px] uppercase tracking-[0.24em] text-slate-500 ${isViewer ? "text-right" : "text-left"}`}>
-            {formatBubbleTime(message.createdAt)}
+            {viewMode === "v3" && !isViewer ? `${message.sender.displayName} · ` : ""}{formatBubbleTime(message.createdAt)}
+          </div>
+        ) : null}
+
+        {viewMode === "v2" && showMeta ? (
+          <div className={`absolute left-0 top-0 grid h-8 w-8 place-items-center rounded-full text-[11px] font-black sm:h-9 sm:w-9 ${isViewer ? "bg-emerald-300/15 text-emerald-100" : "bg-[#353840] text-slate-100"}`}>
+            {senderInitial}
           </div>
         ) : null}
 
         <div className="relative">
           <div
-            className={`relative rounded-[1.25rem] px-3 py-2.5 sm:rounded-[1.45rem] sm:px-4 sm:py-3 ${bubbleTone}`}
+            className={`relative cursor-default ${
+              viewMode === "v2"
+                ? "rounded-sm px-2 py-1.5 text-[14px]"
+                : viewMode === "v3"
+                  ? "rounded-[1.05rem] px-3.5 py-3 sm:rounded-[1.25rem] sm:px-4"
+                  : "rounded-[1.25rem] px-3 py-2.5 sm:rounded-[1.45rem] sm:px-4 sm:py-3"
+            } ${bubbleTone}`}
             onClick={handleBubbleClick}
+            aria-label="Message. Click or press and hold for reactions and actions."
           >
             {message.body ? (
               <div
@@ -871,24 +963,86 @@ function TextMessageBubble({
                 </div>
               </div>
             ) : null}
+
+            {hasTray && !trayVisible ? (
+              <span className={`pointer-events-none absolute -top-3 ${isViewer && viewMode !== "v2" ? "left-2" : "right-2"} inline-flex h-6 w-6 translate-y-1 items-center justify-center rounded-full border border-white/10 bg-[#0a111d]/95 text-slate-400 opacity-0 shadow-lg transition group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:translate-y-0 group-focus-within:opacity-100`}>
+                <MoreHorizontal className="h-3.5 w-3.5" />
+              </span>
+            ) : null}
           </div>
 
           {hasTray ? (
             <div
-              className={`absolute z-30 max-w-[calc(100vw-2rem)] ${isViewer ? "right-0 sm:right-3" : "left-0 sm:left-3"} top-full mt-2 transition-all duration-150 ${
+              className={`absolute z-40 max-w-[min(22rem,calc(100vw-2rem))] ${isViewer && viewMode !== "v2" ? "right-0 sm:right-2" : "left-0 sm:left-2"} bottom-full mb-2 origin-bottom transition-all duration-150 ${
                 trayVisible
-                  ? "pointer-events-auto translate-y-0 opacity-100"
-                  : "pointer-events-none translate-y-1 opacity-0"
+                  ? "pointer-events-auto translate-y-0 scale-100 opacity-100"
+                  : "pointer-events-none translate-y-1 scale-[0.98] opacity-0"
               }`}
-              onMouseEnter={handleDesktopHoverStart}
-              onMouseLeave={handleDesktopHoverEnd}
             >
-              <div className="inline-flex max-w-full flex-wrap items-center gap-1.5 rounded-[1.15rem] border border-white/10 bg-[#091321] px-2.5 py-2 shadow-[0_22px_48px_rgba(2,6,23,0.6)] sm:gap-2 sm:rounded-full">
+              <div className="max-w-full rounded-[1.15rem] border border-white/12 bg-[#09111d]/[0.98] p-2 shadow-[0_24px_64px_rgba(0,0,0,0.68),inset_0_1px_0_rgba(255,255,255,0.05)] backdrop-blur-2xl">
+                <div className="flex items-center gap-1">
+                  {DIRECT_MESSAGE_QUICK_REACTIONS.map((emoji) => {
+                    const existing = message.reactions.find((reaction) => reaction.emoji === emoji);
+                    const isActive = Boolean(existing?.viewerReacted);
+                    const isTextReaction = emoji === "GG";
+                    return (
+                      <button
+                        key={`${message.messageId}-quick-${emoji}`}
+                        type="button"
+                        onClick={() => handleReactionPick(emoji)}
+                        aria-label={`React ${emoji}`}
+                        aria-pressed={isActive}
+                        disabled={reactingMessageId === message.messageId}
+                        className={`grid h-9 flex-1 min-w-9 place-items-center rounded-full border text-base transition hover:-translate-y-0.5 hover:scale-105 ${
+                          isTextReaction ? "text-[10px] font-black tracking-wide" : ""
+                        } ${
+                          isActive
+                            ? "border-amber-200/35 bg-amber-300/18 text-amber-50"
+                            : "border-transparent bg-white/[0.055] text-slate-100 hover:border-white/14 hover:bg-white/[0.1]"
+                        } disabled:opacity-50`}
+                      >
+                        {emoji}
+                      </button>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    onClick={() => setReactionMoreOpen((current) => !current)}
+                    className={`grid h-9 w-9 shrink-0 place-items-center rounded-full border transition ${reactionMoreOpen ? "rotate-180 border-white/16 bg-white/[0.1] text-white" : "border-transparent bg-white/[0.045] text-slate-400 hover:bg-white/[0.09] hover:text-white"}`}
+                    aria-label={reactionMoreOpen ? "Hide more reactions" : "Show more reactions"}
+                    aria-expanded={reactionMoreOpen}
+                  >
+                    <ChevronDown className="h-4 w-4" />
+                  </button>
+                </div>
+
+                {reactionMoreOpen ? (
+                  <div className="mt-2 grid grid-cols-6 gap-1 border-t border-white/8 pt-2">
+                    {secondaryReactions.map((emoji) => {
+                      const existing = message.reactions.find((reaction) => reaction.emoji === emoji);
+                      return (
+                        <button
+                          key={`${message.messageId}-more-${emoji}`}
+                          type="button"
+                          onClick={() => handleReactionPick(emoji)}
+                          aria-pressed={Boolean(existing?.viewerReacted)}
+                          disabled={reactingMessageId === message.messageId}
+                          className={`grid h-8 min-w-8 place-items-center rounded-full border text-sm transition hover:bg-white/[0.1] ${emoji === "GG" ? "text-[9px] font-black" : ""} ${existing?.viewerReacted ? "border-amber-200/30 bg-amber-300/14" : "border-transparent bg-white/[0.035]"}`}
+                        >
+                          {emoji}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : null}
+
+                {(canToggleLobbyShare || canManageMessage) ? (
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-white/8 pt-2">
                 {canToggleLobbyShare ? (
                   <button
                     type="button"
                     onClick={handleLobbyShareToggle}
-                    className={`inline-flex h-10 items-center justify-center rounded-full border px-3 text-[11px] font-medium uppercase tracking-[0.16em] transition ${
+                    className={`inline-flex h-7 items-center justify-center rounded-full border px-2.5 text-[9px] font-semibold uppercase tracking-[0.12em] transition ${
                       message.sharedLobbyMessageId
                         ? "border-cyan-300/22 bg-cyan-400/10 text-cyan-50 hover:border-cyan-200/30 hover:bg-cyan-400/16"
                         : "border-white/10 bg-white/[0.045] text-slate-200 hover:border-white/18 hover:bg-white/[0.1] hover:text-white"
@@ -897,30 +1051,6 @@ function TextMessageBubble({
                     {message.sharedLobbyMessageId ? "Make Private" : "Make Public"}
                   </button>
                 ) : null}
-
-                {DIRECT_MESSAGE_REACTIONS.map((emoji) => {
-                  const existing = message.reactions.find((reaction) => reaction.emoji === emoji);
-                  const isActive = Boolean(existing?.viewerReacted);
-                  const isTextReaction = emoji === "GG";
-                  return (
-                    <button
-                      key={`${message.messageId}-${emoji}`}
-                      type="button"
-                      onClick={() => handleReactionPick(emoji)}
-                      aria-pressed={isActive}
-                      disabled={reactingMessageId === message.messageId}
-                      className={`inline-flex h-7 items-center justify-center rounded-full border px-2 transition duration-150 ${
-                        isTextReaction ? "min-w-[2.3rem] text-[10px] font-semibold tracking-[0.04em]" : "min-w-7 text-[13px]"
-                      } ${
-                        isActive
-                          ? "border-amber-200/35 bg-amber-300/18 text-amber-50 shadow-[0_0_16px_rgba(251,191,36,0.12),inset_0_0_0_1px_rgba(251,191,36,0.12)]"
-                          : "border-white/9 bg-white/[0.055] text-slate-200 hover:border-amber-200/22 hover:bg-white/[0.09] hover:text-white"
-                      } disabled:cursor-not-allowed disabled:opacity-60`}
-                    >
-                      <span>{emoji}</span>
-                    </button>
-                  );
-                })}
 
                 {canManageMessage ? (
                   <button
@@ -941,6 +1071,8 @@ function TextMessageBubble({
                     Delete
                   </button>
                 ) : null}
+                  </div>
+                ) : null}
               </div>
             </div>
           ) : null}
@@ -948,14 +1080,14 @@ function TextMessageBubble({
 
         {message.reactions.length > 0 ? (
           <div
-            className={`mt-2 flex flex-wrap gap-1.5 px-1 ${isViewer ? "justify-end" : "justify-start"}`}
+            className={`flex flex-wrap gap-1 px-1 ${viewMode === "v2" ? "mt-1 justify-start" : `mt-2 ${isViewer ? "justify-end" : "justify-start"}`}`}
           >
             {message.reactions.map((reaction) => (
               <button
                 key={`${message.messageId}-${reaction.emoji}-summary`}
                 type="button"
                 onClick={() => onToggleReaction?.(message.messageId, reaction.emoji)}
-                className={`inline-flex min-w-[2.65rem] items-center justify-center gap-1 rounded-full border px-2 py-1 text-[10px] font-semibold leading-none transition duration-150 ${
+                className={`inline-flex items-center justify-center gap-1 rounded-full border font-semibold leading-none transition duration-150 ${viewMode === "v2" ? "min-w-[2.35rem] px-1.5 py-0.5 text-[9px]" : "min-w-[2.65rem] px-2 py-1 text-[10px]"} ${
                   reaction.viewerReacted
                     ? "border-amber-200/32 bg-amber-300/15 text-amber-50 shadow-[0_0_14px_rgba(251,191,36,0.10)]"
                     : "border-white/10 bg-white/[0.045] text-slate-300 hover:border-white/18 hover:bg-white/[0.075] hover:text-white"
@@ -1089,8 +1221,10 @@ export default function ContactInboxPanel({
 }: ContactInboxPanelProps) {
   const counterpart = data?.activeCounterpart ?? null;
   const activeTargetUid = data?.activeTargetUid ?? null;
+  const { chatViewMode, setChatViewMode } = useChatViewPreference();
   const timelineViewportRef = useRef<HTMLDivElement | null>(null);
   const timelineBottomRef = useRef<HTMLDivElement | null>(null);
+  const timelineContentRef = useRef<HTMLDivElement | null>(null);
   const lastAutoScrolledTargetUidRef = useRef<string | null>(null);
   const [showTimelineJump, setShowTimelineJump] = useState(false);
   const [typingHudMode, setTypingHudMode] = useState<"steady" | "pulse">("steady");
@@ -1121,20 +1255,42 @@ export default function ContactInboxPanel({
     : ownTypingSteadyLabel;
   const timelineRows = useMemo(() => buildTimelineRows(data?.messages ?? []), [data?.messages]);
   const latestTimelineKey = timelineRows[timelineRows.length - 1]?.key ?? "empty";
+  const isLineView = chatViewMode === "v2";
+  const isObsidianView = chatViewMode === "v3";
   const shellClassName =
-    mode === "page"
-      ? "bg-[linear-gradient(180deg,rgba(15,23,42,0.98),rgba(2,6,23,0.98))]"
-      : "bg-[linear-gradient(180deg,rgba(7,12,22,1),rgba(4,8,16,1))]";
+    isLineView
+      ? "bg-[#1e1f22]"
+      : isObsidianView
+        ? "bg-[radial-gradient(circle_at_12%_0%,rgba(45,212,191,0.11),transparent_34%),radial-gradient(circle_at_96%_100%,rgba(251,191,36,0.10),transparent_38%),linear-gradient(145deg,#071019,#03070d_68%)]"
+        : mode === "page"
+          ? "bg-[linear-gradient(180deg,rgba(15,23,42,0.98),rgba(2,6,23,0.98))]"
+          : "bg-[linear-gradient(180deg,rgba(7,12,22,1),rgba(4,8,16,1))]";
   const chromeClassName =
-    mode === "page"
-      ? "border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01))]"
-      : "border-slate-200/12 bg-[#101a2c]";
-  const railClassName = mode === "page" ? "bg-white/[0.02]" : "bg-[#0b1423]";
-  const composerClassName = mode === "page" ? "bg-white/[0.015]" : "bg-[#0d1625]";
+    isLineView
+      ? "border-white/10 bg-[#2b2d31]"
+      : isObsidianView
+        ? "border-white/8 bg-black/15 backdrop-blur-2xl"
+        : mode === "page"
+          ? "border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01))]"
+          : "border-slate-200/12 bg-[#101a2c]";
+  const railClassName = isLineView
+    ? "bg-[#25262b]"
+    : isObsidianView
+      ? "bg-black/10"
+      : mode === "page" ? "bg-white/[0.02]" : "bg-[#0b1423]";
+  const composerClassName = isLineView
+    ? "bg-[#292b30]"
+    : isObsidianView
+      ? "bg-[linear-gradient(180deg,rgba(4,10,17,0.72),rgba(2,6,12,0.9))]"
+      : mode === "page" ? "bg-white/[0.015]" : "bg-[#0d1625]";
   const plainComposerInputClassName =
-    mode === "page"
-      ? "bg-white/[0.055] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]"
-      : "bg-[#0a1220] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]";
+    isLineView
+      ? "rounded-md bg-[#383a40] shadow-none"
+      : isObsidianView
+        ? "border border-teal-100/10 bg-white/[0.04] shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_10px_30px_rgba(0,0,0,0.18)]"
+        : mode === "page"
+          ? "bg-white/[0.055] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]"
+          : "bg-[#0a1220] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]";
 
   function pulseOwnTypingHud() {
     if (typeof window === "undefined") return;
@@ -1232,7 +1388,7 @@ export default function ContactInboxPanel({
     }
   }, [body, typingHudMode]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (typeof window === "undefined") return;
     if (!timelineRows.length) return;
 
@@ -1250,42 +1406,42 @@ export default function ContactInboxPanel({
 
     lastAutoScrolledTargetUidRef.current = activeTargetUid;
 
-    let secondFrame = 0;
     const scrollToLatest = () => {
-      timelineBottomRef.current?.scrollIntoView({ block: "end" });
-      viewport.scrollTo({
-        top: viewport.scrollHeight,
-        behavior: "auto",
-      });
+      viewport.scrollTop = viewport.scrollHeight;
       setShowTimelineJump(false);
     };
 
-    const timeout = window.setTimeout(() => {
-      scrollToLatest();
-    }, 140);
-
-    const frame = window.requestAnimationFrame(() => {
-      scrollToLatest();
-      secondFrame = window.requestAnimationFrame(() => {
-        scrollToLatest();
-      });
-    });
+    scrollToLatest();
+    const frame = window.requestAnimationFrame(scrollToLatest);
 
     return () => {
-      window.clearTimeout(timeout);
       window.cancelAnimationFrame(frame);
-      window.cancelAnimationFrame(secondFrame);
     };
-  }, [activeTargetUid, latestTimelineKey, loading, timelineRows.length]);
+  }, [activeTargetUid, chatViewMode, latestTimelineKey, loading, timelineRows.length]);
+
+  useEffect(() => {
+    const viewport = timelineViewportRef.current;
+    const content = timelineContentRef.current;
+    if (!viewport || !content || typeof ResizeObserver === "undefined") return;
+
+    const observer = new ResizeObserver(() => {
+      const distanceFromBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
+      if (distanceFromBottom < 220) {
+        viewport.scrollTop = viewport.scrollHeight;
+      }
+    });
+    observer.observe(content);
+    return () => observer.disconnect();
+  }, [activeTargetUid, timelineRows.length]);
 
   return (
     <div
-      className={`relative isolate flex min-h-0 flex-col overflow-hidden rounded-[1.25rem] text-white shadow-[0_28px_120px_rgba(0,0,0,0.45),0_0_42px_rgba(16,185,129,0.08)] sm:rounded-[1.6rem] ${shellClassName} ${
+      className={`relative isolate flex min-h-0 flex-col overflow-hidden text-white ${isLineView ? "rounded-lg" : isObsidianView ? "rounded-[1.1rem] shadow-[0_38px_130px_rgba(0,0,0,0.62),0_0_50px_rgba(45,212,191,0.055)] sm:rounded-[1.35rem]" : "rounded-[1.25rem] shadow-[0_28px_120px_rgba(0,0,0,0.45),0_0_42px_rgba(16,185,129,0.08)] sm:rounded-[1.6rem]"} ${shellClassName} ${
         mode === "page"
           ? "h-full max-h-full flex-1 shadow-[0_32px_140px_rgba(0,0,0,0.5)]"
           : "h-full w-full shadow-[0_34px_120px_rgba(2,6,23,0.82)]"
       }`}
-      style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.07), 0 32px 120px rgba(0,0,0,0.45)" }}
+      style={{ boxShadow: isLineView ? "inset 0 0 0 1px rgba(255,255,255,0.08)" : undefined }}
     >
       <div className={`shrink-0 border-b px-3 py-2.5 sm:px-4 sm:py-3 ${chromeClassName}`}>
         <div className="flex items-start justify-between gap-3">
@@ -1313,9 +1469,12 @@ export default function ContactInboxPanel({
               </div>
             ) : null}
           </div>
-          {unreadCount > 0 ? (
-            <div className="rounded-full bg-red-500/90 px-3 py-1 text-xs text-white">{unreadCount} unread</div>
-          ) : null}
+          <div className="flex shrink-0 flex-col items-end gap-2">
+            <ChatViewSwitcher value={chatViewMode} onChange={setChatViewMode} />
+            {unreadCount > 0 ? (
+              <div className="rounded-full bg-red-500/90 px-3 py-1 text-xs text-white">{unreadCount} unread</div>
+            ) : null}
+          </div>
         </div>
 
         {counterpart?.badges.length ? (
@@ -1339,7 +1498,7 @@ export default function ContactInboxPanel({
       <div
         className={
           showConversationRail
-            ? "grid min-h-0 flex-1 lg:grid-cols-[15rem_minmax(0,1fr)]"
+            ? `grid min-h-0 flex-1 ${isLineView ? "lg:grid-cols-[13rem_minmax(0,1fr)]" : "lg:grid-cols-[15rem_minmax(0,1fr)]"}`
             : "flex min-h-0 flex-1 flex-col"
         }
       >
@@ -1352,6 +1511,7 @@ export default function ContactInboxPanel({
                   summary={summary}
                   active={summary.targetUid === activeTargetUid}
                   onClick={() => onSelectConversation(summary.targetUid)}
+                  viewMode={chatViewMode}
                 />
               ))}
             </div>
@@ -1383,7 +1543,7 @@ export default function ContactInboxPanel({
             <div
               ref={timelineViewportRef}
               onScroll={handleTimelineScroll}
-              className="h-full min-h-0 overflow-y-auto overscroll-contain px-3 py-3 sm:px-4 sm:py-4"
+              className={`h-full min-h-0 overflow-y-auto overscroll-contain ${isLineView ? "px-2 py-2 sm:px-3" : isObsidianView ? "px-3 py-4 sm:px-5 sm:py-5" : "px-3 py-3 sm:px-4 sm:py-4"}`}
             >
             {loading ? (
               <div className="rounded-[1.35rem] bg-white/[0.045] px-4 py-5 text-sm text-slate-300 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]">
@@ -1402,10 +1562,10 @@ export default function ContactInboxPanel({
                 {data?.viewer.isAdmin ? "No messages in this thread yet." : "No messages yet. Say hello."}
               </div>
             ) : (
-              <div className="space-y-3">
+              <div ref={timelineContentRef} className={isLineView ? "space-y-0.5" : isObsidianView ? "space-y-4" : "space-y-3"}>
                 {timelineRows.map((row) =>
                   row.type === "date" ? (
-                    <DateDivider key={row.key} label={row.label} />
+                    <DateDivider key={row.key} label={row.label} viewMode={chatViewMode} />
                   ) : row.message.kind === "text" ? (
                     <TextMessageBubble
                       key={row.key}
@@ -1413,6 +1573,7 @@ export default function ContactInboxPanel({
                       viewerUid={data?.viewer.uid || ""}
                       viewerIsAdmin={Boolean(data?.viewer.isAdmin)}
                       mode={mode}
+                      viewMode={chatViewMode}
                       showMeta={row.showMeta}
                       onInboxAction={onInboxAction}
                       onToggleReaction={onToggleReaction}
@@ -1456,26 +1617,6 @@ export default function ContactInboxPanel({
               </button>
             ) : null}
 
-            <button
-              type="button"
-              onClick={toggleTypingHudMode}
-              className={`absolute bottom-4 left-4 z-30 inline-flex h-4 w-4 items-center justify-center rounded-full border transition hover:scale-110 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-200/25 ${
-                premiumTypingHud
-                  ? "border-emerald-200/20 bg-emerald-300/[0.075] shadow-[0_0_14px_rgba(110,231,183,0.18)]"
-                  : "border-white/12 bg-white/[0.055] shadow-[0_0_10px_rgba(148,163,184,0.10)]"
-              }`}
-              aria-label="Toggle typing display"
-              aria-pressed={premiumTypingHud}
-            >
-              <span
-                className={`h-1.5 w-1.5 rounded-full transition ${
-                  premiumTypingHud
-                    ? "bg-emerald-200/90 shadow-[0_0_12px_rgba(110,231,183,0.55)]"
-                    : "bg-slate-300/45 shadow-[0_0_8px_rgba(148,163,184,0.22)]"
-                }`}
-                aria-hidden="true"
-              />
-            </button>
           </div>
 
           {centerTypingLabel ? (
@@ -1491,7 +1632,28 @@ export default function ContactInboxPanel({
             </div>
           ) : null}
 
-          <div className={`shrink-0 border-t px-3 py-3 sm:px-4 sm:py-4 ${chromeClassName} ${composerClassName}`}>
+          <div className={`relative shrink-0 border-t px-3 pb-3 pt-4 sm:px-4 sm:pb-4 sm:pt-5 ${chromeClassName} ${composerClassName}`}>
+            <button
+              type="button"
+              onClick={toggleTypingHudMode}
+              className={`absolute bottom-2.5 left-3 z-30 inline-flex h-4 w-4 items-center justify-center rounded-full border transition hover:scale-110 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-200/25 sm:bottom-3 sm:left-4 ${
+                premiumTypingHud
+                  ? "border-emerald-200/20 bg-emerald-300/[0.075] shadow-[0_0_14px_rgba(110,231,183,0.18)]"
+                  : "border-white/12 bg-white/[0.055] shadow-[0_0_10px_rgba(148,163,184,0.10)]"
+              }`}
+              aria-label="Toggle typing display"
+              aria-pressed={premiumTypingHud}
+              title={premiumTypingHud ? "Typing indicator: pulse" : "Typing indicator: steady"}
+            >
+              <span
+                className={`h-1.5 w-1.5 rounded-full transition ${
+                  premiumTypingHud
+                    ? "bg-emerald-200/90 shadow-[0_0_12px_rgba(110,231,183,0.55)]"
+                    : "bg-slate-300/45 shadow-[0_0_8px_rgba(148,163,184,0.22)]"
+                }`}
+                aria-hidden="true"
+              />
+            </button>
             {richComposer ? (
               richComposer
             ) : (
@@ -1512,13 +1674,13 @@ export default function ContactInboxPanel({
                     }
                   }}
                   placeholder={buildPrompt(data, counterpart)}
-                  className={`min-w-0 flex-1 rounded-[1.25rem] px-4 py-3 text-sm leading-6 text-white outline-none placeholder:text-slate-500 transition focus:shadow-[inset_0_0_0_1px_rgba(251,191,36,0.25)] ${plainComposerInputClassName}`}
+                  className={`min-w-0 flex-1 ${isLineView ? "rounded-md" : "rounded-[1.25rem]"} px-4 py-3 text-sm leading-6 text-white outline-none placeholder:text-slate-500 transition focus:shadow-[inset_0_0_0_1px_rgba(251,191,36,0.25)] ${plainComposerInputClassName}`}
                 />
                 <button
                   type="button"
                   onClick={onSend}
                   disabled={sendPending || !body.trim() || Boolean(data?.unavailableReason)}
-                  className="min-h-11 rounded-full bg-amber-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-50 sm:self-end"
+                  className={`min-h-11 bg-amber-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-50 sm:self-end ${isLineView ? "rounded-md" : "rounded-full"}`}
                 >
                   {sendPending ? "Sending..." : "Send"}
                 </button>

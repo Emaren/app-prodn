@@ -272,21 +272,14 @@ export default function ContactEmarenWorkspace() {
 
     (async () => {
       const initialTargetUid = requestedUser ?? selectedTargetUidRef.current ?? null;
-      const summaryPayload = await refreshSummary(initialTargetUid, { silent: false });
+      await refreshPanel(initialTargetUid, { silent: false });
       if (cancelled) return;
-
-      const targetUid = initialTargetUid ?? summaryPayload?.activeTargetUid ?? null;
-      if (targetUid) {
-        await refreshPanel(targetUid, { silent: false });
-      } else if (summaryPayload) {
-        setPanelData(summaryPayload);
-      }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [clearAttachment, refreshPanel, refreshSummary, requestedUser, uid]);
+  }, [clearAttachment, refreshPanel, requestedUser, uid]);
 
   useEffect(() => {
     if (!uid) return;

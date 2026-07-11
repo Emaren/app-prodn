@@ -129,6 +129,10 @@ Current strengths:
 
 Current strengths:
 - direct-line experience exists and is usable
+- Nav Chat and Full Chat expose the same persisted V1/V2/V3 preference: upgraded classic bubbles, compact line chat, and obsidian glass
+- initial full-chat load uses one complete thread request, Nav Chat keeps a warm per-thread cache, and the timeline anchors to the latest message without delayed multi-jump scrolling
+- reactions use a deliberate click/long-press quick bar with six AoE2-relevant choices and a compact expansion rail instead of an automatic hover takeover
+- the typing-display control sits in the lower-left composer/footer area rather than over message content
 - message receipts are quieter and more premium
 - gifts and badges flow through chat
 - unread counts and read state exist
