@@ -23,7 +23,7 @@ import {
   Swords,
   Trophy,
 } from "lucide-react";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
 import CommunityBadgePill from "@/components/contact/CommunityBadgePill";
@@ -1459,7 +1459,7 @@ export default function ContactInboxPanel({
     });
   }
 
-  function updateTimelineJumpButton() {
+  const updateTimelineJumpButton = useCallback(() => {
     const viewport = timelineViewportRef.current;
     if (!viewport) return;
 
@@ -1471,7 +1471,7 @@ export default function ContactInboxPanel({
     shouldStickToBottomRef.current = distanceFromBottom < 220;
 
     setShowTimelineJump((current) => (current === shouldShow ? current : shouldShow));
-  }
+  }, [mode]);
 
   function scrollTimelineToBottom(behavior: ScrollBehavior = "smooth") {
     const viewport = timelineViewportRef.current;
@@ -1578,7 +1578,7 @@ export default function ContactInboxPanel({
     const handleDocumentScroll = () => updateTimelineJumpButton();
     window.addEventListener("scroll", handleDocumentScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleDocumentScroll);
-  }, [mode]);
+  }, [mode, updateTimelineJumpButton]);
 
   useLayoutEffect(() => {
     if (typeof window === "undefined") return;
@@ -1617,7 +1617,7 @@ export default function ContactInboxPanel({
     return () => {
       window.cancelAnimationFrame(frame);
     };
-  }, [activeTargetUid, chatViewMode, latestTimelineKey, loading, timelineRows.length]);
+  }, [activeTargetUid, chatViewMode, latestTimelineKey, loading, mode, timelineRows.length, updateTimelineJumpButton]);
 
   useEffect(() => {
     const viewport = timelineViewportRef.current;
