@@ -42,6 +42,7 @@ All three modes are available in Nav Chat and Full Chat. A selection made in eit
 - A single follow-up animation frame accounts for final layout; the old timeout plus multiple-frame scroll sequence is intentionally retired.
 - A resize observer keeps the viewport pinned when late-loading message content changes height and the user was already near the bottom.
 - Scrolling upward preserves the reader's position and reveals the explicit jump-to-latest control.
+- `/contact-emaren` must keep the application shell on normal document flow; do not apply a route-wide `100dvh` / `overflow-y-hidden` lock. Wheel and trackpad input from the outer page gutters is forwarded to the full-page message timeline.
 - Full Chat loads the complete initial thread in one request instead of fetching the summary and full payload sequentially.
 - Nav Chat keeps warm per-thread payloads so revisiting a conversation paints immediately while a silent refresh reconciles it.
 - The typing-display toggle belongs in the lower-left composer/footer area, outside the message viewport.
@@ -56,4 +57,3 @@ For changes to this surface, verify:
 4. Upward reading is not pulled back to the bottom by polling.
 5. The reaction picker stays inside the chat shell at desktop and narrow popover widths.
 6. Quick and expanded reactions, edit/delete, receipts, typing, attachments, and send behavior still work.
-

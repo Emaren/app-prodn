@@ -1547,6 +1547,7 @@ export default function ContactInboxPanel({
             <div
               ref={timelineViewportRef}
               onScroll={handleTimelineScroll}
+              data-contact-chat-scroll={mode}
               className={`h-full min-h-0 overflow-y-auto overscroll-contain ${isLineView ? "px-2 py-2 sm:px-3" : isObsidianView ? "px-3 py-4 sm:px-5 sm:py-5" : "px-3 py-3 sm:px-4 sm:py-4"}`}
             >
             {loading ? (

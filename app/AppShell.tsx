@@ -415,6 +415,24 @@ function InnerShell({ children }: { children: React.ReactNode }) {
     [themeKey, viewMode]
   );
 
+  function handleContactShellWheel(event: React.WheelEvent<HTMLDivElement>) {
+    if (!isContactPage || event.deltaY === 0) return;
+
+    const target = event.target as HTMLElement;
+    if (target.closest('[data-contact-chat-scroll="page"]')) return;
+
+    const timeline = event.currentTarget.querySelector<HTMLElement>(
+      '[data-contact-chat-scroll="page"]'
+    );
+    if (!timeline || timeline.scrollHeight <= timeline.clientHeight) return;
+
+    const previousScrollTop = timeline.scrollTop;
+    timeline.scrollTop += event.deltaY;
+    if (timeline.scrollTop !== previousScrollTop) {
+      event.preventDefault();
+    }
+  }
+
   React.useEffect(() => {
     let cancelled = false;
 
@@ -456,9 +474,8 @@ function InnerShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div
-      className={`${isAcademySurface ? "academy-route-shell" : ""} flex w-full flex-col overflow-x-hidden text-white transition-[background-image,background-color] duration-500 ${
-        isContactPage ? "h-[100dvh] overflow-y-hidden" : "min-h-screen"
-      }`}
+      className={`${isAcademySurface ? "academy-route-shell" : ""} flex min-h-screen w-full flex-col overflow-x-hidden text-white transition-[background-image,background-color] duration-500`}
+      onWheel={handleContactShellWheel}
       style={
         isAcademySurface
           ? {
@@ -667,7 +684,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                       : isExtremePlayerProfileSurface ? "max-w-[90rem]" : "max-w-6xl"
               }`
         } ${isAcademySurface ? "academy-shell-skin" : ""} ${
-          isContactPage ? "overflow-hidden" : isMediaManagerSurface || isHeroStudioSurface ? "overflow-x-visible" : "overflow-x-hidden"
+          isContactPage ? "overflow-x-hidden overflow-y-visible" : isMediaManagerSurface || isHeroStudioSurface ? "overflow-x-visible" : "overflow-x-hidden"
         }`}
       >
         <GlobalInstallAppPrompt />
