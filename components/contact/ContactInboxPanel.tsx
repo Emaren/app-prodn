@@ -716,6 +716,7 @@ function TextMessageBubble({
   mode,
   viewMode,
   showMeta,
+  showReceipt,
   onInboxAction,
   onToggleReaction,
   reactingMessageId,
@@ -729,6 +730,7 @@ function TextMessageBubble({
   mode: "popover" | "page";
   viewMode: ChatViewMode;
   showMeta: boolean;
+  showReceipt: boolean;
   onInboxAction: (action: Record<string, unknown>) => void;
   onToggleReaction?: (messageId: number, emoji: string) => void;
   reactingMessageId?: number | null;
@@ -754,6 +756,7 @@ function TextMessageBubble({
   const clanProtocolMessage = parseClanProtocolMessage(message.body);
   const compactChallengeNotice = message.body ? challengeNoticeTone(summarizeChallengeInboxMessage(message.body)) : null;
   const [trayPinnedOpen, setTrayPinnedOpen] = useState(false);
+  const [trayPlacement, setTrayPlacement] = useState<"above" | "below">("above");
   const [reactionMoreOpen, setReactionMoreOpen] = useState(false);
   const [attachmentPreviewFailed, setAttachmentPreviewFailed] = useState(false);
   const [languagePending, setLanguagePending] = useState(false);
@@ -803,8 +806,18 @@ function TextMessageBubble({
     clearHoldTimer();
     holdTimerRef.current = window.setTimeout(() => {
       longPressTriggeredRef.current = true;
+      updateTrayPlacement();
       setTrayPinnedOpen(true);
     }, 360);
+  }
+
+  function updateTrayPlacement() {
+    const bubble = bubbleRef.current;
+    const timeline = bubble?.closest<HTMLElement>("[data-contact-chat-scroll]");
+    if (!bubble || !timeline) return;
+    const bubbleRect = bubble.getBoundingClientRect();
+    const timelineRect = timeline.getBoundingClientRect();
+    setTrayPlacement(bubbleRect.top - timelineRect.top < 190 ? "below" : "above");
   }
 
   function handleBubbleClick() {
@@ -812,7 +825,12 @@ function TextMessageBubble({
       longPressTriggeredRef.current = false;
       return;
     }
-    setTrayPinnedOpen((current) => !current);
+    if (trayPinnedOpen) {
+      setTrayPinnedOpen(false);
+      return;
+    }
+    updateTrayPlacement();
+    setTrayPinnedOpen(true);
   }
 
   const bubbleTone = isViewer
@@ -931,7 +949,7 @@ function TextMessageBubble({
   const senderInitial = message.sender.displayName.trim().charAt(0).toUpperCase() || "?";
 
   return (
-    <div className={`[content-visibility:auto] [contain-intrinsic-size:auto_96px] flex ${viewMode === "v2" ? "justify-start" : isViewer ? "justify-end" : "justify-start"}`}>
+    <div className={`${trayVisible ? "relative z-50 [content-visibility:visible]" : "[content-visibility:auto] [contain-intrinsic-size:auto_96px]"} flex ${viewMode === "v2" ? "justify-start" : isViewer ? "justify-end" : "justify-start"}`}>
       <div
         ref={bubbleRef}
         className={`group relative min-w-0 max-w-full ${maxBubbleWidthClass} ${viewMode === "v2" ? "py-0.5 pl-9 sm:pl-11" : ""}`}
@@ -1062,7 +1080,7 @@ function TextMessageBubble({
 
           {hasTray ? (
             <div
-              className={`absolute z-40 max-w-[min(22rem,calc(100vw-2rem))] ${isViewer && viewMode !== "v2" ? "right-0 sm:right-2" : "left-0 sm:left-2"} bottom-full mb-2 origin-bottom transition-all duration-150 ${
+              className={`absolute z-40 max-w-[min(22rem,calc(100vw-2rem))] ${isViewer && viewMode !== "v2" ? "right-0 sm:right-2" : "left-0 sm:left-2"} ${trayPlacement === "above" ? "bottom-full mb-2 origin-bottom" : "top-full mt-2 origin-top"} transition-all duration-150 ${
                 trayVisible
                   ? "pointer-events-auto translate-y-0 scale-100 opacity-100"
                   : "pointer-events-none translate-y-1 scale-[0.98] opacity-0"
@@ -1208,7 +1226,9 @@ function TextMessageBubble({
           </div>
         ) : null}
 
-        <ReceiptLine message={message} onRetry={message.receipt?.status === "failed" ? () => onRetryOptimistic?.(message) : undefined} />
+        {showReceipt ? (
+          <ReceiptLine message={message} onRetry={message.receipt?.status === "failed" ? () => onRetryOptimistic?.(message) : undefined} />
+        ) : null}
       </div>
     </div>
   );
@@ -1374,6 +1394,18 @@ export default function ContactInboxPanel({
     ? typingLabel || ownTypingPulseLabel
     : ownTypingSteadyLabel;
   const timelineRows = useMemo(() => buildTimelineRows(data?.messages ?? []), [data?.messages]);
+  const latestOutgoingMessageId = useMemo(() => {
+    const viewerUid = data?.viewer.uid;
+    if (!viewerUid) return null;
+    const messages = data?.messages ?? [];
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+      const message = messages[index];
+      if (message.kind === "text" && message.sender.uid === viewerUid) {
+        return message.messageId;
+      }
+    }
+    return null;
+  }, [data?.messages, data?.viewer.uid]);
   const latestTimelineKey = timelineRows[timelineRows.length - 1]?.key ?? "empty";
   const isLineView = chatViewMode === "v2";
   const isObsidianView = chatViewMode === "v3";
@@ -1774,6 +1806,7 @@ export default function ContactInboxPanel({
                       mode={mode}
                       viewMode={chatViewMode}
                       showMeta={row.showMeta}
+                      showReceipt={row.message.messageId === latestOutgoingMessageId}
                       onInboxAction={onInboxAction}
                       onToggleReaction={onToggleReaction}
                       reactingMessageId={reactingMessageId}
