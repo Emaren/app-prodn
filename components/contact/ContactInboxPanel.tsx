@@ -451,7 +451,7 @@ function ChatViewSwitcher({
 }) {
   return (
     <div
-      className="inline-flex shrink-0 items-center rounded-full border border-white/10 bg-black/25 p-1 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.025)]"
+      className="inline-flex shrink-0 items-center rounded-full border border-white/10 bg-black/25 p-0.5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.025)] sm:p-1"
       role="group"
       aria-label="Chat appearance"
     >
@@ -465,7 +465,7 @@ function ChatViewSwitcher({
             onClick={() => onChange(option.mode)}
             aria-pressed={active}
             title={option.title}
-            className={`inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-[10px] font-black uppercase tracking-[0.14em] transition sm:px-3 ${
+            className={`inline-flex h-7 items-center gap-1 rounded-full px-2 text-[9px] font-black uppercase tracking-[0.11em] transition sm:h-8 sm:gap-1.5 sm:px-3 sm:text-[10px] sm:tracking-[0.14em] ${
               active
                 ? option.mode === "v3"
                   ? "bg-[linear-gradient(135deg,rgba(45,212,191,0.2),rgba(251,191,36,0.18))] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.14),0_0_20px_rgba(45,212,191,0.08)]"
@@ -473,7 +473,7 @@ function ChatViewSwitcher({
                 : "text-slate-500 hover:bg-white/[0.055] hover:text-slate-200"
             }`}
           >
-            <Icon className="h-3 w-3" aria-hidden="true" />
+            <Icon className="hidden h-3 w-3 min-[390px]:block" aria-hidden="true" />
             {option.label}
           </button>
         );
@@ -1648,41 +1648,36 @@ export default function ContactInboxPanel({
       style={{ boxShadow: isLineView ? "inset 0 0 0 1px rgba(255,255,255,0.08)" : undefined }}
     >
       <div className={`shrink-0 border-b px-3 py-2.5 sm:px-4 sm:py-3 ${chromeClassName}`}>
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="text-[11px] uppercase tracking-[0.32em] text-emerald-200/70">
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0 text-[10px] uppercase tracking-[0.28em] text-emerald-200/70 sm:text-[11px] sm:tracking-[0.32em]">
               {counterpart?.threadKind === "ai"
                 ? "AI scribe"
                 : data?.viewer.isAdmin
                   ? "Private inbox"
                   : "Direct line"}
-            </div>
-            <h2 className="mt-1.5 break-words text-lg font-semibold text-white sm:mt-2 sm:truncate sm:text-xl">
-              {heading}
-            </h2>
-            {counterpart ? (
-              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-400">
-                <span>
-                  {counterpart.threadKind === "ai"
-                    ? "Private AI scribe thread with site context"
-                    : counterpart.isAdmin
-                      ? "Private thread with Emaren"
-                      : "Private community thread"}
-                </span>
-                {counterpart.giftedWolo > 0 ? <span>· {counterpart.giftedWolo} WOLO gifted</span> : null}
-              </div>
-            ) : null}
           </div>
-          <div className="flex shrink-0 flex-col items-end gap-2">
-            <div className="flex items-center gap-1.5">
-              <button type="button" onClick={() => { setSearchOpen((current) => !current); setPinsOpen(false); }} className="grid h-8 w-8 place-items-center rounded-full border border-white/10 bg-white/[0.045] text-slate-300 transition hover:bg-white/[0.09] hover:text-white" aria-label="Search messages"><Search className="h-3.5 w-3.5" /></button>
-              <button type="button" onClick={() => { setPinsOpen((current) => !current); setSearchOpen(false); }} className="relative grid h-8 w-8 place-items-center rounded-full border border-white/10 bg-white/[0.045] text-slate-300 transition hover:bg-white/[0.09] hover:text-white" aria-label="Pinned messages"><Pin className="h-3.5 w-3.5" />{data?.pinnedMessages.length ? <span className="absolute -right-1 -top-1 rounded-full bg-amber-300 px-1 text-[9px] font-black text-slate-950">{data.pinnedMessages.length}</span> : null}</button>
+          <div className="flex shrink-0 items-center gap-1 sm:gap-1.5">
+              <button type="button" onClick={() => { setSearchOpen((current) => !current); setPinsOpen(false); }} className="grid h-7 w-7 place-items-center rounded-full border border-white/10 bg-white/[0.045] text-slate-300 transition hover:bg-white/[0.09] hover:text-white sm:h-8 sm:w-8" aria-label="Search messages"><Search className="h-3.5 w-3.5" /></button>
+              <button type="button" onClick={() => { setPinsOpen((current) => !current); setSearchOpen(false); }} className="relative grid h-7 w-7 place-items-center rounded-full border border-white/10 bg-white/[0.045] text-slate-300 transition hover:bg-white/[0.09] hover:text-white sm:h-8 sm:w-8" aria-label="Pinned messages"><Pin className="h-3.5 w-3.5" />{data?.pinnedMessages.length ? <span className="absolute -right-1 -top-1 rounded-full bg-amber-300 px-1 text-[9px] font-black text-slate-950">{data.pinnedMessages.length}</span> : null}</button>
               <ChatViewSwitcher value={chatViewMode} onChange={setChatViewMode} />
-            </div>
-            {unreadCount > 0 ? (
-              <div className="rounded-full bg-red-500/90 px-3 py-1 text-xs text-white">{unreadCount} unread</div>
-            ) : null}
           </div>
+        </div>
+
+        <div className="mt-2 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5 sm:mt-2.5">
+          <h2 className="min-w-0 break-words text-lg font-semibold leading-tight text-white sm:truncate sm:text-xl">
+            {heading}
+          </h2>
+          {counterpart?.badges.map((badge) => (
+            <CommunityBadgePill key={badge.id} label={badge.label} />
+          ))}
+          {counterpart && counterpart.giftedWolo > 0 ? (
+            <span className="rounded-full border border-amber-200/15 bg-amber-300/[0.06] px-2 py-1 text-[10px] font-medium text-amber-100/80">
+              {counterpart.giftedWolo} WOLO gifted
+            </span>
+          ) : null}
+          {unreadCount > 0 ? (
+            <span className="rounded-full bg-red-500/90 px-2 py-1 text-[10px] font-semibold text-white">{unreadCount} unread</span>
+          ) : null}
         </div>
 
         {searchOpen ? (
@@ -1698,14 +1693,6 @@ export default function ContactInboxPanel({
         {pinsOpen ? (
           <div className="mt-3 max-h-44 space-y-1 overflow-y-auto rounded-xl border border-amber-200/12 bg-amber-300/[0.035] p-2">
             {data?.pinnedMessages.length ? data.pinnedMessages.map((message) => <button key={message.messageId} type="button" onClick={() => focusMessage(message.messageId)} className="block w-full rounded-lg px-3 py-2 text-left transition hover:bg-white/[0.06]"><div className="text-[10px] text-amber-100/55">{message.sender.displayName} · {formatTimestamp(message.createdAt)}</div><div className="mt-0.5 line-clamp-2 text-xs text-slate-200">{message.body || message.transcription || "Attachment"}</div></button>) : <div className="px-3 py-2 text-xs text-slate-400">No pinned messages yet.</div>}
-          </div>
-        ) : null}
-
-        {counterpart?.badges.length ? (
-          <div className="mt-3 flex flex-wrap gap-2">
-            {counterpart.badges.map((badge) => (
-              <CommunityBadgePill key={badge.id} label={badge.label} />
-            ))}
           </div>
         ) : null}
 
@@ -1744,13 +1731,13 @@ export default function ContactInboxPanel({
 
         <div className="flex min-h-0 flex-1 flex-col">
           {showConversationChips ? (
-            <div className={`flex shrink-0 gap-2 overflow-x-auto overscroll-contain border-b px-3 py-2.5 sm:px-4 sm:py-3 ${chromeClassName}`}>
+            <div className={`flex shrink-0 gap-2 overflow-x-auto overscroll-contain border-b px-3 py-2 sm:px-4 sm:py-3 ${chromeClassName}`}>
               {data?.summaries.map((summary) => (
                 <button
                   key={summary.targetUid}
                   type="button"
                   onClick={() => onSelectConversation(summary.targetUid)}
-                  className={`rounded-full px-3 py-1.5 text-xs transition ${
+                  className={`whitespace-nowrap rounded-full px-3 py-1.5 text-xs transition ${
                     summary.targetUid === activeTargetUid
                       ? "bg-emerald-400/12 text-emerald-100 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.18)]"
                       : "bg-white/[0.05] text-slate-300 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)] hover:bg-white/[0.08]"
@@ -1868,7 +1855,7 @@ export default function ContactInboxPanel({
             </div>
           ) : null}
 
-          <div className={`relative shrink-0 border-t px-3 pb-3 pt-4 sm:px-4 sm:pb-4 sm:pt-5 ${chromeClassName} ${composerClassName}`}>
+          <div className={`relative shrink-0 border-t px-3 pb-2.5 pt-2.5 sm:px-4 sm:pb-4 sm:pt-4 ${chromeClassName} ${composerClassName}`}>
             <button
               type="button"
               onClick={toggleTypingHudMode}
@@ -1899,7 +1886,7 @@ export default function ContactInboxPanel({
             {richComposer ? (
               richComposer
             ) : (
-              <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
+              <div className="flex items-end gap-2 sm:gap-3">
                 <AutoGrowTextarea
                   value={body}
                   maxRows={4}
@@ -1923,21 +1910,15 @@ export default function ContactInboxPanel({
                   data-contact-send="true"
                   onClick={onSend}
                   disabled={sendPending || !body.trim() || Boolean(data?.unavailableReason)}
-                  className={`min-h-11 bg-amber-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-50 sm:self-end ${isLineView ? "rounded-md" : "rounded-full"}`}
+                  className={`min-h-11 shrink-0 bg-amber-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-50 ${isLineView ? "rounded-md" : "rounded-full"}`}
                 >
                   {sendPending ? "Sending..." : "Send"}
                 </button>
               </div>
             )}
 
-            {!richComposer ? (
-              <div className="mt-2 text-right text-[11px] uppercase tracking-[0.18em] text-slate-600">
-                {body.length}/{DIRECT_MESSAGE_MAX_CHARS}
-              </div>
-            ) : null}
-
             {openPageHref ? (
-              <div className="mt-3 flex justify-end">
+              <div className="mt-2 flex justify-end">
                 <Link
                   href={openPageHref}
                   onClick={onOpenFullPage}

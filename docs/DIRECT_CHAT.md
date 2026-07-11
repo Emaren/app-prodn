@@ -43,13 +43,22 @@ All three modes are available in Nav Chat and Full Chat. A selection made in eit
 - A single follow-up animation frame accounts for final layout; the old timeout plus multiple-frame scroll sequence is intentionally retired.
 - A resize observer keeps the viewport pinned when late-loading message content changes height and the user was already near the bottom.
 - Scrolling upward preserves the reader's position and reveals the explicit jump-to-latest control.
-- `/contact-emaren` must keep the application shell on normal document flow; do not apply a route-wide `100dvh` / `overflow-y-hidden` lock. Wheel and trackpad input from the outer page gutters is forwarded to the full-page message timeline.
+- `/contact-emaren` deliberately uses two responsive scroll contracts: phones remain on natural document flow, while `lg` desktop viewports cap the application shell at `100dvh` so Full Chat stays inside a contained viewscreen. Desktop wheel and trackpad input from the outer page gutters is forwarded to the message timeline.
 - Both surfaces load the latest 80 messages, then prepend older 80-message cursor pages while preserving the reader's exact scroll position.
 - Message rows use browser-native `content-visibility` containment so off-screen bubbles do not consume full layout/paint work.
 - Full Chat loads the initial thread in one request instead of fetching the summary and full payload sequentially.
 - Nav Chat keeps warm per-thread payloads so revisiting a conversation paints immediately while a silent refresh reconciles it.
 - Authenticated server-sent events push message, receipt, typing, reaction, pin, and update invalidations immediately. A 60-second poll remains as recovery only.
 - The typing-display toggle belongs in the lower-left composer/footer area, outside the message viewport.
+
+## Responsive presentation contract
+
+- Nav Chat uses the full available phone height between the site header and the bottom safe area; it is not capped to an arbitrary fixed pixel/rem height.
+- The conversation descriptor is intentionally omitted. The active name, honor/champion badges, gifted-WOLO state, and unread state share one compact identity row.
+- Message character limits remain enforced at 1,000 characters, but persistent counters are intentionally hidden to preserve conversation and composer space.
+- The Nav composer remains a single row at phone widths, with the growing text field and send action side by side.
+- Full Chat stays naturally scrollable on phones and becomes an internally scrolling, viewport-contained workspace on desktop.
+- These responsive rules are shared by V1, V2, and V3; a mode may change visual treatment, never the mobile space budget or interaction contract.
 
 ## Message intelligence and state
 
@@ -80,3 +89,5 @@ For changes to this surface, verify:
 7. Older-page loading preserves scroll position and never fetches the former 5,000-message payload.
 8. Search, pins, replies, cross-surface drafts, replay cards, translation, and transcription work in V1/V2/V3.
 9. With two signed-in browsers, delivery/read/typing changes arrive without waiting for the fallback poll.
+10. At 375–430px widths, Nav Chat reaches the bottom safe area, the identity badge stays beside the active name, the composer stays on one row, and no character counter or conversation descriptor is rendered.
+11. At desktop widths, the page itself stays viewport-height while the Full Chat timeline scrolls; at phone widths, the page remains naturally scrollable.

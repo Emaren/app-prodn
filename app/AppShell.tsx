@@ -474,7 +474,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div
-      className={`${isAcademySurface ? "academy-route-shell" : ""} flex min-h-screen w-full flex-col overflow-x-hidden text-white transition-[background-image,background-color] duration-500`}
+      className={`${isAcademySurface ? "academy-route-shell" : ""} flex min-h-screen w-full flex-col overflow-x-hidden text-white transition-[background-image,background-color] duration-500 ${isContactPage ? "lg:h-[100dvh] lg:max-h-[100dvh] lg:overflow-y-hidden" : ""}`}
       onWheel={handleContactShellWheel}
       style={
         isAcademySurface
@@ -684,7 +684,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                       : isExtremePlayerProfileSurface ? "max-w-[90rem]" : "max-w-6xl"
               }`
         } ${isAcademySurface ? "academy-shell-skin" : ""} ${
-          isContactPage ? "overflow-x-hidden overflow-y-visible" : isMediaManagerSurface || isHeroStudioSurface ? "overflow-x-visible" : "overflow-x-hidden"
+          isContactPage ? "overflow-x-hidden overflow-y-visible lg:overflow-y-hidden" : isMediaManagerSurface || isHeroStudioSurface ? "overflow-x-visible" : "overflow-x-hidden"
         }`}
       >
         <GlobalInstallAppPrompt />

@@ -186,12 +186,9 @@ export default function ContactRichComposer({
         </div>
       ) : null}
 
-      <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 sm:gap-3">
+      <div className="flex min-w-0 items-center gap-2 sm:gap-3">
         <div className="min-w-0 break-words text-[10px] uppercase tracking-[0.22em] text-slate-500 sm:text-xs sm:tracking-[0.28em]">
           {counterpartName ? `Replying to ${counterpartName}` : "Private reply"}
-        </div>
-        <div className="text-xs text-slate-600">
-          {body.length}/{DIRECT_MESSAGE_MAX_CHARS}
         </div>
       </div>
 
@@ -266,8 +263,8 @@ export default function ContactRichComposer({
           className="w-full bg-transparent px-1 py-1 text-sm leading-6 text-white outline-none placeholder:text-slate-500"
         />
 
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-white/8 pt-3 sm:gap-3">
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
+        <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-white/8 pt-2.5 sm:mt-3 sm:gap-3 sm:pt-3">
+          <div className="flex min-w-0 items-center gap-2">
             <input
               id={inputId}
               ref={fileInputRef}
@@ -308,7 +305,7 @@ export default function ContactRichComposer({
             data-contact-send="true"
             onClick={onSend}
             disabled={isDisabled}
-            className={`inline-flex min-h-11 w-full items-center justify-center gap-2 bg-amber-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto ${isLineView ? "rounded-md" : "rounded-full"}`}
+            className={`inline-flex min-h-10 shrink-0 items-center justify-center gap-2 bg-amber-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-11 sm:py-2.5 ${isLineView ? "rounded-md" : "rounded-full"}`}
           >
             <SendHorizonal className="h-4 w-4" />
             {sendPending ? "Sending..." : "Send"}
