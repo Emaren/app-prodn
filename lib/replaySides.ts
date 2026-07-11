@@ -60,7 +60,10 @@ function readTeamValue(
   }
 
   if (typeof rawTeam === "number") {
-    if (!Number.isFinite(rawTeam) || rawTeam <= 0) {
+    // HD replay team IDs may be zero-based. Team 0 is a
+    // legitimate side when the replay still resolves into
+    // exactly two balanced teams.
+    if (!Number.isFinite(rawTeam) || rawTeam < 0) {
       return null;
     }
 
@@ -73,7 +76,6 @@ function readTeamValue(
 
   if (
     !team ||
-    team === "0" ||
     team === "-1" ||
     ["none", "null", "unknown", "ffa"].includes(
       team.toLowerCase()

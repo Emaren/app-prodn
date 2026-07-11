@@ -115,7 +115,7 @@ A valid exact-team rivalry requires:
 - exactly two sides;
 - equal roster sizes;
 - 2, 3, or 4 players per side;
-- explicit team evidence;
+- explicit team evidence, including valid zero-based team IDs such as `0` and `1`;
 - canonical public-player tokens;
 - no duplicate member inside a roster.
 
