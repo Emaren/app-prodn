@@ -54,7 +54,7 @@ All three modes are available in Nav Chat and Full Chat. A selection made in eit
 ## Responsive presentation contract
 
 - Nav Chat is portalled to `document.body`, above the sticky header stacking context, and uses the live visual-viewport height between the site header and bottom safe area. It must never be nested inside the header containing block.
-- The conversation descriptor is intentionally omitted. The active name, honor/champion badges, gifted-WOLO state, and unread state share one compact identity row.
+- The conversation descriptor and inbox eyebrow are intentionally omitted. The active name, honor/champion badges, gifted-WOLO state, unread state, and appearance controls share one compact top row.
 - Message character limits remain enforced at 1,000 characters, but persistent counters are intentionally hidden to preserve conversation and composer space.
 - The Nav composer remains a single row at phone widths, with the growing text field and send action side by side.
 - Full Chat uses compact horizontal conversation chips on phones and the full conversation rail on desktop. The global mobile command bar and the explanatory route hero are intentionally absent from the phone chat viewscreen.
@@ -63,7 +63,7 @@ All three modes are available in Nav Chat and Full Chat. A selection made in eit
 
 ## Message intelligence and state
 
-- Read receipts are automatic and enabled by default. Outgoing messages progress through `sending`, `sent`, `delivered`, `read`, or `failed`; stable states pair the receipt with that message's own second-level timestamp instead of repeating the conversation-level read checkpoint under every bubble. Failed optimistic sends expose a retry action.
+- Read receipts are automatic and enabled by default, but the user-facing copy stays deliberately soft: normal stable states show only `Sent` until viewed, then that message's own `H:MM AM/PM` timestamp with no `Read` label and no seconds. Transient sending/failure feedback remains available for reliability and retry.
 - Opening a thread marks incoming messages read. Establishing the live event stream marks previously undelivered incoming messages delivered, even if that thread is not open.
 - Draft text and quoted-reply targets are debounced to `direct_message_drafts`, shared between Nav Chat and Full Chat, and removed after a successful send.
 - Replies persist a validated same-conversation message reference and render a compact quote in every mode.

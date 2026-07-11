@@ -115,13 +115,12 @@ function formatTimestamp(value: string | null) {
   });
 }
 
-function formatReceiptTimestamp(value: string, includeSeconds = false) {
+function formatReceiptTimestamp(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "recently";
   return date.toLocaleTimeString([], {
     hour: "numeric",
     minute: "2-digit",
-    ...(includeSeconds ? { second: "2-digit" as const } : {}),
   });
 }
 
@@ -552,14 +551,14 @@ function ReceiptLine({
 
   const copy =
     message.receipt.status === "read" && message.receipt.readAt
-      ? `${formatReceiptTimestamp(message.createdAt, true)} · Read`
+      ? formatReceiptTimestamp(message.createdAt)
       : message.receipt.status === "delivered"
-        ? `${formatReceiptTimestamp(message.createdAt, true)} · Delivered`
+        ? "Sent"
         : message.receipt.status === "sending"
           ? "Sending…"
           : message.receipt.status === "failed"
             ? "Failed to send"
-            : `${formatReceiptTimestamp(message.createdAt, true)} · Sent`;
+            : "Sent";
 
   return <div className={`mt-1 text-right text-[10px] italic ${message.receipt.status === "failed" ? "text-rose-300" : "text-slate-500/80"}`}>{copy}{message.receipt.status === "failed" && onRetry ? <button type="button" onClick={onRetry} className="ml-2 font-semibold not-italic underline decoration-rose-300/40 underline-offset-2">Retry</button> : null}</div>;
 }
@@ -1636,36 +1635,28 @@ export default function ContactInboxPanel({
       style={{ boxShadow: isLineView ? "inset 0 0 0 1px rgba(255,255,255,0.08)" : undefined }}
     >
       <div className={`shrink-0 border-b px-3 py-2.5 sm:px-4 sm:py-3 ${chromeClassName}`}>
-        <div className="flex items-center justify-between gap-2">
-          <div className="min-w-0 text-[10px] uppercase tracking-[0.28em] text-emerald-200/70 sm:text-[11px] sm:tracking-[0.32em]">
-              {counterpart?.threadKind === "ai"
-                ? "AI scribe"
-                : data?.viewer.isAdmin
-                  ? "Private inbox"
-                  : "Direct line"}
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5">
+            <h2 className="min-w-0 break-words text-lg font-semibold leading-tight text-white sm:truncate sm:text-xl">
+              {heading}
+            </h2>
+            {counterpart?.badges.map((badge) => (
+              <CommunityBadgePill key={badge.id} label={badge.label} />
+            ))}
+            {counterpart && counterpart.giftedWolo > 0 ? (
+              <span className="rounded-full border border-amber-200/15 bg-amber-300/[0.06] px-2 py-1 text-[10px] font-medium text-amber-100/80">
+                {counterpart.giftedWolo} WOLO gifted
+              </span>
+            ) : null}
+            {unreadCount > 0 ? (
+              <span className="rounded-full bg-red-500/90 px-2 py-1 text-[10px] font-semibold text-white">{unreadCount} unread</span>
+            ) : null}
           </div>
           <div className="flex shrink-0 items-center gap-1 sm:gap-1.5">
               <button type="button" onClick={() => { setSearchOpen((current) => !current); setPinsOpen(false); }} className="grid h-7 w-7 place-items-center rounded-full border border-white/10 bg-white/[0.045] text-slate-300 transition hover:bg-white/[0.09] hover:text-white sm:h-8 sm:w-8" aria-label="Search messages"><Search className="h-3.5 w-3.5" /></button>
               <button type="button" onClick={() => { setPinsOpen((current) => !current); setSearchOpen(false); }} className="relative grid h-7 w-7 place-items-center rounded-full border border-white/10 bg-white/[0.045] text-slate-300 transition hover:bg-white/[0.09] hover:text-white sm:h-8 sm:w-8" aria-label="Pinned messages"><Pin className="h-3.5 w-3.5" />{data?.pinnedMessages.length ? <span className="absolute -right-1 -top-1 rounded-full bg-amber-300 px-1 text-[9px] font-black text-slate-950">{data.pinnedMessages.length}</span> : null}</button>
               <ChatViewSwitcher value={chatViewMode} onChange={setChatViewMode} />
           </div>
-        </div>
-
-        <div className="mt-2 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5 sm:mt-2.5">
-          <h2 className="min-w-0 break-words text-lg font-semibold leading-tight text-white sm:truncate sm:text-xl">
-            {heading}
-          </h2>
-          {counterpart?.badges.map((badge) => (
-            <CommunityBadgePill key={badge.id} label={badge.label} />
-          ))}
-          {counterpart && counterpart.giftedWolo > 0 ? (
-            <span className="rounded-full border border-amber-200/15 bg-amber-300/[0.06] px-2 py-1 text-[10px] font-medium text-amber-100/80">
-              {counterpart.giftedWolo} WOLO gifted
-            </span>
-          ) : null}
-          {unreadCount > 0 ? (
-            <span className="rounded-full bg-red-500/90 px-2 py-1 text-[10px] font-semibold text-white">{unreadCount} unread</span>
-          ) : null}
         </div>
 
         {searchOpen ? (
