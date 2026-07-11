@@ -1226,6 +1226,7 @@ export default function ContactInboxPanel({
   const timelineBottomRef = useRef<HTMLDivElement | null>(null);
   const timelineContentRef = useRef<HTMLDivElement | null>(null);
   const lastAutoScrolledTargetUidRef = useRef<string | null>(null);
+  const shouldStickToBottomRef = useRef(true);
   const [showTimelineJump, setShowTimelineJump] = useState(false);
   const [typingHudMode, setTypingHudMode] = useState<"steady" | "pulse">("steady");
   const [ownTypingPulse, setOwnTypingPulse] = useState(false);
@@ -1332,12 +1333,14 @@ export default function ContactInboxPanel({
 
     const distanceFromBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
     const shouldShow = distanceFromBottom > 140;
+    shouldStickToBottomRef.current = distanceFromBottom < 220;
 
     setShowTimelineJump((current) => (current === shouldShow ? current : shouldShow));
   }
 
   function scrollTimelineToBottom(behavior: ScrollBehavior = "smooth") {
     const viewport = timelineViewportRef.current;
+    shouldStickToBottomRef.current = true;
 
     timelineBottomRef.current?.scrollIntoView({ block: "end", behavior });
 
@@ -1397,7 +1400,7 @@ export default function ContactInboxPanel({
 
     const targetChanged = lastAutoScrolledTargetUidRef.current !== activeTargetUid;
     const distanceFromBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
-    const userIsNearBottom = distanceFromBottom < 220;
+    const userIsNearBottom = shouldStickToBottomRef.current || distanceFromBottom < 220;
 
     if (!targetChanged && !userIsNearBottom) {
       updateTimelineJumpButton();
@@ -1405,6 +1408,7 @@ export default function ContactInboxPanel({
     }
 
     lastAutoScrolledTargetUidRef.current = activeTargetUid;
+    shouldStickToBottomRef.current = true;
 
     const scrollToLatest = () => {
       viewport.scrollTop = viewport.scrollHeight;
@@ -1425,9 +1429,9 @@ export default function ContactInboxPanel({
     if (!viewport || !content || typeof ResizeObserver === "undefined") return;
 
     const observer = new ResizeObserver(() => {
-      const distanceFromBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
-      if (distanceFromBottom < 220) {
+      if (shouldStickToBottomRef.current) {
         viewport.scrollTop = viewport.scrollHeight;
+        setShowTimelineJump(false);
       }
     });
     observer.observe(content);
