@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { readFile } from "node:fs/promises";
 
 import { publishDirectMessageEvent } from "@/lib/directMessageEvents";
 import { loadDirectMessageAttachmentContent } from "@/lib/directMessageAttachments";
@@ -8,6 +9,16 @@ import { getSessionUid } from "@/lib/session";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+async function getOpenAiApiKey() {
+  if (process.env.OPENAI_API_KEY?.trim()) return process.env.OPENAI_API_KEY.trim();
+  const keyPath = process.env.OPENAI_API_KEY_FILE || "/home/tony/.config/aoe2hdbets/openai.key";
+  try {
+    return (await readFile(keyPath, "utf8")).trim() || null;
+  } catch {
+    return null;
+  }
+}
+
 export async function POST(
   request: NextRequest,
   context: { params: Promise<{ messageId: string }> }
@@ -15,7 +26,7 @@ export async function POST(
   const sessionUid = await getSessionUid(request);
   if (!sessionUid) return NextResponse.json({ detail: "No active session" }, { status: 401 });
 
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = await getOpenAiApiKey();
   if (!apiKey) {
     return NextResponse.json({ detail: "Voice transcription is not configured yet" }, { status: 503 });
   }

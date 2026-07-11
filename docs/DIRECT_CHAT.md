@@ -61,7 +61,7 @@ All three modes are available in Nav Chat and Full Chat. A selection made in eit
 - Search covers message bodies and voice transcripts with case-insensitive Postgres search and returns the latest forty matches.
 - `/game-stats/{id}` links hydrate into replay intelligence cards from canonical `GameStats` data.
 - Translation is on demand, uses the existing authenticated AI gateway, and caches per-message/per-language output.
-- Voice transcription is on demand through OpenAI's audio transcription API, persists on the message, and degrades to a clear unavailable state when `OPENAI_API_KEY` is not configured. `OPENAI_TRANSCRIPTION_MODEL` may override the default `gpt-4o-mini-transcribe`.
+- Voice transcription is on demand through OpenAI's audio transcription API, persists on the message, and degrades to a clear unavailable state when credentials are not configured. `OPENAI_API_KEY` wins; otherwise the service reads `OPENAI_API_KEY_FILE` (default `/home/tony/.config/aoe2hdbets/openai.key`). `OPENAI_TRANSCRIPTION_MODEL` may override the default `gpt-4o-mini-transcribe`.
 
 ## Database migration
 
