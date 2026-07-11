@@ -5,11 +5,12 @@ The private direct-chat experience is shared by the header Nav Chat and the full
 ## Ownership
 
 - `components/contact/ContactInboxPanel.tsx` owns the shared conversation chrome, timeline, reactions, typing presentation, scroll behavior, and V1/V2/V3 selector.
-- `components/contact/HeaderInboxControl.tsx` owns the header popover lifecycle, lightweight closed-state summary polling, open-thread polling, and warm conversation cache.
+- `components/contact/HeaderInboxControl.tsx` owns the header popover lifecycle, optimistic text outbox, live-event reconciliation, fallback polling, and warm conversation cache.
 - `components/contact/ContactEmarenWorkspace.tsx` owns the full-page data lifecycle, attachments, voice notes, URL-synced thread selection, and send actions.
 - `components/contact/ContactRichComposer.tsx` owns the full-page attachment/voice composer and follows the active chat mode.
 - `components/contact/chatViewPreference.ts` owns the persisted cross-surface preference. The local storage key is `aoe2war:direct-chat-view`.
 - `lib/contactInboxConfig.ts` remains the source of truth for valid direct-message reactions and the six-item quick-reaction set.
+- `lib/directMessageEvents.ts` owns the process-wide server event bus; `/api/contact-emaren/events` exposes it as an authenticated SSE stream.
 
 ## Modes
 
@@ -43,9 +44,28 @@ All three modes are available in Nav Chat and Full Chat. A selection made in eit
 - A resize observer keeps the viewport pinned when late-loading message content changes height and the user was already near the bottom.
 - Scrolling upward preserves the reader's position and reveals the explicit jump-to-latest control.
 - `/contact-emaren` must keep the application shell on normal document flow; do not apply a route-wide `100dvh` / `overflow-y-hidden` lock. Wheel and trackpad input from the outer page gutters is forwarded to the full-page message timeline.
-- Full Chat loads the complete initial thread in one request instead of fetching the summary and full payload sequentially.
+- Both surfaces load the latest 80 messages, then prepend older 80-message cursor pages while preserving the reader's exact scroll position.
+- Message rows use browser-native `content-visibility` containment so off-screen bubbles do not consume full layout/paint work.
+- Full Chat loads the initial thread in one request instead of fetching the summary and full payload sequentially.
 - Nav Chat keeps warm per-thread payloads so revisiting a conversation paints immediately while a silent refresh reconciles it.
+- Authenticated server-sent events push message, receipt, typing, reaction, pin, and update invalidations immediately. A 60-second poll remains as recovery only.
 - The typing-display toggle belongs in the lower-left composer/footer area, outside the message viewport.
+
+## Message intelligence and state
+
+- Read receipts are automatic and enabled by default. Outgoing messages progress through `sending`, `sent`, `delivered`, `read`, or `failed`; failed optimistic sends expose a retry action.
+- Opening a thread marks incoming messages read. Establishing the live event stream marks previously undelivered incoming messages delivered, even if that thread is not open.
+- Draft text and quoted-reply targets are debounced to `direct_message_drafts`, shared between Nav Chat and Full Chat, and removed after a successful send.
+- Replies persist a validated same-conversation message reference and render a compact quote in every mode.
+- Pins are shared conversation state. The header pin drawer exposes the latest twelve pinned messages.
+- Search covers message bodies and voice transcripts with case-insensitive Postgres search and returns the latest forty matches.
+- `/game-stats/{id}` links hydrate into replay intelligence cards from canonical `GameStats` data.
+- Translation is on demand, uses the existing authenticated AI gateway, and caches per-message/per-language output.
+- Voice transcription is on demand through OpenAI's audio transcription API, persists on the message, and degrades to a clear unavailable state when `OPENAI_API_KEY` is not configured. `OPENAI_TRANSCRIPTION_MODEL` may override the default `gpt-4o-mini-transcribe`.
+
+## Database migration
+
+`20260710203000_direct_chat_state_of_the_art` adds delivery/edit/transcription/reply state plus drafts, pins, and cached translations. Production deploys must run `npx prisma migrate deploy` before restarting the web service.
 
 ## Verification
 
@@ -56,4 +76,7 @@ For changes to this surface, verify:
 3. Initial thread load and conversation switches land on the latest message.
 4. Upward reading is not pulled back to the bottom by polling.
 5. The reaction picker stays inside the chat shell at desktop and narrow popover widths.
-6. Quick and expanded reactions, edit/delete, receipts, typing, attachments, and send behavior still work.
+6. Quick and expanded reactions, edit/delete, receipts, typing, attachments, and send/retry behavior still work.
+7. Older-page loading preserves scroll position and never fetches the former 5,000-message payload.
+8. Search, pins, replies, cross-surface drafts, replay cards, translation, and transcription work in V1/V2/V3.
+9. With two signed-in browsers, delivery/read/typing changes arrive without waiting for the fallback poll.

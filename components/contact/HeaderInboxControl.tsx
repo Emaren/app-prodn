@@ -8,6 +8,7 @@ import type {
   ContactChallengeActionKind,
   ContactChallengeActionState,
   ContactInboxPayload,
+  ContactTextMessage,
 } from "@/components/contact/types";
 import { useUserAuth } from "@/context/UserAuthContext";
 import { useClickOutside } from "@/hooks/useClickOutside";
@@ -21,7 +22,7 @@ function readDetail(payload: unknown) {
   return typeof detail === "string" ? detail : null;
 }
 
-async function requestInbox(targetUid?: string | null, summaryOnly?: boolean) {
+async function requestInbox(targetUid?: string | null, summaryOnly?: boolean, beforeMessageId?: number | null) {
   const params = new URLSearchParams();
   if (targetUid) {
     params.set("user", targetUid);
@@ -29,6 +30,7 @@ async function requestInbox(targetUid?: string | null, summaryOnly?: boolean) {
   if (summaryOnly) {
     params.set("summary", "1");
   }
+  if (beforeMessageId) params.set("before", String(beforeMessageId));
 
   const response = await fetch(
     `/api/contact-emaren${params.size > 0 ? `?${params.toString()}` : ""}`,
@@ -67,12 +69,14 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
     action: null,
   });
   const [reactingMessageId, setReactingMessageId] = useState<number | null>(null);
+  const [replyingTo, setReplyingTo] = useState<ContactTextMessage | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const selectedTargetUidRef = useRef<string | null>(null);
   const typingTimerRef = useRef<number | null>(null);
   const typingActiveRef = useRef(false);
   const panelCacheRef = useRef(new Map<string, ContactInboxPayload>());
   const panelRequestIdRef = useRef(0);
+  const draftHydratedTargetRef = useRef<string | null>(null);
 
   useClickOutside(panelRef as React.RefObject<HTMLElement>, () => setOpen(false));
 
@@ -89,6 +93,15 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
       setPanelData(payload);
       setSummary(payload);
       applySelectedTargetUid(payload.activeTargetUid);
+      if (payload.activeTargetUid && draftHydratedTargetRef.current !== payload.activeTargetUid) {
+        draftHydratedTargetRef.current = payload.activeTargetUid;
+        setBody(payload.draft?.body ?? "");
+        setReplyingTo(
+          payload.draft?.replyToMessageId
+            ? (payload.messages.find((message): message is ContactTextMessage => message.kind === "text" && message.messageId === payload.draft?.replyToMessageId) ?? null)
+            : null
+        );
+      }
     },
     [applySelectedTargetUid]
   );
@@ -168,12 +181,42 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
     void refreshPanel(selectedTargetUidRef.current);
     const interval = window.setInterval(() => {
       void refreshPanel(undefined, { silent: true });
-    }, 15_000);
+    }, 60_000);
 
     return () => {
       window.clearInterval(interval);
     };
   }, [open, refreshPanel, uid]);
+
+  useEffect(() => {
+    if (!uid) return;
+    const events = new EventSource("/api/contact-emaren/events");
+    let timer: number | null = null;
+    events.onmessage = () => {
+      if (timer) window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        if (open) void refreshPanel(undefined, { silent: true });
+        else void refreshSummary();
+      }, 80);
+    };
+    return () => {
+      events.close();
+      if (timer) window.clearTimeout(timer);
+    };
+  }, [open, refreshPanel, refreshSummary, uid]);
+
+  useEffect(() => {
+    const targetUid = selectedTargetUidRef.current;
+    if (!targetUid || draftHydratedTargetRef.current !== targetUid) return;
+    const timer = window.setTimeout(() => {
+      void fetch("/api/contact-emaren", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "save_draft", targetUid, body, replyToMessageId: replyingTo?.messageId ?? null }),
+      });
+    }, 500);
+    return () => window.clearTimeout(timer);
+  }, [body, replyingTo?.messageId]);
 
   useEffect(() => {
     return () => {
@@ -389,12 +432,39 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
                 challengeActionState={challengeActionState}
                 onSelectConversation={(targetUid) => {
                   applySelectedTargetUid(targetUid);
+                  setReplyingTo(null);
+                  draftHydratedTargetRef.current = null;
                   const cachedPayload = panelCacheRef.current.get(targetUid) ?? null;
                   setPanelData(cachedPayload);
+                  setBody(cachedPayload?.draft?.body ?? "");
+                  if (cachedPayload) draftHydratedTargetRef.current = targetUid;
                   void refreshPanel(targetUid, { silent: Boolean(cachedPayload) });
                 }}
                 onSend={async () => {
                   if (!body.trim()) return;
+                  const optimisticKey = `optimistic-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+                  const currentData = panelData ?? summary;
+                  const optimisticMessage: ContactTextMessage | null = currentData?.viewer ? {
+                    id: optimisticKey,
+                    messageId: -Date.now(),
+                    kind: "text",
+                    createdAt: new Date().toISOString(),
+                    sender: { uid: currentData.viewer.uid, displayName: currentData.viewer.displayName, isAdmin: currentData.viewer.isAdmin, badges: [] },
+                    receipt: { status: "sending", deliveredAt: null, readAt: null },
+                    body,
+                    attachment: null,
+                    reactions: [],
+                    sharedLobbyMessageId: null,
+                    replyTo: replyingTo ? { messageId: replyingTo.messageId, senderName: replyingTo.sender.displayName, body: replyingTo.body || replyingTo.transcription || "Attachment" } : null,
+                    isPinned: false,
+                    editedAt: null,
+                    transcription: null,
+                    transcriptionStatus: null,
+                    translations: [],
+                    replayCard: null,
+                    optimisticKey,
+                  } : null;
+                  if (optimisticMessage) setPanelData((current) => current ? { ...current, messages: [...current.messages, optimisticMessage] } : current);
                   setSendPending(true);
                   setError(null);
 
@@ -407,6 +477,7 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
                       body: JSON.stringify({
                         targetUid: selectedTargetUidRef.current,
                         body,
+                        replyToMessageId: replyingTo?.messageId ?? null,
                       }),
                     });
 
@@ -419,11 +490,13 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
                     }
 
                     setBody("");
+                    setReplyingTo(null);
                     void sendTypingState(false);
                     panelRequestIdRef.current += 1;
                     applyInboxPayload(payload as ContactInboxPayload);
                   } catch (sendError) {
                     setError(sendError instanceof Error ? sendError.message : "Message failed.");
+                    setPanelData((current) => current ? { ...current, messages: current.messages.map((message) => message.kind === "text" && message.optimisticKey === optimisticKey ? { ...message, receipt: { status: "failed", deliveredAt: null, readAt: null } } : message) } : current);
                   } finally {
                     setSendPending(false);
                   }
@@ -465,6 +538,28 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
                   }
                 }}
                 reactingMessageId={reactingMessageId}
+                onLoadOlder={async () => {
+                  const current = panelData ?? summary;
+                  const before = current?.messagePage.beforeMessageId;
+                  const target = selectedTargetUidRef.current;
+                  if (!before || !target) return;
+                  const older = await requestInbox(target, false, before);
+                  setPanelData((latest) => {
+                    if (!latest || latest.activeTargetUid !== target) return latest;
+                    const known = new Set(latest.messages.map((message) => message.id));
+                    return { ...latest, messages: [...older.messages.filter((message) => !known.has(message.id)), ...latest.messages], messagePage: older.messagePage };
+                  });
+                }}
+                onRefresh={() => refreshPanel(undefined, { silent: true }).then(() => undefined)}
+                replyingTo={replyingTo}
+                onReply={(message) => setReplyingTo(message)}
+                onCancelReply={() => setReplyingTo(null)}
+                onRetryOptimistic={(message) => {
+                  setPanelData((current) => current ? { ...current, messages: current.messages.filter((item) => item.id !== message.id) } : current);
+                  window.setTimeout(() => {
+                    panelRef.current?.querySelector<HTMLButtonElement>("[data-contact-send='true']")?.click();
+                  }, 0);
+                }}
                 openPageHref={openPageHref}
                 onOpenFullPage={() => setOpen(false)}
               />

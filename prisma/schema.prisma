@@ -23,16 +23,16 @@ model User {
   // NOTE: DB has a partial unique index (WHERE steam_id IS NOT NULL).
   // Prisma can't represent partial uniqueness here, so we map to the index name
   // and rely on the DB for enforcement.
-  steamId            String?   @unique(map: "uq_users_steam_id") @map("steam_id") @db.VarChar(32)
-  steamPersonaName   String?   @map("steam_persona_name") @db.VarChar(255)
-  twitchStreamUrl    String?   @map("twitch_stream_url") @db.VarChar(500)
-  representedCountry String?   @map("represented_country") @db.VarChar(40)
+  steamId                     String?   @unique(map: "uq_users_steam_id") @map("steam_id") @db.VarChar(32)
+  steamPersonaName            String?   @map("steam_persona_name") @db.VarChar(255)
+  twitchStreamUrl             String?   @map("twitch_stream_url") @db.VarChar(500)
+  representedCountry          String?   @map("represented_country") @db.VarChar(40)
   representedCountryUpdatedAt DateTime? @map("represented_country_updated_at") @db.Timestamp(6)
-  genderDivision     String    @default("Man") @map("gender_division") @db.VarChar(16)
-  genderDivisionUpdatedAt DateTime? @map("gender_division_updated_at") @db.Timestamp(6)
-  verificationLevel  Int       @default(0) @map("verification_level")
-  verificationMethod String    @default("none") @map("verification_method") @db.VarChar(32)
-  verifiedAt         DateTime? @map("verified_at") @db.Timestamp(6)
+  genderDivision              String    @default("Man") @map("gender_division") @db.VarChar(16)
+  genderDivisionUpdatedAt     DateTime? @map("gender_division_updated_at") @db.Timestamp(6)
+  verificationLevel           Int       @default(0) @map("verification_level")
+  verificationMethod          String    @default("none") @map("verification_method") @db.VarChar(32)
+  verifiedAt                  DateTime? @map("verified_at") @db.Timestamp(6)
 
   apiKeys                        ApiKey[]
   gameStats                      GameStats[]
@@ -43,6 +43,8 @@ model User {
   directConversationParticipants DirectConversationParticipant[] @relation("DirectConversationParticipantUser")
   directMessagesSent             DirectMessage[]                 @relation("DirectMessageSender")
   directMessageReactions         DirectMessageReaction[]
+  directMessagePins              DirectMessagePin[]              @relation("DirectMessagePinUser")
+  directMessageDrafts            DirectMessageDraft[]
   communityRequestsCreated       CommunityRequest[]              @relation("CommunityRequestAuthor")
   communityRequestsCompleted     CommunityRequest[]              @relation("CommunityRequestCompleter")
   communityRequestVotes          CommunityRequestVote[]
@@ -67,26 +69,26 @@ model User {
   scheduledChallengesReceived    ScheduledMatch[]                @relation("ScheduledMatchChallenged")
   scheduledMatchActivities       ScheduledMatchActivity[]        @relation("ScheduledMatchActivityActor")
   scheduledMatchPreferences      ScheduledMatchUserPreference[]
-  trophiesHeld                   Trophy[]                         @relation("TrophyCurrentHolder")
-  trophiesGuarded                Trophy[]                         @relation("TrophyGuardianHolder")
-  trophyEconomicsChanges         TrophyEconomicsVersion[]         @relation("TrophyEconomicsChangedBy")
-  trophyEventsActed              TrophyEvent[]                    @relation("TrophyEventActor")
-  trophyEventsFrom               TrophyEvent[]                    @relation("TrophyEventFromHolder")
-  trophyEventsTo                 TrophyEvent[]                    @relation("TrophyEventToHolder")
-  trophyPayouts                  TrophyPayout[]                   @relation("TrophyPayoutRecipient")
-  trophyChallengesCreated        TrophyChallenge[]                @relation("TrophyChallengeChallenger")
-  trophyChallengesDefended       TrophyChallenge[]                @relation("TrophyChallengeDefender")
-  trophyChallengesGuarded        TrophyChallenge[]                @relation("TrophyChallengeGuardian")
-  trophyChallengesWon            TrophyChallenge[]                @relation("TrophyChallengeWinner")
-  trophySettingsChanged          TrophySetting[]                  @relation("TrophySettingChangedBy")
-  eventTilesAsPlayerOne          EventTile[]                       @relation("EventTilePlayerOne")
-  eventTilesAsPlayerTwo          EventTile[]                       @relation("EventTilePlayerTwo")
-  eventTilesAsCommissioner       EventTile[]                       @relation("EventTileCommissioner")
+  trophiesHeld                   Trophy[]                        @relation("TrophyCurrentHolder")
+  trophiesGuarded                Trophy[]                        @relation("TrophyGuardianHolder")
+  trophyEconomicsChanges         TrophyEconomicsVersion[]        @relation("TrophyEconomicsChangedBy")
+  trophyEventsActed              TrophyEvent[]                   @relation("TrophyEventActor")
+  trophyEventsFrom               TrophyEvent[]                   @relation("TrophyEventFromHolder")
+  trophyEventsTo                 TrophyEvent[]                   @relation("TrophyEventToHolder")
+  trophyPayouts                  TrophyPayout[]                  @relation("TrophyPayoutRecipient")
+  trophyChallengesCreated        TrophyChallenge[]               @relation("TrophyChallengeChallenger")
+  trophyChallengesDefended       TrophyChallenge[]               @relation("TrophyChallengeDefender")
+  trophyChallengesGuarded        TrophyChallenge[]               @relation("TrophyChallengeGuardian")
+  trophyChallengesWon            TrophyChallenge[]               @relation("TrophyChallengeWinner")
+  trophySettingsChanged          TrophySetting[]                 @relation("TrophySettingChangedBy")
+  eventTilesAsPlayerOne          EventTile[]                     @relation("EventTilePlayerOne")
+  eventTilesAsPlayerTwo          EventTile[]                     @relation("EventTilePlayerTwo")
+  eventTilesAsCommissioner       EventTile[]                     @relation("EventTileCommissioner")
   clanMemberships                ClanMember[]
   clanMessages                   ClanMessage[]
   clanMessageReactions           ClanMessageReaction[]
-  forumThreads                   ForumThread[]                    @relation("ForumThreadAuthor")
-  forumPosts                     ForumPost[]                      @relation("ForumPostAuthor")
+  forumThreads                   ForumThread[]                   @relation("ForumThreadAuthor")
+  forumPosts                     ForumPost[]                     @relation("ForumPostAuthor")
   forumThreadBookmarks           ForumThreadBookmark[]
   forumThreadReactions           ForumThreadReaction[]
 
@@ -358,47 +360,47 @@ model ScheduledMatchSettlement {
 }
 
 model Trophy {
-  id                          Int       @id @default(autoincrement())
-  trophyId                    String    @unique(map: "uq_trophies_trophy_id") @map("trophy_id") @db.VarChar(100)
-  displayName                 String    @map("display_name") @db.VarChar(160)
-  kind                        String    @db.VarChar(24)
-  family                      String    @db.VarChar(32)
-  tier                        String?   @db.VarChar(40)
-  status                      String    @default("vacant") @db.VarChar(32)
-  currentHolderUserId         Int?      @map("current_holder_user_id")
-  currentHolderDisplayName    String?   @map("current_holder_display_name") @db.VarChar(120)
-  currentHolderWoloAddress    String?   @map("current_holder_wolo_address") @db.VarChar(100)
-  guardianHolderUserId        Int?      @map("guardian_holder_user_id")
-  guardianHolderDisplayName   String?   @map("guardian_holder_display_name") @db.VarChar(120)
-  guardianHolderWoloAddress   String?   @map("guardian_holder_wolo_address") @db.VarChar(100)
-  eligibleNationality         String?   @map("eligible_nationality") @db.VarChar(40)
-  eloBandMin                  Int?      @map("elo_band_min")
-  eloBandMax                  Int?      @map("elo_band_max")
-  currentBountyWolo           Int       @default(0) @map("current_bounty_wolo")
-  tributeAmountWolo           Int       @default(0) @map("tribute_amount_wolo")
-  bountyGrowthWolo            Int       @default(0) @map("bounty_growth_wolo")
-  payoutFrequency             String    @default("daily") @map("payout_frequency") @db.VarChar(24)
-  bountyAccrualFrequency      String    @default("daily") @map("bounty_accrual_frequency") @db.VarChar(24)
-  nftClassId                  String?   @map("nft_class_id") @db.VarChar(120)
-  nftId                       String?   @map("nft_id") @db.VarChar(160)
-  nftMetadataUri              String?   @map("nft_metadata_uri") @db.VarChar(500)
-  nftImageUri                 String?   @map("nft_image_uri") @db.VarChar(500)
-  chainStatus                 String    @default("app_only") @map("chain_status") @db.VarChar(32)
-  chainOwnerAddress           String?   @map("chain_owner_address") @db.VarChar(100)
-  lastChainSyncAt             DateTime? @map("last_chain_sync_at") @db.Timestamp(6)
-  forfeitureNeeded            Boolean   @default(false) @map("forfeiture_needed")
-  eligibilityNote             String?   @map("eligibility_note") @db.VarChar(255)
-  holderSince                 DateTime? @map("holder_since") @db.Timestamp(6)
-  createdAt                   DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt                   DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+  id                        Int       @id @default(autoincrement())
+  trophyId                  String    @unique(map: "uq_trophies_trophy_id") @map("trophy_id") @db.VarChar(100)
+  displayName               String    @map("display_name") @db.VarChar(160)
+  kind                      String    @db.VarChar(24)
+  family                    String    @db.VarChar(32)
+  tier                      String?   @db.VarChar(40)
+  status                    String    @default("vacant") @db.VarChar(32)
+  currentHolderUserId       Int?      @map("current_holder_user_id")
+  currentHolderDisplayName  String?   @map("current_holder_display_name") @db.VarChar(120)
+  currentHolderWoloAddress  String?   @map("current_holder_wolo_address") @db.VarChar(100)
+  guardianHolderUserId      Int?      @map("guardian_holder_user_id")
+  guardianHolderDisplayName String?   @map("guardian_holder_display_name") @db.VarChar(120)
+  guardianHolderWoloAddress String?   @map("guardian_holder_wolo_address") @db.VarChar(100)
+  eligibleNationality       String?   @map("eligible_nationality") @db.VarChar(40)
+  eloBandMin                Int?      @map("elo_band_min")
+  eloBandMax                Int?      @map("elo_band_max")
+  currentBountyWolo         Int       @default(0) @map("current_bounty_wolo")
+  tributeAmountWolo         Int       @default(0) @map("tribute_amount_wolo")
+  bountyGrowthWolo          Int       @default(0) @map("bounty_growth_wolo")
+  payoutFrequency           String    @default("daily") @map("payout_frequency") @db.VarChar(24)
+  bountyAccrualFrequency    String    @default("daily") @map("bounty_accrual_frequency") @db.VarChar(24)
+  nftClassId                String?   @map("nft_class_id") @db.VarChar(120)
+  nftId                     String?   @map("nft_id") @db.VarChar(160)
+  nftMetadataUri            String?   @map("nft_metadata_uri") @db.VarChar(500)
+  nftImageUri               String?   @map("nft_image_uri") @db.VarChar(500)
+  chainStatus               String    @default("app_only") @map("chain_status") @db.VarChar(32)
+  chainOwnerAddress         String?   @map("chain_owner_address") @db.VarChar(100)
+  lastChainSyncAt           DateTime? @map("last_chain_sync_at") @db.Timestamp(6)
+  forfeitureNeeded          Boolean   @default(false) @map("forfeiture_needed")
+  eligibilityNote           String?   @map("eligibility_note") @db.VarChar(255)
+  holderSince               DateTime? @map("holder_since") @db.Timestamp(6)
+  createdAt                 DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt                 DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
 
-  currentHolder   User?                      @relation("TrophyCurrentHolder", fields: [currentHolderUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
-  guardianHolder  User?                      @relation("TrophyGuardianHolder", fields: [guardianHolderUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
-  economics       TrophyEconomicsVersion[]
-  events          TrophyEvent[]
-  payouts         TrophyPayout[]
-  challenges      TrophyChallenge[]
-  eventTiles      EventTile[]
+  currentHolder  User?                    @relation("TrophyCurrentHolder", fields: [currentHolderUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  guardianHolder User?                    @relation("TrophyGuardianHolder", fields: [guardianHolderUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  economics      TrophyEconomicsVersion[]
+  events         TrophyEvent[]
+  payouts        TrophyPayout[]
+  challenges     TrophyChallenge[]
+  eventTiles     EventTile[]
 
   @@index([kind, status], map: "ix_trophies_kind_status")
   @@index([family, status], map: "ix_trophies_family_status")
@@ -422,8 +424,8 @@ model TrophyEconomicsVersion {
   reason                 String?   @db.VarChar(255)
   createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
 
-  trophy   Trophy @relation(fields: [trophyId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  changedBy User? @relation("TrophyEconomicsChangedBy", fields: [changedByUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  trophy    Trophy @relation(fields: [trophyId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  changedBy User?  @relation("TrophyEconomicsChangedBy", fields: [changedByUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
   @@index([trophyId, effectiveFrom], map: "ix_trophy_economics_trophy_effective")
   @@index([changedByUserId], map: "ix_trophy_economics_changed_by")
@@ -431,34 +433,34 @@ model TrophyEconomicsVersion {
 }
 
 model TrophyEvent {
-  id               Int       @id @default(autoincrement())
-  trophyId         Int       @map("trophy_id")
-  eventType        String    @map("event_type") @db.VarChar(64)
-  actorUserId      Int?      @map("actor_user_id")
-  actorRole        String    @default("system") @map("actor_role") @db.VarChar(24)
-  initiatedBy      String    @default("system") @map("initiated_by") @db.VarChar(24)
-  fromHolderUserId Int?      @map("from_holder_user_id")
-  toHolderUserId   Int?      @map("to_holder_user_id")
-  fromWoloAddress  String?   @map("from_wolo_address") @db.VarChar(100)
-  toWoloAddress    String?   @map("to_wolo_address") @db.VarChar(100)
-  amountWolo       Int?      @map("amount_wolo")
-  gameId           Int?      @map("game_id")
-  replayId         Int?      @map("replay_id")
-  challengeId      Int?      @map("challenge_id")
-  chainTxHash      String?   @map("chain_tx_hash") @db.VarChar(128)
-  status           String    @default("recorded") @db.VarChar(32)
-  rawRequest       Json?     @map("raw_request")
-  rawResponse      Json?     @map("raw_response")
-  errorMessage     String?   @map("error_message") @db.Text
-  retryCount       Int       @default(0) @map("retry_count")
-  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  id               Int      @id @default(autoincrement())
+  trophyId         Int      @map("trophy_id")
+  eventType        String   @map("event_type") @db.VarChar(64)
+  actorUserId      Int?     @map("actor_user_id")
+  actorRole        String   @default("system") @map("actor_role") @db.VarChar(24)
+  initiatedBy      String   @default("system") @map("initiated_by") @db.VarChar(24)
+  fromHolderUserId Int?     @map("from_holder_user_id")
+  toHolderUserId   Int?     @map("to_holder_user_id")
+  fromWoloAddress  String?  @map("from_wolo_address") @db.VarChar(100)
+  toWoloAddress    String?  @map("to_wolo_address") @db.VarChar(100)
+  amountWolo       Int?     @map("amount_wolo")
+  gameId           Int?     @map("game_id")
+  replayId         Int?     @map("replay_id")
+  challengeId      Int?     @map("challenge_id")
+  chainTxHash      String?  @map("chain_tx_hash") @db.VarChar(128)
+  status           String   @default("recorded") @db.VarChar(32)
+  rawRequest       Json?    @map("raw_request")
+  rawResponse      Json?    @map("raw_response")
+  errorMessage     String?  @map("error_message") @db.Text
+  retryCount       Int      @default(0) @map("retry_count")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamp(6)
 
-  trophy    Trophy           @relation(fields: [trophyId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  actor     User?            @relation("TrophyEventActor", fields: [actorUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
-  fromHolder User?           @relation("TrophyEventFromHolder", fields: [fromHolderUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
-  toHolder  User?            @relation("TrophyEventToHolder", fields: [toHolderUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
-  replay    GameStats?       @relation(fields: [replayId], references: [id], onDelete: SetNull, onUpdate: NoAction)
-  challenge TrophyChallenge? @relation(fields: [challengeId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  trophy     Trophy           @relation(fields: [trophyId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  actor      User?            @relation("TrophyEventActor", fields: [actorUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  fromHolder User?            @relation("TrophyEventFromHolder", fields: [fromHolderUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  toHolder   User?            @relation("TrophyEventToHolder", fields: [toHolderUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  replay     GameStats?       @relation(fields: [replayId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  challenge  TrophyChallenge? @relation(fields: [challengeId], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
   @@index([trophyId, createdAt], map: "ix_trophy_events_trophy_created")
   @@index([eventType, status, createdAt], map: "ix_trophy_events_type_status_created")
@@ -496,43 +498,43 @@ model TrophyPayout {
 }
 
 model TrophyChallenge {
-  id                     Int       @id @default(autoincrement())
-  trophyId               Int       @map("trophy_id")
-  challengeKind          String    @map("challenge_kind") @db.VarChar(32)
-  challengerUserId       Int       @map("challenger_user_id")
-  defenderUserId         Int?      @map("defender_user_id")
-  guardianUserId         Int?      @map("guardian_user_id")
-  challengerWoloAddress  String?   @map("challenger_wolo_address") @db.VarChar(100)
-  defenderWoloAddress    String?   @map("defender_wolo_address") @db.VarChar(100)
-  expectedPlayerNames    Json?     @map("expected_player_names")
-  requiredNationality    String?   @map("required_nationality") @db.VarChar(40)
-  requiredEloMin         Int?      @map("required_elo_min")
-  requiredEloMax         Int?      @map("required_elo_max")
-  eligibilitySnapshot    Json?     @map("eligibility_snapshot")
-  eligibilityOverride    Boolean   @default(false) @map("eligibility_override")
-  status                 String    @default("draft") @db.VarChar(40)
-  gameId                 Int?      @map("game_id")
-  replayId               Int?      @map("replay_id")
-  scheduledMatchId       Int?      @map("scheduled_match_id")
-  watcherSessionId       String?   @map("watcher_session_id") @db.VarChar(255)
-  watcherPairingId       String?   @map("watcher_pairing_id") @db.VarChar(255)
-  winnerUserId           Int?      @map("winner_user_id")
-  verificationSummary    String?   @map("verification_summary") @db.Text
-  settlementStatus       String    @default("not_started") @map("settlement_status") @db.VarChar(32)
-  chainTxHash            String?   @map("chain_tx_hash") @db.VarChar(128)
-  payoutTxHash           String?   @map("payout_tx_hash") @db.VarChar(128)
-  errorState             String?   @map("error_state") @db.VarChar(255)
-  createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt              DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+  id                    Int      @id @default(autoincrement())
+  trophyId              Int      @map("trophy_id")
+  challengeKind         String   @map("challenge_kind") @db.VarChar(32)
+  challengerUserId      Int      @map("challenger_user_id")
+  defenderUserId        Int?     @map("defender_user_id")
+  guardianUserId        Int?     @map("guardian_user_id")
+  challengerWoloAddress String?  @map("challenger_wolo_address") @db.VarChar(100)
+  defenderWoloAddress   String?  @map("defender_wolo_address") @db.VarChar(100)
+  expectedPlayerNames   Json?    @map("expected_player_names")
+  requiredNationality   String?  @map("required_nationality") @db.VarChar(40)
+  requiredEloMin        Int?     @map("required_elo_min")
+  requiredEloMax        Int?     @map("required_elo_max")
+  eligibilitySnapshot   Json?    @map("eligibility_snapshot")
+  eligibilityOverride   Boolean  @default(false) @map("eligibility_override")
+  status                String   @default("draft") @db.VarChar(40)
+  gameId                Int?     @map("game_id")
+  replayId              Int?     @map("replay_id")
+  scheduledMatchId      Int?     @map("scheduled_match_id")
+  watcherSessionId      String?  @map("watcher_session_id") @db.VarChar(255)
+  watcherPairingId      String?  @map("watcher_pairing_id") @db.VarChar(255)
+  winnerUserId          Int?     @map("winner_user_id")
+  verificationSummary   String?  @map("verification_summary") @db.Text
+  settlementStatus      String   @default("not_started") @map("settlement_status") @db.VarChar(32)
+  chainTxHash           String?  @map("chain_tx_hash") @db.VarChar(128)
+  payoutTxHash          String?  @map("payout_tx_hash") @db.VarChar(128)
+  errorState            String?  @map("error_state") @db.VarChar(255)
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
 
-  trophy        Trophy         @relation(fields: [trophyId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  challenger    User           @relation("TrophyChallengeChallenger", fields: [challengerUserId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  defender      User?          @relation("TrophyChallengeDefender", fields: [defenderUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
-  guardian      User?          @relation("TrophyChallengeGuardian", fields: [guardianUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
-  winner        User?          @relation("TrophyChallengeWinner", fields: [winnerUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
-  replay        GameStats?     @relation(fields: [replayId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  trophy         Trophy          @relation(fields: [trophyId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  challenger     User            @relation("TrophyChallengeChallenger", fields: [challengerUserId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  defender       User?           @relation("TrophyChallengeDefender", fields: [defenderUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  guardian       User?           @relation("TrophyChallengeGuardian", fields: [guardianUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  winner         User?           @relation("TrophyChallengeWinner", fields: [winnerUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  replay         GameStats?      @relation(fields: [replayId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   scheduledMatch ScheduledMatch? @relation(fields: [scheduledMatchId], references: [id], onDelete: SetNull, onUpdate: NoAction)
-  events        TrophyEvent[]
+  events         TrophyEvent[]
 
   @@index([trophyId, status, updatedAt], map: "ix_trophy_challenges_trophy_status_updated")
   @@index([challengerUserId, status], map: "ix_trophy_challenges_challenger_status")
@@ -558,58 +560,58 @@ model TrophySetting {
 }
 
 model EventTile {
-  id                         Int       @id @default(autoincrement())
-  eventTileId                String    @unique(map: "uq_event_tiles_event_tile_id") @map("event_tile_id") @db.VarChar(100)
-  slug                       String    @unique(map: "uq_event_tiles_slug") @db.VarChar(120)
-  status                     String    @default("draft") @db.VarChar(24)
-  priority                   Int       @default(0)
-  isPublished                Boolean   @default(false) @map("is_published")
-  isActive                   Boolean   @default(false) @map("is_active")
-  name                       String    @db.VarChar(160)
-  eyebrow                    String?   @db.VarChar(160)
-  title                      String    @db.VarChar(180)
-  subtitle                   String?   @db.VarChar(220)
-  description                String?   @db.Text
-  chapterLabel               String?   @map("chapter_label") @db.VarChar(160)
-  dateLabel                  String?   @map("date_label") @db.VarChar(160)
-  eventStartsAt              DateTime? @map("event_starts_at") @db.Timestamp(6)
-  eventEndsAt                DateTime? @map("event_ends_at") @db.Timestamp(6)
-  payoutBadgeText            String?   @map("payout_badge_text") @db.VarChar(120)
-  featuredBadgeText          String?   @map("featured_badge_text") @db.VarChar(120)
-  ctaLabel                   String?   @map("cta_label") @db.VarChar(120)
-  ctaUrl                     String?   @map("cta_url") @db.VarChar(500)
-  matchFormat                String?   @map("match_format") @db.VarChar(120)
-  rulesSummary               String?   @map("rules_summary") @db.VarChar(255)
-  tournamentName             String?   @map("tournament_name") @db.VarChar(180)
-  linkedTrophyId             Int?      @map("linked_trophy_id")
-  playerOneUserId            Int?      @map("player_one_user_id")
-  playerOneName              String?   @map("player_one_name") @db.VarChar(120)
-  playerOneAvatarUrl         String?   @map("player_one_avatar_url") @db.VarChar(500)
-  playerTwoUserId            Int?      @map("player_two_user_id")
-  playerTwoName              String?   @map("player_two_name") @db.VarChar(120)
-  playerTwoAvatarUrl         String?   @map("player_two_avatar_url") @db.VarChar(500)
-  commissionerUserId         Int?      @map("commissioner_user_id")
-  commissionerName           String?   @map("commissioner_name") @db.VarChar(120)
-  commissionerAvatarUrl      String?   @map("commissioner_avatar_url") @db.VarChar(500)
-  beltImageUrl               String?   @map("belt_image_url") @db.VarChar(500)
-  backgroundImageUrl         String?   @map("background_image_url") @db.VarChar(500)
-  mobileBackgroundImageUrl   String?   @map("mobile_background_image_url") @db.VarChar(500)
-  gradientFrom               String    @default("#150704") @map("gradient_from") @db.VarChar(24)
-  gradientVia                String    @default("#05070d") @map("gradient_via") @db.VarChar(24)
-  gradientTo                 String    @default("#071225") @map("gradient_to") @db.VarChar(24)
-  overlayOpacity             Float     @default(0.24) @map("overlay_opacity")
-  vignetteOpacity            Float     @default(0.82) @map("vignette_opacity")
-  theme                      String    @default("royal") @db.VarChar(40)
-  styleConfig                Json?     @map("style_config")
-  createdAt                  DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt                  DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
-  publishedAt                DateTime? @map("published_at") @db.Timestamp(6)
+  id                       Int       @id @default(autoincrement())
+  eventTileId              String    @unique(map: "uq_event_tiles_event_tile_id") @map("event_tile_id") @db.VarChar(100)
+  slug                     String    @unique(map: "uq_event_tiles_slug") @db.VarChar(120)
+  status                   String    @default("draft") @db.VarChar(24)
+  priority                 Int       @default(0)
+  isPublished              Boolean   @default(false) @map("is_published")
+  isActive                 Boolean   @default(false) @map("is_active")
+  name                     String    @db.VarChar(160)
+  eyebrow                  String?   @db.VarChar(160)
+  title                    String    @db.VarChar(180)
+  subtitle                 String?   @db.VarChar(220)
+  description              String?   @db.Text
+  chapterLabel             String?   @map("chapter_label") @db.VarChar(160)
+  dateLabel                String?   @map("date_label") @db.VarChar(160)
+  eventStartsAt            DateTime? @map("event_starts_at") @db.Timestamp(6)
+  eventEndsAt              DateTime? @map("event_ends_at") @db.Timestamp(6)
+  payoutBadgeText          String?   @map("payout_badge_text") @db.VarChar(120)
+  featuredBadgeText        String?   @map("featured_badge_text") @db.VarChar(120)
+  ctaLabel                 String?   @map("cta_label") @db.VarChar(120)
+  ctaUrl                   String?   @map("cta_url") @db.VarChar(500)
+  matchFormat              String?   @map("match_format") @db.VarChar(120)
+  rulesSummary             String?   @map("rules_summary") @db.VarChar(255)
+  tournamentName           String?   @map("tournament_name") @db.VarChar(180)
+  linkedTrophyId           Int?      @map("linked_trophy_id")
+  playerOneUserId          Int?      @map("player_one_user_id")
+  playerOneName            String?   @map("player_one_name") @db.VarChar(120)
+  playerOneAvatarUrl       String?   @map("player_one_avatar_url") @db.VarChar(500)
+  playerTwoUserId          Int?      @map("player_two_user_id")
+  playerTwoName            String?   @map("player_two_name") @db.VarChar(120)
+  playerTwoAvatarUrl       String?   @map("player_two_avatar_url") @db.VarChar(500)
+  commissionerUserId       Int?      @map("commissioner_user_id")
+  commissionerName         String?   @map("commissioner_name") @db.VarChar(120)
+  commissionerAvatarUrl    String?   @map("commissioner_avatar_url") @db.VarChar(500)
+  beltImageUrl             String?   @map("belt_image_url") @db.VarChar(500)
+  backgroundImageUrl       String?   @map("background_image_url") @db.VarChar(500)
+  mobileBackgroundImageUrl String?   @map("mobile_background_image_url") @db.VarChar(500)
+  gradientFrom             String    @default("#150704") @map("gradient_from") @db.VarChar(24)
+  gradientVia              String    @default("#05070d") @map("gradient_via") @db.VarChar(24)
+  gradientTo               String    @default("#071225") @map("gradient_to") @db.VarChar(24)
+  overlayOpacity           Float     @default(0.24) @map("overlay_opacity")
+  vignetteOpacity          Float     @default(0.82) @map("vignette_opacity")
+  theme                    String    @default("royal") @db.VarChar(40)
+  styleConfig              Json?     @map("style_config")
+  createdAt                DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt                DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+  publishedAt              DateTime? @map("published_at") @db.Timestamp(6)
 
-  linkedTrophy Trophy? @relation(fields: [linkedTrophyId], references: [id], onDelete: SetNull, onUpdate: NoAction)
-  playerOne User? @relation("EventTilePlayerOne", fields: [playerOneUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
-  playerTwo User? @relation("EventTilePlayerTwo", fields: [playerTwoUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
-  commissioner User? @relation("EventTileCommissioner", fields: [commissionerUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
-  heroScreens HeroScreen[]
+  linkedTrophy Trophy?      @relation(fields: [linkedTrophyId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  playerOne    User?        @relation("EventTilePlayerOne", fields: [playerOneUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  playerTwo    User?        @relation("EventTilePlayerTwo", fields: [playerTwoUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  commissioner User?        @relation("EventTileCommissioner", fields: [commissionerUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  heroScreens  HeroScreen[]
 
   @@index([isPublished, isActive, priority], map: "ix_event_tiles_published_active_priority")
   @@index([status, updatedAt], map: "ix_event_tiles_status_updated")
@@ -775,10 +777,10 @@ model ForumThread {
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
 
-  author    User?                 @relation("ForumThreadAuthor", fields: [authorUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
-  posts     ForumPost[]
-  bookmarks ForumThreadBookmark[]
-  reactions ForumThreadReaction[]
+  author      User?                 @relation("ForumThreadAuthor", fields: [authorUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  posts       ForumPost[]
+  bookmarks   ForumThreadBookmark[]
+  reactions   ForumThreadReaction[]
   heroScreens HeroScreen[]
 
   @@index([channel, updatedAt], map: "ix_forum_threads_channel_updated_at")
@@ -858,6 +860,8 @@ model DirectConversation {
 
   participants DirectConversationParticipant[]
   messages     DirectMessage[]
+  drafts       DirectMessageDraft[]
+  pins         DirectMessagePin[]
 
   @@map("direct_conversations")
 }
@@ -880,26 +884,85 @@ model DirectConversationParticipant {
 }
 
 model DirectMessage {
-  id                        Int      @id @default(autoincrement())
-  conversationId            Int      @map("conversation_id")
-  senderUserId              Int      @map("sender_user_id")
-  body                      String?  @db.Text
-  attachmentKind            String?  @map("attachment_kind") @db.VarChar(20)
-  attachmentName            String?  @map("attachment_name") @db.VarChar(255)
-  attachmentMimeType        String?  @map("attachment_mime_type") @db.VarChar(120)
-  attachmentDataUrl         String?  @map("attachment_data_url") @db.Text
-  attachmentDurationSeconds Int?     @map("attachment_duration_seconds")
-  sharedLobbyMessageId      Int?     @unique(map: "uq_direct_messages_shared_lobby_message_id") @map("shared_lobby_message_id")
-  createdAt                 DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  id                        Int       @id @default(autoincrement())
+  conversationId            Int       @map("conversation_id")
+  senderUserId              Int       @map("sender_user_id")
+  body                      String?   @db.Text
+  attachmentKind            String?   @map("attachment_kind") @db.VarChar(20)
+  attachmentName            String?   @map("attachment_name") @db.VarChar(255)
+  attachmentMimeType        String?   @map("attachment_mime_type") @db.VarChar(120)
+  attachmentDataUrl         String?   @map("attachment_data_url") @db.Text
+  attachmentDurationSeconds Int?      @map("attachment_duration_seconds")
+  sharedLobbyMessageId      Int?      @unique(map: "uq_direct_messages_shared_lobby_message_id") @map("shared_lobby_message_id")
+  replyToMessageId          Int?      @map("reply_to_message_id")
+  deliveredAt               DateTime? @map("delivered_at") @db.Timestamp(6)
+  editedAt                  DateTime? @map("edited_at") @db.Timestamp(6)
+  transcription             String?   @db.Text
+  transcriptionStatus       String?   @map("transcription_status") @db.VarChar(20)
+  createdAt                 DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
 
-  conversation       DirectConversation      @relation(fields: [conversationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  sender             User                    @relation("DirectMessageSender", fields: [senderUserId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  conversation       DirectConversation         @relation(fields: [conversationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  sender             User                       @relation("DirectMessageSender", fields: [senderUserId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   reactions          DirectMessageReaction[]
-  sharedLobbyMessage ChatMessage?            @relation("DirectMessageLobbyShare", fields: [sharedLobbyMessageId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  sharedLobbyMessage ChatMessage?               @relation("DirectMessageLobbyShare", fields: [sharedLobbyMessageId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  replyTo            DirectMessage?             @relation("DirectMessageReplies", fields: [replyToMessageId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  replies            DirectMessage[]            @relation("DirectMessageReplies")
+  pins               DirectMessagePin[]
+  translations       DirectMessageTranslation[]
 
   @@index([conversationId, createdAt], map: "ix_direct_messages_conversation_created_at")
+  @@index([conversationId, id], map: "ix_direct_messages_conversation_id")
+  @@index([replyToMessageId], map: "ix_direct_messages_reply_to_message_id")
   @@index([senderUserId, createdAt], map: "ix_direct_messages_sender_created_at")
   @@map("direct_messages")
+}
+
+model DirectMessageDraft {
+  id               Int      @id @default(autoincrement())
+  conversationId   Int      @map("conversation_id")
+  userId           Int      @map("user_id")
+  body             String?  @db.Text
+  replyToMessageId Int?     @map("reply_to_message_id")
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  conversation DirectConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([conversationId, userId], map: "uq_direct_message_drafts_conversation_user")
+  @@index([userId, updatedAt], map: "ix_direct_message_drafts_user_updated_at")
+  @@map("direct_message_drafts")
+}
+
+model DirectMessagePin {
+  id             Int      @id @default(autoincrement())
+  conversationId Int      @map("conversation_id")
+  messageId      Int      @map("message_id")
+  pinnedByUserId Int      @map("pinned_by_user_id")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  conversation DirectConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  message      DirectMessage      @relation(fields: [messageId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  pinnedBy     User               @relation("DirectMessagePinUser", fields: [pinnedByUserId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([conversationId, messageId], map: "uq_direct_message_pins_conversation_message")
+  @@index([conversationId, createdAt], map: "ix_direct_message_pins_conversation_created_at")
+  @@map("direct_message_pins")
+}
+
+model DirectMessageTranslation {
+  id        Int      @id @default(autoincrement())
+  messageId Int      @map("message_id")
+  language  String   @db.VarChar(12)
+  text      String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  message DirectMessage @relation(fields: [messageId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([messageId, language], map: "uq_direct_message_translations_message_language")
+  @@index([messageId], map: "ix_direct_message_translations_message_id")
+  @@map("direct_message_translations")
 }
 
 model DirectMessageReaction {
@@ -1039,20 +1102,20 @@ model UserAppearancePreference {
 }
 
 model ManagedMediaAsset {
-  id            Int      @id @default(autoincrement())
-  key           String   @unique @db.VarChar(160)
-  kind          String   @db.VarChar(32)
-  target        String?  @db.VarChar(160)
-  label         String   @db.VarChar(160)
-  url           String   @db.VarChar(500)
-  alt           String?  @db.VarChar(180)
-  mimeType      String?  @map("mime_type") @db.VarChar(100)
-  originalName  String?  @map("original_name") @db.VarChar(255)
-  sizeBytes     Int      @default(0) @map("size_bytes")
-  active        Boolean  @default(true)
-  uploadedByUid String?  @map("uploaded_by_uid") @db.VarChar(100)
-  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+  id            Int          @id @default(autoincrement())
+  key           String       @unique @db.VarChar(160)
+  kind          String       @db.VarChar(32)
+  target        String?      @db.VarChar(160)
+  label         String       @db.VarChar(160)
+  url           String       @db.VarChar(500)
+  alt           String?      @db.VarChar(180)
+  mimeType      String?      @map("mime_type") @db.VarChar(100)
+  originalName  String?      @map("original_name") @db.VarChar(255)
+  sizeBytes     Int          @default(0) @map("size_bytes")
+  active        Boolean      @default(true)
+  uploadedByUid String?      @map("uploaded_by_uid") @db.VarChar(100)
+  createdAt     DateTime     @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt     DateTime     @updatedAt @map("updated_at") @db.Timestamp(6)
   heroScreens   HeroScreen[]
 
   @@index([kind, target, active], map: "ix_managed_media_assets_kind_target_active")
@@ -1082,19 +1145,19 @@ model HeroPlaylist {
 }
 
 model HeroScreen {
-  id             Int      @id @default(autoincrement())
-  key            String   @unique(map: "uq_hero_screens_key") @db.VarChar(120)
-  name           String   @db.VarChar(160)
-  type           String   @db.VarChar(40)
-  status         String   @default("draft") @db.VarChar(24)
-  defaultHref    String?  @map("default_href") @db.VarChar(500)
-  ariaLabel      String?  @map("aria_label") @db.VarChar(180)
-  eventTileId    Int?     @map("event_tile_id")
-  forumThreadId  Int?     @map("forum_thread_id")
-  mediaAssetId   Int?     @map("media_asset_id")
-  config         Json?
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+  id            Int      @id @default(autoincrement())
+  key           String   @unique(map: "uq_hero_screens_key") @db.VarChar(120)
+  name          String   @db.VarChar(160)
+  type          String   @db.VarChar(40)
+  status        String   @default("draft") @db.VarChar(24)
+  defaultHref   String?  @map("default_href") @db.VarChar(500)
+  ariaLabel     String?  @map("aria_label") @db.VarChar(180)
+  eventTileId   Int?     @map("event_tile_id")
+  forumThreadId Int?     @map("forum_thread_id")
+  mediaAssetId  Int?     @map("media_asset_id")
+  config        Json?
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
 
   eventTile   EventTile?         @relation(fields: [eventTileId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   forumThread ForumThread?       @relation(fields: [forumThreadId], references: [id], onDelete: SetNull, onUpdate: NoAction)
@@ -1109,17 +1172,17 @@ model HeroScreen {
 }
 
 model HeroPlaylistItem {
-  id         Int       @id @default(autoincrement())
-  playlistId Int       @map("playlist_id")
-  screenId   Int       @map("screen_id")
-  position   Int       @default(0)
-  enabled    Boolean   @default(true)
-  startsAt   DateTime? @map("starts_at") @db.Timestamp(6)
-  endsAt     DateTime? @map("ends_at") @db.Timestamp(6)
-  durationMs Int?      @map("duration_ms")
-  hrefOverride String? @map("href_override") @db.VarChar(500)
-  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+  id           Int       @id @default(autoincrement())
+  playlistId   Int       @map("playlist_id")
+  screenId     Int       @map("screen_id")
+  position     Int       @default(0)
+  enabled      Boolean   @default(true)
+  startsAt     DateTime? @map("starts_at") @db.Timestamp(6)
+  endsAt       DateTime? @map("ends_at") @db.Timestamp(6)
+  durationMs   Int?      @map("duration_ms")
+  hrefOverride String?   @map("href_override") @db.VarChar(500)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
 
   playlist HeroPlaylist @relation(fields: [playlistId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   screen   HeroScreen   @relation(fields: [screenId], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -1390,20 +1453,20 @@ model BetStakeIntent {
 }
 
 model StakingPosition {
-  id                  Int      @id @default(autoincrement())
-  userId              Int      @unique(map: "uq_staking_positions_user_id") @map("user_id")
-  walletAddress       String?  @map("wallet_address") @db.VarChar(100)
-  currentStakedWolo   Int      @default(0) @map("current_staked_wolo")
-  accumulatedWeight   BigInt   @default(0) @map("accumulated_weight")
-  lastWeightUpdateAt  DateTime @default(now()) @map("last_weight_update_at") @db.Timestamp(6)
+  id                    Int      @id @default(autoincrement())
+  userId                Int      @unique(map: "uq_staking_positions_user_id") @map("user_id")
+  walletAddress         String?  @map("wallet_address") @db.VarChar(100)
+  currentStakedWolo     Int      @default(0) @map("current_staked_wolo")
+  accumulatedWeight     BigInt   @default(0) @map("accumulated_weight")
+  lastWeightUpdateAt    DateTime @default(now()) @map("last_weight_update_at") @db.Timestamp(6)
   pendingRewardsWolo    Int      @default(0) @map("pending_rewards_wolo")
   lifetimeRewardsWolo   Int      @default(0) @map("lifetime_rewards_wolo")
   claimedRewardsWolo    Int      @default(0) @map("claimed_rewards_wolo")
   autoCompoundRewards   Boolean  @default(true) @map("auto_compound_rewards")
   compoundedRewardsWolo Int      @default(0) @map("compounded_rewards_wolo")
-  status              String   @default("active") @db.VarChar(24)
-  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt           DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+  status                String   @default("active") @db.VarChar(24)
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
 
   user              User                      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   events            StakingEvent[]

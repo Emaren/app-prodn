@@ -305,6 +305,7 @@ export default function ContactRichComposer({
 
           <button
             type="button"
+            data-contact-send="true"
             onClick={onSend}
             disabled={isDisabled}
             className={`inline-flex min-h-11 w-full items-center justify-center gap-2 bg-amber-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto ${isLineView ? "rounded-md" : "rounded-full"}`}

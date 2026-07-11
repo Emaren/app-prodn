@@ -68,8 +68,24 @@ type ContactInboxSender = {
 };
 
 type ContactInboxReceipt = {
-  status: "sent" | "read";
+  status: "sending" | "sent" | "delivered" | "read" | "failed";
+  deliveredAt: string | null;
   readAt: string | null;
+};
+
+export type ContactMessageReply = {
+  messageId: number;
+  senderName: string;
+  body: string;
+};
+
+export type ContactReplayCard = {
+  id: number;
+  players: string[];
+  mapName: string | null;
+  winner: string | null;
+  durationSeconds: number | null;
+  playedAt: string | null;
 };
 
 export type ContactTextMessage = {
@@ -83,6 +99,14 @@ export type ContactTextMessage = {
   attachment: ContactMessageAttachment | null;
   reactions: ContactMessageReaction[];
   sharedLobbyMessageId: number | null;
+  replyTo: ContactMessageReply | null;
+  isPinned: boolean;
+  editedAt: string | null;
+  transcription: string | null;
+  transcriptionStatus: string | null;
+  translations: Array<{ language: string; text: string }>;
+  replayCard: ContactReplayCard | null;
+  optimisticKey?: string;
 };
 
 export type ContactBadgeMessage = {
@@ -129,6 +153,16 @@ export type ContactInboxPayload = {
   activeCounterpart: ContactInboxCounterpart | null;
   activeChallenge: ScheduledMatchTile | null;
   messages: ContactInboxMessage[];
+  messagePage: {
+    hasMore: boolean;
+    beforeMessageId: number | null;
+  };
+  draft: {
+    body: string;
+    replyToMessageId: number | null;
+    updatedAt: string;
+  } | null;
+  pinnedMessages: ContactTextMessage[];
   unavailableReason: string | null;
   conversation: {
     counterpartLastReadAt: string | null;

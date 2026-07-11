@@ -14,6 +14,10 @@ import {
   Mic,
   MoreHorizontal,
   Paperclip,
+  Languages,
+  Pin,
+  Reply,
+  Search,
   ShieldCheck,
   Sparkles,
   Swords,
@@ -47,6 +51,7 @@ import type {
   ContactInboxMessage,
   ContactInboxPayload,
   ContactInboxSummary,
+  ContactTextMessage,
 } from "@/components/contact/types";
 
 const TYPING_HUD_MODE_STORAGE_KEY = "aoe2war:typing-hud-mode";
@@ -78,6 +83,12 @@ type ContactInboxPanelProps = {
   richComposer?: ReactNode;
   openPageHref?: string;
   onOpenFullPage?: () => void;
+  onLoadOlder?: () => Promise<void>;
+  onRefresh?: () => void | Promise<void>;
+  replyingTo?: ContactTextMessage | null;
+  onReply?: (message: ContactTextMessage) => void;
+  onCancelReply?: () => void;
+  onRetryOptimistic?: (message: ContactTextMessage) => void;
 };
 
 type TimelineRow =
@@ -542,8 +553,10 @@ function statusTone(status: string) {
 
 function ReceiptLine({
   message,
+  onRetry,
 }: {
   message: Extract<ContactInboxMessage, { kind: "text" }>;
+  onRetry?: () => void;
 }) {
   if (!message.receipt) {
     return null;
@@ -552,9 +565,15 @@ function ReceiptLine({
   const copy =
     message.receipt.status === "read" && message.receipt.readAt
       ? `Read ${formatReceiptTimestamp(message.receipt.readAt, message.createdAt)}`
-      : "Sent";
+      : message.receipt.status === "delivered"
+        ? "Delivered"
+        : message.receipt.status === "sending"
+          ? "Sending…"
+          : message.receipt.status === "failed"
+            ? "Failed to send"
+            : "Sent";
 
-  return <div className="mt-1 text-right text-[10px] italic text-slate-500/80">{copy}</div>;
+  return <div className={`mt-1 text-right text-[10px] italic ${message.receipt.status === "failed" ? "text-rose-300" : "text-slate-500/80"}`}>{copy}{message.receipt.status === "failed" && onRetry ? <button type="button" onClick={onRetry} className="ml-2 font-semibold not-italic underline decoration-rose-300/40 underline-offset-2">Retry</button> : null}</div>;
 }
 
 function HonorActions({
@@ -713,6 +732,9 @@ function TextMessageBubble({
   onInboxAction,
   onToggleReaction,
   reactingMessageId,
+  onReply,
+  onRefresh,
+  onRetryOptimistic,
 }: {
   message: Extract<ContactInboxMessage, { kind: "text" }>;
   viewerUid: string;
@@ -723,9 +745,13 @@ function TextMessageBubble({
   onInboxAction: (action: Record<string, unknown>) => void;
   onToggleReaction?: (messageId: number, emoji: string) => void;
   reactingMessageId?: number | null;
+  onReply?: (message: ContactTextMessage) => void;
+  onRefresh?: () => void | Promise<void>;
+  onRetryOptimistic?: (message: ContactTextMessage) => void;
 }) {
   const isViewer = message.sender.uid === viewerUid;
-  const canManageMessage = viewerIsAdmin || isViewer;
+  const isPersisted = message.messageId > 0;
+  const canManageMessage = isPersisted && (viewerIsAdmin || isViewer);
   const maxBubbleWidthClass =
     viewMode === "v2"
       ? "w-full max-w-none"
@@ -737,12 +763,15 @@ function TextMessageBubble({
   const messageBodyViewportClass =
     mode === "page" ? "max-h-[min(46vh,28rem)] overflow-y-auto pr-1" : "max-h-48 overflow-y-auto pr-1";
   const canToggleLobbyShare =
-    message.sender.uid === AI_CONCIERGE_UID && !message.attachment && message.body.trim().length > 0;
+    isPersisted && message.sender.uid === AI_CONCIERGE_UID && !message.attachment && message.body.trim().length > 0;
   const clanProtocolMessage = parseClanProtocolMessage(message.body);
   const compactChallengeNotice = message.body ? challengeNoticeTone(summarizeChallengeInboxMessage(message.body)) : null;
   const [trayPinnedOpen, setTrayPinnedOpen] = useState(false);
   const [reactionMoreOpen, setReactionMoreOpen] = useState(false);
   const [attachmentPreviewFailed, setAttachmentPreviewFailed] = useState(false);
+  const [languagePending, setLanguagePending] = useState(false);
+  const [transcriptionPending, setTranscriptionPending] = useState(false);
+  const [activeTranslation, setActiveTranslation] = useState<{ language: string; text: string } | null>(message.translations[0] ?? null);
   const holdTimerRef = useRef<number | null>(null);
   const longPressTriggeredRef = useRef(false);
   const bubbleRef = useRef<HTMLDivElement | null>(null);
@@ -856,6 +885,44 @@ function TextMessageBubble({
     setTrayPinnedOpen(false);
   }
 
+  async function handleTranslate() {
+    const language = (typeof navigator !== "undefined" ? navigator.language : "en").toLowerCase().slice(0, 5);
+    const cached = message.translations.find((translation) => translation.language === language);
+    if (cached) {
+      setActiveTranslation((current) => current?.language === cached.language ? null : cached);
+      setTrayPinnedOpen(false);
+      return;
+    }
+    setLanguagePending(true);
+    try {
+      const response = await fetch(`/api/contact-emaren/messages/${message.messageId}/translate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ language }),
+      });
+      const payload = (await response.json().catch(() => ({}))) as { text?: string; language?: string; detail?: string };
+      if (!response.ok || !payload.text) throw new Error(payload.detail || "Translation failed");
+      setActiveTranslation({ language: payload.language || language, text: payload.text });
+      await onRefresh?.();
+    } finally {
+      setLanguagePending(false);
+      setTrayPinnedOpen(false);
+    }
+  }
+
+  async function handleTranscribe() {
+    setTranscriptionPending(true);
+    try {
+      const response = await fetch(`/api/contact-emaren/messages/${message.messageId}/transcribe`, { method: "POST" });
+      const payload = (await response.json().catch(() => ({}))) as { text?: string; detail?: string };
+      if (!response.ok) throw new Error(payload.detail || "Transcription failed");
+      await onRefresh?.();
+    } finally {
+      setTranscriptionPending(false);
+      setTrayPinnedOpen(false);
+    }
+  }
+
   if (clanProtocolMessage) {
     return (
       <ClanProtocolSystemLine
@@ -870,14 +937,14 @@ function TextMessageBubble({
   }
 
   const trayVisible = trayPinnedOpen;
-  const hasTray = Boolean(onToggleReaction || canToggleLobbyShare || canManageMessage);
+  const hasTray = isPersisted && Boolean(onToggleReaction || canToggleLobbyShare || canManageMessage || onReply);
   const secondaryReactions = DIRECT_MESSAGE_REACTIONS.filter(
     (emoji) => !(DIRECT_MESSAGE_QUICK_REACTIONS as readonly string[]).includes(emoji)
   );
   const senderInitial = message.sender.displayName.trim().charAt(0).toUpperCase() || "?";
 
   return (
-    <div className={`flex ${viewMode === "v2" ? "justify-start" : isViewer ? "justify-end" : "justify-start"}`}>
+    <div className={`[content-visibility:auto] [contain-intrinsic-size:auto_96px] flex ${viewMode === "v2" ? "justify-start" : isViewer ? "justify-end" : "justify-start"}`}>
       <div
         ref={bubbleRef}
         className={`group relative min-w-0 max-w-full ${maxBubbleWidthClass} ${viewMode === "v2" ? "py-0.5 pl-9 sm:pl-11" : ""}`}
@@ -907,6 +974,7 @@ function TextMessageBubble({
 
         <div className="relative">
           <div
+            data-message-id={message.messageId}
             className={`relative cursor-default ${
               viewMode === "v2"
                 ? "rounded-sm px-2 py-1.5 text-[14px]"
@@ -917,6 +985,12 @@ function TextMessageBubble({
             onClick={handleBubbleClick}
             aria-label="Message. Click or press and hold for reactions and actions."
           >
+            {message.replyTo ? (
+              <div className="mb-2 rounded-lg border-l-2 border-cyan-200/45 bg-black/20 px-3 py-2 text-xs text-slate-300">
+                <div className="font-semibold text-cyan-100/80">{message.replyTo.senderName}</div>
+                <div className="mt-0.5 line-clamp-2">{message.replyTo.body}</div>
+              </div>
+            ) : null}
             {message.body ? (
               <div
                 className={`relative whitespace-pre-wrap text-sm leading-6 [overflow-wrap:anywhere] ${messageBodyViewportClass}`}
@@ -963,6 +1037,34 @@ function TextMessageBubble({
                 </div>
               </div>
             ) : null}
+
+            {message.transcription ? (
+              <div className="mt-2 rounded-lg border border-white/8 bg-black/20 px-3 py-2 text-xs leading-5 text-slate-200">
+                <span className="mr-2 font-semibold uppercase tracking-[0.14em] text-teal-200/70">Transcript</span>
+                {message.transcription}
+              </div>
+            ) : null}
+
+            {activeTranslation ? (
+              <div className="mt-2 rounded-lg border border-cyan-200/10 bg-cyan-300/[0.045] px-3 py-2 text-xs leading-5 text-cyan-50/90">
+                <span className="mr-2 font-semibold uppercase tracking-[0.14em] text-cyan-200/60">{activeTranslation.language}</span>
+                {activeTranslation.text}
+              </div>
+            ) : null}
+
+            {message.replayCard ? (
+              <Link
+                href={`/game-stats/${message.replayCard.id}`}
+                onClick={(event) => event.stopPropagation()}
+                className="mt-3 block rounded-xl border border-amber-200/16 bg-[linear-gradient(135deg,rgba(120,53,15,0.28),rgba(3,7,18,0.72))] p-3 transition hover:border-amber-200/30"
+              >
+                <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-amber-200/65">Replay intelligence · #{message.replayCard.id}</div>
+                <div className="mt-1 text-sm font-semibold text-white">{message.replayCard.players.join(" vs ") || "Parsed AoE2 match"}</div>
+                <div className="mt-1 text-xs text-slate-300">{[message.replayCard.mapName, message.replayCard.winner ? `${message.replayCard.winner} won` : null].filter(Boolean).join(" · ")}</div>
+              </Link>
+            ) : null}
+
+            {message.editedAt ? <div className="mt-1 text-right text-[9px] italic text-slate-500">edited</div> : null}
 
             {hasTray && !trayVisible ? (
               <span className={`pointer-events-none absolute -top-3 ${isViewer && viewMode !== "v2" ? "left-2" : "right-2"} inline-flex h-6 w-6 translate-y-1 items-center justify-center rounded-full border border-white/10 bg-[#0a111d]/95 text-slate-400 opacity-0 shadow-lg transition group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:translate-y-0 group-focus-within:opacity-100`}>
@@ -1036,8 +1138,26 @@ function TextMessageBubble({
                   </div>
                 ) : null}
 
-                {(canToggleLobbyShare || canManageMessage) ? (
+                {(canToggleLobbyShare || canManageMessage || onReply) ? (
                   <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-white/8 pt-2">
+                {onReply ? (
+                  <button type="button" onClick={() => { onReply(message); setTrayPinnedOpen(false); }} className="inline-flex h-7 items-center gap-1 rounded-full border border-white/10 bg-white/[0.05] px-2.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-200 hover:bg-white/[0.1]">
+                    <Reply className="h-3 w-3" /> Reply
+                  </button>
+                ) : null}
+                <button type="button" onClick={() => { onInboxAction({ action: "toggle_pin", messageId: message.messageId }); setTrayPinnedOpen(false); }} className="inline-flex h-7 items-center gap-1 rounded-full border border-white/10 bg-white/[0.05] px-2.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-200 hover:bg-white/[0.1]">
+                  <Pin className="h-3 w-3" /> {message.isPinned ? "Unpin" : "Pin"}
+                </button>
+                {message.body ? (
+                  <button type="button" disabled={languagePending} onClick={() => void handleTranslate()} className="inline-flex h-7 items-center gap-1 rounded-full border border-white/10 bg-white/[0.05] px-2.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-200 hover:bg-white/[0.1] disabled:opacity-50">
+                    <Languages className="h-3 w-3" /> {languagePending ? "Translating" : "Translate"}
+                  </button>
+                ) : null}
+                {message.attachment?.kind === "audio" ? (
+                  <button type="button" disabled={transcriptionPending} onClick={() => void handleTranscribe()} className="inline-flex h-7 items-center gap-1 rounded-full border border-white/10 bg-white/[0.05] px-2.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-200 hover:bg-white/[0.1] disabled:opacity-50">
+                    <Mic className="h-3 w-3" /> {transcriptionPending ? "Transcribing" : message.transcription ? "Transcript" : "Transcribe"}
+                  </button>
+                ) : null}
                 {canToggleLobbyShare ? (
                   <button
                     type="button"
@@ -1101,7 +1221,7 @@ function TextMessageBubble({
           </div>
         ) : null}
 
-        <ReceiptLine message={message} />
+        <ReceiptLine message={message} onRetry={message.receipt?.status === "failed" ? () => onRetryOptimistic?.(message) : undefined} />
       </div>
     </div>
   );
@@ -1218,6 +1338,12 @@ export default function ContactInboxPanel({
   richComposer,
   openPageHref,
   onOpenFullPage,
+  onLoadOlder,
+  onRefresh,
+  replyingTo,
+  onReply,
+  onCancelReply,
+  onRetryOptimistic,
 }: ContactInboxPanelProps) {
   const counterpart = data?.activeCounterpart ?? null;
   const activeTargetUid = data?.activeTargetUid ?? null;
@@ -1230,6 +1356,12 @@ export default function ContactInboxPanel({
   const [showTimelineJump, setShowTimelineJump] = useState(false);
   const [typingHudMode, setTypingHudMode] = useState<"steady" | "pulse">("steady");
   const [ownTypingPulse, setOwnTypingPulse] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [pinsOpen, setPinsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<Array<{ messageId: number; body: string; createdAt: string; senderName: string }>>([]);
+  const [searchPending, setSearchPending] = useState(false);
   const ownTypingPulseTimerRef = useRef<number | null>(null);
   const lastBodyForTypingPulseRef = useRef(body);
   const hasConversationChoices = (data?.summaries.length ?? 0) > 1;
@@ -1358,6 +1490,42 @@ export default function ContactInboxPanel({
     updateTimelineJumpButton();
   }
 
+  async function loadOlderMessages() {
+    if (!onLoadOlder || loadingOlder) return;
+    const viewport = timelineViewportRef.current;
+    const previousHeight = viewport?.scrollHeight ?? 0;
+    const previousTop = viewport?.scrollTop ?? 0;
+    setLoadingOlder(true);
+    try {
+      await onLoadOlder();
+      window.requestAnimationFrame(() => {
+        if (viewport) viewport.scrollTop = previousTop + (viewport.scrollHeight - previousHeight);
+      });
+    } finally {
+      setLoadingOlder(false);
+    }
+  }
+
+  async function runSearch() {
+    if (!activeTargetUid || searchQuery.trim().length < 2) return;
+    setSearchPending(true);
+    try {
+      const params = new URLSearchParams({ user: activeTargetUid, q: searchQuery.trim() });
+      const response = await fetch(`/api/contact-emaren/search?${params.toString()}`, { cache: "no-store" });
+      const payload = (await response.json().catch(() => ({}))) as { results?: typeof searchResults };
+      setSearchResults(response.ok && Array.isArray(payload.results) ? payload.results : []);
+    } finally {
+      setSearchPending(false);
+    }
+  }
+
+  function focusMessage(messageId: number) {
+    const node = timelineViewportRef.current?.querySelector(`[data-message-id="${messageId}"]`);
+    node?.scrollIntoView({ behavior: "smooth", block: "center" });
+    setSearchOpen(false);
+    setPinsOpen(false);
+  }
+
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -1474,12 +1642,32 @@ export default function ContactInboxPanel({
             ) : null}
           </div>
           <div className="flex shrink-0 flex-col items-end gap-2">
-            <ChatViewSwitcher value={chatViewMode} onChange={setChatViewMode} />
+            <div className="flex items-center gap-1.5">
+              <button type="button" onClick={() => { setSearchOpen((current) => !current); setPinsOpen(false); }} className="grid h-8 w-8 place-items-center rounded-full border border-white/10 bg-white/[0.045] text-slate-300 transition hover:bg-white/[0.09] hover:text-white" aria-label="Search messages"><Search className="h-3.5 w-3.5" /></button>
+              <button type="button" onClick={() => { setPinsOpen((current) => !current); setSearchOpen(false); }} className="relative grid h-8 w-8 place-items-center rounded-full border border-white/10 bg-white/[0.045] text-slate-300 transition hover:bg-white/[0.09] hover:text-white" aria-label="Pinned messages"><Pin className="h-3.5 w-3.5" />{data?.pinnedMessages.length ? <span className="absolute -right-1 -top-1 rounded-full bg-amber-300 px-1 text-[9px] font-black text-slate-950">{data.pinnedMessages.length}</span> : null}</button>
+              <ChatViewSwitcher value={chatViewMode} onChange={setChatViewMode} />
+            </div>
             {unreadCount > 0 ? (
               <div className="rounded-full bg-red-500/90 px-3 py-1 text-xs text-white">{unreadCount} unread</div>
             ) : null}
           </div>
         </div>
+
+        {searchOpen ? (
+          <div className="mt-3 rounded-xl border border-white/10 bg-black/20 p-2">
+            <form onSubmit={(event) => { event.preventDefault(); void runSearch(); }} className="flex gap-2">
+              <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Search this conversation" className="min-w-0 flex-1 rounded-lg border border-white/10 bg-black/25 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-500" autoFocus />
+              <button type="submit" disabled={searchPending || searchQuery.trim().length < 2} className="rounded-lg bg-cyan-200/12 px-3 text-xs font-semibold text-cyan-100 disabled:opacity-40">{searchPending ? "…" : "Search"}</button>
+            </form>
+            {searchResults.length ? <div className="mt-2 max-h-44 space-y-1 overflow-y-auto">{searchResults.map((result) => <button key={result.messageId} type="button" onClick={() => focusMessage(result.messageId)} className="block w-full rounded-lg px-3 py-2 text-left transition hover:bg-white/[0.06]"><div className="text-[10px] text-cyan-100/60">{result.senderName} · {formatTimestamp(result.createdAt)}</div><div className="mt-0.5 line-clamp-2 text-xs text-slate-200">{result.body}</div></button>)}</div> : null}
+          </div>
+        ) : null}
+
+        {pinsOpen ? (
+          <div className="mt-3 max-h-44 space-y-1 overflow-y-auto rounded-xl border border-amber-200/12 bg-amber-300/[0.035] p-2">
+            {data?.pinnedMessages.length ? data.pinnedMessages.map((message) => <button key={message.messageId} type="button" onClick={() => focusMessage(message.messageId)} className="block w-full rounded-lg px-3 py-2 text-left transition hover:bg-white/[0.06]"><div className="text-[10px] text-amber-100/55">{message.sender.displayName} · {formatTimestamp(message.createdAt)}</div><div className="mt-0.5 line-clamp-2 text-xs text-slate-200">{message.body || message.transcription || "Attachment"}</div></button>) : <div className="px-3 py-2 text-xs text-slate-400">No pinned messages yet.</div>}
+          </div>
+        ) : null}
 
         {counterpart?.badges.length ? (
           <div className="mt-3 flex flex-wrap gap-2">
@@ -1568,6 +1756,9 @@ export default function ContactInboxPanel({
               </div>
             ) : (
               <div ref={timelineContentRef} className={isLineView ? "space-y-0.5" : isObsidianView ? "space-y-4" : "space-y-3"}>
+                {data?.messagePage.hasMore ? (
+                  <div className="flex justify-center pb-2"><button type="button" onClick={() => void loadOlderMessages()} disabled={loadingOlder} className="rounded-full border border-white/10 bg-white/[0.045] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-300 transition hover:bg-white/[0.08] disabled:opacity-50">{loadingOlder ? "Loading history…" : "Load older messages"}</button></div>
+                ) : null}
                 {timelineRows.map((row) =>
                   row.type === "date" ? (
                     <DateDivider key={row.key} label={row.label} viewMode={chatViewMode} />
@@ -1583,6 +1774,9 @@ export default function ContactInboxPanel({
                       onInboxAction={onInboxAction}
                       onToggleReaction={onToggleReaction}
                       reactingMessageId={reactingMessageId}
+                      onReply={onReply}
+                      onRefresh={onRefresh}
+                      onRetryOptimistic={onRetryOptimistic}
                     />
                   ) : (
                     <HonorEventCard
@@ -1659,6 +1853,12 @@ export default function ContactInboxPanel({
                 aria-hidden="true"
               />
             </button>
+            {replyingTo ? (
+              <div className="mb-2 flex items-center justify-between gap-3 rounded-lg border-l-2 border-cyan-200/45 bg-cyan-300/[0.045] px-3 py-2 text-xs text-slate-300">
+                <div className="min-w-0"><span className="font-semibold text-cyan-100">Replying to {replyingTo.sender.displayName}</span><div className="mt-0.5 truncate">{replyingTo.body || replyingTo.transcription || "Attachment"}</div></div>
+                <button type="button" onClick={onCancelReply} className="text-slate-400 hover:text-white" aria-label="Cancel reply">×</button>
+              </div>
+            ) : null}
             {richComposer ? (
               richComposer
             ) : (
@@ -1683,6 +1883,7 @@ export default function ContactInboxPanel({
                 />
                 <button
                   type="button"
+                  data-contact-send="true"
                   onClick={onSend}
                   disabled={sendPending || !body.trim() || Boolean(data?.unavailableReason)}
                   className={`min-h-11 bg-amber-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-50 sm:self-end ${isLineView ? "rounded-md" : "rounded-full"}`}

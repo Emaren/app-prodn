@@ -53,7 +53,8 @@ type InboxSender = {
 };
 
 type InboxReadReceipt = {
-  status: "sent" | "read";
+  status: "sent" | "delivered" | "read";
+  deliveredAt: string | null;
   readAt: string | null;
 };
 
@@ -113,6 +114,24 @@ export type InboxTextMessage = {
   attachment: InboxMessageAttachment | null;
   reactions: InboxMessageReaction[];
   sharedLobbyMessageId: number | null;
+  replyTo: {
+    messageId: number;
+    senderName: string;
+    body: string;
+  } | null;
+  isPinned: boolean;
+  editedAt: string | null;
+  transcription: string | null;
+  transcriptionStatus: string | null;
+  translations: Array<{ language: string; text: string }>;
+  replayCard: {
+    id: number;
+    players: string[];
+    mapName: string | null;
+    winner: string | null;
+    durationSeconds: number | null;
+    playedAt: string | null;
+  } | null;
 };
 
 export type InboxMessage = InboxTextMessage | InboxBadgeMessage | InboxGiftMessage;
@@ -129,6 +148,16 @@ export type InboxPayload = {
   activeCounterpart: InboxCounterpart | null;
   activeChallenge: ScheduledMatchTile | null;
   messages: InboxMessage[];
+  messagePage: {
+    hasMore: boolean;
+    beforeMessageId: number | null;
+  };
+  draft: {
+    body: string;
+    replyToMessageId: number | null;
+    updatedAt: string;
+  } | null;
+  pinnedMessages: InboxTextMessage[];
   unavailableReason: string | null;
   conversation: {
     counterpartLastReadAt: string | null;
@@ -1071,32 +1100,12 @@ async function loadConversationSummaries(prisma: PrismaClient, viewerUserId: num
 async function loadConversationMessages(
   prisma: PrismaClient,
   viewerUserId: number,
-  targetUserId: number
+  targetUserId: number,
+  options?: { beforeMessageId?: number | null; limit?: number }
 ) {
   const conversation = await prisma.directConversation.findUnique({
     where: { pairKey: buildPairKey(viewerUserId, targetUserId) },
     include: {
-      messages: {
-        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-        take: 5000,
-        select: {
-        id: true,
-        senderUserId: true,
-        body: true,
-        attachmentKind: true,
-        attachmentName: true,
-        attachmentMimeType: true,
-        attachmentDurationSeconds: true,
-        sharedLobbyMessageId: true,
-        createdAt: true,
-        reactions: {
-          select: {
-            emoji: true,
-            userId: true,
-          },
-          },
-        },
-      },
       participants: {
         include: {
           user: {
@@ -1120,10 +1129,56 @@ async function loadConversationMessages(
       counterpart: null as InboxCounterpart | null,
       counterpartLastReadAt: null as string | null,
       counterpartTyping: false,
+      messagePage: { hasMore: false, beforeMessageId: null as number | null },
+      draft: null,
+      pinnedMessages: [] as InboxTextMessage[],
     };
   }
 
-  const orderedMessages = [...conversation.messages].reverse();
+  const limit = Math.min(Math.max(options?.limit ?? 80, 20), 120);
+  const rows = await prisma.directMessage.findMany({
+    where: {
+      conversationId: conversation.id,
+      ...(options?.beforeMessageId ? { id: { lt: options.beforeMessageId } } : {}),
+    },
+    orderBy: [{ id: "desc" }],
+    take: limit + 1,
+    select: {
+      id: true,
+      senderUserId: true,
+      body: true,
+      attachmentKind: true,
+      attachmentName: true,
+      attachmentMimeType: true,
+      attachmentDurationSeconds: true,
+      sharedLobbyMessageId: true,
+      replyToMessageId: true,
+      deliveredAt: true,
+      editedAt: true,
+      transcription: true,
+      transcriptionStatus: true,
+      createdAt: true,
+      replyTo: {
+        select: {
+          id: true,
+          body: true,
+          attachmentKind: true,
+          sender: {
+            select: {
+              uid: true,
+              inGameName: true,
+              steamPersonaName: true,
+            },
+          },
+        },
+      },
+      reactions: { select: { emoji: true, userId: true } },
+      pins: { where: { conversationId: conversation.id }, select: { id: true } },
+      translations: { orderBy: { updatedAt: "desc" }, take: 4, select: { language: true, text: true } },
+    },
+  });
+  const hasMore = rows.length > limit;
+  const orderedMessages = rows.slice(0, limit).reverse();
 
   const counterpartParticipant = conversation.participants.find(
     (participant) => participant.userId === targetUserId
@@ -1137,8 +1192,8 @@ async function loadConversationMessages(
     ? communityMap.get(counterpartParticipant.userId) ?? { badges: [], gifts: [], giftedWolo: 0 }
     : { badges: [], gifts: [], giftedWolo: 0 };
 
-  const [badges, gifts] = await Promise.all([
-    prisma.userBadge.findMany({
+  const [badges, gifts, draft, pinnedRows] = await Promise.all([
+    options?.beforeMessageId ? Promise.resolve([]) : prisma.userBadge.findMany({
       where: {
         OR: [
           { userId: viewerUserId, createdByUserId: targetUserId },
@@ -1158,7 +1213,7 @@ async function loadConversationMessages(
       },
       orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     }),
-    prisma.userGift.findMany({
+    options?.beforeMessageId ? Promise.resolve([]) : prisma.userGift.findMany({
       where: {
         OR: [
           { userId: viewerUserId, createdByUserId: targetUserId },
@@ -1177,6 +1232,37 @@ async function loadConversationMessages(
         },
       },
       orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    }),
+    prisma.directMessageDraft.findUnique({
+      where: {
+        conversationId_userId: { conversationId: conversation.id, userId: viewerUserId },
+      },
+      select: { body: true, replyToMessageId: true, updatedAt: true },
+    }),
+    prisma.directMessage.findMany({
+      where: { conversationId: conversation.id, pins: { some: {} } },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: 12,
+      select: {
+        id: true,
+        senderUserId: true,
+        body: true,
+        attachmentKind: true,
+        attachmentName: true,
+        attachmentMimeType: true,
+        attachmentDurationSeconds: true,
+        sharedLobbyMessageId: true,
+        replyToMessageId: true,
+        deliveredAt: true,
+        editedAt: true,
+        transcription: true,
+        transcriptionStatus: true,
+        createdAt: true,
+        replyTo: { select: { id: true, body: true, attachmentKind: true, sender: { select: { uid: true, inGameName: true, steamPersonaName: true } } } },
+        reactions: { select: { emoji: true, userId: true } },
+        pins: { select: { id: true } },
+        translations: { orderBy: { updatedAt: "desc" }, take: 4, select: { language: true, text: true } },
+      },
     }),
   ]);
 
@@ -1194,21 +1280,19 @@ async function loadConversationMessages(
     counterpartParticipant?.typingUpdatedAt &&
       Date.now() - counterpartParticipant.typingUpdatedAt.getTime() <= DIRECT_MESSAGE_TYPING_WINDOW_MS
   );
-  const latestOutgoingTextMessage =
-    [...orderedMessages].reverse().find((message) => message.senderUserId === viewerUserId) ?? null;
-  const latestReadOutgoingTextMessage =
-    counterpartParticipant?.lastReadAt
-      ? [...orderedMessages]
-          .reverse()
-          .find(
-            (message) =>
-              message.senderUserId === viewerUserId &&
-              counterpartParticipant.lastReadAt &&
-              counterpartParticipant.lastReadAt.getTime() >= message.createdAt.getTime()
-          ) ?? null
-      : null;
+  const replayIds = Array.from(new Set([...orderedMessages, ...pinnedRows].flatMap((message) => {
+    const matches = Array.from((message.body ?? "").matchAll(/\/game-stats\/(\d+)/g));
+    return matches.map((match) => Number(match[1])).filter(Number.isFinite);
+  })));
+  const replayRows = replayIds.length
+    ? await prisma.gameStats.findMany({
+        where: { id: { in: replayIds } },
+        select: { id: true, players: true, map: true, winner: true, duration: true, game_duration: true, played_on: true, timestamp: true },
+      })
+    : [];
+  const replayMap = new Map(replayRows.map((row) => [row.id, row]));
 
-  const messageEvents: InboxMessage[] = orderedMessages.map((message) => {
+  const serializeMessage = (message: (typeof orderedMessages)[number]): InboxTextMessage => {
     const sender = conversation.participants.find(
       (participant) => participant.userId === message.senderUserId
     )?.user;
@@ -1217,13 +1301,19 @@ async function loadConversationMessages(
         ? senderCommunityMap.get(sender.id)
         : { badges: [], gifts: [], giftedWolo: 0 };
 
-    const isReceiptAnchor =
-      sender?.id === viewerUserId && latestOutgoingTextMessage?.id === message.id;
-    const readAt =
-      isReceiptAnchor &&
-      latestReadOutgoingTextMessage?.id === message.id &&
-      counterpartParticipant?.lastReadAt
-        ? counterpartParticipant.lastReadAt.toISOString()
+    const isOutgoing = sender?.id === viewerUserId;
+    const readAt = isOutgoing && counterpartParticipant?.lastReadAt && counterpartParticipant.lastReadAt >= message.createdAt
+      ? counterpartParticipant.lastReadAt.toISOString()
+      : null;
+    const replayIdMatch = message.body?.match(/\/game-stats\/(\d+)/);
+    const replay = replayIdMatch ? replayMap.get(Number(replayIdMatch[1])) : null;
+    const replayPlayers = replay && Array.isArray(replay.players)
+      ? replay.players.map((player) => typeof player === "string" ? player : player && typeof player === "object" && "name" in player ? String(player.name) : "").filter(Boolean).slice(0, 8)
+      : [];
+    const replayMapName = replay && typeof replay.map === "string"
+      ? replay.map
+      : replay?.map && typeof replay.map === "object" && "name" in replay.map
+        ? String(replay.map.name || "") || null
         : null;
 
     return {
@@ -1236,15 +1326,33 @@ async function loadConversationMessages(
       attachment: buildMessageAttachment(message),
       reactions: buildMessageReactions(message.reactions, viewerUserId),
       sharedLobbyMessageId: message.sharedLobbyMessageId ?? null,
-      receipt:
-        isReceiptAnchor
-          ? {
-              status: readAt ? "read" : "sent",
-              readAt,
-            }
-          : null,
-    } satisfies InboxTextMessage;
-  });
+      replyTo: message.replyTo ? {
+        messageId: message.replyTo.id,
+        senderName: displayNameForUser(message.replyTo.sender),
+        body: message.replyTo.body?.trim() || (message.replyTo.attachmentKind === "audio" ? "Voice note" : "Attachment"),
+      } : null,
+      isPinned: message.pins.length > 0,
+      editedAt: message.editedAt?.toISOString() ?? null,
+      transcription: message.transcription ?? null,
+      transcriptionStatus: message.transcriptionStatus ?? null,
+      translations: message.translations,
+      replayCard: replay ? {
+        id: replay.id,
+        players: replayPlayers,
+        mapName: replayMapName,
+        winner: replay.winner ?? null,
+        durationSeconds: replay.duration ?? replay.game_duration ?? null,
+        playedAt: (replay.played_on ?? replay.timestamp)?.toISOString() ?? null,
+      } : null,
+      receipt: isOutgoing ? {
+        status: readAt ? "read" : message.deliveredAt ? "delivered" : "sent",
+        deliveredAt: message.deliveredAt?.toISOString() ?? null,
+        readAt,
+      } : null,
+    };
+  };
+
+  const messageEvents: InboxMessage[] = orderedMessages.map(serializeMessage);
 
   const badgeEvents = badges.map((badge) =>
     serializeBadge(
@@ -1288,6 +1396,16 @@ async function loadConversationMessages(
       : null,
     counterpartLastReadAt,
     counterpartTyping,
+    messagePage: {
+      hasMore,
+      beforeMessageId: hasMore && orderedMessages[0] ? orderedMessages[0].id : null,
+    },
+    draft: draft ? {
+      body: draft.body ?? "",
+      replyToMessageId: draft.replyToMessageId ?? null,
+      updatedAt: draft.updatedAt.toISOString(),
+    } : null,
+    pinnedMessages: pinnedRows.map(serializeMessage),
   };
 }
 
@@ -1305,15 +1423,24 @@ async function markConversationRead(
     return;
   }
 
-  await prisma.directConversationParticipant.updateMany({
-    where: {
-      conversationId: conversation.id,
-      userId: viewerUserId,
-    },
-    data: {
-      lastReadAt: new Date(),
-    },
-  });
+  const now = new Date();
+  await prisma.$transaction([
+    prisma.directConversationParticipant.updateMany({
+      where: {
+        conversationId: conversation.id,
+        userId: viewerUserId,
+      },
+      data: { lastReadAt: now },
+    }),
+    prisma.directMessage.updateMany({
+      where: {
+        conversationId: conversation.id,
+        senderUserId: targetUserId,
+        deliveredAt: null,
+      },
+      data: { deliveredAt: now },
+    }),
+  ]);
 }
 
 export async function resolveInboxTargetForViewer(
@@ -1364,6 +1491,8 @@ export async function loadInboxPayload(
   options?: {
     targetUid?: string | null;
     summaryOnly?: boolean;
+    beforeMessageId?: number | null;
+    messageLimit?: number;
   }
 ): Promise<InboxPayload> {
   const viewer = await findViewer(prisma, viewerUid);
@@ -1450,12 +1579,18 @@ export async function loadInboxPayload(
       activeCounterpart: null,
       activeChallenge: null,
       messages: [],
+      messagePage: { hasMore: false, beforeMessageId: null },
+      draft: null,
+      pinnedMessages: [],
       unavailableReason,
       conversation: null,
     };
   }
 
-  const activeConversation = await loadConversationMessages(prisma, viewer.id, activeTargetUser.id);
+  const activeConversation = await loadConversationMessages(prisma, viewer.id, activeTargetUser.id, {
+    beforeMessageId: options?.beforeMessageId,
+    limit: options?.messageLimit,
+  });
 
   if (!activeConversation.counterpart) {
     const communityMap = await loadUserCommunitySummaries(prisma, [activeTargetUser.id]);
@@ -1480,6 +1615,9 @@ export async function loadInboxPayload(
       },
       activeChallenge,
       messages: [],
+      messagePage: { hasMore: false, beforeMessageId: null },
+      draft: null,
+      pinnedMessages: [],
       unavailableReason,
       conversation: {
         counterpartLastReadAt: null,
@@ -1500,6 +1638,9 @@ export async function loadInboxPayload(
     activeCounterpart: activeConversation.counterpart,
     activeChallenge,
     messages: activeConversation.messages,
+    messagePage: activeConversation.messagePage,
+    draft: activeConversation.draft,
+    pinnedMessages: activeConversation.pinnedMessages,
     unavailableReason,
     conversation: {
       counterpartLastReadAt: activeConversation.counterpartLastReadAt,

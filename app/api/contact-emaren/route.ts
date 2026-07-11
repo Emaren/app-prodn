@@ -21,6 +21,7 @@ import {
   removePersistedDirectMessageAttachment,
 } from "@/lib/directMessageAttachments";
 import { recordUserActivity } from "@/lib/userExperience";
+import { publishDirectMessageEvent } from "@/lib/directMessageEvents";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 import { LOBBY_ROOM_SLUG, normalizeChatBody } from "@/lib/lobby";
@@ -118,6 +119,7 @@ async function readMessageInput(request: NextRequest) {
     return {
       body: normalizeInboxMessageBody(String(formData.get("body") || "")),
       targetUid: readTargetUid(formData.get("targetUid")),
+      replyToMessageId: Number(formData.get("replyToMessageId")) || null,
       attachment,
     };
   }
@@ -125,11 +127,13 @@ async function readMessageInput(request: NextRequest) {
   const payload = (await request.json().catch(() => ({}))) as {
     body?: string;
     targetUid?: string;
+    replyToMessageId?: number | null;
   };
 
   return {
     body: normalizeInboxMessageBody(payload.body || ""),
     targetUid: readTargetUid(payload.targetUid),
+    replyToMessageId: typeof payload.replyToMessageId === "number" ? payload.replyToMessageId : null,
     attachment: null,
   };
 }
@@ -179,10 +183,18 @@ export async function GET(request: NextRequest) {
     const prisma = getPrisma();
     const summaryOnly = request.nextUrl.searchParams.get("summary") === "1";
     const targetUid = request.nextUrl.searchParams.get("user");
+    const beforeMessageId = Number(request.nextUrl.searchParams.get("before")) || null;
     const payload = await loadInboxPayload(prisma, sessionUid, {
       summaryOnly,
       targetUid,
+      beforeMessageId,
     });
+    if (!summaryOnly && payload.activeTargetUid) {
+      publishDirectMessageEvent(payload.activeTargetUid, {
+        type: "receipt",
+        targetUid: sessionUid,
+      });
+    }
 
     return NextResponse.json(payload);
   } catch (error) {
@@ -246,6 +258,15 @@ export async function POST(request: NextRequest) {
     }
 
     const conversation = await getOrCreateConversationByUsers(prisma, viewer.id, targetUser.id);
+    if (payload.replyToMessageId) {
+      const replyTarget = await prisma.directMessage.findFirst({
+        where: { id: payload.replyToMessageId, conversationId: conversation.id },
+        select: { id: true },
+      });
+      if (!replyTarget) {
+        return NextResponse.json({ detail: "Reply target was not found in this conversation." }, { status: 400 });
+      }
+    }
     const aiPromptBody =
       targetUser.uid === AI_CONCIERGE_UID ? buildAiPromptBody(payload) : "";
     const priorAiThreadMessages =
@@ -255,7 +276,7 @@ export async function POST(request: NextRequest) {
               conversationId: conversation.id,
             },
             orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-            take: 5000,
+            take: 60,
             select: {
               body: true,
               senderUserId: true,
@@ -279,8 +300,9 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    let createdMessageId: number | null = null;
     try {
-      await prisma.directMessage.create({
+      const createdMessage = await prisma.directMessage.create({
         data: {
           conversationId: conversation.id,
           senderUserId: viewer.id,
@@ -290,8 +312,11 @@ export async function POST(request: NextRequest) {
           attachmentMimeType: attachment?.mimeType ?? null,
           attachmentDataUrl: attachmentStorageRef,
           attachmentDurationSeconds: attachment?.durationSeconds ?? null,
+          replyToMessageId: payload.replyToMessageId,
         },
+        select: { id: true },
       });
+      createdMessageId = createdMessage.id;
     } catch (createMessageError) {
       await removePersistedDirectMessageAttachment(attachmentStorageRef);
       throw createMessageError;
@@ -363,6 +388,15 @@ export async function POST(request: NextRequest) {
       dedupeWithinSeconds: 0,
     });
 
+    await prisma.directMessageDraft.deleteMany({
+      where: { conversationId: conversation.id, userId: viewer.id },
+    });
+    publishDirectMessageEvent(targetUser.uid, {
+      type: "message",
+      targetUid: viewer.uid,
+      messageId: createdMessageId,
+    });
+
     const refreshed = await loadInboxPayload(prisma, viewer.uid, {
       targetUid: targetUser.uid,
     });
@@ -408,6 +442,8 @@ export async function PATCH(request: NextRequest) {
       body?: string;
       emoji?: string;
       isTyping?: boolean;
+      replyToMessageId?: number | null;
+      language?: string;
     };
 
     let targetUser = await resolveInboxTargetForViewer(prisma, viewer, payload.targetUid);
@@ -819,6 +855,7 @@ export async function PATCH(request: NextRequest) {
               where: { id: message.id },
               data: {
                 body: nextBody || null,
+                editedAt: new Date(),
               },
             }),
             prisma.chatMessage.update({
@@ -833,6 +870,7 @@ export async function PATCH(request: NextRequest) {
             where: { id: message.id },
             data: {
               body: nextBody || null,
+              editedAt: new Date(),
             },
           });
         }
@@ -1014,12 +1052,76 @@ export async function PATCH(request: NextRequest) {
           },
         });
 
+        publishDirectMessageEvent(targetUser.uid, { type: "typing", targetUid: viewer.uid });
         return NextResponse.json({ ok: true });
+      }
+
+      case "save_draft": {
+        const conversation = await getOrCreateConversationByUsers(prisma, viewer.id, targetUser.id);
+        const draftBody = String(payload.body || "").slice(0, 4000);
+        if (!draftBody.trim() && !payload.replyToMessageId) {
+          await prisma.directMessageDraft.deleteMany({
+            where: { conversationId: conversation.id, userId: viewer.id },
+          });
+        } else {
+          await prisma.directMessageDraft.upsert({
+            where: { conversationId_userId: { conversationId: conversation.id, userId: viewer.id } },
+            create: {
+              conversationId: conversation.id,
+              userId: viewer.id,
+              body: draftBody || null,
+              replyToMessageId: payload.replyToMessageId ?? null,
+            },
+            update: {
+              body: draftBody || null,
+              replyToMessageId: payload.replyToMessageId ?? null,
+            },
+          });
+        }
+        return NextResponse.json({ ok: true });
+      }
+
+      case "toggle_pin": {
+        if (typeof payload.messageId !== "number") {
+          return NextResponse.json({ detail: "Message id is required" }, { status: 400 });
+        }
+        const conversation = await prisma.directConversation.findUnique({
+          where: { pairKey: [viewer.id, targetUser.id].sort((a, b) => a - b).join(":") },
+          select: { id: true },
+        });
+        if (!conversation) {
+          return NextResponse.json({ detail: "Conversation not found" }, { status: 404 });
+        }
+        const message = await prisma.directMessage.findFirst({
+          where: { id: payload.messageId, conversationId: conversation.id },
+          select: { id: true },
+        });
+        if (!message) {
+          return NextResponse.json({ detail: "Message not found" }, { status: 404 });
+        }
+        const existing = await prisma.directMessagePin.findUnique({
+          where: { conversationId_messageId: { conversationId: conversation.id, messageId: message.id } },
+          select: { id: true },
+        });
+        if (existing) {
+          await prisma.directMessagePin.delete({ where: { id: existing.id } });
+        } else {
+          await prisma.directMessagePin.create({
+            data: { conversationId: conversation.id, messageId: message.id, pinnedByUserId: viewer.id },
+          });
+        }
+        break;
       }
 
       default:
         return NextResponse.json({ detail: "Unknown inbox action" }, { status: 400 });
     }
+
+    publishDirectMessageEvent(targetUser.uid, {
+      type: payload.action === "toggle_reaction" ? "reaction" : payload.action === "toggle_pin" ? "pin" : "message_updated",
+      targetUid: viewer.uid,
+      messageId: payload.messageId ?? null,
+    });
 
     const refreshed = await loadInboxPayload(prisma, viewer.uid, {
       targetUid: targetUser.uid,
