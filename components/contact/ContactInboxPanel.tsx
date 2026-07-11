@@ -118,10 +118,15 @@ function formatTimestamp(value: string | null) {
 function formatReceiptTimestamp(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "recently";
-  return date.toLocaleTimeString([], {
+  const dateCopy = date.toLocaleDateString([], {
+    month: "short",
+    day: "numeric",
+  });
+  const timeCopy = date.toLocaleTimeString([], {
     hour: "numeric",
     minute: "2-digit",
   });
+  return `${dateCopy} · ${timeCopy}`;
 }
 
 function formatBubbleTime(value: string) {
@@ -551,7 +556,7 @@ function ReceiptLine({
 
   const copy =
     message.receipt.status === "read" && message.receipt.readAt
-      ? formatReceiptTimestamp(message.createdAt)
+      ? formatReceiptTimestamp(message.receipt.readAt)
       : message.receipt.status === "delivered"
         ? "Sent"
         : message.receipt.status === "sending"
