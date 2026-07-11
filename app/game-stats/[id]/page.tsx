@@ -298,16 +298,100 @@ export default async function GameStatsDetailPage({
             <h1 className="break-words text-4xl font-semibold text-white sm:text-5xl [overflow-wrap:anywhere]">
               {readMapName(game.map)}
             </h1>
-            <p className="max-w-3xl break-words text-base leading-7 text-slate-300 sm:text-lg [overflow-wrap:anywhere]">
-              {players.length > 0 ? (
+            <div className="flex max-w-5xl flex-wrap items-center gap-x-2 gap-y-1 break-words text-base leading-7 text-slate-300 sm:text-lg [overflow-wrap:anywhere]">
+              {replaySides &&
+              replaySides.format !== "1v1" ? (
+                <>
+                  <span
+                    className="inline-flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1"
+                    data-replay-team-side="left"
+                  >
+                    {replaySides.left.map(
+                      (member, index) => (
+                        <span
+                          key={`left:${member.name}:${index}`}
+                          className="inline-flex min-w-0 items-center gap-x-2"
+                        >
+                          {index > 0 ? (
+                            <span className="text-slate-500">
+                              /
+                            </span>
+                          ) : null}
+
+                          <Link
+                            href={getPublicPlayerHref(
+                              member.name,
+                              claimedPlayers
+                            )}
+                            className="min-w-0 break-words text-sky-200 transition hover:text-sky-100"
+                            data-replay-team-player-link
+                          >
+                            {member.name}
+                          </Link>
+                        </span>
+                      )
+                    )}
+                  </span>
+
+                  <span
+                    className="px-1 font-medium text-slate-500"
+                    data-replay-team-versus
+                  >
+                    vs
+                  </span>
+
+                  <span
+                    className="inline-flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1"
+                    data-replay-team-side="right"
+                  >
+                    {replaySides.right.map(
+                      (member, index) => (
+                        <span
+                          key={`right:${member.name}:${index}`}
+                          className="inline-flex min-w-0 items-center gap-x-2"
+                        >
+                          {index > 0 ? (
+                            <span className="text-slate-500">
+                              /
+                            </span>
+                          ) : null}
+
+                          <Link
+                            href={getPublicPlayerHref(
+                              member.name,
+                              claimedPlayers
+                            )}
+                            className="min-w-0 break-words text-sky-200 transition hover:text-sky-100"
+                            data-replay-team-player-link
+                          >
+                            {member.name}
+                          </Link>
+                        </span>
+                      )
+                    )}
+                  </span>
+                </>
+              ) : players.length > 0 ? (
                 players.map((player, index) => {
                   const name = displayPlayerName(player);
+
                   return (
-                    <span key={`${name}-${index}`}>
-                      {index > 0 ? " vs " : null}
+                    <span
+                      key={`${name}-${index}`}
+                      className="inline-flex min-w-0 items-center gap-x-2"
+                    >
+                      {index > 0 ? (
+                        <span className="text-slate-500">
+                          vs
+                        </span>
+                      ) : null}
+
                       <Link
-                        href={getPublicPlayerHref(name, claimedPlayers)}
-                        className="text-sky-200 transition hover:text-sky-100"
+                        href={getPublicPlayerHref(
+                          name,
+                          claimedPlayers
+                        )}
+                        className="min-w-0 break-words text-sky-200 transition hover:text-sky-100"
                       >
                         {name}
                       </Link>
@@ -317,7 +401,7 @@ export default async function GameStatsDetailPage({
               ) : (
                 "Player list unavailable"
               )}
-            </p>
+            </div>
             <div className="flex flex-wrap gap-2">
               <Tag>{winnerLabel(game.winner, game.parse_reason)}</Tag>
               <Tag>{game.parse_source}</Tag>
