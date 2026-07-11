@@ -42,6 +42,8 @@ type BetMarketPreflightContext = {
     leftLabel: string;
     rightLabel: string;
     marketType: string;
+    linkedSessionKey: string | null;
+    scheduledMatchId: number | null;
   };
   activeMarketWagers: Array<{
     id: number;
@@ -233,6 +235,8 @@ async function loadBetMarketPreflightContext(
         leftLabel: true,
         rightLabel: true,
         marketType: true,
+        linkedSessionKey: true,
+        scheduledMatchId: true,
       },
     }),
     prisma.betWager.findMany({
@@ -308,6 +312,17 @@ function assertBetMarketPreflight(
   }
 ) {
   const normalizedWalletAddress = input.walletAddress?.trim() || "";
+
+  if (
+    context.market.status === "closing" &&
+    context.market.linkedSessionKey &&
+    !context.market.scheduledMatchId
+  ) {
+    throw new BetWagerError(
+      409,
+      "This live book is locked while the final replay is being verified."
+    );
+  }
 
   if (!["open", "closing", "live"].includes(context.market.status)) {
     throw new BetWagerError(409, "This book is closed.");

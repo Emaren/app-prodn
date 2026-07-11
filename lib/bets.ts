@@ -2306,11 +2306,40 @@ async function reconcileDetachedWatcherMarkets(
 
       const finalGameId = finalGameIdBySessionKey.get(sessionKey) ?? null;
       const finalGame = finalGameId ? finalGameById.get(finalGameId) ?? null : null;
-      const winnerSide = finalGame
-        ? inferWinnerSideFromGameStats(market, finalGame)
-        : null;
-      const settledAt = finalGame?.timestamp ?? finalGame?.createdAt ?? market.updatedAt ?? new Date();
-      const mapName = finalGame ? readMapName(finalGame.map) : null;
+
+      // A watcher session disappearing from the live snapshot is not
+      // final-result proof. Lock the book and preserve active wagers
+      // until a real final game_stats row is available.
+      if (!finalGame) {
+        await prisma.betMarket.updateMany({
+          where: {
+            id: market.id,
+            status: {
+              in: ["open", "live"],
+            },
+          },
+          data: {
+            status: "closing",
+            featured: false,
+            closeAt: new Date(),
+            settledAt: null,
+            winnerSide: null,
+          },
+        });
+
+        return;
+      }
+
+      const winnerSide = inferWinnerSideFromGameStats(
+        market,
+        finalGame
+      );
+      const settledAt =
+        finalGame.timestamp ??
+        finalGame.createdAt ??
+        market.updatedAt ??
+        new Date();
+      const mapName = readMapName(finalGame.map);
 
       await prisma.betMarket.update({
         where: { id: market.id },
@@ -2690,7 +2719,15 @@ function buildMarketCard(
     linkedGameStatsId: market.linkedGameStatsId ?? null,
     status: market.status as BetStatus,
     featured: market.featured,
-    closeLabel: formatCloseLabel(market.status as BetStatus, market.closeAt),
+    closeLabel:
+      market.status === "closing" &&
+      linkedSessionKey &&
+      !market.scheduledMatch
+        ? "Awaiting final replay"
+        : formatCloseLabel(
+            market.status as BetStatus,
+            market.closeAt
+          ),
     scheduledStartAt: market.closeAt?.toISOString() ?? market.scheduledMatch?.scheduledAt?.toISOString() ?? null,
     totalPotWolo,
     left: {
