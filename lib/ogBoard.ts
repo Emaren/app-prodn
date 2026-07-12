@@ -118,6 +118,10 @@ function readPosition(player: Record<string, unknown>) {
     : null;
 }
 
+function meaningfulRating(value: number | null) {
+  return value !== null && value > 0 ? value : null;
+}
+
 function toIso(value: Date | string | null) {
   if (!value) return null;
   const date = value instanceof Date ? value : new Date(value);
@@ -190,8 +194,8 @@ export async function loadOgBoardPage(
         eapm: readNumber(player, "eapm"),
         position: readPosition(player),
         teamId: readTeamId(player),
-        rmRating: readPlayerSteamRmRating(player),
-        dmRating: readPlayerSteamDmRating(player),
+        rmRating: meaningfulRating(readPlayerSteamRmRating(player)),
+        dmRating: meaningfulRating(readPlayerSteamDmRating(player)),
         achievements,
       };
     });

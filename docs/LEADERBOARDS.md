@@ -20,6 +20,7 @@ Postgame data is field-presence aware:
 - explicit `has_scores: false` and `has_achievements: false` signals suppress those groups;
 - null, undefined, empty, or non-finite achievement values are omitted;
 - a genuinely stored numeric zero remains visible;
+- non-positive RM/DM rating snapshots are treated as unavailable because legacy parser rows use zero as a rating sentinel;
 - partial/fallback replays still show map, duration, date, roster, civilizations, ratings/EAPM where stored, and only a reliable winner;
 - cards without score/achievement payloads say that postgame statistics are unavailable instead of rendering zeroes.
 
