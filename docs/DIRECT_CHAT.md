@@ -64,6 +64,7 @@ All three modes are available in Nav Chat and Full Chat. A selection made in eit
 ## Message intelligence and state
 
 - Read receipts are automatic and enabled by default, but only the latest outgoing message renders a receipt line, matching the quiet Apple-style pattern. Normal stable states show only `Sent` until viewed, then the actual viewed-at timestamp as `Mon D · H:MM AM/PM`, with no `Read` label and no seconds. Transient sending/failure feedback remains available for reliability and retry.
+- Date dividers remain pinned to the top of the scrolling timeline until the next day takes over. This preserves the send-date context when a viewed-at receipt falls on a later day and prevents two valid times from appearing chronologically impossible.
 - Message action trays deliberately disable `content-visibility` paint containment only while open, then choose an above/below anchor inside the timeline. This keeps reactions, reply, pin, translation, edit, and delete fully visible without giving up off-screen message rendering performance.
 - Opening a thread marks incoming messages read. Establishing the live event stream marks previously undelivered incoming messages delivered, even if that thread is not open.
 - Draft text and quoted-reply targets are debounced to `direct_message_drafts`, shared between Nav Chat and Full Chat, and removed after a successful send.

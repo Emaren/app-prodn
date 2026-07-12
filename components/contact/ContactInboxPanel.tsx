@@ -695,21 +695,25 @@ function HonorActions({
 function DateDivider({ label, viewMode }: { label: string; viewMode: ChatViewMode }) {
   if (viewMode === "v2") {
     return (
-      <div className="my-3 flex items-center gap-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#8b8d93]">
-        <div className="h-px flex-1 bg-white/10" />
-        {label}
-        <div className="h-px flex-1 bg-white/10" />
+      <div className="pointer-events-none sticky top-0 z-30 -mx-2 bg-[linear-gradient(180deg,rgba(4,10,20,0.98)_0%,rgba(4,10,20,0.91)_72%,rgba(4,10,20,0)_100%)] px-2 pb-2 pt-1 backdrop-blur-md" aria-label={`Messages from ${label}`}>
+        <div className="flex items-center gap-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#8b8d93]">
+          <div className="h-px flex-1 bg-white/10" />
+          {label}
+          <div className="h-px flex-1 bg-white/10" />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="my-3 flex items-center gap-3 py-1">
-      <div className={`h-px flex-1 ${viewMode === "v3" ? "bg-gradient-to-r from-transparent to-teal-200/20" : "bg-white/7"}`} />
-      <div className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.24em] ${viewMode === "v3" ? "border border-teal-100/10 bg-teal-200/[0.045] text-teal-100/45" : "bg-white/[0.05] text-slate-500"}`}>
-        {label}
+    <div className="pointer-events-none sticky top-0 z-30 -mx-2 bg-[linear-gradient(180deg,rgba(4,10,20,0.98)_0%,rgba(4,10,20,0.91)_72%,rgba(4,10,20,0)_100%)] px-2 pb-2 pt-1 backdrop-blur-md" aria-label={`Messages from ${label}`}>
+      <div className="flex items-center gap-3 py-1">
+        <div className={`h-px flex-1 ${viewMode === "v3" ? "bg-gradient-to-r from-transparent to-teal-200/20" : "bg-white/7"}`} />
+        <div className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.24em] ${viewMode === "v3" ? "border border-teal-100/10 bg-teal-200/[0.06] text-teal-100/60" : "bg-white/[0.06] text-slate-400"}`}>
+          {label}
+        </div>
+        <div className={`h-px flex-1 ${viewMode === "v3" ? "bg-gradient-to-l from-transparent to-amber-200/20" : "bg-white/7"}`} />
       </div>
-      <div className={`h-px flex-1 ${viewMode === "v3" ? "bg-gradient-to-l from-transparent to-amber-200/20" : "bg-white/7"}`} />
     </div>
   );
 }
