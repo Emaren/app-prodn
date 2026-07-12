@@ -6,6 +6,8 @@ This is the public product shell users actually feel.
 
 It currently owns the premium lobby/community surface, leaderboard presentation, players/rivalries/live-games/clan routes, requests/inbox/admin flows, `$WOLO` product UI, and same-origin browser API routes that enforce session/admin behavior before proxying selected calls to `api-prodn`.
 
+The public leaderboard now has two dedicated routes: `/leaderboard` for the modern RM/DM ranked warrior table and `/leaderboard/og` for the chronological replay-backed battle board. Both use current HD data and share the app's existing ranking, replay-finality, and public-player resolution rules.
+
 ## Canonical docs
 
 - [ARCHITECTURE.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/ARCHITECTURE.md)

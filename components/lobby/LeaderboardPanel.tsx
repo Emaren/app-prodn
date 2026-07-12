@@ -2,7 +2,17 @@
 
 import { formatLobbyMoment } from "@/components/lobby/utils";
 import Link from "next/link";
-import { type UIEvent, type WheelEvent, useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  type KeyboardEvent,
+  type MouseEvent,
+  type UIEvent,
+  type WheelEvent,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import SteamLinkedBadge from "@/components/SteamLinkedBadge";
 import { LeaderboardLaneToggle } from "@/components/lobby/LeaderboardLaneToggle";
@@ -14,6 +24,7 @@ import {
 import { LobbyViewToggle } from "@/components/lobby/LobbyAppearanceControls";
 import type { LobbyLeaderboardSummary } from "@/lib/lobby";
 import type { LeaderboardLane } from "@/lib/leaderboardLane";
+import { trackLeaderboardEvent } from "@/lib/leaderboardTelemetry";
 
 type LeaderboardPanelProps = {
   leaderboard: LobbyLeaderboardSummary;
@@ -72,6 +83,16 @@ function buildRecordLabel(entry: LobbyLeaderboardSummary["entries"][number]) {
   return entry.unknowns > 0 ? `${base} · ${entry.unknowns} unk` : base;
 }
 
+function isLeaderboardNavigationControl(target: EventTarget | null) {
+  return target instanceof HTMLElement
+    ? Boolean(
+        target.closest(
+          "a,button,input,textarea,select,label,[role='button'],[data-ignore-leaderboard-navigation='true']"
+        )
+      )
+    : false;
+}
+
 export function LeaderboardPanel({
   leaderboard,
   onlineCount,
@@ -83,6 +104,7 @@ export function LeaderboardPanel({
   onLeaderboardLaneChange,
   surface = "standard",
 }: LeaderboardPanelProps) {
+  const router = useRouter();
   const tone = getLobbyPresentationTone(themeKey, viewMode);
   const isExtreme = surface === "extreme";
   const [entries, setEntries] = useState(leaderboard.entries);
@@ -345,8 +367,30 @@ export function LeaderboardPanel({
     : "mt-6 h-[clamp(30rem,calc(100svh-15rem),62rem)] min-h-[30rem] space-y-3 overflow-y-auto overflow-x-hidden overscroll-y-auto pr-2 scroll-smooth [scrollbar-gutter:stable] [scrollbar-width:thin] [-webkit-overflow-scrolling:touch] [touch-action:pan-y] [contain:layout_paint] sm:h-[clamp(30rem,calc(100svh-15rem),68rem)] lg:h-[clamp(32rem,calc(100svh-14rem),76rem)]"
 
   const leaderboardPanelShellClassName = isExtreme
-    ? `relative flex min-h-0 flex-col rounded-[1.85rem] border p-5 transition-all duration-300 sm:p-6 ${tone.panelShell}`
-    : `relative flex min-h-0 flex-col rounded-[1.85rem] border p-5 transition-all duration-300 sm:p-6 ${tone.panelShell}`
+    ? `relative flex min-h-0 cursor-pointer flex-col rounded-[1.85rem] border p-5 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_24px_70px_rgba(15,23,42,0.38)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200/55 sm:p-6 ${tone.panelShell}`
+    : `relative flex min-h-0 cursor-pointer flex-col rounded-[1.85rem] border p-5 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_24px_70px_rgba(15,23,42,0.38)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200/55 sm:p-6 ${tone.panelShell}`
+
+  const navigateToLeaderboard = () => {
+    trackLeaderboardEvent({
+      type: "leaderboard_open_home_tile",
+      metadata: { destination: "modern" },
+    });
+    router.push("/leaderboard");
+  };
+
+  const handlePanelClick = (event: MouseEvent<HTMLDivElement>) => {
+    if (isLeaderboardNavigationControl(event.target)) return;
+    if (window.getSelection()?.toString()) return;
+    navigateToLeaderboard();
+  };
+
+  const handlePanelKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (isLeaderboardNavigationControl(event.target)) return;
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      navigateToLeaderboard();
+    }
+  };
 
   useEffect(() => {
     if (leaderboardHydrationStartedRef.current) return;
@@ -411,6 +455,11 @@ export function LeaderboardPanel({
     <div
       ref={leaderboardPanelRef}
       data-lobby-leaderboard-panel="true"
+      role="link"
+      tabIndex={0}
+      aria-label="Open the full HD Leaderboard"
+      onClick={handlePanelClick}
+      onKeyDown={handlePanelKeyDown}
       className={leaderboardPanelShellClassName}
     >
       <div className="flex flex-col gap-5">
@@ -489,6 +538,7 @@ export function LeaderboardPanel({
 
       <div
         ref={leaderboardScrollRef}
+        data-ignore-leaderboard-navigation="true"
         className={leaderboardScrollClassName}
         aria-busy={isLoadingMore}
         onScroll={handleLeaderboardScroll}

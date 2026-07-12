@@ -33,6 +33,9 @@ const SAFE_METADATA_KEYS = new Set([
   "hrefPath",
   "external",
   "buttonType",
+  "destination",
+  "from",
+  "to",
 ]);
 
 const STRING_METADATA_LIMITS: Record<string, number> = {
@@ -57,6 +60,9 @@ const STRING_METADATA_LIMITS: Record<string, number> = {
   hrefHost: 120,
   hrefPath: 160,
   buttonType: 40,
+  destination: 16,
+  from: 16,
+  to: 16,
 };
 
 const NUMERIC_METADATA_LIMITS: Record<string, number> = {

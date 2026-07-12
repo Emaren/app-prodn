@@ -5,7 +5,8 @@ import { useEffect, useState } from "react";
 import { formatLobbyMoment } from "@/components/lobby/utils";
 import Image from "next/image";
 import Link from "next/link";
-import type { MouseEvent } from "react";
+import { useRouter } from "next/navigation";
+import type { KeyboardEvent, MouseEvent } from "react";
 import SteamLoginButton from "@/components/SteamLoginButton";
 import { LeaderboardPanel } from "@/components/lobby/LeaderboardPanel";
 import { LeaderboardLaneToggle } from "@/components/lobby/LeaderboardLaneToggle";
@@ -19,6 +20,7 @@ import type { Aoe2HdPulseItem, Aoe2HdPulseSnapshot } from "@/lib/aoe2HdPulse";
 import type { LobbyLeaderboardEntry, LobbyMatchRow, LobbySnapshot } from "@/lib/lobby";
 import { avatarCardUrlForUser, avatarThumbUrlForUser } from "@/lib/avatarAssets";
 import type { LeaderboardLane } from "@/lib/leaderboardLane";
+import { trackLeaderboardEvent } from "@/lib/leaderboardTelemetry";
 import { TILE_VIEW_MODES, type TileViewMode } from "@/lib/tileViewPreferences";
 import {
   normalizePublicReplayText,
@@ -79,6 +81,16 @@ function formatUpdatedAt(value: string | null | undefined) {
 function isInteractiveToggleTarget(target: EventTarget | null) {
   return target instanceof HTMLElement
     ? Boolean(target.closest("a,button,input,textarea,select,label,[data-ignore-tile-toggle='true']"))
+    : false;
+}
+
+function isLeaderboardNavigationControl(target: EventTarget | null) {
+  return target instanceof HTMLElement
+    ? Boolean(
+        target.closest(
+          "a,button,input,textarea,select,label,[role='button'],[data-ignore-leaderboard-navigation='true']"
+        )
+      )
     : false;
 }
 
@@ -216,6 +228,7 @@ export function LobbyHero({
   onTileViewModeChange,
   onToggleTileViewMode,
 }: LobbyHeroProps) {
+  const router = useRouter();
   const accentTextClassName =
     viewMode === "field" ? "text-emerald-200/70" : "text-amber-200/70";
 
@@ -244,6 +257,27 @@ export function LobbyHero({
     }
 
     onToggleTileViewMode();
+  };
+  const openLeaderboard = () => {
+    trackLeaderboardEvent({
+      type: "leaderboard_open_home_tile",
+      metadata: { destination: "modern" },
+    });
+    router.push("/leaderboard");
+  };
+  const handleExtremeLeaderboardClick = (event: MouseEvent<HTMLElement>) => {
+    if (isLeaderboardNavigationControl(event.target)) return;
+    event.stopPropagation();
+    if (window.getSelection()?.toString()) return;
+    openLeaderboard();
+  };
+  const handleExtremeLeaderboardKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+    if (isLeaderboardNavigationControl(event.target)) return;
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      event.stopPropagation();
+      openLeaderboard();
+    }
   };
   const tone = getLobbyPresentationTone(themeKey, viewMode);
   const [woloMoved24h, setWoloMoved24h] = useState<WoloMoved24hSnapshot>({
@@ -340,7 +374,15 @@ export function LobbyHero({
           </div>
         )}
 
-        <section className="relative overflow-hidden rounded-[1.85rem] border border-amber-200/12 bg-[radial-gradient(circle_at_20%_0%,rgba(251,191,36,0.16),transparent_30%),radial-gradient(circle_at_86%_12%,rgba(59,130,246,0.12),transparent_28%),linear-gradient(135deg,rgba(5,11,21,0.96),rgba(1,5,14,0.98))] p-4 shadow-[0_30px_100px_rgba(0,0,0,0.34)] sm:p-5">
+        <section
+          role="link"
+          tabIndex={0}
+          aria-label="Open the full HD Leaderboard"
+          data-ignore-tile-toggle="true"
+          onClick={handleExtremeLeaderboardClick}
+          onKeyDown={handleExtremeLeaderboardKeyDown}
+          className="relative cursor-pointer overflow-hidden rounded-[1.85rem] border border-amber-200/12 bg-[radial-gradient(circle_at_20%_0%,rgba(251,191,36,0.16),transparent_30%),radial-gradient(circle_at_86%_12%,rgba(59,130,246,0.12),transparent_28%),linear-gradient(135deg,rgba(5,11,21,0.96),rgba(1,5,14,0.98))] p-4 shadow-[0_30px_100px_rgba(0,0,0,0.34)] outline-none transition hover:-translate-y-0.5 hover:border-amber-200/24 focus-visible:ring-2 focus-visible:ring-amber-200/55 sm:p-5"
+        >
           <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/34 to-transparent" />
           <div className="grid gap-5 xl:grid-cols-[minmax(19rem,0.66fr)_minmax(0,1fr)] xl:items-stretch 2xl:grid-cols-[minmax(22rem,0.72fr)_minmax(0,1fr)]">
             <div className="relative min-h-[21rem] overflow-hidden rounded-[1.55rem] border border-amber-200/10 bg-[radial-gradient(circle_at_48%_12%,rgba(251,191,36,0.08),transparent_28%),linear-gradient(135deg,rgba(0,0,0,0.38),rgba(2,6,23,0.42))] sm:min-h-[25rem] xl:min-h-[42rem]">
@@ -414,7 +456,7 @@ export function LobbyHero({
                   </span>
                 </div>
 
-                <div className="mt-5 max-h-[46rem] space-y-2.5 overflow-y-auto overscroll-contain pr-1">
+                <div data-ignore-leaderboard-navigation="true" className="mt-5 max-h-[46rem] space-y-2.5 overflow-y-auto overscroll-contain pr-1">
                   {leaderboardRows.length === 0 ? (
                     <div className="rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-4 text-sm text-slate-300">
                       The board is warming up.

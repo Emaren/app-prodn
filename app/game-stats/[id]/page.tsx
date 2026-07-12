@@ -42,6 +42,10 @@ import {
 } from "@/lib/publicPlayers";
 import { resolveReliableReplayWinner } from "@/lib/unresolvedWatcherResult";
 import { applyReplayAdjudicationToGameStats } from "@/lib/replayAdjudications";
+import {
+  getReplayAchievementGroups,
+  type ReplayAchievementGroup,
+} from "@/lib/replayAchievementMetrics";
 
 export const dynamic = "force-dynamic";
 
@@ -581,10 +585,9 @@ export default async function GameStatsDetailPage({
                       </dl>
 
                       <div className="mt-5 space-y-4">
-                        {renderAchievementGroup("Military", readNestedRecord(player, "achievements", "military"))}
-                        {renderAchievementGroup("Economy", readNestedRecord(player, "achievements", "economy"))}
-                        {renderAchievementGroup("Technology", readNestedRecord(player, "achievements", "technology"))}
-                        {renderAchievementGroup("Society", readNestedRecord(player, "achievements", "society"))}
+                        {getReplayAchievementGroups(player).map((group) =>
+                          renderAchievementGroup(group)
+                        )}
                       </div>
 
                       <div className="mt-5 flex items-center justify-between gap-3 border-t border-white/8 pt-4 text-sm text-slate-400">
@@ -850,36 +853,13 @@ function RivalryHeroSide({
 }
 
 
-function readNestedRecord(source: Record<string, unknown>, ...keys: string[]) {
-  let current: unknown = source;
-
-  for (const key of keys) {
-    if (!current || typeof current !== "object" || Array.isArray(current)) {
-      return {};
-    }
-
-    current = (current as Record<string, unknown>)[key];
-  }
-
-  if (!current || typeof current !== "object" || Array.isArray(current)) {
-    return {};
-  }
-
-  return current as Record<string, unknown>;
-}
-
-function renderAchievementGroup(title: string, record: Record<string, unknown>) {
-  const entries = Object.entries(record).filter(([, value]) => value !== null && value !== undefined);
-  if (entries.length === 0) {
-    return null;
-  }
-
+function renderAchievementGroup(group: ReplayAchievementGroup) {
   return (
-    <div>
-      <div className="text-xs uppercase tracking-[0.25em] text-slate-500">{title}</div>
+    <div key={group.key}>
+      <div className="text-xs uppercase tracking-[0.25em] text-slate-500">{group.label}</div>
       <dl className="mt-3 grid gap-3 sm:grid-cols-2">
-        {entries.map(([key, value]) => (
-          <StatRow key={key} label={humanizeKey(key)} value={formatPrimitive(value)} compact />
+        {group.metrics.map((metric) => (
+          <StatRow key={metric.key} label={metric.label} value={formatPrimitive(metric.value)} compact />
         ))}
       </dl>
     </div>

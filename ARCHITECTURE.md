@@ -40,6 +40,8 @@ Important public surfaces include:
 - `app/lobby/page.tsx`
 - `app/bets/page.tsx`
 - `app/live-games/page.tsx`
+- `app/leaderboard/page.tsx`
+- `app/leaderboard/og/page.tsx`
 - `app/game-stats/live/[sessionKey]/page.tsx`
 - `app/players/page.tsx`
 - `app/players/[uid]/page.tsx`
@@ -180,6 +182,13 @@ Important semantics:
   - `primaryRatingSourceLabel: Profile`
 
 The leaderboard is now part of the product spine, not decorative filler. Changes here affect first impression, credibility, and navigation quality.
+
+The full leaderboard system has two distinct public projections of the same HD competitive world:
+
+- `/leaderboard` is the DE-familiar ranked player table. It reuses the lobby leaderboard loader and RM/DM lane rules, adds server-side alias search through the backward-compatible `q` parameter on `/api/lobby/leaderboard`, and paginates instead of preloading the full directory.
+- `/leaderboard/og` is the archival chronological battle board. `lib/ogBoard.ts` sanitizes canonical final replay rows, resolves public player links, and sends a narrow projection through `/api/leaderboard/og`; partial replays never synthesize missing scores or achievements.
+
+The homepage board chrome and Kingdom menu open the modern route. The two dedicated pages cross-link and emit authenticated activity events through the existing user-experience telemetry rail. See `docs/LEADERBOARDS.md` for data and interaction rules.
 
 ### Players directory
 

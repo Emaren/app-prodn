@@ -1,0 +1,216 @@
+"use client";
+
+import { Search, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+
+import { LeaderboardViewLink } from "@/components/leaderboard/LeaderboardViewLink";
+import { ModernLeaderboardTable } from "@/components/leaderboard/ModernLeaderboardTable";
+import { LeaderboardLaneToggle } from "@/components/lobby/LeaderboardLaneToggle";
+import type { LobbyLeaderboardSummary } from "@/lib/lobby";
+import {
+  readStoredLeaderboardLane,
+  writeStoredLeaderboardLane,
+  type LeaderboardLane,
+} from "@/lib/leaderboardLane";
+
+const PAGE_SIZE = 50;
+
+type LeaderboardResponse = LobbyLeaderboardSummary & {
+  ok?: boolean;
+  nextOffset: number;
+  hasMore: boolean;
+};
+
+function mergeEntries(
+  current: LobbyLeaderboardSummary["entries"],
+  incoming: LobbyLeaderboardSummary["entries"]
+) {
+  const entries = new Map(current.map((entry) => [entry.key, entry]));
+  for (const entry of incoming) entries.set(entry.key, entry);
+  return Array.from(entries.values()).sort((left, right) => left.rank - right.rank);
+}
+
+export function ModernLeaderboardPage({
+  initialLeaderboard,
+}: {
+  initialLeaderboard: LobbyLeaderboardSummary | null;
+}) {
+  const [lane, setLane] = useState<LeaderboardLane>(initialLeaderboard?.lane ?? "rm");
+  const [searchInput, setSearchInput] = useState("");
+  const [query, setQuery] = useState("");
+  const [entries, setEntries] = useState(initialLeaderboard?.entries ?? []);
+  const [trackedPlayers, setTrackedPlayers] = useState(initialLeaderboard?.trackedPlayers ?? 0);
+  const [nextOffset, setNextOffset] = useState(initialLeaderboard?.entries.length ?? 0);
+  const [hasMore, setHasMore] = useState(
+    (initialLeaderboard?.entries.length ?? 0) < (initialLeaderboard?.trackedPlayers ?? 0)
+  );
+  const [loading, setLoading] = useState(!initialLeaderboard);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState(initialLeaderboard ? null : "The ranked board is temporarily unavailable.");
+  const firstEffect = useRef(true);
+  const requestId = useRef(0);
+  const loadingMoreRef = useRef(false);
+  const sentinelRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setQuery(searchInput.trim()), 280);
+    return () => window.clearTimeout(timer);
+  }, [searchInput]);
+
+  const loadPage = useCallback(
+    async ({ reset, offset = 0 }: { reset: boolean; offset?: number }) => {
+      if (!reset && loadingMoreRef.current) return;
+      const activeRequest = ++requestId.current;
+      if (reset) setLoading(true);
+      else {
+        loadingMoreRef.current = true;
+        setLoadingMore(true);
+      }
+      setError(null);
+
+      try {
+        const params = new URLSearchParams({
+          lane,
+          offset: String(offset),
+          limit: String(PAGE_SIZE),
+        });
+        if (query) params.set("q", query);
+        const response = await fetch(`/api/lobby/leaderboard?${params}`, { cache: "no-store" });
+        const payload = (await response.json().catch(() => ({}))) as Partial<LeaderboardResponse>;
+        if (!response.ok || !Array.isArray(payload.entries)) {
+          throw new Error("leaderboard unavailable");
+        }
+        if (activeRequest !== requestId.current) return;
+
+        setEntries((current) => (reset ? payload.entries! : mergeEntries(current, payload.entries!)));
+        setTrackedPlayers(typeof payload.trackedPlayers === "number" ? payload.trackedPlayers : payload.entries.length);
+        setNextOffset(typeof payload.nextOffset === "number" ? payload.nextOffset : offset + payload.entries.length);
+        setHasMore(Boolean(payload.hasMore));
+      } catch {
+        if (activeRequest !== requestId.current) return;
+        setError(reset ? "The ranked board is temporarily unavailable." : "Older ranks could not be loaded. Try again.");
+      } finally {
+        if (activeRequest === requestId.current) {
+          setLoading(false);
+          setLoadingMore(false);
+          loadingMoreRef.current = false;
+        }
+      }
+    },
+    [lane, query]
+  );
+
+  useEffect(() => {
+    if (firstEffect.current) {
+      firstEffect.current = false;
+      const storedLane = readStoredLeaderboardLane();
+      if (storedLane !== lane) {
+        setLane(storedLane);
+      } else if (!initialLeaderboard) {
+        void loadPage({ reset: true });
+      }
+      return;
+    }
+    void loadPage({ reset: true });
+  }, [initialLeaderboard, lane, query, loadPage]);
+
+  useEffect(() => {
+    if (!hasMore || loading || loadingMore) return;
+    const node = sentinelRef.current;
+    if (!node) return;
+    const observer = new IntersectionObserver(
+      (items) => {
+        if (items.some((item) => item.isIntersecting)) {
+          void loadPage({ reset: false, offset: nextOffset });
+        }
+      },
+      { rootMargin: "700px 0px" }
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [hasMore, loadPage, loading, loadingMore, nextOffset]);
+
+  const changeLane = (nextLane: LeaderboardLane) => {
+    writeStoredLeaderboardLane(nextLane);
+    setLane(nextLane);
+  };
+
+  return (
+    <main className="space-y-5 py-3 text-white sm:py-6">
+      <section className="overflow-hidden rounded-[1.8rem] border border-amber-200/14 bg-[radial-gradient(circle_at_10%_0%,rgba(34,211,238,0.09),transparent_26%),linear-gradient(145deg,#101a2d,#070d18_62%,#030711)] shadow-[0_30px_100px_rgba(0,0,0,0.3)]">
+        <div className="border-b border-amber-200/18 px-5 py-6 sm:px-8 sm:py-8">
+          <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.36em] text-amber-200/65">AoE2WAR · HD Ranked Command</div>
+              <h1 className="mt-3 font-serif text-3xl font-semibold tracking-tight text-amber-100 sm:text-5xl">HD Leaderboard</h1>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300 sm:text-base">Real HD ratings, replay-backed records, and the warriors ruling the ladder now.</p>
+            </div>
+            <LeaderboardViewLink from="modern" to="og" href="/leaderboard/og">Open the OG Board</LeaderboardViewLink>
+          </div>
+        </div>
+
+        <div className="grid gap-4 border-b border-white/[0.07] bg-black/15 px-5 py-5 sm:px-8 lg:grid-cols-[auto_minmax(18rem,1fr)_auto] lg:items-center">
+          <LeaderboardLaneToggle lane={lane} onChange={changeLane} loading={loading} variant="compact" />
+          <label className="relative block lg:mx-auto lg:w-full lg:max-w-xl">
+            <span className="sr-only">Search warriors</span>
+            <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-amber-200/70" aria-hidden="true" />
+            <input
+              type="search"
+              value={searchInput}
+              onChange={(event) => setSearchInput(event.target.value)}
+              placeholder="Search by warrior name"
+              className="h-13 w-full rounded-none border border-cyan-300/25 bg-slate-950/75 pl-12 pr-12 text-base text-white outline-none transition placeholder:text-slate-500 focus:border-amber-200/55 focus:ring-2 focus:ring-amber-200/15"
+            />
+            {searchInput ? (
+              <button
+                type="button"
+                onClick={() => setSearchInput("")}
+                className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center text-slate-400 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200/50"
+                aria-label="Clear player search"
+              >
+                <X className="h-4 w-4" aria-hidden="true" />
+              </button>
+            ) : null}
+          </label>
+          <div className="text-left lg:text-right">
+            <div className="text-2xl font-semibold tabular-nums text-white">{trackedPlayers.toLocaleString()}</div>
+            <div className="text-[10px] uppercase tracking-[0.2em] text-slate-500">{query ? "matching warriors" : "warriors on board"}</div>
+          </div>
+        </div>
+
+        <div className="p-3 sm:p-5 lg:p-7" aria-busy={loading || loadingMore}>
+          {loading ? (
+            <div className="space-y-2" aria-label="Loading leaderboard">
+              {Array.from({ length: 8 }, (_, index) => <div key={index} className="h-16 animate-pulse border border-white/[0.05] bg-white/[0.035]" />)}
+            </div>
+          ) : entries.length === 0 && query ? (
+            <div className="border border-amber-200/14 bg-amber-300/[0.045] px-5 py-10 text-center text-slate-300">No ranked warrior matches “{query}”.</div>
+          ) : entries.length === 0 ? (
+            <div className="border border-white/10 bg-white/[0.04] px-5 py-10 text-center text-slate-300">No ranked warriors yet. Final HD replays will raise the first names onto this board.</div>
+          ) : (
+            <ModernLeaderboardTable entries={entries} />
+          )}
+
+          {error ? (
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border border-orange-300/20 bg-orange-400/[0.06] px-4 py-3 text-sm text-orange-100">
+              <span>{error}</span>
+              <button type="button" onClick={() => void loadPage({ reset: entries.length === 0, offset: entries.length === 0 ? 0 : nextOffset })} className="font-semibold underline underline-offset-4">Try again</button>
+            </div>
+          ) : null}
+
+          {hasMore && !loading ? (
+            <button
+              ref={sentinelRef}
+              type="button"
+              disabled={loadingMore}
+              onClick={() => void loadPage({ reset: false, offset: nextOffset })}
+              className="mt-5 w-full border border-amber-200/16 bg-amber-300/[0.045] px-4 py-4 text-xs font-semibold uppercase tracking-[0.24em] text-amber-100 transition hover:border-amber-200/35 hover:bg-amber-300/[0.08] disabled:cursor-wait disabled:opacity-65"
+            >
+              {loadingMore ? "Calling up more warriors…" : "Load more warriors"}
+            </button>
+          ) : null}
+        </div>
+      </section>
+    </main>
+  );
+}

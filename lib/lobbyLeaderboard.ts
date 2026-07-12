@@ -17,6 +17,10 @@ import {
   normalizeLeaderboardLane,
   type LeaderboardLane,
 } from "@/lib/leaderboardLane";
+import {
+  matchesLeaderboardSearch,
+  normalizeLeaderboardSearch,
+} from "@/lib/leaderboardPage";
 
 const BASE_ARENA_ELO = 1500;
 const ARENA_ELO_K_FACTOR = 32;
@@ -29,6 +33,7 @@ export type LoadLobbyLeaderboardOptions = {
   limit?: number;
   includePendingClaimed?: boolean;
   lane?: LeaderboardLane;
+  query?: string | null;
 };
 
 type PreparedLeaderboardGame = {
@@ -202,13 +207,17 @@ function buildLeaderboardSelection(entries: EnrichedLeaderboardEntry[], options:
   );
   const includePendingClaimed = options.includePendingClaimed ?? true;
   const orderedEntries = [...rankedEntries, ...pendingClaimedEntries];
+  const normalizedQuery = normalizeLeaderboardSearch(options.query);
+  const searchableEntries = normalizedQuery
+    ? orderedEntries.filter((entry) => matchesLeaderboardSearch(entry.aliasKeys, normalizedQuery))
+    : orderedEntries;
   const selectedByKey = new Map<string, EnrichedLeaderboardEntry>();
 
-  for (const entry of orderedEntries.slice(safeOffset, safeOffset + safeLimit)) {
+  for (const entry of searchableEntries.slice(safeOffset, safeOffset + safeLimit)) {
     selectedByKey.set(entry.key, entry);
   }
 
-  if (includePendingClaimed) {
+  if (includePendingClaimed && !normalizedQuery) {
     for (const entry of pendingClaimedEntries) {
       selectedByKey.set(entry.key, entry);
     }
@@ -231,7 +240,7 @@ function buildLeaderboardSelection(entries: EnrichedLeaderboardEntry[], options:
     eligibleEntries,
     selectedEntries,
     rankByKey,
-    fullEntryCount: orderedEntries.length,
+    fullEntryCount: searchableEntries.length,
   };
 }
 

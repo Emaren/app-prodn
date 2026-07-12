@@ -25,12 +25,14 @@ export async function GET(request: NextRequest) {
     Math.min(MAX_LIMIT, readIntegerParam(request, "limit", DEFAULT_LIMIT))
   );
   const lane = normalizeLeaderboardLane(request.nextUrl.searchParams.get("lane"));
+  const query = request.nextUrl.searchParams.get("q")?.trim().slice(0, 64) || null;
 
   const leaderboard = await loadLobbyLeaderboard(getPrisma(), {
     offset,
     limit,
     includePendingClaimed: false,
     lane,
+    query,
   });
 
   const nextOffset = offset + leaderboard.entries.length;

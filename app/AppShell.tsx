@@ -4,7 +4,7 @@ import React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Castle, Crown, Globe2, GraduationCap, MessageSquare, Store, UsersRound, X } from "lucide-react";
+import { BarChart3, Castle, Crown, Globe2, GraduationCap, MessageSquare, Store, UsersRound, X } from "lucide-react";
 import { createPortal } from "react-dom";
 import UserExperienceTracker from "@/components/analytics/UserExperienceTracker";
 import HeaderInboxControl from "@/components/contact/HeaderInboxControl";
@@ -23,6 +23,7 @@ import { GlobalInstallAppPrompt } from "@/components/pwa/InstallAppPrompt";
 import MobileFloatingNav from "@/components/pwa/MobileFloatingNav";
 import AoE2WarFooter from "@/components/pwa/AoE2WarFooter";
 import { getTileViewMode } from "@/lib/tileViewPreferences";
+import { trackLeaderboardEvent } from "@/lib/leaderboardTelemetry";
 import { Toaster } from "sonner";
 import { Providers } from "./Providers";
 import { UserAuthProvider, useUserAuth } from "@/context/UserAuthContext";
@@ -43,6 +44,7 @@ const HEADER_LINKS: ReadonlyArray<{
 
 const KINGDOM_LINKS = [
   { href: "/kingdom", label: "Kingdom", icon: Castle, body: "The realm, crowns, and league map" },
+  { href: "/leaderboard", label: "Leaderboard", icon: BarChart3, body: "Ratings, records, and ranked warriors" },
   { href: "/champions", label: "Champions", icon: Crown, body: "Belts, reigns, title rules" },
   { href: "/national-champions", label: "Nations", icon: Globe2, body: "Beacon map and national bounties" },
   { href: "/clans", label: "Clans", icon: UsersRound, body: "Teams, houses, and clan halls" },
@@ -57,6 +59,8 @@ const PAGE_HEADINGS: ReadonlyArray<{ prefix: string; title: string }> = [
   { prefix: "/admin", title: "Operator Command" },
   { prefix: "/staking/stakers", title: "Staking Hall" },
   { prefix: "/staking", title: "WOLO Staking" },
+  { prefix: "/leaderboard/og", title: "OG Board" },
+  { prefix: "/leaderboard", title: "HD Leaderboard" },
   { prefix: "/national-champions", title: "National Champions" },
   { prefix: "/clans", title: "Clan Halls" },
   { prefix: "/academy", title: "Academy" },
@@ -291,7 +295,15 @@ function KingdomMenuPanel({
               key={item.href}
               href={item.href}
               role="menuitem"
-              onClick={onNavigate}
+              onClick={() => {
+                if (item.href === "/leaderboard") {
+                  trackLeaderboardEvent({
+                    type: "leaderboard_open_kingdom_menu",
+                    metadata: { destination: "modern" },
+                  });
+                }
+                onNavigate();
+              }}
               className="group/item flex items-center gap-3 rounded-[1rem] px-3 py-3 text-left transition hover:bg-white/[0.07]"
             >
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-amber-200/12 bg-amber-300/[0.06] text-amber-100 transition group-hover/item:border-amber-200/25 group-hover/item:bg-amber-300/10">
@@ -380,6 +392,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
     pathname?.startsWith("/academy") ||
     pathname?.startsWith("/market") ||
     pathname?.startsWith("/kingdom") ||
+    pathname?.startsWith("/leaderboard") ||
     pathname?.startsWith("/battle-archive") ||
     pathname?.startsWith("/challenge");
   const communityLobbyViewMode = getTileViewMode(
