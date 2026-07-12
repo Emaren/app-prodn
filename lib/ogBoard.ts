@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@/lib/generated/prisma";
+import { Prisma, type PrismaClient } from "@/lib/generated/prisma";
 
 import {
   displayGameType,
@@ -57,6 +57,29 @@ export type OgBoardPage = {
   hasMore: boolean;
 };
 
+type OgBoardRawRow = {
+  id: number;
+  createdAt: Date;
+  replayHash: string;
+  replay_file: string;
+  original_filename: string | null;
+  game_version: string | null;
+  map: Prisma.JsonValue | null;
+  game_type: string | null;
+  duration: number | null;
+  game_duration: number | null;
+  winner: string | null;
+  players: Prisma.JsonValue | null;
+  event_types: Prisma.JsonValue | null;
+  key_events: Prisma.JsonValue | null;
+  timestamp: Date | null;
+  played_on: Date | null;
+  parse_iteration: number;
+  is_final: boolean;
+  parse_source: string;
+  parse_reason: string;
+};
+
 function readRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -107,42 +130,35 @@ export async function loadOgBoardPage(
 ): Promise<OgBoardPage> {
   const offset = Math.max(0, Math.floor(options.offset ?? 0));
   const limit = Math.max(1, Math.min(40, Math.floor(options.limit ?? 24)));
-  const rawRows = await prisma.gameStats.findMany({
-    where: {
-      is_final: true,
-      NOT: { parse_reason: "superseded_by_later_upload" },
-    },
-    orderBy: [
-      { played_on: "desc" },
-      { timestamp: "desc" },
-      { createdAt: "desc" },
-      { id: "desc" },
-    ],
-    skip: offset,
-    take: limit,
-    select: {
-      id: true,
-      createdAt: true,
-      replayHash: true,
-      replay_file: true,
-      original_filename: true,
-      game_version: true,
-      map: true,
-      game_type: true,
-      duration: true,
-      game_duration: true,
-      winner: true,
-      players: true,
-      event_types: true,
-      key_events: true,
-      timestamp: true,
-      played_on: true,
-      parse_iteration: true,
-      is_final: true,
-      parse_source: true,
-      parse_reason: true,
-    },
-  });
+  const rawRows = await prisma.$queryRaw<OgBoardRawRow[]>(Prisma.sql`
+    SELECT
+      id,
+      created_at AS "createdAt",
+      replay_hash AS "replayHash",
+      replay_file,
+      original_filename,
+      game_version,
+      map,
+      game_type,
+      duration,
+      game_duration,
+      winner,
+      players,
+      event_types,
+      key_events,
+      timestamp,
+      played_on,
+      parse_iteration,
+      is_final,
+      parse_source,
+      parse_reason
+    FROM game_stats
+    WHERE is_final = true
+      AND parse_reason <> 'superseded_by_later_upload'
+    ORDER BY COALESCE(played_on, timestamp, created_at) DESC, id DESC
+    OFFSET ${offset}
+    LIMIT ${limit}
+  `);
 
   const rows = cleanPublicGameRows(rawRows, {
     includeReview: true,

@@ -13,6 +13,8 @@ The homepage leaderboard chrome and the shared Kingdom menu open the modern boar
 
 `lib/ogBoard.ts` is a presentation projection, not replay truth. It passes game rows through `cleanPublicGameRows`, uses the existing winner/finality rules, and resolves player URLs with the shared public-player helpers. Raw player JSON, key events, parser diagnostics, and internal failure details never enter the browser payload.
 
+Chronology is ordered by `COALESCE(played_on, timestamp, created_at) DESC, id DESC` so legacy rows without `played_on` cannot jump ahead of genuinely newer battles.
+
 Postgame data is field-presence aware:
 
 - explicit `has_scores: false` and `has_achievements: false` signals suppress those groups;
