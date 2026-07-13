@@ -2593,6 +2593,7 @@ async function linkLateFinalEvidence(prisma: PrismaClient) {
     select: {
       id: true,
       linkedSessionKey: true,
+      linkedGameStatsId: true,
       leftLabel: true,
       rightLabel: true,
       resolutionReason: true,
@@ -2604,6 +2605,9 @@ async function linkLateFinalEvidence(prisma: PrismaClient) {
     if (!sessionKey) continue;
     const finalGameId = await resolveFinalGameStatsIdForSessionKey(prisma, sessionKey);
     if (!finalGameId) continue;
+    // This is only late evidence when it is new to the market. Integrity voids
+    // commonly retain the final game that proved the proposition was invalid.
+    if (market.linkedGameStatsId === finalGameId) continue;
     const linked = await prisma.betMarket.updateMany({
       where: { id: market.id, status: "voided", lateFinalGameStatsId: null },
       data: {
