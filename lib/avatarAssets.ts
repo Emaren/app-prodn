@@ -269,34 +269,72 @@ export function kingdomChronicleAvatarCardUrlForName(name: string | null | undef
   return managedAvatarCardUrlWithFallbackTargets(targets, fallback);
 }
 
-export function avatarCardUrlForUser(uid: string | null | undefined, name: string | null | undefined) {
+export function avatarCardUrlForUser(
+  uid: string | null | undefined,
+  name: string | null | undefined
+) {
   const normalizedUid = slugifyAvatarTarget(uid);
+
   if (!normalizedUid) {
     return avatarCardUrlForName(name);
   }
 
-  const fallback = managedAvatarUrl(`user-${normalizedUid}`, avatarFallbackForName(name), { size: "card" });
-  return managedAvatarUrl(`user-${normalizedUid}-pool`, fallback, { size: "card" });
+  return managedAvatarUrl(
+    `user-${normalizedUid}`,
+    avatarFallbackForName(name),
+    { size: "card" }
+  );
 }
 
-export function avatarUrlForUser(uid: string | null | undefined, name: string | null | undefined) {
+export function avatarUrlForUser(
+  uid: string | null | undefined,
+  name: string | null | undefined
+) {
   const normalizedUid = slugifyAvatarTarget(uid);
+
   if (!normalizedUid) {
     return avatarUrlForName(name);
   }
 
-  const fallback = managedAvatarUrl(`user-${normalizedUid}`, avatarFallbackForName(name));
-  return managedAvatarUrl(`user-${normalizedUid}-pool`, fallback);
+  return managedAvatarUrl(
+    `user-${normalizedUid}`,
+    avatarFallbackForName(name)
+  );
 }
 
-export function avatarThumbUrlForUser(uid: string | null | undefined, name: string | null | undefined) {
+export function avatarThumbUrlForUser(
+  uid: string | null | undefined,
+  name: string | null | undefined
+) {
   const normalizedUid = slugifyAvatarTarget(uid);
+
   if (!normalizedUid) {
     return avatarThumbUrlForName(name);
   }
 
-  const fallback = managedAvatarUrl(`user-${normalizedUid}`, avatarFallbackForName(name), { size: "thumb" });
-  return managedAvatarUrl(`user-${normalizedUid}-pool`, fallback, { size: "thumb" });
+  return managedAvatarUrl(
+    `user-${normalizedUid}`,
+    avatarFallbackForName(name),
+    { size: "thumb" }
+  );
+}
+
+export function featuredAvatarCardUrlForUser(
+  uid: string | null | undefined,
+  name: string | null | undefined
+) {
+  const normalizedUid = slugifyAvatarTarget(uid);
+  const profileFallback = avatarCardUrlForUser(uid, name);
+
+  if (!normalizedUid) {
+    return profileFallback;
+  }
+
+  return managedAvatarUrl(
+    `user-${normalizedUid}-featured`,
+    profileFallback,
+    { size: "card" }
+  );
 }
 
 export function thumbnailUrlForAvatarAsset(url: string | null | undefined) {

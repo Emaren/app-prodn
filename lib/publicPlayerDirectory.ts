@@ -1,5 +1,6 @@
 import type { PrismaClient } from "@/lib/generated/prisma";
 import type { CommunityBadge } from "@/lib/communityHonors";
+import { normalizeManagedMediaTarget } from "@/lib/managedMediaAssets";
 
 import {
   displayPlayerName,
@@ -30,6 +31,7 @@ export type PublicPlayerDirectoryEntry = {
   verified: boolean;
   verificationLevel: number;
   isOnline: boolean;
+  hasFeaturedAvatar: boolean;
   totalMatches: number;
   wins: number;
   losses: number;
@@ -253,7 +255,11 @@ export async function loadPublicPlayerDirectory(
 ): Promise<PublicPlayerDirectory> {
   const onlineThreshold = new Date(Date.now() - 2 * 60 * 1000);
 
-  const [users, rawGames] = await Promise.all([
+  const [
+    users,
+    rawGames,
+    activeFeaturedAvatarAssets,
+  ] = await Promise.all([
     prisma.user.findMany({
       select: {
         id: true,
@@ -265,12 +271,23 @@ export async function loadPublicPlayerDirectory(
         verificationLevel: true,
         lastSeen: true,
       },
-      orderBy: [{ lastSeen: "desc" }, { verifiedAt: "desc" }, { createdAt: "desc" }],
+      orderBy: [
+        { lastSeen: "desc" },
+        { verifiedAt: "desc" },
+        { createdAt: "desc" },
+      ],
       take: 250,
     }),
+
     prisma.gameStats.findMany({
-      where: { is_final: true },
-      orderBy: [{ timestamp: "desc" }, { createdAt: "desc" }, { id: "desc" }],
+      where: {
+        is_final: true,
+      },
+      orderBy: [
+        { timestamp: "desc" },
+        { createdAt: "desc" },
+        { id: "desc" },
+      ],
       take: PLAYER_DIRECTORY_GAME_WINDOW,
       select: {
         createdAt: true,
@@ -285,7 +302,44 @@ export async function loadPublicPlayerDirectory(
         winner: true,
       },
     }),
+
+    prisma.managedMediaAsset.findMany({
+      where: {
+        kind: "avatar",
+        active: true,
+        target: {
+          startsWith: "user-",
+          endsWith: "-featured",
+        },
+      },
+      select: {
+        target: true,
+      },
+    }),
   ]);
+
+  const activeFeaturedAvatarTargets =
+    new Set(
+      activeFeaturedAvatarAssets
+        .map((asset) => asset.target)
+        .filter(
+          (target): target is string =>
+            Boolean(target)
+        )
+    );
+
+  const hasFeaturedAvatarForUid =
+    (uid: string) => {
+      const target =
+        normalizeManagedMediaTarget(
+          `user-${uid}-featured`
+        );
+
+      return Boolean(
+        target &&
+        activeFeaturedAvatarTargets.has(target)
+      );
+    };
 
   const games = [...rawGames].sort(sortCandidateGamesByPlayedAtDesc);
 
@@ -353,6 +407,7 @@ export async function loadPublicPlayerDirectory(
       verified: user.verified,
       verificationLevel: user.verificationLevel,
       isOnline: Boolean(user.lastSeen && user.lastSeen > onlineThreshold),
+      hasFeaturedAvatar: hasFeaturedAvatarForUid(user.uid),
       totalMatches: 0,
       wins: 0,
       losses: 0,
@@ -400,6 +455,7 @@ export async function loadPublicPlayerDirectory(
           verified: false,
           verificationLevel: 0,
           isOnline: false,
+          hasFeaturedAvatar: false,
           totalMatches: 0,
           wins: 0,
           losses: 0,

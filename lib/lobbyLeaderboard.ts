@@ -200,6 +200,21 @@ function buildLeaderboardSelection(entries: EnrichedLeaderboardEntry[], options:
       return left.name.localeCompare(right.name);
     });
 
+  const featuredClaimedEntries = entries
+    .filter(
+      (entry) =>
+        entry.claimed &&
+        entry.uid &&
+        entry.hasFeaturedAvatar
+    )
+    .sort((left, right) =>
+      compareLeaderboardEntries(
+        left,
+        right,
+        lane
+      )
+    );
+
   const safeOffset = Math.max(0, Math.floor(options.offset ?? 0));
   const safeLimit = Math.max(
     1,
@@ -219,6 +234,12 @@ function buildLeaderboardSelection(entries: EnrichedLeaderboardEntry[], options:
 
   if (includePendingClaimed && !normalizedQuery) {
     for (const entry of pendingClaimedEntries) {
+      selectedByKey.set(entry.key, entry);
+    }
+  }
+
+  if (!normalizedQuery) {
+    for (const entry of featuredClaimedEntries) {
       selectedByKey.set(entry.key, entry);
     }
   }
@@ -463,6 +484,7 @@ function toLobbyLeaderboardEntry(
     verificationLevel: entry.verificationLevel,
     isOnline: entry.isOnline,
     claimed: entry.claimed,
+    hasFeaturedAvatar: entry.hasFeaturedAvatar,
     pendingWoloClaimCount: entry.pendingWoloClaimCount,
     pendingWoloClaimAmount: entry.pendingWoloClaimAmount,
     totalMatches: entry.totalMatches,
@@ -542,8 +564,9 @@ function buildDiscoveredLeaderboardEntries(
         claimed: false,
         verified: false,
         verificationLevel: 0,
-        isOnline: false,
-        lastSeen: null,
+         isOnline: false,
+         hasFeaturedAvatar: false,
+         lastSeen: null,
         lastSeenAt: null,
         avatarUrl: null,
         uid: null,

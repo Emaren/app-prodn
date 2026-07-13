@@ -154,6 +154,7 @@ export type LobbyLeaderboardEntry = {
   verificationLevel: number;
   isOnline: boolean;
   claimed: boolean;
+  hasFeaturedAvatar?: boolean;
   pendingWoloClaimCount: number;
   pendingWoloClaimAmount: number;
   totalMatches: number;

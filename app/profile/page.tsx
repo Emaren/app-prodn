@@ -89,10 +89,15 @@ type ProfileResponse = {
   pendingClaimCount: number;
   pendingClaimLatestCreatedAt: string | null;
   avatarUrl: string;
+  featuredAvatarUrl: string | null;
   avatarOptions: Array<{
+    id: number;
     target: string;
     label: string;
     url: string;
+    source: "personal" | "aoe2war" | "profile";
+    profileActive: boolean;
+    featuredActive: boolean;
   }>;
   belts: ProfileTitleHolding[];
   artifacts: ProfileTitleHolding[];
@@ -168,6 +173,33 @@ const PROFILE_VIEW_MODES: Array<{
 
 function normalizedProfileName(value: string | null | undefined) {
   return (value || "").trim().toLowerCase();
+}
+
+function avatarOptionSourceLabel(
+  option: ProfileResponse["avatarOptions"][number]
+) {
+  if (option.source === "personal") {
+    return "Your upload";
+  }
+
+  if (option.source === "aoe2war") {
+    return "AoE2WAR avatar";
+  }
+
+  return "Profile history";
+}
+
+function avatarOptionTitle(
+  option: ProfileResponse["avatarOptions"][number]
+) {
+  return [
+    option.label,
+    avatarOptionSourceLabel(option),
+    option.profileActive ? "Profile active" : null,
+    option.featuredActive ? "Featured Warrior" : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 }
 
 function isApprenticeshipAdminName(value: string | null | undefined) {
@@ -555,68 +587,100 @@ function ProfilePageContent() {
     }
   }, [genderDivisionDraft, representedCountryDraft]);
 
-  const chooseAvatarPreset = useCallback(async (target: string) => {
-    setAvatarSavingTarget(target);
-    setStatus("");
+  const chooseAvatarPreset = useCallback(
+    async (target: string) => {
+      setAvatarSavingTarget(target);
+      setStatus("");
 
-    try {
-      const response = await fetch("/api/user/avatar", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ preset: target }),
-      });
-      const payload = (await response.json().catch(() => null)) as
-        | { avatarUrl?: string; detail?: string }
-        | null;
+      try {
+        const response = await fetch("/api/user/avatar", {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            preset: target,
+          }),
+        });
 
-      if (!response.ok || !payload?.avatarUrl) {
-        throw new Error(payload?.detail || "Avatar update failed.");
+        const payload =
+          (await response.json().catch(() => null)) as
+            | {
+                avatarUrl?: string;
+                detail?: string;
+              }
+            | null;
+
+        if (!response.ok || !payload?.avatarUrl) {
+          throw new Error(
+            payload?.detail ||
+              "Avatar update failed."
+          );
+        }
+
+        await loadProfile();
+        setStatus("Profile avatar updated.");
+      } catch (error) {
+        setStatus(
+          error instanceof Error
+            ? error.message
+            : "Avatar update failed."
+        );
+      } finally {
+        setAvatarSavingTarget(null);
       }
+    },
+    [loadProfile]
+  );
 
-      setProfile((current) =>
-        current ? { ...current, avatarUrl: payload.avatarUrl ?? current.avatarUrl } : current
-      );
-      setStatus("Avatar updated.");
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Avatar update failed.");
-    } finally {
-      setAvatarSavingTarget(null);
-    }
-  }, []);
+  const uploadProfileAvatar = useCallback(
+    async (file: File | null) => {
+      if (!file) return;
 
-  const uploadProfileAvatar = useCallback(async (file: File | null) => {
-    if (!file) return;
-    setAvatarUploading(true);
-    setStatus("");
+      setAvatarUploading(true);
+      setStatus("");
 
-    try {
-      const body = new FormData();
-      body.set("file", file);
+      try {
+        const body = new FormData();
+        body.set("file", file);
 
-      const response = await fetch("/api/user/avatar", {
-        method: "POST",
-        body,
-      });
-      const payload = (await response.json().catch(() => null)) as
-        | { avatarUrl?: string; detail?: string }
-        | null;
+        const response = await fetch("/api/user/avatar", {
+          method: "POST",
+          body,
+        });
 
-      if (!response.ok || !payload?.avatarUrl) {
-        throw new Error(payload?.detail || "Avatar upload failed.");
+        const payload =
+          (await response.json().catch(() => null)) as
+            | {
+                avatarUrl?: string;
+                detail?: string;
+              }
+            | null;
+
+        if (!response.ok || !payload?.avatarUrl) {
+          throw new Error(
+            payload?.detail ||
+              "Avatar upload failed."
+          );
+        }
+
+        await loadProfile();
+
+        setStatus(
+          "Avatar uploaded and added to your library."
+        );
+      } catch (error) {
+        setStatus(
+          error instanceof Error
+            ? error.message
+            : "Avatar upload failed."
+        );
+      } finally {
+        setAvatarUploading(false);
       }
-
-      setProfile((current) =>
-        current ? { ...current, avatarUrl: payload.avatarUrl ?? current.avatarUrl } : current
-      );
-      setStatus("Avatar uploaded.");
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Avatar upload failed.");
-    } finally {
-      setAvatarUploading(false);
-    }
-  }, []);
+    },
+    [loadProfile]
+  );
 
   const createWatcherKey = useCallback(
     async ({ pairToWatcher = false } = {}) => {
@@ -2147,9 +2211,74 @@ function ProfileAvatarPanel({
   onPreset: (target: string) => void;
   onUpload: (file: File | null) => void;
 }) {
-  const avatarUrl = profile?.avatarUrl || "/champions/players/silhouette.webp";
-  const options = profile?.avatarOptions ?? [];
-  const visibleOptions = options.slice(0, 8);
+  const avatarUrl =
+    profile?.avatarUrl ||
+    "/champions/players/silhouette.webp";
+
+  const options =
+    profile?.avatarOptions ??
+    [];
+
+  const avatarOption = (
+    option: ProfileResponse["avatarOptions"][number],
+    compact = false
+  ) => {
+    const active =
+      option.profileActive ||
+      avatarUrl === option.url;
+
+    return (
+      <button
+        key={option.id}
+        type="button"
+        onClick={() => onPreset(option.target)}
+        disabled={
+          uploading ||
+          Boolean(savingTarget)
+        }
+        className={`relative aspect-square overflow-hidden border bg-black/25 transition disabled:cursor-not-allowed disabled:opacity-55 ${
+          compact
+            ? "rounded-xl"
+            : "rounded-2xl"
+        } ${
+          active
+            ? "border-amber-200/75 shadow-[0_0_0_1px_rgba(251,191,36,0.30),0_12px_35px_rgba(251,191,36,0.12)]"
+            : "border-white/10 hover:border-amber-200/38"
+        }`}
+        title={
+          savingTarget === option.target
+            ? "Saving..."
+            : avatarOptionTitle(option)
+        }
+      >
+        <img
+          src={option.url}
+          alt=""
+          className="h-full w-full object-cover object-top"
+        />
+
+        <span className="absolute left-1 top-1 rounded-full border border-white/12 bg-black/70 px-1.5 py-0.5 text-[7px] font-black uppercase tracking-[0.08em] text-white/85 backdrop-blur">
+          {option.source === "personal"
+            ? "Yours"
+            : option.source === "aoe2war"
+              ? "AoE2WAR"
+              : "Profile"}
+        </span>
+
+        {active ? (
+          <span className="absolute bottom-1 left-1 rounded-full border border-amber-100/25 bg-amber-300 px-1.5 py-0.5 text-[7px] font-black uppercase tracking-[0.08em] text-slate-950">
+            Profile
+          </span>
+        ) : null}
+
+        {option.featuredActive ? (
+          <span className="absolute bottom-1 right-1 rounded-full border border-sky-100/25 bg-sky-300 px-1.5 py-0.5 text-[7px] font-black uppercase tracking-[0.08em] text-slate-950">
+            Featured
+          </span>
+        ) : null}
+      </button>
+    );
+  };
 
   if (viewMode === "basic") {
     return (
@@ -2160,34 +2289,38 @@ function ProfileAvatarPanel({
             alt={`${displayName} avatar`}
             className="h-full w-full object-cover object-top"
           />
+
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/72 to-transparent" />
+
+          <span className="absolute bottom-2 left-2 rounded-full border border-amber-100/20 bg-black/70 px-2 py-1 text-[8px] font-black uppercase tracking-[0.12em] text-amber-100 backdrop-blur">
+            Profile
+          </span>
         </div>
 
-        <div className="mt-4 grid grid-cols-5 gap-1.5">
-          {options.map((option) => (
-            <button
-              key={option.target}
-              type="button"
-              onClick={() => onPreset(option.target)}
-              disabled={uploading || Boolean(savingTarget)}
-              className="relative aspect-square overflow-hidden rounded-xl border border-white/10 bg-black/20 transition hover:border-amber-200/35 disabled:cursor-not-allowed disabled:opacity-55"
-              title={savingTarget === option.target ? "Saving..." : option.label}
-            >
-              <img src={option.url} alt="" className="h-full w-full object-cover object-top" />
-            </button>
-          ))}
-        </div>
+        {options.length > 0 ? (
+          <div className="mt-4 grid grid-cols-5 gap-1.5">
+            {options.map((option) =>
+              avatarOption(option, true)
+            )}
+          </div>
+        ) : null}
 
         <label className="mt-3 flex cursor-pointer items-center justify-center gap-2 rounded-full border border-amber-200/18 px-3 py-2 text-xs font-semibold text-amber-100 transition hover:bg-amber-300/10">
           <ImagePlus className="h-4 w-4" />
-          {uploading ? "Uploading..." : "Upload Avatar"}
+          {uploading
+            ? "Uploading..."
+            : "Upload Avatar"}
+
           <input
             type="file"
             accept="image/png,image/jpeg,image/webp,image/gif"
             className="hidden"
             disabled={uploading}
             onChange={(event) => {
-              const file = event.target.files?.[0] ?? null;
+              const file =
+                event.target.files?.[0] ??
+                null;
+
               onUpload(file);
               event.target.value = "";
             }}
@@ -2202,10 +2335,11 @@ function ProfileAvatarPanel({
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.28em] text-amber-100/75">
           <UserRound className="h-4 w-4" />
-          Avatar
+          Avatar Library
         </div>
+
         <div className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[10px] font-semibold text-slate-300">
-          {visibleOptions.length || 1}/{Math.max(options.length, visibleOptions.length || 1)}
+          {options.length}
         </div>
       </div>
 
@@ -2216,59 +2350,49 @@ function ProfileAvatarPanel({
             alt={`${displayName} avatar`}
             className="h-full w-full object-cover object-top"
           />
+
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/86 via-black/25 to-transparent" />
+
           <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <div className="truncate text-sm font-black text-white">{displayName}</div>
-              <div className="mt-0.5 text-[9px] uppercase tracking-[0.22em] text-amber-100/65">Selected</div>
+              <div className="truncate text-sm font-black text-white">
+                {displayName}
+              </div>
+
+              <div className="mt-0.5 text-[9px] uppercase tracking-[0.22em] text-amber-100/65">
+                Profile Avatar
+              </div>
             </div>
+
             <BadgeCheck className="h-5 w-5 shrink-0 text-amber-200" />
           </div>
         </div>
       </div>
 
-      {visibleOptions.length > 0 ? (
+      {options.length > 0 ? (
         <div className="mt-3 grid grid-cols-4 gap-2">
-          {visibleOptions.map((option) => {
-            const active =
-              avatarUrl === option.url ||
-              avatarUrl.includes(`/avatar/${option.target}`) ||
-              avatarUrl.includes(option.target);
-            return (
-              <button
-                key={option.target}
-                type="button"
-                onClick={() => onPreset(option.target)}
-                disabled={uploading || Boolean(savingTarget)}
-                className={`relative aspect-square overflow-hidden rounded-2xl border bg-black/25 transition disabled:cursor-not-allowed disabled:opacity-55 ${
-                  active
-                    ? "border-amber-200/75 shadow-[0_0_0_1px_rgba(251,191,36,0.32),0_12px_35px_rgba(251,191,36,0.14)]"
-                    : "border-white/10 hover:border-amber-200/38"
-                }`}
-                title={savingTarget === option.target ? "Saving..." : option.label}
-              >
-                <img src={option.url} alt="" className="h-full w-full object-cover object-top" />
-                {active ? (
-                  <span className="absolute right-1.5 top-1.5 rounded-full bg-amber-300 p-0.5 text-slate-950">
-                    <BadgeCheck className="h-3 w-3" />
-                  </span>
-                ) : null}
-              </button>
-            );
-          })}
+          {options.map((option) =>
+            avatarOption(option)
+          )}
         </div>
       ) : null}
 
       <label className="mt-3 flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-amber-200/18 bg-amber-300/10 px-3 py-2.5 text-xs font-semibold text-amber-100 transition hover:bg-amber-300/16">
         <ImagePlus className="h-4 w-4" />
-        {uploading ? "Uploading..." : "Upload"}
+        {uploading
+          ? "Uploading..."
+          : "Upload"}
+
         <input
           type="file"
           accept="image/png,image/jpeg,image/webp,image/gif"
           className="hidden"
           disabled={uploading}
           onChange={(event) => {
-            const file = event.target.files?.[0] ?? null;
+            const file =
+              event.target.files?.[0] ??
+              null;
+
             onUpload(file);
             event.target.value = "";
           }}

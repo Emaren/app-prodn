@@ -32,7 +32,11 @@ import {
   type LobbySnapshot,
 } from "@/lib/lobby";
 import type { LeaderboardLane } from "@/lib/leaderboardLane";
-import { avatarCardUrlForUser, avatarUrlForName } from "@/lib/avatarAssets";
+import {
+  avatarCardUrlForUser,
+  avatarUrlForName,
+  featuredAvatarCardUrlForUser,
+} from "@/lib/avatarAssets";
 
 const EMPTY_MESSAGES: LobbyMessage[] = [];
 const ZODIAC_UID = "u_06c16d39d25c476fac2c86fee7b4d189";
@@ -152,6 +156,7 @@ type FeaturedWarrior = {
   href: string;
   imageUrl?: string;
   isPlaceholder?: boolean;
+  hasFeaturedAvatar?: boolean;
   rank?: number | null;
   elo?: number | null;
   arenaElo?: number | null;
@@ -365,7 +370,26 @@ function buildFeaturedWarriorPool(entries: LobbyLeaderboardEntry[]) {
 
     warriors.push({
       ...warrior,
-      href: leaderboardEntry?.href || warrior.href,
+
+      href:
+        leaderboardEntry?.href ||
+        warrior.href,
+
+      imageUrl:
+        leaderboardEntry?.hasFeaturedAvatar &&
+        leaderboardEntry.uid
+          ? featuredAvatarCardUrlForUser(
+              leaderboardEntry.uid,
+              leaderboardEntry.name
+            )
+          : warrior.imageUrl,
+
+      hasFeaturedAvatar:
+        Boolean(
+          leaderboardEntry?.hasFeaturedAvatar
+        ) ||
+        Boolean(warrior.hasFeaturedAvatar),
+
       role: honorSubtitle || (leaderboardEntry
         ? featuredRoleForLeaderboardEntry(leaderboardEntry)
         : warrior.role),
@@ -379,14 +403,48 @@ function buildFeaturedWarriorPool(entries: LobbyLeaderboardEntry[]) {
     const key = normalizeFeaturedWarriorKey(entry.name);
     if (!key || seen.has(key)) return;
 
+    const qualifiedUid =
+      entry.claimed &&
+      entry.uid &&
+      entry.hasFeaturedAvatar
+        ? entry.uid
+        : null;
+
     pushWarrior({
-      key: `placeholder:${entry.key || entry.href || entry.name}`,
+      key: qualifiedUid
+        ? `featured:${qualifiedUid}`
+        : `placeholder:${
+            entry.key ||
+            entry.href ||
+            entry.name
+          }`,
+
       name: entry.name,
       lookupName: entry.name,
-      role: featuredRoleForLeaderboardEntry(entry),
+
+      role:
+        featuredRoleForLeaderboardEntry(entry),
+
       ...featuredWarriorStatsFromEntry(entry),
-      href: entry.href || `/players/by-name/${encodeURIComponent(entry.name)}`,
-      isPlaceholder: true,
+
+      href:
+        entry.href ||
+        `/players/by-name/${encodeURIComponent(
+          entry.name
+        )}`,
+
+      imageUrl: qualifiedUid
+        ? featuredAvatarCardUrlForUser(
+            qualifiedUid,
+            entry.name
+          )
+        : undefined,
+
+      hasFeaturedAvatar:
+        Boolean(qualifiedUid),
+
+      isPlaceholder:
+        !qualifiedUid,
     });
   });
 
@@ -429,6 +487,10 @@ const FEATURED_WARRIOR_REAL_AVATAR_KEYS = new Set([
 ]);
 
 function featuredWarriorHasRealAvatar(warrior: FeaturedWarrior) {
+  if (warrior.hasFeaturedAvatar) {
+    return true;
+  }
+
   const directImage = warrior.imageUrl || "";
 
   if (
@@ -595,23 +657,23 @@ function featuredWarriorImageSrc(warrior: FeaturedWarrior) {
   const identity = normalizeFeaturedWarriorKey(warrior.lookupName || warrior.name);
 
   if (identity === "grimer") {
-    return avatarCardUrlForUser(GRIMER_UID, AI_GRIMER_NAME);
+    return featuredAvatarCardUrlForUser(GRIMER_UID, AI_GRIMER_NAME);
   }
 
   if (identity === "the-ai-scribe" || identity === "ai-scribe") {
-    return avatarCardUrlForUser(AI_SCRIBE_UID, AI_CONCIERGE_NAME);
+    return featuredAvatarCardUrlForUser(AI_SCRIBE_UID, AI_CONCIERGE_NAME);
   }
 
   if (identity === "moose") {
-    return avatarCardUrlForUser(MOOSE_UID, "Moose");
+    return featuredAvatarCardUrlForUser(MOOSE_UID, "Moose");
   }
 
   if (identity === "zodiac") {
-    return avatarCardUrlForUser(ZODIAC_UID, "Zodiac");
+    return featuredAvatarCardUrlForUser(ZODIAC_UID, "Zodiac");
   }
 
   if (identity === "julio" || identity === "julio-alvarez") {
-    return avatarCardUrlForUser(JULIO_ALVAREZ_UID, "Julio Alvarez");
+    return featuredAvatarCardUrlForUser(JULIO_ALVAREZ_UID, "Julio Alvarez");
   }
 
   return warrior.imageUrl ?? avatarUrlForName(warrior.lookupName);

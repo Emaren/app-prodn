@@ -216,28 +216,128 @@ async function buildProfilePresentation(
   const artifacts = holdings.filter((title) => title.kind === "artifact");
   const earningWoloPerDay = holdings.reduce((sum, title) => sum + title.dailyWolo, 0);
 
-  const selectedAvatarTarget = normalizeManagedMediaTarget(`user-${user.uid}`) || `user-${user.uid}`;
-  const avatarPoolTarget = normalizeManagedMediaTarget(`user-${user.uid}-pool`) || `user-${user.uid}-pool`;
-  const assignedAvatarAssets = await prisma.managedMediaAsset.findMany({
-    where: {
-      kind: "avatar",
-      target: avatarPoolTarget,
-    },
-    orderBy: [{ active: "desc" }, { updatedAt: "desc" }, { id: "desc" }],
-  });
-  const selectedAvatar = assignedAvatarAssets.find((asset) => asset.active) || null;
-  const fallbackAvatar = "/champions/players/silhouette.webp";
+  const profileAvatarTarget =
+    normalizeManagedMediaTarget(`user-${user.uid}`) ||
+    `user-${user.uid}`;
+
+  const avatarPoolTarget =
+    normalizeManagedMediaTarget(`user-${user.uid}-pool`) ||
+    `user-${user.uid}-pool`;
+
+  const featuredAvatarTarget =
+    normalizeManagedMediaTarget(`user-${user.uid}-featured`) ||
+    `user-${user.uid}-featured`;
+
+  const [
+    profileAvatarAssets,
+    assignedAvatarAssets,
+    featuredAvatarAsset,
+  ] = await Promise.all([
+    prisma.managedMediaAsset.findMany({
+      where: {
+        kind: "avatar",
+        target: profileAvatarTarget,
+      },
+      orderBy: [
+        { active: "desc" },
+        { updatedAt: "desc" },
+        { id: "desc" },
+      ],
+    }),
+
+    prisma.managedMediaAsset.findMany({
+      where: {
+        kind: "avatar",
+        target: avatarPoolTarget,
+      },
+      orderBy: [
+        { active: "desc" },
+        { updatedAt: "desc" },
+        { id: "desc" },
+      ],
+    }),
+
+    prisma.managedMediaAsset.findFirst({
+      where: {
+        kind: "avatar",
+        target: featuredAvatarTarget,
+        active: true,
+      },
+      orderBy: [
+        { updatedAt: "desc" },
+        { id: "desc" },
+      ],
+    }),
+  ]);
+
+  const fallbackAvatar =
+    "/champions/players/silhouette.webp";
+
+  const activeProfileAvatar =
+    profileAvatarAssets.find((asset) => asset.active) ||
+    null;
+
+  const profileAvatarUrl =
+    activeProfileAvatar?.url ||
+    (await resolveManagedMediaUrl(
+      prisma,
+      "avatar",
+      profileAvatarTarget,
+      fallbackAvatar
+    ));
+
+  const featuredAvatarUrl =
+    featuredAvatarAsset?.url ||
+    null;
+
+  const assignedUrls = new Set(
+    assignedAvatarAssets.map((asset) => asset.url)
+  );
+
+  const uniqueAvatarAssets = Array.from(
+    new Map(
+      [
+        ...profileAvatarAssets,
+        ...assignedAvatarAssets,
+      ].map((asset) => [asset.url, asset])
+    ).values()
+  );
 
   return {
-    avatarUrl:
-      selectedAvatar?.url ||
-      (await resolveManagedMediaUrl(prisma, "avatar", selectedAvatarTarget, fallbackAvatar)),
-    avatarOptions: assignedAvatarAssets.map((asset) => ({
-      target: `asset:${asset.id}`,
-      label: asset.label,
-      url: asset.url,
-      active: asset.active,
-    })),
+    avatarUrl: profileAvatarUrl,
+    featuredAvatarUrl,
+
+    avatarOptions: uniqueAvatarAssets.map((asset) => {
+      const isAoE2WarAvatar =
+        assignedUrls.has(asset.url);
+
+      const isPersonalUpload =
+        !isAoE2WarAvatar &&
+        asset.target === profileAvatarTarget &&
+        asset.uploadedByUid === user.uid &&
+        Boolean(asset.originalName) &&
+        asset.sizeBytes > 0;
+
+      return {
+        id: asset.id,
+        target: `asset:${asset.id}`,
+        label: asset.label,
+        url: asset.url,
+
+        source: isAoE2WarAvatar
+          ? ("aoe2war" as const)
+          : isPersonalUpload
+            ? ("personal" as const)
+            : ("profile" as const),
+
+        profileActive:
+          asset.url === profileAvatarUrl,
+
+        featuredActive:
+          asset.url === featuredAvatarUrl,
+      };
+    }),
+
     belts,
     artifacts,
     earningWoloPerDay,

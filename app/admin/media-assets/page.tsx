@@ -5,6 +5,7 @@ import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   CheckCircle2,
+  Crown,
   ImagePlus,
   RefreshCw,
   Search,
@@ -84,21 +85,51 @@ function normalizeMediaTarget(value: string) {
 }
 
 function poolTargetFor(uid: string) {
-  return normalizeMediaTarget(`user-${uid}-pool`);
+  return normalizeMediaTarget(
+    `user-${uid}-pool`
+  );
 }
 
 function currentTargetFor(uid: string) {
-  return normalizeMediaTarget(`user-${uid}`);
+  return normalizeMediaTarget(
+    `user-${uid}`
+  );
 }
 
-function assetBelongsToUser(asset: ManagedMediaAsset, uid: string) {
-  return asset.target === poolTargetFor(uid);
+function featuredTargetFor(uid: string) {
+  return normalizeMediaTarget(
+    `user-${uid}-featured`
+  );
 }
 
-function targetBadge(asset: ManagedMediaAsset, uid: string) {
-  if (asset.target === poolTargetFor(uid)) return "assigned";
-  if (asset.target === currentTargetFor(uid)) return "current";
-  return asset.target || "global";
+function assetBelongsToUser(
+  asset: ManagedMediaAsset,
+  uid: string
+) {
+  return (
+    asset.target === poolTargetFor(uid) ||
+    asset.target === currentTargetFor(uid)
+  );
+}
+
+function avatarSourceLabel(
+  asset: ManagedMediaAsset,
+  uid: string
+) {
+  if (asset.target === poolTargetFor(uid)) {
+    return "AoE2WAR avatar";
+  }
+
+  if (
+    asset.target === currentTargetFor(uid) &&
+    asset.originalName &&
+    asset.sizeBytes > 0 &&
+    asset.uploadedByUid === uid
+  ) {
+    return "Personal upload";
+  }
+
+  return "Profile history";
 }
 
 function formatSize(bytes: number) {
@@ -185,25 +216,143 @@ export default function AdminMediaAssetsPage() {
   );
 
   const selectedUserAssignments = useMemo(() => {
-    if (!selectedUserUid) return [];
-    return assets.filter((asset) => assetBelongsToUser(asset, selectedUserUid));
+    if (!selectedUserUid) {
+      return [];
+    }
+
+    return assets.filter((asset) =>
+      assetBelongsToUser(
+        asset,
+        selectedUserUid
+      )
+    );
   }, [assets, selectedUserUid]);
 
-  const selectedUserAssignmentsForCategory = useMemo(
-    () => selectedUserAssignments.filter((asset) => asset.kind === category),
-    [category, selectedUserAssignments]
-  );
+  const selectedUserAvatarLibrary = useMemo(() => {
+    if (!selectedUserUid) {
+      return [];
+    }
+
+    const byUrl =
+      new Map<string, ManagedMediaAsset>();
+
+    const poolAssets =
+      selectedUserAssignments.filter(
+        (asset) =>
+          asset.kind === "avatar" &&
+          asset.target ===
+            poolTargetFor(selectedUserUid)
+      );
+
+    const profileAssets =
+      selectedUserAssignments.filter(
+        (asset) =>
+          asset.kind === "avatar" &&
+          asset.target ===
+            currentTargetFor(selectedUserUid)
+      );
+
+    for (const asset of poolAssets) {
+      if (!byUrl.has(asset.url)) {
+        byUrl.set(asset.url, asset);
+      }
+    }
+
+    for (const asset of profileAssets) {
+      if (!byUrl.has(asset.url)) {
+        byUrl.set(asset.url, asset);
+      }
+    }
+
+    return Array.from(byUrl.values());
+  }, [
+    selectedUserAssignments,
+    selectedUserUid,
+  ]);
+
+  const selectedUserAssignmentsForCategory =
+    useMemo(
+      () =>
+        category === "avatar"
+          ? selectedUserAvatarLibrary
+          : selectedUserAssignments.filter(
+              (asset) =>
+                asset.kind === category
+            ),
+      [
+        category,
+        selectedUserAssignments,
+        selectedUserAvatarLibrary,
+      ]
+    );
+
+  const selectedUserProfileAsset = useMemo(() => {
+    if (!selectedUserUid) {
+      return null;
+    }
+
+    return (
+      assets.find(
+        (asset) =>
+          asset.kind === "avatar" &&
+          asset.target ===
+            currentTargetFor(selectedUserUid) &&
+          asset.active
+      ) ||
+      null
+    );
+  }, [assets, selectedUserUid]);
+
+  const selectedUserFeaturedAsset = useMemo(() => {
+    if (!selectedUserUid) {
+      return null;
+    }
+
+    return (
+      assets.find(
+        (asset) =>
+          asset.kind === "avatar" &&
+          asset.target ===
+            featuredTargetFor(selectedUserUid) &&
+          asset.active
+      ) ||
+      null
+    );
+  }, [assets, selectedUserUid]);
 
   const categoryStats = useMemo(() => {
     return KIND_OPTIONS.map((kind) => ({
       kind,
-      global: assets.filter((asset) => asset.kind === kind && !isUserTarget(asset.target)).length,
-      assigned: selectedUserAssignments.filter((asset) => asset.kind === kind).length,
-    }));
-  }, [assets, selectedUserAssignments]);
 
-  const totalAssignedForSelectedUser = selectedUserAssignments.length;
-  const totalUploadBytes = files.reduce((sum, file) => sum + file.size, 0);
+      global:
+        assets.filter(
+          (asset) =>
+            asset.kind === kind &&
+            !isUserTarget(asset.target)
+        ).length,
+
+      assigned:
+        kind === "avatar"
+          ? selectedUserAvatarLibrary.length
+          : selectedUserAssignments.filter(
+              (asset) =>
+                asset.kind === kind
+            ).length,
+    }));
+  }, [
+    assets,
+    selectedUserAssignments,
+    selectedUserAvatarLibrary,
+  ]);
+
+  const totalAssignedForSelectedUser =
+    selectedUserAssignments.filter(
+      (asset) =>
+        asset.kind !== "avatar"
+    ).length +
+    selectedUserAvatarLibrary.length;
+
+    const totalUploadBytes = files.reduce((sum, file) => sum + file.size, 0);
   const allVisibleSelected = visibleAssets.length > 0 && visibleAssets.every((asset) => selectedAssetIds.includes(asset.id));
 
   async function loadAssets() {
@@ -456,6 +605,71 @@ export default function AdminMediaAssetsPage() {
       await loadAssets();
     } catch (updateError) {
       setError(updateError instanceof Error ? updateError.message : "Asset update failed.");
+    } finally {
+      setBusyAssetId(null);
+    }
+  }
+
+  async function setFeaturedAvatar(
+    asset: ManagedMediaAsset
+  ) {
+    if (!selectedUserUid) {
+      setError("Choose a warrior first.");
+      return;
+    }
+
+    setBusyAssetId(asset.id);
+    setError(null);
+    setNotice(null);
+
+    try {
+      const response = await fetch(
+        "/api/admin/media-assets/set-user-featured-avatar",
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            uid: selectedUserUid,
+            assetId: asset.id,
+          }),
+        }
+      );
+
+      const payload =
+        (await response.json().catch(() => ({}))) as {
+          detail?: string;
+          user?: {
+            displayName?: string;
+          };
+        };
+
+      if (!response.ok) {
+        throw new Error(
+          payload.detail ||
+            "Could not set Featured Warrior avatar."
+        );
+      }
+
+      setNotice(
+        `${
+          payload.user?.displayName ||
+          selectedUser?.displayName ||
+          "Warrior"
+        } Featured Warrior avatar updated.`
+      );
+
+      await Promise.all([
+        loadAssets(),
+        loadUsers(userQuery),
+      ]);
+    } catch (updateError) {
+      setError(
+        updateError instanceof Error
+          ? updateError.message
+          : "Could not set Featured Warrior avatar."
+      );
     } finally {
       setBusyAssetId(null);
     }
@@ -785,17 +999,52 @@ export default function AdminMediaAssetsPage() {
             </div>
 
             {selectedUser ? (
-              <img
-                src={selectedUser.avatarPreviewUrl}
-                alt={`${selectedUser.displayName} avatar`}
-                className="h-14 w-14 flex-none rounded-2xl border border-sky-200/18 object-cover"
-              />
+              <div className="flex shrink-0 gap-2">
+                <div className="text-center">
+                  <img
+                    src={
+                      selectedUserProfileAsset?.url ||
+                      selectedUser.avatarPreviewUrl
+                    }
+                    alt={`${selectedUser.displayName} Profile avatar`}
+                    className="h-14 w-14 rounded-2xl border border-amber-200/24 object-cover object-top"
+                  />
+
+                  <div className="mt-1 text-[8px] font-semibold uppercase tracking-[0.12em] text-amber-100/65">
+                    Profile
+                  </div>
+                </div>
+
+                <div className="text-center">
+                  {selectedUserFeaturedAsset ? (
+                    <img
+                      src={selectedUserFeaturedAsset.url}
+                      alt={`${selectedUser.displayName} Featured Warrior`}
+                      className="h-14 w-14 rounded-2xl border border-sky-200/24 object-cover object-top"
+                    />
+                  ) : (
+                    <div className="grid h-14 w-14 place-items-center rounded-2xl border border-dashed border-white/12 bg-black/20 text-slate-600">
+                      <Crown className="h-5 w-5" />
+                    </div>
+                  )}
+
+                  <div className="mt-1 text-[8px] font-semibold uppercase tracking-[0.12em] text-sky-100/65">
+                    Featured
+                  </div>
+                </div>
+              </div>
             ) : null}
           </div>
 
           <div className="mt-4 grid gap-3">
             {KIND_OPTIONS.map((kind) => {
-              const rows = selectedUserAssignments.filter((asset) => asset.kind === kind);
+              const rows =
+                kind === "avatar"
+                  ? selectedUserAvatarLibrary
+                  : selectedUserAssignments.filter(
+                      (asset) =>
+                        asset.kind === kind
+                    );
 
               return (
                 <section key={kind} className="rounded-2xl border border-white/10 bg-black/18 p-3">
@@ -812,10 +1061,59 @@ export default function AdminMediaAssetsPage() {
                         <AssignedAssetTile
                           key={asset.id}
                           asset={asset}
-                          targetLabel={selectedUserUid ? targetBadge(asset, selectedUserUid) : "assigned"}
+                          sourceLabel={
+                            selectedUserUid &&
+                            kind === "avatar"
+                              ? avatarSourceLabel(
+                                  asset,
+                                  selectedUserUid
+                                )
+                              : "Assigned"
+                          }
+
+                          profileActive={
+                            kind === "avatar" &&
+                            selectedUserProfileAsset?.url ===
+                              asset.url
+                          }
+
+                          featuredActive={
+                            kind === "avatar" &&
+                            selectedUserFeaturedAsset?.url ===
+                              asset.url
+                          }
+
+                          canRemove={
+                            kind !== "avatar" ||
+                            Boolean(
+                              selectedUserUid &&
+                              asset.target ===
+                                poolTargetFor(
+                                  selectedUserUid
+                                ) &&
+                              selectedUserProfileAsset?.url !==
+                                asset.url &&
+                              selectedUserFeaturedAsset?.url !==
+                                asset.url
+                            )
+                          }
+
                           busy={busyAssetId === asset.id}
-                          onUse={() => void setAssetActive(asset, true)}
-                          onDelete={() => void deleteAsset(asset)}
+
+                          onUse={() =>
+                            void setAssetActive(
+                              asset,
+                              true
+                            )
+                          }
+
+                          onFeature={() =>
+                            void setFeaturedAvatar(asset)
+                          }
+
+                          onDelete={() =>
+                            void deleteAsset(asset)
+                          }
                         />
                       ))}
                     </div>
@@ -925,43 +1223,97 @@ function AssetCard({
 
 function AssignedAssetTile({
   asset,
-  targetLabel,
+  sourceLabel,
+  profileActive,
+  featuredActive,
+  canRemove,
   busy,
   onUse,
+  onFeature,
   onDelete,
 }: {
   asset: ManagedMediaAsset;
-  targetLabel: string;
+  sourceLabel: string;
+  profileActive: boolean;
+  featuredActive: boolean;
+  canRemove: boolean;
   busy: boolean;
   onUse: () => void;
+  onFeature: () => void;
   onDelete: () => void;
 }) {
+  const isAvatar =
+    asset.kind === "avatar";
+
   return (
     <div className="min-w-0 overflow-hidden rounded-xl border border-white/10 bg-white/[0.035]">
       <div className="relative flex aspect-square items-center justify-center bg-black/20">
         {asset.mimeType?.startsWith("video/") ? (
-          <video src={asset.url} muted loop autoPlay playsInline className="h-full w-full object-contain p-1.5" />
+          <video
+            src={asset.url}
+            muted
+            loop
+            autoPlay
+            playsInline
+            className="h-full w-full object-contain p-1.5"
+          />
         ) : (
-          <img src={asset.url} alt={asset.alt || asset.label} className="h-full w-full object-contain p-1.5" />
+          <img
+            src={asset.url}
+            alt={
+              asset.alt ||
+              asset.label
+            }
+            className="h-full w-full object-contain p-1.5"
+          />
         )}
-        {asset.active ? (
-          <span className="absolute left-1.5 top-1.5 rounded-full border border-emerald-300/24 bg-emerald-400/16 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.1em] text-emerald-100">
-            Active
-          </span>
-        ) : null}
+
+        <div className="absolute left-1.5 top-1.5 flex flex-col items-start gap-1">
+          {profileActive ? (
+            <span className="rounded-full border border-amber-100/25 bg-amber-300 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.08em] text-slate-950">
+              Profile
+            </span>
+          ) : null}
+
+          {featuredActive ? (
+            <span className="rounded-full border border-sky-100/25 bg-sky-300 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.08em] text-slate-950">
+              Featured
+            </span>
+          ) : null}
+        </div>
       </div>
 
       <div className="p-2">
-        <div className="truncate text-xs font-semibold text-white">{asset.label}</div>
-        <div className="mt-0.5 truncate text-[10px] text-slate-500">{targetLabel}</div>
+        <div className="truncate text-xs font-semibold text-white">
+          {asset.label}
+        </div>
+
+        <div className="mt-0.5 truncate text-[10px] text-slate-500">
+          {sourceLabel}
+        </div>
 
         <div className="mt-2 flex flex-wrap gap-1">
-          {!asset.active ? (
+          {isAvatar ? (
+            featuredActive ? (
+              <span className="rounded-full border border-sky-200/18 bg-sky-300/10 px-2 py-1 text-[10px] font-semibold text-sky-100">
+                Featured
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={onFeature}
+                disabled={busy}
+                className="rounded-full border border-sky-200/18 px-2 py-1 text-[10px] font-semibold text-sky-100 transition hover:bg-sky-300/10 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Feature
+              </button>
+            )
+          ) : !asset.active ? (
             <button
               type="button"
               onClick={onUse}
               disabled={busy}
-              className="rounded-full border border-sky-200/18 px-2 py-1 text-[10px] font-semibold text-sky-100 transition hover:bg-sky-300/10 disabled:opacity-50"
+              className="rounded-full border border-sky-200/18 px-2 py-1 text-[10px] font-semibold text-sky-100 transition hover:bg-sky-300/10 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Use
             </button>
@@ -970,8 +1322,16 @@ function AssignedAssetTile({
           <button
             type="button"
             onClick={onDelete}
-            disabled={busy}
-            className="rounded-full border border-red-300/18 px-2 py-1 text-[10px] font-semibold text-red-100 transition hover:bg-red-400/10 disabled:opacity-50"
+            disabled={
+              busy ||
+              !canRemove
+            }
+            title={
+              canRemove
+                ? "Remove"
+                : "Profile, personal, and Featured avatars are protected."
+            }
+            className="rounded-full border border-red-300/18 px-2 py-1 text-[10px] font-semibold text-red-100 transition hover:bg-red-400/10 disabled:cursor-not-allowed disabled:opacity-30"
           >
             Remove
           </button>

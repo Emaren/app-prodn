@@ -15,7 +15,6 @@ const NO_STORE_HEADERS = {
   "Cache-Control": "no-store, max-age=0",
 };
 
-
 function userAvatarTarget(uid: string) {
   const target = normalizeManagedMediaTarget(`user-${uid}`);
 
@@ -38,11 +37,18 @@ function userAvatarPoolTarget(uid: string) {
 
 async function requireViewer(request: NextRequest) {
   const uid = await getSessionUid(request);
+
   if (!uid) {
-    return { error: NextResponse.json({ detail: "No active session" }, { status: 401 }) };
+    return {
+      error: NextResponse.json(
+        { detail: "No active session" },
+        { status: 401 }
+      ),
+    };
   }
 
   const prisma = getPrisma();
+
   const user = await prisma.user.findUnique({
     where: { uid },
     select: {
@@ -54,7 +60,12 @@ async function requireViewer(request: NextRequest) {
   });
 
   if (!user) {
-    return { error: NextResponse.json({ detail: "User not found" }, { status: 404 }) };
+    return {
+      error: NextResponse.json(
+        { detail: "User not found" },
+        { status: 404 }
+      ),
+    };
   }
 
   return { prisma, user };
@@ -62,6 +73,7 @@ async function requireViewer(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const gate = await requireViewer(request);
+
   if ("error" in gate) {
     return gate.error;
   }
@@ -69,6 +81,7 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const file = formData.get("file");
+
     if (!(file instanceof File)) {
       return NextResponse.json(
         { detail: "Choose an image file first." },
@@ -86,12 +99,21 @@ export async function POST(request: NextRequest) {
       file,
       kind: "avatar",
       target: userAvatarTarget(gate.user.uid),
-      label,
+      label: `${label} personal upload`,
       alt: `${label} avatar`,
       uploadedByUid: gate.user.uid,
     });
 
-    return NextResponse.json({ avatarUrl: asset.url, asset }, { status: 201, headers: NO_STORE_HEADERS });
+    return NextResponse.json(
+      {
+        avatarUrl: asset.url,
+        asset,
+      },
+      {
+        status: 201,
+        headers: NO_STORE_HEADERS,
+      }
+    );
   } catch (error) {
     return NextResponse.json(
       {
@@ -100,75 +122,94 @@ export async function POST(request: NextRequest) {
             ? error.message
             : "Could not save avatar.",
       },
-      { status: 400, headers: NO_STORE_HEADERS }
+      {
+        status: 400,
+        headers: NO_STORE_HEADERS,
+      }
     );
   }
 }
 
 export async function PATCH(request: NextRequest) {
   const gate = await requireViewer(request);
+
   if ("error" in gate) {
     return gate.error;
   }
 
   try {
-    const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+    const body =
+      (await request.json().catch(() => ({}))) as Record<
+        string,
+        unknown
+      >;
+
     const requestedPreset = String(body.preset || "").trim();
     const assetChoice = requestedPreset.match(/^asset:(\d+)$/i);
     const assetId = Number(body.assetId ?? assetChoice?.[1]);
-    const target = userAvatarPoolTarget(gate.user.uid);
 
-    if (Number.isInteger(assetId) && assetId > 0) {
-      const asset = await gate.prisma.managedMediaAsset.findFirst({
-        where: {
-          id: assetId,
-          kind: "avatar",
-          target,
-        },
-      });
-
-      if (!asset) {
-        return NextResponse.json(
-          { detail: "That avatar is not assigned to your profile." },
-          { status: 404, headers: NO_STORE_HEADERS }
-        );
-      }
-
-      await gate.prisma.$transaction([
-        gate.prisma.managedMediaAsset.updateMany({
-          where: { kind: "avatar", target, active: true, id: { not: asset.id } },
-          data: { active: false },
-        }),
-        gate.prisma.managedMediaAsset.update({
-          where: { id: asset.id },
-          data: { active: true },
-        }),
-      ]);
-
-      const label =
-        gate.user.inGameName ||
-        gate.user.steamPersonaName ||
-        "Profile avatar";
-
-      const selectedAsset = await saveManagedMediaReference({
-        prisma: gate.prisma,
-        kind: "avatar",
-        target: userAvatarTarget(gate.user.uid),
-        url: asset.url,
-        label: `${label} selected avatar`,
-        alt: asset.alt || `${label} avatar`,
-        uploadedByUid: gate.user.uid,
-      });
-
+    if (!Number.isInteger(assetId) || assetId < 1) {
       return NextResponse.json(
-        { avatarUrl: selectedAsset.url, asset: { ...asset, active: true } },
-        { headers: NO_STORE_HEADERS }
+        {
+          detail:
+            "Choose one of the avatars available to your profile.",
+        },
+        {
+          status: 400,
+          headers: NO_STORE_HEADERS,
+        }
       );
     }
 
+    const profileTarget = userAvatarTarget(gate.user.uid);
+    const poolTarget = userAvatarPoolTarget(gate.user.uid);
+
+    const asset = await gate.prisma.managedMediaAsset.findFirst({
+      where: {
+        id: assetId,
+        kind: "avatar",
+        target: {
+          in: [profileTarget, poolTarget],
+        },
+      },
+    });
+
+    if (!asset) {
+      return NextResponse.json(
+        {
+          detail:
+            "That avatar is not available to your profile.",
+        },
+        {
+          status: 404,
+          headers: NO_STORE_HEADERS,
+        }
+      );
+    }
+
+    const label =
+      gate.user.inGameName ||
+      gate.user.steamPersonaName ||
+      "Profile avatar";
+
+    const selectedAsset = await saveManagedMediaReference({
+      prisma: gate.prisma,
+      kind: "avatar",
+      target: profileTarget,
+      url: asset.url,
+      label: `${label} selected profile avatar`,
+      alt: asset.alt || `${label} avatar`,
+      uploadedByUid: gate.user.uid,
+    });
+
     return NextResponse.json(
-      { detail: "Choose one of the avatars assigned to your profile." },
-      { status: 400, headers: NO_STORE_HEADERS }
+      {
+        avatarUrl: selectedAsset.url,
+        asset,
+      },
+      {
+        headers: NO_STORE_HEADERS,
+      }
     );
   } catch (error) {
     return NextResponse.json(
@@ -178,7 +219,10 @@ export async function PATCH(request: NextRequest) {
             ? error.message
             : "Could not update avatar.",
       },
-      { status: 400, headers: NO_STORE_HEADERS }
+      {
+        status: 400,
+        headers: NO_STORE_HEADERS,
+      }
     );
   }
 }
