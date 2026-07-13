@@ -64,6 +64,10 @@ function explicitTeams(players) {
     .map(([teamId, team]) => ({ teamId, players: team }));
 }
 
+function financialCorrectionResolved(status) {
+  return ["resolved", "resolved_overpayment"].includes(clean(status));
+}
+
 function classify(row) {
   const players = canonicalPlayers(row.players);
   const displayedLeft = sideNames(row.left_label);
@@ -95,12 +99,21 @@ function classify(row) {
   if (players.length === 2) {
     const aligned = displayedLeft.length === 1 && displayedRight.length === 1 &&
       sameSet([...displayedLeft, ...displayedRight], players.map((player) => player.name));
+    const correctionResolved = financialCorrectionResolved(row.incident_status);
     return {
       ...base,
       verifiedTeamA: players[0].name,
       verifiedTeamB: players[1].name,
-      category: aligned ? "safe" : moneyWolo > 0 ? "financial_correction_required" : "invalid_team_assignment",
-      reason: aligned ? "one_vs_one_roster_matches_display" : "one_vs_one_display_mismatch",
+      category: aligned
+        ? "safe"
+        : moneyWolo > 0 && !correctionResolved
+          ? "financial_correction_required"
+          : "invalid_team_assignment",
+      reason: aligned
+        ? "one_vs_one_roster_matches_display"
+        : correctionResolved
+          ? "one_vs_one_display_mismatch_correction_resolved"
+          : "one_vs_one_display_mismatch",
     };
   }
 
@@ -121,10 +134,13 @@ function classify(row) {
   let category;
   let reason;
   if (!aligned) {
-    category = moneyWolo > 0 || paidWolo > 0
+    const correctionResolved = financialCorrectionResolved(row.incident_status);
+    category = (moneyWolo > 0 || paidWolo > 0) && !correctionResolved
       ? "financial_correction_required"
       : "invalid_team_assignment";
-    reason = "displayed_sides_do_not_match_explicit_replay_teams";
+    reason = correctionResolved
+      ? "displayed_sides_do_not_match_explicit_replay_teams_correction_resolved"
+      : "displayed_sides_do_not_match_explicit_replay_teams";
   } else if (!currentContract) {
     category = "needs_review";
     reason = "legacy_market_aligned_but_has_no_frozen_proposition";
@@ -186,6 +202,7 @@ try {
       select item.status
       from bet_market_integrity_incidents item
       where item.market_id = market.id
+        and item.incident_type = 'invalid_team_assignment'
       order by item.created_at desc, item.id desc
       limit 1
     ) incident on true

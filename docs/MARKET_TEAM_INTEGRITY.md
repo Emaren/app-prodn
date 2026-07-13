@@ -33,7 +33,7 @@ Run the audit read-only after the integrity migration:
 node scripts/audit-watcher-team-markets.mjs --out-dir runtime/team-market-audits
 ```
 
-It writes deterministic JSON, CSV, and Markdown and classifies every watcher team market as `safe`, `needs_review`, `invalid_team_assignment`, `financial_correction_required`, or `insufficient_evidence`. It never splits player order and never mutates a market. Additional repairs require exact evidence and explicit operator approval.
+It writes deterministic JSON, CSV, and Markdown and classifies every watcher team market as `safe`, `needs_review`, `invalid_team_assignment`, `financial_correction_required`, or `insufficient_evidence`. A financially corrected invalid proposition remains `invalid_team_assignment` with a resolved incident; only outstanding exposure remains `financial_correction_required`. The audit never splits player order and never mutates a market. Additional repairs require exact evidence and explicit operator approval.
 
 ## Exact incident repairs
 
