@@ -447,8 +447,8 @@ try {
       await db.query(
         `insert into user_activity_events(user_id,type,path,label,metadata,created_at)
          values
-           ($1,'corrective_refund_queued',$3,left($4::text,80),jsonb_build_object('marketId',$2::int,'incidentId',$5::int,'wagerId',$6::int,'amountWolo',$7::int),$8),
-           ($9,'market_overpayment_detected',$3,left($4::text,80),jsonb_build_object('marketId',$2::int,'incidentId',$5::int,'wagerId',$10::int,'overpaymentWolo',$11::int,'automaticClawback',false),$8)`,
+           ($1,'corrective_refund_queued',$3,left($4::text,80),jsonb_build_object('marketId',$2::int,'incidentId',$5::int,'wagerId',$6::int,'amountWolo',$7::int),$8::timestamp),
+           ($9,'market_overpayment_detected',$3,left($4::text,80),jsonb_build_object('marketId',$2::int,'incidentId',$5::int,'wagerId',$10::int,'overpaymentWolo',$11::int,'automaticClawback',false),$8::timestamp)`,
         [
           inspection.jim.user_id,
           marketId,

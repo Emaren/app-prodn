@@ -266,7 +266,7 @@ try {
       await db.query(
         `insert into user_activity_events(user_id,type,path,label,metadata,created_at)
          values($1,'corrective_refund_queued',$2,left($3::text,80),
-           jsonb_build_object('marketId',$4::int,'incidentId',$5::int,'wagerId',$6::int,'amountWolo',$7::int),$8)`,
+           jsonb_build_object('marketId',$4::int,'incidentId',$5::int,'wagerId',$6::int,'amountWolo',$7::int),$8::timestamp)`,
         [inspection.wager.user_id, `/bets/${expected.marketId}`, evidence.market.title, expected.marketId, incidentId, expected.wagerId, expected.stakeWolo, now]
       );
       await db.query("commit");
