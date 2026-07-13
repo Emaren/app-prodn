@@ -440,7 +440,7 @@ try {
            jsonb_build_object(
              'marketId',$1::int,'incidentId',$4::int,'reason','invalid_team_assignment',
              'automaticClawback',false,'correctionStatus','pending'
-           ),$5
+           ),$5::timestamp
          from bet_wagers where market_id=$1`,
         [marketId, `/bets/${marketId}`, before.market.title, incidentId, now]
       );
