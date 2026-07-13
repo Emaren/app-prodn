@@ -62,7 +62,7 @@ export default function ResultCard({
           {result.title}
         </div>
         <div className={compact ? "mt-1 text-sm leading-5 text-slate-400" : "mt-1 text-sm leading-6 text-slate-400"}>
-          {result.winner} took it
+          {result.resolutionStatus === "settled" ? `${result.winner} took it` : result.winner}
         </div>
       </div>
 

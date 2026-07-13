@@ -1,5 +1,13 @@
 # app-prodn Architecture
 
+## Watcher and betting final-proof lifecycle
+
+Replay receipt truth comes from watcher-backed `game_stats` and `replay_parse_attempts`; `watcher_client_events` is client acknowledgement only. `/admin/watcher-funnel` reports connection, monitor, folder, current replay, last server replay, parse/finality, stream, and version independently.
+
+Watcher-linked books use `open`/`live` → `awaiting_final_proof` → `settled`, `voided`, or `under_review`. Session disappearance is driven by replay activity freshness. It locks the book and sets one `WATCHER_FINAL_PROOF_GRACE_MINUTES` deadline (default 20 minutes); `updated_at` is not the proof clock. Expiry without trusted winner proof creates `voided`/`final_replay_not_received`. Explicit disconnect/desync evidence may use the corresponding evidence-backed reason.
+
+Voids have no winner or fee. Active wagers become `void`, payout equals original stake, founder/winner bonuses are rescinded, and the normal idempotent settlement rail records `queued`, `refunded`, or `failed`. Late finals attach to `late_final_game_stats_id` and never reopen betting or reverse refunds automatically.
+
 ## Purpose
 
 `app-prodn` is the public product shell for AoE2HDBets.

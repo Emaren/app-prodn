@@ -55,7 +55,14 @@ import {
 } from "@/lib/betBroadcastPreviews";
 
 export type BetSide = "left" | "right";
-export type BetStatus = "open" | "closing" | "live" | "settled";
+export type BetStatus =
+  | "open"
+  | "closing"
+  | "live"
+  | "awaiting_final_proof"
+  | "settled"
+  | "voided"
+  | "under_review";
 export type BetFounderBonusType = "participants" | "winner";
 
 export type BetBoardSide = {
@@ -156,6 +163,9 @@ export type BetSettledResult = {
   title: string;
   eventLabel: string;
   winner: string;
+  resolutionStatus: "settled" | "voided" | "under_review";
+  resolutionReason: string | null;
+  refundStatus: string | null;
   mapName: string;
   totalPotWolo: number;
   payoutWolo: number;
@@ -210,6 +220,7 @@ export type BetBoardSnapshot = {
   };
   featuredMarket: BetBoardMarket | null;
   openMarkets: BetBoardMarket[];
+  awaitingProofMarkets: BetBoardMarket[];
   settledResults: BetSettledResult[];
   yourBook: {
     activeCount: number;
@@ -232,6 +243,14 @@ export type BetBoardSnapshot = {
 
 
 const OPEN_STATUSES: BetStatus[] = ["open", "closing", "live"];
+const RECONCILABLE_WATCHER_STATUSES: BetStatus[] = [
+  ...OPEN_STATUSES,
+  "awaiting_final_proof",
+];
+const WATCHER_FINAL_PROOF_GRACE_MINUTES = Math.max(
+  5,
+  Number.parseInt(process.env.WATCHER_FINAL_PROOF_GRACE_MINUTES || "20", 10) || 20
+);
 const CHALLENGE_MARKET_SLUG_PREFIX = "challenge-runway-";
 const WATCHER_MARKET_SLUG_PREFIX = "watcher-live-";
 const LOW_CONFIDENCE_MARKET_LABELS = [
@@ -1672,7 +1691,7 @@ function summarizeSettlementConfigBlocker() {
 async function settleResolvedMarketWagers(prisma: PrismaClient) {
   const markets = await prisma.betMarket.findMany({
     where: {
-      status: "settled",
+      status: { in: ["settled", "voided"] },
       wagers: {
         some: buildCountableActiveWagerWhere(),
       },
@@ -2000,6 +2019,13 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
           settlementDetail,
           settlementAttemptedAt,
           settlementExecutedAt,
+          refundStatus: !winningSide
+            ? settlementStatus === "executed"
+              ? "refunded"
+              : settlementStatus === "failed"
+                ? "failed"
+                : "queued"
+            : undefined,
         },
       });
 
@@ -2103,6 +2129,88 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
           });
         }
       }
+    });
+  }
+}
+
+async function voidExpiredWatcherMarkets(prisma: PrismaClient) {
+  const now = new Date();
+  const expired = await prisma.betMarket.findMany({
+    where: {
+      status: "awaiting_final_proof",
+      proofDeadlineAt: { lte: now },
+    },
+    select: { id: true, resolutionReason: true },
+  });
+  if (expired.length === 0) return;
+
+  await prisma.$transaction(async (tx) => {
+    for (const market of expired) {
+      await tx.betMarket.updateMany({
+        where: { id: market.id, status: "awaiting_final_proof" },
+        data: {
+          status: "voided",
+          featured: false,
+          winnerSide: null,
+          closeAt: null,
+          settledAt: now,
+          voidedAt: now,
+          refundStatus: "queued",
+          resolutionReason:
+            market.resolutionReason === "explicit_desync_without_safe_winner"
+              ? market.resolutionReason
+              : "final_replay_not_received",
+        },
+      });
+      await tx.betMarketFounderBonus.updateMany({
+        where: {
+          marketId: market.id,
+          status: { in: ["armed", "pending", "ready", "partial"] },
+          rescindedAt: null,
+        },
+        data: {
+          status: "rescinded",
+          rescindedAt: now,
+          failureReason: "Market voided; winner and participant bonuses are not payable.",
+        },
+      });
+      await tx.pendingWoloClaim.updateMany({
+        where: {
+          sourceMarketId: market.id,
+          claimKind: { in: ["founders_bonus", "founders_win", "winner_bounty"] },
+          status: "pending",
+        },
+        data: {
+          status: "rescinded",
+          rescindedAt: now,
+          errorState: "Market voided before bonus settlement.",
+        },
+      });
+    }
+  });
+}
+
+async function linkLateFinalEvidence(prisma: PrismaClient) {
+  const voidedMarkets = await prisma.betMarket.findMany({
+    where: {
+      status: "voided",
+      linkedSessionKey: { not: null },
+      lateFinalGameStatsId: null,
+    },
+    select: { id: true, linkedSessionKey: true },
+    take: 50,
+  });
+  for (const market of voidedMarkets) {
+    const sessionKey = normalizeName(market.linkedSessionKey);
+    if (!sessionKey) continue;
+    const finalGameId = await resolveFinalGameStatsIdForSessionKey(prisma, sessionKey);
+    if (!finalGameId) continue;
+    await prisma.betMarket.updateMany({
+      where: { id: market.id, status: "voided", lateFinalGameStatsId: null },
+      data: {
+        lateFinalGameStatsId: finalGameId,
+        commissionerReviewState: "late_final_evidence",
+      },
     });
   }
 }
@@ -2220,7 +2328,7 @@ async function reconcileDetachedWatcherMarkets(
 ) {
   const markets = await prisma.betMarket.findMany({
     where: {
-      status: { in: OPEN_STATUSES },
+      status: { in: RECONCILABLE_WATCHER_STATUSES },
       scheduledMatchId: null,
       linkedSessionKey: { not: null },
       ...(visibleSessionKeys.size > 0
@@ -2241,6 +2349,9 @@ async function reconcileDetachedWatcherMarkets(
       rightLabel: true,
       eventLabel: true,
       updatedAt: true,
+      status: true,
+      proofDeadlineAt: true,
+      resolutionReason: true,
     },
   });
 
@@ -2319,9 +2430,13 @@ async function reconcileDetachedWatcherMarkets(
             },
           },
           data: {
-            status: "closing",
+            status: "awaiting_final_proof",
             featured: false,
             closeAt: new Date(),
+            proofDeadlineAt: new Date(
+              Date.now() + WATCHER_FINAL_PROOF_GRACE_MINUTES * 60 * 1000
+            ),
+            resolutionReason: "final_replay_pending",
             settledAt: null,
             winnerSide: null,
           },
@@ -2334,6 +2449,33 @@ async function reconcileDetachedWatcherMarkets(
         market,
         finalGame
       );
+      if (!winnerSide) {
+        const disconnectEvidence = Boolean(
+          (finalGame.key_events &&
+            typeof finalGame.key_events === "object" &&
+            !Array.isArray(finalGame.key_events) &&
+            (finalGame.key_events as Record<string, unknown>).disconnect_detected) ||
+          String(finalGame.parse_reason || "").toLowerCase().includes("disconnect") ||
+          String(finalGame.parse_reason || "").toLowerCase().includes("desync")
+        );
+        await prisma.betMarket.updateMany({
+          where: { id: market.id, status: { in: ["open", "live"] } },
+          data: {
+            status: "awaiting_final_proof",
+            featured: false,
+            closeAt: new Date(),
+            proofDeadlineAt: new Date(
+              Date.now() + WATCHER_FINAL_PROOF_GRACE_MINUTES * 60 * 1000
+            ),
+            resolutionReason: disconnectEvidence
+              ? "explicit_desync_without_safe_winner"
+              : "final_result_not_betting_eligible",
+            linkedGameStatsId: finalGame.id,
+            winnerSide: null,
+          },
+        });
+        return;
+      }
       const settledAt =
         finalGame.timestamp ??
         finalGame.createdAt ??
@@ -2349,6 +2491,8 @@ async function reconcileDetachedWatcherMarkets(
           closeAt: null,
           settledAt,
           winnerSide,
+          proofDeadlineAt: null,
+          resolutionReason: "trusted_final_received",
           linkedGameStatsId: finalGame?.id ?? market.linkedGameStatsId ?? null,
           eventLabel: buildWatcherEventLabel(
             "Final",
@@ -2610,6 +2754,8 @@ export async function ensureBetMarkets(prisma: PrismaClient) {
 
   await reconcileChallengeSessionShadowMarkets(prisma, seeds);
   await reconcileDetachedWatcherMarkets(prisma, visibleSessionKeys);
+  await voidExpiredWatcherMarkets(prisma);
+  await linkLateFinalEvidence(prisma);
 
   await prisma.betMarket.updateMany({
     where:
@@ -2773,9 +2919,9 @@ function buildMarketCard(
   };
 }
 
-async function loadOpenMarkets(prisma: PrismaClient) {
+async function loadMarketsByStatus(prisma: PrismaClient, statuses: BetStatus[]) {
   const markets = await prisma.betMarket.findMany({
-    where: { status: { in: OPEN_STATUSES } },
+    where: { status: { in: statuses } },
     orderBy: [{ featured: "desc" }, { sortOrder: "asc" }, { updatedAt: "desc" }],
     include: {
       scheduledMatch: {
@@ -2823,14 +2969,19 @@ async function loadOpenMarkets(prisma: PrismaClient) {
   return markets.filter(isConfidentBetMarket);
 }
 
+async function loadOpenMarkets(prisma: PrismaClient) {
+  return loadMarketsByStatus(prisma, OPEN_STATUSES);
+}
+
+async function loadAwaitingProofMarkets(prisma: PrismaClient) {
+  return loadMarketsByStatus(prisma, ["awaiting_final_proof"]);
+}
+
 async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettledResult[]> {
   const [settledMarketsRaw, sessionSnapshot] = await Promise.all([
     prisma.betMarket.findMany({
       where: {
-        status: "settled",
-        winnerSide: {
-          in: ["left", "right"],
-        },
+        status: { in: ["settled", "voided", "under_review"] },
       },
       orderBy: [{ settledAt: "desc" }, { updatedAt: "desc" }, { id: "desc" }],
       take: 40,
@@ -2942,7 +3093,19 @@ async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettle
   );
 
   const marketResults = settledMarkets.map((market) => {
-      const winner = market.winnerSide === "right" ? market.rightLabel : market.leftLabel;
+      const resolutionStatus = market.status as "settled" | "voided" | "under_review";
+      const winner =
+        resolutionStatus === "voided"
+          ? market.refundStatus === "refunded"
+            ? "Voided · refunded"
+            : market.refundStatus === "failed"
+              ? "Voided · refund failed, retrying"
+              : "Voided · refund queued"
+          : resolutionStatus === "under_review"
+            ? "Result under review"
+            : market.winnerSide === "right"
+              ? market.rightLabel
+              : market.leftLabel;
       const countableWagers = market.wagers.filter((wager) => isCountableBetWager(wager));
       const wageredWolo = countableWagers.reduce((sum, wager) => sum + wager.amountWolo, 0);
       const intentWolo = market.stakeIntents
@@ -2971,6 +3134,9 @@ async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettle
         title: market.title,
         eventLabel: market.eventLabel,
         winner,
+        resolutionStatus,
+        resolutionReason: market.resolutionReason ?? null,
+        refundStatus: market.refundStatus ?? null,
         mapName,
         totalPotWolo,
         payoutWolo,
@@ -3036,6 +3202,9 @@ async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettle
       title,
       eventLabel: row.parse_reason ? row.parse_reason.replace(/_/g, " ") : "Replay proof",
       winner: row.winner || "Unknown",
+      resolutionStatus: "settled",
+      resolutionReason: null,
+      refundStatus: null,
       mapName,
       totalPotWolo: 110 + (hashValue(`${row.id}:${row.winner}:pot`) % 240),
       payoutWolo: 110 + (hashValue(`${row.id}:${row.winner}`) % 240),
@@ -3273,7 +3442,15 @@ async function loadViewerRecentClosedBookEntries(
   return rows.map((row): BetBookEntry => {
     const side: BetSide = row.side === "right" ? "right" : "left";
     const pickedLabel = side === "left" ? row.market.leftLabel : row.market.rightLabel;
-    const marketStatus: BetStatus = ["open", "closing", "live", "settled"].includes(row.market.status)
+    const marketStatus: BetStatus = [
+      "open",
+      "closing",
+      "live",
+      "awaiting_final_proof",
+      "settled",
+      "voided",
+      "under_review",
+    ].includes(row.market.status)
       ? (row.market.status as BetStatus)
       : "settled";
 
@@ -3395,14 +3572,15 @@ export async function loadBetBoardSnapshot(
       })
     : null;
 
-  const [openMarketsRaw, settledResultsRaw, unresolvedStakeIntents, settlementSurface] = await Promise.all([
+  const [openMarketsRaw, awaitingProofRaw, settledResultsRaw, unresolvedStakeIntents, settlementSurface] = await Promise.all([
     loadOpenMarkets(prisma),
+    loadAwaitingProofMarkets(prisma),
     loadRecentSettledResults(prisma),
     viewer?.id ? loadViewerBetStakeIntents(prisma, viewer.id) : Promise.resolve([]),
     loadSettlementSurfaceForBetBoard(options.settlementSurfaceMode),
   ]);
 
-  const openMarketIds = openMarketsRaw.map((market) => market.id);
+  const openMarketIds = [...openMarketsRaw, ...awaitingProofRaw].map((market) => market.id);
   const claimRows = openMarketIds.length
     ? await prisma.pendingWoloClaim.findMany({
         where: {
@@ -3440,8 +3618,12 @@ export async function loadBetBoardSnapshot(
   const openMarketsWithoutFeeds = openMarketsRaw.map((market) =>
     buildMarketCard(market, viewer?.id ?? null, claimsByMarketId)
   );
+  const awaitingProofMarkets = awaitingProofRaw.map((market) =>
+    buildMarketCard(market, viewer?.id ?? null, claimsByMarketId)
+  );
   const broadcastSessionKeys = [
     ...openMarketsWithoutFeeds.map((market) => market.linkedSessionKey),
+    ...awaitingProofMarkets.map((market) => market.linkedSessionKey),
     ...settledResultsRaw.map((result) => result.linkedSessionKey),
   ].filter(Boolean) as string[];
   const [streamsBySession, broadcastPreviewsByKey] = await Promise.all([
@@ -3605,6 +3787,20 @@ export async function loadBetBoardSnapshot(
     },
     featuredMarket,
     openMarkets,
+    awaitingProofMarkets: awaitingProofMarkets.map((market) => ({
+      ...market,
+      broadcastFeeds: buildBroadcastFeedsForMatch({
+        streams: market.linkedSessionKey
+          ? streamsBySession.get(market.linkedSessionKey)
+          : undefined,
+        leftName: market.left.name,
+        rightName: market.right.name,
+      }),
+      broadcastPreviewUrls: buildBetBroadcastPreviewUrls(
+        market.linkedSessionKey,
+        broadcastPreviewsByKey
+      ),
+    })),
     settledResults,
     yourBook: {
       activeCount: activeOpenWagers.reduce((sum, wager) => sum + wager.slipCount, 0),

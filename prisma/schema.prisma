@@ -1295,6 +1295,12 @@ model BetMarket {
   closeAt               DateTime? @map("close_at") @db.Timestamp(6)
   settledAt             DateTime? @map("settled_at") @db.Timestamp(6)
   winnerSide            String?   @map("winner_side") @db.VarChar(20)
+  resolutionReason      String?   @map("resolution_reason") @db.VarChar(80)
+  proofDeadlineAt       DateTime? @map("proof_deadline_at") @db.Timestamp(6)
+  voidedAt              DateTime? @map("voided_at") @db.Timestamp(6)
+  refundStatus          String?   @map("refund_status") @db.VarChar(32)
+  commissionerReviewState String? @map("commissioner_review_state") @db.VarChar(32)
+  lateFinalGameStatsId  Int?      @map("late_final_game_stats_id")
   settlementRunId       String?   @map("settlement_run_id") @db.VarChar(128)
   settlementStatus      String?   @map("settlement_status") @db.VarChar(32)
   settlementFailureCode String?   @map("settlement_failure_code") @db.VarChar(80)
@@ -1315,6 +1321,7 @@ model BetMarket {
   @@index([closeAt], map: "ix_bet_markets_close_at")
   @@index([linkedSessionKey], map: "ix_bet_markets_linked_session_key")
   @@index([linkedGameStatsId], map: "ix_bet_markets_linked_game_stats_id")
+  @@index([status, proofDeadlineAt], map: "ix_bet_markets_status_proof_deadline")
   @@map("bet_markets")
 }
 

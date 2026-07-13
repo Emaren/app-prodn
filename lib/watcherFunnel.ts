@@ -178,6 +178,13 @@ export type WatcherFocusUserDiagnostics = {
     steamPersonaName: string | null;
   } | null;
   latestStatus: "online" | "watching" | "idle" | "no_telemetry";
+  connected: boolean;
+  monitorState: "active" | "stopped" | "unknown";
+  folderState: "valid_hd" | "missing" | "invalid" | "unknown";
+  currentReplay: string | null;
+  lastServerReplayAt: string | null;
+  lastServerGameStatsId: number | null;
+  diagnosticWarnings: string[];
   lastSeenAt: string | null;
   lastHeartbeatAt: string | null;
   lastStartedAt: string | null;
@@ -405,6 +412,48 @@ function deriveFocusStatus(events: FocusWatcherEventRow[]) {
   }
 
   return "idle" as const;
+}
+
+function deriveIndependentWatcherState(events: FocusWatcherEventRow[], appVersion: string | null) {
+  const heartbeat = events.find((event) => event.eventType === "heartbeat") ?? null;
+  const connected = Boolean(
+    heartbeat && Date.now() - heartbeat.createdAt.getTime() <= 2.5 * 60 * 1000
+  );
+  const reportedAttached = heartbeat
+    ? metadataBoolean(heartbeat.metadata, "monitorAttached") ??
+      metadataBoolean(heartbeat.metadata, "isWatching")
+    : null;
+  const lastStart = firstEventAt(events, ["watcher_ready", "watching_started"]);
+  const lastStop = firstEventAt(events, ["watching_stopped", "watcher_stopped"]);
+  const monitorState =
+    reportedAttached === true
+      ? "active"
+      : reportedAttached === false
+        ? "stopped"
+        : lastStart && (!lastStop || lastStart > lastStop)
+          ? "active"
+          : lastStop
+            ? "stopped"
+            : "unknown";
+  const folderValid = heartbeat ? metadataBoolean(heartbeat.metadata, "folderValid") : null;
+  const folderKind = heartbeat ? metadataString(heartbeat.metadata, "folderKind") : null;
+  const folderState =
+    folderValid === true && folderKind === "hd"
+      ? "valid_hd"
+      : folderValid === false
+        ? folderKind === "de"
+          ? "invalid"
+          : "missing"
+        : "unknown";
+  const currentReplay = heartbeat && metadataBoolean(heartbeat.metadata, "activeReplay")
+    ? metadataString(heartbeat.metadata, "activeReplayBasename")
+    : null;
+  const modern = Boolean(appVersion && /^1\.(?:[6-9]|[1-9]\d)\.|^1\.5\.(?:[3-9]|[1-9]\d)/.test(appVersion));
+  const warnings: string[] = [];
+  if (connected && monitorState === "unknown") warnings.push("Heartbeat fresh but monitor state unknown.");
+  if (monitorState === "active" && folderState === "unknown") warnings.push("Monitoring active but folder state unknown.");
+  if (!modern && appVersion) warnings.push("Limited diagnostics · upgrade watcher to v1.5.3");
+  return { connected, monitorState, folderState, currentReplay, warnings } as const;
 }
 
 function compactEventCounts(events: FocusWatcherEventRow[]) {
@@ -790,7 +839,7 @@ async function loadFocusUserDiagnostics(
 
   const eventWhere = buildFocusEventWhere(target, cutoff, focusUser);
 
-  const recentEvents = await prisma.watcherClientEvent.findMany({
+  const [recentEvents, lastServerReplay] = await Promise.all([prisma.watcherClientEvent.findMany({
     where: eventWhere,
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: FOCUS_USER_EVENT_LIMIT,
@@ -809,7 +858,14 @@ async function loadFocusUserDiagnostics(
       parseReason: true,
       metadata: true,
     },
-  });
+  }), focusUser ? prisma.gameStats.findFirst({
+    where: {
+      userUid: focusUser.uid,
+      parse_source: { in: ["watcher_live", "watcher_final"] },
+    },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    select: { id: true, createdAt: true },
+  }) : Promise.resolve(null)]);
 
   const lastEvent = recentEvents[0] ?? null;
   const lastUpload = firstEventAt(recentEvents, [
@@ -825,6 +881,10 @@ async function loadFocusUserDiagnostics(
       .map((event) => metadataString(event.metadata, "finalityStatus"))
       .find(Boolean) ?? null;
   const stream = buildStreamDiagnostics(recentEvents);
+  const independentState = deriveIndependentWatcherState(recentEvents, lastEvent?.appVersion ?? null);
+  if (lastServerReplay && !lastUpload) {
+    independentState.warnings.push("Replay received by server but upload telemetry is missing.");
+  }
 
   const displayEvents = recentEvents.filter((event) => {
     if (event.eventType !== "replay_detected_ignored") return true;
@@ -840,6 +900,13 @@ async function loadFocusUserDiagnostics(
     userFound: Boolean(focusUser),
     user: focusUser,
     latestStatus: deriveFocusStatus(recentEvents),
+    connected: independentState.connected,
+    monitorState: independentState.monitorState,
+    folderState: independentState.folderState,
+    currentReplay: independentState.currentReplay,
+    lastServerReplayAt: lastServerReplay?.createdAt.toISOString() ?? null,
+    lastServerGameStatsId: lastServerReplay?.id ?? null,
+    diagnosticWarnings: independentState.warnings,
     lastSeenAt: isoOrNull(lastEvent?.createdAt),
     lastHeartbeatAt: isoOrNull(firstEventAt(recentEvents, ["heartbeat"])),
     lastStartedAt: isoOrNull(firstEventAt(recentEvents, ["watching_started", "watcher_started"])),

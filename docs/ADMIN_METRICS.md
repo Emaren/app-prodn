@@ -1,5 +1,9 @@
 # Admin Metrics
 
+## Watcher funnel reconciliation
+
+`/admin/watcher-funnel` reconciles `watcher_client_events`, `replay_parse_attempts`, watcher `game_stats`, and stream telemetry. “Last replay received” is server evidence and must never be derived solely from upload acknowledgement. Connection, replay monitor, folder, current replay, parse, finality, telemetry acknowledgement, stream, and release version are separate operator fields.
+
 This dashboard must not treat raw watcher package traffic as real users. Package pulls are top-of-funnel request rows only.
 
 ## User List / Command Tower

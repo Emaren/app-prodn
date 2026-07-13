@@ -1,5 +1,7 @@
 # app-prodn
 
+Watcher-linked betting lifecycle configuration: `WATCHER_FINAL_PROOF_GRACE_MINUTES` defaults to 20. Deploy the accompanying Prisma migration before restarting. Production repair work must dry-run `scripts/repair-void-bet-market.mjs`, verify all preconditions, apply once, then invoke/verify the ordinary bet reconciliation rail; never delete financial history.
+
 Production Next.js frontend for AoE2HDBets.
 
 This is the public product shell users actually feel.

@@ -10,6 +10,7 @@ import {
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 import { getWoloBetEscrowRuntime } from "@/lib/woloChain";
+import { getWoloSettlementSurfaceStatus } from "@/lib/woloBetSettlement";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -60,6 +61,16 @@ export async function POST(request: NextRequest) {
         },
         { status: 503 }
       );
+    }
+
+    if (escrowRuntime.onchainRequired) {
+      const settlement = await getWoloSettlementSurfaceStatus();
+      if (!settlement.payoutReady || settlement.settlementHealthOk !== true) {
+        return NextResponse.json(
+          { detail: "Betting temporarily paused. Settlement rail health is being verified." },
+          { status: 503 }
+        );
+      }
     }
 
     const payload = (await request.json().catch(() => ({}))) as {

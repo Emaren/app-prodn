@@ -1,5 +1,9 @@
 # app-prodn Product State
 
+## July 2026 watcher reliability release
+
+Watcher v1.5.3 separates app connection from monitor attachment, validates/scans HD folders (including OneDrive), recovers mid-game files, reports rich privacy-safe heartbeat state, and uses bounded watchdog reattachment. `/bets` now removes detached books from active liquidity, shows them under Awaiting Final Proof without controls, voids after grace when proof never arrives, and preserves honest refund state/history. Required on-chain staking pauses when settlement health cannot be verified.
+
 ## Snapshot
 
 This file captures the current shipped state of the public product surface so a new chat can resume without re-auditing everything.

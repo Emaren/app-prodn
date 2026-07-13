@@ -1,5 +1,11 @@
 # Commissioner Replay Review
 
+## Market proof and repair policy
+
+Commissioner review does not invent a winner. A detached watcher book enters `awaiting_final_proof`, is non-bettable, and expires using replay/session activity plus the shared proof-grace policy. No trusted winner after grace means terminal `voided`; exact stakes refund with zero fee and bonuses are rescinded. A late final is linked as evidence only and cannot resurrect the book or reverse a completed/queued refund.
+
+Use `scripts/repair-void-bet-market.mjs` for one-time repairs. It requires exact market/session/status/date/map/participants/wager-total/reason preconditions, defaults to dry-run, writes a restricted audit backup, and requires an explicit confirmation token to apply. The normal settlement rail performs the idempotent refund and supplies payout proof.
+
 The operator queue lives at `/admin/replay-review`. It is protected by the
 shared `/admin` server layout and reads final replay evidence, parser reasons,
 watcher timing, linked betting markets, slips, claims, and settlement
@@ -169,4 +175,3 @@ candidate:
 
 That change belongs in a separate parser/watcher review and deployment. This
 app-only queue does not change the watcher service.
-

@@ -6,7 +6,7 @@ const WOLO_LOGO_SRC = "/legacy/wolo-logo-transparent.webp";
 const STAKE_OPTIONS = [10, 25, 50, 100] as const;
 
 export type BetSide = "left" | "right";
-export type BetStatus = "open" | "closing" | "live" | "settled";
+export type BetStatus = "open" | "closing" | "live" | "awaiting_final_proof" | "settled" | "voided" | "under_review";
 export type BetsViewMode = "basic" | "advanced" | "extreme";
 export type FounderBonusType = "participants" | "winner";
 
@@ -135,6 +135,9 @@ export type BetSettledResult = {
   title: string;
   eventLabel: string;
   winner: string;
+  resolutionStatus: "settled" | "voided" | "under_review";
+  resolutionReason: string | null;
+  refundStatus: string | null;
   mapName: string;
   totalPotWolo: number;
   payoutWolo: number;
@@ -189,6 +192,7 @@ export type BetBoardSnapshot = {
   };
   featuredMarket: BetBoardMarket | null;
   openMarkets: BetBoardMarket[];
+  awaitingProofMarkets: BetBoardMarket[];
   settledResults: BetSettledResult[];
   yourBook: {
     activeCount: number;

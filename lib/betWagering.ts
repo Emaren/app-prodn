@@ -314,7 +314,7 @@ function assertBetMarketPreflight(
   const normalizedWalletAddress = input.walletAddress?.trim() || "";
 
   if (
-    context.market.status === "closing" &&
+    ["closing", "awaiting_final_proof"].includes(context.market.status) &&
     context.market.linkedSessionKey &&
     !context.market.scheduledMatchId
   ) {

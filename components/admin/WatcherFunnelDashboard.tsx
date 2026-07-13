@@ -228,6 +228,12 @@ function SupportUserDiagnostics({ focusUser }: { focusUser: WatcherFocusUserDiag
         <FocusMetric label="Session" value={compactValue(focusUser.activeSessionId)} />
         <FocusMetric label="Version / Platform" value={[focusUser.appVersion, focusUser.platform].filter(Boolean).join(" / ") || null} />
         <FocusMetric label="Last heartbeat" value={formatMaybeDate(focusUser.lastHeartbeatAt)} />
+        <FocusMetric label="App connection" value={focusUser.connected ? "Connected" : "Not connected"} />
+        <FocusMetric label="Replay monitor" value={focusUser.monitorState} />
+        <FocusMetric label="Folder" value={focusUser.folderState.replace(/_/g, " ")} />
+        <FocusMetric label="Current replay" value={focusUser.currentReplay || "none reported"} />
+        <FocusMetric label="Last replay received" value={formatMaybeDate(focusUser.lastServerReplayAt)} />
+        <FocusMetric label="Server game row" value={focusUser.lastServerGameStatsId ? `#${focusUser.lastServerGameStatsId}` : null} />
         <FocusMetric label="Last start" value={formatMaybeDate(focusUser.lastStartedAt)} />
         <FocusMetric label="Last stop" value={formatMaybeDate(focusUser.lastStoppedAt)} />
         <FocusMetric label="Last upload" value={formatMaybeDate(focusUser.lastUploadAt)} />
@@ -236,6 +242,16 @@ function SupportUserDiagnostics({ focusUser }: { focusUser: WatcherFocusUserDiag
         <FocusMetric label="Failures" value={focusUser.failureCount} />
         <FocusMetric label="Events scanned" value={focusUser.totalEvents} />
       </div>
+
+      {focusUser.diagnosticWarnings.length > 0 ? (
+        <div className="mt-4 space-y-2">
+          {focusUser.diagnosticWarnings.map((warning) => (
+            <div key={warning} className="rounded-lg border border-amber-300/20 bg-amber-400/10 px-3 py-2 text-sm text-amber-100">
+              {warning}
+            </div>
+          ))}
+        </div>
+      ) : null}
 
       {focusUser.stream ? (
         <div className="mt-4 rounded-lg border border-sky-300/20 bg-sky-400/10 p-4">

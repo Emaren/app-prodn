@@ -48,7 +48,7 @@ const BETS_POLL_INTERVAL_MS = 5_000;
 const STAKE_RECOVERY_STORAGE_KEY = "aoe2hdbets.betStakeRecovery.v1";
 const BETS_VIEW_STORAGE_KEY = "aoe2hdbets.betsView.v2";
 type BetSide = "left" | "right";
-type BetStatus = "open" | "closing" | "live" | "settled";
+type BetStatus = "open" | "closing" | "live" | "awaiting_final_proof" | "settled" | "voided" | "under_review";
 type BetsViewMode = "basic" | "advanced" | "extreme";
 type FounderBonusType = "participants" | "winner";
 type BroadcastViewKey = "left" | "god" | "right";
@@ -190,6 +190,9 @@ type BetSettledResult = {
   title: string;
   eventLabel: string;
   winner: string;
+  resolutionStatus: "settled" | "voided" | "under_review";
+  resolutionReason: string | null;
+  refundStatus: string | null;
   mapName: string;
   totalPotWolo: number;
   payoutWolo: number;
@@ -244,6 +247,7 @@ type BetBoardSnapshot = {
   };
   featuredMarket: BetBoardMarket | null;
   openMarkets: BetBoardMarket[];
+  awaitingProofMarkets: BetBoardMarket[];
   settledResults: BetSettledResult[];
   yourBook: {
     activeCount: number;
@@ -1176,6 +1180,7 @@ export default function BetsPage() {
   const liveCount = orderedBookMarkets.filter((market) => market.status === "live").length || board?.heat.liveCount || 0;
   const openCount = orderedBookMarkets.length;
   const recentResults = board?.settledResults || [];
+  const awaitingProofMarkets = board?.awaitingProofMarkets || [];
   const runtimeBetEscrowMode = board?.wolo.betEscrowMode || "disabled";
   const runtimeBetEscrowAddress = board?.wolo.betEscrowAddress?.trim() || "";
   const onchainBetEscrowEnabled = board?.wolo.onchainEscrowEnabled ?? false;
@@ -1186,13 +1191,21 @@ export default function BetsPage() {
   const groupedRunCapability = board?.wolo.groupedRunCapability || "not_configured";
   const settlementSurfaceWarnings = board?.wolo.settlementSurfaceWarnings || [];
   const settlementSurfaceDetail = board?.wolo.settlementSurfaceDetail ?? null;
+  const bettingPaused =
+    onchainBetEscrowRequired &&
+    (settlementExecutionMode === "unconfigured" ||
+      groupedRunCapability === "unknown" ||
+      settlementSurfaceWarnings.length > 0);
   const publicSettlementNotice = buildPublicRailNotice(
     settlementSurfaceDetail,
     settlementSurfaceWarnings
   );
   const publicEscrowConfig = publicEscrowConfigMessage(runtimeBetEscrowConfigError);
   const unresolvedStakeIntents = board?.recovery.unresolvedStakeIntents || [];
-  const maxStakeWolo = useMemo(() => resolveStakeMax(rawWalletBalance), [rawWalletBalance]);
+  const maxStakeWolo = useMemo(
+    () => (bettingPaused ? 0 : resolveStakeMax(rawWalletBalance)),
+    [bettingPaused, rawWalletBalance]
+  );
 
   const refreshBoard = useCallback(async (nextPayload?: BetBoardSnapshot) => {
     if (nextPayload) {
@@ -2230,6 +2243,8 @@ export default function BetsPage() {
             wide
           />
 
+          <AwaitingProofSection markets={awaitingProofMarkets} />
+
           <section className="grid gap-5 xl:grid-cols-[1.08fr_0.92fr]">
             <YourBookSection
               board={board}
@@ -2420,6 +2435,8 @@ export default function BetsPage() {
               limit={null}
               emptyLabel="No open books right now."
             />
+
+            <AwaitingProofSection markets={awaitingProofMarkets} />
 
             <div className="space-y-5">
               <YourBookSection
@@ -2651,6 +2668,44 @@ function SettledSection({ results }: { results: BetSettledResult[] }) {
         ) : (
           <EmptyShell label="No proof landed yet." />
         )}
+      </div>
+    </section>
+  );
+}
+
+function AwaitingProofSection({ markets }: { markets: BetBoardMarket[] }) {
+  if (markets.length === 0) return null;
+  const lockedWolo = markets.reduce((sum, market) => sum + market.totalPotWolo, 0);
+
+  return (
+    <section className={`${shellClass()} p-5 sm:p-6`}>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <div className="text-[11px] uppercase tracking-[0.35em] text-amber-300/70">
+            Awaiting Final Proof
+          </div>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
+            Betting is locked. Replay proof is still being checked; existing wagers remain unchanged.
+          </p>
+        </div>
+        <div className="rounded-full border border-amber-300/15 bg-amber-400/10 px-3 py-1 text-xs text-amber-100">
+          {formatExactWolo(lockedWolo)} WOLO locked
+        </div>
+      </div>
+      <div className="mt-5 grid gap-3 md:grid-cols-2">
+        {markets.map((market) => (
+          <Link
+            key={market.id}
+            href={buildBetMarketHistoryHref(market.id) || `/bets/${market.id}`}
+            className="rounded-2xl border border-amber-200/10 bg-amber-300/[0.04] p-4 transition hover:bg-amber-300/[0.07]"
+          >
+            <div className="text-sm font-semibold text-white">{market.title}</div>
+            <div className="mt-1 text-xs text-slate-400">{market.eventLabel}</div>
+            <div className="mt-3 text-xs font-semibold text-amber-100">
+              Game out of sync · checking final replay
+            </div>
+          </Link>
+        ))}
       </div>
     </section>
   );

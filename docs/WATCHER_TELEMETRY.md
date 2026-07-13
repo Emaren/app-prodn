@@ -1,5 +1,13 @@
 # Watcher Telemetry
 
+## v1.5.3 truth rails
+
+A fresh heartbeat means connected only. Monitor state comes independently from heartbeat `monitorAttached`/`isWatching`, start/ready/stop events, server replay receipts, and watchdog events. v1.5.2 and earlier show `Limited diagnostics · upgrade watcher to v1.5.3` rather than being judged for missing fields.
+
+Heartbeat metadata may include folder kind/validity and basename, folder/replay activity timestamps, active replay basename/size/change time, upload status/queue, batch/stream state, version/platform, and watcher/session IDs. Full private paths and replay contents are excluded.
+
+Truth disagreements are operator-visible: server replay without upload telemetry; client success without server row; fresh heartbeat with unknown monitor; active monitor with unknown folder; valid quiet folder; and old client coverage.
+
 Watcher analytics now separates noisy package pulls from confirmed watcher behavior.
 
 ## Signal Layers
