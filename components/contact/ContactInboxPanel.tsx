@@ -1754,8 +1754,8 @@ export default function ContactInboxPanel({
       <div
         className={
           showConversationRail
-            ? `grid min-h-0 flex-1 ${isLineView ? "lg:grid-cols-[13rem_minmax(0,1fr)]" : "lg:grid-cols-[15rem_minmax(0,1fr)]"}`
-            : "flex min-h-0 flex-1 flex-col"
+            ? `grid min-h-0 min-w-0 w-full flex-1 grid-cols-[minmax(0,1fr)] ${isLineView ? "lg:grid-cols-[13rem_minmax(0,1fr)]" : "lg:grid-cols-[15rem_minmax(0,1fr)]"}`
+            : "flex min-h-0 min-w-0 w-full flex-1 flex-col"
         }
       >
         {showConversationRail ? (
@@ -1774,7 +1774,7 @@ export default function ContactInboxPanel({
           </aside>
         ) : null}
 
-        <div className="flex min-h-0 flex-1 flex-col">
+        <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col">
           {showConversationChips ? (
             <div className={`flex shrink-0 gap-2 overflow-x-auto overscroll-contain border-b px-3 py-2 sm:px-4 sm:py-3 ${mode === "page" ? "lg:hidden" : ""} ${chromeClassName}`}>
               {data?.summaries.map((summary) => (
@@ -1795,7 +1795,7 @@ export default function ContactInboxPanel({
             </div>
           ) : null}
 
-          <div className="relative min-h-0 flex-1">
+          <div className="relative min-h-0 min-w-0 w-full flex-1">
             <div
               ref={timelineViewportRef}
               onScroll={handleTimelineScroll}
@@ -1805,7 +1805,7 @@ export default function ContactInboxPanel({
                 }
               }}
               data-contact-chat-scroll={mode}
-              className={`h-full min-h-0 transform-gpu scroll-smooth overflow-x-hidden overflow-y-auto overscroll-contain [scrollbar-gutter:stable] [-webkit-overflow-scrolling:touch] [touch-action:pan-y] [will-change:scroll-position] ${isLineView ? "px-2 py-2 sm:px-3" : isObsidianView ? "px-3 py-3 sm:px-5 sm:py-4" : "px-3 py-3 sm:px-4 sm:py-4"}`}
+              className={`h-full min-h-0 min-w-0 w-full transform-gpu scroll-smooth overflow-x-hidden overflow-y-auto overscroll-contain [scrollbar-gutter:stable] [-webkit-overflow-scrolling:touch] [touch-action:pan-y] [will-change:scroll-position] ${isLineView ? "px-2 py-2 sm:px-3" : isObsidianView ? "px-3 py-3 sm:px-5 sm:py-4" : "px-3 py-3 sm:px-4 sm:py-4"}`}
             >
             {loading ? (
               <div className="rounded-[1.35rem] bg-white/[0.045] px-4 py-5 text-sm text-slate-300 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]">
