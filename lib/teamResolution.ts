@@ -15,6 +15,10 @@ export type ReplayTeamProvenance =
   | "commissioner_verified"
   | "unresolved";
 
+export function isTerminalVoidedMarketStatus(status: string | null | undefined) {
+  return status === "voided";
+}
+
 export type CanonicalReplayPlayer = {
   name: string;
   normalizedName: string;

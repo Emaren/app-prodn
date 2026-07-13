@@ -16,7 +16,7 @@ Watcher-created 2v2, 3v3, and 4v4 books require exactly two complete, equal-size
 
 A bettable market persists its format, resolution status/provenance/confidence, left/right roster snapshots, source iteration, roster hash, and proposition hash. The first accepted stake atomically writes the roster/betting/first-stake lock timestamps. Later replay changes never rewrite a locked proposition; they close the book and create a deduplicated `roster_changed_after_stake` incident.
 
-Settlement requires a trusted final replay from the linked game/session, the same complete player identities, the same two team assignments and proposition hash, coherent winner/loser flags for every player, a compatible winner string, and final betting eligibility. Failure creates `settlement_integrity_blocked`, sets the market to `under_review`, and creates no payout, fee, or bonus.
+Settlement requires a trusted final replay from the linked game/session, the same complete player identities, the same two team assignments and proposition hash, coherent winner/loser flags for every player, a compatible winner string, and final betting eligibility. Failure creates `settlement_integrity_blocked`, sets the market to `under_review`, and creates no payout, fee, or bonus. `voided` is terminal: later seed reconciliation or final replay evidence may add review context but can never restore `settled`, a winner side, betting controls, or interrupt a queued correction.
 
 ## Operator surfaces and events
 
@@ -47,7 +47,7 @@ node scripts/repair-invalid-team-market.mjs --market-id 345524 --verify
 
 `scripts/repair-unpaid-invalid-team-market.mjs` is the same evidence-locked pattern for a confirmed invalid market with one unpaid stake. Never turn either script into a heuristic bulk-refund tool.
 
-The ordinary correction rail returns only `amount_still_owed_wolo` from the configured Bet Escrow signer—the custody account that received the stake, not the winner-payout reserve. Its unique incident/wager memo and escrow sender are checked against WoloChain before retry, and the distinct-send guard must pass before the claim or wager is marked paid. An amount already paid above the void entitlement remains an incident overpayment with `automaticClawback=false`; a voluntary return requires the user's explicit signed transaction.
+The ordinary correction rail returns only `amount_still_owed_wolo` from the configured Bet Escrow signer—the custody account that received the stake, not the winner-payout reserve. Its unique incident/wager memo and escrow sender are checked against WoloChain before retry, and the distinct-send guard must pass before the claim or wager is marked paid. A fully returned incident is marked `resolved`/`refunded`; `resolved_overpayment`/`corrected_with_overpayment` is reserved for cases with a preserved prior overpayment. An amount already paid above the void entitlement remains an incident overpayment with `automaticClawback=false`; a voluntary return requires the user's explicit signed transaction.
 
 ## Release order
 

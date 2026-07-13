@@ -3,12 +3,19 @@ import test from "node:test";
 
 import {
   mergeReplayPlayerIterations,
+  isTerminalVoidedMarketStatus,
   normalizeReplayPlayers,
   resolveReplayTeams,
   resolveWinningTeamIndex,
   rosterSnapshot,
   validateMarketFinalIntegrity,
 } from "../lib/teamResolution.ts";
+
+test("a voided market is terminal across later replay reconciliation", () => {
+  assert.equal(isTerminalVoidedMarketStatus("voided"), true);
+  assert.equal(isTerminalVoidedMarketStatus("settled"), false);
+  assert.equal(isTerminalVoidedMarketStatus("under_review"), false);
+});
 
 function teamPlayers(size: number) {
   return Array.from({ length: size * 2 }, (_, index) => ({

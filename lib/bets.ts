@@ -10,6 +10,7 @@ import { resolveFinalGameStatsIdForSessionKey } from "@/lib/liveReplayDetail";
 import { resolveReplayWinnerTruth } from "@/lib/unresolvedWatcherResult";
 import {
   normalizeReplayPlayers,
+  isTerminalVoidedMarketStatus,
   resolveReplayTeams,
   resolveWinningTeamIndex,
   rosterSnapshot,
@@ -538,6 +539,19 @@ function marketSeedUpdateData(
   const propositionChanged = Boolean(
     propositionLocked && existing?.propositionHash && seed.propositionHash !== existing.propositionHash
   );
+
+  // Voiding is a terminal financial decision. A later final replay or routine
+  // market seed reconciliation may attach evidence, but it can never resurrect
+  // the book, restore a winner side, or interrupt an in-flight refund.
+  if (isTerminalVoidedMarketStatus(existing?.status)) {
+    return {
+      status: "voided",
+      featured: false,
+      closeAt: null,
+      settledAt: existing?.settledAt ?? null,
+      winnerSide: null,
+    };
+  }
 
   if (existing?.status === "under_review") {
     return {
@@ -2483,21 +2497,28 @@ async function settleMarketIntegrityCorrections(prisma: PrismaClient) {
         },
       });
       if (remaining === 0) {
+        const hasRecordedOverpayment = adjustment.incident.overpaymentWolo > 0;
         await tx.betMarketIntegrityIncident.update({
           where: { id: adjustment.incidentId },
           data: {
-            status: "resolved_overpayment",
-            operatorReturnStatus: "not_requested",
+            status: hasRecordedOverpayment ? "resolved_overpayment" : "resolved",
+            operatorReturnStatus: hasRecordedOverpayment
+              ? "not_requested"
+              : "not_applicable",
             resolvedAt: new Date(),
           },
         });
         await tx.betMarket.update({
           where: { id: market.id },
           data: {
-            refundStatus: "corrected_with_overpayment",
+            refundStatus: hasRecordedOverpayment
+              ? "corrected_with_overpayment"
+              : "refunded",
             settlementStatus: "corrected",
             settlementFailureCode: null,
-            settlementDetail: "Invalid team assignment voided; exact unpaid stake returned. Prior overpayment remains recorded without automatic clawback.",
+            settlementDetail: hasRecordedOverpayment
+              ? "Invalid team assignment voided; exact unpaid stake returned. Prior overpayment remains recorded without automatic clawback."
+              : "Invalid team assignment voided; exact unpaid stake returned on-chain.",
           },
         });
       }
