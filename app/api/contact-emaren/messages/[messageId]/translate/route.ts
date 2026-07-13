@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { LLAMA_CHAT_GATEWAY_URL } from "@/lib/aiConciergeConfig";
-import { publishDirectMessageEvent } from "@/lib/directMessageEvents";
+import {
+  findUniversalLanguage,
+  normalizeUniversalLanguage,
+} from "@/lib/i18n/languages";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 
@@ -18,14 +21,23 @@ export async function POST(
   const { messageId: rawMessageId } = await context.params;
   const messageId = Number(rawMessageId);
   const input = (await request.json().catch(() => ({}))) as { language?: string };
-  const language = String(input.language || "en").trim().toLowerCase().slice(0, 12);
-  if (!Number.isInteger(messageId) || !/^[a-z]{2,3}(?:-[a-z]{2})?$/.test(language)) {
+  if (!Number.isInteger(messageId)) {
     return NextResponse.json({ detail: "Invalid translation request" }, { status: 400 });
   }
 
   const prisma = getPrisma();
-  const viewer = await prisma.user.findUnique({ where: { uid: sessionUid }, select: { id: true } });
+  const viewer = await prisma.user.findUnique({
+    where: { uid: sessionUid },
+    select: { id: true, preferredLanguage: true },
+  });
   if (!viewer) return NextResponse.json({ detail: "Viewer not found" }, { status: 404 });
+  const language = normalizeUniversalLanguage(
+    input.language || viewer.preferredLanguage || "en"
+  );
+  const languageDefinition = findUniversalLanguage(language);
+  if (!language || !languageDefinition) {
+    return NextResponse.json({ detail: "Choose a supported translation language" }, { status: 400 });
+  }
 
   const message = await prisma.directMessage.findFirst({
     where: {
@@ -35,7 +47,6 @@ export async function POST(
     select: {
       id: true,
       body: true,
-      conversation: { select: { participants: { where: { userId: { not: viewer.id } }, select: { user: { select: { uid: true } } } } } },
       translations: { where: { language }, take: 1, select: { text: true } },
     },
   });
@@ -52,7 +63,7 @@ export async function POST(
       to: "Agent4.1M",
       messages: [
         { role: "system", content: "You are a precise chat translator. Return only the translated message, preserving names, links, emoji, line breaks, and game terminology. Never add commentary." },
-        { role: "user", content: `Translate this private chat message to ${language}:\n\n${message.body}` },
+        { role: "user", content: `Translate this private chat message to ${languageDefinition.englishName} (${language}):\n\n${message.body}` },
       ],
     }),
     cache: "no-store",
@@ -68,8 +79,5 @@ export async function POST(
     create: { messageId: message.id, language, text },
     update: { text },
   });
-  for (const participant of message.conversation.participants) {
-    publishDirectMessageEvent(participant.user.uid, { type: "message_updated", messageId: message.id });
-  }
   return NextResponse.json({ language, text, cached: false });
 }

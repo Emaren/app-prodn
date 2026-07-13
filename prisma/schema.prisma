@@ -18,7 +18,8 @@ model User {
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
   token         String?   @db.VarChar(128)
   lastSeen      DateTime? @map("last_seen") @db.Timestamp(6)
-  isAdmin       Boolean   @default(false) @map("is_admin")
+  isAdmin           Boolean   @default(false) @map("is_admin")
+  preferredLanguage String?   @map("preferred_language") @db.VarChar(12)
 
   // NOTE: DB has a partial unique index (WHERE steam_id IS NOT NULL).
   // Prisma can't represent partial uniqueness here, so we map to the index name

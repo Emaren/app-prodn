@@ -40,6 +40,17 @@ function writeLanguageCookie(code: UniversalLanguageCode | null) {
   )}; Path=/; Max-Age=31536000; SameSite=Lax${secure}`;
 }
 
+function persistAccountLanguage(code: UniversalLanguageCode | null) {
+  void fetch("/api/user/language", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ language: code }),
+    keepalive: true,
+  }).catch(() => {
+    // Signed-out visitors still keep the device preference.
+  });
+}
+
 export function UniversalLanguageProvider({
   children,
 }: {
@@ -59,7 +70,41 @@ export function UniversalLanguageProvider({
       // Private browsing can block storage; Auto remains the safe default.
     }
     setSelectedLanguageState(stored);
+    writeLanguageCookie(stored);
     setLanguageLoaded(true);
+
+    const controller = new AbortController();
+    void fetch("/api/user/language", {
+      cache: "no-store",
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        if (!response.ok) return;
+        const payload = (await response.json().catch(() => ({}))) as {
+          language?: unknown;
+        };
+        const accountLanguage = normalizeUniversalLanguage(payload.language);
+
+        if (accountLanguage) {
+          setSelectedLanguageState(accountLanguage);
+          try {
+            window.localStorage.setItem(
+              UNIVERSAL_LANGUAGE_STORAGE_KEY,
+              accountLanguage
+            );
+          } catch {
+            // The account preference still applies in memory.
+          }
+          writeLanguageCookie(accountLanguage);
+        } else if (stored) {
+          persistAccountLanguage(stored);
+        }
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+      });
+
+    return () => controller.abort();
   }, []);
 
   useEffect(() => {
@@ -93,6 +138,7 @@ export function UniversalLanguageProvider({
       // The in-memory choice still works when persistent storage is unavailable.
     }
     writeLanguageCookie(code);
+    persistAccountLanguage(code);
   }, []);
 
   const resetToAuto = useCallback(() => {
@@ -103,6 +149,7 @@ export function UniversalLanguageProvider({
       // Auto still applies for the current session.
     }
     writeLanguageCookie(null);
+    persistAccountLanguage(null);
   }, []);
 
   const value = useMemo(

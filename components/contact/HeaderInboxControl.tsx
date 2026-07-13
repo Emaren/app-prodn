@@ -23,7 +23,12 @@ function readDetail(payload: unknown) {
   return typeof detail === "string" ? detail : null;
 }
 
-async function requestInbox(targetUid?: string | null, summaryOnly?: boolean, beforeMessageId?: number | null) {
+async function requestInbox(
+  targetUid?: string | null,
+  summaryOnly?: boolean,
+  beforeMessageId?: number | null,
+  signal?: AbortSignal
+) {
   const params = new URLSearchParams();
   if (targetUid) {
     params.set("user", targetUid);
@@ -37,6 +42,7 @@ async function requestInbox(targetUid?: string | null, summaryOnly?: boolean, be
     `/api/contact-emaren${params.size > 0 ? `?${params.toString()}` : ""}`,
     {
       cache: "no-store",
+      signal,
     }
   );
 
@@ -80,6 +86,9 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
   const typingActiveRef = useRef(false);
   const panelCacheRef = useRef(new Map<string, ContactInboxPayload>());
   const panelRequestIdRef = useRef(0);
+  const summaryRequestIdRef = useRef(0);
+  const panelAbortRef = useRef<AbortController | null>(null);
+  const summaryAbortRef = useRef<AbortController | null>(null);
   const draftHydratedTargetRef = useRef<string | null>(null);
 
   const updateDesktopAnchor = useCallback(() => {
@@ -166,16 +175,31 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
   const refreshSummary = useCallback(async (targetUid?: string | null) => {
     if (!uid) return null;
 
+    summaryAbortRef.current?.abort();
+    const controller = new AbortController();
+    summaryAbortRef.current = controller;
+    const requestId = summaryRequestIdRef.current + 1;
+    summaryRequestIdRef.current = requestId;
+
     try {
-      const payload = await requestInbox(targetUid ?? selectedTargetUidRef.current ?? undefined, true);
+      const payload = await requestInbox(
+        targetUid ?? selectedTargetUidRef.current ?? undefined,
+        true,
+        undefined,
+        controller.signal
+      );
+      if (summaryRequestIdRef.current !== requestId) return null;
       setSummary(payload);
       if (!selectedTargetUidRef.current || targetUid) {
         applySelectedTargetUid(payload.activeTargetUid);
       }
       return payload;
     } catch (fetchError) {
+      if (fetchError instanceof DOMException && fetchError.name === "AbortError") return null;
       console.warn("Failed to refresh inbox summary:", fetchError);
       return null;
+    } finally {
+      if (summaryRequestIdRef.current === requestId) summaryAbortRef.current = null;
     }
   }, [applySelectedTargetUid, uid]);
 
@@ -189,6 +213,9 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
         : null;
       const requestId = panelRequestIdRef.current + 1;
       panelRequestIdRef.current = requestId;
+      panelAbortRef.current?.abort();
+      const controller = new AbortController();
+      panelAbortRef.current = controller;
 
       if (!silent) {
         if (cachedPayload) {
@@ -199,13 +226,19 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
       }
 
       try {
-        const payload = await requestInbox(requestedTargetUid ?? undefined, false);
+        const payload = await requestInbox(
+          requestedTargetUid ?? undefined,
+          false,
+          undefined,
+          controller.signal
+        );
         if (panelRequestIdRef.current !== requestId) {
           return null;
         }
         applyInboxPayload(payload);
         return payload;
       } catch (fetchError) {
+        if (fetchError instanceof DOMException && fetchError.name === "AbortError") return null;
         if (panelRequestIdRef.current === requestId) {
           setError(fetchError instanceof Error ? fetchError.message : "Inbox failed.");
         }
@@ -214,6 +247,7 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
         if (!silent && panelRequestIdRef.current === requestId) {
           setLoading(false);
         }
+        if (panelRequestIdRef.current === requestId) panelAbortRef.current = null;
       }
     },
     [applyInboxPayload, uid]
@@ -249,11 +283,23 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
     if (!uid) return;
     const events = new EventSource("/api/contact-emaren/events");
     let timer: number | null = null;
-    events.onmessage = () => {
+    events.onmessage = (event) => {
+      let payload: { type?: string; targetUid?: string | null };
+      try {
+        payload = JSON.parse(event.data || "{}") as typeof payload;
+      } catch {
+        return;
+      }
+      if (payload.type === "connected") return;
       if (timer) window.clearTimeout(timer);
       timer = window.setTimeout(() => {
-        if (open) void refreshPanel(undefined, { silent: true });
-        else void refreshSummary();
+        const affectsOpenThread =
+          !payload.targetUid || payload.targetUid === selectedTargetUidRef.current;
+        if (open && affectsOpenThread) {
+          void refreshPanel(undefined, { silent: true });
+        } else {
+          void refreshSummary();
+        }
       }, 80);
     };
     return () => {
@@ -277,6 +323,8 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
 
   useEffect(() => {
     return () => {
+      panelAbortRef.current?.abort();
+      summaryAbortRef.current?.abort();
       if (typingTimerRef.current) {
         window.clearTimeout(typingTimerRef.current);
         typingTimerRef.current = null;

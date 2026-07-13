@@ -864,15 +864,23 @@ export async function PATCH(request: NextRequest) {
                 body: nextLobbyBody,
               },
             }),
+            prisma.directMessageTranslation.deleteMany({
+              where: { messageId: message.id },
+            }),
           ]);
         } else {
-          await prisma.directMessage.update({
-            where: { id: message.id },
-            data: {
-              body: nextBody || null,
-              editedAt: new Date(),
-            },
-          });
+          await prisma.$transaction([
+            prisma.directMessage.update({
+              where: { id: message.id },
+              data: {
+                body: nextBody || null,
+                editedAt: new Date(),
+              },
+            }),
+            prisma.directMessageTranslation.deleteMany({
+              where: { messageId: message.id },
+            }),
+          ]);
         }
         break;
       }

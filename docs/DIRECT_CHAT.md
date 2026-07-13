@@ -48,7 +48,10 @@ All three modes are available in Nav Chat and Full Chat. A selection made in eit
 - Full Chat message rows use browser-native `content-visibility` containment so long histories stay efficient. Nav Chat deliberately keeps its smaller warm window fully painted to avoid reveal flicker and intrinsic-size jumps while scrolling through image-heavy messages.
 - Full Chat loads the initial thread in one request instead of fetching the summary and full payload sequentially.
 - Nav Chat keeps warm per-thread payloads so revisiting a conversation paints immediately while a silent refresh reconciles it.
+- Full Chat now keeps the same warm per-thread payload cache. Conversation switches paint cached history immediately while stale requests are cancelled and the latest response wins.
 - Authenticated server-sent events push message, receipt, typing, reaction, pin, and update invalidations immediately. A 60-second poll remains as recovery only.
+- Realtime events ignore the connection handshake and refresh the open timeline only when the event belongs to that thread; other-thread events update the lightweight summary rail instead.
+- Panel, summary, and search requests cancel superseded work so rapid conversation switches, typing events, and repeated searches cannot waste bandwidth or paint stale responses.
 - The typing-display toggle belongs in the lower-left composer/footer area, outside the message viewport.
 
 ## Responsive presentation contract
@@ -64,7 +67,7 @@ All three modes are available in Nav Chat and Full Chat. A selection made in eit
 ## Message intelligence and state
 
 - Read receipts are automatic and enabled by default, but only the latest outgoing message renders a receipt line, matching the quiet Apple-style pattern. Normal stable states show only `Sent` until viewed, then the actual viewed-at timestamp as `Mon D · H:MM AM/PM`, with no `Read` label and no seconds. Transient sending/failure feedback remains available for reliability and retry.
-- Compact floating date chips remain pinned to the top of the scrolling timeline until the next day takes over. They preserve send-date context without reserving an opaque full-width strip or creating a dead visual gap.
+- Full Chat keeps compact floating date chips pinned to the scrolling timeline. Nav Chat omits them entirely to protect the smaller viewscreen; its latest outgoing receipt already carries the calendar date.
 - Edits are intentionally silent in the public presentation: corrected text replaces the old copy without an `edited` badge. Deletes remove the message without leaving a public tombstone; server authorization and internal timestamps remain intact.
 - Message action trays deliberately disable `content-visibility` paint containment only while open, then choose an above/below anchor inside the timeline. This keeps reactions, reply, pin, translation, edit, and delete fully visible without giving up off-screen message rendering performance.
 - Opening a thread marks incoming messages read. Establishing the live event stream marks previously undelivered incoming messages delivered, even if that thread is not open.
@@ -73,12 +76,15 @@ All three modes are available in Nav Chat and Full Chat. A selection made in eit
 - Pins are shared conversation state. The header pin drawer exposes the latest twelve pinned messages.
 - Search covers message bodies and voice transcripts with case-insensitive Postgres search and returns the latest forty matches.
 - `/game-stats/{id}` links hydrate into replay intelligence cards from canonical `GameStats` data.
-- Translation is on demand, uses the existing authenticated AI gateway, and caches per-message/per-language output.
+- Plain `http(s)` and `www` URLs render as safe clickable links in original and translated message text.
+- Translation is on demand, uses the account's preferred language (or the browser language in Auto mode), and caches per-message/per-language output. It opens inline beneath the original and toggles back to the original without reloading the inbox.
+- `/profile` exposes all languages supported by the site translator. The selection is stored to the signed-in account plus the device and drives both the global language control and direct-message Translate action.
+- Editing a message clears its cached translations so corrected source text can never display a stale translation.
 - Voice transcription is on demand through OpenAI's audio transcription API, persists on the message, and degrades to a clear unavailable state when credentials are not configured. `OPENAI_API_KEY` wins; otherwise the service reads `OPENAI_API_KEY_FILE` (default `/home/tony/.config/aoe2hdbets/openai.key`). `OPENAI_TRANSCRIPTION_MODEL` may override the default `gpt-4o-mini-transcribe`.
 
 ## Database migration
 
-`20260710203000_direct_chat_state_of_the_art` adds delivery/edit/transcription/reply state plus drafts, pins, and cached translations. Production deploys must run `npx prisma migrate deploy` before restarting the web service.
+`20260710203000_direct_chat_state_of_the_art` adds delivery/edit/transcription/reply state plus drafts, pins, and cached translations. `20260713120000_add_user_preferred_language` adds the account-level chat/interface language preference. Production deploys must run `npx prisma migrate deploy` before restarting the web service.
 
 ## Verification
 
@@ -96,3 +102,6 @@ For changes to this surface, verify:
 10. At 375–430px widths, Nav Chat reaches the bottom safe area, the identity badge stays beside the active name, the composer stays on one row, and no character counter or conversation descriptor is rendered.
 11. At desktop and phone widths, Full Chat stays viewport-height while the message timeline scrolls internally; opening the iOS keyboard must shrink the viewscreen and keep the focused composer visible.
 12. Full Chat shows compact thread chips rather than the desktop conversation rail on phones, and the global mobile command bar is absent.
+13. Message links open safely in a new tab without opening the message action tray.
+14. Choosing French (or another supported language) in `/profile` persists across reloads; Translate displays that language inline in Nav Chat and Full Chat without a full-timeline refresh.
+15. Nav Chat renders no floating date chip; Full Chat retains the compact sticky date context.

@@ -26,6 +26,7 @@ import {
   Gem,
   ImagePlus,
   KeyRound,
+  Languages,
   Link2,
   LogOut,
   Mail,
@@ -54,6 +55,7 @@ import TimeDisplayText from "@/components/time/TimeDisplayText";
 import { getLobbyHeroBackground } from "@/components/lobby/lobbyPresentation";
 import SteamLoginButton from "@/components/SteamLoginButton";
 import { useUserAuth } from "@/hooks/useUserAuth";
+import { useUniversalLanguage } from "@/context/UniversalLanguageContext";
 import {
   GENDER_DIVISIONS,
   REPRESENTED_COUNTRIES,
@@ -61,6 +63,11 @@ import {
   type RepresentedCountry,
 } from "@/lib/champions/titles";
 import type { ChallengeHubSnapshot } from "@/lib/challenges";
+import {
+  UNIVERSAL_LANGUAGES,
+  findUniversalLanguage,
+  type UniversalLanguageCode,
+} from "@/lib/i18n/languages";
 import { formatDateTime as formatSiteDateTime } from "@/lib/timeDisplay";
 
 type ProfileResponse = {
@@ -1299,7 +1306,7 @@ function ProfilePageContent() {
           </div>
         </div>
 
-        <div className="mt-6 grid gap-4 lg:grid-cols-2 xl:grid-cols-5">
+        <div className="mt-6 grid gap-4 lg:grid-cols-2 xl:grid-cols-6">
           <CompactAppearanceCard title="Theme" tone={appearanceTone}>
             <LobbyThemePicker
               themeKey={themeKey}
@@ -1350,6 +1357,10 @@ function ProfilePageContent() {
                 Preview: <TimeDisplayText value={new Date()} className="font-medium text-white" />
               </div>
             </div>
+          </CompactAppearanceCard>
+
+          <CompactAppearanceCard title="Language" tone={appearanceTone}>
+            <ProfileLanguagePreference />
           </CompactAppearanceCard>
         </div>
 
@@ -1760,6 +1771,14 @@ function ExtremeProfileView({
               <ExtremeCompactCard icon={Monitor} title="Steam" value={steamId ? steamId : "Not linked"} mono={Boolean(steamId)} />
             </div>
 
+            <div className="rounded-[1.35rem] border border-white/10 bg-black/20 p-4">
+              <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.25em] text-cyan-100/70">
+                <Languages className="h-4 w-4" />
+                Language
+              </div>
+              <ProfileLanguagePreference compact />
+            </div>
+
             {canUseApprenticeshipAdmin ? (
               <ApprenticeshipAdminTile currentAvatarUrl={avatarUrl} />
             ) : null}
@@ -1798,6 +1817,47 @@ function ExtremeProfileView({
           </div>
         </div>
       </section>
+    </div>
+  );
+}
+
+function ProfileLanguagePreference({ compact = false }: { compact?: boolean }) {
+  const {
+    selectedLanguage,
+    languageLoaded,
+    setSelectedLanguage,
+    resetToAuto,
+  } = useUniversalLanguage();
+  const activeLanguage = findUniversalLanguage(selectedLanguage);
+
+  return (
+    <div className="mt-3">
+      <select
+        value={selectedLanguage ?? "auto"}
+        disabled={!languageLoaded}
+        onChange={(event) => {
+          const value = event.target.value;
+          if (value === "auto") {
+            resetToAuto();
+          } else {
+            setSelectedLanguage(value as UniversalLanguageCode);
+          }
+        }}
+        aria-label="Preferred language"
+        className="w-full rounded-xl border border-white/10 bg-slate-950/85 px-3 py-2.5 text-sm text-white outline-none transition focus:border-cyan-300/45 disabled:opacity-55"
+      >
+        <option value="auto">Auto · browser language</option>
+        {UNIVERSAL_LANGUAGES.map((language) => (
+          <option key={language.code} value={language.code}>
+            {language.nativeName} · {language.englishName}
+          </option>
+        ))}
+      </select>
+      <p className={`mt-2 leading-5 text-slate-400 ${compact ? "text-[11px]" : "text-xs"}`}>
+        {activeLanguage
+          ? `Chat translations open in ${activeLanguage.englishName}. Saved to your account and device.`
+          : "Chat translations follow this browser until you choose a language."}
+      </p>
     </div>
   );
 }

@@ -30,6 +30,7 @@ import CommunityBadgePill from "@/components/contact/CommunityBadgePill";
 import ScheduledMatchCard from "@/components/challenge/ScheduledMatchCard";
 import TimeDisplayText from "@/components/time/TimeDisplayText";
 import AutoGrowTextarea from "@/components/ui/AutoGrowTextarea";
+import { useUniversalLanguage } from "@/context/UniversalLanguageContext";
 import {
   DIRECT_MESSAGE_MAX_CHARS,
   DIRECT_MESSAGE_QUICK_REACTIONS,
@@ -45,6 +46,11 @@ import {
   type ClanProtocolMessage,
 } from "@/lib/clanProtocolMessages";
 import { summarizeChallengeInboxMessage } from "@/lib/challengeInboxMessages";
+import {
+  UNIVERSAL_LANGUAGES,
+  findUniversalLanguage,
+  type UniversalLanguageCode,
+} from "@/lib/i18n/languages";
 import type {
   ContactChallengeActionKind,
   ContactChallengeActionState,
@@ -104,6 +110,93 @@ type TimelineRow =
       showTail: boolean;
       message: ContactInboxMessage;
     };
+
+const MESSAGE_URL_PATTERN = /(?:https?:\/\/|www\.)[^\s<>]+/gi;
+
+function trimMessageUrl(rawUrl: string) {
+  let url = rawUrl;
+  let trailing = "";
+  const moveLastCharacterToTrailing = () => {
+    trailing = `${url.slice(-1)}${trailing}`;
+    url = url.slice(0, -1);
+  };
+
+  while (/[.,!?;:'"]$/.test(url)) moveLastCharacterToTrailing();
+  const bracketPairs = [
+    ["(", ")"],
+    ["[", "]"],
+    ["{", "}"],
+  ] as const;
+  for (const [opening, closing] of bracketPairs) {
+    while (
+      url.endsWith(closing) &&
+      url.split(closing).length > url.split(opening).length
+    ) {
+      moveLastCharacterToTrailing();
+    }
+  }
+
+  return { url, trailing };
+}
+
+function MessageText({ text }: { text: string }) {
+  const nodes: ReactNode[] = [];
+  let cursor = 0;
+
+  for (const match of text.matchAll(MESSAGE_URL_PATTERN)) {
+    const index = match.index ?? 0;
+    const rawUrl = match[0];
+    const { url, trailing } = trimMessageUrl(rawUrl);
+    if (index > cursor) nodes.push(text.slice(cursor, index));
+    if (url) {
+      nodes.push(
+        <a
+          key={`${index}-${url}`}
+          href={url.startsWith("www.") ? `https://${url}` : url}
+          target="_blank"
+          rel="noopener noreferrer nofollow ugc"
+          onClick={(event) => event.stopPropagation()}
+          className="font-medium text-cyan-200 underline decoration-cyan-300/45 underline-offset-2 transition hover:text-cyan-100 hover:decoration-cyan-200"
+        >
+          {url}
+        </a>
+      );
+    }
+    if (trailing) nodes.push(trailing);
+    cursor = index + rawUrl.length;
+  }
+
+  if (cursor < text.length) nodes.push(text.slice(cursor));
+  return <>{nodes.length > 0 ? nodes : text}</>;
+}
+
+function resolveChatTranslationLanguage(
+  selectedLanguage: UniversalLanguageCode | null
+): UniversalLanguageCode {
+  if (selectedLanguage) return selectedLanguage;
+  if (typeof navigator === "undefined") return "en";
+
+  const browserLanguages = navigator.languages?.length
+    ? navigator.languages
+    : [navigator.language];
+  for (const browserLanguage of browserLanguages) {
+    const normalized = browserLanguage.trim().toLowerCase();
+    const exact = UNIVERSAL_LANGUAGES.find(
+      (language) =>
+        language.code.toLowerCase() === normalized ||
+        language.htmlLang.toLowerCase() === normalized
+    );
+    if (exact) return exact.code;
+
+    const base = normalized.split("-")[0];
+    const baseMatch = UNIVERSAL_LANGUAGES.find(
+      (language) => language.code.toLowerCase().split("-")[0] === base
+    );
+    if (baseMatch) return baseMatch.code;
+  }
+
+  return "en";
+}
 
 function formatTimestamp(value: string | null) {
   if (!value) return "No messages yet";
@@ -728,6 +821,7 @@ function TextMessageBubble({
   onReply,
   onRefresh,
   onRetryOptimistic,
+  translationLanguage,
 }: {
   message: Extract<ContactInboxMessage, { kind: "text" }>;
   viewerUid: string;
@@ -742,6 +836,7 @@ function TextMessageBubble({
   onReply?: (message: ContactTextMessage) => void;
   onRefresh?: () => void | Promise<void>;
   onRetryOptimistic?: (message: ContactTextMessage) => void;
+  translationLanguage: UniversalLanguageCode;
 }) {
   const isViewer = message.sender.uid === viewerUid;
   const isPersisted = message.messageId > 0;
@@ -765,8 +860,12 @@ function TextMessageBubble({
   const [reactionMoreOpen, setReactionMoreOpen] = useState(false);
   const [attachmentPreviewFailed, setAttachmentPreviewFailed] = useState(false);
   const [languagePending, setLanguagePending] = useState(false);
+  const [translationError, setTranslationError] = useState<string | null>(null);
   const [transcriptionPending, setTranscriptionPending] = useState(false);
-  const [activeTranslation, setActiveTranslation] = useState<{ language: string; text: string } | null>(message.translations[0] ?? null);
+  const [activeTranslation, setActiveTranslation] = useState<{
+    language: UniversalLanguageCode;
+    text: string;
+  } | null>(null);
   const holdTimerRef = useRef<number | null>(null);
   const longPressTriggeredRef = useRef(false);
   const bubbleRef = useRef<HTMLDivElement | null>(null);
@@ -896,24 +995,37 @@ function TextMessageBubble({
   }
 
   async function handleTranslate() {
-    const language = (typeof navigator !== "undefined" ? navigator.language : "en").toLowerCase().slice(0, 5);
-    const cached = message.translations.find((translation) => translation.language === language);
+    if (activeTranslation?.language === translationLanguage) {
+      setActiveTranslation(null);
+      setTranslationError(null);
+      setTrayPinnedOpen(false);
+      return;
+    }
+
+    const cached = message.translations.find(
+      (translation) => translation.language === translationLanguage
+    );
     if (cached) {
-      setActiveTranslation((current) => current?.language === cached.language ? null : cached);
+      setActiveTranslation({ language: translationLanguage, text: cached.text });
+      setTranslationError(null);
       setTrayPinnedOpen(false);
       return;
     }
     setLanguagePending(true);
+    setTranslationError(null);
     try {
       const response = await fetch(`/api/contact-emaren/messages/${message.messageId}/translate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ language }),
+        body: JSON.stringify({ language: translationLanguage }),
       });
       const payload = (await response.json().catch(() => ({}))) as { text?: string; language?: string; detail?: string };
       if (!response.ok || !payload.text) throw new Error(payload.detail || "Translation failed");
-      setActiveTranslation({ language: payload.language || language, text: payload.text });
-      await onRefresh?.();
+      setActiveTranslation({ language: translationLanguage, text: payload.text });
+    } catch (error) {
+      setTranslationError(
+        error instanceof Error ? error.message : "Translation is temporarily unavailable"
+      );
     } finally {
       setLanguagePending(false);
       setTrayPinnedOpen(false);
@@ -1005,7 +1117,7 @@ function TextMessageBubble({
               <div
                 className={`relative whitespace-pre-wrap text-sm leading-6 [overflow-wrap:anywhere] ${messageBodyViewportClass}`}
               >
-                {message.body}
+                <MessageText text={message.body} />
               </div>
             ) : null}
 
@@ -1057,9 +1169,15 @@ function TextMessageBubble({
 
             {activeTranslation ? (
               <div className="mt-2 rounded-lg border border-cyan-200/10 bg-cyan-300/[0.045] px-3 py-2 text-xs leading-5 text-cyan-50/90">
-                <span className="mr-2 font-semibold uppercase tracking-[0.14em] text-cyan-200/60">{activeTranslation.language}</span>
-                {activeTranslation.text}
+                <span className="mr-2 font-semibold uppercase tracking-[0.14em] text-cyan-200/60">
+                  {findUniversalLanguage(activeTranslation.language)?.nativeName ?? activeTranslation.language}
+                </span>
+                <MessageText text={activeTranslation.text} />
               </div>
+            ) : null}
+
+            {translationError ? (
+              <div className="mt-2 text-xs text-rose-200/90">{translationError}</div>
             ) : null}
 
             {message.replayCard ? (
@@ -1158,7 +1276,7 @@ function TextMessageBubble({
                 </button>
                 {message.body ? (
                   <button type="button" disabled={languagePending} onClick={() => void handleTranslate()} className="inline-flex h-7 items-center gap-1 rounded-full border border-white/10 bg-white/[0.05] px-2.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-200 hover:bg-white/[0.1] disabled:opacity-50">
-                    <Languages className="h-3 w-3" /> {languagePending ? "Translating" : "Translate"}
+                    <Languages className="h-3 w-3" /> {languagePending ? "Translating" : activeTranslation?.language === translationLanguage ? "Original" : "Translate"}
                   </button>
                 ) : null}
                 {message.attachment?.kind === "audio" ? (
@@ -1358,6 +1476,11 @@ export default function ContactInboxPanel({
   const counterpart = data?.activeCounterpart ?? null;
   const activeTargetUid = data?.activeTargetUid ?? null;
   const { chatViewMode, setChatViewMode } = useChatViewPreference();
+  const { selectedLanguage } = useUniversalLanguage();
+  const translationLanguage = useMemo(
+    () => resolveChatTranslationLanguage(selectedLanguage),
+    [selectedLanguage]
+  );
   const timelineViewportRef = useRef<HTMLDivElement | null>(null);
   const timelineContentRef = useRef<HTMLDivElement | null>(null);
   const lastAutoScrolledTargetUidRef = useRef<string | null>(null);
@@ -1365,6 +1488,7 @@ export default function ContactInboxPanel({
   const lastTimelineScrollTopRef = useRef(0);
   const timelineScrollFrameRef = useRef<number | null>(null);
   const timelineResizeFrameRef = useRef<number | null>(null);
+  const searchAbortRef = useRef<AbortController | null>(null);
   const [showTimelineJump, setShowTimelineJump] = useState(false);
   const [typingHudMode, setTypingHudMode] = useState<"steady" | "pulse">("steady");
   const [ownTypingPulse, setOwnTypingPulse] = useState(false);
@@ -1558,14 +1682,27 @@ export default function ContactInboxPanel({
 
   async function runSearch() {
     if (!activeTargetUid || searchQuery.trim().length < 2) return;
+    searchAbortRef.current?.abort();
+    const controller = new AbortController();
+    searchAbortRef.current = controller;
     setSearchPending(true);
     try {
       const params = new URLSearchParams({ user: activeTargetUid, q: searchQuery.trim() });
-      const response = await fetch(`/api/contact-emaren/search?${params.toString()}`, { cache: "no-store" });
+      const response = await fetch(`/api/contact-emaren/search?${params.toString()}`, {
+        cache: "no-store",
+        signal: controller.signal,
+      });
       const payload = (await response.json().catch(() => ({}))) as { results?: typeof searchResults };
       setSearchResults(response.ok && Array.isArray(payload.results) ? payload.results : []);
+    } catch (error) {
+      if (!(error instanceof DOMException && error.name === "AbortError")) {
+        setSearchResults([]);
+      }
     } finally {
-      setSearchPending(false);
+      if (searchAbortRef.current === controller) {
+        searchAbortRef.current = null;
+        setSearchPending(false);
+      }
     }
   }
 
@@ -1624,6 +1761,7 @@ export default function ContactInboxPanel({
       if (timelineResizeFrameRef.current !== null) {
         window.cancelAnimationFrame(timelineResizeFrameRef.current);
       }
+      searchAbortRef.current?.abort();
     };
   }, []);
 
@@ -1830,7 +1968,9 @@ export default function ContactInboxPanel({
                 ) : null}
                 {timelineRows.map((row) =>
                   row.type === "date" ? (
-                    <DateDivider key={row.key} label={row.label} viewMode={chatViewMode} />
+                    mode === "page" ? (
+                      <DateDivider key={row.key} label={row.label} viewMode={chatViewMode} />
+                    ) : null
                   ) : row.message.kind === "text" ? (
                     <TextMessageBubble
                       key={row.key}
@@ -1847,6 +1987,7 @@ export default function ContactInboxPanel({
                       onReply={onReply}
                       onRefresh={onRefresh}
                       onRetryOptimistic={onRetryOptimistic}
+                      translationLanguage={translationLanguage}
                     />
                   ) : (
                     <HonorEventCard
