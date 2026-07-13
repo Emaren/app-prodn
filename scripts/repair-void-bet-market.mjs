@@ -184,7 +184,7 @@ try {
       await db.query(
         `insert into user_activity_events(user_id,type,path,label,metadata,created_at)
          select distinct user_id, 'bet_market_voided', '/bets', $2,
-                jsonb_build_object('marketId',$1,'reason',$3,'refundStatus','queued'), $4::timestamp
+                jsonb_build_object('marketId',$1::int,'reason',$3::text,'refundStatus','queued'), $4::timestamp
            from bet_wagers where market_id = $1`,
         [marketId, market.title, args.get("reason"), now]
       );
