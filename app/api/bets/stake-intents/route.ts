@@ -65,7 +65,11 @@ export async function POST(request: NextRequest) {
 
     if (escrowRuntime.onchainRequired) {
       const settlement = await getWoloSettlementSurfaceStatus();
-      if (!settlement.payoutReady || settlement.settlementHealthOk !== true) {
+      if (
+        settlement.payoutExecutionMode === "unconfigured" ||
+        (settlement.payoutExecutionMode === "settlement_service" &&
+          (!settlement.payoutReady || settlement.settlementHealthOk !== true))
+      ) {
         return NextResponse.json(
           { detail: "Betting temporarily paused. Settlement rail health is being verified." },
           { status: 503 }

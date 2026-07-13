@@ -125,7 +125,11 @@ export async function POST(request: NextRequest) {
     const escrowRuntime = getWoloBetEscrowRuntime();
     if (escrowRuntime.onchainRequired) {
       const settlement = await getWoloSettlementSurfaceStatus();
-      if (!settlement.payoutReady || settlement.settlementHealthOk !== true) {
+      if (
+        settlement.payoutExecutionMode === "unconfigured" ||
+        (settlement.payoutExecutionMode === "settlement_service" &&
+          (!settlement.payoutReady || settlement.settlementHealthOk !== true))
+      ) {
         return NextResponse.json(
           {
             detail:

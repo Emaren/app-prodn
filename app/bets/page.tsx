@@ -1194,8 +1194,7 @@ export default function BetsPage() {
   const bettingPaused =
     onchainBetEscrowRequired &&
     (settlementExecutionMode === "unconfigured" ||
-      groupedRunCapability === "unknown" ||
-      settlementSurfaceWarnings.length > 0);
+      (settlementExecutionMode === "settlement_service" && groupedRunCapability === "unknown"));
   const publicSettlementNotice = buildPublicRailNotice(
     settlementSurfaceDetail,
     settlementSurfaceWarnings
