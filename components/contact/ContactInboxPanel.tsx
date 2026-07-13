@@ -695,24 +695,20 @@ function HonorActions({
 function DateDivider({ label, viewMode }: { label: string; viewMode: ChatViewMode }) {
   if (viewMode === "v2") {
     return (
-      <div className="pointer-events-none sticky top-0 z-30 -mx-2 bg-[linear-gradient(180deg,rgba(4,10,20,0.98)_0%,rgba(4,10,20,0.91)_72%,rgba(4,10,20,0)_100%)] px-2 pb-2 pt-1 backdrop-blur-md" aria-label={`Messages from ${label}`}>
-        <div className="flex items-center gap-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#8b8d93]">
-          <div className="h-px flex-1 bg-white/10" />
-          {label}
-          <div className="h-px flex-1 bg-white/10" />
+      <div className="pointer-events-none sticky top-1 z-30 flex justify-center py-1" aria-label={`Messages from ${label}`}>
+        <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#17191e]/95 px-3 py-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-[#a7a9af] shadow-[0_8px_24px_rgba(0,0,0,0.32)]">
+          <span className="h-px w-4 bg-white/12" />
+          <span>{label}</span>
+          <span className="h-px w-4 bg-white/12" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="pointer-events-none sticky top-0 z-30 -mx-2 bg-[linear-gradient(180deg,rgba(4,10,20,0.98)_0%,rgba(4,10,20,0.91)_72%,rgba(4,10,20,0)_100%)] px-2 pb-2 pt-1 backdrop-blur-md" aria-label={`Messages from ${label}`}>
-      <div className="flex items-center gap-3 py-1">
-        <div className={`h-px flex-1 ${viewMode === "v3" ? "bg-gradient-to-r from-transparent to-teal-200/20" : "bg-white/7"}`} />
-        <div className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.24em] ${viewMode === "v3" ? "border border-teal-100/10 bg-teal-200/[0.06] text-teal-100/60" : "bg-white/[0.06] text-slate-400"}`}>
-          {label}
-        </div>
-        <div className={`h-px flex-1 ${viewMode === "v3" ? "bg-gradient-to-l from-transparent to-amber-200/20" : "bg-white/7"}`} />
+    <div className="pointer-events-none sticky top-1 z-30 flex justify-center py-1" aria-label={`Messages from ${label}`}>
+      <div className={`rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] shadow-[0_8px_28px_rgba(0,0,0,0.34)] ${viewMode === "v3" ? "border-teal-100/14 bg-[#08131b]/95 text-teal-100/68" : "border-white/10 bg-[#0d1625]/95 text-slate-400"}`}>
+        {label}
       </div>
     </div>
   );
@@ -958,7 +954,7 @@ function TextMessageBubble({
   const senderInitial = message.sender.displayName.trim().charAt(0).toUpperCase() || "?";
 
   return (
-    <div className={`${trayVisible ? "relative z-50 [content-visibility:visible]" : "[content-visibility:auto] [contain-intrinsic-size:auto_96px]"} flex ${viewMode === "v2" ? "justify-start" : isViewer ? "justify-end" : "justify-start"}`}>
+    <div className={`${trayVisible ? "relative z-50 [content-visibility:visible]" : mode === "page" ? "[content-visibility:auto] [contain-intrinsic-size:auto_112px]" : "relative"} flex ${viewMode === "v2" ? "justify-start" : isViewer ? "justify-end" : "justify-start"}`}>
       <div
         ref={bubbleRef}
         className={`group relative min-w-0 max-w-full ${maxBubbleWidthClass} ${viewMode === "v2" ? "py-0.5 pl-9 sm:pl-11" : ""}`}
@@ -1077,8 +1073,6 @@ function TextMessageBubble({
                 <div className="mt-1 text-xs text-slate-300">{[message.replayCard.mapName, message.replayCard.winner ? `${message.replayCard.winner} won` : null].filter(Boolean).join(" · ")}</div>
               </Link>
             ) : null}
-
-            {message.editedAt ? <div className="mt-1 text-right text-[9px] italic text-slate-500">edited</div> : null}
 
             {hasTray && !trayVisible ? (
               <span className={`pointer-events-none absolute -top-3 ${isViewer && viewMode !== "v2" ? "left-2" : "right-2"} inline-flex h-6 w-6 translate-y-1 items-center justify-center rounded-full border border-white/10 bg-[#0a111d]/95 text-slate-400 opacity-0 shadow-lg transition group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:translate-y-0 group-focus-within:opacity-100`}>
@@ -1365,10 +1359,12 @@ export default function ContactInboxPanel({
   const activeTargetUid = data?.activeTargetUid ?? null;
   const { chatViewMode, setChatViewMode } = useChatViewPreference();
   const timelineViewportRef = useRef<HTMLDivElement | null>(null);
-  const timelineBottomRef = useRef<HTMLDivElement | null>(null);
   const timelineContentRef = useRef<HTMLDivElement | null>(null);
   const lastAutoScrolledTargetUidRef = useRef<string | null>(null);
   const shouldStickToBottomRef = useRef(true);
+  const lastTimelineScrollTopRef = useRef(0);
+  const timelineScrollFrameRef = useRef<number | null>(null);
+  const timelineResizeFrameRef = useRef<number | null>(null);
   const [showTimelineJump, setShowTimelineJump] = useState(false);
   const [typingHudMode, setTypingHudMode] = useState<"steady" | "pulse">("steady");
   const [ownTypingPulse, setOwnTypingPulse] = useState(false);
@@ -1496,10 +1492,18 @@ export default function ContactInboxPanel({
       ? document.documentElement.scrollHeight - window.scrollY - window.innerHeight
       : viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
     const shouldShow = distanceFromBottom > 140;
-    shouldStickToBottomRef.current = distanceFromBottom < 220;
+    shouldStickToBottomRef.current = distanceFromBottom < 48;
 
     setShowTimelineJump((current) => (current === shouldShow ? current : shouldShow));
   }, [mode]);
+
+  const scheduleTimelineJumpUpdate = useCallback(() => {
+    if (typeof window === "undefined" || timelineScrollFrameRef.current !== null) return;
+    timelineScrollFrameRef.current = window.requestAnimationFrame(() => {
+      timelineScrollFrameRef.current = null;
+      updateTimelineJumpButton();
+    });
+  }, [updateTimelineJumpButton]);
 
   function scrollTimelineToBottom(behavior: ScrollBehavior = "smooth") {
     const viewport = timelineViewportRef.current;
@@ -1507,22 +1511,26 @@ export default function ContactInboxPanel({
 
     if (mode === "page" && viewport && viewport.scrollHeight <= viewport.clientHeight + 1) {
       window.scrollTo({ top: document.documentElement.scrollHeight, behavior });
-    } else {
-      timelineBottomRef.current?.scrollIntoView({ block: "end", behavior });
-    }
-
-    if (viewport && !(mode === "page" && viewport.scrollHeight <= viewport.clientHeight + 1)) {
+    } else if (viewport) {
       viewport.scrollTo({
         top: viewport.scrollHeight,
         behavior,
       });
+      lastTimelineScrollTopRef.current = viewport.scrollHeight;
     }
 
     setShowTimelineJump(false);
   }
 
   function handleTimelineScroll() {
-    updateTimelineJumpButton();
+    const viewport = timelineViewportRef.current;
+    if (viewport) {
+      if (viewport.scrollTop + 1 < lastTimelineScrollTopRef.current) {
+        shouldStickToBottomRef.current = false;
+      }
+      lastTimelineScrollTopRef.current = viewport.scrollTop;
+    }
+    scheduleTimelineJumpUpdate();
   }
 
   async function loadOlderMessages() {
@@ -1603,10 +1611,21 @@ export default function ContactInboxPanel({
 
   useEffect(() => {
     if (mode !== "page") return;
-    const handleDocumentScroll = () => updateTimelineJumpButton();
+    const handleDocumentScroll = () => scheduleTimelineJumpUpdate();
     window.addEventListener("scroll", handleDocumentScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleDocumentScroll);
-  }, [mode, updateTimelineJumpButton]);
+  }, [mode, scheduleTimelineJumpUpdate]);
+
+  useEffect(() => {
+    return () => {
+      if (timelineScrollFrameRef.current !== null) {
+        window.cancelAnimationFrame(timelineScrollFrameRef.current);
+      }
+      if (timelineResizeFrameRef.current !== null) {
+        window.cancelAnimationFrame(timelineResizeFrameRef.current);
+      }
+    };
+  }, []);
 
   useLayoutEffect(() => {
     if (typeof window === "undefined") return;
@@ -1620,7 +1639,7 @@ export default function ContactInboxPanel({
     const distanceFromBottom = usesDocumentScroll
       ? document.documentElement.scrollHeight - window.scrollY - window.innerHeight
       : viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
-    const userIsNearBottom = shouldStickToBottomRef.current || distanceFromBottom < 220;
+    const userIsNearBottom = shouldStickToBottomRef.current || distanceFromBottom < 48;
 
     if (!targetChanged && !userIsNearBottom) {
       updateTimelineJumpButton();
@@ -1635,16 +1654,12 @@ export default function ContactInboxPanel({
         window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "auto" });
       } else {
         viewport.scrollTop = viewport.scrollHeight;
+        lastTimelineScrollTopRef.current = viewport.scrollTop;
       }
       setShowTimelineJump(false);
     };
 
     scrollToLatest();
-    const frame = window.requestAnimationFrame(scrollToLatest);
-
-    return () => {
-      window.cancelAnimationFrame(frame);
-    };
   }, [activeTargetUid, chatViewMode, latestTimelineKey, loading, mode, timelineRows.length, updateTimelineJumpButton]);
 
   useEffect(() => {
@@ -1653,17 +1668,27 @@ export default function ContactInboxPanel({
     if (!viewport || !content || typeof ResizeObserver === "undefined") return;
 
     const observer = new ResizeObserver(() => {
-      if (shouldStickToBottomRef.current) {
+      if (!shouldStickToBottomRef.current || timelineResizeFrameRef.current !== null) return;
+      timelineResizeFrameRef.current = window.requestAnimationFrame(() => {
+        timelineResizeFrameRef.current = null;
+        if (!shouldStickToBottomRef.current) return;
         if (mode === "page" && viewport.scrollHeight <= viewport.clientHeight + 1) {
           window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "auto" });
         } else {
           viewport.scrollTop = viewport.scrollHeight;
+          lastTimelineScrollTopRef.current = viewport.scrollTop;
         }
         setShowTimelineJump(false);
-      }
+      });
     });
     observer.observe(content);
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      if (timelineResizeFrameRef.current !== null) {
+        window.cancelAnimationFrame(timelineResizeFrameRef.current);
+        timelineResizeFrameRef.current = null;
+      }
+    };
   }, [activeTargetUid, mode, timelineRows.length]);
 
   return (
@@ -1780,7 +1805,7 @@ export default function ContactInboxPanel({
                 }
               }}
               data-contact-chat-scroll={mode}
-              className={`h-full min-h-0 overflow-y-auto overscroll-contain ${isLineView ? "px-2 py-2 sm:px-3" : isObsidianView ? "px-3 py-4 sm:px-5 sm:py-5" : "px-3 py-3 sm:px-4 sm:py-4"}`}
+              className={`h-full min-h-0 transform-gpu scroll-smooth overflow-x-hidden overflow-y-auto overscroll-contain [scrollbar-gutter:stable] [-webkit-overflow-scrolling:touch] [touch-action:pan-y] [will-change:scroll-position] ${isLineView ? "px-2 py-2 sm:px-3" : isObsidianView ? "px-3 py-3 sm:px-5 sm:py-4" : "px-3 py-3 sm:px-4 sm:py-4"}`}
             >
             {loading ? (
               <div className="rounded-[1.35rem] bg-white/[0.045] px-4 py-5 text-sm text-slate-300 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]">
@@ -1845,7 +1870,7 @@ export default function ContactInboxPanel({
                     </div>
                   </div>
                 ) : null}
-                <div ref={timelineBottomRef} className="h-px w-full" />
+                <div className="h-px w-full" />
               </div>
             )}
             </div>

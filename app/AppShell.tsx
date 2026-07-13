@@ -415,8 +415,17 @@ function InnerShell({ children }: { children: React.ReactNode }) {
       return;
     }
     const visualViewport = window.visualViewport;
+    let resizeFrame: number | null = null;
     const updateViewportHeight = () => {
-      setContactViewportHeight(Math.round(visualViewport?.height ?? window.innerHeight));
+      if (resizeFrame !== null) return;
+      resizeFrame = window.requestAnimationFrame(() => {
+        resizeFrame = null;
+        const nextHeight = Math.round(visualViewport?.height ?? window.innerHeight);
+        setContactViewportHeight((current) => (current === nextHeight ? current : nextHeight));
+        if (window.scrollY !== 0) {
+          window.scrollTo({ top: 0, behavior: "auto" });
+        }
+      });
     };
     updateViewportHeight();
     window.addEventListener("resize", updateViewportHeight);
@@ -424,6 +433,21 @@ function InnerShell({ children }: { children: React.ReactNode }) {
     return () => {
       window.removeEventListener("resize", updateViewportHeight);
       visualViewport?.removeEventListener("resize", updateViewportHeight);
+      if (resizeFrame !== null) {
+        window.cancelAnimationFrame(resizeFrame);
+      }
+    };
+  }, [isContactPage]);
+  React.useEffect(() => {
+    if (!isContactPage) return;
+    const previousDocumentOverflow = document.documentElement.style.overflow;
+    const previousBodyOverflow = document.body.style.overflow;
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    window.scrollTo({ top: 0, behavior: "auto" });
+    return () => {
+      document.documentElement.style.overflow = previousDocumentOverflow;
+      document.body.style.overflow = previousBodyOverflow;
     };
   }, [isContactPage]);
   const activeSurfaceViewMode = isLiveGamesSurface
@@ -705,8 +729,10 @@ function InnerShell({ children }: { children: React.ReactNode }) {
       </header>
 
       <main
-        className={`mx-auto flex min-h-0 min-w-0 w-full flex-1 flex-col py-4 pb-32 transition-[max-width] duration-300 lg:pb-4 ${
-          isMediaManagerSurface
+        className={`mx-auto flex min-h-0 min-w-0 w-full flex-1 flex-col py-4 pb-32 lg:pb-4 ${isContactPage ? "transition-none" : "transition-[max-width] duration-300"} ${
+          isContactPage
+            ? "max-w-[96rem] px-2 sm:px-3"
+          : isMediaManagerSurface
             ? "max-w-none px-3 sm:px-4 2xl:px-6"
             : isHeroStudioSurface
               ? "max-w-none px-1 sm:px-2 2xl:px-3"

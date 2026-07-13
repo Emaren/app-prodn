@@ -40,12 +40,12 @@ All three modes are available in Nav Chat and Full Chat. A selection made in eit
 ## Scroll and performance contract
 
 - New or newly selected threads anchor to the latest message before paint.
-- A single follow-up animation frame accounts for final layout; the old timeout plus multiple-frame scroll sequence is intentionally retired.
-- A resize observer keeps the viewport pinned when late-loading message content changes height and the user was already near the bottom.
+- Initial thread positioning is a single synchronous layout pass; late media sizing is handled separately by the bottom-only resize observer.
+- A frame-throttled resize observer keeps the viewport pinned only when the reader is genuinely at the bottom. Scrolling upward immediately releases that pin so image/layout changes cannot pull the reader back down.
 - Scrolling upward preserves the reader's position and reveals the explicit jump-to-latest control.
 - `/contact-emaren` is a contained chat viewscreen at every breakpoint. The shell follows `visualViewport.height` so iOS keyboard changes shrink the conversation instead of pushing the composer below the screen. Desktop wheel and trackpad input from the outer page gutters is forwarded to the message timeline.
 - Both surfaces load the latest 80 messages, then prepend older 80-message cursor pages while preserving the reader's exact scroll position.
-- Message rows use browser-native `content-visibility` containment so off-screen bubbles do not consume full layout/paint work.
+- Full Chat message rows use browser-native `content-visibility` containment so long histories stay efficient. Nav Chat deliberately keeps its smaller warm window fully painted to avoid reveal flicker and intrinsic-size jumps while scrolling through image-heavy messages.
 - Full Chat loads the initial thread in one request instead of fetching the summary and full payload sequentially.
 - Nav Chat keeps warm per-thread payloads so revisiting a conversation paints immediately while a silent refresh reconciles it.
 - Authenticated server-sent events push message, receipt, typing, reaction, pin, and update invalidations immediately. A 60-second poll remains as recovery only.
@@ -64,7 +64,8 @@ All three modes are available in Nav Chat and Full Chat. A selection made in eit
 ## Message intelligence and state
 
 - Read receipts are automatic and enabled by default, but only the latest outgoing message renders a receipt line, matching the quiet Apple-style pattern. Normal stable states show only `Sent` until viewed, then the actual viewed-at timestamp as `Mon D · H:MM AM/PM`, with no `Read` label and no seconds. Transient sending/failure feedback remains available for reliability and retry.
-- Date dividers remain pinned to the top of the scrolling timeline until the next day takes over. This preserves the send-date context when a viewed-at receipt falls on a later day and prevents two valid times from appearing chronologically impossible.
+- Compact floating date chips remain pinned to the top of the scrolling timeline until the next day takes over. They preserve send-date context without reserving an opaque full-width strip or creating a dead visual gap.
+- Edits are intentionally silent in the public presentation: corrected text replaces the old copy without an `edited` badge. Deletes remove the message without leaving a public tombstone; server authorization and internal timestamps remain intact.
 - Message action trays deliberately disable `content-visibility` paint containment only while open, then choose an above/below anchor inside the timeline. This keeps reactions, reply, pin, translation, edit, and delete fully visible without giving up off-screen message rendering performance.
 - Opening a thread marks incoming messages read. Establishing the live event stream marks previously undelivered incoming messages delivered, even if that thread is not open.
 - Draft text and quoted-reply targets are debounced to `direct_message_drafts`, shared between Nav Chat and Full Chat, and removed after a successful send.

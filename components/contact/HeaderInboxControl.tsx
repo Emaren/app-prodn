@@ -86,27 +86,42 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
     const trigger = triggerRef.current;
     if (!trigger || typeof window === "undefined") return;
     const rect = trigger.getBoundingClientRect();
-    setDesktopAnchor({
+    const nextAnchor = {
       right: Math.max(16, window.innerWidth - rect.right),
       top: rect.bottom + 8,
-    });
+    };
+    setDesktopAnchor((current) =>
+      Math.abs(current.right - nextAnchor.right) < 1 && Math.abs(current.top - nextAnchor.top) < 1
+        ? current
+        : nextAnchor
+    );
   }, []);
 
   useEffect(() => {
     if (!open) return;
     const visualViewport = window.visualViewport;
-    const updateViewportHeight = () => {
-      setMobileViewportHeight(Math.round(visualViewport?.height ?? window.innerHeight));
+    let resizeFrame: number | null = null;
+    const syncViewportMetrics = () => {
+      if (resizeFrame !== null) return;
+      resizeFrame = window.requestAnimationFrame(() => {
+        resizeFrame = null;
+        updateDesktopAnchor();
+        const compactViewport = window.matchMedia("(max-width: 639px)").matches;
+        const nextHeight = compactViewport
+          ? Math.round(visualViewport?.height ?? window.innerHeight)
+          : null;
+        setMobileViewportHeight((current) => (current === nextHeight ? current : nextHeight));
+      });
     };
-    updateDesktopAnchor();
-    updateViewportHeight();
-    window.addEventListener("resize", updateDesktopAnchor);
-    window.addEventListener("resize", updateViewportHeight);
-    visualViewport?.addEventListener("resize", updateViewportHeight);
+    syncViewportMetrics();
+    window.addEventListener("resize", syncViewportMetrics);
+    visualViewport?.addEventListener("resize", syncViewportMetrics);
     return () => {
-      window.removeEventListener("resize", updateDesktopAnchor);
-      window.removeEventListener("resize", updateViewportHeight);
-      visualViewport?.removeEventListener("resize", updateViewportHeight);
+      window.removeEventListener("resize", syncViewportMetrics);
+      visualViewport?.removeEventListener("resize", syncViewportMetrics);
+      if (resizeFrame !== null) {
+        window.cancelAnimationFrame(resizeFrame);
+      }
     };
   }, [open, updateDesktopAnchor]);
 
@@ -423,7 +438,7 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
           <div
             role="dialog"
             aria-label="Private inbox"
-            className="fixed inset-x-2 top-[5.75rem] z-[220] h-[calc(var(--contact-inbox-viewport-height,100dvh)-6.35rem)] sm:inset-x-auto sm:right-[var(--contact-inbox-right)] sm:top-[var(--contact-inbox-top)] sm:h-[min(38rem,calc(100dvh-6.5rem))] sm:w-[29.5rem] sm:max-w-[calc(100vw-2rem)]"
+            className="fixed inset-x-2 top-[5.75rem] z-[220] h-[calc(var(--contact-inbox-viewport-height,100dvh)-6.35rem)] transform-gpu [backface-visibility:hidden] sm:inset-x-auto sm:right-[var(--contact-inbox-right)] sm:top-[var(--contact-inbox-top)] sm:h-[min(38rem,calc(100dvh-6.5rem))] sm:w-[min(31rem,calc(100vw-2rem))]"
             style={{
               "--contact-inbox-right": `${desktopAnchor.right}px`,
               "--contact-inbox-top": `${desktopAnchor.top}px`,
