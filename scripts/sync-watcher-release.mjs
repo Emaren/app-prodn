@@ -17,6 +17,11 @@ const FEATURE_CHIPS = [
   "Upload backpressure",
   "Rolling playback",
   "Faster final detection",
+  "Connected vs monitoring truth",
+  "OneDrive HD folder detection",
+  "Mid-game replay recovery",
+  "Bounded monitor watchdog",
+  "Privacy-safe rich heartbeat",
 ];
 
 const WATCHER_RELEASE_TEMPLATE = ({ version, releasedOn }) => `export type WatcherArtifactPlatform = "windows" | "macos" | "linux";
@@ -47,7 +52,7 @@ export const WATCHER_RELEASE = {
   version: ${JSON.stringify(version)},
   label: ${JSON.stringify(`AoE2HDBets Watcher ${version}`)},
   releasedOn: ${JSON.stringify(releasedOn)},
-  signingStatus: "Signed Windows builds; unsigned macOS builds",
+  signingStatus: "Signed and timestamped Windows builds; unsigned macOS build; Linux AppImage available",
   featureChips: ${JSON.stringify(
     [`AoE2HDBets Watcher ${version}`, releasedOn, ...FEATURE_CHIPS],
     null,
