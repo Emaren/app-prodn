@@ -300,6 +300,61 @@ function getOrCreateActor(
   return created;
 }
 
+/**
+ * Final identity safety net for the War Chest.
+ *
+ * Some reward rails arrive with only a replay/player name while wagers and
+ * claimed activity arrive with a user id. Exact normalized public names must
+ * become one ranked actor. When either side is claimed, retain that claimed
+ * identity and fold the name-only totals into it.
+ */
+function mergeDuplicateActorNames(entries: ActorMetrics[]) {
+  const merged = new Map<string, ActorMetrics>();
+
+  for (const entry of entries) {
+    const displayName = entry.user
+      ? formatUserDisplayName(entry.user)
+      : normalizePublicPlayerName(entry.replayName);
+    const nameKey = normalizeNameKey(displayName);
+
+    if (!nameKey) {
+      merged.set(entry.actorKey, { ...entry });
+      continue;
+    }
+
+    const current = merged.get(nameKey);
+
+    if (!current) {
+      merged.set(nameKey, { ...entry });
+      continue;
+    }
+
+    const claimedUser = current.user ?? entry.user;
+
+    current.user = claimedUser;
+    current.actorKey = claimedUser ? `u:${claimedUser.id}` : current.actorKey;
+    current.replayName = claimedUser
+      ? null
+      : current.replayName ?? entry.replayName;
+
+    current.weeklyTakeWolo += entry.weeklyTakeWolo;
+    current.settledWolo += entry.settledWolo;
+    current.wageredWolo += entry.wageredWolo;
+    current.claimCount += entry.claimCount;
+    current.wagerCount += entry.wagerCount;
+    current.claimableWolo += entry.claimableWolo;
+
+    if (entry.lastActiveAt) {
+      current.lastActiveAt = setLatestActivity(
+        current.lastActiveAt,
+        entry.lastActiveAt
+      );
+    }
+  }
+
+  return Array.from(merged.values());
+}
+
 async function loadClaims(prisma: PrismaClient) {
   return prisma.pendingWoloClaim.findMany({
     where: {
@@ -490,14 +545,15 @@ async function loadBoardMetrics(prisma: PrismaClient, weekStartsAt: Date) {
     }
   }
 
-  return Array.from(metrics.values())
-    .filter(
+  return mergeDuplicateActorNames(
+    Array.from(metrics.values()).filter(
       (entry) =>
         entry.weeklyTakeWolo > 0 ||
         entry.settledWolo > 0 ||
         entry.wageredWolo > 0 ||
         entry.claimableWolo > 0
-    );
+    )
+  );
 }
 
 export async function loadLobbyWoloEarnersBoard(
