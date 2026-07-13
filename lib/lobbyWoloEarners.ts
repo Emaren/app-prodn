@@ -234,6 +234,7 @@ async function loadUsersByNames(prisma: PrismaClient, names: string[]) {
   const users = await prisma.user.findMany({
     where: {
       OR: normalizedNames.flatMap((name) => [
+        { uid: { equals: name, mode: "insensitive" as const } },
         { inGameName: { equals: name, mode: "insensitive" as const } },
         { steamPersonaName: { equals: name, mode: "insensitive" as const } },
       ]),
@@ -249,7 +250,7 @@ async function loadUsersByNames(prisma: PrismaClient, names: string[]) {
   });
 
   for (const user of users) {
-    const keys = [user.inGameName, user.steamPersonaName]
+    const keys = [user.uid, user.inGameName, user.steamPersonaName]
       .map((value) => normalizeNameKey(value))
       .filter(Boolean);
 
@@ -442,7 +443,7 @@ async function loadBoardMetrics(prisma: PrismaClient, weekStartsAt: Date) {
     const directUser = claim.claimedByUserId ? usersById.get(claim.claimedByUserId) ?? null : null;
     const matchedUser =
       directUser ??
-      usersByName.get(claim.normalizedPlayerName) ??
+      usersByName.get(normalizeNameKey(claim.normalizedPlayerName)) ??
       usersByName.get(normalizeNameKey(claim.displayPlayerName)) ??
       null;
     const actorKey = matchedUser ? `u:${matchedUser.id}` : `n:${claim.normalizedPlayerName}`;
