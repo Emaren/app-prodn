@@ -6,6 +6,8 @@ Commissioner review does not invent a winner. A detached watcher book enters `aw
 
 Use `scripts/repair-void-bet-market.mjs` for one-time repairs. It requires exact market/session/status/date/map/participants/wager-total/reason preconditions, defaults to dry-run, writes a restricted audit backup, and requires an explicit confirmation token to apply. The normal settlement rail performs the idempotent refund and supplies payout proof.
 
+Team-integrity incidents use `/admin/market-integrity` and the stricter runbook in [Team Market Integrity](./MARKET_TEAM_INTEGRITY.md). A team alias can reconcile identity but cannot supply team membership. A locked roster mismatch, mixed winner/loser side, missing team ID, or proposition-hash mismatch must remain `under_review`; commissioner review must never rewrite the original sides after a stake.
+
 The operator queue lives at `/admin/replay-review`. It is protected by the
 shared `/admin` server layout and reads final replay evidence, parser reasons,
 watcher timing, linked betting markets, slips, claims, and settlement

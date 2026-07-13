@@ -121,6 +121,9 @@ or hiding their indexed ledger rows.
   payout-signer fallback.
 - Pending claim retries should distinguish unresolved wallet identity from
   settlement service or signer unavailability.
+- Team-market settlement must pass the immutable proposition/final-roster gate before any payout plan, betting fee, winner bounty, or founder bonus is created.
+- Integrity corrections send only the exact unpaid void entitlement from the Bet Escrow signer that received the stake, never from the winner-payout reserve. The unique incident/wager memo and escrow sender are recovered from WoloChain before retry and must pass distinct-send validation before local rows become paid.
+- A prior payout above the void entitlement is recorded as an incident overpayment. The app never auto-debits it; any return is a separate user-signed transaction.
 
 ## Deploy and backfill
 

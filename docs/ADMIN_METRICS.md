@@ -6,6 +6,10 @@
 
 This dashboard must not treat raw watcher package traffic as real users. Package pulls are top-of-funnel request rows only.
 
+## Market integrity cockpit
+
+`/admin/market-integrity` is the operator source for unresolved/changed team propositions, settlement blocks, incident corrections, overpayments, and pending identity aliases. Market rows retain immutable original sides; incident rows retain verified replay rosters and financial totals; adjustment rows distinguish amount already paid, exact void entitlement, amount still owed, overpayment, corrective tx hash, and voluntary-return status. An overpayment is visibility, not authority to debit a wallet. See `docs/MARKET_TEAM_INTEGRITY.md` for the audit and repair commands.
+
 ## User List / Command Tower
 
 `/admin/user-list` is an operator cockpit, not a plain directory. Keep the top admin navigation visible near the top and keep Recent Actions in a fixed-height lazy-loaded pane so older activity can stream in without resizing each user card.

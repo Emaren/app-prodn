@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@/lib/generated/prisma";
+import type { Prisma, PrismaClient } from "@/lib/generated/prisma";
 import {
   loadScheduledMatchTilesForLiveBoard,
   type ScheduledMatchTile,
@@ -9,16 +9,31 @@ import { loadLiveGamesSnapshot } from "@/lib/liveGames";
 import { resolveFinalGameStatsIdForSessionKey } from "@/lib/liveReplayDetail";
 import { resolveReplayWinnerTruth } from "@/lib/unresolvedWatcherResult";
 import {
+  normalizeReplayPlayers,
+  resolveReplayTeams,
+  resolveWinningTeamIndex,
+  rosterSnapshot,
+  validateMarketFinalIntegrity,
+  type ReplayTeamConfidence,
+  type ReplayTeamFormat,
+  type ReplayTeamProvenance,
+  type ReplayTeamResolutionStatus,
+} from "@/lib/teamResolution";
+import {
   createPendingWoloClaim,
   normalizePendingWoloClaimName,
 } from "@/lib/pendingWoloClaims";
 import { settleFounderBonuses } from "@/lib/betFounderBonuses";
 import {
+  executeWoloEscrowSettlementRun,
   executeWoloSettlementRun,
+  findConfirmedWoloPayoutByMemo,
   getWoloPayoutExecutionBlocker,
   getWoloSettlementSurfaceStatus,
+  hasWoloEscrowSettlementExecutionConfigured,
   hasWoloPayoutExecutionConfigured,
   type SettlementRunResult,
+  validateWoloEscrowSettlementRun,
   validateWoloSettlementRun,
 } from "@/lib/woloBetSettlement";
 import {
@@ -118,6 +133,13 @@ export type BetBoardMarket = {
   linkedSessionKey: string | null;
   linkedGameStatsId: number | null;
   status: BetStatus;
+  teamFormat: string | null;
+  teamResolutionStatus: string | null;
+  teamResolutionProvenance: string | null;
+  teamConfidence: string | null;
+  integrityStatus: string;
+  integrityReason: string | null;
+  rosterLockedAt: string | null;
   featured: boolean;
   closeLabel: string;
   scheduledStartAt: string | null;
@@ -166,6 +188,14 @@ export type BetSettledResult = {
   resolutionStatus: "settled" | "voided" | "under_review";
   resolutionReason: string | null;
   refundStatus: string | null;
+  teamFormat: string | null;
+  teamResolutionProvenance: string | null;
+  integrityStatus: string;
+  integrityReason: string | null;
+  integritySummary: string | null;
+  correctionStatus: string | null;
+  amountStillOwedWolo: number;
+  overpaymentWolo: number;
   mapName: string;
   totalPotWolo: number;
   payoutWolo: number;
@@ -366,64 +396,6 @@ function buildBetMarketHref(marketId: number) {
   return `/bets/${marketId}`;
 }
 
-function getNamedSessionPlayers(session: LiveGameSession) {
-  const seen = new Map<
-    string,
-    {
-      name: string;
-      winner: boolean | null;
-      team?: unknown;
-      teamNumber?: unknown;
-      team_number?: unknown;
-      teamId?: unknown;
-      team_id?: unknown;
-    }
-  >();
-
-  for (const player of session.players) {
-    const name = normalizeName(player.name);
-    if (!name) continue;
-
-    const record = player as {
-      name?: unknown;
-      winner?: boolean | null;
-      team?: unknown;
-      teamNumber?: unknown;
-      team_number?: unknown;
-      teamId?: unknown;
-      team_id?: unknown;
-    };
-
-    const key = name.toLowerCase();
-    const existing = seen.get(key);
-
-    if (!existing) {
-      seen.set(key, {
-        name,
-        winner: player.winner,
-        team: record.team,
-        teamNumber: record.teamNumber,
-        team_number: record.team_number,
-        teamId: record.teamId,
-        team_id: record.team_id,
-      });
-      continue;
-    }
-
-    if (player.winner === true && existing.winner !== true) {
-      existing.winner = true;
-    }
-
-    existing.team ??= record.team;
-    existing.teamNumber ??= record.teamNumber;
-    existing.team_number ??= record.team_number;
-    existing.teamId ??= record.teamId;
-    existing.team_id ??= record.team_id;
-  }
-
-  return Array.from(seen.values());
-}
-
 type SessionSideDescription = {
   title: string;
   leftLabel: string;
@@ -431,44 +403,6 @@ type SessionSideDescription = {
   leftNames: string[];
   rightNames: string[];
 };
-
-
-function readSessionPlayerTeam(player: ReturnType<typeof getNamedSessionPlayers>[number]) {
-  const record = player as {
-    team?: unknown;
-    teamNumber?: unknown;
-    team_number?: unknown;
-    teamId?: unknown;
-    team_id?: unknown;
-  };
-
-  const rawTeam =
-    record.team ??
-    record.teamNumber ??
-    record.team_number ??
-    record.teamId ??
-    record.team_id ??
-    null;
-
-  if (typeof rawTeam === "number" && Number.isFinite(rawTeam) && rawTeam > 0) {
-    return String(Math.trunc(rawTeam));
-  }
-
-  const teamText = normalizeName(String(rawTeam ?? ""));
-  if (!teamText) return null;
-
-  const lowered = teamText.toLowerCase();
-  if (lowered === "0" || lowered === "-1" || lowered === "none" || lowered === "unknown") {
-    return null;
-  }
-
-  return teamText;
-}
-
-function teamSortKey(team: string) {
-  const numeric = Number(team);
-  return Number.isFinite(numeric) ? numeric : 999;
-}
 
 function compactTeamLabel(names: string[]) {
   if (names.length <= 4) return names.join(" / ");
@@ -486,102 +420,30 @@ function formatTeamLabel(names: string[]) {
 }
 
 function describeSessionSides(session: LiveGameSession): SessionSideDescription | null {
-  const players = getNamedSessionPlayers(session);
-
-  if (players.length < 2) {
-    return null;
-  }
-
-  const teams = new Map<string, string[]>();
-
-  for (const player of players) {
-    const team = readSessionPlayerTeam(player);
-    if (!team) continue;
-
-    const existing = teams.get(team) || [];
-    existing.push(player.name);
-    teams.set(team, existing);
-  }
-
-  const teamEntries = [...teams.entries()]
-    .filter(([, names]) => names.length > 0)
-    .sort((left, right) => teamSortKey(left[0]) - teamSortKey(right[0]) || left[0].localeCompare(right[0]));
-
-  if (teamEntries.length === 2) {
-    const leftNames = teamEntries[0][1];
-    const rightNames = teamEntries[1][1];
-    const leftLabel = formatTeamLabel(leftNames);
-    const rightLabel = formatTeamLabel(rightNames);
-
-    return {
-      title: `${leftLabel} vs ${rightLabel}`,
-      leftLabel,
-      rightLabel,
-      leftNames,
-      rightNames,
-    };
-  }
-
-  const balancedTeamSize = players.length / 2;
-
+  const resolution = session.teamResolution;
   if (
-    Number.isInteger(balancedTeamSize) &&
-    balancedTeamSize >= 1 &&
-    balancedTeamSize <= 4
+    resolution.status !== "resolved" ||
+    resolution.confidence !== "high" ||
+    resolution.teams.length !== 2
   ) {
-    const leftNames = players.slice(0, balancedTeamSize).map((player) => player.name);
-    const rightNames = players.slice(balancedTeamSize).map((player) => player.name);
-    const leftLabel = formatTeamLabel(leftNames);
-    const rightLabel = formatTeamLabel(rightNames);
-
-    return {
-      title: `${leftLabel} vs ${rightLabel}`,
-      leftLabel,
-      rightLabel,
-      leftNames,
-      rightNames,
-    };
-  }
-
-  const [focusPlayer, ...fieldPlayers] = players;
-  if (fieldPlayers.length === 0) {
     return null;
   }
-
+  const leftNames = resolution.teams[0].players.map((player) => player.name);
+  const rightNames = resolution.teams[1].players.map((player) => player.name);
+  const leftLabel = formatTeamLabel(leftNames);
+  const rightLabel = formatTeamLabel(rightNames);
   return {
-    title: players.map((player) => player.name).join(" vs "),
-    leftLabel: focusPlayer.name,
-    rightLabel:
-      fieldPlayers.length === 1
-        ? fieldPlayers[0].name
-        : fieldPlayers.map((player) => player.name).join(" / "),
-    leftNames: [focusPlayer.name],
-    rightNames: fieldPlayers.map((player) => player.name),
+    title: `${leftLabel} vs ${rightLabel}`,
+    leftLabel,
+    rightLabel,
+    leftNames,
+    rightNames,
   };
 }
 
 function inferWinnerSideFromSession(session: LiveGameSession): BetSide | null {
-  const sides = describeSessionSides(session);
-  if (!sides) return null;
-
-  const normalizedWinner = normalizeName(session.winner).toLowerCase();
-  if (normalizedWinner) {
-    if (sides.leftNames.some((name) => name.toLowerCase() === normalizedWinner)) return "left";
-    if (sides.rightNames.some((name) => name.toLowerCase() === normalizedWinner)) return "right";
-  }
-
-  const players = getNamedSessionPlayers(session);
-  const leftWinner = players.some(
-    (player) => player.winner === true && sides.leftNames.includes(player.name)
-  );
-  const rightWinner = players.some(
-    (player) => player.winner === true && sides.rightNames.includes(player.name)
-  );
-
-  if (leftWinner && !rightWinner) return "left";
-  if (rightWinner && !leftWinner) return "right";
-
-  return null;
+  const winningIndex = resolveWinningTeamIndex(session.players, session.teamResolution);
+  return winningIndex === 0 ? "left" : winningIndex === 1 ? "right" : null;
 }
 
 type MarketSeed = {
@@ -603,6 +465,17 @@ type MarketSeed = {
   closeAt: Date | null;
   settledAt: Date | null;
   winnerSide: BetSide | null;
+  teamFormat: ReplayTeamFormat | null;
+  teamResolutionStatus: ReplayTeamResolutionStatus | null;
+  teamResolutionProvenance: ReplayTeamProvenance | null;
+  teamConfidence: ReplayTeamConfidence | null;
+  leftRosterSnapshot: Prisma.InputJsonValue;
+  rightRosterSnapshot: Prisma.InputJsonValue;
+  sourceParseIteration: number | null;
+  sourceRosterHash: string | null;
+  propositionHash: string | null;
+  integrityStatus: string;
+  integrityReason: string | null;
 };
 
 function marketSeedCreateData(seed: MarketSeed) {
@@ -624,6 +497,17 @@ function marketSeedCreateData(seed: MarketSeed) {
     closeAt: seed.closeAt,
     settledAt: seed.settledAt,
     winnerSide: seed.winnerSide,
+    teamFormat: seed.teamFormat,
+    teamResolutionStatus: seed.teamResolutionStatus,
+    teamResolutionProvenance: seed.teamResolutionProvenance,
+    teamConfidence: seed.teamConfidence,
+    leftRosterSnapshot: seed.leftRosterSnapshot,
+    rightRosterSnapshot: seed.rightRosterSnapshot,
+    sourceParseIteration: seed.sourceParseIteration,
+    sourceRosterHash: seed.sourceRosterHash,
+    propositionHash: seed.propositionHash,
+    integrityStatus: seed.integrityStatus,
+    integrityReason: seed.integrityReason,
   };
 }
 
@@ -633,6 +517,13 @@ function marketSeedUpdateData(
     status: string;
     settledAt: Date | null;
     winnerSide: string | null;
+    title: string;
+    leftLabel: string;
+    rightLabel: string;
+    leftHref: string | null;
+    rightHref: string | null;
+    propositionHash: string | null;
+    firstStakeAcceptedAt: Date | null;
   } | null
 ) {
   const existingWinnerSide =
@@ -643,24 +534,75 @@ function marketSeedUpdateData(
     existing?.status === "settled" && Boolean(existing?.settledAt) && Boolean(existingWinnerSide);
   const keepSettledWinnerLatch =
     existingFinalized && (seed.status !== "settled" || seed.winnerSide !== existingWinnerSide);
+  const propositionLocked = Boolean(existing?.firstStakeAcceptedAt);
+  const propositionChanged = Boolean(
+    propositionLocked && existing?.propositionHash && seed.propositionHash !== existing.propositionHash
+  );
+
+  if (existing?.status === "under_review") {
+    return {
+      scheduledMatchId: seed.scheduledMatchId,
+      linkedSessionKey: seed.linkedSessionKey,
+      eventLabel: seed.eventLabel,
+      status: "under_review",
+      featured: false,
+      sortOrder: seed.sortOrder,
+      closeAt: new Date(),
+      settledAt: existing.settledAt,
+      winnerSide: null,
+    };
+  }
+
+  if (propositionChanged) {
+    return {
+      scheduledMatchId: seed.scheduledMatchId,
+      linkedSessionKey: seed.linkedSessionKey,
+      eventLabel: seed.eventLabel,
+      status: "under_review",
+      featured: false,
+      sortOrder: seed.sortOrder,
+      closeAt: new Date(),
+      settledAt: existing?.settledAt ?? null,
+      winnerSide: null,
+      integrityStatus: "under_review",
+      integrityReason: "roster_changed_after_stake",
+      commissionerReviewState: "roster_changed_after_stake",
+      underReviewAt: new Date(),
+    };
+  }
 
   return {
     scheduledMatchId: seed.scheduledMatchId,
     linkedSessionKey: seed.linkedSessionKey,
-    title: seed.title,
+    title: propositionLocked ? existing?.title ?? seed.title : seed.title,
     eventLabel: seed.eventLabel,
     status: keepSettledWinnerLatch ? "settled" : seed.status,
     featured: keepSettledWinnerLatch ? false : seed.featured,
     sortOrder: seed.sortOrder,
-    leftLabel: seed.leftLabel,
-    rightLabel: seed.rightLabel,
-    leftHref: seed.leftHref,
-    rightHref: seed.rightHref,
+    leftLabel: propositionLocked ? existing?.leftLabel ?? seed.leftLabel : seed.leftLabel,
+    rightLabel: propositionLocked ? existing?.rightLabel ?? seed.rightLabel : seed.rightLabel,
+    leftHref: propositionLocked ? existing?.leftHref ?? null : seed.leftHref,
+    rightHref: propositionLocked ? existing?.rightHref ?? null : seed.rightHref,
     seedLeftWolo: seed.seedLeftWolo,
     seedRightWolo: seed.seedRightWolo,
     closeAt: keepSettledWinnerLatch ? null : seed.closeAt,
     settledAt: keepSettledWinnerLatch ? existing?.settledAt ?? seed.settledAt : seed.settledAt,
     winnerSide: keepSettledWinnerLatch ? existingWinnerSide : seed.winnerSide,
+    ...(propositionLocked
+      ? {}
+      : {
+          teamFormat: seed.teamFormat,
+          teamResolutionStatus: seed.teamResolutionStatus,
+          teamResolutionProvenance: seed.teamResolutionProvenance,
+          teamConfidence: seed.teamConfidence,
+          leftRosterSnapshot: seed.leftRosterSnapshot,
+          rightRosterSnapshot: seed.rightRosterSnapshot,
+          sourceParseIteration: seed.sourceParseIteration,
+          sourceRosterHash: seed.sourceRosterHash,
+          propositionHash: seed.propositionHash,
+          integrityStatus: seed.integrityStatus,
+          integrityReason: seed.integrityReason,
+        }),
   };
 }
 
@@ -749,18 +691,13 @@ function resolveMarketSideTransfer(
   return null;
 }
 
-function splitSideNames(label: string) {
-  return normalizeName(label)
-    .split(/\s*\/\s*|\s+\+\s+/)
-    .map((value) => normalizeName(value))
-    .filter(Boolean)
-    .map((value) => value.toLowerCase());
-}
-
-function inferWinnerSideFromGameStats(
+function evaluateFinalMarketIntegrity(
   market: {
     leftLabel: string;
     rightLabel: string;
+    propositionHash: string | null;
+    leftRosterSnapshot: unknown;
+    rightRosterSnapshot: unknown;
   },
   game: {
     winner: string | null;
@@ -768,37 +705,22 @@ function inferWinnerSideFromGameStats(
     parse_reason?: string | null;
     key_events?: unknown;
   }
-): BetSide | null {
-  const leftNames = splitSideNames(market.leftLabel);
-  const rightNames = splitSideNames(market.rightLabel);
-  const players = parsePlayers(game.players);
+) {
+  const players = normalizeReplayPlayers(game.players);
   const winnerTruth = resolveReplayWinnerTruth({
     winner: game.winner,
     players,
     parseReason: game.parse_reason,
     keyEvents: game.key_events,
   });
-  if (!winnerTruth.bettingEligible) return null;
-
-  const normalizedWinner = normalizeName(winnerTruth.winner).toLowerCase();
-
-  if (normalizedWinner) {
-    if (leftNames.includes(normalizedWinner)) return "left";
-    if (rightNames.includes(normalizedWinner)) return "right";
-  }
-
-  const leftWinner = players.some((player) => {
-    const playerName = typeof player.name === "string" ? normalizeName(player.name).toLowerCase() : "";
-    return Boolean(playerName && player.winner === true && leftNames.includes(playerName));
+  return validateMarketFinalIntegrity({
+    propositionHash: market.propositionHash,
+    leftRosterSnapshot: market.leftRosterSnapshot,
+    rightRosterSnapshot: market.rightRosterSnapshot,
+    finalPlayers: players,
+    finalWinner: winnerTruth.winner,
+    finalBettingEligible: winnerTruth.bettingEligible,
   });
-  const rightWinner = players.some((player) => {
-    const playerName = typeof player.name === "string" ? normalizeName(player.name).toLowerCase() : "";
-    return Boolean(playerName && player.winner === true && rightNames.includes(playerName));
-  });
-
-  if (leftWinner && !rightWinner) return "left";
-  if (rightWinner && !leftWinner) return "right";
-  return null;
 }
 
 function buildSessionMarketSeed(
@@ -810,12 +732,27 @@ function buildSessionMarketSeed(
 
   // A watcher row is not a bettable market until the parser can name both sides.
   if (!sides) return null;
+  const resolution = session.teamResolution;
+  if (
+    resolution.status !== "resolved" ||
+    resolution.confidence !== "high" ||
+    resolution.teams.length !== 2 ||
+    !resolution.propositionHash ||
+    !resolution.rosterHash
+  ) {
+    return null;
+  }
 
   const leftLabel = sides.leftLabel;
   const rightLabel = sides.rightLabel;
   const rightNames = sides.rightNames;
   const title = sides.title;
   const settledAtRaw = session.completedAt || session.updatedAt || session.createdAt;
+  const resolvedWinnerSide =
+    session.state === "completed" ? inferWinnerSideFromSession(session) : null;
+  // Completed team games without one coherent winning team are evidence for review,
+  // never an implicitly voided or settled betting proposition.
+  if (session.state === "completed" && !resolvedWinnerSide) return null;
   const seed = {
     scheduledMatchId: null,
     linkedSessionKey: session.sessionKey || session.originalFilename || null,
@@ -840,13 +777,54 @@ function buildSessionMarketSeed(
     seedRightWolo: 0,
     closeAt: null,
     settledAt: session.state === "completed" ? new Date(settledAtRaw) : null,
-    winnerSide:
-      session.state === "completed"
-        ? inferWinnerSideFromSession(session)
-        : null,
+    winnerSide: resolvedWinnerSide,
+    teamFormat: resolution.format,
+    teamResolutionStatus: resolution.status,
+    teamResolutionProvenance: resolution.provenance,
+    teamConfidence: resolution.confidence,
+    leftRosterSnapshot: rosterSnapshot(resolution.teams[0]),
+    rightRosterSnapshot: rosterSnapshot(resolution.teams[1]),
+    sourceParseIteration: session.parseIteration,
+    sourceRosterHash: resolution.rosterHash,
+    propositionHash: resolution.propositionHash,
+    integrityStatus: "verified",
+    integrityReason: null,
   } satisfies MarketSeed;
 
   return isConfidentBetMarket(seed) ? seed : null;
+}
+
+function scheduledMatchIntegritySeed(match: ScheduledMatchTile) {
+  const resolution = resolveReplayTeams([
+    { name: match.challenger.name },
+    { name: match.challenged.name },
+  ], { provenance: "scheduled_match_roster" });
+  return {
+    teamFormat: resolution.format,
+    teamResolutionStatus: resolution.status,
+    teamResolutionProvenance: resolution.provenance,
+    teamConfidence: resolution.confidence,
+    leftRosterSnapshot: resolution.teams[0] ? rosterSnapshot(resolution.teams[0]) : [],
+    rightRosterSnapshot: resolution.teams[1] ? rosterSnapshot(resolution.teams[1]) : [],
+    sourceParseIteration: null,
+    sourceRosterHash: resolution.rosterHash,
+    propositionHash: resolution.propositionHash,
+    integrityStatus: resolution.status === "resolved" ? "verified" : "blocked",
+    integrityReason: resolution.reasonCodes.join(",") || null,
+  } satisfies Pick<
+    MarketSeed,
+    | "teamFormat"
+    | "teamResolutionStatus"
+    | "teamResolutionProvenance"
+    | "teamConfidence"
+    | "leftRosterSnapshot"
+    | "rightRosterSnapshot"
+    | "sourceParseIteration"
+    | "sourceRosterHash"
+    | "propositionHash"
+    | "integrityStatus"
+    | "integrityReason"
+  >;
 }
 
 function marketStatusFromScheduledMatch(displayState: ScheduledMatchTile["displayState"]): BetStatus {
@@ -968,6 +946,7 @@ function buildChallengeMarketSeeds(scheduledMatches: ScheduledMatchTile[]) {
           ? new Date(match.activityAt)
           : null,
       winnerSide: match.displayState === "completed" ? inferWinnerSideFromChallenge(match) : null,
+      ...scheduledMatchIntegritySeed(match),
     }) satisfies MarketSeed)
     .filter(isConfidentBetMarket);
 }
@@ -1073,6 +1052,9 @@ type SettlementWinnerTruthMarket = {
   leftLabel: string;
   rightLabel: string;
   linkedGameStatsId: number | null;
+  propositionHash: string | null;
+  leftRosterSnapshot: unknown;
+  rightRosterSnapshot: unknown;
 };
 
 function settlementTruthName(value: string | null | undefined) {
@@ -1122,7 +1104,7 @@ async function assertSettlementWinnerTruthGate(
 
   const game = await prisma.gameStats.findUnique({
     where: { id: market.linkedGameStatsId },
-    select: { id: true, winner: true, players: true },
+    select: { id: true, winner: true, players: true, parse_reason: true, key_events: true },
   });
 
   if (!game) {
@@ -1134,6 +1116,31 @@ async function assertSettlementWinnerTruthGate(
         " is missing"
     );
   }
+
+  const players = normalizeReplayPlayers(game.players);
+  const winnerTruth = resolveReplayWinnerTruth({
+    winner: game.winner,
+    players,
+    parseReason: game.parse_reason,
+    keyEvents: game.key_events,
+  });
+  const integrity = validateMarketFinalIntegrity({
+    propositionHash: market.propositionHash,
+    leftRosterSnapshot: market.leftRosterSnapshot,
+    rightRosterSnapshot: market.rightRosterSnapshot,
+    finalPlayers: players,
+    finalWinner: winnerTruth.winner,
+    finalBettingEligible: winnerTruth.bettingEligible,
+  });
+  if (!integrity.ok || integrity.winningSide !== winningSide) {
+    throw new Error(
+      `MARKET_INTEGRITY_BLOCKED: market ${market.id} final proposition failed: ${integrity.reasonCodes.join(",") || "winning_side_mismatch"}`
+    );
+  }
+  const snapshotPlayerCount =
+    (Array.isArray(market.leftRosterSnapshot) ? market.leftRosterSnapshot.length : 0) +
+    (Array.isArray(market.rightRosterSnapshot) ? market.rightRosterSnapshot.length : 0);
+  if (snapshotPlayerCount > 2) return;
 
   const rowSide = settlementTruthSide(market, game.winner);
   if (game.winner && !rowSide) {
@@ -1165,9 +1172,9 @@ async function assertSettlementWinnerTruthGate(
 
   const flaggedSides = new Set<BetSide>();
   const flaggedNames: string[] = [];
-  const players = Array.isArray(game.players) ? game.players : [];
+  const rawPlayers = Array.isArray(game.players) ? game.players : [];
 
-  for (const player of players) {
+  for (const player of rawPlayers) {
     if (!settlementTruthWinnerFlag(player)) continue;
     const name = settlementTruthPlayerName(player);
     if (!name) continue;
@@ -1688,6 +1695,88 @@ function summarizeSettlementConfigBlocker() {
   );
 }
 
+async function markMarketUnderIntegrityReview(
+  prisma: PrismaClient,
+  input: {
+    marketId: number;
+    title: string;
+    leftLabel: string;
+    rightLabel: string;
+    priorStatus: string;
+    reason: string;
+    linkedGameStatsId?: number | null;
+  }
+) {
+  const now = new Date();
+  const reason = clampDbText(input.reason || "settlement_integrity_blocked", 120);
+  await prisma.$transaction(async (tx) => {
+    await tx.betMarket.update({
+      where: { id: input.marketId },
+      data: {
+        status: "under_review",
+        featured: false,
+        closeAt: now,
+        winnerSide: null,
+        integrityStatus: "under_review",
+        integrityReason: reason,
+        commissionerReviewState: "settlement_blocked",
+        underReviewAt: now,
+        linkedGameStatsId: input.linkedGameStatsId ?? undefined,
+      },
+    });
+
+    await tx.betMarketIntegrityIncident.upsert({
+      where: { incidentKey: `automated-integrity-block-${input.marketId}` },
+      create: {
+        marketId: input.marketId,
+        incidentKey: `automated-integrity-block-${input.marketId}`,
+        incidentType: "settlement_integrity_blocked",
+        status: "open",
+        publicSummary: "Betting paused while the replay teams and result are reviewed.",
+        evidence: {
+          source: "automated_settlement_gate",
+          priorStatus: input.priorStatus,
+          reason,
+          linkedGameStatsId: input.linkedGameStatsId ?? null,
+          detectedAt: now.toISOString(),
+        },
+        originalLeftLabel: input.leftLabel,
+        originalRightLabel: input.rightLabel,
+      },
+      update: {
+        status: "open",
+        evidence: {
+          source: "automated_settlement_gate",
+          priorStatus: input.priorStatus,
+          reason,
+          linkedGameStatsId: input.linkedGameStatsId ?? null,
+          detectedAt: now.toISOString(),
+        },
+      },
+    });
+
+    const affectedUsers = await tx.betWager.findMany({
+      where: { marketId: input.marketId },
+      distinct: ["userId"],
+      select: { userId: true },
+    });
+    for (const { userId } of affectedUsers) {
+      await recordUserActivity(tx, {
+        userId,
+        type: "settlement_integrity_blocked",
+        path: "/bets",
+        label: input.title,
+        metadata: {
+          marketId: input.marketId,
+          reason,
+          linkedGameStatsId: input.linkedGameStatsId ?? null,
+        },
+        dedupeWithinSeconds: 86_400,
+      });
+    }
+  });
+}
+
 async function settleResolvedMarketWagers(prisma: PrismaClient) {
   const markets = await prisma.betMarket.findMany({
     where: {
@@ -1703,6 +1792,9 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
       leftLabel: true,
       rightLabel: true,
       linkedGameStatsId: true,
+      propositionHash: true,
+      leftRosterSnapshot: true,
+      rightRosterSnapshot: true,
       winnerSide: true,
       seedLeftWolo: true,
       seedRightWolo: true,
@@ -1746,7 +1838,22 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
         ? market.winnerSide
         : null;
 
-    await assertSettlementWinnerTruthGate(prisma, market, winningSide);
+    try {
+      await assertSettlementWinnerTruthGate(prisma, market, winningSide);
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      await markMarketUnderIntegrityReview(prisma, {
+        marketId: market.id,
+        title: market.title,
+        leftLabel: market.leftLabel,
+        rightLabel: market.rightLabel,
+        priorStatus: "settled",
+        reason: detail,
+        linkedGameStatsId: market.linkedGameStatsId,
+      });
+      console.error(`Blocked settlement for market #${market.id}:`, error);
+      continue;
+    }
     const winningUserPool = winningSide
       ? market.wagers
           .filter((wager) => wager.side === winningSide)
@@ -2133,6 +2240,271 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
   }
 }
 
+async function settleMarketIntegrityCorrections(prisma: PrismaClient) {
+  const retryCutoff = new Date(Date.now() - 5 * 60_000);
+  const candidates = await prisma.betMarketFinancialAdjustment.findMany({
+    where: {
+      amountStillOwedWolo: { gt: 0 },
+      OR: [
+        { adjustmentStatus: "corrective_refund_pending" },
+        { adjustmentStatus: "corrective_refund_failed", updatedAt: { lt: retryCutoff } },
+        { adjustmentStatus: "corrective_refund_processing", updatedAt: { lt: retryCutoff } },
+      ],
+      incident: {
+        market: { status: "voided" },
+      },
+    },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    include: {
+      incident: {
+        include: {
+          market: true,
+        },
+      },
+    },
+  });
+
+  for (const adjustment of candidates) {
+    const acquired = await prisma.betMarketFinancialAdjustment.updateMany({
+      where: {
+        id: adjustment.id,
+        amountStillOwedWolo: { gt: 0 },
+        OR: [
+          { adjustmentStatus: "corrective_refund_pending" },
+          { adjustmentStatus: "corrective_refund_failed", updatedAt: { lt: retryCutoff } },
+          { adjustmentStatus: "corrective_refund_processing", updatedAt: { lt: retryCutoff } },
+        ],
+      },
+      data: { adjustmentStatus: "corrective_refund_processing" },
+    });
+    if (acquired.count !== 1) continue;
+
+    const user = await prisma.user.findUnique({
+      where: { id: adjustment.userId },
+      select: {
+        id: true,
+        uid: true,
+        inGameName: true,
+        steamPersonaName: true,
+        verified: true,
+        verificationLevel: true,
+        steamId: true,
+        walletAddress: true,
+      },
+    });
+    const market = adjustment.incident.market;
+    const displayName = user ? claimPlayerNameForUser(user) : `User #${adjustment.userId}`;
+    const claimGroupKey = `integrity:${adjustment.incidentId}`;
+    const memo = `AoE2 integrity correction · incident ${adjustment.incidentId} · wager ${adjustment.wagerId}`;
+    const requestId = `integrity-${adjustment.incidentId}-wager-${adjustment.wagerId}`;
+    const walletAddress = user && canAutoClaimForKnownUser(user) ? user.walletAddress : null;
+    const escrowAddress = getWoloBetEscrowRuntime().escrowAddress;
+
+    if (!walletAddress || !escrowAddress || !hasWoloEscrowSettlementExecutionConfigured()) {
+      const claim = await createPendingWoloClaim(prisma, {
+        playerName: displayName,
+        displayPlayerName: displayName,
+        amountWolo: adjustment.amountStillOwedWolo,
+        claimKind: "bet_corrective_refund",
+        claimGroupKey,
+        targetScope: "integrity_correction",
+        sourceMarketId: market.id,
+        sourceGameStatsId: market.linkedGameStatsId,
+        errorState: walletAddress
+          ? summarizeSettlementConfigBlocker()
+          : buildAwaitingWalletLinkClaimDetail(displayName),
+        note: `Invalid team assignment · exact stake correction · wager ${adjustment.wagerId}`,
+        status: "pending",
+      });
+      await prisma.betMarketFinancialAdjustment.update({
+        where: { id: adjustment.id },
+        data: {
+          adjustmentStatus: walletAddress
+            ? "corrective_refund_failed"
+            : "awaiting_wallet",
+          correctiveClaimId: claim?.id ?? null,
+        },
+      });
+      continue;
+    }
+
+    let payout = await findConfirmedWoloPayoutByMemo({
+      toAddress: walletAddress,
+      amountWolo: adjustment.amountStillOwedWolo,
+      memo,
+      fromAddress: escrowAddress,
+    });
+    let failureDetail: string | null = null;
+    const attemptedAt = new Date();
+    if (!payout) {
+      const settlementRunId = `aoe2-integrity-incident-${adjustment.incidentId}`;
+      const validation = await validateWoloEscrowSettlementRun({
+        settlementRunId,
+        sourceApp: "aoe2hdbets",
+        sourceEventId: `market-integrity-${adjustment.incidentId}`,
+        note: `Market integrity correction · market ${market.id}`,
+        memo,
+        payouts: [{
+          requestId,
+          toAddress: walletAddress,
+          amountWolo: adjustment.amountStillOwedWolo,
+          memo,
+        }],
+      });
+      if (validation?.ok) {
+        const execution = await executeWoloEscrowSettlementRun({
+          settlementRunId,
+          sourceApp: "aoe2hdbets",
+          sourceEventId: `market-integrity-${adjustment.incidentId}`,
+          note: `Market integrity correction · market ${market.id}`,
+          memo,
+          payouts: [{
+            requestId,
+            toAddress: walletAddress,
+            amountWolo: adjustment.amountStillOwedWolo,
+            memo,
+          }],
+        });
+        const result = execution.payouts.find((entry) => entry.requestId === requestId) ?? null;
+        if (result?.ok && result.txHash) {
+          payout = {
+            txHash: result.txHash,
+            proofUrl: result.proofUrl || buildWoloRestTxLookupUrl(result.txHash),
+            recovered: Boolean(result.idempotentReplay),
+          };
+        } else {
+          failureDetail = result?.detail || execution.detail || execution.failureCode || "Correction payout failed.";
+        }
+      } else {
+        failureDetail = validation?.detail || validation?.failureCode || "Correction payout validation failed.";
+      }
+    }
+
+    if (!payout) {
+      const claim = await createPendingWoloClaim(prisma, {
+        playerName: displayName,
+        displayPlayerName: displayName,
+        amountWolo: adjustment.amountStillOwedWolo,
+        claimKind: "bet_corrective_refund",
+        claimGroupKey,
+        targetScope: "integrity_correction",
+        sourceMarketId: market.id,
+        sourceGameStatsId: market.linkedGameStatsId,
+        errorState: failureDetail,
+        payoutAttemptedAt: attemptedAt,
+        note: `Invalid team assignment · exact stake correction · wager ${adjustment.wagerId}`,
+        status: "pending",
+      });
+      await prisma.betMarketFinancialAdjustment.update({
+        where: { id: adjustment.id },
+        data: {
+          adjustmentStatus: "corrective_refund_failed",
+          correctiveClaimId: claim?.id ?? null,
+        },
+      });
+      continue;
+    }
+
+    const guard = (
+      await validateDistinctClaimPayoutTxBatch(prisma, [{
+        key: requestId,
+        txHash: payout.txHash,
+        toAddress: walletAddress,
+        amountWolo: adjustment.amountStillOwedWolo,
+      }])
+    ).get(requestId);
+    if (!guard?.ok) {
+      await prisma.betMarketFinancialAdjustment.update({
+        where: { id: adjustment.id },
+        data: {
+          adjustmentStatus: "corrective_tx_guard_failed",
+          correctiveTxHash: payout.txHash,
+        },
+      });
+      continue;
+    }
+
+    await prisma.$transaction(async (tx) => {
+      const claim = await createPendingWoloClaim(tx as PrismaClient, {
+        playerName: displayName,
+        displayPlayerName: displayName,
+        amountWolo: adjustment.amountStillOwedWolo,
+        claimKind: "bet_corrective_refund",
+        claimGroupKey,
+        targetScope: "integrity_correction",
+        sourceMarketId: market.id,
+        sourceGameStatsId: market.linkedGameStatsId,
+        payoutTxHash: payout.txHash,
+        payoutProofUrl: guard.proofUrl ?? payout.proofUrl,
+        payoutAttemptedAt: attemptedAt,
+        note: `Invalid team assignment corrected on-chain · wager ${adjustment.wagerId}`,
+        status: "claimed",
+        claimedByUserId: user?.id ?? null,
+        claimedAt: new Date(),
+      });
+      await tx.betMarketFinancialAdjustment.update({
+        where: { id: adjustment.id },
+        data: {
+          adjustmentStatus: "corrective_refund_paid",
+          amountStillOwedWolo: 0,
+          correctiveClaimId: claim?.id ?? null,
+          correctiveTxHash: payout.txHash,
+        },
+      });
+      await tx.betWager.update({
+        where: { id: adjustment.wagerId },
+        data: {
+          status: "void",
+          payoutWolo: adjustment.voidEntitlementWolo,
+          payoutTxHash: payout.txHash,
+          payoutProofUrl: guard.proofUrl ?? payout.proofUrl,
+        },
+      });
+      await recordUserActivity(tx, {
+        userId: adjustment.userId,
+        type: "corrective_refund_completed",
+        path: `/bets/${market.id}`,
+        label: market.title,
+        metadata: {
+          marketId: market.id,
+          incidentId: adjustment.incidentId,
+          wagerId: adjustment.wagerId,
+          amountWolo: adjustment.voidEntitlementWolo,
+          txHash: payout.txHash,
+          recoveredFromChain: payout.recovered,
+        },
+        dedupeWithinSeconds: 86_400,
+      });
+
+      const remaining = await tx.betMarketFinancialAdjustment.count({
+        where: {
+          incidentId: adjustment.incidentId,
+          amountStillOwedWolo: { gt: 0 },
+        },
+      });
+      if (remaining === 0) {
+        await tx.betMarketIntegrityIncident.update({
+          where: { id: adjustment.incidentId },
+          data: {
+            status: "resolved_overpayment",
+            operatorReturnStatus: "not_requested",
+            resolvedAt: new Date(),
+          },
+        });
+        await tx.betMarket.update({
+          where: { id: market.id },
+          data: {
+            refundStatus: "corrected_with_overpayment",
+            settlementStatus: "corrected",
+            settlementFailureCode: null,
+            settlementDetail: "Invalid team assignment voided; exact unpaid stake returned. Prior overpayment remains recorded without automatic clawback.",
+          },
+        });
+      }
+    });
+  }
+}
+
 async function voidExpiredWatcherMarkets(prisma: PrismaClient) {
   const now = new Date();
   const expired = await prisma.betMarket.findMany({
@@ -2197,7 +2569,13 @@ async function linkLateFinalEvidence(prisma: PrismaClient) {
       linkedSessionKey: { not: null },
       lateFinalGameStatsId: null,
     },
-    select: { id: true, linkedSessionKey: true },
+    select: {
+      id: true,
+      linkedSessionKey: true,
+      leftLabel: true,
+      rightLabel: true,
+      resolutionReason: true,
+    },
     take: 50,
   });
   for (const market of voidedMarkets) {
@@ -2205,13 +2583,39 @@ async function linkLateFinalEvidence(prisma: PrismaClient) {
     if (!sessionKey) continue;
     const finalGameId = await resolveFinalGameStatsIdForSessionKey(prisma, sessionKey);
     if (!finalGameId) continue;
-    await prisma.betMarket.updateMany({
+    const linked = await prisma.betMarket.updateMany({
       where: { id: market.id, status: "voided", lateFinalGameStatsId: null },
       data: {
         lateFinalGameStatsId: finalGameId,
         commissionerReviewState: "late_final_evidence",
       },
     });
+    if (linked.count === 1) {
+      await prisma.betMarketIntegrityIncident.upsert({
+        where: { incidentKey: `late-final-after-void-${market.id}` },
+        create: {
+          marketId: market.id,
+          incidentKey: `late-final-after-void-${market.id}`,
+          incidentType: "late_final_after_void",
+          status: "open",
+          publicSummary: "Final replay evidence arrived after this market had already been voided.",
+          evidence: {
+            linkedGameStatsId: finalGameId,
+            priorResolutionReason: market.resolutionReason,
+            automaticReopen: false,
+          },
+          originalLeftLabel: market.leftLabel,
+          originalRightLabel: market.rightLabel,
+        },
+        update: {
+          evidence: {
+            linkedGameStatsId: finalGameId,
+            priorResolutionReason: market.resolutionReason,
+            automaticReopen: false,
+          },
+        },
+      });
+    }
   }
 }
 
@@ -2281,6 +2685,7 @@ async function reconcileBetMarketStatsLinks(prisma: PrismaClient) {
     },
     select: {
       id: true,
+      title: true,
       linkedSessionKey: true,
       linkedGameStatsId: true,
     },
@@ -2343,10 +2748,14 @@ async function reconcileDetachedWatcherMarkets(
     },
     select: {
       id: true,
+      title: true,
       linkedSessionKey: true,
       linkedGameStatsId: true,
       leftLabel: true,
       rightLabel: true,
+      propositionHash: true,
+      leftRosterSnapshot: true,
+      rightRosterSnapshot: true,
       eventLabel: true,
       updatedAt: true,
       status: true,
@@ -2445,11 +2854,30 @@ async function reconcileDetachedWatcherMarkets(
         return;
       }
 
-      const winnerSide = inferWinnerSideFromGameStats(
+      const integrity = evaluateFinalMarketIntegrity(
         market,
         finalGame
       );
-      if (!winnerSide) {
+      if (!integrity.ok || !integrity.winningSide) {
+        const isIntegrityFailure = integrity.reasonCodes.some((reason) =>
+          reason.startsWith("market_") ||
+          reason.startsWith("final_proposition") ||
+          reason.startsWith("final_roster") ||
+          reason.includes("winning_team") ||
+          reason.includes("winner_string")
+        );
+        if (isIntegrityFailure) {
+          await markMarketUnderIntegrityReview(prisma, {
+            marketId: market.id,
+            title: market.title,
+            leftLabel: market.leftLabel,
+            rightLabel: market.rightLabel,
+            priorStatus: market.status,
+            reason: integrity.reasonCodes.join(",") || "settlement_integrity_blocked",
+            linkedGameStatsId: finalGame.id,
+          });
+          return;
+        }
         const disconnectEvidence = Boolean(
           (finalGame.key_events &&
             typeof finalGame.key_events === "object" &&
@@ -2476,6 +2904,7 @@ async function reconcileDetachedWatcherMarkets(
         });
         return;
       }
+      const winnerSide = integrity.winningSide;
       const settledAt =
         finalGame.timestamp ??
         finalGame.createdAt ??
@@ -2734,21 +3163,62 @@ export async function ensureBetMarkets(prisma: PrismaClient) {
   const existingMarkets = await prisma.betMarket.findMany({
     where: slugs.length > 0 ? { slug: { in: slugs } } : undefined,
     select: {
+      id: true,
       slug: true,
       status: true,
       settledAt: true,
       winnerSide: true,
+      title: true,
+      leftLabel: true,
+      rightLabel: true,
+      leftHref: true,
+      rightHref: true,
+      propositionHash: true,
+      firstStakeAcceptedAt: true,
     },
   });
   const existingBySlug = new Map(existingMarkets.map((market) => [market.slug, market] as const));
 
   await Promise.all(
     seeds.map(async (seed) => {
-      await prisma.betMarket.upsert({
+      const existing = existingBySlug.get(seed.slug);
+      const rosterChangedAfterStake = Boolean(
+        existing?.firstStakeAcceptedAt &&
+        existing.propositionHash &&
+        seed.propositionHash !== existing.propositionHash
+      );
+      const persisted = await prisma.betMarket.upsert({
         where: { slug: seed.slug },
         create: marketSeedCreateData(seed),
-        update: marketSeedUpdateData(seed, existingBySlug.get(seed.slug)),
+        update: marketSeedUpdateData(seed, existing),
       });
+      if (rosterChangedAfterStake) {
+        await prisma.betMarketIntegrityIncident.upsert({
+          where: { incidentKey: `roster-changed-after-stake-${persisted.id}` },
+          create: {
+            marketId: persisted.id,
+            incidentKey: `roster-changed-after-stake-${persisted.id}`,
+            incidentType: "roster_changed_after_stake",
+            status: "open",
+            publicSummary: "Betting paused because later replay evidence changed a locked roster.",
+            evidence: {
+              priorPropositionHash: existing?.propositionHash ?? null,
+              observedPropositionHash: seed.propositionHash,
+              sourceParseIteration: seed.sourceParseIteration,
+            },
+            originalLeftLabel: existing?.leftLabel ?? persisted.leftLabel,
+            originalRightLabel: existing?.rightLabel ?? persisted.rightLabel,
+          },
+          update: {
+            status: "open",
+            evidence: {
+              priorPropositionHash: existing?.propositionHash ?? null,
+              observedPropositionHash: seed.propositionHash,
+              sourceParseIteration: seed.sourceParseIteration,
+            },
+          },
+        });
+      }
     })
   );
 
@@ -2803,6 +3273,7 @@ export async function ensureBetMarkets(prisma: PrismaClient) {
   });
 
   await settleResolvedMarketWagers(prisma);
+  await settleMarketIntegrityCorrections(prisma);
   await reconcileBetMarketStatsLinks(prisma);
   await settleFounderBonuses(prisma);
 }
@@ -2864,6 +3335,13 @@ function buildMarketCard(
     linkedSessionKey,
     linkedGameStatsId: market.linkedGameStatsId ?? null,
     status: market.status as BetStatus,
+    teamFormat: market.teamFormat ?? null,
+    teamResolutionStatus: market.teamResolutionStatus ?? null,
+    teamResolutionProvenance: market.teamResolutionProvenance ?? null,
+    teamConfidence: market.teamConfidence ?? null,
+    integrityStatus: market.integrityStatus,
+    integrityReason: market.integrityReason ?? null,
+    rosterLockedAt: market.rosterLockedAt?.toISOString() ?? null,
     featured: market.featured,
     closeLabel:
       market.status === "closing" &&
@@ -2966,7 +3444,14 @@ async function loadMarketsByStatus(prisma: PrismaClient, statuses: BetStatus[]) 
     },
   });
 
-  return markets.filter(isConfidentBetMarket);
+  return markets.filter(
+    (market) =>
+      isConfidentBetMarket(market) &&
+      market.integrityStatus === "verified" &&
+      market.teamResolutionStatus === "resolved" &&
+      market.teamConfidence === "high" &&
+      Boolean(market.propositionHash)
+  );
 }
 
 async function loadOpenMarkets(prisma: PrismaClient) {
@@ -3017,6 +3502,19 @@ async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettle
           select: {
             amountWolo: true,
             status: true,
+          },
+        },
+        integrityIncidents: {
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          take: 1,
+          include: {
+            adjustments: {
+              select: {
+                amountStillOwedWolo: true,
+                overpaymentWolo: true,
+                adjustmentStatus: true,
+              },
+            },
           },
         },
       },
@@ -3096,7 +3594,9 @@ async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettle
       const resolutionStatus = market.status as "settled" | "voided" | "under_review";
       const winner =
         resolutionStatus === "voided"
-          ? market.refundStatus === "refunded"
+          ? market.refundStatus === "corrected_with_overpayment"
+            ? "Voided · stake corrections recorded"
+            : market.refundStatus === "refunded"
             ? "Voided · refunded"
             : market.refundStatus === "failed"
               ? "Voided · refund failed, retrying"
@@ -3128,6 +3628,24 @@ async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettle
       const linkedSessionKey =
         market.linkedSessionKey?.trim() || market.scheduledMatch?.linkedSessionKey?.trim() || null;
       const href = `/bets/${market.id}`;
+      const integrityIncident = market.integrityIncidents[0] ?? null;
+      const amountStillOwedWolo = integrityIncident?.adjustments.reduce(
+        (sum, adjustment) => sum + adjustment.amountStillOwedWolo,
+        0
+      ) ?? 0;
+      const overpaymentWolo = integrityIncident?.adjustments.reduce(
+        (sum, adjustment) => sum + adjustment.overpaymentWolo,
+        0
+      ) ?? 0;
+      const correctionStatus = integrityIncident
+        ? integrityIncident.adjustments.every((adjustment) =>
+            ["corrective_refund_paid", "overpayment_recorded", "no_adjustment_due"].includes(
+              adjustment.adjustmentStatus
+            )
+          )
+          ? "recorded"
+          : "in_progress"
+        : null;
 
       return {
         id: market.id,
@@ -3137,6 +3655,14 @@ async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettle
         resolutionStatus,
         resolutionReason: market.resolutionReason ?? null,
         refundStatus: market.refundStatus ?? null,
+        teamFormat: market.teamFormat ?? null,
+        teamResolutionProvenance: market.teamResolutionProvenance ?? null,
+        integrityStatus: market.integrityStatus,
+        integrityReason: market.integrityReason ?? null,
+        integritySummary: integrityIncident?.publicSummary ?? null,
+        correctionStatus,
+        amountStillOwedWolo,
+        overpaymentWolo,
         mapName,
         totalPotWolo,
         payoutWolo,
@@ -3205,6 +3731,14 @@ async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettle
       resolutionStatus: "settled",
       resolutionReason: null,
       refundStatus: null,
+      teamFormat: null,
+      teamResolutionProvenance: null,
+      integrityStatus: "not_applicable",
+      integrityReason: null,
+      integritySummary: null,
+      correctionStatus: null,
+      amountStillOwedWolo: 0,
+      overpaymentWolo: 0,
       mapName,
       totalPotWolo: 110 + (hashValue(`${row.id}:${row.winner}:pot`) % 240),
       payoutWolo: 110 + (hashValue(`${row.id}:${row.winner}`) % 240),

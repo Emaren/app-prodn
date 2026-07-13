@@ -45,7 +45,15 @@ export default function ResultCard({
           )}
         </div>
 
-        <div className="flex shrink-0 items-center gap-2 rounded-full border border-emerald-300/16 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-100">
+        <div
+          className={`flex shrink-0 items-center gap-2 rounded-full border px-3 py-1 text-[11px] ${
+            result.resolutionStatus === "settled"
+              ? "border-emerald-300/16 bg-emerald-500/10 text-emerald-100"
+              : result.resolutionStatus === "voided"
+                ? "border-sky-300/20 bg-sky-500/10 text-sky-100"
+                : "border-amber-300/20 bg-amber-500/10 text-amber-100"
+          }`}
+        >
           <CoinMark small />
           <span>{formatExactWolo(resultPotWolo)} WOLO</span>
         </div>
@@ -64,6 +72,16 @@ export default function ResultCard({
         <div className={compact ? "mt-1 text-sm leading-5 text-slate-400" : "mt-1 text-sm leading-6 text-slate-400"}>
           {result.resolutionStatus === "settled" ? `${result.winner} took it` : result.winner}
         </div>
+        {result.integritySummary ? (
+          <div className="mt-2 rounded-xl border border-sky-300/12 bg-sky-400/[0.05] px-3 py-2 text-xs leading-5 text-sky-100/80">
+            {result.integritySummary}
+            {result.amountStillOwedWolo > 0
+              ? ` ${formatExactWolo(result.amountStillOwedWolo)} WOLO correction pending.`
+              : result.correctionStatus === "recorded"
+                ? " Financial correction recorded in the ledger."
+                : ""}
+          </div>
+        ) : null}
       </div>
 
       <div className={compact ? "mt-4" : "mt-auto pt-4"}>

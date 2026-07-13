@@ -57,6 +57,15 @@ journalctl -u aoe2hdbets-web.service -n 40 --no-pager
 
 ## Recent deployment notes
 
+### 2026-07-13 team-market integrity and incident correction rail
+
+- API replay players now retain canonical explicit team IDs and expose team resolution/final winner coherence.
+- Watcher team markets require high-confidence explicit teams, persist immutable proposition snapshots, lock on first stake, and fail closed during final settlement.
+- Added `/admin/market-integrity`, exact incident/adjustment/alias tables, read-only historical audit artifacts, and evidence-locked repair scripts.
+- Before migration, make a restricted Postgres backup and exact incident export with hashes. Then run `npx prisma migrate deploy`, verify `bet_market_integrity_incidents`, `bet_market_financial_adjustments`, `player_identity_aliases`, and new `bet_markets` columns/indexes, build, and restart.
+- Do not apply a financial repair until new code is live, the settlement/signing rail is verified, the dry run matches every chain/database fact, and the backup exists. Never bulk repair from audit heuristics.
+- Runtime evidence paths are `runtime/market-integrity-backups` (mode `0700` directory / `0600` files) and `runtime/team-market-audits`; preserve their hashes off-checkout before cleanup or redeploy.
+
 ### 2026-07-03 Hero Studio and Main Stage carousel
 
 - Replaced the direct single EventTile placement on `/` and `/lobby` with a

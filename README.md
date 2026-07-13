@@ -1,6 +1,6 @@
 # app-prodn
 
-Watcher-linked betting lifecycle configuration: `WATCHER_FINAL_PROOF_GRACE_MINUTES` defaults to 20. Deploy the accompanying Prisma migration before restarting. Production repair work must dry-run `scripts/repair-void-bet-market.mjs`, verify all preconditions, apply once, then invoke/verify the ordinary bet reconciliation rail; never delete financial history.
+Watcher-linked betting lifecycle configuration: `WATCHER_FINAL_PROOF_GRACE_MINUTES` defaults to 20. Team books obey **no confident teams, no market; no matching final roster, no settlement**. Team ID `0` is valid, player order is never membership, the first stake freezes the structured proposition, and integrity failures enter commissioner review before fees, bonuses, or payouts. See [docs/MARKET_TEAM_INTEGRITY.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/docs/MARKET_TEAM_INTEGRITY.md). Deploy the accompanying Prisma migration before restarting. Production repair work must dry-run the evidence-locked script, verify every precondition, apply once, then invoke/verify the ordinary reconciliation rail; never delete financial history or auto-claw back a wallet.
 
 Production Next.js frontend for AoE2HDBets.
 
@@ -22,6 +22,7 @@ The public leaderboard now has two dedicated routes: `/leaderboard` for the mode
 - [docs/WAR_ROOM_FORUM.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/docs/WAR_ROOM_FORUM.md)
 - [docs/HERO_STUDIO.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/docs/HERO_STUDIO.md)
 - [docs/DIRECT_CHAT.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/docs/DIRECT_CHAT.md)
+- [docs/MARKET_TEAM_INTEGRITY.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/docs/MARKET_TEAM_INTEGRITY.md)
 
 ## Stack
 

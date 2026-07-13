@@ -19,6 +19,17 @@ type MarketRow = {
   title: string;
   eventLabel: string | null;
   status: string;
+  teamFormat: string | null;
+  teamResolutionStatus: string | null;
+  teamResolutionProvenance: string | null;
+  teamConfidence: string | null;
+  integrityStatus: string;
+  integrityReason: string | null;
+  resolutionReason: string | null;
+  refundStatus: string | null;
+  rosterLockedAt: Date | null;
+  leftRosterSnapshot: unknown;
+  rightRosterSnapshot: unknown;
   leftLabel: string;
   rightLabel: string;
   seedLeftWolo: number;
@@ -78,6 +89,25 @@ type ClaimRow = {
   payoutTxHash: string | null;
   createdAt: Date;
   claimedAt: Date | null;
+};
+
+type IntegrityIncidentRow = {
+  id: number;
+  status: string;
+  incidentType: string;
+  publicSummary: string;
+  originalLeftLabel: string;
+  originalRightLabel: string;
+  verifiedLeftRoster: unknown;
+  verifiedRightRoster: unknown;
+  originalPayoutWolo: number;
+  voidEntitlementWolo: number;
+  underpaymentWolo: number;
+  overpaymentWolo: number;
+  bettingFeeReversedWolo: number;
+  operatorReturnStatus: string | null;
+  resolvedAt: Date | null;
+  amountStillOwedWolo: number;
 };
 
 type TimelineRow = {
@@ -152,6 +182,57 @@ function sideLabel(market: MarketRow, side: string | null | undefined) {
 function shortHash(value: string | null | undefined) {
   if (!value) return null;
   return `${value.slice(0, 8)}…${value.slice(-6)}`;
+}
+
+function rosterNames(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((player) => {
+    if (typeof player === "string" && player.trim()) return [player.trim()];
+    if (!player || typeof player !== "object") return [];
+    const name = (player as { name?: unknown }).name;
+    return typeof name === "string" && name.trim() ? [name.trim()] : [];
+  });
+}
+
+function IntegrityNotice({
+  market,
+  incident,
+}: {
+  market: MarketRow;
+  incident: IntegrityIncidentRow | null;
+}) {
+  if (market.integrityStatus === "verified" && !incident) return null;
+  const verifiedLeft = rosterNames(incident?.verifiedLeftRoster);
+  const verifiedRight = rosterNames(incident?.verifiedRightRoster);
+  return (
+    <section className="rounded-[1.5rem] border border-sky-300/20 bg-sky-400/[0.065] p-5 text-sky-50 shadow-[0_18px_55px_rgba(2,132,199,0.10)]">
+      <div className="text-[10px] font-black uppercase tracking-[0.34em] text-sky-200/70">
+        Market integrity · {market.integrityStatus.replaceAll("_", " ")}
+      </div>
+      <p className="mt-2 max-w-4xl text-sm leading-6 text-sky-50/85">
+        {incident?.publicSummary || "Betting is locked while replay team evidence is reviewed."}
+      </p>
+      {incident ? (
+        <div className="mt-4 grid gap-3 text-xs text-sky-100/75 md:grid-cols-2">
+          <div className="rounded-xl border border-white/10 bg-black/15 p-3">
+            <div className="font-semibold text-white">Original proposition</div>
+            <div className="mt-1">{incident.originalLeftLabel} vs {incident.originalRightLabel}</div>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/15 p-3">
+            <div className="font-semibold text-white">Replay-verified teams</div>
+            <div className="mt-1">
+              {verifiedLeft.length && verifiedRight.length
+                ? `${verifiedLeft.join(" / ")} vs ${verifiedRight.join(" / ")}`
+                : "Preserved in the incident evidence ledger"}
+            </div>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/15 p-3 md:col-span-2">
+            Void entitlement {formatWolo(incident.voidEntitlementWolo)} WOLO · correction still owed {formatWolo(incident.amountStillOwedWolo)} WOLO · prior overpayment preserved {formatWolo(incident.overpaymentWolo)} WOLO
+          </div>
+        </div>
+      ) : null}
+    </section>
+  );
 }
 
 function isCountableIntent(status: string) {
@@ -245,6 +326,24 @@ function splitTeamMatchTitle(title: string) {
     teamSize: half,
     isBalancedTeamMatch: half > 1,
   };
+}
+
+function marketTeamMatchup(market: MarketRow) {
+  const leftTeam = rosterNames(market.leftRosterSnapshot);
+  const rightTeam = rosterNames(market.rightRosterSnapshot);
+  if (leftTeam.length > 0 && rightTeam.length > 0) {
+    return {
+      leftTeam,
+      rightTeam,
+      teamSize: Math.max(leftTeam.length, rightTeam.length),
+      isBalancedTeamMatch: leftTeam.length === rightTeam.length && leftTeam.length > 1,
+    };
+  }
+
+  // Legacy markets predate immutable roster snapshots. Parsing their preserved
+  // title is display-only historical compatibility and never feeds wagering or
+  // settlement.
+  return splitTeamMatchTitle(market.title);
 }
 
 function teamNameSizeClass(name: string, teamSize: number) {
@@ -572,6 +671,17 @@ export default async function BetMarketDetailPage({ params, searchParams }: Page
             title,
             event_label as "eventLabel",
             status,
+            team_format as "teamFormat",
+            team_resolution_status as "teamResolutionStatus",
+            team_resolution_provenance as "teamResolutionProvenance",
+            team_confidence as "teamConfidence",
+            integrity_status as "integrityStatus",
+            integrity_reason as "integrityReason",
+            resolution_reason as "resolutionReason",
+            refund_status as "refundStatus",
+            roster_locked_at as "rosterLockedAt",
+            left_roster_snapshot as "leftRosterSnapshot",
+            right_roster_snapshot as "rightRosterSnapshot",
             left_label as "leftLabel",
             right_label as "rightLabel",
             seed_left_wolo as "seedLeftWolo",
@@ -595,6 +705,17 @@ export default async function BetMarketDetailPage({ params, searchParams }: Page
             title,
             event_label as "eventLabel",
             status,
+            team_format as "teamFormat",
+            team_resolution_status as "teamResolutionStatus",
+            team_resolution_provenance as "teamResolutionProvenance",
+            team_confidence as "teamConfidence",
+            integrity_status as "integrityStatus",
+            integrity_reason as "integrityReason",
+            resolution_reason as "resolutionReason",
+            refund_status as "refundStatus",
+            roster_locked_at as "rosterLockedAt",
+            left_roster_snapshot as "leftRosterSnapshot",
+            right_roster_snapshot as "rightRosterSnapshot",
             left_label as "leftLabel",
             right_label as "rightLabel",
             seed_left_wolo as "seedLeftWolo",
@@ -615,7 +736,7 @@ export default async function BetMarketDetailPage({ params, searchParams }: Page
   const market = markets[0];
   if (!market) notFound();
 
-  const [intents, wagers, bonuses, claims] = await Promise.all([
+  const [intents, wagers, bonuses, claims, integrityIncidents] = await Promise.all([
     prisma.$queryRaw<IntentRow[]>`
       select
         i.id,
@@ -679,7 +800,34 @@ export default async function BetMarketDetailPage({ params, searchParams }: Page
         and rescinded_at is null
       order by created_at asc, id asc
     `,
+    prisma.$queryRaw<IntegrityIncidentRow[]>`
+      select
+        incident.id,
+        incident.status,
+        incident.incident_type as "incidentType",
+        incident.public_summary as "publicSummary",
+        incident.original_left_label as "originalLeftLabel",
+        incident.original_right_label as "originalRightLabel",
+        incident.verified_left_roster as "verifiedLeftRoster",
+        incident.verified_right_roster as "verifiedRightRoster",
+        incident.original_payout_wolo as "originalPayoutWolo",
+        incident.void_entitlement_wolo as "voidEntitlementWolo",
+        incident.underpayment_wolo as "underpaymentWolo",
+        incident.overpayment_wolo as "overpaymentWolo",
+        incident.betting_fee_reversed_wolo as "bettingFeeReversedWolo",
+        incident.operator_return_status as "operatorReturnStatus",
+        incident.resolved_at as "resolvedAt",
+        coalesce(sum(adjustment.amount_still_owed_wolo), 0)::int as "amountStillOwedWolo"
+      from bet_market_integrity_incidents incident
+      left join bet_market_financial_adjustments adjustment
+        on adjustment.incident_id = incident.id
+      where incident.market_id = ${market.id}
+      group by incident.id
+      order by incident.created_at desc, incident.id desc
+      limit 1
+    `,
   ]);
+  const integrityIncident = integrityIncidents[0] ?? null;
 
   const seededWolo = market.seedLeftWolo + market.seedRightWolo;
   const intentWolo = intents
@@ -805,13 +953,15 @@ export default async function BetMarketDetailPage({ params, searchParams }: Page
   );
 
   const replayHref = gameHref(market);
-  const resolvedTeamMatchup = splitTeamMatchTitle(market.title);
+  const resolvedTeamMatchup = marketTeamMatchup(market);
 
   if (view === "basic") {
     return (
       <main className="min-h-screen bg-[#07111f] text-slate-100">
         <section className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-5 py-8 sm:px-8 lg:px-10">
           <BookTopBar market={market} view={view} order={order} replayHref={replayHref} />
+
+          <IntegrityNotice market={market} incident={integrityIncident} />
 
         <div className="relative z-10 flex justify-end">
           <BetDetailBaeToggle marketId={market.id} view={view} />
@@ -862,6 +1012,8 @@ export default async function BetMarketDetailPage({ params, searchParams }: Page
 
       <section className="relative mx-auto flex w-full max-w-[96rem] flex-col gap-6 px-5 py-8 sm:px-8 lg:px-10">
         <BookTopBar market={market} view={view} order={order} replayHref={replayHref} />
+
+        <IntegrityNotice market={market} incident={integrityIncident} />
 
         <div className="relative z-10 flex justify-end">
           <BetDetailBaeToggle marketId={market.id} view={view} />

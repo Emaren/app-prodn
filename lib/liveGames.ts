@@ -13,6 +13,10 @@ import {
   normalizePublicReplayText,
   resolveReliableReplayWinner,
 } from "@/lib/unresolvedWatcherResult";
+import {
+  normalizeReplayPlayers,
+  resolveReplayTeams,
+} from "@/lib/teamResolution";
 import { loadReplayReviewMarketSummaryMap } from "@/lib/replayReviewQueue";
 import { toWatchStreamPayload, type WatchStreamPayload } from "@/lib/watchStreams";
 
@@ -719,18 +723,10 @@ function extractRecentMatchPlayers(match: LobbyMatchRow): LiveGameSession["playe
     })?.toLowerCase() ?? "";
 
   if (rawPlayers.length > 0) {
-    return rawPlayers
-      .map((player) => {
-        const record = player as Record<string, unknown>;
-        const name =
-          normalizePublicReplayText(record.name ?? record.player ?? record.playerName) ?? "";
-        if (!name) return null;
-        return {
-          name,
-          winner: winner ? name.toLowerCase() === winner : null,
-        };
-      })
-      .filter(Boolean) as LiveGameSession["players"];
+    return normalizeReplayPlayers(rawPlayers).map((player) => ({
+      ...player,
+      winner: winner ? player.normalizedName === winner : player.winner,
+    }));
   }
 
   const title = readMatchText(match, "title", "matchTitle", "name");
@@ -739,14 +735,14 @@ function extractRecentMatchPlayers(match: LobbyMatchRow): LiveGameSession["playe
     .map((part) => part.trim())
     .filter(Boolean);
 
-  return parts.slice(0, 2).flatMap((name) => {
+  return normalizeReplayPlayers(parts.slice(0, 2).flatMap((name) => {
     const resolvedName = normalizePublicReplayText(name);
     if (!resolvedName) return [];
     return [{
-    name: resolvedName,
-    winner: winner ? name.toLowerCase() === winner : false,
+      name: resolvedName,
+      winner: winner ? name.toLowerCase() === winner : false,
     }];
-  });
+  }));
 }
 
 function buildRecentOutcomeSession(
@@ -780,6 +776,7 @@ function buildRecentOutcomeSession(
   const parseReason = readMatchText(match, "parse_reason", "parseReason") || null;
   const parseSource = readMatchText(match, "parse_source", "parseSource") || null;
   const mapName = readMatchMapName(match);
+  const teamResolution = resolveReplayTeams(players, { final: true });
 
   return {
     id,
@@ -815,6 +812,7 @@ function buildRecentOutcomeSession(
     }),
     state: "completed",
     players,
+    teamResolution,
     uploaders: [],
     watcherCount: 1,
     parseRows: 1,
@@ -931,10 +929,10 @@ function parseStreamPlayers(title: string): LiveGameSession["players"] {
 
   if (parts.length < 2) return [];
 
-  return parts.slice(0, 2).map((name) => ({
+  return normalizeReplayPlayers(parts.slice(0, 2).map((name) => ({
     name,
     winner: null,
-  }));
+  })));
 }
 
 
@@ -1004,6 +1002,7 @@ async function loadStandaloneLiveStreamSessions(
     const title = cleanStandaloneStreamTitle(stream.title || stream.playerLabel || stream.label);
     const nowIso = new Date().toISOString();
     const activityIso = stream.lastHeartbeatAt || stream.updatedAt || nowIso;
+    const players = parseStreamPlayers(title);
 
     sessions.push({
       id: -Math.abs(stream.id),
@@ -1024,7 +1023,8 @@ async function loadStandaloneLiveStreamSessions(
       parseSource: "watcher_stream",
       unresolvedResult: null,
       state: "live",
-      players: parseStreamPlayers(title),
+      players,
+      teamResolution: resolveReplayTeams(players),
       uploaders: [],
       watcherCount: 1,
       parseRows: 1,

@@ -610,6 +610,12 @@ export default function AdminPage() {
               >
                 Open User List
               </Link>
+              <Link
+                href="/admin/market-integrity"
+                className="inline-flex rounded-full border border-sky-200/18 bg-sky-300/[0.06] px-5 py-3 text-sm text-sky-100 transition hover:border-sky-200/36 hover:bg-sky-300/10"
+              >
+                Market Integrity
+              </Link>
             </div>
           </div>
 

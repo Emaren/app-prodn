@@ -173,7 +173,25 @@ function sessionKnownParticipantNames(session: Pick<LiveSession, "players" | "up
   ]);
 }
 
+function resolvedReplayTeamTitle(session: LiveSession) {
+  const resolution = session.teamResolution;
+  if (
+    resolution?.status !== "resolved" ||
+    resolution.confidence !== "high" ||
+    resolution.teams.length !== 2
+  ) {
+    return null;
+  }
+  const labels = resolution.teams.map((team) =>
+    team.players.map((player) => player.name).filter(Boolean).join(" / ")
+  );
+  return labels.every(Boolean) ? `${labels[0]} vs ${labels[1]}` : null;
+}
+
 function sessionTitle(session: LiveSession) {
+  const replayTeamTitle = resolvedReplayTeamTitle(session);
+  if (replayTeamTitle) return replayTeamTitle;
+
   // Betting markets already preserve the authoritative team
   // presentation: teammates separated by "/" and one "vs"
   // between the two complete sides.
@@ -191,7 +209,7 @@ function sessionTitle(session: LiveSession) {
   const names = sessionKnownParticipantNames(session);
 
   if (names.length >= 2) {
-    return names.join(" vs ");
+    return `${names.join(" · ")} · teams resolving`;
   }
 
   if (names.length === 1) {
@@ -236,7 +254,12 @@ function proofExplanation(session: LiveSession) {
 
 function liveMarketHref(session: LiveSession) {
   const marketId = session.reviewMarket?.id;
-  if (session.state === "completed" || marketId === null || marketId === undefined) {
+  if (
+    session.state === "completed" ||
+    !resolvedReplayTeamTitle(session) ||
+    marketId === null ||
+    marketId === undefined
+  ) {
     return null;
   }
 
@@ -1389,52 +1412,14 @@ function resolvedBattleSizeLabel(playerCount: number) {
 
 function resolvedSessionDisplay(session: LiveSession) {
   const names = resolvedPlayerNames(session);
-  const players = session.players
-    .map((player) => {
-      const rawPlayer = player as {
-        name?: string | null;
-        winner?: boolean | null;
-        team_id?: number | string | null;
-        teamId?: number | string | null;
-      };
-
-      return {
-        name: String(rawPlayer.name ?? "").trim(),
-        winner: rawPlayer.winner === true,
-        teamId:
-          rawPlayer.team_id !== null && rawPlayer.team_id !== undefined
-            ? String(rawPlayer.team_id)
-            : rawPlayer.teamId !== null && rawPlayer.teamId !== undefined
-              ? String(rawPlayer.teamId)
-              : null,
-      };
-    })
-    .filter((player) => player.name);
-
   const winnerName = resolvedWinnerName(session);
   const mapName = publicReplayMapLabel(session.mapName, "Map pending");
   const battleSize = resolvedBattleSizeLabel(names.length);
-  const winnerPlayers = players.filter((player) => player.winner);
-  const fieldPlayers = players.filter((player) => !player.winner);
-  const hasWinnerFlags = winnerPlayers.length > 0 && fieldPlayers.length > 0;
-  const isEvenTeamGame = names.length >= 4 && names.length % 2 === 0;
-
-  const winnerSide =
-    hasWinnerFlags
-      ? winnerPlayers.map((player) => player.name)
-      : winnerName
-        ? [winnerName]
-        : names.slice(0, Math.max(1, Math.ceil(names.length / 2)));
-
-  const winnerSet = new Set(winnerSide.map((name) => name.toLowerCase()));
-  const fieldSide =
-    hasWinnerFlags
-      ? fieldPlayers.map((player) => player.name)
-      : names.length > 2
-        ? names.filter((name) => !winnerSet.has(name.toLowerCase()))
-        : names.filter((name) => !winnerName || name !== winnerName);
 
   if (names.length <= 2) {
+    const winnerSide = winnerName ? [winnerName] : names.slice(0, 1);
+    const winnerSet = new Set(winnerSide.map((name) => name.toLowerCase()));
+    const fieldSide = names.filter((name) => !winnerSet.has(name.toLowerCase()));
     const loserName = fieldSide[0] || names.find((name) => name !== winnerName) || null;
     const duelWinner = winnerSide[0] || winnerName;
 
@@ -1449,23 +1434,54 @@ function resolvedSessionDisplay(session: LiveSession) {
       rightLabel: duelWinner ? "Challenger" : "Side II",
       leftNames: duelWinner ? [duelWinner] : names.slice(0, 1),
       rightNames: loserName ? [loserName] : names.slice(1, 2),
+      teamsResolved: true,
     };
   }
 
+  const resolution = session.teamResolution;
+  if (
+    resolution.status !== "resolved" ||
+    resolution.confidence !== "high" ||
+    resolution.teams.length !== 2
+  ) {
+    return {
+      names,
+      winnerName,
+      battleSize,
+      mapName,
+      heroTitle: `${battleSize} stored · teams unresolved`,
+      heroSubtitle: `The replay roster is preserved without guessing team sides · ${mapName}`,
+      leftLabel: "Replay roster",
+      rightLabel: "Teams unresolved",
+      leftNames: names,
+      rightNames: [] as string[],
+      teamsResolved: false,
+    };
+  }
+
+  const teamFlags = resolution.teams.map((team) => team.players.map((player) => player.winner));
+  const winningIndex = teamFlags.findIndex(
+    (flags) => flags.length > 0 && flags.every((flag) => flag === true)
+  );
+  const losingIndex = teamFlags.findIndex(
+    (flags) => flags.length > 0 && flags.every((flag) => flag === false)
+  );
+  const hasCoherentTeamResult =
+    winningIndex >= 0 && losingIndex >= 0 && winningIndex !== losingIndex;
+  const leftTeam = resolution.teams[hasCoherentTeamResult ? winningIndex : 0];
+  const rightTeam = resolution.teams[hasCoherentTeamResult ? losingIndex : 1];
+  const winnerSide = leftTeam.players.map((player) => player.name);
+  const fieldSide = rightTeam.players.map((player) => player.name);
   const leadWinner = winnerSide[0] || winnerName || names[0] || "Victory";
   const teamTitle =
-    hasWinnerFlags && isEvenTeamGame
+    hasCoherentTeamResult
       ? `Team ${leadWinner} wins ${battleSize}`
-      : hasWinnerFlags
-        ? `${compactResolvedNames(winnerSide, 2)} win`
-        : winnerName
-          ? `${winnerName} recorded as victor`
-          : `${battleSize} resolved`;
+      : `${battleSize} stored · result under review`;
 
   const teamSubtitle =
-    fieldSide.length > 0
+    hasCoherentTeamResult
       ? `${compactResolvedNames(winnerSide, 3)} defeated ${compactResolvedNames(fieldSide, 3)} · ${mapName}`
-      : `${compactResolvedNames(names, 4)} · ${mapName}`;
+      : `Replay-confirmed teams preserved; no winner side is inferred · ${mapName}`;
 
   return {
     names,
@@ -1474,10 +1490,11 @@ function resolvedSessionDisplay(session: LiveSession) {
     mapName,
     heroTitle: teamTitle,
     heroSubtitle: teamSubtitle,
-    leftLabel: hasWinnerFlags ? "Victory side" : "Recorded winner",
-    rightLabel: hasWinnerFlags ? "Defeated side" : "Field",
+    leftLabel: hasCoherentTeamResult ? "Victory side" : "Replay team I",
+    rightLabel: hasCoherentTeamResult ? "Defeated side" : "Replay team II",
     leftNames: winnerSide,
     rightNames: fieldSide,
+    teamsResolved: true,
   };
 }
 
@@ -1559,6 +1576,45 @@ function UnresolvedReplayOutcomeCard({ session }: { session: LiveSession }) {
   );
 }
 
+function NeutralResolvedRosterCard({
+  session,
+  display,
+}: {
+  session: LiveSession;
+  display: ReturnType<typeof resolvedSessionDisplay>;
+}) {
+  return (
+    <article className="relative overflow-hidden rounded-[1.75rem] border border-sky-200/18 bg-[linear-gradient(145deg,rgba(15,23,42,0.94),rgba(2,6,23,0.98))] px-5 py-5 shadow-[0_24px_80px_rgba(2,6,23,0.32)]">
+      <div className="text-[10px] font-black uppercase tracking-[0.3em] text-sky-100/60">
+        Final replay · teams unresolved
+      </div>
+      <h3 className="mt-3 font-serif text-[1.45rem] text-white">{display.heroTitle}</h3>
+      <p className="mt-2 text-sm leading-6 text-slate-300">{display.heroSubtitle}</p>
+      <div className="mt-4 flex flex-wrap gap-2 rounded-2xl border border-white/10 bg-white/[0.035] p-4">
+        {display.names.map((name) => (
+          <span
+            key={name}
+            className="rounded-full border border-white/10 bg-black/22 px-3 py-1.5 text-xs font-semibold text-slate-100"
+          >
+            {name}
+          </span>
+        ))}
+      </div>
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+          No authoritative sides are displayed or offered for betting
+        </span>
+        <Link
+          href={sessionStatsHref(session)}
+          className="inline-flex h-9 items-center justify-center rounded-full border border-sky-200/18 bg-sky-300/10 px-4 text-xs font-semibold text-sky-100 transition hover:bg-sky-300/15"
+        >
+          Open replay
+        </Link>
+      </div>
+    </article>
+  );
+}
+
 function PremiumResolvedOutcomeCard({
   session,
   resolvedStyle,
@@ -1572,6 +1628,9 @@ function PremiumResolvedOutcomeCard({
 
   const sessionAny = session as Record<string, unknown>;
   const display = resolvedSessionDisplay(session);
+  if (!display.teamsResolved) {
+    return <NeutralResolvedRosterCard session={session} display={display} />;
+  }
   const gameHref = sessionStatsHref(session);
   const watchHref = `/watch/${encodeURIComponent(session.sessionKey)}`;
   const durationLabel = formatDurationCompact(session.durationSeconds);
@@ -2264,12 +2323,18 @@ function ClassicLiveSessionCard({
         >
           Open Lobby
         </Link>
-        <Link
-          href={liveMarketHref(session) ?? "/bets"}
-          className="rounded-full border border-amber-300/30 bg-amber-400/10 px-4 py-2 text-sm text-amber-100 transition hover:bg-amber-400/15"
-        >
-          Bet Rail
-        </Link>
+        {liveMarketHref(session) ? (
+          <Link
+            href={liveMarketHref(session) as string}
+            className="rounded-full border border-amber-300/30 bg-amber-400/10 px-4 py-2 text-sm text-amber-100 transition hover:bg-amber-400/15"
+          >
+            Bet live
+          </Link>
+        ) : session.state === "live" ? (
+          <span className="rounded-full border border-slate-300/15 bg-white/[0.04] px-4 py-2 text-sm text-slate-400">
+            Betting unavailable · teams unresolved
+          </span>
+        ) : null}
       </div>
     </div>
   );
@@ -2959,12 +3024,18 @@ function LiveSessionCard({
           </Link>
         ) : null}
         {!isBasic && !isExtreme ? (
-          <Link
-            href={liveMarketHref(session) ?? "/bets"}
-            className="inline-flex min-h-9 items-center justify-center rounded-full border border-amber-200/18 bg-amber-300/8 px-4 py-2 text-center text-xs font-semibold text-amber-100 transition hover:bg-amber-300/14"
-          >
-            Bet rail
-          </Link>
+          liveMarketHref(session) ? (
+            <Link
+              href={liveMarketHref(session) as string}
+              className="inline-flex min-h-9 items-center justify-center rounded-full border border-amber-200/18 bg-amber-300/8 px-4 py-2 text-center text-xs font-semibold text-amber-100 transition hover:bg-amber-300/14"
+            >
+              Bet live
+            </Link>
+          ) : session.state === "live" ? (
+            <span className="inline-flex min-h-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.035] px-4 py-2 text-center text-xs text-slate-500">
+              Betting unavailable · teams unresolved
+            </span>
+          ) : null
         ) : null}
       </div>
     </article>

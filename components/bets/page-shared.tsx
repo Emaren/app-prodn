@@ -90,6 +90,13 @@ export type BetBoardMarket = {
   linkedSessionKey: string | null;
   linkedGameStatsId: number | null;
   status: BetStatus;
+  teamFormat: string | null;
+  teamResolutionStatus: string | null;
+  teamResolutionProvenance: string | null;
+  teamConfidence: string | null;
+  integrityStatus: string;
+  integrityReason: string | null;
+  rosterLockedAt: string | null;
   featured: boolean;
   closeLabel: string;
   scheduledStartAt: string | null;
@@ -138,6 +145,14 @@ export type BetSettledResult = {
   resolutionStatus: "settled" | "voided" | "under_review";
   resolutionReason: string | null;
   refundStatus: string | null;
+  teamFormat: string | null;
+  teamResolutionProvenance: string | null;
+  integrityStatus: string;
+  integrityReason: string | null;
+  integritySummary: string | null;
+  correctionStatus: string | null;
+  amountStillOwedWolo: number;
+  overpaymentWolo: number;
   mapName: string;
   totalPotWolo: number;
   payoutWolo: number;

@@ -1058,6 +1058,58 @@ async function fetchTxWithRetry(txHash: string, attempts = 6) {
   return null;
 }
 
+export async function findConfirmedWoloPayoutByMemo(input: {
+  toAddress: string;
+  amountWolo: number;
+  memo: string;
+  fromAddress?: string | null;
+}) {
+  const recipient = normalizeAddress(input.toAddress);
+  const sender = normalizeAddress(input.fromAddress);
+  const memo = input.memo.trim();
+  const amountUWolo = toUwoLoAmount(input.amountWolo);
+  if (!recipient || !memo || input.amountWolo < 1) return null;
+
+  const params = new URLSearchParams();
+  params.append("events", `transfer.recipient='${recipient}'`);
+  params.set("pagination.limit", "100");
+  params.set("order_by", "ORDER_BY_DESC");
+  const response = await fetch(`${WOLO_REST_URL}/cosmos/tx/v1beta1/txs?${params.toString()}`, {
+    cache: "no-store",
+  }).catch(() => null);
+  if (!response?.ok) return null;
+
+  const payload = asRecord(await response.json().catch(() => null));
+  const txResponses = asRecordArray(payload?.tx_responses);
+  for (const txResponse of txResponses) {
+    if (Number(txResponse.code ?? 0) !== 0) continue;
+    const tx = asRecord(txResponse.tx);
+    const body = asRecord(tx?.body);
+    if (getStringField(body || {}, "memo") !== memo) continue;
+    const messages = asRecordArray(body?.messages);
+    const matches = messages.some((message) => {
+      if (getStringField(message, "@type") !== "/cosmos.bank.v1beta1.MsgSend") return false;
+      if (sender && normalizeAddress(getStringField(message, "from_address")) !== sender) return false;
+      if (normalizeAddress(getStringField(message, "to_address")) !== recipient) return false;
+      const coins = asRecordArray(message.amount);
+      return coins.some(
+        (coin) =>
+          getStringField(coin, "denom") === WOLO_BASE_DENOM &&
+          getStringField(coin, "amount") === amountUWolo
+      );
+    });
+    if (!matches) continue;
+    const txHash = normalizeTxHash(getStringField(txResponse, "txhash"));
+    if (!txHash) continue;
+    return {
+      txHash,
+      proofUrl: buildWoloRestTxLookupUrl(txHash),
+      recovered: true,
+    };
+  }
+  return null;
+}
+
 function txNetworkFeeWolo(payload: unknown) {
   const txResponse = asRecord(asRecord(payload)?.tx_response);
   return estimateWoloNetworkFeeWolo(getStringField(txResponse || {}, "gas_wanted"));

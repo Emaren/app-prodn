@@ -44,6 +44,12 @@ type BetMarketPreflightContext = {
     marketType: string;
     linkedSessionKey: string | null;
     scheduledMatchId: number | null;
+    integrityStatus: string;
+    teamResolutionStatus: string | null;
+    teamConfidence: string | null;
+    propositionHash: string | null;
+    leftRosterSnapshot: unknown;
+    rightRosterSnapshot: unknown;
   };
   activeMarketWagers: Array<{
     id: number;
@@ -237,6 +243,12 @@ async function loadBetMarketPreflightContext(
         marketType: true,
         linkedSessionKey: true,
         scheduledMatchId: true,
+        integrityStatus: true,
+        teamResolutionStatus: true,
+        teamConfidence: true,
+        propositionHash: true,
+        leftRosterSnapshot: true,
+        rightRosterSnapshot: true,
       },
     }),
     prisma.betWager.findMany({
@@ -326,6 +338,22 @@ function assertBetMarketPreflight(
 
   if (!["open", "closing", "live"].includes(context.market.status)) {
     throw new BetWagerError(409, "This book is closed.");
+  }
+
+  if (
+    context.market.integrityStatus !== "verified" ||
+    context.market.teamResolutionStatus !== "resolved" ||
+    context.market.teamConfidence !== "high" ||
+    !context.market.propositionHash ||
+    !Array.isArray(context.market.leftRosterSnapshot) ||
+    !Array.isArray(context.market.rightRosterSnapshot) ||
+    context.market.leftRosterSnapshot.length === 0 ||
+    context.market.rightRosterSnapshot.length === 0
+  ) {
+    throw new BetWagerError(
+      409,
+      "Betting unavailable — both teams must be verified before WOLO can enter this market."
+    );
   }
 
   const forcedSide = resolveViewerMatchSide(input.viewer, context.market);
@@ -533,6 +561,31 @@ export async function placePooledBetWager(
 
   try {
     await prisma.$transaction(async (tx) => {
+      const lockedAt = new Date();
+      const lockResult = await tx.betMarket.updateMany({
+        where: {
+          id: input.marketId,
+          status: { in: ["open", "closing", "live"] },
+          integrityStatus: "verified",
+          teamResolutionStatus: "resolved",
+          teamConfidence: "high",
+          propositionHash: market.propositionHash,
+        },
+        data: {
+          bettingLockedAt: lockedAt,
+        },
+      });
+      if (lockResult.count !== 1) {
+        throw new BetWagerError(409, "Market integrity changed before the stake was recorded.");
+      }
+      const firstStakeLock = await tx.betMarket.updateMany({
+        where: { id: input.marketId, firstStakeAcceptedAt: null },
+        data: {
+          firstStakeAcceptedAt: lockedAt,
+          rosterLockedAt: lockedAt,
+        },
+      });
+
       if (input.viewer.walletAddress !== normalizedWalletAddress && normalizedWalletAddress) {
         await tx.user.update({
           where: { id: input.viewer.id },
@@ -568,6 +621,23 @@ export async function placePooledBetWager(
           stakeLockedAt: shouldUseOnchainStake ? new Date() : null,
         },
       });
+
+      if (firstStakeLock.count === 1) {
+        await recordUserActivity(tx as PrismaClient, {
+          userId: input.viewer.id,
+          type: "market_proposition_locked",
+          path: "/bets",
+          label: market.title,
+          metadata: {
+            marketId: market.id,
+            propositionHash: market.propositionHash,
+            leftLabel: market.leftLabel,
+            rightLabel: market.rightLabel,
+            lockedAt: lockedAt.toISOString(),
+          },
+          dedupeWithinSeconds: 0,
+        });
+      }
 
       if (typeof input.stakeIntentId === "number" && shouldUseOnchainStake) {
         await markBetStakeIntentRecorded(tx as PrismaClient, { intentId: input.stakeIntentId });

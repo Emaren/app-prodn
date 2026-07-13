@@ -8,6 +8,10 @@ Watcher-linked books use `open`/`live` → `awaiting_final_proof` → `settled`,
 
 Voids have no winner or fee. Active wagers become `void`, payout equals original stake, founder/winner bonuses are rescinded, and the normal idempotent settlement rail records `queued`, `refunded`, or `failed`. Late finals attach to `late_final_game_stats_id` and never reopen betting or reverse refunds automatically.
 
+Team membership is an end-to-end replay contract. `api-prodn` preserves canonical player/team fields; `lib/liveSessionSnapshot.ts` merges iterations without discarding complete team evidence; and `lib/teamResolution.ts` is the single resolver for live display, market creation, proposition hashing, final validation, and audits. Team games require two complete equal teams from explicit replay team IDs. Array order and aliases cannot assign sides.
+
+Every bettable team book stores immutable left/right roster snapshots and a proposition hash. The first accepted stake locks those fields. A later roster mismatch creates an integrity incident and closes the book instead of mutating it. Final settlement re-resolves the full final roster and requires the same identities, teams, hash, coherent winner/loser flags, and betting eligibility. `/admin/market-integrity` is the operator cockpit; the full contract and repair lifecycle are in `docs/MARKET_TEAM_INTEGRITY.md`.
+
 ## Purpose
 
 `app-prodn` is the public product shell for AoE2HDBets.

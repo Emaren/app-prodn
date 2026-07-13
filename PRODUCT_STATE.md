@@ -4,6 +4,8 @@
 
 Watcher v1.5.3 separates app connection from monitor attachment, validates/scans HD folders (including OneDrive), recovers mid-game files, reports rich privacy-safe heartbeat state, and uses bounded watchdog reattachment. `/bets` now removes detached books from active liquidity, shows them under Awaiting Final Proof without controls, voids after grace when proof never arrives, and preserves honest refund state/history. Required on-chain staking pauses when settlement health cannot be verified.
 
+The watcher-to-betting rail now preserves explicit replay team IDs through API storage and live-session projection. Team markets open only for two complete high-confidence teams, persist immutable roster/proposition snapshots, lock on first stake, and settle only against a matching full final roster. Unresolved games stay visible as a neutral roster without stake controls. `/admin/market-integrity` exposes conflicts, blocked settlements, alias review, incident evidence, exact corrective payments, and honest overpayments. Historical team books are covered by read-only JSON/CSV/Markdown audits and evidence-locked repair commands; no chain transfer is rewritten or silently clawed back.
+
 ## Snapshot
 
 This file captures the current shipped state of the public product surface so a new chat can resume without re-auditing everything.

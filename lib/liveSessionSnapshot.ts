@@ -3,6 +3,12 @@ import path from "node:path";
 import type { PrismaClient } from "@/lib/generated/prisma";
 import type { ReplayReviewMarketSummary } from "@/lib/replayReviewQueue";
 import {
+  mergeReplayPlayerIterations,
+  resolveReplayTeams,
+  type CanonicalReplayPlayer,
+  type ReplayTeamResolution,
+} from "@/lib/teamResolution";
+import {
   classifyUnresolvedWatcherResult,
   normalizePublicReplayText,
   resolveReliableReplayWinner,
@@ -29,10 +35,8 @@ export type LiveGameSession = {
   parseSource: string | null;
   unresolvedResult: UnresolvedWatcherResult | null;
   state: "live" | "completed";
-  players: Array<{
-    name: string;
-    winner: boolean | null;
-  }>;
+  players: CanonicalReplayPlayer[];
+  teamResolution: ReplayTeamResolution;
   uploaders: Array<{
     uid: string;
     displayName: string;
@@ -155,45 +159,14 @@ function parseMapName(value: unknown) {
   return normalizePublicReplayText(name);
 }
 
-function parsePlayers(value: unknown): LiveGameSession["players"] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  return value
-    .map((entry) => {
-      if (!entry || typeof entry !== "object") {
-        return null;
-      }
-
-      const name =
-        "name" in entry ? normalizePublicReplayText(entry.name) ?? "" : "";
-      if (!name) {
-        return null;
-      }
-
-      const winner =
-        "winner" in entry && typeof entry.winner === "boolean" ? entry.winner : null;
-
-      return {
-        name,
-        winner,
-      };
-    })
-    .filter((entry): entry is LiveGameSession["players"][number] => Boolean(entry));
-}
-
 function bestKnownPlayers(rows: SessionRow[], fallback: SessionRow) {
-  let best = parsePlayers(fallback.players);
-
-  for (const row of rows) {
-    const players = parsePlayers(row.players);
-    if (players.length > best.length) {
-      best = players;
-    }
-  }
-
-  return best;
+  return mergeReplayPlayerIterations([
+    fallback.players,
+    ...rows
+      .filter((row) => row.id !== fallback.id)
+      .sort((left, right) => left.parse_iteration - right.parse_iteration)
+      .map((row) => row.players),
+  ]);
 }
 
 function bestKnownMapName(rows: SessionRow[], fallback: SessionRow) {
@@ -282,7 +255,12 @@ function buildSessionFromRow(
   const activityTime = getRowActivityTime(row);
   const uploaders = collectUploaders(sourceRows);
   const primaryUploader = uploaders[0] ?? null;
-  const parsedPlayers = bestKnownPlayers(sourceRows, row);
+  const mergedPlayers = bestKnownPlayers(sourceRows, row);
+  const parsedPlayers = mergedPlayers.players;
+  const teamResolution = resolveReplayTeams(parsedPlayers, {
+    final: state === "completed",
+    conflictReasonCodes: mergedPlayers.conflictReasonCodes,
+  });
   const mapName = bestKnownMapName(sourceRows, row);
   const winnerTruth = resolveReplayWinnerTruth({
     winner: row.winner,
@@ -293,12 +271,16 @@ function buildSessionFromRow(
     eventTypes: row.event_types,
   });
   const winner = winnerTruth.winner;
+  const hasExplicitWinnerFlags = parsedPlayers.some((player) => player.winner !== null);
   const players = winnerTruth.statsEligible
     ? parsedPlayers.map((player) => ({
         ...player,
-        winner: winner
-          ? player.name.toLowerCase() === winner.toLowerCase()
-          : player.winner,
+        winner:
+          hasExplicitWinnerFlags || teamResolution.format !== "1v1"
+            ? player.winner
+            : winner
+              ? player.normalizedName === winner.toLowerCase()
+              : player.winner,
       }))
     : parsedPlayers.map((player) => ({ ...player, winner: null }));
   const unresolvedResult = classifyUnresolvedWatcherResult({
@@ -331,6 +313,7 @@ function buildSessionFromRow(
     unresolvedResult,
     state,
     players,
+    teamResolution,
     uploaders,
     watcherCount: uploaders.length,
     parseRows: sourceRows.length,
