@@ -3176,7 +3176,7 @@ async function archiveLowConfidenceZeroPotMarkets(prisma: PrismaClient) {
   });
 }
 
-export async function ensureBetMarkets(prisma: PrismaClient) {
+async function runBetMarketEnsure(prisma: PrismaClient) {
   await archiveLowConfidenceZeroPotMarkets(prisma);
   const { seeds, visibleSessionKeys } = await buildOpenMarketSeeds(prisma);
   const slugs = [...new Set(seeds.map((seed) => seed.slug))];
@@ -3297,6 +3297,25 @@ export async function ensureBetMarkets(prisma: PrismaClient) {
   await settleMarketIntegrityCorrections(prisma);
   await reconcileBetMarketStatsLinks(prisma);
   await settleFounderBonuses(prisma);
+}
+
+// Several public/admin/replay routes can request the same reconciliation pass.
+// Keep the entire pass single-flight in this Node process so two callers cannot
+// submit different escrow-signer corrections with the same account sequence.
+let betMarketEnsurePromise: Promise<void> | null = null;
+
+export async function ensureBetMarkets(prisma: PrismaClient) {
+  if (betMarketEnsurePromise) {
+    return betMarketEnsurePromise;
+  }
+
+  const run = runBetMarketEnsure(prisma).finally(() => {
+    if (betMarketEnsurePromise === run) {
+      betMarketEnsurePromise = null;
+    }
+  });
+  betMarketEnsurePromise = run;
+  return run;
 }
 
 function buildMarketCard(
