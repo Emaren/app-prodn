@@ -77,3 +77,6 @@ storage/
 
 # Generated deployment identity
 .aoe2war-build-version
+
+# VPS-local operator repair backups
+runtime/
