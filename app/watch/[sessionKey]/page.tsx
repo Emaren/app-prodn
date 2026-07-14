@@ -9,11 +9,9 @@ import {
   displayPlayerName,
   formatDurationLabel,
   parsePlayers,
-  readMapName,
   readPlayerCivilizationLabel,
   readPlayerSteamDmRating,
   readPlayerSteamRmRating,
-  winnerLabel,
 } from "@/lib/gameStatsView";
 import {
   buildBetBroadcastPreviewUrls,
@@ -21,6 +19,11 @@ import {
 } from "@/lib/betBroadcastPreviews";
 import { loadLiveReplayDetailSnapshot } from "@/lib/liveReplayDetail";
 import { getPrisma } from "@/lib/prisma";
+import {
+  normalizePublicReplayText,
+  publicReplayMapLabel,
+  resolveReliableReplayWinner,
+} from "@/lib/unresolvedWatcherResult";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -45,8 +48,15 @@ export default async function BattleTheatrePage({
     playerNames.length > 0
       ? playerNames.join(" vs ")
       : game.originalFilename || game.replayFile || "Battle feed";
-  const mapName = readMapName(game.map);
-  const durationLabel = formatDurationLabel(game.duration || game.gameDuration);
+  const mapName = publicReplayMapLabel(game.map, "HD Battlefield");
+  const durationSeconds = game.duration || game.gameDuration || 0;
+  const reliableWinner = resolveReliableReplayWinner({
+    winner: game.winner,
+    players,
+    parseReason: game.parseReason,
+    keyEvents: game.keyEvents,
+    eventTypes: game.eventTypes,
+  });
   const archiveMedia = await loadBattleTheatreArchiveMedia({
     sessionKey: decodedSessionKey,
     matchupLabel,
@@ -66,7 +76,7 @@ export default async function BattleTheatrePage({
             <div className="flex flex-wrap items-center gap-2">
               <TheatrePill tone="sky">Battle Theatre</TheatrePill>
               <TheatrePill tone={isFinal ? "emerald" : "amber"}>
-                {isFinal ? "Archive Ready" : "Awaiting Live Feed"}
+                {isFinal ? "Archive Ready" : "Live Feed"}
               </TheatrePill>
               <TheatrePill>{mapName}</TheatrePill>
             </div>
@@ -122,9 +132,8 @@ export default async function BattleTheatrePage({
             <Panel eyebrow="Match Snapshot" title={mapName}>
               <div className="space-y-3">
                 <MiniRow label="Matchup" value={matchupLabel} />
-                <MiniRow label="Duration" value={durationLabel} />
-                <MiniRow label="Winner Signal" value={winnerLabel(game.winner, game.parseReason)} />
-                <MiniRow label="Parse Iteration" value={`#${game.parseIteration}`} />
+                {durationSeconds > 0 ? <MiniRow label="Duration" value={formatDurationLabel(durationSeconds)} /> : null}
+                {reliableWinner ? <MiniRow label="Winner" value={reliableWinner} /> : null}
                 <MiniRow label="Mode" value={isFinal ? "Battle archive" : "Live watcher rail"} />
               </div>
             </Panel>
@@ -134,9 +143,9 @@ export default async function BattleTheatrePage({
                 <div className="text-xs uppercase tracking-[0.28em] text-amber-100/75">
                   Stakes module
                 </div>
-                <div className="mt-3 text-3xl font-semibold text-white">Standby</div>
+                <div className="mt-3 text-3xl font-semibold text-white">WOLO Arena</div>
                 <p className="mt-2 text-sm leading-6 text-amber-50/70">
-                  Escrow, odds, and payout state will dock here once the watch rail is wired into markets.
+                  Supported battle markets bring wager pressure, odds, and payout state into this rail.
                 </p>
               </div>
             </Panel>
@@ -185,7 +194,7 @@ export default async function BattleTheatrePage({
                 <FeedCard
                   key={name}
                   title={`${name} POV`}
-                  body={`${readPlayerCivilizationLabel(player)} camera slot. Delay controls come later.`}
+                  body={`${normalizePublicReplayText(readPlayerCivilizationLabel(player)) ?? "HD warrior"} battle perspective.`}
                 />
               );
             })}
@@ -203,12 +212,11 @@ export default async function BattleTheatrePage({
             <IntelCard label="Pulse Window" value={snapshot.telemetry.historyWindowSeconds ? formatDurationLabel(snapshot.telemetry.historyWindowSeconds) : "Opening"} />
             <IntelCard label="Event Families" value={String(snapshot.telemetry.uniqueEventTypeCount || snapshot.telemetry.latestEventTypeCount || 0)} />
             <IntelCard label="Chat Signals" value={String(snapshot.telemetry.latestChatCount ?? 0)} />
-            <IntelCard label="Parse Attempts" value={String(snapshot.parseAttempts.length)} />
+            <IntelCard label="Replay Pulses" value={String(snapshot.history.length)} />
           </div>
 
           <div className="mt-4 rounded-2xl border border-white/8 bg-white/[0.035] p-4 text-sm leading-6 text-slate-300">
-            Later this becomes the caster radar: score pressure, eco swing, army movement, map control,
-            resign detection, wager state, and stream delay status.
+            The caster radar combines watcher pace, event coverage, chat activity, battle context, and final replay truth.
           </div>
         </Panel>
       </section>
@@ -217,20 +225,23 @@ export default async function BattleTheatrePage({
         {players.length > 0 ? (
           players.map((player) => {
             const name = displayPlayerName(player);
+            const civilization = normalizePublicReplayText(readPlayerCivilizationLabel(player)) ?? "HD warrior";
+            const rmRating = readPlayerSteamRmRating(player);
+            const dmRating = readPlayerSteamDmRating(player);
             return (
               <Panel key={name} eyebrow="Player Camera" title={name}>
                 <div className="grid gap-3 sm:grid-cols-3">
-                  <IntelCard label="Civilization" value={readPlayerCivilizationLabel(player)} />
-                  <IntelCard label="RM" value={formatRating(readPlayerSteamRmRating(player))} />
-                  <IntelCard label="DM" value={formatRating(readPlayerSteamDmRating(player))} />
+                  <IntelCard label="Civilization" value={civilization} />
+                  {rmRating !== null ? <IntelCard label="RM" value={formatRating(rmRating)} /> : null}
+                  {dmRating !== null ? <IntelCard label="DM" value={formatRating(dmRating)} /> : null}
                 </div>
               </Panel>
             );
           })
         ) : (
-          <Panel eyebrow="Player Camera" title="POV slots pending">
+          <Panel eyebrow="Player Camera" title="Main Cast">
             <p className="text-sm leading-6 text-slate-300">
-              Player cards appear here when the watcher payload has parsed the roster.
+              The public broadcast carries this HD battle from the main theatre feed.
             </p>
           </Panel>
         )}

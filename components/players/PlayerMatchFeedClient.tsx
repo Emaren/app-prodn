@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type UIEvent } from "react";
 
 import type { PlayerProfileIdentity, PlayerProfileMatchItem } from "@/lib/playerProfile";
+import ReviewReplayResultButton from "@/components/game-stats/ReviewReplayResultButton";
 
 type PlayerMatchFeedClientProps = {
   identity: PlayerProfileIdentity;
@@ -34,7 +35,7 @@ function resultClass(result: PlayerProfileMatchItem["result"]) {
 }
 
 function resultLabel(result: PlayerProfileMatchItem["result"]) {
-  return result === "unknown" ? "unresolved" : result;
+  return result === "unknown" ? "filed" : result;
 }
 
 function accentHoverClass(accent: "amber" | "rose" | "sky") {
@@ -163,11 +164,11 @@ export default function PlayerMatchFeedClient({
           items.map((item) => {
             if (variant === "classic") {
               return (
-                <Link
-                  key={item.id}
-                  href={item.href}
-                  className={`block rounded-2xl border border-white/8 bg-white/5 px-4 py-4 transition hover:bg-white/10 ${accentHoverClass(accent)}`}
-                >
+                <div key={item.id} className="space-y-2">
+                  <Link
+                    href={item.href}
+                    className={`block rounded-2xl border border-white/8 bg-white/5 px-4 py-4 transition hover:bg-white/10 ${accentHoverClass(accent)}`}
+                  >
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
                       <div className="font-medium text-white">{item.mapName}</div>
@@ -181,22 +182,26 @@ export default function PlayerMatchFeedClient({
                   <div className="mt-4 flex flex-wrap gap-2">
                     {item.outcomeLabel ? <Tag>{item.outcomeLabel}</Tag> : null}
                     <Tag>{item.parseLabel}</Tag>
-                    {item.disconnectDetected ? <Tag>disconnect suspected</Tag> : null}
                   </div>
 
                   {item.playedAt ? (
                     <div className="mt-3 text-xs text-slate-400">{formatDate(item.playedAt)}</div>
                   ) : null}
-                </Link>
+                  </Link>
+                  <ReviewReplayResultButton
+                    gameStatsId={item.id}
+                    submitterUids={item.submitterUids}
+                  />
+                </div>
               );
             }
 
             return (
-              <Link
-                key={item.id}
-                href={item.href}
-                className={`block rounded-[1.25rem] border border-white/8 bg-white/5 px-4 py-4 transition hover:bg-white/10 ${accentHoverClass(accent)}`}
-              >
+              <div key={item.id} className="space-y-2">
+                <Link
+                  href={item.href}
+                  className={`block rounded-[1.25rem] border border-white/8 bg-white/5 px-4 py-4 transition hover:bg-white/10 ${accentHoverClass(accent)}`}
+                >
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
@@ -214,16 +219,20 @@ export default function PlayerMatchFeedClient({
 
                 <div className="mt-4 flex flex-wrap gap-2">
                   <Tag>{item.parseLabel}</Tag>
-                  <Tag>{item.durationLabel}</Tag>
-                  <Tag>{item.playerCivilization}</Tag>
+                  {item.durationLabel ? <Tag>{item.durationLabel}</Tag> : null}
+                  {item.playerCivilization ? <Tag>{item.playerCivilization}</Tag> : null}
                   {item.score !== null ? <Tag>{Math.round(item.score).toLocaleString()} score</Tag> : null}
                   {item.eapm !== null ? <Tag>{Math.round(item.eapm * 10) / 10} EAPM</Tag> : null}
                   {item.outcomeLabel ? <Tag>{item.outcomeLabel}</Tag> : null}
-                  {item.disconnectDetected ? <Tag>disconnect suspected</Tag> : null}
                 </div>
 
-                <div className="mt-3 text-xs text-slate-400">{formatDate(item.playedAt)}</div>
-              </Link>
+                  {item.playedAt ? <div className="mt-3 text-xs text-slate-400">{formatDate(item.playedAt)}</div> : null}
+                </Link>
+                <ReviewReplayResultButton
+                  gameStatsId={item.id}
+                  submitterUids={item.submitterUids}
+                />
+              </div>
             );
           })
         )}

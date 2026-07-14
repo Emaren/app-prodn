@@ -14,6 +14,10 @@ import { normalizePublicPlayerName } from "@/lib/publicPlayers";
 import { loadPendingWoloClaimSummariesByName } from "@/lib/pendingWoloClaims";
 import { cleanPublicGameRows } from "@/lib/publicReplayTruth";
 import {
+  applyReplayAdjudicationToGameStats,
+  EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION,
+} from "@/lib/replayAdjudications";
+import {
   normalizeLeaderboardLane,
   type LeaderboardLane,
 } from "@/lib/leaderboardLane";
@@ -71,6 +75,10 @@ type EnrichedLeaderboardEntry = PublicPlayerDirectoryEntry & {
 
 function normalizeLeaderboardKey(value: string | null | undefined) {
   return normalizePublicPlayerName(value).toLowerCase();
+}
+
+function leaderboardWinnerFlagIsTrue(value: unknown) {
+  return value === true || value === "true" || value === 1 || value === "1";
 }
 
 function buildAliasKeys(entry: PublicPlayerDirectoryEntry) {
@@ -383,8 +391,20 @@ function buildArenaElo(entries: EnrichedLeaderboardEntry[], games: PreparedLeade
   }
 }
 
-function buildEntryOutcome(entry: EnrichedLeaderboardEntry, winner: string | null | undefined) {
-  const normalizedWinner = normalizeLeaderboardKey(winner);
+function buildEntryOutcome(
+  entry: EnrichedLeaderboardEntry,
+  game: PreparedLeaderboardGame
+) {
+  const player = game.players.find((candidate) =>
+    entry.aliasKeys.has(normalizeLeaderboardKey(displayPlayerName(candidate)))
+  );
+  if (!player) return null;
+
+  if (leaderboardWinnerFlagIsTrue(player.winner)) {
+    return "W";
+  }
+
+  const normalizedWinner = normalizeLeaderboardKey(game.winner);
   if (!normalizedWinner || normalizedWinner === "unknown") {
     return null;
   }
@@ -405,7 +425,7 @@ function buildStreakLabel(entry: EnrichedLeaderboardEntry, games: PreparedLeader
       continue;
     }
 
-    const outcome = buildEntryOutcome(entry, game.winner);
+    const outcome = buildEntryOutcome(entry, game);
     if (!outcome) {
       if (direction) {
         break;
@@ -551,6 +571,9 @@ function buildDiscoveredLeaderboardEntries(
 
       const steamDmRating =
         typeof player.steam_dm_rating === "number" ? player.steam_dm_rating : null;
+      const isWinner =
+        leaderboardWinnerFlagIsTrue(player.winner) ||
+        normalizeLeaderboardKey(game.winner) === normalizeLeaderboardKey(name);
 
       discovered.set(key, {
         key,
@@ -575,10 +598,10 @@ function buildDiscoveredLeaderboardEntries(
         steamDmRating,
         arenaElo: ratingSnapshot ?? steamRmRating ?? steamDmRating ?? 1500,
         totalMatches: 1,
-        wins: game.winner === name ? 1 : 0,
-        losses: game.winner && game.winner !== name ? 1 : 0,
+        wins: isWinner ? 1 : 0,
+        losses: isWinner ? 0 : 1,
         unknowns: game.winner ? 0 : 1,
-        currentStreak: game.winner === name ? 1 : game.winner ? -1 : 0,
+        currentStreak: isWinner ? 1 : -1,
         lastPlayedAt: Number.isFinite(game.playedAtMs)
           ? new Date(game.playedAtMs).toISOString()
           : null,
@@ -626,11 +649,14 @@ export async function loadLobbyLeaderboard(
         winner: true,
         parse_reason: true,
         parse_source: true,
+        replayResultAdjudications: EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION,
       },
     }),
   ]);
 
-  const leaderboardGames = [...rawLeaderboardGames].sort(sortCandidateGamesByPlayedAtDesc);
+  const leaderboardGames = rawLeaderboardGames
+    .map((game) => applyReplayAdjudicationToGameStats(game) as CandidateLeaderboardGame)
+    .sort(sortCandidateGamesByPlayedAtDesc);
   const uniqueGames = cleanPublicGameRows(leaderboardGames, {
     includeReview: true,
     includeLive: false,

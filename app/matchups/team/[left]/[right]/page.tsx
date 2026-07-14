@@ -7,7 +7,6 @@ import type { ReactNode } from "react";
 
 import SteamLinkedBadge from "@/components/SteamLinkedBadge";
 import {
-  displayParseReason,
   readMapName,
   readPlayedAt,
 } from "@/lib/gameStatsView";
@@ -139,6 +138,10 @@ export default async function TeamMatchupPage({
 
   const leftLabel = rosterLabel(leftRoster);
   const rightLabel = rosterLabel(rightRoster);
+  const decidedBattles = Math.max(
+    0,
+    summary.totalMatches - summary.unknowns
+  );
 
   const lastPlayedLabel =
     summary.lastPlayedAt
@@ -180,9 +183,7 @@ export default async function TeamMatchupPage({
                 {summary.totalMatches} battles
               </Tag>
               <Tag>{teamSize}v{teamSize}</Tag>
-              <Tag>
-                {summary.unknowns} unknown
-              </Tag>
+              <Tag>{decidedBattles} decided</Tag>
               <Tag>
                 Last fought {lastPlayedLabel}
               </Tag>
@@ -251,10 +252,8 @@ export default async function TeamMatchupPage({
               />
 
               <SummaryMetric
-                label="Unknown Results"
-                value={String(
-                  summary.unknowns
-                )}
+                label="Decided Battles"
+                value={String(decidedBattles)}
               />
 
               <SummaryMetric
@@ -276,14 +275,12 @@ export default async function TeamMatchupPage({
               roster={leftRoster}
               wins={summary.leftWins}
               losses={summary.rightWins}
-              unknowns={summary.unknowns}
             />
 
             <RosterRecord
               roster={rightRoster}
               wins={summary.rightWins}
               losses={summary.leftWins}
-              unknowns={summary.unknowns}
             />
           </div>
         </Panel>
@@ -294,7 +291,7 @@ export default async function TeamMatchupPage({
         >
           <div className="space-y-3">
             {matches.length === 0 ? (
-              <EmptyPanel message="No safely reconstructed battles between these exact rosters were found." />
+              <EmptyPanel message="This exact war party series is ready for its first filed battle." />
             ) : (
               matches.map((match) => {
                 const playedAt =
@@ -312,7 +309,7 @@ export default async function TeamMatchupPage({
                     ? leftLabel
                     : winnerSide === "right"
                       ? rightLabel
-                      : "Result unresolved";
+                      : "Battle preserved";
 
                 return (
                   <article
@@ -334,7 +331,7 @@ export default async function TeamMatchupPage({
                     <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,0.9fr)] lg:items-start">
                       <div className="min-w-0">
                         <div className="break-words text-xl font-semibold leading-tight text-white">
-                          {readMapName(match.map)}
+                          {publicBattlefieldLabel(match.map)}
                         </div>
 
                         <div className="relative z-20 mt-2 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm leading-6 text-slate-400">
@@ -356,27 +353,13 @@ export default async function TeamMatchupPage({
                         <div className="text-[10px] uppercase tracking-[0.26em] text-amber-200/55">
                           {winnerSide
                             ? "Battle Victor"
-                            : "Result"}
+                            : "Archive Status"}
                         </div>
 
                         <div className="mt-2 break-words text-sm font-medium leading-6 text-amber-100/85">
                           {winnerText}
                         </div>
                       </div>
-                    </div>
-
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      <Tag>
-                        {displayParseReason(
-                          match.parse_reason
-                        )}
-                      </Tag>
-
-                      {match.disconnect_detected ? (
-                        <Tag>
-                          disconnect suspected
-                        </Tag>
-                      ) : null}
                     </div>
 
                     {playedAt ? (
@@ -555,12 +538,10 @@ function RosterRecord({
   roster,
   wins,
   losses,
-  unknowns,
 }: {
   roster: PublicPlayerRef[];
   wins: number;
   losses: number;
-  unknowns: number;
 }) {
   return (
     <div className="rounded-[1.8rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.03))] p-6 shadow-lg shadow-black/20">
@@ -573,7 +554,7 @@ function RosterRecord({
         ))}
       </div>
 
-      <div className="mt-5 grid gap-3 sm:grid-cols-3">
+      <div className="mt-5 grid gap-3 sm:grid-cols-2">
         <RecordMetric
           label="Wins"
           value={wins}
@@ -586,14 +567,16 @@ function RosterRecord({
           accent="rose"
         />
 
-        <RecordMetric
-          label="Unknown"
-          value={unknowns}
-          accent="slate"
-        />
       </div>
     </div>
   );
+}
+
+function publicBattlefieldLabel(value: unknown) {
+  const mapName = readMapName(value);
+  return mapName.toLowerCase().includes("unavailable")
+    ? "Recorded Battlefield"
+    : mapName;
 }
 
 function PlayerLine({

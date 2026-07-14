@@ -1,10 +1,8 @@
 import Link from "next/link";
 import {
-  AlertTriangle,
   ArrowLeft,
   CheckCircle2,
   CircleDollarSign,
-  Clock3,
   DatabaseZap,
   ExternalLink,
   FileSearch,
@@ -73,19 +71,6 @@ function moneyTone(market: ReplayReviewMarketSummary | null) {
     return "border-rose-300/20 bg-rose-400/[0.08] text-rose-100";
   }
   return "border-amber-300/18 bg-amber-400/[0.07] text-amber-100";
-}
-
-function StoragePendingButton({ children }: { children: string }) {
-  return (
-    <button
-      type="button"
-      disabled
-      title="Storage pending — commissioner verdict persistence is not present in the current schema."
-      className="min-h-10 cursor-not-allowed rounded-full border border-white/[0.08] bg-white/[0.035] px-4 py-2 text-xs font-semibold text-slate-500"
-    >
-      {children}
-    </button>
-  );
 }
 
 function ReviewPagination({
@@ -207,19 +192,24 @@ function ReviewCard({
               <div className="rounded-2xl border border-emerald-300/18 bg-emerald-400/[0.07] px-4 py-3 text-right">
                 <div className="flex items-center justify-end gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-100">
                   <CheckCircle2 className="h-4 w-4" />
-                  Overlay exists
+                  Accepted verdict
                 </div>
                 <div className="mt-1 text-lg font-semibold text-white">
                   {entry.adjudication.winner}
+                </div>
+                <div className="mt-1 text-[10px] uppercase tracking-[0.14em] text-emerald-100/60">
+                  {entry.adjudication.adjudicatedBy} · {entry.adjudication.actorRole.replaceAll("_", " ")}
                 </div>
               </div>
             ) : (
               <div className="rounded-2xl border border-amber-300/18 bg-amber-400/[0.07] px-4 py-3 text-right">
                 <div className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-100">
-                  Needs commissioner
+                  {entry.pendingProposalCount > 0 ? "Proposal waiting" : "Needs commissioner"}
                 </div>
                 <div className="mt-1 text-sm text-slate-300">
-                  {entry.unresolvedResult.code.replaceAll("_", " ")}
+                  {entry.pendingProposalCount > 0
+                    ? `${entry.pendingProposalCount} submitted verdict${entry.pendingProposalCount === 1 ? "" : "s"}`
+                    : entry.unresolvedResult.code.replaceAll("_", " ")}
                 </div>
               </div>
             )}
@@ -304,10 +294,16 @@ function ReviewCard({
           {entry.adjudication ? (
             <div className="mt-5 rounded-2xl border border-emerald-300/15 bg-emerald-400/[0.05] px-4 py-4">
               <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-100/70">
-                Commissioner verdict · public/stats overlay only
+                Effective verdict · public and stats projection
               </div>
               <div className="mt-2 text-sm leading-6 text-slate-200">
                 {entry.adjudication.reason}
+              </div>
+              <div className="mt-2 text-xs leading-5 text-slate-400">
+                Audit entry {entry.adjudication.id ? `#${entry.adjudication.id}` : "from the legacy recovery ledger"}
+                {entry.adjudication.createdAt ? ` · ${formatDate(entry.adjudication.createdAt)}` : ""}
+                {entry.adjudication.affectsStats ? " · stats projection active" : ""}
+                {entry.adjudication.affectsBets ? " · betting effect recorded" : " · no direct betting mutation"}
               </div>
               {entry.adjudication.settlementNote ? (
                 <div className="mt-2 text-xs leading-5 text-slate-400">
@@ -376,19 +372,26 @@ function ReviewCard({
               Commissioner actions
             </div>
             <p className="mt-2 text-xs leading-5 text-slate-500">
-              Storage pending. These controls intentionally cannot write parser,
-              market, wager, claim, or settlement rows.
+              Review opens the append-only verdict desk. It preserves parser evidence,
+              records who changed the result, and never directly edits market, wager,
+              claim, or settlement history. Market-linked submitter proposals require
+              administrator acceptance.
             </p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <StoragePendingButton>Approve left side</StoragePendingButton>
-              <StoragePendingButton>Approve right side</StoragePendingButton>
-              {entry.players.map((player) => (
-                <StoragePendingButton key={player.name}>
-                  {`Approve ${player.name}`}
-                </StoragePendingButton>
-              ))}
-              <StoragePendingButton>Void / Refund</StoragePendingButton>
-              <StoragePendingButton>Keep under review</StoragePendingButton>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <Link
+                href={`/game-stats/${entry.id}/review`}
+                className="inline-flex min-h-10 items-center gap-2 rounded-full bg-amber-200 px-4 py-2 text-xs font-bold text-slate-950 transition hover:bg-amber-100"
+              >
+                {entry.pendingProposalCount > 0
+                  ? "Review & Approve Proposal"
+                  : entry.reviewHistoryCount > 0 || entry.adjudication
+                    ? "Append Corrected Result"
+                    : "Set Teams & Winner"}
+                <ExternalLink className="h-3.5 w-3.5" />
+              </Link>
+              <span className="rounded-full border border-white/[0.07] bg-white/[0.025] px-3 py-2 text-[10px] uppercase tracking-[0.14em] text-slate-500">
+                {entry.reviewHistoryCount} durable entr{entry.reviewHistoryCount === 1 ? "y" : "ies"}
+              </span>
             </div>
           </div>
 
@@ -479,31 +482,35 @@ export default async function AdminReplayReviewPage({ searchParams }: PageProps)
                 visible as separate layers. This queue never rewrites the raw replay.
               </p>
             </div>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-2 gap-3">
               <div className="rounded-2xl border border-amber-300/15 bg-amber-400/[0.06] px-4 py-3">
                 <div className="text-2xl font-semibold text-white">{data.pendingCount}</div>
                 <div className="mt-1 text-[10px] uppercase tracking-[0.18em] text-amber-100/70">pending</div>
               </div>
               <div className="rounded-2xl border border-emerald-300/15 bg-emerald-400/[0.06] px-4 py-3">
                 <div className="text-2xl font-semibold text-white">{data.adjudicatedCount}</div>
-                <div className="mt-1 text-[10px] uppercase tracking-[0.18em] text-emerald-100/70">overlayed</div>
+                <div className="mt-1 text-[10px] uppercase tracking-[0.18em] text-emerald-100/70">accepted</div>
               </div>
-              <div className="col-span-2 rounded-2xl border border-white/[0.07] bg-white/[0.03] px-4 py-3 sm:col-span-1">
+              <div className="rounded-2xl border border-cyan-300/15 bg-cyan-400/[0.06] px-4 py-3">
+                <div className="text-2xl font-semibold text-white">{data.proposalCount}</div>
+                <div className="mt-1 text-[10px] uppercase tracking-[0.18em] text-cyan-100/70">proposals</div>
+              </div>
+              <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] px-4 py-3">
                 <div className="flex items-center gap-2 text-sm font-semibold text-white">
-                  <Clock3 className="h-4 w-4 text-cyan-200" />
-                  Read only
+                  <DatabaseZap className="h-4 w-4 text-cyan-200" />
+                  Append-only
                 </div>
-                <div className="mt-1 text-[10px] uppercase tracking-[0.18em] text-slate-500">safe mode</div>
+                <div className="mt-1 text-[10px] uppercase tracking-[0.18em] text-slate-500">audited verdicts</div>
               </div>
             </div>
           </div>
         </header>
 
-        <div className="mt-5 flex items-start gap-3 rounded-2xl border border-amber-300/16 bg-amber-400/[0.06] px-4 py-4 text-sm leading-6 text-amber-50">
-          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
+        <div className="mt-5 flex items-start gap-3 rounded-2xl border border-emerald-300/16 bg-emerald-400/[0.06] px-4 py-4 text-sm leading-6 text-emerald-50">
+          <DatabaseZap className="mt-0.5 h-5 w-5 shrink-0" />
           <div>
-            <div className="font-semibold">Verdict storage pending</div>
-            <div className="text-amber-100/75">{data.storageNotice}</div>
+            <div className="font-semibold">Durable verdict ledger active</div>
+            <div className="text-emerald-100/75">{data.storageNotice}</div>
           </div>
         </div>
 

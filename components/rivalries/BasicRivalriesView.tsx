@@ -7,12 +7,12 @@ import {
 } from "react";
 
 import SteamLinkedBadge from "@/components/SteamLinkedBadge";
-import {
-  teamRivalryFormatLabel,
-  type PublicLatestRivalry,
-  type PublicRivalryEntry,
-  type PublicTeamRivalryEntry,
+import type {
+  PublicLatestRivalry,
+  PublicRivalryEntry,
+  PublicTeamRivalryEntry,
 } from "@/lib/publicMatchups";
+import { teamRivalryFormatLabel } from "@/lib/replaySides";
 
 type BasicLayoutMode =
   | "two-up"
@@ -454,9 +454,9 @@ function OriginalDuelCard({
 
       <div className="mt-5 grid gap-3 md:grid-cols-3">
         <SummaryMetric
-          label="Unknown Results"
+          label="Decided Battles"
           value={String(
-            entry.unknowns
+            Math.max(0, entry.totalMatches - entry.unknowns)
           )}
         />
 
@@ -529,9 +529,9 @@ function OriginalTeamCard({
 
       <div className="mt-5 grid gap-3 md:grid-cols-3">
         <SummaryMetric
-          label="Unknown Results"
+          label="Decided Battles"
           value={String(
-            entry.unknowns
+            Math.max(0, entry.totalMatches - entry.unknowns)
           )}
         />
 
@@ -587,9 +587,9 @@ function CardMetrics({
   return (
     <div className="mt-5 grid gap-3 sm:grid-cols-3">
       <SummaryMetric
-        label="Unknown Results"
+        label="Decided Battles"
         value={String(
-          entry.unknowns
+          Math.max(0, entry.totalMatches - entry.unknowns)
         )}
       />
 

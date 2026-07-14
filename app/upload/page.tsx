@@ -12,6 +12,18 @@ type UploadResult = {
   status?: number;
   message?: string;
   detail?: string;
+  finalityStatus?: string;
+  finality_status?: string;
+  finalAccepted?: boolean;
+  final_accepted?: boolean;
+  shouldSettle?: boolean;
+  should_settle?: boolean;
+  archived?: boolean;
+  raw_replay_archived?: boolean;
+  parsed?: boolean;
+  parse_completed?: boolean;
+  resultReady?: boolean;
+  reviewRouted?: boolean;
 };
 
 type UploadQueueResult = UploadResult & {
@@ -75,6 +87,46 @@ function mergeFiles(existing: File[], incoming: File[]) {
   }
 
   return merged;
+}
+
+const TRUSTED_FINAL_STATUSES = new Set([
+  "trusted_final",
+  "trusted_final_duplicate",
+  "trusted_final_refreshed",
+  "reviewed_match_duplicate",
+  "reviewed_match_refreshed",
+]);
+
+function normalizeUploadReceipt(result: UploadResult) {
+  const finalityStatus = result.finalityStatus || result.finality_status || "";
+  const resultReady = Boolean(
+    result.resultReady ||
+      result.finalAccepted ||
+      result.final_accepted ||
+      result.shouldSettle ||
+      result.should_settle ||
+      TRUSTED_FINAL_STATUSES.has(finalityStatus)
+  );
+  const archived = Boolean(result.archived || result.raw_replay_archived);
+  const parsed = Boolean(result.parsed || result.parse_completed || resultReady);
+
+  return {
+    archived,
+    parsed,
+    resultReady,
+    reviewRouted: Boolean(!resultReady && (result.reviewRouted || result.ok)),
+  };
+}
+
+function uploadReceiptLabel(result: UploadResult) {
+  if (!result.ok) return result.detail || result.message || "failed";
+
+  const receipt = normalizeUploadReceipt(result);
+  if (receipt.resultReady) return "result ready";
+  if (receipt.reviewRouted) return "private review";
+  if (receipt.parsed) return "parsed";
+  if (receipt.archived) return "secured";
+  return "received";
 }
 
 function ReplayVaultReleaseStamp() {
@@ -232,7 +284,7 @@ export default function UploadReplay() {
       detail?: string;
       message?: string;
       results?: UploadResult[];
-    };
+    } & UploadResult;
 
     if (Array.isArray(payload.results) && payload.results.length > 0) {
       return payload.results.map((result) => ({
@@ -248,6 +300,13 @@ export default function UploadReplay() {
         ok: response.ok,
         status: response.status,
         message: payload.message,
+        finalityStatus: payload.finalityStatus || payload.finality_status,
+        finalAccepted: payload.finalAccepted || payload.final_accepted,
+        shouldSettle: payload.shouldSettle || payload.should_settle,
+        archived: payload.archived || payload.raw_replay_archived,
+        parsed: payload.parsed || payload.parse_completed,
+        resultReady: normalizeUploadReceipt({ ...payload, ok: response.ok }).resultReady,
+        reviewRouted: normalizeUploadReceipt({ ...payload, ok: response.ok }).reviewRouted,
         detail: response.ok
           ? payload.message || `${file.name} uploaded.`
           : payload.detail || payload.message || `${file.name} failed.`,
@@ -298,15 +357,19 @@ export default function UploadReplay() {
       }
 
       const failures = allResults.filter((result) => result.ok === false).length;
-      const successes = allResults.length - failures;
+      const ready = allResults.filter(
+        (result) => result.ok && normalizeUploadReceipt(result).resultReady
+      ).length;
+      const review = allResults.filter(
+        (result) => result.ok && normalizeUploadReceipt(result).reviewRouted
+      ).length;
+      const statusParts = [
+        ready > 0 ? `${ready} result${ready === 1 ? "" : "s"} ready` : null,
+        review > 0 ? `${review} secured for private review` : null,
+        failures > 0 ? `${failures} upload${failures === 1 ? "" : "s"} failed` : null,
+      ].filter(Boolean);
 
-      setStatus(
-        failures > 0
-          ? `${successes} uploaded · ${failures} need review.`
-          : selectedFiles.length === 1
-            ? `${selectedFiles[0].name} uploaded.`
-            : `${selectedFiles.length} files processed successfully.`
-      );
+      setStatus(statusParts.join(" · ") || "Replay files received.");
     } finally {
       setIsUploading(false);
     }
@@ -461,8 +524,16 @@ export default function UploadReplay() {
                     )}
                   </div>
 
-                  <span className={result.ok ? "shrink-0 text-emerald-300" : "shrink-0 text-rose-300"}>
-                    {result.ok ? "uploaded" : result.detail || result.message || "failed"}
+                  <span
+                    className={
+                      !result.ok
+                        ? "shrink-0 text-rose-300"
+                        : normalizeUploadReceipt(result).resultReady
+                          ? "shrink-0 text-emerald-300"
+                          : "shrink-0 text-sky-300"
+                    }
+                  >
+                    {uploadReceiptLabel(result)}
                   </span>
                 </div>
               ))}

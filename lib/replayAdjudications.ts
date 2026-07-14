@@ -1,4 +1,9 @@
 import { normalizePublicReplayText } from "@/lib/unresolvedWatcherResult";
+import type { Prisma } from "@/lib/generated/prisma";
+import {
+  applyReplayResultAdjudication,
+  type EffectiveReplayResultAdjudication,
+} from "@/lib/replayResultAdjudications";
 
 export type ReplayAdjudication = {
   gameStatsId: number;
@@ -27,6 +32,27 @@ const REPLAY_ADJUDICATIONS: ReplayAdjudication[] = [
       "Linked market was already settled from rejected parser inference. This overlay does not mutate wagers, markets, claims, or settlement history.",
   },
 ];
+
+export const EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION = {
+  where: { decisionStatus: "accepted" },
+  orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+  take: 1,
+  select: {
+    id: true,
+    decisionStatus: true,
+    actorDisplayNameSnapshot: true,
+    actorRole: true,
+    teamAssignments: true,
+    winningTeamKey: true,
+    winningPlayerKeys: true,
+    reason: true,
+    sourceReplayHash: true,
+    sourceParseIteration: true,
+    sourceRosterHash: true,
+    sourcePropositionHash: true,
+    createdAt: true,
+  },
+} satisfies Prisma.GameStats$replayResultAdjudicationsArgs;
 
 function readId(value: unknown) {
   if (typeof value === "number" && Number.isSafeInteger(value)) return value;
@@ -95,6 +121,16 @@ export function hasReplayAdjudication(row: { id?: unknown }) {
 
 export function applyReplayAdjudicationToGameStats<T extends object>(row: T): T {
   const source = row as Record<string, unknown>;
+  const durableEntries = Array.isArray(source["replayResultAdjudications"])
+    ? (source["replayResultAdjudications"] as EffectiveReplayResultAdjudication[])
+    : [];
+  const durableAdjudication = durableEntries.find(
+    (entry) => entry?.decisionStatus === "accepted"
+  );
+  if (durableAdjudication) {
+    return applyReplayResultAdjudication(row, durableAdjudication);
+  }
+
   const adjudication = getReplayAdjudicationForGameStatsId(source["id"]);
   if (!adjudication) return row;
 

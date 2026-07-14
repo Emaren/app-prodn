@@ -7,7 +7,6 @@ import type { ReactNode } from "react";
 
 import SteamLinkedBadge from "@/components/SteamLinkedBadge";
 import {
-  displayParseReason,
   readMapName,
   readPlayedAt,
 } from "@/lib/gameStatsView";
@@ -353,14 +352,12 @@ export default async function MatchupPage({
               player={leftPlayer}
               wins={rivalry.leftWins}
               losses={rivalry.rightWins}
-              unknowns={rivalry.unknowns}
             />
 
             <PlayerSummaryCard
               player={rightPlayer}
               wins={rivalry.rightWins}
               losses={rivalry.leftWins}
-              unknowns={rivalry.unknowns}
             />
           </div>
         </Panel>
@@ -423,7 +420,7 @@ function TeamSeriesCard({
           hour: "numeric",
           minute: "2-digit",
         })
-      : "No recorded date";
+      : "Series archived";
 
   return (
     <Link
@@ -510,7 +507,7 @@ function BattleCard({
         ? rightRoster
         : null;
 
-  let resultLabel = "Result unresolved";
+  let resultLabel = "Battle preserved";
 
   if (winnerRoster) {
     if (allied) {
@@ -557,9 +554,7 @@ function BattleCard({
           </div>
 
           <div className="mt-2 text-lg font-semibold text-white">
-            {readMapName(
-              battle.game.map
-            )}
+            {publicBattlefieldLabel(battle.game.map)}
           </div>
         </div>
 
@@ -608,16 +603,6 @@ function BattleCard({
       </div>
 
       <div className="mt-4 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500">
-        <span>
-          {displayParseReason(
-            battle.game.parse_reason
-          )}
-        </span>
-
-        {battle.game.disconnect_detected ? (
-          <span>Disconnect suspected</span>
-        ) : null}
-
         {playedAt ? (
           <span>
             {new Date(
@@ -826,12 +811,10 @@ function PlayerSummaryCard({
   player,
   wins,
   losses,
-  unknowns,
 }: {
   player: PublicPlayerRef;
   wins: number;
   losses: number;
-  unknowns: number;
 }) {
   const identityLabel = player.claimed
     ? "Claimed profile"
@@ -859,7 +842,7 @@ function PlayerSummaryCard({
           <div className="mt-3 flex flex-wrap gap-2">
             <Tag>{identityLabel}</Tag>
             <Tag>
-              {wins + losses + unknowns} recorded
+              {wins + losses} decided
             </Tag>
 
             {player.pendingWoloClaimCount > 0 ? (
@@ -870,7 +853,7 @@ function PlayerSummaryCard({
           </div>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2">
           <RecordMetric
             label="Wins"
             value={wins}
@@ -883,11 +866,6 @@ function PlayerSummaryCard({
             accent="rose"
           />
 
-          <RecordMetric
-            label="Unknown"
-            value={unknowns}
-            accent="slate"
-          />
         </div>
 
         <div className="flex flex-wrap gap-3">
@@ -914,6 +892,13 @@ function PlayerSummaryCard({
       </div>
     </div>
   );
+}
+
+function publicBattlefieldLabel(value: unknown) {
+  const mapName = readMapName(value);
+  return mapName.toLowerCase().includes("unavailable")
+    ? "Recorded Battlefield"
+    : mapName;
 }
 
 function RecordMetric({

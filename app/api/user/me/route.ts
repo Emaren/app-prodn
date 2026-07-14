@@ -157,6 +157,7 @@ const USER_SELECT = {
   createdAt: true,
   lastSeen: true,
   isAdmin: true,
+  canReviewOwnReplayResults: true,
 } as const;
 
 

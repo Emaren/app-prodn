@@ -138,7 +138,7 @@ function featuredFromReplay(match: LobbyMatchRow | null, tournamentTitle: string
     key: `replay-${match.id}`,
     sessionKey,
     statusLabel: "Replay",
-    title: titleFromPlayers(players, winner ? `Winner ${winner}` : "Replay needs review"),
+    title: titleFromPlayers(players, winner ? `Winner ${winner}` : "HD Battle Record"),
     players,
     mapName,
     detail: playedAt ? `Parsed ${formatLobbyMoment(playedAt)}` : "Latest HD parse",
@@ -155,7 +155,7 @@ function featuredFromLiveSession(session: StreamedLiveGameSession): FeaturedWar 
     statusLabel: session.state === "live" ? "Live" : "Replay",
     title: titleFromPlayers(players, publicReplayMapLabel(session.mapName, "Live AoE2HD war")),
     players,
-    mapName: publicReplayMapLabel(session.mapName, "Map pending"),
+    mapName: publicReplayMapLabel(session.mapName, "HD Battlefield"),
     detail:
       session.state === "live"
         ? `Updated ${formatLobbyMoment(session.updatedAt)}`

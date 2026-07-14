@@ -3,9 +3,9 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
 import FounderBonusChips from "@/components/bets/FounderBonusChips";
+import ReviewReplayResultButton from "@/components/game-stats/ReviewReplayResultButton";
 import SteamLinkedBadge from "@/components/SteamLinkedBadge";
 import {
-  displayParseReason,
   formatDurationLabel,
   displayGameType,
   displayGameVersion,
@@ -23,7 +23,6 @@ import {
   readPlayedAt,
   shortHash,
   stringifyJson,
-  winnerLabel,
 } from "@/lib/gameStatsView";
 import {
   buildMatchupHref,
@@ -41,7 +40,10 @@ import {
   getPublicPlayerHref,
 } from "@/lib/publicPlayers";
 import { resolveReliableReplayWinner } from "@/lib/unresolvedWatcherResult";
-import { applyReplayAdjudicationToGameStats } from "@/lib/replayAdjudications";
+import {
+  applyReplayAdjudicationToGameStats,
+  EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION,
+} from "@/lib/replayAdjudications";
 import {
   getReplayAchievementGroups,
   type ReplayAchievementGroup,
@@ -71,12 +73,13 @@ export default async function GameStatsDetailPage({
 
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const detailView = parseReplayDetailViewMode(resolvedSearchParams.view);
-  const showRawReplayOutput = detailView === "basic" || detailView === "extreme";
+  const showRawReplayOutput = detailView === "extreme";
 
   const prisma = getPrisma();
   const rawGame = await prisma.gameStats.findUnique({
     where: { id: gameId },
     include: {
+      replayResultAdjudications: EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION,
       user: {
         select: {
           uid: true,
@@ -106,6 +109,9 @@ export default async function GameStatsDetailPage({
   }
 
   const game = applyReplayAdjudicationToGameStats(rawGame);
+  const commissionerVerified = Boolean(
+    (game as Record<string, unknown>).replayResultAdjudication
+  );
 
   const parseAttempts = await prisma.replayParseAttempt.findMany({
     where: {
@@ -119,7 +125,13 @@ export default async function GameStatsDetailPage({
     take: 20,
   });
 
-  const players = parsePlayers(game.players);
+  const players = parsePlayers(game.players).filter(
+    (player) => displayPlayerName(player) !== "Roster unresolved"
+  );
+  const resultReviewSubmitterUids = [
+    game.userUid,
+    ...parseAttempts.map((attempt) => attempt.userUid),
+  ];
   const battleTapeSessionKey = game.original_filename || game.replay_file || null;
   const battleTapeHref = battleTapeSessionKey
     ? `/game-stats/live/${encodeURIComponent(battleTapeSessionKey)}`
@@ -234,7 +246,9 @@ export default async function GameStatsDetailPage({
     !Array.isArray(keyEventRecord.settings)
       ? (keyEventRecord.settings as Record<string, unknown>)
       : {};
-  const outcomeLabel = outcomeBadgeLabel(game.parse_reason, game.winner);
+  const publicSettingsEntries = Object.entries(settingsSummary).filter(
+    ([, value]) => value !== null && value !== undefined && value !== ""
+  );
   const reliableWinner = resolveReliableReplayWinner({
     winner: game.winner,
     players,
@@ -242,6 +256,14 @@ export default async function GameStatsDetailPage({
     keyEvents: game.key_events,
     eventTypes,
   });
+  const outcomeLabel = reliableWinner
+    ? outcomeBadgeLabel(game.parse_reason, game.winner)
+    : null;
+  const winningPlayerNames = players
+    .filter((player) => player.winner === true || player.winner === "true" || player.winner === 1)
+    .map((player) => displayPlayerName(player));
+  const publicWinnerLabel =
+    winningPlayerNames.length > 0 ? winningPlayerNames.join(" / ") : reliableWinner;
   const suppressPlayerWinnerState =
     game.parse_reason === "hd_early_exit_under_60s" || !reliableWinner;
   const rivalryMatchCountLabel = rivalrySummary
@@ -300,7 +322,9 @@ export default async function GameStatsDetailPage({
             </div>
 </div>
             <h1 className="break-words text-4xl font-semibold text-white sm:text-5xl [overflow-wrap:anywhere]">
-              {readMapName(game.map)}
+              {readMapName(game.map) === "Map unavailable"
+                ? "AoE2HD Battle Record"
+                : readMapName(game.map)}
             </h1>
             <div className="flex max-w-5xl flex-wrap items-center gap-x-2 gap-y-1 break-words text-base leading-7 text-slate-300 sm:text-lg [overflow-wrap:anywhere]">
               {replaySides &&
@@ -403,21 +427,24 @@ export default async function GameStatsDetailPage({
                   );
                 })
               ) : (
-                "Player list unavailable"
+                "Replay roster preserved"
               )}
             </div>
             <div className="flex flex-wrap gap-2">
-              <Tag>{winnerLabel(game.winner, game.parse_reason)}</Tag>
-              <Tag>{game.parse_source}</Tag>
-              <Tag>{displayParseReason(game.parse_reason)}</Tag>
-              {game.disconnect_detected ? <Tag>disconnect suspected</Tag> : null}
-              {game.is_final ? <Tag>final replay</Tag> : <Tag>non-final replay</Tag>}
+              <Tag>{publicWinnerLabel ? `${publicWinnerLabel} victorious` : "Battle filed"}</Tag>
+              {commissionerVerified ? <Tag>Commissioner verified</Tag> : null}
+              <Tag>HD replay</Tag>
+              <Tag>{game.is_final ? "final replay" : "battle capture"}</Tag>
               {outcomeLabel ? <Tag>{outcomeLabel}</Tag> : null}
             </div>
             <FounderBonusChips bonuses={founderBonuses} />
           </div>
 
           <div className="flex flex-wrap gap-3">
+            <ReviewReplayResultButton
+              gameStatsId={game.id}
+              submitterUids={resultReviewSubmitterUids}
+            />
             {rivalryHref ? (
               <Link
                 href={rivalryHref}
@@ -439,7 +466,7 @@ export default async function GameStatsDetailPage({
               href="/game-stats"
               className="w-full rounded-full border border-white/15 px-5 py-3 text-center text-sm text-white/85 transition hover:border-white/30 hover:text-white sm:w-auto"
             >
-              Back To Parser Lab
+              Back To Battle Intelligence
             </Link>
             <Link
               href="/"
@@ -483,7 +510,6 @@ export default async function GameStatsDetailPage({
 
               <div className="mt-5 flex flex-wrap gap-2">
                 <Tag>Last played {rivalryLastPlayedLabel}</Tag>
-                {rivalrySummary.unknowns > 0 ? <Tag>{rivalrySummary.unknowns} unresolved results</Tag> : null}
               </div>
             </div>
           ) : null}
@@ -495,23 +521,24 @@ export default async function GameStatsDetailPage({
           <Panel title="Replay Summary" eyebrow="Overview">
             <dl className={summaryGridClassName}>
               <StatRow label="Replay ID" value={`#${game.id}`} />
-              <StatRow label="Winner" value={winnerLabel(game.winner, game.parse_reason)} />
-              <StatRow label="Victory Type" value={outcomeLabel || "Recorded final result"} />
-              <StatRow label="Map" value={readMapName(game.map)} />
-              <StatRow label="Map Size" value={readMapSize(game.map)} />
-              <StatRow label="Game Version" value={displayGameVersion(game.game_version)} />
-              <StatRow label="Game Type" value={displayGameType(game.game_type)} />
-              <StatRow label="Platform" value={formatPrimitive(keyEventRecord.platform_id)} />
-              <StatRow label="Rated" value={formatPrimitive(keyEventRecord.rated)} />
-              <StatRow
-                label="Duration"
-                value={formatDurationLabel(game.duration || game.game_duration)}
-              />
-              <StatRow label="Match ID" value={formatPrimitive(keyEventRecord.platform_match_id)} />
-              <StatRow label="Played On" value={formatDateTime(playedAt)} />
+              {publicWinnerLabel ? (
+                <StatRow label="Winner" value={publicWinnerLabel} />
+              ) : (
+                <StatRow label="Archive Status" value="Battle preserved" />
+              )}
+              {outcomeLabel ? <StatRow label="Victory Type" value={outcomeLabel} /> : null}
+              {readMapName(game.map) !== "Map unavailable" ? <StatRow label="Map" value={readMapName(game.map)} /> : null}
+              {readMapSize(game.map) !== "Size unavailable" ? <StatRow label="Map Size" value={readMapSize(game.map)} /> : null}
+              {game.game_version ? <StatRow label="Game Version" value={displayGameVersion(game.game_version)} /> : null}
+              {game.game_type ? <StatRow label="Game Type" value={displayGameType(game.game_type)} /> : null}
+              {keyEventRecord.platform_id !== null && keyEventRecord.platform_id !== undefined ? <StatRow label="Platform" value={formatPrimitive(keyEventRecord.platform_id)} /> : null}
+              {keyEventRecord.rated !== null && keyEventRecord.rated !== undefined ? <StatRow label="Rated" value={formatPrimitive(keyEventRecord.rated)} /> : null}
+              {(game.duration || game.game_duration) ? <StatRow label="Duration" value={formatDurationLabel(game.duration || game.game_duration)} /> : null}
+              {keyEventRecord.platform_match_id ? <StatRow label="Match ID" value={formatPrimitive(keyEventRecord.platform_match_id)} /> : null}
+              {playedAt ? <StatRow label="Played On" value={formatDateTime(playedAt)} /> : null}
               <StatRow label="Recorded At" value={formatDateTime(game.createdAt)} />
-              <StatRow label="Uploader" value={renderUploader(game.user)} />
-              <StatRow label="Lobby Name" value={formatPrimitive(keyEventRecord.lobby_name)} />
+              {game.user ? <StatRow label="Uploader" value={renderUploader(game.user)} /> : null}
+              {keyEventRecord.lobby_name ? <StatRow label="Lobby Name" value={formatPrimitive(keyEventRecord.lobby_name)} /> : null}
               <StatRow
                 label="Replay File"
                 value={displayReplayFilename(game.original_filename, game.replay_file)}
@@ -530,15 +557,22 @@ export default async function GameStatsDetailPage({
             ) : null}
           </Panel>
 
-          <Panel title="Players" eyebrow="Roster">
+          {players.length > 0 ? <Panel title="Players" eyebrow="Roster">
             <div className={playerGridClassName}>
-              {players.length === 0 ? (
-                <EmptyPanel message="No player payload was stored for this replay." />
-              ) : (
-                players.map((player, index) => {
+              {players.map((player, index) => {
                   const playerName = displayPlayerName(player);
                   const playerRef = playerRefs[index];
                   const claimedPlayer = getClaimedPublicPlayer(playerName, claimedPlayers);
+                  const civilizationLabel = readPlayerCivilizationLabel(player);
+                  const steamId = readPlayerSteamId(player);
+                  const rmRating = readPlayerSteamRmRating(player);
+                  const dmRating = readPlayerSteamDmRating(player);
+                  const hasEapm = typeof player.eapm === "number" && Number.isFinite(player.eapm);
+                  const hasPosition = Array.isArray(player.position) && player.position.length === 2;
+                  const hasScore = typeof player.score === "number" && Number.isFinite(player.score);
+                  const hasPlayerMetrics = Boolean(
+                    steamId || rmRating !== null || dmRating !== null || hasEapm || hasPosition || hasScore
+                  );
 
                   return (
                     <Link
@@ -561,28 +595,30 @@ export default async function GameStatsDetailPage({
                                 : "unclaimed warrior"}
                           </div>
                         </div>
-                        <div className="shrink-0 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-                          {readPlayerCivilizationLabel(player)}
-                        </div>
+                        {!civilizationLabel.toLowerCase().includes("unavailable") ? (
+                          <div className="shrink-0 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+                            {civilizationLabel}
+                          </div>
+                        ) : null}
                       </div>
 
-                      <dl className="mt-5 grid gap-3 sm:grid-cols-2">
-                        <PlayerMetric label="Steam ID" value={formatPrimitive(readPlayerSteamId(player))} />
-                        <PlayerMetric
+                      {hasPlayerMetrics ? <dl className="mt-5 grid gap-3 sm:grid-cols-2">
+                        {steamId ? <PlayerMetric label="Steam ID" value={steamId} /> : null}
+                        {rmRating !== null ? <PlayerMetric
                           label="RM Rating"
-                          value={formatRatingMetric(readPlayerSteamRmRating(player))}
-                        />
-                        <PlayerMetric
+                          value={formatRatingMetric(rmRating)}
+                        /> : null}
+                        {dmRating !== null ? <PlayerMetric
                           label="DM Rating"
-                          value={formatRatingMetric(readPlayerSteamDmRating(player))}
-                        />
-                        <PlayerMetric label="EAPM" value={formatPrimitive(player.eapm)} />
-                        <PlayerMetric
+                          value={formatRatingMetric(dmRating)}
+                        /> : null}
+                        {hasEapm ? <PlayerMetric label="EAPM" value={formatPrimitive(player.eapm)} /> : null}
+                        {hasPosition ? <PlayerMetric
                           label="Starting Position"
                           value={formatPositionValue(player.position)}
-                        />
-                        <PlayerMetric label="Score" value={formatPrimitive(player.score)} />
-                      </dl>
+                        /> : null}
+                        {hasScore ? <PlayerMetric label="Score" value={formatPrimitive(player.score)} /> : null}
+                      </dl> : null}
 
                       <div className="mt-5 space-y-4">
                         {getReplayAchievementGroups(player).map((group) =>
@@ -598,36 +634,31 @@ export default async function GameStatsDetailPage({
                       </div>
                     </Link>
                   );
-                })
-              )}
+                })}
             </div>
-          </Panel>
+          </Panel> : null}
         </div>
 
         <div className="space-y-6">
-          <Panel title="Parse Signals" eyebrow="Metadata">
+          {(publicSettingsEntries.length > 0 || eventTypes.length > 0 || showRawReplayOutput) ? <Panel title="Parse Signals" eyebrow="Metadata">
             <div className="space-y-4">
-              {Object.keys(settingsSummary).length > 0 ? (
+              {publicSettingsEntries.length > 0 ? (
                 <div>
                   <div className="text-xs uppercase tracking-[0.25em] text-slate-500">Settings</div>
                   <dl className={settingsGridClassName}>
-                    {Object.entries(settingsSummary).map(([key, value]) => (
+                    {publicSettingsEntries.map(([key, value]) => (
                       <StatRow key={key} label={humanizeKey(key)} value={formatPrimitive(value)} compact />
                     ))}
                   </dl>
                 </div>
               ) : null}
 
-              <div>
+              {eventTypes.length > 0 ? <div>
                 <div className="text-xs uppercase tracking-[0.25em] text-slate-500">Event Types</div>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {eventTypes.length === 0 ? (
-                    <span className="text-sm text-slate-400">No event types recorded.</span>
-                  ) : (
-                    eventTypes.map((eventType) => <Tag key={String(eventType)}>{String(eventType)}</Tag>)
-                  )}
+                  {eventTypes.map((eventType) => <Tag key={String(eventType)}>{String(eventType)}</Tag>)}
                 </div>
-              </div>
+              </div> : null}
 
               {showRawReplayOutput ? (
                 <>
@@ -640,14 +671,11 @@ export default async function GameStatsDetailPage({
                 </div>
               )}
             </div>
-          </Panel>
+          </Panel> : null}
 
-          <Panel title="Parse Attempts" eyebrow="Trail">
+          {showRawReplayOutput && parseAttempts.length > 0 ? <Panel title="Parse Attempts" eyebrow="Operator Trail">
             <div className="space-y-3">
-              {parseAttempts.length === 0 ? (
-                <EmptyPanel message="No parse attempts were recorded for this replay." />
-              ) : (
-                parseAttempts.map((attempt) => (
+              {parseAttempts.map((attempt) => (
                   <div
                     key={attempt.id}
                     className="rounded-2xl border border-white/8 bg-white/5 px-4 py-4"
@@ -668,7 +696,7 @@ export default async function GameStatsDetailPage({
 
                     <div className="mt-4 flex flex-wrap gap-2">
                       <Tag>{attempt.parseSource}</Tag>
-                      <Tag>{attempt.uploadMode || "mode unavailable"}</Tag>
+                      {attempt.uploadMode ? <Tag>{attempt.uploadMode}</Tag> : null}
                       <Tag>{shortHash(attempt.replayHash)}</Tag>
                     </div>
 
@@ -676,10 +704,9 @@ export default async function GameStatsDetailPage({
                       {attempt.createdAt.toLocaleString()}
                     </div>
                   </div>
-                ))
-              )}
+                ))}
             </div>
-          </Panel>
+          </Panel> : null}
 
           {showRawReplayOutput ? (
             <Panel title="Stored Player JSON" eyebrow="Raw Output">
@@ -793,14 +820,6 @@ function StatRow({
   );
 }
 
-function EmptyPanel({ message }: { message: string }) {
-  return (
-    <div className="rounded-2xl border border-white/8 bg-white/5 px-4 py-5 text-sm text-slate-300">
-      {message}
-    </div>
-  );
-}
-
 function PlayerMetric({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="min-w-0 rounded-[1rem] border border-white/8 bg-slate-950/40 px-3 py-3">
@@ -878,7 +897,7 @@ function renderUploader(
       }
     | null
 ) {
-  if (!user) return "Uploader unavailable";
+  if (!user) return "Battle contributor";
   const label = user.inGameName || user.steamPersonaName || user.uid;
 
   return (

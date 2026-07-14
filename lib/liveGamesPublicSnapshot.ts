@@ -8,6 +8,7 @@ import {
   sanitizePublicLiveGamesSnapshot,
   type PublicGameStatsLike,
 } from "@/lib/publicReplayTruth";
+import { EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION } from "@/lib/replayAdjudications";
 
 type PublicRow = PublicGameStatsLike & Record<string, unknown>;
 type CompletedSession = LiveGamesSnapshot["recentlyCompletedSessions"][number] & Record<string, unknown>;
@@ -74,6 +75,7 @@ async function loadCanonicalFinalRowsById(
       parse_iteration: true,
       game_duration: true,
       disconnect_detected: true,
+      replayResultAdjudications: EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION,
     },
   });
 

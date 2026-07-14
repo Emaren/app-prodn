@@ -21,8 +21,10 @@ type PerformanceGame = {
   map: unknown;
   duration?: number | null;
   game_duration?: number | null;
+  event_types?: unknown;
   key_events?: unknown;
   parse_reason?: string | null;
+  parse_source?: string | null;
   played_on?: Date | string | null;
   timestamp?: Date | string | null;
 };
@@ -64,6 +66,10 @@ function readCivilization(player: Record<string, unknown>) {
   }
 
   return null;
+}
+
+function playerWinnerFlagIsTrue(value: unknown) {
+  return value === true || value === "true" || value === 1 || value === "1";
 }
 
 export function buildPlayerPerformanceStats(
@@ -141,10 +147,15 @@ export function buildPlayerPerformanceStats(
       winner: match.winner,
       players,
       parseReason: match.parse_reason,
+      parseSource: match.parse_source,
       keyEvents: match.key_events,
+      eventTypes: match.event_types,
     });
     if (winner) {
-      if (publicPlayerMatchesName(currentPlayer, winner)) {
+      if (
+        playerWinnerFlagIsTrue(currentRecord?.winner) ||
+        publicPlayerMatchesName(currentPlayer, winner)
+      ) {
         wins += 1;
       } else {
         losses += 1;

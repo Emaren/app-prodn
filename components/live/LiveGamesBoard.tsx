@@ -46,7 +46,6 @@ import {
   normalizeResolvedWinner,
   publicReplayMapLabel,
   resolveReliableReplayWinner,
-  unresolvedReplayReviewLabel,
 } from "@/lib/unresolvedWatcherResult";
 import {
   readStoredLiveGamesViewMode,
@@ -209,47 +208,18 @@ function sessionTitle(session: LiveSession) {
   const names = sessionKnownParticipantNames(session);
 
   if (names.length >= 2) {
-    return `${names.join(" · ")} · teams resolving`;
+    return names.join(" · ");
   }
 
   if (names.length === 1) {
-    return `${names[0]} vs opponent resolving`;
+    return `${names[0]}'s recorded battle`;
   }
 
   if (session.state === "live") {
     return "Battle proof assembling";
   }
 
-  return session.originalFilename || "Game in progress";
-}
-
-function proofLabel(session: LiveSession) {
-  const label = session.unresolvedResult?.label as string | undefined;
-  if (!label) return null;
-  if (label === "Awaiting fuller proof") return "Awaiting final proof";
-  if (label === "Winner unresolved") return "Winner under review";
-  if (label === "Needs parser review") return "Result review";
-  return label;
-}
-
-function proofExplanation(session: LiveSession) {
-  const explanation = session.unresolvedResult?.explanation;
-  if (!explanation) return null;
-
-  const names = sessionKnownParticipantNames(session);
-  if (session.unresolvedResult?.code === "roster_missing" && names.length > 0) {
-    return `${names.join(" + ")} linked; opponent resolving from replay proof.`;
-  }
-
-  if (explanation === "Player roster still parsing") {
-    return "Roster still resolving from the live replay.";
-  }
-
-  if (explanation === "Replay parsed but winner field missing") {
-    return "Replay proof is incomplete; review needed.";
-  }
-
-  return explanation;
+  return session.originalFilename || "HD battle record";
 }
 
 function liveMarketHref(session: LiveSession) {
@@ -290,17 +260,25 @@ function liveSessionStatusLabel(session: LiveSession) {
 }
 
 function replayReviewHref(session: LiveSession) {
-  return `/admin/replay-review?gameId=${encodeURIComponent(String(session.id))}#game-${encodeURIComponent(String(session.id))}`;
+  return `/game-stats/${encodeURIComponent(String(session.id))}/review`;
 }
 
-function replayReviewMarketLabel(session: LiveSession) {
-  const market = session.reviewMarket;
-  if (!market) return null;
-  if (market.moneyState === "no_slips") return "Market attached · no slips";
-  if (market.moneyState === "awaiting_verdict") {
-    return `${market.slipCount} slip${market.slipCount === 1 ? "" : "s"} · Awaiting verdict`;
+function canReviewReplaySession(
+  session: LiveSession,
+  viewerUid: string | null | undefined,
+  isAdmin: boolean,
+  canReviewOwnReplayResults: boolean
+) {
+  if (session.state !== "completed" || !Number.isSafeInteger(session.id) || session.id <= 0) {
+    return false;
   }
-  return market.moneyLabel;
+  if (isAdmin) return true;
+  if (!viewerUid || !canReviewOwnReplayResults) return false;
+
+  return [
+    ...(session.uploaders ?? []).map((uploader) => uploader.uid),
+    session.uploader?.uid ?? null,
+  ].some((uid) => uid === viewerUid);
 }
 
 function liveDisplayTitle(session: LiveSession) {
@@ -312,8 +290,8 @@ function liveDisplayTitle(session: LiveSession) {
 
   if (session.players.length === 0 && names.length === 1) {
     return session.state === "live"
-      ? `${names[0]} vs opponent resolving`
-      : `${names[0]} replay awaiting proof`;
+      ? `${names[0]}'s live battle`
+      : `${names[0]}'s recorded battle`;
   }
 
   const title = sessionTitle(session);
@@ -325,20 +303,10 @@ function liveDisplayTitle(session: LiveSession) {
     title.endsWith(".aoe2mpgame");
 
   if (genericProofTitle || fileLike) {
-    return session.state === "live" ? "Battle proof assembling" : "Replay awaiting proof";
+    return session.state === "live" ? "Live HD battle" : "HD battle record";
   }
 
   return title;
-}
-
-function liveDisplaySubtitle(session: LiveSession) {
-  const names = sessionKnownParticipantNames(session);
-  if (names.length > 0 && session.players.length === 0) {
-    return session.state === "live"
-      ? `${names.join(" + ")} linked · opponent resolving from replay`
-      : `${names.join(" + ")} linked · replay proof incomplete`;
-  }
-  return proofExplanation(session);
 }
 
 function isManualUploadedReplaySession(session: Pick<LiveSession, "uploader" | "uploaders">) {
@@ -484,7 +452,7 @@ function DualWatcherProofStack({
 }
 
 export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps) {
-  const { uid, isAdmin } = useUserAuth();
+  const { uid, isAdmin, canReviewOwnReplayResults } = useUserAuth();
   const { setViewMode: setSharedLiveGamesViewMode } = useTileViewPreference("live_games");
   const [viewMode, setViewMode] = useState<TileViewMode>("basic");
   const [snapshot, setSnapshot] = useState(initialSnapshot);
@@ -591,12 +559,10 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
     0,
     MAX_VISIBLE_OUTCOMES
   );
-  const recentlyCompletedSessions = snapshot.recentlyCompletedSessions.filter(
-    (session) => !session.unresolvedResult
-  );
-  const reviewCompletedSessions = snapshot.recentlyCompletedSessions.filter(
-    (session) => Boolean(session.unresolvedResult)
-  );
+  // Every preserved final stays in the public results rail. Evidence review is
+  // a private action for authorized reviewers, not a public-facing quality label.
+  const recentlyCompletedSessions = snapshot.recentlyCompletedSessions;
+  const reviewCompletedSessions: LiveGamesSnapshot["recentlyCompletedSessions"] = [];
   const liveItemsCount =
     liveScheduledMatches.length +
     snapshot.activeSessions.length +
@@ -701,6 +667,7 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
   const boardProps: BoardViewProps = {
     uid,
     isAdmin,
+    canReviewOwnReplayResults,
     snapshot,
     mounted,
     liveItemsCount,
@@ -917,6 +884,7 @@ function StatusPill({
 type BoardViewProps = {
   uid: string | null | undefined;
   isAdmin: boolean;
+  canReviewOwnReplayResults: boolean;
   snapshot: LiveGamesSnapshot;
   mounted: boolean;
   liveItemsCount: number;
@@ -939,7 +907,9 @@ type BoardViewProps = {
 
 
 function ClassicBoard({
+  uid,
   isAdmin,
+  canReviewOwnReplayResults,
   snapshot,
   mounted,
   liveScheduledMatches,
@@ -1054,7 +1024,7 @@ function ClassicBoard({
   const archiveItemCount =
     snapshot.archiveTotal;
   const recentOutcomeCount = recentScheduledMatches.length + featuredCompletedSessions.length;
-  const sectionStatusLabel = liveItemsCount > 0 ? `${liveItemsCount} active` : "Awaiting battle";
+  const sectionStatusLabel = liveItemsCount > 0 ? `${liveItemsCount} active` : "War room ready";
   return (
     <section className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
       <section
@@ -1115,12 +1085,14 @@ function ClassicBoard({
                     key={liveSessionIdentity(session)}
                     session={session}
                     liveTone={liveTone}
+                    canReviewResult={canReviewReplaySession(session, uid, isAdmin, canReviewOwnReplayResults)}
                   />
                 ) : (
                   <ClassicLiveSessionCard
                     key={liveSessionIdentity(session)}
                     session={session}
                     mounted={mounted}
+                    canReviewResult={canReviewReplaySession(session, uid, isAdmin, canReviewOwnReplayResults)}
                   />
                 )
               )}
@@ -1209,12 +1181,14 @@ function ClassicBoard({
                       session={session}
                       liveTone={liveTone}
                       resolvedStyle={resolvedCardStyle}
+                      canReviewResult={canReviewReplaySession(session, uid, isAdmin, canReviewOwnReplayResults)}
                     />
                   ) : (
                     <ClassicLiveSessionCard
                       key={`completed-${liveSessionIdentity(session)}`}
                       session={session}
                       mounted={mounted}
+                      canReviewResult={canReviewReplaySession(session, uid, isAdmin, canReviewOwnReplayResults)}
                     />
                   )
                 )}
@@ -1244,7 +1218,7 @@ function ClassicBoard({
                   key={`review-${liveSessionIdentity(session)}`}
                   session={session}
                   mounted={mounted}
-                  isAdmin={isAdmin}
+                  canReviewResult={canReviewReplaySession(session, uid, isAdmin, canReviewOwnReplayResults)}
                 />
               ))}
             </div>
@@ -1300,13 +1274,6 @@ function ClassicBoard({
                           <div className="mt-1 text-sm text-slate-300">
                             {publicReplayMapLabel(session.mapName)}
                           </div>
-                          {session.unresolvedResult ? (
-                            <div className="mt-2">
-                              <span className="rounded-full border border-amber-200/18 bg-amber-300/8 px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-amber-100">
-                                {proofLabel(session) ?? session.unresolvedResult.label}
-                              </span>
-                            </div>
-                          ) : null}
                         </div>
                         <div className="shrink-0 text-right text-xs text-slate-400">
                           {formatTime(session.playedOn || session.completedAt || session.updatedAt, mounted)}
@@ -1329,19 +1296,6 @@ function ClassicBoard({
                           <div className="mt-1 text-sm text-slate-300">
                             {recentMatchMap(match)}
                           </div>
-                          {!resolveReliableReplayWinner({
-                            winner: match.winner,
-                            parseReason: match.parse_reason,
-                          }) ? (
-                            <div className="mt-2 flex flex-wrap gap-2">
-                              <span className="rounded-full border border-amber-200/18 bg-amber-300/8 px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-amber-100">
-                                Winner under review
-                              </span>
-                              <span className="rounded-full border border-white/9 bg-white/[0.04] px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-slate-300">
-                                {unresolvedReplayReviewLabel(match.parse_reason)}
-                              </span>
-                            </div>
-                          ) : null}
                         </div>
                         <div className="shrink-0 text-right text-xs text-slate-400">
                           {formatTime(match.played_on || match.timestamp, mounted)}
@@ -1413,7 +1367,7 @@ function resolvedBattleSizeLabel(playerCount: number) {
 function resolvedSessionDisplay(session: LiveSession) {
   const names = resolvedPlayerNames(session);
   const winnerName = resolvedWinnerName(session);
-  const mapName = publicReplayMapLabel(session.mapName, "Map pending");
+  const mapName = publicReplayMapLabel(session.mapName, "HD Battlefield");
   const battleSize = resolvedBattleSizeLabel(names.length);
 
   if (names.length <= 2) {
@@ -1449,10 +1403,10 @@ function resolvedSessionDisplay(session: LiveSession) {
       winnerName,
       battleSize,
       mapName,
-      heroTitle: `${battleSize} stored · teams unresolved`,
-      heroSubtitle: `The replay roster is preserved without guessing team sides · ${mapName}`,
+      heroTitle: `${battleSize} battle archived`,
+      heroSubtitle: `${compactResolvedNames(names, 4)} · ${mapName}`,
       leftLabel: "Replay roster",
-      rightLabel: "Teams unresolved",
+      rightLabel: "HD War Vault",
       leftNames: names,
       rightNames: [] as string[],
       teamsResolved: false,
@@ -1476,12 +1430,12 @@ function resolvedSessionDisplay(session: LiveSession) {
   const teamTitle =
     hasCoherentTeamResult
       ? `Team ${leadWinner} wins ${battleSize}`
-      : `${battleSize} stored · result under review`;
+      : `${battleSize} battle archived`;
 
   const teamSubtitle =
     hasCoherentTeamResult
       ? `${compactResolvedNames(winnerSide, 3)} defeated ${compactResolvedNames(fieldSide, 3)} · ${mapName}`
-      : `Replay-confirmed teams preserved; no winner side is inferred · ${mapName}`;
+      : `${compactResolvedNames(winnerSide, 3)} vs ${compactResolvedNames(fieldSide, 3)} · ${mapName}`;
 
   return {
     names,
@@ -1505,37 +1459,29 @@ function UnresolvedReplayOutcomeCard({ session }: { session: LiveSession }) {
   const gameHref = sessionStatsHref(session);
   const watchHref = `/watch/${encodeURIComponent(session.sessionKey)}`;
   const names = resolvedPlayerNames(session);
-  const reasonLabel = unresolved.code.replaceAll("_", " ");
-
   return (
     <article
-      className="relative overflow-hidden rounded-[1.75rem] border border-amber-200/16 bg-[radial-gradient(circle_at_88%_10%,rgba(251,191,36,0.10),transparent_34%),linear-gradient(145deg,rgba(30,41,59,0.90),rgba(2,6,23,0.96))] px-5 py-5 shadow-[0_24px_80px_rgba(2,6,23,0.32)]"
+      className="relative overflow-hidden rounded-[1.75rem] border border-emerald-200/16 bg-[radial-gradient(circle_at_88%_10%,rgba(52,211,153,0.10),transparent_34%),linear-gradient(145deg,rgba(15,41,45,0.90),rgba(2,6,23,0.96))] px-5 py-5 shadow-[0_24px_80px_rgba(2,6,23,0.32)]"
       data-unresolved-result={unresolved.code}
-      aria-label={`${unresolved.label}: ${unresolved.explanation}`}
+      aria-label="HD replay preserved"
     >
       <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/35 to-transparent" />
       <div className="relative">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.3em] text-amber-100/70">
-              <CircleAlert className="h-4 w-4" />
-              Result review
+            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.3em] text-emerald-100/70">
+              <Archive className="h-4 w-4" />
+              HD War Vault
             </div>
             <h3 className="mt-3 font-serif text-[1.55rem] leading-none tracking-[-0.025em] text-white">
-              {unresolved.label}
+              Battle record preserved
             </h3>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
-              {unresolved.explanation}
+              The replay, roster, and battle tape are filed for the permanent HD record.
             </p>
           </div>
-          <span
-            className={`rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${
-              unresolved.reviewNeeded
-                ? "border-amber-200/20 bg-amber-300/10 text-amber-100"
-                : "border-sky-200/20 bg-sky-300/10 text-sky-100"
-            }`}
-          >
-            {reasonLabel}
+          <span className="rounded-full border border-emerald-200/20 bg-emerald-300/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-100">
+            Final stored
           </span>
         </div>
 
@@ -1558,9 +1504,9 @@ function UnresolvedReplayOutcomeCard({ session }: { session: LiveSession }) {
         <div className="mt-5 flex flex-wrap gap-2 border-t border-white/8 pt-4">
           <Link
             href={gameHref}
-            className="inline-flex min-h-9 items-center justify-center rounded-full border border-amber-200/20 bg-amber-300/10 px-4 text-xs font-semibold text-amber-50 transition hover:bg-amber-300/15"
+            className="inline-flex min-h-9 items-center justify-center rounded-full border border-emerald-200/20 bg-emerald-300/10 px-4 text-xs font-semibold text-emerald-50 transition hover:bg-emerald-300/15"
           >
-            Open parser record
+            Open battle record
           </Link>
           {session.primaryStream ? (
             <Link
@@ -1586,7 +1532,7 @@ function NeutralResolvedRosterCard({
   return (
     <article className="relative overflow-hidden rounded-[1.75rem] border border-sky-200/18 bg-[linear-gradient(145deg,rgba(15,23,42,0.94),rgba(2,6,23,0.98))] px-5 py-5 shadow-[0_24px_80px_rgba(2,6,23,0.32)]">
       <div className="text-[10px] font-black uppercase tracking-[0.3em] text-sky-100/60">
-        Final replay · teams unresolved
+        Final replay · battle archived
       </div>
       <h3 className="mt-3 font-serif text-[1.45rem] text-white">{display.heroTitle}</h3>
       <p className="mt-2 text-sm leading-6 text-slate-300">{display.heroSubtitle}</p>
@@ -1602,7 +1548,7 @@ function NeutralResolvedRosterCard({
       </div>
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
         <span className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">
-          No authoritative sides are displayed or offered for betting
+          Replay roster preserved in the permanent HD archive
         </span>
         <Link
           href={sessionStatsHref(session)}
@@ -1961,10 +1907,12 @@ function PremiumClassicLiveSessionCard({
   session,
   liveTone,
   resolvedStyle,
+  canReviewResult = false,
 }: {
   session: LiveGamesSnapshot["activeSessions"][number];
   liveTone: ClassicLiveTone;
   resolvedStyle?: ResolvedCardStyle;
+  canReviewResult?: boolean;
 }) {
   const sessionAny = session as Record<string, unknown>;
   const isCompleted = session.state === "completed";
@@ -1973,10 +1921,20 @@ function PremiumClassicLiveSessionCard({
 
   if (isCompleted && resolvedStyle && resolvedStyle !== "legacy") {
     return (
-      <PremiumResolvedOutcomeCard
-        session={session}
-        resolvedStyle={resolvedStyle}
-      />
+      <div className="relative">
+        <PremiumResolvedOutcomeCard
+          session={session}
+          resolvedStyle={resolvedStyle}
+        />
+        {canReviewResult ? (
+          <Link
+            href={replayReviewHref(session)}
+            className="absolute right-4 top-4 z-30 rounded-full bg-amber-200 px-3 py-2 text-[11px] font-bold text-amber-950 shadow-lg transition hover:bg-amber-100"
+          >
+            Review Result
+          </Link>
+        ) : null}
+      </div>
     );
   }
 
@@ -1987,9 +1945,7 @@ function PremiumClassicLiveSessionCard({
   {/* FORCE_VISIBLE_DUAL_WATCHER_PROOF */}
   <DualWatcherProofStack uploaders={session.uploaders} />
 
-  const statusLabel = session.unresolvedResult
-    ? proofLabel(session) ?? session.unresolvedResult.label
-    : liveSessionStatusLabel(session);
+  const statusLabel = isCompleted ? "Final stored" : liveSessionStatusLabel(session);
   const durationLabel = formatDurationCompact(session.durationSeconds);
 
   const rawGameNumber =
@@ -2122,14 +2078,9 @@ function PremiumClassicLiveSessionCard({
               <div className={`text-[11px] font-medium uppercase tracking-[0.22em] ${winnerClass}`}>
                 Winner <span className={`ml-1 ${winnerNameClass}`}>{winnerName}</span>
               </div>
-            ) : session.unresolvedResult ? (
-              <div>
-                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-100">
-                  {proofLabel(session) ?? session.unresolvedResult.label}
-                </div>
-                <div className="mt-1 text-xs leading-5 text-slate-400">
-                  {liveDisplaySubtitle(session) ?? session.unresolvedResult.explanation}
-                </div>
+            ) : isCompleted ? (
+              <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-emerald-100/70">
+                Replay preserved
               </div>
             ) : (
               <div className="h-[14px]" />
@@ -2154,11 +2105,11 @@ function PremiumClassicLiveSessionCard({
 function ClassicLiveSessionCard({
   session,
   mounted,
-  isAdmin = false,
+  canReviewResult = false,
 }: {
   session: LiveGamesSnapshot["activeSessions"][number];
   mounted: boolean;
-  isAdmin?: boolean;
+  canReviewResult?: boolean;
 }) {
   const isCompleted = session.state === "completed";
   const gameHref = sessionStatsHref(session);
@@ -2187,7 +2138,7 @@ function ClassicLiveSessionCard({
         ? "Dual watcher coverage"
         : watcherCount === 1
           ? "Single watcher"
-          : "Watcher source pending";
+          : "Replay source";
   const coverageClass =
     watcherCount >= 3
       ? "border-sky-300/25 bg-sky-400/10 text-sky-100"
@@ -2203,9 +2154,7 @@ function ClassicLiveSessionCard({
     : "border-red-400/25 bg-red-500/12 text-red-50";
   const eyebrowClass = isCompleted ? "text-emerald-100/80" : "text-red-100/80";
   const eyebrowLabel = isCompleted ? "Just finished" : "Watcher live";
-  const badgeLabel = session.unresolvedResult
-    ? proofLabel(session) ?? session.unresolvedResult.label
-    : liveSessionStatusLabel(session);
+  const badgeLabel = isCompleted ? "Final stored" : liveSessionStatusLabel(session);
   const compactDuration = formatDurationCompact(session.durationSeconds);
 
   return (
@@ -2249,21 +2198,6 @@ function ClassicLiveSessionCard({
                 Winner {normalizeResolvedWinner(session.winner)}
               </span>
             ) : null}
-            {session.unresolvedResult ? (
-              <>
-                <span className="rounded-full border border-amber-300/25 bg-amber-500/10 px-3 py-1 text-xs text-amber-100">
-                  {proofLabel(session) ?? session.unresolvedResult.label}
-                </span>
-                <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-                  {session.unresolvedResult.code.replaceAll("_", " ")}
-                </span>
-                {replayReviewMarketLabel(session) ? (
-                  <span className="rounded-full border border-violet-300/20 bg-violet-400/10 px-3 py-1 text-xs text-violet-100">
-                    {replayReviewMarketLabel(session)}
-                  </span>
-                ) : null}
-              </>
-            ) : null}
             {primaryStream ? (
               <span className="rounded-full border border-red-300/25 bg-red-400/10 px-3 py-1 text-xs text-red-100">
                 {isCompleted ? "Video saved" : "Video live"}
@@ -2297,7 +2231,7 @@ function ClassicLiveSessionCard({
       </div>
 
       <div className="mt-4 flex flex-wrap gap-3">
-        {session.unresolvedResult && isAdmin ? (
+        {isCompleted && canReviewResult ? (
           <Link
             href={replayReviewHref(session)}
             className="rounded-full bg-amber-200 px-4 py-2 text-sm font-semibold text-amber-950 transition hover:bg-amber-100"
@@ -2330,10 +2264,6 @@ function ClassicLiveSessionCard({
           >
             Bet live
           </Link>
-        ) : session.state === "live" ? (
-          <span className="rounded-full border border-slate-300/15 bg-white/[0.04] px-4 py-2 text-sm text-slate-400">
-            Betting unavailable · teams unresolved
-          </span>
         ) : null}
       </div>
     </div>
@@ -2482,7 +2412,9 @@ function ClassicTournamentLiveMatchCard({
 }
 
 function ExtremeBoard({
+  uid,
   isAdmin,
+  canReviewOwnReplayResults,
   snapshot,
   mounted,
   liveItemsCount,
@@ -2534,6 +2466,7 @@ function ExtremeBoard({
                       session={session}
                       mounted={mounted}
                       variant="extreme"
+                      canReviewResult={canReviewReplaySession(session, uid, isAdmin, canReviewOwnReplayResults)}
                     />
                   ))}
                   {snapshot.liveMatches.map((match) => (
@@ -2631,6 +2564,7 @@ function ExtremeBoard({
                   session={session}
                   mounted={mounted}
                   variant="extreme"
+                  canReviewResult={canReviewReplaySession(session, uid, isAdmin, canReviewOwnReplayResults)}
                 />
               ))}
             </div>
@@ -2654,7 +2588,7 @@ function ExtremeBoard({
                 session={session}
                 mounted={mounted}
                 variant="extreme"
-                isAdmin={isAdmin}
+                canReviewResult={canReviewReplaySession(session, uid, isAdmin, canReviewOwnReplayResults)}
               />
             ))}
           </div>
@@ -2851,12 +2785,12 @@ function LiveSessionCard({
   session,
   mounted,
   variant,
-  isAdmin = false,
+  canReviewResult = false,
 }: {
   session: LiveSession;
   mounted: boolean;
   variant: TileViewMode;
-  isAdmin?: boolean;
+  canReviewResult?: boolean;
 }) {
   const isCompleted = session.state === "completed";
   const gameHref = sessionStatsHref(session);
@@ -2864,7 +2798,7 @@ function LiveSessionCard({
   const primaryStream = session.primaryStream;
   const title = liveDisplayTitle(session);
   const compactDuration = formatDurationCompact(session.durationSeconds);
-  const mapName = session.mapName || "Map pending";
+  const mapName = normalizePublicReplayText(session.mapName);
   const winner = isCompleted ? resolvedWinnerName(session) : null;
   const sourceCount = Math.max(
     session.watcherCount || 0,
@@ -2918,9 +2852,7 @@ function LiveSessionCard({
               {/* COMPLETED_DUAL_WATCHER_PROOF */}
               <DualWatcherProofStack uploaders={(session as { uploaders?: DualWatcherProofUploader[] | null }).uploaders} />
 
-              {session.unresolvedResult
-                ? proofLabel(session) ?? session.unresolvedResult.label
-                : hasLiveBetMarket(session)
+              {hasLiveBetMarket(session)
                   ? "Bet live"
                   : isCompleted
                     ? "Final stored"
@@ -2943,26 +2875,8 @@ function LiveSessionCard({
               <span className="font-semibold">{winner}</span>
             </div>
           ) : null}
-          {session.unresolvedResult ? (
-            <div className="mt-2 rounded-xl border border-amber-200/15 bg-amber-300/[0.06] px-3 py-2.5">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-semibold text-amber-100">
-                  {liveDisplaySubtitle(session) ?? session.unresolvedResult.explanation}
-                </span>
-                <span className="rounded-full border border-white/10 bg-slate-950/35 px-2 py-0.5 text-[9px] uppercase tracking-[0.14em] text-slate-300">
-                  {session.unresolvedResult.code.replaceAll("_", " ")}
-                </span>
-              </div>
-              {replayReviewMarketLabel(session) ? (
-                <div className="mt-2 text-[11px] font-semibold text-violet-100">
-                  {replayReviewMarketLabel(session)}
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-
           <div className="mt-3 flex flex-wrap gap-2">
-            <MetaChip>{mapName}</MetaChip>
+            {mapName ? <MetaChip>{mapName}</MetaChip> : null}
             {compactDuration ? <MetaChip>{compactDuration}</MetaChip> : null}
             <MetaChip>
               {sourceCount} {sourceCount === 1 ? "replay source" : "replay sources"}
@@ -2997,7 +2911,7 @@ function LiveSessionCard({
           isCompleted ? "border-emerald-100/10" : "border-red-100/10"
         }`}
       >
-        {session.unresolvedResult && isAdmin ? (
+        {isCompleted && canReviewResult ? (
           <Link
             href={replayReviewHref(session)}
             className="inline-flex min-h-9 flex-1 items-center justify-center rounded-full bg-amber-200 px-4 py-2 text-center text-xs font-bold text-amber-950 transition hover:bg-amber-100"
@@ -3031,10 +2945,6 @@ function LiveSessionCard({
             >
               Bet live
             </Link>
-          ) : session.state === "live" ? (
-            <span className="inline-flex min-h-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.035] px-4 py-2 text-center text-xs text-slate-500">
-              Betting unavailable · teams unresolved
-            </span>
           ) : null
         ) : null}
       </div>

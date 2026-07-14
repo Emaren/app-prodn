@@ -10,6 +10,7 @@ import {
   type PublicRivalryEntry,
   type PublicTeamRivalryEntry,
 } from "@/lib/publicMatchups";
+import { normalizePublicReplayText } from "@/lib/unresolvedWatcherResult";
 
 export type RivalriesViewsProps = {
   duels: PublicRivalryEntry[];
@@ -465,7 +466,7 @@ export function LatestRivalryFeature({
   const winnerLabel =
     game.winnerLabel
       ? `${game.winnerLabel} won`
-      : "Result unresolved";
+      : "Battle preserved";
 
   const extreme = mode === "extreme";
   const advanced = mode === "advanced";
@@ -510,7 +511,7 @@ export function LatestRivalryFeature({
               <span className="px-3 text-slate-600">
                 ·
               </span>
-              {game.mapName}
+              {normalizePublicReplayText(game.mapName) ?? "HD Battlefield"}
             </div>
 
             <div className="mt-2 text-sm text-slate-500">
@@ -598,9 +599,9 @@ export function LatestRivalryFeature({
           />
 
           <Metric
-            label="Unresolved"
+            label="Decided Battles"
             value={String(
-              rivalry.unknowns
+              Math.max(0, rivalry.totalMatches - rivalry.unknowns)
             )}
             premium={extreme}
           />
@@ -726,7 +727,7 @@ function DuelCard({
 
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.06] pt-4 text-xs">
         <span className="text-slate-500">
-          {entry.unknowns} unresolved
+          {Math.max(0, entry.totalMatches - entry.unknowns)} decided
           {" · "}
           {formatDate(entry.lastPlayedAt)}
         </span>
@@ -872,7 +873,7 @@ function TeamCard({
 
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.06] pt-4 text-xs">
         <span className="text-slate-500">
-          {entry.unknowns} unresolved
+          {Math.max(0, entry.totalMatches - entry.unknowns)} decided
           {" · "}
           {formatDate(entry.lastPlayedAt)}
         </span>
@@ -925,7 +926,7 @@ function RawDuelCard({
 
       <div className="mt-auto flex items-end justify-between gap-3 border-t border-white/[0.055] pt-5 text-[10px]">
         <span className="leading-5 text-slate-600">
-          {entry.unknowns} unresolved
+          {Math.max(0, entry.totalMatches - entry.unknowns)} decided
           <br />
           {formatDate(entry.lastPlayedAt)}
         </span>
@@ -982,7 +983,7 @@ function RawTeamCard({
 
       <div className="mt-auto flex items-end justify-between gap-3 border-t border-white/[0.055] pt-5 text-[10px]">
         <span className="leading-5 text-slate-600">
-          {entry.unknowns} unresolved
+          {Math.max(0, entry.totalMatches - entry.unknowns)} decided
           <br />
           {formatDate(entry.lastPlayedAt)}
         </span>
@@ -1453,5 +1454,5 @@ function formatDate(
           minute: "2-digit",
         }
       )
-    : "Date unavailable";
+    : "Historic battle";
 }

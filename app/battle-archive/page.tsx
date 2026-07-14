@@ -151,7 +151,7 @@ function ArchiveCard({
           </div>
 
           <div className="mt-3 break-words text-2xl font-semibold leading-tight text-white">
-            {entry.mapName}
+            {publicBattlefieldLabel(entry.mapName)}
           </div>
 
           <div className="mt-2 text-sm text-slate-500">
@@ -171,13 +171,13 @@ function ArchiveCard({
 
       <div className="mt-5 rounded-xl border border-amber-100/[0.07] bg-amber-100/[0.025] px-4 py-3">
         <div className="text-[9px] uppercase tracking-[0.27em] text-amber-100/35">
-          Result
+          {entry.winnerLabel ? "Battle Victor" : "Archive Status"}
         </div>
 
         <div className="mt-2 break-words text-sm font-medium leading-6 text-amber-50/68">
           {entry.winnerLabel
             ? `${entry.winnerLabel} won`
-            : "Result unresolved"}
+            : "Battle preserved in the War Vault"}
         </div>
       </div>
 
@@ -288,5 +288,12 @@ function formatDate(
           minute: "2-digit",
         }
       )
-    : "Date unavailable";
+    : "Filed battle";
+}
+
+function publicBattlefieldLabel(value: string) {
+  const trimmed = value.trim();
+  return !trimmed || trimmed.toLowerCase().includes("unavailable")
+    ? "Recorded Battlefield"
+    : trimmed;
 }

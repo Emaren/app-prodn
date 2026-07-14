@@ -20,6 +20,11 @@ import {
 import { loadUserCommunitySummaries } from "@/lib/communityHonors";
 import { dedupeFinalReplayRows } from "@/lib/finalReplayIdentity";
 import { loadPendingWoloClaimSummariesByName } from "@/lib/pendingWoloClaims";
+import {
+  applyReplayAdjudicationToGameStats,
+  EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION,
+} from "@/lib/replayAdjudications";
+import { resolveReliableReplayWinner } from "@/lib/unresolvedWatcherResult";
 
 export type PublicPlayerDirectoryEntry = {
   key: string;
@@ -57,6 +62,7 @@ export type PublicPlayerDirectory = {
 
 type CandidateGameRow = {
   createdAt: Date;
+  event_types: unknown;
   id: number;
   key_events: unknown;
   original_filename: string | null;
@@ -66,6 +72,8 @@ type CandidateGameRow = {
   replayHash: string | null;
   timestamp: Date | null;
   winner: string | null;
+  parse_reason: string | null;
+  parse_source: string | null;
 };
 
 const PLAYER_DIRECTORY_GAME_WINDOW = 5000;
@@ -103,16 +111,36 @@ function updateLastPlayedAt(entry: PublicPlayerDirectoryEntry, nextPlayedAt: Dat
 
 function updateOutcome(
   entry: PublicPlayerDirectoryEntry,
-  winner: string | null | undefined,
+  game: CandidateGameRow,
+  player: Record<string, unknown>,
   replayName: string
 ) {
+  const winner = resolveReliableReplayWinner({
+    winner: game.winner,
+    players: parsePlayers(game.players),
+    parseReason: game.parse_reason,
+    parseSource: game.parse_source,
+    keyEvents: game.key_events,
+    eventTypes: game.event_types,
+  });
   const normalizedWinner = normalizeDirectoryKey(winner);
   if (!normalizedWinner || normalizedWinner === "unknown") {
     entry.unknowns += 1;
     return;
   }
 
-  if (normalizedWinner === normalizeDirectoryKey(replayName)) {
+  const playerWinnerFlag = player.winner;
+  const flaggedAsWinner =
+    playerWinnerFlag === true ||
+    playerWinnerFlag === "true" ||
+    playerWinnerFlag === 1 ||
+    playerWinnerFlag === "1";
+
+  // The scalar winner names one member of a winning team. Once the replay's
+  // result has passed the reliable-result gate, every player-level winner flag
+  // is authoritative for that player's record. Durable adjudications project
+  // these flags across the complete accepted roster.
+  if (flaggedAsWinner || normalizedWinner === normalizeDirectoryKey(replayName)) {
     entry.wins += 1;
     return;
   }
@@ -291,6 +319,7 @@ export async function loadPublicPlayerDirectory(
       take: PLAYER_DIRECTORY_GAME_WINDOW,
       select: {
         createdAt: true,
+        event_types: true,
         id: true,
         key_events: true,
         original_filename: true,
@@ -300,6 +329,9 @@ export async function loadPublicPlayerDirectory(
         replayHash: true,
         timestamp: true,
         winner: true,
+        parse_reason: true,
+        parse_source: true,
+        replayResultAdjudications: EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION,
       },
     }),
 
@@ -341,7 +373,9 @@ export async function loadPublicPlayerDirectory(
       );
     };
 
-  const games = [...rawGames].sort(sortCandidateGamesByPlayedAtDesc);
+  const games = rawGames
+    .map((game) => applyReplayAdjudicationToGameStats(game) as CandidateGameRow)
+    .sort(sortCandidateGamesByPlayedAtDesc);
 
   const communityMap = await loadUserCommunitySummaries(
     prisma,
@@ -477,7 +511,7 @@ export async function loadPublicPlayerDirectory(
       pushAlias(entry, replayName);
       updateSteamRatings(entry, player, playedAt);
       entry.totalMatches += 1;
-      updateOutcome(entry, game.winner, replayName);
+      updateOutcome(entry, game, player, replayName);
       updateLastPlayedAt(entry, playedAt);
     }
   }

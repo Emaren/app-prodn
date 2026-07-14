@@ -55,7 +55,7 @@ export default async function PlayersDirectoryPage() {
                 href="/game-stats"
                 className="rounded-full border border-white/15 px-5 py-3 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
               >
-                Open Parser Lab
+                Open Battle Intelligence
               </Link>
             </div>
           </div>
@@ -220,7 +220,7 @@ function PlayerCard({
       <div className="mt-4 text-xs text-slate-400">
         {entry.lastPlayedAt
           ? `Last game ${new Date(entry.lastPlayedAt).toLocaleString()}`
-          : "No games stored yet."}
+          : "Profile ready for its first filed battle."}
       </div>
     </Link>
   );
@@ -293,12 +293,11 @@ function Stat({ label, value }: { label: string; value: string }) {
 }
 
 function formatRating(value: number | null) {
-  return typeof value === "number" && Number.isFinite(value) ? String(Math.round(value)) : "Unknown";
+  return typeof value === "number" && Number.isFinite(value) ? String(Math.round(value)) : "Unranked";
 }
 
 function formatRecord(entry: PublicPlayerDirectoryEntry) {
-  const base = `${entry.wins}-${entry.losses}`;
-  return entry.unknowns > 0 ? `${base}-${entry.unknowns}` : base;
+  return `${entry.wins}-${entry.losses}`;
 }
 
 function visibleAliases(entry: PublicPlayerDirectoryEntry) {

@@ -111,7 +111,6 @@ export function ModernLeaderboardTable({ entries }: { entries: LobbyLeaderboardE
                 <td className="px-4 py-4 text-right text-base tabular-nums text-orange-300">{entry.losses}</td>
                 <td className="px-4 py-4 text-right tabular-nums">
                   <div>{entry.totalMatches}</div>
-                  {entry.unknowns > 0 ? <div className="mt-1 text-[10px] text-amber-200/65">{entry.unknowns} unresolved</div> : null}
                 </td>
                 <td className={`px-5 py-4 text-right text-base font-semibold tabular-nums ${streakTone(entry.streakLabel)}`}>
                   {entry.streakLabel || "—"}
@@ -147,7 +146,6 @@ export function ModernLeaderboardTable({ entries }: { entries: LobbyLeaderboardE
                 <div className={`mt-1 font-semibold ${streakTone(entry.streakLabel)}`}>{entry.streakLabel || "No streak"}</div>
               </div>
             </div>
-            {entry.unknowns > 0 ? <div className="mt-2 text-[10px] text-amber-200/65">{entry.unknowns} unresolved result{entry.unknowns === 1 ? "" : "s"}</div> : null}
           </Link>
         ))}
       </div>
