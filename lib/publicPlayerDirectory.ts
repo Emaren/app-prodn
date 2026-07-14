@@ -77,6 +77,15 @@ type CandidateGameRow = {
 };
 
 const PLAYER_DIRECTORY_GAME_WINDOW = 5000;
+const PLAYER_DIRECTORY_CACHE_TTL_MS = 15_000;
+
+type PublicPlayerDirectoryCacheEntry = {
+  expiresAt: number;
+  value: PublicPlayerDirectory;
+};
+
+let publicPlayerDirectoryCache: PublicPlayerDirectoryCacheEntry | null = null;
+let publicPlayerDirectoryPromise: Promise<PublicPlayerDirectory> | null = null;
 
 function normalizeDirectoryKey(value: string | null | undefined) {
   return normalizePublicPlayerName(value).toLowerCase();
@@ -278,7 +287,7 @@ function sortCandidateGamesByPlayedAtDesc(left: CandidateGameRow, right: Candida
   return right.id - left.id;
 }
 
-export async function loadPublicPlayerDirectory(
+async function loadPublicPlayerDirectoryFresh(
   prisma: PrismaClient
 ): Promise<PublicPlayerDirectory> {
   const onlineThreshold = new Date(Date.now() - 2 * 60 * 1000);
@@ -573,3 +582,39 @@ export async function loadPublicPlayerDirectory(
     replayEntries,
   };
 }
+
+export async function loadPublicPlayerDirectory(
+  prisma: PrismaClient
+): Promise<PublicPlayerDirectory> {
+  const now = Date.now();
+
+  if (
+    publicPlayerDirectoryCache &&
+    publicPlayerDirectoryCache.expiresAt > now
+  ) {
+    return publicPlayerDirectoryCache.value;
+  }
+
+  if (publicPlayerDirectoryPromise) {
+    return publicPlayerDirectoryPromise;
+  }
+
+  const run = loadPublicPlayerDirectoryFresh(prisma)
+    .then((value) => {
+      publicPlayerDirectoryCache = {
+        expiresAt: Date.now() + PLAYER_DIRECTORY_CACHE_TTL_MS,
+        value,
+      };
+
+      return value;
+    })
+    .finally(() => {
+      if (publicPlayerDirectoryPromise === run) {
+        publicPlayerDirectoryPromise = null;
+      }
+    });
+
+  publicPlayerDirectoryPromise = run;
+  return run;
+}
+

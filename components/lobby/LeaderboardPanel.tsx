@@ -38,7 +38,7 @@ type LeaderboardPanelProps = {
   surface?: "standard" | "extreme";
 };
 
-const LEADERBOARD_PAGE_SIZE = 512;
+const LEADERBOARD_PAGE_SIZE = 256;
 
 type LeaderboardPageResponse = {
   ok?: boolean;
@@ -116,8 +116,6 @@ export function LeaderboardPanel({
   const leaderboardPanelRef = useRef<HTMLDivElement | null>(null);
   const leaderboardScrollRef = useRef<HTMLDivElement | null>(null);
   const leaderboardSentinelRef = useRef<HTMLButtonElement | null>(null);
-  const leaderboardHydrationStartedRef = useRef(false);
-  const preloadAllRef = useRef(false);
   const loadingRef = useRef(false);
   const activeLaneRef = useRef(leaderboard.lane);
   const nextOffsetRef = useRef(countRankedLeaderboardEntries(leaderboard.entries));
@@ -134,8 +132,6 @@ export function LeaderboardPanel({
       setEntries(leaderboard.entries);
       entriesRef.current = leaderboard.entries;
       nextOffsetRef.current = rankedEntryCount;
-      leaderboardHydrationStartedRef.current = false;
-      preloadAllRef.current = false;
     } else {
       const merged = mergeLeaderboardEntries(leaderboard.entries, entriesRef.current);
       entriesRef.current = merged;
@@ -313,54 +309,6 @@ export function LeaderboardPanel({
     };
   }, [canLoadMore, loadMoreLeaderboardEntries]);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (preloadAllRef.current) return;
-    if (leaderboard.trackedPlayers <= countRankedLeaderboardEntries(entriesRef.current)) return;
-
-    preloadAllRef.current = true;
-    let cancelled = false;
-    let timer: number | null = null;
-
-    const sleep = (ms: number) =>
-      new Promise<void>((resolve) => {
-        timer = window.setTimeout(resolve, ms);
-      });
-
-    const preloadAllLeaderboardPages = async () => {
-      await sleep(450);
-
-      const maxPages = Math.ceil(leaderboard.trackedPlayers / LEADERBOARD_PAGE_SIZE) + 6;
-
-      for (let page = 0; page < maxPages; page += 1) {
-        if (cancelled) return;
-
-        const before = countRankedLeaderboardEntries(entriesRef.current);
-        if (before >= leaderboard.trackedPlayers) {
-          hasMoreRef.current = false;
-          setHasMore(false);
-          return;
-        }
-
-        await loadMoreLeaderboardEntries();
-        await sleep(180);
-
-        const after = countRankedLeaderboardEntries(entriesRef.current);
-        if (after <= before && !loadingRef.current) {
-          await sleep(900);
-        }
-      }
-    };
-
-    void preloadAllLeaderboardPages();
-
-    return () => {
-      cancelled = true;
-      if (timer !== null) {
-        window.clearTimeout(timer);
-      }
-    };
-  }, [leaderboard.trackedPlayers, loadMoreLeaderboardEntries]);
 
   const leaderboardScrollClassName = isExtreme
     ? "mt-6 h-[clamp(34rem,calc(100svh-13rem),82rem)] min-h-[34rem] space-y-3 overflow-y-auto overflow-x-hidden overscroll-y-auto pr-2 scroll-smooth [scrollbar-gutter:stable] [scrollbar-width:thin] [-webkit-overflow-scrolling:touch] [touch-action:pan-y] [contain:layout_paint]"
@@ -392,63 +340,6 @@ export function LeaderboardPanel({
     }
   };
 
-  useEffect(() => {
-    if (leaderboardHydrationStartedRef.current) return;
-
-    const firstOffset = countRankedLeaderboardEntries(entries);
-    if (firstOffset <= 0) return;
-
-    leaderboardHydrationStartedRef.current = true;
-
-    let cancelled = false;
-
-    async function hydrateFullLeaderboard() {
-      let offset = firstOffset;
-
-      for (let attempt = 0; attempt < 8; attempt += 1) {
-        if (cancelled) return;
-
-        try {
-          const response = await fetch(
-            `/api/lobby/leaderboard?lane=${leaderboard.lane}&offset=${offset}&limit=${LEADERBOARD_PAGE_SIZE}`,
-            { cache: "no-store" }
-          );
-
-          const payload = (await response.json().catch(() => ({}))) as {
-            entries?: LobbyLeaderboardSummary["entries"];
-          };
-
-          const nextEntries = Array.isArray(payload.entries) ? payload.entries : [];
-          const nextRankedCount = countRankedLeaderboardEntries(nextEntries);
-
-          if (!response.ok || nextRankedCount === 0) {
-            hasMoreRef.current = false;
-            setHasMore(false);
-            return;
-          }
-
-          const merged = mergeLeaderboardEntries(entriesRef.current, nextEntries);
-          entriesRef.current = merged;
-          nextOffsetRef.current = countRankedLeaderboardEntries(merged);
-          setEntries(merged);
-          hasMoreRef.current = true;
-          setHasMore(true);
-
-          offset += nextRankedCount;
-
-          await new Promise((resolve) => window.setTimeout(resolve, 90));
-        } catch {
-          return;
-        }
-      }
-    }
-
-    void hydrateFullLeaderboard();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [entries, leaderboard.lane]);
 
 
   return (

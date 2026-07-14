@@ -29,6 +29,17 @@ import {
 const BASE_ARENA_ELO = 1500;
 const ARENA_ELO_K_FACTOR = 32;
 const LEADERBOARD_GAME_WINDOW = 5000;
+const LEADERBOARD_CACHE_TTL_MS = 15_000;
+const LEADERBOARD_CACHE_MAX_ENTRIES = 24;
+
+type LeaderboardCacheEntry = {
+  expiresAt: number;
+  value: LobbyLeaderboardSummary;
+};
+
+const leaderboardCache = new Map<string, LeaderboardCacheEntry>();
+const leaderboardPromises =
+  new Map<string, Promise<LobbyLeaderboardSummary>>();
 
 const SUPERSEDED_PARSE_REASON = "superseded_by_later_upload";
 
@@ -615,7 +626,7 @@ function buildDiscoveredLeaderboardEntries(
   return Array.from(discovered.values());
 }
 
-export async function loadLobbyLeaderboard(
+async function loadLobbyLeaderboardFresh(
   prisma: PrismaClient,
   options: LoadLobbyLeaderboardOptions = {}
 ): Promise<LobbyLeaderboardSummary> {
@@ -738,3 +749,79 @@ export async function loadLobbyLeaderboard(
     minimumMatches: LOBBY_LEADERBOARD_MIN_MATCHES,
   };
 }
+
+function buildLeaderboardCacheKey(
+  options: LoadLobbyLeaderboardOptions
+) {
+  return JSON.stringify({
+    lane: normalizeLeaderboardLane(options.lane),
+    offset: Math.max(0, Math.floor(options.offset ?? 0)),
+    limit: Math.max(
+      1,
+      Math.min(
+        2500,
+        Math.floor(
+          options.limit ??
+            LOBBY_LEADERBOARD_INITIAL_ENTRY_LIMIT
+        )
+      )
+    ),
+    includePendingClaimed:
+      options.includePendingClaimed ?? true,
+    query: normalizeLeaderboardSearch(options.query),
+  });
+}
+
+export async function loadLobbyLeaderboard(
+  prisma: PrismaClient,
+  options: LoadLobbyLeaderboardOptions = {}
+): Promise<LobbyLeaderboardSummary> {
+  const now = Date.now();
+  const cacheKey = buildLeaderboardCacheKey(options);
+  const cached = leaderboardCache.get(cacheKey);
+
+  if (cached && cached.expiresAt > now) {
+    return cached.value;
+  }
+
+  const inFlight = leaderboardPromises.get(cacheKey);
+
+  if (inFlight) {
+    return inFlight;
+  }
+
+  const run = loadLobbyLeaderboardFresh(prisma, options)
+    .then((value) => {
+      leaderboardCache.set(cacheKey, {
+        expiresAt:
+          Date.now() + LEADERBOARD_CACHE_TTL_MS,
+        value,
+      });
+
+      if (
+        leaderboardCache.size >
+        LEADERBOARD_CACHE_MAX_ENTRIES
+      ) {
+        for (const [key, entry] of leaderboardCache) {
+          if (
+            entry.expiresAt <= Date.now() ||
+            leaderboardCache.size >
+              LEADERBOARD_CACHE_MAX_ENTRIES
+          ) {
+            leaderboardCache.delete(key);
+          }
+        }
+      }
+
+      return value;
+    })
+    .finally(() => {
+      if (leaderboardPromises.get(cacheKey) === run) {
+        leaderboardPromises.delete(cacheKey);
+      }
+    });
+
+  leaderboardPromises.set(cacheKey, run);
+  return run;
+}
+

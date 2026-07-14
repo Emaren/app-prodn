@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import CommunityBadgePill from "@/components/contact/CommunityBadgePill";
 import SteamLinkedBadge from "@/components/SteamLinkedBadge";
 import { getPrisma } from "@/lib/prisma";
-import { loadLobbyLeaderboard } from "@/lib/lobbyLeaderboard";
 import {
   loadPublicPlayerDirectory,
   type PublicPlayerDirectoryEntry,
@@ -14,11 +13,8 @@ export const dynamic = "force-dynamic";
 
 export default async function PlayersDirectoryPage() {
   const prisma = getPrisma();
-  const [directory, lobbyLeaderboard] = await Promise.all([
-    loadPublicPlayerDirectory(prisma),
-    loadLobbyLeaderboard(prisma),
-  ]);
-  const boardCount = Math.max(directory.allEntries.length, lobbyLeaderboard.trackedPlayers);
+  const directory = await loadPublicPlayerDirectory(prisma);
+  const boardCount = directory.allEntries.length;
   const claimableCount = Math.max(
     directory.replayEntries.length,
     boardCount - directory.claimedEntries.length

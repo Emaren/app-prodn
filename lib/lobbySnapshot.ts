@@ -25,6 +25,37 @@ import { loadWoloDevSnapshot } from "@/lib/woloDevSnapshot";
 import { loadWoloMarketSnapshot } from "@/lib/woloMarket";
 
 const LOBBY_RECENT_MATCH_INITIAL_LIMIT = 12;
+const LOBBY_MAINTENANCE_INTERVAL_MS = 15_000;
+
+let lastLobbyMaintenanceAt = 0;
+let lobbyMaintenancePromise: Promise<void> | null = null;
+
+function queueLobbyMaintenance(prisma: PrismaClient) {
+  const now = Date.now();
+
+  if (
+    lobbyMaintenancePromise ||
+    now - lastLobbyMaintenanceAt <
+      LOBBY_MAINTENANCE_INTERVAL_MS
+  ) {
+    return;
+  }
+
+  lastLobbyMaintenanceAt = now;
+
+  lobbyMaintenancePromise = Promise.resolve()
+    .then(() => reconcileTournamentMatchProofs(prisma))
+    .then(() => ensureBetMarkets(prisma))
+    .catch((error) => {
+      console.warn(
+        "Background lobby maintenance failed:",
+        error
+      );
+    })
+    .finally(() => {
+      lobbyMaintenancePromise = null;
+    });
+}
 
 async function loadRecentMatches(): Promise<LobbyMatchRow[]> {
   try {
@@ -89,16 +120,14 @@ async function loadLobbySnapshotFresh(
   viewerUid?: string | null,
   guestReactionSessionId?: string | null
 ): Promise<LobbySnapshot> {
-  const wolo = await loadWoloDevSnapshot();
-  const woloMarket = await loadWoloMarketSnapshot();
+  const [wolo, woloMarket] = await Promise.all([
+    loadWoloDevSnapshot(),
+    loadWoloMarketSnapshot(),
+  ]);
+
+  queueLobbyMaintenance(prisma);
 
   try {
-    await reconcileTournamentMatchProofs(prisma);
-    try {
-      await ensureBetMarkets(prisma);
-    } catch (error) {
-      console.warn("Failed to ensure bet markets before lobby WOLO earners:", error);
-    }
     const tournament = await getFeaturedTournament(prisma, viewerUid);
 
     const [
@@ -116,7 +145,7 @@ async function loadLobbySnapshotFresh(
       }),
       loadOnlineUsers(prisma),
       loadRecentMatches(),
-      loadLobbyLeaderboard(prisma, { limit: 2500, includePendingClaimed: false }),
+      loadLobbyLeaderboard(prisma, { limit: 256, includePendingClaimed: false }),
       loadLobbyWoloEarnersBoard(prisma, { mode: "weekly" }),
       loadAoe2HdPulseSnapshot(),
       loadLiveSessionSnapshot(prisma),
@@ -229,20 +258,29 @@ export async function loadLobbySnapshot(
   const cached = lobbySnapshotCache.get(cacheKey);
 
   if (cached && cached.expiresAt > now) {
-    return attachCanonicalRecentMatches(cached.value);
+    return cached.value;
   }
 
   if (cached && cached.staleUntil > now) {
     if (!cached.refreshing) {
       cached.refreshing = true;
 
-      void loadLobbySnapshotFresh(prisma, viewerUid, guestReactionSessionId)
+      void loadLobbySnapshotFresh(
+        prisma,
+        viewerUid,
+        guestReactionSessionId
+      )
+        .then(attachCanonicalRecentMatches)
         .then((value) => {
           const refreshedAt = Date.now();
 
           lobbySnapshotCache.set(cacheKey, {
-            expiresAt: refreshedAt + LOBBY_SNAPSHOT_CACHE_TTL_MS,
-            staleUntil: refreshedAt + LOBBY_SNAPSHOT_STALE_TTL_MS,
+            expiresAt:
+              refreshedAt +
+              LOBBY_SNAPSHOT_CACHE_TTL_MS,
+            staleUntil:
+              refreshedAt +
+              LOBBY_SNAPSHOT_STALE_TTL_MS,
             refreshing: false,
             value,
           });
@@ -257,10 +295,16 @@ export async function loadLobbySnapshot(
         });
     }
 
-    return attachCanonicalRecentMatches(cached.value);
+    return cached.value;
   }
 
-  const value = await loadLobbySnapshotFresh(prisma, viewerUid, guestReactionSessionId);
+  const value = await attachCanonicalRecentMatches(
+    await loadLobbySnapshotFresh(
+      prisma,
+      viewerUid,
+      guestReactionSessionId
+    )
+  );
 
   lobbySnapshotCache.set(cacheKey, {
     expiresAt: now + LOBBY_SNAPSHOT_CACHE_TTL_MS,
@@ -277,5 +321,5 @@ export async function loadLobbySnapshot(
     }
   }
 
-  return attachCanonicalRecentMatches(value);
+  return value;
 }
