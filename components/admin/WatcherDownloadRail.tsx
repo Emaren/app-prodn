@@ -19,6 +19,7 @@ import type {
   WatcherDownloadsPayload,
   WatcherMetricWindow,
   WatcherPackagePullClassification,
+  WatcherRuntimeVersionRow,
 } from "@/components/admin/command-tower/types";
 
 type WatcherDownloadRailProps = {
@@ -43,6 +44,53 @@ function platformTone(platform: WatcherDownloadSummaryRow["platform"]) {
     return "border-amber-300/20 bg-amber-400/10 text-amber-100";
   }
   return "border-emerald-300/20 bg-emerald-400/10 text-emerald-100";
+}
+
+function runtimePlatformTone(
+  platform: WatcherRuntimeVersionRow["platform"]
+) {
+  if (platform === "windows") {
+    return "border-sky-300/20 bg-sky-400/10 text-sky-100";
+  }
+
+  if (platform === "macos") {
+    return "border-amber-300/20 bg-amber-400/10 text-amber-100";
+  }
+
+  if (platform === "linux") {
+    return "border-emerald-300/20 bg-emerald-400/10 text-emerald-100";
+  }
+
+  return "border-white/10 bg-white/5 text-slate-300";
+}
+
+function runtimePlatformLabel(
+  platform: WatcherRuntimeVersionRow["platform"]
+) {
+  if (platform === "windows") return "Windows";
+  if (platform === "macos") return "macOS";
+  if (platform === "linux") return "Linux";
+  return "Unknown";
+}
+
+function runtimeConfirmationLabel(
+  confirmation: WatcherRuntimeVersionRow["confirmation"]
+) {
+  if (confirmation === "up_to_date") {
+    return "Up to date";
+  }
+
+  if (confirmation === "version_seen") {
+    return "Version confirmed";
+  }
+
+  return "Running";
+}
+
+function compactRuntimeId(value: string | null) {
+  if (!value) return null;
+  if (value.length <= 22) return value;
+  return `${value.slice(0, 10)}…${value.slice(-8)}`;
 }
 
 function classificationTone(classification: WatcherDownloadRecentRow["classification"]) {
@@ -112,8 +160,15 @@ function StatTile({
 }
 
 export function WatcherDownloadRail({ analytics }: WatcherDownloadRailProps) {
-  const { packagePulls, confirmedWatcherUsers, watcherAppOpens, linkedWatcherOpens, summary, recent } =
-    analytics;
+  const {
+    packagePulls,
+    confirmedWatcherUsers,
+    watcherAppOpens,
+    linkedWatcherOpens,
+    runtimeVersions,
+    summary,
+    recent,
+  } = analytics;
   const touchedLanes = summary.rows.reduce((sum, row) => sum + Number(row.totalCount > 0), 0);
 
   return (
@@ -160,6 +215,13 @@ export function WatcherDownloadRail({ analytics }: WatcherDownloadRailProps) {
           value={String(linkedWatcherOpens.last24Hours)}
           sublabel={`${windowLabel(linkedWatcherOpens)} · user attached`}
           icon={Link2}
+        />
+
+        <StatTile
+          label="Confirmed Current Release"
+          value={String(runtimeVersions.confirmedLatestCount)}
+          sublabel={`v${runtimeVersions.currentRelease} · older ${runtimeVersions.confirmedOlderCount} · latest seen per watcher`}
+          icon={FileCheck2}
         />
         <StatTile
           label="Manual Upload Users"
@@ -267,6 +329,98 @@ export function WatcherDownloadRail({ analytics }: WatcherDownloadRailProps) {
             </div>
           </div>
         ))}
+      </div>
+
+      <div className="mt-6">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2 text-xs uppercase text-slate-500">
+              <Activity className="h-4 w-4" />
+              Confirmed Running Versions
+            </div>
+
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
+              Runtime telemetry from watchers that actually opened. Auto-updates appear here even
+              when no tracked browser package pull occurred.
+            </p>
+          </div>
+
+          <div className="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-3 py-1 text-xs text-emerald-100">
+            Current release · {runtimeVersions.currentRelease}
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-3 lg:grid-cols-2">
+          {runtimeVersions.rows.length > 0 ? (
+            runtimeVersions.rows.map((event) => (
+              <article
+                key={event.key}
+                className="rounded-lg border border-white/8 bg-slate-900/70 p-4"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-semibold text-white">
+                      {event.userDisplayName || event.userUid || "Linked watcher"}
+                    </div>
+
+                    <div className="mt-1 text-xs text-slate-400">
+                      Watcher {event.appVersion}
+                    </div>
+                  </div>
+
+                  <span
+                    className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] ${
+                      event.isCurrentRelease
+                        ? "border-emerald-300/25 bg-emerald-400/10 text-emerald-100"
+                        : "border-amber-300/25 bg-amber-400/10 text-amber-100"
+                    }`}
+                  >
+                    {event.isCurrentRelease
+                      ? "Current release"
+                      : "Older version"}
+                  </span>
+                </div>
+
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <span
+                    className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] ${runtimePlatformTone(
+                      event.platform
+                    )}`}
+                  >
+                    {runtimePlatformLabel(event.platform)}
+                  </span>
+
+                  <span className="inline-flex rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-slate-300">
+                    {runtimeConfirmationLabel(event.confirmation)}
+                  </span>
+                </div>
+
+                <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-400">
+                  <TimeDisplayText
+                    value={event.createdAt}
+                    className="text-slate-300"
+                    bubbleClassName="max-w-[16rem] text-center"
+                    emptyValue="Unknown"
+                  />
+
+                  {compactRuntimeId(event.watcherId) ? (
+                    <span>
+                      {compactRuntimeId(event.watcherId)}
+                    </span>
+                  ) : null}
+
+                  <span>
+                    {event.eventType.replaceAll("_", " ")}
+                  </span>
+                </div>
+              </article>
+            ))
+          ) : (
+            <div className="rounded-lg border border-white/8 bg-slate-900/70 px-4 py-5 text-sm text-slate-400">
+              No confirmed watcher version telemetry has been recorded yet.
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="mt-6">

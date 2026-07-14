@@ -265,6 +265,21 @@ export type WatcherDownloadRecentRow = {
   userDisplayName: string | null;
 };
 
+export type WatcherRuntimeVersionRow = {
+  key: string;
+  createdAt: string;
+  userUid: string | null;
+  userDisplayName: string | null;
+  appVersion: string;
+  platform: "windows" | "macos" | "linux" | "unknown";
+  artifact: string | null;
+  watcherId: string | null;
+  sessionId: string | null;
+  eventType: string;
+  confirmation: "up_to_date" | "version_seen" | "running";
+  isCurrentRelease: boolean;
+};
+
 export type WatcherMetricWindow = {
   allTime: number;
   last24Hours: number;
@@ -285,6 +300,12 @@ export type WatcherDownloadsPayload = {
   };
   watcherAppOpens: WatcherMetricWindow;
   linkedWatcherOpens: WatcherMetricWindow;
+  runtimeVersions: {
+    currentRelease: string;
+    confirmedLatestCount: number;
+    confirmedOlderCount: number;
+    rows: WatcherRuntimeVersionRow[];
+  };
   uploadEvents: {
     attempted: WatcherMetricWindow;
     succeeded: WatcherMetricWindow;

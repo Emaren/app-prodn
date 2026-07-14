@@ -3,6 +3,7 @@ import { Prisma, type PrismaClient } from "@/lib/generated/prisma";
 
 import {
   WATCHER_DOWNLOAD_ARTIFACTS,
+  WATCHER_RELEASE,
   type WatcherArtifactKey,
   type WatcherArtifactPlatform,
 } from "@/lib/watcherRelease";
@@ -155,6 +156,21 @@ export type WatcherDownloadRecentRow = {
   userDisplayName: string | null;
 };
 
+export type WatcherRuntimeVersionRow = {
+  key: string;
+  createdAt: string;
+  userUid: string | null;
+  userDisplayName: string | null;
+  appVersion: string;
+  platform: WatcherArtifactPlatform | "unknown";
+  artifact: string | null;
+  watcherId: string | null;
+  sessionId: string | null;
+  eventType: string;
+  confirmation: "up_to_date" | "version_seen" | "running";
+  isCurrentRelease: boolean;
+};
+
 export type WatcherMetricWindow = {
   last24Hours: number;
   last7Days: number;
@@ -175,6 +191,12 @@ export type WatcherDownloadAnalytics = {
   };
   watcherAppOpens: WatcherMetricWindow;
   linkedWatcherOpens: WatcherMetricWindow;
+  runtimeVersions: {
+    currentRelease: string;
+    confirmedLatestCount: number;
+    confirmedOlderCount: number;
+    rows: WatcherRuntimeVersionRow[];
+  };
   uploadEvents: {
     attempted: WatcherMetricWindow;
     succeeded: WatcherMetricWindow;
@@ -331,6 +353,32 @@ function displayUserName(entry: {
   steamPersonaName?: string | null;
 }) {
   return entry.inGameName || entry.steamPersonaName || entry.uid || null;
+}
+
+function normalizeRuntimePlatform(
+  value: string | null | undefined
+): WatcherArtifactPlatform | "unknown" {
+  const normalized = value?.trim().toLowerCase() ?? "";
+
+  if (
+    normalized === "win32" ||
+    normalized.includes("windows")
+  ) {
+    return "windows";
+  }
+
+  if (
+    normalized === "darwin" ||
+    normalized.includes("mac")
+  ) {
+    return "macos";
+  }
+
+  if (normalized.includes("linux")) {
+    return "linux";
+  }
+
+  return "unknown";
 }
 
 function countDistinctUsers(rows: Array<{ userId?: number | null; userUid?: string | null }>) {
@@ -539,6 +587,7 @@ export async function loadWatcherDownloadAnalytics(
     fileUploadParsedMatches,
     manualUploadUserRows,
     parseSourceRows,
+    runtimeVersionEvents,
   ] = await Promise.all([
     prisma.watcherDownloadEvent.count(),
     prisma.watcherDownloadEvent.count({ where: { userId: { not: null } } }),
@@ -663,7 +712,173 @@ export async function loadWatcherDownloadAnalytics(
       by: ["parse_source"],
       _count: { _all: true },
     }),
+    prisma.watcherClientEvent.findMany({
+      where: {
+        createdAt: {
+          gte: new Date(now - 30 * ONE_DAY_MS),
+        },
+        appVersion: {
+          not: null,
+        },
+        eventType: {
+          in: [
+            "watcher_update_not_available",
+            "watcher_version_seen",
+            "watcher_started",
+            "app_open",
+          ],
+        },
+        OR: [
+          {
+            userId: {
+              not: null,
+            },
+          },
+          {
+            userUid: {
+              not: null,
+            },
+          },
+        ],
+      },
+      orderBy: [
+        {
+          createdAt: "desc",
+        },
+        {
+          id: "desc",
+        },
+      ],
+      take: 1000,
+      select: {
+        id: true,
+        createdAt: true,
+        userId: true,
+        userUid: true,
+        eventType: true,
+        appVersion: true,
+        platform: true,
+        artifact: true,
+        watcherId: true,
+        sessionId: true,
+      },
+    }),
   ]);
+
+  const runtimeVersionUserIds = Array.from(
+    new Set(
+      runtimeVersionEvents
+        .map((event) => event.userId)
+        .filter((value): value is number => typeof value === "number")
+    )
+  );
+
+  const runtimeVersionUserUids = Array.from(
+    new Set(
+      runtimeVersionEvents
+        .map((event) => event.userUid?.trim() || "")
+        .filter(Boolean)
+    )
+  );
+
+  const runtimeVersionUsers =
+    runtimeVersionUserIds.length > 0 ||
+    runtimeVersionUserUids.length > 0
+      ? await prisma.user.findMany({
+          where: {
+            OR: [
+              {
+                id: {
+                  in: runtimeVersionUserIds,
+                },
+              },
+              {
+                uid: {
+                  in: runtimeVersionUserUids,
+                },
+              },
+            ],
+          },
+          select: {
+            id: true,
+            uid: true,
+            inGameName: true,
+            steamPersonaName: true,
+          },
+        })
+      : [];
+
+  const runtimeUsersById = new Map(
+    runtimeVersionUsers.map((user) => [user.id, user] as const)
+  );
+
+  const runtimeUsersByUid = new Map(
+    runtimeVersionUsers.map((user) => [user.uid, user] as const)
+  );
+
+  const seenRuntimeIdentities = new Set<string>();
+  const allRuntimeVersionRows: WatcherRuntimeVersionRow[] = [];
+
+  for (const event of runtimeVersionEvents) {
+    const appVersion = event.appVersion?.trim();
+
+    if (!appVersion) {
+      continue;
+    }
+
+    const identityKey = event.watcherId?.trim()
+      ? `watcher:${event.watcherId.trim()}`
+      : event.userUid?.trim()
+        ? `uid:${event.userUid.trim()}`
+        : event.userId
+          ? `user:${event.userId}`
+          : event.sessionId?.trim()
+            ? `session:${event.sessionId.trim()}`
+            : `event:${event.id}`;
+
+    if (seenRuntimeIdentities.has(identityKey)) {
+      continue;
+    }
+
+    seenRuntimeIdentities.add(identityKey);
+
+    const user =
+      (event.userId
+        ? runtimeUsersById.get(event.userId)
+        : null) ||
+      (event.userUid
+        ? runtimeUsersByUid.get(event.userUid)
+        : null) ||
+      null;
+
+    const confirmation =
+      event.eventType === "watcher_update_not_available"
+        ? "up_to_date"
+        : event.eventType === "watcher_version_seen"
+          ? "version_seen"
+          : "running";
+
+    allRuntimeVersionRows.push({
+      key: `${identityKey}:${event.id}`,
+      createdAt: event.createdAt.toISOString(),
+      userUid: user?.uid || event.userUid || null,
+      userDisplayName: user
+        ? displayUserName(user)
+        : event.userUid || null,
+      appVersion,
+      platform: normalizeRuntimePlatform(event.platform),
+      artifact: event.artifact || null,
+      watcherId: event.watcherId || null,
+      sessionId: event.sessionId || null,
+      eventType: event.eventType,
+      confirmation,
+      isCurrentRelease:
+        appVersion === WATCHER_RELEASE.version,
+    });
+  }
+
+  const runtimeVersionRows =
+    allRuntimeVersionRows.slice(0, 20);
 
   const totalMap = buildCountMap(groupedAll);
   const last24Map = buildCountMap(grouped24Hours);
@@ -737,6 +952,18 @@ export async function loadWatcherDownloadAnalytics(
     },
     watcherAppOpens,
     linkedWatcherOpens,
+    runtimeVersions: {
+      currentRelease: WATCHER_RELEASE.version,
+      confirmedLatestCount:
+        allRuntimeVersionRows.filter(
+          (row) => row.isCurrentRelease
+        ).length,
+      confirmedOlderCount:
+        allRuntimeVersionRows.filter(
+          (row) => !row.isCurrentRelease
+        ).length,
+      rows: runtimeVersionRows,
+    },
     uploadEvents: {
       attempted: uploadAttempted,
       succeeded: uploadSucceeded,
