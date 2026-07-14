@@ -72,7 +72,6 @@ function purePlaylistSettings(
   return {
     ...settings,
     autoplay: true,
-    pauseOnHover: false,
     transitionStyle:
       settings.transitionStyle === "cut" ? "crossfade" : settings.transitionStyle,
     transitionDurationMs:
