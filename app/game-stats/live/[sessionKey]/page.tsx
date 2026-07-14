@@ -1,8 +1,10 @@
 import { notFound } from "next/navigation";
+import { cookies } from "next/headers";
 
 import LiveReplayDetail from "@/components/game-stats/LiveReplayDetail";
 import { loadLiveReplayDetailSnapshot } from "@/lib/liveReplayDetail";
 import { getPrisma } from "@/lib/prisma";
+import { SESSION_COOKIE_NAME, verifySession } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +22,9 @@ export default async function LiveReplayDetailPage({
     notFound();
   }
 
-  const linkedBetMarket = await prisma.betMarket.findFirst({
+  const cookieStore = await cookies();
+  const claims = await verifySession(cookieStore.get(SESSION_COOKIE_NAME)?.value);
+  const [linkedBetMarket, viewer] = await Promise.all([prisma.betMarket.findFirst({
     where: {
       linkedSessionKey: decodedSessionKey,
     },
@@ -40,7 +44,9 @@ export default async function LiveReplayDetailPage({
         },
       },
     },
-  });
+  }), claims?.uid
+    ? prisma.user.findUnique({ where: { uid: claims.uid }, select: { isAdmin: true } })
+    : Promise.resolve(null)]);
 
   const founderBonuses = (linkedBetMarket?.founderBonuses || []).map((bonus) => ({
     id: bonus.id,
@@ -53,5 +59,5 @@ export default async function LiveReplayDetailPage({
     createdAt: bonus.createdAt.toISOString(),
   }));
 
-  return <LiveReplayDetail initialSnapshot={snapshot} founderBonuses={founderBonuses} />;
+  return <LiveReplayDetail initialSnapshot={snapshot} founderBonuses={founderBonuses} showDiagnostics={Boolean(viewer?.isAdmin)} />;
 }

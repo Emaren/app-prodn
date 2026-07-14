@@ -44,6 +44,22 @@ export type ReplayReviewPlayer = {
   winnerFlag: boolean | null;
 };
 
+export type ReplayReviewAdjudicationSummary = {
+  id: number | null;
+  decisionStatus: "accepted" | "legacy_overlay";
+  winner: string;
+  winningPlayers: string[];
+  winningTeamKey: string | null;
+  adjudicatedBy: string;
+  actorRole: string;
+  reason: string;
+  affectsStats: boolean;
+  affectsBets: boolean;
+  financialDisposition: string;
+  createdAt: string | null;
+  settlementNote?: string;
+};
+
 export type ReplayReviewQueueEntry = {
   id: number;
   title: string;
@@ -65,7 +81,9 @@ export type ReplayReviewQueueEntry = {
   rawWinner: string | null;
   winnerTruth: ReplayWinnerTruth;
   unresolvedResult: UnresolvedWatcherResult;
-  adjudication: ReplayAdjudication | null;
+  adjudication: ReplayReviewAdjudicationSummary | null;
+  pendingProposalCount: number;
+  reviewHistoryCount: number;
   market: ReplayReviewMarketSummary | null;
   replayProof: {
     parseAttempts: number;
@@ -91,10 +109,11 @@ export type ReplayReviewQueueEntry = {
 
 export type ReplayReviewQueueData = {
   generatedAt: string;
-  storageReady: false;
+  storageReady: true;
   storageNotice: string;
   pendingCount: number;
   adjudicatedCount: number;
+  proposalCount: number;
   entries: ReplayReviewQueueEntry[];
 };
 
@@ -201,6 +220,78 @@ function readPlayers(value: unknown): ReplayReviewPlayer[] {
   return players;
 }
 
+function durableWinningPlayers(value: unknown, winningTeamKey: string) {
+  const teams = Array.isArray(value) ? value : [];
+  const winningTeam = teams.find((entry) => {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) return false;
+    return String((entry as Record<string, unknown>).teamKey ?? "") === winningTeamKey;
+  });
+  if (!winningTeam || typeof winningTeam !== "object" || Array.isArray(winningTeam)) {
+    return [] as string[];
+  }
+  const players = (winningTeam as Record<string, unknown>).players;
+  if (!Array.isArray(players)) return [] as string[];
+  return players.flatMap((entry) => {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) return [];
+    const name = normalizePublicReplayText((entry as Record<string, unknown>).name);
+    return name ? [name] : [];
+  });
+}
+
+function durableAdjudicationSummary(
+  adjudication: {
+    id: number;
+    decisionStatus: string;
+    actorDisplayNameSnapshot: string;
+    actorRole: string;
+    teamAssignments: unknown;
+    winningTeamKey: string;
+    reason: string;
+    affectsStats: boolean;
+    affectsBets: boolean;
+    financialDisposition: string;
+    createdAt: Date;
+  } | null,
+  legacy: ReplayAdjudication | null
+): ReplayReviewAdjudicationSummary | null {
+  if (adjudication) {
+    const winningPlayers = durableWinningPlayers(
+      adjudication.teamAssignments,
+      adjudication.winningTeamKey
+    );
+    return {
+      id: adjudication.id,
+      decisionStatus: "accepted",
+      winner: winningPlayers.join(" + ") || `Team ${adjudication.winningTeamKey}`,
+      winningPlayers,
+      winningTeamKey: adjudication.winningTeamKey,
+      adjudicatedBy: adjudication.actorDisplayNameSnapshot,
+      actorRole: adjudication.actorRole,
+      reason: adjudication.reason,
+      affectsStats: adjudication.affectsStats,
+      affectsBets: adjudication.affectsBets,
+      financialDisposition: adjudication.financialDisposition,
+      createdAt: adjudication.createdAt.toISOString(),
+    };
+  }
+  if (!legacy) return null;
+  return {
+    id: null,
+    decisionStatus: "legacy_overlay",
+    winner: legacy.winner,
+    winningPlayers: [legacy.winner],
+    winningTeamKey: null,
+    adjudicatedBy: legacy.adjudicatedBy,
+    actorRole: "site_admin",
+    reason: legacy.reason,
+    affectsStats: legacy.affectsStats,
+    affectsBets: legacy.affectsBets,
+    financialDisposition: "historical_overlay_only",
+    createdAt: null,
+    settlementNote: legacy.settlementNote,
+  };
+}
+
 function reviewSides(players: ReplayReviewPlayer[]) {
   const grouped = new Map<string, string[]>();
   for (const player of players) {
@@ -217,17 +308,16 @@ function reviewSides(players: ReplayReviewPlayer[]) {
     return { leftCandidates: sides[0], rightCandidates: sides[1] };
   }
 
-  if (players.length >= 2 && players.length % 2 === 0) {
-    const midpoint = players.length / 2;
+  if (players.length === 2) {
     return {
-      leftCandidates: players.slice(0, midpoint).map((player) => player.name),
-      rightCandidates: players.slice(midpoint).map((player) => player.name),
+      leftCandidates: [players[0].name],
+      rightCandidates: [players[1].name],
     };
   }
 
   return {
-    leftCandidates: players.slice(0, 1).map((player) => player.name),
-    rightCandidates: players.slice(1).map((player) => player.name),
+    leftCandidates: [],
+    rightCandidates: [],
   };
 }
 
@@ -514,6 +604,7 @@ export async function loadReplayReviewQueue(
         { winner: { in: ["", "Unknown", "UNKNOWN", "unknown", "N/A", "na"] } },
         { parse_reason: { startsWith: "watcher_inferred_" } },
         { parse_reason: { in: ["watcher_final_unparsed", "hd_final_parse_match_fallback"] } },
+        { replayResultAdjudications: { some: {} } },
         ...(adjudicatedGameIds.length ? [{ id: { in: adjudicatedGameIds } }] : []),
       ],
     },
@@ -554,6 +645,23 @@ export async function loadReplayReviewQueue(
           createdAt: true,
         },
       },
+      replayResultAdjudications: {
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        take: 50,
+        select: {
+          id: true,
+          decisionStatus: true,
+          actorDisplayNameSnapshot: true,
+          actorRole: true,
+          teamAssignments: true,
+          winningTeamKey: true,
+          reason: true,
+          affectsStats: true,
+          affectsBets: true,
+          financialDisposition: true,
+          createdAt: true,
+        },
+      },
     },
   });
 
@@ -567,7 +675,13 @@ export async function loadReplayReviewQueue(
       keyEvents: row.key_events,
       eventTypes: row.event_types,
     });
-    if (winnerTruth.statsEligible) return [];
+    if (
+      winnerTruth.statsEligible &&
+      row.replayResultAdjudications.length === 0 &&
+      !getReplayAdjudicationForGameStatsId(row.id)
+    ) {
+      return [];
+    }
     return [{ row, players, winnerTruth }];
   });
 
@@ -637,7 +751,16 @@ export async function loadReplayReviewQueue(
         explanation: winnerTruth.diagnosticSummary,
         reviewNeeded: true,
       };
-    const adjudication = getReplayAdjudicationForGameStatsId(row.id);
+    const acceptedVerdict = row.replayResultAdjudications.find(
+      (entry) => entry.decisionStatus === "accepted"
+    ) ?? null;
+    const pendingProposalCount = row.replayResultAdjudications.filter(
+      (entry) => entry.decisionStatus === "pending_admin_approval"
+    ).length;
+    const adjudication = durableAdjudicationSummary(
+      acceptedVerdict,
+      getReplayAdjudicationForGameStatsId(row.id)
+    );
     const latestAttempt = row.replayParseAttempts[0] ?? null;
     const uploaderName =
       normalizePublicReplayText(row.user?.inGameName) ??
@@ -664,6 +787,8 @@ export async function loadReplayReviewQueue(
       winnerTruth,
       unresolvedResult,
       adjudication,
+      pendingProposalCount,
+      reviewHistoryCount: row.replayResultAdjudications.length,
       market: marketSummary(market, claims),
       replayProof: {
         parseAttempts: row.replayParseAttempts.length,
@@ -695,11 +820,15 @@ export async function loadReplayReviewQueue(
 
   return {
     generatedAt: new Date().toISOString(),
-    storageReady: false,
+    storageReady: true,
     storageNotice:
-      "Commissioner verdict storage is not present in the current schema. Review actions are disabled; raw parser rows and betting money state remain untouched.",
+      "Result reviews are written to an append-only audit ledger. Accepted verdicts project effective teams and winners without rewriting parser evidence or directly mutating market, wager, claim, or settlement history.",
     pendingCount: entries.filter((entry) => !entry.adjudication).length,
     adjudicatedCount: entries.filter((entry) => Boolean(entry.adjudication)).length,
+    proposalCount: entries.reduce(
+      (sum, entry) => sum + entry.pendingProposalCount,
+      0
+    ),
     entries,
   };
 }

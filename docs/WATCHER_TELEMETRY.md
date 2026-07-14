@@ -128,13 +128,21 @@ Upload responses can include:
 - `finality_status = live_pending_parse`
 - `finality_status = final_not_ready`
 - `finality_status = final_unparsed_proof`
+- `finality_status = final_recorded`
+- `finality_status = final_recorded_duplicate`
+- `finality_status = final_recorded_refreshed`
 - `finality_status = trusted_final`
 - `finality_status = trusted_final_duplicate`
 - `finality_status = trusted_final_refreshed`
 - `finality_status = reviewed_match_duplicate`
 - `finality_status = reviewed_match_refreshed`
 
-Only `trusted_final*` and `reviewed_match*` statuses should set `should_settle = true`. The watcher treats every other final response as a deferred candidate and keeps monitoring the replay file.
+Upload/archive success and settlement readiness are separate. Use
+`artifact_accepted` to confirm preservation and `parse_completed` to confirm a
+parser pass. `final_recorded*` means the final artifact/candidate is stored and
+routed for result review; it is not a failed upload and does not authorize
+settlement. Only `trusted_final*` and `reviewed_match*` statuses should set
+`should_settle = true`.
 
 ## Admin Watcher Diagnostics Rail
 
@@ -147,6 +155,7 @@ Only `trusted_final*` and `reviewed_match*` statuses should set `should_settle =
 The recent-event rail translates finality telemetry into operator language:
 
 - `final_unparsed_proof` / `unparsedFinal` -> **Final proof preserved but parser could not extract winner**
+- `final_recorded*` -> **Final replay preserved · result review routed**
 - `final_candidate_deferred` with `final_candidate_cooldown` -> **Replay still cooling down**
 - `parse_pending` or `parse_result_unknown_fields` -> **Awaiting roster parse**
 - `final_candidate_accepted` / `finalAccepted` -> **Accepted into game #____** when a game id is present
@@ -177,11 +186,13 @@ Use this rail when a player says the watcher saw a replay but the site did not
 show a live game or final result. The rail is diagnostic only: it does not
 fabricate replay outcomes and it does not replace parser truth.
 
-`/admin/replay-review` is the commissioner handoff for final rows whose winner
-truth is still unsafe. It joins parser evidence with linked market/slip/claim
-state, but remains read-only until an append-only adjudication model exists.
-See [Commissioner Replay Review](./COMMISSIONER_REPLAY_REVIEW.md) for the truth
-layers, money-safety rules, and operator playbook.
+`/admin/replay-review` is the commissioner triage queue for final rows routed to
+review. It joins parser evidence with linked market/slip/claim state. Authorized
+reviewers use the neutral `/game-stats/[id]/review` editor, whose API appends to
+the immutable `replay_result_adjudications` ledger. The editor never mutates
+money; a submitter correction linked to a market requires an appended admin
+approval. See [Commissioner Replay Review](./COMMISSIONER_REPLAY_REVIEW.md) for
+the truth layers, authorization, money-safety rules, and operator playbook.
 
 ## Debug Queries
 

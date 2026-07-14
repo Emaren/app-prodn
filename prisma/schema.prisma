@@ -8,18 +8,19 @@ datasource db {
 }
 
 model User {
-  id            Int       @id @default(autoincrement())
-  uid           String    @unique @db.VarChar(100)
-  email         String?   @unique(map: "ix_users_email") @db.VarChar(100)
-  inGameName    String?   @unique @map("in_game_name") @db.VarChar
-  verified      Boolean   @default(false)
-  walletAddress String?   @map("wallet_address") @db.VarChar(100)
-  lockName      Boolean   @default(false) @map("lock_name")
-  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  token         String?   @db.VarChar(128)
-  lastSeen      DateTime? @map("last_seen") @db.Timestamp(6)
-  isAdmin           Boolean   @default(false) @map("is_admin")
-  preferredLanguage String?   @map("preferred_language") @db.VarChar(12)
+  id                        Int       @id @default(autoincrement())
+  uid                       String    @unique @db.VarChar(100)
+  email                     String?   @unique(map: "ix_users_email") @db.VarChar(100)
+  inGameName                String?   @unique @map("in_game_name") @db.VarChar
+  verified                  Boolean   @default(false)
+  walletAddress             String?   @map("wallet_address") @db.VarChar(100)
+  lockName                  Boolean   @default(false) @map("lock_name")
+  createdAt                 DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  token                     String?   @db.VarChar(128)
+  lastSeen                  DateTime? @map("last_seen") @db.Timestamp(6)
+  isAdmin                   Boolean   @default(false) @map("is_admin")
+  canReviewOwnReplayResults Boolean   @default(false) @map("can_review_own_replay_results")
+  preferredLanguage         String?   @map("preferred_language") @db.VarChar(12)
 
   // NOTE: DB has a partial unique index (WHERE steam_id IS NOT NULL).
   // Prisma can't represent partial uniqueness here, so we map to the index name
@@ -94,6 +95,7 @@ model User {
   forumPosts                     ForumPost[]                     @relation("ForumPostAuthor")
   forumThreadBookmarks           ForumThreadBookmark[]
   forumThreadReactions           ForumThreadReaction[]
+  replayResultAdjudications      ReplayResultAdjudication[]      @relation("ReplayResultAdjudicationActor")
 
   @@map("users")
 }
@@ -139,12 +141,13 @@ model GameStats {
   parse_reason        String    @default("unspecified") @db.VarChar(50)
   original_filename   String?   @db.VarChar(255)
 
-  user                 User?                @relation(fields: [userUid], references: [uid], onDelete: NoAction, onUpdate: NoAction)
-  linkedBetMarkets     BetMarket[]          @relation("BetMarketLinkedGameStats")
-  tournamentMatchProof TournamentMatch?     @relation("TournamentMatchProof")
-  replayParseAttempts  ReplayParseAttempt[] @relation("GameStatsParseAttempts")
-  trophyEvents         TrophyEvent[]
-  trophyChallenges     TrophyChallenge[]
+  user                      User?                      @relation(fields: [userUid], references: [uid], onDelete: NoAction, onUpdate: NoAction)
+  linkedBetMarkets          BetMarket[]                @relation("BetMarketLinkedGameStats")
+  tournamentMatchProof      TournamentMatch?           @relation("TournamentMatchProof")
+  replayParseAttempts       ReplayParseAttempt[]       @relation("GameStatsParseAttempts")
+  replayResultAdjudications ReplayResultAdjudication[]
+  trophyEvents              TrophyEvent[]
+  trophyChallenges          TrophyChallenge[]
 
   @@unique([replayHash, is_final], map: "uq_replay_final")
   @@index([createdAt], map: "ix_game_stats_created_at")
@@ -176,7 +179,50 @@ model ReplayParseAttempt {
   @@index([userUid, createdAt], map: "ix_replay_parse_attempts_user_uid_created_at")
   @@index([replayHash], map: "ix_replay_parse_attempts_replay_hash")
   @@index([gameStatsId], map: "ix_replay_parse_attempts_game_stats_id")
+  @@index([gameStatsId, userUid], map: "ix_replay_parse_attempts_game_stats_user_uid")
   @@map("replay_parse_attempts")
+}
+
+/// Append-only human verdicts over immutable replay parser evidence.
+/// Corrections are new rows linked through supersedesId; rows are never edited or deleted.
+model ReplayResultAdjudication {
+  id                       Int      @id @default(autoincrement())
+  gameStatsId              Int      @map("game_stats_id")
+  actorUserId              Int      @map("actor_user_id")
+  supersedesId             Int?     @map("supersedes_id")
+  idempotencyKey           String   @unique(map: "uq_replay_result_adjudications_idempotency") @map("idempotency_key") @db.VarChar(128)
+  inputHash                String   @map("input_hash") @db.VarChar(64)
+  decisionStatus           String   @default("accepted") @map("decision_status") @db.VarChar(32)
+  actorUidSnapshot         String   @map("actor_uid_snapshot") @db.VarChar(100)
+  actorDisplayNameSnapshot String   @map("actor_display_name_snapshot") @db.VarChar(100)
+  actorRole                String   @map("actor_role") @db.VarChar(32)
+  teamAssignments          Json     @map("team_assignments")
+  winningTeamKey           String   @map("winning_team_key") @db.VarChar(128)
+  winningPlayerKeys        Json     @map("winning_player_keys")
+  reason                   String   @db.Text
+  evidence                 Json?
+  sourceReplayHash         String   @map("source_replay_hash") @db.VarChar(64)
+  sourceParseIteration     Int      @map("source_parse_iteration")
+  sourceRosterHash         String   @map("source_roster_hash") @db.VarChar(64)
+  sourcePropositionHash    String   @map("source_proposition_hash") @db.VarChar(64)
+  rawParserSnapshot        Json     @map("raw_parser_snapshot")
+  marketSnapshot           Json?    @map("market_snapshot")
+  hasLinkedMarket          Boolean  @default(false) @map("has_linked_market")
+  financialDisposition     String   @default("none") @map("financial_disposition") @db.VarChar(40)
+  affectsStats             Boolean  @default(false) @map("affects_stats")
+  affectsBets              Boolean  @default(false) @map("affects_bets")
+  createdAt                DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  gameStats    GameStats                  @relation(fields: [gameStatsId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  actor        User                       @relation("ReplayResultAdjudicationActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  supersedes   ReplayResultAdjudication?  @relation("ReplayResultAdjudicationSupersession", fields: [supersedesId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  supersededBy ReplayResultAdjudication[] @relation("ReplayResultAdjudicationSupersession")
+
+  @@index([gameStatsId, decisionStatus, createdAt], map: "ix_replay_result_adjudications_game_status")
+  @@index([actorUserId, createdAt], map: "ix_replay_result_adjudications_actor")
+  @@index([supersedesId], map: "ix_replay_result_adjudications_supersedes")
+  @@index([sourceReplayHash], map: "ix_replay_result_adjudications_replay_hash")
+  @@map("replay_result_adjudications")
 }
 
 model Tournament {

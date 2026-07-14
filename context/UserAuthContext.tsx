@@ -15,6 +15,7 @@ type SessionUser = {
   email: string | null;
   inGameName: string | null;
   isAdmin: boolean;
+  canReviewOwnReplayResults: boolean;
   steamId: string | null;
   steamPersonaName: string | null;
   verificationLevel: number;
@@ -34,6 +35,7 @@ type CtxShape = {
   setUid: (uid: string | null) => void;
   token: string | null;
   isAdmin: boolean;
+  canReviewOwnReplayResults: boolean;
   isAuthenticated: boolean;
   loading: boolean;
   user: SessionUser | null;
@@ -76,12 +78,14 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<SessionUser | null>(null);
   const [playerName, setPlayerNameState] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
+  const [canReviewOwnReplayResults, setCanReviewOwnReplayResults] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const syncUserState = useCallback((nextUser: SessionUser | null) => {
     setUser(nextUser);
     setUidState(nextUser?.uid ?? null);
     setIsAdmin(Boolean(nextUser?.isAdmin));
+    setCanReviewOwnReplayResults(Boolean(nextUser?.canReviewOwnReplayResults));
     setPlayerNameState(getDisplayName(nextUser));
     persistDisplayState(nextUser);
   }, []);
@@ -214,6 +218,7 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
     setUid,
     token,
     isAdmin,
+    canReviewOwnReplayResults,
     isAuthenticated: Boolean(uid),
     loading,
     user,

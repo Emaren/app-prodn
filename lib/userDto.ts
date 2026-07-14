@@ -17,6 +17,7 @@ export type UserCoreRow = {
   token: string | null;
   lastSeen: Date | null;
   isAdmin: boolean;
+  canReviewOwnReplayResults: boolean;
 } & Partial<{
   steamId: string | null;
   steamPersonaName: string | null;
@@ -50,6 +51,7 @@ export type UserApi = {
   token: string | null;
   lastSeen: string | null;
   isAdmin: boolean;
+  canReviewOwnReplayResults: boolean;
 
   steamId: string | null;
   steamPersonaName: string | null;
@@ -95,6 +97,7 @@ export function toUserApi(core: UserCoreRow, ver?: Partial<UserVerificationRow> 
     token: core.token,
     lastSeen: core.lastSeen ? core.lastSeen.toISOString() : null,
     isAdmin: core.isAdmin,
+    canReviewOwnReplayResults: Boolean(core.canReviewOwnReplayResults),
 
     steamId: v.steamId,
     steamPersonaName: v.steamPersonaName,

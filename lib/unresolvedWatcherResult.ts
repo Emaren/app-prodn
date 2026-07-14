@@ -115,6 +115,16 @@ const NON_WINNER_VALUES = new Set([
   "to be determined",
   "-",
   "--",
+  "unavailable",
+  "map unavailable",
+  "size unavailable",
+  "version unavailable",
+  "match type unavailable",
+  "parse reason unavailable",
+  "duration unavailable",
+  "civilization unavailable",
+  "date unavailable",
+  "map pending",
 ]);
 
 function textValue(value: unknown) {
@@ -133,7 +143,7 @@ export function isUnknownishReplayValue(value: unknown) {
   return normalizePublicReplayText(value) === null;
 }
 
-export function publicReplayMapLabel(value: unknown, fallback = "Map unresolved") {
+export function publicReplayMapLabel(value: unknown, fallback = "HD Battlefield") {
   if (value && typeof value === "object" && !Array.isArray(value)) {
     return normalizePublicReplayText((value as { name?: unknown }).name) ?? fallback;
   }
@@ -155,7 +165,7 @@ export function publicReplayMapLabel(value: unknown, fallback = "Map unresolved"
   return fallback;
 }
 
-export function publicReplayPlayerLabel(value: unknown, fallback = "Roster unresolved") {
+export function publicReplayPlayerLabel(value: unknown, fallback = "HD Warrior") {
   return normalizePublicReplayText(value) ?? fallback;
 }
 

@@ -3,11 +3,12 @@ import { Flame, Trophy } from "lucide-react";
 
 import { formatDurationLabel } from "@/lib/gameStatsView";
 import type { OgBoardEntry, OgBoardPlayer } from "@/lib/ogBoard";
+import { normalizePublicReplayText } from "@/lib/unresolvedWatcherResult";
 
 function formatPlayedAt(value: string | null) {
-  if (!value) return "Date unavailable";
+  if (!value) return "Historic archive";
   const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return "Date unavailable";
+  if (!Number.isFinite(date.getTime())) return "Historic archive";
   return new Intl.DateTimeFormat("en-US", {
     year: "numeric",
     month: "short",
@@ -27,6 +28,7 @@ function Metric({ label, value }: { label: string; value: React.ReactNode }) {
 }
 
 function OgPlayerBlock({ player }: { player: OgBoardPlayer }) {
+  const civilization = normalizePublicReplayText(player.civilization) ?? "HD warrior";
   const hasPrimaryMetrics = [
     player.score,
     player.eapm,
@@ -49,7 +51,7 @@ function OgPlayerBlock({ player }: { player: OgBoardPlayer }) {
           <Link href={player.href} className="break-words text-lg font-black underline decoration-slate-900/30 underline-offset-4 transition hover:decoration-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950/60">
             {player.name}
           </Link>
-          <div className="mt-1 text-xs font-semibold uppercase tracking-[0.15em] text-slate-800/70">{player.civilization}</div>
+          <div className="mt-1 text-xs font-semibold uppercase tracking-[0.15em] text-slate-800/70">{civilization}</div>
         </div>
         {player.winner ? (
           <span className="inline-flex shrink-0 items-center gap-1.5 border border-slate-900/15 bg-white/30 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em]">
@@ -82,6 +84,11 @@ function OgPlayerBlock({ player }: { player: OgBoardPlayer }) {
 }
 
 export function OgBattleCard({ entry, latest }: { entry: OgBoardEntry; latest: boolean }) {
+  const gameVersion = normalizePublicReplayText(entry.gameVersion) ?? "AoE2HD";
+  const mapName = normalizePublicReplayText(entry.mapName) ?? "HD Battlefield";
+  const gameType = normalizePublicReplayText(entry.gameType) ?? "Recorded Match";
+  const hasDuration = typeof entry.durationSeconds === "number" && entry.durationSeconds > 0;
+
   return (
     <article
       className={`px-4 py-5 shadow-[0_24px_70px_rgba(0,0,0,0.25)] sm:px-6 sm:py-6 ${
@@ -104,12 +111,16 @@ export function OgBattleCard({ entry, latest }: { entry: OgBoardEntry; latest: b
       </div>
 
       <dl className={`mt-5 grid gap-x-7 gap-y-2 border-y py-4 text-sm sm:grid-cols-2 ${latest ? "border-amber-200/18" : "border-slate-300/15"}`}>
-        <div><dt className="inline font-bold">Game Version:</dt> <dd className="inline">{entry.gameVersion}</dd></div>
-        <div><dt className="inline font-bold">Map:</dt> <dd className="inline">{entry.mapName}{entry.mapSize ? ` · ${entry.mapSize}` : ""}</dd></div>
-        <div><dt className="inline font-bold">Game Type:</dt> <dd className="inline">{entry.gameType}</dd></div>
-        <div><dt className="inline font-bold">Duration:</dt> <dd className="inline">{formatDurationLabel(entry.durationSeconds)}</dd></div>
+        <div><dt className="inline font-bold">Game Version:</dt> <dd className="inline">{gameVersion}</dd></div>
+        <div><dt className="inline font-bold">Map:</dt> <dd className="inline">{mapName}{entry.mapSize ? ` · ${entry.mapSize}` : ""}</dd></div>
+        <div><dt className="inline font-bold">Game Type:</dt> <dd className="inline">{gameType}</dd></div>
+        {hasDuration ? <div><dt className="inline font-bold">Duration:</dt> <dd className="inline">{formatDurationLabel(entry.durationSeconds)}</dd></div> : null}
         <div><dt className="inline font-bold">Played:</dt> <dd className="inline"><time dateTime={entry.playedAt || undefined} suppressHydrationWarning>{formatPlayedAt(entry.playedAt)}</time></dd></div>
-        <div><dt className="inline font-bold">Winner:</dt> <dd className="inline">{entry.winnerName || "Winner unresolved"}</dd></div>
+        {entry.winnerName ? (
+          <div><dt className="inline font-bold">Winner:</dt> <dd className="inline">{entry.winnerName}</dd></div>
+        ) : (
+          <div><dt className="inline font-bold">Archive Status:</dt> <dd className="inline">Battle preserved</dd></div>
+        )}
       </dl>
 
       <h2 className={`mt-5 text-base font-black uppercase tracking-[0.15em] ${latest ? "text-amber-300" : "text-white"}`}>Players</h2>
@@ -118,12 +129,12 @@ export function OgBattleCard({ entry, latest }: { entry: OgBoardEntry; latest: b
           {entry.players.map((player, index) => <OgPlayerBlock key={`${entry.id}:${player.name}:${index}`} player={player} />)}
         </div>
       ) : (
-        <div className="mt-3 border border-white/10 bg-black/15 px-4 py-4 text-sm text-slate-300">No player roster was stored for this replay.</div>
+        <div className="mt-3 border border-white/10 bg-black/15 px-4 py-4 text-sm text-slate-300">Replay preserved in the HD War Vault.</div>
       )}
 
       {entry.parseCompleteness !== "full" ? (
         <div className={`mt-4 border px-4 py-3 text-sm ${latest ? "border-amber-200/15 bg-amber-300/[0.045] text-amber-100/70" : "border-slate-300/15 bg-black/10 text-slate-300"}`}>
-          Postgame statistics unavailable for this replay.
+          Replay command record preserved in the HD War Vault.
         </div>
       ) : null}
     </article>

@@ -595,7 +595,7 @@ function getLobbyMatchResultDisplay(match: LobbyMatchRow) {
     if (acceptedPublicFallback) {
       return {
         headline: resolvedWinner,
-        pill: "Replay inference",
+        pill: "Replay result",
       };
     }
 
@@ -619,10 +619,8 @@ function getLobbyMatchResultDisplay(match: LobbyMatchRow) {
   }
 
   return {
-    headline: "Winner unresolved",
-    pill:
-      outcomeBadgeLabel(match.parse_reason, match.winner) ||
-      "Needs review",
+    headline: "Battle filed",
+    pill: null,
   };
 }
 
@@ -652,7 +650,7 @@ const MatchCard = memo(function MatchCard({
         <div className="min-w-0">
           <div className="font-medium text-white">{publicReplayMapLabel(match.map)}</div>
           <div className="mt-1 truncate text-sm text-slate-300">
-            {players.length > 0 ? players.join(" vs ") : "Roster unresolved"}
+            {players.length > 0 ? players.join(" vs ") : "HD battle record"}
           </div>
         </div>
 

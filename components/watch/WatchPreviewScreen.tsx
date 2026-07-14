@@ -27,7 +27,7 @@ function BroadcastPlaceholder({ showLabel }: { showLabel: boolean }) {
       {showLabel ? (
         <div className="absolute inset-x-0 top-1/2 flex -translate-y-1/2 justify-center px-5">
           <div className="whitespace-nowrap rounded-full border border-white/12 bg-white/10 px-7 py-2.5 text-[11px] font-black uppercase leading-none tracking-[0.34em] text-slate-200 shadow-[0_0_48px_rgba(125,211,252,0.18)] backdrop-blur-md">
-            Preview pending
+            Broadcast ready
           </div>
         </div>
       ) : null}

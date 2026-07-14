@@ -32,8 +32,13 @@ type PackageUploadResult = {
   status: number;
   message?: string;
   detail?: string;
-  finalityStatus?: unknown;
+  finalityStatus?: string;
   gameId?: unknown;
+  archived: boolean;
+  parsed: boolean;
+  resultReady: boolean;
+  reviewRouted: boolean;
+  duplicate: boolean;
 };
 
 type PackageSkippedEntry = {
@@ -73,6 +78,62 @@ function parseJsonBody(value: string, contentType: string | null) {
   } catch {
     return null;
   }
+}
+
+function isTruthyPayloadFlag(value: unknown) {
+  return value === true || value === "true" || value === 1 || value === "1";
+}
+
+function classifyBackendReplayReceipt(
+  payload: Record<string, unknown> | null,
+  responseOk: boolean
+) {
+  const finalityStatus = String(
+    payload?.finality_status || payload?.finalityStatus || ""
+  ).trim();
+  const pendingParse = isTruthyPayloadFlag(payload?.pending_parse ?? payload?.pendingParse);
+  const unparsedFinal = isTruthyPayloadFlag(payload?.unparsed_final ?? payload?.unparsedFinal);
+  const explicitParseCompleted = payload?.parse_completed ?? payload?.parseCompleted;
+  const parsed =
+    explicitParseCompleted === undefined || explicitParseCompleted === null
+      ? Boolean(finalityStatus) &&
+        !pendingParse &&
+        !unparsedFinal &&
+        !["live_pending_parse", "final_unparsed_proof"].includes(finalityStatus)
+      : isTruthyPayloadFlag(explicitParseCompleted);
+  const trustedFinalStatuses = new Set([
+    "trusted_final",
+    "trusted_final_duplicate",
+    "trusted_final_refreshed",
+    "reviewed_match_duplicate",
+    "reviewed_match_refreshed",
+  ]);
+  const resultReady = Boolean(
+    responseOk &&
+      (isTruthyPayloadFlag(payload?.final_accepted ?? payload?.finalAccepted) ||
+        isTruthyPayloadFlag(payload?.should_settle ?? payload?.shouldSettle) ||
+        trustedFinalStatuses.has(finalityStatus))
+  );
+  const duplicate = finalityStatus.endsWith("_duplicate");
+
+  return {
+    finalityStatus,
+    archived: Boolean(
+      responseOk &&
+        isTruthyPayloadFlag(payload?.raw_replay_archived ?? payload?.rawReplayArchived)
+    ),
+    parsed: Boolean(responseOk && parsed),
+    resultReady,
+    reviewRouted: Boolean(responseOk && !resultReady),
+    duplicate,
+  };
+}
+
+function receiptMessage(receipt: ReturnType<typeof classifyBackendReplayReceipt>) {
+  if (receipt.resultReady) return "Result ready and filed.";
+  if (receipt.parsed) return "Replay parsed and secured for private result review.";
+  if (receipt.archived) return "Replay secured for private result review.";
+  return "Replay received for private result review.";
 }
 
 async function listZipEntries(zipPath: string) {
@@ -134,15 +195,25 @@ async function uploadReplayBufferToBackend(options: {
   const contentType = response.headers.get("content-type") || "application/json";
   const body = await response.text();
   const payload = parseJsonBody(body, contentType);
+  const receipt = classifyBackendReplayReceipt(payload, response.ok);
 
   const result: PackageUploadResult = {
     filename: options.filename,
     ok: response.ok,
     status: response.status,
-    message: typeof payload?.message === "string" ? payload.message : undefined,
+    message: response.ok
+      ? receiptMessage(receipt)
+      : typeof payload?.message === "string"
+        ? payload.message
+        : undefined,
     detail: typeof payload?.detail === "string" ? payload.detail : undefined,
-    finalityStatus: payload?.finality_status || payload?.finalityStatus,
+    finalityStatus: receipt.finalityStatus || undefined,
     gameId: payload?.game_id || payload?.gameId || payload?.id,
+    archived: receipt.archived,
+    parsed: receipt.parsed,
+    resultReady: receipt.resultReady,
+    reviewRouted: receipt.reviewRouted,
+    duplicate: receipt.duplicate,
   };
 
   if (!response.ok && !result.detail) {
@@ -286,29 +357,48 @@ export async function POST(request: NextRequest) {
           ok: false,
           status: 500,
           detail: error instanceof Error ? error.message : "Replay upload failed.",
+          archived: false,
+          parsed: false,
+          resultReady: false,
+          reviewRouted: false,
+          duplicate: false,
         });
       }
     }
 
-    const uploaded = results.filter((result) => result.ok);
+    const received = results.filter((result) => result.ok);
+    const uploaded = received.filter((result) => !result.duplicate);
+    const archived = received.filter((result) => result.archived);
+    const parsed = received.filter((result) => result.parsed);
+    const resultReady = received.filter((result) => result.resultReady);
+    const reviewRouted = received.filter((result) => result.reviewRouted);
+    const duplicates = received.filter((result) => result.duplicate);
     const failed = results.filter((result) => !result.ok);
 
-    if (uploaded.length > 0) {
+    if (resultReady.length > 0) {
       try {
         await reconcileTournamentMatchProofs(prisma, { force: true });
       } catch (error) {
         console.warn("Replay pack upload succeeded but tournament proof reconciliation failed:", error);
       }
+    }
 
+    if (received.length > 0) {
       await recordUserActivity(prisma, {
         userId: user.id,
         type: "replay_upload",
         path: "/upload",
-        label: `Replay pack: ${uploaded.length} uploaded`,
+        label: `Replay pack: ${resultReady.length} result ready`,
         metadata: {
           packageUpload: true,
           archiveFilename: archiveName,
+          receivedCount: received.length,
           uploadedCount: uploaded.length,
+          archivedCount: archived.length,
+          parsedCount: parsed.length,
+          resultReadyCount: resultReady.length,
+          reviewRoutedCount: reviewRouted.length,
+          duplicateCount: duplicates.length,
           failedCount: failed.length,
           skippedCount: skipped.length,
           filenames: uploaded.map((result) => result.filename).slice(0, 30),
@@ -317,22 +407,32 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const message =
-      failed.length === 0
-        ? `Replay pack imported: ${uploaded.length} replay${uploaded.length === 1 ? "" : "s"} uploaded.`
-        : `Replay pack partly imported: ${uploaded.length} uploaded, ${failed.length} failed.`;
+    const message = [
+      `Replay pack received: ${received.length}`,
+      `${resultReady.length} result ready`,
+      `${reviewRouted.length} routed to private review`,
+      failed.length > 0 ? `${failed.length} failed` : null,
+    ]
+      .filter(Boolean)
+      .join(" · ");
 
     return NextResponse.json(
       {
         message,
+        received: received.length,
         uploaded: uploaded.length,
+        archived: archived.length,
+        parsed: parsed.length,
+        resultReady: resultReady.length,
+        reviewRouted: reviewRouted.length,
+        duplicates: duplicates.length,
         failed: failed.length,
         skipped: skipped.length,
         maxFiles: MAX_REPLAY_PACK_FILES,
         results,
         skippedEntries: skipped,
       },
-      { status: uploaded.length > 0 ? 207 : 400 }
+      { status: received.length > 0 ? 207 : 400 }
     );
   } finally {
     await rm(tmpRoot, { recursive: true, force: true });

@@ -19,6 +19,7 @@ import {
 } from "@/lib/teamResolution";
 import { loadReplayReviewMarketSummaryMap } from "@/lib/replayReviewQueue";
 import { toWatchStreamPayload, type WatchStreamPayload } from "@/lib/watchStreams";
+import { EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION } from "@/lib/replayAdjudications";
 
 type StreamedLiveGameSession = LiveGameSession & {
   streams: WatchStreamPayload[];
@@ -199,6 +200,7 @@ async function loadRecentMatches(
         replay_file: true,
         key_events: true,
         is_final: true,
+        replayResultAdjudications: EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION,
       },
     });
 

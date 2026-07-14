@@ -167,7 +167,7 @@ test("unknown-like placeholders are never promoted to replay metadata", () => {
     assert.equal(isUnknownishReplayValue(value), true, String(value));
   }
 
-  assert.equal(publicReplayMapLabel({ name: "Unknown" }), "Map unresolved");
+  assert.equal(publicReplayMapLabel({ name: "Unknown" }), "HD Battlefield");
   assert.equal(publicReplayMapLabel({ name: "Yucatan" }), "Yucatan");
 });
 

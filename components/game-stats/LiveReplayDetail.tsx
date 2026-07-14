@@ -22,7 +22,6 @@ import {
   outcomeBadgeLabel,
   parsePlayers,
   parseStatusLabel,
-  readMapName,
   readMapSize,
   readPlayerCivilizationLabel,
   readPlayerSteamDmRating,
@@ -33,7 +32,11 @@ import {
   winnerLabel,
 } from "@/lib/gameStatsView";
 import type { LiveReplayDetailSnapshot, LiveReplayPlayerRecord } from "@/lib/liveReplayDetail";
-import { resolveReliableReplayWinner } from "@/lib/unresolvedWatcherResult";
+import {
+  normalizePublicReplayText,
+  publicReplayMapLabel,
+  resolveReliableReplayWinner,
+} from "@/lib/unresolvedWatcherResult";
 
 const POLL_INTERVAL_MS = 5_000;
 
@@ -106,6 +109,7 @@ function displayBattleReasonTag(
 export default function LiveReplayDetail({
   initialSnapshot,
   founderBonuses = [],
+  showDiagnostics = false,
 }: {
   initialSnapshot: LiveReplayDetailSnapshot;
   founderBonuses?: Array<{
@@ -116,6 +120,7 @@ export default function LiveReplayDetail({
     status: string;
     createdAt: string;
   }>;
+  showDiagnostics?: boolean;
 }) {
   const [snapshot, setSnapshot] = useState(initialSnapshot);
   const [battleMatrixFullWidth, setBattleMatrixFullWidth] = useState(false);
@@ -227,6 +232,12 @@ export default function LiveReplayDetail({
     game.disconnectDetected && (game.isFinal || snapshot.telemetry.completedSignal);
   const fogItems = buildFogItems(snapshot, showDisconnectWarning);
   const achievementSignalLabel = describeAchievementSignal(snapshot);
+  const publicMapName = publicReplayMapLabel(game.map, "HD Battlefield");
+  const publicMapSize = normalizePublicReplayText(readMapSize(game.map));
+  const publicGameVersion = normalizePublicReplayText(displayGameVersion(game.gameVersion));
+  const publicGameType = normalizePublicReplayText(displayGameType(game.gameType));
+  const publicLobbyName = normalizePublicReplayText(keyEvents.lobby_name);
+  const publicMatchId = normalizePublicReplayText(keyEvents.platform_match_id);
 
   return (
     <main className="space-y-5 overflow-x-hidden py-4 text-white sm:space-y-6 sm:py-6">
@@ -237,7 +248,7 @@ export default function LiveReplayDetail({
               {isBattleArchive ? "Battle Archive" : "Live Replay Detail"}
             </div>
             <h1 className="break-words text-4xl font-semibold text-white sm:text-5xl [overflow-wrap:anywhere]">
-              {readMapName(game.map)}
+              {publicMapName}
             </h1>
             <p className="max-w-3xl break-words text-base leading-7 text-slate-300 sm:text-lg [overflow-wrap:anywhere]">
               {players.length > 0
@@ -251,10 +262,10 @@ export default function LiveReplayDetail({
             </p>
             <div className="flex flex-wrap gap-2">
               <Tag>{isBattleArchive ? "Battle archive" : "Watcher live"}</Tag>
-              <Tag>Parse #{game.parseIteration}</Tag>
-              <Tag>{displayBattleReasonTag(game.parseReason, isBattleArchive)}</Tag>
-              {showDisconnectWarning ? <Tag>disconnect suspected</Tag> : null}
-              {outcomeLabel ? <Tag>{outcomeLabel}</Tag> : null}
+              {showDiagnostics ? <Tag>Parse #{game.parseIteration}</Tag> : null}
+              {showDiagnostics ? <Tag>{displayBattleReasonTag(game.parseReason, isBattleArchive)}</Tag> : null}
+              {showDiagnostics && showDisconnectWarning ? <Tag>disconnect suspected</Tag> : null}
+              {reliableWinner && outcomeLabel ? <Tag>{outcomeLabel}</Tag> : null}
               {finalStatsReady ? <Tag>final stats ready</Tag> : null}
               <Tag>Updated {formatDateTime(snapshot.updatedAt)}</Tag>
             </div>
@@ -262,7 +273,7 @@ export default function LiveReplayDetail({
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <StatCard label="Live Duration" value={formatDurationLabel(game.duration || game.gameDuration)} />
+            <StatCard label="Live Duration" value={liveDurationSeconds > 0 ? formatDurationLabel(liveDurationSeconds) : "Battle clock live"} />
             <StatCard
               label="Pulse Window"
               value={
@@ -280,7 +291,7 @@ export default function LiveReplayDetail({
               value={String(snapshot.telemetry.latestChatCount ?? chatPreview.length)}
             />
             <StatCard label="Parse Iterations" value={String(snapshot.history.length)} />
-            <StatCard label="Recent Attempts" value={String(snapshot.parseAttempts.length)} />
+            {showDiagnostics ? <StatCard label="Recent Attempts" value={String(snapshot.parseAttempts.length)} /> : null}
           </div>
         </div>
 
@@ -314,14 +325,13 @@ export default function LiveReplayDetail({
         </div>
       </section>
 
-      <section className="min-w-0 overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(56,189,248,0.16),_transparent_26%),radial-gradient(circle_at_top_right,_rgba(251,191,36,0.12),_transparent_28%),linear-gradient(135deg,_rgba(8,15,29,0.98),_rgba(7,12,24,0.99))] p-5 sm:p-8">
+      {showDiagnostics || (hasBattleMatrixSignal && !battleMatrixWarming) ? <section className="min-w-0 overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(56,189,248,0.16),_transparent_26%),radial-gradient(circle_at_top_right,_rgba(251,191,36,0.12),_transparent_28%),linear-gradient(135deg,_rgba(8,15,29,0.98),_rgba(7,12,24,0.99))] p-5 sm:p-8">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="text-xs uppercase tracking-[0.35em] text-sky-200/70">Battle Matrix</div>
             <h2 className="mt-2 text-3xl font-semibold text-white sm:text-4xl">Live Activity Lanes</h2>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300 sm:text-base">
-              This is the premium live read: who is more active, how the pulse is growing, which signals are lighting up,
-              and where the fog still hides the battlefield.
+              Live watcher activity shows who is setting the pace and how each warrior&apos;s command rhythm is moving.
             </p>
           </div>
 
@@ -341,8 +351,8 @@ export default function LiveReplayDetail({
             <div className="flex flex-wrap justify-end gap-2">
               <Tag>{snapshot.telemetry.uniqueEventTypeCount} event families tracked</Tag>
               <Tag>{snapshot.telemetry.latestChatCount ?? 0} live chat signals</Tag>
-              <Tag>{snapshot.telemetry.hasScores ? "scores visible" : "scores dark"}</Tag>
-              <Tag>{achievementSignalLabel}</Tag>
+              {showDiagnostics || snapshot.telemetry.hasScores ? <Tag>{snapshot.telemetry.hasScores ? "scores visible" : "score telemetry"}</Tag> : null}
+              {showDiagnostics || snapshot.telemetry.hasAchievements ? <Tag>{snapshot.telemetry.hasAchievements ? "achievements visible" : achievementSignalLabel}</Tag> : null}
             </div>
           </div>
         </div>
@@ -373,11 +383,11 @@ export default function LiveReplayDetail({
             ))
           )}
         </div>
-      </section>
+      </section> : null}
 
-      <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+      <section className={`grid gap-6 ${showDiagnostics ? "xl:grid-cols-[1.15fr_0.85fr]" : ""}`}>
         <div className="space-y-6">
-          <Panel title="Pulse Board" eyebrow="Spectator Mode">
+          {showDiagnostics ? <Panel title="Pulse Board" eyebrow="Spectator Mode">
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               <SignalTile
                 label="Current winner signal"
@@ -422,51 +432,54 @@ export default function LiveReplayDetail({
               duration growth, player identity, EAPM drift, event-family coverage, chat signals, and parser state.
               Final-style scoreboards only unlock once HD starts surfacing them or the closing replay lands.
             </div>
-          </Panel>
+          </Panel> : null}
 
           <Panel title="Live Match Summary" eyebrow="Overview">
             <dl className="grid gap-4 sm:grid-cols-2">
               <StatRow label="Session Key" value={snapshot.sessionKey} />
               <StatRow label="Live State" value={isBattleArchive ? "Battle archive" : "Watcher replay stream"} />
-              <StatRow label="Current Winner Signal" value={winnerLabel(game.winner, game.parseReason)} />
-              <StatRow
-                label="Victory Hint"
-                value={
-                  snapshot.telemetry.completionSource === "resignation" && isBattleArchive
-                    ? "Locked by recorded resignation"
-                    : outcomeLabel || "Still unfolding"
-                }
-              />
-              <StatRow label="Map" value={readMapName(game.map)} />
-              <StatRow label="Map Size" value={readMapSize(game.map)} />
-              <StatRow label="Game Version" value={displayGameVersion(game.gameVersion)} />
-              <StatRow label="Game Type" value={displayGameType(game.gameType)} />
-              <StatRow label="Duration" value={formatDurationLabel(game.duration || game.gameDuration)} />
-              <StatRow label="Played On" value={formatDateTime(playedAt)} />
+              {reliableWinner ? <StatRow label="Winner" value={reliableWinner} /> : null}
+              {reliableWinner && snapshot.telemetry.completionSource === "resignation" && isBattleArchive ? <StatRow label="Victory Proof" value="Locked by recorded resignation" /> : null}
+              <StatRow label="Map" value={publicMapName} />
+              {publicMapSize ? <StatRow label="Map Size" value={publicMapSize} /> : null}
+              {publicGameVersion ? <StatRow label="Game Version" value={publicGameVersion} /> : null}
+              {publicGameType ? <StatRow label="Game Type" value={publicGameType} /> : null}
+              {liveDurationSeconds > 0 ? <StatRow label="Duration" value={formatDurationLabel(liveDurationSeconds)} /> : null}
+              {playedAt ? <StatRow label="Played On" value={formatDateTime(playedAt)} /> : null}
               <StatRow label="Latest Pulse" value={formatDateTime(snapshot.updatedAt)} />
               <StatRow label="Uploader" value={renderUploader(game.user)} />
-              <StatRow label="Lobby Name" value={formatPrimitive(keyEvents.lobby_name)} />
-              <StatRow label="Match ID" value={formatPrimitive(keyEvents.platform_match_id)} />
+              {publicLobbyName ? <StatRow label="Lobby Name" value={publicLobbyName} /> : null}
+              {publicMatchId ? <StatRow label="Match ID" value={publicMatchId} /> : null}
               <StatRow label="Replay File" value={displayReplayFilename(game.originalFilename, game.replayFile)} />
-              <StatRow label="Replay Hash" value={shortHash(game.replayHash, 20)} />
+              {showDiagnostics ? <StatRow label="Replay Hash" value={shortHash(game.replayHash, 20)} /> : null}
             </dl>
           </Panel>
 
           <Panel title="Players" eyebrow="Roster">
             <div className="grid gap-4 lg:grid-cols-2">
               {players.length === 0 ? (
-                <EmptyPanel message="No player payload has landed yet for this live replay." />
+                <EmptyPanel message="Battle tape live in the HD War Room." />
               ) : (
                 players.map((player, index) => {
                   const playerName = displayPlayerName(player);
                   const pulseSummary = playerPulseSummaries[index];
+                  const civilization = normalizePublicReplayText(readPlayerCivilizationLabel(player)) ?? "HD warrior";
+                  const steamId = normalizePublicReplayText(readPlayerSteamId(player));
+                  const rmRating = readPlayerSteamRmRating(player);
+                  const dmRating = readPlayerSteamDmRating(player);
+                  const currentEapm = battleMatrixWarming ? null : pulseSummary.currentEapm;
+                  const peakEapm = battleMatrixWarming ? null : pulseSummary.peakEapm;
+                  const eapmDelta = battleMatrixWarming ? null : pulseSummary.eapmDelta;
+                  const position = Array.isArray(player.position) && player.position.length === 2
+                    ? player.position.join(", ")
+                    : null;
                   const winnerState = reliableWinner
                     ? player.winner === true
-                      ? "winner signal"
+                      ? "winner"
                       : player.winner === false
-                        ? "trailing signal"
-                        : "live"
-                    : "winner unresolved";
+                        ? "battle rival"
+                        : "battle roster"
+                    : isBattleArchive ? "battle roster" : "live warrior";
 
                   return (
                     <div
@@ -483,48 +496,44 @@ export default function LiveReplayDetail({
                           </div>
                         </div>
                         <div className="shrink-0 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-                          {readPlayerCivilizationLabel(player)}
+                          {civilization}
                         </div>
                       </div>
 
                       <dl className="mt-5 grid gap-3 sm:grid-cols-2">
-                        <PlayerMetric label="Steam ID" value={formatPrimitive(readPlayerSteamId(player))} />
-                        <PlayerMetric
+                        {steamId ? <PlayerMetric label="Steam ID" value={steamId} /> : null}
+                        {rmRating !== null ? <PlayerMetric
                           label="RM Rating"
-                          value={formatRatingMetric(readPlayerSteamRmRating(player))}
-                        />
-                        <PlayerMetric
+                          value={formatRatingMetric(rmRating)}
+                        /> : null}
+                        {dmRating !== null ? <PlayerMetric
                           label="DM Rating"
-                          value={formatRatingMetric(readPlayerSteamDmRating(player))}
-                        />
-                        <PlayerMetric
+                          value={formatRatingMetric(dmRating)}
+                        /> : null}
+                        {currentEapm !== null ? <PlayerMetric
                           label="Current EAPM"
-                          value={formatActivityMetric(battleMatrixWarming ? null : pulseSummary.currentEapm)}
-                        />
-                        <PlayerMetric
+                          value={formatActivityMetric(currentEapm)}
+                        /> : null}
+                        {peakEapm !== null ? <PlayerMetric
                           label="Peak EAPM"
-                          value={formatActivityMetric(battleMatrixWarming ? null : pulseSummary.peakEapm)}
-                        />
-                        <PlayerMetric
+                          value={formatActivityMetric(peakEapm)}
+                        /> : null}
+                        {eapmDelta !== null ? <PlayerMetric
                           label="EAPM Delta"
-                          value={formatDeltaMetric(battleMatrixWarming ? null : pulseSummary.eapmDelta)}
-                        />
-                        <PlayerMetric
+                          value={formatDeltaMetric(eapmDelta)}
+                        /> : null}
+                        {position ? <PlayerMetric
                           label="Starting Position"
-                          value={formatPositionValue(player.position)}
-                        />
-                        <PlayerMetric
+                          value={position}
+                        /> : null}
+                        {showDiagnostics ? <PlayerMetric
                           label="Pulse Coverage"
                           value={`${pulseSummary.pulseCount}/${historyPulses.length || 1} pulses`}
-                        />
-                        <PlayerMetric
+                        /> : null}
+                        {pulseSummary.scoreVisible ? <PlayerMetric
                           label="Live Score"
-                          value={
-                            pulseSummary.scoreVisible
-                              ? formatNumericMetric(pulseSummary.lastKnownScore)
-                              : "Fog of war"
-                          }
-                        />
+                          value={formatNumericMetric(pulseSummary.lastKnownScore)}
+                        /> : null}
                       </dl>
 
                       <div className="mt-5 space-y-4">
@@ -540,7 +549,7 @@ export default function LiveReplayDetail({
             </div>
           </Panel>
 
-          <Panel title="Pulse Timeline" eyebrow="Iterations">
+          {showDiagnostics ? <Panel title="Pulse Timeline" eyebrow="Iterations">
             <div className="space-y-3">
               {historyPulses.map((entry) => (
                 <div
@@ -618,10 +627,10 @@ export default function LiveReplayDetail({
                 </div>
               ))}
             </div>
-          </Panel>
+          </Panel> : null}
         </div>
 
-        <div className="space-y-6">
+        {showDiagnostics ? <div className="space-y-6">
           <Panel title="Fog Of War" eyebrow="Truth Boundary">
             <div className="space-y-3">
               {fogItems.length === 0 ? (
@@ -732,7 +741,7 @@ export default function LiveReplayDetail({
               )}
             </div>
           </Panel>
-        </div>
+        </div> : null}
       </section>
     </main>
   );
@@ -828,6 +837,12 @@ function BattleMatrixLane({
   globalPeakEapm: number;
   tone: "sky" | "amber";
 }) {
+  const civilization = normalizePublicReplayText(readPlayerCivilizationLabel(player)) ?? "HD warrior";
+  const rmRating = readPlayerSteamRmRating(player);
+  const position = Array.isArray(player.position) && player.position.length === 2
+    ? player.position.join(", ")
+    : null;
+  const visibleSeries = series.filter((point) => point.eapm !== null);
   const toneClass =
     tone === "amber"
       ? {
@@ -852,9 +867,9 @@ function BattleMatrixLane({
             {displayPlayerName(player)}
           </div>
           <div className="mt-2 flex flex-wrap gap-2">
-            <Tag>{readPlayerCivilizationLabel(player)}</Tag>
-            <Tag>{formatRatingMetric(readPlayerSteamRmRating(player))} RM</Tag>
-            <Tag>{formatPositionValue(player.position)}</Tag>
+            <Tag>{civilization}</Tag>
+            {rmRating !== null ? <Tag>{formatRatingMetric(rmRating)} RM</Tag> : null}
+            {position ? <Tag>{position}</Tag> : null}
           </div>
         </div>
 
@@ -883,23 +898,23 @@ function BattleMatrixLane({
             />
           </div>
           <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <MatrixMetric label="Opening" value={formatActivityMetric(summary.openingEapm)} />
-            <MatrixMetric label="Peak" value={formatActivityMetric(summary.peakEapm)} />
-            <MatrixMetric label="Coverage" value={`${summary.pulseCount}/${Math.max(1, series.length)}`} />
-            <MatrixMetric
+            {summary.openingEapm !== null ? <MatrixMetric label="Opening" value={formatActivityMetric(summary.openingEapm)} /> : null}
+            {summary.peakEapm !== null ? <MatrixMetric label="Peak" value={formatActivityMetric(summary.peakEapm)} /> : null}
+            <MatrixMetric label="Coverage" value={`${summary.pulseCount}/${Math.max(1, visibleSeries.length)}`} />
+            {summary.scoreVisible ? <MatrixMetric
               label="Score"
-              value={summary.scoreVisible ? formatNumericMetric(summary.lastKnownScore) : "Fog"}
-            />
+              value={formatNumericMetric(summary.lastKnownScore)}
+            /> : null}
           </div>
         </div>
 
         <div className="rounded-[1.35rem] border border-white/8 bg-slate-950/25 p-4 sm:p-5">
           <div className="flex items-center justify-between gap-3 text-[11px] uppercase tracking-[0.22em] text-slate-500">
             <span>Pulse strip</span>
-            <span>{series.length} pulses</span>
+            <span>{visibleSeries.length} pulses</span>
           </div>
           <div className="mt-4 grid grid-cols-[repeat(auto-fit,minmax(3.65rem,1fr))] gap-2.5">
-            {series.map((point) => (
+            {visibleSeries.map((point) => (
               <div
                 key={`${summary.name}-${point.parseIteration}`}
                 className={`rounded-[1rem] border px-3 py-3 text-center ${toneClass.active}`}
@@ -1045,7 +1060,9 @@ function readNestedRecord(source: Record<string, unknown>, ...keys: string[]) {
 }
 
 function renderAchievementGroup(title: string, record: Record<string, unknown>) {
-  const entries = Object.entries(record).filter(([, value]) => value !== null && value !== undefined);
+  const entries = Object.entries(record).filter(
+    ([, value]) => value !== null && value !== undefined && value !== ""
+  );
   if (entries.length === 0) {
     return null;
   }
@@ -1066,7 +1083,7 @@ function renderUploader(
   user: LiveReplayDetailSnapshot["game"]["user"]
 ) {
   if (!user) {
-    return "Uploader unavailable";
+    return "Battle contributor";
   }
 
   const label = user.inGameName || user.steamPersonaName || user.uid;

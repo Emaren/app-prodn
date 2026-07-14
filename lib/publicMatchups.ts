@@ -25,6 +25,7 @@ import {
 } from "@/lib/unresolvedWatcherResult";
 import {
   applyReplayAdjudicationToGameStats,
+  EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION,
 } from "@/lib/replayAdjudications";
 import {
   parseReplaySides,
@@ -54,7 +55,9 @@ export type MatchupGameRow = {
   disconnect_detected?: boolean;
   duration?: number | null;
   game_duration?: number | null;
+  event_types?: unknown;
   key_events?: unknown;
+  parse_source?: string | null;
 };
 
 export type RivalSummary = {
@@ -194,6 +197,10 @@ function normalizeWinnerName(value: unknown) {
   return winner;
 }
 
+function matchWinnerFlagIsTrue(value: unknown) {
+  return value === true || value === "true" || value === 1 || value === "1";
+}
+
 function resolveMatchWinnerName(
   game: MatchupGameRow
 ) {
@@ -207,7 +214,9 @@ function resolveMatchWinnerName(
         adjudicatedGame.players
       ),
       parseReason: adjudicatedGame.parse_reason,
+      parseSource: adjudicatedGame.parse_source,
       keyEvents: adjudicatedGame.key_events,
+      eventTypes: adjudicatedGame.event_types,
     })
   );
 }
@@ -228,36 +237,20 @@ function resolveParsedWinnerSide(
   game: MatchupGameRow,
   sides: ParsedReplaySides
 ): "left" | "right" | null {
-  const winner = resolveMatchWinnerName(game);
-
-  if (winner) {
-    const leftWinner = sideContainsName(
-      sides.left,
-      winner
-    );
-    const rightWinner = sideContainsName(
-      sides.right,
-      winner
-    );
-
-    if (leftWinner !== rightWinner) {
-      return leftWinner ? "left" : "right";
-    }
-  }
-
   const adjudicatedGame =
     applyReplayAdjudicationToGameStats(game);
+  const winner = resolveMatchWinnerName(adjudicatedGame);
+
+  if (!winner) {
+    return null;
+  }
 
   const flaggedWinnerNames = parsePlayers(
     adjudicatedGame.players
   )
-    .filter((player) => player.winner === true)
+    .filter((player) => matchWinnerFlagIsTrue(player.winner))
     .map((player) => displayPlayerName(player))
     .filter(Boolean);
-
-  if (flaggedWinnerNames.length === 0) {
-    return null;
-  }
 
   const flaggedSides = new Set<
     "left" | "right"
@@ -283,8 +276,27 @@ function resolveParsedWinnerSide(
     }
   }
 
-  return flaggedSides.size === 1
-    ? [...flaggedSides][0]
+  if (flaggedSides.size === 1) {
+    return [...flaggedSides][0];
+  }
+
+  if (flaggedSides.size > 1) {
+    return null;
+  }
+
+  const leftWinner = sideContainsName(
+    sides.left,
+    winner
+  );
+  const rightWinner = sideContainsName(
+    sides.right,
+    winner
+  );
+
+  return leftWinner !== rightWinner
+    ? leftWinner
+      ? "left"
+      : "right"
     : null;
 }
 
@@ -293,10 +305,18 @@ function winnerMatchesPlayer(
   game: MatchupGameRow
 ) {
   const winner = resolveMatchWinnerName(game);
+  if (!winner) return false;
 
-  return winner
-    ? publicPlayerMatchesName(player, winner)
-    : false;
+  const adjudicatedGame = applyReplayAdjudicationToGameStats(game);
+  const playerRecord = parsePlayers(adjudicatedGame.players).find((candidate) =>
+    publicPlayerMatchesName(player, displayPlayerName(candidate))
+  );
+
+  if (playerRecord && matchWinnerFlagIsTrue(playerRecord.winner)) {
+    return true;
+  }
+
+  return publicPlayerMatchesName(player, winner);
 }
 
 function sortMatchRowsByPlayedAtDesc(
@@ -344,11 +364,15 @@ export async function loadRecentFinalMatchupRows(
         disconnect_detected: true,
         duration: true,
         game_duration: true,
+        event_types: true,
         key_events: true,
+        parse_source: true,
+        replayResultAdjudications: EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION,
       },
     });
 
   return candidateMatches
+    .map((game) => applyReplayAdjudicationToGameStats(game) as MatchupGameRow)
     .sort(sortMatchRowsByPlayedAtDesc)
     .slice(0, take);
 }
@@ -1324,7 +1348,8 @@ export function filterTeamMatchupMatches(
   }
 
   return games.filter((game) => {
-    const sides = parseReplaySides(game.players);
+    const effectiveGame = applyReplayAdjudicationToGameStats(game) as MatchupGameRow;
+    const sides = parseReplaySides(effectiveGame.players);
 
     if (
       !sides ||
@@ -1349,7 +1374,8 @@ export function resolveTeamMatchWinnerSide(
   left: PublicPlayerRef[],
   right: PublicPlayerRef[]
 ): "left" | "right" | null {
-  const sides = parseReplaySides(game.players);
+  const effectiveGame = applyReplayAdjudicationToGameStats(game) as MatchupGameRow;
+  const sides = parseReplaySides(effectiveGame.players);
 
   if (!sides || sides.format === "1v1") {
     return null;
@@ -1366,7 +1392,7 @@ export function resolveTeamMatchWinnerSide(
   }
 
   const parsedWinnerSide =
-    resolveParsedWinnerSide(game, sides);
+    resolveParsedWinnerSide(effectiveGame, sides);
 
   if (!parsedWinnerSide) {
     return null;

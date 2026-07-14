@@ -149,9 +149,18 @@ export function publicReplayWinnerTruth(row: PublicGameStatsLike) {
 }
 
 export function isPublicResolvedGameStatsRow(row: PublicGameStatsLike) {
+  const adjudicated = applyReplayAdjudicationToGameStats(row);
   const adjudication = getReplayAdjudicationForGameStatsId(row.id);
-  if (adjudication?.affectsStats) return publicReplayIsFinal(row);
-  return publicReplayIsFinal(row) && publicReplayWinnerTruth(row).statsEligible;
+  if (
+    adjudication?.affectsStats ||
+    Boolean((adjudicated as Record<string, unknown>).replayResultAdjudication)
+  ) {
+    return publicReplayIsFinal(adjudicated);
+  }
+  return (
+    publicReplayIsFinal(adjudicated) &&
+    publicReplayWinnerTruth(adjudicated).statsEligible
+  );
 }
 
 export function publicReplayIdentity(row: PublicGameStatsLike) {
@@ -187,16 +196,26 @@ export function publicReplayIdentity(row: PublicGameStatsLike) {
 }
 
 function metadataScore(row: PublicGameStatsLike) {
-  const players = readPlayers(row.players);
+  const adjudicated = applyReplayAdjudicationToGameStats(row);
+  const players = readPlayers(adjudicated.players);
   const knownPlayers = players.filter((player) =>
     normalizePublicReplayText(player.name)
   ).length;
   let score = knownPlayers * 50;
-  if (readMapName(row)) score += 100;
-  if (publicReplayIsFinal(row)) score += 500;
-  if (getReplayAdjudicationForGameStatsId(row.id)?.affectsStats) score += 1400;
-  else if (publicReplayWinnerTruth(row).statsEligible) score += 1000;
-  score += Math.min(250, Math.max(0, readNumber(row, "parse_iteration", "parseIteration")));
+  if (readMapName(adjudicated)) score += 100;
+  if (publicReplayIsFinal(adjudicated)) score += 500;
+  if (
+    getReplayAdjudicationForGameStatsId(row.id)?.affectsStats ||
+    Boolean((adjudicated as Record<string, unknown>).replayResultAdjudication)
+  ) {
+    score += 1400;
+  } else if (publicReplayWinnerTruth(adjudicated).statsEligible) {
+    score += 1000;
+  }
+  score += Math.min(
+    250,
+    Math.max(0, readNumber(adjudicated, "parse_iteration", "parseIteration"))
+  );
   return score;
 }
 
@@ -296,6 +315,7 @@ function isManualPublicResultReason(parseReason: string | null | undefined) {
   return (
     reason === "manual_override" ||
     reason === "manual_recovery" ||
+    reason === "manual_result_adjudication" ||
     reason.includes("manual_backfill") ||
     reason.includes("manual_recovery") ||
     reason.includes("manual_override")
@@ -332,7 +352,10 @@ function trustedManualPublicWinner(row: PublicGameStatsLike) {
 
 export function toPublicGameStatsRow<T extends PublicGameStatsLike>(row: T): T {
   const adjudicated = applyReplayAdjudicationToGameStats(row);
-  if (getReplayAdjudicationForGameStatsId(row.id)) {
+  if (
+    getReplayAdjudicationForGameStatsId(row.id) ||
+    Boolean((adjudicated as Record<string, unknown>).replayResultAdjudication)
+  ) {
     return sanitizePublicMetadataFields(adjudicated);
   }
 

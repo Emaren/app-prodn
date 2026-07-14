@@ -1,179 +1,188 @@
-# Commissioner Replay Review
+# Commissioner Replay Result Review
 
-## Market proof and repair policy
+## Purpose and product posture
 
-Commissioner review does not invent a winner. A detached watcher book enters `awaiting_final_proof`, is non-bettable, and expires using replay/session activity plus the shared proof-grace policy. No trusted winner after grace means terminal `voided`; exact stakes refund with zero fee and bonuses are rescinded. A late final is linked as evidence only and cannot resurrect the book or reverse a completed/queued refund.
+Replay review keeps the public HD battle record moving without turning a parser
+guess into settlement truth. The public product should lead with the battle,
+players, teams, map, timing, and a confirmed winner whenever one exists. Raw
+parser failures, confidence internals, and evidence conflicts belong in private
+review and operator surfaces rather than public cards.
 
-Use `scripts/repair-void-bet-market.mjs` for one-time repairs. It requires exact market/session/status/date/map/participants/wager-total/reason preconditions, defaults to dry-run, writes a restricted audit backup, and requires an explicit confirmation token to apply. The normal settlement rail performs the idempotent refund and supplies payout proof.
+This is not permission to manufacture a winner. When automatic evidence is not
+strong enough, the game is preserved and routed quickly to an authorized human.
+An accepted review verdict then becomes the effective public/stats result while
+the original parser row remains intact.
 
-Team-integrity incidents use `/admin/market-integrity` and the stricter runbook in [Team Market Integrity](./MARKET_TEAM_INTEGRITY.md). A team alias can reconcile identity but cannot supply team membership. A locked roster mismatch, mixed winner/loser side, missing team ID, or proposition-hash mismatch must remain `under_review`; commissioner review must never rewrite the original sides after a stake.
+See [HD Replay Truth Pipeline](./HD_REPLAY_TRUTH_PIPELINE.md) for ingestion,
+archive, parser, backfill, and deployment operations.
 
-The operator queue lives at `/admin/replay-review`. It is protected by the
-shared `/admin` server layout and reads final replay evidence, parser reasons,
-watcher timing, linked betting markets, slips, claims, and settlement
-breadcrumbs in one place.
+## Surfaces and access
 
-## Current safety mode
+- `/game-stats/[id]/review` is the neutral per-game result editor. **Review
+  Result** links should point here from game details, battle feeds, and private
+  review queues.
+- `/admin/replay-review` remains Emaren's triage queue for parser evidence,
+  watcher timing, linked markets, slips, claims, and settlement breadcrumbs.
+- `GET /api/replay-results/[id]/adjudications` loads authorized review state and
+  the immutable verdict history.
+- `POST /api/replay-results/[id]/adjudications` appends a verdict or correction.
 
-The current Prisma schema has no replay-adjudication table. The existing
-`lib/replayAdjudications.ts` mechanism is a reviewed, in-code public/stats
-overlay. It deliberately does not change `game_stats.winner`, markets, wagers,
-claims, or settlement history.
+Server authorization is capability- and submission-based:
 
-For that reason the queue is read-only:
+- a site admin may review every game;
+- a non-admin must have `User.canReviewOwnReplayResults = true` **and** exact
+  ownership evidence: either `GameStats.userUid` or a linked
+  `ReplayParseAttempt(gameStatsId, userUid)` proving that account submitted the
+  game;
+- Jim and Julio receive that capability in the initial migration;
+- uploader display names and mutable `GameStats.userUid` are not sufficient
+  authorization by themselves.
 
-- Approve left side — disabled, storage pending
-- Approve right side — disabled, storage pending
-- Approve a named player — disabled, storage pending
-- Void / Refund — disabled, storage pending
-- Keep under review — disabled, storage pending
-
-Do not turn these controls into API mutations until durable adjudication
-storage and an audited authorization/event trail exist. In particular, do not
-write a verdict into the raw parser row as a shortcut.
+Do not hardcode reviewer names or UIDs in route logic. Future trusted uploaders
+must be enabled through the same capability plus exact per-game ownership evidence.
 
 ## Four truth layers
 
 Keep these layers separate in code, operator language, and incident reports.
 
-1. `parser_result`
-   - Raw `game_stats` fields, player flags, key events, parse source/reason, and
-     replay attempts.
-   - Preserved even when incomplete or wrong.
-2. `commissioner_verdict`
-   - A reviewed result with actor, reason, evidence snapshot, and timestamp.
-   - Currently represented only by the static overlay for exceptional recovered
-     rows.
-3. `public_result`
-   - What profiles, game stats, live games, and public archives display.
-   - May prefer a valid commissioner verdict over rejected parser inference.
-4. `settlement_result`
-   - What happened to slips and money: awaiting verdict, settled, paid,
-     refunded, failed/retryable, or wallet-link pending.
-   - Never silently rewritten because public truth changed later.
+1. **Raw parser evidence**
+   - `game_stats`, canonical players, key events, parse source/reason, replay
+     hash, parse iteration, and parse attempts.
+   - Immutable historical evidence even when a later parser or human finds a
+     better answer.
+2. **Replay adjudication ledger**
+   - Append-only human decisions in `replay_result_adjudications`.
+   - Stores exact teams, complete winning team, actor snapshots, reason,
+     evidence, source hashes, raw parser snapshot, and money snapshot.
+3. **Effective public/stats result**
+   - The accepted result projected into profiles, battle details, rivalry
+     records, and public archives.
+   - May prefer the newest valid accepted adjudication over raw parser flags.
+4. **Betting and settlement history**
+   - Frozen proposition, stakes, slips, payout attempts, claims, refunds,
+     integrity incidents, and chain breadcrumbs.
+   - Never rewritten by the replay-adjudication ledger.
 
-Wrong winner is worse than unresolved. Unsafe incomplete 1v1
-uploader/opponent inference is a candidate, not proof.
+## Append-only verdict contract
 
-## Betting lifecycle
+`ReplayResultAdjudication` records:
 
-The public and operator lifecycle is:
+- the reviewed `gameStatsId` and actor identity/role snapshots;
+- exact canonical `teamAssignments`, `winningTeamKey`, and
+  `winningPlayerKeys`;
+- reason and optional structured evidence;
+- replay hash, parse iteration, roster hash, and proposition hash;
+- raw parser and point-in-time market/financial snapshots;
+- `decisionStatus`, `financialDisposition`, `affectsStats`, and `affectsBets`;
+- an idempotency key and optional `supersedesId`.
 
-`Open → Slip locked → Final proof → Awaiting verdict → Settled → Paid / Refunded`
+Database constraints and a trigger reject `UPDATE` and `DELETE`. A correction
+is a new row naming the verdict it supersedes. The route also rejects stale
+replay, parser iteration, roster, or proposition hashes so an old browser
+cannot overwrite newer evidence.
 
-Rules:
+Every verdict must assign every canonical player exactly once, preserve valid
+team ID `0`, and name one complete team as the winner. Player order and aliases
+never assign teams. A single named winner is not valid team-game truth.
 
-- If the parser proves a winner before settlement, use the existing settlement
-  path.
-- If final proof cannot prove the winner and slips exist, show **Awaiting
-  Verdict**. Do not manufacture a winner.
-- A safely stored commissioner verdict may later make the result eligible for
-  the existing settlement path. It must not bypass that path.
-- A commissioner void may use an existing audited refund/void path only after
-  durable storage exists. The review UI must not invent a new payout path.
-- If a market is already refunded or voided, preserve that money state. A late
-  public verdict does not claw back or re-pay funds.
-- If a payout is already recorded, never alter it without a separate explicit,
-  audited manual-override workflow.
+## Acceptance and approval behavior
 
-The queue exposes:
+| Reviewer | Linked market | Stored decision | Public/stats effect | Betting effect |
+|---|---|---|---|---|
+| Site admin | No | `accepted` | Immediate effective projection | None |
+| Site admin | Yes | `accepted` | Immediate effective projection | None; separate operator rail |
+| Verified submitter | No | `accepted` | Immediate effective projection | None |
+| Verified submitter | Yes | `pending_admin_approval` | None until admin review | None |
 
-- No market attached
-- Market attached, no slips
-- Slips attached, awaiting verdict
-- Settlement waiting
-- Refund recorded
-- Paid
-- Settlement failed / retryable
-- Wallet link pending
-- Payout reserve / funding issue
+Admin approval of a submitter proposal is another accepted append-only verdict,
+normally superseding the pending proposal. It is not an update to the proposal.
+
+`affectsBets` is database-constrained to `false`. The review API never mutates a
+market, wager, claim, refund, payout, or chain record. A money-linked correction
+sets `financialDisposition = operator_review_required` and sends the operator
+to the existing market-integrity or settlement rail.
+
+## Public presentation versus private evidence
+
+Public presentation should feel complete and confident without making false
+claims:
+
+- show a full winning team whenever parser evidence or an accepted verdict
+  supports it;
+- never reduce a team victory to one scalar winner name;
+- lead with strong known facts: roster, teams, map, date, duration, civilization,
+  and replay provenance;
+- when a winner is not yet accepted, present the preserved battle record rather
+  than public labels such as `unknown`, `unresolved`, `parser failed`, or a
+  confidence percentage;
+- keep parser codes, rejected inferences, conflict details, confidence/evidence
+  breakdowns, stale-hash errors, and financial snapshots private;
+- never convert a missing value into zero or a guess merely to fill space.
+
+Recommended public phrases include **Battle filed**, **Replay preserved**, and
+**Result confirmed**. Private operator surfaces may use precise states such as
+`result_resolved`, `result_trusted`, `review_routed`,
+`pending_admin_approval`, and `betting_eligible`.
+
+## Betting and repair policy
+
+The result editor corrects game truth; it does not settle or repair money.
+
+- If no market is linked, an accepted verdict may update only the effective
+  public/stats projection.
+- If a market is linked, capture and inspect its frozen proposition, wagers,
+  claims, integrity incidents, and terminal-money state.
+- If corrected teams differ from a frozen proposition after the first stake,
+  use `/admin/market-integrity`. Do not rewrite the original market sides.
+- A team-integrity void returns exact original stakes with zero fee/bonus and
+  preserves all chain and adjustment history.
+- A paid, refunded, voided, claimed, or rescinded outcome remains terminal. A
+  later public correction does not claw back, re-pay, or reopen it.
+- A late final remains evidence only for a terminal void/refund and cannot
+  resurrect the market.
+- Retry failed/retryable payouts only from the existing settlement rail.
+
+Use [Team Market Integrity](./MARKET_TEAM_INTEGRITY.md) for financial incidents.
+One-time market repairs must retain their existing dry-run, exact-precondition,
+backup, audit, and explicit-confirmation safeguards.
 
 ## Operator playbook
 
-1. Open `/admin/replay-review`, or use **Review Result** on an admin
-   `/live-games` Parser Review card.
-2. Confirm the roster, teams, map, duration, uploader, and stable replay
-   evidence.
-3. Read the raw candidate and the reason it was rejected. A stored name is not
-   automatically reliable.
-4. Review parse attempts and watcher events:
-   - `final_candidate_deferred` can mean the replay was still cooling down.
-   - `parse_pending` means the final parser result had not landed.
-   - `parse_result_unknown_fields` means parsing completed without enough
-     roster/winner truth.
-   - `final_candidate_accepted` confirms acceptance, not necessarily a winner.
-   - `replay_detected_ignored` records a duplicate replay event.
-5. Read the money-state card before considering a verdict. Paid/refunded state
-   is a hard safety boundary.
-6. Until storage is added, document the evidence and create a reviewed static
-   overlay only through a separately reviewed code change. Do not edit the raw
-   row.
-7. Retry a payout only from the existing settlement/operator rail when its
-   status explicitly says failed/retryable. Do not retry from replay review.
-8. Do not rescind an auto-settled or already-paid outcome from this surface.
+1. Open `/admin/replay-review`, or follow **Review Result** to
+   `/game-stats/[id]/review`.
+2. Confirm the replay hash, parse iteration, complete canonical roster, explicit
+   team evidence, map, duration, uploader, and source file.
+3. Review direct evidence before inference: postgame/scoreboard, full losing-team
+   resignation, explicit lobby teams, event timeline, and watcher finality.
+4. Assign every player exactly once and select one complete winning team.
+5. Read the money snapshot before submitting. If Jim or Julio is correcting a
+   money-linked game, expect `pending_admin_approval`.
+6. Enter a concise reason and attach structured evidence when useful. Submit
+   once with a stable idempotency key.
+7. If history already exists, append a correction with `supersedesId`; never
+   edit or delete an earlier verdict.
+8. Confirm that the accepted public projection shows every winning teammate and
+   that the raw parser row remains unchanged.
+9. If money action is required, leave the adjudication ledger and follow the
+   appropriate market-integrity/refund/settlement workflow.
 
-## Recovery diagnostics
+## Watcher evidence language
 
-The queue includes every recent `is_final` row whose winner truth is not
-stats-eligible. For each row it reports whether the app can extract:
+Watcher HTTP success proves only that a request succeeded. The API now separates
+archive, parse, result, and settlement facts. In particular,
+`final_recorded*` means final bytes and candidate data were preserved but the
+result was not authorized for automatic settlement. Only `trusted_final*` or
+`reviewed_match*` with `should_settle = true` may enter the settlement path.
 
-- roster and side candidates
-- map
-- duration
-- a stored or flagged winner candidate
-- decisive postgame, score, achievement, resignation, or completion signals
-- stable replay/parse attempts
-- final-candidate, cooldown, unknown-field, or duplicate watcher events
-- linked market, slips, claims, and settlement state
+Useful private diagnostics include:
 
-Use the game-id filter (`/admin/replay-review?gameId=10252`) for a direct
-operator handoff. The known Tell3z/Emaren case remains an example of a rejected
-incomplete-uploader inference with a separate commissioner public/stats
-overlay. The queue should likewise expose current MuppeT390, CN-强哥, and Jim
-rows when their final records remain unresolved; it does not special-case
-those names.
+- `final_candidate_deferred` — file cooling or result proof not ready;
+- `parse_pending` — parser work has not completed;
+- `parse_result_unknown_fields` — candidate stored with incomplete result
+  evidence;
+- `final_candidate_accepted` — artifact/candidate accepted, not automatically a
+  trusted winner;
+- `replay_detected_ignored` — duplicate watcher event.
 
-## Required storage before enabling actions
-
-A future migration should be designed and reviewed separately. A minimum
-append-only adjudication record needs:
-
-- `game_stats_id`
-- optional `market_id`
-- verdict kind: winner side, winner player, keep-under-review, or void request
-- selected side/player identity
-- adjudicating admin user id/uid
-- reason and evidence note
-- raw parser winner/source/reason snapshot
-- money-state snapshot
-- created timestamp
-- supersession/revocation reference rather than destructive updates
-
-The write route must:
-
-- require server admin authorization
-- be idempotent and audited
-- preserve raw replay rows
-- never mutate money directly
-- reject automatic changes to paid/refunded markets
-- pass only eligible unsettled verdicts into the existing settlement service
-
-No action should be enabled merely because the UI can render the candidate.
-
-## Watcher timing follow-up
-
-The current app can diagnose timing from `watcher_client_events` and
-`replay_parse_attempts`, but it does not yet have one canonical final-proof
-timeline object. A later watcher/API change should persist, per final
-candidate:
-
-- file hash and size at each stability check
-- cooldown start/end
-- accepted final copy/hash
-- parse start/end
-- parser outcome and unknown fields
-- duplicate/alias decision
-- accepted `game_stats_id`
-
-That change belongs in a separate parser/watcher review and deployment. This
-app-only queue does not change the watcher service.
+These details support review. They do not establish public or betting truth by
+themselves.

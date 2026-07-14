@@ -118,11 +118,8 @@ const RESOURCE_META: Record<keyof PlayerResourceStats["totals"], { label: string
 };
 
 function PlayerRecordBadge({ profile }: { profile: PlayerProfile }) {
-  const hasUnknowns = profile.command.unknowns > 0;
-  const recordLabel = hasUnknowns
-    ? `${profile.command.wins} - ${profile.command.losses} - ${profile.command.unknowns}`
-    : `${profile.command.wins} - ${profile.command.losses}`;
-  const recordTitle = hasUnknowns ? "Wins - Losses - Unknown" : "Wins - Losses";
+  const recordLabel = `${profile.command.wins} - ${profile.command.losses}`;
+  const recordTitle = "Resolved wins - losses";
 
   return (
     <span
@@ -174,8 +171,8 @@ function PlayerProfileExtreme({
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <CommandTile label="Win Rate" value={formatPercent(profile.command.winRate)} detail={`${profile.command.wins}W / ${profile.command.losses}L`} tone="emerald" />
                 <CommandTile label="Current Streak" value={profile.command.currentStreakLabel} detail={`${profile.command.matchesLast30Days} games in 30d`} tone={currentStreakTone} />
-                <CommandTile label="Peak Score" value={formatPeakNumber(profile.command.bestScore)} detail={formatAverageNumber(profile.command.averageScore)} tone="sky" />
-                <CommandTile label="Peak EAPM" value={formatPeakDecimal(profile.command.bestEapm)} detail={formatAverageDecimal(profile.command.averageEapm)} tone="red" />
+                <CommandTile label={profile.command.bestScore !== null ? "Peak Score" : "Battle Archive"} value={profile.command.bestScore !== null ? formatPeakNumber(profile.command.bestScore) : `${profile.command.totalMatches} games`} detail={profile.command.averageScore !== null ? formatAverageNumber(profile.command.averageScore) : `${profile.command.activeDays} active days`} tone="sky" />
+                <CommandTile label={profile.command.bestEapm !== null ? "Peak EAPM" : "Watcher Proof"} value={profile.command.bestEapm !== null ? formatPeakDecimal(profile.command.bestEapm) : `${profile.watcher.watcherBackedMatches} games`} detail={profile.command.averageEapm !== null ? formatAverageDecimal(profile.command.averageEapm) : `${profile.watcher.proofScore}/100 proof`} tone="red" />
               </div>
 
               <div className="mt-5 grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
@@ -192,7 +189,7 @@ function PlayerProfileExtreme({
             </Panel>
 
             <section className="grid gap-6">
-              <Panel eyebrow="Economy Vault" title="Resource command" count={profile.resources.visibleGames > 0 ? `${profile.resources.visibleGames} visible` : "gated"}>
+              <Panel eyebrow="Economy Vault" title="Resource command" count={profile.resources.visibleGames > 0 ? `${profile.resources.visibleGames} tables` : "HD archive"}>
                 <ResourceVault resources={profile.resources} />
               </Panel>
 
@@ -262,8 +259,8 @@ function PlayerProfileAdvanced({ profile }: { profile: PlayerProfile }) {
             <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
               <CommandTile label="Win Rate" value={formatPercent(profile.command.winRate)} detail={`${profile.command.wins}W / ${profile.command.losses}L`} tone="emerald" />
               <CommandTile label="Current Streak" value={profile.command.currentStreakLabel} detail={`${profile.command.matchesLast30Days} games in 30d`} tone={currentStreakTone} />
-              <CommandTile label="Peak Score" value={formatPeakNumber(profile.command.bestScore)} detail={formatAverageNumber(profile.command.averageScore)} tone="sky" />
-              <CommandTile label="Peak EAPM" value={formatPeakDecimal(profile.command.bestEapm)} detail={formatAverageDecimal(profile.command.averageEapm)} tone="red" />
+              <CommandTile label={profile.command.bestScore !== null ? "Peak Score" : "Battle Archive"} value={profile.command.bestScore !== null ? formatPeakNumber(profile.command.bestScore) : `${profile.command.totalMatches} games`} detail={profile.command.averageScore !== null ? formatAverageNumber(profile.command.averageScore) : `${profile.command.activeDays} active days`} tone="sky" />
+              <CommandTile label={profile.command.bestEapm !== null ? "Peak EAPM" : "Watcher Proof"} value={profile.command.bestEapm !== null ? formatPeakDecimal(profile.command.bestEapm) : `${profile.watcher.watcherBackedMatches} games`} detail={profile.command.averageEapm !== null ? formatAverageDecimal(profile.command.averageEapm) : `${profile.watcher.proofScore}/100 proof`} tone="red" />
             </div>
 
             <div className="mt-5 grid gap-4 2xl:grid-cols-[0.95fr_1.05fr]">
@@ -279,7 +276,7 @@ function PlayerProfileAdvanced({ profile }: { profile: PlayerProfile }) {
             </div>
           </Panel>
 
-          <Panel eyebrow="Economy Vault" title="Resource command" count={profile.resources.visibleGames > 0 ? `${profile.resources.visibleGames} visible` : "gated"}>
+          <Panel eyebrow="Economy Vault" title="Resource command" count={profile.resources.visibleGames > 0 ? `${profile.resources.visibleGames} tables` : "HD archive"}>
             <ResourceVault resources={profile.resources} />
           </Panel>
 
@@ -391,11 +388,13 @@ function ClaimedBasicProfile({ profile }: { profile: PlayerProfile }) {
               <MetricCard label="Steam DM" value={formatNumber(profile.steam.dmRating)} />
               <MetricCard label="Win Rate" value={formatPercent(profile.command.winRate)} />
               <MetricCard label="Rated Matches" value={String(profile.performance.ratedMatches)} />
-              <MetricCard label="Avg Game Length" value={formatDurationLabel(profile.performance.averageDurationSeconds)} />
-              <MetricCard label="Longest Game" value={formatDurationLabel(profile.performance.longestDurationSeconds)} />
+              {profile.performance.averageDurationSeconds ? <MetricCard label="Avg Game Length" value={formatDurationLabel(profile.performance.averageDurationSeconds)} /> : null}
+              {profile.performance.longestDurationSeconds ? <MetricCard label="Longest Game" value={formatDurationLabel(profile.performance.longestDurationSeconds)} /> : null}
               <MetricCard label="Unique Opponents" value={String(profile.performance.uniqueOpponents)} />
               <MetricCard label="Civilizations" value={String(profile.performance.civilizationsPlayed)} />
-              <MetricCard label="Most Played Map" value={profile.performance.mostPlayedMap || "Map unresolved"} />
+              {profile.performance.mostPlayedMap ? (
+                <MetricCard label="Most Played Map" value={profile.performance.mostPlayedMap} />
+              ) : null}
             </div>
           </Panel>
 
@@ -444,7 +443,6 @@ function ClaimedBasicProfile({ profile }: { profile: PlayerProfile }) {
 function ReplayClassicBasicProfile({ profile }: { profile: PlayerProfile }) {
   const wins = profile.command.wins;
   const losses = profile.command.losses;
-  const unknowns = profile.command.unknowns;
   const pendingClaimAmount = profile.currentPlayer.pendingWoloClaimAmount || profile.wolo.pendingClaimWolo;
   const pendingClaimCount = profile.currentPlayer.pendingWoloClaimCount || profile.wolo.pendingClaimCount;
 
@@ -473,7 +471,6 @@ function ReplayClassicBasicProfile({ profile }: { profile: PlayerProfile }) {
               {pendingClaimCount > 0 ? <Tag>{pendingClaimAmount} WOLO unclaimed</Tag> : null}
               {wins > 0 ? <Tag>{wins} wins</Tag> : null}
               {losses > 0 ? <Tag>{losses} losses</Tag> : null}
-              {unknowns > 0 ? <Tag>{unknowns} unresolved outcomes</Tag> : null}
             </div>
           </div>
 
@@ -518,12 +515,14 @@ function ReplayClassicBasicProfile({ profile }: { profile: PlayerProfile }) {
               <MetricCard label="Steam DM" value={formatRatingMetric(profile.performance.ladderRating)} />
               <MetricCard label="Win Rate" value={formatPercent(profile.performance.winRate)} />
               <MetricCard label="Rated Matches" value={String(profile.performance.ratedMatches)} />
-              <MetricCard label="Avg Game Length" value={formatDurationLabel(profile.performance.averageDurationSeconds)} />
-              <MetricCard label="Longest Game" value={formatDurationLabel(profile.performance.longestDurationSeconds)} />
-              <MetricCard label="Shortest Game" value={formatDurationLabel(profile.performance.shortestDurationSeconds)} />
+              {profile.performance.averageDurationSeconds ? <MetricCard label="Avg Game Length" value={formatDurationLabel(profile.performance.averageDurationSeconds)} /> : null}
+              {profile.performance.longestDurationSeconds ? <MetricCard label="Longest Game" value={formatDurationLabel(profile.performance.longestDurationSeconds)} /> : null}
+              {profile.performance.shortestDurationSeconds ? <MetricCard label="Shortest Game" value={formatDurationLabel(profile.performance.shortestDurationSeconds)} /> : null}
               <MetricCard label="Unique Opponents" value={String(profile.performance.uniqueOpponents)} />
               <MetricCard label="Civilizations Played" value={String(profile.performance.civilizationsPlayed)} />
-              <MetricCard label="Most Played Map" value={profile.performance.mostPlayedMap || "Map unresolved"} />
+              {profile.performance.mostPlayedMap ? (
+                <MetricCard label="Most Played Map" value={profile.performance.mostPlayedMap} />
+              ) : null}
             </div>
             {profile.performance.ratingLastSeenAt ? (
               <div className="mt-4 text-xs text-slate-400">
@@ -676,7 +675,7 @@ function ExtremeHero({
             tone="emerald"
           />
           <HeroSignal label="Steam" value={profile.steam.rmRating ? String(profile.steam.rmRating) : "Linked"} detail={profile.steam.personaName || "rating feed"} tone="sky" />
-          <HeroSignal label="Favorite Map" value={profile.command.favoriteMap || "Calibrating"} detail={profile.command.mostPlayedCivilization || "civ mix building"} tone="amber" />
+          <HeroSignal label="Favorite Map" value={profile.command.favoriteMap || "HD Battlefield"} detail={profile.command.mostPlayedCivilization || "Civilization archive"} tone="amber" />
           <HeroSignal label="Stream" value={profile.stream.twitchChannel || "Ready"} detail={profile.stream.twitchUrl ? "Twitch rail linked" : "Add Twitch in profile"} tone="rose" />
         </div>
       </div>
@@ -786,7 +785,7 @@ function AdvancedHero({ profile }: { profile: PlayerProfile }) {
             tone="emerald"
           />
           <HeroSignal label="Steam" value={profile.steam.rmRating ? String(profile.steam.rmRating) : "Linked"} detail={profile.steam.personaName || "rating feed"} tone="sky" />
-          <HeroSignal label="Favorite Map" value={profile.command.favoriteMap || "Calibrating"} detail={profile.command.mostPlayedCivilization || "civ mix building"} tone="amber" />
+          <HeroSignal label="Favorite Map" value={profile.command.favoriteMap || "HD Battlefield"} detail={profile.command.mostPlayedCivilization || "Civilization archive"} tone="amber" />
           <HeroSignal label="Stream" value={profile.stream.twitchChannel || "Ready"} detail={profile.stream.twitchUrl ? "Twitch rail linked" : "Add Twitch in profile"} tone="rose" />
         </div>
       </div>
@@ -795,7 +794,7 @@ function AdvancedHero({ profile }: { profile: PlayerProfile }) {
 }
 
 function PlayerProfileTicker({ items }: { items: string[] }) {
-  const loopItems = items.length > 0 ? [...items, ...items] : ["Profile telemetry warming", "Replay archive ready"];
+  const loopItems = items.length > 0 ? [...items, ...items] : ["Player command center online", "Replay archive ready"];
 
   return (
     <section className="overflow-hidden rounded-full border border-white/10 bg-slate-950/70 px-4 py-2.5 shadow-[0_18px_50px_rgba(2,6,23,0.22)]" aria-label="Player ticker">
@@ -1035,15 +1034,27 @@ function FormChart({ points }: { points: PlayerFormPoint[] }) {
 }
 
 function ResourceVault({ resources }: { resources: PlayerResourceStats }) {
+  const visibleResources = RESOURCE_LABELS.filter(
+    (resource) => typeof resources.totals[resource] === "number"
+  );
+
+  if (visibleResources.length === 0) {
+    return (
+      <div className="rounded-[1.1rem] border border-white/8 bg-white/5 px-5 py-6 text-sm leading-6 text-slate-300">
+        Economy vault ready for captured AoE2HD postgame tables.
+      </div>
+    );
+  }
+
   const maxTotal = Math.max(
     1,
-    ...RESOURCE_LABELS.map((resource) => resources.totals[resource] ?? 0)
+    ...visibleResources.map((resource) => resources.totals[resource] ?? 0)
   );
 
   return (
     <div className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
-        {RESOURCE_LABELS.map((resource) => {
+        {visibleResources.map((resource) => {
           const meta = RESOURCE_META[resource];
           const total = resources.totals[resource];
           const best = resources.best[resource];
@@ -1057,13 +1068,13 @@ function ResourceVault({ resources }: { resources: PlayerResourceStats }) {
                 </div>
               </div>
               <div className="mt-3 text-2xl font-semibold capitalize text-white">
-                {total !== null ? total.toLocaleString() : "Fog"}
+                {total?.toLocaleString()}
               </div>
               <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/8">
                 <div className={`h-full rounded-full bg-gradient-to-r ${meta.accent}`} style={{ width: `${width}%` }} />
               </div>
               <div className="mt-3 text-xs text-slate-400">
-                {best ? `Best ${best.value.toLocaleString()} on ${best.mapName}` : "Awaiting postgame table"}
+                {best ? `Best ${best.value.toLocaleString()} on ${best.mapName}` : `${resources.visibleGames} economy table${resources.visibleGames === 1 ? "" : "s"} indexed`}
               </div>
             </div>
           );
@@ -1072,7 +1083,7 @@ function ResourceVault({ resources }: { resources: PlayerResourceStats }) {
       <div className="rounded-[1rem] border border-white/8 bg-slate-900/45 px-4 py-3 text-xs leading-5 text-slate-400">
         {resources.visibleGames > 0
           ? `${resources.visibleGames} stored game${resources.visibleGames === 1 ? "" : "s"} include visible economy table values.`
-          : resources.unavailableReason}
+          : "Economy vault ready for every captured postgame table."}
       </div>
     </div>
   );
@@ -1099,7 +1110,7 @@ function BreakdownBars({ rows, accent }: { rows: PlayerBreakdownRow[]; accent: "
             <div className={`h-full rounded-full ${barClass}`} style={{ width: `${Math.max(8, row.share)}%` }} />
           </div>
           <div className="mt-2 text-xs text-slate-500">
-            {row.wins}W / {row.losses}L{row.unknowns > 0 ? ` / ${row.unknowns} unresolved` : ""}
+            {row.wins}W / {row.losses}L
           </div>
         </div>
       ))}
@@ -1182,8 +1193,8 @@ function AiRail({ profile }: { profile: PlayerProfile }) {
   const props = {
     totalMatches: profile.command.totalMatches,
     winRateLabel: formatPercent(profile.command.winRate),
-    mapLabel: profile.command.favoriteMap || "Map unavailable",
-    civLabel: profile.command.mostPlayedCivilization || "Civilization unavailable",
+    mapLabel: profile.command.favoriteMap || "HD battlefield archive",
+    civLabel: profile.command.mostPlayedCivilization || "HD civilization archive",
     weaknessLabel,
     profileUid: profile.identity.kind === "claimed" ? profile.identity.uid : profile.identity.name,
     profileDisplayName: profile.displayName,
@@ -1279,7 +1290,6 @@ function ClassicRivalries({ profile }: { profile: PlayerProfile }) {
               </div>
               <div className="text-right text-xs text-slate-300">
                 {rivalry.wins}-{rivalry.losses}
-                {rivalry.unknowns > 0 ? ` · ${rivalry.unknowns} unresolved` : ""}
               </div>
             </div>
 
@@ -1361,33 +1371,33 @@ function formatRatingMetric(value: number | null | undefined) {
 }
 
 function formatNumber(value: number | null | undefined) {
-  return typeof value === "number" && Number.isFinite(value) ? Math.round(value).toLocaleString() : "—";
+  return typeof value === "number" && Number.isFinite(value) ? Math.round(value).toLocaleString() : "Not ranked";
 }
 
 function formatPercent(value: number | null | undefined) {
-  return typeof value === "number" && Number.isFinite(value) ? `${value}%` : "—";
+  return typeof value === "number" && Number.isFinite(value) ? `${value}%` : "Record active";
 }
 
 function formatPeakNumber(value: number | null | undefined) {
   return typeof value === "number" && Number.isFinite(value)
     ? Math.round(value).toLocaleString()
-    : "No peak yet";
+    : "Replay vault";
 }
 
 function formatAverageNumber(value: number | null | undefined) {
   return typeof value === "number" && Number.isFinite(value)
     ? `avg ${Math.round(value).toLocaleString()}`
-    : "avg unavailable";
+    : "HD archive";
 }
 
 function formatPeakDecimal(value: number | null | undefined) {
-  return typeof value === "number" && Number.isFinite(value) ? String(value) : "No peak yet";
+  return typeof value === "number" && Number.isFinite(value) ? String(value) : "Replay vault";
 }
 
 function formatAverageDecimal(value: number | null | undefined) {
   return typeof value === "number" && Number.isFinite(value)
     ? `avg ${value}`
-    : "avg unavailable";
+    : "HD archive";
 }
 
 function formatWolo(value: number | null | undefined) {
@@ -1395,9 +1405,9 @@ function formatWolo(value: number | null | undefined) {
 }
 
 function formatDate(value: string | null | undefined) {
-  if (!value) return "Date hidden";
+  if (!value) return "Historic archive";
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Date hidden";
+  if (Number.isNaN(date.getTime())) return "Historic archive";
   return date.toLocaleDateString([], {
     month: "short",
     day: "numeric",

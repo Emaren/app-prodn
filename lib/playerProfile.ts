@@ -11,7 +11,6 @@ import {
   readPlayerSteamDmRating,
   readPlayerSteamId,
   readPlayerSteamRmRating,
-  winnerLabel,
   isEarlyExitNoResult,
 } from "@/lib/gameStatsView";
 import type { PrismaClient } from "@/lib/generated/prisma";
@@ -33,7 +32,10 @@ import {
 } from "@/lib/publicPlayers";
 import { isAtOrAfterWoloMainnetStart, isMainnetVisibleBetWager } from "@/lib/woloChain";
 import { loadUserCommunitySummaries, type UserCommunitySummary } from "@/lib/communityHonors";
-import { applyReplayAdjudicationToGameStats } from "@/lib/replayAdjudications";
+import {
+  applyReplayAdjudicationToGameStats,
+  EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION,
+} from "@/lib/replayAdjudications";
 import { cleanPublicGameRows, type PublicGameStatsLike } from "@/lib/publicReplayTruth";
 import {
   normalizePublicReplayText,
@@ -48,6 +50,7 @@ export type PlayerProfileIdentity =
 
 export type PlayerProfileGameRow = {
   id: number;
+  userUid?: string | null;
   winner: string | null;
   players: unknown;
   played_on: Date | string | null;
@@ -63,6 +66,7 @@ export type PlayerProfileGameRow = {
   game_duration?: number | null;
   key_events?: unknown;
   event_types?: unknown;
+  replayParseAttempts?: Array<{ userUid: string | null }>;
   is_final?: boolean | null;
   winnerProof?: string | null;
   reviewNeeded?: boolean | null;
@@ -83,9 +87,10 @@ export type PlayerProfileMatchItem = {
   outcomeLabel: string | null;
   parseLabel: string;
   playedAt: string | null;
-  durationLabel: string;
+  durationLabel: string | null;
   disconnectDetected: boolean;
-  playerCivilization: string;
+  playerCivilization: string | null;
+  submitterUids: Array<string | null>;
   result: "win" | "loss" | "unknown";
   score: number | null;
   eapm: number | null;
@@ -373,6 +378,16 @@ function gameResult(game: PlayerProfileGameRow, currentPlayer: PublicPlayerRef):
   const winner = playerProfileReliableWinner(adjudicatedGame);
 
   if (!winner) return "unknown";
+
+  const player = currentPlayerRecord(adjudicatedGame, currentPlayer);
+  if (player && playerWinnerFlagIsTrue(player.winner)) {
+    return "win";
+  }
+
+  // A team result still keeps one scalar winner for compatibility, but the
+  // complete winning roster is carried by the per-player flags. Check those
+  // flags after reliable proof/adjudication has been established so every
+  // teammate receives the same accepted outcome.
   return publicPlayerMatchesName(currentPlayer, winner) ? "win" : "loss";
 }
 
@@ -502,8 +517,8 @@ function buildCurrentStreakLabel(games: PlayerProfileGameRow[], currentPlayer: P
   for (const game of games) {
     const result = gameResult(game, currentPlayer);
     if (result === "unknown") {
-      if (count === 0) return "Awaiting result proof";
-      return `${count} ${streakKind === "win" ? (count === 1 ? "win" : "wins") : count === 1 ? "loss" : "losses"} · proof boundary`;
+      if (count === 0) return "Campaign active";
+      break;
     }
 
     if (!streakKind) {
@@ -516,7 +531,7 @@ function buildCurrentStreakLabel(games: PlayerProfileGameRow[], currentPlayer: P
     count += 1;
   }
 
-  if (!streakKind || count === 0) return "No locked streak";
+  if (!streakKind || count === 0) return "Campaign active";
   if (streakKind === "win") return `${count} ${count === 1 ? "win" : "wins"}`;
   return `${count} ${count === 1 ? "loss" : "losses"}`;
 }
@@ -766,18 +781,30 @@ function toMatchItem(game: PlayerProfileGameRow, currentPlayer: PublicPlayerRef)
         .map((entry) => normalizePublicReplayText(entry.name))
         .filter((name): name is string => Boolean(name));
       if (names.length >= 2) return names.join(" vs ");
-      if (names.length === 1) return `${names[0]} · Opponent unresolved`;
-      return "Roster unresolved";
+      if (names.length === 1) return names[0];
+      return "Replay roster preserved";
     })(),
     winnerLabel: playerProfileWinnerLabel(game),
     outcomeLabel: playerProfileOutcomeLabel(game),
-    parseLabel: displayParseReason(game.parse_reason),
+    parseLabel:
+      game.parse_reason === "manual_result_adjudication"
+        ? "Commissioner verified"
+        : String(game.parse_source || "").toLowerCase().startsWith("watcher")
+          ? "Watcher-backed"
+          : "Replay-backed",
     playedAt,
-    durationLabel: formatDurationLabel(game.duration ?? game.game_duration ?? null),
+    durationLabel:
+      (game.duration ?? game.game_duration ?? 0) > 0
+        ? formatDurationLabel(game.duration ?? game.game_duration ?? null)
+        : null,
     disconnectDetected: Boolean(game.disconnect_detected),
-    playerCivilization:
-      (player ? normalizePublicReplayText(readPlayerCivilizationLabel(player)) : null) ??
-      "Civilization unavailable",
+    playerCivilization: player
+      ? normalizePublicReplayText(readPlayerCivilizationLabel(player))
+      : null,
+    submitterUids: [
+      game.userUid ?? null,
+      ...(game.replayParseAttempts ?? []).map((attempt) => attempt.userUid),
+    ],
     result,
     score: readPlayerScore(player),
     eapm: readPlayerEapm(player),
@@ -839,25 +866,21 @@ function playerProfileReliableWinner(game: PlayerProfileGameRow) {
   });
 }
 
-function playerProfileUnresolvedResult(game: PlayerProfileGameRow) {
-  const unresolved = game.unresolvedResult;
-  return unresolved && typeof unresolved === "object" ? unresolved : null;
-}
-
 function playerProfileWinnerLabel(game: PlayerProfileGameRow) {
-  const unresolved = playerProfileUnresolvedResult(game);
-  if (unresolved?.code === "winner_not_captured") return "Winner not captured";
-
   const reliableWinner = playerProfileReliableWinner(game);
-  if (reliableWinner) return reliableWinner;
+  if (reliableWinner) {
+    const winningNames = parsePlayers(game.players)
+      .filter((player) => playerWinnerFlagIsTrue(player.winner))
+      .map((player) => normalizePublicReplayText(displayPlayerName(player)))
+      .filter((name): name is string => Boolean(name));
+    return winningNames.length > 0 ? winningNames.join(" / ") : reliableWinner;
+  }
 
-  return winnerLabel(game.winner, game.parse_reason);
+  return "Battle filed";
 }
 
 function playerProfileOutcomeLabel(game: PlayerProfileGameRow) {
-  const unresolved = playerProfileUnresolvedResult(game);
-  if (unresolved?.code === "winner_not_captured") return "Completed";
-  if (unresolved?.label === "Completed") return "Completed";
+  if (!playerProfileReliableWinner(game)) return null;
   if (game.winnerProof === "historical_inferred_fallback" && playerProfileReliableWinner(game)) return null;
   return outcomeBadgeLabel(game.parse_reason, game.winner);
 }
@@ -888,7 +911,7 @@ function buildTickerItems(profile: {
     profile.command.favoriteMap ? `Best-known battlefield: ${profile.command.favoriteMap}` : null,
     profile.command.mostPlayedCivilization ? `Most played civ: ${profile.command.mostPlayedCivilization}` : null,
     profile.watcher.watcherBackedMatches > 0 ? `${profile.watcher.watcherBackedMatches} watcher-backed proofs` : null,
-    profile.resources.visibleGames > 0 ? `${profile.resources.visibleGames} games with economy tables visible` : "Economy vault awaiting postgame tables",
+    profile.resources.visibleGames > 0 ? `${profile.resources.visibleGames} games with economy tables visible` : "Economy vault expanding with every replay",
     profile.wolo.totalFlexWolo > 0 ? `${profile.wolo.totalFlexWolo} WOLO profile flex` : null,
     profile.stream.twitchUrl ? `Twitch rail linked${profile.stream.twitchChannel ? `: ${profile.stream.twitchChannel}` : ""}` : null,
   ].filter((item): item is string => Boolean(item));
@@ -1028,7 +1051,8 @@ async function loadCandidateFinalGames(prisma: PrismaClient): Promise<PlayerProf
     take: PROFILE_MATCH_SCAN_LIMIT,
     select: {
       id: true,
-        is_final: true,
+      userUid: true,
+      is_final: true,
       winner: true,
       players: true,
       played_on: true,
@@ -1044,6 +1068,10 @@ async function loadCandidateFinalGames(prisma: PrismaClient): Promise<PlayerProf
       game_duration: true,
       key_events: true,
       event_types: true,
+      replayResultAdjudications: EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION,
+      replayParseAttempts: {
+        select: { userUid: true },
+      },
     },
   });
 
