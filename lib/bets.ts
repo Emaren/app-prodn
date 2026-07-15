@@ -27,7 +27,6 @@ import {
 import { settleFounderBonuses } from "@/lib/betFounderBonuses";
 import {
   executeWoloEscrowSettlementRun,
-  executeWoloSettlementRun,
   findConfirmedWoloPayoutByMemo,
   getWoloPayoutExecutionBlocker,
   getWoloSettlementSurfaceStatus,
@@ -35,7 +34,6 @@ import {
   hasWoloPayoutExecutionConfigured,
   type SettlementRunResult,
   validateWoloEscrowSettlementRun,
-  validateWoloSettlementRun,
 } from "@/lib/woloBetSettlement";
 import {
   validateDistinctClaimPayoutTxBatch,
@@ -2022,7 +2020,7 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
     const autoClaimPlans = claimPlanList.filter(
       (plan) =>
         Boolean(plan.walletAddress && plan.claimedByUserId) &&
-        hasWoloPayoutExecutionConfigured()
+        hasWoloEscrowSettlementExecutionConfigured()
     );
 
     let validationResult: SettlementRunResult | null = null;
@@ -2034,7 +2032,7 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
     if (autoClaimPlans.length > 0) {
       settlementRunId = buildMarketSettlementRunId(market.id);
       settlementAttemptedAt = new Date();
-      validationResult = await validateWoloSettlementRun({
+      validationResult = await validateWoloEscrowSettlementRun({
         settlementRunId,
         sourceApp: "aoe2hdbets",
         sourceEventId: `bet-market-${market.id}`,
@@ -2048,7 +2046,7 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
         })),
       });
 
-      executionResult = await executeWoloSettlementRun({
+      executionResult = await executeWoloEscrowSettlementRun({
         settlementRunId,
         sourceApp: "aoe2hdbets",
         sourceEventId: `bet-market-${market.id}`,
