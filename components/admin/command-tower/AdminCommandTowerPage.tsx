@@ -10,6 +10,7 @@ import {
   Crown,
   Filter,
   FileSearch,
+  FlaskConical,
   Home,
   Images,
   LayoutGrid,
@@ -67,6 +68,7 @@ const ADMIN_NAV_LINKS = [
   { href: "/admin/trophies", label: "Trophy Command", Icon: Crown },
   { href: "/admin/media-assets", label: "Media Assets", Icon: Images },
   { href: "/admin/replay-review", label: "Replay Review", Icon: FileSearch },
+  { href: "/admin/parser-lab", label: "HD Replay Engine Room", Icon: FlaskConical },
   { href: "/admin/wolochain", label: "WoloChain", Icon: Coins },
   { href: "/admin/user-list", label: "User List / Command Tower", Icon: UsersRound },
 ] as const;

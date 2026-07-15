@@ -616,6 +616,12 @@ export default function AdminPage() {
               >
                 Market Integrity
               </Link>
+              <Link
+                href="/admin/parser-lab"
+                className="inline-flex rounded-full border border-cyan-200/18 bg-cyan-300/[0.06] px-5 py-3 text-sm text-cyan-100 transition hover:border-cyan-200/36 hover:bg-cyan-300/10"
+              >
+                HD Replay Engine Room
+              </Link>
             </div>
           </div>
 

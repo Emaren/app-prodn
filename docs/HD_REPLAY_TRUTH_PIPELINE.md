@@ -13,6 +13,13 @@ HD corpus. New parser versions may add observations or supersede an effective
 projection, but they must never erase the original artifact, parser output, or
 review history.
 
+The additive private data contract for those passes is documented in
+`docs/PARSER_ENGINE_ROOM.md`. Its first migration records artifacts,
+submissions, completed parse runs, candidate observations, evidence, private
+promotions, and bounded resumable job history. The API-side worker appends only
+to that private lane and immutable mounted-volume output; neither the migration
+nor the worker mutates `game_stats`/public aggregates.
+
 ## Lifecycle contract
 
 Treat each state as a separate fact. Do not collapse them into one “success.”
@@ -157,6 +164,11 @@ Before deployment:
 - confirm the raw replay archive exists, is mounted, and is writable by the API
   service user;
 - capture a production database backup appropriate for the migration.
+
+The Parser Engine Room foundation is a separate additive migration. Deploying
+its tables does not authorize a backfill: verify the append-only triggers and
+job event guard first, then keep workers disabled until a bounded dry-run cohort
+has operator approval.
 
 Deploy in this order:
 

@@ -96,6 +96,9 @@ model User {
   forumThreadBookmarks           ForumThreadBookmark[]
   forumThreadReactions           ForumThreadReaction[]
   replayResultAdjudications      ReplayResultAdjudication[]      @relation("ReplayResultAdjudicationActor")
+  replaySubmissions              ReplaySubmission[]              @relation("ReplaySubmissionSubmitter")
+  replayObservationPromotions    ReplayObservationPromotion[]    @relation("ReplayObservationPromotionActor")
+  replayReprocessJobs            ReplayReprocessJob[]            @relation("ReplayReprocessJobCreator")
 
   @@map("users")
 }
@@ -141,13 +144,15 @@ model GameStats {
   parse_reason        String    @default("unspecified") @db.VarChar(50)
   original_filename   String?   @db.VarChar(255)
 
-  user                      User?                      @relation(fields: [userUid], references: [uid], onDelete: NoAction, onUpdate: NoAction)
-  linkedBetMarkets          BetMarket[]                @relation("BetMarketLinkedGameStats")
-  tournamentMatchProof      TournamentMatch?           @relation("TournamentMatchProof")
-  replayParseAttempts       ReplayParseAttempt[]       @relation("GameStatsParseAttempts")
-  replayResultAdjudications ReplayResultAdjudication[]
-  trophyEvents              TrophyEvent[]
-  trophyChallenges          TrophyChallenge[]
+  user                        User?                        @relation(fields: [userUid], references: [uid], onDelete: NoAction, onUpdate: NoAction)
+  linkedBetMarkets            BetMarket[]                  @relation("BetMarketLinkedGameStats")
+  tournamentMatchProof        TournamentMatch?             @relation("TournamentMatchProof")
+  replayParseAttempts         ReplayParseAttempt[]         @relation("GameStatsParseAttempts")
+  replayResultAdjudications   ReplayResultAdjudication[]
+  replayParseRuns             ReplayParseRun[]             @relation("ReplayParseRunGameStats")
+  replayObservationPromotions ReplayObservationPromotion[] @relation("ReplayObservationPromotionGameStats")
+  trophyEvents                TrophyEvent[]
+  trophyChallenges            TrophyChallenge[]
 
   @@unique([replayHash, is_final], map: "uq_replay_final")
   @@index([createdAt], map: "ix_game_stats_created_at")
@@ -172,7 +177,9 @@ model ReplayParseAttempt {
   gameStatsId      Int?      @map("game_stats_id")
   playedOn         DateTime? @map("played_on") @db.Timestamp(6)
 
-  gameStats GameStats? @relation("GameStatsParseAttempts", fields: [gameStatsId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  gameStats            GameStats?        @relation("GameStatsParseAttempts", fields: [gameStatsId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  engineRoomSubmission ReplaySubmission? @relation("ReplaySubmissionLegacyAttempt")
+  engineRoomParseRuns  ReplayParseRun[]  @relation("ReplayParseRunLegacyAttempt")
 
   @@index([createdAt], map: "ix_replay_parse_attempts_created_at")
   @@index([status, createdAt], map: "ix_replay_parse_attempts_status_created_at")
@@ -213,16 +220,285 @@ model ReplayResultAdjudication {
   affectsBets              Boolean  @default(false) @map("affects_bets")
   createdAt                DateTime @default(now()) @map("created_at") @db.Timestamp(6)
 
-  gameStats    GameStats                  @relation(fields: [gameStatsId], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  actor        User                       @relation("ReplayResultAdjudicationActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  supersedes   ReplayResultAdjudication?  @relation("ReplayResultAdjudicationSupersession", fields: [supersedesId], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  supersededBy ReplayResultAdjudication[] @relation("ReplayResultAdjudicationSupersession")
+  gameStats             GameStats                    @relation(fields: [gameStatsId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  actor                 User                         @relation("ReplayResultAdjudicationActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  supersedes            ReplayResultAdjudication?    @relation("ReplayResultAdjudicationSupersession", fields: [supersedesId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  supersededBy          ReplayResultAdjudication[]   @relation("ReplayResultAdjudicationSupersession")
+  observationPromotions ReplayObservationPromotion[] @relation("ReplayObservationPromotionAdjudication")
+  evidenceLinks         ReplayEvidenceLink[]         @relation("ReplayEvidenceLinkAdjudication")
 
   @@index([gameStatsId, decisionStatus, createdAt], map: "ix_replay_result_adjudications_game_status")
   @@index([actorUserId, createdAt], map: "ix_replay_result_adjudications_actor")
   @@index([supersedesId], map: "ix_replay_result_adjudications_supersedes")
   @@index([sourceReplayHash], map: "ix_replay_result_adjudications_replay_hash")
   @@map("replay_result_adjudications")
+}
+
+/// Immutable content-addressed AoE2HD source bytes. A new storage fact is a new row;
+/// archived artifact rows are never rewritten or deleted.
+model ReplayArtifact {
+  id                Int      @id @default(autoincrement())
+  sha256            String   @unique(map: "uq_replay_artifacts_sha256") @db.VarChar(64)
+  byteSize          BigInt   @map("byte_size")
+  storageProvider   String   @default("filesystem") @map("storage_provider") @db.VarChar(32)
+  storageKey        String   @unique(map: "uq_replay_artifacts_storage_key") @map("storage_key") @db.VarChar(1000)
+  originalExtension String?  @map("original_extension") @db.VarChar(32)
+  mediaType         String?  @map("media_type") @db.VarChar(100)
+  headerFingerprint String?  @map("header_fingerprint") @db.VarChar(128)
+  archiveMetadata   Json?    @map("archive_metadata")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  submissions ReplaySubmission[]
+  parseRuns   ReplayParseRun[]
+  jobEvents   ReplayReprocessJobEvent[]
+
+  @@index([createdAt], map: "ix_replay_artifacts_created_at")
+  @@map("replay_artifacts")
+}
+
+/// Immutable receipt linking a user/transport submission to content-addressed bytes.
+/// Duplicate bytes may have many submissions; idempotent transport retries reuse one row.
+model ReplaySubmission {
+  id                   Int      @id @default(autoincrement())
+  artifactId           Int      @map("artifact_id")
+  submittedByUserId    Int?     @map("submitted_by_user_id")
+  legacyParseAttemptId Int?     @unique(map: "uq_replay_submissions_legacy_attempt") @map("legacy_parse_attempt_id")
+  idempotencyKey       String   @unique(map: "uq_replay_submissions_idempotency") @map("idempotency_key") @db.VarChar(128)
+  submitterUidSnapshot String?  @map("submitter_uid_snapshot") @db.VarChar(100)
+  source               String   @db.VarChar(32)
+  originalFilename     String?  @map("original_filename") @db.VarChar(255)
+  clientSubmissionId   String?  @map("client_submission_id") @db.VarChar(128)
+  transportMetadata    Json?    @map("transport_metadata")
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  artifact           ReplayArtifact      @relation(fields: [artifactId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  submitter          User?               @relation("ReplaySubmissionSubmitter", fields: [submittedByUserId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  legacyParseAttempt ReplayParseAttempt? @relation("ReplaySubmissionLegacyAttempt", fields: [legacyParseAttemptId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  parseRuns          ReplayParseRun[]
+
+  @@index([artifactId, createdAt], map: "ix_replay_submissions_artifact_created")
+  @@index([submittedByUserId, createdAt], map: "ix_replay_submissions_user_created")
+  @@index([source, createdAt], map: "ix_replay_submissions_source_created")
+  @@map("replay_submissions")
+}
+
+/// One immutable, completed parser/pass execution. Runs only emit candidates and never
+/// mutate GameStats or any public aggregate.
+model ReplayParseRun {
+  id                             Int      @id @default(autoincrement())
+  artifactId                     Int      @map("artifact_id")
+  submissionId                   Int?     @map("submission_id")
+  legacyParseAttemptId           Int?     @map("legacy_parse_attempt_id")
+  gameStatsId                    Int?     @map("game_stats_id")
+  idempotencyKey                 String   @unique(map: "uq_replay_parse_runs_idempotency") @map("idempotency_key") @db.VarChar(128)
+  runIdentityHash                String   @map("run_identity_hash") @db.VarChar(64)
+  parserName                     String   @map("parser_name") @db.VarChar(64)
+  parserVersion                  String   @map("parser_version") @db.VarChar(64)
+  parserBuild                    String?  @map("parser_build") @db.VarChar(128)
+  passName                       String   @map("pass_name") @db.VarChar(64)
+  passVersion                    String   @map("pass_version") @db.VarChar(64)
+  schemaVersion                  String   @map("schema_version") @db.VarChar(64)
+  inputHash                      String   @map("input_hash") @db.VarChar(64)
+  parserConfigHash               String   @map("parser_config_hash") @db.VarChar(64)
+  status                         String   @db.VarChar(24)
+  candidateOutputHash            String?  @map("candidate_output_hash") @db.VarChar(64)
+  candidateOutputStorageProvider String?  @map("candidate_output_storage_provider") @db.VarChar(32)
+  candidateOutputStorageKey      String?  @unique(map: "uq_replay_parse_runs_output_storage_key") @map("candidate_output_storage_key") @db.VarChar(1000)
+  candidateOutputByteSize        BigInt?  @map("candidate_output_byte_size")
+  observationCount               Int      @default(0) @map("observation_count")
+  actionCount                    Int      @default(0) @map("action_count")
+  failureSignature               String?  @map("failure_signature") @db.VarChar(128)
+  failureDetail                  String?  @map("failure_detail") @db.Text
+  metrics                        Json?
+  candidateOnly                  Boolean  @default(true) @map("candidate_only")
+  affectsPublicAggregates        Boolean  @default(false) @map("affects_public_aggregates")
+  startedAt                      DateTime @map("started_at") @db.Timestamp(6)
+  completedAt                    DateTime @map("completed_at") @db.Timestamp(6)
+  createdAt                      DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  artifact                ReplayArtifact            @relation(fields: [artifactId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  submission              ReplaySubmission?         @relation(fields: [submissionId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  legacyParseAttempt      ReplayParseAttempt?       @relation("ReplayParseRunLegacyAttempt", fields: [legacyParseAttemptId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  gameStats               GameStats?                @relation("ReplayParseRunGameStats", fields: [gameStatsId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  observations            ReplayObservation[]
+  evidenceLinks           ReplayEvidenceLink[]
+  outputEvidenceArtifacts ReplayEvidenceArtifact[]  @relation("ReplayEvidenceSourceOutput")
+  jobEvents               ReplayReprocessJobEvent[]
+
+  @@unique([artifactId, runIdentityHash], map: "uq_replay_parse_runs_artifact_identity")
+  @@index([artifactId, createdAt], map: "ix_replay_parse_runs_artifact_created")
+  @@index([gameStatsId, createdAt], map: "ix_replay_parse_runs_game_created")
+  @@index([legacyParseAttemptId], map: "ix_replay_parse_runs_legacy_attempt")
+  @@index([status, createdAt], map: "ix_replay_parse_runs_status_created")
+  @@map("replay_parse_runs")
+}
+
+/// Immutable field/event candidate emitted by one parser run. Promotion is represented
+/// by ReplayObservationPromotion, never by updating this row.
+model ReplayObservation {
+  id                      Int      @id @default(autoincrement())
+  parseRunId              Int      @map("parse_run_id")
+  idempotencyKey          String   @unique(map: "uq_replay_observations_idempotency") @map("idempotency_key") @db.VarChar(128)
+  observationKey          String   @map("observation_key") @db.VarChar(160)
+  observationKind         String   @map("observation_kind") @db.VarChar(40)
+  fieldPath               String   @map("field_path") @db.VarChar(255)
+  value                   Json
+  valueHash               String   @map("value_hash") @db.VarChar(64)
+  confidenceBps           Int?     @map("confidence_bps")
+  provenance              Json
+  candidateOnly           Boolean  @default(true) @map("candidate_only")
+  affectsPublicAggregates Boolean  @default(false) @map("affects_public_aggregates")
+  createdAt               DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  parseRun      ReplayParseRun               @relation(fields: [parseRunId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  promotions    ReplayObservationPromotion[]
+  evidenceLinks ReplayEvidenceLink[]
+
+  @@unique([parseRunId, observationKey], map: "uq_replay_observations_run_key")
+  @@index([parseRunId, fieldPath], map: "ix_replay_observations_run_field")
+  @@index([observationKind, createdAt], map: "ix_replay_observations_kind_created")
+  @@index([valueHash], map: "ix_replay_observations_value_hash")
+  @@map("replay_observations")
+}
+
+/// Append-only acceptance of a parser candidate into the private Engine Room catalog.
+/// It intentionally does not project into GameStats or public aggregates.
+model ReplayObservationPromotion {
+  id                      Int      @id @default(autoincrement())
+  observationId           Int      @map("observation_id")
+  gameStatsId             Int?     @map("game_stats_id")
+  resultAdjudicationId    Int?     @map("result_adjudication_id")
+  promotedByUserId        Int?     @map("promoted_by_user_id")
+  supersedesId            Int?     @unique(map: "uq_replay_promotions_supersedes") @map("supersedes_id")
+  idempotencyKey          String   @unique(map: "uq_replay_promotions_idempotency") @map("idempotency_key") @db.VarChar(128)
+  promotionKey            String   @map("promotion_key") @db.VarChar(255)
+  decisionHash            String   @map("decision_hash") @db.VarChar(64)
+  policyVersion           String   @map("policy_version") @db.VarChar(64)
+  reason                  String   @db.Text
+  affectsPublicAggregates Boolean  @default(false) @map("affects_public_aggregates")
+  createdAt               DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  observation        ReplayObservation           @relation(fields: [observationId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  gameStats          GameStats?                  @relation("ReplayObservationPromotionGameStats", fields: [gameStatsId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  resultAdjudication ReplayResultAdjudication?   @relation("ReplayObservationPromotionAdjudication", fields: [resultAdjudicationId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  promotedBy         User?                       @relation("ReplayObservationPromotionActor", fields: [promotedByUserId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  supersedes         ReplayObservationPromotion? @relation("ReplayObservationPromotionSupersession", fields: [supersedesId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  supersededBy       ReplayObservationPromotion? @relation("ReplayObservationPromotionSupersession")
+
+  @@unique([observationId, promotionKey], map: "uq_replay_promotions_observation_key")
+  @@index([gameStatsId, promotionKey, createdAt], map: "ix_replay_promotions_game_key")
+  @@index([resultAdjudicationId], map: "ix_replay_promotions_adjudication")
+  @@index([promotedByUserId, createdAt], map: "ix_replay_promotions_actor_created")
+  @@map("replay_observation_promotions")
+}
+
+/// Immutable content-addressed screenshot, trace, OCR, or operator evidence object.
+model ReplayEvidenceArtifact {
+  id                        Int       @id @default(autoincrement())
+  sha256                    String    @unique(map: "uq_replay_evidence_artifacts_sha256") @db.VarChar(64)
+  byteSize                  BigInt    @map("byte_size")
+  storageProvider           String    @default("filesystem") @map("storage_provider") @db.VarChar(32)
+  storageKey                String    @unique(map: "uq_replay_evidence_storage_key") @map("storage_key") @db.VarChar(1000)
+  evidenceKind              String    @map("evidence_kind") @db.VarChar(40)
+  mediaType                 String?   @map("media_type") @db.VarChar(100)
+  sourceParseRunId          Int?      @map("source_parse_run_id")
+  sourceCandidateOutputHash String?   @map("source_candidate_output_hash") @db.VarChar(64)
+  capturedAt                DateTime? @map("captured_at") @db.Timestamp(6)
+  metadata                  Json?
+  createdAt                 DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+
+  sourceParseRun ReplayParseRun?      @relation("ReplayEvidenceSourceOutput", fields: [sourceParseRunId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  links          ReplayEvidenceLink[]
+
+  @@index([evidenceKind, createdAt], map: "ix_replay_evidence_kind_created")
+  @@index([sourceParseRunId], map: "ix_replay_evidence_source_parse_run")
+  @@map("replay_evidence_artifacts")
+}
+
+/// Append-only provenance edge from evidence bytes to one or more replay truth records.
+model ReplayEvidenceLink {
+  id                   Int      @id @default(autoincrement())
+  evidenceArtifactId   Int      @map("evidence_artifact_id")
+  parseRunId           Int?     @map("parse_run_id")
+  observationId        Int?     @map("observation_id")
+  resultAdjudicationId Int?     @map("result_adjudication_id")
+  idempotencyKey       String   @unique(map: "uq_replay_evidence_links_idempotency") @map("idempotency_key") @db.VarChar(128)
+  purpose              String   @db.VarChar(64)
+  metadata             Json?
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  evidenceArtifact   ReplayEvidenceArtifact    @relation(fields: [evidenceArtifactId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  parseRun           ReplayParseRun?           @relation(fields: [parseRunId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  observation        ReplayObservation?        @relation(fields: [observationId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  resultAdjudication ReplayResultAdjudication? @relation("ReplayEvidenceLinkAdjudication", fields: [resultAdjudicationId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([evidenceArtifactId, createdAt], map: "ix_replay_evidence_links_artifact")
+  @@index([parseRunId], map: "ix_replay_evidence_links_parse_run")
+  @@index([observationId], map: "ix_replay_evidence_links_observation")
+  @@index([resultAdjudicationId], map: "ix_replay_evidence_links_adjudication")
+  @@map("replay_evidence_links")
+}
+
+/// Immutable bounded reprocessing manifest. Runtime state and checkpoints are an
+/// append-only ReplayReprocessJobEvent stream.
+model ReplayReprocessJob {
+  id                      Int      @id @default(autoincrement())
+  requestedByUserId       Int?     @map("requested_by_user_id")
+  idempotencyKey          String   @unique(map: "uq_replay_reprocess_jobs_idempotency") @map("idempotency_key") @db.VarChar(128)
+  jobIdentityHash         String   @unique(map: "uq_replay_reprocess_jobs_identity") @map("job_identity_hash") @db.VarChar(64)
+  scopeKind               String   @map("scope_kind") @db.VarChar(40)
+  scope                   Json
+  scopeHash               String   @map("scope_hash") @db.VarChar(64)
+  parserName              String   @map("parser_name") @db.VarChar(64)
+  parserVersion           String   @map("parser_version") @db.VarChar(64)
+  passName                String   @map("pass_name") @db.VarChar(64)
+  passVersion             String   @map("pass_version") @db.VarChar(64)
+  parserConfigHash        String   @map("parser_config_hash") @db.VarChar(64)
+  batchSize               Int      @default(50) @map("batch_size")
+  maxArtifacts            Int      @map("max_artifacts")
+  maxAttemptsPerArtifact  Int      @default(2) @map("max_attempts_per_artifact")
+  dryRun                  Boolean  @default(true) @map("dry_run")
+  candidateOnly           Boolean  @default(true) @map("candidate_only")
+  affectsPublicAggregates Boolean  @default(false) @map("affects_public_aggregates")
+  createdAt               DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  requestedBy User?                     @relation("ReplayReprocessJobCreator", fields: [requestedByUserId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  events      ReplayReprocessJobEvent[]
+
+  @@index([requestedByUserId, createdAt], map: "ix_replay_reprocess_jobs_requester")
+  @@index([scopeKind, createdAt], map: "ix_replay_reprocess_jobs_scope_created")
+  @@map("replay_reprocess_jobs")
+}
+
+/// Immutable event/checkpoint stream for a bounded reprocessing job. Sequence zero is
+/// queued; every later event advances exactly one sequence number.
+model ReplayReprocessJobEvent {
+  id               Int      @id @default(autoincrement())
+  jobId            Int      @map("job_id")
+  artifactId       Int?     @map("artifact_id")
+  parseRunId       Int?     @map("parse_run_id")
+  idempotencyKey   String   @unique(map: "uq_replay_reprocess_events_idempotency") @map("idempotency_key") @db.VarChar(128)
+  sequence         Int
+  eventType        String   @map("event_type") @db.VarChar(32)
+  workerKey        String?  @map("worker_key") @db.VarChar(128)
+  checkpointCursor String?  @map("checkpoint_cursor") @db.VarChar(500)
+  attemptNumber    Int      @default(0) @map("attempt_number")
+  processedCount   Int      @default(0) @map("processed_count")
+  succeededCount   Int      @default(0) @map("succeeded_count")
+  failedCount      Int      @default(0) @map("failed_count")
+  skippedCount     Int      @default(0) @map("skipped_count")
+  detail           Json?
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  job      ReplayReprocessJob @relation(fields: [jobId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  artifact ReplayArtifact?    @relation(fields: [artifactId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  parseRun ReplayParseRun?    @relation(fields: [parseRunId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([jobId, sequence], map: "uq_replay_reprocess_events_job_sequence")
+  @@index([jobId, createdAt], map: "ix_replay_reprocess_events_job_created")
+  @@index([artifactId, createdAt], map: "ix_replay_reprocess_events_artifact")
+  @@index([eventType, createdAt], map: "ix_replay_reprocess_events_type_created")
+  @@map("replay_reprocess_job_events")
 }
 
 model Tournament {

@@ -23,6 +23,10 @@ archive, parser, backfill, and deployment operations.
   review queues.
 - `/admin/replay-review` remains Emaren's triage queue for parser evidence,
   watcher timing, linked markets, slips, claims, and settlement breadcrumbs.
+- `/admin/parser-lab` is Emaren's private Engine Room cockpit for immutable
+  artifacts, parser/pass coverage, structured failure buckets, candidate-only
+  jobs, and per-game parser-run history. It is telemetry and review evidence;
+  it never settles a market or publishes a candidate by itself.
 - `GET /api/replay-results/[id]/adjudications` loads authorized review state and
   the immutable verdict history.
 - `POST /api/replay-results/[id]/adjudications` appends a verdict or correction.
@@ -165,6 +169,22 @@ backup, audit, and explicit-confirmation safeguards.
    that the raw parser row remains unchanged.
 9. If money action is required, leave the adjudication ledger and follow the
    appropriate market-integrity/refund/settlement workflow.
+
+For a historical Engine Room pass, begin in `/admin/parser-lab` and keep the
+candidate boundary explicit:
+
+1. Verify the frozen cohort manifest hash and exact accounting total.
+2. Run the no-write reconciliation mode and correct every missing/hash-mismatch
+   error before scheduling parser work.
+3. Run candidate-only parsing in a bounded job. The worker stores compressed
+   immutable output on the private mounted volume and appends run,
+   observation, and checkpoint rows; it does not change `GameStats`.
+4. Inspect field-level differences, structured failures, linked markets, and
+   any existing human verdict before accepting evidence.
+5. Route result cases requiring judgment to this review workflow. A parser
+   candidate is never filed as if Jim, Julio, or Emaren personally reviewed it.
+6. Keep all financial history unchanged; a public/stat correction and a money
+   repair remain separate operator decisions.
 
 ## Watcher evidence language
 
