@@ -211,6 +211,12 @@ const BLOCKING_SETTLEMENT_HEALTH_FAILURE_CODES = new Set([
   "SIGNER_UNFUNDED",
 ]);
 
+const PAYOUT_ONLY_SETTLEMENT_HEALTH_FAILURE_CODES = new Set([
+  "PAYOUT_RESERVE_FLOOR_HIT",
+  "PAYOUT_FEE_HEADROOM_TOO_LOW",
+  "PAYOUT_BALANCE_TOO_LOW",
+]);
+
 type SettlementExecutePayload = {
   ok?: boolean;
   status?: string;
@@ -616,6 +622,46 @@ function shouldBlockSettlementForHealth(health: SettlementHealthResult | null) {
   if (!health || health.ok) return false;
   return Boolean(
     health.failureCode && BLOCKING_SETTLEMENT_HEALTH_FAILURE_CODES.has(health.failureCode)
+  );
+}
+
+function shouldBlockSettlementRunForHealth(
+  health: SettlementHealthResult | null,
+  signerRole?: SettlementRunSignerRole | null
+) {
+  if (signerRole !== "escrow") {
+    return shouldBlockSettlementForHealth(health);
+  }
+
+  if (!WOLO_SETTLEMENT_URL) {
+    return false;
+  }
+
+  if (!isWoloMainnet()) {
+    return shouldBlockSettlementForHealth(health);
+  }
+
+  // Never bypass chain identity or service availability.
+  if (!health || health.chainId !== WOLO_MAINNET_CHAIN_ID) {
+    return true;
+  }
+
+  if (health.ok) {
+    return false;
+  }
+
+  const failureCode = normalizeFailureCode(
+    health.failureCode
+  );
+
+  // A payout-reserve failure belongs to the payout signer.
+  // Allow signer_role=escrow runs to reach WoloChain, where the
+  // escrow signer's own balance and fee-headroom checks apply.
+  return !(
+    failureCode &&
+    PAYOUT_ONLY_SETTLEMENT_HEALTH_FAILURE_CODES.has(
+      failureCode
+    )
   );
 }
 
@@ -1832,7 +1878,7 @@ export async function validateWoloSettlementRun(input: {
   }
 
   const health = await fetchWoloSettlementHealth();
-  if (shouldBlockSettlementForHealth(health)) {
+  if (shouldBlockSettlementRunForHealth(health, input.signerRole)) {
     return buildBlockedSettlementRunResult(input, {
       dryRun: true,
       failureCode: health?.failureCode || "SETTLEMENT_HEALTH_NOT_OK",
@@ -1878,7 +1924,7 @@ export async function executeWoloSettlementRun(input: {
 }): Promise<SettlementRunResult> {
   if (WOLO_SETTLEMENT_URL) {
     const health = await fetchWoloSettlementHealth();
-    if (shouldBlockSettlementForHealth(health)) {
+    if (shouldBlockSettlementRunForHealth(health, input.signerRole)) {
       return buildBlockedSettlementRunResult(input, {
         dryRun: false,
         failureCode: health?.failureCode || "SETTLEMENT_HEALTH_NOT_OK",
