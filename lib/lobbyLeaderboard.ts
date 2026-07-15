@@ -25,6 +25,10 @@ import {
   matchesLeaderboardSearch,
   normalizeLeaderboardSearch,
 } from "@/lib/leaderboardPage";
+import {
+  resolveReplayResultForPlayer,
+  type ReplayPlayerResultGame,
+} from "@/lib/replayPlayerResult";
 
 const BASE_ARENA_ELO = 1500;
 const ARENA_ELO_K_FACTOR = 32;
@@ -51,8 +55,7 @@ export type LoadLobbyLeaderboardOptions = {
   query?: string | null;
 };
 
-type PreparedLeaderboardGame = {
-  winner: string | null;
+type PreparedLeaderboardGame = Omit<ReplayPlayerResultGame, "players"> & {
   players: ReturnType<typeof parsePlayers>;
   playedAtMs: number;
 };
@@ -86,10 +89,6 @@ type EnrichedLeaderboardEntry = PublicPlayerDirectoryEntry & {
 
 function normalizeLeaderboardKey(value: string | null | undefined) {
   return normalizePublicPlayerName(value).toLowerCase();
-}
-
-function leaderboardWinnerFlagIsTrue(value: unknown) {
-  return value === true || value === "true" || value === 1 || value === "1";
 }
 
 function buildAliasKeys(entry: PublicPlayerDirectoryEntry) {
@@ -351,11 +350,6 @@ function buildArenaElo(entries: EnrichedLeaderboardEntry[], games: PreparedLeade
   const ratings = new Map(entries.map((entry) => [entry.key, BASE_ARENA_ELO]));
 
   for (const game of games) {
-    const resolvedWinner = normalizeLeaderboardKey(game.winner);
-    if (!resolvedWinner || resolvedWinner === "unknown") {
-      continue;
-    }
-
     const participantNames = game.players
       .map((player) => normalizeLeaderboardKey(displayPlayerName(player)))
       .filter(Boolean);
@@ -376,13 +370,21 @@ function buildArenaElo(entries: EnrichedLeaderboardEntry[], games: PreparedLeade
       continue;
     }
 
-    const winnerEntry = aliasToEntry.get(resolvedWinner);
-    if (!winnerEntry) {
-      continue;
-    }
-
     const [entryA, entryB] = participantEntries;
-    if (winnerEntry.key !== entryA.key && winnerEntry.key !== entryB.key) {
+    const outcomeA = resolveReplayResultForPlayer(
+      game,
+      (player) => entryA.aliasKeys.has(normalizeLeaderboardKey(player.name))
+    );
+    const outcomeB = resolveReplayResultForPlayer(
+      game,
+      (player) => entryB.aliasKeys.has(normalizeLeaderboardKey(player.name))
+    );
+    if (
+      !(
+        (outcomeA === "win" && outcomeB === "loss") ||
+        (outcomeA === "loss" && outcomeB === "win")
+      )
+    ) {
       continue;
     }
 
@@ -390,8 +392,8 @@ function buildArenaElo(entries: EnrichedLeaderboardEntry[], games: PreparedLeade
     const ratingB = ratings.get(entryB.key) ?? BASE_ARENA_ELO;
     const expectedA = 1 / (1 + 10 ** ((ratingB - ratingA) / 400));
     const expectedB = 1 / (1 + 10 ** ((ratingA - ratingB) / 400));
-    const scoreA = winnerEntry.key === entryA.key ? 1 : 0;
-    const scoreB = winnerEntry.key === entryB.key ? 1 : 0;
+    const scoreA = outcomeA === "win" ? 1 : 0;
+    const scoreB = outcomeB === "win" ? 1 : 0;
 
     ratings.set(entryA.key, ratingA + ARENA_ELO_K_FACTOR * (scoreA - expectedA));
     ratings.set(entryB.key, ratingB + ARENA_ELO_K_FACTOR * (scoreB - expectedB));
@@ -406,21 +408,11 @@ function buildEntryOutcome(
   entry: EnrichedLeaderboardEntry,
   game: PreparedLeaderboardGame
 ) {
-  const player = game.players.find((candidate) =>
-    entry.aliasKeys.has(normalizeLeaderboardKey(displayPlayerName(candidate)))
+  const result = resolveReplayResultForPlayer(
+    game,
+    (player) => entry.aliasKeys.has(normalizeLeaderboardKey(player.name))
   );
-  if (!player) return null;
-
-  if (leaderboardWinnerFlagIsTrue(player.winner)) {
-    return "W";
-  }
-
-  const normalizedWinner = normalizeLeaderboardKey(game.winner);
-  if (!normalizedWinner || normalizedWinner === "unknown") {
-    return null;
-  }
-
-  return entry.aliasKeys.has(normalizedWinner) ? "W" : "L";
+  return result === "win" ? "W" : result === "loss" ? "L" : null;
 }
 
 function buildStreakLabel(entry: EnrichedLeaderboardEntry, games: PreparedLeaderboardGame[]) {
@@ -582,9 +574,10 @@ function buildDiscoveredLeaderboardEntries(
 
       const steamDmRating =
         typeof player.steam_dm_rating === "number" ? player.steam_dm_rating : null;
-      const isWinner =
-        leaderboardWinnerFlagIsTrue(player.winner) ||
-        normalizeLeaderboardKey(game.winner) === normalizeLeaderboardKey(name);
+      const result = resolveReplayResultForPlayer(
+        game,
+        (candidate) => normalizeLeaderboardKey(candidate.name) === normalizedName
+      );
 
       discovered.set(key, {
         key,
@@ -609,10 +602,10 @@ function buildDiscoveredLeaderboardEntries(
         steamDmRating,
         arenaElo: ratingSnapshot ?? steamRmRating ?? steamDmRating ?? 1500,
         totalMatches: 1,
-        wins: isWinner ? 1 : 0,
-        losses: isWinner ? 0 : 1,
-        unknowns: game.winner ? 0 : 1,
-        currentStreak: isWinner ? 1 : -1,
+        wins: result === "win" ? 1 : 0,
+        losses: result === "loss" ? 1 : 0,
+        unknowns: result === "unknown" ? 1 : 0,
+        currentStreak: result === "win" ? 1 : result === "loss" ? -1 : 0,
         lastPlayedAt: Number.isFinite(game.playedAtMs)
           ? new Date(game.playedAtMs).toISOString()
           : null,
@@ -681,7 +674,7 @@ async function loadLobbyLeaderboardFresh(
     const playedAt = readPlayedAt(game);
 
     return {
-      winner: game.winner,
+      ...game,
       players: parsePlayers(game.players),
       playedAtMs: playedAt ? new Date(playedAt).getTime() : 0,
     };
@@ -824,4 +817,3 @@ export async function loadLobbyLeaderboard(
   leaderboardPromises.set(cacheKey, run);
   return run;
 }
-

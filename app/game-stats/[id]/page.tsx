@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { cookies } from "next/headers";
 import type { ReactNode } from "react";
 
 import FounderBonusChips from "@/components/bets/FounderBonusChips";
@@ -24,6 +25,7 @@ import {
   shortHash,
   stringifyJson,
 } from "@/lib/gameStatsView";
+import { canShowReplayParserDiagnostics } from "@/lib/replayDiagnosticsVisibility";
 import {
   buildMatchupHref,
   buildTeamMatchupHref,
@@ -32,6 +34,7 @@ import {
   summarizeHeadToHead,
 } from "@/lib/publicMatchups";
 import { getPrisma } from "@/lib/prisma";
+import { SESSION_COOKIE_NAME, verifySession } from "@/lib/session";
 import { parseReplaySides } from "@/lib/replaySides";
 import {
   buildPublicPlayerRef,
@@ -73,7 +76,6 @@ export default async function GameStatsDetailPage({
 
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const detailView = parseReplayDetailViewMode(resolvedSearchParams.view);
-  const showRawReplayOutput = detailView === "extreme";
 
   const prisma = getPrisma();
   const rawGame = await prisma.gameStats.findUnique({
@@ -107,6 +109,19 @@ export default async function GameStatsDetailPage({
   if (!rawGame) {
     notFound();
   }
+
+  const cookieStore = await cookies();
+  const claims = await verifySession(cookieStore.get(SESSION_COOKIE_NAME)?.value);
+  const viewer = claims?.uid
+    ? await prisma.user.findUnique({
+        where: { uid: claims.uid },
+        select: { isAdmin: true },
+      })
+    : null;
+  const showAdminDiagnostics = canShowReplayParserDiagnostics(
+    detailView,
+    Boolean(viewer?.isAdmin)
+  );
 
   const game = applyReplayAdjudicationToGameStats(rawGame);
   const commissionerVerified = Boolean(
@@ -640,7 +655,10 @@ export default async function GameStatsDetailPage({
         </div>
 
         <div className="space-y-6">
-          {(publicSettingsEntries.length > 0 || eventTypes.length > 0 || showRawReplayOutput) ? <Panel title="Parse Signals" eyebrow="Metadata">
+          {(publicSettingsEntries.length > 0 || showAdminDiagnostics) ? <Panel
+            title={showAdminDiagnostics ? "Parse Signals" : "Battle Settings"}
+            eyebrow={showAdminDiagnostics ? "Admin Diagnostics" : "Match Setup"}
+          >
             <div className="space-y-4">
               {publicSettingsEntries.length > 0 ? (
                 <div>
@@ -653,27 +671,23 @@ export default async function GameStatsDetailPage({
                 </div>
               ) : null}
 
-              {eventTypes.length > 0 ? <div>
+              {showAdminDiagnostics && eventTypes.length > 0 ? <div>
                 <div className="text-xs uppercase tracking-[0.25em] text-slate-500">Event Types</div>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {eventTypes.map((eventType) => <Tag key={String(eventType)}>{String(eventType)}</Tag>)}
                 </div>
               </div> : null}
 
-              {showRawReplayOutput ? (
+              {showAdminDiagnostics ? (
                 <>
                   <JsonPanel title="Key Events JSON" value={publicKeyEvents} />
                   <JsonPanel title="Map JSON" value={game.map} />
                 </>
-              ) : (
-                <div className="rounded-2xl border border-amber-200/10 bg-amber-300/[0.045] px-4 py-4 text-sm leading-6 text-amber-50/78">
-                  Raw parser output is tucked into Extreme. Advanced keeps the battle record clean.
-                </div>
-              )}
+              ) : null}
             </div>
           </Panel> : null}
 
-          {showRawReplayOutput && parseAttempts.length > 0 ? <Panel title="Parse Attempts" eyebrow="Operator Trail">
+          {showAdminDiagnostics && parseAttempts.length > 0 ? <Panel title="Parse Attempts" eyebrow="Operator Trail">
             <div className="space-y-3">
               {parseAttempts.map((attempt) => (
                   <div
@@ -708,7 +722,7 @@ export default async function GameStatsDetailPage({
             </div>
           </Panel> : null}
 
-          {showRawReplayOutput ? (
+          {showAdminDiagnostics ? (
             <Panel title="Stored Player JSON" eyebrow="Raw Output">
               <JsonPanel title="Players JSON" value={game.players} />
             </Panel>

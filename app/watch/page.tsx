@@ -13,13 +13,15 @@ import {
   loadBetBroadcastPreviewMap,
 } from "@/lib/betBroadcastPreviews";
 import {
-  displayPlayerName,
   formatDurationLabel,
   parsePlayers,
-  readMapName,
-  winnerLabel,
 } from "@/lib/gameStatsView";
 import { getPrisma } from "@/lib/prisma";
+import {
+  normalizePublicReplayText,
+  publicReplayMapLabel,
+  resolveReliableReplayWinner,
+} from "@/lib/unresolvedWatcherResult";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -37,8 +39,8 @@ type WatchMatchSummary = {
   href: string;
   title: string;
   mapName: string;
-  durationLabel: string;
-  winner: string;
+  durationLabel: string | null;
+  winner: string | null;
   parseIteration: number;
   createdLabel: string;
   mode: "live" | "archive";
@@ -286,7 +288,10 @@ async function loadWatchIndexSnapshot() {
   const matches: WatchMatchSummary[] = games.map((game) => {
     const sessionKey = readSessionKey(game) || `game-${game.id}`;
     const players = parsePlayers(game.players);
-    const playerNames = players.map((player) => displayPlayerName(player)).filter(Boolean);
+    const playerNames = players
+      .map((player) => normalizePublicReplayText(player.name))
+      .filter((name): name is string => Boolean(name));
+    const durationSeconds = Number(game.duration || game.game_duration || 0);
     const attachedStreams = streamsBySession.get(sessionKey) || [];
     const primaryStream = attachedStreams.find((stream) => stream.isPrimary) || attachedStreams[0] || null;
     const isFinal = Boolean(game.is_final) || isCompletedWatcherLiveGame(game);
@@ -306,9 +311,19 @@ async function loadWatchIndexSnapshot() {
         playerNames.length > 0
           ? playerNames.join(" vs ")
           : game.original_filename || game.replay_file || "Battle feed",
-      mapName: readMapName(game.map),
-      durationLabel: formatDurationLabel(game.duration || game.game_duration),
-      winner: winnerLabel(game.winner, game.parse_reason),
+      mapName: publicReplayMapLabel(game.map, "HD Battlefield"),
+      durationLabel:
+        Number.isFinite(durationSeconds) && durationSeconds > 0
+          ? formatDurationLabel(durationSeconds)
+          : null,
+      winner: resolveReliableReplayWinner({
+        winner: game.winner,
+        players,
+        parseReason: game.parse_reason,
+        parseSource: game.parse_source,
+        keyEvents: game.key_events,
+        eventTypes: game.event_types,
+      }),
       parseIteration: game.parse_iteration || 0,
       createdLabel: formatBattleDate(game.createdAt),
       mode: isFinal ? "archive" : "live",
@@ -542,8 +557,8 @@ function HeroScreen({
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <MiniStat label="Winner" value={match.winner} />
-                <MiniStat label="Duration" value={match.durationLabel} />
+                {match.winner ? <MiniStat label="Winner" value={match.winner} /> : null}
+                {match.durationLabel ? <MiniStat label="Duration" value={match.durationLabel} /> : null}
                 <MiniStat label="Parse" value={`#${match.parseIteration}`} />
                 <MiniStat label="Captured" value={match.createdLabel} />
               </div>
@@ -678,8 +693,8 @@ function MatchCard({ match, hot = false }: { match: WatchMatchSummary; hot?: boo
       </div>
 
       <div className="mt-5 grid gap-3 sm:grid-cols-3">
-        <MiniStat label="Winner" value={match.winner} />
-        <MiniStat label="Duration" value={match.durationLabel} />
+        {match.winner ? <MiniStat label="Winner" value={match.winner} /> : null}
+        {match.durationLabel ? <MiniStat label="Duration" value={match.durationLabel} /> : null}
         <MiniStat label="Streams" value={String(match.streamCount)} />
       </div>
     </Link>
@@ -884,7 +899,7 @@ function readWatchTitleTeam(player: WatchTitlePlayer) {
     player.team_id ??
     null;
 
-  if (typeof rawTeam === "number" && Number.isFinite(rawTeam) && rawTeam > 0) {
+  if (typeof rawTeam === "number" && Number.isFinite(rawTeam) && rawTeam >= 0) {
     return String(Math.trunc(rawTeam));
   }
 
@@ -892,7 +907,7 @@ function readWatchTitleTeam(player: WatchTitlePlayer) {
   if (!teamText) return null;
 
   const lowered = teamText.toLowerCase();
-  if (lowered === "0" || lowered === "-1" || lowered === "none" || lowered === "unknown") {
+  if (lowered === "-1" || lowered === "none" || lowered === "unknown") {
     return null;
   }
 

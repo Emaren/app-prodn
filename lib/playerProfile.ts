@@ -37,6 +37,7 @@ import {
   EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION,
 } from "@/lib/replayAdjudications";
 import { cleanPublicGameRows, type PublicGameStatsLike } from "@/lib/publicReplayTruth";
+import { resolveReplayResultForPlayer } from "@/lib/replayPlayerResult";
 import {
   normalizePublicReplayText,
   publicReplayMapLabel,
@@ -374,21 +375,10 @@ function currentPlayerRecord(game: PlayerProfileGameRow, currentPlayer: PublicPl
 }
 
 function gameResult(game: PlayerProfileGameRow, currentPlayer: PublicPlayerRef): "win" | "loss" | "unknown" {
-  const adjudicatedGame = applyReplayAdjudicationToGameStats(game) as PlayerProfileGameRow;
-  const winner = playerProfileReliableWinner(adjudicatedGame);
-
-  if (!winner) return "unknown";
-
-  const player = currentPlayerRecord(adjudicatedGame, currentPlayer);
-  if (player && playerWinnerFlagIsTrue(player.winner)) {
-    return "win";
-  }
-
-  // A team result still keeps one scalar winner for compatibility, but the
-  // complete winning roster is carried by the per-player flags. Check those
-  // flags after reliable proof/adjudication has been established so every
-  // teammate receives the same accepted outcome.
-  return publicPlayerMatchesName(currentPlayer, winner) ? "win" : "loss";
+  return resolveReplayResultForPlayer(
+    game,
+    (player) => publicPlayerMatchesName(currentPlayer, player.name)
+  );
 }
 
 function comparePlayedAtDesc(left: PlayerProfileGameRow, right: PlayerProfileGameRow) {

@@ -55,9 +55,9 @@ The first producer contract is fixed as:
 ```text
 parser: aoe2war.mgz_hd
 mgz: 1.8.51
-schema: 2026-07-14.1
+schema: 2026-07-15.2
 pass: hd_deterministic_evidence
-pass version: 1
+pass version: 2
 ```
 
 Its candidate document contains sorted field observations plus the complete

@@ -69,7 +69,7 @@ test("Tell3z is not reliable winner truth from uploader/opponent inference alone
   assert.equal(truth.confidence, "inferred_low_confidence");
   assert.equal(truth.statsEligible, false);
   assert.equal(truth.bettingEligible, false);
-  assert.equal(truth.publicLabel, "Winner unresolved");
+  assert.equal(truth.publicLabel, "Winner under review");
   assert.ok(
     truth.truthReasons.includes("uploader_opponent_inference_rejected")
   );
@@ -98,7 +98,7 @@ test("the rejected Tell3z inference becomes a reviewable unresolved result", () 
   });
 
   assert.equal(unresolved?.code, "impossible_from_available_replay_data");
-  assert.equal(unresolved?.label, "Winner unresolved");
+  assert.equal(unresolved?.label, "Winner under review");
   assert.match(unresolved?.explanation ?? "", /rejected replay inference/i);
 });
 
@@ -207,7 +207,7 @@ test("completed replay metadata names the missing winner instead of generic unkn
   });
 
   assert.equal(unresolved?.code, "winner_missing");
-  assert.equal(unresolved?.label, "Winner unresolved");
+  assert.equal(unresolved?.label, "Winner under review");
   assert.equal(
     unresolved?.explanation,
     "Replay parsed but winner field missing"
@@ -216,7 +216,6 @@ test("completed replay metadata names the missing winner instead of generic unkn
 
 test("public replay rows reject unsafe winners and normalize unknown metadata", () => {
   const row = toPublicGameStatsRow({
-    id: 10252,
     is_final: true,
     winner: "Tell3z",
     parse_reason: "watcher_inferred_opponent_win_on_incomplete_1v1",
@@ -231,7 +230,7 @@ test("public replay rows reject unsafe winners and normalize unknown metadata", 
 
   assert.equal(row.winner, null);
   assert.equal((row.map as { name?: unknown }).name, null);
-  assert.equal(row.unresolvedResult?.label, "Winner unresolved");
+  assert.equal(row.unresolvedResult?.label, "Winner under review");
   assert.deepEqual(
     (row.players as Array<{ winner?: unknown }>).map((player) => player.winner),
     [null, null]

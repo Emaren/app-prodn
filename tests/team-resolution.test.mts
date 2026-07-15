@@ -52,7 +52,12 @@ test("shuffled and reversed order preserve the proposition", () => {
 });
 
 test("missing and partial team ids remain unresolved", () => {
-  assert.equal(resolveReplayTeams(teamPlayers(4).map(({ team_id: _team, ...player }) => player)).status, "incomplete");
+  const withoutTeams = teamPlayers(4).map((player) => {
+    const copy: Partial<typeof player> = { ...player };
+    delete copy.team_id;
+    return copy;
+  });
+  assert.equal(resolveReplayTeams(withoutTeams).status, "incomplete");
   const partial = teamPlayers(4);
   delete (partial[0] as { team_id?: number }).team_id;
   assert.equal(resolveReplayTeams(partial).status, "incomplete");
@@ -96,7 +101,11 @@ test("Savanger and jlann observed aliases retain replay team evidence", () => {
 
 test("multi-iteration merge preserves complete teams and rejects conflicts", () => {
   const complete = teamPlayers(4);
-  const incomplete = complete.map(({ team_id: _team, ...player }) => player);
+  const incomplete = complete.map((player) => {
+    const copy: Partial<typeof player> = { ...player };
+    delete copy.team_id;
+    return copy;
+  });
   const merged = mergeReplayPlayerIterations([complete, incomplete]);
   assert.deepEqual(merged.conflictReasonCodes, []);
   assert.equal(resolveReplayTeams(merged.players).status, "resolved");
@@ -113,6 +122,21 @@ test("a complete winning team is required", () => {
   assert.equal(resolveWinningTeamIndex(players, resolution), 0);
   players[1].winner = true;
   assert.equal(resolveWinningTeamIndex(players, resolution), null);
+});
+
+test("a 1v1 result is never inferred from roster order", () => {
+  const players = normalizeReplayPlayers([
+    { name: "First player" },
+    { name: "Second player" },
+  ]);
+  const resolution = resolveReplayTeams(players, { final: true });
+
+  assert.equal(resolution.status, "resolved");
+  assert.equal(resolveWinningTeamIndex(players, resolution), null);
+
+  players[0].winner = true;
+  players[1].winner = false;
+  assert.equal(resolveWinningTeamIndex(players, resolution), 0);
 });
 
 test("settlement requires the same complete final proposition", () => {

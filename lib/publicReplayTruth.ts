@@ -1,4 +1,4 @@
-import { resolveReplayOwnerDisplay } from "@/lib/replayOwnerDisplay";
+import { resolveReplayOwnerDisplay } from "./replayOwnerDisplay.ts";
 import {
   classifyUnresolvedWatcherResult,
   normalizePublicReplayText,
@@ -8,7 +8,7 @@ import {
 import {
   applyReplayAdjudicationToGameStats,
   getReplayAdjudicationForGameStatsId,
-} from "@/lib/replayAdjudications";
+} from "./replayAdjudications.ts";
 
 export type PublicGameStatsLike = {
   id?: number | string | null;
@@ -368,34 +368,6 @@ export function toPublicGameStatsRow<T extends PublicGameStatsLike>(row: T): T {
     next["winnerProof"] = "manual_winner_flag";
     next["reviewNeeded"] = false;
     next["unresolvedResult"] = null;
-    return next as T;
-  }
-
-  const parseReason = readString(row, "parse_reason", "parseReason") || "";
-  const inferredFallbackWinner =
-    readString(row, "winner", "winnerName", "winner_name") || "";
-
-  const isHistoricalInferredWinnerFallback =
-    publicReplayIsFinal(row) &&
-    inferredFallbackWinner.length > 0 &&
-    inferredFallbackWinner.toLowerCase() !== "unknown" &&
-    (
-      parseReason === "watcher_inferred_opponent_win_on_incomplete_1v1" ||
-      parseReason === "watcher_inferred_opponent_win_on_incomplete"
-    );
-
-  if (isHistoricalInferredWinnerFallback) {
-    const next: Record<string, unknown> = { ...publicRow };
-
-    // Product truth policy:
-    // The old incomplete-1v1 opponent inference remains the foreground fallback.
-    // It is not perfect proof, but it is good enough for immediate public results.
-    // Disputes/adjudication overlays still override it before this branch.
-    next["winner"] = inferredFallbackWinner;
-    next["unresolvedResult"] = null;
-    next["reviewNeeded"] = false;
-    next["winnerProof"] = "historical_inferred_fallback";
-
     return next as T;
   }
 

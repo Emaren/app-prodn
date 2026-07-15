@@ -1352,6 +1352,40 @@ function resolvedWinnerName(session: LiveSession) {
   return normalizeResolvedWinner(session.winner);
 }
 
+function resolveClientWinningTeamIndex(
+  resolution: LiveSession["teamResolution"]
+) {
+  if (resolution.status !== "resolved" || resolution.teams.length !== 2) {
+    return null;
+  }
+
+  const flags = resolution.teams.map((team) =>
+    team.players.map((player) => player.winner)
+  );
+
+  const winningIndexes = flags
+    .map((teamFlags, index) =>
+      teamFlags.length > 0 && teamFlags.every((flag) => flag === true)
+        ? index
+        : -1
+    )
+    .filter((index) => index >= 0);
+
+  const losingIndexes = flags
+    .map((teamFlags, index) =>
+      teamFlags.length > 0 && teamFlags.every((flag) => flag === false)
+        ? index
+        : -1
+    )
+    .filter((index) => index >= 0);
+
+  return winningIndexes.length === 1 &&
+    losingIndexes.length === 1 &&
+    winningIndexes[0] !== losingIndexes[0]
+    ? winningIndexes[0]
+    : null;
+}
+
 function compactResolvedNames(names: string[], max = 2) {
   if (names.length <= max) return names.join(" + ");
   return `${names.slice(0, max).join(" + ")} +${names.length - max}`;
@@ -1369,83 +1403,84 @@ function resolvedSessionDisplay(session: LiveSession) {
   const winnerName = resolvedWinnerName(session);
   const mapName = publicReplayMapLabel(session.mapName, "HD Battlefield");
   const battleSize = resolvedBattleSizeLabel(names.length);
+  const resolution = session.teamResolution;
 
-  if (names.length <= 2) {
-    const winnerSide = winnerName ? [winnerName] : names.slice(0, 1);
-    const winnerSet = new Set(winnerSide.map((name) => name.toLowerCase()));
-    const fieldSide = names.filter((name) => !winnerSet.has(name.toLowerCase()));
-    const loserName = fieldSide[0] || names.find((name) => name !== winnerName) || null;
-    const duelWinner = winnerSide[0] || winnerName;
+  const neutralDisplay = {
+    names,
+    winnerName: null,
+    battleSize,
+    mapName,
+    heroTitle: `${battleSize} battle archived`,
+    heroSubtitle: `${compactResolvedNames(names, 4)} · ${mapName}`,
+    leftLabel: "Replay roster",
+    rightLabel: "HD War Vault",
+    leftNames: names,
+    rightNames: [] as string[],
+    teamsResolved: false,
+  };
 
+  if (names.length === 2) {
+    if (
+      resolution.status !== "resolved" ||
+      resolution.confidence !== "high" ||
+      resolution.format !== "1v1"
+    ) {
+      return neutralDisplay;
+    }
+
+    const winnerIndex = winnerName
+      ? names.findIndex((name) => name.toLowerCase() === winnerName.toLowerCase())
+      : -1;
+    if (winnerIndex < 0) return neutralDisplay;
+
+    const duelWinner = names[winnerIndex];
+    const loserName = names[winnerIndex === 0 ? 1 : 0];
     return {
       names,
-      winnerName: duelWinner ?? winnerName,
+      winnerName: duelWinner,
       battleSize,
       mapName,
-      heroTitle: duelWinner && loserName ? `${duelWinner} wins the duel` : liveDisplayTitle(session),
-      heroSubtitle: duelWinner && loserName ? `${duelWinner} defeated ${loserName} · ${mapName}` : mapName,
-      leftLabel: duelWinner ? "Winner" : "Side I",
-      rightLabel: duelWinner ? "Challenger" : "Side II",
-      leftNames: duelWinner ? [duelWinner] : names.slice(0, 1),
-      rightNames: loserName ? [loserName] : names.slice(1, 2),
+      heroTitle: `${duelWinner} wins the duel`,
+      heroSubtitle: `${duelWinner} defeated ${loserName} · ${mapName}`,
+      leftLabel: "Winner",
+      rightLabel: "Challenger",
+      leftNames: [duelWinner],
+      rightNames: [loserName],
       teamsResolved: true,
     };
   }
 
-  const resolution = session.teamResolution;
+  if (names.length < 2) return neutralDisplay;
+
+  const winningIndex = resolveClientWinningTeamIndex(resolution);
   if (
     resolution.status !== "resolved" ||
     resolution.confidence !== "high" ||
-    resolution.teams.length !== 2
+    resolution.teams.length !== 2 ||
+    winningIndex === null
   ) {
-    return {
-      names,
-      winnerName,
-      battleSize,
-      mapName,
-      heroTitle: `${battleSize} battle archived`,
-      heroSubtitle: `${compactResolvedNames(names, 4)} · ${mapName}`,
-      leftLabel: "Replay roster",
-      rightLabel: "HD War Vault",
-      leftNames: names,
-      rightNames: [] as string[],
-      teamsResolved: false,
-    };
+    return neutralDisplay;
   }
 
-  const teamFlags = resolution.teams.map((team) => team.players.map((player) => player.winner));
-  const winningIndex = teamFlags.findIndex(
-    (flags) => flags.length > 0 && flags.every((flag) => flag === true)
-  );
-  const losingIndex = teamFlags.findIndex(
-    (flags) => flags.length > 0 && flags.every((flag) => flag === false)
-  );
-  const hasCoherentTeamResult =
-    winningIndex >= 0 && losingIndex >= 0 && winningIndex !== losingIndex;
-  const leftTeam = resolution.teams[hasCoherentTeamResult ? winningIndex : 0];
-  const rightTeam = resolution.teams[hasCoherentTeamResult ? losingIndex : 1];
+  const losingIndex = winningIndex === 0 ? 1 : 0;
+  const leftTeam = resolution.teams[winningIndex];
+  const rightTeam = resolution.teams[losingIndex];
   const winnerSide = leftTeam.players.map((player) => player.name);
   const fieldSide = rightTeam.players.map((player) => player.name);
-  const leadWinner = winnerSide[0] || winnerName || names[0] || "Victory";
-  const teamTitle =
-    hasCoherentTeamResult
-      ? `Team ${leadWinner} wins ${battleSize}`
-      : `${battleSize} battle archived`;
+  const leadWinner = winnerSide[0];
 
-  const teamSubtitle =
-    hasCoherentTeamResult
-      ? `${compactResolvedNames(winnerSide, 3)} defeated ${compactResolvedNames(fieldSide, 3)} · ${mapName}`
-      : `${compactResolvedNames(winnerSide, 3)} vs ${compactResolvedNames(fieldSide, 3)} · ${mapName}`;
+  const teamTitle = `Team ${leadWinner} wins ${battleSize}`;
+  const teamSubtitle = `${compactResolvedNames(winnerSide, 3)} defeated ${compactResolvedNames(fieldSide, 3)} · ${mapName}`;
 
   return {
     names,
-    winnerName,
+    winnerName: leadWinner,
     battleSize,
     mapName,
     heroTitle: teamTitle,
     heroSubtitle: teamSubtitle,
-    leftLabel: hasCoherentTeamResult ? "Victory side" : "Replay team I",
-    rightLabel: hasCoherentTeamResult ? "Defeated side" : "Replay team II",
+    leftLabel: "Victory side",
+    rightLabel: "Defeated side",
     leftNames: winnerSide,
     rightNames: fieldSide,
     teamsResolved: true,

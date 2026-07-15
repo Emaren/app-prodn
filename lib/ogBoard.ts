@@ -3,7 +3,6 @@ import { Prisma, type PrismaClient } from "@/lib/generated/prisma";
 import {
   displayGameType,
   displayGameVersion,
-  displayPlayerName,
   normalizeDurationSeconds,
   parsePlayers,
   readMapName,
@@ -22,6 +21,7 @@ import {
   getReplayAchievementGroups,
   type ReplayAchievementGroup,
 } from "@/lib/replayAchievementMetrics";
+import { normalizePublicReplayText } from "@/lib/unresolvedWatcherResult";
 
 export type OgBoardPlayer = {
   name: string;
@@ -169,17 +169,21 @@ export async function loadOgBoardPage(
     includeLive: false,
   });
   const allNames = rows.flatMap((row) =>
-    parsePlayers(row.players).map((player) => displayPlayerName(player))
+    parsePlayers(row.players)
+      .map((player) => normalizePublicReplayText(player.name))
+      .filter((name): name is string => Boolean(name))
   );
   const claimedPlayers = await findClaimedUsersForReplayNames(prisma, allNames);
 
   const entries = rows.map((row): OgBoardEntry => {
-    const players = parsePlayers(row.players);
+    const players = parsePlayers(row.players).filter((player) =>
+      Boolean(normalizePublicReplayText(player.name))
+    );
     const keyEvents = readRecord(row.key_events);
     const scoresUnavailable = keyEvents.has_scores === false;
     const achievementsUnavailable = keyEvents.has_achievements === false;
     const projectedPlayers = players.map((player): OgBoardPlayer => {
-      const name = displayPlayerName(player);
+      const name = normalizePublicReplayText(player.name) as string;
       const playerRef = buildPublicPlayerRef(name, claimedPlayers);
       const achievements = achievementsUnavailable
         ? []

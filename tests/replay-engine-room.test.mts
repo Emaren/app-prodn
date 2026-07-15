@@ -95,7 +95,7 @@ test("the same parser pass is idempotent while a version change creates a new ru
   assert.equal(left.idempotencyKey, reordered.idempotencyKey);
   assert.equal(
     left.runIdentityHash,
-    "7861990f2ad2d56bffbc97c0a4bc8fa00ef58892366038535333393a60fe9bc2"
+    "bdcb70acfa8d88386173e3d3382bfe01aa4143804d84c241c094ba331b5da4cb"
   );
   assert.equal(left.idempotencyKey, left.runIdentityHash);
   assert.notEqual(left.runIdentityHash, upgraded.runIdentityHash);
@@ -250,7 +250,7 @@ test("reprocess manifests are bounded, candidate-only, and deterministic", () =>
   assert.equal(manifest.jobIdentityHash, duplicate.jobIdentityHash);
   assert.equal(
     manifest.jobIdentityHash,
-    "e4ba0425ac249f6ae69dee8a3bb3c76381e688602a4175f8494211a5abdb7163"
+    "82c31cfbfd1adc5b0648042db339f022bedab0962df7ff7bf789d6d3d852b215"
   );
   assert.equal(manifest.idempotencyKey, `replay-engine-room:${manifest.jobIdentityHash}`);
   assert.equal(manifest.candidateOnly, true);

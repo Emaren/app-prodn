@@ -1,9 +1,9 @@
-import { normalizePublicReplayText } from "@/lib/unresolvedWatcherResult";
-import type { Prisma } from "@/lib/generated/prisma";
+import { normalizePublicReplayText } from "./unresolvedWatcherResult.ts";
+import type { Prisma } from "./generated/prisma/index.js";
 import {
   applyReplayResultAdjudication,
   type EffectiveReplayResultAdjudication,
-} from "@/lib/replayResultAdjudications";
+} from "./replayResultAdjudications.ts";
 
 export type ReplayAdjudication = {
   gameStatsId: number;

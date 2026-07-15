@@ -24,7 +24,7 @@ import {
   applyReplayAdjudicationToGameStats,
   EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION,
 } from "@/lib/replayAdjudications";
-import { resolveReliableReplayWinner } from "@/lib/unresolvedWatcherResult";
+import { resolveReplayResultForPlayer } from "@/lib/replayPlayerResult";
 
 export type PublicPlayerDirectoryEntry = {
   key: string;
@@ -121,40 +121,25 @@ function updateLastPlayedAt(entry: PublicPlayerDirectoryEntry, nextPlayedAt: Dat
 function updateOutcome(
   entry: PublicPlayerDirectoryEntry,
   game: CandidateGameRow,
-  player: Record<string, unknown>,
   replayName: string
 ) {
-  const winner = resolveReliableReplayWinner({
-    winner: game.winner,
-    players: parsePlayers(game.players),
-    parseReason: game.parse_reason,
-    parseSource: game.parse_source,
-    keyEvents: game.key_events,
-    eventTypes: game.event_types,
-  });
-  const normalizedWinner = normalizeDirectoryKey(winner);
-  if (!normalizedWinner || normalizedWinner === "unknown") {
-    entry.unknowns += 1;
-    return;
-  }
+  const replayNameKey = normalizeDirectoryKey(replayName);
+  const result = resolveReplayResultForPlayer(
+    game,
+    (player) => normalizeDirectoryKey(player.name) === replayNameKey
+  );
 
-  const playerWinnerFlag = player.winner;
-  const flaggedAsWinner =
-    playerWinnerFlag === true ||
-    playerWinnerFlag === "true" ||
-    playerWinnerFlag === 1 ||
-    playerWinnerFlag === "1";
-
-  // The scalar winner names one member of a winning team. Once the replay's
-  // result has passed the reliable-result gate, every player-level winner flag
-  // is authoritative for that player's record. Durable adjudications project
-  // these flags across the complete accepted roster.
-  if (flaggedAsWinner || normalizedWinner === normalizeDirectoryKey(replayName)) {
+  if (result === "win") {
     entry.wins += 1;
     return;
   }
 
-  entry.losses += 1;
+  if (result === "loss") {
+    entry.losses += 1;
+    return;
+  }
+
+  entry.unknowns += 1;
 }
 
 function updateSteamRatings(
@@ -520,7 +505,7 @@ async function loadPublicPlayerDirectoryFresh(
       pushAlias(entry, replayName);
       updateSteamRatings(entry, player, playedAt);
       entry.totalMatches += 1;
-      updateOutcome(entry, game, player, replayName);
+      updateOutcome(entry, game, replayName);
       updateLastPlayedAt(entry, playedAt);
     }
   }
@@ -617,4 +602,3 @@ export async function loadPublicPlayerDirectory(
   publicPlayerDirectoryPromise = run;
   return run;
 }
-

@@ -6,7 +6,6 @@ import BrowserStreamStudio from "@/components/streaming/BrowserStreamStudio";
 import { notFound } from "next/navigation";
 
 import {
-  displayPlayerName,
   formatDurationLabel,
   parsePlayers,
   readPlayerCivilizationLabel,
@@ -43,7 +42,13 @@ export default async function BattleTheatrePage({
 
   const game = snapshot.game;
   const players = parsePlayers(game.players);
-  const playerNames = players.map((player) => displayPlayerName(player));
+  const publicPlayers = players
+    .map((player) => ({ player, name: normalizePublicReplayText(player.name) }))
+    .filter(
+      (entry): entry is { player: Record<string, unknown>; name: string } =>
+        Boolean(entry.name)
+    );
+  const playerNames = publicPlayers.map((entry) => entry.name);
   const matchupLabel =
     playerNames.length > 0
       ? playerNames.join(" vs ")
@@ -188,8 +193,7 @@ export default async function BattleTheatrePage({
         <Panel eyebrow="Feed Deck" title="Optional POVs">
           <div className="grid gap-3 md:grid-cols-2">
             <FeedCard title="Main Cast" body="The default public broadcast. One clean feed, one clean story." active />
-            {players.slice(0, 4).map((player) => {
-              const name = displayPlayerName(player);
+            {publicPlayers.slice(0, 4).map(({ player, name }) => {
               return (
                 <FeedCard
                   key={name}
@@ -198,7 +202,7 @@ export default async function BattleTheatrePage({
                 />
               );
             })}
-            {players.length === 0 ? (
+            {publicPlayers.length === 0 ? (
               <>
                 <FeedCard title="Player 1 POV" body="Reserved for the first player stream." />
                 <FeedCard title="Player 2 POV" body="Reserved for the opponent stream." />
@@ -222,9 +226,8 @@ export default async function BattleTheatrePage({
       </section>
 
       <section className="grid gap-5 lg:grid-cols-2">
-        {players.length > 0 ? (
-          players.map((player) => {
-            const name = displayPlayerName(player);
+        {publicPlayers.length > 0 ? (
+          publicPlayers.map(({ player, name }) => {
             const civilization = normalizePublicReplayText(readPlayerCivilizationLabel(player)) ?? "HD warrior";
             const rmRating = readPlayerSteamRmRating(player);
             const dmRating = readPlayerSteamDmRating(player);

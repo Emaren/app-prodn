@@ -11,8 +11,8 @@ type WatchArchiveMatch = {
   href: string;
   title: string;
   mapName: string;
-  durationLabel: string;
-  winner: string;
+  durationLabel: string | null;
+  winner: string | null;
   parseIteration: number;
   createdLabel: string;
   hasFeed: boolean;
@@ -114,8 +114,8 @@ function ArchiveCard({ match }: { match: WatchArchiveMatch }) {
         </p>
 
         <div className="mt-5 grid grid-cols-3 gap-3">
-          <MiniStat label="Winner" value={match.winner} />
-          <MiniStat label="Time" value={match.durationLabel} />
+          {match.winner ? <MiniStat label="Winner" value={match.winner} /> : null}
+          {match.durationLabel ? <MiniStat label="Time" value={match.durationLabel} /> : null}
           <MiniStat label="Feeds" value={String(match.streamCount)} />
         </div>
       </div>
