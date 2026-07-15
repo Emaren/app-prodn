@@ -18,7 +18,7 @@ import {
   normalizePublicPlayerName,
 } from "@/lib/publicPlayers";
 import { loadUserCommunitySummaries } from "@/lib/communityHonors";
-import { dedupeFinalReplayRows } from "@/lib/finalReplayIdentity";
+import { cleanPublicGameRows } from "@/lib/publicReplayTruth";
 import { loadPendingWoloClaimSummariesByName } from "@/lib/pendingWoloClaims";
 import {
   applyReplayAdjudicationToGameStats,
@@ -64,6 +64,7 @@ type CandidateGameRow = {
   createdAt: Date;
   event_types: unknown;
   id: number;
+  is_final: boolean;
   key_events: unknown;
   original_filename: string | null;
   played_on: Date | null;
@@ -304,6 +305,9 @@ async function loadPublicPlayerDirectoryFresh(
     prisma.gameStats.findMany({
       where: {
         is_final: true,
+        NOT: {
+          parse_reason: "superseded_by_later_upload",
+        },
       },
       orderBy: [
         { timestamp: "desc" },
@@ -315,6 +319,7 @@ async function loadPublicPlayerDirectoryFresh(
         createdAt: true,
         event_types: true,
         id: true,
+        is_final: true,
         key_events: true,
         original_filename: true,
         played_on: true,
@@ -376,7 +381,17 @@ async function loadPublicPlayerDirectoryFresh(
     users.map((user) => user.id)
   );
 
-  const uniqueGames = dedupeFinalReplayRows(games);
+  /*
+   * Public player totals use the canonical public replay truth policy.
+   *
+   * Superseded rows are excluded at query time. Remaining rows are
+   * sanitized so non-stats-eligible winner evidence cannot count as
+   * W/L here while the same replay is unresolved on player profiles.
+   */
+  const uniqueGames = cleanPublicGameRows(games, {
+    includeReview: true,
+    includeLive: false,
+  });
 
   const replayNames = Array.from(
     new Set(
