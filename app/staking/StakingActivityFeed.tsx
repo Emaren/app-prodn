@@ -676,7 +676,7 @@ function summarizeRelatedLedgerGroup(group: StakingActivityItem[]) {
     return {
       key: `related-ledger-${key}`,
       label: treasuryLead.label || (amountLabel ? `${amountLabel} direct transfer` : "Direct transfer"),
-      detail: sanitizeActivityCopy(treasuryLead.detail || "Bet Payout Signer -> Community Treasury"),
+      detail: sanitizeActivityCopy(treasuryLead.detail || "Staking Distribution Reserve -> Community Treasury"),
       meta: treasuryLead.meta,
       eventType: "PAYOUT",
       timestampLabel: treasuryLead.timestampLabel || treasuryLead.meta,

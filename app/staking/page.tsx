@@ -454,8 +454,8 @@ async function loadEconomySnapshot(period: PeriodKey): Promise<EconomySnapshot> 
   return loadStakingSummary(getPrisma(), period);
 }
 
-const BET_PAYOUT_WARNING_FLOOR_WOLO = 25_000;
-const BET_PAYOUT_TARGET_WOLO = 100_000;
+const STAKING_DISTRIBUTION_WARNING_THRESHOLD_WOLO = 450_000;
+const STAKING_DISTRIBUTION_TARGET_WOLO = 500_000;
 
 function formatPolicyWolo(value: number) {
   return `${new Intl.NumberFormat("en-US", {
@@ -464,26 +464,26 @@ function formatPolicyWolo(value: number) {
   }).format(value)} WOLO`;
 }
 
-function applyBetPayoutPolicy<T extends { balanceWolo: number | null; detail: string }>(wallet: T): T {
+function applyStakingDistributionReservePolicy<T extends { balanceWolo: number | null; detail: string }>(wallet: T): T {
   if (wallet.balanceWolo == null) return wallet;
 
-  if (wallet.balanceWolo < BET_PAYOUT_WARNING_FLOOR_WOLO) {
+  if (wallet.balanceWolo < STAKING_DISTRIBUTION_WARNING_THRESHOLD_WOLO) {
     return {
       ...wallet,
-      detail: `Needs top-up · ${formatPolicyWolo(wallet.balanceWolo)} / ${formatPolicyWolo(BET_PAYOUT_WARNING_FLOOR_WOLO)} floor · target ${formatPolicyWolo(BET_PAYOUT_TARGET_WOLO)}`,
+      detail: `Needs top-up · ${formatPolicyWolo(wallet.balanceWolo)} / ${formatPolicyWolo(STAKING_DISTRIBUTION_WARNING_THRESHOLD_WOLO)} operating threshold · target ${formatPolicyWolo(STAKING_DISTRIBUTION_TARGET_WOLO)}`,
     };
   }
 
-  if (wallet.balanceWolo < BET_PAYOUT_TARGET_WOLO) {
+  if (wallet.balanceWolo < STAKING_DISTRIBUTION_TARGET_WOLO) {
     return {
       ...wallet,
-      detail: `Healthy floor · ${formatPolicyWolo(wallet.balanceWolo)} / ${formatPolicyWolo(BET_PAYOUT_TARGET_WOLO)} target`,
+      detail: `Reserve healthy · ${formatPolicyWolo(wallet.balanceWolo)} / ${formatPolicyWolo(STAKING_DISTRIBUTION_TARGET_WOLO)} target`,
     };
   }
 
   return {
     ...wallet,
-    detail: `Launch-ready cashier · target ${formatPolicyWolo(BET_PAYOUT_TARGET_WOLO)}+`,
+    detail: `Fully funded · target ${formatPolicyWolo(STAKING_DISTRIBUTION_TARGET_WOLO)}`,
   };
 }
 
@@ -574,7 +574,7 @@ export default async function StakingPage({
       readyDetail: "DEX liquidity",
     }),
   ]);
-  const policyPayoutWallet = applyBetPayoutPolicy(payoutWallet);
+  const policyDistributionReserveWallet = applyStakingDistributionReservePolicy(payoutWallet);
 
   const txFeeEvents = await getPrisma().stakingEvent.findMany({
     where: {
@@ -756,8 +756,8 @@ export default async function StakingPage({
                 tone="amber"
               />
               <CustodyRailTile
-                title="Bet Payout"
-                wallet={policyPayoutWallet}
+                title="Staking Distribution Reserve"
+                wallet={policyDistributionReserveWallet}
                 icon={<HandCoins className="h-4 w-4" />}
                 tone="sky"
               />

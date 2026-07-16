@@ -107,7 +107,7 @@ export const WOLO_MAINNET_NETWORK_ACCOUNTS = [
     role: "escrow",
   },
   {
-    label: "Bet Payout Signer",
+    label: "Staking Distribution Reserve",
     address: "wolo1zfa9ssu2gpgqg7yzvhmjt4w66mza07qr2a4rwu",
     use: "Payout Wallet",
     role: "payout",

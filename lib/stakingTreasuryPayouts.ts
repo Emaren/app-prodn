@@ -242,7 +242,7 @@ function buildBlockers(row: StakingTreasuryDistributionRow) {
     }
   }
   if (!runtime.payoutAddress) {
-    blockers.push("WOLO_BET_PAYOUT_ADDRESS is not configured for the Bet Payout signer.");
+    blockers.push("WOLO_BET_PAYOUT_ADDRESS is not configured for the Staking Distribution Reserve signer.");
   }
   if (!hasWoloPayoutExecutionConfigured()) {
     blockers.push(
@@ -303,7 +303,7 @@ function determinePlanState(row: StakingTreasuryDistributionRow, blockers: strin
   return {
     state: "ready" as const,
     stateLabel: "Ready",
-    stateDetail: "Dry-run confirms the Bet Payout source, balance, recipient, and amount before execution.",
+    stateDetail: "Dry-run confirms the Staking Distribution Reserve source, balance, recipient, and amount before execution.",
   };
 }
 
@@ -484,12 +484,12 @@ function enforcePayoutRunSource(
   }
 
   const detail = roleMismatch
-    ? `WoloChain grouped run reported signer role ${role}; staking Treasury payouts must execute from the Bet Payout signer.`
+    ? `WoloChain grouped run reported signer role ${role}; staking Treasury payouts must execute from the Staking Distribution Reserve signer.`
     : addressMismatch
-      ? `WoloChain grouped run reported signer ${address}; expected Bet Payout ${expectedAddress}.`
+      ? `WoloChain grouped run reported signer ${address}; expected Staking Distribution Reserve ${expectedAddress}.`
       : missingRole
         ? "WoloChain grouped run did not confirm signer_role=payout for this staking Treasury payout."
-        : "WoloChain grouped run did not confirm the Bet Payout signer address for this staking Treasury payout.";
+        : "WoloChain grouped run did not confirm the Staking Distribution Reserve signer address for this staking Treasury payout.";
 
   return {
     ...run,
@@ -509,7 +509,7 @@ async function validatePlanDryRun(plan: StakingTreasuryPayoutPlan) {
   if (!dryRun) {
     return syntheticRun(plan, {
       code: "PAYOUT_DRY_RUN_UNAVAILABLE",
-      detail: "WOLO grouped payout dry-run is not available; refusing to execute without a Bet Payout balance check.",
+      detail: "WOLO grouped payout dry-run is not available; refusing to execute without a Staking Distribution Reserve balance check.",
       retryable: false,
     });
   }
@@ -711,7 +711,7 @@ function assertExecutablePlan(plan: StakingTreasuryPayoutPlan) {
     });
   }
   if (!plan.signerAddress) {
-    throw new StakingTreasuryPayoutError("Bet Payout signer address is missing.", {
+    throw new StakingTreasuryPayoutError("Staking Distribution Reserve signer address is missing.", {
       status: 409,
       code: "PAYOUT_SIGNER_MISSING",
     });

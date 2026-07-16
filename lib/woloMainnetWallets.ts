@@ -118,7 +118,7 @@ export const WOLO_MAINNET_WALLET_ALIASES = [
     role: "relayer",
   },
   {
-    label: "Bet Payout Signer",
+    label: "Staking Distribution Reserve",
     address: "wolo1zfa9ssu2gpgqg7yzvhmjt4w66mza07qr2a4rwu",
     role: "payout",
   },
