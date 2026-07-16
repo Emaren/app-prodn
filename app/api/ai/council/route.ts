@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
   const transcript: Array<{
     agent: ReturnType<typeof publicAgentSummary>;
     body: string;
-    timing: { contextMs: number; modelMs: number; totalMs: number; firstTokenMs: null };
+    timing: { contextMs: number; modelMs: number; totalMs: number; firstTokenMs: number | null };
   }> = [];
 
   try {
@@ -137,4 +137,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

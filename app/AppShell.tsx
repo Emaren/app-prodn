@@ -4,7 +4,7 @@ import React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, Bot, Castle, Crown, Globe2, GraduationCap, MessageSquare, Radio, Store, Target, UsersRound, X } from "lucide-react";
+import { BarChart3, Bot, Castle, Crown, Globe2, GraduationCap, Hammer, MessageSquare, Radio, Store, Target, UsersRound, X } from "lucide-react";
 import { createPortal } from "react-dom";
 import UserExperienceTracker from "@/components/analytics/UserExperienceTracker";
 import HeaderInboxControl from "@/components/contact/HeaderInboxControl";
@@ -54,6 +54,7 @@ const KINGDOM_LINKS = [
   { href: "/bounties", label: "Bounties", icon: Target, body: "Open opportunities and payout proof" },
   { href: "/ai", label: "AI Council", icon: Bot, body: "Ask the public house council" },
   { href: "/radio", label: "Radio WOLO", icon: Radio, body: "Kingdom music and creator submissions" },
+  { href: "/workshop", label: "The Workshop", icon: Hammer, body: "Watch the kingdom being forged in public" },
   { href: "/game-stats", label: "Parser Observatory", icon: BarChart3, body: "Replay corpus, coverage, and unknowns" },
 ] as const;
 
@@ -61,6 +62,7 @@ const PAGE_HEADINGS: ReadonlyArray<{ prefix: string; title: string }> = [
   { prefix: "/admin/ai", title: "AI Command Center" },
   { prefix: "/admin/bounties", title: "Bounty Command Center" },
   { prefix: "/admin/radio", title: "Radio WOLO Desk" },
+  { prefix: "/admin/workshop", title: "Workshop Command Center" },
   { prefix: "/admin/hero-studio", title: "Hero Studio" },
   { prefix: "/admin/events", title: "Featured Event Studio" },
   { prefix: "/admin", title: "Operator Command" },
@@ -80,6 +82,7 @@ const PAGE_HEADINGS: ReadonlyArray<{ prefix: string; title: string }> = [
   { prefix: "/bounties", title: "Bounty Board" },
   { prefix: "/ai", title: "AI Council" },
   { prefix: "/radio", title: "Radio WOLO" },
+  { prefix: "/workshop", title: "The Workshop" },
   { prefix: "/submit", title: "Submit to Radio WOLO" },
   { prefix: "/matchups", title: "Rivalry Matchup" },
   { prefix: "/rivalries", title: "Rivalries" },
@@ -354,6 +357,23 @@ function HeaderLiveGamesLink({
   );
 }
 
+function HeaderWorkshopLiveLink({ active }: { active?: boolean }) {
+  return (
+    <Link
+      href="/workshop"
+      aria-current={active ? "page" : undefined}
+      className={`inline-flex min-h-9 shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-bold transition ${
+        active
+          ? "border-orange-200/45 bg-orange-400/18 text-orange-50"
+          : "border-orange-300/25 bg-orange-400/10 text-orange-100 hover:border-orange-200/40"
+      }`}
+    >
+      <span className="h-2 w-2 animate-pulse rounded-full bg-red-400 shadow-[0_0_14px_rgba(248,113,113,0.85)]" />
+      Workshop · LIVE
+    </Link>
+  );
+}
+
 function InnerShell({ children }: { children: React.ReactNode }) {
   const { uid, playerName, isAdmin } = useUserAuth();
   const pathname = usePathname();
@@ -386,6 +406,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
     useLobbyAppearance();
   const [liveGamesCount, setLiveGamesCount] = React.useState(0);
   const [requestCount, setRequestCount] = React.useState(0);
+  const [workshopLive, setWorkshopLive] = React.useState(false);
   const isContactPage = pathname?.startsWith("/contact-emaren");
   const [contactViewportHeight, setContactViewportHeight] = React.useState<number | null>(null);
   const isLobbySurface = pathname === "/" || pathname?.startsWith("/lobby");
@@ -404,6 +425,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
     pathname?.startsWith("/market") ||
     pathname?.startsWith("/kingdom") ||
     pathname?.startsWith("/leaderboard") ||
+    pathname?.startsWith("/workshop") ||
     pathname?.startsWith("/battle-archive") ||
     pathname?.startsWith("/challenge");
   const communityLobbyViewMode = getTileViewMode(
@@ -504,9 +526,10 @@ function InnerShell({ children }: { children: React.ReactNode }) {
 
     async function loadHeaderCounts() {
       try {
-        const [liveResponse, requestsResponse] = await Promise.all([
+        const [liveResponse, requestsResponse, workshopResponse] = await Promise.all([
           fetch("/api/live-games?summary=1", { cache: "no-store" }),
           fetch("/api/requests?summary=1", { cache: "no-store" }),
+          fetch("/api/workshop?summary=1", { cache: "no-store" }),
         ]);
 
         const livePayload = liveResponse.ok
@@ -515,12 +538,16 @@ function InnerShell({ children }: { children: React.ReactNode }) {
         const requestsPayload = requestsResponse.ok
           ? ((await requestsResponse.json()) as { openCount?: number })
           : {};
+        const workshopPayload = workshopResponse.ok
+          ? ((await workshopResponse.json()) as { isLive?: boolean; streamLive?: boolean })
+          : {};
 
         if (!cancelled) {
           setLiveGamesCount(typeof livePayload.liveCount === "number" ? livePayload.liveCount : 0);
           setRequestCount(
             typeof requestsPayload.openCount === "number" ? requestsPayload.openCount : 0
           );
+          setWorkshopLive(workshopPayload.isLive === true || workshopPayload.streamLive === true);
         }
       } catch (error) {
         console.warn("Failed to load header counts:", error);
@@ -636,10 +663,13 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                       requestCount={link.countKey === "requests" ? requestCount : undefined}
                     />
                     {index === 0 ? (
-                      <HeaderLiveGamesLink
-                        liveGamesCount={liveGamesCount}
-                        active={isRouteActive(pathname, "/live-games")}
-                      />
+                      <>
+                        <HeaderLiveGamesLink
+                          liveGamesCount={liveGamesCount}
+                          active={isRouteActive(pathname, "/live-games")}
+                        />
+                        {workshopLive ? <HeaderWorkshopLiveLink active={isRouteActive(pathname, "/workshop")} /> : null}
+                      </>
                     ) : null}
                   </React.Fragment>
                 ))}
@@ -692,10 +722,13 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                     requestCount={link.countKey === "requests" ? requestCount : undefined}
                   />
                   {index === 0 ? (
-                    <HeaderLiveGamesLink
-                      liveGamesCount={liveGamesCount}
-                      active={isRouteActive(pathname, "/live-games")}
-                    />
+                    <>
+                      <HeaderLiveGamesLink
+                        liveGamesCount={liveGamesCount}
+                        active={isRouteActive(pathname, "/live-games")}
+                      />
+                      {workshopLive ? <HeaderWorkshopLiveLink active={isRouteActive(pathname, "/workshop")} /> : null}
+                    </>
                   ) : null}
                 </React.Fragment>
               ))}

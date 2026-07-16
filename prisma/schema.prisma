@@ -2214,6 +2214,113 @@ model RadioSubmission {
   @@map("radio_submissions")
 }
 
+/// Operator-controlled public state for the AoE2WAR Workshop. This table is a
+/// curated projection only; it never mirrors terminal output or private AI
+/// conversations automatically.
+model WorkshopStatus {
+  id               Int      @id @default(1)
+  isOpen           Boolean  @default(false) @map("is_open")
+  isLive           Boolean  @default(false) @map("is_live")
+  activityMode     String   @default("closed") @map("activity_mode") @db.VarChar(32)
+  headline         String   @default("THE WORKSHOP RESTS") @db.VarChar(160)
+  description      String   @default("") @db.Text
+  currentProject   String?  @map("current_project") @db.VarChar(160)
+  activeStreamId   Int?     @map("active_stream_id")
+  updatedByUid     String?  @map("updated_by_uid") @db.VarChar(100)
+  openedAt         DateTime? @map("opened_at") @db.Timestamp(6)
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  activeStream WorkshopStream? @relation(fields: [activeStreamId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([isOpen, isLive], map: "ix_workshop_status_open_live")
+  @@map("workshop_status")
+}
+
+/// Deliberately curated public build notes, AI excerpts, decisions, and
+/// milestones. Publication is explicit and reversible; draft content never
+/// appears in the public Workshop projection.
+model WorkshopEntry {
+  id               Int      @id @default(autoincrement())
+  publicId         String   @unique @default(uuid()) @map("public_id") @db.Uuid
+  entryType        String   @default("build_note") @map("entry_type") @db.VarChar(32)
+  title            String   @db.VarChar(200)
+  summary          String   @default("") @db.VarChar(500)
+  body             String   @default("") @db.Text
+  dialogue         Json     @default("[]")
+  lane             String   @default("work_feed") @db.VarChar(32)
+  status           String   @default("draft") @db.VarChar(24)
+  visibility       String   @default("private") @db.VarChar(24)
+  mediaKind        String?  @map("media_kind") @db.VarChar(32)
+  mediaUrl         String?  @map("media_url") @db.VarChar(1000)
+  mediaAlt         String?  @map("media_alt") @db.VarChar(220)
+  linkLabel        String?  @map("link_label") @db.VarChar(100)
+  linkUrl          String?  @map("link_url") @db.VarChar(1000)
+  pinned           Boolean  @default(false)
+  featuredOrder    Int      @default(0) @map("featured_order")
+  occurredAt       DateTime @default(now()) @map("occurred_at") @db.Timestamp(6)
+  publishedAt      DateTime? @map("published_at") @db.Timestamp(6)
+  createdByUid     String?  @map("created_by_uid") @db.VarChar(100)
+  updatedByUid     String?  @map("updated_by_uid") @db.VarChar(100)
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  artifacts WorkshopArtifact[]
+
+  @@index([status, visibility, publishedAt], map: "ix_workshop_entries_publication")
+  @@index([lane, featuredOrder, occurredAt], map: "ix_workshop_entries_lane_order")
+  @@index([pinned, featuredOrder], map: "ix_workshop_entries_pinned_order")
+  @@map("workshop_entries")
+}
+
+/// Optional media and reference links attached to one curated Workshop entry.
+/// Storage bytes remain owned by the existing managed-media rail.
+model WorkshopArtifact {
+  id          Int      @id @default(autoincrement())
+  entryId     Int      @map("entry_id")
+  kind        String   @default("image") @db.VarChar(32)
+  label       String   @db.VarChar(160)
+  url         String   @db.VarChar(1000)
+  alt         String?  @db.VarChar(220)
+  mimeType    String?  @map("mime_type") @db.VarChar(120)
+  storageKey  String?  @map("storage_key") @db.VarChar(1000)
+  sortOrder   Int      @default(0) @map("sort_order")
+  isPublic    Boolean  @default(false) @map("is_public")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  entry WorkshopEntry @relation(fields: [entryId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([entryId, isPublic, sortOrder], map: "ix_workshop_artifacts_entry_public_order")
+  @@map("workshop_artifacts")
+}
+
+/// Explicitly configured live or recorded Workshop presentation. Starting a
+/// stream is always an operator action; no desktop source is captured by this
+/// model itself.
+model WorkshopStream {
+  id             Int       @id @default(autoincrement())
+  publicId       String    @unique @default(uuid()) @map("public_id") @db.Uuid
+  provider       String    @default("first_party") @db.VarChar(40)
+  sourceType     String    @default("external") @map("source_type") @db.VarChar(32)
+  title          String    @db.VarChar(200)
+  description    String    @default("") @db.Text
+  playbackUrl    String?   @map("playback_url") @db.VarChar(1000)
+  embedUrl       String?   @map("embed_url") @db.VarChar(1000)
+  thumbnailUrl   String?   @map("thumbnail_url") @db.VarChar(1000)
+  status         String    @default("draft") @db.VarChar(24)
+  isPublic       Boolean   @default(false) @map("is_public")
+  createdByUid   String?   @map("created_by_uid") @db.VarChar(100)
+  startedAt      DateTime? @map("started_at") @db.Timestamp(6)
+  endedAt        DateTime? @map("ended_at") @db.Timestamp(6)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  activeForStatuses WorkshopStatus[]
+
+  @@index([status, isPublic, startedAt], map: "ix_workshop_streams_public_status")
+  @@map("workshop_streams")
+}
+
 model alembic_version {
   version_num String @id(map: "alembic_version_pkc") @db.VarChar(32)
 }

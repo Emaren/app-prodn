@@ -16,6 +16,7 @@ import {
   liveSessionIdentity,
   reconcileLiveGamesSnapshots,
 } from "../lib/liveGamesClientReconcile.ts";
+import { classifyReplaySessionDisposition } from "../lib/replaySessionDisposition.ts";
 import type { LiveGamesSnapshot } from "../lib/liveGames.ts";
 
 const tell3zEmarenPlayers = [
@@ -332,12 +333,48 @@ function liveSession(
     watcherCount: 1,
     parseRows: 1,
     coverageLevel: "single",
+    disposition: "live",
     uploader: null,
     streams: [],
     primaryStream: null,
     ...overrides,
   };
 }
+
+test("saved HD session is classified separately from a missing result", () => {
+  assert.equal(
+    classifyReplaySessionDisposition({
+      state: "completed",
+      winner: "Unknown",
+      eventTypes: ["order", "save"],
+      keyEvents: {
+        completed: false,
+        postgame_available: false,
+        resigned_player_numbers: [],
+        chat_preview: [
+          { type: "message", message: "can we save and rehost" },
+          { type: "save", timestamp_seconds: 302 },
+        ],
+      },
+    }),
+    "saved_rehost"
+  );
+});
+
+test("short completed replay without save evidence remains result review", () => {
+  assert.equal(
+    classifyReplaySessionDisposition({
+      state: "completed",
+      winner: "Unknown",
+      keyEvents: {
+        completed: false,
+        postgame_available: false,
+        resigned_player_numbers: [],
+      },
+    }),
+    "result_review"
+  );
+});
 
 function snapshot(
   activeSessions: LiveGamesSnapshot["activeSessions"]

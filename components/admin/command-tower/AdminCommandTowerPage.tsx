@@ -13,6 +13,7 @@ import {
   FileSearch,
   FlaskConical,
   Home,
+  Hammer,
   Images,
   LayoutGrid,
   Palette,
@@ -74,6 +75,7 @@ const ADMIN_NAV_LINKS = [
   { href: "/admin/ai", label: "AI Command Center", Icon: Bot },
   { href: "/admin/bounties", label: "Bounty Command", Icon: Target },
   { href: "/admin/radio", label: "Radio WOLO Desk", Icon: RadioTower },
+  { href: "/admin/workshop", label: "Workshop Command", Icon: Hammer },
   { href: "/admin/wolochain", label: "WoloChain", Icon: Coins },
   { href: "/admin/user-list", label: "User List / Command Tower", Icon: UsersRound },
 ] as const;

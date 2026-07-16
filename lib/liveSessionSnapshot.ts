@@ -15,6 +15,10 @@ import {
   resolveReplayWinnerTruth,
   type UnresolvedWatcherResult,
 } from "@/lib/unresolvedWatcherResult";
+import {
+  classifyReplaySessionDisposition,
+  type ReplaySessionDisposition,
+} from "@/lib/replaySessionDisposition";
 
 export type LiveGameSession = {
   id: number;
@@ -46,6 +50,7 @@ export type LiveGameSession = {
   watcherCount: number;
   parseRows: number;
   coverageLevel: "unknown" | "single" | "dual" | "stacked";
+  disposition: ReplaySessionDisposition;
   uploader:
     | {
         uid: string;
@@ -293,6 +298,12 @@ function buildSessionFromRow(
     keyEvents: row.key_events,
     watcherCount: uploaders.length,
   });
+  const disposition = classifyReplaySessionDisposition({
+    state,
+    winner,
+    keyEvents: row.key_events,
+    eventTypes: row.event_types,
+  });
   return {
     id: row.id,
     sessionKey,
@@ -318,6 +329,7 @@ function buildSessionFromRow(
     watcherCount: uploaders.length,
     parseRows: sourceRows.length,
     coverageLevel: coverageLevel(uploaders.length),
+    disposition,
     uploader: primaryUploader
       ? {
           uid: primaryUploader.uid,

@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@/lib/generated/prisma";
+import { unstable_cache } from "next/cache";
 import {
   loadRuntimeAiAgent,
   type AiAgentRuntimeConfig,
@@ -84,7 +85,7 @@ function normalizeAiReply(
   return collapsed.slice(0, AI_PRIVATE_REPLY_MAX_CHARS);
 }
 
-async function loadRecentMatchesForAi(): Promise<LobbyMatchRow[]> {
+const loadRecentMatchesForAi = unstable_cache(async (): Promise<LobbyMatchRow[]> => {
   try {
     const response = await fetch(`${getBackendUpstreamBase()}/api/game_stats?limit=24`, {
       cache: "no-store",
@@ -99,6 +100,10 @@ async function loadRecentMatchesForAi(): Promise<LobbyMatchRow[]> {
     console.warn("Failed to load recent matches for AI lane:", error);
     return [];
   }
+}, ["ai-recent-matches-v1"], { revalidate: 15 });
+
+function shouldLoadAiContext(message: string, pattern: RegExp) {
+  return pattern.test(message.toLowerCase());
 }
 
 function formatLeaderboardContext(
@@ -889,6 +894,7 @@ export async function requestAiConciergeReply(
     modelMs: number | null;
     promptChars: number;
     responseChars: number;
+    firstTokenMs?: number | null;
     errorCode?: string | null;
   }) => {
     try {
@@ -902,7 +908,7 @@ export async function requestAiConciergeReply(
           requestedModel,
           contextMs: input.contextMs,
           modelMs: input.modelMs,
-          firstTokenMs: null,
+          firstTokenMs: input.firstTokenMs ?? null,
           totalMs: Math.max(0, Date.now() - startedAt),
           promptChars: input.promptChars,
           responseChars: input.responseChars,
@@ -916,6 +922,18 @@ export async function requestAiConciergeReply(
   };
 
   const contextStartedAt = Date.now();
+  const wantsMoneyContext = shouldLoadAiContext(
+    args.userMessage,
+    /\b(wolo|wallet|balance|bet|wager|claim|payout|profit|loss|money|reward|faucet|market)\b/
+  );
+  const wantsStakingContext = shouldLoadAiContext(
+    args.userMessage,
+    /\b(stake|staking|staker|apy|compound|unstake|treasury|yield)\b/
+  );
+  const wantsPeopleContext = shouldLoadAiContext(
+    args.userMessage,
+    /\b(user|users|people|human|player count|how many players|identity|profile)\b/
+  );
   const [
     chatMessages,
     leaderboard,
@@ -929,9 +947,9 @@ export async function requestAiConciergeReply(
     }),
     loadLobbyLeaderboard(args.prisma),
     loadRecentMatchesForAi(),
-    loadAiMoneyContext(args.prisma, args.viewer.uid),
-    loadAiStakingContext(args.prisma, args.viewer.uid),
-    loadAiPeopleContext(args.prisma),
+    wantsMoneyContext ? loadAiMoneyContext(args.prisma, args.viewer.uid) : Promise.resolve(null),
+    wantsStakingContext ? loadAiStakingContext(args.prisma, args.viewer.uid) : Promise.resolve(null),
+    wantsPeopleContext ? loadAiPeopleContext(args.prisma) : Promise.resolve(null),
   ]);
   const contextMs = Date.now() - contextStartedAt;
 
@@ -1030,6 +1048,10 @@ export async function requestAiConciergeReply(
       status: "succeeded",
       contextMs,
       modelMs,
+      // The current local gateway returns one completed JSON body rather than
+      // token SSE. First visible text therefore arrives with the full model
+      // response; recording modelMs is honest, while null would imply unknown.
+      firstTokenMs: modelMs,
       promptChars,
       responseChars: reply.length,
     });
@@ -1045,7 +1067,12 @@ export async function requestAiConciergeReply(
         contextMs,
         modelMs,
         totalMs: Date.now() - startedAt,
-        firstTokenMs: null,
+        firstTokenMs: modelMs,
+        contextProfile: {
+          money: wantsMoneyContext,
+          staking: wantsStakingContext,
+          people: wantsPeopleContext,
+        },
       },
     };
   } catch (error) {

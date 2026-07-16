@@ -12,7 +12,7 @@ type CouncilAgent = {
 type CouncilTurn = {
   agent: CouncilAgent;
   body: string;
-  timing: { contextMs: number; modelMs: number; totalMs: number; firstTokenMs: null };
+  timing: { contextMs: number; modelMs: number; totalMs: number; firstTokenMs: number | null };
 };
 
 export default function AiCouncilClient({ agents }: { agents: CouncilAgent[] }) {

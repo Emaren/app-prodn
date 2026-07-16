@@ -640,6 +640,12 @@ export default function AdminPage() {
               >
                 Radio WOLO Desk
               </Link>
+              <Link
+                href="/admin/workshop"
+                className="inline-flex rounded-full border border-orange-200/18 bg-orange-300/[0.06] px-5 py-3 text-sm text-orange-100 transition hover:border-orange-200/36 hover:bg-orange-300/10"
+              >
+                Workshop Command
+              </Link>
             </div>
           </div>
 

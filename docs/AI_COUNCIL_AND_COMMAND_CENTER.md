@@ -26,9 +26,13 @@ Unknown facts must remain unknown. Bounty state, payout state, replay outcomes, 
 
 Every attempted model call writes an `AiRequestTrace` with the source, requested model label, success/failure/timeout state, context/model/total timing, character counts, and a bounded error code. Prompt and response text are deliberately excluded.
 
+The current local gateway returns one completed JSON response, not token SSE. `firstTokenMs` therefore records the completed model-response duration as an honest first-visible-text proxy; it must not be described as streamed token latency. `totalMs` remains the end-to-end request measure including context assembly.
+
+Context sources are assembled in parallel. Recent-match grounding is cached for 15 seconds, while wallet/economy, staking, and people-directory context are loaded only when the question asks for those domains. This keeps general AoE2 questions out of unrelated database paths without weakening grounding for finance or identity questions.
+
 The admin view calculates rolling 30-day request count, success rate, median latency, p95 latency, and recent failures. Council traffic is rate-limited per signed-in user, accepts at most two voices, and runs sequentially to keep provider pressure controlled. An agent-level timeout aborts a stalled gateway request.
 
-The lobby exposes honest user-facing timing: a visible live thinking counter while replies are pending and `Thought for Ns` after completion. The message action is guarded while pending so Enter and button clicks cannot create duplicate sends.
+The lobby and Council expose honest user-facing timing: a visible thinking counter while replies are pending and `Thought for Ns` after completion. Message actions are guarded while pending so Enter and button clicks cannot create duplicate sends.
 
 ## Data model and routes
 

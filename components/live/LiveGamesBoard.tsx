@@ -251,11 +251,13 @@ function sessionStatsHref(session: LiveSession) {
 
 function liveSessionPrimaryActionLabel(session: LiveSession) {
   if (hasLiveBetMarket(session)) return "Bet live";
+  if (session.disposition === "saved_rehost") return "Open session evidence";
   return session.state === "completed" ? "Open final stats" : "Watch live stats";
 }
 
 function liveSessionStatusLabel(session: LiveSession) {
   if (hasLiveBetMarket(session)) return "Bet live";
+  if (session.disposition === "saved_rehost") return "Saved / rehosted";
   return session.state === "completed" ? "Final stored" : "Live parse";
 }
 
@@ -272,6 +274,7 @@ function canReviewReplaySession(
   if (session.state !== "completed" || !Number.isSafeInteger(session.id) || session.id <= 0) {
     return false;
   }
+  if (session.disposition === "saved_rehost") return false;
   if (isAdmin) return true;
   if (!viewerUid || !canReviewOwnReplayResults) return false;
 
@@ -315,6 +318,7 @@ function isManualUploadedReplaySession(session: Pick<LiveSession, "uploader" | "
 
 function liveSessionEyebrowLabel(session: LiveSession) {
   if (session.state !== "completed") return "Watcher live";
+  if (session.disposition === "saved_rehost") return "Saved session";
 
   const hasResolvedPlayers = session.players.some((player) => {
     const maybePlayer = player as { winner?: boolean | null; name?: string | null };
@@ -1490,6 +1494,7 @@ function resolvedSessionDisplay(session: LiveSession) {
 function UnresolvedReplayOutcomeCard({ session }: { session: LiveSession }) {
   const unresolved = session.unresolvedResult;
   if (!unresolved) return null;
+  const savedForRehost = session.disposition === "saved_rehost";
 
   const gameHref = sessionStatsHref(session);
   const watchHref = `/watch/${encodeURIComponent(session.sessionKey)}`;
@@ -1498,7 +1503,7 @@ function UnresolvedReplayOutcomeCard({ session }: { session: LiveSession }) {
     <article
       className="relative overflow-hidden rounded-[1.75rem] border border-emerald-200/16 bg-[radial-gradient(circle_at_88%_10%,rgba(52,211,153,0.10),transparent_34%),linear-gradient(145deg,rgba(15,41,45,0.90),rgba(2,6,23,0.96))] px-5 py-5 shadow-[0_24px_80px_rgba(2,6,23,0.32)]"
       data-unresolved-result={unresolved.code}
-      aria-label="HD replay preserved"
+      aria-label={savedForRehost ? "HD session saved for rehost" : "HD replay preserved"}
     >
       <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/35 to-transparent" />
       <div className="relative">
@@ -1506,17 +1511,19 @@ function UnresolvedReplayOutcomeCard({ session }: { session: LiveSession }) {
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.3em] text-emerald-100/70">
               <Archive className="h-4 w-4" />
-              HD War Vault
+              {savedForRehost ? "Saved Session" : "HD War Vault"}
             </div>
             <h3 className="mt-3 font-serif text-[1.55rem] leading-none tracking-[-0.025em] text-white">
-              Battle record preserved
+              {savedForRehost ? "Session saved for rehost" : "Battle record preserved"}
             </h3>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
-              The replay, roster, and battle tape are filed for the permanent HD record.
+              {savedForRehost
+                ? "The replay and both teams were preserved. Play stopped on an intentional save event, so there is no winner to review or settle."
+                : "The replay, roster, and battle tape are filed for the permanent HD record."}
             </p>
           </div>
           <span className="rounded-full border border-emerald-200/20 bg-emerald-300/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-100">
-            Final stored
+            {liveSessionStatusLabel(session)}
           </span>
         </div>
 
@@ -1954,7 +1961,7 @@ function PremiumClassicLiveSessionCard({
   const gameHref = sessionStatsHref(session);
   const watchHref = `/watch/${encodeURIComponent(session.sessionKey)}`;
 
-  if (isCompleted && resolvedStyle && resolvedStyle !== "legacy") {
+  if (isCompleted && session.disposition !== "saved_rehost" && resolvedStyle && resolvedStyle !== "legacy") {
     return (
       <div className="relative">
         <PremiumResolvedOutcomeCard
@@ -1980,7 +1987,7 @@ function PremiumClassicLiveSessionCard({
   {/* FORCE_VISIBLE_DUAL_WATCHER_PROOF */}
   <DualWatcherProofStack uploaders={session.uploaders} />
 
-  const statusLabel = isCompleted ? "Final stored" : liveSessionStatusLabel(session);
+  const statusLabel = liveSessionStatusLabel(session);
   const durationLabel = formatDurationCompact(session.durationSeconds);
 
   const rawGameNumber =
@@ -2113,6 +2120,10 @@ function PremiumClassicLiveSessionCard({
               <div className={`text-[11px] font-medium uppercase tracking-[0.22em] ${winnerClass}`}>
                 Winner <span className={`ml-1 ${winnerNameClass}`}>{winnerName}</span>
               </div>
+            ) : session.disposition === "saved_rehost" ? (
+              <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-amber-100/75">
+                No result · saved for rehost
+              </div>
             ) : isCompleted ? (
               <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-emerald-100/70">
                 Replay preserved
@@ -2188,8 +2199,8 @@ function ClassicLiveSessionCard({
     ? "border-emerald-400/25 bg-emerald-500/12 text-emerald-50"
     : "border-red-400/25 bg-red-500/12 text-red-50";
   const eyebrowClass = isCompleted ? "text-emerald-100/80" : "text-red-100/80";
-  const eyebrowLabel = isCompleted ? "Just finished" : "Watcher live";
-  const badgeLabel = isCompleted ? "Final stored" : liveSessionStatusLabel(session);
+  const eyebrowLabel = isCompleted ? liveSessionEyebrowLabel(session) : "Watcher live";
+  const badgeLabel = liveSessionStatusLabel(session);
   const compactDuration = formatDurationCompact(session.durationSeconds);
 
   return (
@@ -2890,7 +2901,7 @@ function LiveSessionCard({
               {hasLiveBetMarket(session)
                   ? "Bet live"
                   : isCompleted
-                    ? "Final stored"
+                    ? liveSessionStatusLabel(session)
                     : "Watcher live"}
             </span>
           </div>

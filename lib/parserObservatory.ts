@@ -58,6 +58,51 @@ function ranked(map: Map<string, number>, limit = 20) {
     .slice(0, limit);
 }
 
+function failureSizeBucket(value: bigint) {
+  const bytes = Number(value);
+  if (bytes < 64 * 1024) return "Under 64 KB";
+  if (bytes < 256 * 1024) return "64–256 KB";
+  if (bytes < 1024 * 1024) return "256 KB–1 MB";
+  if (bytes < 4 * 1024 * 1024) return "1–4 MB";
+  return "4 MB+";
+}
+
+function failureRecoveryLane(input: { signature: string; extension: string }) {
+  if (input.extension === ".aoe2mpgame") {
+    return {
+      key: "playback_required",
+      label: "Saved-game container · playback required",
+      disposition: "Format-specific or controlled playback lane",
+    };
+  }
+  if (input.signature.includes("parser_exception:range_error")) {
+    return {
+      key: "alternate_parser",
+      label: "Header range compatibility",
+      disposition: "Alternate parser / version-specific recovery",
+    };
+  }
+  if (input.signature.includes("terminated_error")) {
+    return {
+      key: "legacy_model_compat",
+      label: "HD body-stream compatibility",
+      disposition: "Isolated legacy-model candidate lane; never automatic promotion",
+    };
+  }
+  if (input.signature.includes("truncated_or_incomplete")) {
+    return {
+      key: "corrupt_or_partial",
+      label: "End-of-stream / incomplete evidence",
+      disposition: "Corruption review before any recovery claim",
+    };
+  }
+  return {
+    key: "manual_review",
+    label: "Unclassified parser failure",
+    disposition: "Operator classification required",
+  };
+}
+
 async function loadCorpusRows() {
   return getPrisma().gameStats.findMany({
     where: { is_final: true },
@@ -90,7 +135,7 @@ async function loadCorpusRows() {
 
 async function buildPublicParserObservatory() {
   const prisma = getPrisma();
-  const [rawRows, allGameRows, artifacts, runStatus, parserVersions, fieldCoverage, observations, jobs, candidateFailures] = await Promise.all([
+  const [rawRows, allGameRows, artifacts, runStatus, parserVersions, fieldCoverage, observations, jobs, candidateFailures, latestArtifactRuns] = await Promise.all([
     loadCorpusRows(),
     prisma.gameStats.count(),
     prisma.replayArtifact.aggregate({ _count: { _all: true }, _sum: { byteSize: true } }),
@@ -148,6 +193,21 @@ async function buildPublicParserObservatory() {
       orderBy: { _count: { failureSignature: "desc" } },
       take: 16,
     }),
+    prisma.replayParseRun.findMany({
+      distinct: ["artifactId"],
+      orderBy: [{ artifactId: "asc" }, { createdAt: "desc" }, { id: "desc" }],
+      select: {
+        artifactId: true,
+        status: true,
+        failureSignature: true,
+        artifact: {
+          select: {
+            originalExtension: true,
+            byteSize: true,
+          },
+        },
+      },
+    }),
   ]);
 
   const rows = applyReplayAdjudicationsToGameStatsRows(rawRows);
@@ -183,6 +243,21 @@ async function buildPublicParserObservatory() {
   let unresolvedResults = 0;
   let unresolvedTeams = 0;
   let reviewRequired = 0;
+
+  const recoveryLaneCounts = new Map<string, number>();
+  const recoveryLaneMeta = new Map<string, { label: string; disposition: string }>();
+  const failureExtensions = new Map<string, number>();
+  const failureSizes = new Map<string, number>();
+  const failedRuns = latestArtifactRuns.filter((run) => run.status === "failed");
+  for (const run of failedRuns) {
+    const signature = run.failureSignature || "missing_signature";
+    const extension = (run.artifact.originalExtension || "unknown").toLowerCase();
+    const lane = failureRecoveryLane({ signature, extension });
+    bump(recoveryLaneCounts, lane.key);
+    recoveryLaneMeta.set(lane.key, { label: lane.label, disposition: lane.disposition });
+    bump(failureExtensions, extension);
+    bump(failureSizes, failureSizeBucket(run.artifact.byteSize));
+  }
 
   for (const row of rows) {
     const players = parsePlayers(row.players);
@@ -283,6 +358,18 @@ async function buildPublicParserObservatory() {
         count: row._count._all,
         latestAt: row._max.createdAt?.toISOString() ?? null,
       })),
+      failureRecovery: {
+        total: failedRuns.length,
+        classified: failedRuns.length - (recoveryLaneCounts.get("manual_review") || 0),
+        lanes: ranked(recoveryLaneCounts, 12).map((row) => ({
+          key: row.key,
+          count: row.count,
+          label: recoveryLaneMeta.get(row.key)?.label || row.key,
+          disposition: recoveryLaneMeta.get(row.key)?.disposition || "Operator review",
+        })),
+        extensions: ranked(failureExtensions, 12),
+        sizes: ranked(failureSizes, 12),
+      },
       jobs: jobs.map((job) => ({
         ...job,
         createdAt: job.createdAt.toISOString(),
@@ -298,7 +385,7 @@ async function buildPublicParserObservatory() {
 
 export const loadPublicParserObservatory = unstable_cache(
   buildPublicParserObservatory,
-  ["public-parser-observatory-v1"],
+  ["public-parser-observatory-v2"],
   { revalidate: 300, tags: ["parser-observatory"] }
 );
 

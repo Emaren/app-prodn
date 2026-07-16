@@ -9,6 +9,7 @@ import {
   radioStoragePath,
   safeOriginalFilename,
 } from "../lib/radioWolo.ts";
+import { normalizeWorkshopDialogue } from "../lib/workshop.ts";
 
 test("Radio WOLO validates file bytes instead of trusting upload extensions", () => {
   assert.deepEqual(detectAudioType(new Uint8Array(Buffer.from("ID3music"))), {
@@ -68,4 +69,37 @@ test("hero rotation still honors the saved pause-on-hover setting", () => {
   assert.match(carousel, /onMouseEnter: \(\) => setInteractionPaused\(true\)/);
   assert.match(carousel, /onMouseLeave: \(\) => setInteractionPaused\(false\)/);
   assert.match(actions, /pauseOnHover: boolValue\(payload\.pauseOnHover, playlist\.pauseOnHover\)/);
+});
+
+test("Workshop migration makes publication explicit and seeds no live fiction", () => {
+  const migration = readFileSync(
+    new URL("../prisma/migrations/20260716233000_add_workshop_foundation/migration.sql", import.meta.url),
+    "utf8"
+  );
+  assert.match(migration, /CREATE TABLE "workshop_status"/);
+  assert.match(migration, /CREATE TABLE "workshop_entries"/);
+  assert.match(migration, /CREATE TABLE "workshop_streams"/);
+  assert.match(migration, /fk_workshop_status_active_stream/);
+  assert.match(migration, /"status" = 'published' AND "visibility" = 'public'/);
+  assert.match(migration, /TRUE, FALSE, 'quiet_work', 'THE WORKSHOP IS OPEN'/);
+  assert.doesNotMatch(migration, /provider_key|api_key|password|database_url/i);
+});
+
+test("Workshop AI excerpts are bounded and discard malformed turns", () => {
+  const turns = normalizeWorkshopDialogue([
+    { speaker: "EMAREN", body: "Build the Workshop." },
+    { speaker: "", body: "private" },
+    { speaker: "THE AI SCRIBE", body: "Publish only a curated projection." },
+    "bad",
+  ]);
+  assert.deepEqual(turns, [
+    { speaker: "EMAREN", body: "Build the Workshop.", tone: null },
+    { speaker: "THE AI SCRIBE", body: "Publish only a curated projection.", tone: null },
+  ]);
+});
+
+test("public Workshop query hard-gates drafts and private records", () => {
+  const source = readFileSync(new URL("../lib/workshop.ts", import.meta.url), "utf8");
+  assert.match(source, /status: "published", visibility: "public", publishedAt: \{ not: null \}/);
+  assert.match(source, /artifacts:[\s\S]*where: \{ isPublic: true \}/);
 });
