@@ -6,6 +6,7 @@ import {
   loadPublicParserObservatory,
   loadViewerParserVault,
 } from "@/lib/parserObservatory";
+import { HD_REPLAY_PARSER_CONTRACT } from "@/lib/replayEngineRoom";
 import { SESSION_COOKIE_NAME, verifySession } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
@@ -31,7 +32,11 @@ export default async function GameStatsPage() {
     loadPublicParserObservatory(),
     loadViewerParserVault(claims?.uid ?? null),
   ]);
-  const activeVersion = data.parser.versions[0] ?? null;
+  const canonicalVersion = data.parser.versions.find(
+    (version) =>
+      version.parserName === HD_REPLAY_PARSER_CONTRACT.parserName &&
+      version.parserVersion === HD_REPLAY_PARSER_CONTRACT.parserVersion
+  ) ?? null;
   const fullJob = data.parser.jobs.find((job) => job.latestEvent?.eventType === "completed") ?? data.parser.jobs[0] ?? null;
 
   return (
@@ -55,7 +60,7 @@ export default async function GameStatsPage() {
           <div className="mt-5 grid gap-3 sm:grid-cols-3"><Mini label="Team-resolved" value={`${data.corpus.resolvedTeams.toLocaleString()} · ${percent(data.corpus.teamCoverageBps)}`} /><Mini label="Needs result/team review" value={data.corpus.reviewRequired.toLocaleString()} /><Mini label="Archived source files" value={data.corpus.archivedArtifacts.toLocaleString()} /></div>
           <p className="mt-5 text-sm leading-6 text-slate-400">Unknowns stay visible here. They are excluded from resolved-result statistics until replay evidence or append-only adjudication establishes a defensible winner.</p>
         </div>
-        <div className="rounded-[1.8rem] border border-amber-200/14 bg-amber-300/[0.055] p-6 sm:p-8"><div className="text-xs uppercase tracking-[0.3em] text-amber-100/55">Active Parser Contract</div><h2 className="mt-3 text-2xl font-semibold">{activeVersion ? `${activeVersion.parserName} ${activeVersion.parserVersion}` : "Parser catalog warming"}</h2><div className="mt-4 space-y-2 text-sm text-slate-300">{activeVersion ? <><Line label="Evidence pass" value={`${activeVersion.passName} v${activeVersion.passVersion}`} /><Line label="Schema" value={activeVersion.schemaVersion} /><Line label="Latest run" value={activeVersion.latestAt ? new Date(activeVersion.latestAt).toLocaleString() : "Not recorded"} /><Line label="Candidate runs" value={data.parser.totalRuns.toLocaleString()} /></> : null}<Line label="Observations preserved" value={compact(data.parser.observations)} /><Line label="Action packets cataloged" value={compact(data.parser.totalActions)} /></div></div>
+        <div className="rounded-[1.8rem] border border-amber-200/14 bg-amber-300/[0.055] p-6 sm:p-8"><div className="text-xs uppercase tracking-[0.3em] text-amber-100/55">Canonical Parser Contract</div><h2 className="mt-3 text-2xl font-semibold">{HD_REPLAY_PARSER_CONTRACT.parserName} {HD_REPLAY_PARSER_CONTRACT.parserVersion}</h2><div className="mt-4 space-y-2 text-sm text-slate-300">{canonicalVersion ? <><Line label="Evidence pass" value={`${canonicalVersion.passName} v${canonicalVersion.passVersion}`} /><Line label="Schema" value={canonicalVersion.schemaVersion} /><Line label="Latest canonical run" value={canonicalVersion.latestAt ? new Date(canonicalVersion.latestAt).toLocaleString() : "Not recorded"} /></> : <Line label="Catalog" value="No canonical run recorded yet" />}<Line label="Candidate runs" value={data.parser.totalRuns.toLocaleString()} /><Line label="Observations preserved" value={compact(data.parser.observations)} /><Line label="Action packets cataloged" value={compact(data.parser.totalActions)} /></div></div>
       </section>
 
       {vault ? <section className="rounded-[1.8rem] border border-emerald-200/14 bg-emerald-300/[0.055] p-6 sm:p-8"><div className="text-xs uppercase tracking-[0.3em] text-emerald-100/60">Your Vault</div><div className="mt-4 grid gap-3 sm:grid-cols-5"><Metric label="Your battles" value={vault.total.toLocaleString()} /><Metric label="Resolved" value={vault.resolved.toLocaleString()} /><Metric label="Unknown" value={vault.unknown.toLocaleString()} alert={vault.unknown > 0} /><Metric label="Teams resolved" value={vault.teamsResolved.toLocaleString()} /><Metric label="Result coverage" value={percent(vault.resultCoverageBps)} /></div></section> : null}

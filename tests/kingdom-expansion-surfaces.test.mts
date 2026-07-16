@@ -103,3 +103,11 @@ test("public Workshop query hard-gates drafts and private records", () => {
   assert.match(source, /status: "published", visibility: "public", publishedAt: \{ not: null \}/);
   assert.match(source, /artifacts:[\s\S]*where: \{ isPublic: true \}/);
 });
+
+test("Parser Observatory keeps compatibility candidates separate from the canonical contract", () => {
+  const page = readFileSync(new URL("../app/game-stats/page.tsx", import.meta.url), "utf8");
+  assert.match(page, /Canonical Parser Contract/);
+  assert.match(page, /HD_REPLAY_PARSER_CONTRACT\.parserName/);
+  assert.match(page, /version\.parserVersion === HD_REPLAY_PARSER_CONTRACT\.parserVersion/);
+  assert.doesNotMatch(page, /const activeVersion = data\.parser\.versions\[0\]/);
+});

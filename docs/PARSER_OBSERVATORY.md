@@ -34,6 +34,8 @@ The latest immutable run per artifact now yields 1,696 candidate completions and
 
 The public recovery map uses the latest immutable run per artifact. Historical failures remain preserved and visible as historical signatures; a later compatibility success retires a current failure without rewriting the earlier run.
 
+The Observatory's contract tile is pinned to `HD_REPLAY_PARSER_CONTRACT`, not whichever candidate run finished most recently. Isolated compatibility versions remain visible in the catalog and recovery evidence without being mislabeled as the canonical parser.
+
 ## Truth and confidence
 
 Public result resolution uses the existing `resolveReplayWinnerTruth` policy plus effective commissioner adjudications. Team resolution reads explicit replay evidence and preserves team ID `0` as valid. Player order and aliases never create teams.
