@@ -16,6 +16,7 @@
     "test:staking-reserve": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/staking-reserve-classification.test.mts",
     "test:challenge": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/challenge-flow.test.mts",
     "test:replay-truth": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/hd-replay-truth.test.mts",
+    "test:kingdom-expansion": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/kingdom-expansion-surfaces.test.mts",
     "test:zodiac": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/zodiac-training.test.mts",
     "watcher:sync": "node scripts/sync-watcher-release.mjs",
     "staking:rewards:run": "node scripts/run-staking-reward-distribution.mjs",

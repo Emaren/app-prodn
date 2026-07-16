@@ -14,6 +14,7 @@ import { createPortal } from "react-dom";
 import {
   BarChart3,
   BadgeDollarSign,
+  Bot,
   Castle,
   ChevronDown,
   Coins,
@@ -26,6 +27,7 @@ import {
   Radio,
   Shield,
   Swords,
+  Target,
   Upload,
   UserCircle,
   Users,
@@ -90,6 +92,9 @@ export default function HeaderMenu({
       { href: "/kingdom", label: "Kingdom", icon: Castle, featured: true },
       { href: "/clans", label: "Clans", icon: Users, featured: true },
       { href: "/watch", label: "Watcher / Streaming", icon: Radio, featured: true },
+      { href: "/bounties", label: "Bounty Board", icon: Target, featured: true },
+      { href: "/ai", label: "AI Council", icon: Bot, featured: true },
+      { href: "/radio", label: "Radio WOLO", icon: Radio, featured: true },
       { href: "/admin/user-list", label: "Admin", icon: Shield, adminOnly: true, featured: true },
       {
         href: "/live-games",
@@ -113,6 +118,7 @@ export default function HeaderMenu({
       { href: "/rivalries", label: "Rivalries", icon: Swords },
       { href: "/upload", label: "Upload Replay", icon: Upload },
       { href: "/game-stats", label: "Game Stats", icon: BarChart3 },
+      { href: "/submit", label: "Submit Music", icon: Upload },
       { href: "/download", label: "Download Watcher", icon: Download },
     ],
     [liveGamesCount, requestCount]

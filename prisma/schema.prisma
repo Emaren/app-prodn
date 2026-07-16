@@ -2071,6 +2071,149 @@ model GameWatchStream {
   @@map("game_watch_streams")
 }
 
+/// Durable, operator-owned configuration layered over the built-in AoE2WAR
+/// runtime personas. Secrets and provider credentials never live here.
+model AiAgent {
+  id                Int      @id @default(autoincrement())
+  slug              String   @unique @db.VarChar(64)
+  runtimePersonaId  String   @default("scribe") @map("runtime_persona_id") @db.VarChar(24)
+  name              String   @db.VarChar(100)
+  avatarUrl         String?  @map("avatar_url") @db.VarChar(500)
+  enabled           Boolean  @default(true)
+  public            Boolean  @default(true)
+  description       String   @default("") @db.VarChar(500)
+  role              String   @default("AoE2WAR council voice") @db.VarChar(160)
+  specialty         String   @default("AoE2HD community intelligence") @db.VarChar(220)
+  introduction      String   @default("") @db.Text
+  personalityPrompt String   @default("") @map("personality_prompt") @db.Text
+  aoe2Prompt        String   @default("") @map("aoe2_prompt") @db.Text
+  knowledgeScopes   Json     @default("[]") @map("knowledge_scopes")
+  allowedTools      Json     @default("[]") @map("allowed_tools")
+  requestedModel    String   @default("Agent4.1Scribe") @map("requested_model") @db.VarChar(80)
+  fallbackModel     String?  @map("fallback_model") @db.VarChar(80)
+  temperature       Float?   @db.DoublePrecision
+  maxContextChars   Int      @default(24000) @map("max_context_chars")
+  timeoutMs         Int      @default(45000) @map("timeout_ms")
+  maxCouncilTurns   Int      @default(2) @map("max_council_turns")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  traces AiRequestTrace[]
+
+  @@index([enabled, public], map: "ix_ai_agents_enabled_public")
+  @@map("ai_agents")
+}
+
+/// Request-level AI timing and failure telemetry. Prompt and response bodies are
+/// deliberately not copied into this table.
+model AiRequestTrace {
+  id                Int      @id @default(autoincrement())
+  agentId           Int?     @map("agent_id")
+  agentSlugSnapshot String   @map("agent_slug_snapshot") @db.VarChar(64)
+  viewerUid         String?  @map("viewer_uid") @db.VarChar(100)
+  source            String   @db.VarChar(40)
+  status            String   @db.VarChar(24)
+  requestedModel    String   @map("requested_model") @db.VarChar(80)
+  contextMs         Int?     @map("context_ms")
+  modelMs           Int?     @map("model_ms")
+  firstTokenMs      Int?     @map("first_token_ms")
+  totalMs           Int      @map("total_ms")
+  promptChars       Int      @default(0) @map("prompt_chars")
+  responseChars     Int      @default(0) @map("response_chars")
+  errorCode         String?  @map("error_code") @db.VarChar(120)
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  agent AiAgent? @relation(fields: [agentId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([agentId, createdAt], map: "ix_ai_request_traces_agent_created")
+  @@index([viewerUid, createdAt], map: "ix_ai_request_traces_viewer_created")
+  @@index([status, createdAt], map: "ix_ai_request_traces_status_created")
+  @@map("ai_request_traces")
+}
+
+/// Canonical app-side opportunity definition. Chain transfers and claim ledgers
+/// remain the authority for whether WOLO actually moved.
+model BountyOpportunity {
+  id           Int      @id @default(autoincrement())
+  slug         String   @unique @db.VarChar(80)
+  title        String   @db.VarChar(160)
+  category     String   @default("kingdom") @db.VarChar(40)
+  description  String   @db.Text
+  eligibility  String?  @db.Text
+  verification String?  @db.Text
+  actionLabel  String   @map("action_label") @db.VarChar(100)
+  actionHref   String   @map("action_href") @db.VarChar(500)
+  rewardWolo   Int?     @map("reward_wolo")
+  status       String   @default("available") @db.VarChar(24)
+  featured     Boolean  @default(false)
+  priority     Int      @default(0)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  events BountyEvent[]
+
+  @@index([status, featured, priority], map: "ix_bounty_opportunities_status_featured_priority")
+  @@map("bounty_opportunities")
+}
+
+/// Append-only app-side bounty lifecycle evidence. It may link to, but never
+/// replaces, indexed WoloChain transfer truth.
+model BountyEvent {
+  id               Int      @id @default(autoincrement())
+  opportunityId    Int?     @map("opportunity_id")
+  eventType        String   @map("event_type") @db.VarChar(24)
+  actorDisplayName String?  @map("actor_display_name") @db.VarChar(120)
+  amountWolo       Int?     @map("amount_wolo")
+  memo             String   @db.Text
+  txHash           String?  @map("tx_hash") @db.VarChar(128)
+  sourceKind       String   @default("operator") @map("source_kind") @db.VarChar(40)
+  sourceRef        String?  @unique(map: "uq_bounty_events_source_ref") @map("source_ref") @db.VarChar(180)
+  occurredAt       DateTime @default(now()) @map("occurred_at") @db.Timestamp(6)
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  opportunity BountyOpportunity? @relation(fields: [opportunityId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([opportunityId, occurredAt], map: "ix_bounty_events_opportunity_occurred")
+  @@index([eventType, occurredAt], map: "ix_bounty_events_type_occurred")
+  @@index([txHash], map: "ix_bounty_events_tx_hash")
+  @@map("bounty_events")
+}
+
+/// Private creator intake plus the public Radio WOLO publication state. Files
+/// live in durable storage; the database stores only metadata and storage keys.
+model RadioSubmission {
+  id                      Int       @id @default(autoincrement())
+  publicId                String    @unique @default(uuid()) @map("public_id") @db.Uuid
+  submitterUid            String?   @map("submitter_uid") @db.VarChar(100)
+  artistName              String    @map("artist_name") @db.VarChar(160)
+  trackTitle              String    @map("track_title") @db.VarChar(200)
+  genre                   String?   @db.VarChar(100)
+  contactEmail            String    @map("contact_email") @db.VarChar(254)
+  contactDiscord          String?   @map("contact_discord") @db.VarChar(120)
+  notes                   String?   @db.Text
+  rightsAccepted          Boolean   @map("rights_accepted")
+  rightsStatementVersion  String    @default("radio-wolo-limited-play-v1") @map("rights_statement_version") @db.VarChar(64)
+  audioOriginalFilename   String    @map("audio_original_filename") @db.VarChar(255)
+  audioStorageKey         String    @unique @map("audio_storage_key") @db.VarChar(1000)
+  audioMediaType          String    @map("audio_media_type") @db.VarChar(100)
+  audioByteSize           BigInt    @map("audio_byte_size")
+  artworkOriginalFilename String?   @map("artwork_original_filename") @db.VarChar(255)
+  artworkStorageKey       String?   @unique @map("artwork_storage_key") @db.VarChar(1000)
+  artworkMediaType        String?   @map("artwork_media_type") @db.VarChar(100)
+  artworkByteSize         BigInt?   @map("artwork_byte_size")
+  status                  String    @default("submitted") @db.VarChar(24)
+  featured                Boolean   @default(false)
+  adminNote               String?   @map("admin_note") @db.Text
+  scheduledAt             DateTime? @map("scheduled_at") @db.Timestamp(6)
+  publishedAt             DateTime? @map("published_at") @db.Timestamp(6)
+  createdAt               DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt               DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  @@index([status, createdAt], map: "ix_radio_submissions_status_created")
+  @@index([featured, publishedAt], map: "ix_radio_submissions_featured_published")
+  @@map("radio_submissions")
+}
+
 model alembic_version {
   version_num String @id(map: "alembic_version_pkc") @db.VarChar(32)
 }

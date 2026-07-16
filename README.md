@@ -23,6 +23,10 @@ The public leaderboard now has two dedicated routes: `/leaderboard` for the mode
 - [docs/HERO_STUDIO.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/docs/HERO_STUDIO.md)
 - [docs/DIRECT_CHAT.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/docs/DIRECT_CHAT.md)
 - [docs/MARKET_TEAM_INTEGRITY.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/docs/MARKET_TEAM_INTEGRITY.md)
+- [docs/AI_COUNCIL_AND_COMMAND_CENTER.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/docs/AI_COUNCIL_AND_COMMAND_CENTER.md)
+- [docs/BOUNTY_BOARD.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/docs/BOUNTY_BOARD.md)
+- [docs/RADIO_WOLO.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/docs/RADIO_WOLO.md)
+- [docs/PARSER_OBSERVATORY.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/docs/PARSER_OBSERVATORY.md)
 
 ## Stack
 
@@ -67,6 +71,11 @@ Current notable product routes include:
 - `/zodiac`
 - `/market`
 - `/forum`
+- `/bounties`
+- `/ai`
+- `/radio`
+- `/submit`
+- `/game-stats`
 - `/live-games`
 - `/players`
 - `/rivalries`

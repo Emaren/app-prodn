@@ -5,6 +5,7 @@ import { useCallback, useMemo, useState } from "react";
 import {
   AlertTriangle,
   ArrowRight,
+  Bot,
   CalendarRange,
   Coins,
   Crown,
@@ -19,6 +20,7 @@ import {
   Search,
   SortDesc,
   Sparkles,
+  Target,
   UsersRound,
 } from "lucide-react";
 
@@ -69,6 +71,9 @@ const ADMIN_NAV_LINKS = [
   { href: "/admin/media-assets", label: "Media Assets", Icon: Images },
   { href: "/admin/replay-review", label: "Replay Review", Icon: FileSearch },
   { href: "/admin/parser-lab", label: "HD Replay Engine Room", Icon: FlaskConical },
+  { href: "/admin/ai", label: "AI Command Center", Icon: Bot },
+  { href: "/admin/bounties", label: "Bounty Command", Icon: Target },
+  { href: "/admin/radio", label: "Radio WOLO Desk", Icon: RadioTower },
   { href: "/admin/wolochain", label: "WoloChain", Icon: Coins },
   { href: "/admin/user-list", label: "User List / Command Tower", Icon: UsersRound },
 ] as const;

@@ -122,6 +122,8 @@ type LobbyChatProps = {
   currentUserIsAdmin: boolean;
   messageBody: string;
   chatPending: boolean;
+  aiThinkingStartedAt: number | null;
+  lastAiThoughtMs: number | null;
   reactingMessageId: number | null;
   moderatingMessageId: number | null;
   aiEnabled: boolean;
@@ -160,6 +162,8 @@ export function LobbyChat(props: LobbyChatProps) {
     currentUserIsAdmin,
     messageBody,
     chatPending,
+    aiThinkingStartedAt,
+    lastAiThoughtMs,
     reactingMessageId,
     moderatingMessageId,
     aiEnabled,
@@ -185,6 +189,7 @@ export function LobbyChat(props: LobbyChatProps) {
   const [chatFilterDockVisible, setChatFilterDockVisible] = useState(false);
   const [typingHudMode, setTypingHudMode] = useState<"steady" | "pulse">("steady");
   const [ownTypingPulse, setOwnTypingPulse] = useState(false);
+  const [aiThinkingSeconds, setAiThinkingSeconds] = useState(0);
   const ownTypingPulseTimerRef = useRef<number | null>(null);
   const lastMessageBodyForTypingPulseRef = useRef(messageBody);
 
@@ -421,14 +426,32 @@ export function LobbyChat(props: LobbyChatProps) {
     messageBody.trim().length > 0 ? `${viewerName} is typing…` : null;
   const ownTypingPulseLabel =
     ownTypingPulse && messageBody.trim().length > 0 ? `${viewerName} is typing…` : null;
+  const aiVoiceLabel = aiScribeEnabled
+    ? aiGrimerEnabled
+      ? "The AI Scribe + Grimer"
+      : "The AI Scribe"
+    : "Grimer";
   const typingLabel =
     chatPending
       ? aiEnabled && (aiScribeEnabled || aiGrimerEnabled)
-        ? `${aiScribeEnabled ? "The AI Scribe" : "Grimer"} is typing…`
+        ? `${aiVoiceLabel} thinking · ${aiThinkingSeconds}s`
         : "The lobby is typing…"
       : premiumTypingHud
         ? ownTypingPulseLabel
         : ownTypingSteadyLabel;
+
+  useEffect(() => {
+    if (!chatPending || aiThinkingStartedAt === null || typeof window === "undefined") {
+      setAiThinkingSeconds(0);
+      return;
+    }
+    const update = () => {
+      setAiThinkingSeconds(Math.max(0, Math.floor((Date.now() - aiThinkingStartedAt) / 1000)));
+    };
+    update();
+    const interval = window.setInterval(update, 250);
+    return () => window.clearInterval(interval);
+  }, [aiThinkingStartedAt, chatPending]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -473,75 +496,55 @@ export function LobbyChat(props: LobbyChatProps) {
       }`}
       style={style}
     >
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex min-w-0 items-center justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <div className={`text-xs uppercase tracking-[0.35em] ${tone.eyebrow}`}>Chat</div>
+          <div className="flex min-w-0 items-center gap-2.5">
+            <div className={`shrink-0 text-xs uppercase tracking-[0.35em] ${tone.eyebrow}`}>Chat</div>
+            {chatAudience.length > 0 ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setChatFilterDockVisible((current) => !current)}
+                  aria-expanded={chatFilterDockVisible}
+                  className="shrink-0 rounded-full border border-white/[0.06] bg-white/[0.035] px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-400 transition hover:bg-white/[0.08] hover:text-white"
+                >
+                  Warriors
+                </button>
+                {chatFilterDockVisible ? (
+                  <div className="flex min-w-0 items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    {chatAudience.map((member) => {
+                      const selected = selectedChatAudienceUids.includes(member.uid);
+                      return (
+                        <button
+                          key={member.uid}
+                          type="button"
+                          onClick={() => toggleChatAudienceUid(member.uid)}
+                          aria-pressed={selected}
+                          title={selected ? `Remove ${member.name} filter` : `Filter ${member.name}`}
+                          className={`relative h-8 w-8 shrink-0 overflow-hidden rounded-full border transition ${
+                            selected
+                              ? "border-amber-200/45 shadow-[0_0_18px_rgba(251,191,36,0.25)]"
+                              : "border-white/10 opacity-75 hover:opacity-100"
+                          }`}
+                        >
+                          <Image src={member.avatarSrc} alt={member.name} fill unoptimized sizes="32px" className="object-cover object-top" />
+                        </button>
+                      );
+                    })}
+                    {selectedChatAudienceUids.length > 0 ? (
+                      <button type="button" onClick={() => setSelectedChatAudienceUids([])} className="shrink-0 rounded-full border border-white/[0.06] px-2 py-1 text-[9px] uppercase tracking-[0.14em] text-slate-400 hover:text-white">Clear</button>
+                    ) : null}
+                  </div>
+                ) : null}
+              </>
+            ) : null}
+          </div>
         </div>
 
         <div className={`shrink-0 rounded-full border border-white/[0.06] px-3 py-1 text-xs ${tone.neutralPill}`}>
           {selectedChatAudienceUids.length > 0 ? `${displayedMessagesCount} shown` : `${messagesCount} recent`}
         </div>
       </div>
-
-      {chatFilterDockVisible && chatAudience.length > 0 ? (
-        <div className="mt-4 rounded-2xl border border-white/[0.055] bg-[#081322]/52 px-3.5 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]">
-          <div className="flex items-center justify-between gap-3">
-                        {selectedChatAudienceUids.length > 0 ? (
-              <button
-                type="button"
-                onClick={() => setSelectedChatAudienceUids([])}
-                className="rounded-full border border-white/[0.06] bg-white/[0.035] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300 transition hover:bg-white/[0.08] hover:text-white"
-              >
-                Clear
-              </button>
-            ) : null}
-          </div>
-
-          <div className="mt-2.5 flex min-w-0 items-center gap-2 overflow-x-auto pb-0.5 pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {chatAudience.map((member) => {
-              const selected = selectedChatAudienceUids.includes(member.uid);
-
-              return (
-                <button
-                  key={member.uid}
-                  type="button"
-                  onClick={() => toggleChatAudienceUid(member.uid)}
-                  aria-pressed={selected}
-                  title={selected ? `Remove ${member.name} filter` : `Filter ${member.name}`}
-                  className={`group relative flex h-11 shrink-0 items-center gap-2 rounded-full border py-1 pl-1 pr-3 transition ${
-                    selected
-                      ? "border-amber-200/26 bg-amber-400/12 text-amber-50 shadow-[0_0_24px_rgba(251,191,36,0.12)]"
-                      : "border-white/[0.055] bg-white/[0.035] text-slate-300 hover:border-white/[0.11] hover:bg-white/[0.07] hover:text-white"
-                  }`}
-                >
-                  <span className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full bg-black/30 shadow-[0_0_0_1px_rgba(255,255,255,0.10)]">
-                    <Image
-                      src={member.avatarSrc}
-                      alt={member.name}
-                      fill
-                      unoptimized
-                      sizes="36px"
-                      className="object-cover object-top"
-                    />
-                  </span>
-
-                  <span className="max-w-[7.5rem] truncate text-[11px] font-semibold tracking-[0.08em]">
-                    {member.name}
-                  </span>
-
-                  <span
-                    className={`absolute right-1.5 top-1.5 h-2 w-2 rounded-full ${
-                      selected ? "bg-amber-300" : "bg-emerald-300/70"
-                    }`}
-                    aria-hidden="true"
-                  />
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      ) : null}
-
 
       <div className="mt-4 flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-x-hidden">
         <div
@@ -615,6 +618,11 @@ export function LobbyChat(props: LobbyChatProps) {
                 </span>
                 <span className="truncate">{typingLabel}</span>
               </div>
+            </div>
+          ) : null}
+          {!chatPending && lastAiThoughtMs !== null ? (
+            <div className="pointer-events-none mt-2 text-center text-[10px] font-medium uppercase tracking-[0.18em] text-slate-500">
+              Thought for {lastAiThoughtMs < 60_000 ? `${Math.max(1, Math.round(lastAiThoughtMs / 1000))}s` : `${Math.floor(lastAiThoughtMs / 60_000)}m ${Math.round((lastAiThoughtMs % 60_000) / 1000)}s`}
             </div>
           ) : null}
         </div>

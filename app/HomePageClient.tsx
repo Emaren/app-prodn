@@ -1175,6 +1175,8 @@ const { uid, isAdmin, isAuthenticated, loading, loginWithSteam, playerName, user
   const [chatNotice, setChatNotice] = useState<string | null>(null);
   const [joinError, setJoinError] = useState<string | null>(null);
   const [chatPending, setChatPending] = useState(false);
+  const [aiThinkingStartedAt, setAiThinkingStartedAt] = useState<number | null>(null);
+  const [lastAiThoughtMs, setLastAiThoughtMs] = useState<number | null>(null);
   const [joinPending, setJoinPending] = useState(false);
   const [chatCardHeight, setChatCardHeight] = useState<number | null>(null);
   const [heroRailHeight, setHeroRailHeight] = useState<number | null>(null);
@@ -1687,7 +1689,7 @@ return () => {
 
   async function handleSendMessage() {
     const trimmed = messageBody.trim();
-    if (!trimmed) return;
+    if (!trimmed || chatPending) return;
 
     if (!isAuthenticated) {
       loginWithSteam("/");
@@ -1696,6 +1698,12 @@ return () => {
 
     try {
       setChatPending(true);
+      const aiWillAnswer = aiEnabled && (aiScribeEnabled || aiGrimerEnabled);
+      const requestStartedAt = Date.now();
+      if (aiWillAnswer) {
+        setAiThinkingStartedAt(requestStartedAt);
+        setLastAiThoughtMs(null);
+      }
       setChatError(null);
 
       const response = await fetch("/api/lobby/chat", {
@@ -1729,11 +1737,15 @@ return () => {
             }
           : current
       );
+      if (aiWillAnswer) {
+        setLastAiThoughtMs(Date.now() - requestStartedAt);
+      }
     } catch (error) {
       setChatError(error instanceof Error ? error.message : "Message failed.");
       setChatNotice(null);
     } finally {
       setChatPending(false);
+      setAiThinkingStartedAt(null);
     }
   }
 
@@ -1983,6 +1995,8 @@ return (
           currentUserIsAdmin={isAdmin}
           messageBody={messageBody}
           chatPending={chatPending}
+          aiThinkingStartedAt={aiThinkingStartedAt}
+          lastAiThoughtMs={lastAiThoughtMs}
           reactingMessageId={reactingMessageId}
           moderatingMessageId={moderatingMessageId}
           aiEnabled={aiEnabled}

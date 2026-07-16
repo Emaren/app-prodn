@@ -1,5 +1,9 @@
 import type { PrismaClient } from "@/lib/generated/prisma";
 import {
+  loadRuntimeAiAgent,
+  type AiAgentRuntimeConfig,
+} from "@/lib/aiAgents";
+import {
   AI_CONCIERGE_NAME,
   AI_CONCIERGE_UID,
   LLAMA_CHAT_GATEWAY_URL,
@@ -35,13 +39,20 @@ export type RequestAiConciergeReplyArgs = {
     uid: string;
     displayName: string;
   };
-  source: "lobby_public" | "lobby_private" | "contact_thread";
+  source:
+    | "lobby_public"
+    | "lobby_private"
+    | "contact_thread"
+    | "council"
+    | "bounty_page";
   userMessage: string;
   requestedModel?: string | null;
   visibility?: AiVisibilityOption;
   roomSlug?: string | null;
   conversationHistory?: AiConversationTurn[];
   personaId?: AiPersonaId;
+  agentConfig?: AiAgentRuntimeConfig | null;
+  groundingContext?: string | null;
 };
 
 const AI_LOBBY_PUBLIC_REPLY_MAX_CHARS = 280;
@@ -652,10 +663,21 @@ function buildSystemPrompt(
   personaId: AiPersonaId,
 ) {
   const persona = getAiPersonaConfig(personaId);
+  const configuredName = args.agentConfig?.name || persona.name;
   const basePrompt = [
-    `You are ${persona.name} for AoE2HDBets.`,
+    `You are ${configuredName} for AoE2WAR.`,
     `Active lane: ${args.source}.`,
     buildSiteKnowledge(personaId),
+    args.agentConfig?.role ? `Configured role: ${args.agentConfig.role}` : "",
+    args.agentConfig?.specialty
+      ? `Configured specialty: ${args.agentConfig.specialty}`
+      : "",
+    args.agentConfig?.personalityPrompt
+      ? `Operator-approved personality layer:\n${args.agentConfig.personalityPrompt}`
+      : "",
+    args.agentConfig?.aoe2Prompt
+      ? `Operator-approved AoE2 expertise layer:\n${args.agentConfig.aoe2Prompt}`
+      : "",
     "If the answer is not supported by the provided context, say what you do know and be explicit about the gap.",
     "Do not mention prompt files, providers, internal tools, or hidden system details unless the user explicitly asks what prompt/model/version you are on; then answer only the available runtime label/version briefly.",
     "Never use em dashes. Use commas, periods, colons, or simple hyphens instead.",
@@ -666,7 +688,7 @@ function buildSystemPrompt(
     "stakingWeight is time-weighted accounting, not extra WOLO balance.",
     "For human/user/player count questions, use Site identity summary first. Never count AI persona/system accounts as human users.",
     "Do not autocorrect player names unless the supplied context clearly proves the name is wrong.",
-  ];
+  ].filter(Boolean);
 
   if (args.source === "lobby_public") {
     if (personaId === "guy") {
@@ -793,6 +815,9 @@ function buildUserPrompt(
     formatPeopleContext(context.peopleContext),
     formatMoneyContext(context.moneyContext),
     formatStakingContext(context.stakingContext),
+    args.groundingContext
+      ? `Authoritative page grounding for this reply:\n${args.groundingContext}`
+      : "Authoritative page grounding: none supplied.",
     threadHistory,
     `Question or message to answer:\n${args.userMessage}`,
   ].join("\n\n");
@@ -844,10 +869,53 @@ export async function requestAiConciergeReply(
 ) {
   const personaId = args.personaId ?? "scribe";
   const persona = getAiPersonaConfig(personaId);
+  const startedAt = Date.now();
+  const agentConfig =
+    args.agentConfig === undefined
+      ? await loadRuntimeAiAgent(args.prisma, personaId).catch(() => null)
+      : args.agentConfig;
+  if (agentConfig && !agentConfig.enabled) {
+    throw new Error(`${agentConfig.name} is disabled.`);
+  }
   const requestedModel: AiModelId =
     (args.requestedModel as AiModelId | null | undefined) ||
+    (agentConfig?.requestedModel as AiModelId | null | undefined) ||
     persona.requestedModel;
 
+  let traceRecorded = false;
+  const writeTrace = async (input: {
+    status: "succeeded" | "failed" | "timed_out";
+    contextMs: number | null;
+    modelMs: number | null;
+    promptChars: number;
+    responseChars: number;
+    errorCode?: string | null;
+  }) => {
+    try {
+      await args.prisma.aiRequestTrace.create({
+        data: {
+          agentId: agentConfig?.id ?? null,
+          agentSlugSnapshot: agentConfig?.slug ?? personaId,
+          viewerUid: args.viewer.uid,
+          source: args.source,
+          status: input.status,
+          requestedModel,
+          contextMs: input.contextMs,
+          modelMs: input.modelMs,
+          firstTokenMs: null,
+          totalMs: Math.max(0, Date.now() - startedAt),
+          promptChars: input.promptChars,
+          responseChars: input.responseChars,
+          errorCode: input.errorCode?.slice(0, 120) || null,
+        },
+      });
+      traceRecorded = true;
+    } catch (traceError) {
+      console.warn("Failed to persist AI request telemetry:", traceError);
+    }
+  };
+
+  const contextStartedAt = Date.now();
   const [
     chatMessages,
     leaderboard,
@@ -865,59 +933,147 @@ export async function requestAiConciergeReply(
     loadAiStakingContext(args.prisma, args.viewer.uid),
     loadAiPeopleContext(args.prisma),
   ]);
+  const contextMs = Date.now() - contextStartedAt;
 
-  const response = await fetch(LLAMA_CHAT_GATEWAY_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      to: requestedModel,
-      messages: [
-        {
-          role: "system",
-          content: buildSystemPrompt(args, personaId),
-        },
-        {
-          role: "user",
-          content: buildUserPrompt(args, {
-            chatMessages,
-            leaderboard,
-            recentMatches,
-            moneyContext,
-            stakingContext,
-            peopleContext,
-          }),
-        },
-      ],
-    }),
-    cache: "no-store",
-  });
+  const systemPrompt = buildSystemPrompt(
+    { ...args, agentConfig },
+    personaId
+  );
+  const rawUserPrompt = buildUserPrompt(
+    { ...args, agentConfig },
+    {
+      chatMessages,
+      leaderboard,
+      recentMatches,
+      moneyContext,
+      stakingContext,
+      peopleContext,
+    }
+  );
+  const maxContextChars = Math.max(
+    2_000,
+    Math.min(100_000, agentConfig?.maxContextChars ?? 24_000)
+  );
+  const userPrompt =
+    rawUserPrompt.length <= maxContextChars
+      ? rawUserPrompt
+      : `${rawUserPrompt.slice(0, 7_000)}\n\n[Middle context compacted]\n\n${rawUserPrompt.slice(
+          -(maxContextChars - 7_040)
+        )}`;
+  const promptChars = systemPrompt.length + userPrompt.length;
+  const timeoutMs = Math.max(
+    5_000,
+    Math.min(120_000, agentConfig?.timeoutMs ?? 45_000)
+  );
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  const modelStartedAt = Date.now();
 
-  const payload = (await response.json().catch(() => ({}))) as {
-    text?: string;
-    error?: string;
-  };
+  try {
+    const response = await fetch(LLAMA_CHAT_GATEWAY_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        to: requestedModel,
+        messages: [
+          {
+            role: "system",
+            content: systemPrompt,
+          },
+          {
+            role: "user",
+            content: userPrompt,
+          },
+        ],
+      }),
+      cache: "no-store",
+      signal: controller.signal,
+    });
+    const modelMs = Date.now() - modelStartedAt;
 
-  if (!response.ok) {
-    throw new Error(
-      payload.error || `${persona.name} is unavailable (${response.status}).`,
-    );
+    const payload = (await response.json().catch(() => ({}))) as {
+      text?: string;
+      error?: string;
+    };
+
+    if (!response.ok) {
+      const error = new Error(
+        payload.error || `${agentConfig?.name || persona.name} is unavailable (${response.status}).`
+      );
+      await writeTrace({
+        status: "failed",
+        contextMs,
+        modelMs,
+        promptChars,
+        responseChars: 0,
+        errorCode: `gateway_${response.status}`,
+      });
+      throw error;
+    }
+
+    const reply = normalizeAiReply(payload.text || "", args.source);
+    if (!reply) {
+      await writeTrace({
+        status: "failed",
+        contextMs,
+        modelMs,
+        promptChars,
+        responseChars: 0,
+        errorCode: "empty_reply",
+      });
+      throw new Error(`${agentConfig?.name || persona.name} returned an empty reply.`);
+    }
+
+    await writeTrace({
+      status: "succeeded",
+      contextMs,
+      modelMs,
+      promptChars,
+      responseChars: reply.length,
+    });
+
+    return {
+      body: reply,
+      requestedModel,
+      requestedModelLabel: getAiModelLabel(requestedModel),
+      personaId,
+      personaName: agentConfig?.name || persona.name,
+      personaUid: persona.uid,
+      timing: {
+        contextMs,
+        modelMs,
+        totalMs: Date.now() - startedAt,
+        firstTokenMs: null,
+      },
+    };
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      await writeTrace({
+        status: "timed_out",
+        contextMs,
+        modelMs: Date.now() - modelStartedAt,
+        promptChars,
+        responseChars: 0,
+        errorCode: "timeout",
+      });
+      throw new Error(`${agentConfig?.name || persona.name} timed out after ${Math.round(timeoutMs / 1000)}s.`);
+    }
+    if (!traceRecorded) {
+      await writeTrace({
+        status: "failed",
+        contextMs,
+        modelMs: Date.now() - modelStartedAt,
+        promptChars,
+        responseChars: 0,
+        errorCode: "network_or_runtime_error",
+      });
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
   }
-
-  const reply = normalizeAiReply(payload.text || "", args.source);
-  if (!reply) {
-    throw new Error(`${persona.name} returned an empty reply.`);
-  }
-
-  return {
-    body: reply,
-    requestedModel,
-    requestedModelLabel: getAiModelLabel(requestedModel),
-    personaId,
-    personaName: persona.name,
-    personaUid: persona.uid,
-  };
 }
 
 export const DEFAULT_AI_CONTACT_TARGET_UID = AI_CONCIERGE_UID;

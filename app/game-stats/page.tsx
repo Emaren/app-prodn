@@ -1,193 +1,89 @@
+import { cookies } from "next/headers";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import ReviewReplayResultButton from "@/components/game-stats/ReviewReplayResultButton";
 import {
-  displayPlayerName,
-  displayReplayFilename,
-  formatDurationLabel,
-  parsePlayers,
-  readMapName,
-  readPlayedAt,
-} from "@/lib/gameStatsView";
-import { getPrisma } from "@/lib/prisma";
-import {
-  applyReplayAdjudicationsToGameStatsRows,
-  EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION,
-} from "@/lib/replayAdjudications";
-import { resolveReliableReplayWinner } from "@/lib/unresolvedWatcherResult";
+  loadPublicParserObservatory,
+  loadViewerParserVault,
+} from "@/lib/parserObservatory";
+import { SESSION_COOKIE_NAME, verifySession } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
-function playerWon(player: Record<string, unknown>) {
-  return player.winner === true || player.winner === "true" || player.winner === 1;
+function percent(bps: number) {
+  return `${(bps / 100).toFixed(1)}%`;
+}
+
+function bytes(value: number) {
+  if (value >= 1024 ** 3) return `${(value / 1024 ** 3).toFixed(2)} GB`;
+  if (value >= 1024 ** 2) return `${(value / 1024 ** 2).toFixed(1)} MB`;
+  return `${Math.round(value / 1024).toLocaleString()} KB`;
+}
+
+function compact(value: number) {
+  return new Intl.NumberFormat("en-US", { notation: value >= 10_000 ? "compact" : "standard", maximumFractionDigits: 1 }).format(value);
 }
 
 export default async function GameStatsPage() {
-  const prisma = getPrisma();
-  const [rawGames, totalGames] = await Promise.all([
-    prisma.gameStats.findMany({
-      where: { is_final: true },
-      orderBy: [{ played_on: "desc" }, { timestamp: "desc" }, { createdAt: "desc" }],
-      take: 100,
-      include: {
-        replayResultAdjudications: EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION,
-        user: {
-          select: {
-            uid: true,
-            inGameName: true,
-            steamPersonaName: true,
-            verificationLevel: true,
-            verified: true,
-          },
-        },
-        replayParseAttempts: {
-          select: { userUid: true },
-        },
-      },
-    }),
-    prisma.gameStats.count({ where: { is_final: true } }),
+  const cookieStore = await cookies();
+  const claims = await verifySession(cookieStore.get(SESSION_COOKIE_NAME)?.value);
+  const [data, vault] = await Promise.all([
+    loadPublicParserObservatory(),
+    loadViewerParserVault(claims?.uid ?? null),
   ]);
-  const games = applyReplayAdjudicationsToGameStatsRows(rawGames);
+  const activeVersion = data.parser.versions[0] ?? null;
+  const fullJob = data.parser.jobs.find((job) => job.latestEvent?.eventType === "completed") ?? data.parser.jobs[0] ?? null;
 
   return (
-    <main className="space-y-6 py-6 text-white">
-      <section className="relative overflow-hidden rounded-[2.2rem] border border-amber-100/12 bg-[radial-gradient(circle_at_14%_0%,rgba(251,191,36,0.17),transparent_30%),radial-gradient(circle_at_88%_18%,rgba(56,189,248,0.12),transparent_28%),linear-gradient(140deg,#111827,#07111f_58%,#080b12)] p-7 shadow-[0_32px_110px_rgba(0,0,0,0.34)] sm:p-10">
-        <div className="pointer-events-none absolute inset-x-20 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/50 to-transparent" />
-        <div className="relative grid gap-8 lg:grid-cols-[1.25fr_0.75fr] lg:items-end">
-          <div>
-            <div className="text-xs font-bold uppercase tracking-[0.38em] text-amber-100/70">
-              AoE2HD Battle Intelligence
-            </div>
-            <h1 className="mt-4 max-w-4xl font-serif text-4xl leading-[1.02] tracking-[-0.035em] text-white sm:text-6xl">
-              The permanent war record for Age of Empires II HD.
-            </h1>
-            <p className="mt-5 max-w-3xl text-base leading-7 text-slate-300 sm:text-lg">
-              Replays become battle records, rivalries, player histories, command timelines, and a living archive for the HD community.
-            </p>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Link href="/upload" className="rounded-full bg-amber-300 px-5 py-3 text-sm font-bold text-slate-950 transition hover:bg-amber-200">
-                Upload Your Replays
-              </Link>
-              <Link href="/battle-archive" className="rounded-full border border-white/16 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition hover:border-white/30 hover:bg-white/10">
-                Enter The War Vault
-              </Link>
-            </div>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-            <StatCard label="Battles Filed" value={totalGames.toLocaleString()} />
-            <StatCard label="Latest Records" value={String(games.length)} />
-            <StatCard label="Replay Standard" value="HD 5.8" />
-          </div>
+    <main className="space-y-7 py-7 text-white">
+      <section className="relative overflow-hidden rounded-[2.2rem] border border-cyan-100/12 bg-[radial-gradient(circle_at_12%_0%,rgba(34,211,238,0.16),transparent_31%),radial-gradient(circle_at_88%_14%,rgba(251,191,36,0.15),transparent_29%),linear-gradient(145deg,#071522,#05070d_62%)] p-7 sm:p-11">
+        <div className="text-xs font-bold uppercase tracking-[0.42em] text-cyan-100/62">Public Parser Observatory</div>
+        <h1 className="mt-4 max-w-5xl font-serif text-5xl leading-none sm:text-7xl">Recovering the lost war record.</h1>
+        <div className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          <Metric label="Logical battles" value={data.corpus.logicalGames.toLocaleString()} />
+          <Metric label="Results resolved" value={data.corpus.resolvedResults.toLocaleString()} />
+          <Metric label="Battles in the fog" value={data.corpus.unresolvedResults.toLocaleString()} alert={data.corpus.unresolvedResults > 0} />
+          <Metric label="Warriors represented" value={data.corpus.playersRepresented.toLocaleString()} />
+          <Metric label="Replay vault" value={bytes(data.corpus.archivedBytes)} />
         </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[1fr_20rem]">
-        <div className="rounded-[1.8rem] border border-white/10 bg-slate-950/72 p-5 sm:p-6">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <div className="text-xs uppercase tracking-[0.35em] text-sky-100/55">Freshly Filed</div>
-              <h2 className="mt-2 text-3xl font-semibold text-white">Latest HD battle records</h2>
-            </div>
-            <Link href="/battle-archive" className="text-sm font-semibold text-amber-200 transition hover:text-amber-100">
-              Browse all {totalGames.toLocaleString()} battles →
-            </Link>
-          </div>
-
-          <div className="mt-6 grid gap-4 lg:grid-cols-2">
-            {games.map((game) => {
-              const players = parsePlayers(game.players);
-              const winningNames = players.filter(playerWon).map(displayPlayerName);
-              const reliableWinner = resolveReliableReplayWinner({
-                winner: game.winner,
-                players,
-                parseReason: game.parse_reason,
-                keyEvents: game.key_events,
-                eventTypes: game.event_types,
-              });
-              const victoryLabel = winningNames.length > 0 ? winningNames.join(" / ") : reliableWinner;
-              const playedAt = readPlayedAt(game);
-              const parsedMapName = readMapName(game.map);
-              const mapName = parsedMapName === "Map unavailable" ? "HD Battle Record" : parsedMapName;
-
-              return (
-                <article
-                  key={game.id}
-                  className="group rounded-[1.45rem] border border-white/8 bg-[linear-gradient(145deg,rgba(255,255,255,0.055),rgba(255,255,255,0.018))] p-5 transition hover:-translate-y-0.5 hover:border-amber-200/25 hover:bg-white/[0.07]"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-sky-100/55">
-                        Battle #{game.id}
-                      </div>
-                      <h3 className="mt-2 break-words text-xl font-semibold text-white">{mapName}</h3>
-                    </div>
-                    <Tag>{victoryLabel ? "Decisive result" : "Battle filed"}</Tag>
-                  </div>
-
-                  <div className="mt-4 break-words text-sm leading-6 text-slate-300">
-                    {players.length > 0
-                      ? players.map(displayPlayerName).join(" · ")
-                      : "Replay roster preserved"}
-                  </div>
-
-                  {victoryLabel ? (
-                    <div className="mt-4 rounded-xl border border-emerald-200/12 bg-emerald-300/[0.06] px-3 py-2 text-sm font-semibold text-emerald-100">
-                      {victoryLabel} victorious
-                    </div>
-                  ) : null}
-
-                  <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-slate-400">
-                    <Tag>{displayReplayFilename(game.original_filename, game.replay_file)}</Tag>
-                    {game.game_duration && game.game_duration > 0 ? <Tag>{formatDurationLabel(game.game_duration)}</Tag> : null}
-                    {game.user ? <Tag>{game.user.inGameName || game.user.steamPersonaName || "HD warrior"}</Tag> : null}
-                  </div>
-                  {playedAt ? <div className="mt-3 text-xs text-slate-500">{new Date(playedAt).toLocaleString()}</div> : null}
-                  <div className="mt-5 flex flex-wrap gap-2 border-t border-white/8 pt-4">
-                    <Link
-                      href={`/game-stats/${game.id}`}
-                      className="w-full rounded-full border border-white/14 bg-white/5 px-4 py-2 text-center text-sm font-semibold text-white transition hover:border-sky-200/35 hover:bg-white/10 sm:w-auto"
-                    >
-                      Open Battle
-                    </Link>
-                    <ReviewReplayResultButton
-                      gameStatsId={game.id}
-                      submitterUids={[
-                        game.userUid,
-                        ...game.replayParseAttempts.map((attempt) => attempt.userUid),
-                      ]}
-                    />
-                  </div>
-                </article>
-              );
-            })}
-          </div>
+      <section className="grid gap-5 lg:grid-cols-[1.15fr_0.85fr]">
+        <div className="rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-6 sm:p-8">
+          <div className="flex flex-wrap items-end justify-between gap-4"><div><div className="text-xs uppercase tracking-[0.3em] text-cyan-100/55">Replay Truth Progress</div><h2 className="mt-2 text-3xl font-semibold">{data.corpus.resolvedResults.toLocaleString()} / {data.corpus.logicalGames.toLocaleString()} results resolved</h2></div><div className="text-2xl font-semibold text-cyan-100">{percent(data.corpus.resultCoverageBps)}</div></div>
+          <Progress value={data.corpus.resultCoverageBps} />
+          <div className="mt-5 grid gap-3 sm:grid-cols-3"><Mini label="Team-resolved" value={`${data.corpus.resolvedTeams.toLocaleString()} · ${percent(data.corpus.teamCoverageBps)}`} /><Mini label="Needs result/team review" value={data.corpus.reviewRequired.toLocaleString()} /><Mini label="Archived source files" value={data.corpus.archivedArtifacts.toLocaleString()} /></div>
+          <p className="mt-5 text-sm leading-6 text-slate-400">Unknowns stay visible here. They are excluded from resolved-result statistics until replay evidence or append-only adjudication establishes a defensible winner.</p>
         </div>
-
-        <aside className="space-y-4">
-          <Feature title="Teams & Results" body="Exact replay rosters, team sides, winner evidence, and a commissioner-backed correction trail." />
-          <Feature title="Player War Books" body="Every uploaded battle strengthens player profiles, rivalries, map history, and long-term form." />
-          <Feature title="Command Intelligence" body="Build orders, research, unit commands, resign timing, and battle rhythm power the next HD analytics layer." />
-          <div className="rounded-[1.5rem] border border-amber-200/18 bg-amber-300/[0.07] p-5">
-            <div className="text-xs font-bold uppercase tracking-[0.28em] text-amber-100/65">Bring Your History Home</div>
-            <p className="mt-3 text-sm leading-6 text-slate-300">Old HD files still have stories to tell. Upload a folder and build your permanent player archive.</p>
-            <Link href="/upload" className="mt-4 inline-flex rounded-full bg-amber-300 px-4 py-2 text-sm font-bold text-slate-950 transition hover:bg-amber-200">Start your vault</Link>
-          </div>
-        </aside>
+        <div className="rounded-[1.8rem] border border-amber-200/14 bg-amber-300/[0.055] p-6 sm:p-8"><div className="text-xs uppercase tracking-[0.3em] text-amber-100/55">Active Parser Contract</div><h2 className="mt-3 text-2xl font-semibold">{activeVersion ? `${activeVersion.parserName} ${activeVersion.parserVersion}` : "Parser catalog warming"}</h2><div className="mt-4 space-y-2 text-sm text-slate-300">{activeVersion ? <><Line label="Evidence pass" value={`${activeVersion.passName} v${activeVersion.passVersion}`} /><Line label="Schema" value={activeVersion.schemaVersion} /><Line label="Latest run" value={activeVersion.latestAt ? new Date(activeVersion.latestAt).toLocaleString() : "Not recorded"} /><Line label="Candidate runs" value={data.parser.totalRuns.toLocaleString()} /></> : null}<Line label="Observations preserved" value={compact(data.parser.observations)} /><Line label="Action packets cataloged" value={compact(data.parser.totalActions)} /></div></div>
       </section>
+
+      {vault ? <section className="rounded-[1.8rem] border border-emerald-200/14 bg-emerald-300/[0.055] p-6 sm:p-8"><div className="text-xs uppercase tracking-[0.3em] text-emerald-100/60">Your Vault</div><div className="mt-4 grid gap-3 sm:grid-cols-5"><Metric label="Your battles" value={vault.total.toLocaleString()} /><Metric label="Resolved" value={vault.resolved.toLocaleString()} /><Metric label="Unknown" value={vault.unknown.toLocaleString()} alert={vault.unknown > 0} /><Metric label="Teams resolved" value={vault.teamsResolved.toLocaleString()} /><Metric label="Result coverage" value={percent(vault.resultCoverageBps)} /></div></section> : null}
+
+      <section className="grid gap-5 xl:grid-cols-2">
+        <RankPanel title="Unknowns by replay owner" rows={data.unknowns.byOwner} />
+        <RankPanel title="Unknowns by warrior in roster" rows={data.unknowns.byRosterPlayer} />
+        <RankPanel title="Unknowns by result reason" rows={data.unknowns.byReason} />
+        <RankPanel title="Unknowns by replay game type" rows={data.unknowns.byGameType} />
+      </section>
+
+      <section className="rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-6 sm:p-8"><div className="flex flex-wrap items-end justify-between gap-4"><div><div className="text-xs uppercase tracking-[0.3em] text-cyan-100/55">Extraction Coverage</div><h2 className="mt-2 text-3xl font-semibold">Stats currently acquired</h2></div><div className="text-sm text-slate-500">Top {data.parser.fields.length} observed fields</div></div><div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">{data.parser.fields.slice(0, 30).map((field) => <div key={field.fieldPath} className="rounded-xl border border-white/8 bg-white/[0.03] p-4"><div className="flex items-start justify-between gap-3"><code className="break-all text-xs text-cyan-100">{field.fieldPath}</code><span className="shrink-0 text-xs text-slate-500">{field.observations.toLocaleString()}</span></div><div className="mt-2 text-[10px] uppercase tracking-[0.16em] text-slate-500">{field.minConfidenceBps === null ? "Experimental / unscored" : field.minConfidenceBps === field.maxConfidenceBps ? `${percent(field.minConfidenceBps)} confidence rubric` : `${percent(field.minConfidenceBps)}–${percent(field.maxConfidenceBps || field.minConfidenceBps)} confidence rubric`}</div></div>)}</div></section>
+
+      <section className="grid gap-5 lg:grid-cols-[1.05fr_0.95fr]"><div className="rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-6 sm:p-8"><div className="text-xs uppercase tracking-[0.3em] text-amber-100/55">Latest Engine Room Campaign</div>{fullJob ? <><h2 className="mt-3 text-3xl font-semibold">{fullJob.maxArtifacts.toLocaleString()}-artifact bounded manifest</h2><div className="mt-5 grid gap-3 sm:grid-cols-3"><Mini label="Processed" value={(fullJob.latestEvent?.processedCount ?? 0).toLocaleString()} /><Mini label="Full candidates" value={(fullJob.latestEvent?.succeededCount ?? 0).toLocaleString()} /><Mini label="Structured failures" value={(fullJob.latestEvent?.failedCount ?? 0).toLocaleString()} /></div><p className="mt-5 text-sm leading-6 text-slate-400">Status: <span className="text-emerald-100">{fullJob.latestEvent?.eventType || "queued"}</span>. Candidate-only: {fullJob.candidateOnly ? "yes" : "no"}. Public aggregates affected: {fullJob.affectsPublicAggregates ? "yes" : "no"}.</p></> : <div className="mt-4 text-slate-500">No bounded parser campaign is cataloged.</div>}</div><div className="rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-6 sm:p-8"><div className="text-xs uppercase tracking-[0.3em] text-rose-100/55">Candidate Failure Signatures</div><div className="mt-4 space-y-2">{data.parser.failures.map((failure) => <div key={failure.signature} className="rounded-xl border border-white/8 bg-white/[0.03] p-3"><div className="flex items-start justify-between gap-3"><code className="break-all text-[11px] text-slate-300">{failure.signature}</code><span className="shrink-0 text-sm font-semibold text-rose-100">{failure.count}</span></div></div>)}</div></div></section>
+
+      <section className="rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-6 sm:p-8"><div className="text-xs uppercase tracking-[0.3em] text-amber-100/55">Battles Remaining in the Fog</div><div className="mt-5 grid gap-4 lg:grid-cols-2">{data.unknowns.latest.map((game) => <article key={game.id} className="rounded-2xl border border-white/8 bg-white/[0.03] p-5"><div className="flex items-start justify-between gap-4"><div><div className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Battle #{game.id} · {game.owner}</div><h3 className="mt-2 text-lg font-semibold">{game.players.length ? game.players.join(" · ") : "Roster unavailable"}</h3></div><span className="rounded-full border border-amber-200/15 bg-amber-300/[0.07] px-3 py-1 text-[10px] uppercase tracking-[0.15em] text-amber-100">Needs proof</span></div><div className="mt-3 text-sm text-slate-400">{game.mapName} · {game.gameType} · {game.parseReason}</div><div className="mt-3 text-xs leading-5 text-slate-500">Needed: {game.neededEvidence.join(", ") || "human review or stronger final evidence"}</div><Link href={`/game-stats/${game.id}`} className="mt-4 inline-flex rounded-full border border-white/10 px-4 py-2 text-xs font-semibold text-white">Open battle record</Link></article>)}</div></section>
+
+      <section className="rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-6 sm:p-8"><div className="flex flex-wrap items-end justify-between gap-4"><div><div className="text-xs uppercase tracking-[0.3em] text-cyan-100/55">Recently Decoded</div><h2 className="mt-2 text-3xl font-semibold">Deep battle records</h2></div><div className="flex gap-2"><Link href="/upload" className="rounded-full bg-amber-300 px-4 py-2 text-xs font-bold text-slate-950">Upload history</Link><Link href="/download" className="rounded-full border border-white/12 px-4 py-2 text-xs font-semibold">Download Watcher</Link></div></div><div className="mt-5 grid gap-4 lg:grid-cols-2">{data.recentDecodes.map((game) => <article key={game.id} className="rounded-2xl border border-white/8 bg-white/[0.03] p-5"><div className="flex flex-wrap items-center justify-between gap-3"><span className="text-xs text-slate-500">Battle #{game.id}</span><div className="flex gap-2"><Pill>{game.teamsResolved ? `Teams ${game.teamConfidence}` : "Teams unresolved"}</Pill><Pill>{game.winner ? `Result ${game.resultConfidence}` : "Result review"}</Pill></div></div><h3 className="mt-3 text-xl font-semibold">{game.players.length ? game.players.join(" · ") : "Replay roster"}</h3><div className="mt-2 text-sm text-slate-400">{game.mapName}{game.winner ? ` · ${game.winner} victorious` : " · winner under review"}</div><div className="mt-4 flex items-center justify-between gap-3"><span className="text-xs text-slate-500">{game.teamProvenance}</span><Link href={`/game-stats/${game.id}`} className="text-sm font-semibold text-cyan-100">Open →</Link></div></article>)}</div></section>
+
+      <section className="grid gap-4 md:grid-cols-2"><Roadmap title="Under active research" items={["Postgame tables and exact end-screen statistics", "Validated action-rate and eAPM semantics", "Kills, losses, resource totals, and peak army", "Controlled HD playback and screenshot/OCR evidence"]} /><Roadmap title="Truth law" items={["Explicit replay team IDs only, including valid team 0", "No player-order team assignment", "No uploader-loss or player-one winner fabrication", "Candidate parser output never rewrites public or financial truth"]} /></section>
     </main>
   );
 }
 
-function StatCard({ label, value }: { label: string; value: string }) {
-  return <div className="rounded-[1.35rem] border border-white/10 bg-black/20 px-4 py-4"><div className="text-[10px] uppercase tracking-[0.28em] text-slate-400">{label}</div><div className="mt-2 text-2xl font-semibold text-white">{value}</div></div>;
-}
-
-function Feature({ title, body }: { title: string; body: string }) {
-  return <div className="rounded-[1.4rem] border border-white/9 bg-slate-950/72 p-5"><h3 className="text-lg font-semibold text-white">{title}</h3><p className="mt-2 text-sm leading-6 text-slate-400">{body}</p></div>;
-}
-
-function Tag({ children }: { children: ReactNode }) {
-  return <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">{children}</span>;
-}
+function Metric({ label, value, alert = false }: { label: string; value: string; alert?: boolean }) { return <div className={`rounded-2xl border p-4 ${alert ? "border-amber-200/18 bg-amber-300/[0.07]" : "border-white/10 bg-black/22"}`}><div className="text-[10px] uppercase tracking-[0.24em] text-slate-500">{label}</div><div className={`mt-2 text-xl font-semibold ${alert ? "text-amber-100" : "text-white"}`}>{value}</div></div>; }
+function Mini({ label, value }: { label: string; value: string }) { return <div className="rounded-xl border border-white/8 bg-white/[0.03] p-3"><div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{label}</div><div className="mt-1 text-sm font-semibold text-white">{value}</div></div>; }
+function Line({ label, value }: { label: string; value: string }) { return <div className="flex items-start justify-between gap-4 border-b border-white/7 pb-2"><span className="text-slate-500">{label}</span><span className="break-all text-right text-slate-200">{value}</span></div>; }
+function Progress({ value }: { value: number }) { return <div className="mt-5 h-3 overflow-hidden rounded-full bg-white/[0.06]"><div className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-emerald-300 to-amber-300" style={{ width: `${Math.max(0, Math.min(100, value / 100))}%` }} /></div>; }
+function RankPanel({ title, rows }: { title: string; rows: Array<{ key: string; count: number }> }) { const max = rows[0]?.count || 1; return <section className="rounded-[1.6rem] border border-white/10 bg-slate-950/75 p-5 sm:p-6"><h2 className="text-xl font-semibold">{title}</h2><div className="mt-4 space-y-3">{rows.length ? rows.map((row) => <div key={row.key}><div className="flex items-center justify-between gap-3 text-sm"><span className="truncate text-slate-300">{row.key}</span><span className="font-semibold text-amber-100">{row.count}</span></div><div className="mt-1 h-1.5 overflow-hidden rounded-full bg-white/[0.05]"><div className="h-full rounded-full bg-cyan-300/65" style={{ width: `${Math.max(4, (row.count / max) * 100)}%` }} /></div></div>) : <div className="text-sm text-slate-500">No unresolved rows in this category.</div>}</div></section>; }
+function Pill({ children }: { children: ReactNode }) { return <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] uppercase tracking-[0.14em] text-slate-300">{children}</span>; }
+function Roadmap({ title, items }: { title: string; items: string[] }) { return <section className="rounded-[1.6rem] border border-white/10 bg-slate-950/75 p-6"><h2 className="text-2xl font-semibold">{title}</h2><ul className="mt-4 space-y-3 text-sm leading-6 text-slate-400">{items.map((item) => <li key={item} className="flex gap-3"><span className="text-cyan-200">◆</span><span>{item}</span></li>)}</ul></section>; }

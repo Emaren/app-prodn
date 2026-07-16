@@ -622,6 +622,24 @@ export default function AdminPage() {
               >
                 HD Replay Engine Room
               </Link>
+              <Link
+                href="/admin/ai"
+                className="inline-flex rounded-full border border-cyan-200/18 bg-cyan-300/[0.06] px-5 py-3 text-sm text-cyan-100 transition hover:border-cyan-200/36 hover:bg-cyan-300/10"
+              >
+                AI Command Center
+              </Link>
+              <Link
+                href="/admin/bounties"
+                className="inline-flex rounded-full border border-amber-200/18 bg-amber-300/[0.06] px-5 py-3 text-sm text-amber-100 transition hover:border-amber-200/36 hover:bg-amber-300/10"
+              >
+                Bounty Command
+              </Link>
+              <Link
+                href="/admin/radio"
+                className="inline-flex rounded-full border border-fuchsia-200/18 bg-fuchsia-300/[0.06] px-5 py-3 text-sm text-fuchsia-100 transition hover:border-fuchsia-200/36 hover:bg-fuchsia-300/10"
+              >
+                Radio WOLO Desk
+              </Link>
             </div>
           </div>
 

@@ -4,7 +4,7 @@ import React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, Castle, Crown, Globe2, GraduationCap, MessageSquare, Store, UsersRound, X } from "lucide-react";
+import { BarChart3, Bot, Castle, Crown, Globe2, GraduationCap, MessageSquare, Radio, Store, Target, UsersRound, X } from "lucide-react";
 import { createPortal } from "react-dom";
 import UserExperienceTracker from "@/components/analytics/UserExperienceTracker";
 import HeaderInboxControl from "@/components/contact/HeaderInboxControl";
@@ -51,9 +51,16 @@ const KINGDOM_LINKS = [
   { href: "/academy", label: "Academy", icon: GraduationCap, body: "Lessons, build orders, replay study" },
   { href: "/market", label: "Marketplace", icon: Store, body: "Player shops, craft, and commissions" },
   { href: "/forum", label: "Forum", icon: MessageSquare, body: "War Room threads and community" },
+  { href: "/bounties", label: "Bounties", icon: Target, body: "Open opportunities and payout proof" },
+  { href: "/ai", label: "AI Council", icon: Bot, body: "Ask the public house council" },
+  { href: "/radio", label: "Radio WOLO", icon: Radio, body: "Kingdom music and creator submissions" },
+  { href: "/game-stats", label: "Parser Observatory", icon: BarChart3, body: "Replay corpus, coverage, and unknowns" },
 ] as const;
 
 const PAGE_HEADINGS: ReadonlyArray<{ prefix: string; title: string }> = [
+  { prefix: "/admin/ai", title: "AI Command Center" },
+  { prefix: "/admin/bounties", title: "Bounty Command Center" },
+  { prefix: "/admin/radio", title: "Radio WOLO Desk" },
   { prefix: "/admin/hero-studio", title: "Hero Studio" },
   { prefix: "/admin/events", title: "Featured Event Studio" },
   { prefix: "/admin", title: "Operator Command" },
@@ -69,7 +76,11 @@ const PAGE_HEADINGS: ReadonlyArray<{ prefix: string; title: string }> = [
   { prefix: "/kingdom", title: "The Kingdom" },
   { prefix: "/forum", title: "War Room Forum" },
   { prefix: "/live-games", title: "Live Games" },
-  { prefix: "/game-stats", title: "Battle Archive" },
+  { prefix: "/game-stats", title: "Parser Observatory" },
+  { prefix: "/bounties", title: "Bounty Board" },
+  { prefix: "/ai", title: "AI Council" },
+  { prefix: "/radio", title: "Radio WOLO" },
+  { prefix: "/submit", title: "Submit to Radio WOLO" },
   { prefix: "/matchups", title: "Rivalry Matchup" },
   { prefix: "/rivalries", title: "Rivalries" },
   { prefix: "/players", title: "Player Registry" },
