@@ -33,7 +33,13 @@ export const WORKSHOP_LANES = [
   "legendary",
 ] as const;
 
-export const WORKSHOP_STREAM_STATUSES = ["draft", "ready", "live", "ended", "hidden"] as const;
+export const WORKSHOP_STREAM_STATUSES = [
+  "draft",
+  "ready",
+  "live",
+  "ended",
+  "hidden",
+] as const;
 
 export type WorkshopDialogueTurn = {
   speaker: string;
@@ -42,6 +48,7 @@ export type WorkshopDialogueTurn = {
 };
 
 const PUBLIC_ENTRY_SELECT = {
+  id: true,
   publicId: true,
   entryType: true,
   title: true,
@@ -72,16 +79,95 @@ const PUBLIC_ENTRY_SELECT = {
   },
 } as const;
 
-export function normalizeWorkshopDialogue(value: unknown): WorkshopDialogueTurn[] {
+export type WorkshopChronicleCursor = {
+  occurredAt: string;
+  id: number;
+};
+
+export type WorkshopChroniclePageOptions = {
+  take?: number;
+  before?: WorkshopChronicleCursor | null;
+};
+
+export function normalizeWorkshopDialogue(
+  value: unknown,
+): WorkshopDialogueTurn[] {
   if (!Array.isArray(value)) return [];
-  return value.flatMap((turn) => {
-    if (!turn || typeof turn !== "object" || Array.isArray(turn)) return [];
-    const row = turn as Record<string, unknown>;
-    const speaker = typeof row.speaker === "string" ? row.speaker.trim().slice(0, 100) : "";
-    const body = typeof row.body === "string" ? row.body.trim().slice(0, 5_000) : "";
-    const tone = typeof row.tone === "string" ? row.tone.trim().slice(0, 40) || null : null;
-    return speaker && body ? [{ speaker, body, tone }] : [];
-  }).slice(0, 24);
+  return value
+    .flatMap((turn) => {
+      if (!turn || typeof turn !== "object" || Array.isArray(turn)) return [];
+      const row = turn as Record<string, unknown>;
+      const speaker =
+        typeof row.speaker === "string" ? row.speaker.trim().slice(0, 100) : "";
+      const body =
+        typeof row.body === "string" ? row.body.trim().slice(0, 5_000) : "";
+      const tone =
+        typeof row.tone === "string"
+          ? row.tone.trim().slice(0, 40) || null
+          : null;
+      return speaker && body ? [{ speaker, body, tone }] : [];
+    })
+    .slice(0, 24);
+}
+
+export async function loadWorkshopChroniclePage(
+  prisma: PrismaClient,
+  options: WorkshopChroniclePageOptions = {},
+) {
+  const take = Math.min(Math.max(options.take ?? 18, 1), 40);
+  const beforeDate = options.before
+    ? new Date(options.before.occurredAt)
+    : null;
+
+  if (beforeDate && Number.isNaN(beforeDate.getTime())) {
+    throw new Error("Invalid Workshop Chronicle cursor.");
+  }
+
+  const rows = await prisma.workshopEntry.findMany({
+    where: {
+      status: "published",
+      visibility: "public",
+      publishedAt: { not: null },
+      ...(beforeDate && options.before
+        ? {
+            OR: [
+              { occurredAt: { lt: beforeDate } },
+              {
+                occurredAt: beforeDate,
+                id: { lt: options.before.id },
+              },
+            ],
+          }
+        : {}),
+    },
+    orderBy: [{ occurredAt: "desc" }, { id: "desc" }],
+    take: take + 1,
+    select: PUBLIC_ENTRY_SELECT,
+  });
+
+  const hasMore = rows.length > take;
+  const pageRows = hasMore ? rows.slice(0, take) : rows;
+
+  const entries = pageRows.map((entry) => ({
+    ...entry,
+    dialogue: normalizeWorkshopDialogue(entry.dialogue),
+    occurredAt: entry.occurredAt.toISOString(),
+    publishedAt: entry.publishedAt?.toISOString() ?? null,
+  }));
+
+  const last = pageRows.at(-1);
+
+  return {
+    entries,
+    hasMore,
+    nextCursor:
+      hasMore && last
+        ? {
+            occurredAt: last.occurredAt.toISOString(),
+            id: last.id,
+          }
+        : null,
+  };
 }
 
 export async function loadPublicWorkshop(prisma: PrismaClient) {
@@ -100,7 +186,11 @@ export async function loadPublicWorkshop(prisma: PrismaClient) {
       },
     }),
     prisma.workshopEntry.findMany({
-      where: { status: "published", visibility: "public", publishedAt: { not: null } },
+      where: {
+        status: "published",
+        visibility: "public",
+        publishedAt: { not: null },
+      },
       orderBy: [
         { pinned: "desc" },
         { featuredOrder: "desc" },
@@ -133,7 +223,8 @@ export async function loadPublicWorkshop(prisma: PrismaClient) {
     isLive: false,
     activityMode: "closed",
     headline: "THE WORKSHOP RESTS",
-    description: "The forge is quiet. Published build records remain available below.",
+    description:
+      "The forge is quiet. Published build records remain available below.",
     currentProject: null,
     openedAt: null,
     updatedAt: new Date(0),
@@ -166,7 +257,9 @@ export async function loadAdminWorkshop(prisma: PrismaClient) {
     prisma.workshopStatus.findUnique({ where: { id: 1 } }),
     prisma.workshopEntry.findMany({
       orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
-      include: { artifacts: { orderBy: [{ sortOrder: "asc" }, { id: "asc" }] } },
+      include: {
+        artifacts: { orderBy: [{ sortOrder: "asc" }, { id: "asc" }] },
+      },
       take: 250,
     }),
     prisma.workshopStream.findMany({
