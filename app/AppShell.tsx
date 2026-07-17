@@ -416,6 +416,8 @@ function InnerShell({ children }: { children: React.ReactNode }) {
   const isLobbySurface = pathname === "/" || pathname?.startsWith("/lobby");
   const isMediaManagerSurface = pathname?.startsWith("/admin/media-assets");
   const isHeroStudioSurface = pathname?.startsWith("/admin/hero-studio");
+  const isObservatorySurface =
+    pathname === "/traffic" || pathname === "/statistics";
   const isAcademySurface = pathname?.startsWith("/academy");
   const isClanSurface = pathname?.startsWith("/clans");
   const isNationalChampionsSurface = pathname?.startsWith("/national-champions");
@@ -784,6 +786,8 @@ function InnerShell({ children }: { children: React.ReactNode }) {
             ? "max-w-none px-3 sm:px-4 2xl:px-6"
             : isHeroStudioSurface
               ? "max-w-none px-1 sm:px-2 2xl:px-3"
+            : isObservatorySurface
+              ? "max-w-none px-0"
             : `px-3 sm:px-4 ${
                 isLobbySurface || isLiveGamesSurface || isForumSurface || isRivalriesSurface
                   ? immersiveShellMaxWidth

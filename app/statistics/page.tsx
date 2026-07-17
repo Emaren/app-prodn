@@ -152,7 +152,7 @@ export default function StatisticsPage() {
   }, []);
 
   return (
-    <main className="relative left-1/2 min-h-screen w-screen -translate-x-1/2 overflow-hidden bg-[#05040d] text-white">
+    <main className="relative min-h-screen w-full overflow-hidden bg-[#05040d] text-white">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_16%_0%,rgba(245,158,11,0.11),transparent_29%),radial-gradient(circle_at_82%_4%,rgba(139,92,246,0.16),transparent_31%),radial-gradient(circle_at_50%_100%,rgba(14,165,233,0.08),transparent_38%)]" />
 
       <div className="relative mx-auto max-w-[1900px] px-3 py-5 sm:px-5 lg:px-8">
