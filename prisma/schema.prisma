@@ -100,6 +100,10 @@ model User {
   replayObservationPromotions    ReplayObservationPromotion[]    @relation("ReplayObservationPromotionActor")
   replayReprocessJobs            ReplayReprocessJob[]            @relation("ReplayReprocessJobCreator")
 
+  featureRequests         FeatureRequest[]  @relation("FeatureRequestRequester")
+  bountyValuationsChanged BountyValuation[] @relation("BountyValuationChangedBy")
+  bountyClaims            BountyClaim[]     @relation("BountyClaimUser")
+
   @@map("users")
 }
 
@@ -2152,6 +2156,9 @@ model BountyOpportunity {
 
   events BountyEvent[]
 
+  valuations BountyValuation[]
+  claims     BountyClaim[]
+
   @@index([status, featured, priority], map: "ix_bounty_opportunities_status_featured_priority")
   @@map("bounty_opportunities")
 }
@@ -2181,6 +2188,133 @@ model BountyEvent {
 
 /// Private creator intake plus the public Radio WOLO publication state. Files
 /// live in durable storage; the database stores only metadata and storage keys.
+
+/// Durable paid request submitted to the AoE2WAR Workshop. WoloChain transfer
+/// truth proves sponsorship; this record owns the request and workflow state.
+model FeatureRequest {
+  id                           Int     @id @default(autoincrement())
+  publicId                     String  @unique @default(uuid()) @map("public_id") @db.Uuid
+  requesterUserId              Int     @map("requester_user_id")
+  requesterUidSnapshot         String  @map("requester_uid_snapshot") @db.VarChar(100)
+  requesterDisplayNameSnapshot String? @map("requester_display_name_snapshot") @db.VarChar(120)
+  requesterAddress             String  @map("requester_address") @db.VarChar(100)
+  requestText                  String? @map("request_text") @db.Text
+
+  sponsorAmountWolo       Int     @default(100) @map("sponsor_amount_wolo")
+  sponsorAmountUwolo      BigInt? @map("sponsor_amount_uwolo")
+  sponsorRecipientAddress String  @map("sponsor_recipient_address") @db.VarChar(100)
+  sponsorMemo             String  @unique @map("sponsor_memo") @db.VarChar(255)
+  sponsorTxHash           String? @unique @map("sponsor_tx_hash") @db.VarChar(128)
+  paymentStatus           String  @default("awaiting_payment") @map("payment_status") @db.VarChar(24)
+
+  status         String  @default("awaiting_payment") @db.VarChar(24)
+  acceptedByUid  String? @map("accepted_by_uid") @db.VarChar(100)
+  completedByUid String? @map("completed_by_uid") @db.VarChar(100)
+  adminNote      String? @map("admin_note") @db.Text
+
+  refundStatus     String  @default("not_required") @map("refund_status") @db.VarChar(24)
+  refundAmountWolo Int?    @map("refund_amount_wolo")
+  refundTxHash     String? @map("refund_tx_hash") @db.VarChar(128)
+
+  developmentValueWolo Int? @map("development_value_wolo")
+  workshopEntryId      Int? @unique @map("workshop_entry_id")
+
+  sponsoredAt DateTime? @map("sponsored_at") @db.Timestamp(6)
+  submittedAt DateTime? @map("submitted_at") @db.Timestamp(6)
+  acceptedAt  DateTime? @map("accepted_at") @db.Timestamp(6)
+  startedAt   DateTime? @map("started_at") @db.Timestamp(6)
+  completedAt DateTime? @map("completed_at") @db.Timestamp(6)
+  declinedAt  DateTime? @map("declined_at") @db.Timestamp(6)
+  refundedAt  DateTime? @map("refunded_at") @db.Timestamp(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  requester     User           @relation("FeatureRequestRequester", fields: [requesterUserId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  workshopEntry WorkshopEntry? @relation(fields: [workshopEntryId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([requesterUserId, createdAt], map: "ix_feature_requests_requester_created")
+  @@index([status, createdAt], map: "ix_feature_requests_status_created")
+  @@index([paymentStatus, createdAt], map: "ix_feature_requests_payment_created")
+  @@index([sponsorTxHash], map: "ix_feature_requests_sponsor_tx")
+  @@index([refundStatus, createdAt], map: "ix_feature_requests_refund_status")
+  @@map("feature_requests")
+}
+
+/// Versioned reward amount for one bounty opportunity. A valuation is historical
+/// truth; changing the bounty creates a new row and closes the previous window.
+model BountyValuation {
+  id              Int       @id @default(autoincrement())
+  opportunityId   Int       @map("opportunity_id")
+  rewardWolo      Int       @map("reward_wolo")
+  effectiveFrom   DateTime  @default(now()) @map("effective_from") @db.Timestamp(6)
+  effectiveTo     DateTime? @map("effective_to") @db.Timestamp(6)
+  changedByUserId Int?      @map("changed_by_user_id")
+  reason          String?   @db.VarChar(500)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+
+  opportunity BountyOpportunity @relation(fields: [opportunityId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  changedBy   User?             @relation("BountyValuationChangedBy", fields: [changedByUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  claims      BountyClaim[]
+
+  @@index([opportunityId, effectiveFrom], map: "ix_bounty_valuations_opportunity_effective")
+  @@index([changedByUserId, createdAt], map: "ix_bounty_valuations_changed_by")
+  @@map("bounty_valuations")
+}
+
+/// A bounty reward freezes here when eligibility locks. Later valuation changes
+/// cannot alter rewardSnapshotWolo for this claim.
+model BountyClaim {
+  id                        Int       @id @default(autoincrement())
+  publicId                  String    @unique @default(uuid()) @map("public_id") @db.Uuid
+  idempotencyKey            String    @unique @map("idempotency_key") @db.VarChar(160)
+  opportunityId             Int       @map("opportunity_id")
+  valuationId               Int       @map("valuation_id")
+  userId                    Int       @map("user_id")
+  playerDisplayNameSnapshot String    @map("player_display_name_snapshot") @db.VarChar(120)
+  recipientAddressSnapshot  String?   @map("recipient_address_snapshot") @db.VarChar(100)
+  rewardSnapshotWolo        Int       @map("reward_snapshot_wolo")
+  status                    String    @default("qualified") @db.VarChar(24)
+  evidence                  Json?
+  eligibilityLockedAt       DateTime  @default(now()) @map("eligibility_locked_at") @db.Timestamp(6)
+  approvedAt                DateTime? @map("approved_at") @db.Timestamp(6)
+  completedAt               DateTime? @map("completed_at") @db.Timestamp(6)
+  cancelledAt               DateTime? @map("cancelled_at") @db.Timestamp(6)
+  createdAt                 DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt                 DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  opportunity BountyOpportunity @relation(fields: [opportunityId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  valuation   BountyValuation   @relation(fields: [valuationId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  user        User              @relation("BountyClaimUser", fields: [userId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  payout      BountyPayout?
+
+  @@index([opportunityId, status, createdAt], map: "ix_bounty_claims_opportunity_status")
+  @@index([userId, createdAt], map: "ix_bounty_claims_user_created")
+  @@index([valuationId], map: "ix_bounty_claims_valuation")
+  @@map("bounty_claims")
+}
+
+/// Durable proof of an actual bounty payment. Chain truth remains authoritative
+/// for whether WOLO moved.
+model BountyPayout {
+  id               Int       @id @default(autoincrement())
+  claimId          Int       @unique @map("claim_id")
+  requestId        String    @unique @map("request_id") @db.VarChar(160)
+  amountWolo       Int       @map("amount_wolo")
+  recipientAddress String    @map("recipient_address") @db.VarChar(100)
+  status           String    @default("pending") @db.VarChar(24)
+  txHash           String?   @map("tx_hash") @db.VarChar(128)
+  errorDetail      String?   @map("error_detail") @db.VarChar(500)
+  paidAt           DateTime? @map("paid_at") @db.Timestamp(6)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  claim BountyClaim @relation(fields: [claimId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([status, createdAt], map: "ix_bounty_payouts_status_created")
+  @@index([txHash], map: "ix_bounty_payouts_tx_hash")
+  @@map("bounty_payouts")
+}
+
 model RadioSubmission {
   id                      Int       @id @default(autoincrement())
   publicId                String    @unique @default(uuid()) @map("public_id") @db.Uuid
@@ -2218,18 +2352,18 @@ model RadioSubmission {
 /// curated projection only; it never mirrors terminal output or private AI
 /// conversations automatically.
 model WorkshopStatus {
-  id               Int      @id @default(1)
-  isOpen           Boolean  @default(false) @map("is_open")
-  isLive           Boolean  @default(false) @map("is_live")
-  activityMode     String   @default("closed") @map("activity_mode") @db.VarChar(32)
-  headline         String   @default("THE WORKSHOP RESTS") @db.VarChar(160)
-  description      String   @default("") @db.Text
-  currentProject   String?  @map("current_project") @db.VarChar(160)
-  activeStreamId   Int?     @map("active_stream_id")
-  updatedByUid     String?  @map("updated_by_uid") @db.VarChar(100)
-  openedAt         DateTime? @map("opened_at") @db.Timestamp(6)
-  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+  id             Int       @id @default(1)
+  isOpen         Boolean   @default(false) @map("is_open")
+  isLive         Boolean   @default(false) @map("is_live")
+  activityMode   String    @default("closed") @map("activity_mode") @db.VarChar(32)
+  headline       String    @default("THE WORKSHOP RESTS") @db.VarChar(160)
+  description    String    @default("") @db.Text
+  currentProject String?   @map("current_project") @db.VarChar(160)
+  activeStreamId Int?      @map("active_stream_id")
+  updatedByUid   String?   @map("updated_by_uid") @db.VarChar(100)
+  openedAt       DateTime? @map("opened_at") @db.Timestamp(6)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
 
   activeStream WorkshopStream? @relation(fields: [activeStreamId], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
@@ -2241,31 +2375,33 @@ model WorkshopStatus {
 /// milestones. Publication is explicit and reversible; draft content never
 /// appears in the public Workshop projection.
 model WorkshopEntry {
-  id               Int      @id @default(autoincrement())
-  publicId         String   @unique @default(uuid()) @map("public_id") @db.Uuid
-  entryType        String   @default("build_note") @map("entry_type") @db.VarChar(32)
-  title            String   @db.VarChar(200)
-  summary          String   @default("") @db.VarChar(500)
-  body             String   @default("") @db.Text
-  dialogue         Json     @default("[]")
-  lane             String   @default("work_feed") @db.VarChar(32)
-  status           String   @default("draft") @db.VarChar(24)
-  visibility       String   @default("private") @db.VarChar(24)
-  mediaKind        String?  @map("media_kind") @db.VarChar(32)
-  mediaUrl         String?  @map("media_url") @db.VarChar(1000)
-  mediaAlt         String?  @map("media_alt") @db.VarChar(220)
-  linkLabel        String?  @map("link_label") @db.VarChar(100)
-  linkUrl          String?  @map("link_url") @db.VarChar(1000)
-  pinned           Boolean  @default(false)
-  featuredOrder    Int      @default(0) @map("featured_order")
-  occurredAt       DateTime @default(now()) @map("occurred_at") @db.Timestamp(6)
-  publishedAt      DateTime? @map("published_at") @db.Timestamp(6)
-  createdByUid     String?  @map("created_by_uid") @db.VarChar(100)
-  updatedByUid     String?  @map("updated_by_uid") @db.VarChar(100)
-  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+  id            Int       @id @default(autoincrement())
+  publicId      String    @unique @default(uuid()) @map("public_id") @db.Uuid
+  entryType     String    @default("build_note") @map("entry_type") @db.VarChar(32)
+  title         String    @db.VarChar(200)
+  summary       String    @default("") @db.VarChar(500)
+  body          String    @default("") @db.Text
+  dialogue      Json      @default("[]")
+  lane          String    @default("work_feed") @db.VarChar(32)
+  status        String    @default("draft") @db.VarChar(24)
+  visibility    String    @default("private") @db.VarChar(24)
+  mediaKind     String?   @map("media_kind") @db.VarChar(32)
+  mediaUrl      String?   @map("media_url") @db.VarChar(1000)
+  mediaAlt      String?   @map("media_alt") @db.VarChar(220)
+  linkLabel     String?   @map("link_label") @db.VarChar(100)
+  linkUrl       String?   @map("link_url") @db.VarChar(1000)
+  pinned        Boolean   @default(false)
+  featuredOrder Int       @default(0) @map("featured_order")
+  occurredAt    DateTime  @default(now()) @map("occurred_at") @db.Timestamp(6)
+  publishedAt   DateTime? @map("published_at") @db.Timestamp(6)
+  createdByUid  String?   @map("created_by_uid") @db.VarChar(100)
+  updatedByUid  String?   @map("updated_by_uid") @db.VarChar(100)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
 
   artifacts WorkshopArtifact[]
+
+  featureRequest FeatureRequest?
 
   @@index([status, visibility, publishedAt], map: "ix_workshop_entries_publication")
   @@index([lane, featuredOrder, occurredAt], map: "ix_workshop_entries_lane_order")
@@ -2276,17 +2412,17 @@ model WorkshopEntry {
 /// Optional media and reference links attached to one curated Workshop entry.
 /// Storage bytes remain owned by the existing managed-media rail.
 model WorkshopArtifact {
-  id          Int      @id @default(autoincrement())
-  entryId     Int      @map("entry_id")
-  kind        String   @default("image") @db.VarChar(32)
-  label       String   @db.VarChar(160)
-  url         String   @db.VarChar(1000)
-  alt         String?  @db.VarChar(220)
-  mimeType    String?  @map("mime_type") @db.VarChar(120)
-  storageKey  String?  @map("storage_key") @db.VarChar(1000)
-  sortOrder   Int      @default(0) @map("sort_order")
-  isPublic    Boolean  @default(false) @map("is_public")
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  id         Int      @id @default(autoincrement())
+  entryId    Int      @map("entry_id")
+  kind       String   @default("image") @db.VarChar(32)
+  label      String   @db.VarChar(160)
+  url        String   @db.VarChar(1000)
+  alt        String?  @db.VarChar(220)
+  mimeType   String?  @map("mime_type") @db.VarChar(120)
+  storageKey String?  @map("storage_key") @db.VarChar(1000)
+  sortOrder  Int      @default(0) @map("sort_order")
+  isPublic   Boolean  @default(false) @map("is_public")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamp(6)
 
   entry WorkshopEntry @relation(fields: [entryId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
@@ -2298,22 +2434,22 @@ model WorkshopArtifact {
 /// stream is always an operator action; no desktop source is captured by this
 /// model itself.
 model WorkshopStream {
-  id             Int       @id @default(autoincrement())
-  publicId       String    @unique @default(uuid()) @map("public_id") @db.Uuid
-  provider       String    @default("first_party") @db.VarChar(40)
-  sourceType     String    @default("external") @map("source_type") @db.VarChar(32)
-  title          String    @db.VarChar(200)
-  description    String    @default("") @db.Text
-  playbackUrl    String?   @map("playback_url") @db.VarChar(1000)
-  embedUrl       String?   @map("embed_url") @db.VarChar(1000)
-  thumbnailUrl   String?   @map("thumbnail_url") @db.VarChar(1000)
-  status         String    @default("draft") @db.VarChar(24)
-  isPublic       Boolean   @default(false) @map("is_public")
-  createdByUid   String?   @map("created_by_uid") @db.VarChar(100)
-  startedAt      DateTime? @map("started_at") @db.Timestamp(6)
-  endedAt        DateTime? @map("ended_at") @db.Timestamp(6)
-  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+  id           Int       @id @default(autoincrement())
+  publicId     String    @unique @default(uuid()) @map("public_id") @db.Uuid
+  provider     String    @default("first_party") @db.VarChar(40)
+  sourceType   String    @default("external") @map("source_type") @db.VarChar(32)
+  title        String    @db.VarChar(200)
+  description  String    @default("") @db.Text
+  playbackUrl  String?   @map("playback_url") @db.VarChar(1000)
+  embedUrl     String?   @map("embed_url") @db.VarChar(1000)
+  thumbnailUrl String?   @map("thumbnail_url") @db.VarChar(1000)
+  status       String    @default("draft") @db.VarChar(24)
+  isPublic     Boolean   @default(false) @map("is_public")
+  createdByUid String?   @map("created_by_uid") @db.VarChar(100)
+  startedAt    DateTime? @map("started_at") @db.Timestamp(6)
+  endedAt      DateTime? @map("ended_at") @db.Timestamp(6)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
 
   activeForStatuses WorkshopStatus[]
 
