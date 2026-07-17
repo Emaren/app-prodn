@@ -10,6 +10,7 @@ import {
   safeOriginalFilename,
 } from "../lib/radioWolo.ts";
 import { normalizeWorkshopDialogue } from "../lib/workshop.ts";
+import { buildReplayEvidenceLanes } from "../lib/replayEvidenceLanes.ts";
 
 test("Radio WOLO validates file bytes instead of trusting upload extensions", () => {
   assert.deepEqual(detectAudioType(new Uint8Array(Buffer.from("ID3music"))), {
@@ -110,4 +111,37 @@ test("Parser Observatory keeps compatibility candidates separate from the canoni
   assert.match(page, /HD_REPLAY_PARSER_CONTRACT\.parserName/);
   assert.match(page, /version\.parserVersion === HD_REPLAY_PARSER_CONTRACT\.parserVersion/);
   assert.doesNotMatch(page, /const activeVersion = data\.parser\.versions\[0\]/);
+  assert.match(page, /The 329 Frontier Is Broken/);
+  assert.match(page, /Saved checkpoints · non-final/);
+  assert.match(page, /Captured is not the same as proven/);
+});
+
+test("advanced replay lanes distinguish extracted evidence from proven semantics", () => {
+  const lanes = buildReplayEvidenceLanes([
+    {
+      fieldPath: "actions.age_up_research_commands",
+      observations: 1837,
+      scoredObservations: 0,
+    },
+    {
+      fieldPath: "actions.tribute_commands",
+      observations: 1837,
+      scoredObservations: 1837,
+    },
+  ]);
+  const age = lanes.find((lane) => lane.key === "age_research");
+  const tribute = lanes.find((lane) => lane.key === "tribute_trade");
+  assert.equal(age?.maturity, "experimental");
+  assert.equal(age?.scoredObservations, 0);
+  assert.equal(tribute?.maturity, "validated");
+  assert.match(tribute?.truthRule || "", /not resource-value totals/);
+});
+
+test("AI replay grounding consumes structured coverage without promoting candidates", () => {
+  const source = readFileSync(new URL("../lib/aiConcierge.ts", import.meta.url), "utf8");
+  assert.match(source, /Structured replay evidence context/);
+  assert.match(source, /Candidate field coverage is not effective player or result truth/);
+  assert.match(source, /Saved checkpoint candidates:[\s\S]*non-final/);
+  assert.match(source, /Never turn candidate coverage[\s\S]*into a result/);
+  assert.doesNotMatch(source, /candidateOutputStorageKey/);
 });

@@ -3,6 +3,7 @@ import { unstable_cache } from "next/cache";
 import { displayPlayerName, parsePlayers, readMapName } from "@/lib/gameStatsView";
 import { getPrisma } from "@/lib/prisma";
 import { resolveReplayOwnerDisplay } from "@/lib/replayOwnerDisplay";
+import { buildReplayEvidenceLanes } from "@/lib/replayEvidenceLanes";
 import {
   applyReplayAdjudicationsToGameStatsRows,
   EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION,
@@ -103,6 +104,21 @@ function failureRecoveryLane(input: { signature: string; extension: string }) {
   };
 }
 
+function candidateModeLabel(mode: string) {
+  const labels: Record<string, string> = {
+    mgz_full_summary: "Full recorded-game summary",
+    mgz_hd_fragment_header_body_fallback: "Header fragment recovery",
+    mgz_hd_metadata_fragment_body_fallback: "Metadata fragment recovery",
+    mgz_hd_trailing_header_body_fallback: "Trailing body recovery",
+    mgz_hd_saved_game_snapshot: "Saved checkpoint decoded",
+    mgz_hd_saved_game_initial_prefix: "Saved checkpoint initial-state prefix",
+    mgz_hd_saved_game_map_prefix: "Saved checkpoint map/roster prefix",
+    mgz_parse_match_fallback: "Live parse-match recovery",
+    mgz_header_only_fallback: "Header-only evidence",
+  };
+  return labels[mode] || mode.replaceAll("_", " ");
+}
+
 async function loadCorpusRows() {
   return getPrisma().gameStats.findMany({
     where: { is_final: true },
@@ -135,7 +151,7 @@ async function loadCorpusRows() {
 
 async function buildPublicParserObservatory() {
   const prisma = getPrisma();
-  const [rawRows, allGameRows, artifacts, runStatus, parserVersions, fieldCoverage, observations, jobs, candidateFailures, latestArtifactRuns] = await Promise.all([
+  const [rawRows, allGameRows, artifacts, runStatus, parserVersions, fieldCoverage, observations, jobs, candidateFailures, latestArtifactRuns, effectiveProjectionReceipts] = await Promise.all([
     loadCorpusRows(),
     prisma.gameStats.count(),
     prisma.replayArtifact.aggregate({ _count: { _all: true }, _sum: { byteSize: true } }),
@@ -149,7 +165,7 @@ async function buildPublicParserObservatory() {
     }),
     prisma.replayObservation.groupBy({
       by: ["fieldPath"],
-      _count: { _all: true },
+      _count: { _all: true, confidenceBps: true },
       _min: { confidenceBps: true },
       _max: { confidenceBps: true },
       orderBy: { _count: { fieldPath: "desc" } },
@@ -199,6 +215,7 @@ async function buildPublicParserObservatory() {
       select: {
         artifactId: true,
         status: true,
+        metrics: true,
         failureSignature: true,
         artifact: {
           select: {
@@ -207,6 +224,9 @@ async function buildPublicParserObservatory() {
           },
         },
       },
+    }),
+    prisma.replayEvidenceArtifact.count({
+      where: { evidenceKind: "effective_projection_receipt" },
     }),
   ]);
 
@@ -249,6 +269,14 @@ async function buildPublicParserObservatory() {
   const failureExtensions = new Map<string, number>();
   const failureSizes = new Map<string, number>();
   const failedRuns = latestArtifactRuns.filter((run) => run.status === "failed");
+  const completedRuns = latestArtifactRuns.filter((run) => run.status === "completed");
+  const candidateModes = new Map<string, number>();
+  for (const run of completedRuns) {
+    bump(candidateModes, text(record(run.metrics).parse_mode, "unspecified"));
+  }
+  const savedSnapshots = completedRuns.filter((run) =>
+    text(record(run.metrics).parse_mode, "").startsWith("mgz_hd_saved_game_")
+  ).length;
   for (const run of failedRuns) {
     const signature = run.failureSignature || "missing_signature";
     const extension = (run.artifact.originalExtension || "unknown").toLowerCase();
@@ -350,9 +378,30 @@ async function buildPublicParserObservatory() {
       fields: fieldCoverage.map((row) => ({
         fieldPath: row.fieldPath,
         observations: row._count._all,
+        scoredObservations: row._count.confidenceBps,
         minConfidenceBps: row._min.confidenceBps,
         maxConfidenceBps: row._max.confidenceBps,
       })),
+      frontier: {
+        artifacts: latestArtifactRuns.length,
+        completed: completedRuns.length,
+        failed: failedRuns.length,
+        savedSnapshots,
+        recordedGameCandidates: completedRuns.length - savedSnapshots,
+        effectiveResultCorrections: effectiveProjectionReceipts,
+        modes: ranked(candidateModes, 16).map((row) => ({
+          key: row.key,
+          count: row.count,
+          label: candidateModeLabel(row.key),
+        })),
+      },
+      advancedLanes: buildReplayEvidenceLanes(
+        fieldCoverage.map((row) => ({
+          fieldPath: row.fieldPath,
+          observations: row._count._all,
+          scoredObservations: row._count.confidenceBps,
+        }))
+      ),
       failures: candidateFailures.map((row) => ({
         signature: row.failureSignature || "missing_signature",
         count: row._count._all,

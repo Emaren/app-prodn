@@ -103,6 +103,18 @@ duration, and player identity were identical across both versions. Production is
 therefore pinned to 1.8.51 while retaining the HD `game_type_id=9`
 compatibility shim. Future promotions must repeat the same differential gate.
 
+Campaign III retains that canonical `mgz 1.8.51` identity while advancing the
+evidence schema to `2026-07-16.4` / pass `6`. Targeted canonical recovery lanes
+now cover header fragments, metadata fragments, one trailing body stream, and
+HD saved-game checkpoints. The latest candidate disposition is complete for
+all 2,025 frozen artifacts; older failed runs remain immutable history.
+
+Saved checkpoints are not parser failures and are not final battles. Even when
+roster/map/initial state is decoded, they remain result-unknown and
+settlement-ineligible. A future continuation matcher may link checkpoints to
+later recorded games only with stable evidence; name/time similarity alone is
+insufficient.
+
 ## Backfill order
 
 Backfill in risk and value order, never by overwriting the active corpus:
@@ -120,11 +132,13 @@ Backfill in risk and value order, never by overwriting the active corpus:
 7. Reconcile totals, hashes, effective results, and money-linked exceptions
    before starting the next cohort.
 
-Initial execution order is Jim's full submitted archive first, followed by the
-complete War Vault. Within Jim's cohort: betting-linked rows, currently resolved
-team games, parsed review-routed games, then classified parser misses. No cohort
-is complete until every input is accounted for as promoted, review-routed,
-unsupported, or corrupt while its raw artifact remains preserved.
+Jim's full 2,025-artifact pass and the deterministic recovery frontier are
+complete. The continuing order is: reconcile effective truth, preserve human
+adjudications and money-linked rows, promote only strict no-financial-impact
+improvements, investigate saved-checkpoint continuation evidence, then score
+advanced-stat semantics. No cohort is public-truth complete until every input
+is accounted for as effective, review-routed, checkpoint-only, unsupported, or
+corrupt while its raw artifact remains preserved.
 
 ## Operator checks
 

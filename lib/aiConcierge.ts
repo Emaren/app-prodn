@@ -20,6 +20,7 @@ import { getLobbyMessages } from "@/lib/communityStore";
 import { loadLobbyLeaderboard } from "@/lib/lobbyLeaderboard";
 import { loadLobbyWoloEarnersBoard } from "@/lib/lobbyWoloEarners";
 import { LOBBY_ROOM_SLUG, type LobbyMatchRow } from "@/lib/lobby";
+import { buildReplayEvidenceLanes } from "@/lib/replayEvidenceLanes";
 import {
   BETTING_FEE_RATE_BPS,
   BPS_DENOMINATOR,
@@ -149,6 +150,92 @@ function formatRecentMatchesContext(matches: LobbyMatchRow[]) {
     .join("\n");
 
   return `Recently parsed games:\n${rows}`;
+}
+
+type AiReplayEvidenceContext = {
+  logicalFinalRows: number;
+  latestArtifacts: number;
+  latestCompleted: number;
+  latestFailures: number;
+  savedSnapshots: number;
+  effectiveResultCorrections: number;
+  advancedLanes: ReturnType<typeof buildReplayEvidenceLanes>;
+};
+
+function jsonRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+async function loadAiReplayEvidenceContext(
+  prisma: PrismaClient
+): Promise<AiReplayEvidenceContext | null> {
+  try {
+    const [logicalFinalRows, effectiveResultCorrections, fields, latestRuns] =
+      await Promise.all([
+        prisma.gameStats.count({ where: { is_final: true } }),
+        prisma.replayEvidenceArtifact.count({
+          where: { evidenceKind: "effective_projection_receipt" },
+        }),
+        prisma.replayObservation.groupBy({
+          by: ["fieldPath"],
+          _count: { _all: true, confidenceBps: true },
+          orderBy: { _count: { fieldPath: "desc" } },
+          take: 100,
+        }),
+        prisma.replayParseRun.findMany({
+          distinct: ["artifactId"],
+          orderBy: [
+            { artifactId: "asc" },
+            { createdAt: "desc" },
+            { id: "desc" },
+          ],
+          select: { status: true, metrics: true },
+        }),
+      ]);
+    const completed = latestRuns.filter((run) => run.status === "completed");
+    return {
+      logicalFinalRows,
+      latestArtifacts: latestRuns.length,
+      latestCompleted: completed.length,
+      latestFailures: latestRuns.length - completed.length,
+      savedSnapshots: completed.filter((run) =>
+        String(jsonRecord(run.metrics).parse_mode || "").startsWith(
+          "mgz_hd_saved_game_"
+        )
+      ).length,
+      effectiveResultCorrections,
+      advancedLanes: buildReplayEvidenceLanes(
+        fields.map((field) => ({
+          fieldPath: field.fieldPath,
+          observations: field._count._all,
+          scoredObservations: field._count.confidenceBps,
+        }))
+      ),
+    };
+  } catch (error) {
+    console.warn("Failed to load structured replay evidence for AI:", error);
+    return null;
+  }
+}
+
+function formatReplayEvidenceContext(context: AiReplayEvidenceContext | null) {
+  if (!context) return "Replay evidence context: unavailable for this reply.";
+  const lanes = context.advancedLanes.map(
+    (lane) =>
+      `- ${lane.label}: ${lane.observations} observations, ${lane.scoredObservations} confidence-scored, maturity ${lane.maturity}. ${lane.truthRule}`
+  );
+  return [
+    "Structured replay evidence context:",
+    `Effective final game rows: ${context.logicalFinalRows}.`,
+    `Latest Engine Room artifact dispositions: ${context.latestCompleted}/${context.latestArtifacts} completed, ${context.latestFailures} current failures.`,
+    `Saved checkpoint candidates: ${context.savedSnapshots}. They are non-final and cannot establish a winner.`,
+    `Strict receipt-backed effective result corrections: ${context.effectiveResultCorrections}.`,
+    "Advanced candidate coverage follows. Coverage is extraction readiness, not player-specific effective truth:",
+    ...lanes,
+    "Use only effective recent-match context for battle claims. Never turn candidate coverage, unscored commands, or saved checkpoints into a result, build-order claim, eAPM claim, or financial fact.",
+  ].join("\n");
 }
 
 type AiMoneyContext = {
@@ -635,6 +722,7 @@ function buildSiteKnowledge(personaId: AiPersonaId) {
   const common = [
     "AoE2HDBets is the AoE2HD product surface for replay parsing, rivalries, players, tournaments, public chat, and WOLO-adjacent UX.",
     "Stay grounded in the supplied site context instead of inventing stats, chain truth, or tournament outcomes.",
+    "Treat Engine Room candidates as private evidence. Candidate field coverage is not effective player or result truth.",
     "WOLO explanations should stay app-side and user-facing. Do not invent chain identity or supply facts beyond provided context.",
   ];
 
@@ -798,6 +886,7 @@ function buildUserPrompt(
     moneyContext: AiMoneyContext | null;
     stakingContext: AiStakingContext | null;
     peopleContext: AiPeopleContext | null;
+    replayEvidenceContext: AiReplayEvidenceContext | null;
   },
 ) {
   const threadHistory =
@@ -817,6 +906,7 @@ function buildUserPrompt(
     formatChatContext(context.chatMessages, args.viewer.uid),
     formatLeaderboardContext(context.leaderboard),
     formatRecentMatchesContext(context.recentMatches),
+    formatReplayEvidenceContext(context.replayEvidenceContext),
     formatPeopleContext(context.peopleContext),
     formatMoneyContext(context.moneyContext),
     formatStakingContext(context.stakingContext),
@@ -934,6 +1024,10 @@ export async function requestAiConciergeReply(
     args.userMessage,
     /\b(user|users|people|human|player count|how many players|identity|profile)\b/
   );
+  const wantsReplayEvidenceContext = shouldLoadAiContext(
+    args.userMessage,
+    /\b(replay|parser|engine room|game stats|build order|age up|research|eapm|apm|resign|tribute|trade|map control|recorded game|saved game)\b/
+  );
   const [
     chatMessages,
     leaderboard,
@@ -941,6 +1035,7 @@ export async function requestAiConciergeReply(
     moneyContext,
     stakingContext,
     peopleContext,
+    replayEvidenceContext,
   ] = await Promise.all([
     getLobbyMessages(args.prisma, args.roomSlug || LOBBY_ROOM_SLUG, 24, {
       uid: args.viewer.uid,
@@ -950,6 +1045,9 @@ export async function requestAiConciergeReply(
     wantsMoneyContext ? loadAiMoneyContext(args.prisma, args.viewer.uid) : Promise.resolve(null),
     wantsStakingContext ? loadAiStakingContext(args.prisma, args.viewer.uid) : Promise.resolve(null),
     wantsPeopleContext ? loadAiPeopleContext(args.prisma) : Promise.resolve(null),
+    wantsReplayEvidenceContext
+      ? loadAiReplayEvidenceContext(args.prisma)
+      : Promise.resolve(null),
   ]);
   const contextMs = Date.now() - contextStartedAt;
 
@@ -966,6 +1064,7 @@ export async function requestAiConciergeReply(
       moneyContext,
       stakingContext,
       peopleContext,
+      replayEvidenceContext,
     }
   );
   const maxContextChars = Math.max(

@@ -2,60 +2,127 @@
 
 ## Public surface
 
-`/game-stats` is the Parser Observatory and battle archive. It reports the live replay corpus, result/team coverage, unresolved ownership, parser versions, field observations, reprocess progress, failure signatures, recently decoded games, and battles still in the fog.
+`/game-stats` is the public Parser Observatory and battle archive. It reports
+live effective result/team coverage separately from private Engine Room
+candidate coverage. The page is read-only: it cannot promote candidates,
+adjudicate games, settle markets, or change chain history.
 
-The public page is a read-only projection. It does not promote parser candidates or rewrite replay truth.
+## Campaign III production checkpoint
 
-## Current corpus baseline
+The frozen 2,025-artifact cohort is fully accounted as of July 17, 2026:
 
-The production reconciliation completed on July 16, 2026:
+- latest candidate dispositions: `2,025 completed / 0 failed`;
+- immutable history: 2,389 parse runs and 247,630 material observations;
+- deterministic candidate output: 1,073,943,609 compressed bytes;
+- recorded-game candidate dispositions: 1,823;
+- saved-game checkpoint dispositions: 202, all explicitly non-final;
+- reviewed effective result corrections in this pass: 12;
+- private observation-promotion facts for those corrections: 24;
+- linked markets, pending claims, financial mutations, and chain transactions
+  for those 12 corrections: zero.
 
-- 2,025 archived replay artifacts;
-- 2,050 parse runs across the initial sample and full v2 campaign;
-- v2 job completed all 2,025 artifacts: 1,689 succeeded and 336 failed;
-- 566,591 candidate observations and 1,022,487,954 bytes of candidate output;
-- all candidate output remains excluded from public aggregates until an explicit promotion decision.
+The latest candidate mode equation is:
 
-The page calculates current game counts and coverage from the live database at render time. It reports the bounded operational job state exactly rather than presenting an estimated progress bar.
+| Latest candidate mode | Artifacts |
+|---|---:|
+| Full recorded-game summary | 1,681 |
+| Saved checkpoint decoded completely | 196 |
+| Header fragment plus body recovery | 118 |
+| Live parse-match fallback | 11 |
+| Header-only evidence | 8 |
+| Saved checkpoint initial-state prefix | 5 |
+| Metadata fragment plus body recovery | 4 |
+| Saved checkpoint map/roster prefix | 1 |
+| Trailing body-stream recovery | 1 |
+| **Total** | **2,025** |
 
-The original 336 failures were fully classified without changing their candidate status:
+This is why the public page says the 329 frontier is broken. Historical failed
+runs remain immutable and visible as historical failure signatures; only the
+latest disposition per artifact drives the current frontier.
 
-- 202 `.aoe2mpgame` saved-game containers require a format-specific or controlled-playback lane;
-- 126 `.aoe2record` files hit header range-compatibility signatures and are candidates for an alternate/version-aware parser lane;
-- 8 `.aoe2record` files reached the same HD body-stream termination signature and entered an isolated older-model compatibility lane.
+Candidate completion is not effective truth. The 202 `.aoe2mpgame` files are
+decoded checkpoint evidence, not completed battles. They have zero duration,
+no winner, `final_battle_eligible = false`, and
+`settlement_evidence_eligible = false` in their candidate contract.
 
-The first bounded compatibility pass ran only those 8 exact hashes with an isolated `mgz==1.8.27` runtime. It completed 7 private candidates and left 1 structured failure, with the balanced equation `8 = 7 + 1 + 0`. It emitted 2,402 candidate observations and 103,170 raw actions, promoted zero observations, and changed no public or financial aggregate.
+## Canonical and compatibility parsers
 
-The latest immutable run per artifact now yields 1,696 candidate completions and 329 current failures across the 2,025-artifact frozen cohort. The remaining frontier is:
+The canonical contract is:
 
-- 202 saved-game `.aoe2mpgame` containers in a controlled-playback/format-specific lane;
-- 126 `.aoe2record` header-range failures in a version-aware parser lane;
-- 1 `.aoe2record` body-stream termination artifact still requiring deeper compatibility or corruption proof.
+```text
+parser: aoe2war.mgz_hd
+mgz: 1.8.51
+schema: 2026-07-16.4
+pass: hd_deterministic_evidence
+pass version: 6
+```
 
-The public recovery map uses the latest immutable run per artifact. Historical failures remain preserved and visible as historical signatures; a later compatibility success retires a current failure without rewriting the earlier run.
+The isolated `mgz 1.8.27` lane remains compatibility evidence. It never became
+the production parser. The Observatory pins its contract tile to
+`HD_REPLAY_PARSER_CONTRACT`, rather than whichever run finished most recently.
 
-The Observatory's contract tile is pinned to `HD_REPLAY_PARSER_CONTRACT`, not whichever candidate run finished most recently. Isolated compatibility versions remain visible in the catalog and recovery evidence without being mislabeled as the canonical parser.
+## Effective result projection
+
+The 12 Campaign III corrections crossed into `GameStats` only after the strict
+projector verified all of the following:
+
+- immutable candidate bytes, compressed hash, semantic hash, and run identity;
+- complete unique roster and explicit resolved teams;
+- trusted allowlisted result provenance;
+- current effective result still unknown;
+- no accepted human adjudication;
+- no linked market and no pending WOLO claim;
+- completed recorded game, never a saved checkpoint.
+
+Each write has a mode-`0600`, content-addressed private receipt plus an
+`effective_projection_receipt` evidence row. The projector preserves replay
+ingress provenance, removes stale parse-failure markers, writes a compact source
+marker, and is idempotent. A second apply reused all 12 receipts and performed
+zero new writes. Candidate observation promotions remain private by schema;
+the separate receipt explicitly records that the reviewed projection affects
+public stats and does not affect financial history.
+
+## Advanced evidence front
+
+The Observatory now publishes field-path readiness without presenting
+experimental evidence as a player stat:
+
+- age/research commands: captured, experimental and unscored;
+- command activity and recorded eAPM: structured, experimental and unscored;
+- resignation chronology: captured with a smaller confidence-scored subset;
+- tribute and market commands: validated extraction facts, not resource totals;
+- terrain/elevation/map hashes: validated map structure, not map-control claims;
+- production/build orders: command-family foundation only; ordered semantic
+  build orders remain future work.
+
+The same aggregate readiness can be supplied to the AI Council as a structured
+context object when a replay/stat question is asked. Raw candidate objects and
+private storage keys are never sent. The prompt contract states that coverage
+is extraction readiness, saved checkpoints are non-final, and only effective
+recent-match context may support battle claims.
 
 ## Truth and confidence
 
-Public result resolution uses the existing `resolveReplayWinnerTruth` policy plus effective commissioner adjudications. Team resolution reads explicit replay evidence and preserves team ID `0` as valid. Player order and aliases never create teams.
+Public result resolution uses `resolveReplayWinnerTruth` plus effective
+commissioner adjudications. Team resolution reads explicit replay evidence and
+preserves team ID `0` as valid. Player order and aliases never create teams.
+Missing fields remain missing; they never become zeroes.
 
-Confidence labels mean:
+Intentional save/rehost sessions remain a separate public disposition when an
+actual replay `save` event exists without postgame, resignations, or a trusted
+result. They are not parser failures. Saved-game containers are likewise
+checkpoint artifacts, not finals.
 
-- **direct / verified**: decisive replay or accepted adjudication evidence under current public policy;
-- **inferred / partial**: useful candidate evidence that is insufficient for automatic public promotion;
-- **unknown / review**: the record lacks the required final or roster evidence.
+## Storage and ownership
 
-Unknowns are shown by public owner/uploader, roster player, game type, and parse reason. Missing postgame fields remain missing; they never become zeroes. The newest unresolved records also state the evidence still needed.
+`api-prodn` owns parse execution, source receipts, manifests, candidate objects,
+failure classification, reports, and the reviewed projection utility.
+`app-prodn` owns the public/admin presentation and effective truth policy.
 
-Intentional save/rehost sessions are a separate presentation disposition when an actual replay `save` event exists without postgame, resignations, or a trusted result. They are not described as parser failures and are not sent to result review merely because the session was short.
+- source archive: `/mnt/HC_Volume_105319120/aoe2-replay-archive`;
+- Engine Room jobs/reports/fixtures/backups/receipts:
+  `/mnt/HC_Volume_105319120/aoe2-parser-engine`.
 
-## Parser engine separation
-
-`api-prodn` and the replay engine own parse execution, archive receipts, job manifests, raw candidate outputs, and failure classification. `app-prodn` owns this public/admin projection and the truth-policy presentation. Candidate observations, even at high confidence, do not affect leaderboards, settlements, or public aggregates without a separate promotion or adjudication fact.
-
-The production archive remains immutable-by-convention at `/mnt/HC_Volume_105319120/aoe2-replay-archive`. Parser manifests, candidate outputs, reports, fixtures, and backups remain under `/mnt/HC_Volume_105319120/aoe2-parser-engine`.
-
-## Roadmap
-
-Next parser work should prioritize a bounded alternate header/version lane for the 126 range failures, controlled playback research for the 202 saved-game containers, and deeper compatibility/corruption proof for the single remaining body-stream artifact. Promotion policy for safely supported v2 fields, deeper economy timelines, build-order events, combat/resource efficiency, and map-control observations follow. New statistics must publish their field path, provenance, confidence, and unknown policy before entering player or leaderboard truth.
+Next work is no longer “make 329 parse.” It is saved-checkpoint continuation
+research, safe reconciliation of remaining candidate improvements, confidence
+scoring for experimental action fields, and semantic advanced-stat derivation.

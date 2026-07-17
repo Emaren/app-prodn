@@ -2,10 +2,11 @@
 
 ## Status
 
-The additive database foundation and the private admin observatory are present.
-The API repository also owns a bounded, resumable candidate worker. None of
-these pieces alters `game_stats`, publishes a candidate, or changes a public or
-financial aggregate. Public projection remains a separate reviewed step.
+The additive database foundation, private admin observatory, bounded resumable
+candidate worker, job reporter, saved-checkpoint decoder, and separately
+authorized effective-result projector are present. The worker and reporter do
+not alter `game_stats`. Public projection is a distinct reviewed command with a
+stricter gate and its own immutable receipt.
 
 The foundation lives in:
 
@@ -55,9 +56,9 @@ The first producer contract is fixed as:
 ```text
 parser: aoe2war.mgz_hd
 mgz: 1.8.51
-schema: 2026-07-15.2
+schema: 2026-07-16.4
 pass: hd_deterministic_evidence
-pass version: 2
+pass version: 6
 ```
 
 Its candidate document contains sorted field observations plus the complete
@@ -111,10 +112,35 @@ A promotion is a separate immutable row and is also constrained to
 `affects_public_aggregates = false`. In this first foundation, “promoted” means
 accepted into the private Engine Room catalog. It does not mean published.
 
-Any future public projector must be explicit, separately authorized, compare its
-source hashes against the current replay/roster, honor human adjudication, and
-write its own audit record. It must not silently turn a candidate promotion into
-bet settlement or modify settlement, claim, refund, or chain history.
+The effective-result projector is explicit and separately authorized. It
+re-verifies source hashes, requires a placeholder effective roster, complete
+unique candidate roster, explicit teams, trusted allowlisted result provenance,
+and a completed recorded game. Accepted adjudications, saved checkpoints,
+known/conflicting results, markets, and pending claims block application.
+
+The projector writes a content-addressed mode-`0600` receipt, links it as an
+`effective_projection_receipt`, appends private observation-promotion facts,
+and updates only the reviewed `GameStats` projection. It has no market, wager,
+claim, settlement, refund, or chain write path. Re-running an applied cohort
+must reuse the existing receipt and write nothing.
+
+Campaign III applied this rail to 12 eight-player games. All 12 had zero linked
+markets, claims, or adjudications. The second apply reused 12 receipts with zero
+new writes. The pre-apply database backup is recorded in the server storage map.
+
+## Saved-game checkpoint lane
+
+`.aoe2mpgame` files use a candidate-only raw-DEFLATE decoder. The public replay
+parser continues to reject this suffix. The lane recovered:
+
+- 196 complete saved snapshots;
+- 5 complete initial-state prefixes;
+- 1 map/roster prefix.
+
+All 202 candidates carry the saved-checkpoint role and remain non-final,
+result-unknown, and settlement-ineligible. The decoder caps inflated output at
+64 MiB. Three private golden fixtures cover the complete, initial-prefix, and
+map-prefix shapes without committing private replay bytes to Git.
 
 ## Bounded resumable jobs
 
@@ -190,11 +216,11 @@ batch. Re-run the identical command after exit `75` or another resumable pause.
 The job identity includes the manifest, parser/options, and batch size; changing
 one creates a different immutable job.
 
-The Jim pass must reconcile exactly 2,025 manifest rows before the full-vault
-manifest is attempted. After parsing, inspect candidates, existing human
-adjudications, and market links in `/admin/parser-lab`. Do not treat a private
-candidate as public truth and do not modify a wager, payout, refund, claim, or
-chain transaction from this worker.
+The Jim pass reconciled exactly 2,025 manifest rows. The latest immutable
+candidate disposition now accounts for all 2,025 artifacts with zero current
+candidate failures. Continue to inspect candidates, existing human
+adjudications, and market links in `/admin/parser-lab`; that completion equation
+does not make every candidate effective public truth.
 
 Generate the private, byte-verified reconciliation equation with the API
 reporter before any public projector is considered:
