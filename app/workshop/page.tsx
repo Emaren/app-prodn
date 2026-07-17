@@ -14,6 +14,7 @@ import {
 
 import WorkshopAsk from "@/components/workshop/WorkshopAsk";
 import WorkshopChronicle from "@/components/workshop/WorkshopChronicle";
+import WorkshopSponsor from "@/components/workshop/WorkshopSponsor";
 import { getPrisma } from "@/lib/prisma";
 import {
   loadPublicWorkshop,
@@ -224,6 +225,8 @@ export default async function WorkshopPage() {
           )}
         </section>
       ) : null}
+
+      <WorkshopSponsor />
 
       <WorkshopChronicle
         initialEntries={chronicle.entries}

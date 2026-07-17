@@ -15,11 +15,13 @@ import {
 type MarketplacePaymentWindow = Window & {
   keplr?: {
     enable?: (chainId: string) => Promise<void>;
-    experimentalSuggestChain?: (config: typeof woloChainConfig) => Promise<void>;
+    experimentalSuggestChain?: (
+      config: typeof woloChainConfig,
+    ) => Promise<void>;
     getOfflineSignerAuto?: (chainId: string) => Promise<unknown>;
     getOfflineSignerOnlyAmino?: (chainId: string) => unknown;
     getKey?: (
-      chainId: string
+      chainId: string,
     ) => Promise<{ bech32Address?: string; isNanoLedger?: boolean }>;
   };
   getOfflineSigner?: (chainId: string) => unknown;
@@ -42,8 +44,8 @@ function describeMarketplacePaymentError(error: unknown, isLedger: boolean) {
     normalized.includes("canceled")
   ) {
     return isLedger
-      ? "Ledger approval was cancelled before the marketplace payment finished."
-      : "Keplr approval was cancelled before the marketplace payment finished.";
+      ? "Ledger approval was cancelled before the WOLO payment finished."
+      : "Keplr approval was cancelled before the WOLO payment finished.";
   }
 
   if (
@@ -54,35 +56,37 @@ function describeMarketplacePaymentError(error: unknown, isLedger: boolean) {
     return "Ledger did not finish signing. Unlock it, open the Cosmos app, and approve the WOLO payment.";
   }
 
-  if (normalized.includes("failed to fetch") || normalized.includes("network")) {
+  if (
+    normalized.includes("failed to fetch") ||
+    normalized.includes("network")
+  ) {
     return "The WoloChain connection dropped before payment finished. Refresh and retry once.";
   }
 
-  return message || "The marketplace payment could not be broadcast.";
+  return message || "The WOLO payment could not be broadcast.";
 }
 
 async function resolveMarketplaceSigner(
   keplrWindow: MarketplacePaymentWindow,
-  fallbackAddress: string
+  fallbackAddress: string,
 ) {
   const key = keplrWindow.keplr?.getKey
     ? await keplrWindow.keplr.getKey(WOLO_CHAIN_ID).catch(() => null)
     : null;
   const keyAddress = key?.bech32Address?.trim() || "";
   const isLedger = Boolean(
-    (key as { isNanoLedger?: boolean } | null)?.isNanoLedger
+    (key as { isNanoLedger?: boolean } | null)?.isNanoLedger,
   );
 
   if (isLedger) {
-    const signer =
-      (keplrWindow.keplr?.getOfflineSignerOnlyAmino?.(WOLO_CHAIN_ID) ||
-        keplrWindow.getOfflineSignerOnlyAmino?.(
-          WOLO_CHAIN_ID
-        )) as OfflineSigner | undefined;
+    const signer = (keplrWindow.keplr?.getOfflineSignerOnlyAmino?.(
+      WOLO_CHAIN_ID,
+    ) || keplrWindow.getOfflineSignerOnlyAmino?.(WOLO_CHAIN_ID)) as
+      OfflineSigner | undefined;
 
     if (!signer) {
       throw new Error(
-        "Ledger account detected, but Keplr Amino signer is unavailable."
+        "Ledger account detected, but Keplr Amino signer is unavailable.",
       );
     }
 
@@ -99,7 +103,7 @@ async function resolveMarketplaceSigner(
 
   if (keplrWindow.keplr?.getOfflineSignerAuto) {
     const signer = (await keplrWindow.keplr.getOfflineSignerAuto(
-      WOLO_CHAIN_ID
+      WOLO_CHAIN_ID,
     )) as OfflineSigner;
     const accounts = await signer.getAccounts();
     const signerAddress =
@@ -112,11 +116,8 @@ async function resolveMarketplaceSigner(
     return { signer, signerAddress, isLedger: false };
   }
 
-  const signer =
-    (keplrWindow.getOfflineSignerOnlyAmino?.(WOLO_CHAIN_ID) ||
-      keplrWindow.getOfflineSigner?.(
-        WOLO_CHAIN_ID
-      )) as OfflineSigner | undefined;
+  const signer = (keplrWindow.getOfflineSignerOnlyAmino?.(WOLO_CHAIN_ID) ||
+    keplrWindow.getOfflineSigner?.(WOLO_CHAIN_ID)) as OfflineSigner | undefined;
 
   if (!signer) {
     throw new Error("Keplr offline signer was not found in this browser.");
@@ -164,16 +165,16 @@ export async function payMarketplaceRequestOnChain(input: {
 
   const signerResolution = await resolveMarketplaceSigner(
     keplrWindow,
-    input.fallbackWalletAddress?.trim() || ""
+    input.fallbackWalletAddress?.trim() || "",
   );
 
   const [{ GasPrice, SigningStargateClient }] = await Promise.all([
     import("@cosmjs/stargate"),
   ]);
 
-  let client:
-    | Awaited<ReturnType<typeof SigningStargateClient.connectWithSigner>>
-    | null = null;
+  let client: Awaited<
+    ReturnType<typeof SigningStargateClient.connectWithSigner>
+  > | null = null;
 
   try {
     client = await SigningStargateClient.connectWithSigner(
@@ -181,7 +182,7 @@ export async function payMarketplaceRequestOnChain(input: {
       signerResolution.signer,
       {
         gasPrice: GasPrice.fromString(WOLO_DEFAULT_GAS_PRICE),
-      }
+      },
     );
 
     const result = await client.sendTokens(
@@ -194,7 +195,7 @@ export async function payMarketplaceRequestOnChain(input: {
         },
       ],
       "auto",
-      input.memo
+      input.memo,
     );
 
     return {
@@ -204,9 +205,11 @@ export async function payMarketplaceRequestOnChain(input: {
     };
   } catch (error) {
     throw new Error(
-      describeMarketplacePaymentError(error, signerResolution.isLedger)
+      describeMarketplacePaymentError(error, signerResolution.isLedger),
     );
   } finally {
     client?.disconnect();
   }
 }
+
+export const payWoloOnChain = payMarketplaceRequestOnChain;
