@@ -578,7 +578,19 @@ function InnerShell({ children }: { children: React.ReactNode }) {
       className={`${isAcademySurface ? "academy-route-shell" : ""} flex w-full flex-col overflow-x-hidden text-white transition-[background-image,background-color] duration-500 ${isContactPage ? "h-[100dvh] min-h-0 max-h-[100dvh] overflow-y-hidden" : "min-h-screen"}`}
       onWheel={handleContactShellWheel}
       style={
-        isAcademySurface
+        isObservatorySurface
+          ? pathname === "/traffic"
+            ? {
+                backgroundColor: "#01070b",
+                backgroundImage:
+                  "radial-gradient(72rem 38rem at 12% 0%, rgba(16,185,129,0.10), transparent 62%), radial-gradient(68rem 36rem at 88% 0%, rgba(59,130,246,0.09), transparent 64%), linear-gradient(180deg, #02090f 0%, #01070c 46%, #01050a 100%)",
+              }
+            : {
+                backgroundColor: "#05040d",
+                backgroundImage:
+                  "radial-gradient(72rem 38rem at 12% 0%, rgba(245,158,11,0.085), transparent 62%), radial-gradient(68rem 38rem at 88% 0%, rgba(139,92,246,0.12), transparent 64%), linear-gradient(180deg, #090713 0%, #05040d 48%, #03030a 100%)",
+              }
+        : isAcademySurface
           ? {
               ...pageStyle,
               backgroundColor: "#06070a",
@@ -598,6 +610,23 @@ function InnerShell({ children }: { children: React.ReactNode }) {
       <UserExperienceTracker />
       <header
         className={`sticky top-0 z-[180] shrink-0 overflow-visible border-b px-3 pb-3 pt-[calc(env(safe-area-inset-top)+0.7rem)] backdrop-blur-2xl transition-[background-color,border-color] duration-500 sm:px-4 lg:py-3 ${headerSkin.shell}`}
+        style={
+          isObservatorySurface
+            ? pathname === "/traffic"
+              ? {
+                  backgroundColor: "rgba(2, 9, 15, 0.97)",
+                  backgroundImage:
+                    "linear-gradient(180deg, rgba(3,14,21,0.99), rgba(2,8,14,0.97))",
+                  borderColor: "rgba(94,234,212,0.08)",
+                }
+              : {
+                  backgroundColor: "rgba(7, 5, 15, 0.97)",
+                  backgroundImage:
+                    "linear-gradient(180deg, rgba(12,8,22,0.99), rgba(6,5,14,0.97))",
+                  borderColor: "rgba(196,181,253,0.08)",
+                }
+            : undefined
+        }
       >
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
           <div className="absolute -left-16 -top-20 h-44 w-72 rounded-full bg-amber-300/[0.055] blur-3xl" />

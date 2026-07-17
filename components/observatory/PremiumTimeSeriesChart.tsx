@@ -88,6 +88,41 @@ type Coord = {
   y: number;
 };
 
+function axisMaxWithHeadroom(
+  rawMax: number,
+) {
+  if (
+    !Number.isFinite(rawMax) ||
+    rawMax <= 0
+  ) {
+    return 1;
+  }
+
+  /*
+   * Give real peaks roughly 10% breathing room.
+   *
+   * Round upward to a clean increment so a real plateau
+   * remains visually flat without sitting against the roof.
+   */
+  const target = rawMax * 1.1;
+
+  const magnitude =
+    10 **
+    Math.max(
+      0,
+      Math.floor(
+        Math.log10(target),
+      ) - 1,
+    );
+
+  return (
+    Math.ceil(
+      target / magnitude,
+    ) * magnitude
+  );
+}
+
+
 function smoothPath(
   points: Array<{ x: number; y: number }>,
 ) {
@@ -306,7 +341,7 @@ export default function PremiumTimeSeriesChart({
     [series, visible],
   );
 
-  const leftMax = useMemo(
+  const rawLeftMax = useMemo(
     () =>
       Math.max(
         1,
@@ -324,7 +359,9 @@ export default function PremiumTimeSeriesChart({
     [displayedPoints, displayedSeries],
   );
 
-  const rightMax = useMemo(
+  const leftMax = axisMaxWithHeadroom(rawLeftMax);
+
+  const rawRightMax = useMemo(
     () =>
       Math.max(
         1,
@@ -341,6 +378,8 @@ export default function PremiumTimeSeriesChart({
       ),
     [displayedPoints, displayedSeries],
   );
+
+  const rightMax = axisMaxWithHeadroom(rawRightMax);
 
   function xForIndex(index: number) {
     if (displayedPoints.length <= 1) {
