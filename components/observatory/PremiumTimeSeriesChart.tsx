@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { useMemo, useRef, useState } from "react";
 
-export type ObservatoryAxis = "count" | "wolo";
+export type ObservatoryAxis = "count" | "secondaryCount" | "wolo";
 
 export type ObservatorySeries = {
   key: string;
@@ -209,7 +209,7 @@ export default function PremiumTimeSeriesChart({
       Math.max(
         1,
         ...displayedSeries
-          .filter((item) => item.axis === "wolo")
+          .filter((item) => item.axis !== "count")
           .flatMap((item) =>
             displayedPoints
               .map((point) => point.values[item.key])
@@ -231,7 +231,7 @@ export default function PremiumTimeSeriesChart({
   }
 
   function yForValue(value: number, axis: ObservatoryAxis) {
-    const max = axis === "wolo" ? rightMax : leftMax;
+    const max = axis === "count" ? leftMax : rightMax;
 
     return MARGIN.top + PLOT_HEIGHT - (value / max) * PLOT_HEIGHT;
   }

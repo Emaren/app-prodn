@@ -17,16 +17,16 @@ const SERIES: ObservatorySeries[] = [
   },
   {
     key: "suspectedHuman",
-    label: "Suspected Human",
+    label: "Potential Humans",
     color: "#5aa9ff",
-    axis: "count",
+    axis: "secondaryCount",
     defaultVisible: true,
   },
   {
     key: "confirmedHuman",
-    label: "Confirmed Human",
+    label: "Confirmed Humans",
     color: "#42f1b5",
-    axis: "count",
+    axis: "secondaryCount",
     defaultVisible: true,
   },
 ];
