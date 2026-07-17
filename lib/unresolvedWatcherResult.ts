@@ -32,6 +32,7 @@ export type ReplayTruthConfidence =
 export const REPLAY_WINNER_TRUTH_REASON_CODES = [
   "stored_winner_field",
   "reliable_player_winner_flag",
+  "trusted_team_result",
   "recorded_resignation",
   "postgame_block",
   "scoreboard_completion",
@@ -271,6 +272,42 @@ function winnerFlagNames(
   return [...names];
 }
 
+function trustedStructuredTeamWinners(
+  keyEvents: Record<string, unknown>,
+  flaggedWinners: string[]
+) {
+  if (flaggedWinners.length < 2) return null;
+  const result = readKeyEvents(keyEvents.result_resolution);
+  const teams = readKeyEvents(keyEvents.team_resolution);
+  const winningNames = (Array.isArray(result.winning_player_names)
+    ? result.winning_player_names
+    : []
+  )
+    .map(normalizePublicReplayText)
+    .filter((name): name is string => Boolean(name));
+  const flaggedKeys = new Set(flaggedWinners.map((name) => name.toLowerCase()));
+  const resultKeys = new Set(winningNames.map((name) => name.toLowerCase()));
+  const provenance = textValue(result.result_provenance).toLowerCase();
+  const allowlistedProvenance = new Set([
+    "complete_losing_team_resignation",
+    "postgame_winner_flags",
+    "scoreboard_winner_flags",
+  ]);
+  if (
+    !truthBoolean(result.result_trusted) ||
+    textValue(result.result_status).toLowerCase() !== "resolved" ||
+    !allowlistedProvenance.has(provenance) ||
+    textValue(teams.status).toLowerCase() !== "resolved" ||
+    textValue(teams.confidence).toLowerCase() !== "high" ||
+    winningNames.length !== flaggedWinners.length ||
+    resultKeys.size !== flaggedKeys.size ||
+    [...flaggedKeys].some((key) => !resultKeys.has(key))
+  ) {
+    return null;
+  }
+  return flaggedWinners;
+}
+
 function missingWinnerProofReasons(
   keyEvents: Record<string, unknown>,
   eventTypes: Set<string>,
@@ -348,6 +385,14 @@ export function resolveReplayWinnerTruth(
   const parseReason = textValue(input.parseReason).toLowerCase();
   const storedWinner = normalizeResolvedWinner(input.winner);
   const flaggedWinners = winnerFlagNames(input.players);
+  const structuredTeamWinners = trustedStructuredTeamWinners(
+    keyEvents,
+    flaggedWinners
+  );
+  const structuredResult = readKeyEvents(keyEvents.result_resolution);
+  const structuredResultClaimsTeam =
+    Array.isArray(structuredResult.winning_player_names) &&
+    structuredResult.winning_player_names.length > 1;
   const reliableFlagWinner =
     flaggedWinners.length === 1 ? flaggedWinners[0] : null;
   const inferenceRejected = isUnreliableWinnerInference(
@@ -368,6 +413,7 @@ export function resolveReplayWinnerTruth(
     truthCount(keyEvents.achievement_player_count) > 0;
   const decisivePlayerFlag =
     Boolean(reliableFlagWinner) &&
+    !structuredResultClaimsTeam &&
     (truthBoolean(keyEvents.completed) ||
       postgameProof ||
       scoreboardProof ||
@@ -433,6 +479,27 @@ export function resolveReplayWinnerTruth(
         confidence === "recovered"
           ? `Winner ${storedWinner} was recovered from reviewed replay metadata.`
           : `Winner ${storedWinner} is supported by the stored replay result.`,
+      neededEvidence: [],
+    };
+  }
+
+  if (structuredTeamWinners) {
+    const winnerLabel = structuredTeamWinners.join(" / ");
+    const truthReasons: ReplayWinnerTruthReason[] = ["trusted_team_result"];
+    if (resignationProof) truthReasons.push("recorded_resignation");
+    if (postgameProof) truthReasons.push("postgame_block");
+    if (scoreboardProof) truthReasons.push("scoreboard_completion");
+    return {
+      winner: winnerLabel,
+      candidateWinner: winnerLabel,
+      confidence: "recovered",
+      truthReasons,
+      publicLabel: winnerLabel,
+      statsEligible: true,
+      // A structured team result can enter stats without becoming standalone
+      // market settlement proof. Team markets retain their frozen-roster rail.
+      bettingEligible: false,
+      diagnosticSummary: `Winning team ${winnerLabel} matches the complete trusted structured result.`,
       neededEvidence: [],
     };
   }

@@ -82,6 +82,12 @@ zero new writes. Candidate observation promotions remain private by schema;
 the separate receipt explicitly records that the reviewed projection affects
 public stats and does not affect financial history.
 
+The public winner resolver accepts a multi-player winning side only when the
+complete set of true player flags exactly matches the trusted structured winner
+names and resolved high-confidence teams. That makes the row stats-eligible but
+not standalone betting-eligible; market settlement still requires its separate
+frozen-roster integrity rail.
+
 ## Advanced evidence front
 
 The Observatory now publishes field-path readiness without presenting

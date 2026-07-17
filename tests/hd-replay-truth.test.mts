@@ -151,6 +151,62 @@ test("a winner can be recovered from one decisive player flag", () => {
   assert.equal(truth.statsEligible, true);
 });
 
+test("a complete trusted team result enters stats without becoming settlement proof", () => {
+  const truth = resolveReplayWinnerTruth({
+    winner: null,
+    players: [
+      { name: "Alpha", winner: false },
+      { name: "Bravo", winner: false },
+      { name: "Charlie", winner: true },
+      { name: "Delta", winner: true },
+    ],
+    parseReason: "engine_room_trusted_result",
+    parseSource: "watcher_final",
+    keyEvents: {
+      completed: true,
+      result_resolution: {
+        result_status: "resolved",
+        result_trusted: true,
+        result_provenance: "complete_losing_team_resignation",
+        winning_player_names: ["Charlie", "Delta"],
+      },
+      team_resolution: {
+        status: "resolved",
+        confidence: "high",
+      },
+    },
+    eventTypes: ["resign"],
+  });
+  assert.equal(truth.winner, "Charlie / Delta");
+  assert.equal(truth.statsEligible, true);
+  assert.equal(truth.bettingEligible, false);
+  assert.ok(truth.truthReasons.includes("trusted_team_result"));
+});
+
+test("partial or conflicting team winner flags remain unresolved", () => {
+  const truth = resolveReplayWinnerTruth({
+    winner: null,
+    players: [
+      { name: "Alpha", winner: false },
+      { name: "Bravo", winner: false },
+      { name: "Charlie", winner: true },
+      { name: "Delta", winner: false },
+    ],
+    parseReason: "engine_room_trusted_result",
+    keyEvents: {
+      completed: true,
+      result_resolution: {
+        result_status: "resolved",
+        result_trusted: true,
+        result_provenance: "complete_losing_team_resignation",
+        winning_player_names: ["Charlie", "Delta"],
+      },
+      team_resolution: { status: "resolved", confidence: "high" },
+    },
+  });
+  assert.equal(truth.statsEligible, false);
+});
+
 test("unknown-like placeholders are never promoted to replay metadata", () => {
   for (const value of [
     null,
