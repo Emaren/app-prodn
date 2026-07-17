@@ -118,6 +118,8 @@ export default function HeaderMenu({
       { href: "/rivalries", label: "Rivalries", icon: Swords },
       { href: "/upload", label: "Upload Replay", icon: Upload },
       { href: "/game-stats", label: "Game Stats", icon: BarChart3 },
+      { href: "/traffic", label: "Traffic Observatory", icon: Globe2 },
+      { href: "/statistics", label: "Kingdom Statistics", icon: BarChart3 },
       { href: "/submit", label: "Submit Music", icon: Upload },
       { href: "/download", label: "Download Watcher", icon: Download },
     ],
@@ -257,7 +259,7 @@ export default function HeaderMenu({
                 id={panelId}
                 style={panelStyle}
                 className={[
-                  "fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+0.75rem)] top-[calc(env(safe-area-inset-top)+0.75rem)] z-[260] min-h-0 overflow-hidden rounded-[1.85rem] border p-2 shadow-[0_34px_120px_rgba(0,0,0,0.72)] backdrop-blur-2xl sm:inset-x-auto sm:bottom-auto sm:top-auto sm:w-[30rem] sm:max-w-[calc(100vw-1.5rem)]",
+                  "fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+0.75rem)] top-[calc(env(safe-area-inset-top)+0.75rem)] z-[260] flex min-h-0 flex-col overflow-hidden rounded-[1.85rem] border p-2 shadow-[0_34px_120px_rgba(0,0,0,0.72)] backdrop-blur-2xl sm:inset-x-auto sm:bottom-auto sm:top-auto sm:w-[30rem] sm:max-w-[calc(100vw-1.5rem)]",
                   menuClassName || "border-white/10 bg-[#0b1324]/98",
                 ]
                   .filter(Boolean)
@@ -266,7 +268,7 @@ export default function HeaderMenu({
                 aria-modal={!desktop}
                 aria-label="Account menu"
               >
-                <div className="flex h-full min-h-0 flex-col">
+                <div className="flex min-h-0 flex-1 flex-col">
                   <div className="rounded-[1.45rem] border border-white/10 bg-[linear-gradient(145deg,rgba(255,255,255,0.065),rgba(255,255,255,0.025))] p-4">
                     <div className="flex items-center justify-between gap-3">
                       <div className="text-[10px] font-semibold uppercase tracking-[0.34em] text-amber-100/55">
@@ -298,7 +300,7 @@ export default function HeaderMenu({
                     </div>
                   </div>
 
-                  <div className="mt-3 min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
+                  <div className="mt-3 min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-contain pr-1 [scrollbar-gutter:stable]">
                     <MenuSection label="Command routes">
                       {primaryEntries.map((entry) => (
                         <MenuTile

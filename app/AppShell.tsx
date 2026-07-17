@@ -56,6 +56,8 @@ const KINGDOM_LINKS = [
   { href: "/radio", label: "Radio WOLO", icon: Radio, body: "Kingdom music and creator submissions" },
   { href: "/workshop", label: "The Workshop", icon: Hammer, body: "Watch the kingdom being forged in public" },
   { href: "/game-stats", label: "Parser Observatory", icon: BarChart3, body: "Replay corpus, coverage, and unknowns" },
+  { href: "/traffic", label: "Traffic Observatory", icon: Globe2, body: "Traffic, suspected humans, and confirmed humans" },
+  { href: "/statistics", label: "Kingdom Statistics", icon: BarChart3, body: "WOLO, users, bets, games, watchers, and growth" },
 ] as const;
 
 const PAGE_HEADINGS: ReadonlyArray<{ prefix: string; title: string }> = [
@@ -103,6 +105,8 @@ const PAGE_HEADINGS: ReadonlyArray<{ prefix: string; title: string }> = [
   { prefix: "/upload", title: "Upload Replay" },
   { prefix: "/app", title: "Today’s War Room" },
   { prefix: "/lobby", title: "Tournament Lobby" },
+  { prefix: "/traffic", title: "Traffic Observatory" },
+  { prefix: "/statistics", title: "Kingdom Statistics" },
 ];
 
 function getPageHeading(pathname: string | null) {
@@ -236,7 +240,7 @@ function KingdomNavItem({
       </button>
 
       <div
-        className={`absolute left-1/2 top-full z-[220] hidden w-[22rem] -translate-x-1/2 pt-3 transition duration-150 sm:block ${
+        className={`absolute left-1/2 top-full z-[220] hidden max-h-[calc(100dvh-6.25rem)] overflow-y-auto overscroll-contain touch-pan-y [scrollbar-gutter:stable] w-[22rem] -translate-x-1/2 pt-3 transition duration-150 sm:block ${
           open
             ? "pointer-events-auto translate-y-0 opacity-100"
             : "pointer-events-none -translate-y-1 opacity-0"
@@ -258,7 +262,7 @@ function KingdomNavItem({
               />
               <div
                 ref={panelRef}
-                className="absolute inset-x-3 top-[calc(env(safe-area-inset-top)+0.75rem)] max-h-[calc(100dvh-env(safe-area-inset-top)-1.5rem)] overflow-y-auto rounded-[1.65rem] border border-amber-200/18 bg-[#07101a]/98 p-3 shadow-[0_34px_110px_rgba(0,0,0,0.7)] backdrop-blur-2xl"
+                className="absolute inset-x-3 top-[calc(env(safe-area-inset-top)+0.75rem)] max-h-[calc(100dvh-env(safe-area-inset-top)-1.5rem)] overflow-y-auto overscroll-contain touch-pan-y [scrollbar-gutter:stable] rounded-[1.65rem] border border-amber-200/18 bg-[#07101a]/98 p-3 shadow-[0_34px_110px_rgba(0,0,0,0.7)] backdrop-blur-2xl"
               >
                 <div className="mb-2 flex items-center justify-between gap-3 px-2 py-2">
                   <div>
