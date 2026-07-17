@@ -13,7 +13,8 @@ The frozen 2,025-artifact cohort is fully accounted as of July 17, 2026:
 
 - latest candidate dispositions: `2,025 completed / 0 failed`;
 - immutable history: 2,389 parse runs and 247,630 material observations;
-- deterministic candidate output: 1,073,943,609 compressed bytes;
+- candidate-output byte counter across all run history: 1,073,943,609 bytes
+  (1,068,199,389 bytes for the latest 2,025 candidates alone);
 - recorded-game candidate dispositions: 1,823;
 - saved-game checkpoint dispositions: 202, all explicitly non-final;
 - reviewed effective result corrections in this pass: 12;
@@ -87,6 +88,31 @@ complete set of true player flags exactly matches the trusted structured winner
 names and resolved high-confidence teams. That makes the row stats-eligible but
 not standalone betting-eligible; market settlement still requires its separate
 frozen-roster integrity rail.
+
+The Observatory denominator is not a deduplicated count of logical battles.
+It is the timestamped set of `GameStats` rows marked `is_final = true`, after
+append-only adjudications are projected. Replay hashes are distinct within the
+current set, but a final watcher/upload record can still be a saved/rehosted,
+aborted, checkpoint-only, or otherwise unprovable session. These records remain
+visible in the fog and excluded from resolved-result statistics. Campaign IV
+must classify that lifecycle evidence before treating the remaining count as a
+recovery queue; the target is zero *unexplained viable finals*, not zero honest
+unknowns.
+
+At the repeatable-read production audit ending `2026-07-17T01:14Z`, the live
+equation was `1,910 resolved + 1,017 fog = 2,927 final replay records`.
+Team truth was `1,475 resolved + 1,452 unknown = 2,927`, and 1,557 records
+needed result or team review. All 202 saved-checkpoint rows were inside the fog;
+removing only that known checkpoint cohort leaves 815 unknown recorded-file
+rows, which still require save/rehost, abort, and evidence-viability
+classification before they can be called recoverable battles.
+
+The exact 1,017-fog reason snapshot was: 538 inferred incomplete 1v1 records,
+338 `watcher_final_unparsed`, 83 recorded-resignation finals, 17 sub-60-second
+early exits, 17 incomplete team resignations, 9 watcher final submissions,
+8 HD parse-match fallbacks, 3 manual overrides, 2 header-only fallbacks,
+1 manual recovery, and 1 repaired parse-match fallback. These are routing
+labels, not winner proof.
 
 ## Advanced evidence front
 

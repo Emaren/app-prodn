@@ -101,6 +101,10 @@ never assign teams. A single named winner is not valid team-game truth.
 Admin approval of a submitter proposal is another accepted append-only verdict,
 normally superseding the pending proposal. It is not an update to the proposal.
 
+Database triggers reject update, delete, and truncate on the verdict ledger.
+The application owner therefore cannot bypass append-only history with a table
+truncate; corrections remain new rows linked through `supersedes_id`.
+
 `affectsBets` is database-constrained to `false`. The review API never mutates a
 market, wager, claim, refund, payout, or chain record. A money-linked correction
 sets `financialDisposition = operator_review_required` and sends the operator
@@ -119,6 +123,10 @@ claims:
 - when a winner is not yet accepted, present the preserved battle record rather
   than public labels such as `unknown`, `unresolved`, `parser failed`, or a
   confidence percentage;
+- the public Parser Observatory is the deliberate aggregate exception: it may
+  count result-unknown records as “Battles in the fog” so coverage debt stays
+  visible, while individual battle cards retain the confident presentation
+  above;
 - keep parser codes, rejected inferences, conflict details, confidence/evidence
   breakdowns, stale-hash errors, and financial snapshots private;
 - never convert a missing value into zero or a guess merely to fill space.

@@ -63,6 +63,24 @@ test("kingdom expansion migration preserves append-only bounty evidence", () => 
   assert.doesNotMatch(migration, /provider_key|api_key|password/i);
 });
 
+test("append-only verdict and bounty ledgers reject table truncation", () => {
+  const migration = readFileSync(
+    new URL(
+      "../prisma/migrations/20260717013000_harden_append_only_truncate_guards/migration.sql",
+      import.meta.url
+    ),
+    "utf8"
+  );
+  assert.match(
+    migration,
+    /BEFORE TRUNCATE ON "replay_result_adjudications"/
+  );
+  assert.match(migration, /BEFORE TRUNCATE ON "bounty_events"/);
+  assert.match(migration, /FOR EACH STATEMENT/);
+  assert.match(migration, /^BEGIN;/m);
+  assert.match(migration, /^COMMIT;/m);
+});
+
 test("hero rotation still honors the saved pause-on-hover setting", () => {
   const carousel = readFileSync(new URL("../components/hero/HeroCarousel.tsx", import.meta.url), "utf8");
   const actions = readFileSync(new URL("../lib/hero/actions.ts", import.meta.url), "utf8");

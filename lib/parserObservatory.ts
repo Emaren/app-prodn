@@ -120,6 +120,9 @@ function candidateModeLabel(mode: string) {
 }
 
 async function loadCorpusRows() {
+  // This is final watcher/upload-record grain, not deduplicated logical-game
+  // grain and not the frozen Engine Room artifact cohort. Adjudications are
+  // overlaid below before resolveReplayWinnerTruth decides stats eligibility.
   return getPrisma().gameStats.findMany({
     where: { is_final: true },
     orderBy: [{ played_on: "desc" }, { timestamp: "desc" }, { id: "desc" }],
@@ -338,7 +341,7 @@ async function buildPublicParserObservatory() {
   return {
     generatedAt: new Date().toISOString(),
     corpus: {
-      logicalGames: rows.length,
+      finalReplayRecords: rows.length,
       allDatabaseRows: allGameRows,
       archivedArtifacts: artifacts._count._all,
       archivedBytes: Number(artifacts._sum.byteSize || 0),

@@ -82,3 +82,11 @@ When no stream is live, the Workshop remains useful through its status, work fee
 ## Performance
 
 The global shell polls the summary endpoint every 30 seconds together with existing header counts. The summary response is a single status/stream projection with short shared-cache headers. Public requests never run Git, scan the filesystem, or inspect terminal state.
+
+## Campaign III seal
+
+At the July 17, 2026 production checkpoint, the Workshop is open in
+`quiet_work` mode and is not claiming a live stream. Seven entries are
+published/public. The pinned milestone is **The 329 frontier falls**. These are
+database facts at the checkpoint, not migration defaults or a promise that the
+state will never change.

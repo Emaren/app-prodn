@@ -119,6 +119,17 @@ saved checkpoints stay unlinked. These identity links do not import a later
 winner into the saved checkpoint, create settlement evidence, or affect public
 aggregates; name/time similarity alone remains insufficient.
 
+The Campaign III strict projector reviewed 12 completed recorded games and
+created 12 immutable effective-projection receipts plus 24 private observation
+promotion facts. It changed no market, claim, financial, settlement, or chain
+record. Reapplying the same cohort produced zero new writes.
+
+Public coverage uses final replay-record grain: every `GameStats` row with
+`is_final = true`, after append-only adjudication projection. It must not be
+described as a deduplicated logical-battle total. Saved/rehosted, aborted,
+checkpoint-only, and otherwise unprovable sessions can correctly remain in that
+denominator while staying excluded from resolved-result statistics.
+
 ## Backfill order
 
 Backfill in risk and value order, never by overwriting the active corpus:

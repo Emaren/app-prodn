@@ -15,7 +15,8 @@ An opportunity is not a payment promise. `available` and `in_progress` describe 
 ## Evidence model
 
 - `BountyOpportunity` is the current app-owned definition.
-- `BountyEvent` is append-only. A database trigger blocks update and delete; corrections are new superseding events.
+- `BountyEvent` is append-only. Database triggers block update, delete, and
+  truncate; corrections are new superseding events.
 - Existing `PendingWoloClaim` rows contribute pending, paid, rescinded, and failure state for known bounty claim kinds.
 - Existing `TrophyPayout` rows contribute championship reward state.
 - Existing `WoloIndexedTransfer` rows with reward/bounty/trophy/artifact/belt memos contribute real indexed chain proof.

@@ -30,7 +30,16 @@ The current local gateway returns one completed JSON response, not token SSE. `f
 
 Context sources are assembled in parallel. Recent-match grounding is cached for 15 seconds, while wallet/economy, staking, and people-directory context are loaded only when the question asks for those domains. This keeps general AoE2 questions out of unrelated database paths without weakening grounding for finance or identity questions.
 
+Replay/stat questions may receive the aggregate parser-readiness snapshot used
+by the Observatory. That context describes extraction coverage and effective
+recent-match truth only. Raw candidate objects, private storage keys, and
+checkpoint winners are never supplied to a house voice.
+
 The admin view calculates rolling 30-day request count, success rate, median latency, p95 latency, and recent failures. Council traffic is rate-limited per signed-in user, accepts at most two voices, and runs sequentially to keep provider pressure controlled. An agent-level timeout aborts a stalled gateway request.
+
+At the Campaign III seal, production contains zero `AiRequestTrace` rows. The
+telemetry rail is deployed, but there is not yet production evidence for a
+specific latency bottleneck; do not infer one from an empty sample.
 
 The lobby and Council expose honest user-facing timing: a visible thinking counter while replies are pending and `Thought for Ns` after completion. Message actions are guarded while pending so Enter and button clicks cannot create duplicate sends.
 

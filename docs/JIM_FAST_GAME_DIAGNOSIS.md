@@ -46,3 +46,9 @@ The stages for this session are therefore:
 `detected → uploaded → archived → parsed → saved/rehosted disposition`
 
 It is not `result-ready`, `stats-result-ready`, or `betting-eligible`.
+
+This `.aoe2record` contains a real in-replay `save` event and is a preserved
+save/rehost session. It is distinct from the frozen corpus's 202
+`.aoe2mpgame` saved-game checkpoint containers: those are separately decoded
+checkpoint artifacts, remain non-final, and never inherit a later recording's
+winner merely because continuation identity is known.

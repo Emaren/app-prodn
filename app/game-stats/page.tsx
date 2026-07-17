@@ -45,7 +45,7 @@ export default async function GameStatsPage() {
         <div className="text-xs font-bold uppercase tracking-[0.42em] text-cyan-100/62">Public Parser Observatory</div>
         <h1 className="mt-4 max-w-5xl font-serif text-5xl leading-none sm:text-7xl">Recovering the lost war record.</h1>
         <div className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-          <Metric label="Logical battles" value={data.corpus.logicalGames.toLocaleString()} />
+          <Metric label="Final replay records" value={data.corpus.finalReplayRecords.toLocaleString()} />
           <Metric label="Results resolved" value={data.corpus.resolvedResults.toLocaleString()} />
           <Metric label="Battles in the fog" value={data.corpus.unresolvedResults.toLocaleString()} alert={data.corpus.unresolvedResults > 0} />
           <Metric label="Warriors represented" value={data.corpus.playersRepresented.toLocaleString()} />
@@ -55,10 +55,10 @@ export default async function GameStatsPage() {
 
       <section className="grid gap-5 lg:grid-cols-[1.15fr_0.85fr]">
         <div className="rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-6 sm:p-8">
-          <div className="flex flex-wrap items-end justify-between gap-4"><div><div className="text-xs uppercase tracking-[0.3em] text-cyan-100/55">Replay Truth Progress</div><h2 className="mt-2 text-3xl font-semibold">{data.corpus.resolvedResults.toLocaleString()} / {data.corpus.logicalGames.toLocaleString()} results resolved</h2></div><div className="text-2xl font-semibold text-cyan-100">{percent(data.corpus.resultCoverageBps)}</div></div>
+          <div className="flex flex-wrap items-end justify-between gap-4"><div><div className="text-xs uppercase tracking-[0.3em] text-cyan-100/55">Replay Truth Progress</div><h2 className="mt-2 text-3xl font-semibold">{data.corpus.resolvedResults.toLocaleString()} / {data.corpus.finalReplayRecords.toLocaleString()} final replay records resolved</h2></div><div className="text-2xl font-semibold text-cyan-100">{percent(data.corpus.resultCoverageBps)}</div></div>
           <Progress value={data.corpus.resultCoverageBps} />
           <div className="mt-5 grid gap-3 sm:grid-cols-3"><Mini label="Team-resolved" value={`${data.corpus.resolvedTeams.toLocaleString()} · ${percent(data.corpus.teamCoverageBps)}`} /><Mini label="Needs result/team review" value={data.corpus.reviewRequired.toLocaleString()} /><Mini label="Archived source files" value={data.corpus.archivedArtifacts.toLocaleString()} /></div>
-          <p className="mt-5 text-sm leading-6 text-slate-400">Unknowns stay visible here. They are excluded from resolved-result statistics until replay evidence or append-only adjudication establishes a defensible winner.</p>
+          <p className="mt-5 text-sm leading-6 text-slate-400">This denominator is the current set of final watcher/upload records in <code>GameStats</code>, after append-only adjudications are projected. It is not a deduplicated logical-game count: saved or rehosted records may correctly remain result-unknown. Unknowns stay excluded until replay evidence or adjudication establishes a defensible winner.</p>
         </div>
         <div className="rounded-[1.8rem] border border-amber-200/14 bg-amber-300/[0.055] p-6 sm:p-8"><div className="text-xs uppercase tracking-[0.3em] text-amber-100/55">Canonical Parser Contract</div><h2 className="mt-3 text-2xl font-semibold">{HD_REPLAY_PARSER_CONTRACT.parserName} {HD_REPLAY_PARSER_CONTRACT.parserVersion}</h2><div className="mt-4 space-y-2 text-sm text-slate-300">{canonicalVersion ? <><Line label="Evidence pass" value={`${canonicalVersion.passName} v${canonicalVersion.passVersion}`} /><Line label="Schema" value={canonicalVersion.schemaVersion} /><Line label="Latest canonical run" value={canonicalVersion.latestAt ? new Date(canonicalVersion.latestAt).toLocaleString() : "Not recorded"} /></> : <Line label="Catalog" value="No canonical run recorded yet" />}<Line label="Candidate runs" value={data.parser.totalRuns.toLocaleString()} /><Line label="Observations preserved" value={compact(data.parser.observations)} /><Line label="Action packets cataloged" value={compact(data.parser.totalActions)} /></div></div>
       </section>
