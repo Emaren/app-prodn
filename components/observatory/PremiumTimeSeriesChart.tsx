@@ -88,8 +88,10 @@ type Coord = {
   y: number;
 };
 
-function smoothPath(points: Coord[]) {
-  if (points.length === 0) {
+function smoothPath(
+  points: Array<{ x: number; y: number }>,
+) {
+  if (!points.length) {
     return "";
   }
 
@@ -97,26 +99,144 @@ function smoothPath(points: Coord[]) {
     return `M ${points[0].x} ${points[0].y}`;
   }
 
-  let path = `M ${points[0].x} ${points[0].y}`;
+  if (points.length === 2) {
+    return `M ${points[0].x} ${points[0].y} L ${points[1].x} ${points[1].y}`;
+  }
 
-  for (let index = 0; index < points.length - 1; index += 1) {
-    const p0 = points[index - 1] || points[index];
+  /*
+   * Monotone cubic Hermite interpolation.
+   *
+   * Unlike unconstrained Catmull-Rom / Bézier smoothing, this limits
+   * tangents so a non-negative metric cannot visually dive below zero
+   * or overshoot above a local maximum between real observations.
+   */
+  const segmentCount = points.length - 1;
 
-    const p1 = points[index];
+  const slopes = new Array<number>(segmentCount);
 
-    const p2 = points[index + 1];
+  const tangents = new Array<number>(
+    points.length,
+  );
 
-    const p3 = points[index + 2] || p2;
+  for (
+    let index = 0;
+    index < segmentCount;
+    index += 1
+  ) {
+    const dx = Math.max(
+      0.000001,
+      points[index + 1].x -
+        points[index].x,
+    );
 
-    const cp1x = p1.x + (p2.x - p0.x) / 6;
+    slopes[index] =
+      (points[index + 1].y -
+        points[index].y) /
+      dx;
+  }
 
-    const cp1y = p1.y + (p2.y - p0.y) / 6;
+  tangents[0] = slopes[0];
 
-    const cp2x = p2.x - (p3.x - p1.x) / 6;
+  tangents[points.length - 1] =
+    slopes[slopes.length - 1];
 
-    const cp2y = p2.y - (p3.y - p1.y) / 6;
+  for (
+    let index = 1;
+    index < points.length - 1;
+    index += 1
+  ) {
+    const before = slopes[index - 1];
 
-    path += ` C ${cp1x} ${cp1y},` + ` ${cp2x} ${cp2y},` + ` ${p2.x} ${p2.y}`;
+    const after = slopes[index];
+
+    if (
+      before === 0 ||
+      after === 0 ||
+      Math.sign(before) !==
+        Math.sign(after)
+    ) {
+      tangents[index] = 0;
+    } else {
+      tangents[index] =
+        (before + after) / 2;
+    }
+  }
+
+  /*
+   * Fritsch-Carlson tangent limiting.
+   * Keeps every cubic segment inside the range implied by
+   * its neighboring data points.
+   */
+  for (
+    let index = 0;
+    index < segmentCount;
+    index += 1
+  ) {
+    const slope = slopes[index];
+
+    if (Math.abs(slope) < 0.000001) {
+      tangents[index] = 0;
+
+      tangents[index + 1] = 0;
+
+      continue;
+    }
+
+    const a =
+      tangents[index] / slope;
+
+    const b =
+      tangents[index + 1] / slope;
+
+    const magnitude = Math.hypot(a, b);
+
+    if (magnitude > 3) {
+      const limiter =
+        3 / magnitude;
+
+      tangents[index] =
+        limiter * a * slope;
+
+      tangents[index + 1] =
+        limiter * b * slope;
+    }
+  }
+
+  let path =
+    `M ${points[0].x} ${points[0].y}`;
+
+  for (
+    let index = 0;
+    index < segmentCount;
+    index += 1
+  ) {
+    const current = points[index];
+
+    const next = points[index + 1];
+
+    const dx =
+      next.x - current.x;
+
+    const control1X =
+      current.x + dx / 3;
+
+    const control1Y =
+      current.y +
+      (tangents[index] * dx) / 3;
+
+    const control2X =
+      next.x - dx / 3;
+
+    const control2Y =
+      next.y -
+      (tangents[index + 1] *
+        dx) /
+        3;
+
+    path +=
+      ` C ${control1X} ${control1Y},` +
+      ` ${control2X} ${control2Y},` +
+      ` ${next.x} ${next.y}`;
   }
 
   return path;

@@ -240,7 +240,7 @@ function KingdomNavItem({
       </button>
 
       <div
-        className={`absolute left-1/2 top-full z-[220] hidden max-h-[calc(100dvh-6.25rem)] overflow-y-auto overscroll-contain touch-pan-y [scrollbar-gutter:stable] w-[22rem] -translate-x-1/2 pt-3 transition duration-150 sm:block ${
+        className={`absolute left-1/2 top-full z-[220] hidden w-[22rem] -translate-x-1/2 pt-7 transition duration-150 sm:block ${
           open
             ? "pointer-events-auto translate-y-0 opacity-100"
             : "pointer-events-none -translate-y-1 opacity-0"
@@ -248,7 +248,7 @@ function KingdomNavItem({
         onMouseEnter={openMenu}
         onMouseLeave={scheduleClose}
       >
-        <KingdomMenuPanel onNavigate={() => setOpen(false)} />
+        <KingdomMenuPanel key={open ? "kingdom-open" : "kingdom-closed"} onNavigate={() => setOpen(false)} />
       </div>
 
       {portalReady && open
@@ -299,8 +299,10 @@ function KingdomMenuPanel({
 }) {
   return (
     <div
-      className={`overflow-hidden rounded-[1.35rem] border border-amber-200/14 bg-[linear-gradient(145deg,rgba(13,25,42,0.98),rgba(5,12,22,0.98))] p-2 shadow-[0_24px_80px_rgba(0,0,0,0.48)] ${
-        mobile ? "border-white/8 shadow-none" : "backdrop-blur-xl"
+      className={`rounded-[1.35rem] border border-amber-200/14 bg-[linear-gradient(145deg,rgba(13,25,42,0.98),rgba(5,12,22,0.98))] p-2 shadow-[0_24px_80px_rgba(0,0,0,0.48)] ${
+        mobile
+          ? "overflow-hidden border-white/8 shadow-none"
+          : "max-h-[calc(100dvh-7.5rem)] overflow-y-auto overscroll-contain touch-pan-y [scrollbar-gutter:stable] [scrollbar-width:thin] backdrop-blur-xl"
       }`}
       role="menu"
       aria-label="Kingdom pages"
