@@ -52,9 +52,15 @@ type LiveGamesPayload = {
 type FeaturedWar = {
   key: string;
   sessionKey: string | null;
+  streamKeys: string[];
   statusLabel: string;
   title: string;
   players: string[];
+  teamFormat: string | null;
+  leftRoster: string[];
+  rightRoster: string[];
+  leftLabel: string | null;
+  rightLabel: string | null;
   mapName: string | null;
   detail: string;
   href: string;
@@ -111,14 +117,117 @@ function titleFromPlayers(players: string[], fallback: string) {
   return fallback;
 }
 
+function battleKeyAliases(...values: Array<string | null | undefined>) {
+  const aliases = new Set<string>();
+
+  for (const value of values) {
+    const trimmed = value?.trim();
+    if (!trimmed) continue;
+
+    aliases.add(trimmed);
+
+    const basename = trimmed.split(/[\\/]/).pop()?.trim();
+    if (basename) aliases.add(basename);
+  }
+
+  return [...aliases];
+}
+
+function normalizeBattleKey(value: string | null | undefined) {
+  return value?.trim().toLocaleLowerCase("en-US") || "";
+}
+
+function rosterSideLabel(roster: string[], fallback: string) {
+  if (roster.length === 0) return fallback;
+  if (roster.length === 1) return roster[0];
+
+  const captain = roster[0];
+  return `${captain}${captain.toLocaleLowerCase("en-US").endsWith("s") ? "'" : "'s"} Team`;
+}
+
+function sessionTeamPresentation(session: StreamedLiveGameSession) {
+  const resolution = session.teamResolution;
+
+  if (resolution.status !== "resolved" || resolution.teams.length !== 2) {
+    return {
+      teamFormat: null,
+      leftRoster: [] as string[],
+      rightRoster: [] as string[],
+      leftLabel: null as string | null,
+      rightLabel: null as string | null,
+    };
+  }
+
+  const leftRoster = resolution.teams[0].players
+    .map((player) => normalizePublicReplayText(player.name))
+    .filter((name): name is string => Boolean(name));
+
+  const rightRoster = resolution.teams[1].players
+    .map((player) => normalizePublicReplayText(player.name))
+    .filter((name): name is string => Boolean(name));
+
+  return {
+    teamFormat: resolution.format,
+    leftRoster,
+    rightRoster,
+    leftLabel: rosterSideLabel(leftRoster, "Team 1"),
+    rightLabel: rosterSideLabel(rightRoster, "Team 2"),
+  };
+}
+
+function marketMatchesFeaturedWar(
+  market: BetBoardMarket,
+  war: FeaturedWar
+) {
+  const marketKey = normalizeBattleKey(market.linkedSessionKey);
+  if (!marketKey) return false;
+
+  return war.streamKeys.some(
+    (key) => normalizeBattleKey(key) === marketKey
+  );
+}
+
+function hasFirstPartyBattleStream(session: StreamedLiveGameSession) {
+  const candidates = [
+    session.primaryStream,
+    ...(session.streams ?? []),
+  ].filter((stream): stream is WatchStreamPayload => Boolean(stream));
+
+  return candidates.some(
+    (stream) =>
+      stream.provider === "aoe2war" &&
+      Boolean(stream.playbackUrl) &&
+      ["starting", "live"].includes(stream.status)
+  );
+}
+
+function firstPartyStreamScore(stream: WatchStreamPayload) {
+  let score = 0;
+
+  if (stream.status === "live") score += 10_000;
+  else if (stream.status === "starting") score += 8_000;
+  else if (stream.status === "ended") score += 1_000;
+
+  if (stream.isPrimary) score += 500;
+  score += Math.max(0, stream.chunkCount ?? 0);
+
+  return score;
+}
+
 function featuredFromReplay(match: LobbyMatchRow | null, tournamentTitle: string): FeaturedWar {
   if (!match) {
     return {
       key: "next-tournament",
       sessionKey: null,
+      streamKeys: [],
       statusLabel: "On Deck",
       title: tournamentTitle,
       players: [],
+      teamFormat: null,
+      leftRoster: [],
+      rightRoster: [],
+      leftLabel: null,
+      rightLabel: null,
       mapName: null,
       detail: "Next community war room",
       href: "/live-games",
@@ -137,9 +246,15 @@ function featuredFromReplay(match: LobbyMatchRow | null, tournamentTitle: string
   return {
     key: `replay-${match.id}`,
     sessionKey,
+    streamKeys: battleKeyAliases(sessionKey),
     statusLabel: "Replay",
     title: titleFromPlayers(players, winner ? `Winner ${winner}` : "HD Battle Record"),
     players,
+    teamFormat: null,
+    leftRoster: [],
+    rightRoster: [],
+    leftLabel: null,
+    rightLabel: null,
     mapName,
     detail: playedAt ? `Parsed ${formatLobbyMoment(playedAt)}` : "Latest HD parse",
     href: `/game-stats/${match.id}`,
@@ -147,20 +262,47 @@ function featuredFromReplay(match: LobbyMatchRow | null, tournamentTitle: string
 }
 
 function featuredFromLiveSession(session: StreamedLiveGameSession): FeaturedWar {
-  const players = sessionPlayerNames(session);
+  const flatPlayers = sessionPlayerNames(session);
+  const teams = sessionTeamPresentation(session);
+
+  const players =
+    teams.leftRoster.length > 0 && teams.rightRoster.length > 0
+      ? [...teams.leftRoster, ...teams.rightRoster]
+      : flatPlayers;
+
+  const title =
+    teams.leftLabel && teams.rightLabel
+      ? `${teams.leftLabel} vs ${teams.rightLabel}`
+      : titleFromPlayers(
+          flatPlayers,
+          publicReplayMapLabel(session.mapName, "Live AoE2HD war")
+        );
 
   return {
     key: `live-${session.sessionKey}`,
     sessionKey: session.sessionKey,
+    streamKeys: battleKeyAliases(
+      session.sessionKey,
+      session.originalFilename,
+      session.replayFile
+    ),
     statusLabel: session.state === "live" ? "Live" : "Replay",
-    title: titleFromPlayers(players, publicReplayMapLabel(session.mapName, "Live AoE2HD war")),
+    title,
     players,
+    teamFormat: teams.teamFormat,
+    leftRoster: teams.leftRoster,
+    rightRoster: teams.rightRoster,
+    leftLabel: teams.leftLabel,
+    rightLabel: teams.rightLabel,
     mapName: publicReplayMapLabel(session.mapName, "HD Battlefield"),
     detail:
       session.state === "live"
         ? `Updated ${formatLobbyMoment(session.updatedAt)}`
         : `Completed ${formatLobbyMoment(session.completedAt || session.updatedAt)}`,
-    href: session.state === "live" ? `/watch/${encodeURIComponent(session.sessionKey)}` : `/game-stats/${session.id}`,
+    href:
+      session.state === "live"
+        ? `/watch/${encodeURIComponent(session.sessionKey)}`
+        : `/game-stats/${session.id}`,
     primaryStream: session.primaryStream ?? session.streams?.[0] ?? null,
   };
 }
@@ -309,7 +451,11 @@ export function WatchAndChatHero({
   }, []);
 
   const featuredOptions = useMemo(() => {
-    const liveSessions = liveGames?.activeSessions ?? [];
+    const liveSessions = [...(liveGames?.activeSessions ?? [])].sort(
+      (left, right) =>
+        Number(hasFirstPartyBattleStream(right)) -
+        Number(hasFirstPartyBattleStream(left))
+    );
     const completedSessions = liveGames?.recentlyCompletedSessions ?? [];
     const options = [
       ...liveSessions.slice(0, 4).map(featuredFromLiveSession),
@@ -337,27 +483,40 @@ export function WatchAndChatHero({
 
   useEffect(() => {
     let cancelled = false;
-    const sessionKey = selectedWar?.sessionKey;
+    const streamKeys = selectedWar?.streamKeys ?? [];
 
-    if (!sessionKey) {
+    if (streamKeys.length === 0) {
       setStreams([]);
       return;
     }
-    const activeSessionKey = sessionKey;
 
     async function loadStreams() {
       try {
-        const response = await fetch(
-          `/api/watch-streams?sessionKey=${encodeURIComponent(activeSessionKey)}`,
-          { cache: "no-store" }
+        const batches = await Promise.all(
+          streamKeys.map(async (streamKey) => {
+            const response = await fetch(
+              `/api/watch-streams?sessionKey=${encodeURIComponent(streamKey)}`,
+              { cache: "no-store" }
+            );
+
+            if (!response.ok) return [];
+
+            const payload = (await response.json()) as {
+              streams?: WatchStreamPayload[];
+            };
+
+            return Array.isArray(payload.streams) ? payload.streams : [];
+          })
         );
-        if (!response.ok) {
-          if (!cancelled) setStreams([]);
-          return;
+
+        const merged = new Map<number, WatchStreamPayload>();
+
+        for (const stream of batches.flat()) {
+          merged.set(stream.id, stream);
         }
-        const payload = (await response.json()) as { streams?: WatchStreamPayload[] };
+
         if (!cancelled) {
-          setStreams(Array.isArray(payload.streams) ? payload.streams : []);
+          setStreams([...merged.values()]);
         }
       } catch (error) {
         console.warn("Failed to load Watch & Chat streams:", error);
@@ -367,20 +526,32 @@ export function WatchAndChatHero({
 
     void loadStreams();
 
+    const interval = window.setInterval(() => {
+      void loadStreams();
+    }, 5_000);
+
     return () => {
       cancelled = true;
+      window.clearInterval(interval);
     };
-  }, [selectedWar?.sessionKey]);
+  }, [selectedWar?.key, selectedWar?.streamKeys]);
 
   const streamOptions = selectedWar.primaryStream
     ? [selectedWar.primaryStream, ...streams.filter((stream) => stream.id !== selectedWar.primaryStream?.id)]
     : streams;
   const nativeStream =
-    streamOptions.find(
-      (stream) =>
-        (stream.provider === "aoe2war" || stream.sourceType === "browser") &&
-        Boolean(stream.playbackUrl)
-    ) ?? null;
+    streamOptions
+      .filter(
+        (stream) =>
+          (stream.provider === "aoe2war" ||
+            stream.sourceType === "browser" ||
+            stream.sourceType === "watcher_native") &&
+          Boolean(stream.playbackUrl)
+      )
+      .sort(
+        (left, right) =>
+          firstPartyStreamScore(right) - firstPartyStreamScore(left)
+      )[0] ?? null;
   const externalEmbeddableStream =
     selectedWar.statusLabel === "Live"
       ? streamOptions.find((stream) => stream.isPrimary && stream.canEmbed) ??
@@ -397,7 +568,19 @@ export function WatchAndChatHero({
   const heroStreamFallbackLabel =
     primaryStream?.status === "ended" ? "Saved Battle Cam" : selectedWar.statusLabel === "Live" ? "Live" : "Battle Cam";
   const commentMessages = messages.slice(-5);
-  const heroBetMarket = betBoard?.featuredMarket ?? betBoard?.openMarkets?.[0] ?? null;
+
+  const heroMarketCandidates = [
+    ...(betBoard?.featuredMarket ? [betBoard.featuredMarket] : []),
+    ...(betBoard?.openMarkets ?? []),
+  ].filter(
+    (market, index, all) =>
+      all.findIndex((candidate) => candidate.id === market.id) === index
+  );
+
+  const heroBetMarket =
+    heroMarketCandidates.find((market) =>
+      marketMatchesFeaturedWar(market, selectedWar)
+    ) ?? null;
 
   const shellClassName = isExtreme
     ? "overflow-hidden rounded-[2rem] border border-amber-200/12 bg-[radial-gradient(circle_at_18%_0%,rgba(251,191,36,0.12),transparent_30%),radial-gradient(circle_at_92%_16%,rgba(59,130,246,0.12),transparent_26%),linear-gradient(135deg,rgba(4,11,22,0.96),rgba(1,5,14,0.98))] shadow-[0_32px_110px_rgba(0,0,0,0.38)]"
@@ -466,10 +649,50 @@ export function WatchAndChatHero({
                 <h2 className="mt-2 break-words text-2xl font-semibold text-white sm:text-3xl">
                   {selectedWar.title}
                 </h2>
+
+                {selectedWar.teamFormat &&
+                selectedWar.teamFormat !== "1v1" &&
+                selectedWar.leftRoster.length > 0 &&
+                selectedWar.rightRoster.length > 0 ? (
+                  <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 rounded-2xl border border-white/10 bg-black/20 px-3 py-3">
+                    <div className="min-w-0 space-y-1">
+                      {selectedWar.leftRoster.map((player) => (
+                        <div
+                          key={`left-${player}`}
+                          className="truncate text-sm font-medium text-slate-100"
+                        >
+                          {player}
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-amber-200/70">
+                      VS
+                    </div>
+
+                    <div className="min-w-0 space-y-1 text-right">
+                      {selectedWar.rightRoster.map((player) => (
+                        <div
+                          key={`right-${player}`}
+                          className="truncate text-sm font-medium text-slate-100"
+                        >
+                          {player}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
                 <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-300">
                   <span className="rounded-full border border-emerald-300/25 bg-emerald-400/10 px-3 py-1 text-emerald-100">
                     {selectedWar.statusLabel}
                   </span>
+                  {selectedWar.teamFormat &&
+                  selectedWar.teamFormat !== "unknown" ? (
+                    <span className="rounded-full border border-amber-200/15 bg-amber-300/[0.06] px-3 py-1 uppercase text-amber-100/80">
+                      {selectedWar.teamFormat}
+                    </span>
+                  ) : null}
                   {selectedWar.mapName ? (
                     <span className="rounded-full border border-white/10 bg-white/8 px-3 py-1">
                       {selectedWar.mapName}
@@ -678,9 +901,16 @@ function HeroBetSlip({
   variant?: "standard" | "extreme";
 }) {
   const isExtreme = variant === "extreme";
-  const fallbackNames = selectedWar.players.length >= 2
-    ? [selectedWar.players[0], selectedWar.players[1]]
-    : ["Player 1", "Player 2"];
+  const fallbackNames = [
+    selectedWar.leftLabel ||
+      selectedWar.leftRoster[0] ||
+      selectedWar.players[0] ||
+      "Player 1",
+    selectedWar.rightLabel ||
+      selectedWar.rightRoster[0] ||
+      selectedWar.players[1] ||
+      "Player 2",
+  ];
   const leftName = market?.left.name || fallbackNames[0];
   const rightName = market?.right.name || fallbackNames[1];
   const stakeWolo = Math.max(0, Math.round(Number(stakeDraft) || 0));
