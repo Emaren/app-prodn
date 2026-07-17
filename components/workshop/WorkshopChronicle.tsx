@@ -47,7 +47,6 @@ type ChronicleEntry = {
 };
 
 type ChronicleCursor = {
-  occurredAt: string;
   id: number;
 };
 
@@ -220,7 +219,6 @@ export default function WorkshopChronicle({
 
     try {
       const params = new URLSearchParams({
-        beforeOccurredAt: nextCursor.occurredAt,
         beforeId: String(nextCursor.id),
         limit: "18",
       });

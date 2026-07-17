@@ -12,16 +12,13 @@ function positiveInt(value: string | null, fallback: number) {
 }
 
 export async function GET(request: NextRequest) {
-  const occurredAt = request.nextUrl.searchParams.get("beforeOccurredAt");
   const beforeId = request.nextUrl.searchParams.get("beforeId");
 
-  const before =
-    occurredAt && beforeId
-      ? {
-          occurredAt,
-          id: positiveInt(beforeId, 0),
-        }
-      : null;
+  const before = beforeId
+    ? {
+        id: positiveInt(beforeId, 0),
+      }
+    : null;
 
   if (before && before.id <= 0) {
     return NextResponse.json(

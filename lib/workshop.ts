@@ -80,7 +80,6 @@ const PUBLIC_ENTRY_SELECT = {
 } as const;
 
 export type WorkshopChronicleCursor = {
-  occurredAt: string;
   id: number;
 };
 
@@ -115,38 +114,79 @@ export async function loadWorkshopChroniclePage(
   options: WorkshopChroniclePageOptions = {},
 ) {
   const take = Math.min(Math.max(options.take ?? 18, 1), 40);
-  const beforeDate = options.before
-    ? new Date(options.before.occurredAt)
-    : null;
+  const rowLimit = take + 1;
 
-  if (beforeDate && Number.isNaN(beforeDate.getTime())) {
-    throw new Error("Invalid Workshop Chronicle cursor.");
-  }
+  // PostgreSQL owns the chronological boundary calculation.
+  //
+  // WorkshopEntry.occurredAt is stored with microsecond precision while
+  // JavaScript Date preserves only milliseconds. We therefore pass only the
+  // unique row ID as the cursor and let PostgreSQL recover the cursor row's
+  // exact occurred_at value before applying the chronological tuple boundary.
+  //
+  // This keeps the canonical ordering:
+  //   occurred_at DESC, id DESC
+  //
+  // without lossy timestamp round-trips through JavaScript.
+  const idRows = options.before
+    ? await prisma.$queryRaw<Array<{ id: number }>>`
+        WITH cursor_row AS (
+          SELECT
+            "occurred_at",
+            "id"
+          FROM "workshop_entries"
+          WHERE "id" = ${options.before.id}
+        )
+        SELECT w."id"
+        FROM "workshop_entries" AS w
+        CROSS JOIN cursor_row AS c
+        WHERE w."status" = 'published'
+          AND w."visibility" = 'public'
+          AND w."published_at" IS NOT NULL
+          AND (w."occurred_at", w."id")
+              < (c."occurred_at", c."id")
+        ORDER BY
+          w."occurred_at" DESC,
+          w."id" DESC
+        LIMIT ${rowLimit}
+      `
+    : await prisma.$queryRaw<Array<{ id: number }>>`
+        SELECT w."id"
+        FROM "workshop_entries" AS w
+        WHERE w."status" = 'published'
+          AND w."visibility" = 'public'
+          AND w."published_at" IS NOT NULL
+        ORDER BY
+          w."occurred_at" DESC,
+          w."id" DESC
+        LIMIT ${rowLimit}
+      `;
 
-  const rows = await prisma.workshopEntry.findMany({
-    where: {
-      status: "published",
-      visibility: "public",
-      publishedAt: { not: null },
-      ...(beforeDate && options.before
-        ? {
-            OR: [
-              { occurredAt: { lt: beforeDate } },
-              {
-                occurredAt: beforeDate,
-                id: { lt: options.before.id },
-              },
-            ],
-          }
-        : {}),
-    },
-    orderBy: [{ occurredAt: "desc" }, { id: "desc" }],
-    take: take + 1,
-    select: PUBLIC_ENTRY_SELECT,
+  const hasMore = idRows.length > take;
+  const pageIds = idRows.slice(0, take).map((row) => row.id);
+
+  const selectedRows = pageIds.length
+    ? await prisma.workshopEntry.findMany({
+        where: {
+          id: { in: pageIds },
+        },
+        select: PUBLIC_ENTRY_SELECT,
+      })
+    : [];
+
+  // findMany with an IN predicate does not promise preservation of the ID
+  // query's ordering, so explicitly restore the authoritative keyset order.
+  const rowsById = new Map(selectedRows.map((entry) => [entry.id, entry]));
+
+  const pageRows = pageIds.flatMap((id) => {
+    const entry = rowsById.get(id);
+    return entry ? [entry] : [];
   });
 
-  const hasMore = rows.length > take;
-  const pageRows = hasMore ? rows.slice(0, take) : rows;
+  if (pageRows.length !== pageIds.length) {
+    throw new Error(
+      "Workshop Chronicle page changed while it was being assembled.",
+    );
+  }
 
   const entries = pageRows.map((entry) => ({
     ...entry,
@@ -163,7 +203,6 @@ export async function loadWorkshopChroniclePage(
     nextCursor:
       hasMore && last
         ? {
-            occurredAt: last.occurredAt.toISOString(),
             id: last.id,
           }
         : null,
