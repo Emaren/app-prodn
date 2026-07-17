@@ -341,8 +341,8 @@ export default function PremiumTimeSeriesChart({
       </div>
 
       <div className="relative min-w-0 px-4 sm:px-7">
-        <div className="-mx-4 min-w-0 overflow-x-auto overscroll-x-contain border-y border-white/[0.055] px-4 touch-pan-x [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-7 sm:px-7 lg:mx-0 lg:overflow-visible lg:px-0">
-          <div className="flex w-max min-w-full flex-nowrap gap-2 py-4 lg:w-full lg:min-w-0 lg:flex-wrap">
+        <div className="min-w-0 border-y border-white/[0.055]">
+          <div className="flex min-w-0 flex-wrap content-start items-center gap-2 py-4">
             {series.map((item) => {
               const active = visible.has(item.key);
 
@@ -353,7 +353,7 @@ export default function PremiumTimeSeriesChart({
                   onClick={() => toggleSeries(item.key)}
                   onMouseEnter={() => setFocusedSeries(item.key)}
                   onMouseLeave={() => setFocusedSeries(null)}
-                  className={`group flex shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap rounded-full border px-3 py-2 text-[11px] font-semibold transition ${
+                  className={`group flex max-w-full shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap rounded-full border px-3 py-2 text-[11px] font-semibold transition ${
                     active
                       ? "border-white/[0.10] bg-white/[0.055] text-slate-200"
                       : "border-white/[0.04] bg-transparent text-slate-600"
