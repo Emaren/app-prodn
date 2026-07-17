@@ -23,6 +23,13 @@ const SERIES: ObservatorySeries[] = [
     defaultVisible: true,
   },
   {
+    key: "totalUsers",
+    label: "Total Users",
+    color: "#818cf8",
+    axis: "count",
+    defaultVisible: false,
+  },
+  {
     key: "returningUsers",
     label: "Returning Users / Day",
     color: "#34d399",

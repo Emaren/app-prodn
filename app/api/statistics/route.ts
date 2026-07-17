@@ -10,6 +10,7 @@ type StatisticsRow = {
   day: Date;
   wolo_transferred: unknown;
   new_users: bigint;
+  total_users: bigint;
   returning_users: bigint;
   users_who_returned: bigint;
   bets_placed: bigint;
@@ -50,14 +51,59 @@ WITH days AS (
   )::date AS day
 ),
 
+real_users AS (
+  SELECT
+    u.*
+  FROM users u
+  WHERE
+    u.uid NOT LIKE
+      'aoe2hd_ai_%'
+
+    AND lower(
+      coalesce(
+        u.in_game_name,
+        ''
+      )
+    ) NOT IN (
+      'grimer',
+      'the ai scribe',
+      'moose'
+    )
+
+    AND lower(
+      coalesce(
+        u.steam_persona_name,
+        ''
+      )
+    ) NOT IN (
+      'grimer',
+      'the ai scribe',
+      'moose'
+    )
+),
+
 users_daily AS (
   SELECT
     created_at::date AS day,
     COUNT(*) AS new_users
-  FROM users
+  FROM real_users
   WHERE created_at >=
     TIMESTAMP '2026-05-22'
   GROUP BY 1
+),
+
+total_users_daily AS (
+  SELECT
+    d.day,
+    COUNT(
+      ru.id
+    ) AS total_users
+  FROM days d
+  LEFT JOIN real_users ru
+    ON ru.created_at::date <=
+      d.day
+  GROUP BY
+    d.day
 ),
 
 returning_daily AS (
@@ -67,7 +113,7 @@ returning_daily AS (
       DISTINCT e.user_id
     ) AS returning_users
   FROM user_activity_events e
-  JOIN users u
+  JOIN real_users u
     ON u.id = e.user_id
   WHERE
     e.created_at >=
@@ -78,8 +124,6 @@ returning_daily AS (
       IS NOT NULL
     AND u.created_at::date <
       e.created_at::date
-    AND u.uid NOT LIKE
-      'aoe2hd_ai_%'
   GROUP BY 1
 ),
 
@@ -89,17 +133,12 @@ first_return_by_user AS (
     MIN(
       e.created_at::date
     ) AS first_return_day
-  FROM users u
+  FROM real_users u
   JOIN user_activity_events e
     ON e.user_id = u.id
   WHERE
-    u.last_seen IS NOT NULL
-    AND u.last_seen::date >
+    e.created_at::date >
       u.created_at::date
-    AND e.created_at::date >
-      u.created_at::date
-    AND u.uid NOT LIKE
-      'aoe2hd_ai_%'
   GROUP BY
     u.id
 ),
@@ -375,6 +414,11 @@ SELECT
   ) AS new_users,
 
   COALESCE(
+    tu.total_users,
+    0
+  ) AS total_users,
+
+  COALESCE(
     r.returning_users,
     0
   ) AS returning_users,
@@ -454,6 +498,9 @@ FROM days d
 LEFT JOIN users_daily u
   USING (day)
 
+LEFT JOIN total_users_daily tu
+  USING (day)
+
 LEFT JOIN returning_daily r
   USING (day)
 
@@ -506,6 +553,8 @@ ORDER BY d.day;
         woloTransferred: numeric(row.wolo_transferred),
 
         newUsers: numeric(row.new_users),
+
+        totalUsers: numeric(row.total_users),
 
         returningUsers: numeric(row.returning_users),
 
