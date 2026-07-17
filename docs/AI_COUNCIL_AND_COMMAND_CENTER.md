@@ -37,9 +37,10 @@ checkpoint winners are never supplied to a house voice.
 
 The admin view calculates rolling 30-day request count, success rate, median latency, p95 latency, and recent failures. Council traffic is rate-limited per signed-in user, accepts at most two voices, and runs sequentially to keep provider pressure controlled. An agent-level timeout aborts a stalled gateway request.
 
-At the Campaign III seal, production contains zero `AiRequestTrace` rows. The
-telemetry rail is deployed, but there is not yet production evidence for a
-specific latency bottleneck; do not infer one from an empty sample.
+The pre-deploy Campaign III audit found zero `AiRequestTrace` rows. By the final
+seal, two successful public-lobby traces had arrived: one Scribe request at
+9,359 ms and one Grimer request at 1,608 ms. The telemetry rail is active, but
+that sample is too small to identify a production latency bottleneck.
 
 The lobby and Council expose honest user-facing timing: a visible thinking counter while replies are pending and `Thought for Ns` after completion. Message actions are guarded while pending so Enter and button clicks cannot create duplicate sends.
 
