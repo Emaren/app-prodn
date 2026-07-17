@@ -11,6 +11,7 @@ type StatisticsRow = {
   wolo_transferred: unknown;
   new_users: bigint;
   returning_users: bigint;
+  users_who_returned: bigint;
   bets_placed: bigint;
   bet_volume_wolo: unknown;
   games_streamed: bigint;
@@ -19,6 +20,7 @@ type StatisticsRow = {
   watcher_first_launches: bigint;
   active_watchers: bigint;
   marketplace_requests: bigint;
+  proposed_shops: bigint;
   feature_requests: bigint;
   bounty_claims: bigint;
   forum_posts: bigint;
@@ -76,7 +78,44 @@ returning_daily AS (
       IS NOT NULL
     AND u.created_at::date <
       e.created_at::date
+    AND u.uid NOT LIKE
+      'aoe2hd_ai_%'
   GROUP BY 1
+),
+
+first_return_by_user AS (
+  SELECT
+    u.id AS user_id,
+    MIN(
+      e.created_at::date
+    ) AS first_return_day
+  FROM users u
+  JOIN user_activity_events e
+    ON e.user_id = u.id
+  WHERE
+    u.last_seen IS NOT NULL
+    AND u.last_seen::date >
+      u.created_at::date
+    AND e.created_at::date >
+      u.created_at::date
+    AND u.uid NOT LIKE
+      'aoe2hd_ai_%'
+  GROUP BY
+    u.id
+),
+
+returned_cumulative AS (
+  SELECT
+    d.day,
+    COUNT(
+      fr.user_id
+    ) AS users_who_returned
+  FROM days d
+  LEFT JOIN first_return_by_user fr
+    ON fr.first_return_day <=
+      d.day
+  GROUP BY
+    d.day
 ),
 
 wolo_daily AS (
@@ -258,9 +297,27 @@ marketplace_daily AS (
   SELECT
     created_at::date AS day,
     COUNT(*) AS marketplace_requests
-  FROM community_requests
-  WHERE created_at >=
-    TIMESTAMP '2026-05-22'
+  FROM user_activity_events
+  WHERE
+    created_at >=
+      TIMESTAMP '2026-05-22'
+    AND type IN (
+      'market_avatar_commission',
+      'market_shop_proposal'
+    )
+  GROUP BY 1
+),
+
+proposed_shops_daily AS (
+  SELECT
+    created_at::date AS day,
+    COUNT(*) AS proposed_shops
+  FROM user_activity_events
+  WHERE
+    created_at >=
+      TIMESTAMP '2026-05-22'
+    AND type =
+      'market_shop_proposal'
   GROUP BY 1
 ),
 
@@ -323,6 +380,11 @@ SELECT
   ) AS returning_users,
 
   COALESCE(
+    rc.users_who_returned,
+    0
+  ) AS users_who_returned,
+
+  COALESCE(
     b.bets_placed,
     0
   ) AS bets_placed,
@@ -363,6 +425,11 @@ SELECT
   ) AS marketplace_requests,
 
   COALESCE(
+    ps.proposed_shops,
+    0
+  ) AS proposed_shops,
+
+  COALESCE(
     f.feature_requests,
     0
   ) AS feature_requests,
@@ -390,6 +457,9 @@ LEFT JOIN users_daily u
 LEFT JOIN returning_daily r
   USING (day)
 
+LEFT JOIN returned_cumulative rc
+  USING (day)
+
 LEFT JOIN wolo_daily w
   USING (day)
 
@@ -409,6 +479,9 @@ LEFT JOIN watcher_active_daily wa
   USING (day)
 
 LEFT JOIN marketplace_daily m
+  USING (day)
+
+LEFT JOIN proposed_shops_daily ps
   USING (day)
 
 LEFT JOIN feature_daily f
@@ -436,6 +509,8 @@ ORDER BY d.day;
 
         returningUsers: numeric(row.returning_users),
 
+        usersWhoReturned: numeric(row.users_who_returned),
+
         betsPlaced: numeric(row.bets_placed),
 
         betVolumeWolo: numeric(row.bet_volume_wolo),
@@ -451,6 +526,8 @@ ORDER BY d.day;
         activeWatchers: numeric(row.active_watchers),
 
         marketplaceRequests: numeric(row.marketplace_requests),
+
+        proposedShops: numeric(row.proposed_shops),
 
         featureRequests: numeric(row.feature_requests),
 

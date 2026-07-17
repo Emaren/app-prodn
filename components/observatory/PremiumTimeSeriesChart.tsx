@@ -448,12 +448,20 @@ export default function PremiumTimeSeriesChart({
 
     const rect = event.currentTarget.getBoundingClientRect();
 
-    const relative = Math.min(
+    const svgX =
+      ((event.clientX - rect.left) / rect.width) * VIEW_WIDTH;
+
+    const plotRelative = Math.min(
       1,
-      Math.max(0, (event.clientX - rect.left) / rect.width),
+      Math.max(
+        0,
+        (svgX - MARGIN.left) / PLOT_WIDTH,
+      ),
     );
 
-    const index = Math.round(relative * (displayedPoints.length - 1));
+    const index = Math.round(
+      plotRelative * (displayedPoints.length - 1),
+    );
 
     setHoverIndex(index);
   }
