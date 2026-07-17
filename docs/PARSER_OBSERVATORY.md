@@ -129,6 +129,8 @@ failure classification, reports, and the reviewed projection utility.
 - Engine Room jobs/reports/fixtures/backups/receipts:
   `/mnt/HC_Volume_105319120/aoe2-parser-engine`.
 
-Next work is no longer “make 329 parse.” It is saved-checkpoint continuation
-research, safe reconciliation of remaining candidate improvements, confidence
-scoring for experimental action fields, and semantic advanced-stat derivation.
+Next work is no longer “make 329 parse.” The exact saved-checkpoint identity
+rail now accounts for 113 checkpoints linked to 98 recorded candidates while 89
+remain unlinked. The frontier is safe reconciliation of remaining candidate
+improvements, confidence scoring for experimental action fields, and semantic
+advanced-stat derivation; continuation identity itself is never result truth.

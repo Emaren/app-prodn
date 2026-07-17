@@ -111,9 +111,13 @@ all 2,025 frozen artifacts; older failed runs remain immutable history.
 
 Saved checkpoints are not parser failures and are not final battles. Even when
 roster/map/initial state is decoded, they remain result-unknown and
-settlement-ineligible. A future continuation matcher may link checkpoints to
-later recorded games only with stable evidence; name/time similarity alone is
-insufficient.
+settlement-ineligible. The read-only continuation report now links 113 saved
+checkpoints to 98 recorded-game candidates across 98 exact HD platform match
+IDs. Every linked pair also has identical normalized name and non-zero Steam-ID
+rosters; 90 IDs are one-to-one and 8 contain multiple checkpoints. The other 89
+saved checkpoints stay unlinked. These identity links do not import a later
+winner into the saved checkpoint, create settlement evidence, or affect public
+aggregates; name/time similarity alone remains insufficient.
 
 ## Backfill order
 

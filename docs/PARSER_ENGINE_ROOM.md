@@ -142,6 +142,13 @@ result-unknown, and settlement-ineligible. The decoder caps inflated output at
 64 MiB. Three private golden fixtures cover the complete, initial-prefix, and
 map-prefix shapes without committing private replay bytes to Git.
 
+The continuation identity audit is a separate read-only rail. Exact HD
+`platform_match_id` plus exact normalized name and non-zero Steam-ID rosters
+linked 113 checkpoints to 98 recorded candidates across 98 match IDs. All 113
+pairs matched; 90 IDs were one-to-one and 8 contained multiple checkpoints.
+The remaining 89 saves remain deliberately unlinked. A continuation identity
+never makes the checkpoint final and never promotes result or settlement truth.
+
 ## Bounded resumable jobs
 
 Each job fixes its scope and parser configuration at creation:
