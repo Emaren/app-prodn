@@ -35,13 +35,20 @@ export async function GET(request: NextRequest) {
     query,
   });
 
-  const nextOffset = offset + leaderboard.entries.length;
+  // The leaderboard helper may enrich a selection with additional
+  // rows. The HTTP pagination contract must remain strict: a request
+  // for N rows may advance by at most N rows.
+  const entries = leaderboard.entries.slice(0, limit);
+  const nextOffset = offset + entries.length;
 
   return NextResponse.json({
     ok: true,
     ...leaderboard,
+    entries,
     nextOffset,
-    hasMore: nextOffset < leaderboard.trackedPlayers,
+    hasMore:
+      entries.length > 0 &&
+      nextOffset < leaderboard.trackedPlayers,
     trackedPlayers: leaderboard.trackedPlayers,
     rankedPlayers: leaderboard.rankedPlayers,
   });

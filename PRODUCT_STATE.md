@@ -148,7 +148,7 @@ Current strengths:
 Current strengths:
 - can inspect users
 - `/admin/hero-studio` owns the lobby/home Hero composition and uses the exact public carousel and typed renderer for desktop and mobile previews
-- `/admin/events` uses the exact Featured Event renderer and feeds saved EventTile sources into Hero Studio
+- `/admin/events` uses the exact Featured Event renderer and is the single live-event switch: **Make live** publishes + activates one EventTile, while every Featured Event Hero screen resolves that active EventTile and CTA automatically; Hero Studio controls placement/order, not event selection
 - `/admin/user-list` has top-level operator navigation for Admin Home, Media Assets, WoloChain, and the User List / Command Tower
 - can award badges/gifts, with the badge panel now presented as Honors
 - Honors Phase 3A can grant/remove Badges, Belts, Artifacts, and Designations from `/admin/user-list`

@@ -286,10 +286,10 @@ function defaultHrefForScreen(
   eventTile: EventTileView | null,
   forumThread: HeroForumThreadSource | null
 ) {
+  if (screen.type === "featured_event") return eventTile?.ctaUrl || "/lobby";
   if (screen.defaultHref && isSafeHeroHref(screen.defaultHref)) {
     return screen.defaultHref;
   }
-  if (screen.type === "featured_event") return eventTile?.ctaUrl || "/lobby";
   if (screen.type === "chronicle_cover" && forumThread) {
     return `/forum/thread/${forumThread.slug}`;
   }
@@ -302,9 +302,9 @@ export async function hydrateHeroSnapshot(
   meta: Pick<HeroPlaylistView, "publishedVersion" | "publishedAt" | "source">,
   includeInactive = false
 ): Promise<HeroPlaylistView> {
-  const eventIds = Array.from(
-    new Set(snapshot.items.map((item) => item.screen.eventTileId).filter(Boolean))
-  ) as number[];
+  const needsActiveEvent = snapshot.items.some(
+    (item) => item.screen.type === "featured_event"
+  );
   const threadIds = Array.from(
     new Set(snapshot.items.map((item) => item.screen.forumThreadId).filter(Boolean))
   ) as number[];
@@ -312,13 +312,22 @@ export async function hydrateHeroSnapshot(
     new Set(snapshot.items.map((item) => item.screen.mediaAssetId).filter(Boolean))
   ) as number[];
 
-  const [events, threads, media] = await Promise.all([
-    eventIds.length
-      ? prisma.eventTile.findMany({
-          where: { id: { in: eventIds } },
+  const [activeEvent, threads, media] = await Promise.all([
+    needsActiveEvent
+      ? prisma.eventTile.findFirst({
+          where: {
+            isPublished: true,
+            isActive: true,
+            status: { not: "archived" },
+          },
           include: EVENT_INCLUDE,
+          orderBy: [
+            { priority: "desc" },
+            { publishedAt: "desc" },
+            { updatedAt: "desc" },
+          ],
         })
-      : Promise.resolve([] as EventWithRelations[]),
+      : Promise.resolve(null as EventWithRelations | null),
     threadIds.length
       ? prisma.forumThread.findMany({ where: { id: { in: threadIds } } })
       : Promise.resolve([] as ForumThread[]),
@@ -327,9 +336,9 @@ export async function hydrateHeroSnapshot(
       : Promise.resolve([] as ManagedMediaAsset[]),
   ]);
 
-  const eventsById = new Map(
-    events.map((event) => [event.id, serializeEventTile(event as EventWithRelations)])
-  );
+  const activeEventTile = activeEvent
+    ? serializeEventTile(activeEvent as EventWithRelations)
+    : null;
   const threadsById = new Map(
     threads.map((thread) => [thread.id, serializeForumThreadSource(thread)])
   );
@@ -341,9 +350,8 @@ export async function hydrateHeroSnapshot(
     .filter((item) => includeInactive || (item.enabled && isItemInWindow(item, now)))
     .sort((a, b) => a.position - b.position || a.id - b.id)
     .flatMap((item) => {
-      const eventTile = item.screen.eventTileId
-        ? eventsById.get(item.screen.eventTileId) || null
-        : null;
+      const eventTile =
+        item.screen.type === "featured_event" ? activeEventTile : null;
       const forumThread = item.screen.forumThreadId
         ? threadsById.get(item.screen.forumThreadId) || null
         : null;
@@ -358,9 +366,11 @@ export async function hydrateHeroSnapshot(
         return [];
       }
       const href =
-        item.hrefOverride && isSafeHeroHref(item.hrefOverride)
-          ? item.hrefOverride
-          : defaultHrefForScreen(item.screen, eventTile, forumThread);
+        item.screen.type === "featured_event"
+          ? eventTile?.ctaUrl || "/lobby"
+          : item.hrefOverride && isSafeHeroHref(item.hrefOverride)
+            ? item.hrefOverride
+            : defaultHrefForScreen(item.screen, eventTile, forumThread);
       return [
         {
           ...item,

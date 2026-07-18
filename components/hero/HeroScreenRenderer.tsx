@@ -372,12 +372,27 @@ export function HeroScreenRenderer({
 }: {
   item: HeroPlaylistItemView;
 }) {
-  if (item.screen.type === "featured_event" && item.screen.eventTile) {
+  if (item.screen.type === "featured_event") {
+    if (item.screen.eventTile) {
+      return (
+        <WolomaniaPromoTile
+          eventTile={{ ...item.screen.eventTile, ctaUrl: item.href }}
+          embedded
+        />
+      );
+    }
     return (
-      <WolomaniaPromoTile
-        eventTile={{ ...item.screen.eventTile, ctaUrl: item.href }}
-        embedded
-      />
+      <div className="grid min-h-[32rem] place-items-center rounded-[2rem] border border-dashed border-amber-200/20 bg-black/30 px-6 text-center">
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-[0.28em] text-amber-100/65">
+            Featured Event
+          </div>
+          <div className="mt-3 text-lg font-semibold text-white">No live event</div>
+          <p className="mt-2 max-w-md text-sm leading-6 text-slate-400">
+            Make an event live in Event Foundry. This screen will update automatically.
+          </p>
+        </div>
+      </div>
     );
   }
   if (item.screen.type === "chronicle_cover") {

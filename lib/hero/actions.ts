@@ -104,14 +104,8 @@ async function getScreen(prisma: PrismaClient, payload: Payload) {
 
 function validateScreenSource(
   type: HeroScreenType,
-  eventTileId: number | null,
   forumThreadId: number | null
 ) {
-  if (type === "featured_event" && !eventTileId) {
-    throw new HeroStudioActionError(
-      "Featured Event screens must reference an Event Studio tile."
-    );
-  }
   if (type === "chronicle_cover" && !forumThreadId) {
     throw new HeroStudioActionError(
       "Chronicle screens must reference a War Room dispatch."
@@ -159,10 +153,9 @@ async function saveScreen(prisma: PrismaClient, payload: Payload) {
   if (!name || !key) {
     throw new HeroStudioActionError("Hero screen name and key are required.");
   }
-  const eventTileId = nullableInt(payload.eventTileId);
   const forumThreadId = nullableInt(payload.forumThreadId);
   const mediaAssetId = nullableInt(payload.mediaAssetId);
-  validateScreenSource(type, eventTileId, forumThreadId);
+  validateScreenSource(type, forumThreadId);
   let config;
   try {
     config = normalizeHeroScreenConfig(type, payload.config);
@@ -176,9 +169,9 @@ async function saveScreen(prisma: PrismaClient, payload: Payload) {
     name,
     type,
     status: screenStatus(payload.status),
-    defaultHref: hrefValue(payload.defaultHref),
+    defaultHref: type === "featured_event" ? null : hrefValue(payload.defaultHref),
     ariaLabel: text(payload.ariaLabel, 180) || null,
-    eventTileId: type === "featured_event" ? eventTileId : null,
+    eventTileId: null,
     forumThreadId: type === "chronicle_cover" ? forumThreadId : null,
     mediaAssetId,
     config,
@@ -210,9 +203,9 @@ async function duplicateScreen(prisma: PrismaClient, payload: Payload) {
       name: `${screen.name} Copy`,
       type: screen.type,
       status: "draft",
-      defaultHref: screen.defaultHref,
+      defaultHref: screen.type === "featured_event" ? null : screen.defaultHref,
       ariaLabel: screen.ariaLabel,
-      eventTileId: screen.eventTileId,
+      eventTileId: null,
       forumThreadId: screen.forumThreadId,
       mediaAssetId: screen.mediaAssetId,
       config: screen.config ?? undefined,
@@ -267,11 +260,19 @@ async function saveItems(prisma: PrismaClient, payload: Payload) {
   const existing = parsed.length
     ? await prisma.heroScreen.findMany({
         where: { id: { in: parsed.map((item) => item.screenId) } },
-        select: { id: true },
+        select: { id: true, type: true },
       })
     : [];
   if (existing.length !== parsed.length) {
     throw new HeroStudioActionError("One or more Hero screens no longer exist.");
+  }
+  const featuredEventScreenIds = new Set(
+    existing
+      .filter((screen) => screen.type === "featured_event")
+      .map((screen) => screen.id)
+  );
+  for (const item of parsed) {
+    if (featuredEventScreenIds.has(item.screenId)) item.hrefOverride = null;
   }
   return prisma.$transaction(async (tx) => {
     await tx.heroPlaylistItem.deleteMany({
@@ -314,11 +315,7 @@ function validatePublishSnapshot(
     );
   }
   for (const item of active) {
-    validateScreenSource(
-      item.screen.type,
-      item.screen.eventTileId,
-      item.screen.forumThreadId
-    );
+    validateScreenSource(item.screen.type, item.screen.forumThreadId);
   }
 }
 

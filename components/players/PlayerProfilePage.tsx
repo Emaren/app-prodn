@@ -110,6 +110,13 @@ async function loadPlayerTitleHonors(profile: PlayerProfile): Promise<PlayerTitl
 
 const RESOURCE_LABELS: Array<keyof PlayerResourceStats["totals"]> = ["wood", "food", "gold", "stone"];
 const WOLO_LOGO_SRC = "/legacy/wolo-logo-transparent.webp";
+
+function formatWoloClaimAmount(value: number) {
+  if (!Number.isFinite(value)) return "0";
+  if (Number.isInteger(value)) return String(value);
+
+  return value.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+}
 const RESOURCE_META: Record<keyof PlayerResourceStats["totals"], { label: string; icon: string; accent: string }> = {
   wood: { label: "Wood", icon: "🪵", accent: "from-emerald-400 to-lime-200" },
   food: { label: "Food", icon: "🥩", accent: "from-red-400 to-amber-200" },
@@ -359,7 +366,7 @@ function ClaimedBasicProfile({ profile }: { profile: PlayerProfile }) {
               <Tag>{profile.isVerified ? "Replay verified" : profile.isClaimed ? "Claimed profile" : "Unclaimed identity"}</Tag>
               <Tag>{profile.command.totalMatches} parsed matches</Tag>
               {profile.isLive ? <Tag>online now</Tag> : null}
-              {profile.wolo.pendingClaimCount > 0 ? <Tag>{profile.wolo.pendingClaimWolo} WOLO unclaimed</Tag> : null}
+              {profile.wolo.pendingClaimCount > 0 ? <Tag>{formatWoloClaimAmount(profile.wolo.pendingClaimWolo)} WOLO unclaimed</Tag> : null}
               {profile.community.badges.map((badge) => (
                 <CommunityBadgePill key={badge.id} label={badge.label} />
               ))}
@@ -468,7 +475,7 @@ function ReplayClassicBasicProfile({ profile }: { profile: PlayerProfile }) {
             <div className="flex flex-wrap gap-2">
               <Tag>unclaimed identity</Tag>
               <Tag>{profile.command.totalMatches} parsed matches</Tag>
-              {pendingClaimCount > 0 ? <Tag>{pendingClaimAmount} WOLO unclaimed</Tag> : null}
+              {pendingClaimCount > 0 ? <Tag>{formatWoloClaimAmount(pendingClaimAmount)} WOLO unclaimed</Tag> : null}
               {wins > 0 ? <Tag>{wins} wins</Tag> : null}
               {losses > 0 ? <Tag>{losses} losses</Tag> : null}
             </div>
@@ -504,7 +511,7 @@ function ReplayClassicBasicProfile({ profile }: { profile: PlayerProfile }) {
           <section className="rounded-[1.75rem] border border-white/10 bg-slate-950/70 p-6">
             {pendingClaimCount > 0 ? (
               <div className="mb-5 rounded-2xl border border-amber-300/20 bg-amber-400/10 px-4 py-4 text-sm leading-6 text-amber-100">
-                {pendingClaimAmount} WOLO is still waiting in the claim ledger for this replay-built warrior page.
+                {formatWoloClaimAmount(pendingClaimAmount)} WOLO is still waiting in the claim ledger for this replay-built warrior page.
               </div>
             ) : null}
             <div className="text-xs uppercase tracking-[0.35em] text-white/45">Stats</div>

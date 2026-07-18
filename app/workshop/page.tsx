@@ -15,6 +15,7 @@ import {
 import WorkshopAsk from "@/components/workshop/WorkshopAsk";
 import WorkshopChronicle from "@/components/workshop/WorkshopChronicle";
 import WorkshopSponsor from "@/components/workshop/WorkshopSponsor";
+import { loadPublicParserObservatory } from "@/lib/parserObservatory";
 import { getPrisma } from "@/lib/prisma";
 import {
   loadPublicWorkshop,
@@ -98,12 +99,51 @@ function statusCopy(data: PublicWorkshop) {
   return { label: "THE WORKSHOP IS OPEN", tone: "amber" };
 }
 
+function CampaignMetric({
+  label,
+  value,
+  note,
+  alert = false,
+}: {
+  label: string;
+  value: string;
+  note: string;
+  alert?: boolean;
+}) {
+  return (
+    <div
+      className={[
+        "rounded-[1.35rem] border p-4 sm:p-5",
+        alert
+          ? "border-amber-200/16 bg-amber-300/[0.055]"
+          : "border-white/9 bg-black/20",
+      ].join(" ")}
+    >
+      <div
+        className={[
+          "text-2xl font-semibold sm:text-3xl",
+          alert ? "text-amber-100" : "text-white",
+        ].join(" ")}
+      >
+        {value}
+      </div>
+      <div className="mt-2 text-[9px] font-bold uppercase tracking-[0.24em] text-slate-400">
+        {label}
+      </div>
+      <div className="mt-2 text-[11px] leading-5 text-slate-600">
+        {note}
+      </div>
+    </div>
+  );
+}
+
 export default async function WorkshopPage() {
   const prisma = getPrisma();
 
-  const [data, chronicle] = await Promise.all([
+  const [data, chronicle, observatory] = await Promise.all([
     loadPublicWorkshop(prisma),
     loadWorkshopChroniclePage(prisma, { take: 18 }),
+    loadPublicParserObservatory(),
   ]);
 
   const signal = statusCopy(data);
@@ -176,6 +216,156 @@ export default async function WorkshopPage() {
               operator-controlled.
             </div>
           </div>
+        </div>
+      </section>
+
+      <section
+        id="current-campaign"
+        className="relative overflow-hidden rounded-[2.15rem] border border-cyan-100/12 bg-[radial-gradient(circle_at_8%_0%,rgba(34,211,238,0.15),transparent_31%),radial-gradient(circle_at_88%_15%,rgba(251,191,36,0.13),transparent_28%),linear-gradient(145deg,#061521,#080b12_56%,#120a05)] p-6 shadow-[0_30px_110px_rgba(0,0,0,0.32)] sm:p-9"
+      >
+        <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-cyan-100/35 to-transparent" />
+
+        <div className="relative grid gap-7 xl:grid-cols-[minmax(0,1.45fr)_minmax(19rem,0.55fr)]">
+          <div>
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.34em] text-cyan-100/60">
+                <Wrench className="h-4 w-4" />
+                Current Campaign
+              </div>
+
+              <span className="rounded-full border border-amber-200/16 bg-amber-300/[0.07] px-3 py-1 text-[9px] font-bold uppercase tracking-[0.2em] text-amber-100/75">
+                Campaign IV · Parser Front
+              </span>
+            </div>
+
+            <h2 className="mt-5 font-serif text-5xl leading-[0.92] text-white sm:text-6xl lg:text-7xl">
+              Into the Fog.
+            </h2>
+
+            <p className="mt-5 max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
+              Campaign III conquered artifact classification. Every preserved
+              Engine Room artifact now has a latest candidate disposition.
+              The question has changed. We are no longer asking whether the
+              archive can be classified. We are asking what battle truth the
+              surviving evidence can actually prove.
+            </p>
+
+            <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <CampaignMetric
+                label="Artifacts accounted"
+                value={`${observatory.parser.frontier.completed.toLocaleString()} / ${observatory.parser.frontier.artifacts.toLocaleString()}`}
+                note="Frozen Engine Room candidate frontier."
+              />
+
+              <CampaignMetric
+                label="Current candidate failures"
+                value={observatory.parser.frontier.failed.toLocaleString()}
+                note="Historical failed runs remain preserved."
+              />
+
+              <CampaignMetric
+                label="Effective results"
+                value={observatory.corpus.resolvedResults.toLocaleString()}
+                note="Current public final replay-record grain."
+              />
+
+              <CampaignMetric
+                label="Battles in the fog"
+                value={observatory.corpus.unresolvedResults.toLocaleString()}
+                note="No decisive trustworthy result yet."
+                alert={observatory.corpus.unresolvedResults > 0}
+              />
+
+              <CampaignMetric
+                label="Result coverage"
+                value={`${(observatory.corpus.resultCoverageBps / 100).toFixed(1)}%`}
+                note="Effective resolved result coverage."
+              />
+
+              <CampaignMetric
+                label="Unlinked checkpoints"
+                value="89"
+                note="Campaign III sealed continuation frontier."
+                alert
+              />
+            </div>
+
+            <div className="mt-6 flex flex-wrap items-center gap-3">
+              <Link
+                href="/game-stats"
+                className="inline-flex min-h-11 items-center gap-2 rounded-full bg-cyan-100 px-5 text-sm font-bold text-slate-950 transition hover:bg-white"
+              >
+                <ShieldCheck className="h-4 w-4" />
+                Enter the Parser Observatory
+              </Link>
+
+              <div className="text-xs leading-5 text-slate-500">
+                Live Observatory totals refresh independently from the curated Chronicle.
+              </div>
+            </div>
+          </div>
+
+          <aside className="rounded-[1.7rem] border border-amber-100/12 bg-black/28 p-6 sm:p-7">
+            <div className="text-[10px] font-bold uppercase tracking-[0.3em] text-amber-100/55">
+              Campaign III · Sealed
+            </div>
+
+            <h3 className="mt-3 font-serif text-3xl text-white">
+              The Engine Room
+            </h3>
+
+            <div className="mt-6 space-y-4">
+              <div className="border-b border-white/8 pb-4">
+                <div className="text-2xl font-semibold text-white">
+                  {observatory.parser.frontier.recordedGameCandidates.toLocaleString()}
+                </div>
+                <div className="mt-1 text-[10px] uppercase tracking-[0.22em] text-slate-500">
+                  recorded-game candidates
+                </div>
+              </div>
+
+              <div className="border-b border-white/8 pb-4">
+                <div className="text-2xl font-semibold text-white">
+                  {observatory.parser.frontier.savedSnapshots.toLocaleString()}
+                </div>
+                <div className="mt-1 text-[10px] uppercase tracking-[0.22em] text-slate-500">
+                  non-final saved checkpoints
+                </div>
+              </div>
+
+              <div className="border-b border-white/8 pb-4">
+                <div className="text-2xl font-semibold text-emerald-100">
+                  {observatory.parser.frontier.effectiveResultCorrections.toLocaleString()}
+                </div>
+                <div className="mt-1 text-[10px] uppercase tracking-[0.22em] text-slate-500">
+                  safe effective corrections
+                </div>
+              </div>
+
+              <div>
+                <div className="text-2xl font-semibold text-amber-100">
+                  113 → 98
+                </div>
+                <div className="mt-1 text-[10px] uppercase tracking-[0.22em] text-slate-500">
+                  checkpoints linked to recorded candidates
+                </div>
+              </div>
+            </div>
+
+            <p className="mt-6 text-xs leading-6 text-slate-500">
+              Candidate completion never becomes automatic public or financial
+              truth. Saved checkpoints remain non-final and settlement-ineligible.
+              Continuation identity does not import a later result.
+            </p>
+          </aside>
+        </div>
+
+        <div className="relative mt-7 rounded-2xl border border-white/8 bg-black/20 px-5 py-4 text-xs leading-6 text-slate-500">
+          <span className="font-semibold text-slate-300">Truth boundary:</span>{" "}
+          the live result counters above describe final watcher/upload records,
+          not a deduplicated count of logical battles. Saved, rehosted, aborted,
+          checkpoint-only, and otherwise unprovable sessions may correctly remain
+          in the fog.
         </div>
       </section>
 

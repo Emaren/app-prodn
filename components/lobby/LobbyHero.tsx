@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { formatLobbyMoment } from "@/components/lobby/utils";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { KeyboardEvent, MouseEvent } from "react";
+import type { KeyboardEvent, MouseEvent, UIEvent } from "react";
 import SteamLoginButton from "@/components/SteamLoginButton";
 import { LeaderboardPanel } from "@/components/lobby/LeaderboardPanel";
 import { LeaderboardLaneToggle } from "@/components/lobby/LeaderboardLaneToggle";
@@ -18,7 +18,7 @@ import {
 import { StatCard } from "@/components/lobby/StatCard";
 import type { Aoe2HdPulseItem, Aoe2HdPulseSnapshot } from "@/lib/aoe2HdPulse";
 import type { LobbyLeaderboardEntry, LobbyMatchRow, LobbySnapshot } from "@/lib/lobby";
-import { avatarCardUrlForUser, avatarThumbUrlForUser } from "@/lib/avatarAssets";
+import { avatarThumbUrlForUser, avatarUrlForUser } from "@/lib/avatarAssets";
 import type { LeaderboardLane } from "@/lib/leaderboardLane";
 import { trackLeaderboardEvent } from "@/lib/leaderboardTelemetry";
 import { TILE_VIEW_MODES, type TileViewMode } from "@/lib/tileViewPreferences";
@@ -32,6 +32,36 @@ type WoloMoved24hSnapshot = {
   totalWolo: number;
   transferCount: number;
 };
+
+const EXTREME_LEADERBOARD_PAGE_SIZE = 64;
+
+type ExtremeLeaderboardPageResponse = {
+  entries?: LobbySnapshot["leaderboard"]["entries"];
+  nextOffset?: number;
+  hasMore?: boolean;
+};
+
+function mergeExtremeLeaderboardEntries(
+  primary: LobbySnapshot["leaderboard"]["entries"],
+  secondary: LobbySnapshot["leaderboard"]["entries"]
+) {
+  const byKey = new Map<
+    string,
+    LobbySnapshot["leaderboard"]["entries"][number]
+  >();
+
+  for (const entry of [...primary, ...secondary]) {
+    byKey.set(entry.key, entry);
+  }
+
+  return Array.from(byKey.values()).sort((left, right) => {
+    if (left.rank !== right.rank) {
+      return left.rank - right.rank;
+    }
+
+    return left.name.localeCompare(right.name);
+  });
+}
 
 function formatCompactStatNumber(value: number) {
   if (!Number.isFinite(value) || value <= 0) return "0";
@@ -285,6 +315,192 @@ export function LobbyHero({
     transferCount: 0,
   });
   const showExtremeStats = tileViewMode === "extreme";
+
+  const [extremeLeaderboardEntries, setExtremeLeaderboardEntries] =
+    useState(leaderboard.entries);
+  const [extremeLeaderboardLoading, setExtremeLeaderboardLoading] =
+    useState(false);
+  const [extremeLeaderboardHasMore, setExtremeLeaderboardHasMore] =
+    useState(leaderboard.entries.length < leaderboard.trackedPlayers);
+
+  const extremeLeaderboardEntriesRef =
+    useRef(leaderboard.entries);
+  const extremeLeaderboardNextOffsetRef =
+    useRef(leaderboard.entries.length);
+  const extremeLeaderboardLoadingRef =
+    useRef(false);
+  const extremeLeaderboardHasMoreRef =
+    useRef(leaderboard.entries.length < leaderboard.trackedPlayers);
+  const extremeLeaderboardLaneRef =
+    useRef(leaderboard.lane);
+  const extremeLeaderboardScrollRef =
+    useRef<HTMLDivElement | null>(null);
+  const extremeLeaderboardSentinelRef =
+    useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const laneChanged =
+      extremeLeaderboardLaneRef.current !== leaderboard.lane;
+
+    if (laneChanged) {
+      extremeLeaderboardLaneRef.current = leaderboard.lane;
+      extremeLeaderboardEntriesRef.current = leaderboard.entries;
+      extremeLeaderboardNextOffsetRef.current =
+        leaderboard.entries.length;
+
+      setExtremeLeaderboardEntries(leaderboard.entries);
+
+      const nextHasMore =
+        leaderboard.entries.length < leaderboard.trackedPlayers;
+
+      extremeLeaderboardHasMoreRef.current = nextHasMore;
+      setExtremeLeaderboardHasMore(nextHasMore);
+      return;
+    }
+
+    const merged = mergeExtremeLeaderboardEntries(
+      leaderboard.entries,
+      extremeLeaderboardEntriesRef.current
+    );
+
+    extremeLeaderboardEntriesRef.current = merged;
+    setExtremeLeaderboardEntries(merged);
+
+    extremeLeaderboardNextOffsetRef.current = Math.max(
+      extremeLeaderboardNextOffsetRef.current,
+      leaderboard.entries.length
+    );
+
+    const nextHasMore =
+      extremeLeaderboardNextOffsetRef.current <
+      leaderboard.trackedPlayers;
+
+    extremeLeaderboardHasMoreRef.current = nextHasMore;
+    setExtremeLeaderboardHasMore(nextHasMore);
+  }, [
+    leaderboard.entries,
+    leaderboard.lane,
+    leaderboard.trackedPlayers,
+  ]);
+
+  const loadMoreExtremeLeaderboard = useCallback(async () => {
+    if (extremeLeaderboardLoadingRef.current) return;
+    if (!extremeLeaderboardHasMoreRef.current) return;
+
+    const offset =
+      extremeLeaderboardNextOffsetRef.current;
+
+    extremeLeaderboardLoadingRef.current = true;
+    setExtremeLeaderboardLoading(true);
+
+    try {
+      const response = await fetch(
+        `/api/lobby/leaderboard?lane=${encodeURIComponent(
+          leaderboard.lane
+        )}&offset=${offset}&limit=${EXTREME_LEADERBOARD_PAGE_SIZE}`,
+        { cache: "no-store" }
+      );
+
+      if (!response.ok) {
+        return;
+      }
+
+      const payload =
+        (await response.json()) as ExtremeLeaderboardPageResponse;
+
+      const nextEntries = Array.isArray(payload.entries)
+        ? payload.entries
+        : [];
+
+      if (nextEntries.length === 0) {
+        extremeLeaderboardHasMoreRef.current = false;
+        setExtremeLeaderboardHasMore(false);
+        return;
+      }
+
+      const merged = mergeExtremeLeaderboardEntries(
+        extremeLeaderboardEntriesRef.current,
+        nextEntries
+      );
+
+      extremeLeaderboardEntriesRef.current = merged;
+      setExtremeLeaderboardEntries(merged);
+
+      const nextOffset =
+        typeof payload.nextOffset === "number"
+          ? payload.nextOffset
+          : offset + nextEntries.length;
+
+      extremeLeaderboardNextOffsetRef.current = nextOffset;
+
+      const nextHasMore =
+        typeof payload.hasMore === "boolean"
+          ? payload.hasMore
+          : nextOffset < leaderboard.trackedPlayers;
+
+      extremeLeaderboardHasMoreRef.current = nextHasMore;
+      setExtremeLeaderboardHasMore(nextHasMore);
+    } catch (error) {
+      console.warn(
+        "Failed to load more Extreme leaderboard entries:",
+        error
+      );
+    } finally {
+      extremeLeaderboardLoadingRef.current = false;
+      setExtremeLeaderboardLoading(false);
+    }
+  }, [
+    leaderboard.lane,
+    leaderboard.trackedPlayers,
+  ]);
+
+  const handleExtremeLeaderboardScroll = useCallback(
+    (event: UIEvent<HTMLDivElement>) => {
+      const target = event.currentTarget;
+
+      const distanceFromBottom =
+        target.scrollHeight -
+        target.scrollTop -
+        target.clientHeight;
+
+      if (distanceFromBottom < 2400) {
+        void loadMoreExtremeLeaderboard();
+      }
+    },
+    [loadMoreExtremeLeaderboard]
+  );
+
+  useEffect(() => {
+    if (tileViewMode !== "extreme") return;
+    if (!extremeLeaderboardHasMore) return;
+
+    const root = extremeLeaderboardScrollRef.current;
+    const sentinel = extremeLeaderboardSentinelRef.current;
+
+    if (!root || !sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (records) => {
+        if (records.some((record) => record.isIntersecting)) {
+          void loadMoreExtremeLeaderboard();
+        }
+      },
+      {
+        root,
+        rootMargin: "2400px 0px",
+        threshold: 0.01,
+      }
+    );
+
+    observer.observe(sentinel);
+
+    return () => observer.disconnect();
+  }, [
+    tileViewMode,
+    extremeLeaderboardHasMore,
+    loadMoreExtremeLeaderboard,
+  ]);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -320,10 +536,10 @@ export function LobbyHero({
 
 
   if (tileViewMode === "extreme") {
-    const featuredEntry = leaderboard.entries[0] ?? null;
+    const leaderboardRows = extremeLeaderboardEntries;
+    const featuredEntry = leaderboardRows[0] ?? null;
     const featuredName = featuredEntry?.name || "Sniper";
     const featuredRating = featuredEntry ? primaryRating(featuredEntry) : null;
-    const leaderboardRows = leaderboard.entries;
 
     return (
       <div
@@ -387,11 +603,11 @@ export function LobbyHero({
           <div className="grid gap-5 xl:grid-cols-[minmax(19rem,0.66fr)_minmax(0,1fr)] xl:items-stretch 2xl:grid-cols-[minmax(22rem,0.72fr)_minmax(0,1fr)]">
             <div className="relative min-h-[21rem] overflow-hidden rounded-[1.55rem] border border-amber-200/10 bg-[radial-gradient(circle_at_48%_12%,rgba(251,191,36,0.08),transparent_28%),linear-gradient(135deg,rgba(0,0,0,0.38),rgba(2,6,23,0.42))] sm:min-h-[25rem] xl:min-h-[42rem]">
               <Image
-                src={avatarCardUrlForUser(featuredEntry?.uid, featuredName)}
+                src={avatarUrlForUser(featuredEntry?.uid, featuredName)}
                 alt=""
                 fill
-                unoptimized
                 priority
+                quality={95}
                 sizes="(min-width: 1536px) 360px, (min-width: 1280px) 300px, 90vw"
                 className="object-contain object-top opacity-100 [mask-image:linear-gradient(180deg,black_0%,black_82%,transparent_100%)] xl:object-cover"
               />
@@ -456,7 +672,12 @@ export function LobbyHero({
                   </span>
                 </div>
 
-                <div data-ignore-leaderboard-navigation="true" className="mt-5 max-h-[46rem] space-y-2.5 overflow-y-auto overscroll-contain pr-1">
+                <div
+                  ref={extremeLeaderboardScrollRef}
+                  data-ignore-leaderboard-navigation="true"
+                  onScroll={handleExtremeLeaderboardScroll}
+                  className="mt-5 max-h-[46rem] space-y-2.5 overflow-y-auto overscroll-y-contain pr-1 [-webkit-overflow-scrolling:touch] [touch-action:pan-y]"
+                >
                   {leaderboardRows.length === 0 ? (
                     <div className="rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-4 text-sm text-slate-300">
                       The board is warming up.
@@ -505,6 +726,18 @@ export function LobbyHero({
                       );
                     })
                   )}
+
+                  <div
+                    ref={extremeLeaderboardSentinelRef}
+                    aria-hidden="true"
+                    className="h-px w-full"
+                  />
+
+                  {extremeLeaderboardLoading ? (
+                    <div className="py-3 text-center text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+                      Reinforcements arriving…
+                    </div>
+                  ) : null}
                 </div>
               </div>
 

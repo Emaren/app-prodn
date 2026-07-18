@@ -154,10 +154,11 @@ function clientResolvedScreen(
   screen: HeroScreenDefinition,
   snapshot: HeroStudioSnapshot
 ): HeroResolvedScreen {
+  const activeEvent =
+    snapshot.eventTiles.find((event) => event.isActive && event.isPublished) || null;
   return {
     ...screen,
-    eventTile:
-      snapshot.eventTiles.find((event) => event.id === screen.eventTileId) || null,
+    eventTile: screen.type === "featured_event" ? activeEvent : null,
     forumThread:
       snapshot.forumThreads.find((thread) => thread.id === screen.forumThreadId) ||
       null,
@@ -348,7 +349,10 @@ export default function HeroStudio() {
       const resolved = clientResolvedScreen(definition, snapshot);
       return {
         ...item,
-        href: item.hrefOverride || definition.defaultHref || item.href || "/",
+        href:
+          definition.type === "featured_event"
+            ? resolved.eventTile?.ctaUrl || "/lobby"
+            : item.hrefOverride || definition.defaultHref || item.href || "/",
         screen: resolved,
       };
     });
@@ -605,6 +609,9 @@ export default function HeroStudio() {
     );
   }
 
+  const activeEvent =
+    snapshot.eventTiles.find((event) => event.isActive && event.isPublished) || null;
+
   return (
     <div className="w-full min-w-0 space-y-5 py-2 text-white">
       <section className="overflow-hidden rounded-[2rem] border border-amber-200/16 bg-[radial-gradient(circle_at_12%_0%,rgba(251,191,36,0.20),transparent_30%),radial-gradient(circle_at_88%_10%,rgba(59,130,246,0.15),transparent_32%),linear-gradient(145deg,#120d08,#07111c_56%,#02040a)] p-5 shadow-[0_36px_120px_rgba(0,0,0,0.42)] sm:p-7">
@@ -618,7 +625,7 @@ export default function HeroStudio() {
               Hero Tile Chain
             </h1>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
-              Build the homepage hero as one ordered chain. Drop images in, add event-fed screens, tune timing, reorder the elements, and publish once.
+              Build the homepage hero as one ordered chain. Hero Studio controls placement and timing; the Featured Event screen always follows the live event from Event Foundry automatically.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -890,16 +897,24 @@ export default function HeroStudio() {
                         }
                       />
                     </Field>
-                    <Field label="Link override">
-                      <input
-                        className={inputClass}
-                        value={item.hrefOverride}
-                        placeholder={item.href}
-                        onChange={(event) =>
-                          updateItem(index, { hrefOverride: event.target.value })
-                        }
-                      />
-                    </Field>
+                    {item.screen.type === "featured_event" ? (
+                      <Field label="Destination">
+                        <div className="flex min-h-11 items-center rounded-xl border border-emerald-200/15 bg-emerald-300/[0.06] px-3 text-xs text-emerald-100">
+                          Automatic · {activeEvent?.ctaUrl || "/lobby"}
+                        </div>
+                      </Field>
+                    ) : (
+                      <Field label="Link override">
+                        <input
+                          className={inputClass}
+                          value={item.hrefOverride}
+                          placeholder={item.href}
+                          onChange={(event) =>
+                            updateItem(index, { hrefOverride: event.target.value })
+                          }
+                        />
+                      </Field>
+                    )}
                     <Field label="Starts">
                       <input
                         className={inputClass}
@@ -1134,15 +1149,34 @@ export default function HeroStudio() {
                   <option value="archived">Archived</option>
                 </select>
               </Field>
-              <Field label="Default link">
-                <input
-                  className={inputClass}
-                  value={draft.defaultHref}
-                  onChange={(event) =>
-                    setDraft({ ...draft, defaultHref: event.target.value })
-                  }
-                />
-              </Field>
+              {draft.type === "featured_event" ? (
+                <Field label="Live event source">
+                  <div className="rounded-xl border border-emerald-200/15 bg-emerald-300/[0.06] px-3 py-3 text-xs text-emerald-100">
+                    <div className="font-semibold">Automatic from Event Foundry</div>
+                    <div className="mt-1 text-emerald-100/70">
+                      {activeEvent
+                        ? `${activeEvent.name} is live. Its artwork, copy, matchup, and CTA appear here automatically.`
+                        : "No event is live. Make one live in Event Foundry and this screen updates immediately."}
+                    </div>
+                    <Link
+                      href="/admin/events"
+                      className="mt-2 inline-flex font-semibold text-amber-100 hover:text-white"
+                    >
+                      Open Event Foundry →
+                    </Link>
+                  </div>
+                </Field>
+              ) : (
+                <Field label="Default link">
+                  <input
+                    className={inputClass}
+                    value={draft.defaultHref}
+                    onChange={(event) =>
+                      setDraft({ ...draft, defaultHref: event.target.value })
+                    }
+                  />
+                </Field>
+              )}
               <Field label="Accessible label">
                 <input
                   className={inputClass}
@@ -1152,27 +1186,6 @@ export default function HeroStudio() {
                   }
                 />
               </Field>
-              {draft.type === "featured_event" ? (
-                <Field label="Event Studio tile">
-                  <select
-                    className={selectClass}
-                    value={draft.eventTileId || ""}
-                    onChange={(event) =>
-                      setDraft({
-                        ...draft,
-                        eventTileId: Number(event.target.value) || null,
-                      })
-                    }
-                  >
-                    <option value="">Choose an event</option>
-                    {snapshot.eventTiles.map((event) => (
-                      <option key={event.id} value={event.id || ""}>
-                        {event.name} · {event.status}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-              ) : null}
               {draft.type === "chronicle_cover" ? (
                 <Field label="War Room dispatch">
                   <select

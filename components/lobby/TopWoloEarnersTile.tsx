@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type WheelEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type UIEvent } from "react";
 
 import {
   getLobbyPresentationTone,
@@ -182,6 +182,7 @@ export function TopWoloEarnersTile({
   const lazyLoadingRef = useRef(false);
   const nextOffsetRef = useRef(board?.entries?.length ?? 0);
   const activeModeRef = useRef(mode);
+  const prefetchedModeRef = useRef<LobbyWoloEarnersMode | null>(null);
 
   useEffect(() => {
     const boardEntries = board?.entries ?? [];
@@ -191,6 +192,7 @@ export function TopWoloEarnersTile({
 
     if (activeModeRef.current !== mode) {
       activeModeRef.current = mode;
+      prefetchedModeRef.current = null;
       const seedEntries = boardMatchesMode ? boardEntries : [];
 
       setLazyEntries(seedEntries);
@@ -287,32 +289,31 @@ export function TopWoloEarnersTile({
     }
   }, [hasMoreEntries, mode, totalParticipants]);
 
+  // Keep exactly one page buffered ahead after the first paint.
+  // Do not recursively preload the whole board.
   useEffect(() => {
-    if (!hasMoreEntries) return;
+    if (!hasMoreEntries || lazyLoading) return;
+    if (prefetchedModeRef.current === mode) return;
 
-    const timer = window.setTimeout(() => {
-      void loadNextBoardPage();
-    }, 450);
+    prefetchedModeRef.current = mode;
+    void loadNextBoardPage();
+  }, [
+    hasMoreEntries,
+    lazyLoading,
+    mode,
+    loadNextBoardPage,
+  ]);
 
-    return () => window.clearTimeout(timer);
-  }, [hasMoreEntries, loadNextBoardPage]);
-
-  const handleWarChestWheel = useCallback(
-    (event: WheelEvent<HTMLDivElement>) => {
+  const handleWarChestScroll = useCallback(
+    (event: UIEvent<HTMLDivElement>) => {
       const target = event.currentTarget;
-      if (target.scrollHeight <= target.clientHeight) return;
 
-      const maxScrollTop = Math.max(0, target.scrollHeight - target.clientHeight);
-      const nextScrollTop = Math.max(0, Math.min(maxScrollTop, target.scrollTop + event.deltaY));
+      const distanceFromBottom =
+        target.scrollHeight -
+        target.scrollTop -
+        target.clientHeight;
 
-      if (nextScrollTop !== target.scrollTop) {
-        event.preventDefault();
-        event.stopPropagation();
-        target.scrollTop = nextScrollTop;
-      }
-
-      const distanceFromBottom = target.scrollHeight - target.scrollTop - target.clientHeight;
-      if (distanceFromBottom < 900) {
+      if (distanceFromBottom < 3600) {
         void loadNextBoardPage();
       }
     },
@@ -339,7 +340,7 @@ export function TopWoloEarnersTile({
       },
       {
         root: scrollRoot,
-        rootMargin: "260px 0px 420px 0px",
+        rootMargin: "2400px 0px 3600px 0px",
         threshold: 0.01,
       },
     );
@@ -462,8 +463,9 @@ export function TopWoloEarnersTile({
         ) : (
           <div
             ref={scrollViewportRef}
-            onWheel={handleWarChestWheel}
-            className="min-h-0 flex-1 scroll-smooth overflow-y-auto overflow-x-hidden overscroll-y-auto pr-1 [scrollbar-gutter:stable] [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,0.28)_transparent] [-webkit-overflow-scrolling:touch] [touch-action:pan-y]"
+            onScroll={handleWarChestScroll}
+            aria-busy={lazyLoading}
+            className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain pr-1 [scrollbar-gutter:stable] [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,0.28)_transparent] [-webkit-overflow-scrolling:touch] [touch-action:pan-y]"
           >
             <div className="grid gap-2.5">
               {entries.map((entry) => {
@@ -547,12 +549,6 @@ export function TopWoloEarnersTile({
                 aria-hidden="true"
                 className="h-1 w-full shrink-0"
               />
-
-              {lazyLoading ? (
-                <div className="rounded-[1.15rem] border border-white/10 bg-white/[0.025] px-4 py-3 text-center text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">
-                  Loading more earners…
-                </div>
-              ) : null}
 
               {PLACEHOLDER_LANES.slice(entries.length, entries.length + placeholderCount).map((lane) => (
                 <div

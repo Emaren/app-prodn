@@ -9,9 +9,9 @@ the underlying domain models into a generic page-builder table.
 The operator surface is:
 
 - `/admin/hero-studio` for screen library, ordering, scheduling, transitions,
-  per-screen duration and links, preview, publication history, and rollback
-- `/admin/events` for event-specific copy, warriors, trophy, Commissioner,
-  timing, and artwork
+  per-screen duration, preview, publication history, and rollback
+- `/admin/events` for the live Featured Event: copy, warriors, trophy,
+  Commissioner, timing, artwork, and CTA
 - `/admin/media-assets` for reusable still and motion assets
 
 ## Data model
@@ -39,7 +39,7 @@ trusted renderer and configuration validator:
 - enabled state
 - optional start/end schedule
 - optional display-duration override
-- optional safe link override
+- optional safe link override for non-Featured-Event screens
 
 `HeroPlaylistPublication` stores an immutable ordered snapshot. Public routes
 read the newest publication, while Admin may continue editing the draft. A
@@ -52,15 +52,24 @@ temporary `draft-bootstrap` compatibility state after migrations complete.
 
 ## Source ownership
 
-Typed Hero screens reference real app-domain rows:
+Typed Hero screens use real app-domain sources:
 
-- Featured Event -> `EventTile`
-- Wolo Chronicle -> `ForumThread`
+- Featured Event -> the single published + active `EventTile`
+- Wolo Chronicle -> an explicitly selected `ForumThread`
 - optional managed art or motion -> `ManagedMediaAsset`
 
-The publication snapshot owns composition, screen configuration, and link
-overrides. Referenced EventTile and ForumThread content is hydrated from its
-own current app record so the owning editor remains authoritative.
+The Featured Event is deliberately different from the other source types. A
+Featured Event Hero screen does **not** pin an EventTile ID. At render time it
+always resolves the current published + active EventTile, including that
+event's CTA. Clicking **Make live** in Event Foundry therefore changes the
+Featured Event everywhere without editing or republishing the Hero chain. Hero
+Studio owns only whether the Featured Event screen is present, where it sits,
+and how long it is shown.
+
+The publication snapshot owns composition and screen configuration. Chronicle
+and media sources remain explicit editorial choices. EventTile and ForumThread
+content is hydrated from its current app record so the owning editor remains
+authoritative.
 
 Do not add arbitrary HTML, JSX, scripts, or database-authored React code.
 Genuinely new visual templates require a trusted renderer plus validator in the
@@ -126,6 +135,16 @@ The upload directory must be writable by the `tony` service user. The dynamic
 so no public-tree symlink is required.
 
 ## Publication workflow
+
+### Featured Event
+
+1. Keep one Featured Event screen in the Hero chain and publish the chain once.
+2. Build or edit an event in `/admin/events`.
+3. Click **Make live**.
+4. The current Featured Event screen immediately resolves that event's content
+   and CTA. No Hero Studio event selection or Hero republish is required.
+
+### Other Hero screens
 
 1. Create or select a typed screen.
 2. Save it.

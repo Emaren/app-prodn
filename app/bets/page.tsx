@@ -26,12 +26,13 @@ import { useUserAuth } from "@/context/UserAuthContext";
 import { useKeplr } from "@/hooks/use-keplr";
 import { useWoloBalance } from "@/hooks/useWoloBalance";
 import {
-  BATTLE_CAM_STANDBY_VIDEO_URL,
+
   isExplicitlyAttachedBroadcastFeed,
   readStoredBattleCamVisibility,
   type BattleCamVisibility,
   writeStoredBattleCamVisibility,
 } from "@/lib/broadcastPresentation";
+import { battleLoopForSeed } from "@/lib/battleLoopClips";
 import {
   WOLO_BASE_DENOM,
   WOLO_CHAIN_ID,
@@ -3144,7 +3145,7 @@ function BattleCamStandbyFrame({
       <div className="relative aspect-video max-h-[30rem] min-h-[12rem] overflow-hidden rounded-[1.2rem] bg-black/70 sm:min-h-[16rem]">
         <video
           className="absolute inset-0 h-full w-full object-cover opacity-45 saturate-[0.65]"
-          src={BATTLE_CAM_STANDBY_VIDEO_URL}
+          src={battleLoopForSeed(`${eventLabel}:${marketTitle}`)}
           autoPlay
           muted
           loop

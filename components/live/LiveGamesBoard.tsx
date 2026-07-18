@@ -32,7 +32,7 @@ import ScheduledMatchCard, {
 } from "@/components/challenge/ScheduledMatchCard";
 import { displayName } from "@/components/lobby/utils";
 import LiveStreamFrame from "@/components/streaming/LiveStreamFrame";
-import { BATTLE_CAM_STANDBY_VIDEO_URL } from "@/lib/broadcastPresentation";
+import { battleLoopForSeed } from "@/lib/battleLoopClips";
 import { useTileViewPreference } from "@/components/tile-view/useTileViewPreference";
 import { useUserAuth } from "@/context/UserAuthContext";
 import type { LiveGamesSnapshot } from "@/lib/liveGames";
@@ -1731,7 +1731,7 @@ function PremiumResolvedOutcomeCard({
               >
                 <video
                   className="h-[4.9rem] w-full object-cover opacity-92 transition duration-500 group-hover:scale-[1.04] group-hover:opacity-100"
-                  src={BATTLE_CAM_STANDBY_VIDEO_URL}
+                  src={battleLoopForSeed(session.sessionKey)}
                   autoPlay
                   muted
                   loop
@@ -1813,7 +1813,7 @@ function PremiumResolvedOutcomeCard({
           >
             <video
               className="h-[4.7rem] w-full object-cover opacity-90 transition duration-500 group-hover:scale-[1.04] sm:h-[5.1rem]"
-              src={BATTLE_CAM_STANDBY_VIDEO_URL}
+              src={battleLoopForSeed(session.sessionKey)}
               autoPlay
               muted
               loop
@@ -1918,7 +1918,7 @@ function PremiumResolvedOutcomeCard({
         >
           <video
             className="h-[4.9rem] w-full object-cover opacity-92 transition duration-500 group-hover:scale-[1.04] group-hover:opacity-100 sm:h-[5.3rem]"
-            src={BATTLE_CAM_STANDBY_VIDEO_URL}
+            src={battleLoopForSeed(session.sessionKey)}
             autoPlay
             muted
             loop
@@ -2103,7 +2103,7 @@ function PremiumClassicLiveSessionCard({
           >
             <video
               className="h-[4.8rem] w-full object-cover opacity-92 transition duration-500 group-hover:scale-[1.04] group-hover:opacity-100 sm:h-[5.2rem]"
-              src={BATTLE_CAM_STANDBY_VIDEO_URL}
+              src={battleLoopForSeed(session.sessionKey)}
               autoPlay
               muted
               loop

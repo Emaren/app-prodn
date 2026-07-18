@@ -48,12 +48,12 @@ The public leaderboard now has two dedicated routes: `/leaderboard` for the mode
 - Forum search, tabs, channels, feed shelves, bookmarks, read state, publishing, replies, and named reactions are functional; a missing forum migration returns the complete editorial archive read-only instead of white-screening or pretending a write succeeded
 - `/academy` is the premium strategy front gate, launching with Zodiac as the founding advisor; `/zodiac` owns his replay-backed counsel page and verified 100 WOLO first-lesson checkout
 - `/market` is the player-built AoE2WAR Agora, launching with The Visage Forge, tailored merchant awnings, an AoE2-lobby-inspired dark commission desk, authenticated 100 WOLO avatar requests, direct Emaren inbox delivery, profile avatar-vault delivery, and an open-shop proposal rail
-- `/` and `/lobby` share the published Hero Main Stage: an accessible, responsive carousel of typed Featured Event, Wolo Chronicle, Warrior Quote, and media-takeover screens with operator-defined ordering, schedules, dwell time, link overrides, and motion presets
+- `/` and `/lobby` share the published Hero Main Stage: an accessible, responsive carousel of typed Featured Event, Wolo Chronicle, Warrior Quote, and media-takeover screens with operator-defined ordering, schedules, dwell time, and motion presets; the Featured Event slot always resolves the current published + active EventTile and its CTA automatically
 - `/` and `/lobby` place the founding AoE2 Shorts reel directly below the Hero Main Stage: real replay clips, vertical and wide presentations, a mobile portrait rail, full-screen swipe playback, uploader links, reactions, comments handoff, and sharing
 - `/champions` owns the app-side championship title economy: podium belts, tag titles, national titles, ELO titles, special designations, live custody/bounty overlays, challenge links, and detail pages
 - `/admin/trophies` is the persistent War Trophy command center for definitions, holder/Guardian custody, challenges, replay proof, dry-run settlement, payouts, NFT intents, settings, and audit history
 - `/admin/hero-studio` owns the reusable screen library, ordered transition chain, scheduling, carousel settings, exact preview, atomic publication history, and rollback
-- `/admin/events` remains the specialized Featured Event editor; EventTile is a typed Hero source rather than the carousel data model, and the Wolomania composition remains the hard production fallback
+- `/admin/events` is the single control point for Featured Event content: **Make live** publishes and activates one EventTile, and every Featured Event Hero screen resolves it automatically without a Hero Studio tile binding or republish; the Wolomania composition remains the hard production fallback
 - Lazy client islands for wallet-heavy `/wolo`, `/wallet`, and `/connect-wallet` routes so the server shell paints with a small first-load bundle
 
 ## Shipped public surfaces

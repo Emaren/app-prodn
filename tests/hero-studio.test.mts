@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
@@ -51,6 +52,8 @@ test("Warrior Quote config clamps media opacity and fills the house defaults", (
       videoUrl: "",
       posterUrl: "",
       overlayOpacity: 1,
+      imageFit: "cover",
+      pureImage: false,
     }
   );
 });
@@ -63,4 +66,28 @@ test("Hero config rejects unsafe media paths", () => {
       }),
     /Hero media must use/
   );
+});
+
+
+test("Featured Event follows the single live EventTile without a manual Hero binding", () => {
+  const service = readFileSync(
+    new URL("../lib/hero/service.ts", import.meta.url),
+    "utf8"
+  );
+  const actions = readFileSync(
+    new URL("../lib/hero/actions.ts", import.meta.url),
+    "utf8"
+  );
+  const studio = readFileSync(
+    new URL("../components/admin/hero/HeroStudio.tsx", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(service, /isPublished: true/);
+  assert.match(service, /isActive: true/);
+  assert.match(service, /item\.screen\.type === "featured_event" \? activeEventTile : null/);
+  assert.match(service, /item\.screen\.type === "featured_event"[\s\S]*eventTile\?\.ctaUrl \|\| "\/lobby"/);
+  assert.doesNotMatch(actions, /Featured Event screens must reference an Event Studio tile/);
+  assert.doesNotMatch(studio, /Event Studio tile/);
+  assert.match(studio, /Automatic from Event Foundry/);
 });

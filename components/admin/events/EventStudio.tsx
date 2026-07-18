@@ -329,7 +329,7 @@ export default function EventStudio() {
               Featured Event Foundry
             </h1>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
-              Build and preview cinematic event screens, then place them into the public rotation from Hero Studio.
+              Build and preview the Featured Event here. Click Make live and every Featured Event screen on the site updates immediately; Hero Studio only controls where that screen sits in the rotation.
             </p>
           </div>
           <Button onClick={() => void load()} disabled={loading || busy}>
@@ -383,7 +383,7 @@ export default function EventStudio() {
               className="flex w-full items-center justify-center gap-2 rounded-2xl border border-amber-200/20 bg-amber-300/10 px-4 py-3 text-sm font-semibold text-amber-100 transition hover:bg-amber-300/16"
             >
               <Plus className="h-4 w-4" />
-              New event tile
+              New event
             </button>
             <div className="max-h-[70rem] space-y-2 overflow-y-auto pr-1">
               {snapshot.events.map((event) => (
@@ -403,7 +403,7 @@ export default function EventStudio() {
                       <div className="mt-1 truncate text-xs text-slate-500">{event.eventTileId}</div>
                     </div>
                     <span className={`shrink-0 rounded-full border px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.13em] ${statusTone(event)}`}>
-                      {event.isActive && event.isPublished ? "active" : event.status}
+                      {event.isActive && event.isPublished ? "LIVE" : event.status}
                     </span>
                   </div>
                   <div className="mt-3 flex items-center justify-between text-[10px] uppercase tracking-[0.16em] text-slate-500">
@@ -455,12 +455,12 @@ export default function EventStudio() {
                     onClick={() =>
                       void runAction(
                         { action: "set_active", id: draft.id },
-                        "Event published and set active."
+                        "Event is live everywhere the Featured Event screen appears."
                       )
                     }
                   >
                     <Sparkles className="h-3.5 w-3.5" />
-                    Publish + activate
+                    Make live
                   </Button>
                   {draft.isPublished ? (
                     <Button

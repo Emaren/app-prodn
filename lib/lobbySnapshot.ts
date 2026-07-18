@@ -24,7 +24,7 @@ import { reconcileTournamentMatchProofs } from "@/lib/tournamentProofReconciler"
 import { loadWoloDevSnapshot } from "@/lib/woloDevSnapshot";
 import { loadWoloMarketSnapshot } from "@/lib/woloMarket";
 
-const LOBBY_RECENT_MATCH_INITIAL_LIMIT = 12;
+const LOBBY_RECENT_MATCH_INITIAL_LIMIT = 8;
 const LOBBY_MAINTENANCE_INTERVAL_MS = 15_000;
 
 let lastLobbyMaintenanceAt = 0;
@@ -145,12 +145,23 @@ async function loadLobbySnapshotFresh(
       }),
       loadOnlineUsers(prisma),
       loadRecentMatches(),
-      loadLobbyLeaderboard(prisma, { limit: 256, includePendingClaimed: false }),
+      loadLobbyLeaderboard(prisma, { limit: 32, includePendingClaimed: false }),
       loadLobbyWoloEarnersBoard(prisma, { mode: "weekly" }),
       loadAoe2HdPulseSnapshot(),
       loadLiveSessionSnapshot(prisma),
     ]);
-    const visibleWoloEarners = woloEarners;
+    const visibleLeaderboard = {
+      ...leaderboard,
+      entries: leaderboard.entries.slice(0, 32),
+    };
+
+    const visibleWoloEarners =
+      woloEarners && Array.isArray(woloEarners.entries)
+        ? {
+            ...woloEarners,
+            entries: woloEarners.entries.slice(0, 16),
+          }
+        : woloEarners;
 
     const recentMatches = cleanPublicGameRows(
       mergeCompletedSessionsIntoLobbyMatches(
@@ -183,7 +194,7 @@ async function loadLobbySnapshotFresh(
       messages,
       onlineUsers,
       recentMatches,
-      leaderboard,
+      leaderboard: visibleLeaderboard,
       wolo,
       woloEarners: visibleWoloEarners,
       aoe2hdPulse,

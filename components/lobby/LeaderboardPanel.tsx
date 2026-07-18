@@ -7,7 +7,6 @@ import {
   type KeyboardEvent,
   type MouseEvent,
   type UIEvent,
-  type WheelEvent,
   useCallback,
   useEffect,
   useRef,
@@ -38,7 +37,7 @@ type LeaderboardPanelProps = {
   surface?: "standard" | "extreme";
 };
 
-const LEADERBOARD_PAGE_SIZE = 256;
+const LEADERBOARD_PAGE_SIZE = 64;
 
 type LeaderboardPageResponse = {
   ok?: boolean;
@@ -213,31 +212,7 @@ export function LeaderboardPanel({
       const distanceFromBottom =
         target.scrollHeight - target.scrollTop - target.clientHeight;
 
-      if (distanceFromBottom < 900) {
-        void loadMoreLeaderboardEntries();
-      }
-    },
-    [loadMoreLeaderboardEntries]
-  );
-
-  const handleLeaderboardWheel = useCallback(
-    (event: WheelEvent<HTMLDivElement>) => {
-      const target = event.currentTarget;
-
-      if (target.scrollHeight <= target.clientHeight) return;
-
-      const maxScrollTop = Math.max(0, target.scrollHeight - target.clientHeight);
-      const nextScrollTop = Math.max(0, Math.min(maxScrollTop, target.scrollTop + event.deltaY));
-
-      if (nextScrollTop !== target.scrollTop) {
-        event.preventDefault();
-        event.stopPropagation();
-        target.scrollTop = nextScrollTop;
-      }
-
-      const distanceFromBottom = target.scrollHeight - target.scrollTop - target.clientHeight;
-
-      if (distanceFromBottom < 640) {
+      if (distanceFromBottom < 2400) {
         void loadMoreLeaderboardEntries();
       }
     },
@@ -260,7 +235,7 @@ export function LeaderboardPanel({
       },
       {
         root,
-        rootMargin: "900px 0px",
+        rootMargin: "2400px 0px",
         threshold: 0.01,
       }
     );
@@ -285,7 +260,7 @@ export function LeaderboardPanel({
 
       const rect = node.getBoundingClientRect();
       const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
-      const nearPanelBottom = rect.bottom - viewportHeight < 900;
+      const nearPanelBottom = rect.bottom - viewportHeight < 1600;
 
       if (nearPanelBottom) {
         void loadMoreLeaderboardEntries();
@@ -311,8 +286,8 @@ export function LeaderboardPanel({
 
 
   const leaderboardScrollClassName = isExtreme
-    ? "mt-6 h-[clamp(34rem,calc(100svh-13rem),82rem)] min-h-[34rem] space-y-3 overflow-y-auto overflow-x-hidden overscroll-y-auto pr-2 scroll-smooth [scrollbar-gutter:stable] [scrollbar-width:thin] [-webkit-overflow-scrolling:touch] [touch-action:pan-y] [contain:layout_paint]"
-    : "mt-6 h-[clamp(30rem,calc(100svh-15rem),62rem)] min-h-[30rem] space-y-3 overflow-y-auto overflow-x-hidden overscroll-y-auto pr-2 scroll-smooth [scrollbar-gutter:stable] [scrollbar-width:thin] [-webkit-overflow-scrolling:touch] [touch-action:pan-y] [contain:layout_paint] sm:h-[clamp(30rem,calc(100svh-15rem),68rem)] lg:h-[clamp(32rem,calc(100svh-14rem),76rem)]"
+    ? "mt-6 h-[clamp(34rem,calc(100svh-13rem),82rem)] min-h-[34rem] space-y-3 overflow-y-auto overflow-x-hidden overscroll-y-contain pr-2 scroll-smooth [scrollbar-gutter:stable] [scrollbar-width:thin] [-webkit-overflow-scrolling:touch] [touch-action:pan-y] [contain:layout_paint]"
+    : "mt-6 h-[clamp(30rem,calc(100svh-15rem),62rem)] min-h-[30rem] space-y-3 overflow-y-auto overflow-x-hidden overscroll-y-contain pr-2 scroll-smooth [scrollbar-gutter:stable] [scrollbar-width:thin] [-webkit-overflow-scrolling:touch] [touch-action:pan-y] [contain:layout_paint] sm:h-[clamp(30rem,calc(100svh-15rem),68rem)] lg:h-[clamp(32rem,calc(100svh-14rem),76rem)]"
 
   const leaderboardPanelShellClassName = isExtreme
     ? `relative flex min-h-0 cursor-pointer flex-col rounded-[1.85rem] border p-5 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_24px_70px_rgba(15,23,42,0.38)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200/55 sm:p-6 ${tone.panelShell}`
@@ -433,7 +408,6 @@ export function LeaderboardPanel({
         className={leaderboardScrollClassName}
         aria-busy={isLoadingMore}
         onScroll={handleLeaderboardScroll}
-        onWheel={handleLeaderboardWheel}
       >
         {entries.length === 0 ? (
           <div className="rounded-2xl border border-white/8 bg-white/5 px-4 py-5 text-sm leading-6 text-slate-300">

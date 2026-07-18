@@ -17,6 +17,15 @@ export type PendingWoloClaimLookupUser = {
 
 type PendingWoloClaimDb = Pick<PrismaClient, "pendingWoloClaim">;
 
+type PendingWoloClaimSummaryRow = {
+  id: number;
+  claimedByUserId: number | null;
+  normalizedPlayerName: string;
+  displayPlayerName: string;
+  amountWolo: number;
+  createdAt: Date;
+};
+
 export function pendingWoloClaimNameKeys(values: Array<string | null | undefined>) {
   return uniqueNameKeys(values);
 }
@@ -78,6 +87,46 @@ function mergeSummary(
   }
 }
 
+function splitPendingWoloTeamClaimNames(
+  row: Pick<
+    PendingWoloClaimSummaryRow,
+    "claimedByUserId" | "displayPlayerName" | "normalizedPlayerName"
+  >
+) {
+  // A claim already attached to a concrete user is not an unresolved
+  // team-label claim and must not be redistributed by name.
+  if (row.claimedByUserId) {
+    return [];
+  }
+
+  const sourceName =
+    normalizePublicPlayerName(row.displayPlayerName) ||
+    normalizePublicPlayerName(row.normalizedPlayerName) ||
+    "";
+
+  if (!sourceName.includes("/")) {
+    return [];
+  }
+
+  const parts = sourceName
+    .split(/\s+\/\s+/)
+    .map((part) => normalizePublicPlayerName(part))
+    .filter((part): part is string => Boolean(part));
+
+  const unique: string[] = [];
+  const seen = new Set<string>();
+
+  for (const part of parts) {
+    const key = normalizePendingWoloClaimName(part);
+    if (!key || seen.has(key)) continue;
+
+    seen.add(key);
+    unique.push(part);
+  }
+
+  return unique.length >= 2 ? unique : [];
+}
+
 function visibleMainnetClaimWhere(
   extra: Prisma.PendingWoloClaimWhereInput = {}
 ): Prisma.PendingWoloClaimWhereInput {
@@ -99,22 +148,60 @@ export async function loadPendingWoloClaimSummariesByName(
     return summaryMap;
   }
 
-  const rows = await prisma.pendingWoloClaim.findMany({
+  const requestedKeys = new Set(keys);
+
+  const rows = (await prisma.pendingWoloClaim.findMany({
     where: visibleMainnetClaimWhere({
       status: "pending",
-      normalizedPlayerName: { in: keys },
+      OR: [
+        {
+          normalizedPlayerName: { in: keys },
+        },
+        {
+          claimedByUserId: null,
+          OR: [
+            { normalizedPlayerName: { contains: "/" } },
+            { displayPlayerName: { contains: "/" } },
+          ],
+        },
+      ],
     }),
     select: {
       id: true,
+      claimedByUserId: true,
       normalizedPlayerName: true,
+      displayPlayerName: true,
       amountWolo: true,
       createdAt: true,
     },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-  });
+  })) as PendingWoloClaimSummaryRow[];
 
   for (const row of rows) {
+    const teamNames = splitPendingWoloTeamClaimNames(row);
+
+    if (teamNames.length > 0) {
+      const shareAmountWolo = row.amountWolo / teamNames.length;
+
+      for (const teamName of teamNames) {
+        const key = normalizePendingWoloClaimName(teamName);
+        if (!requestedKeys.has(key)) continue;
+
+        const current = summaryMap.get(key) ?? emptySummary();
+        mergeSummary(current, {
+          id: row.id,
+          amountWolo: shareAmountWolo,
+          createdAt: row.createdAt,
+        });
+        summaryMap.set(key, current);
+      }
+
+      continue;
+    }
+
     const key = row.normalizedPlayerName;
+    if (!requestedKeys.has(key)) continue;
+
     const current = summaryMap.get(key) ?? emptySummary();
     mergeSummary(current, row);
     summaryMap.set(key, current);

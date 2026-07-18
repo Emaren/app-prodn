@@ -24,11 +24,11 @@ export type WatcherDownloadArtifact = {
 
 export const WATCHER_RELEASE = {
   version: "1.5.3",
-  label: "AoE2HDBets Watcher 1.5.3",
+  label: "AoE2HDBets Watcher 1.5.3 · macOS 1.5.4",
   releasedOn: "Jul 12, 2026",
   signingStatus: "Signed and timestamped Windows builds; unsigned macOS build; Linux AppImage available",
   featureChips: [
-    "AoE2HDBets Watcher 1.5.3",
+    "macOS 1.5.4 · Windows/Linux 1.5.3",
     "Jul 12, 2026",
     "Windows installer",
     "Windows portable fallback",
@@ -84,13 +84,13 @@ export const WATCHER_DOWNLOAD_ARTIFACTS: readonly WatcherDownloadArtifact[] = [
     key: "mac-dmg",
     platform: "macos",
     title: "macOS DMG",
-    shortLabel: "Apple Silicon",
+    shortLabel: "Apple Silicon · v1.5.4",
     badge: "Mac first",
-    filename: "AoE2HDBets Watcher-1.5.3-arm64.dmg",
+    filename: "AoE2HDBets Watcher-1.5.4-arm64.dmg",
     format: "DMG",
     description:
       "Best Mac install path. Drag in, pair once, and keep it open while AoE2HD runs under macOS or CrossOver.",
-    downloadPath: "/downloads/AoE2HDBets%20Watcher-1.5.3-arm64.dmg",
+    downloadPath: "/downloads/AoE2HDBets%20Watcher-1.5.4-arm64.dmg",
     trackedHref: "/download/watcher/mac-dmg",
     primary: false,
     featuredOnDownloadPage: true,

@@ -1540,6 +1540,18 @@ async function buildProfileFromPlayer(
     buildRivalSummaries(prisma, matchedGames.slice(0, 60), currentPlayer),
   ]);
 
+  // Replay-built identities use the canonical name-based pending-claim
+  // projection. This includes individual shares from unresolved team claims,
+  // matching the War Chest read semantics without changing claim rows.
+  const projectedWolo =
+    input.identity.kind === "replay"
+      ? {
+          ...wolo,
+          pendingClaimWolo: currentPlayer.pendingWoloClaimAmount,
+          pendingClaimCount: currentPlayer.pendingWoloClaimCount,
+        }
+      : wolo;
+
   const latestPlayerRecord = matchedGames.map((game) => currentPlayerRecord(game, currentPlayer)).find(Boolean);
   const steamRmRating =
     latestPlayerRecord ? readPlayerSteamRmRating(latestPlayerRecord) : performance.steamRating;
@@ -1551,7 +1563,7 @@ async function buildProfileFromPlayer(
     displayName: input.displayName,
     command,
     watcher,
-    wolo,
+    wolo: projectedWolo,
     resources,
     stream,
   };
@@ -1593,7 +1605,7 @@ async function buildProfileFromPlayer(
     command,
     resources,
     watcher,
-    wolo,
+    wolo: projectedWolo,
     charts,
     bestGames,
     rivalries,
