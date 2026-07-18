@@ -23,6 +23,7 @@ import {
   resolveReliableReplayWinner,
 } from "@/lib/unresolvedWatcherResult";
 import { BattleLoopPreview } from "@/components/media/BattleLoopPreview";
+import { useNearViewport } from "@/hooks/useNearViewport";
 
 type WatchAndChatHeroProps = {
   tournament: LobbySnapshot["tournament"];
@@ -360,6 +361,7 @@ export function WatchAndChatHero({
   onLogin,
   variant = "standard",
 }: WatchAndChatHeroProps) {
+  const { ref: heroRef, isNear: fallbackMediaReady } = useNearViewport<HTMLElement>();
   const tone = getLobbyPresentationTone(themeKey, viewMode);
   const quickChatReady = messageBody.trim().length > 0 && !chatPending;
   const isExtreme = variant === "extreme";
@@ -564,7 +566,10 @@ export function WatchAndChatHero({
   const embedSrc = primaryIsBrowserStream ? null : getEmbedSrc(primaryStream, parentHost);
   const actionHref = primaryIsBrowserStream ? selectedWar.href : primaryStream?.url || selectedWar.href;
   const actionIsExternalStream = Boolean(primaryStream?.url && !primaryIsBrowserStream);
-  const fallbackVideoUrl = primaryStream || embedSrc || fallbackLoopFailed ? null : WATCH_CHAT_LOOP_URL;
+  const fallbackVideoUrl =
+    primaryStream || embedSrc || fallbackLoopFailed || !fallbackMediaReady
+      ? null
+      : WATCH_CHAT_LOOP_URL;
   const heroStreamFallbackLabel =
     primaryStream?.status === "ended" ? "Saved Battle Cam" : selectedWar.statusLabel === "Live" ? "Live" : "Battle Cam";
   const commentMessages = messages.slice(-5);
@@ -593,7 +598,7 @@ export function WatchAndChatHero({
     : "flex min-h-[3.3rem] flex-col items-center justify-center gap-1 rounded-2xl border border-white/10 bg-white/[0.04] text-xs text-slate-200 transition hover:border-amber-200/35 hover:bg-amber-300/10 hover:text-white";
 
   return (
-    <section className={shellClassName}>
+    <section ref={heroRef} className={shellClassName}>
       <div className="grid gap-0 lg:grid-cols-[minmax(0,1.45fr)_minmax(20rem,0.74fr)]">
         <div className="flex min-w-0 flex-col">
           <div className="relative aspect-video min-h-[15rem] overflow-hidden bg-black sm:min-h-[20rem] lg:min-h-[27rem]">

@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import type { Metadata } from "next";
 import HomePageClient from "@/app/HomePageClient";
 import { loadPublishedHeroPlaylist } from "@/lib/hero/service";
 import { readGuestReactionSessionIdFromCookies } from "@/lib/guestReactionSession";
@@ -8,6 +9,10 @@ import { SESSION_COOKIE_NAME, verifySession } from "@/lib/session";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+};
 
 export default async function HomePage() {
   const cookieStore = await cookies();

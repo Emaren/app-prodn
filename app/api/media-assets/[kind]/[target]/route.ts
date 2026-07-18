@@ -1,6 +1,7 @@
 import { promises as fs } from "fs";
 import path from "path";
 import { NextRequest, NextResponse } from "next/server";
+import sharp from "sharp";
 
 import { mediaFallbackUrl, resolveManagedMediaUrl } from "@/lib/managedMediaAssets";
 import { getPrisma } from "@/lib/prisma";
@@ -21,6 +22,7 @@ const MIME_TYPES: Record<string, string> = {
 };
 
 const IMAGE_RESPONSE_CACHE_CONTROL = "public, max-age=86400, stale-while-revalidate=604800";
+const generatedVariantPromises = new Map<string, Promise<void>>();
 
 const PUBLIC_DIRECT_PREFIXES = [
   "/brand/",
@@ -67,6 +69,77 @@ async function readIfExists(filePath: string) {
   } catch {
     return null;
   }
+}
+
+type ManagedVariant = "card-sidecar" | "thumb-sidecar" | "webp-sidecar" | "original";
+
+function imageResponse(
+  hit: NonNullable<Awaited<ReturnType<typeof readIfExists>>>,
+  filePath: string,
+  variant: ManagedVariant
+) {
+  return new NextResponse(hit.data, {
+    headers: {
+      "Cache-Control": IMAGE_RESPONSE_CACHE_CONTROL,
+      "Content-Length": String(hit.data.length),
+      "Content-Type": contentTypeFor(filePath),
+      "Last-Modified": hit.stat.mtime.toUTCString(),
+      "Vary": "Accept",
+      "X-AoE2WAR-Image-Variant": variant,
+      "X-AoE2WAR-Media-Proxy": "direct-managed",
+    },
+  });
+}
+
+function canGenerateWebpVariant(filePath: string) {
+  return ![".avif", ".gif", ".svg"].includes(path.extname(filePath).toLowerCase());
+}
+
+async function generateWebpVariant(
+  originalPath: string,
+  targetPath: string,
+  variant: Exclude<ManagedVariant, "original">
+) {
+  if (!canGenerateWebpVariant(originalPath)) return;
+
+  const existing = await readIfExists(targetPath);
+  if (existing) return;
+
+  const cached = generatedVariantPromises.get(targetPath);
+  if (cached) {
+    await cached;
+    return;
+  }
+
+  const promise = (async () => {
+    const temporaryPath = `${targetPath}.${process.pid}.${Date.now()}.tmp.webp`;
+
+    try {
+      await fs.mkdir(path.dirname(targetPath), { recursive: true });
+
+      let pipeline = sharp(originalPath, { failOn: "none" }).rotate();
+
+      if (variant === "thumb-sidecar") {
+        pipeline = pipeline.resize({ width: 256, withoutEnlargement: true });
+      } else if (variant === "card-sidecar") {
+        pipeline = pipeline.resize({ width: 640, withoutEnlargement: true });
+      }
+
+      const quality =
+        variant === "thumb-sidecar" ? 92 : variant === "card-sidecar" ? 95 : 94;
+
+      await pipeline.webp({ quality, effort: 5 }).toFile(temporaryPath);
+      await fs.rename(temporaryPath, targetPath);
+    } catch (error) {
+      await fs.unlink(temporaryPath).catch(() => undefined);
+      console.warn(`Managed media ${variant} generation failed for ${originalPath}:`, error);
+    }
+  })().finally(() => {
+    generatedVariantPromises.delete(targetPath);
+  });
+
+  generatedVariantPromises.set(targetPath, promise);
+  await promise;
 }
 
 function webpSidecarName(fileName: string) {
@@ -197,63 +270,44 @@ async function serveManagedUploadDirect(request: NextRequest, url: string) {
     path.join("uploads", "managed-assets", parts.kind, parts.file),
   ];
 
-  const candidates: Array<{ filePath: string; variant: "card-sidecar" | "thumb-sidecar" | "webp-sidecar" | "original" }> = [];
+  const originalCandidates = relativeOriginals.map((relative) => path.join(root, relative));
+  let originalPath = "";
+  let originalHit: Awaited<ReturnType<typeof readIfExists>> = null;
 
-  if (cardSidecar) {
-    for (const relative of relativeOriginals) {
-      candidates.push({
-        filePath: path.join(root, path.dirname(relative), cardSidecar),
-        variant: "card-sidecar",
-      });
+  for (const candidate of originalCandidates) {
+    const hit = await readIfExists(candidate);
+    if (!hit) continue;
+    originalPath = candidate;
+    originalHit = hit;
+    break;
+  }
+
+  if (!originalPath || !originalHit) return null;
+
+  const requestedVariant: Exclude<ManagedVariant, "original"> | null = cardSidecar
+    ? "card-sidecar"
+    : thumbSidecar
+      ? "thumb-sidecar"
+      : sidecar
+        ? "webp-sidecar"
+        : null;
+  const requestedFileName = cardSidecar || thumbSidecar || sidecar;
+
+  if (requestedVariant && requestedFileName) {
+    const variantPath = path.join(path.dirname(originalPath), requestedFileName);
+    let variantHit = await readIfExists(variantPath);
+
+    if (!variantHit) {
+      await generateWebpVariant(originalPath, variantPath, requestedVariant);
+      variantHit = await readIfExists(variantPath);
+    }
+
+    if (variantHit) {
+      return imageResponse(variantHit, variantPath, requestedVariant);
     }
   }
 
-  if (thumbSidecar) {
-    for (const relative of relativeOriginals) {
-      candidates.push({
-        filePath: path.join(root, path.dirname(relative), thumbSidecar),
-        variant: "thumb-sidecar",
-      });
-    }
-  }
-
-  if (sidecar) {
-    for (const relative of relativeOriginals) {
-      candidates.push({
-        filePath: path.join(root, path.dirname(relative), sidecar),
-        variant: "webp-sidecar",
-      });
-    }
-  }
-
-  for (const relative of relativeOriginals) {
-    candidates.push({
-      filePath: path.join(root, relative),
-      variant: "original",
-    });
-  }
-
-  for (const candidate of candidates) {
-    const hit = await readIfExists(candidate.filePath);
-
-    if (!hit) {
-      continue;
-    }
-
-    return new NextResponse(hit.data, {
-      headers: {
-        "Cache-Control": IMAGE_RESPONSE_CACHE_CONTROL,
-        "Content-Length": String(hit.data.length),
-        "Content-Type": contentTypeFor(candidate.filePath),
-        "Last-Modified": hit.stat.mtime.toUTCString(),
-        "Vary": "Accept",
-        "X-AoE2WAR-Image-Variant": candidate.variant,
-        "X-AoE2WAR-Media-Proxy": "direct-managed",
-      },
-    });
-  }
-
-  return null;
+  return imageResponse(originalHit, originalPath, "original");
 }
 
 async function servePublicAssetDirect(request: NextRequest, url: string) {

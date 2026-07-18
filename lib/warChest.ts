@@ -1,6 +1,7 @@
 import type { Prisma, PrismaClient } from "@/lib/generated/prisma";
 
 import { loadBetBoardSnapshot, type BetBoardSnapshot } from "@/lib/bets";
+import { queueBetMarketEnsure } from "@/lib/betMarketEnsureQueue";
 import type {
   LobbyWoloEarnersBoard,
   LobbyWoloEarnersMode,
@@ -135,10 +136,14 @@ export async function loadWarChestSnapshot(
 ): Promise<WarChestSnapshot> {
   const mode = options.mode ?? "weekly";
 
-  // Important: loadBetBoardSnapshot() runs bet-market reconciliation and creates
-  // pending WOLO claim rows for newly settled markets. Do this before loading
-  // the earners board so War Chest does not race against its own claim creation.
-  const betBoard = await loadBetBoardSnapshot(prisma, viewerUid);
+  // Reconciliation may call external settlement rails and should not hold the
+  // public page response open. Queue it once, then render committed market and
+  // claim truth with the same bounded settlement mode used by /api/bets.
+  queueBetMarketEnsure(prisma);
+  const betBoard = await loadBetBoardSnapshot(prisma, viewerUid, {
+    ensureMarkets: false,
+    settlementSurfaceMode: "fast",
+  });
   const [wolo, earners] = await Promise.all([
     loadWoloDevSnapshot(),
     loadLobbyWoloEarnersBoard(prisma, { mode }),

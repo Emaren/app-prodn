@@ -1,7 +1,8 @@
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
 
-const targetPath = path.join(process.cwd(), ".next", "cache", "images");
+const distDir = process.env.NEXT_DIST_DIR || ".next";
+const targetPath = path.join(process.cwd(), distDir, "cache", "images");
 
 try {
   await mkdir(targetPath, { recursive: true });

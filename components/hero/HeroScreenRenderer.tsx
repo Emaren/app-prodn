@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { ArrowUpRight, Crown, Feather, Quote, Swords } from "lucide-react";
 
@@ -314,10 +315,14 @@ function MediaTakeover({ item }: { item: HeroPlaylistItemView }) {
             preload="metadata"
           />
         ) : url ? (
-          <img
+          <Image
             src={url}
             alt={item.screen.ariaLabel || item.screen.name || "AoE2WAR hero image"}
-            className={`h-full w-full ${fitClass}`}
+            fill
+            priority
+            quality={95}
+            sizes="100vw"
+            className={fitClass}
             draggable={false}
           />
         ) : null}

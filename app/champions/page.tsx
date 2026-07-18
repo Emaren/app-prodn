@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 
 import { getPrisma } from "@/lib/prisma";
-import { avatarUrlForName, avatarUrlForUser } from "@/lib/avatarAssets";
+import { avatarCardUrlForName, avatarCardUrlForUser } from "@/lib/avatarAssets";
 import {
   designationTitles,
   eloTitles,
@@ -104,10 +104,10 @@ function avatarForPlayerName(name: string) {
   const uid = knownPlayerUidForName(name);
 
   if (uid) {
-    return avatarUrlForUser(uid, name);
+    return avatarCardUrlForUser(uid, name);
   }
 
-  return avatarUrlForName(name);
+  return avatarCardUrlForName(name);
 }
 
 
@@ -115,7 +115,7 @@ function avatarForHolder(holder: ChampionTitleDefinition["holders"][number]) {
   const uid = holder.uid || uidFromPlayerHref(holder.href) || knownPlayerUidForName(holder.name);
 
   if (uid) {
-    return avatarUrlForUser(uid, holder.name);
+    return avatarCardUrlForUser(uid, holder.name);
   }
 
   return avatarForPlayerName(holder.name);
@@ -227,7 +227,7 @@ function BeltAsset({
           alt=""
           fill
           priority={priority}
-          unoptimized
+          quality={95}
           sizes="(min-width: 1280px) 340px, (min-width: 768px) 42vw, 90vw"
           className={`pointer-events-none z-0 object-contain object-bottom opacity-70 [mask-image:linear-gradient(180deg,black_0%,black_82%,transparent_100%)] ${backdropClassName}`}
         />
@@ -238,7 +238,7 @@ function BeltAsset({
           alt=""
           fill
           priority={priority}
-          unoptimized
+          quality={95}
           sizes="(min-width: 1280px) 360px, (min-width: 768px) 46vw, 92vw"
           className="object-contain drop-shadow-[0_18px_36px_rgba(0,0,0,0.55)]"
         />
@@ -720,7 +720,7 @@ function HeroRosterBackdrop() {
             src={item.src}
             alt=""
             fill
-            unoptimized
+            quality={95}
             sizes="28vw"
             className="object-contain object-bottom mix-blend-screen [mask-image:linear-gradient(180deg,transparent_0%,black_18%,black_72%,transparent_100%)]"
           />

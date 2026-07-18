@@ -27,6 +27,9 @@ const UPSTREAM_API = (process.env.AOE2_BACKEND_UPSTREAM ?? "http://127.0.0.1:333
 module.exports = {
   reactStrictMode: false,
   productionBrowserSourceMaps: false,
+  // Production can build into .next-release while the live process keeps
+  // serving .next, then swap directories during a sub-second restart window.
+  distDir: process.env.NEXT_DIST_DIR || ".next",
 
   env: {
     // ✅ Public/browser base (truthy same-origin)

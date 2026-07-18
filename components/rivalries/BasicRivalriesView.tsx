@@ -12,6 +12,7 @@ import type {
   PublicRivalryEntry,
   PublicTeamRivalryEntry,
 } from "@/lib/publicMatchups";
+import type { RivalryCollectionTotals } from "@/components/rivalries/RivalriesViews";
 import { teamRivalryFormatLabel } from "@/lib/replaySides";
 
 type BasicLayoutMode =
@@ -37,6 +38,7 @@ type BasicPlayer =
 export default function BasicRivalriesView({
   duels,
   teams,
+  totals,
 }: {
   duels: PublicRivalryEntry[];
   teams: PublicTeamRivalryEntry[];
@@ -44,6 +46,7 @@ export default function BasicRivalriesView({
     | PublicLatestRivalry
     | null;
   totalTeamBattles: number;
+  totals: RivalryCollectionTotals;
 }) {
   const [
     layoutMode,
@@ -127,15 +130,15 @@ export default function BasicRivalriesView({
 
             <div className="flex flex-wrap gap-2">
               <Tag>
-                {allBoards.length} boards live
+                {totals.boards} boards live
               </Tag>
 
               <Tag>
-                {establishedRivalries.length} established
+                {totals.established} established
               </Tag>
 
               <Tag>
-                {freshFeuds.length} fresh
+                {totals.fresh} fresh
               </Tag>
             </div>
 
@@ -160,21 +163,21 @@ export default function BasicRivalriesView({
             <StatCard
               label="All Rivalries"
               value={String(
-                allBoards.length
+                totals.boards
               )}
             />
 
             <StatCard
               label="Established Rivalries"
               value={String(
-                establishedRivalries.length
+                totals.established
               )}
             />
 
             <StatCard
               label="Fresh Feuds"
               value={String(
-                freshFeuds.length
+                totals.fresh
               )}
             />
           </div>

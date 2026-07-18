@@ -153,7 +153,7 @@ export default async function ChampionTitleDetailPage({
               alt=""
               fill
               priority
-              unoptimized
+              quality={95}
               sizes="(min-width: 1024px) 44vw, 92vw"
               className="object-contain drop-shadow-[0_24px_55px_rgba(0,0,0,0.62)]"
             />

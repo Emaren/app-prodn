@@ -773,12 +773,6 @@ function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
 
   useEffect(() => {
     poolRef.current = pool;
-
-    for (const warrior of pool) {
-      if (featuredWarriorHasRealAvatar(warrior)) {
-        void decodeFeaturedWarriorImage(featuredWarriorImageSrc(warrior));
-      }
-    }
   }, [pool]);
 
   useEffect(() => {
@@ -991,7 +985,6 @@ function AdvancedFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] })
                 fill
                 sizes="(min-width: 1280px) 250px, (min-width: 640px) 45vw, 90vw"
                 priority={index < FEATURED_WARRIOR_SLOT_COUNT}
-                quality={100}
                 unoptimized
                 className="object-contain object-top transition duration-500 ease-out group-hover:scale-[1.01] opacity-90"
               />
@@ -1102,7 +1095,6 @@ function ExtremeFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] }) 
                     fill
                     sizes="(min-width: 1280px) 280px, (min-width: 640px) 45vw, 90vw"
                     priority={index < FEATURED_WARRIOR_SLOT_COUNT}
-                    quality={100}
                     unoptimized
                     className="object-contain object-center drop-shadow-[0_18px_34px_rgba(0,0,0,0.56)] transition duration-500 ease-out [mask-image:linear-gradient(180deg,black_0%,black_88%,transparent_100%)]"
                   />
@@ -1846,21 +1838,6 @@ return () => {
   const lobbyHeroGridClassName = isExtremeLobby
     ? "grid gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(24rem,0.82fr)] lg:items-start lg:gap-7 xl:grid-cols-[minmax(0,1.4fr)_minmax(27rem,0.82fr)]"
     : "grid gap-5 lg:grid-cols-[1.2fr_0.95fr] lg:items-start lg:gap-7";
-
-    const [homepageHydrated, setHomepageHydrated] = useState(false);
-
-  useEffect(() => {
-    setHomepageHydrated(true);
-  }, []);
-
-  if (!homepageHydrated) {
-    return (
-      <main
-        suppressHydrationWarning
-        className="min-h-screen bg-[#07101f] text-slate-100"
-      />
-    );
-  }
 
 return (
     <div className="space-y-4 overflow-x-hidden py-2 text-white sm:space-y-6 sm:py-3">

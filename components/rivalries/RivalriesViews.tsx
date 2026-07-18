@@ -19,6 +19,18 @@ export type RivalriesViewsProps = {
     | PublicLatestRivalry
     | null;
   totalTeamBattles: number;
+  totals: RivalryCollectionTotals;
+};
+
+export type RivalryCollectionTotals = {
+  boards: number;
+  duels: number;
+  teams: number;
+  established: number;
+  fresh: number;
+  tagTeams: number;
+  triTeams: number;
+  warTeams: number;
 };
 
 type ViewMode =
@@ -55,6 +67,7 @@ export function BasicRivalriesView({
   teams,
   latestRivalry,
   totalTeamBattles,
+  totals,
 }: RivalriesViewsProps) {
   const establishedDuels = duels
     .filter(
@@ -85,11 +98,10 @@ export function BasicRivalriesView({
     >
       <OverviewStrip
         mode="basic"
-        duels={duels}
-        teams={teams}
         totalTeamBattles={
           totalTeamBattles
         }
+        totals={totals}
       />
 
       <Panel
@@ -158,6 +170,7 @@ export function AdvancedRivalriesView({
   teams,
   latestRivalry,
   totalTeamBattles,
+  totals,
 }: RivalriesViewsProps) {
   const establishedDuels = duels
     .filter(
@@ -178,11 +191,10 @@ export function AdvancedRivalriesView({
     >
       <OverviewStrip
         mode="advanced"
-        duels={duels}
-        teams={teams}
         totalTeamBattles={
           totalTeamBattles
         }
+        totals={totals}
       />
 
       <LooseSection
@@ -238,6 +250,7 @@ export function ExtremeRivalriesView({
   teams,
   latestRivalry,
   totalTeamBattles,
+  totals,
 }: RivalriesViewsProps) {
   const rawBoards: RawRivalryBoard[] = [
     ...duels.map(
@@ -269,11 +282,10 @@ export function ExtremeRivalriesView({
     >
       <OverviewStrip
         mode="extreme"
-        duels={duels}
-        teams={teams}
         totalTeamBattles={
           totalTeamBattles
         }
+        totals={totals}
       />
 
       <LatestRivalryFeature
@@ -314,16 +326,13 @@ export function ExtremeRivalriesView({
 
 function OverviewStrip({
   mode,
-  duels,
-  teams,
   totalTeamBattles,
+  totals,
 }: {
   mode: ViewMode;
-  duels: PublicRivalryEntry[];
-  teams: PublicTeamRivalryEntry[];
   totalTeamBattles: number;
+  totals: RivalryCollectionTotals;
 }) {
-  const groups = groupTeams(teams);
   const extreme = mode === "extreme";
 
   return (
@@ -354,11 +363,11 @@ function OverviewStrip({
 
           <div className="mt-6 flex flex-wrap gap-2">
             <CountTag>
-              {duels.length} player histories
+              {totals.duels} player histories
             </CountTag>
 
             <CountTag>
-              {teams.length} exact team histories
+              {totals.teams} exact team histories
             </CountTag>
 
             <CountTag>
@@ -396,13 +405,13 @@ function OverviewStrip({
         >
           <StatCard
             label="Player Rivalries"
-            value={String(duels.length)}
+            value={String(totals.duels)}
             premium={extreme}
           />
 
           <StatCard
             label="Exact Team Rivalries"
-            value={String(teams.length)}
+            value={String(totals.teams)}
             premium={extreme}
           />
 
@@ -414,7 +423,7 @@ function OverviewStrip({
 
           <StatCard
             label="Tag / Tri / War"
-            value={`${groups.tag.length} / ${groups.tri.length} / ${groups.war.length}`}
+            value={`${totals.tagTeams} / ${totals.triTeams} / ${totals.warTeams}`}
             premium={extreme}
           />
         </div>

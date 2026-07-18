@@ -15,9 +15,6 @@ export const metadata: Metadata = {
   },
   description:
     "AoE2HD tournament lobby with live chat, replay-backed results, rivalry pages, and the trust layer for competitive bets.",
-  alternates: {
-    canonical: "/",
-  },
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
@@ -88,12 +85,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         suppressHydrationWarning
       >
         <Script
-          defer
+          strategy="lazyOnload"
           data-domain="aoe2war.com"
           src="https://plausible.io/js/script.js"
         />
         <Script
-          defer
+          strategy="lazyOnload"
           src="https://traffic.tokentap.ca/api/beacon.js"
           data-project="aoe2hdbets"
         />

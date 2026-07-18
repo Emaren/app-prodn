@@ -28,6 +28,8 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 
+import { useNearViewport } from "@/hooks/useNearViewport";
+
 type ShortsView = "vertical" | "wide";
 type ShortReaction = "up" | "down" | null;
 
@@ -163,6 +165,7 @@ function UploaderLink({
 }
 
 export default function Aoe2ShortsTile() {
+  const { ref: tileRef, isNear: mediaReady } = useNearViewport<HTMLElement>();
   const [view, setView] = useState<ShortsView>("vertical");
   const [activeIndex, setActiveIndex] = useState(0);
   const [reelOpen, setReelOpen] = useState(false);
@@ -297,6 +300,7 @@ export default function Aoe2ShortsTile() {
   return (
     <>
       <section
+        ref={tileRef}
         id="aoe2-shorts"
         className="relative isolate scroll-mt-24 overflow-hidden rounded-[1.8rem] border border-amber-100/16 bg-[radial-gradient(circle_at_8%_0%,rgba(153,27,27,0.28),transparent_31%),radial-gradient(circle_at_95%_15%,rgba(30,64,175,0.18),transparent_28%),linear-gradient(145deg,#090b12,#03050a_58%,#090607)] p-4 shadow-[0_35px_120px_rgba(0,0,0,0.42)] sm:rounded-[2rem] sm:p-6"
       >
@@ -367,13 +371,13 @@ export default function Aoe2ShortsTile() {
                 />
                 <video
                   key={activeShort.id}
-                  src={activeShort.videoSrc}
+                  src={mediaReady ? activeShort.videoSrc : undefined}
                   poster={activeShort.posterSrc}
                   muted
                   loop
-                  autoPlay
+                  autoPlay={mediaReady}
                   playsInline
-                  preload="metadata"
+                  preload={mediaReady ? "metadata" : "none"}
                   className="absolute inset-0 h-full w-full object-cover"
                 />
                 <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(1,3,8,0.18),transparent_36%,rgba(1,3,8,0.86)_100%)]" />
@@ -509,13 +513,13 @@ export default function Aoe2ShortsTile() {
                 />
                 <video
                   key={activeShort.id}
-                  src={activeShort.videoSrc}
+                  src={mediaReady ? activeShort.videoSrc : undefined}
                   poster={activeShort.posterSrc}
                   muted
                   loop
-                  autoPlay
+                  autoPlay={mediaReady}
                   playsInline
-                  preload="metadata"
+                  preload={mediaReady ? "metadata" : "none"}
                   className="absolute inset-0 h-full w-full object-cover"
                 />
                 <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(2,4,9,0.82),rgba(2,4,9,0.18)_50%,rgba(2,4,9,0.45)),linear-gradient(180deg,transparent_55%,rgba(1,3,8,0.84))]" />
