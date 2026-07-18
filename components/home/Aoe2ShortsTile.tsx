@@ -165,7 +165,7 @@ function UploaderLink({
 }
 
 export default function Aoe2ShortsTile() {
-  const { ref: tileRef, isNear: mediaReady } = useNearViewport<HTMLElement>();
+  const { ref: tileRef, isNear: mediaReady } = useNearViewport<HTMLElement>("0px");
   const [view, setView] = useState<ShortsView>("vertical");
   const [activeIndex, setActiveIndex] = useState(0);
   const [reelOpen, setReelOpen] = useState(false);

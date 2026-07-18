@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 import {
@@ -34,15 +35,20 @@ type PromoImageProps = {
   fallback: string;
   alt: string;
   className: string;
+  sizes: string;
 };
 
-function PromoImage({ src, fallback, alt, className }: PromoImageProps) {
+function PromoImage({ src, fallback, alt, className, sizes }: PromoImageProps) {
   return (
-    <img
+    <Image
       src={src || fallback}
       alt={alt}
+      width={1200}
+      height={1600}
+      quality={95}
+      priority
+      sizes={sizes}
       className={className}
-      loading="eager" decoding="sync"
       onError={(event) => {
         const image = event.currentTarget;
         if (image.dataset.fallbackUsed === "1") {
@@ -301,12 +307,14 @@ function MobileEventTile({
             src={eventTile.playerOneAvatarUrl || ASSET_FALLBACKS.playerOne}
             fallback={ASSET_FALLBACKS.playerOne}
             alt={eventTile.playerOneName}
+            sizes="(max-width: 639px) 70vw, 1px"
             className="absolute -bottom-4 -left-10 h-[94%] w-[70%] object-contain object-bottom drop-shadow-[0_24px_50px_rgba(0,0,0,0.85)]"
           />
           <PromoImage
             src={eventTile.playerTwoAvatarUrl || ASSET_FALLBACKS.playerTwo}
             fallback={ASSET_FALLBACKS.playerTwo}
             alt={eventTile.playerTwoName}
+            sizes="(max-width: 639px) 70vw, 1px"
             className="absolute -bottom-4 -right-10 h-[94%] w-[70%] object-contain object-bottom drop-shadow-[0_24px_50px_rgba(0,0,0,0.85)]"
           />
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black via-black/65 to-transparent" />
@@ -314,6 +322,7 @@ function MobileEventTile({
             src={eventTile.beltImageUrl}
             fallback={ASSET_FALLBACKS.belt}
             alt={`${eventTile.name} championship belt`}
+            sizes="(max-width: 639px) 92vw, 1px"
             className="absolute left-1/2 top-[57%] z-20 h-32 w-[92%] -translate-x-1/2 -translate-y-1/2 object-contain drop-shadow-[0_24px_55px_rgba(0,0,0,0.9)] transition duration-500 group-hover:scale-[1.025]"
           />
           <div className="absolute inset-x-4 bottom-4 z-30 grid grid-cols-2 gap-5 text-center">
@@ -414,18 +423,21 @@ function DesktopEventTile({
         src={eventTile.playerOneAvatarUrl || ASSET_FALLBACKS.playerOne}
         fallback={ASSET_FALLBACKS.playerOne}
         alt={eventTile.playerOneName}
+        sizes="(max-width: 639px) 1px, 33vw"
         className="absolute bottom-[1.5rem] left-[5%] z-30 h-[64%] w-[33%] object-contain object-bottom opacity-100 drop-shadow-[0_24px_60px_rgba(0,0,0,0.82)] sm:h-[68%]"
       />
       <PromoImage
         src={eventTile.playerTwoAvatarUrl || ASSET_FALLBACKS.playerTwo}
         fallback={ASSET_FALLBACKS.playerTwo}
         alt={eventTile.playerTwoName}
+        sizes="(max-width: 639px) 1px, 34vw"
         className="absolute bottom-[1.5rem] right-[5%] z-30 h-[65%] w-[34%] object-contain object-bottom opacity-100 drop-shadow-[0_24px_60px_rgba(0,0,0,0.82)] sm:h-[69%]"
       />
       <PromoImage
         src={thumbnailUrlForAvatarAsset(eventTile.commissionerAvatarUrl)}
         fallback={ASSET_FALLBACKS.commissioner}
         alt={eventTile.commissionerName}
+        sizes="(max-width: 639px) 1px, 17vw"
         className="absolute bottom-[15.35rem] left-[39%] z-[24] h-[38%] w-[17%] -translate-x-1/2 -rotate-2 object-contain object-bottom opacity-76 drop-shadow-[0_24px_70px_rgba(0,0,0,0.95)]"
       />
       <div className="pointer-events-none absolute left-[39%] top-[47.6%] z-[80] -translate-x-1/2 text-center">
@@ -439,6 +451,7 @@ function DesktopEventTile({
         src={eventTile.beltImageUrl}
         fallback={ASSET_FALLBACKS.belt}
         alt={`${eventTile.name} championship belt`}
+        sizes="(max-width: 639px) 1px, 42rem"
         className="absolute left-1/2 top-[63.9%] z-[52] h-56 w-[42rem] max-w-[72%] -translate-x-1/2 -translate-y-1/2 object-contain opacity-97 drop-shadow-[0_34px_90px_rgba(0,0,0,0.88)] transition duration-700 group-hover:scale-[1.02] sm:h-64 xl:h-72"
       />
 

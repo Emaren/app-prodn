@@ -361,7 +361,7 @@ export function WatchAndChatHero({
   onLogin,
   variant = "standard",
 }: WatchAndChatHeroProps) {
-  const { ref: heroRef, isNear: fallbackMediaReady } = useNearViewport<HTMLElement>();
+  const { ref: heroRef, isNear: fallbackMediaReady } = useNearViewport<HTMLElement>("200px");
   const tone = getLobbyPresentationTone(themeKey, viewMode);
   const quickChatReady = messageBody.trim().length > 0 && !chatPending;
   const isExtreme = variant === "extreme";
