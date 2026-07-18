@@ -494,6 +494,9 @@ function ChallengeThreadStrip({
             guaranteeAmountWolo: payload.guaranteeAmountWolo,
           })
         }
+        onConfirmTime={(challengeId) =>
+          onChallengeAction?.({ challengeId, action: "confirm_time" })
+        }
         onFund={(challengeId, payload) =>
           onChallengeAction?.({
             challengeId,

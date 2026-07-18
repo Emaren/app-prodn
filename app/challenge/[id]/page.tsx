@@ -49,6 +49,14 @@ function eventLabel(eventType: string) {
   switch (eventType) {
     case "scheduled":
       return "Scheduled";
+    case "challenge_created":
+      return "Challenge issued";
+    case "expired":
+      return "Expired";
+    case "funding_expired":
+      return "Funding expired";
+    case "wager_awarded":
+      return "Winner paid";
     case "accepted":
       return "Accepted";
     case "terms_accepted":
@@ -64,6 +72,10 @@ function eventLabel(eventType: string) {
     case "no_show_right":
     case "double_no_show":
       return "No-show";
+    case "time_proposed":
+      return "Time proposed";
+    case "time_confirmed":
+      return "Time confirmed";
     case "refund_sent":
       return "Refund sent";
     case "guarantee_forfeited_to_treasury":
@@ -96,6 +108,12 @@ function statusLabel(status: string, leftName: string, rightName: string) {
     case "cancelled":
     case "canceled":
       return "Cancelled";
+    case "expired":
+      return "Expired";
+    case "funding_expired":
+      return "Funding expired";
+    case "refunded":
+      return "Refunded";
     default:
       return status.replace(/_/g, " ");
   }
@@ -124,6 +142,8 @@ function buildMoneyRows(input: {
   rightName: string;
   wager: number;
   guarantee: number;
+  leftFunded: boolean;
+  rightFunded: boolean;
 }) {
   const rows: MoneyRow[] = [];
 
@@ -149,6 +169,15 @@ function buildMoneyRows(input: {
     refund(`${input.leftName} Wolo Wager refund due`, input.wager, "left");
     refund(`${input.leftName} Match Guarantee return due`, input.guarantee, "left");
     refund(`${input.rightName} missed Match Guarantee → ${input.leftName}`, input.guarantee, "left");
+  }
+
+  if (["canceled", "cancelled", "expired", "funding_expired"].includes(input.status)) {
+    if (input.leftFunded) {
+      refund(`${input.leftName} challenge funding return`, input.wager + input.guarantee, "left");
+    }
+    if (input.rightFunded) {
+      refund(`${input.rightName} challenge funding return`, input.wager + input.guarantee, "right");
+    }
   }
 
   if (input.status === "double_no_show") {
@@ -231,7 +260,6 @@ export default async function ChallengeDetailPage({
           uid: true,
           inGameName: true,
           steamPersonaName: true,
-          walletAddress: true,
         },
       },
       challenged: {
@@ -239,7 +267,6 @@ export default async function ChallengeDetailPage({
           uid: true,
           inGameName: true,
           steamPersonaName: true,
-          walletAddress: true,
         },
       },
       activities: {
@@ -253,9 +280,11 @@ export default async function ChallengeDetailPage({
           },
         },
         orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        take: 100,
       },
       settlements: {
         orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        take: 50,
       },
     },
   });
@@ -274,7 +303,29 @@ export default async function ChallengeDetailPage({
     rightName,
     wager: match.wagerAmountWolo,
     guarantee: match.guaranteeAmountWolo,
+    leftFunded: Boolean(match.challengerFundedAt),
+    rightFunded: Boolean(match.challengedFundedAt),
   });
+  const executedSettlements = match.settlements.filter(
+    (settlement) => settlement.status === "executed" && settlement.txHash
+  );
+  const executedSettlementWolo = executedSettlements.reduce(
+    (sum, settlement) => sum + settlement.amountWolo,
+    0
+  );
+  const refundTerminal = ["canceled", "cancelled", "expired", "funding_expired", "refunded"].includes(match.status);
+  const fundedSides = Number(Boolean(match.challengerFundedAt)) + Number(Boolean(match.challengedFundedAt));
+  const expectedRefundWolo = refundTerminal ? fundedSides * totalEach : 0;
+  const refundConfirmed = expectedRefundWolo > 0 && executedSettlementWolo >= expectedRefundWolo;
+  const settlementHeadline = refundConfirmed
+    ? `${fmtWolo(executedSettlementWolo)} WOLO returned`
+    : match.settlements.some((settlement) => settlement.status === "failed")
+      ? "Settlement needs attention"
+      : match.settlements.length > 0
+        ? "Settlement in progress"
+        : refundTerminal && expectedRefundWolo > 0
+          ? `${fmtWolo(expectedRefundWolo)} WOLO refund due`
+          : "No settlement consequence recorded yet";
 
   const extreme = view === "extreme";
   const basic = view === "basic";
@@ -351,7 +402,11 @@ export default async function ChallengeDetailPage({
                   {fmtWolo(totalEach)} WOLO each
                 </span>
                 <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-bold text-slate-300">
-                  {fmtDate(match.scheduledAt)}
+                  {match.timingMode === "open"
+                    ? match.acceptBy
+                      ? `Accept by ${fmtDate(match.acceptBy)}`
+                      : "Play anytime"
+                    : fmtDate(match.matchTime || match.scheduledAt)}
                 </span>
               </div>
 
@@ -409,29 +464,47 @@ export default async function ChallengeDetailPage({
                   Settlement Rail
                 </p>
 
-                {moneyRows.length === 0 ? (
+                <div className="mt-4 rounded-[1rem] border border-amber-100/14 bg-amber-100/[0.055] p-4">
+                  <div className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-100/55">Current truth</div>
+                  <div className="mt-1 text-lg font-black text-amber-50">{settlementHeadline}</div>
+                  {refundConfirmed ? (
+                    <div className="mt-1 text-xs text-emerald-100/75">Net financial impact of the cancelled challenge: 0 WOLO.</div>
+                  ) : null}
+                </div>
+
+                {match.settlements.length > 0 ? (
+                  <div className="mt-3 grid gap-2.5">
+                    {match.settlements.map((settlement) => (
+                      <div key={settlement.id} className="rounded-[1rem] border border-white/10 bg-white/[0.04] p-3">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <div className="font-serif text-[0.98rem] font-semibold tracking-[-0.015em] text-amber-50/84">
+                              {settlement.action.replace(/_/g, " ")}
+                            </div>
+                            <div className="mt-1 text-[10px] uppercase tracking-[0.2em] text-slate-500">
+                              {settlement.status}{settlement.txHash ? ` · tx ${settlement.txHash.slice(0, 10)}…${settlement.txHash.slice(-6)}` : ""}
+                            </div>
+                          </div>
+                          <div className="rounded-full border border-amber-100/14 bg-amber-100/[0.06] px-3 py-1 text-xs font-black text-amber-50">
+                            {fmtWolo(settlement.amountWolo)} WOLO
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : moneyRows.length === 0 ? (
                   <p className="mt-4 rounded-[1rem] border border-white/10 bg-white/[0.035] p-4 text-sm text-slate-400">
-                    No settlement consequence recorded yet.
+                    No settlement transaction is recorded yet.
                   </p>
                 ) : (
                   <div className="mt-4 grid gap-2.5">
                     {moneyRows.map((row) => (
-                      <div
-                        key={row.label}
-                        className={`rounded-[1rem] border p-3 ${
-                          row.tone === "treasury"
-                            ? "border-amber-100/20 bg-amber-100/[0.08] shadow-[0_0_35px_rgba(245,158,11,0.08)]"
-                            : "border-white/10 bg-white/[0.04]"
-                        }`}
-                      >
+                      <div key={row.label} className="rounded-[1rem] border border-white/10 bg-white/[0.04] p-3">
                         <div className="flex flex-wrap items-start justify-between gap-3">
                           <div>
                             <div className="font-serif text-[0.98rem] font-semibold tracking-[-0.015em] text-amber-50/84">{row.label}</div>
-                            <div className="mt-1 text-[10px] uppercase tracking-[0.2em] text-slate-500">
-                              {row.tone === "treasury" ? "Treasury route" : "Refund due"}
-                            </div>
+                            <div className="mt-1 text-[10px] uppercase tracking-[0.2em] text-slate-500">Pending chain confirmation</div>
                           </div>
-
                           <div className="rounded-full border border-amber-100/14 bg-amber-100/[0.06] px-3 py-1 text-xs font-black text-amber-50">
                             {fmtWolo(row.amount)} WOLO
                           </div>
@@ -449,7 +522,7 @@ export default async function ChallengeDetailPage({
           <section className={`mt-6 grid gap-6 ${extreme ? "xl:grid-cols-[1.15fr_0.85fr]" : "xl:grid-cols-[1fr_0.8fr]"}`}>
             <div className="rounded-[2rem] border border-white/10 bg-slate-950/72 p-5 shadow-[0_25px_90px_rgba(0,0,0,0.38)]">
               <p className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-100/38">
-                Proof Trail
+                Proof Trail · RAW
               </p>
 
               <div className="mt-4 grid gap-3">

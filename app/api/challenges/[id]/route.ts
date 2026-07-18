@@ -15,6 +15,10 @@ import {
   validateChallengeTermsAmounts,
 } from "@/lib/challengeEconomy";
 import { Prisma } from "@/lib/generated/prisma";
+import {
+  buildChallengeFundBy,
+  buildChallengePlayBy,
+} from "@/lib/challengeLifecycle";
 import { postChallengeInboxNotice } from "@/lib/contactInbox";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
@@ -25,7 +29,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const SCHEDULE_WINDOW_MIN_MS = 2 * 60 * 1000;
-const SCHEDULE_WINDOW_MAX_MS = 7 * 24 * 60 * 60 * 1000;
+const SCHEDULE_WINDOW_MAX_MS = 30 * 24 * 60 * 60 * 1000;
 const FUNDABLE_STATUSES = new Set([
   "proposed",
   "pending",
@@ -46,6 +50,15 @@ const MANAGEABLE_DISPLAY_STATES = new Set([
   "checkin_open",
 ]);
 
+class ChallengeConflictError extends Error {
+  status: number;
+  constructor(message: string, status = 409) {
+    super(message);
+    this.name = "ChallengeConflictError";
+    this.status = status;
+  }
+}
+
 const VIEWER_SELECT = {
   id: true,
   uid: true,
@@ -58,6 +71,16 @@ const SCHEDULED_MATCH_SELECT = {
   id: true,
   status: true,
   scheduledAt: true,
+  timingMode: true,
+  acceptBy: true,
+  fundBy: true,
+  playBy: true,
+  matchTime: true,
+  matchTimeProposedByUserId: true,
+  matchTimeConfirmedAt: true,
+  expiredAt: true,
+  reconciledAt: true,
+  creationRequestId: true,
   challengeNote: true,
   acceptedAt: true,
   declinedAt: true,
@@ -130,7 +153,7 @@ function validateScheduledAtWindow(scheduledAt: Date) {
   }
 
   if (scheduledAt.getTime() > now + SCHEDULE_WINDOW_MAX_MS) {
-    return "Keep scheduled matches inside the next seven days for now.";
+    return "Keep exact match times inside the next 30 days.";
   }
 
   return null;
@@ -159,6 +182,8 @@ function computeChallengeSurface(
   scheduledMatch: {
     status: string;
     scheduledAt: Date;
+    timingMode: string;
+    matchTime: Date | null;
     acceptedAt: Date | null;
     resultAt: Date | null;
     liveConfirmedAt: Date | null;
@@ -180,6 +205,8 @@ function computeChallengeSurface(
     {
       status: scheduledMatch.status,
       scheduledAt: scheduledMatch.scheduledAt,
+      timingMode: scheduledMatch.timingMode,
+      matchTime: scheduledMatch.matchTime,
       acceptedAt: scheduledMatch.acceptedAt,
       resultAt: scheduledMatch.resultAt,
       liveConfirmedAt: scheduledMatch.liveConfirmedAt,
@@ -206,33 +233,43 @@ function totalFundingWolo(scheduledMatch: {
   return scheduledMatch.wagerAmountWolo + scheduledMatch.guaranteeAmountWolo;
 }
 
+function challengeTimingNoticeLines(matchTime: Date | null) {
+  return matchTime
+    ? [
+        `Start: ${formatScheduledAtForInbox(matchTime)}`,
+        `Start ISO: ${matchTime.toISOString()}`,
+      ]
+    : ["Play: Anytime after both sides fund"];
+}
+
 function buildTermsAcceptedMessage(input: {
   challengerName: string;
   challengedName: string;
-  scheduledAt: Date;
+  matchTime: Date | null;
+  fundBy: Date | null;
   totalFundingWolo: number;
   nextStatus: string;
 }) {
   return [
     "Challenge terms accepted",
     `${input.challengerName} vs ${input.challengedName}`,
-    `Start: ${formatScheduledAtForInbox(input.scheduledAt)}`,
-    `Start ISO: ${input.scheduledAt.toISOString()}`,
+    ...challengeTimingNoticeLines(input.matchTime),
     `Funding: ${formatWolo(input.totalFundingWolo)} WOLO each`,
+    input.fundBy ? `Fund by: ${formatScheduledAtForInbox(input.fundBy)}` : null,
+    input.fundBy ? `Fund by ISO: ${input.fundBy.toISOString()}` : null,
     `Status: ${input.nextStatus}`,
-  ].join("\n");
+  ].filter(Boolean).join("\n");
 }
 
 function buildDeclineMessage(input: {
   challengerName: string;
   challengedName: string;
-  scheduledAt: Date;
+  matchTime: Date | null;
 }) {
   return [
     "Challenge declined",
     `${input.challengerName} vs ${input.challengedName}`,
-    `Start: ${formatScheduledAtForInbox(input.scheduledAt)}`,
-    `Start ISO: ${input.scheduledAt.toISOString()}`,
+    ...challengeTimingNoticeLines(input.matchTime),
     "Status: Terms declined",
   ].join("\n");
 }
@@ -240,15 +277,14 @@ function buildDeclineMessage(input: {
 function buildCancellationMessage(input: {
   challengerName: string;
   challengedName: string;
-  scheduledAt: Date;
+  matchTime: Date | null;
   cancelledByName: string;
   refundPending?: boolean;
 }) {
   const lines = [
     "Challenge cancelled",
     `${input.challengerName} vs ${input.challengedName}`,
-    `Start: ${formatScheduledAtForInbox(input.scheduledAt)}`,
-    `Start ISO: ${input.scheduledAt.toISOString()}`,
+    ...challengeTimingNoticeLines(input.matchTime),
     `Status: Cancelled by ${input.cancelledByName}`,
   ];
 
@@ -267,17 +303,25 @@ function buildRescheduleMessage(input: {
   wagerAmountWolo: number;
   guaranteeAmountWolo: number;
   fundingPreserved?: boolean;
+  accepted?: boolean;
+  confirmed?: boolean;
 }) {
   const totalFunding = input.wagerAmountWolo + input.guaranteeAmountWolo;
   const lines = [
-    "Challenge rescheduled",
+    input.confirmed ? "Challenge time confirmed" : "Challenge time proposed",
     `${input.challengerName} vs ${input.challengedName}`,
-    `Start: ${formatScheduledAtForInbox(input.scheduledAt)}`,
-    `Start ISO: ${input.scheduledAt.toISOString()}`,
+    `${input.confirmed ? "Start" : "Proposed match time"}: ${formatScheduledAtForInbox(input.scheduledAt)}`,
+    `Match time ISO: ${input.scheduledAt.toISOString()}`,
     `Wolo Wager: ${formatWolo(input.wagerAmountWolo)} WOLO`,
     `Match Guarantee: ${formatWolo(input.guaranteeAmountWolo)} WOLO`,
     `Funding: ${formatWolo(totalFunding)} WOLO each`,
-    input.fundingPreserved ? "Status: Funding preserved" : "Status: Awaiting terms acceptance",
+    input.confirmed
+      ? "Status: Exact time confirmed"
+      : input.fundingPreserved
+        ? "Status: Funding preserved · waiting for the other player to confirm the time"
+        : input.accepted
+          ? "Status: Challenge accepted · waiting for the other player to confirm the time"
+          : "Status: Awaiting acceptance",
   ];
 
   if (input.challengeNote) {
@@ -290,7 +334,7 @@ function buildRescheduleMessage(input: {
 function buildFundingMessage(input: {
   challengerName: string;
   challengedName: string;
-  scheduledAt: Date;
+  matchTime: Date | null;
   actorName: string;
   totalFundingWolo: number;
   statusLabel: string;
@@ -298,8 +342,7 @@ function buildFundingMessage(input: {
   return [
     "Challenge funding recorded",
     `${input.challengerName} vs ${input.challengedName}`,
-    `Start: ${formatScheduledAtForInbox(input.scheduledAt)}`,
-    `Start ISO: ${input.scheduledAt.toISOString()}`,
+    ...challengeTimingNoticeLines(input.matchTime),
     `Funding: ${input.actorName} locked ${formatWolo(input.totalFundingWolo)} WOLO`,
     `Status: ${input.statusLabel}`,
   ].join("\n");
@@ -387,6 +430,7 @@ export async function PATCH(
     const payload = (await request.json().catch(() => ({}))) as {
       action?: string;
       scheduledAt?: string;
+      matchTime?: string;
       challengeNote?: string;
       wagerAmountWolo?: string | number | null;
       guaranteeAmountWolo?: string | number | null;
@@ -426,6 +470,7 @@ export async function PATCH(
       payload.action !== "decline" &&
       payload.action !== "cancel" &&
       payload.action !== "reschedule" &&
+      payload.action !== "confirm_time" &&
       payload.action !== "fund" &&
       payload.action !== "check_in" &&
       payload.action !== "resolve_no_show" &&
@@ -450,6 +495,17 @@ export async function PATCH(
       }
 
       const acceptedAt = new Date();
+      if (scheduledMatch.acceptBy && acceptedAt.getTime() >= scheduledMatch.acceptBy.getTime()) {
+        return NextResponse.json(
+          { detail: "This challenge expired before it was accepted." },
+          { status: 409 }
+        );
+      }
+      const fundBy =
+        fundingTotal > 0
+          ? buildChallengeFundBy(acceptedAt, scheduledMatch.matchTime)
+          : null;
+      const playBy = fundingTotal <= 0 ? buildChallengePlayBy(acceptedAt) : null;
       const nextStatus =
         fundingTotal > 0
           ? scheduledMatch.challengerFundedAt && !scheduledMatch.challengedFundedAt
@@ -457,15 +513,29 @@ export async function PATCH(
             : "terms_accepted"
           : "accepted";
       await prisma.$transaction(async (tx) => {
-        await tx.scheduledMatch.update({
-          where: { id: challengeId },
+        const accepted = await tx.scheduledMatch.updateMany({
+          where: {
+            id: challengeId,
+            acceptedAt: null,
+            status: { in: ["proposed", "pending", "creator_funded"] },
+            OR: [{ acceptBy: null }, { acceptBy: { gt: acceptedAt } }],
+          },
           data: {
             status: nextStatus,
             acceptedAt,
+            fundBy,
+            playBy,
+            matchTimeConfirmedAt:
+              scheduledMatch.timingMode === "scheduled" && scheduledMatch.matchTime
+                ? acceptedAt
+                : scheduledMatch.matchTimeConfirmedAt,
             declinedAt: null,
             cancelledAt: null,
           },
         });
+        if (accepted.count !== 1) {
+          throw new ChallengeConflictError("This challenge changed or expired before acceptance completed.");
+        }
         await tx.trophyChallenge.updateMany({
           where: {
             scheduledMatchId: challengeId,
@@ -487,6 +557,9 @@ export async function PATCH(
               ? `Terms accepted. Creator funding is next for ${formatWolo(fundingTotal)} WOLO.`
               : "Accepted and ready to lock.",
           metadata: {
+            acceptBy: scheduledMatch.acceptBy?.toISOString() ?? null,
+            fundBy: fundBy?.toISOString() ?? null,
+            matchTime: scheduledMatch.matchTime?.toISOString() ?? null,
             scheduledAt: scheduledMatch.scheduledAt.toISOString(),
             totalFundingWolo: fundingTotal,
           },
@@ -500,7 +573,8 @@ export async function PATCH(
           body: buildTermsAcceptedMessage({
             challengerName,
             challengedName,
-            scheduledAt: scheduledMatch.scheduledAt,
+            matchTime: scheduledMatch.matchTime,
+            fundBy,
             totalFundingWolo: fundingTotal,
             nextStatus: scheduledMatch.challengerFundedAt
               ? "Opponent funding next"
@@ -547,7 +621,7 @@ export async function PATCH(
         );
       }
 
-      if (!["proposed", "pending"].includes(currentSurface.displayState)) {
+      if (!["proposed", "pending", "creator_funded"].includes(currentSurface.displayState)) {
         return NextResponse.json(
           { detail: "This challenge is no longer awaiting terms acceptance." },
           { status: 409 }
@@ -589,7 +663,7 @@ export async function PATCH(
           body: buildDeclineMessage({
             challengerName,
             challengedName,
-            scheduledAt: scheduledMatch.scheduledAt,
+            matchTime: scheduledMatch.matchTime,
           }),
           now: declinedAt,
         });
@@ -656,6 +730,8 @@ export async function PATCH(
           data: {
             status: "canceled",
             cancelledAt,
+            resultAt: hasAnyFunding ? cancelledAt : scheduledMatch.resultAt,
+            settlementReadyAt: hasAnyFunding ? cancelledAt : scheduledMatch.settlementReadyAt,
           },
         });
         await tx.trophyChallenge.updateMany({
@@ -693,7 +769,7 @@ export async function PATCH(
             body: buildCancellationMessage({
               challengerName,
               challengedName,
-              scheduledAt: scheduledMatch.scheduledAt,
+              matchTime: scheduledMatch.matchTime,
               cancelledByName: playerName(viewer),
               refundPending: hasAnyFunding,
             }),
@@ -732,6 +808,13 @@ export async function PATCH(
     }
 
     if (payload.action === "reschedule") {
+      if (!scheduledMatch.acceptedAt && !viewerIsChallenger && !viewer.isAdmin) {
+        return NextResponse.json(
+          { detail: "Only the challenger can change terms or propose a time before acceptance." },
+          { status: 403 }
+        );
+      }
+
       const hasAnyFunding =
         Boolean(scheduledMatch.challengerFundedAt) || Boolean(scheduledMatch.challengedFundedAt);
       const hasAnyCheckIn =
@@ -751,7 +834,7 @@ export async function PATCH(
         );
       }
 
-      const nextScheduledAt = parseScheduledMatchDate(payload.scheduledAt);
+      const nextScheduledAt = parseScheduledMatchDate(payload.matchTime ?? payload.scheduledAt);
       if (!nextScheduledAt) {
         return NextResponse.json({ detail: "Choose a valid new start time." }, { status: 400 });
       }
@@ -761,13 +844,27 @@ export async function PATCH(
         return NextResponse.json({ detail: scheduledAtWindowError }, { status: 400 });
       }
 
+      if (
+        scheduledMatch.playBy &&
+        scheduledMatch.challengerFundedAt &&
+        scheduledMatch.challengedFundedAt &&
+        nextScheduledAt.getTime() > scheduledMatch.playBy.getTime()
+      ) {
+        return NextResponse.json(
+          { detail: "Choose an exact time before this funded challenge's play window expires." },
+          { status: 400 }
+        );
+      }
+
       const nextChallengeNote = normalizeChallengeNote(payload.challengeNote);
+      const accepted = Boolean(scheduledMatch.acceptedAt);
+      const preserveLifecycle = accepted || hasAnyFunding;
       const wagerAmountWolo =
-        hasAnyFunding
+        preserveLifecycle
           ? scheduledMatch.wagerAmountWolo
           : normalizeChallengeWoloAmount(payload.wagerAmountWolo) ?? scheduledMatch.wagerAmountWolo ?? CHALLENGE_DEFAULT_WAGER_WOLO;
       const guaranteeAmountWolo =
-        hasAnyFunding
+        preserveLifecycle
           ? scheduledMatch.guaranteeAmountWolo
           : normalizeChallengeWoloAmount(payload.guaranteeAmountWolo) ?? scheduledMatch.guaranteeAmountWolo ?? CHALLENGE_DEFAULT_GUARANTEE_WOLO;
       const termsError = validateChallengeTermsAmounts(wagerAmountWolo, guaranteeAmountWolo);
@@ -788,17 +885,39 @@ export async function PATCH(
         wagerAmountWolo,
         guaranteeAmountWolo,
       };
-      const nextSurface = hasAnyFunding
-        ? computeChallengeSurface(nextShape, rescheduledAt)
+      const nextSurface = preserveLifecycle
+        ? computeChallengeSurface(
+            {
+              ...nextShape,
+              timingMode: "scheduled",
+              matchTime: nextScheduledAt,
+            },
+            rescheduledAt
+          )
         : null;
 
       await prisma.$transaction(async (tx) => {
         await tx.scheduledMatch.update({
           where: { id: challengeId },
-          data: hasAnyFunding
+          data: preserveLifecycle
             ? {
                 status: nextSurface?.persistedStatus ?? scheduledMatch.status,
                 scheduledAt: nextScheduledAt,
+                timingMode: "scheduled",
+                matchTime: nextScheduledAt,
+                matchTimeProposedByUserId: viewer.id,
+                matchTimeConfirmedAt: viewer.isAdmin ? rescheduledAt : null,
+                acceptBy:
+                  !scheduledMatch.acceptedAt &&
+                  (!scheduledMatch.acceptBy || nextScheduledAt.getTime() < scheduledMatch.acceptBy.getTime())
+                    ? nextScheduledAt
+                    : undefined,
+                fundBy:
+                  scheduledMatch.acceptedAt &&
+                  scheduledMatch.fundBy &&
+                  nextScheduledAt.getTime() < scheduledMatch.fundBy.getTime()
+                    ? nextScheduledAt
+                    : undefined,
                 challengeNote: nextChallengeNote,
                 wagerAmountWolo,
                 guaranteeAmountWolo,
@@ -808,6 +927,14 @@ export async function PATCH(
             : {
                 status: "proposed",
                 scheduledAt: nextScheduledAt,
+                timingMode: "scheduled",
+                matchTime: nextScheduledAt,
+                matchTimeProposedByUserId: viewer.id,
+                matchTimeConfirmedAt: null,
+                acceptBy:
+                  !scheduledMatch.acceptBy || nextScheduledAt.getTime() < scheduledMatch.acceptBy.getTime()
+                    ? nextScheduledAt
+                    : scheduledMatch.acceptBy,
                 challengeNote: nextChallengeNote,
                 wagerAmountWolo,
                 guaranteeAmountWolo,
@@ -835,16 +962,20 @@ export async function PATCH(
         await recordChallengeActivity(tx, {
           scheduledMatchId: challengeId,
           actorUserId: viewer.id,
-          eventType: "rescheduled",
-          detail: `${challengeLabel} · moved to ${formatScheduledAtForInbox(nextScheduledAt)}${
+          eventType: "time_proposed",
+          detail: `${challengeLabel} · exact time proposed for ${formatScheduledAtForInbox(nextScheduledAt)}${
             hasAnyFunding ? " · funding preserved" : ""
           }`,
           metadata: {
             scheduledAt: nextScheduledAt.toISOString(),
+            matchTime: nextScheduledAt.toISOString(),
+            matchTimeProposedByUid: viewer.uid,
+            matchTimeConfirmed: viewer.isAdmin,
             wagerAmountWolo,
             guaranteeAmountWolo,
             totalFundingWolo: nextFundingTotal,
             fundingPreserved: hasAnyFunding,
+            accepted,
           },
           createdAt: rescheduledAt,
         });
@@ -861,6 +992,8 @@ export async function PATCH(
             wagerAmountWolo,
             guaranteeAmountWolo,
             fundingPreserved: hasAnyFunding,
+            accepted,
+            confirmed: viewer.isAdmin,
           }),
           now: rescheduledAt,
         });
@@ -880,6 +1013,7 @@ export async function PATCH(
             guaranteeAmountWolo,
             totalFundingWolo: nextFundingTotal,
             fundingPreserved: hasAnyFunding,
+            accepted,
           },
         });
 
@@ -898,8 +1032,99 @@ export async function PATCH(
             guaranteeAmountWolo,
             totalFundingWolo: nextFundingTotal,
             fundingPreserved: hasAnyFunding,
+            accepted,
           },
         });
+      });
+    }
+
+    if (payload.action === "confirm_time") {
+      if (!scheduledMatch.acceptedAt) {
+        return NextResponse.json(
+          { detail: "Accept the challenge first. Acceptance confirms the initially proposed exact time." },
+          { status: 409 }
+        );
+      }
+      if (!scheduledMatch.matchTime || !scheduledMatch.matchTimeProposedByUserId) {
+        return NextResponse.json({ detail: "There is no proposed exact time to confirm." }, { status: 409 });
+      }
+      if (scheduledMatch.matchTimeConfirmedAt) {
+        return NextResponse.json({ detail: "This exact match time is already confirmed." }, { status: 409 });
+      }
+      if (scheduledMatch.matchTime.getTime() <= Date.now()) {
+        return NextResponse.json(
+          { detail: "That proposed match time has passed. Propose a new exact time instead." },
+          { status: 409 }
+        );
+      }
+      if (!viewer.isAdmin && scheduledMatch.matchTimeProposedByUserId === viewer.id) {
+        return NextResponse.json(
+          { detail: "The other player must confirm the proposed exact time." },
+          { status: 409 }
+        );
+      }
+      const hasAnyCheckIn =
+        Boolean(scheduledMatch.challengerCheckedInAt) || Boolean(scheduledMatch.challengedCheckedInAt);
+      if (hasAnyCheckIn || currentSurface.displayState === "live") {
+        return NextResponse.json(
+          { detail: "This match is already checked in or live. The time can no longer be changed." },
+          { status: 409 }
+        );
+      }
+
+      const confirmedAt = new Date();
+      const targetUserId = viewerIsChallenger
+        ? scheduledMatch.challengedUserId
+        : scheduledMatch.challengerUserId;
+
+      await prisma.$transaction(async (tx) => {
+        const updated = await tx.scheduledMatch.updateMany({
+          where: {
+            id: challengeId,
+            matchTime: scheduledMatch.matchTime,
+            matchTimeProposedByUserId: scheduledMatch.matchTimeProposedByUserId,
+            matchTimeConfirmedAt: null,
+          },
+          data: {
+            timingMode: "scheduled",
+            scheduledAt: scheduledMatch.matchTime!,
+            matchTimeConfirmedAt: confirmedAt,
+          },
+        });
+        if (updated.count !== 1) {
+          throw new ChallengeConflictError("The proposed time changed before confirmation completed.");
+        }
+
+        await recordChallengeActivity(tx, {
+          scheduledMatchId: challengeId,
+          actorUserId: viewer.id,
+          eventType: "time_confirmed",
+          detail: `${challengeLabel} · exact time confirmed for ${formatScheduledAtForInbox(scheduledMatch.matchTime!)}`,
+          metadata: {
+            matchTime: scheduledMatch.matchTime!.toISOString(),
+            confirmedByUid: viewer.uid,
+          },
+          createdAt: confirmedAt,
+        });
+
+        if (viewerIsChallenger || viewerIsChallenged) {
+          await postChallengeInboxNotice(tx, {
+            senderUserId: viewer.id,
+            targetUserId,
+            challengeId,
+            body: buildRescheduleMessage({
+              challengerName,
+              challengedName,
+              scheduledAt: scheduledMatch.matchTime!,
+              challengeNote: scheduledMatch.challengeNote,
+              wagerAmountWolo: scheduledMatch.wagerAmountWolo,
+              guaranteeAmountWolo: scheduledMatch.guaranteeAmountWolo,
+              fundingPreserved: Boolean(scheduledMatch.challengerFundedAt || scheduledMatch.challengedFundedAt),
+              confirmed: true,
+            }),
+            now: confirmedAt,
+          });
+        }
       });
     }
 
@@ -915,9 +1140,9 @@ export async function PATCH(
         return NextResponse.json({ detail: "This match is not open for funding." }, { status: 409 });
       }
 
-      if (viewerIsChallenged && ["proposed", "pending"].includes(scheduledMatch.status.toLowerCase())) {
+      if (viewerIsChallenged && !scheduledMatch.acceptedAt) {
         return NextResponse.json(
-          { detail: "Wait for creator funding, then accept and fund." },
+          { detail: "Accept the challenge before funding it." },
           { status: 409 }
         );
       }
@@ -933,8 +1158,13 @@ export async function PATCH(
         );
       }
 
-      if (scheduledMatch.scheduledAt.getTime() <= Date.now()) {
-        return NextResponse.json({ detail: "Funding closed when the scheduled start locked." }, { status: 409 });
+      const fundingDeadline = viewerIsChallenged
+        ? scheduledMatch.fundBy
+        : scheduledMatch.acceptedAt
+          ? scheduledMatch.fundBy
+          : scheduledMatch.acceptBy;
+      if (fundingDeadline && fundingDeadline.getTime() <= Date.now()) {
+        return NextResponse.json({ detail: "The funding window has expired." }, { status: 409 });
       }
 
       if (viewerIsChallenger && scheduledMatch.challengerFundedAt) {
@@ -1003,13 +1233,43 @@ export async function PATCH(
           : scheduledMatch.challengedFundingWalletAddress,
       };
       const nextSurface = computeChallengeSurface(nextShape, fundedAt);
+      const bothFunded = Boolean(nextShape.challengerFundedAt && nextShape.challengedFundedAt);
+      const playBy = bothFunded
+        ? scheduledMatch.playBy ?? buildChallengePlayBy(fundedAt)
+        : scheduledMatch.playBy;
       const targetUserId = viewerIsChallenger
         ? scheduledMatch.challengedUserId
         : scheduledMatch.challengerUserId;
 
       await prisma.$transaction(async (tx) => {
-        await tx.scheduledMatch.update({
-          where: { id: challengeId },
+        await tx.scheduledMatchFundingProof.create({
+          data: {
+            scheduledMatchId: challengeId,
+            participantSide: viewerIsChallenger ? "left" : "right",
+            txHash: verifiedFundingTxHash,
+            walletAddress: fundingWalletAddress,
+            amountWolo: fundingTotal,
+          },
+        }).catch((error) => {
+          if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+            throw new ChallengeConflictError("That funding proof is already attached to a challenge side.");
+          }
+          throw error;
+        });
+
+        const funded = await tx.scheduledMatch.updateMany({
+          where: {
+            id: challengeId,
+            wagerAmountWolo: scheduledMatch.wagerAmountWolo,
+            guaranteeAmountWolo: scheduledMatch.guaranteeAmountWolo,
+            status: { in: Array.from(FUNDABLE_STATUSES) },
+            ...(viewerIsChallenger
+              ? { challengerFundedAt: null }
+              : { challengedFundedAt: null, acceptedAt: { not: null } }),
+            OR: scheduledMatch.acceptedAt
+              ? [{ fundBy: null }, { fundBy: { gt: fundedAt } }]
+              : [{ acceptBy: null }, { acceptBy: { gt: fundedAt } }],
+          },
           data: {
             status: nextSurface.persistedStatus,
             challengerFundedAt: viewerIsChallenger ? fundedAt : undefined,
@@ -1018,8 +1278,12 @@ export async function PATCH(
             challengedFundedAt: viewerIsChallenged ? fundedAt : undefined,
             challengedFundingTxHash: viewerIsChallenged ? verifiedFundingTxHash : undefined,
             challengedFundingWalletAddress: viewerIsChallenged ? fundingWalletAddress : undefined,
+            playBy: bothFunded ? playBy : undefined,
           },
         });
+        if (funded.count !== 1) {
+          throw new ChallengeConflictError("Challenge terms or funding state changed while the chain proof was being verified.");
+        }
 
         await recordChallengeActivity(tx, {
           scheduledMatchId: challengeId,
@@ -1032,6 +1296,7 @@ export async function PATCH(
             totalFundingWolo: fundingTotal,
             proofUrl: fundingVerification.proofUrl ?? null,
             verifiedBy: "wolochain",
+            playBy: playBy?.toISOString() ?? null,
           },
           createdAt: fundedAt,
         });
@@ -1043,7 +1308,7 @@ export async function PATCH(
           body: buildFundingMessage({
             challengerName,
             challengedName,
-            scheduledAt: scheduledMatch.scheduledAt,
+            matchTime: scheduledMatch.matchTime,
             actorName: playerName(viewer),
             totalFundingWolo: fundingTotal,
             statusLabel: nextSurface.economy.statusLabel,
@@ -1082,6 +1347,12 @@ export async function PATCH(
     }
 
     if (payload.action === "check_in") {
+      if (scheduledMatch.timingMode !== "scheduled" || !scheduledMatch.matchTime) {
+        return NextResponse.json(
+          { detail: "Play-anytime challenges do not require check-in. Propose an exact time first if you want the scheduling rail." },
+          { status: 409 }
+        );
+      }
       if (!viewerIsChallenger && !viewerIsChallenged) {
         return NextResponse.json({ detail: "Only match participants can check in." }, { status: 403 });
       }
@@ -1283,6 +1554,9 @@ export async function PATCH(
     return NextResponse.json(refreshed);
   } catch (error) {
     console.error("Failed to update scheduled match:", error);
+    if (error instanceof ChallengeConflictError) {
+      return NextResponse.json({ detail: error.message }, { status: error.status });
+    }
     const detail = error instanceof Error ? error.message : "Challenge update failed.";
     return NextResponse.json({ detail }, { status: 500 });
   }

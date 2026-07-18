@@ -31,6 +31,12 @@ import {
   fundChallengeEscrow,
 } from "@/lib/clientChallengeFunding";
 import {
+  clearPendingChallengeFundingProof,
+  loadPendingChallengeFundingProof,
+  storePendingChallengeFundingProof,
+  type ChallengeFundingParticipantSide,
+} from "@/lib/clientChallengeFundingRetry";
+import {
   SCHEDULED_MATCH_COLOR_TAGS,
   type ScheduledMatchColorTag,
 } from "@/lib/scheduledMatchPreferences";
@@ -43,6 +49,7 @@ export type ScheduledMatchCardActionKind =
   | "decline"
   | "cancel"
   | "reschedule"
+  | "confirm_time"
   | "fund"
   | "check_in";
 
@@ -76,6 +83,7 @@ type ScheduledMatchCardProps = {
       guaranteeAmountWolo: number;
     }
   ) => void | Promise<void>;
+  onConfirmTime?: (challengeId: number) => void | Promise<void>;
   onFund?: (
     challengeId: number,
     payload: {
@@ -132,40 +140,41 @@ function formatRelativeDuration(diffMs: number) {
 }
 
 function formatCountdownLabel(match: ScheduledMatchTile, nowMs: number) {
-  if (match.economy.countdownTargetAt) {
-    const targetMs = new Date(match.economy.countdownTargetAt).getTime();
-    const diff = targetMs - nowMs;
-    if (match.economy.countdownMode === "opens_in") {
-      return `Check-in ${formatRelativeDuration(diff)}`;
-    }
-    if (match.economy.countdownMode === "closes_in") {
-      return `Closes ${formatRelativeDuration(diff)}`;
-    }
-  }
-
-  const scheduledMs = new Date(match.scheduledAt).getTime();
-  const untilStart = scheduledMs - nowMs;
-  const sinceStart = nowMs - scheduledMs;
-
-  if (match.displayState === "completed") {
-    return "Final";
-  }
-
-  if (
-    match.displayState === "no_show_left" ||
-    match.displayState === "no_show_right" ||
-    match.displayState === "double_no_show" ||
-    match.displayState === "refunded" ||
-    match.displayState === "forfeited"
-  ) {
-    return "Resolved";
+  if (["completed", "no_show_left", "no_show_right", "double_no_show", "refunded", "forfeited", "declined", "cancelled", "canceled", "expired", "funding_expired"].includes(match.displayState)) {
+    return match.money.state === "refunded" ? "Refunded" : "Resolved";
   }
 
   if (match.displayState === "live") {
-    return `Live ${formatRelativeDuration(sinceStart)}`;
+    const liveSince = new Date(match.matchTime ?? match.scheduledAt).getTime();
+    return `Live ${formatRelativeDuration(nowMs - liveSince)}`;
   }
 
-  return untilStart >= 0 ? `Starts ${formatRelativeDuration(untilStart)}` : "Start locked";
+  if (match.lifecycle.canPlayAnytime && match.lifecycle.phase === "match_ready") {
+    return "Play anytime";
+  }
+
+  if (match.lifecycle.deadlineAt) {
+    const diff = new Date(match.lifecycle.deadlineAt).getTime() - nowMs;
+    if (match.lifecycle.phase === "awaiting_opponent") return `Expires ${formatRelativeDuration(diff)}`;
+    if (match.lifecycle.phase === "awaiting_creator_funding" || match.lifecycle.phase === "awaiting_opponent_funding") {
+      return `Fund within ${formatRelativeDuration(diff)}`;
+    }
+  }
+
+  if (match.economy.countdownTargetAt) {
+    const targetMs = new Date(match.economy.countdownTargetAt).getTime();
+    const diff = targetMs - nowMs;
+    if (match.economy.countdownMode === "opens_in") return `Check-in ${formatRelativeDuration(diff)}`;
+    if (match.economy.countdownMode === "closes_in") return `Closes ${formatRelativeDuration(diff)}`;
+  }
+
+  const exactMs = match.matchTime ? new Date(match.matchTime).getTime() : null;
+  if (exactMs !== null) {
+    const untilStart = exactMs - nowMs;
+    return untilStart >= 0 ? `Starts ${formatRelativeDuration(untilStart)}` : "Start locked";
+  }
+
+  return "Challenge open";
 }
 
 function fundingWorkflowLabel(state: FundingWorkflowState, totalFundingWolo: number) {
@@ -237,6 +246,8 @@ function accentClasses(displayState: ScheduledMatchTile["displayState"]) {
       };
     case "cancelled":
     case "canceled":
+    case "expired":
+    case "funding_expired":
     case "refunded":
     default:
       return {
@@ -258,6 +269,8 @@ function isResolvedState(displayState: ScheduledMatchTile["displayState"]) {
     "declined",
     "cancelled",
     "canceled",
+    "expired",
+    "funding_expired",
     "refunded",
   ].includes(displayState);
 }
@@ -499,9 +512,16 @@ export function CompactScheduledMatchHistoryRow({
     match.displayState === "completed" && winner
       ? `${winner} won`
       : match.economy.resolution.label || match.economy.statusLabel;
+  const viewerParticipated = Boolean(
+    viewerUid && (viewerUid === match.challenger.uid || viewerUid === match.challenged.uid)
+  );
   const amountLabel =
     match.displayState === "completed" && winner
-      ? `${viewerWon ? "+" : ""}${formatWolo(match.terms.wagerAmountWolo * 2)} WOLO`
+      ? viewerWon
+        ? `+${formatWolo(match.terms.wagerAmountWolo * 2)} WOLO`
+        : viewerParticipated
+          ? "Wager settled"
+          : `${formatWolo(match.terms.wagerAmountWolo * 2)} WOLO pot`
       : match.displayState.includes("no_show")
         ? "Guarantee"
         : match.economy.statusLabel;
@@ -536,6 +556,7 @@ export default function ScheduledMatchCard({
   onDecline,
   onCancel,
   onReschedule,
+  onConfirmTime,
   onFund,
   onCheckIn,
   onPreferenceChange,
@@ -561,7 +582,7 @@ export default function ScheduledMatchCard({
   const [fundingWorkflow, setFundingWorkflow] = useState<FundingWorkflowState>("idle");
   const [fundingError, setFundingError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [rescheduledAt, setRescheduledAt] = useState(() => toLocalDateTimeValue(match.scheduledAt));
+  const [rescheduledAt, setRescheduledAt] = useState(() => toLocalDateTimeValue(match.matchTime ?? match.scheduledAt));
   const [rescheduleNote, setRescheduleNote] = useState(match.challengeNote ?? "");
   const [wagerAmount, setWagerAmount] = useState(String(match.terms.wagerAmountWolo));
   const [guaranteeAmount, setGuaranteeAmount] = useState(String(match.terms.guaranteeAmountWolo));
@@ -591,7 +612,7 @@ export default function ScheduledMatchCard({
     setFundingWorkflow("idle");
     setFundingError(null);
     setActionError(null);
-    setRescheduledAt(toLocalDateTimeValue(match.scheduledAt));
+    setRescheduledAt(toLocalDateTimeValue(match.matchTime ?? match.scheduledAt));
     setRescheduleNote(match.challengeNote ?? "");
     setWagerAmount(String(match.terms.wagerAmountWolo));
     setGuaranteeAmount(String(match.terms.guaranteeAmountWolo));
@@ -600,6 +621,7 @@ export default function ScheduledMatchCard({
   }, [
     match.id,
     match.scheduledAt,
+    match.matchTime,
     match.challengeNote,
     match.terms.guaranteeAmountWolo,
     match.terms.wagerAmountWolo,
@@ -631,6 +653,18 @@ export default function ScheduledMatchCard({
     : viewerIsChallenged
       ? opponentFunded
       : false;
+  const fundingParticipantSide: ChallengeFundingParticipantSide | null = viewerIsChallenger
+    ? "left"
+    : viewerIsChallenged
+      ? "right"
+      : null;
+
+  useEffect(() => {
+    if (viewerAlreadyFunded) {
+      clearPendingChallengeFundingProof(match.id);
+    }
+  }, [match.id, viewerAlreadyFunded]);
+
   const viewerAlreadyCheckedIn = viewerIsChallenger
     ? Boolean(match.economy.leftCheckedInAt)
     : viewerIsChallenged
@@ -689,14 +723,27 @@ export default function ScheduledMatchCard({
         "checkin_open",
       ].includes(match.displayState)
   );
+  const canConfirmTime = Boolean(
+    onConfirmTime &&
+      viewerIsParticipant &&
+      match.acceptedAt &&
+      match.matchTime &&
+      !match.matchTimeConfirmedAt &&
+      match.matchTimeProposedByUid &&
+      match.matchTimeProposedByUid !== viewerUid &&
+      !hasCheckInOnFile &&
+      match.displayState !== "live" &&
+      !resolved
+  );
   const canFund = Boolean(
     onFund &&
       viewerIsParticipant &&
       match.economy.hasTerms &&
       !viewerAlreadyFunded &&
+      (viewerIsChallenger || Boolean(match.acceptedAt)) &&
       !resolved &&
-      !["declined", "cancelled", "canceled"].includes(match.displayState) &&
-      (!mounted || new Date(match.scheduledAt).getTime() > nowMs)
+      !["declined", "cancelled", "canceled", "expired", "funding_expired"].includes(match.displayState) &&
+      (!mounted || !match.lifecycle.deadlineAt || new Date(match.lifecycle.deadlineAt).getTime() > nowMs)
   );
   const canCheckIn = Boolean(
     onCheckIn &&
@@ -832,14 +879,37 @@ export default function ScheduledMatchCard({
       setFundingWorkflow("awaiting_wallet");
       const walletAddress = connectedWalletAddress || (await connectKeplr());
 
+      if (!fundingParticipantSide) {
+        throw new Error("Only challenge participants can fund this match.");
+      }
       setFundingWorkflow("confirming_chain");
-      const result = await fundChallengeEscrow({
+      const storedFunding = loadPendingChallengeFundingProof({
         challengeId: match.id,
+        participantSide: fundingParticipantSide,
         wagerAmountWolo: match.terms.wagerAmountWolo,
         guaranteeAmountWolo: match.terms.guaranteeAmountWolo,
-        participantSide: viewerIsChallenger ? "left" : "right",
-        escrowAddress: match.fundingRail.escrowAddress,
-        fallbackWalletAddress: walletAddress,
+      });
+      const result = storedFunding
+        ? {
+            fundingTxHash: storedFunding.fundingTxHash,
+            walletAddress: storedFunding.walletAddress,
+          }
+        : await fundChallengeEscrow({
+            challengeId: match.id,
+            wagerAmountWolo: match.terms.wagerAmountWolo,
+            guaranteeAmountWolo: match.terms.guaranteeAmountWolo,
+            participantSide: fundingParticipantSide,
+            escrowAddress: match.fundingRail.escrowAddress,
+            fallbackWalletAddress: walletAddress,
+          });
+
+      storePendingChallengeFundingProof({
+        challengeId: match.id,
+        participantSide: fundingParticipantSide,
+        wagerAmountWolo: match.terms.wagerAmountWolo,
+        guaranteeAmountWolo: match.terms.guaranteeAmountWolo,
+        fundingTxHash: result.fundingTxHash,
+        walletAddress: result.walletAddress,
       });
 
       setFundingWorkflow("recording");
@@ -848,6 +918,7 @@ export default function ScheduledMatchCard({
         fundingWalletAddress: result.walletAddress,
       });
 
+      clearPendingChallengeFundingProof(match.id);
       setFundingWorkflow("verified");
       setShowFundingForm(false);
     } catch (error) {
@@ -885,13 +956,33 @@ export default function ScheduledMatchCard({
       await onAccept(match.id);
 
       setFundingWorkflow("confirming_chain");
-      const result = await fundChallengeEscrow({
+      const storedFunding = loadPendingChallengeFundingProof({
         challengeId: match.id,
+        participantSide: "right",
         wagerAmountWolo: match.terms.wagerAmountWolo,
         guaranteeAmountWolo: match.terms.guaranteeAmountWolo,
+      });
+      const result = storedFunding
+        ? {
+            fundingTxHash: storedFunding.fundingTxHash,
+            walletAddress: storedFunding.walletAddress,
+          }
+        : await fundChallengeEscrow({
+            challengeId: match.id,
+            wagerAmountWolo: match.terms.wagerAmountWolo,
+            guaranteeAmountWolo: match.terms.guaranteeAmountWolo,
+            participantSide: "right",
+            escrowAddress: match.fundingRail.escrowAddress,
+            fallbackWalletAddress: walletAddress,
+          });
+
+      storePendingChallengeFundingProof({
+        challengeId: match.id,
         participantSide: "right",
-        escrowAddress: match.fundingRail.escrowAddress,
-        fallbackWalletAddress: walletAddress,
+        wagerAmountWolo: match.terms.wagerAmountWolo,
+        guaranteeAmountWolo: match.terms.guaranteeAmountWolo,
+        fundingTxHash: result.fundingTxHash,
+        walletAddress: result.walletAddress,
       });
 
       setFundingWorkflow("recording");
@@ -899,6 +990,7 @@ export default function ScheduledMatchCard({
         fundingTxHash: result.fundingTxHash,
         fundingWalletAddress: result.walletAddress,
       });
+      clearPendingChallengeFundingProof(match.id);
       setFundingWorkflow("verified");
     } catch (error) {
       setFundingWorkflow("failed");
@@ -979,7 +1071,7 @@ export default function ScheduledMatchCard({
       >
         <span className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 ${accent.badge}`}>
           <CalendarClock className="h-3 w-3" />
-          Scheduled
+          {match.lifecycle.timingMode === "open" ? "Challenge" : "Scheduled"}
         </span>
         <span className="truncate font-semibold text-white">
           {match.challenger.name} vs {match.challenged.name}
@@ -989,12 +1081,16 @@ export default function ScheduledMatchCard({
           {formatWolo(match.terms.totalFundingWolo)} WOLO each
         </span>
         <span className="shrink-0 text-slate-600">·</span>
-        <TimeDisplayText
-          value={match.scheduledAt}
-          includeZone={false}
-          className="shrink-0 text-slate-300"
-          bubbleClassName="max-w-[14rem] text-center"
-        />
+        {match.lifecycle.canPlayAnytime && match.lifecycle.phase === "match_ready" ? (
+          <span className="shrink-0 text-emerald-100">Play anytime</span>
+        ) : (
+          <TimeDisplayText
+            value={match.matchTime ?? match.lifecycle.deadlineAt ?? match.scheduledAt}
+            includeZone={false}
+            className="shrink-0 text-slate-300"
+            bubbleClassName="max-w-[14rem] text-center"
+          />
+        )}
         <span className="shrink-0 text-slate-600">·</span>
         <span className="shrink-0 text-slate-300">{viewerFundingSummary}</span>
         <span className="shrink-0 text-slate-600">·</span>
@@ -1040,7 +1136,7 @@ export default function ScheduledMatchCard({
         <div className="min-w-0">
           <div className={`flex items-center gap-2 text-[10px] uppercase tracking-[0.24em] ${accent.eyebrow}`}>
             <Swords className="h-3.5 w-3.5" />
-            Scheduled match
+            {match.lifecycle.timingMode === "open" ? "Challenge" : "Scheduled match"}
           </div>
           <div className={`${compact ? "mt-1 text-base" : "mt-2 text-xl"} break-words font-semibold text-white`}>
             {match.challenger.name} vs {match.challenged.name}
@@ -1082,6 +1178,14 @@ export default function ScheduledMatchCard({
                 }`}
               >
                 <SlidersHorizontal className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                title="Raw challenge proof"
+                onClick={() => setCardViewMode("advanced")}
+                className="hidden rounded-full border border-white/10 bg-black/20 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.18em] text-slate-400 transition hover:border-white/25 hover:text-white sm:inline-flex"
+              >
+                RAW
               </button>
             </>
           ) : null}
@@ -1208,7 +1312,7 @@ export default function ScheduledMatchCard({
             <span className="text-xs text-slate-400">
               {localTimePrimary ? (
                 formatDateTime(
-                  match.scheduledAt,
+                  match.matchTime ?? match.lifecycle.deadlineAt ?? match.scheduledAt,
                   {
                     timeDisplayMode: "local",
                     timeClockMode,
@@ -1220,7 +1324,11 @@ export default function ScheduledMatchCard({
                   }
                 )
               ) : (
-                <TimeDisplayText value={match.scheduledAt} includeZone className="text-slate-300" />
+                match.lifecycle.canPlayAnytime && match.lifecycle.phase === "match_ready" ? (
+                  <span className="text-emerald-100">Play anytime</span>
+                ) : (
+                  <TimeDisplayText value={match.matchTime ?? match.lifecycle.deadlineAt ?? match.scheduledAt} includeZone className="text-slate-300" />
+                )
               )}
             </span>
           </div>
@@ -1253,6 +1361,17 @@ export default function ScheduledMatchCard({
               Decline
             </button>
           ) : null}
+          {canConfirmTime ? (
+            <button
+              type="button"
+              onClick={() => void runAction(() => onConfirmTime?.(match.id))}
+              disabled={cardBusy}
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-emerald-300/28 bg-emerald-400/12 px-3 py-2 text-sm font-semibold text-emerald-50 transition hover:bg-emerald-400/18 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <CalendarClock className="h-4 w-4" />
+              {currentActionKind === "confirm_time" ? "Confirming" : "Confirm Time"}
+            </button>
+          ) : null}
           {canReschedule ? (
             <button
               type="button"
@@ -1264,7 +1383,7 @@ export default function ScheduledMatchCard({
               className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-sky-300/28 bg-sky-400/10 px-3 py-2 text-sm font-semibold text-sky-100 transition hover:bg-sky-400/15 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <CalendarClock className="h-4 w-4" />
-              {showRescheduleForm ? "Close Time" : "Edit Time"}
+              {showRescheduleForm ? "Close Time" : match.matchTime ? "Propose New Time" : "Propose Time"}
             </button>
           ) : null}
           {canCancel ? (
@@ -1362,7 +1481,7 @@ export default function ScheduledMatchCard({
             disabled={cardBusy}
             className="rounded-full bg-emerald-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-200 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {currentActionKind === "reschedule" ? "Saving" : hasFundingOnFile ? "Save Time" : "Send Terms"}
+            {currentActionKind === "reschedule" ? "Sending" : hasFundingOnFile ? "Propose Time" : "Send Terms + Time"}
           </button>
         </form>
       ) : null}
@@ -1381,6 +1500,11 @@ export default function ScheduledMatchCard({
 
           <div className="mt-3 grid gap-4 lg:grid-cols-2">
             <div className="rounded-[0.95rem] border border-white/10 bg-white/[0.035] px-3 py-2">
+              <AdvancedRow label="Lifecycle" value={match.lifecycle.phase.replace(/_/g, " ")} />
+              <AdvancedRow label="Money" value={`${match.money.label}${match.money.executedWolo ? ` · ${formatWolo(match.money.executedWolo)} WOLO` : ""}`} />
+              <AdvancedRow label="Accept by" value={<TimeDisplayText value={match.acceptBy} includeZone={false} />} />
+              <AdvancedRow label="Fund by" value={<TimeDisplayText value={match.fundBy} includeZone={false} />} />
+              <AdvancedRow label="Play by" value={<TimeDisplayText value={match.playBy} includeZone={false} />} />
               <AdvancedRow label="Creator tx" value={shortHash(match.economy.creatorFundingTxHash)} />
               <AdvancedRow label="Opponent tx" value={shortHash(match.economy.opponentFundingTxHash)} />
               <AdvancedRow

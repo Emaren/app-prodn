@@ -901,6 +901,8 @@ function buildChallengeMarketSeeds(scheduledMatches: ScheduledMatchTile[]) {
       "declined",
       "cancelled",
       "canceled",
+      "expired",
+      "funding_expired",
       "no_show_left",
       "no_show_right",
       "double_no_show",
@@ -951,6 +953,8 @@ function buildChallengeMarketSeeds(scheduledMatches: ScheduledMatchTile[]) {
         match.displayState === "declined" ||
         match.displayState === "cancelled" ||
         match.displayState === "canceled" ||
+        match.displayState === "expired" ||
+        match.displayState === "funding_expired" ||
         match.displayState === "no_show_left" ||
         match.displayState === "no_show_right" ||
         match.displayState === "double_no_show" ||

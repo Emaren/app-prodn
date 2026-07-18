@@ -22,6 +22,8 @@ export type ScheduledMatchPersistedStatus =
   | "no_show_right"
   | "double_no_show"
   | "refunded"
+  | "expired"
+  | "funding_expired"
   | "canceled";
 
 export type ScheduledMatchDisplayState =
@@ -45,6 +47,8 @@ export type ScheduledMatchDisplayState =
   | "no_show_right"
   | "double_no_show"
   | "refunded"
+  | "expired"
+  | "funding_expired"
   | "canceled";
 
 export type ScheduledMatchResolutionSurface = {
@@ -82,6 +86,8 @@ export type ScheduledMatchEconomySurface = {
 type ChallengeEconomyInput = {
   status: string;
   scheduledAt: Date;
+  timingMode?: string | null;
+  matchTime?: Date | null;
   acceptedAt?: Date | null;
   resultAt?: Date | null;
   liveConfirmedAt?: Date | null;
@@ -177,8 +183,12 @@ export function buildChallengeEconomySurface(
   const totalFundingWolo = wagerAmountWolo + guaranteeAmountWolo;
   const hasTerms = totalFundingWolo > 0;
   const rawStatus = normalizeScheduledMatchStatus(input.status);
-  const checkInOpensAt = buildCheckInOpenAt(input.scheduledAt);
-  const checkInClosesAt = input.scheduledAt;
+  const timingMode = input.timingMode === "open" ? "open" : "scheduled";
+  const exactMatchTime = input.matchTime ?? (timingMode === "scheduled" ? input.scheduledAt : null);
+  const effectiveScheduledAt = exactMatchTime ?? input.scheduledAt;
+  const hasExactSchedule = Boolean(exactMatchTime);
+  const checkInOpensAt = buildCheckInOpenAt(effectiveScheduledAt);
+  const checkInClosesAt = effectiveScheduledAt;
   const creatorFunded = Boolean(input.challengerFundedAt);
   const opponentFunded = Boolean(input.challengedFundedAt);
   const bothFunded = creatorFunded && opponentFunded;
@@ -189,6 +199,8 @@ export function buildChallengeEconomySurface(
     rawStatus === "no_show_left" ||
     rawStatus === "no_show_right" ||
     rawStatus === "double_no_show" ||
+    rawStatus === "expired" ||
+    rawStatus === "funding_expired" ||
     rawStatus === "refunded";
 
   if (!hasTerms) {
@@ -201,9 +213,17 @@ export function buildChallengeEconomySurface(
             ? "completed"
             : rawStatus === "forfeited"
               ? "forfeited"
-              : rawStatus === "canceled"
-                ? "cancelled"
-                : "pending";
+              : rawStatus === "expired"
+                ? "expired"
+                : rawStatus === "funding_expired"
+                  ? "funding_expired"
+                  : rawStatus === "refunded"
+                    ? "refunded"
+                    : rawStatus === "no_show_left" || rawStatus === "no_show_right" || rawStatus === "double_no_show"
+                      ? rawStatus
+                      : rawStatus === "canceled"
+                        ? "cancelled"
+                        : "pending";
 
     const legacyStatusLabel =
       legacyDisplayState === "accepted"
@@ -214,9 +234,17 @@ export function buildChallengeEconomySurface(
             ? "Forfeit"
             : legacyDisplayState === "declined"
               ? "Declined"
-              : legacyDisplayState === "cancelled"
-                ? "Cancelled"
-                : "Awaiting acceptance";
+              : legacyDisplayState === "expired"
+                ? "Expired"
+                : legacyDisplayState === "funding_expired"
+                  ? "Funding expired"
+                  : legacyDisplayState === "refunded"
+                    ? "Refunded"
+                    : legacyDisplayState === "no_show_left" || legacyDisplayState === "no_show_right" || legacyDisplayState === "double_no_show"
+                      ? "No-show resolved"
+                      : legacyDisplayState === "cancelled"
+                        ? "Cancelled"
+                        : "Awaiting acceptance";
     const legacyStatusDetail =
       legacyDisplayState === "accepted"
         ? "Legacy scheduled match without economy terms."
@@ -226,9 +254,17 @@ export function buildChallengeEconomySurface(
             ? "Legacy start window expired."
             : legacyDisplayState === "declined"
               ? "Legacy challenge declined."
-              : legacyDisplayState === "cancelled"
-                ? "Legacy challenge cancelled."
-                : "Legacy challenge awaiting acceptance.";
+              : legacyDisplayState === "expired"
+                ? "Legacy challenge expired."
+                : legacyDisplayState === "funding_expired"
+                  ? "Legacy challenge funding window expired."
+                  : legacyDisplayState === "refunded"
+                    ? "Legacy challenge refund recorded."
+                    : legacyDisplayState === "no_show_left" || legacyDisplayState === "no_show_right" || legacyDisplayState === "double_no_show"
+                      ? "Legacy no-show result recorded."
+                      : legacyDisplayState === "cancelled"
+                        ? "Legacy challenge cancelled."
+                        : "Legacy challenge awaiting acceptance.";
 
     return {
       persistedStatus: rawStatus,
@@ -266,17 +302,21 @@ export function buildChallengeEconomySurface(
   }
 
   const timeUntilCheckInOpen = checkInOpensAt.getTime() - now.getTime();
-  const checkInWindowState: ScheduledMatchEconomySurface["checkInWindowState"] = !bothFunded
+  const checkInWindowState: ScheduledMatchEconomySurface["checkInWindowState"] = !bothFunded || !hasExactSchedule
     ? "disabled"
     : now.getTime() < checkInOpensAt.getTime()
       ? "upcoming"
-      : now.getTime() < input.scheduledAt.getTime()
+      : now.getTime() < effectiveScheduledAt.getTime()
         ? "open"
         : "closed";
 
   let displayState: ScheduledMatchDisplayState;
 
-  if (rawStatus === "declined") {
+  if (rawStatus === "expired") {
+    displayState = "expired";
+  } else if (rawStatus === "funding_expired") {
+    displayState = "funding_expired";
+  } else if (rawStatus === "declined") {
     displayState = "declined";
   } else if (rawStatus === "canceled") {
     displayState = "canceled";
@@ -312,7 +352,7 @@ export function buildChallengeEconomySurface(
     displayState = "proposed";
   }
 
-  if (checkInWindowState === "closed" && bothFunded && rawStatus !== "completed" && rawStatus !== "live_confirmed") {
+  if (hasExactSchedule && checkInWindowState === "closed" && bothFunded && rawStatus !== "completed" && rawStatus !== "live_confirmed") {
     if (leftCheckedIn && rightCheckedIn) {
       displayState = "ready";
     } else if (leftCheckedIn) {
@@ -342,7 +382,7 @@ export function buildChallengeEconomySurface(
     countdownMode === "opens_in"
       ? checkInOpensAt.toISOString()
       : countdownMode === "closes_in"
-        ? input.scheduledAt.toISOString()
+        ? effectiveScheduledAt.toISOString()
         : null;
 
   let statusLabel = "Creator funding required";
@@ -368,8 +408,10 @@ export function buildChallengeEconomySurface(
       statusDetail = `Opponent locked ${formatWolo(totalFundingWolo)} WOLO.`;
       break;
     case "funded":
-      statusLabel = "Funded";
-      statusDetail = "Check-in opens exactly 10 minutes before start.";
+      statusLabel = hasExactSchedule ? "Funded · scheduled" : "Match ready";
+      statusDetail = hasExactSchedule
+        ? "Check-in opens exactly 10 minutes before start."
+        : "Both sides are funded. Play anytime or propose an exact time.";
       break;
     case "checkin_open":
       statusLabel = "Check-in open";
@@ -418,9 +460,9 @@ export function buildChallengeEconomySurface(
       statusDetail = "Opponent checked in. Creator missed the lock.";
       resolution = {
         label: "Creator no-show",
-        guarantee: "Opponent Match Guarantee returns; creator Match Guarantee goes to Community Treasury.",
+        guarantee: "Opponent Match Guarantee returns; creator Match Guarantee is awarded to the opponent who showed.",
         wager: "Both Wolo Wagers release because no match was played.",
-        treasury: "Community Treasury",
+        treasury: null,
       };
       break;
     case "no_show_right":
@@ -428,9 +470,9 @@ export function buildChallengeEconomySurface(
       statusDetail = "Creator checked in. Opponent missed the lock.";
       resolution = {
         label: "Opponent no-show",
-        guarantee: "Creator Match Guarantee returns; opponent Match Guarantee goes to Community Treasury.",
+        guarantee: "Creator Match Guarantee returns; opponent Match Guarantee is awarded to the creator who showed.",
         wager: "Both Wolo Wagers release because no match was played.",
-        treasury: "Community Treasury",
+        treasury: null,
       };
       break;
     case "double_no_show":
@@ -442,6 +484,14 @@ export function buildChallengeEconomySurface(
         wager: "Both Wolo Wagers release because no match was played.",
         treasury: "Community Treasury",
       };
+      break;
+    case "expired":
+      statusLabel = "Challenge expired";
+      statusDetail = "The acceptance window closed before the opponent accepted.";
+      break;
+    case "funding_expired":
+      statusLabel = "Funding window expired";
+      statusDetail = "The accepted challenge was not fully funded before the funding deadline.";
       break;
     case "declined":
       statusLabel = "Declined";

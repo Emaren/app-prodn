@@ -6,6 +6,13 @@ import {
   type ScheduledMatchEconomySurface,
   type ScheduledMatchPersistedStatus,
 } from "@/lib/challengeEconomy";
+import {
+  deriveChallengeLifecycle,
+  deriveChallengeMoneyState,
+  type ChallengeLifecyclePhase,
+  type ChallengeMoneyState,
+  type ChallengeTimingMode,
+} from "@/lib/challengeLifecycle";
 import { Prisma, type PrismaClient } from "@/lib/generated/prisma";
 import { loadLiveSessionSnapshot } from "@/lib/liveSessionSnapshot";
 import { buildClaimedPlayerHref } from "@/lib/publicPlayers";
@@ -20,7 +27,7 @@ import {
 } from "@/lib/woloChain";
 
 const CHALLENGE_ONLINE_WINDOW_MS = 2 * 60 * 1000;
-const CHALLENGE_LOOKAHEAD_MS = 7 * 24 * 60 * 60 * 1000;
+const CHALLENGE_LOOKAHEAD_MS = 30 * 24 * 60 * 60 * 1000;
 const CHALLENGE_HISTORY_LOOKBACK_MS = 12 * 60 * 60 * 1000;
 const CHALLENGE_RECENT_LINGER_MS = 15 * 60 * 1000;
 const CHALLENGE_START_GRACE_MS = 60 * 1000;
@@ -41,6 +48,19 @@ const ACTIVE_SCHEDULED_STATUSES = [
   "right_checked_in",
   "ready",
   "live_confirmed",
+] as const;
+const RESOLVED_SCHEDULED_STATUSES = [
+  "completed",
+  "forfeited",
+  "declined",
+  "cancelled",
+  "canceled",
+  "expired",
+  "funding_expired",
+  "no_show_left",
+  "no_show_right",
+  "double_no_show",
+  "refunded",
 ] as const;
 
 function projectedChallengeTrophyBounty(trophy: {
@@ -74,6 +94,16 @@ type ScheduledMatchRow = {
   id: number;
   status: string;
   scheduledAt: Date;
+  timingMode: string;
+  acceptBy: Date | null;
+  fundBy: Date | null;
+  playBy: Date | null;
+  matchTime: Date | null;
+  matchTimeProposedByUserId: number | null;
+  matchTimeConfirmedAt: Date | null;
+  expiredAt: Date | null;
+  reconciledAt: Date | null;
+  creationRequestId: string | null;
   createdAt: Date;
   updatedAt: Date;
   acceptedAt: Date | null;
@@ -112,6 +142,13 @@ type ScheduledMatchRow = {
       chainStatus: string;
     };
   }>;
+  settlements: Array<{
+    status: string;
+    action: string;
+    amountWolo: number;
+    txHash: string | null;
+    executedAt: Date | null;
+  }>;
 };
 
 type ComparableSession = {
@@ -141,7 +178,32 @@ export type ScheduledMatchTile = {
   id: number;
   status: ScheduledMatchPersistedStatus;
   displayState: ScheduledMatchDisplayState;
+  lifecycle: {
+    phase: ChallengeLifecyclePhase;
+    timingMode: ChallengeTimingMode;
+    terminal: boolean;
+    active: boolean;
+    awaitingActor: "opponent" | "creator" | "both" | null;
+    deadlineAt: string | null;
+    exactTime: string | null;
+    canPlayAnytime: boolean;
+  };
+  money: {
+    state: ChallengeMoneyState;
+    label: string;
+    executedWolo: number;
+    plannedWolo: number;
+    chainTxCount: number;
+    netImpactWolo: number | null;
+  };
   scheduledAt: string;
+  acceptBy: string | null;
+  fundBy: string | null;
+  playBy: string | null;
+  matchTime: string | null;
+  matchTimeProposedByUid: string | null;
+  matchTimeConfirmedAt: string | null;
+  expiredAt: string | null;
   createdAt: string;
   acceptedAt: string | null;
   declinedAt: string | null;
@@ -256,6 +318,16 @@ const SCHEDULED_MATCH_SELECT = {
   id: true,
   status: true,
   scheduledAt: true,
+  timingMode: true,
+  acceptBy: true,
+  fundBy: true,
+  playBy: true,
+  matchTime: true,
+  matchTimeProposedByUserId: true,
+  matchTimeConfirmedAt: true,
+  expiredAt: true,
+  reconciledAt: true,
+  creationRequestId: true,
   createdAt: true,
   updatedAt: true,
   acceptedAt: true,
@@ -300,6 +372,18 @@ const SCHEDULED_MATCH_SELECT = {
           chainStatus: true,
         },
       },
+    },
+    orderBy: {
+      id: "asc",
+    },
+  },
+  settlements: {
+    select: {
+      status: true,
+      action: true,
+      amountWolo: true,
+      txHash: true,
+      executedAt: true,
     },
     orderBy: {
       id: "asc",
@@ -713,12 +797,67 @@ function sessionMatchesScheduledPlayers(
   return includesAlias(challengerAliases) && includesAlias(challengedAliases);
 }
 
+function readSessionStartTime(session: ComparableSession) {
+  const endTime = readSessionTime(session);
+  if (!Number.isFinite(endTime) || endTime <= 0) return null;
+  if (session.durationSeconds === null || !Number.isFinite(session.durationSeconds)) return null;
+  return endTime - Math.max(0, session.durationSeconds) * 1000;
+}
+
+function openChallengePairKey(row: ScheduledMatchRow) {
+  return [row.challenger.id, row.challenged.id].sort((left, right) => left - right).join(":");
+}
+
 function findLinkedSession(
   sessions: ComparableSession[],
   row: ScheduledMatchRow,
-  usedSessionKeys: Set<string>
+  usedSessionKeys: Set<string>,
+  options?: { allowOpenPlayAnytimeCorrelation?: boolean }
 ) {
-  const scheduledAt = row.scheduledAt.getTime();
+  if (row.linkedSessionKey) {
+    const exact = sessions.find(
+      (session) =>
+        session.sessionKey === row.linkedSessionKey &&
+        !usedSessionKeys.has(session.sessionKey) &&
+        sessionMatchesScheduledPlayers(session, row.challenger, row.challenged)
+    );
+    if (exact) return exact;
+  }
+
+  const correlationAnchor = row.matchTime ?? (row.timingMode === "scheduled" ? row.scheduledAt : null);
+  if (!correlationAnchor) {
+    if (!options?.allowOpenPlayAnytimeCorrelation) return null;
+    if (!row.challengerFundedAt || !row.challengedFundedAt) return null;
+
+    // Open Play Anytime challenges bind to the first 1v1 watcher session that
+    // starts after both verified escrow deposits and before the play runway
+    // closes. The caller only enables this when the user pair has exactly one
+    // unlinked funded open challenge, so two simultaneous wagers can never race
+    // to claim the same replay by loose name matching.
+    const readyAt = Math.max(
+      row.challengerFundedAt.getTime(),
+      row.challengedFundedAt.getTime()
+    );
+    const playBy = row.playBy?.getTime() ?? Number.POSITIVE_INFINITY;
+    let earliest: ComparableSession | null = null;
+    let earliestStart = Number.POSITIVE_INFINITY;
+
+    for (const session of sessions) {
+      if (usedSessionKeys.has(session.sessionKey)) continue;
+      if (session.players.length !== 2) continue;
+      if (!sessionMatchesScheduledPlayers(session, row.challenger, row.challenged)) continue;
+      const startedAt = readSessionStartTime(session);
+      if (startedAt === null || startedAt < readyAt || startedAt > playBy) continue;
+      if (startedAt < earliestStart) {
+        earliest = session;
+        earliestStart = startedAt;
+      }
+    }
+
+    return earliest;
+  }
+
+  const scheduledAt = correlationAnchor.getTime();
   let bestMatch: ComparableSession | null = null;
   let bestDelta = Number.POSITIVE_INFINITY;
 
@@ -754,16 +893,71 @@ function buildActivityAt(row: ScheduledMatchRow, displayState: ScheduledMatchDis
     row.acceptedAt,
     row.declinedAt,
     row.cancelledAt,
+    row.expiredAt,
+    row.matchTimeConfirmedAt,
+    row.matchTime,
+    row.playBy,
+    row.fundBy,
+    row.acceptBy,
     row.updatedAt,
     row.createdAt,
     row.scheduledAt,
   ].filter((value): value is Date => value instanceof Date);
 
   if (displayState === "proposed" || displayState === "terms_accepted") {
-    return row.scheduledAt > row.createdAt ? row.scheduledAt : row.createdAt;
+    const deadline = row.acceptBy ?? row.scheduledAt;
+    return deadline > row.createdAt ? deadline : row.createdAt;
   }
 
   return timestamps[0] ?? row.scheduledAt;
+}
+
+function challengeMoneyLabel(state: ChallengeMoneyState) {
+  switch (state) {
+    case "unfunded": return "Not funded";
+    case "partially_funded": return "Partially funded";
+    case "locked": return "WOLO locked";
+    case "refund_pending": return "Refund pending";
+    case "partially_refunded": return "Refund partially confirmed";
+    case "refunded": return "Refunded";
+    case "settlement_pending": return "Settlement pending";
+    case "settled": return "Settled";
+    case "settlement_failed": return "Settlement needs attention";
+  }
+}
+
+function buildChallengeMoneySurface(row: ScheduledMatchRow) {
+  const executed = row.settlements.filter((settlement) => settlement.status === "executed" && settlement.txHash);
+  const failed = row.settlements.filter((settlement) => settlement.status === "failed");
+  const terminalStatus = row.status.toLowerCase();
+  const isRefundTerminal = ["canceled", "cancelled", "expired", "funding_expired", "refunded"].includes(terminalStatus);
+  const fundedCount = Number(Boolean(row.challengerFundedAt)) + Number(Boolean(row.challengedFundedAt));
+  const inferredPlannedTransfers = isRefundTerminal ? fundedCount : terminalStatus === "completed" && fundedCount === 2 ? 3 : 0;
+  const plannedTransferCount = Math.max(row.settlements.length, inferredPlannedTransfers);
+  const state = deriveChallengeMoneyState({
+    challengerFunded: Boolean(row.challengerFundedAt),
+    challengedFunded: Boolean(row.challengedFundedAt),
+    terminalStatus,
+    plannedTransferCount,
+    executedTransferCount: executed.length,
+    failedTransferCount: failed.length,
+  });
+  const executedWolo = executed.reduce((sum, settlement) => sum + settlement.amountWolo, 0);
+  const plannedWolo = row.settlements.length > 0
+    ? row.settlements.reduce((sum, settlement) => sum + settlement.amountWolo, 0)
+    : isRefundTerminal
+      ? fundedCount * (row.wagerAmountWolo + row.guaranteeAmountWolo)
+      : terminalStatus === "completed" && fundedCount === 2
+        ? 2 * (row.wagerAmountWolo + row.guaranteeAmountWolo)
+        : 0;
+  return {
+    state,
+    label: challengeMoneyLabel(state),
+    executedWolo,
+    plannedWolo,
+    chainTxCount: new Set(executed.map((settlement) => settlement.txHash).filter(Boolean)).size,
+    netImpactWolo: state === "refunded" ? 0 : null,
+  };
 }
 
 function buildScheduledMatchTile(
@@ -779,6 +973,8 @@ function buildScheduledMatchTile(
     {
       status: linkedSessionState === "live" ? "live_confirmed" : linkedSessionState === "completed" ? "completed" : row.status,
       scheduledAt: row.scheduledAt,
+      timingMode: row.timingMode,
+      matchTime: row.matchTime,
       acceptedAt: row.acceptedAt,
       resultAt: row.resultAt,
       liveConfirmedAt: row.liveConfirmedAt,
@@ -796,14 +992,69 @@ function buildScheduledMatchTile(
     },
     now
   );
-  const displayState = linkedSessionState === "live" ? "live" : linkedSessionState === "completed" ? "completed" : surface.displayState;
+  const lifecycle = deriveChallengeLifecycle(
+    {
+      status: linkedSessionState === "live" ? "live_confirmed" : linkedSessionState === "completed" ? "completed" : row.status,
+      timingMode: row.timingMode,
+      createdAt: row.createdAt,
+      acceptBy: row.acceptBy,
+      acceptedAt: row.acceptedAt,
+      fundBy: row.fundBy,
+      playBy: row.playBy,
+      matchTime: row.matchTime,
+      matchTimeConfirmedAt: row.matchTimeConfirmedAt,
+      expiredAt: row.expiredAt,
+      cancelledAt: row.cancelledAt,
+      declinedAt: row.declinedAt,
+      resultAt: row.resultAt,
+      liveConfirmedAt: row.liveConfirmedAt,
+      challengerFundedAt: row.challengerFundedAt,
+      challengedFundedAt: row.challengedFundedAt,
+      challengerCheckedInAt: row.challengerCheckedInAt,
+      challengedCheckedInAt: row.challengedCheckedInAt,
+    },
+    now
+  );
+  const displayState = linkedSessionState === "live"
+    ? "live"
+    : linkedSessionState === "completed"
+      ? "completed"
+      : lifecycle.phase === "expired"
+        ? "expired"
+        : lifecycle.phase === "funding_expired"
+          ? "funding_expired"
+          : surface.displayState;
   const activityAt = buildActivityAt(row, displayState);
+  const money = buildChallengeMoneySurface(row);
 
   return {
     id: row.id,
     status: normalizeChallengeStatusForTile(row.status),
     displayState,
+    lifecycle: {
+      phase: lifecycle.phase,
+      timingMode: lifecycle.timingMode,
+      terminal: lifecycle.terminal,
+      active: lifecycle.active,
+      awaitingActor: lifecycle.awaitingActor,
+      deadlineAt: lifecycle.deadlineAt?.toISOString() ?? null,
+      exactTime: lifecycle.exactTime?.toISOString() ?? null,
+      canPlayAnytime: lifecycle.canPlayAnytime,
+    },
+    money,
     scheduledAt: row.scheduledAt.toISOString(),
+    acceptBy: row.acceptBy?.toISOString() ?? null,
+    fundBy: row.fundBy?.toISOString() ?? null,
+    playBy: row.playBy?.toISOString() ?? null,
+    matchTime: row.matchTime?.toISOString() ?? null,
+    matchTimeProposedByUid:
+      row.matchTimeProposedByUserId === row.challenger.id
+        ? row.challenger.uid
+        : row.matchTimeProposedByUserId === row.challenged.id
+          ? row.challenged.uid
+          : null,
+    matchTimeConfirmedAt: row.matchTimeConfirmedAt?.toISOString() ?? null,
+    expiredAt: row.expiredAt?.toISOString() ?? null,
     createdAt: row.createdAt.toISOString(),
     acceptedAt: row.acceptedAt?.toISOString() ?? null,
     declinedAt: row.declinedAt?.toISOString() ?? null,
@@ -878,6 +1129,8 @@ function rowAlreadyFinalized(row: ScheduledMatchRow) {
     "no_show_right",
     "double_no_show",
     "refunded",
+    "expired",
+    "funding_expired",
   ].includes(row.status) && row.resultAt !== null;
 }
 
@@ -1114,12 +1367,45 @@ async function persistScheduledMatchResults(
   const updatedRows: ScheduledMatchRow[] = [];
   const matchedActiveSessionKeys = new Set<string>();
   const matchedCompletedSessionKeys = new Set<string>();
+  const unlinkedFundedOpenPairCounts = new Map<string, number>();
+  const needsOpenCorrelationGuard = rows.some(
+    (row) =>
+      row.timingMode === "open" &&
+      !row.matchTime &&
+      !row.linkedSessionKey &&
+      row.challengerFundedAt &&
+      row.challengedFundedAt &&
+      !rowAlreadyFinalized(row)
+  );
+
+  if (needsOpenCorrelationGuard) {
+    const allUnlinkedFundedOpenChallenges = await prisma.scheduledMatch.findMany({
+      where: {
+        timingMode: "open",
+        matchTime: null,
+        linkedSessionKey: null,
+        challengerFundedAt: { not: null },
+        challengedFundedAt: { not: null },
+        status: { notIn: [...RESOLVED_SCHEDULED_STATUSES] },
+      },
+      select: { challengerUserId: true, challengedUserId: true },
+    });
+
+    for (const challenge of allUnlinkedFundedOpenChallenges) {
+      const key = [challenge.challengerUserId, challenge.challengedUserId]
+        .sort((left, right) => left - right)
+        .join(":");
+      unlinkedFundedOpenPairCounts.set(key, (unlinkedFundedOpenPairCounts.get(key) ?? 0) + 1);
+    }
+  }
 
   for (const row of rows) {
     const surface = buildChallengeEconomySurface(
       {
         status: row.status,
         scheduledAt: row.scheduledAt,
+        timingMode: row.timingMode,
+        matchTime: row.matchTime,
         acceptedAt: row.acceptedAt,
         resultAt: row.resultAt,
         liveConfirmedAt: row.liveConfirmedAt,
@@ -1138,15 +1424,29 @@ async function persistScheduledMatchResults(
       now
     );
     const hasTerms = surface.economy.hasTerms;
-    const canLinkSessions = hasTerms
-      ? surface.displayState === "ready" || row.status === "live_confirmed" || row.status === "completed"
-      : row.status === "accepted" || row.status === "completed";
+    const openPairIsUnambiguous =
+      row.timingMode === "open" &&
+      !row.matchTime &&
+      (Boolean(row.linkedSessionKey) ||
+        unlinkedFundedOpenPairCounts.get(openChallengePairKey(row)) === 1);
+    const canLinkScheduledSession =
+      row.timingMode === "scheduled" &&
+      Boolean(row.matchTime) &&
+      (hasTerms
+        ? surface.displayState === "ready" || row.status === "live_confirmed" || row.status === "completed"
+        : row.status === "accepted" || row.status === "completed");
+    const canLinkOpenSession =
+      openPairIsUnambiguous &&
+      Boolean(row.challengerFundedAt && row.challengedFundedAt) &&
+      ["funded", "ready", "live"].includes(surface.displayState);
+    const canLinkSessions = canLinkScheduledSession || canLinkOpenSession || Boolean(row.linkedSessionKey);
 
     if (canLinkSessions) {
       const completedSession = findLinkedSession(
         recentlyCompletedSessions,
         row,
-        matchedCompletedSessionKeys
+        matchedCompletedSessionKeys,
+        { allowOpenPlayAnytimeCorrelation: openPairIsUnambiguous }
       );
 
       if (completedSession) {
@@ -1211,7 +1511,9 @@ async function persistScheduledMatchResults(
         continue;
       }
 
-      const activeSession = findLinkedSession(activeSessions, row, matchedActiveSessionKeys);
+      const activeSession = findLinkedSession(activeSessions, row, matchedActiveSessionKeys, {
+        allowOpenPlayAnytimeCorrelation: openPairIsUnambiguous,
+      });
 
       if (activeSession) {
         matchedActiveSessionKeys.add(activeSession.sessionKey);
@@ -1266,7 +1568,7 @@ async function persistScheduledMatchResults(
         desiredStatus === "double_no_show";
 
       if (terminalNoShow && row.status !== desiredStatus) {
-        const resolvedAt = new Date(row.scheduledAt);
+        const resolvedAt = new Date(row.matchTime ?? row.scheduledAt);
         const nextRow = {
           ...row,
           status: desiredStatus,
@@ -1331,12 +1633,12 @@ async function persistScheduledMatchResults(
       continue;
     }
 
-    if (row.status !== "accepted") {
+    if (row.status !== "accepted" || row.timingMode !== "scheduled" || !row.matchTime) {
       updatedRows.push(row);
       continue;
     }
 
-    const forfeitedAt = new Date(row.scheduledAt.getTime() + CHALLENGE_START_GRACE_MS);
+    const forfeitedAt = new Date(row.matchTime.getTime() + CHALLENGE_START_GRACE_MS);
     if (now.getTime() >= forfeitedAt.getTime()) {
       const nextRow = {
         ...row,
@@ -1417,8 +1719,8 @@ function compareScheduledTileOrder(left: ScheduledMatchTile, right: ScheduledMat
     return priority(left) - priority(right);
   }
 
-  const leftScheduledAt = new Date(left.scheduledAt).getTime();
-  const rightScheduledAt = new Date(right.scheduledAt).getTime();
+  const leftScheduledAt = new Date(left.lifecycle.deadlineAt ?? left.matchTime ?? left.scheduledAt).getTime();
+  const rightScheduledAt = new Date(right.lifecycle.deadlineAt ?? right.matchTime ?? right.scheduledAt).getTime();
 
   if (
     [
@@ -1473,6 +1775,8 @@ function isResolvedChallengeDisplayState(displayState: ScheduledMatchTile["displ
     "no_show_right",
     "double_no_show",
     "refunded",
+    "expired",
+    "funding_expired",
   ].includes(displayState);
 }
 
@@ -1543,10 +1847,21 @@ async function loadScheduledMatchRows(
       status: {
         in: [...ACTIVE_SCHEDULED_STATUSES],
       },
-      scheduledAt: {
-        gte: earliest,
-        lte: latest,
-      },
+      OR: [
+        { acceptBy: { gte: earliest, lte: latest } },
+        { fundBy: { gte: earliest, lte: latest } },
+        { playBy: { gte: earliest } },
+        { matchTime: { gte: earliest, lte: new Date(now + 30 * 24 * 60 * 60 * 1000) } },
+        {
+          AND: [
+            { acceptBy: null },
+            { fundBy: null },
+            { playBy: null },
+            { matchTime: null },
+            { scheduledAt: { gte: earliest, lte: latest } },
+          ],
+        },
+      ],
     },
     {
       status: "completed",
@@ -1587,6 +1902,10 @@ async function loadScheduledMatchRows(
             cancelledAt: {
               gte: recentResolvedCutoff,
             },
+          },
+          {
+            status: { in: ["expired", "funding_expired"] },
+            expiredAt: { gte: recentResolvedCutoff },
           },
         ]
       : []),
@@ -1632,32 +1951,89 @@ async function loadChallengeHistoryRows(
   viewerUserId: number
 ) {
   const lookbackCutoff = new Date(Date.now() - CHALLENGE_LEDGER_LOOKBACK_MS);
+  const participantFilter: Prisma.ScheduledMatchWhereInput = {
+    OR: [
+      { challengerUserId: viewerUserId },
+      { challengedUserId: viewerUserId },
+    ],
+  };
 
-  return prisma.scheduledMatch.findMany({
+  // Active/actionable challenges must never disappear merely because a user has
+  // more than one page of history. Bound the active runway separately from the
+  // initial folded-history page, then lazy-load older terminal records.
+  const [activeRows, recentResolvedRows] = await Promise.all([
+    prisma.scheduledMatch.findMany({
+      where: {
+        AND: [
+          participantFilter,
+          { status: { in: [...ACTIVE_SCHEDULED_STATUSES] } },
+        ],
+      },
+      orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+      take: 100,
+      select: SCHEDULED_MATCH_SELECT,
+    }),
+    prisma.scheduledMatch.findMany({
+      where: {
+        AND: [
+          participantFilter,
+          { status: { in: [...RESOLVED_SCHEDULED_STATUSES] } },
+          {
+            OR: [
+              { createdAt: { gte: lookbackCutoff } },
+              { scheduledAt: { gte: lookbackCutoff } },
+              { acceptedAt: { gte: lookbackCutoff } },
+              { declinedAt: { gte: lookbackCutoff } },
+              { cancelledAt: { gte: lookbackCutoff } },
+              { resultAt: { gte: lookbackCutoff } },
+              { acceptBy: { gte: lookbackCutoff } },
+              { fundBy: { gte: lookbackCutoff } },
+              { playBy: { gte: lookbackCutoff } },
+              { matchTime: { gte: lookbackCutoff } },
+              { expiredAt: { gte: lookbackCutoff } },
+            ],
+          },
+        ],
+      },
+      orderBy: [{ id: "desc" }],
+      take: 24,
+      select: SCHEDULED_MATCH_SELECT,
+    }),
+  ]);
+
+  const byId = new Map<number, ScheduledMatchRow>();
+  for (const row of [...activeRows, ...recentResolvedRows]) {
+    byId.set(row.id, row);
+  }
+  return Array.from(byId.values());
+}
+
+export async function loadChallengeHistoryPage(
+  prisma: PrismaClient,
+  viewerUserId: number,
+  options?: { cursor?: number | null; limit?: number }
+) {
+  const limit = Math.max(1, Math.min(options?.limit ?? 20, 50));
+  const rows = await prisma.scheduledMatch.findMany({
     where: {
-      AND: [
-        {
-          OR: [
-            { challengerUserId: viewerUserId },
-            { challengedUserId: viewerUserId },
-          ],
-        },
-        {
-          OR: [
-            { createdAt: { gte: lookbackCutoff } },
-            { scheduledAt: { gte: lookbackCutoff } },
-            { acceptedAt: { gte: lookbackCutoff } },
-            { declinedAt: { gte: lookbackCutoff } },
-            { cancelledAt: { gte: lookbackCutoff } },
-            { resultAt: { gte: lookbackCutoff } },
-          ],
-        },
-      ],
+      OR: [{ challengerUserId: viewerUserId }, { challengedUserId: viewerUserId }],
+      status: {
+        in: [...RESOLVED_SCHEDULED_STATUSES],
+      },
     },
-    orderBy: [{ scheduledAt: "desc" }, { createdAt: "desc" }],
-    take: 120,
+    orderBy: [{ id: "desc" }],
+    ...(options?.cursor ? { cursor: { id: options.cursor }, skip: 1 } : {}),
+    take: limit + 1,
     select: SCHEDULED_MATCH_SELECT,
   });
+  const hasMore = rows.length > limit;
+  const pageRows = rows.slice(0, limit);
+  const tiles = buildComparableChallengeTiles(pageRows).sort(compareHistoryTileOrder);
+  return {
+    tiles,
+    hasMore,
+    nextCursor: hasMore ? pageRows[pageRows.length - 1]?.id ?? null : null,
+  };
 }
 
 export function deriveScheduledMatchTiles(
@@ -1730,6 +2106,8 @@ function buildChallengeRecordSummary(
         break;
       case "cancelled":
       case "canceled":
+      case "expired":
+      case "funding_expired":
         summary.cancelled += 1;
         break;
       case "completed":

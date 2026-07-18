@@ -352,6 +352,8 @@ export async function GET(request: NextRequest) {
           id: true,
           status: true,
           scheduledAt: true,
+          timingMode: true,
+          matchTime: true,
           updatedAt: true,
           acceptedAt: true,
           resultAt: true,
@@ -723,6 +725,8 @@ export async function GET(request: NextRequest) {
       const surface = buildChallengeEconomySurface({
         status: row.status,
         scheduledAt: row.scheduledAt,
+        timingMode: row.timingMode,
+        matchTime: row.matchTime,
         acceptedAt: row.acceptedAt,
         resultAt: row.resultAt,
         liveConfirmedAt: row.liveConfirmedAt,

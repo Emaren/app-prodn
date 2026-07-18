@@ -233,6 +233,11 @@ function toChallengeRun(row: {
   id: number;
   status: string;
   scheduledAt: Date;
+  timingMode: string;
+  acceptBy: Date | null;
+  fundBy: Date | null;
+  playBy: Date | null;
+  matchTime: Date | null;
   challengeNote: string | null;
   wagerAmountWolo: number;
   guaranteeAmountWolo: number;
@@ -279,6 +284,11 @@ function toChallengeRun(row: {
     challengerName,
     challengedName,
     scheduledAt: row.scheduledAt.toISOString(),
+    timingMode: row.timingMode === "open" ? "open" : "scheduled",
+    acceptBy: row.acceptBy?.toISOString() ?? null,
+    fundBy: row.fundBy?.toISOString() ?? null,
+    playBy: row.playBy?.toISOString() ?? null,
+    matchTime: row.matchTime?.toISOString() ?? null,
     updatedAt: row.updatedAt.toISOString(),
     resultAt: row.resultAt?.toISOString() ?? null,
     settlementReadyAt: surface.economy.settlementReadyAt,
@@ -383,6 +393,10 @@ export async function GET(request: NextRequest) {
                   "ready",
                   "live_confirmed",
                   "completed",
+                  "canceled",
+                  "cancelled",
+                  "expired",
+                  "funding_expired",
                   "no_show_left",
                   "no_show_right",
                   "double_no_show",
@@ -398,6 +412,11 @@ export async function GET(request: NextRequest) {
           id: true,
           status: true,
           scheduledAt: true,
+          timingMode: true,
+          acceptBy: true,
+          fundBy: true,
+          playBy: true,
+          matchTime: true,
           challengeNote: true,
           wagerAmountWolo: true,
           guaranteeAmountWolo: true,

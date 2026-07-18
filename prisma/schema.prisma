@@ -583,6 +583,16 @@ model ScheduledMatch {
   challengedUserId               Int                            @map("challenged_user_id")
   status                         String                         @default("proposed") @db.VarChar(20)
   scheduledAt                    DateTime                       @map("scheduled_at") @db.Timestamp(6)
+  timingMode                     String                         @default("scheduled") @map("timing_mode") @db.VarChar(16)
+  acceptBy                       DateTime?                      @map("accept_by") @db.Timestamp(6)
+  fundBy                         DateTime?                      @map("fund_by") @db.Timestamp(6)
+  playBy                         DateTime?                      @map("play_by") @db.Timestamp(6)
+  matchTime                      DateTime?                      @map("match_time") @db.Timestamp(6)
+  matchTimeProposedByUserId      Int?                           @map("match_time_proposed_by_user_id")
+  matchTimeConfirmedAt           DateTime?                      @map("match_time_confirmed_at") @db.Timestamp(6)
+  expiredAt                      DateTime?                      @map("expired_at") @db.Timestamp(6)
+  reconciledAt                   DateTime?                      @map("reconciled_at") @db.Timestamp(6)
+  creationRequestId              String?                        @unique(map: "uq_scheduled_matches_creation_request_id") @map("creation_request_id") @db.VarChar(128)
   challengeNote                  String?                        @map("challenge_note") @db.VarChar(160)
   wagerAmountWolo                Int                            @default(0) @map("wager_amount_wolo")
   guaranteeAmountWolo            Int                            @default(0) @map("guarantee_amount_wolo")
@@ -609,6 +619,7 @@ model ScheduledMatch {
   activities                     ScheduledMatchActivity[]
   userPreferences                ScheduledMatchUserPreference[]
   settlements                    ScheduledMatchSettlement[]
+  fundingProofs                  ScheduledMatchFundingProof[]
   trophyChallenges               TrophyChallenge[]
 
   challenger User       @relation("ScheduledMatchChallenger", fields: [challengerUserId], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -616,6 +627,9 @@ model ScheduledMatch {
   betMarket  BetMarket?
 
   @@index([status, scheduledAt], map: "ix_scheduled_matches_status_scheduled_at")
+  @@index([status, acceptBy], map: "ix_scheduled_matches_status_accept_by")
+  @@index([status, fundBy], map: "ix_scheduled_matches_status_fund_by")
+  @@index([status, playBy], map: "ix_scheduled_matches_status_play_by")
   @@index([status, updatedAt], map: "ix_scheduled_matches_status_updated_at")
   @@index([challengerUserId, scheduledAt], map: "ix_scheduled_matches_challenger_scheduled_at")
   @@index([challengedUserId, scheduledAt], map: "ix_scheduled_matches_challenged_scheduled_at")
@@ -663,6 +677,22 @@ model ScheduledMatchActivity {
   @@map("scheduled_match_activities")
 }
 
+model ScheduledMatchFundingProof {
+  id               Int      @id @default(autoincrement())
+  scheduledMatchId Int      @map("scheduled_match_id")
+  participantSide  String   @map("participant_side") @db.VarChar(8)
+  txHash           String   @unique(map: "uq_scheduled_match_funding_proofs_tx_hash") @map("tx_hash") @db.VarChar(128)
+  walletAddress    String   @map("wallet_address") @db.VarChar(100)
+  amountWolo       Int      @map("amount_wolo")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  scheduledMatch ScheduledMatch @relation(fields: [scheduledMatchId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([scheduledMatchId, participantSide], map: "uq_scheduled_match_funding_proofs_match_side")
+  @@index([scheduledMatchId], map: "ix_scheduled_match_funding_proofs_match")
+  @@map("scheduled_match_funding_proofs")
+}
+
 model ScheduledMatchSettlement {
   id                  Int       @id @default(autoincrement())
   scheduledMatchId    Int       @map("scheduled_match_id")
@@ -674,6 +704,8 @@ model ScheduledMatchSettlement {
   sourceWalletAddress String?   @map("source_wallet_address") @db.VarChar(100)
   txHash              String?   @map("tx_hash") @db.VarChar(128)
   errorDetail         String?   @map("error_detail") @db.VarChar(500)
+  attemptCount        Int       @default(0) @map("attempt_count")
+  lastAttemptAt       DateTime? @map("last_attempt_at") @db.Timestamp(6)
   createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
   executedAt          DateTime? @map("executed_at") @db.Timestamp(6)
@@ -684,6 +716,7 @@ model ScheduledMatchSettlement {
   @@unique([requestId], map: "uq_scheduled_match_settlements_request_id")
   @@index([scheduledMatchId, status], map: "ix_scheduled_match_settlements_match_status")
   @@index([status, updatedAt], map: "ix_scheduled_match_settlements_status_updated_at")
+  @@index([status, lastAttemptAt], map: "ix_scheduled_match_settlements_status_last_attempt_at")
   @@index([txHash], map: "ix_scheduled_match_settlements_tx_hash")
   @@map("scheduled_match_settlements")
 }

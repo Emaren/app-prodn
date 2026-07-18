@@ -1,5 +1,9 @@
 export type ChallengeInboxNoticeState =
   | "scheduled"
+  | "issued"
+  | "expired"
+  | "funding_expired"
+  | "refunded"
   | "accepted"
   | "terms_accepted"
   | "funding"
@@ -36,6 +40,22 @@ export const CHALLENGE_NOTICE_HEADLINES: Record<
   "Challenge scheduled": {
     state: "scheduled",
     compactHeadline: "Scheduled game",
+  },
+  "Challenge issued": {
+    state: "issued",
+    compactHeadline: "Challenge issued",
+  },
+  "Challenge expired": {
+    state: "expired",
+    compactHeadline: "Challenge expired",
+  },
+  "Challenge funding expired": {
+    state: "funding_expired",
+    compactHeadline: "Funding expired",
+  },
+  "Challenge refunded": {
+    state: "refunded",
+    compactHeadline: "WOLO returned",
   },
   "Challenge terms accepted": {
     state: "terms_accepted",
@@ -76,6 +96,14 @@ export const CHALLENGE_NOTICE_HEADLINES: Record<
   "Challenge rescheduled": {
     state: "rescheduled",
     compactHeadline: "Game rescheduled",
+  },
+  "Challenge time proposed": {
+    state: "rescheduled",
+    compactHeadline: "Time proposed",
+  },
+  "Challenge time confirmed": {
+    state: "rescheduled",
+    compactHeadline: "Time confirmed",
   },
 };
 
@@ -168,9 +196,9 @@ export function summarizeChallengeInboxMessage(
     lines[1] && !lines[1].includes(":")
       ? lines[1]
       : null;
-  const scheduledLabel = readPrefixedLine(lines, ["Start:", "New start:"]);
+  const scheduledLabel = readPrefixedLine(lines, ["Start:", "New start:", "Accept by:", "Proposed match time:"]);
   const scheduledAtIso =
-    readPrefixedLine(lines, ["Start ISO:", "New start ISO:"]) ||
+    readPrefixedLine(lines, ["Start ISO:", "New start ISO:", "Accept by ISO:", "Match time ISO:"]) ||
     coerceServerScheduledLabelToIso(scheduledLabel);
   const fundingLabel = readPrefixedLine(lines, ["Funding:"]);
   const statusLabel = readPrefixedLine(lines, ["Status:"]);

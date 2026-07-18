@@ -2,6 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  clearPendingChallengeFundingProof,
+  loadPendingChallengeFundingProof,
+  storePendingChallengeFundingProof,
+} from "../lib/clientChallengeFundingRetry.ts";
+
+import {
   summarizeChallengeInboxMessage,
 } from "../lib/challengeInboxMessages.ts";
 import {
@@ -44,4 +50,107 @@ test("parses title stakes into the rich challenge invitation contract", () => {
     "Eligible app-side titles move only after verified watcher or replay proof."
   );
   assert.match(summary.compactLine, /Canada Champion/);
+});
+
+test("parses open Challenge v2 invitation with acceptance deadline and play-anytime terms", () => {
+  const summary = summarizeChallengeInboxMessage(
+    [
+      "Challenge issued",
+      "Emaren vs Jim",
+      "Challenge ID: #77",
+      "Accept by: Jul 21, 11:00 AM",
+      "Accept by ISO: 2026-07-21T17:00:00.000Z",
+      "Wolo Wager: 25 WOLO",
+      "Match Guarantee: 10 WOLO",
+      "Funding: 35 WOLO each",
+      "Status: Awaiting acceptance",
+    ].join("\n")
+  );
+
+  assert.ok(summary);
+  assert.equal(summary.state, "issued");
+  assert.equal(summary.challengeId, 77);
+  assert.equal(summary.scheduledAtIso, "2026-07-21T17:00:00.000Z");
+  assert.match(summary.compactLine, /Challenge issued/);
+  assert.match(summary.compactLine, /35 WOLO each/);
+});
+
+test("parses proposed and confirmed exact-time notices without confusing them with acceptance", () => {
+  const proposed = summarizeChallengeInboxMessage(
+    [
+      "Challenge time proposed",
+      "Jim vs Zodiac",
+      "Challenge ID: #24",
+      "Proposed match time: Jul 22, 8:00 PM",
+      "Match time ISO: 2026-07-23T02:00:00.000Z",
+      "Status: Waiting for confirmation",
+    ].join("\n")
+  );
+  assert.ok(proposed);
+  assert.equal(proposed.compactHeadline, "Time proposed");
+  assert.equal(proposed.scheduledAtIso, "2026-07-23T02:00:00.000Z");
+
+  const confirmed = summarizeChallengeInboxMessage(
+    [
+      "Challenge time confirmed",
+      "Jim vs Zodiac",
+      "Challenge ID: #24",
+      "Start: Jul 22, 8:00 PM",
+      "Match time ISO: 2026-07-23T02:00:00.000Z",
+      "Status: Exact time confirmed",
+    ].join("\n")
+  );
+  assert.ok(confirmed);
+  assert.equal(confirmed.compactHeadline, "Time confirmed");
+  assert.equal(confirmed.scheduledAtIso, "2026-07-23T02:00:00.000Z");
+});
+
+
+test("persists one reusable funding proof per challenge side to prevent duplicate broadcasts", () => {
+  const storage = new Map<string, string>();
+  const originalWindow = (globalThis as { window?: unknown }).window;
+  (globalThis as { window?: unknown }).window = {
+    localStorage: {
+      getItem: (key: string) => storage.get(key) ?? null,
+      setItem: (key: string, value: string) => storage.set(key, value),
+      removeItem: (key: string) => storage.delete(key),
+    },
+  };
+
+  try {
+    storePendingChallengeFundingProof({
+      challengeId: 24,
+      participantSide: "left",
+      wagerAmountWolo: 1000,
+      guaranteeAmountWolo: 10,
+      fundingTxHash: "ABC123",
+      walletAddress: "wolo1jim",
+    });
+
+    const same = loadPendingChallengeFundingProof({
+      challengeId: 24,
+      participantSide: "left",
+      wagerAmountWolo: 1000,
+      guaranteeAmountWolo: 10,
+    });
+    assert.equal(same?.fundingTxHash, "ABC123");
+
+    const wrongSide = loadPendingChallengeFundingProof({
+      challengeId: 24,
+      participantSide: "right",
+      wagerAmountWolo: 1000,
+      guaranteeAmountWolo: 10,
+    });
+    assert.equal(wrongSide, null);
+
+    clearPendingChallengeFundingProof(24);
+    assert.equal(loadPendingChallengeFundingProof({
+      challengeId: 24,
+      participantSide: "left",
+      wagerAmountWolo: 1000,
+      guaranteeAmountWolo: 10,
+    }), null);
+  } finally {
+    (globalThis as { window?: unknown }).window = originalWindow;
+  }
 });

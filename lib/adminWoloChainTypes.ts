@@ -19,6 +19,11 @@ export type WoloChainAdminChallengeRun = {
   challengerName: string;
   challengedName: string;
   scheduledAt: string;
+  timingMode: "open" | "scheduled";
+  acceptBy: string | null;
+  fundBy: string | null;
+  playBy: string | null;
+  matchTime: string | null;
   updatedAt: string;
   resultAt: string | null;
   settlementReadyAt: string | null;

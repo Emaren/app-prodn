@@ -1,4 +1,8 @@
+import { randomUUID } from "node:crypto";
+
 import { NextRequest, NextResponse } from "next/server";
+
+import { Prisma } from "@/lib/generated/prisma";
 
 import {
   CHALLENGE_DEFAULT_GUARANTEE_WOLO,
@@ -14,6 +18,13 @@ import {
   normalizeChallengeWoloAmount,
   validateChallengeTermsAmounts,
 } from "@/lib/challengeEconomy";
+import {
+  buildChallengeAcceptBy,
+  CHALLENGE_DEFAULT_ACCEPTANCE_WINDOW_HOURS,
+  normalizeAcceptanceWindowHours,
+  validateExactMatchTime,
+  type ChallengeTimingMode,
+} from "@/lib/challengeLifecycle";
 import { postChallengeInboxNotice } from "@/lib/contactInbox";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
@@ -27,9 +38,6 @@ import { countriesEligibilityMatch } from "@/lib/countryEligibility";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-const SCHEDULE_WINDOW_MIN_MS = 2 * 60 * 1000;
-const SCHEDULE_WINDOW_MAX_MS = 7 * 24 * 60 * 60 * 1000;
 
 const VIEWER_SELECT = {
   id: true,
@@ -76,7 +84,9 @@ function buildChallengeLabel({
 function buildChallengeInviteMessage({
   challengerName,
   challengedName,
-  scheduledAt,
+  timingMode,
+  acceptBy,
+  matchTime,
   challengeNote,
   wagerAmountWolo,
   guaranteeAmountWolo,
@@ -84,7 +94,9 @@ function buildChallengeInviteMessage({
 }: {
   challengerName: string;
   challengedName: string;
-  scheduledAt: Date;
+  timingMode: ChallengeTimingMode;
+  acceptBy: Date;
+  matchTime: Date | null;
   challengeNote: string | null;
   wagerAmountWolo: number;
   guaranteeAmountWolo: number;
@@ -92,15 +104,19 @@ function buildChallengeInviteMessage({
 }) {
   const totalFundingWolo = wagerAmountWolo + guaranteeAmountWolo;
   const lines = [
-    "Challenge scheduled",
+    "Challenge issued",
     `${challengerName} vs ${challengedName}`,
-    `Start: ${formatScheduledAtForInbox(scheduledAt)}`,
-    `Start ISO: ${scheduledAt.toISOString()}`,
+    `Accept by: ${formatScheduledAtForInbox(acceptBy)}`,
+    `Accept by ISO: ${acceptBy.toISOString()}`,
+    timingMode === "scheduled" && matchTime
+      ? `Proposed match time: ${formatScheduledAtForInbox(matchTime)}`
+      : "Match time: Play anytime after both sides fund",
+    timingMode === "scheduled" && matchTime ? `Match time ISO: ${matchTime.toISOString()}` : null,
     `Wolo Wager: ${formatWolo(wagerAmountWolo)} WOLO`,
     `Match Guarantee: ${formatWolo(guaranteeAmountWolo)} WOLO`,
     `Funding: ${formatWolo(totalFundingWolo)} WOLO each`,
-    "Status: Awaiting terms acceptance",
-  ];
+    "Status: Awaiting acceptance",
+  ].filter((line): line is string => Boolean(line));
 
   if (titleStakeNames.length > 0) {
     lines.push(`Title Stakes: ${titleStakeNames.join(", ")}`);
@@ -114,18 +130,10 @@ function buildChallengeInviteMessage({
   return lines.join("\n");
 }
 
-function validateScheduledAtWindow(scheduledAt: Date) {
-  const now = Date.now();
-
-  if (scheduledAt.getTime() < now + SCHEDULE_WINDOW_MIN_MS) {
-    return "Schedule the game at least two minutes ahead.";
-  }
-
-  if (scheduledAt.getTime() > now + SCHEDULE_WINDOW_MAX_MS) {
-    return "Keep scheduled matches inside the next seven days for now.";
-  }
-
-  return null;
+function normalizeCreationRequestId(value: unknown) {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim().slice(0, 128);
+  return /^[A-Za-z0-9:_-]{12,128}$/.test(normalized) ? normalized : null;
 }
 
 async function requireViewer(request: NextRequest) {
@@ -169,7 +177,11 @@ export async function POST(request: NextRequest) {
     const { prisma, viewer } = viewerState;
     const payload = (await request.json().catch(() => ({}))) as {
       challengedUid?: string;
+      timingMode?: string;
+      acceptanceWindowHours?: number | string;
+      matchTime?: string;
       scheduledAt?: string;
+      creationRequestId?: string;
       challengeNote?: string;
       wagerAmountWolo?: string | number | null;
       guaranteeAmountWolo?: string | number | null;
@@ -179,7 +191,23 @@ export async function POST(request: NextRequest) {
 
     const challengedUid =
       typeof payload.challengedUid === "string" ? payload.challengedUid.trim() : "";
-    const scheduledAt = parseScheduledMatchDate(payload.scheduledAt);
+    const timingMode: ChallengeTimingMode = payload.timingMode === "scheduled" ? "scheduled" : "open";
+    const acceptanceWindowHours = normalizeAcceptanceWindowHours(
+      payload.acceptanceWindowHours ?? CHALLENGE_DEFAULT_ACCEPTANCE_WINDOW_HOURS
+    );
+    const now = new Date();
+    const matchTime = timingMode === "scheduled"
+      ? parseScheduledMatchDate(payload.matchTime ?? payload.scheduledAt)
+      : null;
+    const requestedAcceptBy = buildChallengeAcceptBy(now, acceptanceWindowHours);
+    const acceptBy =
+      matchTime && matchTime.getTime() < requestedAcceptBy.getTime()
+        ? new Date(matchTime)
+        : requestedAcceptBy;
+    const scheduledAt = matchTime ?? acceptBy; // legacy compatibility shadow; v2 uses acceptBy/matchTime.
+    const creationRequestId =
+      normalizeCreationRequestId(payload.creationRequestId) ??
+      `challenge-v2:${viewer.id}:${randomUUID()}`;
     const challengeNote = normalizeChallengeNote(payload.challengeNote);
     const wagerAmountWolo =
       normalizeChallengeWoloAmount(payload.wagerAmountWolo) ?? CHALLENGE_DEFAULT_WAGER_WOLO;
@@ -199,8 +227,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ detail: "Challenge another player, not yourself." }, { status: 400 });
     }
 
-    if (!scheduledAt) {
-      return NextResponse.json({ detail: "Choose a valid start time." }, { status: 400 });
+    if (timingMode === "scheduled" && !matchTime) {
+      return NextResponse.json({ detail: "Choose a valid exact match time." }, { status: 400 });
     }
 
     const termsError = validateChallengeTermsAmounts(wagerAmountWolo, guaranteeAmountWolo);
@@ -208,9 +236,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ detail: termsError }, { status: 400 });
     }
 
-    const scheduledAtWindowError = validateScheduledAtWindow(scheduledAt);
-    if (scheduledAtWindowError) {
-      return NextResponse.json({ detail: scheduledAtWindowError }, { status: 400 });
+    if (matchTime) {
+      const matchTimeError = validateExactMatchTime(matchTime, now);
+      if (matchTimeError) {
+        return NextResponse.json({ detail: matchTimeError }, { status: 400 });
+      }
     }
 
     const challenged = await prisma.user.findUnique({
@@ -229,9 +259,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ detail: "Challenged player not found." }, { status: 404 });
     }
 
+    if (creationRequestId) {
+      const existingRequest = await prisma.scheduledMatch.findUnique({
+        where: { creationRequestId },
+        select: { id: true, challengerUserId: true },
+      });
+      if (existingRequest) {
+        if (existingRequest.challengerUserId !== viewer.id) {
+          return NextResponse.json({ detail: "Challenge request ID is already in use." }, { status: 409 });
+        }
+        const refreshed = await loadChallengeHubSnapshot(prisma, viewer.uid);
+        return NextResponse.json({
+          ...refreshed,
+          createdChallengeId: existingRequest.id,
+          idempotentReplay: true,
+        });
+      }
+    }
+
     const existingActiveMatch = await loadChallengeThreadTile(prisma, viewer.id, challenged.id);
     const duplicateWarning = existingActiveMatch
-      ? `You already have another match with ${playerName(challenged)}. Scheduling anyway.`
+      ? `You already have another active challenge with ${playerName(challenged)}. Creating this one anyway.`
       : null;
 
     const challengerName = playerName(viewer);
@@ -414,12 +462,21 @@ export async function POST(request: NextRequest) {
     const linkedTrophyChallengeIds: number[] = [];
     const titleStakeNames = titleStakePlans.map((plan) => plan.trophy.displayName);
 
-    await prisma.$transaction(async (tx) => {
+    try {
+      await prisma.$transaction(async (tx) => {
       const createdMatch = await tx.scheduledMatch.create({
         data: {
           challengerUserId: viewer.id,
           challengedUserId: challenged.id,
           scheduledAt,
+          timingMode,
+          acceptBy,
+          fundBy: null,
+          playBy: null,
+          matchTime,
+          matchTimeProposedByUserId: matchTime ? viewer.id : null,
+          matchTimeConfirmedAt: null,
+          creationRequestId,
           challengeNote,
           status: "proposed",
           wagerAmountWolo,
@@ -496,15 +553,18 @@ export async function POST(request: NextRequest) {
         data: {
           scheduledMatchId: createdMatch.id,
           actorUserId: viewer.id,
-          eventType: "scheduled",
+          eventType: "challenge_created",
           detail: [
-            `Scheduled for ${challengerName} vs ${challengedName}.`,
+            `${challengerName} challenged ${challengedName}.`,
             `Funding ${formatWolo(totalFundingWolo)} WOLO each.`,
             challengeNote ? `Note: ${challengeNote}` : null,
           ]
             .filter(Boolean)
             .join(" "),
           metadata: {
+            timingMode,
+            acceptBy: acceptBy.toISOString(),
+            matchTime: matchTime?.toISOString() ?? null,
             scheduledAt: scheduledAt.toISOString(),
             wagerAmountWolo,
             guaranteeAmountWolo,
@@ -522,7 +582,9 @@ export async function POST(request: NextRequest) {
         body: buildChallengeInviteMessage({
           challengerName,
           challengedName,
-          scheduledAt,
+          timingMode,
+          acceptBy,
+          matchTime,
           challengeNote,
           wagerAmountWolo,
           guaranteeAmountWolo,
@@ -539,6 +601,9 @@ export async function POST(request: NextRequest) {
           challengeId: createdMatch.id,
           role: "challenger",
           opponentUid: challenged.uid,
+          timingMode,
+          acceptBy: acceptBy.toISOString(),
+          matchTime: matchTime?.toISOString() ?? null,
           scheduledAt: scheduledAt.toISOString(),
           challengeNote,
           wagerAmountWolo,
@@ -559,6 +624,9 @@ export async function POST(request: NextRequest) {
           challengeId: createdMatch.id,
           role: "challenged",
           opponentUid: viewer.uid,
+          timingMode,
+          acceptBy: acceptBy.toISOString(),
+          matchTime: matchTime?.toISOString() ?? null,
           scheduledAt: scheduledAt.toISOString(),
           challengeNote,
           wagerAmountWolo,
@@ -569,7 +637,28 @@ export async function POST(request: NextRequest) {
         },
         dedupeWithinSeconds: 5,
       });
-    });
+      });
+    } catch (error) {
+      if (
+        creationRequestId &&
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        const existingRequest = await prisma.scheduledMatch.findUnique({
+          where: { creationRequestId },
+          select: { id: true, challengerUserId: true },
+        });
+        if (existingRequest?.challengerUserId === viewer.id) {
+          const refreshed = await loadChallengeHubSnapshot(prisma, viewer.uid);
+          return NextResponse.json({
+            ...refreshed,
+            createdChallengeId: existingRequest.id,
+            idempotentReplay: true,
+          });
+        }
+      }
+      throw error;
+    }
 
     const refreshed = await loadChallengeHubSnapshot(prisma, viewer.uid);
     return NextResponse.json({

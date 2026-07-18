@@ -334,8 +334,25 @@ export async function GET(request: NextRequest) {
           guaranteeAmountWolo: true,
           challengerFundedAt: true,
           challengerFundingTxHash: true,
+          challengerFundingWalletAddress: true,
           challengedFundedAt: true,
           challengedFundingTxHash: true,
+          challengedFundingWalletAddress: true,
+          settlements: {
+            orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+            select: {
+              id: true,
+              status: true,
+              action: true,
+              recipientAddress: true,
+              amountWolo: true,
+              txHash: true,
+              errorDetail: true,
+              createdAt: true,
+              updatedAt: true,
+              executedAt: true,
+            },
+          },
           challenger: {
             select: {
               uid: true,
@@ -546,7 +563,17 @@ export async function GET(request: NextRequest) {
 
     for (const match of scheduledMatches) {
       const amountWolo = match.wagerAmountWolo + match.guaranteeAmountWolo;
-      const label = `Scheduled escrow · vs ${opponentLabel({ ...match, userId: user.id })}`;
+      const opponent = opponentLabel({ ...match, userId: user.id });
+      const label = `Challenge funding · vs ${opponent}`;
+      const challengeWalletAddresses = new Set(linkedWalletAddresses);
+
+      if (match.challengerUserId === user.id && match.challengerFundingWalletAddress) {
+        challengeWalletAddresses.add(match.challengerFundingWalletAddress.toLowerCase());
+      }
+      if (match.challengedUserId === user.id && match.challengedFundingWalletAddress) {
+        challengeWalletAddresses.add(match.challengedFundingWalletAddress.toLowerCase());
+      }
+
       if (match.challengerUserId === user.id) {
         pushRow(rows, {
           id: `scheduled-challenger-${match.id}`,
@@ -573,6 +600,37 @@ export async function GET(request: NextRequest) {
           proofUrl: null,
           category: "challenge",
           network: match.challengedFundingTxHash ? "mainnet" : "app",
+        });
+      }
+
+      for (const settlement of match.settlements) {
+        const recipient = settlement.recipientAddress?.trim().toLowerCase();
+        if (!recipient || !challengeWalletAddresses.has(recipient)) continue;
+
+        const isRefund = settlement.action.includes("refund") || settlement.action.includes("return");
+        const isAward = settlement.action.includes("award");
+        const semanticLabel = isRefund
+          ? `Challenge refund · vs ${opponent}`
+          : isAward
+            ? `Challenge winnings · vs ${opponent}`
+            : `Challenge settlement · vs ${opponent}`;
+        const status = settlement.status === "executed" && settlement.txHash
+          ? "confirmed"
+          : settlement.status === "failed"
+            ? `failed${settlement.errorDetail ? " · retry queued" : ""}`
+            : formatStatus(settlement.status);
+
+        pushRow(rows, {
+          id: `scheduled-settlement-${settlement.id}`,
+          direction: "in",
+          amountWolo: settlement.amountWolo,
+          label: semanticLabel,
+          status,
+          occurredAt: (settlement.executedAt || settlement.updatedAt || settlement.createdAt).toISOString(),
+          txHash: settlement.txHash,
+          proofUrl: null,
+          category: "challenge",
+          network: settlement.txHash ? "mainnet" : "app",
         });
       }
     }

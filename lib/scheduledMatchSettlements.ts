@@ -18,6 +18,8 @@ const ADVISORY_LOCK_NAMESPACE = 752006;
 const SETTLEMENT_STATUSES = new Set([
   "canceled",
   "cancelled",
+  "expired",
+  "funding_expired",
   "double_no_show",
   "no_show_left",
   "no_show_right",
@@ -77,6 +79,8 @@ const SCHEDULED_MATCH_SETTLEMENT_SELECT = {
       sourceWalletAddress: true,
       txHash: true,
       errorDetail: true,
+      attemptCount: true,
+      lastAttemptAt: true,
       createdAt: true,
       updatedAt: true,
       executedAt: true,
@@ -119,7 +123,7 @@ export type ScheduledMatchSettlementTransfer = {
   amountWolo: number;
   requestId: string;
   memo: string;
-  eventType: "refund_sent" | "guarantee_forfeited_to_treasury" | "guarantee_awarded";
+  eventType: "refund_sent" | "guarantee_forfeited_to_treasury" | "guarantee_awarded" | "wager_awarded";
   sourceWalletAddress: string | null;
   fundingTxHash: string | null;
   fundingWalletAddress: string | null;
@@ -128,6 +132,8 @@ export type ScheduledMatchSettlementTransfer = {
     status: string;
     txHash: string | null;
     errorDetail: string | null;
+    attemptCount: number;
+    lastAttemptAt: string | null;
     executedAt: string | null;
     updatedAt: string;
   } | null;
@@ -228,6 +234,21 @@ function normalizeStatus(value: string | null | undefined) {
   return (value || "").trim().toLowerCase();
 }
 
+function normalizeIdentity(value: string | null | undefined) {
+  return (value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
+}
+
+function participantAliases(user: ScheduledMatchSettlementRow["challenger"]) {
+  return new Set(
+    [user.uid, user.inGameName, user.steamPersonaName]
+      .map(normalizeIdentity)
+      .filter(Boolean)
+  );
+}
+
 function titleForMatch(row: ScheduledMatchSettlementRow) {
   return `${displayUserName(row.challenger)} vs ${displayUserName(row.challenged)}`;
 }
@@ -237,6 +258,10 @@ function settlementSlug(status: string) {
     case "cancelled":
     case "canceled":
       return "canceled";
+    case "expired":
+      return "expired";
+    case "funding_expired":
+      return "funding-expired";
     case "double_no_show":
       return "double-noshow";
     case "no_show_left":
@@ -274,7 +299,10 @@ function buildParticipant(
   const fundingTxHash = funding.fundingTxHash?.trim() || null;
   const fundingWalletAddress = funding.fundingWalletAddress?.trim() || null;
   const fundedAt = funding.fundedAt?.toISOString() ?? null;
-  const funded = Boolean(fundedAt || fundingTxHash || fundingWalletAddress);
+  // Mainnet settlement liability is tx-backed. A timestamp or wallet field alone
+  // is not proof that WOLO reached Bet Escrow. Missing recipient metadata remains
+  // visible as a blocker when a funding tx exists.
+  const funded = Boolean(fundingTxHash);
 
   return {
     side,
@@ -307,6 +335,8 @@ function buildExistingSettlementMap(row: ScheduledMatchSettlementRow) {
       status: settlement.status,
       txHash: settlement.txHash ?? null,
       errorDetail: settlement.errorDetail ?? null,
+      attemptCount: settlement.attemptCount,
+      lastAttemptAt: settlement.lastAttemptAt?.toISOString() ?? null,
       executedAt: settlement.executedAt?.toISOString() ?? null,
       updatedAt: settlement.updatedAt.toISOString(),
     });
@@ -460,13 +490,57 @@ function buildRawTransfers(input: {
     });
   };
 
-  if (status === "canceled" || status === "cancelled") {
+  const awardWagerToParticipant = (
+    recipient: ParticipantPlan,
+    amountWolo: number,
+    action: string,
+    label: string
+  ) => {
+    addTransfer(transfers, input.row, input.existingMap, {
+      action,
+      label,
+      participant: recipient,
+      participantSide: recipient.side,
+      bucket: "wager",
+      reason: "award",
+      recipientAddress: recipient.fundingWalletAddress || recipient.userWalletAddress,
+      recipientLabel: recipient.name,
+      amountWolo,
+      eventType: "wager_awarded",
+      sourceWalletAddress: input.sourceWalletAddress,
+    });
+  };
+
+  if (["canceled", "cancelled", "expired", "funding_expired"].includes(status)) {
     if (input.left.funded) {
       refundParticipant(input.left, total, "left_full_refund", "left full refund", "combined");
     }
     if (input.right.funded) {
       refundParticipant(input.right, total, "right_full_refund", "right full refund", "combined");
     }
+    return transfers;
+  }
+
+  if (status === "completed") {
+    const winnerKey = normalizeIdentity(input.row.linkedWinner);
+    const leftMatches = Boolean(winnerKey) && participantAliases(input.row.challenger).has(winnerKey);
+    const rightMatches = Boolean(winnerKey) && participantAliases(input.row.challenged).has(winnerKey);
+    const winner = leftMatches === rightMatches ? null : leftMatches ? input.left : input.right;
+
+    if (!winner || !input.left.funded || !input.right.funded) {
+      return transfers;
+    }
+
+    if (guarantee > 0) {
+      refundParticipant(input.left, guarantee, "left_guarantee_return", "left match guarantee return", "guarantee");
+      refundParticipant(input.right, guarantee, "right_guarantee_return", "right match guarantee return", "guarantee");
+    }
+    awardWagerToParticipant(
+      winner,
+      wager * 2,
+      `${winner.side}_winner_wager_award`,
+      `${winner.side} winner wager award`
+    );
     return transfers;
   }
 
@@ -572,14 +646,6 @@ function determinePlanState(input: {
   transfers: ScheduledMatchSettlementTransfer[];
   blockers: string[];
 }) {
-  if (normalizeStatus(input.status) === "completed") {
-    return {
-      state: "review_only" as const,
-      stateLabel: "Review only",
-      stateDetail: "Completed scheduled matches are result-ready, but winner payout logic is not auto-settled here yet.",
-    };
-  }
-
   if (input.fundedCount === 0) {
     return {
       state: "no_funding" as const,
@@ -669,6 +735,17 @@ export function buildScheduledMatchSettlementPlan(
     treasuryAddress,
     transfers,
   });
+  if (normalizeStatus(row.status) === "completed") {
+    const winnerKey = normalizeIdentity(row.linkedWinner);
+    const leftMatches = Boolean(winnerKey) && participantAliases(row.challenger).has(winnerKey);
+    const rightMatches = Boolean(winnerKey) && participantAliases(row.challenged).has(winnerKey);
+    if (!winnerKey || leftMatches === rightMatches) {
+      blockers.push("Completed match winner does not resolve uniquely to one challenge participant.");
+    }
+    if (!left.funded || !right.funded) {
+      blockers.push("Completed wager settlement requires both participants to have verified funding.");
+    }
+  }
   const planState = determinePlanState({
     status: row.status,
     fundedCount: fundedParticipants.length,
@@ -865,7 +942,7 @@ export async function loadScheduledMatchSettlementPlans(
         ? { id: { in: ids } }
         : {
             OR: [
-              { status: { in: ["canceled", "cancelled", "double_no_show", "no_show_left", "no_show_right", "completed"] } },
+              { status: { in: ["canceled", "cancelled", "expired", "funding_expired", "double_no_show", "no_show_left", "no_show_right", "completed"] } },
               { settlementReadyAt: { not: null } },
               { challengerFundedAt: { not: null } },
               { challengedFundedAt: { not: null } },
@@ -873,7 +950,7 @@ export async function loadScheduledMatchSettlementPlans(
               { challengedFundingTxHash: { not: null } },
             ],
           },
-    orderBy: [{ settlementReadyAt: "desc" }, { updatedAt: "desc" }, { id: "desc" }],
+    orderBy: [{ settlementReadyAt: "asc" }, { updatedAt: "asc" }, { id: "asc" }],
     take,
     select: SCHEDULED_MATCH_SETTLEMENT_SELECT,
   });
@@ -945,8 +1022,8 @@ function assertExecutablePlan(plan: ScheduledMatchSettlementPlan) {
   }
   if (plan.state === "review_only") {
     throw new ScheduledMatchSettlementError(
-      "Completed scheduled matches are review-only until winner payout logic is explicitly wired.",
-      { status: 409, code: "COMPLETED_REVIEW_ONLY" }
+      "Scheduled-match settlement requires operator review before execution.",
+      { status: 409, code: "SETTLEMENT_REVIEW_ONLY" }
     );
   }
   if (plan.state === "no_funding") {
@@ -1033,6 +1110,8 @@ async function markSettlementExecutionStarted(
           requestId: transfer.requestId,
           sourceWalletAddress: transfer.sourceWalletAddress,
           errorDetail: null,
+          attemptCount: 1,
+          lastAttemptAt: new Date(),
         },
         update: {
           status: "executing",
@@ -1041,6 +1120,8 @@ async function markSettlementExecutionStarted(
           errorDetail: null,
           txHash: null,
           executedAt: null,
+          attemptCount: { increment: 1 },
+          lastAttemptAt: new Date(),
         },
       });
     }
@@ -1094,7 +1175,7 @@ async function recordExecutionResult(
   prisma: PrismaClient,
   plan: ScheduledMatchSettlementPlan,
   execution: SettlementRunResult,
-  adminUserId: number
+  adminUserId: number | null
 ): Promise<ScheduledMatchSettlementPlan> {
   const payoutByRequestId = resultByRequestId(execution);
 
@@ -1235,7 +1316,7 @@ async function recordExecutionResult(
 async function recordExecutionFailure(
   prisma: PrismaClient,
   plan: ScheduledMatchSettlementPlan,
-  adminUserId: number,
+  adminUserId: number | null,
   detail: string
 ) {
   await prisma.$transaction(async (tx) => {
@@ -1267,7 +1348,7 @@ async function recordExecutionFailure(
 export async function executeScheduledMatchSettlement(
   prisma: PrismaClient,
   matchId: number,
-  adminUserId: number
+  adminUserId: number | null = null
 ): Promise<ScheduledMatchSettlementExecutionResult> {
   const markedPlan = await markSettlementExecutionStarted(prisma, matchId);
 

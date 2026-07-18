@@ -1,0 +1,12 @@
+[Unit]
+Description=AoE2WAR Challenge lifecycle reconciliation
+After=network-online.target aoe2hdbets-web.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=tony
+WorkingDirectory=/var/www/AoE2HDBets/app-prodn
+EnvironmentFile=/etc/aoe2hdbets/aoe2hdbets-web.env
+ExecStart=/usr/bin/npm run challenge:reconcile
+Nice=5

@@ -37,6 +37,15 @@ type ScheduledMatchSummary = {
   id: number;
   displayState: string;
   scheduledAt: string;
+  acceptBy?: string | null;
+  fundBy?: string | null;
+  playBy?: string | null;
+  matchTime?: string | null;
+  lifecycle?: {
+    timingMode?: "open" | "scheduled";
+    deadlineAt?: string | null;
+    canPlayAnytime?: boolean;
+  };
   terms: {
     totalFundingWolo: number;
   };
@@ -123,13 +132,32 @@ function compactState(value: string | null | undefined) {
   return (value || "ready").replace(/_/g, " ");
 }
 
+function challengePriorityTime(match: ScheduledMatchSummary) {
+  const value = match.matchTime || match.lifecycle?.deadlineAt || match.acceptBy || match.fundBy || match.playBy || match.scheduledAt;
+  const parsed = Date.parse(value || "");
+  return Number.isFinite(parsed) ? parsed : Number.MAX_SAFE_INTEGER;
+}
+
 function pickNextMatch(matches: ScheduledMatchSummary[] | undefined) {
   if (!matches?.length) return null;
   const active = matches
     .filter((match) => ACTIVE_MATCH_STATES.has(match.displayState))
-    .sort((a, b) => Date.parse(a.scheduledAt) - Date.parse(b.scheduledAt));
+    .sort((a, b) => challengePriorityTime(a) - challengePriorityTime(b));
 
   return active[0] ?? matches[0] ?? null;
+}
+
+function challengeTimeLabel(match: ScheduledMatchSummary | null) {
+  if (!match) return "No active challenge";
+  if (match.matchTime) return formatLocalDate(match.matchTime);
+  if (match.lifecycle?.canPlayAnytime) return "Play anytime";
+  if (["proposed", "pending", "creator_funded"].includes(match.displayState) && match.acceptBy) {
+    return `Accept by ${formatLocalDate(match.acceptBy)}`;
+  }
+  if (["accepted", "terms_accepted", "opponent_funded"].includes(match.displayState) && match.fundBy) {
+    return `Fund by ${formatLocalDate(match.fundBy)}`;
+  }
+  return match.lifecycle?.deadlineAt ? formatLocalDate(match.lifecycle.deadlineAt) : "Play anytime";
 }
 
 function matchFundingLabel(match: ScheduledMatchSummary | null, uid: string | null) {
@@ -354,9 +382,7 @@ export default function InstalledAppPage() {
             title={nextMatch ? `${nextMatch.challenger.name} vs ${nextMatch.challenged.name}` : "Schedule next"}
             value={
               nextMatch
-                ? `${formatWolo(nextMatch.terms.totalFundingWolo)} WOLO each · ${formatLocalDate(
-                    nextMatch.scheduledAt
-                  )}`
+                ? `${formatWolo(nextMatch.terms.totalFundingWolo)} WOLO each · ${challengeTimeLabel(nextMatch)}`
                 : "Create or accept a match"
             }
             href="/challenge"
@@ -390,14 +416,14 @@ export default function InstalledAppPage() {
                     {formatWolo(nextMatch.terms.totalFundingWolo)} WOLO each
                   </span>
                   <span>·</span>
-                  <span>{formatLocalDate(nextMatch.scheduledAt)}</span>
+                  <span>{challengeTimeLabel(nextMatch)}</span>
                   <span>·</span>
                   <span>{matchFundingLabel(nextMatch, uid)}</span>
                   <span>·</span>
                   <span>{compactState(nextMatch.displayState)}</span>
                 </div>
               ) : (
-                <div className="text-sm text-slate-400">Challenge a player and lock the time.</div>
+                <div className="text-sm text-slate-400">Challenge a player. Schedule an exact time only when you need one.</div>
               )}
             </div>
           </div>

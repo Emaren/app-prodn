@@ -57,6 +57,15 @@ journalctl -u aoe2hdbets-web.service -n 40 --no-pager
 
 ## Recent deployment notes
 
+### 2026-07-18 Challenge lifecycle v2
+
+- Challenge creation now defaults to a 72-hour open acceptance window and Play Anytime after both sides fund; exact match times are optional and use browser-local display with UTC as secondary truth.
+- Added explicit `accept_by`, `fund_by`, `play_by`, `match_time`, exact-time confirmation, creation idempotency, canonical funding-proof uniqueness, bounded Challenge history, folded lifecycle records, and deterministic settlement retry metadata.
+- Automatic reconciliation is restricted to Challenge V2 rows with non-null `creation_request_id`; migrated legacy rows remain operator-reviewed and are never silently swept by the timer.
+- Install `deploy/aoe2hdbets-challenge-reconcile.service` and `.timer` only after the application migration/build/smoke gate passes and `CHALLENGE_RECONCILE_TOKEN` (or `CRON_SECRET`) is present in `/etc/aoe2hdbets/aoe2hdbets-web.env`. The timer runs every five minutes and may execute deterministic refunds for newly expired V2 Challenges.
+- Before enabling the timer, take a restricted Postgres backup, run `npx prisma migrate deploy`, `npx prisma generate`, `npm run test:challenge`, `npx tsc --noEmit --pretty false`, the relevant lint/build gates, and deploy through the isolated `.next-release` atomic swap.
+- Historical Jim vs Zodiac Challenge #24 is not an automatic-reconciliation target. Production audit identified a 1,010 WOLO funded liability (1,000 wager + 10 guarantee) with no refund/settlement row at audit time. Re-query current DB/chain truth after deploy, dry-run only #24 through the existing admin scheduled-settlement rail, and execute exactly once only if it is still outstanding.
+
 ### 2026-07-13 team-market integrity and incident correction rail
 
 - API replay players now retain canonical explicit team IDs and expose team resolution/final winner coherence.

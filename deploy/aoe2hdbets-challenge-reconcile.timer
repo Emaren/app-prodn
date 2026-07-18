@@ -1,0 +1,12 @@
+[Unit]
+Description=Run AoE2WAR Challenge reconciliation every five minutes
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=5min
+RandomizedDelaySec=30s
+Persistent=true
+Unit=aoe2hdbets-challenge-reconcile.service
+
+[Install]
+WantedBy=timers.target
