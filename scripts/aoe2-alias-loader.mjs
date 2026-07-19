@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, statSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -25,7 +25,7 @@ export async function resolve(specifier, context, nextResolve) {
   const base = path.resolve(ROOT, relative);
   for (const suffix of CANDIDATE_SUFFIXES) {
     const candidate = `${base}${suffix}`;
-    if (existsSync(candidate)) {
+    if (existsSync(candidate) && statSync(candidate).isFile()) {
       return {
         url: pathToFileURL(candidate).href,
         shortCircuit: true,
