@@ -31,6 +31,8 @@ export type PublicGameStatsLike = {
   parseReason?: string | null;
   parse_source?: string | null;
   parseSource?: string | null;
+  disconnect_detected?: boolean | null;
+  disconnectDetected?: boolean | null;
   is_final?: boolean | null;
   isFinal?: boolean | null;
   timestamp?: string | Date | null;
@@ -145,6 +147,8 @@ export function publicReplayWinnerTruth(row: PublicGameStatsLike) {
     parseSource: readString(row, "parse_source", "parseSource") || null,
     keyEvents: row.key_events ?? row.keyEvents,
     eventTypes: row.event_types ?? row.eventTypes,
+    disconnectDetected:
+      row.disconnect_detected === true || row.disconnectDetected === true,
   });
 }
 
@@ -416,6 +420,8 @@ export function toPublicGameStatsRow<T extends PublicGameStatsLike>(row: T): T {
       parseReason: readString(row, "parse_reason", "parseReason") || null,
       parseSource: readString(row, "parse_source", "parseSource") || null,
       keyEvents: row.key_events ?? row.keyEvents,
+      disconnectDetected:
+        row.disconnect_detected === true || row.disconnectDetected === true,
     });
   return next as T;
 }

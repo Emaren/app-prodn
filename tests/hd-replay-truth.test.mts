@@ -207,6 +207,94 @@ test("partial or conflicting team winner flags remain unresolved", () => {
   assert.equal(truth.statsEligible, false);
 });
 
+test("stored scalar winner cannot override an untrusted structured 3v3 result", () => {
+  const players = [
+    { name: "Jim", winner: false },
+    { name: "jlann85", winner: false },
+    { name: "Scavanger_Ab", winner: false },
+    { name: "Kryptonyt@", winner: true },
+    { name: "Nui", winner: true },
+    { name: "...A warm gun", winner: true },
+  ];
+
+  const keyEvents = {
+    completed: true,
+    team_resolution: {
+      status: "resolved",
+      confidence: "high",
+      player_count: 6,
+      team_count: 2,
+    },
+    result_resolution: {
+      result_status: "review_required",
+      result_trusted: false,
+      result_confidence: "review",
+      result_provenance: "coherent_player_winner_flags_review",
+      winning_team_id: null,
+      winning_player_names: [],
+    },
+  };
+
+  const truth = resolveReplayWinnerTruth({
+    winner: "Kryptonyt@",
+    players,
+    parseReason: "team_resignation_not_complete",
+    parseSource: "watcher_final",
+    keyEvents,
+    eventTypes: ["resign"],
+  });
+
+  assert.equal(truth.winner, null);
+  assert.equal(truth.candidateWinner, "Kryptonyt@");
+  assert.equal(truth.statsEligible, false);
+  assert.equal(truth.bettingEligible, false);
+  assert.equal(truth.publicLabel, "Result review");
+  assert.ok(
+    truth.truthReasons.includes("untrusted_structured_team_result")
+  );
+
+  const publicRow = toPublicGameStatsRow({
+    id: 17236,
+    is_final: true,
+    disconnect_detected: false,
+    winner: "Kryptonyt@",
+    parse_reason: "team_resignation_not_complete",
+    parse_source: "watcher_final",
+    players,
+    key_events: keyEvents,
+  });
+
+  assert.equal(publicRow.winner, null);
+  assert.deepEqual(
+    (publicRow.players as Array<{ winner?: unknown }>).map((player) => player.winner),
+    [null, null, null, null, null, null]
+  );
+});
+
+test("disconnect evidence blocks an otherwise stored winner", () => {
+  const truth = resolveReplayWinnerTruth({
+    winner: "Alpha",
+    players: [
+      { name: "Alpha", winner: true },
+      { name: "Bravo", winner: false },
+    ],
+    parseReason: "watcher_final_submission",
+    parseSource: "watcher_final",
+    keyEvents: {
+      completed: true,
+      postgame_available: true,
+      has_scores: true,
+    },
+    disconnectDetected: true,
+  });
+
+  assert.equal(truth.winner, null);
+  assert.equal(truth.candidateWinner, "Alpha");
+  assert.equal(truth.statsEligible, false);
+  assert.equal(truth.bettingEligible, false);
+  assert.ok(truth.truthReasons.includes("disconnect_or_desync"));
+});
+
 test("unknown-like placeholders are never promoted to replay metadata", () => {
   for (const value of [
     null,

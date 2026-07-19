@@ -39,6 +39,8 @@ export const REPLAY_WINNER_TRUTH_REASON_CODES = [
   "manual_recovery",
   "uploader_opponent_inference_rejected",
   "generic_inference_rejected",
+  "disconnect_or_desync",
+  "untrusted_structured_team_result",
   "winner_missing",
   "no_postgame_block",
   "no_scores",
@@ -72,6 +74,7 @@ export type ReplayWinnerTruthInput = {
   parseSource?: string | null;
   keyEvents?: unknown;
   eventTypes?: unknown;
+  disconnectDetected?: boolean | null;
 };
 
 type UnresolvedWatcherResultInput = {
@@ -90,6 +93,7 @@ type UnresolvedWatcherResultInput = {
   reason?: string | null;
   waitMs?: number | null;
   watcherCount?: number | null;
+  disconnectDetected?: boolean | null;
 };
 
 const NON_WINNER_VALUES = new Set([
@@ -390,6 +394,7 @@ export function resolveReplayWinnerTruth(
     flaggedWinners
   );
   const structuredResult = readKeyEvents(keyEvents.result_resolution);
+  const structuredTeamResolution = readKeyEvents(keyEvents.team_resolution);
   const structuredResultClaimsTeam =
     Array.isArray(structuredResult.winning_player_names) &&
     structuredResult.winning_player_names.length > 1;
@@ -419,6 +424,67 @@ export function resolveReplayWinnerTruth(
       scoreboardProof ||
       resignationProof);
   const candidateWinner = storedWinner ?? reliableFlagWinner;
+  const disconnectDetected =
+    truthBoolean(input.disconnectDetected) ||
+    truthBoolean(keyEvents.disconnect_detected);
+  const hasStructuredResultContract =
+    Object.keys(structuredResult).length > 0 &&
+    (
+      "result_status" in structuredResult ||
+      "result_trusted" in structuredResult ||
+      "winning_team_id" in structuredResult ||
+      "winning_player_names" in structuredResult
+    );
+  const isStructuredTeamGame =
+    Array.isArray(input.players) &&
+    input.players.length > 2 &&
+    Object.keys(structuredTeamResolution).length > 0;
+  const structuredTeamResultRejected =
+    isStructuredTeamGame &&
+    hasStructuredResultContract &&
+    (
+      textValue(structuredResult.result_status).toLowerCase() !== "resolved" ||
+      !truthBoolean(structuredResult.result_trusted)
+    );
+
+  if (disconnectDetected) {
+    const truthReasons: ReplayWinnerTruthReason[] = ["disconnect_or_desync"];
+    return {
+      winner: null,
+      candidateWinner,
+      confidence: "unresolved",
+      truthReasons,
+      publicLabel: "Result review",
+      statsEligible: false,
+      bettingEligible: false,
+      diagnosticSummary: candidateWinner
+        ? `Candidate ${candidateWinner} was rejected because the replay carries disconnect/desync evidence.`
+        : "Replay carries disconnect/desync evidence and cannot establish a canonical winner.",
+      neededEvidence: ["a clean final replay or commissioner adjudication"],
+    };
+  }
+
+  // Canonical team-result contract outranks the legacy scalar winner field.
+  // A review_required/untrusted structured team result must never be resurrected
+  // into a win merely because mgz exposed coherent player winner flags.
+  if (structuredTeamResultRejected) {
+    const truthReasons: ReplayWinnerTruthReason[] = [
+      "untrusted_structured_team_result",
+    ];
+    return {
+      winner: null,
+      candidateWinner,
+      confidence: "unresolved",
+      truthReasons,
+      publicLabel: "Result review",
+      statsEligible: false,
+      bettingEligible: false,
+      diagnosticSummary: candidateWinner
+        ? `Candidate ${candidateWinner} was rejected because the structured team result is not trusted.`
+        : "The structured team result requires review and does not establish a canonical winner.",
+      neededEvidence: ["a trusted structured team result or commissioner adjudication"],
+    };
+  }
 
   if (inferenceRejected) {
     const inference = readKeyEvents(input.keyEvents).winner_inference;
@@ -584,6 +650,7 @@ export function classifyUnresolvedWatcherResult(
     parseReason: input.parseReason,
     parseSource: input.parseSource,
     keyEvents: input.keyEvents,
+    disconnectDetected: input.disconnectDetected,
   });
 
   if (winnerTruth.statsEligible) {
